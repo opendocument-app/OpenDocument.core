@@ -6,7 +6,7 @@ on:
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
-  CCACHE_MAXSIZE: 500M
+  CCACHE_MAXSIZE: 1G
   CCACHE_KEY_SUFFIX: r1
   CONAN_HOME: ${{ github.workspace }}/.conan2
   CONAN_KEY_SUFFIX: r1
@@ -46,26 +46,26 @@ jobs:
       - name: get version
         run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
-      - name: cache
+      - name: cache conan
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ${{ env.CONAN_HOME }}
-          key: ${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.host_profile }}-
+            conan-${{ matrix.host_profile }}-
 
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
         run: conan config install .github/config/conan
 
-      - name: cache
+      - name: cache ccache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.host_profile }}-
+            ccache-${{ matrix.host_profile }}-
 
       - name: conan install
         run: >

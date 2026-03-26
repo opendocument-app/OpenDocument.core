@@ -8,7 +8,7 @@ concurrency:
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
-  CCACHE_MAXSIZE: 500M
+  CCACHE_MAXSIZE: 1G
   CCACHE_KEY_SUFFIX: r1
   CONAN_HOME: ${{ github.workspace }}/.conan2
   CONAN_KEY_SUFFIX: r1
@@ -54,26 +54,26 @@ jobs:
         if: startsWith(matrix.host_profile, 'android')
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
-      - name: cache
+      - name: cache conan
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ${{ env.CONAN_HOME }}
-          key: ${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.host_profile }}-
+            conan-${{ matrix.host_profile }}-
 
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
         run: conan config install .github/config/conan
 
-      - name: cache
+      - name: cache ccache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.host_profile }}-
+            ccache-${{ matrix.host_profile }}-
 
       - name: conan install
         run: >
@@ -307,11 +307,14 @@ jobs:
         if: startsWith(matrix.host_profile, 'android')
         run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
-      - name: fetch conan-odr-index
-        uses: actions/checkout@v4
+      - name: cache conan
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
-          repository: opendocument-app/conan-odr-index
-          path: conan-odr-index
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          restore-keys: |
+            conan-${{ matrix.host_profile }}-
+
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py
       - name: conan config
@@ -320,15 +323,13 @@ jobs:
       - name: conan odrcore
         run: conan export . --name odrcore --version 0.0.0
 
-      - name: cache
-        uses: actions/cache@v4
+      - name: cache ccache
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
-          path: |
-            ~/.ccache
-            /Users/runner/Library/Caches/ccache
-          key: ${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
           restore-keys: |
-            ${{ matrix.host_profile }}-
+            ccache-${{ matrix.host_profile }}-
 
       - name: conan install
         run: >
