@@ -39,7 +39,7 @@ class OpenDocumentCoreConan(ConanFile):
             del self.options.with_libmagic
 
     def requirements(self):
-        self.requires("pugixml/1.14")
+        self.requires("pugixml/1.15")
         self.requires("cryptopp/8.9.0")
         self.requires("miniz/3.0.2")
         self.requires("nlohmann_json/3.11.3")
