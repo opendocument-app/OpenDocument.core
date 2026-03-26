@@ -4,7 +4,7 @@
 
 namespace odr {
 
-class GlobalParams {
+class GlobalParams final {
 public:
   static const std::string &odr_core_data_path();
   static const std::string &fontconfig_data_path();

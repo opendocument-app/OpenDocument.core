@@ -1,4 +1,9 @@
+#include <test_util.hpp>
+
+#include <test_info.hpp>
+
 #include <odr/file.hpp>
+#include <odr/global_params.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
@@ -8,12 +13,23 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
-#include <test_util.hpp>
 #include <utility>
 
 using namespace odr;
 using namespace odr::internal;
 namespace fs = std::filesystem;
+
+namespace odr {
+
+void test::set_global_params() {
+  GlobalParams::set_odr_core_data_path(info::odr_data_path());
+  GlobalParams::set_fontconfig_data_path(info::fontconfig_data_path());
+  GlobalParams::set_poppler_data_path(info::poppler_data_path());
+  GlobalParams::set_pdf2htmlex_data_path(info::pdf2htmlex_data_path());
+  GlobalParams::set_libmagic_database_path(info::libmagic_database_path());
+}
+
+} // namespace odr
 
 namespace odr::test {
 
@@ -97,7 +113,7 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
 std::vector<TestFile> get_test_files() {
   std::vector<TestFile> result;
 
-  for (const std::string root = TestData::data_input_directory();
+  for (const std::string root = TestData::test_input_directory();
        const auto &e : fs::directory_iterator(root)) {
     const auto files = get_test_files(root, e.path().string());
     result.insert(std::end(result), std::begin(files), std::end(files));
@@ -118,8 +134,8 @@ TestFile::TestFile(std::string absolute_path, std::string short_path,
       short_path{std::move(short_path)}, type{type},
       password{std::move(password)} {}
 
-std::string TestData::data_input_directory() {
-  return Path(data_directory()).join(RelPath("input")).string();
+std::string TestData::test_input_directory() {
+  return Path(info::odr_test_data_path()).join(RelPath("input")).string();
 }
 
 TestData &TestData::instance_() {
@@ -151,11 +167,11 @@ std::string TestData::test_file_path(const std::string &short_path) {
 
 TestData::TestData() : m_test_files{get_test_files()} {}
 
-std::vector<TestFile> TestData::test_files_(const FileType fileType) const {
+std::vector<TestFile> TestData::test_files_(const FileType file_type) const {
   std::vector<TestFile> result;
   result.reserve(m_test_files.size());
   for (auto &&file : m_test_files) {
-    if (file.type == fileType) {
+    if (file.type == file_type) {
       result.push_back(file);
     }
   }

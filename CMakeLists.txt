@@ -17,6 +17,9 @@ option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
 option(WITH_WVWARE "Build with wvWare" ON)
 option(WITH_LIBMAGIC "Build with libmagic" ON)
+option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" ON)
+
+include(GNUInstallDirs)
 
 # TODO defining global compiler flags seems to be bad practice with conan
 # TODO consider using conan profiles
@@ -53,10 +56,6 @@ FetchContent_Declare(odr.js
         URL_HASH SHA256=5ccbe1c5bb46d65bc0dccc6c6df6548a571eef5536fcb95f9dcb80add26800b6
 )
 FetchContent_MakeAvailable(odr.js)
-
-set(ODR_DATA_PATH "${odr.js_SOURCE_DIR}")
-
-configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -213,6 +212,10 @@ target_link_libraries(odr
         argon2::argon2
 )
 
+set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
+file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
+set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
+
 if (WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     find_package(poppler REQUIRED)
@@ -230,6 +233,28 @@ if (WITH_PDF2HTMLEX)
             PRIVATE
             ODR_WITH_PDF2HTMLEX
     )
+
+    if (ODR_BUNDLE_ASSETS)
+        set(ODR_BUILD_FONTCONFIG_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/fontconfig")
+        set(ODR_BUILD_POPPLER_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/poppler")
+        set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/pdf2htmlex")
+
+        file(COPY "${FONTCONFIG_DATA_PATH}/" DESTINATION "${ODR_BUILD_FONTCONFIG_DATA_PATH}")
+        file(COPY "${POPPLER_DATA_PATH}/" DESTINATION "${ODR_BUILD_POPPLER_DATA_PATH}")
+        file(COPY "${PDF2HTMLEX_DATA_PATH}/" DESTINATION "${ODR_BUILD_PDF2HTMLEX_DATA_PATH}")
+
+        set(ODR_INSTALL_FONTCONFIG_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/fontconfig")
+        set(ODR_INSTALL_POPPLER_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/poppler")
+        set(ODR_INSTALL_PDF2HTMLEX_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/pdf2htmlex")
+    else ()
+        set(ODR_BUILD_FONTCONFIG_DATA_PATH "${FONTCONFIG_DATA_PATH}")
+        set(ODR_BUILD_POPPLER_DATA_PATH "${POPPLER_DATA_PATH}")
+        set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}")
+
+        set(ODR_INSTALL_FONTCONFIG_DATA_PATH "${FONTCONFIG_DATA_PATH}")
+        set(ODR_INSTALL_POPPLER_DATA_PATH "${POPPLER_DATA_PATH}")
+        set(ODR_INSTALL_PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}")
+    endif ()
 endif ()
 if (WITH_WVWARE)
     find_package(wvware REQUIRED)
@@ -261,7 +286,21 @@ if (WITH_LIBMAGIC)
             PRIVATE
             ODR_WITH_LIBMAGIC
     )
+
+    if (ODR_BUNDLE_ASSETS)
+        set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${ODR_BUILD_ODR_DATA_PATH}/magic.mgc")
+
+        file(COPY_FILE "${LIBMAGIC_DATABASE_PATH}" "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}")
+
+        set(ODR_INSTALL_LIBMAGIC_DATABASE_PATH "${ODR_INSTALL_ODR_DATA_PATH}/magic.mgc")
+    else ()
+        set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${LIBMAGIC_DATABASE_PATH}")
+
+        set(ODR_INSTALL_LIBMAGIC_DATABASE_PATH "${LIBMAGIC_DATABASE_PATH}")
+    endif ()
 endif ()
+
+configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
     add_dependencies(odr check_git)
@@ -279,8 +318,6 @@ if (ODR_CLANG_TIDY)
     add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
-include(GNUInstallDirs)
-
 install(
         DIRECTORY src/ "${CMAKE_CURRENT_BINARY_DIR}/src/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -294,6 +331,6 @@ install(
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 install(
-        DIRECTORY "${ODR_DATA_PATH}/"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}"
+        DIRECTORY "${ODR_BUILD_ODR_DATA_PATH}/"
+        DESTINATION "${ODR_INSTALL_ODR_DATA_PATH}"
 )
