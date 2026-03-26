@@ -43,10 +43,10 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: setup python 3.12
+      - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: 3.12
+          python-version: 3.14
       - name: install python dependencies
         run: pip install conan
 
@@ -221,10 +221,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install tidy-html5
 
-      - name: set up python 3.12
+      - name: set up python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: 3.12
+          python-version: 3.14
       - name: install python dependencies
         run: pip install htmlcmp==1.2.1
 
@@ -302,10 +302,10 @@ jobs:
           brew install ccache
           ccache -V
 
-      - name: set up python 3.12
+      - name: set up python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: 3.12
+          python-version: 3.14
       - name: install python dependencies
         run: pip install conan
 
