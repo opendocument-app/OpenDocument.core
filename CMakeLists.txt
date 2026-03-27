@@ -14,9 +14,12 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
-option(WITH_PDF2HTMLEX "Build with pdf2htmlEX" ON)
-option(WITH_WVWARE "Build with wvWare" ON)
-option(WITH_LIBMAGIC "Build with libmagic" ON)
+option(WITH_PDF2HTMLEX "Deprecated: `ODR_WITH_PDF2HTMLEX` instead! Build with pdf2htmlEX" ON)
+option(WITH_WVWARE "Deprecated: `ODR_WITH_WVWARE` instead! Build with wvWare" ON)
+option(WITH_LIBMAGIC "Deprecated: `ODR_WITH_WVWARE` instead! Build with libmagic" ON)
+option(ODR_WITH_PDF2HTMLEX "Build with pdf2htmlEX" "${WITH_PDF2HTMLEX}")
+option(ODR_WITH_WVWARE "Build with wvWare" "${WITH_WVWARE}")
+option(ODR_WITH_LIBMAGIC "Build with libmagic" "${WITH_LIBMAGIC}")
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" ON)
 
 include(GNUInstallDirs)
@@ -216,7 +219,7 @@ set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
 file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
 set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
 
-if (WITH_PDF2HTMLEX)
+if (ODR_WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     find_package(poppler REQUIRED)
     target_sources(odr
@@ -256,7 +259,7 @@ if (WITH_PDF2HTMLEX)
         set(ODR_INSTALL_PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}")
     endif ()
 endif ()
-if (WITH_WVWARE)
+if (ODR_WITH_WVWARE)
     find_package(wvware REQUIRED)
     target_sources(odr
             PRIVATE
@@ -272,7 +275,7 @@ if (WITH_WVWARE)
             ODR_WITH_WVWARE
     )
 endif ()
-if (WITH_LIBMAGIC)
+if (ODR_WITH_LIBMAGIC)
     find_package(libmagic REQUIRED)
     target_sources(odr
             PRIVATE
