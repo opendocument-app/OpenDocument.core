@@ -247,7 +247,7 @@ jobs:
         shell: bash
         run: |
           compare-html \
-            --driver chrome \
+            --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-public/output \
             build/test/output/odr-public/output
@@ -258,7 +258,7 @@ jobs:
         shell: bash
         run: |
           compare-html \
-            --driver chrome \
+            --driver firefox \
             --max-workers 1 \
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
