@@ -108,7 +108,7 @@ jobs:
           -DODR_TEST=ON
           -DODR_WITH_PDF2HTMLEX=OFF
           -DODR_WITH_WVWARE=OFF
-          -DODR_WITH_LIBMAGIC=ON
+          -DODR_WITH_LIBMAGIC=OFF
 
       - name: build
         run: cmake --build build --config Release
