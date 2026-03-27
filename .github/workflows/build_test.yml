@@ -217,7 +217,7 @@ jobs:
         with:
           python-version: 3.14
       - name: install python dependencies
-        run: pip install htmlcmp==1.2.2
+        run: pip install htmlcmp==1.2.3
 
       - name: download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
