@@ -70,9 +70,9 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
-        tc.variables["WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
-        tc.variables["WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
-        tc.variables["WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
+        tc.variables["ODR_WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
+        tc.variables["ODR_WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
+        tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
 
         # Get runenv info, exported by package_info() of dependencies
         # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR
