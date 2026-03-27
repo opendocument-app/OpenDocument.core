@@ -5,6 +5,7 @@
 #include <odr/internal/util/odr_meta_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <test_info.hpp>
 #include <test_util.hpp>
 
 #include <filesystem>
@@ -158,7 +159,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   const std::string resource_path =
       Path(output_path_prefix).parent().join(RelPath("resources")).string();
-  std::filesystem::copy(TestData::resource_directory(), resource_path,
+  std::filesystem::copy(info::odr_data_path(), resource_path,
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
 

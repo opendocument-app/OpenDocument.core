@@ -1,9 +1,0 @@
-#include <test_util.hpp>
-
-namespace odr::test {
-
-std::string TestData::resource_directory() { return "${ODR_RESOURCE_DIRECTORY}"; }
-
-std::string TestData::data_directory() { return "${ODR_TEST_DATA_DIRECTORY}"; }
-
-} // namespace odr::test

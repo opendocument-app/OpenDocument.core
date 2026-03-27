@@ -2,14 +2,15 @@ find_package(GTest REQUIRED)
 
 include(GoogleTest REQUIRED)
 
-set(ODR_RESOURCE_DIRECTORY "${odr.js_SOURCE_DIR}")
 set(ODR_TEST_DATA_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/data")
-configure_file("src/test_constants.cpp.in" "src/test_constants.cpp")
+configure_file("src/test_info.cpp.in" "src/test_info.cpp")
 
 enable_testing()
 add_executable(odr_test
+        "src/test_main.cpp"
+
         "src/test_util.cpp"
-        "${CMAKE_CURRENT_BINARY_DIR}/src/test_constants.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/src/test_info.cpp"
 
         "src/document_path_test.cpp"
         "src/document_test.cpp"
@@ -61,7 +62,6 @@ target_link_libraries(odr_test
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         GTest::gtest
-        GTest::gtest_main
 
         odr
 )

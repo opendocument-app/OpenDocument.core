@@ -7,6 +7,8 @@
 
 namespace odr::test {
 
+void set_global_params();
+
 struct TestFile {
   std::string absolute_path;
   std::string short_path;
@@ -20,9 +22,7 @@ struct TestFile {
 
 class TestData {
 public:
-  static std::string resource_directory();
-  static std::string data_directory();
-  static std::string data_input_directory();
+  static std::string test_input_directory();
 
   static std::vector<TestFile> test_files();
   static std::vector<TestFile> test_files(FileType);
@@ -38,8 +38,9 @@ public:
 private:
   TestData();
 
-  static TestData &instance_();
-  [[nodiscard]] std::vector<TestFile> test_files_(FileType) const;
+  [[nodiscard]] static TestData &instance_();
+
+  [[nodiscard]] std::vector<TestFile> test_files_(FileType file_type) const;
 
   std::vector<TestFile> m_test_files;
 };
