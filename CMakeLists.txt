@@ -143,6 +143,16 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_parser.cpp"
         "src/odr/internal/odf/odf_style.cpp"
 
+        "src/odr/internal/oldms/structs/fc_lcb.cpp"
+        "src/odr/internal/oldms/structs/fib.cpp"
+        "src/odr/internal/oldms/structs/fib_base.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_csw_new.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb_97.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb_2000.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb_2002.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb_2003.cpp"
+        "src/odr/internal/oldms/structs/fib_rg_fc_lcb_2007.cpp"
         "src/odr/internal/oldms/oldms_file.cpp"
 
         "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"
