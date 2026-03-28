@@ -7,7 +7,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/odr.hpp>
 
-#include <odr/internal/oldms/structs/fib.hpp>
+#include <odr/internal/oldms/word/io.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
