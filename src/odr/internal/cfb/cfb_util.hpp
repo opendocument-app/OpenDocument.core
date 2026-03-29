@@ -41,15 +41,10 @@ public:
 
   class Entry {
   public:
-    Entry(const Entry &) = default;
-    Entry(Entry &&) noexcept = default;
     Entry(const Archive &archive, const std::uint32_t entry_id,
           const impl::CompoundFileEntry &entry, RelPath path)
         : m_archive{&archive}, m_entry_id{entry_id}, m_entry{entry},
           m_path{std::move(path)} {}
-    ~Entry() = default;
-    Entry &operator=(const Entry &) = default;
-    Entry &operator=(Entry &&) noexcept = default;
 
     bool operator==(const Entry &other) const {
       return m_entry_id == other.m_entry_id;

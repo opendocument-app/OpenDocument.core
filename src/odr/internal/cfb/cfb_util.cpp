@@ -17,10 +17,11 @@ public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
                const impl::CompoundFileEntry &entry,
                std::unique_ptr<std::istream> stream,
-               const std::uint32_t buffer_size = 4098)
+               const std::size_t buffer_size = 4098)
       : m_reader{&reader}, m_entry{&entry}, m_stream{std::move(stream)},
         m_buffer(buffer_size, '\0') {}
 
+protected:
   int underflow() override {
     if (m_offset >= m_entry->size) {
       return traits_type::eof();
@@ -34,6 +35,35 @@ public:
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + amount);
 
     return traits_type::to_int_type(*gptr());
+  }
+
+  std::streampos seekoff(const std::streamoff off,
+                         const std::ios_base::seekdir dir,
+                         const std::ios_base::openmode which) override {
+    if ((which & std::ios_base::in) == 0) {
+      return -1;
+    }
+
+    std::streampos new_pos;
+
+    if (dir == std::ios_base::beg) {
+      new_pos = off;
+    } else if (dir == std::ios_base::cur) {
+      new_pos = m_offset - (egptr() - gptr()) + off;
+    } else if (dir == std::ios_base::end) {
+      new_pos = m_entry->size + off;
+    }
+
+    if (new_pos < 0 || new_pos > m_entry->size) {
+      return -1;
+    }
+
+    m_offset = new_pos;
+
+    // invalidate buffer
+    setg(m_buffer.data(), m_buffer.data(), m_buffer.data());
+
+    return new_pos;
   }
 
 private:

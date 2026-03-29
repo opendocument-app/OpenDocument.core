@@ -29,9 +29,20 @@ TEST(OldMs, test) {
 
   const std::string word_document =
       internal::util::stream::read(*files.open("/WordDocument").stream());
-  std::cout << word_document << std::endl;
+  std::cout << "/WordDocument size " << word_document.size() << std::endl;
 
-  auto stream = files.open("/WordDocument").stream();
-  internal::oldms::Fib fib;
+  const std::size_t fib_size = internal::oldms::determine_size_Fib(
+      *files.open("/WordDocument").stream());
+  std::cout << "Fib size " << fib_size << std::endl;
+
+  const auto stream = files.open("/WordDocument").stream();
+  internal::oldms::ParsedFib fib;
   internal::oldms::read(*stream, fib);
+
+  const std::string tableStreamPath =
+      fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
+
+  const std::string table =
+      internal::util::stream::read(*files.open(tableStreamPath).stream());
+  std::cout << tableStreamPath << " size " << table.size() << std::endl;
 }

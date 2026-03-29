@@ -3,74 +3,135 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+namespace odr::internal::oldms {
+
+namespace {
+
+template <typename T> struct TypeTag {
+  using type = T;
+};
+
+template <typename F>
+auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
+  switch (nFib) {
+  case nFib97: {
+    return f(TypeTag<FibRgFcLcb97>{});
+  }
+  case nFib2000: {
+    return f(TypeTag<FibRgFcLcb2000>{});
+  }
+  case nFib2002: {
+    return f(TypeTag<FibRgFcLcb2002>{});
+  }
+  case nFib2003: {
+    return f(TypeTag<FibRgFcLcb2003>{});
+  }
+  case nFib2007: {
+    return f(TypeTag<FibRgFcLcb2007>{});
+  }
+  default:
+    throw std::runtime_error("Unknown nFib value: " + std::to_string(nFib));
+  }
+}
+
+} // namespace
+
+} // namespace odr::internal::oldms
+
 namespace odr::internal {
 
-void oldms::read(std::istream &in, FibRgFcLcb97 &fib_base) {
-  util::byte_stream::read(in, fib_base);
+void oldms::read(std::istream &in, FibBase &out) {
+  util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2000 &fib_base) {
-  util::byte_stream::read(in, fib_base);
+void oldms::read(std::istream &in, FibRgFcLcb97 &out) {
+  util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2002 &fib_base) {
-  util::byte_stream::read(in, fib_base);
+void oldms::read(std::istream &in, FibRgFcLcb2000 &out) {
+  util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2003 &fib_base) {
-  util::byte_stream::read(in, fib_base);
+void oldms::read(std::istream &in, FibRgFcLcb2002 &out) {
+  util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2007 &fib_base) {
-  util::byte_stream::read(in, fib_base);
+void oldms::read(std::istream &in, FibRgFcLcb2003 &out) {
+  util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, Fib &fib) {
-  read(in, fib.base);
+void oldms::read(std::istream &in, FibRgFcLcb2007 &out) {
+  util::byte_stream::read(in, out);
+}
 
-  util::byte_stream::read(in, fib.csw);
-  if (fib.csw * 2 < sizeof(fib.fibRgW)) {
+std::size_t oldms::determine_size_Fib(std::istream &in) {
+  std::size_t result = 0;
+
+  const auto read_uint16_t = [&] {
+    const std::uint16_t value = util::byte_stream::read<std::uint16_t>(in);
+    result += sizeof(std::uint16_t);
+    return value;
+  };
+  const auto ignore = [&](const std::size_t count) {
+    in.ignore(count);
+    result += count;
+  };
+
+  ignore(sizeof(FibBase));
+  const std::uint16_t csw = read_uint16_t();
+  ignore(csw * 2);
+  const std::uint16_t cslw = read_uint16_t();
+  ignore(cslw * 4);
+  const std::uint16_t cbRgFcLcb = read_uint16_t();
+  ignore(cbRgFcLcb * 8);
+  const std::uint16_t cswNew = read_uint16_t();
+  ignore(cswNew * 2);
+
+  return result;
+}
+
+void oldms::read(std::istream &in, ParsedFib &out) {
+  read(in, out.base);
+
+  util::byte_stream::read(in, out.csw);
+  if (out.csw * 2 < sizeof(out.fibRgW)) {
     throw std::runtime_error("Unexpected Fib.csw value: " +
-                             std::to_string(fib.csw));
+                             std::to_string(out.csw));
   }
+  util::byte_stream::read(in, out.fibRgW);
+  in.ignore(out.csw * 2 - sizeof(out.fibRgW));
 
-  const std::streampos offsetFibRgW = in.tellg();
-  util::byte_stream::read(in, fib.fibRgW);
-  in.seekg(offsetFibRgW + static_cast<std::streamoff>(fib.csw * 2));
-
-  util::byte_stream::read(in, fib.cslw);
-  if (fib.cslw * 4 < sizeof(fib.fibRgLw)) {
+  util::byte_stream::read(in, out.cslw);
+  if (out.cslw * 4 < sizeof(out.fibRgLw)) {
     throw std::runtime_error("Unexpected Fib.cslw value: " +
-                             std::to_string(fib.cslw));
+                             std::to_string(out.cslw));
   }
+  util::byte_stream::read(in, out.fibRgLw);
+  in.ignore(out.cslw * 4 - sizeof(out.fibRgLw));
 
-  const std::streampos offsetFibRgLw = in.tellg();
-  util::byte_stream::read(in, fib.fibRgLw);
-  in.seekg(offsetFibRgLw + static_cast<std::streamoff>(fib.cslw * 4));
+  util::byte_stream::read(in, out.cbRgFcLcb);
+  auto fibRgFcLcb = std::make_unique<char[]>(out.cbRgFcLcb * 8);
+  in.read(fibRgFcLcb.get(), out.cbRgFcLcb * 8);
 
-  util::byte_stream::read(in, fib.cbRgFcLcb);
-
-  const std::streampos offsetFibRgFcLcb = in.tellg();
-  in.seekg(offsetFibRgFcLcb + static_cast<std::streamoff>(fib.cbRgFcLcb * 8));
-
-  util::byte_stream::read(in, fib.cswNew);
-
-  const std::streampos offsetFibRgCswNew = in.tellg();
-  read(in, fib.fibRgCswNew);
-  in.seekg(offsetFibRgCswNew + static_cast<std::streamoff>(fib.cswNew * 2));
+  util::byte_stream::read(in, out.cswNew);
+  read(in, out.fibRgCswNew);
 
   const std::uint16_t nFib =
-      (fib.cswNew != 0) ? fib.fibRgCswNew.nFibNew : fib.base.nFib;
+      out.cswNew != 0 ? out.fibRgCswNew.nFibNew : out.base.nFib;
 
-  in.seekg(offsetFibRgFcLcb);
-  fib.fibRgFcLcb = readFibRgFcLcb(in, nFib);
+  out.fibRgFcLcb = type_dispatch_FibRgFcLcb(
+      nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
+        using FibRgFcLcbType = T::type;
+        if (sizeof(FibRgFcLcbType) < out.cbRgFcLcb * 8) {
+          throw std::runtime_error("Unexpected cbRgFcLcb value: " +
+                                   std::to_string(out.cbRgFcLcb));
+        }
+        return std::unique_ptr<FibRgFcLcb97>(
+            reinterpret_cast<FibRgFcLcb97 *>(fibRgFcLcb.release()));
+      });
 }
 
-void oldms::read(std::istream &in, FibBase &fibBase) {
-  util::byte_stream::read(in, fibBase);
-}
-
-void oldms::read(std::istream &in, FibRgCswNew &out) {
+void oldms::read(std::istream &in, ParsedFibRgCswNew &out) {
   util::byte_stream::read(in, out.nFibNew);
 
   switch (out.nFibNew) {
@@ -95,36 +156,38 @@ void oldms::read(std::istream &in, FibRgCswNew &out) {
 }
 
 std::unique_ptr<oldms::FibRgFcLcb97>
-oldms::readFibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
-  switch (nFib) {
-  case nFib97: {
-    auto result = std::make_unique<FibRgFcLcb97>();
-    read(in, *result);
-    return result;
+oldms::read_FibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
+  return type_dispatch_FibRgFcLcb(
+      nFib, [&in]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
+        using FibRgFcLcbType = T::type;
+        auto result = std::make_unique<FibRgFcLcbType>();
+        read(in, *result);
+        return result;
+      });
+}
+
+void oldms::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
+                     const HandlePcdt &handle_Pcdt) {
+  while (true) {
+    const int c = in.peek();
+    if (c == 0x2) {
+      handle_Pcdt(in);
+      return;
+    }
+    if (c != 0x1) {
+      throw std::runtime_error("Unexpected input: " + std::to_string(c));
+    }
+    handle_Prc(in);
   }
-  case nFib2000: {
-    auto result = std::make_unique<FibRgFcLcb2000>();
-    read(in, *result);
-    return result;
+}
+
+void oldms::skip_Prc(std::istream &in) {
+  if (const int c = in.get(); c != 0x1) {
+    throw std::runtime_error("Unexpected input: " + std::to_string(c));
   }
-  case nFib2002: {
-    auto result = std::make_unique<FibRgFcLcb2002>();
-    read(in, *result);
-    return result;
-  }
-  case nFib2003: {
-    auto result = std::make_unique<FibRgFcLcb2003>();
-    read(in, *result);
-    return result;
-  }
-  case nFib2007: {
-    auto result = std::make_unique<FibRgFcLcb2007>();
-    read(in, *result);
-    return result;
-  }
-  default:
-    throw std::runtime_error("Unknown nFib value: " + std::to_string(nFib));
-  }
+
+  const std::uint16_t cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
+  in.ignore(cbGrpprl);
 }
 
 } // namespace odr::internal

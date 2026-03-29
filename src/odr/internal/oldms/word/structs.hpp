@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace odr::internal::oldms {
 
@@ -27,11 +28,28 @@ struct FibBase {
   std::uint16_t unused;
   std::uint16_t lid;
   std::uint16_t pnNext;
-  std::uint16_t flags1;
+  std::uint16_t fDot : 1;
+  std::uint16_t fGlsy : 1;
+  std::uint16_t fComplex : 1;
+  std::uint16_t fHasPic : 1;
+  std::uint16_t cQuickSaves : 4;
+  std::uint16_t fEncrypted : 1;
+  std::uint16_t fWhichTblStm : 1;
+  std::uint16_t fReadOnlyRecommended : 1;
+  std::uint16_t fWriteReservation : 1;
+  std::uint16_t fExtChar : 1;
+  std::uint16_t fLoadOverride : 1;
+  std::uint16_t fFarEast : 1;
+  std::uint16_t fObfuscated : 1;
   std::uint16_t nFibBack;
   std::uint32_t lKey;
   std::uint8_t envr;
-  std::uint8_t flags2;
+  std::uint8_t fMac : 1;
+  std::uint8_t fEmptySpecial : 1;
+  std::uint8_t fLoadOverridePage : 1;
+  std::uint8_t reserved1 : 1;
+  std::uint8_t reserved2 : 1;
+  std::uint8_t fSpare0 : 3;
   std::uint16_t reserved3;
   std::uint16_t reserved4;
   std::uint32_t reserved5;
@@ -247,21 +265,46 @@ struct FibRgCswNewData2007 : FibRgCswNewData2000 {
   std::uint16_t lidThemeCS;
 };
 
-struct FibRgCswNew {
-  std::uint16_t nFibNew;
-  std::unique_ptr<FibRgCswNewData2000> rgCswNewData;
+struct Sprm {
+  std::uint16_t ispmd : 9;
+  std::uint16_t fSpec : 1;
+  std::uint16_t sgc : 3;
+  std::uint16_t spra : 3;
+
+  int operand_size() const {
+    switch (spra) {
+    case 0:
+    case 1:
+      return 1;
+    case 2:
+    case 4:
+    case 5:
+      return 2;
+    case 7:
+      return 3;
+    case 3:
+      return 4;
+    case 6:
+      return -1;
+    default:
+      throw std::logic_error("Invalid spra value: " + std::to_string(spra));
+    }
+  }
 };
 
-struct Fib {
-  FibBase base;
-  std::uint16_t csw;
-  std::array<std::uint16_t, 14> fibRgW;
-  std::uint16_t cslw;
-  std::array<std::uint16_t, 44> fibRgLw;
-  std::uint16_t cbRgFcLcb;
-  std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
-  std::uint16_t cswNew;
-  FibRgCswNew fibRgCswNew;
+struct FcCompressed {
+  std::uint32_t fc : 30;
+  std::uint32_t fCompressed : 1;
+  std::uint32_t r1 : 1;
+};
+
+struct Pcd {
+  std::uint16_t fNoParaLast : 1;
+  std::uint16_t fR1 : 1;
+  std::uint16_t fDirty : 1;
+  std::uint16_t fR : 13;
+  FcCompressed fc;
+  std::uint16_t prm;
 };
 
 #pragma pack(pop)
@@ -282,5 +325,62 @@ static_assert(sizeof(FibRgCswNewData2000) == 2,
               "FibRgCswNewData2000 should be 2 bytes");
 static_assert(sizeof(FibRgCswNewData2007) == 8,
               "FibRgCswNewData2007 should be 8 bytes");
+static_assert(sizeof(FcCompressed) == 4, "FcCompressed should be 4 bytes");
+static_assert(sizeof(Pcd) == 8, "Pcd should be 8 bytes");
+
+struct ParsedFibRgCswNew {
+  std::uint16_t nFibNew;
+  std::unique_ptr<FibRgCswNewData2000> rgCswNewData;
+};
+
+struct ParsedFib {
+  FibBase base;
+  std::uint16_t csw;
+  std::array<std::uint16_t, 14> fibRgW;
+  std::uint16_t cslw;
+  std::array<std::uint16_t, 44> fibRgLw;
+  std::uint16_t cbRgFcLcb;
+  std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
+  std::uint16_t cswNew;
+  ParsedFibRgCswNew fibRgCswNew;
+};
+
+template <typename Derived, typename Data> class PlcBase {
+public:
+  static constexpr std::uint32_t cbData() { return sizeof(Data); }
+
+  std::uint32_t n() const { return (self().cbPlc() - 4) / (4 + sizeof(Data)); }
+
+  const std::uint32_t *aCP_ptr() const {
+    return reinterpret_cast<const std::uint32_t *>(self().data());
+  }
+
+  const Data *aData_ptr() const {
+    return reinterpret_cast<const Data *>(self().data() + (n() + 1) * 4);
+  }
+
+  std::uint32_t aCP(const std::uint32_t i) const { return aCP_ptr()[i]; }
+
+  Data aData(const std::uint32_t i) const { return aData_ptr()[i]; }
+
+private:
+  Derived &self() { return *static_cast<Derived *>(this); }
+  const Derived &self() const { return *static_cast<const Derived *>(this); }
+};
+
+template <typename Derived> class PlcPcdBase : public PlcBase<Derived, Pcd> {};
+
+class PlcPcdMap : public PlcPcdBase<PlcPcdMap> {
+public:
+  PlcPcdMap(void *data, const std::size_t cbPlc)
+      : m_data(data), m_cbPlc(cbPlc) {}
+
+  void *data() const { return m_data; }
+  std::size_t cbPlc() const { return m_cbPlc; }
+
+private:
+  void *m_data{nullptr};
+  std::size_t m_cbPlc{0};
+};
 
 } // namespace odr::internal::oldms
