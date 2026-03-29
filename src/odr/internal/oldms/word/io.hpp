@@ -5,6 +5,7 @@
 #include <array>
 #include <functional>
 #include <iosfwd>
+#include <memory>
 
 namespace odr::internal::oldms {
 
