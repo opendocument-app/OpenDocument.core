@@ -54,11 +54,11 @@ protected:
       new_pos = m_entry->size + off;
     }
 
-    if (new_pos < 0 || new_pos > m_entry->size) {
+    if (new_pos < 0 || static_cast<std::uint64_t>(new_pos) > m_entry->size) {
       return -1;
     }
 
-    m_offset = new_pos;
+    m_offset = static_cast<std::uint64_t>(new_pos);
 
     // invalidate buffer
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data());
