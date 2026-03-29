@@ -17,7 +17,7 @@ public:
   ReaderBuffer(const impl::CompoundFileReader &reader,
                const impl::CompoundFileEntry &entry,
                std::unique_ptr<std::istream> stream,
-               const std::size_t buffer_size = 4098)
+               const std::size_t buffer_size = 4096)
       : m_reader{&reader}, m_entry{&entry}, m_stream{std::move(stream)},
         m_buffer(buffer_size, '\0') {}
 
@@ -37,6 +37,11 @@ protected:
     return traits_type::to_int_type(*gptr());
   }
 
+  std::streampos seekpos(const std::streampos sp,
+                         const std::ios_base::openmode which) override {
+    return seekoff(sp, std::ios_base::beg, which);
+  }
+
   std::streampos seekoff(const std::streamoff off,
                          const std::ios_base::seekdir dir,
                          const std::ios_base::openmode which) override {
@@ -49,9 +54,14 @@ protected:
     if (dir == std::ios_base::beg) {
       new_pos = off;
     } else if (dir == std::ios_base::cur) {
-      new_pos = m_offset - (egptr() - gptr()) + off;
+      const std::streampos current_pos =
+          static_cast<std::streampos>(m_offset) +
+          static_cast<std::streampos>(gptr() - eback());
+      new_pos = current_pos + off;
     } else if (dir == std::ios_base::end) {
-      new_pos = m_entry->size + off;
+      new_pos = static_cast<std::streampos>(m_entry->size) + off;
+    } else {
+      throw std::logic_error("Invalid seek direction");
     }
 
     if (new_pos < 0 || static_cast<std::uint64_t>(new_pos) > m_entry->size) {

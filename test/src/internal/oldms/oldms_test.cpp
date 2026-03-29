@@ -77,7 +77,7 @@ TEST(OldMs, test) {
         std::cout << "first_text_offset " << first_text_offset << std::endl;
 
         const auto document_stream = files.open("/WordDocument").stream();
-        document_stream->ignore(first_text_offset);
+        document_stream->seekg(first_text_offset);
         const std::string first_text =
             internal::util::stream::read(*document_stream, first_text_length);
         std::cout << "first_text " << first_text << std::endl;

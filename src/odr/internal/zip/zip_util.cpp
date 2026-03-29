@@ -14,7 +14,7 @@ class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(std::shared_ptr<const Archive> archive,
                mz_zip_reader_extract_iter_state *iter,
-               const std::size_t buffer_size = 4098)
+               const std::size_t buffer_size = 4096)
       : m_archive{std::move(archive)}, m_buffer(buffer_size, '\0') {
     if (m_archive == nullptr) {
       throw NullPointerError("ReaderBuffer: archive is nullptr");
