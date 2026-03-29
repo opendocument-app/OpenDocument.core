@@ -374,14 +374,14 @@ template <typename Derived> class PlcPcdBase : public PlcBase<Derived, Pcd> {};
 
 class PlcPcdMap : public PlcPcdBase<PlcPcdMap> {
 public:
-  PlcPcdMap(void *data, const std::size_t cbPlc)
+  PlcPcdMap(char *data, const std::size_t cbPlc)
       : m_data(data), m_cbPlc(cbPlc) {}
 
-  void *data() const { return m_data; }
+  char *data() const { return m_data; }
   std::size_t cbPlc() const { return m_cbPlc; }
 
 private:
-  void *m_data{nullptr};
+  char *m_data{nullptr};
   std::size_t m_cbPlc{0};
 };
 

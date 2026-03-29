@@ -45,4 +45,41 @@ TEST(OldMs, test) {
   const std::string table =
       internal::util::stream::read(*files.open(tableStreamPath).stream());
   std::cout << tableStreamPath << " size " << table.size() << std::endl;
+
+  const auto table_stream = files.open(tableStreamPath).stream();
+  std::cout << "Fib.fibRgFcLcb->clx.fc " << fib.fibRgFcLcb->clx.fc << std::endl;
+  std::cout << "Fib.fibRgFcLcb->clx.lcb " << fib.fibRgFcLcb->clx.lcb
+            << std::endl;
+  table_stream->ignore(fib.fibRgFcLcb->clx.fc);
+  internal::oldms::read_Clx(
+      *table_stream, internal::oldms::skip_Prc, [&](std::istream &in) {
+        if (const int c = in.get(); c != 0x2) {
+          throw std::runtime_error("Unexpected input: " + std::to_string(c));
+        }
+        const std::uint32_t lcb =
+            internal::util::byte_stream::read<std::uint32_t>(in);
+        std::cout << "lcb " << lcb << std::endl;
+        std::string plcPcd = internal::util::stream::read(in, lcb);
+        const internal::oldms::PlcPcdMap plc_pcd_map(plcPcd.data(),
+                                                     plcPcd.size());
+        std::cout << "plc_pcd_map n " << plc_pcd_map.n() << std::endl;
+        std::cout << "plc_pcd_map aCP(0) " << plc_pcd_map.aCP(0) << std::endl;
+        std::cout << "plc_pcd_map aCP(1) " << plc_pcd_map.aCP(1) << std::endl;
+        std::cout << "plc_pcd_map aData(0).fc.fc " << plc_pcd_map.aData(0).fc.fc
+                  << std::endl;
+        std::cout << "plc_pcd_map aData(0).fc.fCompressed "
+                  << plc_pcd_map.aData(0).fc.fCompressed << std::endl;
+
+        const std::size_t first_text_offset = plc_pcd_map.aData(0).fc.fc / 2;
+        const std::size_t first_text_length =
+            plc_pcd_map.aCP(1) - plc_pcd_map.aCP(0);
+        std::cout << "first_text_length " << first_text_length << std::endl;
+        std::cout << "first_text_offset " << first_text_offset << std::endl;
+
+        const auto document_stream = files.open("/WordDocument").stream();
+        document_stream->ignore(first_text_offset);
+        const std::string first_text =
+            internal::util::stream::read(*document_stream, first_text_length);
+        std::cout << "first_text " << first_text << std::endl;
+      });
 }
