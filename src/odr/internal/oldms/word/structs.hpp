@@ -5,7 +5,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace odr::internal::oldms {
 
@@ -273,7 +272,7 @@ struct Sprm {
   std::uint16_t sgc : 3;
   std::uint16_t spra : 3;
 
-  int operand_size() const {
+  [[nodiscard]] int operand_size() const {
     switch (spra) {
     case 0:
     case 1:
@@ -351,23 +350,31 @@ template <typename Derived, typename Data> class PlcBase {
 public:
   static constexpr std::uint32_t cbData() { return sizeof(Data); }
 
-  std::uint32_t n() const { return (self().cbPlc() - 4) / (4 + sizeof(Data)); }
+  [[nodiscard]] std::uint32_t n() const {
+    return (self().cbPlc() - 4) / (4 + sizeof(Data));
+  }
 
-  const std::uint32_t *aCP_ptr() const {
+  [[nodiscard]] const std::uint32_t *aCP_ptr() const {
     return reinterpret_cast<const std::uint32_t *>(self().data());
   }
 
-  const Data *aData_ptr() const {
+  [[nodiscard]] const Data *aData_ptr() const {
     return reinterpret_cast<const Data *>(self().data() + (n() + 1) * 4);
   }
 
-  std::uint32_t aCP(const std::uint32_t i) const { return aCP_ptr()[i]; }
+  [[nodiscard]] std::uint32_t aCP(const std::uint32_t i) const {
+    return aCP_ptr()[i];
+  }
 
-  Data aData(const std::uint32_t i) const { return aData_ptr()[i]; }
+  [[nodiscard]] Data aData(const std::uint32_t i) const {
+    return aData_ptr()[i];
+  }
 
 private:
-  Derived &self() { return *static_cast<Derived *>(this); }
-  const Derived &self() const { return *static_cast<const Derived *>(this); }
+  [[nodiscard]] Derived &self() { return *static_cast<Derived *>(this); }
+  [[nodiscard]] const Derived &self() const {
+    return *static_cast<const Derived *>(this);
+  }
 };
 
 template <typename Derived> class PlcPcdBase : public PlcBase<Derived, Pcd> {};
@@ -377,8 +384,8 @@ public:
   PlcPcdMap(char *data, const std::size_t cbPlc)
       : m_data(data), m_cbPlc(cbPlc) {}
 
-  char *data() const { return m_data; }
-  std::size_t cbPlc() const { return m_cbPlc; }
+  [[nodiscard]] char *data() const { return m_data; }
+  [[nodiscard]] std::size_t cbPlc() const { return m_cbPlc; }
 
 private:
   char *m_data{nullptr};
