@@ -14,8 +14,8 @@ class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(std::shared_ptr<const Archive> archive,
                mz_zip_reader_extract_iter_state *iter,
-               const std::size_t buffer_size)
-      : m_archive{std::move(archive)} {
+               const std::size_t buffer_size = 4096)
+      : m_archive{std::move(archive)}, m_buffer(buffer_size, '\0') {
     if (m_archive == nullptr) {
       throw NullPointerError("ReaderBuffer: archive is nullptr");
     }
@@ -24,34 +24,9 @@ public:
     }
     m_iter = iter;
     m_remaining = iter->file_stat.m_uncomp_size;
-    m_buffer_size = buffer_size;
-    m_buffer = new char[m_buffer_size];
-  }
-  ReaderBuffer(const ReaderBuffer &) = delete;
-  ReaderBuffer(ReaderBuffer &&other) noexcept
-      : m_iter{other.m_iter}, m_remaining{other.m_remaining},
-        m_buffer_size{other.m_buffer_size}, m_buffer{other.m_buffer} {
-    other.m_iter = nullptr;
-    other.m_buffer = nullptr;
-  }
-  ~ReaderBuffer() override {
-    mz_zip_reader_extract_iter_free(m_iter);
-    delete[] m_buffer;
   }
 
-  ReaderBuffer &operator=(const ReaderBuffer &) = delete;
-  ReaderBuffer &operator=(ReaderBuffer &&other) noexcept {
-    if (&other != this) {
-      m_iter = other.m_iter;
-      m_remaining = other.m_remaining;
-      m_buffer_size = other.m_buffer_size;
-      m_buffer = other.m_buffer;
-      other.m_iter = nullptr;
-      other.m_buffer = nullptr;
-    }
-    return *this;
-  }
-
+protected:
   int underflow() override {
     if (m_remaining <= 0) {
       return traits_type::eof();
@@ -59,11 +34,12 @@ public:
 
     std::lock_guard lock(m_archive->mutex());
 
-    const std::uint64_t amount = std::min(m_remaining, m_buffer_size);
+    const std::uint64_t amount =
+        std::min<std::uint64_t>(m_remaining, m_buffer.size());
     const std::uint32_t result =
-        mz_zip_reader_extract_iter_read(m_iter, m_buffer, amount);
+        mz_zip_reader_extract_iter_read(m_iter, m_buffer.data(), amount);
     m_remaining -= result;
-    setg(m_buffer, m_buffer, m_buffer + result);
+    setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + result);
 
     return traits_type::to_int_type(*gptr());
   }
@@ -72,8 +48,7 @@ private:
   std::shared_ptr<const Archive> m_archive;
   mz_zip_reader_extract_iter_state *m_iter{};
   std::uint64_t m_remaining{0};
-  std::uint64_t m_buffer_size{4098};
-  char *m_buffer;
+  std::vector<char> m_buffer;
 };
 
 class FileInZipIstream final : public std::istream {

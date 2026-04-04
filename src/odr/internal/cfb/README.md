@@ -7,14 +7,15 @@ CFB stands for _Microsoft Compound File Binary File Format_
 ## Features
 
 - [x] from memory
-- [ ] from file
+- [x] from file
 - [x] list entries
 - [x] read as stream
 - [x] write as stream
 
 ## References
 
-implementation relies on [microsoft/compoundfilereader](https://github.com/microsoft/compoundfilereader)
+- [[MS-CFB]: Compound File Binary File Format](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb)
+- implementation relies on [microsoft/compoundfilereader](https://github.com/microsoft/compoundfilereader)
 
 ### Related work
 

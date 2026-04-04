@@ -143,6 +143,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_parser.cpp"
         "src/odr/internal/odf/odf_style.cpp"
 
+        "src/odr/internal/oldms/word/io.cpp"
         "src/odr/internal/oldms/oldms_file.cpp"
 
         "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"
