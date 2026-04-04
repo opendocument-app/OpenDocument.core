@@ -6,6 +6,7 @@
 #include <functional>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 
 namespace odr::internal::oldms {
 
