@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <iomanip>
-#include <locale>
 #include <sstream>
 
 #include <utf8cpp/utf8/cpp17.h>
@@ -83,6 +82,10 @@ std::u16string string::string_to_u16string(const std::string &string) {
 std::string string::c16str_to_string(const char16_t *c16str,
                                      const std::size_t length) {
   return u16string_to_string(std::u16string(c16str, length / 2));
+}
+
+void string::append_c32(const char32_t c, std::string &string) {
+  utf8::append(c, string);
 }
 
 } // namespace odr::internal::util

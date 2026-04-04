@@ -78,8 +78,8 @@ TEST(OldMs, test) {
 
         const auto document_stream = files.open("/WordDocument").stream();
         document_stream->seekg(first_text_offset);
-        const std::string first_text =
-            internal::util::stream::read(*document_stream, first_text_length);
+        const std::string first_text = internal::oldms::read_string_compressed(
+            *document_stream, first_text_length);
         std::cout << "first_text " << first_text << std::endl;
       });
 }

@@ -1,7 +1,9 @@
 #include <odr/internal/oldms/word/io.hpp>
 
+#include "odr/internal/util/string_util.hpp"
+
 #include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 namespace odr::internal::oldms {
 
@@ -188,6 +190,99 @@ void oldms::skip_Prc(std::istream &in) {
 
   const std::uint16_t cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
   in.ignore(cbGrpprl);
+}
+
+std::string oldms::read_string_compressed(std::istream &in,
+                                          const std::size_t size) {
+  static constexpr auto eof = std::istream::traits_type::eof();
+
+  std::string result;
+  result.reserve(size);
+
+  for (std::size_t i = 0; i < size; ++i) {
+    const auto ci = in.get();
+    if (ci == eof) {
+      throw std::runtime_error("Unexpected end of input");
+    }
+    if (ci < 0 || ci > 0xFF) {
+      throw std::runtime_error("Unexpected input: " + std::to_string(ci));
+    }
+    const char c = static_cast<char>(ci);
+    if (const std::optional<char16_t> uncompressed = uncompress_char(c);
+        uncompressed.has_value()) {
+      util::string::append_c32(*uncompressed, result);
+    } else {
+      result.push_back(c);
+    }
+  }
+
+  return result;
+}
+
+std::u16string oldms::read_string_uncompressed(std::istream &in,
+                                               const std::size_t size) {
+  std::u16string result;
+  result.resize(size);
+
+  in.read(reinterpret_cast<char *>(result.data()),
+          static_cast<std::streamsize>(size * sizeof(char16_t)));
+
+  return result;
+}
+
+std::optional<char16_t> oldms::uncompress_char(const char c) {
+  switch (c) {
+  case '\x82':
+    return 0x201A;
+  case '\x83':
+    return 0x0192;
+  case '\x84':
+    return 0x201E;
+  case '\x85':
+    return 0x2026;
+  case '\x86':
+    return 0x2020;
+  case '\x87':
+    return 0x2021;
+  case '\x88':
+    return 0x02C6;
+  case '\x89':
+    return 0x2030;
+  case '\x8A':
+    return 0x0160;
+  case '\x8B':
+    return 0x2039;
+  case '\x8C':
+    return 0x0152;
+  case '\x91':
+    return 0x2018;
+  case '\x92':
+    return 0x2019;
+  case '\x93':
+    return 0x201C;
+  case '\x94':
+    return 0x201D;
+  case '\x95':
+    return 0x2022;
+  case '\x96':
+    return 0x2013;
+  case '\x97':
+    return 0x2014;
+  case '\x98':
+    return 0x02DC;
+  case '\x99':
+    return 0x2122;
+  case '\x9A':
+    return 0x0161;
+  case '\x9B':
+    return 0x203A;
+  case '\x9C':
+    return 0x0153;
+  case '\x9F':
+    return 0x0178;
+  default:
+    return std::nullopt;
+  }
 }
 
 } // namespace odr::internal
