@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/oldms/word/structs.hpp>
+#include <odr/internal/oldms/text/doc_structs.hpp>
 
 #include <array>
 #include <functional>
@@ -8,7 +8,7 @@
 #include <memory>
 #include <optional>
 
-namespace odr::internal::oldms {
+namespace odr::internal::oldms::text {
 
 void read(std::istream &in, FibBase &out);
 void read(std::istream &in, FibRgFcLcb97 &out);
@@ -36,4 +36,4 @@ std::u16string read_string_uncompressed(std::istream &in, std::size_t size);
 
 std::optional<char16_t> uncompress_char(char c);
 
-} // namespace odr::internal::oldms
+} // namespace odr::internal::oldms::text

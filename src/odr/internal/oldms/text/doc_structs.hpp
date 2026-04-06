@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace odr::internal::oldms {
+namespace odr::internal::oldms::text {
 
 #pragma pack(push, 1)
 
@@ -392,4 +392,4 @@ private:
   std::size_t m_cbPlc{0};
 };
 
-} // namespace odr::internal::oldms
+} // namespace odr::internal::oldms::text

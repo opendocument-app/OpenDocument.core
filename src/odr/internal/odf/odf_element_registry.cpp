@@ -8,9 +8,10 @@ namespace odr::internal::odf {
 
 void ElementRegistry::clear() noexcept {
   m_elements.clear();
-  m_tables.clear();
   m_texts.clear();
+  m_tables.clear();
   m_sheets.clear();
+  m_sheet_cells.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -219,17 +220,17 @@ void ElementRegistry::check_element_id(const ElementIdentifier id) const {
   }
 }
 
-void ElementRegistry::check_table_id(const ElementIdentifier id) const {
+void ElementRegistry::check_text_id(const ElementIdentifier id) const {
   check_element_id(id);
-  if (!m_tables.contains(id)) {
+  if (!m_texts.contains(id)) {
     throw std::out_of_range(
         "DocumentElementRegistry::check_id: identifier not found");
   }
 }
 
-void ElementRegistry::check_text_id(const ElementIdentifier id) const {
+void ElementRegistry::check_table_id(const ElementIdentifier id) const {
   check_element_id(id);
-  if (!m_texts.contains(id)) {
+  if (!m_tables.contains(id)) {
     throw std::out_of_range(
         "DocumentElementRegistry::check_id: identifier not found");
   }

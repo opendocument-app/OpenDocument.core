@@ -1,11 +1,11 @@
-#include <odr/internal/oldms/word/io.hpp>
+#include <odr/internal/oldms/text/doc_io.hpp>
 
 #include "odr/internal/util/string_util.hpp"
 
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-namespace odr::internal::oldms {
+namespace odr::internal::oldms::text {
 
 namespace {
 
@@ -38,35 +38,35 @@ auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
 
 } // namespace
 
-} // namespace odr::internal::oldms
+} // namespace odr::internal::oldms::text
 
-namespace odr::internal {
+namespace odr::internal::oldms {
 
-void oldms::read(std::istream &in, FibBase &out) {
+void text::read(std::istream &in, FibBase &out) {
   util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb97 &out) {
+void text::read(std::istream &in, FibRgFcLcb97 &out) {
   util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2000 &out) {
+void text::read(std::istream &in, FibRgFcLcb2000 &out) {
   util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2002 &out) {
+void text::read(std::istream &in, FibRgFcLcb2002 &out) {
   util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2003 &out) {
+void text::read(std::istream &in, FibRgFcLcb2003 &out) {
   util::byte_stream::read(in, out);
 }
 
-void oldms::read(std::istream &in, FibRgFcLcb2007 &out) {
+void text::read(std::istream &in, FibRgFcLcb2007 &out) {
   util::byte_stream::read(in, out);
 }
 
-std::size_t oldms::determine_size_Fib(std::istream &in) {
+std::size_t text::determine_size_Fib(std::istream &in) {
   std::size_t result = 0;
 
   const auto read_uint16_t = [&] {
@@ -92,7 +92,7 @@ std::size_t oldms::determine_size_Fib(std::istream &in) {
   return result;
 }
 
-void oldms::read(std::istream &in, ParsedFib &out) {
+void text::read(std::istream &in, ParsedFib &out) {
   read(in, out.base);
 
   util::byte_stream::read(in, out.csw);
@@ -133,7 +133,7 @@ void oldms::read(std::istream &in, ParsedFib &out) {
       });
 }
 
-void oldms::read(std::istream &in, ParsedFibRgCswNew &out) {
+void text::read(std::istream &in, ParsedFibRgCswNew &out) {
   util::byte_stream::read(in, out.nFibNew);
 
   switch (out.nFibNew) {
@@ -157,8 +157,8 @@ void oldms::read(std::istream &in, ParsedFibRgCswNew &out) {
   }
 }
 
-std::unique_ptr<oldms::FibRgFcLcb97>
-oldms::read_FibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
+std::unique_ptr<text::FibRgFcLcb97>
+text::read_FibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
   return type_dispatch_FibRgFcLcb(
       nFib, [&in]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
         using FibRgFcLcbType = T::type;
@@ -168,8 +168,8 @@ oldms::read_FibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
       });
 }
 
-void oldms::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
-                     const HandlePcdt &handle_Pcdt) {
+void text::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
+                    const HandlePcdt &handle_Pcdt) {
   while (true) {
     const int c = in.peek();
     if (c == 0x2) {
@@ -183,7 +183,7 @@ void oldms::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
   }
 }
 
-void oldms::skip_Prc(std::istream &in) {
+void text::skip_Prc(std::istream &in) {
   if (const int c = in.get(); c != 0x1) {
     throw std::runtime_error("Unexpected input: " + std::to_string(c));
   }
@@ -192,8 +192,8 @@ void oldms::skip_Prc(std::istream &in) {
   in.ignore(cbGrpprl);
 }
 
-std::string oldms::read_string_compressed(std::istream &in,
-                                          const std::size_t size) {
+std::string text::read_string_compressed(std::istream &in,
+                                         const std::size_t size) {
   static constexpr auto eof = std::istream::traits_type::eof();
 
   std::string result;
@@ -219,8 +219,8 @@ std::string oldms::read_string_compressed(std::istream &in,
   return result;
 }
 
-std::u16string oldms::read_string_uncompressed(std::istream &in,
-                                               const std::size_t size) {
+std::u16string text::read_string_uncompressed(std::istream &in,
+                                              const std::size_t size) {
   std::u16string result;
   result.resize(size);
 
@@ -230,7 +230,7 @@ std::u16string oldms::read_string_uncompressed(std::istream &in,
   return result;
 }
 
-std::optional<char16_t> oldms::uncompress_char(const char c) {
+std::optional<char16_t> text::uncompress_char(const char c) {
   switch (c) {
   case '\x82':
     return 0x201A;
@@ -285,4 +285,4 @@ std::optional<char16_t> oldms::uncompress_char(const char c) {
   }
 }
 
-} // namespace odr::internal
+} // namespace odr::internal::oldms
