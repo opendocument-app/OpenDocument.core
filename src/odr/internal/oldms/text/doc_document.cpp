@@ -36,9 +36,14 @@ bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
-void Document::save(const Path &path) const { throw UnsupportedOperation(); }
+void Document::save(const Path &path) const {
+  (void)path;
+  throw UnsupportedOperation();
+}
 
-void Document::save(const Path & /*path*/, const char * /*password*/) const {
+void Document::save(const Path &path, const char *password) const {
+  (void)path;
+  (void)password;
   throw UnsupportedOperation();
 }
 
@@ -82,15 +87,18 @@ public:
 
   [[nodiscard]] bool element_is_unique(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
+    (void)element_id;
     return true;
   }
   [[nodiscard]] bool element_is_self_locatable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
+    (void)element_id;
     return true;
   }
   [[nodiscard]] bool element_is_editable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
+    (void)element_id;
+    return false;
   }
   [[nodiscard]]
   DocumentPath
@@ -126,29 +134,35 @@ public:
 
   [[nodiscard]] PageLayout text_root_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {};
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {};
   }
 
   [[nodiscard]] TextStyle
   line_break_style(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
 
   [[nodiscard]] ParagraphStyle
   paragraph_style(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
 
   [[nodiscard]] TextStyle
   span_style(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
 
@@ -158,10 +172,13 @@ public:
   }
   void text_set_content(const ElementIdentifier element_id,
                         const std::string &text) const override {
+    (void)element_id;
+    (void)text;
     throw UnsupportedOperation();
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
+    (void)element_id;
     return {}; // TODO
   }
 

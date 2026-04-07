@@ -22,9 +22,6 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   const std::string word_document =
       util::stream::read(*files.open(AbsPath("/WordDocument"))->stream());
 
-  const std::size_t fib_size =
-      determine_size_Fib(*files.open(AbsPath("/WordDocument"))->stream());
-
   const auto stream = files.open(AbsPath("/WordDocument"))->stream();
   ParsedFib fib;
   read(*stream, fib);
