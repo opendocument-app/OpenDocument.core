@@ -183,6 +183,8 @@ public:
   }
 
 private:
+  // TODO remove maybe_unused
+  [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
 };
