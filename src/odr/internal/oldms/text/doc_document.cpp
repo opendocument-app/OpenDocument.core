@@ -19,7 +19,7 @@ create_element_adapter(const Document &document, ElementRegistry &registry);
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::legacy_word_document, DocumentType::text,
                          std::move(files)) {
-  m_root_element = parse_tree(m_element_registry, *files);
+  m_root_element = parse_tree(m_element_registry, *m_files);
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }

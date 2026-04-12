@@ -10,6 +10,6 @@ class ReadableFilesystem;
 
 namespace odr::internal::ooxml {
 
-FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem);
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &files);
 
 } // namespace odr::internal::ooxml

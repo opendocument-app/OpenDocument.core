@@ -125,6 +125,13 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
+  // TODO oldms decryption
+  if (test_file.password.has_value() &&
+      test_file.type == FileType::legacy_word_document &&
+      engine == DecoderEngine::odr) {
+    GTEST_SKIP();
+  }
+
   EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
 
   if (test_file.password.has_value()) {
@@ -238,7 +245,6 @@ std::vector<TestParams> list_test_params() {
       engines.push_back(DecoderEngine::poppler);
     }
     if (test_file.type == FileType::legacy_word_document) {
-      engines.clear();
       engines.push_back(DecoderEngine::wvware);
     }
 
