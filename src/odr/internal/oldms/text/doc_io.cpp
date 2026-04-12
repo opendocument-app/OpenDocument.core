@@ -116,10 +116,12 @@ void text::read(std::istream &in, ParsedFib &out) {
   in.read(fibRgFcLcb.get(), out.cbRgFcLcb * 8);
 
   util::byte_stream::read(in, out.cswNew);
-  read(in, out.fibRgCswNew);
-
+  if (out.cswNew > 0) {
+    out.fibRgCswNew.emplace();
+    read(in, *out.fibRgCswNew);
+  }
   const std::uint16_t nFib =
-      out.cswNew != 0 ? out.fibRgCswNew.nFibNew : out.base.nFib;
+      out.cswNew != 0 ? out.fibRgCswNew.value().nFibNew : out.base.nFib;
 
   out.fibRgFcLcb = type_dispatch_FibRgFcLcb(
       nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {

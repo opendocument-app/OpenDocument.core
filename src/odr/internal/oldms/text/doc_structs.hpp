@@ -343,7 +343,7 @@ struct ParsedFib {
   std::uint16_t cbRgFcLcb;
   std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
   std::uint16_t cswNew;
-  ParsedFibRgCswNew fibRgCswNew;
+  std::optional<ParsedFibRgCswNew> fibRgCswNew;
 };
 
 template <typename Derived, typename Data> class PlcBase {
