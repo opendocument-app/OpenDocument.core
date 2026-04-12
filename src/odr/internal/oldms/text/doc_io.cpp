@@ -194,14 +194,24 @@ void text::skip_Prc(std::istream &in) {
   in.ignore(cbGrpprl);
 }
 
+std::string text::read_string(std::istream &in, const std::size_t length_cp,
+                              const bool is_compressed) {
+  if (is_compressed) {
+    return read_string_compressed(in, length_cp);
+  }
+
+  return util::string::u16string_to_string(
+      read_string_uncompressed(in, length_cp));
+}
+
 std::string text::read_string_compressed(std::istream &in,
-                                         const std::size_t size) {
+                                         const std::size_t length_cp) {
   static constexpr auto eof = std::istream::traits_type::eof();
 
   std::string result;
-  result.reserve(size);
+  result.reserve(length_cp);
 
-  for (std::size_t i = 0; i < size; ++i) {
+  for (std::size_t i = 0; i < length_cp; ++i) {
     const auto ci = in.get();
     if (ci == eof) {
       throw std::runtime_error("Unexpected end of input");
@@ -222,12 +232,12 @@ std::string text::read_string_compressed(std::istream &in,
 }
 
 std::u16string text::read_string_uncompressed(std::istream &in,
-                                              const std::size_t size) {
+                                              const std::size_t length_cp) {
   std::u16string result;
-  result.resize(size);
+  result.resize(length_cp);
 
   in.read(reinterpret_cast<char *>(result.data()),
-          static_cast<std::streamsize>(size * sizeof(char16_t)));
+          static_cast<std::streamsize>(length_cp * sizeof(char16_t)));
 
   return result;
 }

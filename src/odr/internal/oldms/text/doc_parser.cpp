@@ -20,12 +20,9 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
                                    const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
-  const std::string word_document =
-      util::stream::read(*files.open(AbsPath("/WordDocument"))->stream());
-
-  const auto stream = files.open(AbsPath("/WordDocument"))->stream();
+  const auto document_stream = files.open(AbsPath("/WordDocument"))->stream();
   ParsedFib fib;
-  read(*stream, fib);
+  read(*document_stream, fib);
 
   const std::string tableStreamPath =
       fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
@@ -40,12 +37,12 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
 
   const auto table_stream = files.open(AbsPath(tableStreamPath))->stream();
   table_stream->ignore(fib.fibRgFcLcb->clx.fc);
+
   const CharacterIndex character_index = read_character_index(*table_stream);
   for (const auto &entry : character_index) {
-    const auto document_stream = files.open(AbsPath("/WordDocument"))->stream();
     document_stream->seekg(entry.data_offset);
     const std::string text_entry =
-        read_string_compressed(*document_stream, entry.data_length);
+        read_string(*document_stream, entry.length_cp, entry.is_compressed);
 
     const auto paragraphs = util::string::split(text_entry, "\r");
     for (std::uint32_t paragraph_i = 0; paragraph_i < paragraphs.size();

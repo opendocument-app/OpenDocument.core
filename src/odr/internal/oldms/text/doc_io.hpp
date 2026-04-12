@@ -31,8 +31,11 @@ void read_Clx(std::istream &in, const HandlePrc &handle_Prc,
               const HandlePcdt &handle_Pcdt);
 void skip_Prc(std::istream &in);
 
-std::string read_string_compressed(std::istream &in, std::size_t size);
-std::u16string read_string_uncompressed(std::istream &in, std::size_t size);
+std::string read_string(std::istream &in, std::size_t length_cp,
+                        bool is_compressed);
+std::string read_string_compressed(std::istream &in, std::size_t length_cp);
+std::u16string read_string_uncompressed(std::istream &in,
+                                        std::size_t length_cp);
 
 std::optional<char16_t> uncompress_char(char c);
 
