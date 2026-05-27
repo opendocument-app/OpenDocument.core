@@ -3,10 +3,11 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
-namespace odr::internal::oldms {
+namespace odr::internal::oldms::text {
 
 #pragma pack(push, 1)
 
@@ -343,7 +344,7 @@ struct ParsedFib {
   std::uint16_t cbRgFcLcb;
   std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
   std::uint16_t cswNew;
-  ParsedFibRgCswNew fibRgCswNew;
+  std::optional<ParsedFibRgCswNew> fibRgCswNew;
 };
 
 template <typename Derived, typename Data> class PlcBase {
@@ -392,4 +393,4 @@ private:
   std::size_t m_cbPlc{0};
 };
 
-} // namespace odr::internal::oldms
+} // namespace odr::internal::oldms::text

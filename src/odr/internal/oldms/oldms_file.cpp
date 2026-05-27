@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/text/doc_document.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -10,9 +11,10 @@
 namespace odr::internal::oldms {
 
 namespace {
-FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
+FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
   struct Variant {
     FileType type{FileType::unknown};
+    DocumentType document_type{DocumentType::unknown};
     std::string_view mimetype;
   };
 
@@ -20,24 +22,35 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
       // MS-DOC: The "WordDocument" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
       {AbsPath("/WordDocument"),
-       {FileType::legacy_word_document, "application/msword"}},
+       {FileType::legacy_word_document, DocumentType::text,
+        "application/msword"}},
       // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
       // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
       {AbsPath("/PowerPoint Document"),
-       {FileType::legacy_powerpoint_presentation,
+       {FileType::legacy_powerpoint_presentation, DocumentType::presentation,
         "application/vnd.ms-powerpoint"}},
       // MS-XLS: The "Workbook" stream MUST be present in the file.
       // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
       {AbsPath("/Workbook"),
-       {FileType::legacy_excel_worksheets, "application/vnd.ms-excel"}},
+       {FileType::legacy_excel_worksheets, DocumentType::spreadsheet,
+        "application/vnd.ms-excel"}},
   };
 
   FileMeta result;
+  result.document_meta = DocumentMeta();
+
+  if (files.is_file(AbsPath("/EncryptionInfo")) &&
+      files.is_file(AbsPath("/EncryptedPackage"))) {
+    result.type = FileType::office_open_xml_encrypted;
+    result.password_encrypted = true;
+    return result;
+  }
 
   for (const auto &[path, variant] : types) {
-    if (storage.is_file(path)) {
+    if (files.is_file(path)) {
       result.type = variant.type;
       result.mimetype = variant.mimetype;
+      result.document_meta->document_type = variant.document_type;
       break;
     }
   }
@@ -51,9 +64,9 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &storage) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<abstract::ReadableFilesystem> storage)
-    : m_storage{std::move(storage)} {
-  m_file_meta = parse_meta(*m_storage);
+    std::shared_ptr<abstract::ReadableFilesystem> files)
+    : m_files{std::move(files)} {
+  m_file_meta = parse_meta(*m_files);
 }
 
 std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
@@ -99,8 +112,12 @@ std::shared_ptr<abstract::DecodedFile> LegacyMicrosoftFile::decrypt(
 bool LegacyMicrosoftFile::is_decodable() const noexcept { return false; }
 
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
-  throw UnsupportedFileEncoding(
-      "odrcore does not support reading legacy Microsoft files");
+  switch (file_type()) {
+  case FileType::legacy_word_document:
+    return std::make_shared<text::Document>(m_files);
+  default:
+    throw UnsupportedFileType(file_type());
+  }
 }
 
 } // namespace odr::internal::oldms

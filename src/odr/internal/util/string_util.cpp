@@ -48,13 +48,16 @@ void string::replace_all(std::string &string, const std::string &search,
 
 void string::split(const std::string &string, const std::string &delimiter,
                    const std::function<void(const std::string &)> &callback) {
-  std::size_t pos = 0;
-  std::size_t last = 0;
-  while ((pos = string.find(delimiter, pos)) != std::string::npos) {
-    callback(string.substr(last, pos));
-    last = pos;
-    pos += delimiter.size();
+  std::size_t last_end = 0;
+  while (true) {
+    const std::size_t pos = string.find(delimiter, last_end);
+    if (pos == std::string::npos) {
+      break;
+    }
+    callback(string.substr(last_end, pos));
+    last_end = pos + delimiter.size();
   }
+  callback(string.substr(last_end));
 }
 
 std::vector<std::string> string::split(const std::string &string,
