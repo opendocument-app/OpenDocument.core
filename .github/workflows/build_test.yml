@@ -9,9 +9,9 @@ concurrency:
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 1G
-  CCACHE_KEY_SUFFIX: r1
+  CCACHE_KEY_SUFFIX: r2
   CONAN_HOME: ${{ github.workspace }}/.conan2
-  CONAN_KEY_SUFFIX: r1
+  CONAN_KEY_SUFFIX: r2
 
 jobs:
   build:
