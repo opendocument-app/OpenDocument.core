@@ -78,7 +78,6 @@ jobs:
       - name: conan install
         run: >
           conan install .
-          --lockfile conan.lock
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --build missing
