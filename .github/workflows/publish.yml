@@ -55,7 +55,7 @@ jobs:
             conan-${{ matrix.host_profile }}-
 
       - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py
+        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 
