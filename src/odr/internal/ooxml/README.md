@@ -1,24 +1,42 @@
 # OOXML implementation
 
-## General
+Reader and (partial) editor for Office Open XML files: word processing
+(`.docx`), presentation (`.pptx`) and spreadsheet (`.xlsx`).
 
-this implementation relies on [ZIP](../zip/README.md) and [CFB](../cfb/README.md)
+This implementation relies on [ZIP](../zip/README.md) and [CFB](../cfb/README.md)
+(the latter for the encryption container).
 
-used by [DOCX](text/README.md), [PPTX](presentation/README.md) and [XLSX](spreadsheet/README.md)
-
-docx, pptx and xlsx have almost nothing in common.
+The three formats share almost nothing beyond packaging and encryption, so most
+features are documented in the per-format READMEs: [DOCX](text/README.md),
+[PPTX](presentation/README.md) and [XLSX](spreadsheet/README.md). This file
+covers only what is common to all three.
 
 ## Features
 
-### Functional
+Roughly ordered by importance.
+
+### Shared
 
 - [x] open
-  - [x] decryption (only _standard_)
+  - [x] decryption
+    - [x] ECMA-376 _standard_ encryption (AES + SHA1)
+    - [ ] _agile_ encryption (rejected with `MsUnsupportedCryptoAlgorithm`)
+    - [ ] _extensible_ encryption
+    - [ ] big endian hosts
 - [x] meta data
-- [x] edit
-  - [x] text
-- [x] save
-  - [ ] encryption
+  - [x] file type detection (docx / pptx / xlsx, encrypted package)
+  - [ ] document statistics (page / table count)
+
+### Per-format capabilities
+
+| Capability  | DOCX | PPTX | XLSX |
+| ----------- | :--: | :--: | :--: |
+| read        |  ✓   |  ✓   |  ✓   |
+| styles      |  ✓   |  ✓   |  ✓   |
+| edit text   |  ✓   |      |      |
+| save        |  ✓   |      |      |
+
+See the per-format READMEs for the detailed element and style coverage.
 
 ## References
 

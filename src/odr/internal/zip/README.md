@@ -1,10 +1,8 @@
 # ZIP implementation
 
-# General
-
 used by [ODF](../odf/README.md) and [OOXML](../ooxml/README.md)
 
-# References
+## Features
 
 - [x] from memory
 - [x] from file

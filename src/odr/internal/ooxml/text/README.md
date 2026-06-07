@@ -1,34 +1,64 @@
 # OOXML text implementation
 
-## General
+Reader and editor for word processing documents (`.docx`).
 
-this implementation relies on [OOXML](../README.md)
+This implementation relies on [OOXML](../README.md).
+
+The document tree is parsed from `word/document.xml` (see
+`ooxml_text_parser.cpp`); styles are resolved from `word/styles.xml` over the
+`w:basedOn` parent hierarchy and `w:docDefaults` (see `ooxml_text_style.cpp`).
 
 ## Features
 
+Roughly ordered by importance.
+
 ### Functional
 
+- [x] open
+- [x] text extraction (`w:t`, tabs)
 - [x] edit
-  - [x] text
+  - [x] text content
+  - [ ] structural edits (insert / delete elements)
+- [x] save
+  - [ ] encryption (re-encrypting on save is unsupported)
+
+### Content
+
+- [x] headings and paragraphs
+- [x] runs / spans
+- [x] line breaks
+- [x] hyperlinks
+- [x] bookmarks
+- [x] tables (grid columns, rows, cells)
+- [x] images (`w:drawing`)
+- [x] structured document tags (rendered as generic groups)
+- [x] listings
+  - [x] bullets (incl. nesting by level)
+  - [ ] numbering (`w:numPr` levels are honored, but `numbering.xml` formats are
+    not resolved to actual numbers)
+- [ ] annotations / comments
 
 ### Styles
 
 - [x] font
+  - [x] family (`w:rFonts`)
   - [x] size
   - [x] italic, bold
-  - [x] alignment
   - [x] underline, strike through
-  - [x] color
-  - [x] family
+  - [x] color, background (highlight)
+  - [x] shadow
   - [ ] superscript, subscript
-- [x] links
+- [x] paragraph
+  - [x] alignment
+  - [x] indentation / left & right margins
+  - [ ] top / bottom margins, line height
 - [x] tables
-- [x] images
-- [x] listings
-  - [x] bullets
-  - [ ] numbering
-- [ ] annotations
-- [x] page layout
+  - [x] table width
+  - [x] cell vertical alignment, borders
+  - [ ] cell width (parsed but not applied)
+  - [ ] table row styles
+- [x] page layout (via master page)
+- [ ] graphic / drawing styles
 
 ## References
 

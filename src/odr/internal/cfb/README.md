@@ -1,7 +1,5 @@
 # CFB implementation
 
-## General
-
 CFB stands for _Microsoft Compound File Binary File Format_
 
 ## Features
