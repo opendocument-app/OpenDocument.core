@@ -3,10 +3,11 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
-namespace odr::internal::oldms {
+namespace odr::internal::oldms::text {
 
 #pragma pack(push, 1)
 
@@ -343,7 +344,15 @@ struct ParsedFib {
   std::uint16_t cbRgFcLcb;
   std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
   std::uint16_t cswNew;
-  ParsedFibRgCswNew fibRgCswNew;
+  std::optional<ParsedFibRgCswNew> fibRgCswNew;
+
+  // FibRgLw97.ccpText: count of CPs in the main document. It is the 4th 32-bit
+  // field (cbMac, reserved1, reserved2, ccpText), i.e. uint16 indices 6-7.
+  // Stored little-endian, consistent with the rest of this parser.
+  [[nodiscard]] std::uint32_t ccpText() const {
+    return static_cast<std::uint32_t>(fibRgLw[6]) |
+           (static_cast<std::uint32_t>(fibRgLw[7]) << 16);
+  }
 };
 
 template <typename Derived, typename Data> class PlcBase {
@@ -392,4 +401,4 @@ private:
   std::size_t m_cbPlc{0};
 };
 
-} // namespace odr::internal::oldms
+} // namespace odr::internal::oldms::text

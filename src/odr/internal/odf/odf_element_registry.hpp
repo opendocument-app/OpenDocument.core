@@ -125,8 +125,8 @@ private:
   std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
 
   void check_element_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;
+  void check_table_id(ElementIdentifier id) const;
   void check_sheet_id(ElementIdentifier id) const;
   void check_sheet_cell_id(ElementIdentifier id) const;
 };

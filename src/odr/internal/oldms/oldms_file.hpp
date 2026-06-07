@@ -18,7 +18,7 @@ namespace odr::internal::oldms {
 class LegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
   explicit LegacyMicrosoftFile(
-      std::shared_ptr<abstract::ReadableFilesystem> storage);
+      std::shared_ptr<abstract::ReadableFilesystem> files);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -40,7 +40,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
 private:
-  std::shared_ptr<abstract::ReadableFilesystem> m_storage;
+  std::shared_ptr<abstract::ReadableFilesystem> m_files;
   FileMeta m_file_meta;
 };
 

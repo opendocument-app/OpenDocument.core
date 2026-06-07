@@ -10,7 +10,7 @@
 
 namespace odr::internal::ooxml {
 
-FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem) {
+FileMeta parse_file_meta(const abstract::ReadableFilesystem &files) {
   struct TypeInfo {
     FileType file_type{FileType::unknown};
     DocumentType document_type{DocumentType::unknown};
@@ -34,15 +34,15 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem) {
   FileMeta result;
   result.document_meta = DocumentMeta();
 
-  if (filesystem.is_file(AbsPath("/EncryptionInfo")) &&
-      filesystem.is_file(AbsPath("/EncryptedPackage"))) {
+  if (files.is_file(AbsPath("/EncryptionInfo")) &&
+      files.is_file(AbsPath("/EncryptedPackage"))) {
     result.type = FileType::office_open_xml_encrypted;
     result.password_encrypted = true;
     return result;
   }
 
   for (const auto &[path, info] : types) {
-    if (filesystem.is_file(path)) {
+    if (files.is_file(path)) {
       result.type = info.file_type;
       result.mimetype = info.mimetype;
       result.document_meta->document_type = info.document_type;
