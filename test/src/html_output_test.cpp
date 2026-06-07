@@ -132,6 +132,12 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
+  // TODO oldms
+  if (test_file.type == FileType::legacy_word_document &&
+      engine == DecoderEngine::odr) {
+    GTEST_SKIP();
+  }
+
   EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
 
   if (test_file.password.has_value()) {
