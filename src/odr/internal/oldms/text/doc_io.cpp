@@ -5,6 +5,8 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <cstring>
+
 namespace odr::internal::oldms::text {
 
 namespace {
@@ -130,8 +132,9 @@ void text::read(std::istream &in, ParsedFib &out) {
           throw std::runtime_error("Unexpected cbRgFcLcb value: " +
                                    std::to_string(out.cbRgFcLcb));
         }
-        return std::unique_ptr<FibRgFcLcb97>(
-            reinterpret_cast<FibRgFcLcb97 *>(fibRgFcLcb.release()));
+        auto result = std::make_unique<FibRgFcLcbType>();
+        std::memcpy(result.get(), fibRgFcLcb.get(), out.cbRgFcLcb * 8);
+        return result;
       });
 }
 

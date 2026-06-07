@@ -39,13 +39,6 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
   FileMeta result;
   result.document_meta = DocumentMeta();
 
-  if (files.is_file(AbsPath("/EncryptionInfo")) &&
-      files.is_file(AbsPath("/EncryptedPackage"))) {
-    result.type = FileType::office_open_xml_encrypted;
-    result.password_encrypted = true;
-    return result;
-  }
-
   for (const auto &[path, variant] : types) {
     if (files.is_file(path)) {
       result.type = variant.type;
