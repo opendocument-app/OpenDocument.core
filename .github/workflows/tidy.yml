@@ -48,7 +48,7 @@ jobs:
         run: pip install --upgrade pip conan
 
       - name: cache conan
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
           key: conan-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
@@ -56,12 +56,12 @@ jobs:
             conan-${{ matrix.host_profile }}-
 
       - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py
+        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 
       - name: cache ccache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}

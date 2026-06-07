@@ -29,11 +29,11 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
   } else if (const std::shared_ptr memory_file =
                  std::dynamic_pointer_cast<MemoryFile>(m_file);
              memory_file != nullptr) {
-    // `stream` is freed by `m_pdf_doc`
-    auto stream = new MemStream(memory_file->memory_data(), 0,
-                                static_cast<Goffset>(memory_file->size()),
-                                Object(objNull));
-    m_pdf_doc = std::make_shared<PDFDoc>(stream, password_goo, password_goo);
+    auto stream = std::make_unique<MemStream>(
+        memory_file->memory_data(), 0,
+        static_cast<Goffset>(memory_file->size()), Object::null());
+    m_pdf_doc =
+        std::make_shared<PDFDoc>(std::move(stream), password_goo, password_goo);
   } else {
     throw NoPdfFile();
   }
