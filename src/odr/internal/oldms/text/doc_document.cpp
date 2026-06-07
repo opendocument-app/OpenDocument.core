@@ -157,7 +157,9 @@ public:
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    // TODO setting font size otherwise the text will be invisible. upstream
+    // this is used to make empty paragraphs works correctly
+    return {.font_size = Measure("11pt")}; // TODO
   }
 
   [[nodiscard]] TextStyle
