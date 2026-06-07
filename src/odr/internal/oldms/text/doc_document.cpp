@@ -159,7 +159,10 @@ public:
     (void)element_id;
     // TODO setting font size otherwise the text will be invisible. upstream
     // this is used to make empty paragraphs works correctly
-    return {.font_size = Measure("11pt")}; // TODO
+    TextStyle style{};
+    // TODO
+    style.font_size = Measure("11pt");
+    return style;
   }
 
   [[nodiscard]] TextStyle
@@ -183,7 +186,10 @@ public:
     (void)element_id;
     // TODO setting font size otherwise the text will be invisible. upstream
     // this is used to make empty paragraphs works correctly
-    return {.font_size = Measure("11pt")}; // TODO
+    TextStyle style{};
+    // TODO
+    style.font_size = Measure("11pt");
+    return style;
   }
 
 private:
