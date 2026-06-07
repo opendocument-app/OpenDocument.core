@@ -57,8 +57,8 @@ TEST(OldMs, test) {
   for (const auto &entry : character_index) {
     const auto document_stream = files.open("/WordDocument").stream();
     document_stream->seekg(entry.data_offset);
-    const std::string text = internal::oldms::text::read_string_compressed(
-        *document_stream, entry.data_length);
+    const std::string text = internal::oldms::text::read_string(
+        *document_stream, entry.length_cp, entry.is_compressed);
     std::cout << "text " << text << std::endl;
   }
 }

@@ -54,7 +54,7 @@ void string::split(const std::string &string, const std::string &delimiter,
     if (pos == std::string::npos) {
       break;
     }
-    callback(string.substr(last_end, pos));
+    callback(string.substr(last_end, pos - last_end));
     last_end = pos + delimiter.size();
   }
   callback(string.substr(last_end));
