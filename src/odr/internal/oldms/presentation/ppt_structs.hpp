@@ -77,6 +77,16 @@ enum RecordType : std::uint16_t {
   RT_UserEditAtom = 0x0FF5,      // a user edit (offsets to dir + previous edit)
   RT_CurrentUserAtom = 0x0FF6,   // in the "Current User" stream
   RT_PersistDirectoryAtom = 0x1772, // persist id -> stream offset directory
+
+  // Office Art (Escher) drawing records that hold the slide's text boxes.
+  // The OfficeArt* records are [MS-ODRAW]; the client records (textbox/anchor)
+  // are [MS-PPT].
+  RT_Drawing = 0x040C,              // DrawingContainer        [MS-PPT] 2.5.13
+  RT_OfficeArtDgContainer = 0xF002, //                         [MS-ODRAW] 2.2.13
+  RT_OfficeArtSpgrContainer = 0xF003, // shape group           [MS-ODRAW] 2.2.16
+  RT_OfficeArtSpContainer = 0xF004, // one shape (a text box)  [MS-ODRAW] 2.2.14
+  RT_OfficeArtClientTextbox = 0xF00D, // a shape's text        [MS-PPT] 2.9.76
+  RT_OfficeArtClientAnchor = 0xF010,  // a shape's position     [MS-PPT] 2.7.1
 };
 
 // recInstance values of a RT_SlideListWithText container, distinguishing the
@@ -88,6 +98,16 @@ enum SlideListInstance : std::uint16_t {
   SlideListInstance_Slides = 0x000,
   SlideListInstance_Master = 0x001,
   SlideListInstance_Notes = 0x002,
+};
+
+// A shape's position/size, decoded from an OfficeArtClientAnchor body
+// (SmallRectStruct or RectStruct, [MS-PPT] 2.12.7/2.12.8). Coordinates are in
+// master units (1/576 inch) of the slide's coordinate system.
+struct Anchor {
+  std::int32_t top{0};
+  std::int32_t left{0};
+  std::int32_t right{0};
+  std::int32_t bottom{0};
 };
 
 } // namespace odr::internal::oldms::presentation

@@ -141,20 +141,29 @@ std::string clean_text(const std::string &in) {
   return out;
 }
 
-// Builds the paragraph/line_break/text subtree of a single slide from its
-// concatenated text. Mirrors the splitting done by the .doc parser.
-void build_slide(ElementRegistry &registry, const ElementIdentifier slide_id,
-                 const std::string &slide_text) {
+// A single text box on a slide: the text it holds and, optionally, the position
+// and size from its OfficeArtClientAnchor.
+struct TextBox final {
+  std::optional<Anchor> anchor;
+  std::string text;
+};
+
+// Builds the paragraph/line_break/text subtree of one text box from its
+// concatenated text, under `parent_id`. Mirrors the splitting done by the .doc
+// parser.
+void build_paragraphs(ElementRegistry &registry,
+                      const ElementIdentifier parent_id,
+                      const std::string &box_text) {
   auto paragraphs =
-      util::string::split(slide_text, std::string(1, paragraph_mark));
-  // Slide text usually ends on a paragraph break; drop the trailing empty.
+      util::string::split(box_text, std::string(1, paragraph_mark));
+  // Box text usually ends on a paragraph break; drop the trailing empty.
   if (!paragraphs.empty() && paragraphs.back().empty()) {
     paragraphs.pop_back();
   }
 
   for (const auto &paragraph : paragraphs) {
     auto [paragraph_id, _] = registry.create_element(ElementType::paragraph);
-    registry.append_child(slide_id, paragraph_id);
+    registry.append_child(parent_id, paragraph_id);
 
     const auto lines =
         util::string::split(paragraph, std::string(1, line_break_mark));
@@ -211,6 +220,68 @@ void gather_text(std::istream &in, const RecordHeader &container,
   }
 }
 
+// Reads one shape (OfficeArtSpContainer): its optional anchor and the text from
+// its OfficeArtClientTextbox. The stream is positioned at the shape body;
+// `shape` is its header. Consumes the whole shape body.
+TextBox read_shape(std::istream &in, const RecordHeader &shape) {
+  TextBox box;
+  ChildCursor children(in, shape);
+  while (const std::optional<RecordHeader> child = children.next()) {
+    if (child->recType == RT_OfficeArtClientAnchor) {
+      if (std::optional<Anchor> anchor =
+              read_client_anchor(in, child->recLen)) {
+        box.anchor = *anchor;
+        children.consume(child->recLen);
+      }
+    } else if (child->recType == RT_OfficeArtClientTextbox) {
+      gather_text(in, *child, box.text);
+      children.consume(child->recLen);
+    }
+    // Other children (shapeProp, FOPT, clientData, …): skipped by the cursor.
+  }
+  return box;
+}
+
+// Reads the text boxes drawn on a slide, in shape (z) order. The stream is
+// positioned at the SlideContainer body; `slide` is its header. Boxes with no
+// text are dropped, so the group shape and non-text shapes disappear. First
+// cut: only top-level shapes (direct children of the root
+// OfficeArtSpgrContainer), whose anchors are already in the slide's master-unit
+// coordinate system.
+std::vector<TextBox> read_slide_text_boxes(std::istream &in,
+                                           const RecordHeader &slide) {
+  // SlideContainer → DrawingContainer → OfficeArtDgContainer →
+  // OfficeArtSpgrContainer, then iterate the OfficeArtSpContainer shapes.
+  const std::optional<RecordHeader> drawing = find_child(in, slide, RT_Drawing);
+  if (!drawing.has_value()) {
+    return {};
+  }
+  const std::optional<RecordHeader> dg =
+      find_child(in, *drawing, RT_OfficeArtDgContainer);
+  if (!dg.has_value()) {
+    return {};
+  }
+  const std::optional<RecordHeader> spgr =
+      find_child(in, *dg, RT_OfficeArtSpgrContainer);
+  if (!spgr.has_value()) {
+    return {};
+  }
+
+  std::vector<TextBox> boxes;
+  ChildCursor shapes(in, *spgr);
+  while (const std::optional<RecordHeader> shape = shapes.next()) {
+    if (shape->recType != RT_OfficeArtSpContainer) {
+      continue; // not a shape; the cursor skips it
+    }
+    TextBox box = read_shape(in, *shape);
+    shapes.consume(shape->recLen);
+    if (!box.text.empty()) {
+      boxes.push_back(std::move(box));
+    }
+  }
+  return boxes;
+}
+
 // Maps a persist object identifier to its offset in the PowerPoint Document
 // stream. See [MS-PPT] 2.3.4 "persist object directory".
 using PersistDirectory = std::unordered_map<std::uint32_t, std::uint32_t>;
@@ -264,9 +335,10 @@ read_slide_persist_ids(std::istream &in, const RecordHeader &slide_list) {
 // and each slide's SlideContainer. Slides therefore come out in presentation
 // order, from the live records, regardless of stale/duplicate copies left in
 // the stream by incremental saves. The caller provides both required streams
-// (spec 2.1.1/2.1.2); malformed records throw.
-std::vector<std::string> collect_slides(std::istream &current_user,
-                                        std::istream &document) {
+// (spec 2.1.1/2.1.2); malformed records throw. Returns, per slide, the text
+// boxes drawn on it (in shape order).
+std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
+                                                 std::istream &document) {
   // Newest user edit offset, from the Current User stream.
   CurrentUserAtomHead head{};
   read(current_user, head);
@@ -329,19 +401,19 @@ std::vector<std::string> collect_slides(std::istream &current_user,
       read_slide_persist_ids(document, *slide_list);
 
   // Each SlidePersistAtom references a SlideContainer by persist id; resolve it
-  // and gather the text drawn on that slide.
-  std::vector<std::string> slides;
+  // and read the text boxes drawn on that slide.
+  std::vector<std::vector<TextBox>> slides;
   slides.reserve(persist_ids.size());
   for (const std::uint32_t persist_id : persist_ids) {
-    std::string slide_text;
+    std::vector<TextBox> boxes;
     if (const auto it = directory.find(persist_id); it != directory.end()) {
       document.clear();
       document.seekg(it->second);
       const RecordHeader slide_header =
           read_header(document, RT_SlideContainer);
-      gather_text(document, slide_header, slide_text);
+      boxes = read_slide_text_boxes(document, slide_header);
     }
-    slides.push_back(std::move(slide_text));
+    slides.push_back(std::move(boxes));
   }
   return slides;
 }
@@ -366,11 +438,19 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
   const auto document_stream = document_file->stream();
   const auto current_user_stream = current_user_file->stream();
 
-  for (const std::string &slide_text :
+  for (const std::vector<TextBox> &boxes :
        collect_slides(*current_user_stream, *document_stream)) {
     auto [slide_id, _] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
-    build_slide(registry, slide_id, slide_text);
+
+    // One frame per text box; the box's paragraphs hang off the frame.
+    for (const TextBox &box : boxes) {
+      auto [frame_id, frame_element, frame] = registry.create_frame_element();
+      (void)frame_element;
+      frame.anchor = box.anchor;
+      registry.append_child(slide_id, frame_id);
+      build_paragraphs(registry, frame_id, box.text);
+    }
   }
 
   return root_id;

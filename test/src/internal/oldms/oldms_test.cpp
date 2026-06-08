@@ -124,13 +124,46 @@ TEST(OldMs, ppt_slides) {
   const Document document = document_file.document();
   EXPECT_EQ(document.document_type(), DocumentType::presentation);
 
-  std::vector<std::string> slide_texts;
+  std::vector<Element> slides;
   for (const Element slide : document.root_element().children()) {
     EXPECT_EQ(slide.type(), ElementType::slide);
-    slide_texts.push_back(collect_text(slide));
+    slides.push_back(slide);
+  }
+  ASSERT_EQ(slides.size(), 2);
+
+  // Each slide is a set of positioned text boxes (frames), in shape order.
+  const auto frames_of = [](const Element &slide) {
+    std::vector<Element> frames;
+    for (const Element child : slide.children()) {
+      frames.push_back(child);
+    }
+    return frames;
+  };
+  const std::vector<Element> s0 = frames_of(slides[0]);
+  const std::vector<Element> s1 = frames_of(slides[1]);
+  ASSERT_EQ(s0.size(), 2);
+  ASSERT_EQ(s1.size(), 2);
+
+  // Every frame is positioned (anchored to the page, all four measures
+  // present).
+  for (const Element &element : {s0[0], s0[1], s1[0], s1[1]}) {
+    EXPECT_EQ(element.type(), ElementType::frame);
+    const Frame frame = element.as_frame();
+    EXPECT_EQ(frame.anchor_type(), AnchorType::at_page);
+    EXPECT_TRUE(frame.x().has_value());
+    EXPECT_TRUE(frame.y().has_value());
+    EXPECT_TRUE(frame.width().has_value());
+    EXPECT_TRUE(frame.height().has_value());
   }
 
-  ASSERT_EQ(slide_texts.size(), 2);
-  EXPECT_EQ(slide_texts[0], "Hello PowerPoint\nFirst bullet\nSecond bullet");
-  EXPECT_EQ(slide_texts[1], "Slide Two Title\nContent on slide two");
+  // The two boxes on a slide sit at different vertical positions (title above
+  // body).
+  EXPECT_NE(s0[0].as_frame().y(), s0[1].as_frame().y());
+  EXPECT_NE(s1[0].as_frame().y(), s1[1].as_frame().y());
+
+  // Text per box, in shape order.
+  EXPECT_EQ(collect_text(s0[0]), "Hello PowerPoint");
+  EXPECT_EQ(collect_text(s0[1]), "First bullet\nSecond bullet");
+  EXPECT_EQ(collect_text(s1[0]), "Slide Two Title");
+  EXPECT_EQ(collect_text(s1[1]), "Content on slide two");
 }

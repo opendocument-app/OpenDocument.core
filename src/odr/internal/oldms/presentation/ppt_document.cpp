@@ -9,6 +9,9 @@
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 
+#include <optional>
+#include <string>
+
 namespace odr::internal::oldms::presentation {
 
 namespace {
@@ -51,6 +54,7 @@ namespace {
 
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::SlideAdapter,
+                             public abstract::FrameAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
                              public abstract::TextAdapter {
@@ -110,6 +114,10 @@ public:
   slide_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::slide ? this : nullptr;
   }
+  [[nodiscard]] const FrameAdapter *
+  frame_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::frame ? this : nullptr;
+  }
   [[nodiscard]] const LineBreakAdapter *
   line_break_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::line_break ? this : nullptr;
@@ -139,6 +147,37 @@ public:
   }
   [[nodiscard]] std::string slide_name(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+
+  [[nodiscard]] AnchorType frame_anchor_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return AnchorType::at_page;
+  }
+  [[nodiscard]] std::optional<std::string>
+  frame_x(const ElementIdentifier element_id) const override {
+    return anchor_measure(element_id, [](const Anchor &a) { return a.left; });
+  }
+  [[nodiscard]] std::optional<std::string>
+  frame_y(const ElementIdentifier element_id) const override {
+    return anchor_measure(element_id, [](const Anchor &a) { return a.top; });
+  }
+  [[nodiscard]] std::optional<std::string>
+  frame_width(const ElementIdentifier element_id) const override {
+    return anchor_measure(element_id,
+                          [](const Anchor &a) { return a.right - a.left; });
+  }
+  [[nodiscard]] std::optional<std::string>
+  frame_height(const ElementIdentifier element_id) const override {
+    return anchor_measure(element_id,
+                          [](const Anchor &a) { return a.bottom - a.top; });
+  }
+  [[nodiscard]] std::optional<std::string>
+  frame_z_index(const ElementIdentifier /*element_id*/) const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] GraphicStyle
+  frame_style(const ElementIdentifier /*element_id*/) const override {
     return {};
   }
 
@@ -177,6 +216,20 @@ public:
   }
 
 private:
+  // Converts one field of a frame's anchor (master units = 1/576 inch) to a
+  // Measure string, or nullopt when the frame has no anchor.
+  template <typename Selector>
+  [[nodiscard]] std::optional<std::string>
+  anchor_measure(const ElementIdentifier element_id,
+                 const Selector &select) const {
+    const std::optional<Anchor> &anchor =
+        m_registry->frame_element_at(element_id).anchor;
+    if (!anchor.has_value()) {
+      return std::nullopt;
+    }
+    return Measure(select(*anchor) / 576.0, DynamicUnit("in")).to_string();
+  }
+
   [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};

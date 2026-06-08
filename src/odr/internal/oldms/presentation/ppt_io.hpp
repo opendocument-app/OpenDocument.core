@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <optional>
 #include <string>
 
 namespace odr::internal::oldms::presentation {
@@ -30,5 +31,11 @@ std::string read_text_chars(std::istream &in, std::uint32_t rec_len);
 // Decodes a TextBytesAtom body (rec_len bytes, one byte per character, each in
 // the range 0x00-0xFF) to UTF-8.
 std::string read_text_bytes(std::istream &in, std::uint32_t rec_len);
+
+// Reads an OfficeArtClientAnchor body into {top, left, right, bottom}: rec_len
+// 8 → SmallRectStruct (signed int16), rec_len 16 → RectStruct (signed int32),
+// in that field order. Returns nullopt (reading nothing) for any other rec_len.
+std::optional<Anchor> read_client_anchor(std::istream &in,
+                                         std::uint32_t rec_len);
 
 } // namespace odr::internal::oldms::presentation
