@@ -25,68 +25,97 @@ constexpr char paragraph_mark = '\x0D';
 // Manual line break (vertical tab) inside a PPT text atom.
 constexpr char line_break_mark = '\x0B';
 
-// A record's header together with the absolute stream offset of its body.
-struct Record {
-  RecordHeader header;
-  std::streamoff body_begin{0};
-};
+// Walks the child records of a container by reading forward from the stream. It
+// never uses absolute offsets or tellg (the underlying CFB stream's tellg is
+// not reliable); only seekg to a known offset and sequential reads are used.
+//
+// Construct it with the stream positioned at the start of the container body
+// and the container's header. next() returns the next child's header with the
+// stream positioned at that child's body; read up to recLen bytes from it and
+// report how many via consume() — whatever you leave is skipped on the
+// following next(). Over a full iteration the cursor consumes exactly
+// container.recLen bytes, so nested containers stay in sync.
+class ChildCursor {
+public:
+  ChildCursor(std::istream &in, const RecordHeader &container)
+      : m_in(in), m_remaining(static_cast<std::int64_t>(container.recLen)) {}
 
-// Reads the immediate child records contained in the byte range [begin, end).
-// Each returned record's body spans [body_begin, body_begin + recLen). Stops
-// early on a malformed/truncated record rather than throwing.
-std::vector<Record> read_children(std::istream &in, const std::streamoff begin,
-                                  const std::streamoff end) {
-  std::vector<Record> result;
-
-  std::streamoff pos = begin;
-  while (pos + static_cast<std::streamoff>(sizeof(RecordHeader)) <= end) {
-    in.clear();
-    in.seekg(pos);
-
-    Record record;
-    read(in, record.header);
-    if (!in) {
-      break;
+  std::optional<RecordHeader> next() {
+    skip_body();
+    if (m_remaining < static_cast<std::int64_t>(sizeof(RecordHeader))) {
+      finish();
+      return std::nullopt;
     }
-    record.body_begin = pos + static_cast<std::streamoff>(sizeof(RecordHeader));
-
-    const std::streamoff body_end =
-        record.body_begin + static_cast<std::streamoff>(record.header.recLen);
-    if (body_end > end) {
-      break; // truncated record
+    RecordHeader header{};
+    read(m_in, header);
+    if (!m_in) {
+      m_remaining = 0;
+      return std::nullopt;
     }
-
-    result.push_back(record);
-    pos = body_end;
+    m_remaining -= static_cast<std::int64_t>(sizeof(RecordHeader));
+    if (static_cast<std::int64_t>(header.recLen) > m_remaining) {
+      finish(); // truncated
+      return std::nullopt;
+    }
+    m_body = header.recLen;
+    return header;
   }
 
-  return result;
-}
+  // Records that `n` bytes of the current child's body have been read.
+  void consume(std::uint32_t n) {
+    if (n > m_body) {
+      n = m_body;
+    }
+    m_body -= n;
+    m_remaining -= static_cast<std::int64_t>(n);
+  }
 
-// Seeks to an absolute stream offset and reads a record header. Returns false
-// if the read fails (offset past EOF, truncated header, …).
-bool read_header_at(std::istream &in, const std::streamoff offset,
-                    RecordHeader &out) {
-  in.clear();
-  in.seekg(offset);
+private:
+  void skip_body() {
+    if (m_body > 0) {
+      m_in.ignore(static_cast<std::streamsize>(m_body));
+      m_remaining -= static_cast<std::int64_t>(m_body);
+      m_body = 0;
+    }
+  }
+  // Consumes any trailing bytes of the container body that do not form a
+  // record, so the cursor always advances the stream by exactly
+  // container.recLen.
+  void finish() {
+    if (m_remaining > 0) {
+      m_in.ignore(static_cast<std::streamsize>(m_remaining));
+      m_remaining = 0;
+    }
+  }
+
+  std::istream &m_in;
+  std::int64_t m_remaining; // bytes left in the container body
+  std::uint32_t m_body{0};  // unconsumed bytes of the current child's body
+};
+
+// Reads a record header at the current stream position and checks its type.
+// Returns false on a read failure or type mismatch. The caller positions the
+// stream and decides what a false result means.
+bool read_header(std::istream &in, const std::uint16_t expected_type,
+                 RecordHeader &out) {
   read(in, out);
-  return static_cast<bool>(in);
+  return static_cast<bool>(in) && out.recType == expected_type;
 }
 
-// Finds the first immediate child with the given record type, optionally also
-// matching recInstance. Returns nullopt if none is found.
-std::optional<Record>
-find_child(const std::vector<Record> &children, const std::uint16_t rec_type,
+// Scans the children of a container (stream positioned at its body, `container`
+// its header) for the first one matching rec_type (and recInstance, if given),
+// leaving the stream positioned at that child's body and returning its header.
+// Returns nullopt if none matches (the container body is then fully consumed).
+std::optional<RecordHeader>
+find_child(std::istream &in, const RecordHeader &container,
+           const std::uint16_t rec_type,
            const std::optional<std::uint16_t> rec_instance = std::nullopt) {
-  for (const Record &record : children) {
-    if (record.header.recType != rec_type) {
-      continue;
+  ChildCursor children(in, container);
+  while (const std::optional<RecordHeader> child = children.next()) {
+    if (child->recType == rec_type &&
+        (!rec_instance.has_value() || child->rec_instance() == *rec_instance)) {
+      return child; // stream is positioned at the child body
     }
-    if (rec_instance.has_value() &&
-        record.header.rec_instance() != *rec_instance) {
-      continue;
-    }
-    return record;
   }
   return std::nullopt;
 }
@@ -139,13 +168,12 @@ void build_slide(ElementRegistry &registry, const ElementIdentifier slide_id,
 }
 
 // Reads the body of a text atom into a string, depending on its record type.
-std::string read_text_atom(std::istream &in, const Record &record) {
-  in.clear();
-  in.seekg(record.body_begin);
-  if (record.header.recType == RT_TextBytesAtom) {
-    return read_text_bytes(in, record.header.recLen);
+// The stream must be positioned at the atom body; `header` is its header.
+std::string read_text_atom(std::istream &in, const RecordHeader &header) {
+  if (header.recType == RT_TextBytesAtom) {
+    return read_text_bytes(in, header.recLen);
   }
-  return read_text_chars(in, record.header.recLen);
+  return read_text_chars(in, header.recLen);
 }
 
 // Appends a text atom to a slide's running text, separating consecutive text
@@ -160,19 +188,22 @@ void append_text(std::string &slide_text, std::string text) {
   slide_text += std::move(text);
 }
 
-// Recursively gathers all text atoms in [begin, end), in stream order, into one
-// string. Used to collect the text drawn on a single slide.
-void gather_text(std::istream &in, const std::streamoff begin,
-                 const std::streamoff end, std::string &slide_text) {
-  for (const Record &record : read_children(in, begin, end)) {
-    if (record.header.recType == RT_TextCharsAtom ||
-        record.header.recType == RT_TextBytesAtom) {
-      append_text(slide_text, read_text_atom(in, record));
-    } else if (record.header.is_container()) {
-      const std::streamoff record_end =
-          record.body_begin + static_cast<std::streamoff>(record.header.recLen);
-      gather_text(in, record.body_begin, record_end, slide_text);
+// Recursively gathers all text atoms within a container, in stream order, into
+// one string. The stream must be positioned at the start of the container body;
+// `container` is its header. Used to collect the text drawn on a single slide.
+void gather_text(std::istream &in, const RecordHeader &container,
+                 std::string &slide_text) {
+  ChildCursor children(in, container);
+  while (const std::optional<RecordHeader> child = children.next()) {
+    if (child->recType == RT_TextCharsAtom ||
+        child->recType == RT_TextBytesAtom) {
+      append_text(slide_text, read_text_atom(in, *child));
+      children.consume(child->recLen);
+    } else if (child->is_container()) {
+      gather_text(in, *child, slide_text);
+      children.consume(child->recLen);
     }
+    // Other atoms: left unconsumed; the cursor skips their bodies.
   }
 }
 
@@ -180,43 +211,52 @@ void gather_text(std::istream &in, const std::streamoff begin,
 // stream. See [MS-PPT] 2.3.4 "persist object directory".
 using PersistDirectory = std::unordered_map<std::uint32_t, std::uint32_t>;
 
-// Parses the PersistDirectoryAtom at the given offset and adds its
-// (persistId -> offset) pairs to the directory. Existing entries are kept
-// (insert-if-absent), so when edits are processed newest-first the newest
-// offset for each id wins, as required by [MS-PPT] step 8 of the reading
-// algorithm.
-void read_persist_directory(std::istream &in, const std::uint32_t offset,
+// Adds the (persistId -> offset) pairs of a PersistDirectoryAtom to the
+// directory. The stream must be positioned at the atom body; `header` is its
+// header. Existing entries are kept (insert-if-absent), so when edits are
+// processed newest-first the newest offset for each id wins, as required by
+// [MS-PPT] step 8 of the reading algorithm.
+void read_persist_directory(std::istream &in, const RecordHeader &header,
                             PersistDirectory &directory) {
-  RecordHeader header{};
-  if (!read_header_at(in, static_cast<std::streamoff>(offset), header) ||
-      header.recType != RT_PersistDirectoryAtom) {
-    return;
-  }
-  const std::streamoff begin =
-      static_cast<std::streamoff>(offset) +
-      static_cast<std::streamoff>(sizeof(RecordHeader));
-  const std::streamoff end = begin + static_cast<std::streamoff>(header.recLen);
+  constexpr std::uint32_t field_size = sizeof(std::uint32_t);
 
-  std::streamoff pos = begin;
-  while (pos + 4 <= end) {
-    in.clear();
-    in.seekg(pos);
+  std::uint32_t remaining = header.recLen;
+  while (remaining >= field_size) {
     const std::uint32_t entry = read_u32(in); // persistId:20 | cPersist:12
     if (!in) {
       return;
     }
-    pos += 4;
+    remaining -= field_size;
     const std::uint32_t persist_id = entry & 0x000FFFFF;
     const std::uint32_t count = entry >> 20;
-    for (std::uint32_t i = 0; i < count && pos + 4 <= end; ++i) {
+    for (std::uint32_t i = 0; i < count && remaining >= field_size; ++i) {
       const std::uint32_t persist_offset = read_u32(in);
       if (!in) {
         return;
       }
-      pos += 4;
+      remaining -= field_size;
       directory.emplace(persist_id + i, persist_offset);
     }
   }
+}
+
+// Reads the persistIdRef of every SlidePersistAtom in a SlideListWithText
+// container, in order. The stream must be positioned at the container body;
+// `slide_list` is its header.
+std::vector<std::uint32_t>
+read_slide_persist_ids(std::istream &in, const RecordHeader &slide_list) {
+  constexpr std::uint32_t persist_ref_size = sizeof(std::uint32_t);
+
+  std::vector<std::uint32_t> ids;
+  ChildCursor children(in, slide_list);
+  while (const std::optional<RecordHeader> child = children.next()) {
+    if (child->recType == RT_SlidePersistAtom &&
+        child->recLen >= persist_ref_size) {
+      ids.push_back(read_u32(in)); // persistIdRef is the first body field
+      children.consume(persist_ref_size);
+    }
+  }
+  return ids;
 }
 
 // Resolves the presentation slides via the [MS-PPT] reading algorithm (the only
@@ -253,10 +293,10 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
   std::uint32_t doc_persist_id = 0;
   std::uint32_t edit_offset = current_edit;
   for (bool first = true; edit_offset != 0; first = false) {
+    in.clear();
+    in.seekg(edit_offset);
     RecordHeader edit_header{};
-    if (!read_header_at(in, static_cast<std::streamoff>(edit_offset),
-                        edit_header) ||
-        edit_header.recType != RT_UserEditAtom) {
+    if (!read_header(in, RT_UserEditAtom, edit_header)) {
       return {};
     }
     UserEditAtomBody edit{};
@@ -267,7 +307,14 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
     if (first) {
       doc_persist_id = edit.docPersistIdRef;
     }
-    read_persist_directory(in, edit.offsetPersistDirectory, directory);
+
+    // Persist directory for this edit (skipped if its header is missing/wrong).
+    in.clear();
+    in.seekg(edit.offsetPersistDirectory);
+    if (RecordHeader dir_header{};
+        read_header(in, RT_PersistDirectoryAtom, dir_header)) {
+      read_persist_directory(in, dir_header, directory);
+    }
 
     // offsetLastEdit MUST strictly decrease; stop on a non-decreasing (i.e.
     // malformed/looping) chain.
@@ -285,54 +332,35 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
   if (doc_it == directory.end()) {
     return {};
   }
+  in.clear();
+  in.seekg(doc_it->second);
   RecordHeader doc_header{};
-  if (!read_header_at(in, static_cast<std::streamoff>(doc_it->second),
-                      doc_header) ||
-      doc_header.recType != RT_DocumentContainer) {
+  if (!read_header(in, RT_DocumentContainer, doc_header)) {
     return {};
   }
-  const std::streamoff doc_begin =
-      static_cast<std::streamoff>(doc_it->second) +
-      static_cast<std::streamoff>(sizeof(RecordHeader));
-  const std::streamoff doc_end =
-      doc_begin + static_cast<std::streamoff>(doc_header.recLen);
 
-  // The presentation slide list (recInstance Slides).
-  const std::vector<Record> doc_children =
-      read_children(in, doc_begin, doc_end);
-  const std::optional<Record> slide_list =
-      find_child(doc_children, RT_SlideListWithText, SlideListInstance_Slides);
+  // The presentation slide list (recInstance Slides), then its slides' persist
+  // ids in presentation order.
+  const std::optional<RecordHeader> slide_list = find_child(
+      in, doc_header, RT_SlideListWithText, SlideListInstance_Slides);
   if (!slide_list.has_value()) {
     return {}; // valid document, no presentation slides
   }
-  const std::streamoff slide_list_end =
-      slide_list->body_begin +
-      static_cast<std::streamoff>(slide_list->header.recLen);
+  const std::vector<std::uint32_t> persist_ids =
+      read_slide_persist_ids(in, *slide_list);
 
-  // Each SlidePersistAtom, in presentation order, references a SlideContainer
-  // by persist id; resolve it and gather the text drawn on that slide.
+  // Each SlidePersistAtom references a SlideContainer by persist id; resolve it
+  // and gather the text drawn on that slide.
   std::vector<std::string> slides;
-  for (const Record &record :
-       read_children(in, slide_list->body_begin, slide_list_end)) {
-    if (record.header.recType != RT_SlidePersistAtom) {
-      continue;
-    }
-    in.clear();
-    in.seekg(record.body_begin);
-    const std::uint32_t persist_id_ref = read_u32(in); // first body field
-
+  slides.reserve(persist_ids.size());
+  for (const std::uint32_t persist_id : persist_ids) {
     std::string slide_text;
-    if (const auto it = directory.find(persist_id_ref); it != directory.end()) {
-      RecordHeader slide_header{};
-      if (read_header_at(in, static_cast<std::streamoff>(it->second),
-                         slide_header) &&
-          slide_header.recType == RT_SlideContainer) {
-        const std::streamoff slide_begin =
-            static_cast<std::streamoff>(it->second) +
-            static_cast<std::streamoff>(sizeof(RecordHeader));
-        const std::streamoff slide_end =
-            slide_begin + static_cast<std::streamoff>(slide_header.recLen);
-        gather_text(in, slide_begin, slide_end, slide_text);
+    if (const auto it = directory.find(persist_id); it != directory.end()) {
+      in.clear();
+      in.seekg(it->second);
+      if (RecordHeader slide_header{};
+          read_header(in, RT_SlideContainer, slide_header)) {
+        gather_text(in, slide_header, slide_text);
       }
     }
     slides.push_back(std::move(slide_text));

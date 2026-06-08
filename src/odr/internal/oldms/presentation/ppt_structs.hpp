@@ -4,6 +4,12 @@
 
 namespace odr::internal::oldms::presentation {
 
+// These packed structs are filled by copying the file's bytes straight into
+// them (see ppt_io.{hpp,cpp}), so their multi-byte fields are interpreted in
+// the host's byte order. That holds only while the host's byte order matches
+// the file's, which is what this module currently relies on; handling a
+// mismatch is a future task (see the note in ppt_io.hpp).
+
 #pragma pack(push, 1)
 
 // Every record in the "PowerPoint Document" stream starts with this 8-byte
@@ -65,8 +71,8 @@ enum RecordType : std::uint16_t {
   RT_SlidePersistAtom = 0x03F3,  // delimits each slide's text in the list
   RT_MainMaster = 0x03F8,        // master slide (skipped)
   RT_TextHeaderAtom = 0x0F9F,    // type of the text block that follows
-  RT_TextCharsAtom = 0x0FA0,     // UTF-16LE text
-  RT_TextBytesAtom = 0x0FA8,     // "compressed" text: 1 byte/char, high byte 0
+  RT_TextCharsAtom = 0x0FA0,     // UTF-16 text (two bytes per code unit)
+  RT_TextBytesAtom = 0x0FA8,     // "compressed" text: one byte per character
   RT_SlideListWithText = 0x0FF0, // outline text for all slides
   RT_UserEditAtom = 0x0FF5,      // a user edit (offsets to dir + previous edit)
   RT_CurrentUserAtom = 0x0FF6,   // in the "Current User" stream
