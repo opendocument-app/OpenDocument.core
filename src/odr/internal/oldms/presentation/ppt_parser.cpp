@@ -368,7 +368,7 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
 
   for (const std::string &slide_text :
        collect_slides(*current_user_stream, *document_stream)) {
-    auto [slide_id, _2] = registry.create_element(ElementType::slide);
+    auto [slide_id, _] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
     build_slide(registry, slide_id, slide_text);
   }
