@@ -124,6 +124,16 @@ find_child(std::istream &in, const RecordHeader &container,
   return std::nullopt;
 }
 
+// Like find_child but for a record the spec mandates: throws if it is absent.
+RecordHeader require_child(std::istream &in, const RecordHeader &container,
+                           const std::uint16_t rec_type) {
+  if (std::optional<RecordHeader> child = find_child(in, container, rec_type)) {
+    return *child;
+  }
+  throw std::runtime_error("ppt: missing required record type " +
+                           std::to_string(rec_type));
+}
+
 // Removes control/anchor characters from a run of slide text, keeping only what
 // should be visible. Paragraph and manual line breaks are consumed by the
 // caller's split and never reach this function.
@@ -228,11 +238,8 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape) {
   ChildCursor children(in, shape);
   while (const std::optional<RecordHeader> child = children.next()) {
     if (child->recType == RT_OfficeArtClientAnchor) {
-      if (std::optional<Anchor> anchor =
-              read_client_anchor(in, child->recLen)) {
-        box.anchor = *anchor;
-        children.consume(child->recLen);
-      }
+      box.anchor = read_client_anchor(in, child->recLen);
+      children.consume(child->recLen);
     } else if (child->recType == RT_OfficeArtClientTextbox) {
       gather_text(in, *child, box.text);
       children.consume(child->recLen);
@@ -251,24 +258,13 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape) {
 std::vector<TextBox> read_slide_text_boxes(std::istream &in,
                                            const RecordHeader &slide) {
   // SlideContainer → DrawingContainer → OfficeArtDgContainer →
-  // OfficeArtSpgrContainer, then iterate the OfficeArtSpContainer shapes.
-  const std::optional<RecordHeader> drawing = find_child(in, slide, RT_Drawing);
-  if (!drawing.has_value()) {
-    return {};
-  }
-  const std::optional<RecordHeader> dg =
-      find_child(in, *drawing, RT_OfficeArtDgContainer);
-  if (!dg.has_value()) {
-    return {};
-  }
-  const std::optional<RecordHeader> spgr =
-      find_child(in, *dg, RT_OfficeArtSpgrContainer);
-  if (!spgr.has_value()) {
-    return {};
-  }
+  // OfficeArtSpgrContainer (all mandatory), then iterate the shapes.
+  const RecordHeader drawing = require_child(in, slide, RT_Drawing);
+  const RecordHeader dg = require_child(in, drawing, RT_OfficeArtDgContainer);
+  const RecordHeader spgr = require_child(in, dg, RT_OfficeArtSpgrContainer);
 
   std::vector<TextBox> boxes;
-  ChildCursor shapes(in, *spgr);
+  ChildCursor shapes(in, spgr);
   while (const std::optional<RecordHeader> shape = shapes.next()) {
     if (shape->recType != RT_OfficeArtSpContainer) {
       continue; // not a shape; the cursor skips it
@@ -370,21 +366,21 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
         read_header(document, RT_PersistDirectoryAtom);
     read_persist_directory(document, dir_header, directory);
 
-    // offsetLastEdit MUST strictly decrease; stop on a non-decreasing (i.e.
-    // malformed/looping) chain.
-    if (edit.offsetLastEdit >= edit_offset) {
-      break;
+    // offsetLastEdit MUST strictly decrease (0 ends the chain); a
+    // non-decreasing value is a malformed/looping chain.
+    if (edit.offsetLastEdit != 0 && edit.offsetLastEdit >= edit_offset) {
+      throw std::runtime_error("ppt: non-decreasing UserEditAtom chain");
     }
     edit_offset = edit.offsetLastEdit;
   }
   if (doc_persist_id == 0) {
-    return {};
+    throw std::runtime_error("ppt: empty UserEditAtom chain (no document)");
   }
 
   // Resolve the live DocumentContainer through the directory.
   const auto doc_it = directory.find(doc_persist_id);
   if (doc_it == directory.end()) {
-    return {};
+    throw std::runtime_error("ppt: document persist id not in directory");
   }
   document.clear();
   document.seekg(doc_it->second);
@@ -400,20 +396,19 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
   const std::vector<std::uint32_t> persist_ids =
       read_slide_persist_ids(document, *slide_list);
 
-  // Each SlidePersistAtom references a SlideContainer by persist id; resolve it
-  // and read the text boxes drawn on that slide.
+  // Each SlidePersistAtom references a SlideContainer by persist id (which the
+  // spec requires the directory to resolve); read its text boxes.
   std::vector<std::vector<TextBox>> slides;
   slides.reserve(persist_ids.size());
   for (const std::uint32_t persist_id : persist_ids) {
-    std::vector<TextBox> boxes;
-    if (const auto it = directory.find(persist_id); it != directory.end()) {
-      document.clear();
-      document.seekg(it->second);
-      const RecordHeader slide_header =
-          read_header(document, RT_SlideContainer);
-      boxes = read_slide_text_boxes(document, slide_header);
+    const auto it = directory.find(persist_id);
+    if (it == directory.end()) {
+      throw std::runtime_error("ppt: slide persist id not in directory");
     }
-    slides.push_back(std::move(boxes));
+    document.clear();
+    document.seekg(it->second);
+    const RecordHeader slide_header = read_header(document, RT_SlideContainer);
+    slides.push_back(read_slide_text_boxes(document, slide_header));
   }
   return slides;
 }

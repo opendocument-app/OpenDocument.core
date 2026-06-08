@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <istream>
+#include <stdexcept>
+#include <string>
 
 namespace odr::internal::oldms::presentation {
 
@@ -48,8 +50,7 @@ std::string read_text_bytes(std::istream &in, const std::uint32_t rec_len) {
   return util::string::u16string_to_string(buffer);
 }
 
-std::optional<Anchor> read_client_anchor(std::istream &in,
-                                         const std::uint32_t rec_len) {
+Anchor read_client_anchor(std::istream &in, const std::uint32_t rec_len) {
   const auto read_rect = [&in](auto tag) -> Anchor {
     using T = decltype(tag);
     Anchor anchor;
@@ -66,7 +67,8 @@ std::optional<Anchor> read_client_anchor(std::istream &in,
   if (rec_len == 16) {
     return read_rect(std::int32_t{}); // RectStruct
   }
-  return std::nullopt;
+  throw std::runtime_error("ppt: unexpected OfficeArtClientAnchor length " +
+                           std::to_string(rec_len));
 }
 
 } // namespace odr::internal::oldms::presentation

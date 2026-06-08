@@ -4,7 +4,6 @@
 
 #include <cstdint>
 #include <iosfwd>
-#include <optional>
 #include <string>
 
 namespace odr::internal::oldms::presentation {
@@ -34,8 +33,7 @@ std::string read_text_bytes(std::istream &in, std::uint32_t rec_len);
 
 // Reads an OfficeArtClientAnchor body into {top, left, right, bottom}: rec_len
 // 8 → SmallRectStruct (signed int16), rec_len 16 → RectStruct (signed int32),
-// in that field order. Returns nullopt (reading nothing) for any other rec_len.
-std::optional<Anchor> read_client_anchor(std::istream &in,
-                                         std::uint32_t rec_len);
+// in that field order. Throws on any other rec_len (the spec mandates 8 or 16).
+Anchor read_client_anchor(std::istream &in, std::uint32_t rec_len);
 
 } // namespace odr::internal::oldms::presentation
