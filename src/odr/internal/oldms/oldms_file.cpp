@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/presentation/ppt_document.hpp>
 #include <odr/internal/oldms/text/doc_document.hpp>
 
 #include <memory>
@@ -108,6 +109,8 @@ std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
   switch (file_type()) {
   case FileType::legacy_word_document:
     return std::make_shared<text::Document>(m_files);
+  case FileType::legacy_powerpoint_presentation:
+    return std::make_shared<presentation::Document>(m_files);
   default:
     throw UnsupportedFileType(file_type());
   }
