@@ -11,6 +11,18 @@ void read(std::istream &in, RecordHeader &out) {
   util::byte_stream::read(in, out);
 }
 
+void read(std::istream &in, CurrentUserAtomHead &out) {
+  util::byte_stream::read(in, out);
+}
+
+void read(std::istream &in, UserEditAtomBody &out) {
+  util::byte_stream::read(in, out);
+}
+
+std::uint32_t read_u32(std::istream &in) {
+  return util::byte_stream::read<std::uint32_t>(in);
+}
+
 std::string read_text_chars(std::istream &in, const std::uint32_t rec_len) {
   const std::size_t count = rec_len / 2;
   std::u16string buffer;

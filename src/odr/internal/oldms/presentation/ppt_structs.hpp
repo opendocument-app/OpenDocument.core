@@ -24,9 +24,38 @@ struct RecordHeader {
   [[nodiscard]] bool is_container() const { return rec_ver() == 0xF; }
 };
 
+// Fixed prefix of the CurrentUserAtom (the only record in the "Current User"
+// stream). See [MS-PPT] 2.3.2. Only the leading fields up to the offset of the
+// most recent edit are needed; the variable user-name tail is ignored.
+struct CurrentUserAtomHead {
+  RecordHeader rh;
+  std::uint32_t size;
+  std::uint32_t headerToken;
+  std::uint32_t offsetToCurrentEdit; // offset of the newest UserEditAtom
+};
+
+// Body of a UserEditAtom (the part after its 8-byte RecordHeader). See
+// [MS-PPT] 2.3.3. The optional trailing encryptSessionPersistIdRef is not read.
+struct UserEditAtomBody {
+  std::uint32_t lastSlideIdRef;
+  std::uint16_t version;
+  std::uint8_t minorVersion;
+  std::uint8_t majorVersion;
+  std::uint32_t offsetLastEdit;         // previous UserEditAtom, 0 = none
+  std::uint32_t offsetPersistDirectory; // PersistDirectoryAtom for this edit
+  std::uint32_t docPersistIdRef;        // persist id of the DocumentContainer
+  std::uint32_t persistIdSeed;
+  std::uint16_t lastView;
+  std::uint16_t unused;
+};
+
 #pragma pack(pop)
 
 static_assert(sizeof(RecordHeader) == 8, "RecordHeader should be 8 bytes");
+static_assert(sizeof(CurrentUserAtomHead) == 20,
+              "CurrentUserAtomHead should be 20 bytes");
+static_assert(sizeof(UserEditAtomBody) == 28,
+              "UserEditAtomBody should be 28 bytes");
 
 // Record types relevant to text extraction. See [MS-PPT] 2.13.24 RecordType.
 enum RecordType : std::uint16_t {
@@ -39,13 +68,19 @@ enum RecordType : std::uint16_t {
   RT_TextCharsAtom = 0x0FA0,     // UTF-16LE text
   RT_TextBytesAtom = 0x0FA8,     // "compressed" text: 1 byte/char, high byte 0
   RT_SlideListWithText = 0x0FF0, // outline text for all slides
+  RT_UserEditAtom = 0x0FF5,      // a user edit (offsets to dir + previous edit)
+  RT_CurrentUserAtom = 0x0FF6,   // in the "Current User" stream
+  RT_PersistDirectoryAtom = 0x1772, // persist id -> stream offset directory
 };
 
 // recInstance values of a RT_SlideListWithText container, distinguishing the
-// master, slide and notes lists inside the DocumentContainer.
+// slide, master and notes lists inside the DocumentContainer. Per [MS-PPT]
+// 2.4.14.1/2.4.14.3/2.4.14.6: SlideListWithTextContainer (the presentation
+// slides) is 0x000, MasterListWithTextContainer is 0x001, and
+// NotesListWithTextContainer is 0x002.
 enum SlideListInstance : std::uint16_t {
-  SlideListInstance_Master = 0x000,
-  SlideListInstance_Slides = 0x001,
+  SlideListInstance_Slides = 0x000,
+  SlideListInstance_Master = 0x001,
   SlideListInstance_Notes = 0x002,
 };
 
