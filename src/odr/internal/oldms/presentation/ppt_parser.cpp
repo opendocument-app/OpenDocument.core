@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <istream>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,7 +28,7 @@ constexpr char line_break_mark = '\x0B';
 
 // Walks the child records of a container by reading forward from the stream. It
 // never uses absolute offsets or tellg (the underlying CFB stream's tellg is
-// not reliable); only seekg to a known offset and sequential reads are used.
+// not reliable); only sequential reads are used.
 //
 // Construct it with the stream positioned at the start of the container body
 // and the container's header. next() returns the next child's header with the
@@ -38,24 +39,21 @@ constexpr char line_break_mark = '\x0B';
 class ChildCursor {
 public:
   ChildCursor(std::istream &in, const RecordHeader &container)
-      : m_in(in), m_remaining(static_cast<std::int64_t>(container.recLen)) {}
+      : m_in(&in), m_remaining(static_cast<std::int64_t>(container.recLen)) {}
 
   std::optional<RecordHeader> next() {
     skip_body();
-    if (m_remaining < static_cast<std::int64_t>(sizeof(RecordHeader))) {
-      finish();
+    if (m_remaining <= 0) {
       return std::nullopt;
+    }
+    if (m_remaining < static_cast<std::int64_t>(sizeof(RecordHeader))) {
+      throw std::runtime_error("ppt: not enough space in record header");
     }
     RecordHeader header{};
-    read(m_in, header);
-    if (!m_in) {
-      m_remaining = 0;
-      return std::nullopt;
-    }
+    read(*m_in, header);
     m_remaining -= static_cast<std::int64_t>(sizeof(RecordHeader));
     if (static_cast<std::int64_t>(header.recLen) > m_remaining) {
-      finish(); // truncated
-      return std::nullopt;
+      throw std::runtime_error("ppt: not enough space in record body");
     }
     m_body = header.recLen;
     return header;
@@ -64,42 +62,48 @@ public:
   // Records that `n` bytes of the current child's body have been read.
   void consume(std::uint32_t n) {
     if (n > m_body) {
-      n = m_body;
+      throw std::runtime_error("ppt: not enough space in record body");
     }
     m_body -= n;
     m_remaining -= static_cast<std::int64_t>(n);
   }
 
-private:
   void skip_body() {
     if (m_body > 0) {
-      m_in.ignore(static_cast<std::streamsize>(m_body));
+      m_in->ignore(static_cast<std::streamsize>(m_body));
       m_remaining -= static_cast<std::int64_t>(m_body);
       m_body = 0;
     }
   }
+
   // Consumes any trailing bytes of the container body that do not form a
   // record, so the cursor always advances the stream by exactly
   // container.recLen.
   void finish() {
     if (m_remaining > 0) {
-      m_in.ignore(static_cast<std::streamsize>(m_remaining));
+      m_in->ignore(static_cast<std::streamsize>(m_remaining));
       m_remaining = 0;
     }
   }
 
-  std::istream &m_in;
-  std::int64_t m_remaining; // bytes left in the container body
-  std::uint32_t m_body{0};  // unconsumed bytes of the current child's body
+private:
+  std::istream *m_in{};
+  std::int64_t m_remaining{}; // bytes left in the container body
+  std::uint32_t m_body{0};    // unconsumed bytes of the current child's body
 };
 
-// Reads a record header at the current stream position and checks its type.
-// Returns false on a read failure or type mismatch. The caller positions the
-// stream and decides what a false result means.
-bool read_header(std::istream &in, const std::uint16_t expected_type,
-                 RecordHeader &out) {
-  read(in, out);
-  return static_cast<bool>(in) && out.recType == expected_type;
+// Reads a record header at the current stream position and returns it, throwing
+// if the read fails or the record is not of `expected_type`. The caller
+// positions the stream; a wrong type means malformed input, so we fail early.
+RecordHeader read_header(std::istream &in, const std::uint16_t expected_type) {
+  RecordHeader header{};
+  read(in, header);
+  if (header.recType != expected_type) {
+    throw std::runtime_error("ppt: unexpected record type " +
+                             std::to_string(header.recType) + " (expected " +
+                             std::to_string(expected_type) + ")");
+  }
+  return header;
 }
 
 // Scans the children of a container (stream positioned at its body, `container`
@@ -223,17 +227,11 @@ void read_persist_directory(std::istream &in, const RecordHeader &header,
   std::uint32_t remaining = header.recLen;
   while (remaining >= field_size) {
     const std::uint32_t entry = read_u32(in); // persistId:20 | cPersist:12
-    if (!in) {
-      return;
-    }
     remaining -= field_size;
     const std::uint32_t persist_id = entry & 0x000FFFFF;
     const std::uint32_t count = entry >> 20;
     for (std::uint32_t i = 0; i < count && remaining >= field_size; ++i) {
       const std::uint32_t persist_offset = read_u32(in);
-      if (!in) {
-        return;
-      }
       remaining -= field_size;
       directory.emplace(persist_id + i, persist_offset);
     }
@@ -261,31 +259,22 @@ read_slide_persist_ids(std::istream &in, const RecordHeader &slide_list) {
 
 // Resolves the presentation slides via the [MS-PPT] reading algorithm (the only
 // spec-defined read path): the "Current User" stream points at the newest
-// UserEditAtom, whose chain builds the persist object directory; that directory
-// resolves the live DocumentContainer and each slide's SlideContainer. Slides
-// therefore come out in presentation order, from the live records, regardless
-// of stale/duplicate copies left in the stream by incremental saves. Returns an
-// empty list for a (malformed) file whose persist structures cannot be read;
-// both required streams are guaranteed present in any conformant file (spec
-// 2.1.1/2.1.2).
-std::vector<std::string>
-collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
-  const AbsPath current_user_path("/Current User");
-  if (!files.is_file(current_user_path)) {
-    return {};
-  }
-
+// UserEditAtom, whose chain (in the "PowerPoint Document" stream) builds the
+// persist object directory; that directory resolves the live DocumentContainer
+// and each slide's SlideContainer. Slides therefore come out in presentation
+// order, from the live records, regardless of stale/duplicate copies left in
+// the stream by incremental saves. The caller provides both required streams
+// (spec 2.1.1/2.1.2); malformed records throw.
+std::vector<std::string> collect_slides(std::istream &current_user,
+                                        std::istream &document) {
   // Newest user edit offset, from the Current User stream.
-  std::uint32_t current_edit = 0;
-  {
-    const auto current_user = files.open(current_user_path)->stream();
-    CurrentUserAtomHead head{};
-    read(*current_user, head);
-    if (!*current_user || head.rh.recType != RT_CurrentUserAtom) {
-      return {};
-    }
-    current_edit = head.offsetToCurrentEdit;
+  CurrentUserAtomHead head{};
+  read(current_user, head);
+  if (head.rh.recType != RT_CurrentUserAtom) {
+    throw std::runtime_error(
+        "ppt: invalid CurrentUserAtom in \"Current User\" stream");
   }
+  const std::uint32_t current_edit = head.offsetToCurrentEdit;
 
   // Walk the UserEditAtom chain newest -> oldest, accumulating the persist
   // directory (newest wins) and capturing the live document's persist id.
@@ -293,28 +282,21 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
   std::uint32_t doc_persist_id = 0;
   std::uint32_t edit_offset = current_edit;
   for (bool first = true; edit_offset != 0; first = false) {
-    in.clear();
-    in.seekg(edit_offset);
-    RecordHeader edit_header{};
-    if (!read_header(in, RT_UserEditAtom, edit_header)) {
-      return {};
-    }
+    document.clear();
+    document.seekg(edit_offset);
+    read_header(document, RT_UserEditAtom);
     UserEditAtomBody edit{};
-    read(in, edit);
-    if (!in) {
-      return {};
-    }
+    read(document, edit);
     if (first) {
       doc_persist_id = edit.docPersistIdRef;
     }
 
-    // Persist directory for this edit (skipped if its header is missing/wrong).
-    in.clear();
-    in.seekg(edit.offsetPersistDirectory);
-    if (RecordHeader dir_header{};
-        read_header(in, RT_PersistDirectoryAtom, dir_header)) {
-      read_persist_directory(in, dir_header, directory);
-    }
+    // Persist directory for this edit.
+    document.clear();
+    document.seekg(edit.offsetPersistDirectory);
+    const RecordHeader dir_header =
+        read_header(document, RT_PersistDirectoryAtom);
+    read_persist_directory(document, dir_header, directory);
 
     // offsetLastEdit MUST strictly decrease; stop on a non-decreasing (i.e.
     // malformed/looping) chain.
@@ -332,22 +314,19 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
   if (doc_it == directory.end()) {
     return {};
   }
-  in.clear();
-  in.seekg(doc_it->second);
-  RecordHeader doc_header{};
-  if (!read_header(in, RT_DocumentContainer, doc_header)) {
-    return {};
-  }
+  document.clear();
+  document.seekg(doc_it->second);
+  const RecordHeader doc_header = read_header(document, RT_DocumentContainer);
 
   // The presentation slide list (recInstance Slides), then its slides' persist
   // ids in presentation order.
   const std::optional<RecordHeader> slide_list = find_child(
-      in, doc_header, RT_SlideListWithText, SlideListInstance_Slides);
+      document, doc_header, RT_SlideListWithText, SlideListInstance_Slides);
   if (!slide_list.has_value()) {
     return {}; // valid document, no presentation slides
   }
   const std::vector<std::uint32_t> persist_ids =
-      read_slide_persist_ids(in, *slide_list);
+      read_slide_persist_ids(document, *slide_list);
 
   // Each SlidePersistAtom references a SlideContainer by persist id; resolve it
   // and gather the text drawn on that slide.
@@ -356,12 +335,11 @@ collect_slides(const abstract::ReadableFilesystem &files, std::istream &in) {
   for (const std::uint32_t persist_id : persist_ids) {
     std::string slide_text;
     if (const auto it = directory.find(persist_id); it != directory.end()) {
-      in.clear();
-      in.seekg(it->second);
-      if (RecordHeader slide_header{};
-          read_header(in, RT_SlideContainer, slide_header)) {
-        gather_text(in, slide_header, slide_text);
-      }
+      document.clear();
+      document.seekg(it->second);
+      const RecordHeader slide_header =
+          read_header(document, RT_SlideContainer);
+      gather_text(document, slide_header, slide_text);
     }
     slides.push_back(std::move(slide_text));
   }
@@ -374,9 +352,22 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
                              const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
-  const auto stream = files.open(AbsPath("/PowerPoint Document"))->stream();
+  const auto document_file = files.open(AbsPath("/PowerPoint Document"));
+  const auto current_user_file = files.open(AbsPath("/Current User"));
 
-  for (const std::string &slide_text : collect_slides(files, *stream)) {
+  if (document_file == nullptr) {
+    throw std::runtime_error("ppt: missing \"PowerPoint Document\" stream");
+  }
+  if (current_user_file == nullptr) {
+    throw std::runtime_error("ppt: missing \"Current User\" stream");
+  }
+
+  // Both streams are required in a conformant .ppt (spec 2.1.1/2.1.2).
+  const auto document_stream = document_file->stream();
+  const auto current_user_stream = current_user_file->stream();
+
+  for (const std::string &slide_text :
+       collect_slides(*current_user_stream, *document_stream)) {
     auto [slide_id, _2] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
     build_slide(registry, slide_id, slide_text);
