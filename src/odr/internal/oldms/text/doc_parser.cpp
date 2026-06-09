@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 namespace odr::internal::oldms {
 
@@ -24,34 +25,50 @@ constexpr char line_break_mark = '\x0B';
 
 // Removes anchor/control characters from a run of body text and resolves field
 // codes, keeping only what should be visible. A field is delimited by
-// 0x13 (begin) ... 0x14 (separator) ... 0x15 (end): the instruction between
-// begin and separator is hidden, the result between separator and end is shown.
+// 0x13 (begin) ... [0x14 (separator)] ... 0x15 (end) ([MS-DOC] 2.8.25): the
+// instruction between begin and separator is hidden and the result between
+// separator and end is shown. The separator is OPTIONAL — a field with no
+// separator (and thus no result) is hidden in its entirety, up to its end.
 // Paragraph marks and manual line breaks are consumed by the caller's split and
 // never reach this function.
 std::string clean_text(const std::string &in) {
   std::string out;
   out.reserve(in.size());
 
-  // >0 while inside the instruction part of a (possibly nested) field.
-  int field_instruction_depth = 0;
+  // Stack of currently-open fields; each entry is true while we are still in
+  // that field's instruction part (i.e. its separator has not been seen yet).
+  // `instruction_depth` counts the open fields currently in their instruction
+  // part; text is hidden whenever it is > 0 (a nested field inside an
+  // instruction stays hidden even after its own separator/result).
+  std::vector<bool> field_in_instruction;
+  int instruction_depth = 0;
 
   for (const char c : in) {
     switch (c) {
-    case '\x13': // field begin
-      ++field_instruction_depth;
+    case '\x13': // field begin: a new field opens in its instruction part
+      field_in_instruction.push_back(true);
+      ++instruction_depth;
       continue;
-    case '\x14': // field separator (instruction ends, result begins)
-      if (field_instruction_depth > 0) {
-        --field_instruction_depth;
+    case '\x14': // field separator: the innermost field's instruction ends
+      if (!field_in_instruction.empty() && field_in_instruction.back()) {
+        field_in_instruction.back() = false;
+        --instruction_depth;
       }
       continue;
-    case '\x15': // field end
+    case '\x15': // field end: close the innermost field
+      if (!field_in_instruction.empty()) {
+        if (field_in_instruction.back()) {
+          // separator-less field: its instruction part ends here, not earlier
+          --instruction_depth;
+        }
+        field_in_instruction.pop_back();
+      }
       continue;
     default:
       break;
     }
 
-    if (field_instruction_depth > 0) {
+    if (instruction_depth > 0) {
       continue; // drop the hidden field instruction
     }
 

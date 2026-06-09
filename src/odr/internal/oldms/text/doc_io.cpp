@@ -227,7 +227,12 @@ std::string text::read_string_compressed(std::istream &in,
         uncompressed.has_value()) {
       util::string::append_c32(*uncompressed, result);
     } else {
-      result.push_back(c);
+      // Compressed text is an array of 8-bit Unicode characters ([MS-DOC]
+      // 2.9.73 / 2.4.1 step 6): a byte that is not one of the mapped values
+      // denotes code point U+00XX, so UTF-8-encode it. Emitting the raw byte
+      // would be correct only for 0x00-0x7F and produce invalid UTF-8 for
+      // 0xA0-0xFF (and the unmapped 0x80/0x81/0x8D/0x8E/0x8F/0x90).
+      util::string::append_c32(static_cast<char32_t>(ci), result);
     }
   }
 
