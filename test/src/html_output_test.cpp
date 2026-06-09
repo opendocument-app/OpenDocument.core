@@ -65,7 +65,6 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   // these files cannot be opened
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
-      test_file.type == FileType::legacy_powerpoint_presentation ||
       test_file.type == FileType::legacy_excel_worksheets ||
       test_file.type == FileType::word_perfect ||
       test_file.type == FileType::starview_metafile) {

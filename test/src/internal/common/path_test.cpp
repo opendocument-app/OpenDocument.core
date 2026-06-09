@@ -22,6 +22,23 @@ TEST(Path, normalization) {
             Path("././././././ppt/media/image8.png"));
 }
 
+TEST(Path, basename) {
+  EXPECT_EQ("image8.png", Path("/ppt/media/image8.png").basename());
+  EXPECT_EQ("mimetype", Path("mimetype").basename());
+}
+
+TEST(Path, extension) {
+  // The last dot-separated segment, without the leading dot.
+  EXPECT_EQ("png", Path("/ppt/media/image8.png").extension());
+  EXPECT_EQ("ppt", Path("foo.ppt").extension());
+  // Multiple dots in the name: only the final extension.
+  EXPECT_EQ("ppt", Path("a.b/2025-09-11.15_35_15.ppt").extension());
+  EXPECT_EQ("gz", Path("archive.tar.gz").extension());
+  // No extension, and dot-files (a leading dot is not an extension).
+  EXPECT_EQ("", Path("mimetype").extension());
+  EXPECT_EQ("", Path(".bashrc").extension());
+}
+
 TEST(Path, join) {
   EXPECT_EQ("/home/media/image8.png",
             Path("/home").join(RelPath("media/image8.png")).string());
