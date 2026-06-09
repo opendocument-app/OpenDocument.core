@@ -5,6 +5,7 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <cstring>
 
 namespace odr::internal::oldms::text {
@@ -34,6 +35,13 @@ auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
     return f(TypeTag<FibRgFcLcb2007>{});
   }
   default:
+    // A newer-than-2007 FIB only appends FcLcb entries; the fields we read
+    // ([MS-DOC] fcClx) live in the FibRgFcLcb97 base, so reuse the newest
+    // layout we model and let the caller ignore the surplus entries. Genuinely
+    // older / unrecognised versions (< nFib97) still fail.
+    if (nFib > nFib2007) {
+      return f(TypeTag<FibRgFcLcb2007>{});
+    }
     throw std::runtime_error("Unknown nFib value: " + std::to_string(nFib));
   }
 }
@@ -113,6 +121,14 @@ void text::read(std::istream &in, ParsedFib &out) {
   util::byte_stream::read(in, out.fibRgLw);
   in.ignore(out.cslw * 4 - sizeof(out.fibRgLw));
 
+  // ccpText ([MS-DOC] 2.5.5 FibRgLw97) is a signed integer that MUST be >= 0.
+  // We assemble it unsigned (ParsedFib::ccpText); reject a value with the sign
+  // bit set as malformed rather than treating it as a huge length.
+  if ((out.ccpText() & 0x80000000U) != 0) {
+    throw std::runtime_error("Unexpected negative Fib.ccpText: " +
+                             std::to_string(out.ccpText()));
+  }
+
   util::byte_stream::read(in, out.cbRgFcLcb);
   auto fibRgFcLcb = std::make_unique<char[]>(out.cbRgFcLcb * 8);
   in.read(fibRgFcLcb.get(), out.cbRgFcLcb * 8);
@@ -128,12 +144,14 @@ void text::read(std::istream &in, ParsedFib &out) {
   out.fibRgFcLcb = type_dispatch_FibRgFcLcb(
       nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
         using FibRgFcLcbType = T::type;
-        if (sizeof(FibRgFcLcbType) < out.cbRgFcLcb * 8) {
-          throw std::runtime_error("Unexpected cbRgFcLcb value: " +
-                                   std::to_string(out.cbRgFcLcb));
-        }
         auto result = std::make_unique<FibRgFcLcbType>();
-        std::memcpy(result.get(), fibRgFcLcb.get(), out.cbRgFcLcb * 8);
+        // Copy only what fits: a newer FIB carries more FcLcb entries than the
+        // modelled layout (ignore the surplus), an older one carries fewer
+        // (leave the remainder zero-initialised). The fcClx we need lives in
+        // the FibRgFcLcb97 base, so it is always covered.
+        const std::size_t copy =
+            std::min<std::size_t>(sizeof(FibRgFcLcbType), out.cbRgFcLcb * 8);
+        std::memcpy(result.get(), fibRgFcLcb.get(), copy);
         return result;
       });
 }

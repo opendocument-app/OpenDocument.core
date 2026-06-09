@@ -22,6 +22,10 @@ namespace {
 constexpr char paragraph_mark = '\r'; // 0x0D
 // Manual line break (Shift+Enter); a vertical tab in the .doc text stream.
 constexpr char line_break_mark = '\x0B';
+// End-of-section / manual page break ([MS-DOC] 2.8.26: a section ends with this
+// character; one mid-section is a manual page break). We surface either as a
+// page_break element.
+constexpr char page_break_mark = '\x0C';
 
 // Removes anchor/control characters from a run of body text and resolves field
 // codes, keeping only what should be visible. A field is delimited by
@@ -29,8 +33,8 @@ constexpr char line_break_mark = '\x0B';
 // instruction between begin and separator is hidden and the result between
 // separator and end is shown. The separator is OPTIONAL — a field with no
 // separator (and thus no result) is hidden in its entirety, up to its end.
-// Paragraph marks and manual line breaks are consumed by the caller's split and
-// never reach this function.
+// Paragraph marks, manual line breaks and page breaks are consumed by the
+// caller's splits and never reach this function.
 std::string clean_text(const std::string &in) {
   std::string out;
   out.reserve(in.size());
@@ -83,8 +87,8 @@ std::string clean_text(const std::string &in) {
       break;
     default:
       // Drop remaining anchor/control characters (picture/OLE 0x01, footnote/
-      // annotation refs 0x02/0x05, cell mark 0x07, drawn object 0x08, section/
-      // page break 0x0C, etc.); keep everything else.
+      // annotation refs 0x02/0x05, cell mark 0x07, drawn object 0x08, etc.);
+      // keep everything else.
       if (static_cast<unsigned char>(c) >= 0x20) {
         out.push_back(c);
       }
@@ -138,20 +142,32 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   }
 
   for (const auto &paragraph : paragraphs) {
-    auto [paragraph_id, _] = registry.create_element(ElementType::paragraph);
-    registry.append_child(root_id, paragraph_id);
-
-    const auto lines =
-        util::string::split(paragraph, std::string(1, line_break_mark));
-    for (std::uint32_t line_i = 0; line_i < lines.size(); ++line_i) {
-      if (line_i > 0) {
-        auto [line_id, _] = registry.create_element(ElementType::line_break);
-        registry.append_child(paragraph_id, line_id);
+    // A paragraph may contain end-of-section / manual page-break characters
+    // (0x0C): split on them and mark each boundary with a page_break element.
+    const auto pages =
+        util::string::split(paragraph, std::string(1, page_break_mark));
+    for (std::size_t page_i = 0; page_i < pages.size(); ++page_i) {
+      if (page_i > 0) {
+        auto [page_break_id, _] =
+            registry.create_element(ElementType::page_break);
+        registry.append_child(root_id, page_break_id);
       }
 
-      auto [text_id, _, text_element] = registry.create_text_element();
-      text_element.text = clean_text(lines[line_i]);
-      registry.append_child(paragraph_id, text_id);
+      auto [paragraph_id, _] = registry.create_element(ElementType::paragraph);
+      registry.append_child(root_id, paragraph_id);
+
+      const auto lines =
+          util::string::split(pages[page_i], std::string(1, line_break_mark));
+      for (std::uint32_t line_i = 0; line_i < lines.size(); ++line_i) {
+        if (line_i > 0) {
+          auto [line_id, _] = registry.create_element(ElementType::line_break);
+          registry.append_child(paragraph_id, line_id);
+        }
+
+        auto [text_id, _, text_element] = registry.create_text_element();
+        text_element.text = clean_text(lines[line_i]);
+        registry.append_child(paragraph_id, text_id);
+      }
     }
   }
 
