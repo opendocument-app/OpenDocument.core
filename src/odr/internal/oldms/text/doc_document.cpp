@@ -32,7 +32,10 @@ const ElementRegistry &Document::element_registry() const {
 
 bool Document::is_editable() const noexcept { return false; }
 
-bool Document::is_savable(const bool encrypted) const noexcept { return false; }
+bool Document::is_savable(const bool encrypted) const noexcept {
+  (void)encrypted;
+  return false;
+}
 
 void Document::save(const Path &path) const {
   (void)path;
