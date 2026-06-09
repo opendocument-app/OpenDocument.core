@@ -35,7 +35,8 @@ const ElementRegistry &Document::element_registry() const {
 
 bool Document::is_editable() const noexcept { return false; }
 
-bool Document::is_savable(const bool /*encrypted*/) const noexcept {
+bool Document::is_savable(const bool encrypted) const noexcept {
+  (void)encrypted;
   return false;
 }
 

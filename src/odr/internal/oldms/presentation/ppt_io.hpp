@@ -15,9 +15,9 @@ namespace odr::internal::oldms::presentation {
 // swap the inputs before they reach these readers, or add a swap flag here) is
 // a future task and intentionally out of scope for now.
 
-void read(std::istream &in, RecordHeader &out);
-void read(std::istream &in, CurrentUserAtomHead &out);
-void read(std::istream &in, UserEditAtomBody &out);
+RecordHeader read_record_header(std::istream &in);
+CurrentUserAtomHead read_current_user_atom_head(std::istream &in);
+UserEditAtomBody read_user_edit_atom_body(std::istream &in);
 
 // Reads a raw unsigned 32-bit integer (an offset/identifier). See the
 // byte-order note above.

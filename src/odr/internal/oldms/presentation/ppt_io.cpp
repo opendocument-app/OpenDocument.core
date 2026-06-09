@@ -3,30 +3,38 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <cstdint>
 #include <istream>
 #include <stdexcept>
 #include <string>
 
-namespace odr::internal::oldms::presentation {
+namespace odr::internal::oldms {
 
-void read(std::istream &in, RecordHeader &out) {
-  util::byte_stream::read(in, out);
+presentation::RecordHeader presentation::read_record_header(std::istream &in) {
+  RecordHeader result{};
+  util::byte_stream::read(in, result);
+  return result;
 }
 
-void read(std::istream &in, CurrentUserAtomHead &out) {
-  util::byte_stream::read(in, out);
+presentation::CurrentUserAtomHead
+presentation::read_current_user_atom_head(std::istream &in) {
+  CurrentUserAtomHead result{};
+  util::byte_stream::read(in, result);
+  return result;
 }
 
-void read(std::istream &in, UserEditAtomBody &out) {
-  util::byte_stream::read(in, out);
+presentation::UserEditAtomBody
+presentation::read_user_edit_atom_body(std::istream &in) {
+  UserEditAtomBody result{};
+  util::byte_stream::read(in, result);
+  return result;
 }
 
-std::uint32_t read_u32(std::istream &in) {
+std::uint32_t presentation::read_u32(std::istream &in) {
   return util::byte_stream::read<std::uint32_t>(in);
 }
 
-std::string read_text_chars(std::istream &in, const std::uint32_t rec_len) {
+std::string presentation::read_text_chars(std::istream &in,
+                                          const std::uint32_t rec_len) {
   const std::size_t count = rec_len / 2;
   std::u16string buffer;
   buffer.resize(count);
@@ -35,7 +43,8 @@ std::string read_text_chars(std::istream &in, const std::uint32_t rec_len) {
   return util::string::u16string_to_string(buffer);
 }
 
-std::string read_text_bytes(std::istream &in, const std::uint32_t rec_len) {
+std::string presentation::read_text_bytes(std::istream &in,
+                                          const std::uint32_t rec_len) {
   static constexpr auto eof = std::istream::traits_type::eof();
 
   std::u16string buffer;
@@ -45,14 +54,15 @@ std::string read_text_bytes(std::istream &in, const std::uint32_t rec_len) {
     if (c == eof) {
       break;
     }
-    buffer.push_back(static_cast<char16_t>(static_cast<unsigned char>(c)));
+    buffer.push_back(static_cast<unsigned char>(c));
   }
   return util::string::u16string_to_string(buffer);
 }
 
-Anchor read_client_anchor(std::istream &in, const std::uint32_t rec_len) {
-  const auto read_rect = [&in](auto tag) -> Anchor {
-    using T = decltype(tag);
+presentation::Anchor
+presentation::read_client_anchor(std::istream &in,
+                                 const std::uint32_t rec_len) {
+  const auto read_rect = [&in]<typename T>(T) -> Anchor {
     Anchor anchor;
     anchor.top = util::byte_stream::read<T>(in);
     anchor.left = util::byte_stream::read<T>(in);
@@ -71,4 +81,4 @@ Anchor read_client_anchor(std::istream &in, const std::uint32_t rec_len) {
                            std::to_string(rec_len));
 }
 
-} // namespace odr::internal::oldms::presentation
+} // namespace odr::internal::oldms

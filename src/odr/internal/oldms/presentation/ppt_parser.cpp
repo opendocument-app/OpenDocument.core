@@ -21,21 +21,21 @@ namespace odr::internal::oldms::presentation {
 
 namespace {
 
-// Paragraph break inside a PPT text atom.
+/// Paragraph break inside a PPT text atom.
 constexpr char paragraph_mark = '\x0D';
-// Manual line break (vertical tab) inside a PPT text atom.
+/// Manual line break (vertical tab) inside a PPT text atom.
 constexpr char line_break_mark = '\x0B';
 
-// Walks the child records of a container by reading forward from the stream. It
-// never uses absolute offsets or tellg (the underlying CFB stream's tellg is
-// not reliable); only sequential reads are used.
-//
-// Construct it with the stream positioned at the start of the container body
-// and the container's header. next() returns the next child's header with the
-// stream positioned at that child's body; read up to recLen bytes from it and
-// report how many via consume() — whatever you leave is skipped on the
-// following next(). Over a full iteration the cursor consumes exactly
-// container.recLen bytes, so nested containers stay in sync.
+/// Walks the child records of a container by reading forward from the stream.
+/// It never uses absolute offsets or tellg (the underlying CFB stream's tellg
+/// is not reliable); only sequential reads are used.
+///
+/// Construct it with the stream positioned at the start of the container body
+/// and the container's header. next() returns the next child's header with the
+/// stream positioned at that child's body; read up to recLen bytes from it and
+/// report how many via consume() — whatever you leave is skipped on the
+/// following next(). Over a full iteration the cursor consumes exactly
+/// container.recLen bytes, so nested containers stay in sync.
 class ChildCursor {
 public:
   ChildCursor(std::istream &in, const RecordHeader &container)
@@ -49,8 +49,7 @@ public:
     if (m_remaining < static_cast<std::int64_t>(sizeof(RecordHeader))) {
       throw std::runtime_error("ppt: not enough space in record header");
     }
-    RecordHeader header{};
-    read(*m_in, header);
+    RecordHeader header = read_record_header(*m_in);
     m_remaining -= static_cast<std::int64_t>(sizeof(RecordHeader));
     if (static_cast<std::int64_t>(header.recLen) > m_remaining) {
       throw std::runtime_error("ppt: not enough space in record body");
@@ -59,8 +58,8 @@ public:
     return header;
   }
 
-  // Records that `n` bytes of the current child's body have been read.
-  void consume(std::uint32_t n) {
+  /// Records that `n` bytes of the current child's body have been read.
+  void consume(const std::uint32_t n) {
     if (n > m_body) {
       throw std::runtime_error("ppt: not enough space in record body");
     }
@@ -70,34 +69,34 @@ public:
 
   void skip_body() {
     if (m_body > 0) {
-      m_in->ignore(static_cast<std::streamsize>(m_body));
+      m_in->ignore(m_body);
       m_remaining -= static_cast<std::int64_t>(m_body);
       m_body = 0;
     }
   }
 
-  // Consumes any trailing bytes of the container body that do not form a
-  // record, so the cursor always advances the stream by exactly
-  // container.recLen.
+  /// Consumes any trailing bytes of the container body that do not form a
+  /// record, so the cursor always advances the stream by exactly
+  /// container.recLen.
   void finish() {
     if (m_remaining > 0) {
-      m_in->ignore(static_cast<std::streamsize>(m_remaining));
+      m_in->ignore(m_remaining);
       m_remaining = 0;
     }
   }
 
 private:
   std::istream *m_in{};
-  std::int64_t m_remaining{}; // bytes left in the container body
-  std::uint32_t m_body{0};    // unconsumed bytes of the current child's body
+  std::int64_t m_remaining{}; //< bytes left in the container body
+  std::uint32_t m_body{0};    //< unconsumed bytes of the current child's body
 };
 
-// Reads a record header at the current stream position and returns it, throwing
-// if the read fails or the record is not of `expected_type`. The caller
-// positions the stream; a wrong type means malformed input, so we fail early.
+/// Reads a record header at the current stream position and returns it,
+/// throwing if the read fails or the record is not of `expected_type`. The
+/// caller positions the stream; a wrong type means malformed input, so we fail
+/// early.
 RecordHeader read_header(std::istream &in, const std::uint16_t expected_type) {
-  RecordHeader header{};
-  read(in, header);
+  const RecordHeader header = read_record_header(in);
   if (header.recType != expected_type) {
     throw std::runtime_error("ppt: unexpected record type " +
                              std::to_string(header.recType) + " (expected " +
@@ -106,10 +105,11 @@ RecordHeader read_header(std::istream &in, const std::uint16_t expected_type) {
   return header;
 }
 
-// Scans the children of a container (stream positioned at its body, `container`
-// its header) for the first one matching rec_type (and recInstance, if given),
-// leaving the stream positioned at that child's body and returning its header.
-// Returns nullopt if none matches (the container body is then fully consumed).
+/// Scans the children of a container (stream positioned at its body,
+/// `container` its header) for the first one matching rec_type (and
+/// recInstance, if given), leaving the stream positioned at that child's body
+/// and returning its header. Returns nullopt if none matches (the container
+/// body is then fully consumed).
 std::optional<RecordHeader>
 find_child(std::istream &in, const RecordHeader &container,
            const std::uint16_t rec_type,
@@ -124,19 +124,20 @@ find_child(std::istream &in, const RecordHeader &container,
   return std::nullopt;
 }
 
-// Like find_child but for a record the spec mandates: throws if it is absent.
+/// Like find_child but for a record the spec mandates: throws if it is absent.
 RecordHeader require_child(std::istream &in, const RecordHeader &container,
                            const std::uint16_t rec_type) {
-  if (std::optional<RecordHeader> child = find_child(in, container, rec_type)) {
+  if (const std::optional<RecordHeader> child =
+          find_child(in, container, rec_type)) {
     return *child;
   }
   throw std::runtime_error("ppt: missing required record type " +
                            std::to_string(rec_type));
 }
 
-// Removes control/anchor characters from a run of slide text, keeping only what
-// should be visible. Paragraph and manual line breaks are consumed by the
-// caller's split and never reach this function.
+/// Removes control/anchor characters from a run of slide text, keeping only
+/// what should be visible. Paragraph and manual line breaks are consumed by the
+/// caller's split and never reach this function.
 std::string clean_text(const std::string &in) {
   std::string out;
   out.reserve(in.size());
@@ -151,16 +152,16 @@ std::string clean_text(const std::string &in) {
   return out;
 }
 
-// A single text box on a slide: the text it holds and, optionally, the position
-// and size from its OfficeArtClientAnchor.
+/// A single text box on a slide: the text it holds and, optionally, the
+/// position and size from its OfficeArtClientAnchor.
 struct TextBox final {
   std::optional<Anchor> anchor;
   std::string text;
 };
 
-// Builds the paragraph/line_break/text subtree of one text box from its
-// concatenated text, under `parent_id`. Mirrors the splitting done by the .doc
-// parser.
+/// Builds the paragraph/line_break/text subtree of one text box from its
+/// concatenated text, under `parent_id`. Mirrors the splitting done by the .doc
+/// parser.
 void build_paragraphs(ElementRegistry &registry,
                       const ElementIdentifier parent_id,
                       const std::string &box_text) {
@@ -190,8 +191,8 @@ void build_paragraphs(ElementRegistry &registry,
   }
 }
 
-// Reads the body of a text atom into a string, depending on its record type.
-// The stream must be positioned at the atom body; `header` is its header.
+/// Reads the body of a text atom into a string, depending on its record type.
+/// The stream must be positioned at the atom body; `header` is its header.
 std::string read_text_atom(std::istream &in, const RecordHeader &header) {
   if (header.recType == RT_TextBytesAtom) {
     return read_text_bytes(in, header.recLen);
@@ -199,24 +200,24 @@ std::string read_text_atom(std::istream &in, const RecordHeader &header) {
   return read_text_chars(in, header.recLen);
 }
 
-// Appends a text atom to a slide's running text, separating consecutive text
-// blocks (e.g. title vs. body) with a paragraph break.
-void append_text(std::string &slide_text, std::string text) {
+/// Appends a text atom to a slide's running text, separating consecutive text
+/// blocks (e.g. title vs. body) with a paragraph break.
+void append_text(std::string &slide_text, const std::string &text) {
   if (text.empty()) {
     return;
   }
   if (!slide_text.empty()) {
     slide_text.push_back(paragraph_mark);
   }
-  slide_text += std::move(text);
+  slide_text += text;
 }
 
-// Recursively gathers a text box's text within a container, in stream order,
-// into one string. The stream must be positioned at the start of the container
-// body; `container` is its header. A box either holds inline TextChars/
-// TextBytes atoms or an OutlineTextRefAtom that points at the slide's text in
-// the slide list; `outline_texts` are that slide's outline text blocks, indexed
-// as the OutlineTextRefAtom references them ([MS-PPT] 2.9.78).
+/// Recursively gathers a text box's text within a container, in stream order,
+/// into one string. The stream must be positioned at the start of the container
+/// body; `container` is its header. A box either holds inline TextChars/
+/// TextBytes atoms or an OutlineTextRefAtom that points at the slide's text in
+/// the slide list; `outline_texts` are that slide's outline text blocks,
+/// indexed as the OutlineTextRefAtom references them ([MS-PPT] 2.9.78).
 void gather_text(std::istream &in, const RecordHeader &container,
                  std::string &slide_text,
                  const std::vector<std::string> &outline_texts) {
@@ -246,10 +247,10 @@ void gather_text(std::istream &in, const RecordHeader &container,
   }
 }
 
-// Reads one shape (OfficeArtSpContainer): its optional anchor and the text from
-// its OfficeArtClientTextbox. The stream is positioned at the shape body;
-// `shape` is its header. Consumes the whole shape body. `outline_texts` is this
-// slide's slide-list text, used to resolve an OutlineTextRefAtom.
+/// Reads one shape (OfficeArtSpContainer): its optional anchor and the text
+/// from its OfficeArtClientTextbox. The stream is positioned at the shape body;
+/// `shape` is its header. Consumes the whole shape body. `outline_texts` is
+/// this slide's slide-list text, used to resolve an OutlineTextRefAtom.
 TextBox read_shape(std::istream &in, const RecordHeader &shape,
                    const std::vector<std::string> &outline_texts) {
   TextBox box;
@@ -267,12 +268,12 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape,
   return box;
 }
 
-// Reads the text boxes drawn on a slide, in shape (z) order. The stream is
-// positioned at the SlideContainer body; `slide` is its header. Boxes with no
-// text are dropped, so the group shape and non-text shapes disappear. First
-// cut: only top-level shapes (direct children of the root
-// OfficeArtSpgrContainer), whose anchors are already in the slide's master-unit
-// coordinate system.
+/// Reads the text boxes drawn on a slide, in shape (z) order. The stream is
+/// positioned at the SlideContainer body; `slide` is its header. Boxes with no
+/// text are dropped, so the group shape and non-text shapes disappear. First
+/// cut: only top-level shapes (direct children of the root
+/// OfficeArtSpgrContainer), whose anchors are already in the slide's
+/// master-unit coordinate system.
 std::vector<TextBox>
 read_slide_text_boxes(std::istream &in, const RecordHeader &slide,
                       const std::vector<std::string> &outline_texts) {
@@ -297,15 +298,15 @@ read_slide_text_boxes(std::istream &in, const RecordHeader &slide,
   return boxes;
 }
 
-// Maps a persist object identifier to its offset in the PowerPoint Document
-// stream. See [MS-PPT] 2.3.4 "persist object directory".
+/// Maps a persist object identifier to its offset in the PowerPoint Document
+/// stream. See [MS-PPT] 2.3.4 "persist object directory".
 using PersistDirectory = std::unordered_map<std::uint32_t, std::uint32_t>;
 
-// Adds the (persistId -> offset) pairs of a PersistDirectoryAtom to the
-// directory. The stream must be positioned at the atom body; `header` is its
-// header. Existing entries are kept (insert-if-absent), so when edits are
-// processed newest-first the newest offset for each id wins, as required by
-// [MS-PPT] step 8 of the reading algorithm.
+/// Adds the (persistId -> offset) pairs of a PersistDirectoryAtom to the
+/// directory. The stream must be positioned at the atom body; `header` is its
+/// header. Existing entries are kept (insert-if-absent), so when edits are
+/// processed newest-first the newest offset for each id wins, as required by
+/// [MS-PPT] step 8 of the reading algorithm.
 void read_persist_directory(std::istream &in, const RecordHeader &header,
                             PersistDirectory &directory) {
   constexpr std::uint32_t field_size = sizeof(std::uint32_t);
@@ -324,21 +325,22 @@ void read_persist_directory(std::istream &in, const RecordHeader &header,
   }
 }
 
-// The text a SlideListWithText container holds for the presentation slides: the
-// slides' persistIdRefs in presentation order, plus — per slide (keyed by
-// persistIdRef) — the text of each TextHeaderAtom block in order, which an
-// OutlineTextRefAtom in a slide's text box references by index ([MS-PPT]
-// 2.4.14.3 / 2.9.78).
+/// The text a SlideListWithText container holds for the presentation slides:
+/// the slides' persistIdRefs in presentation order, plus — per slide (keyed by
+/// persistIdRef) — the text of each TextHeaderAtom block in order, which an
+/// OutlineTextRefAtom in a slide's text box references by index ([MS-PPT]
+/// 2.4.14.3 / 2.9.78).
 struct SlideListText {
   std::vector<std::uint32_t> persist_ids;
   std::unordered_map<std::uint32_t, std::vector<std::string>> outline_texts;
 };
 
-// Walks a SlideListWithText container once, in order. Each SlidePersistAtom
-// starts a slide section; the TextHeaderAtom records that follow it (until the
-// next SlidePersistAtom) are that slide's outline text blocks — one entry per
-// header, filled by its following TextChars/TextBytes atom (absent → empty).
-// The stream must be positioned at the container body; `slide_list` its header.
+/// Walks a SlideListWithText container once, in order. Each SlidePersistAtom
+/// starts a slide section; the TextHeaderAtom records that follow it (until the
+/// next SlidePersistAtom) are that slide's outline text blocks — one entry per
+/// header, filled by its following TextChars/TextBytes atom (absent → empty).
+/// The stream must be positioned at the container body; `slide_list` its
+/// header.
 SlideListText read_slide_list_text(std::istream &in,
                                    const RecordHeader &slide_list) {
   constexpr std::uint32_t persist_ref_size = sizeof(std::uint32_t);
@@ -372,20 +374,19 @@ SlideListText read_slide_list_text(std::istream &in,
   return result;
 }
 
-// Resolves the presentation slides via the [MS-PPT] reading algorithm (the only
-// spec-defined read path): the "Current User" stream points at the newest
-// UserEditAtom, whose chain (in the "PowerPoint Document" stream) builds the
-// persist object directory; that directory resolves the live DocumentContainer
-// and each slide's SlideContainer. Slides therefore come out in presentation
-// order, from the live records, regardless of stale/duplicate copies left in
-// the stream by incremental saves. The caller provides both required streams
-// (spec 2.1.1/2.1.2); malformed records throw. Returns, per slide, the text
-// boxes drawn on it (in shape order).
+/// Resolves the presentation slides via the [MS-PPT] reading algorithm (the
+/// only spec-defined read path): the "Current User" stream points at the newest
+/// UserEditAtom, whose chain (in the "PowerPoint Document" stream) builds the
+/// persist object directory; that directory resolves the live DocumentContainer
+/// and each slide's SlideContainer. Slides therefore come out in presentation
+/// order, from the live records, regardless of stale/duplicate copies left in
+/// the stream by incremental saves. The caller provides both required streams
+/// (spec 2.1.1/2.1.2); malformed records throw. Returns, per slide, the text
+/// boxes drawn on it (in shape order).
 std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
                                                  std::istream &document) {
   // Newest user edit offset, from the Current User stream.
-  CurrentUserAtomHead head{};
-  read(current_user, head);
+  CurrentUserAtomHead head = read_current_user_atom_head(current_user);
   if (head.rh.recType != RT_CurrentUserAtom) {
     throw std::runtime_error(
         "ppt: invalid CurrentUserAtom in \"Current User\" stream");
@@ -401,8 +402,7 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
     document.clear();
     document.seekg(edit_offset);
     read_header(document, RT_UserEditAtom);
-    UserEditAtomBody edit{};
-    read(document, edit);
+    UserEditAtomBody edit = read_user_edit_atom_body(document);
     if (first) {
       doc_persist_id = edit.docPersistIdRef;
     }
@@ -447,7 +447,7 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
   // Each SlidePersistAtom references a SlideContainer by persist id (which the
   // spec requires the directory to resolve); read its text boxes, passing the
   // slide's outline texts so OutlineTextRefAtom boxes can be resolved.
-  static const std::vector<std::string> no_outline_texts;
+  static constexpr std::vector<std::string> no_outline_texts;
   std::vector<std::vector<TextBox>> slides;
   slides.reserve(slide_list_text.persist_ids.size());
   for (const std::uint32_t persist_id : slide_list_text.persist_ids) {
@@ -496,7 +496,6 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
     // One frame per text box; the box's paragraphs hang off the frame.
     for (const TextBox &box : boxes) {
       auto [frame_id, frame_element, frame] = registry.create_frame_element();
-      (void)frame_element;
       frame.anchor = box.anchor;
       registry.append_child(slide_id, frame_id);
       build_paragraphs(registry, frame_id, box.text);
