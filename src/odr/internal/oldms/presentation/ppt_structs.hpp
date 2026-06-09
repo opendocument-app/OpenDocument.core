@@ -18,7 +18,7 @@ struct RecordHeader {
   /// low 4 bits = recVer, high 12 bits = recInstance
   std::uint16_t recVerAndInstance;
   std::uint16_t recType;
-  std::uint32_t recLen; // bytes of body that follow the header
+  std::uint32_t recLen; //< bytes of body that follow the header
 
   [[nodiscard]] std::uint8_t rec_ver() const {
     return static_cast<std::uint8_t>(recVerAndInstance & 0x000F);
@@ -37,7 +37,7 @@ struct CurrentUserAtomHead {
   RecordHeader rh;
   std::uint32_t size;
   std::uint32_t headerToken;
-  std::uint32_t offsetToCurrentEdit; // offset of the newest UserEditAtom
+  std::uint32_t offsetToCurrentEdit; //< offset of the newest UserEditAtom
 };
 
 /// Body of a UserEditAtom (the part after its 8-byte RecordHeader). See
@@ -49,7 +49,7 @@ struct UserEditAtomBody {
   std::uint8_t minorVersion;
   std::uint8_t majorVersion;
   std::uint32_t offsetLastEdit;         //< previous UserEditAtom, 0 = none
-  std::uint32_t offsetPersistDirectory; //<PersistDirectoryAtom for this edit
+  std::uint32_t offsetPersistDirectory; //< PersistDirectoryAtom for this edit
   std::uint32_t docPersistIdRef;        //< persist id of the DocumentContainer
   std::uint32_t persistIdSeed;
   std::uint16_t lastView;
@@ -83,12 +83,12 @@ enum RecordType : std::uint16_t {
   // Office Art (Escher) drawing records that hold the slide's text boxes.
   // The OfficeArt* records are [MS-ODRAW]; the client records (textbox/anchor)
   // are [MS-PPT].
-  RT_Drawing = 0x040C,              // DrawingContainer        [MS-PPT] 2.5.13
-  RT_OfficeArtDgContainer = 0xF002, //                         [MS-ODRAW] 2.2.13
-  RT_OfficeArtSpgrContainer = 0xF003, // shape group           [MS-ODRAW] 2.2.16
-  RT_OfficeArtSpContainer = 0xF004, // one shape (a text box)  [MS-ODRAW] 2.2.14
-  RT_OfficeArtClientTextbox = 0xF00D, // a shape's text        [MS-PPT] 2.9.76
-  RT_OfficeArtClientAnchor = 0xF010,  // a shape's position     [MS-PPT] 2.7.1
+  RT_Drawing = 0x040C,              //< DrawingContainer        [MS-PPT] 2.5.13
+  RT_OfficeArtDgContainer = 0xF002, //< [MS-ODRAW] 2.2.13
+  RT_OfficeArtSpgrContainer = 0xF003, //< shape group [MS-ODRAW] 2.2.16
+  RT_OfficeArtSpContainer = 0xF004, //< one shape (a text box) [MS-ODRAW] 2.2.14
+  RT_OfficeArtClientTextbox = 0xF00D, //< a shape's text        [MS-PPT] 2.9.76
+  RT_OfficeArtClientAnchor = 0xF010,  //< a shape's position    [MS-PPT] 2.7.1
 };
 
 /// recInstance values of a RT_SlideListWithText container, distinguishing the

@@ -27,8 +27,7 @@ constexpr char paragraph_mark = '\x0D';
 constexpr char line_break_mark = '\x0B';
 
 /// Walks the child records of a container by reading forward from the stream.
-/// It never uses absolute offsets or tellg (the underlying CFB stream's tellg
-/// is not reliable); only sequential reads are used.
+/// It never uses absolute offsets or tellg; only sequential reads are used.
 ///
 /// Construct it with the stream positioned at the start of the container body
 /// and the container's header. next() returns the next child's header with the
@@ -145,9 +144,10 @@ std::string clean_text(const std::string &in) {
     const auto uc = static_cast<unsigned char>(c);
     // Keep tab and any non-control byte (>= 0x20, including UTF-8 lead and
     // continuation bytes); drop the remaining control characters.
-    if (c == '\x09' || uc >= 0x20) {
-      out.push_back(c);
+    if (uc < 0x20 && c != '\x09') {
+      continue;
     }
+    out.push_back(c);
   }
   return out;
 }
@@ -386,7 +386,7 @@ SlideListText read_slide_list_text(std::istream &in,
 std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
                                                  std::istream &document) {
   // Newest user edit offset, from the Current User stream.
-  CurrentUserAtomHead head = read_current_user_atom_head(current_user);
+  const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
   if (head.rh.recType != RT_CurrentUserAtom) {
     throw std::runtime_error(
         "ppt: invalid CurrentUserAtom in \"Current User\" stream");
@@ -402,7 +402,7 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
     document.clear();
     document.seekg(edit_offset);
     read_header(document, RT_UserEditAtom);
-    UserEditAtomBody edit = read_user_edit_atom_body(document);
+    const UserEditAtomBody edit = read_user_edit_atom_body(document);
     if (first) {
       doc_persist_id = edit.docPersistIdRef;
     }
