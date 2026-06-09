@@ -124,7 +124,7 @@ void text::read(std::istream &in, ParsedFib &out) {
   // ccpText ([MS-DOC] 2.5.5 FibRgLw97) is a signed integer that MUST be >= 0.
   // We assemble it unsigned (ParsedFib::ccpText); reject a value with the sign
   // bit set as malformed rather than treating it as a huge length.
-  if ((out.ccpText() & 0x80000000U) != 0) {
+  if (out.ccpText() < 0) {
     throw std::runtime_error("Unexpected negative Fib.ccpText: " +
                              std::to_string(out.ccpText()));
   }
