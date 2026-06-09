@@ -35,10 +35,9 @@ auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
     return f(TypeTag<FibRgFcLcb2007>{});
   }
   default:
-    // A newer-than-2007 FIB only appends FcLcb entries; the fields we read
-    // ([MS-DOC] fcClx) live in the FibRgFcLcb97 base, so reuse the newest
-    // layout we model and let the caller ignore the surplus entries. Genuinely
-    // older / unrecognised versions (< nFib97) still fail.
+    // Newer-than-2007 FIBs only append entries; the fcClx we read lives in the
+    // FibRgFcLcb97 base, so reuse the newest modelled layout. Older/unknown
+    // fail.
     if (nFib > nFib2007) {
       return f(TypeTag<FibRgFcLcb2007>{});
     }
@@ -121,9 +120,8 @@ void text::read(std::istream &in, ParsedFib &out) {
   util::byte_stream::read(in, out.fibRgLw);
   in.ignore(out.cslw * 4 - sizeof(out.fibRgLw));
 
-  // ccpText ([MS-DOC] 2.5.5 FibRgLw97) is a signed integer that MUST be >= 0.
-  // We assemble it unsigned (ParsedFib::ccpText); reject a value with the sign
-  // bit set as malformed rather than treating it as a huge length.
+  // ccpText ([MS-DOC] 2.5.5) MUST be >= 0; reject a negative value as
+  // malformed.
   if (out.ccpText() < 0) {
     throw std::runtime_error("Unexpected negative Fib.ccpText: " +
                              std::to_string(out.ccpText()));
@@ -145,10 +143,9 @@ void text::read(std::istream &in, ParsedFib &out) {
       nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
         using FibRgFcLcbType = T::type;
         auto result = std::make_unique<FibRgFcLcbType>();
-        // Copy only what fits: a newer FIB carries more FcLcb entries than the
-        // modelled layout (ignore the surplus), an older one carries fewer
-        // (leave the remainder zero-initialised). The fcClx we need lives in
-        // the FibRgFcLcb97 base, so it is always covered.
+        // Copy only what fits: surplus entries of a newer FIB are ignored, a
+        // shorter one leaves the rest zero-initialised. fcClx is always
+        // covered.
         const std::size_t copy =
             std::min<std::size_t>(sizeof(FibRgFcLcbType), out.cbRgFcLcb * 8);
         std::memcpy(result.get(), fibRgFcLcb.get(), copy);
@@ -245,11 +242,8 @@ std::string text::read_string_compressed(std::istream &in,
         uncompressed.has_value()) {
       util::string::append_c32(*uncompressed, result);
     } else {
-      // Compressed text is an array of 8-bit Unicode characters ([MS-DOC]
-      // 2.9.73 / 2.4.1 step 6): a byte that is not one of the mapped values
-      // denotes code point U+00XX, so UTF-8-encode it. Emitting the raw byte
-      // would be correct only for 0x00-0x7F and produce invalid UTF-8 for
-      // 0xA0-0xFF (and the unmapped 0x80/0x81/0x8D/0x8E/0x8F/0x90).
+      // Unmapped byte ([MS-DOC] 2.4.1 step 6): denotes code point U+00XX, so
+      // UTF-8-encode it (emitting the raw byte would be invalid UTF-8 >= 0xA0).
       util::string::append_c32(static_cast<char32_t>(ci), result);
     }
   }

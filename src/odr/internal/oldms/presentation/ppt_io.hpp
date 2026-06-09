@@ -8,12 +8,8 @@
 
 namespace odr::internal::oldms::presentation {
 
-// NOTE: these helpers copy the file's bytes straight into native integers and
-// code units, so they interpret multi-byte values in the host's byte order.
-// That is correct only while the host's byte order matches the file's, which is
-// what this module currently relies on. Handling a mismatch (detect it, then
-// swap the inputs before they reach these readers, or add a swap flag here) is
-// a future task and intentionally out of scope for now.
+// NOTE: these helpers read multi-byte values in host byte order, so they are
+// correct only on little-endian hosts. Handling big-endian is a future task.
 
 RecordHeader read_record_header(std::istream &in);
 CurrentUserAtomHead read_current_user_atom_head(std::istream &in);
@@ -31,10 +27,8 @@ std::string read_text_chars(std::istream &in, std::uint32_t rec_len);
 /// the range 0x00-0xFF) to UTF-8.
 std::string read_text_bytes(std::istream &in, std::uint32_t rec_len);
 
-/// Reads an OfficeArtClientAnchor body into {top, left, right, bottom}: rec_len
-/// 8 → SmallRectStruct (signed int16), rec_len 16 → RectStruct (signed int32),
-/// in that field order. Throws on any other rec_len (the spec mandates 8 or
-/// 16).
+/// Reads an OfficeArtClientAnchor into {top, left, right, bottom}: rec_len 8 →
+/// SmallRectStruct (int16), 16 → RectStruct (int32). Throws on any other.
 Anchor read_client_anchor(std::istream &in, std::uint32_t rec_len);
 
 } // namespace odr::internal::oldms::presentation

@@ -4,11 +4,8 @@
 
 namespace odr::internal::oldms::presentation {
 
-// These packed structs are filled by copying the file's bytes straight into
-// them (see ppt_io.{hpp,cpp}), so their multi-byte fields are interpreted in
-// the host's byte order. That holds only while the host's byte order matches
-// the file's, which is what this module currently relies on; handling a
-// mismatch is a future task (see the note in ppt_io.hpp).
+// Filled by copying file bytes straight in (see ppt_io), so multi-byte fields
+// use host byte order — correct only on little-endian hosts (see ppt_io.hpp).
 
 #pragma pack(push, 1)
 
@@ -30,9 +27,8 @@ struct RecordHeader {
   [[nodiscard]] bool is_container() const { return rec_ver() == 0xF; }
 };
 
-/// Fixed prefix of the CurrentUserAtom (the only record in the "Current User"
-/// stream). See [MS-PPT] 2.3.2. Only the leading fields up to the offset of the
-/// most recent edit are needed; the variable user-name tail is ignored.
+/// Fixed prefix of the CurrentUserAtom ([MS-PPT] 2.3.2); the variable user-name
+/// tail is ignored.
 struct CurrentUserAtomHead {
   RecordHeader rh;
   std::uint32_t size;
@@ -40,9 +36,8 @@ struct CurrentUserAtomHead {
   std::uint32_t offsetToCurrentEdit; //< offset of the newest UserEditAtom
 };
 
-/// Body of a UserEditAtom (the part after its 8-byte RecordHeader). See
-/// [MS-PPT] 2.3.3. The optional trailing encryptSessionPersistIdRef is not
-/// read.
+/// Body of a UserEditAtom ([MS-PPT] 2.3.3); the optional trailing
+/// encryptSessionPersistIdRef is not read.
 struct UserEditAtomBody {
   std::uint32_t lastSlideIdRef;
   std::uint16_t version;
@@ -80,9 +75,8 @@ enum RecordType : std::uint16_t {
   RT_CurrentUserAtom = 0x0FF6, //< in the "Current User" stream
   RT_PersistDirectoryAtom = 0x1772, //< persist id -> stream offset directory
 
-  // Office Art (Escher) drawing records that hold the slide's text boxes.
-  // The OfficeArt* records are [MS-ODRAW]; the client records (textbox/anchor)
-  // are [MS-PPT].
+  // Office Art (Escher) drawing records holding the slide's text boxes:
+  // OfficeArt* are [MS-ODRAW], client records (textbox/anchor) are [MS-PPT].
   RT_Drawing = 0x040C,              //< DrawingContainer        [MS-PPT] 2.5.13
   RT_OfficeArtDgContainer = 0xF002, //< [MS-ODRAW] 2.2.13
   RT_OfficeArtSpgrContainer = 0xF003, //< shape group [MS-ODRAW] 2.2.16
@@ -91,20 +85,16 @@ enum RecordType : std::uint16_t {
   RT_OfficeArtClientAnchor = 0xF010,  //< a shape's position    [MS-PPT] 2.7.1
 };
 
-/// recInstance values of a RT_SlideListWithText container, distinguishing the
-/// slide, master and notes lists inside the DocumentContainer. Per [MS-PPT]
-/// 2.4.14.1/2.4.14.3/2.4.14.6: SlideListWithTextContainer (the presentation
-/// slides) is 0x000, MasterListWithTextContainer is 0x001, and
-/// NotesListWithTextContainer is 0x002.
+/// recInstance of a RT_SlideListWithText container: which list it is (slides /
+/// master / notes) inside the DocumentContainer ([MS-PPT] 2.4.14.1/3/6).
 enum SlideListInstance : std::uint16_t {
   SlideListInstance_Slides = 0x000,
   SlideListInstance_Master = 0x001,
   SlideListInstance_Notes = 0x002,
 };
 
-/// A shape's position/size, decoded from an OfficeArtClientAnchor body
-/// (SmallRectStruct or RectStruct, [MS-PPT] 2.12.7/2.12.8). Coordinates are in
-/// master units (1/576 inch) of the slide's coordinate system.
+/// A shape's position/size from an OfficeArtClientAnchor ([MS-PPT] 2.12.7/8),
+/// in master units (1/576 inch) of the slide's coordinate system.
 struct Anchor {
   std::int32_t top{0};
   std::int32_t left{0};

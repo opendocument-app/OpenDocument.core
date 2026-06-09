@@ -22,28 +22,19 @@ namespace {
 constexpr char paragraph_mark = '\r'; // 0x0D
 // Manual line break (Shift+Enter); a vertical tab in the .doc text stream.
 constexpr char line_break_mark = '\x0B';
-// End-of-section / manual page break ([MS-DOC] 2.8.26: a section ends with this
-// character; one mid-section is a manual page break). We surface either as a
-// page_break element.
+// End-of-section / manual page break ([MS-DOC] 2.8.26); surfaced as page_break.
 constexpr char page_break_mark = '\x0C';
 
-// Removes anchor/control characters from a run of body text and resolves field
-// codes, keeping only what should be visible. A field is delimited by
-// 0x13 (begin) ... [0x14 (separator)] ... 0x15 (end) ([MS-DOC] 2.8.25): the
-// instruction between begin and separator is hidden and the result between
-// separator and end is shown. The separator is OPTIONAL — a field with no
-// separator (and thus no result) is hidden in its entirety, up to its end.
-// Paragraph marks, manual line breaks and page breaks are consumed by the
-// caller's splits and never reach this function.
+// Drops anchor/control characters and resolves field codes, keeping only the
+// visible text. A field is 0x13 begin ... [0x14 separator] ... 0x15 end
+// ([MS-DOC] 2.8.25): the instruction (begin..separator) is hidden, the result
+// (separator..end) shown. A separator-less field is hidden entirely.
 std::string clean_text(const std::string &in) {
   std::string out;
   out.reserve(in.size());
 
-  // Stack of currently-open fields; each entry is true while we are still in
-  // that field's instruction part (i.e. its separator has not been seen yet).
-  // `instruction_depth` counts the open fields currently in their instruction
-  // part; text is hidden whenever it is > 0 (a nested field inside an
-  // instruction stays hidden even after its own separator/result).
+  // Open fields; entry is true while still in that field's instruction part.
+  // instruction_depth counts those; text is hidden whenever it is > 0.
   std::vector<bool> field_in_instruction;
   int instruction_depth = 0;
 
@@ -86,9 +77,7 @@ std::string clean_text(const std::string &in) {
     case '\x1F': // optional hyphen: drop
       break;
     default:
-      // Drop remaining anchor/control characters (picture/OLE 0x01, footnote/
-      // annotation refs 0x02/0x05, cell mark 0x07, drawn object 0x08, etc.);
-      // keep everything else.
+      // Drop remaining control/anchor characters (< 0x20); keep the rest.
       if (static_cast<unsigned char>(c) >= 0x20) {
         out.push_back(c);
       }
