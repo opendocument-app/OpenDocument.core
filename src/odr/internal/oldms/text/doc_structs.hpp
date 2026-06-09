@@ -350,8 +350,11 @@ struct ParsedFib {
   // field (cbMac, reserved1, reserved2, ccpText), i.e. uint16 indices 6-7.
   // Stored little-endian, consistent with the rest of this parser.
   [[nodiscard]] std::int32_t ccpText() const {
-    return static_cast<std::int32_t>(fibRgLw[6]) |
-           (static_cast<std::int32_t>(fibRgLw[7]) << 16);
+    // Assemble unsigned to avoid signed-shift overflow (UB) when the high word
+    // has the sign bit set; the caller validates the resulting sign.
+    const std::uint32_t value = static_cast<std::uint32_t>(fibRgLw[6]) |
+                                (static_cast<std::uint32_t>(fibRgLw[7]) << 16);
+    return static_cast<std::int32_t>(value);
   }
 };
 
