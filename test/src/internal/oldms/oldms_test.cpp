@@ -14,9 +14,9 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 
 using namespace odr;
 using namespace odr::test;

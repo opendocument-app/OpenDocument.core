@@ -211,19 +211,35 @@ void append_text(std::string &slide_text, std::string text) {
   slide_text += std::move(text);
 }
 
-// Recursively gathers all text atoms within a container, in stream order, into
-// one string. The stream must be positioned at the start of the container body;
-// `container` is its header. Used to collect the text drawn on a single slide.
+// Recursively gathers a text box's text within a container, in stream order,
+// into one string. The stream must be positioned at the start of the container
+// body; `container` is its header. A box either holds inline TextChars/
+// TextBytes atoms or an OutlineTextRefAtom that points at the slide's text in
+// the slide list; `outline_texts` are that slide's outline text blocks, indexed
+// as the OutlineTextRefAtom references them ([MS-PPT] 2.9.78).
 void gather_text(std::istream &in, const RecordHeader &container,
-                 std::string &slide_text) {
+                 std::string &slide_text,
+                 const std::vector<std::string> &outline_texts) {
   ChildCursor children(in, container);
   while (const std::optional<RecordHeader> child = children.next()) {
     if (child->recType == RT_TextCharsAtom ||
         child->recType == RT_TextBytesAtom) {
       append_text(slide_text, read_text_atom(in, *child));
       children.consume(child->recLen);
+    } else if (child->recType == RT_OutlineTextRefAtom &&
+               child->recLen >= sizeof(std::int32_t)) {
+      // No inline text: the box references the index-th TextHeaderAtom block of
+      // this slide in the SlideListWithTextContainer. A malformed
+      // (out-of-range) index is ignored rather than aborting the whole
+      // presentation.
+      const auto index = static_cast<std::int32_t>(read_u32(in));
+      children.consume(sizeof(std::int32_t));
+      if (index >= 0 &&
+          static_cast<std::size_t>(index) < outline_texts.size()) {
+        append_text(slide_text, outline_texts[index]);
+      }
     } else if (child->is_container()) {
-      gather_text(in, *child, slide_text);
+      gather_text(in, *child, slide_text, outline_texts);
       children.consume(child->recLen);
     }
     // Other atoms: left unconsumed; the cursor skips their bodies.
@@ -232,8 +248,10 @@ void gather_text(std::istream &in, const RecordHeader &container,
 
 // Reads one shape (OfficeArtSpContainer): its optional anchor and the text from
 // its OfficeArtClientTextbox. The stream is positioned at the shape body;
-// `shape` is its header. Consumes the whole shape body.
-TextBox read_shape(std::istream &in, const RecordHeader &shape) {
+// `shape` is its header. Consumes the whole shape body. `outline_texts` is this
+// slide's slide-list text, used to resolve an OutlineTextRefAtom.
+TextBox read_shape(std::istream &in, const RecordHeader &shape,
+                   const std::vector<std::string> &outline_texts) {
   TextBox box;
   ChildCursor children(in, shape);
   while (const std::optional<RecordHeader> child = children.next()) {
@@ -241,7 +259,7 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape) {
       box.anchor = read_client_anchor(in, child->recLen);
       children.consume(child->recLen);
     } else if (child->recType == RT_OfficeArtClientTextbox) {
-      gather_text(in, *child, box.text);
+      gather_text(in, *child, box.text, outline_texts);
       children.consume(child->recLen);
     }
     // Other children (shapeProp, FOPT, clientData, …): skipped by the cursor.
@@ -255,8 +273,9 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape) {
 // cut: only top-level shapes (direct children of the root
 // OfficeArtSpgrContainer), whose anchors are already in the slide's master-unit
 // coordinate system.
-std::vector<TextBox> read_slide_text_boxes(std::istream &in,
-                                           const RecordHeader &slide) {
+std::vector<TextBox>
+read_slide_text_boxes(std::istream &in, const RecordHeader &slide,
+                      const std::vector<std::string> &outline_texts) {
   // SlideContainer → DrawingContainer → OfficeArtDgContainer →
   // OfficeArtSpgrContainer (all mandatory), then iterate the shapes.
   const RecordHeader drawing = require_child(in, slide, RT_Drawing);
@@ -269,7 +288,7 @@ std::vector<TextBox> read_slide_text_boxes(std::istream &in,
     if (shape->recType != RT_OfficeArtSpContainer) {
       continue; // not a shape; the cursor skips it
     }
-    TextBox box = read_shape(in, *shape);
+    TextBox box = read_shape(in, *shape, outline_texts);
     shapes.consume(shape->recLen);
     if (!box.text.empty()) {
       boxes.push_back(std::move(box));
@@ -305,23 +324,52 @@ void read_persist_directory(std::istream &in, const RecordHeader &header,
   }
 }
 
-// Reads the persistIdRef of every SlidePersistAtom in a SlideListWithText
-// container, in order. The stream must be positioned at the container body;
-// `slide_list` is its header.
-std::vector<std::uint32_t>
-read_slide_persist_ids(std::istream &in, const RecordHeader &slide_list) {
+// The text a SlideListWithText container holds for the presentation slides: the
+// slides' persistIdRefs in presentation order, plus — per slide (keyed by
+// persistIdRef) — the text of each TextHeaderAtom block in order, which an
+// OutlineTextRefAtom in a slide's text box references by index ([MS-PPT]
+// 2.4.14.3 / 2.9.78).
+struct SlideListText {
+  std::vector<std::uint32_t> persist_ids;
+  std::unordered_map<std::uint32_t, std::vector<std::string>> outline_texts;
+};
+
+// Walks a SlideListWithText container once, in order. Each SlidePersistAtom
+// starts a slide section; the TextHeaderAtom records that follow it (until the
+// next SlidePersistAtom) are that slide's outline text blocks — one entry per
+// header, filled by its following TextChars/TextBytes atom (absent → empty).
+// The stream must be positioned at the container body; `slide_list` its header.
+SlideListText read_slide_list_text(std::istream &in,
+                                   const RecordHeader &slide_list) {
   constexpr std::uint32_t persist_ref_size = sizeof(std::uint32_t);
 
-  std::vector<std::uint32_t> ids;
+  SlideListText result;
+  // Outline texts of the slide currently being read. unordered_map never
+  // invalidates element references on insert, so this stays valid until
+  // reassigned at the next SlidePersistAtom.
+  std::vector<std::string> *current = nullptr;
   ChildCursor children(in, slide_list);
   while (const std::optional<RecordHeader> child = children.next()) {
     if (child->recType == RT_SlidePersistAtom &&
         child->recLen >= persist_ref_size) {
-      ids.push_back(read_u32(in)); // persistIdRef is the first body field
+      const std::uint32_t persist_id = read_u32(in); // persistIdRef is first
       children.consume(persist_ref_size);
+      result.persist_ids.push_back(persist_id);
+      current = &result.outline_texts[persist_id];
+    } else if (child->recType == RT_TextHeaderAtom) {
+      if (current != nullptr) {
+        current->emplace_back(); // one block per header; text filled in below
+      }
+    } else if (child->recType == RT_TextCharsAtom ||
+               child->recType == RT_TextBytesAtom) {
+      if (current != nullptr && !current->empty()) {
+        current->back() = read_text_atom(in, *child);
+        children.consume(child->recLen);
+      }
     }
+    // Everything else (style/meta atoms, …): left for the cursor to skip.
   }
-  return ids;
+  return result;
 }
 
 // Resolves the presentation slides via the [MS-PPT] reading algorithm (the only
@@ -393,14 +441,16 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
   if (!slide_list.has_value()) {
     return {}; // valid document, no presentation slides
   }
-  const std::vector<std::uint32_t> persist_ids =
-      read_slide_persist_ids(document, *slide_list);
+  const SlideListText slide_list_text =
+      read_slide_list_text(document, *slide_list);
 
   // Each SlidePersistAtom references a SlideContainer by persist id (which the
-  // spec requires the directory to resolve); read its text boxes.
+  // spec requires the directory to resolve); read its text boxes, passing the
+  // slide's outline texts so OutlineTextRefAtom boxes can be resolved.
+  static const std::vector<std::string> no_outline_texts;
   std::vector<std::vector<TextBox>> slides;
-  slides.reserve(persist_ids.size());
-  for (const std::uint32_t persist_id : persist_ids) {
+  slides.reserve(slide_list_text.persist_ids.size());
+  for (const std::uint32_t persist_id : slide_list_text.persist_ids) {
     const auto it = directory.find(persist_id);
     if (it == directory.end()) {
       throw std::runtime_error("ppt: slide persist id not in directory");
@@ -408,7 +458,12 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
     document.clear();
     document.seekg(it->second);
     const RecordHeader slide_header = read_header(document, RT_SlideContainer);
-    slides.push_back(read_slide_text_boxes(document, slide_header));
+    const auto ot = slide_list_text.outline_texts.find(persist_id);
+    const std::vector<std::string> &outline_texts =
+        ot != slide_list_text.outline_texts.end() ? ot->second
+                                                  : no_outline_texts;
+    slides.push_back(
+        read_slide_text_boxes(document, slide_header, outline_texts));
   }
   return slides;
 }
