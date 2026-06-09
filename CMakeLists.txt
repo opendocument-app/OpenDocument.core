@@ -148,6 +148,10 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/oldms/text/doc_helper.cpp"
         "src/odr/internal/oldms/text/doc_io.cpp"
         "src/odr/internal/oldms/text/doc_parser.cpp"
+        "src/odr/internal/oldms/presentation/ppt_document.cpp"
+        "src/odr/internal/oldms/presentation/ppt_element_registry.cpp"
+        "src/odr/internal/oldms/presentation/ppt_io.cpp"
+        "src/odr/internal/oldms/presentation/ppt_parser.cpp"
         "src/odr/internal/oldms/oldms_file.cpp"
 
         "src/odr/internal/ooxml/presentation/ooxml_presentation_document.cpp"

@@ -176,12 +176,15 @@ std::string Path::basename() const noexcept {
 }
 
 std::string Path::extension() const noexcept {
-  auto bn = basename();
-  const auto pos = bn.find('.');
-  if (pos == std::string::npos) {
-    return "";
+  // The extension is the last dot-separated segment of the file name, without
+  // the leading dot (e.g. "a.b.ppt" -> "ppt"). Delegate to std::filesystem so
+  // edge cases (no extension, dot-files like ".bashrc") match the platform's
+  // definition; it returns ".ppt", so strip the leading dot.
+  std::string extension = path().extension().string();
+  if (!extension.empty() && extension.front() == '.') {
+    extension.erase(extension.begin());
   }
-  return bn.substr(pos + 1);
+  return extension;
 }
 
 Path Path::parent() const {
@@ -206,7 +209,7 @@ Path Path::rebase(const Path &b) const {
     throw std::invalid_argument("cannot rebase absolute and relative path");
   }
 
-  Path result = Path("");
+  auto result = Path("");
   auto common_root = this->common_root(b);
 
   Path sub_a;
