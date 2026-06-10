@@ -9,8 +9,6 @@
 
 namespace odr::internal::oldms::text {
 
-#pragma pack(push, 1)
-
 enum NFibValues : std::uint16_t {
   nFib97 = 0x00C1,
   nFib2000 = 0x00D9,
@@ -19,10 +17,13 @@ enum NFibValues : std::uint16_t {
   nFib2007 = 0x0112,
 };
 
+#pragma pack(push, 1)
+
 struct FcLcb {
   std::uint32_t fc;
   std::uint32_t lcb;
 };
+static_assert(sizeof(FcLcb) == 8, "FcLcb should be 8 bytes");
 
 struct FibBase {
   std::uint16_t wIdent;
@@ -57,6 +58,7 @@ struct FibBase {
   std::uint32_t reserved5;
   std::uint32_t reserved6;
 };
+static_assert(sizeof(FibBase) == 32, "FibBase should be 8 bytes");
 
 struct FibRgFcLcb97 {
   FcLcb stshfOrig;
@@ -154,6 +156,8 @@ struct FibRgFcLcb97 {
   FcLcb sttbListNames;
   FcLcb sttbfUssr;
 };
+static_assert(sizeof(FibRgFcLcb97) == 744,
+              "FibRgFcLcb97 should be 744 bytes in size");
 
 struct FibRgFcLcb2000 : FibRgFcLcb97 {
   FcLcb plcfTch;
@@ -172,6 +176,8 @@ struct FibRgFcLcb2000 : FibRgFcLcb97 {
   FcLcb pgdEdnOld;
   FcLcb bkdEdnOld;
 };
+static_assert(sizeof(FibRgFcLcb2000) == 864,
+              "FibRgFcLcb2003 should be 864 bytes in size");
 
 struct FibRgFcLcb2002 : FibRgFcLcb2000 {
   FcLcb unused1;
@@ -203,6 +209,8 @@ struct FibRgFcLcb2002 : FibRgFcLcb2000 {
   FcLcb plcflvcNewXP;
   FcLcb plcflvcMixedXP;
 };
+static_assert(sizeof(FibRgFcLcb2002) == 1088,
+              "FibRgFcLcb2003 should be 1088 bytes in size");
 
 struct FibRgFcLcb2003 : FibRgFcLcb2002 {
   FcLcb hplxsdr;
@@ -234,6 +242,8 @@ struct FibRgFcLcb2003 : FibRgFcLcb2002 {
   FcLcb afdEdn;
   FcLcb afd;
 };
+static_assert(sizeof(FibRgFcLcb2003) == 1312,
+              "FibRgFcLcb2003 should be 1312 bytes in size");
 
 struct FibRgFcLcb2007 : FibRgFcLcb2003 {
   FcLcb plcfmthd;
@@ -256,16 +266,22 @@ struct FibRgFcLcb2007 : FibRgFcLcb2003 {
   FcLcb ossTheme;
   FcLcb colorSchemeMapping;
 };
+static_assert(sizeof(FibRgFcLcb2007) == 1464,
+              "FibRgFcLcb2007 should be 1464 bytes in size");
 
 struct FibRgCswNewData2000 {
   std::uint16_t cQuickSavesNew;
 };
+static_assert(sizeof(FibRgCswNewData2000) == 2,
+              "FibRgCswNewData2000 should be 2 bytes");
 
 struct FibRgCswNewData2007 : FibRgCswNewData2000 {
   std::uint16_t lidThemeOther;
   std::uint16_t lidThemeFE;
   std::uint16_t lidThemeCS;
 };
+static_assert(sizeof(FibRgCswNewData2007) == 8,
+              "FibRgCswNewData2007 should be 8 bytes");
 
 struct Sprm {
   std::uint16_t ispmd : 9;
@@ -293,12 +309,14 @@ struct Sprm {
     }
   }
 };
+static_assert(sizeof(Sprm) == 2, "Sprm should be 2 bytes");
 
 struct FcCompressed {
   std::uint32_t fc : 30;
   std::uint32_t fCompressed : 1;
   std::uint32_t r1 : 1;
 };
+static_assert(sizeof(FcCompressed) == 4, "FcCompressed should be 4 bytes");
 
 struct Pcd {
   std::uint16_t fNoParaLast : 1;
@@ -308,27 +326,9 @@ struct Pcd {
   FcCompressed fc;
   std::uint16_t prm;
 };
+static_assert(sizeof(Pcd) == 8, "Pcd should be 8 bytes");
 
 #pragma pack(pop)
-
-static_assert(sizeof(FcLcb) == 8, "FcLcb should be 8 bytes");
-static_assert(sizeof(FibBase) == 32, "FibBase should be 8 bytes");
-static_assert(sizeof(FibRgFcLcb97) == 744,
-              "FibRgFcLcb97 should be 744 bytes in size");
-static_assert(sizeof(FibRgFcLcb2000) == 864,
-              "FibRgFcLcb2003 should be 864 bytes in size");
-static_assert(sizeof(FibRgFcLcb2002) == 1088,
-              "FibRgFcLcb2003 should be 1088 bytes in size");
-static_assert(sizeof(FibRgFcLcb2003) == 1312,
-              "FibRgFcLcb2003 should be 1312 bytes in size");
-static_assert(sizeof(FibRgFcLcb2007) == 1464,
-              "FibRgFcLcb2007 should be 1464 bytes in size");
-static_assert(sizeof(FibRgCswNewData2000) == 2,
-              "FibRgCswNewData2000 should be 2 bytes");
-static_assert(sizeof(FibRgCswNewData2007) == 8,
-              "FibRgCswNewData2007 should be 8 bytes");
-static_assert(sizeof(FcCompressed) == 4, "FcCompressed should be 4 bytes");
-static_assert(sizeof(Pcd) == 8, "Pcd should be 8 bytes");
 
 struct ParsedFibRgCswNew {
   std::uint16_t nFibNew;

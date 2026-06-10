@@ -18,7 +18,6 @@
 #include <vector>
 
 namespace odr::internal::oldms::presentation {
-
 namespace {
 
 /// Paragraph break inside a PPT text atom.
@@ -105,7 +104,7 @@ find_child(std::istream &in, const RecordHeader &container,
   ChildCursor children(in, container);
   while (const std::optional<RecordHeader> child = children.next()) {
     if (child->recType == rec_type &&
-        (!rec_instance.has_value() || child->rec_instance() == *rec_instance)) {
+        (!rec_instance.has_value() || child->recInstance == *rec_instance)) {
       return child; // stream is positioned at the child body
     }
   }
@@ -438,9 +437,13 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
 }
 
 } // namespace
+} // namespace odr::internal::oldms::presentation
 
-ElementIdentifier parse_tree(ElementRegistry &registry,
-                             const abstract::ReadableFilesystem &files) {
+namespace odr::internal::oldms {
+
+ElementIdentifier
+presentation::parse_tree(ElementRegistry &registry,
+                         const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
   const auto document_file = files.open(AbsPath("/PowerPoint Document"));
@@ -474,4 +477,4 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
-} // namespace odr::internal::oldms::presentation
+} // namespace odr::internal::oldms

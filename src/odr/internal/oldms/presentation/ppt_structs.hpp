@@ -6,58 +6,8 @@ namespace odr::internal::oldms::presentation {
 
 // Filled by copying file bytes straight in (see ppt_io), so multi-byte fields
 // use host byte order — correct only on little-endian hosts (see ppt_io.hpp).
-
-#pragma pack(push, 1)
-
-/// Every record in the "PowerPoint Document" stream starts with this 8-byte
-/// header. See [MS-PPT] 2.3.1 RecordHeader.
-struct RecordHeader {
-  /// low 4 bits = recVer, high 12 bits = recInstance
-  std::uint16_t recVerAndInstance;
-  std::uint16_t recType;
-  std::uint32_t recLen; //< bytes of body that follow the header
-
-  [[nodiscard]] std::uint8_t rec_ver() const {
-    return static_cast<std::uint8_t>(recVerAndInstance & 0x000F);
-  }
-  [[nodiscard]] std::uint16_t rec_instance() const {
-    return static_cast<std::uint16_t>(recVerAndInstance >> 4);
-  }
-  /// recVer == 0xF marks a container whose body is a sequence of records.
-  [[nodiscard]] bool is_container() const { return rec_ver() == 0xF; }
-};
-
-/// Fixed prefix of the CurrentUserAtom ([MS-PPT] 2.3.2); the variable user-name
-/// tail is ignored.
-struct CurrentUserAtomHead {
-  RecordHeader rh;
-  std::uint32_t size;
-  std::uint32_t headerToken;
-  std::uint32_t offsetToCurrentEdit; //< offset of the newest UserEditAtom
-};
-
-/// Body of a UserEditAtom ([MS-PPT] 2.3.3); the optional trailing
-/// encryptSessionPersistIdRef is not read.
-struct UserEditAtomBody {
-  std::uint32_t lastSlideIdRef;
-  std::uint16_t version;
-  std::uint8_t minorVersion;
-  std::uint8_t majorVersion;
-  std::uint32_t offsetLastEdit;         //< previous UserEditAtom, 0 = none
-  std::uint32_t offsetPersistDirectory; //< PersistDirectoryAtom for this edit
-  std::uint32_t docPersistIdRef;        //< persist id of the DocumentContainer
-  std::uint32_t persistIdSeed;
-  std::uint16_t lastView;
-  std::uint16_t unused;
-};
-
-#pragma pack(pop)
-
-static_assert(sizeof(RecordHeader) == 8, "RecordHeader should be 8 bytes");
-static_assert(sizeof(CurrentUserAtomHead) == 20,
-              "CurrentUserAtomHead should be 20 bytes");
-static_assert(sizeof(UserEditAtomBody) == 28,
-              "UserEditAtomBody should be 28 bytes");
+// Bit-fields additionally assume LSB-first allocation, which all supported
+// compilers use on little-endian targets (same as the sibling .doc module).
 
 /// Record types relevant to text extraction. See [MS-PPT] 2.13.24 RecordType.
 enum RecordType : std::uint16_t {
@@ -92,6 +42,51 @@ enum SlideListInstance : std::uint16_t {
   SlideListInstance_Master = 0x001,
   SlideListInstance_Notes = 0x002,
 };
+
+#pragma pack(push, 1)
+
+/// Every record in the "PowerPoint Document" stream starts with this 8-byte
+/// header. See [MS-PPT] 2.3.1 RecordHeader.
+struct RecordHeader {
+  std::uint16_t recVer : 4;
+  std::uint16_t recInstance : 12;
+  std::uint16_t recType;
+  std::uint32_t recLen; //< bytes of body that follow the header
+
+  /// recVer == 0xF marks a container whose body is a sequence of records.
+  [[nodiscard]] bool is_container() const { return recVer == 0xF; }
+};
+static_assert(sizeof(RecordHeader) == 8, "RecordHeader should be 8 bytes");
+
+/// Fixed prefix of the CurrentUserAtom ([MS-PPT] 2.3.2); the variable user-name
+/// tail is ignored.
+struct CurrentUserAtomHead {
+  RecordHeader rh;
+  std::uint32_t size;
+  std::uint32_t headerToken;
+  std::uint32_t offsetToCurrentEdit; //< offset of the newest UserEditAtom
+};
+static_assert(sizeof(CurrentUserAtomHead) == 20,
+              "CurrentUserAtomHead should be 20 bytes");
+
+/// Body of a UserEditAtom ([MS-PPT] 2.3.3); the optional trailing
+/// encryptSessionPersistIdRef is not read.
+struct UserEditAtomBody {
+  std::uint32_t lastSlideIdRef;
+  std::uint16_t version;
+  std::uint8_t minorVersion;
+  std::uint8_t majorVersion;
+  std::uint32_t offsetLastEdit;         //< previous UserEditAtom, 0 = none
+  std::uint32_t offsetPersistDirectory; //< PersistDirectoryAtom for this edit
+  std::uint32_t docPersistIdRef;        //< persist id of the DocumentContainer
+  std::uint32_t persistIdSeed;
+  std::uint16_t lastView;
+  std::uint16_t unused;
+};
+static_assert(sizeof(UserEditAtomBody) == 28,
+              "UserEditAtomBody should be 28 bytes");
+
+#pragma pack(pop)
 
 /// A shape's position/size from an OfficeArtClientAnchor ([MS-PPT] 2.12.7/8),
 /// in master units (1/576 inch) of the slide's coordinate system.
