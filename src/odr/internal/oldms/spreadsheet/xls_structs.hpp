@@ -10,7 +10,7 @@ namespace odr::internal::oldms::spreadsheet {
 // Filled by copying file bytes straight in (see xls_io), so multi-byte fields
 // use host byte order — correct only on little-endian hosts (see xls_io.hpp).
 // Bit-fields additionally assume LSB-first allocation, which all supported
-// compilers use on little-endian targets (same as the sibling .doc module).
+// compilers use on little-endian targets (shared oldms/ assumption).
 
 /// BIFF8 record type values handled here ([MS-XLS] 2.3 Record Enumeration).
 enum BiffRecordType : std::uint16_t {
