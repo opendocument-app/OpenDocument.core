@@ -96,7 +96,6 @@ void append_record(std::string &out, const std::uint16_t type,
 // for the remainder.
 TEST(OldMs, xls_string_split_across_continue) {
   using internal::oldms::spreadsheet::BiffReader;
-  using internal::oldms::spreadsheet::read_xl_unicode_rich_extended_string;
 
   std::string body;
   append_u16(body, 4);    // cch
@@ -114,7 +113,7 @@ TEST(OldMs, xls_string_split_across_continue) {
   std::istringstream in(stream);
   BiffReader reader(in);
   ASSERT_TRUE(reader.next_record());
-  EXPECT_EQ(read_xl_unicode_rich_extended_string(reader), "abcd");
+  EXPECT_EQ(reader.read_xl_unicode_rich_extended_string(), "abcd");
 }
 
 // Formatting runs (fRichSt) are skipped; the skip can cross a CONTINUE
@@ -122,7 +121,6 @@ TEST(OldMs, xls_string_split_across_continue) {
 // next string starts right after.
 TEST(OldMs, xls_rich_string_runs_across_continue) {
   using internal::oldms::spreadsheet::BiffReader;
-  using internal::oldms::spreadsheet::read_xl_unicode_rich_extended_string;
 
   std::string body;
   append_u16(body, 2);                // cch
@@ -144,8 +142,8 @@ TEST(OldMs, xls_rich_string_runs_across_continue) {
   std::istringstream in(stream);
   BiffReader reader(in);
   ASSERT_TRUE(reader.next_record());
-  EXPECT_EQ(read_xl_unicode_rich_extended_string(reader), "hi");
-  EXPECT_EQ(read_xl_unicode_rich_extended_string(reader), "x");
+  EXPECT_EQ(reader.read_xl_unicode_rich_extended_string(), "hi");
+  EXPECT_EQ(reader.read_xl_unicode_rich_extended_string(), "x");
 }
 
 // RkNumber ([MS-XLS] 2.5.217): bit 0 = fX100, bit 1 = fInt, the rest is a

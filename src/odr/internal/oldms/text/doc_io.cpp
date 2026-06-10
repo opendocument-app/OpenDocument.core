@@ -3,10 +3,9 @@
 #include "odr/internal/util/string_util.hpp"
 
 #include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <cstring>
+#include <iostream>
 
 namespace odr::internal::oldms::text {
 
@@ -79,12 +78,12 @@ std::size_t text::determine_size_Fib(std::istream &in) {
   std::size_t result = 0;
 
   const auto read_uint16_t = [&] {
-    const std::uint16_t value = util::byte_stream::read<std::uint16_t>(in);
+    const auto value = util::byte_stream::read<std::uint16_t>(in);
     result += sizeof(std::uint16_t);
     return value;
   };
   const auto ignore = [&](const std::size_t count) {
-    in.ignore(count);
+    in.ignore(static_cast<std::streamsize>(count));
     result += count;
   };
 
@@ -110,7 +109,7 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.csw));
   }
   util::byte_stream::read(in, out.fibRgW);
-  in.ignore(out.csw * 2 - sizeof(out.fibRgW));
+  in.ignore(static_cast<std::streamsize>(out.csw * 2 - sizeof(out.fibRgW)));
 
   util::byte_stream::read(in, out.cslw);
   if (out.cslw * 4 < sizeof(out.fibRgLw)) {
@@ -118,7 +117,7 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.cslw));
   }
   util::byte_stream::read(in, out.fibRgLw);
-  in.ignore(out.cslw * 4 - sizeof(out.fibRgLw));
+  in.ignore(static_cast<std::streamsize>(out.cslw * 4 - sizeof(out.fibRgLw)));
 
   // ccpText ([MS-DOC] 2.5.5) MUST be >= 0; reject a negative value as
   // malformed.
@@ -128,7 +127,7 @@ void text::read(std::istream &in, ParsedFib &out) {
   }
 
   util::byte_stream::read(in, out.cbRgFcLcb);
-  auto fibRgFcLcb = std::make_unique<char[]>(out.cbRgFcLcb * 8);
+  const auto fibRgFcLcb = std::make_unique<char[]>(out.cbRgFcLcb * 8);
   in.read(fibRgFcLcb.get(), out.cbRgFcLcb * 8);
 
   util::byte_stream::read(in, out.cswNew);
@@ -208,7 +207,7 @@ void text::skip_Prc(std::istream &in) {
     throw std::runtime_error("Unexpected input: " + std::to_string(c));
   }
 
-  const std::uint16_t cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
+  const auto cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
   in.ignore(cbGrpprl);
 }
 

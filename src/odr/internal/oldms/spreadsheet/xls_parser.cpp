@@ -7,14 +7,12 @@
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
 
-#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace odr::internal::oldms::spreadsheet {
-
 namespace {
 
 struct BoundSheet {
@@ -34,48 +32,34 @@ void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
       registry.create_element(ElementType::paragraph);
   registry.append_child(cell_id, paragraph_id);
 
-  auto [text_id, text_element_, text_element] = registry.create_text_element();
-  text_element.text = std::move(text);
+  auto [text_id, text_element, text_entry] = registry.create_text_element();
+  text_entry.text = std::move(text);
   registry.append_child(paragraph_id, text_id);
-}
-
-void expect_bof(BiffReader &reader) {
-  if (!reader.next_record() || reader.record_type() != biff_bof) {
-    throw std::runtime_error("xls: expected BOF record");
-  }
-  BofFixed bof{};
-  reader.read(bof);
-  if (bof.vers != bof_vers_biff8) {
-    throw std::runtime_error("xls: unsupported BIFF version " +
-                             std::to_string(bof.vers));
-  }
 }
 
 /// Globals substream: collects the worksheet BoundSheet8 entries and the
 /// shared string table.
 void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
                    std::vector<std::string> &shared_strings) {
-  expect_bof(reader);
+  reader.expect_bof();
 
   while (reader.next_record() && reader.record_type() != biff_eof) {
     switch (reader.record_type()) {
     case biff_boundsheet: {
-      BoundSheet8Fixed boundsheet{};
-      reader.read(boundsheet);
-      std::string name = read_short_xl_unicode_string(reader);
+      const auto boundsheet = reader.read<BoundSheet8Fixed>();
+      std::string name = reader.read_short_xl_unicode_string();
       if (boundsheet.dt == boundsheet_dt_worksheet) {
         sheets.push_back({boundsheet.lbPlyPos, std::move(name)});
       }
     } break;
     case biff_sst: {
-      SstHead head{};
-      reader.read(head);
+      const auto head = reader.read<SstHead>();
       if (head.cstUnique < 0) {
         throw std::runtime_error("xls: negative SST string count");
       }
       shared_strings.reserve(static_cast<std::size_t>(head.cstUnique));
       for (std::int32_t i = 0; i < head.cstUnique; ++i) {
-        shared_strings.push_back(read_xl_unicode_rich_extended_string(reader));
+        shared_strings.push_back(reader.read_xl_unicode_rich_extended_string());
       }
     } break;
     default:
@@ -89,7 +73,7 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
                  const ElementIdentifier sheet_id, const BoundSheet &info,
                  const std::vector<std::string> &shared_strings) {
   reader.seek(info.offset);
-  expect_bof(reader);
+  reader.expect_bof();
 
   ElementRegistry::Sheet &sheet = registry.sheet_element_at(sheet_id);
   sheet.name = info.name;
@@ -101,13 +85,11 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
   while (reader.next_record() && reader.record_type() != biff_eof) {
     switch (reader.record_type()) {
     case biff_dimensions: {
-      DimensionsBody dimensions{};
-      reader.read(dimensions);
+      const auto dimensions = reader.read<DimensionsBody>();
       sheet.dimensions = TableDimensions(dimensions.rwMac, dimensions.colMac);
     } break;
     case biff_labelsst: {
-      LabelSstBody label{};
-      reader.read(label);
+      const auto label = reader.read<LabelSstBody>();
       if (label.isst >= shared_strings.size()) {
         throw std::runtime_error("xls: SST index out of range");
       }
@@ -115,8 +97,7 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
                shared_strings[label.isst]);
     } break;
     case biff_rk: {
-      RkBody rk{};
-      reader.read(rk);
+      const auto rk = reader.read<RkBody>();
       add_cell(registry, sheet_id, rk.col, rk.rw,
                format_number(decode_rk(rk.rk)));
     } break;
@@ -137,28 +118,24 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
       }
     } break;
     case biff_number: {
-      NumberBody number{};
-      reader.read(number);
+      const auto number = reader.read<NumberBody>();
       add_cell(registry, sheet_id, number.cell.col, number.cell.rw,
                format_number(number.num));
     } break;
     case biff_label: {
-      CellRef cell{};
-      reader.read(cell);
+      const auto cell = reader.read<CellRef>();
       add_cell(registry, sheet_id, cell.col, cell.rw,
-               read_xl_unicode_string(reader));
+               reader.read_xl_unicode_string());
     } break;
     case biff_boolerr: {
-      BoolErrBody boolerr{};
-      reader.read(boolerr);
+      const auto boolerr = reader.read<BoolErrBody>();
       add_cell(registry, sheet_id, boolerr.cell.col, boolerr.cell.rw,
                boolerr.fError != 0
                    ? error_code_string(boolerr.bBoolErr)
                    : (boolerr.bBoolErr != 0 ? "TRUE" : "FALSE"));
     } break;
     case biff_formula: {
-      FormulaFixed formula{};
-      reader.read(formula);
+      const auto formula = reader.read<FormulaFixed>();
       const TablePosition position(formula.cell.col, formula.cell.rw);
       if (formula.val.fExprO != 0xFFFF) {
         double value;
@@ -187,7 +164,7 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     case biff_string: {
       if (pending_string_cell.has_value()) {
         add_cell(registry, sheet_id, pending_string_cell->column,
-                 pending_string_cell->row, read_xl_unicode_string(reader));
+                 pending_string_cell->row, reader.read_xl_unicode_string());
         pending_string_cell.reset();
       }
     } break;
@@ -198,9 +175,13 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
 }
 
 } // namespace
+} // namespace odr::internal::oldms::spreadsheet
 
-ElementIdentifier parse_tree(ElementRegistry &registry,
-                             const abstract::ReadableFilesystem &files) {
+namespace odr::internal::oldms {
+
+ElementIdentifier
+spreadsheet::parse_tree(ElementRegistry &registry,
+                        const abstract::ReadableFilesystem &files) {
   const auto workbook_stream = files.open(AbsPath("/Workbook"))->stream();
   BiffReader reader(*workbook_stream);
 
@@ -219,4 +200,4 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
-} // namespace odr::internal::oldms::spreadsheet
+} // namespace odr::internal::oldms

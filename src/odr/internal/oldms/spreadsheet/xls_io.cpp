@@ -1,12 +1,12 @@
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 
+#include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <cstring>
 #include <istream>
 #include <stdexcept>
 
@@ -20,17 +20,13 @@ bool BiffReader::next_record() {
     m_remaining = 0;
   }
 
-  RecordHeader header{};
-  m_in->read(reinterpret_cast<char *>(&header), sizeof(header));
-  if (m_in->eof() || m_in->gcount() != sizeof(header)) {
+  const std::optional header = util::byte_stream::try_read<RecordHeader>(*m_in);
+  if (!header) {
     return false;
   }
-  if (!*m_in) {
-    throw std::runtime_error("xls: failed to read record header");
-  }
 
-  m_record_type = header.type;
-  m_remaining = header.size;
+  m_record_type = header->type;
+  m_remaining = header->size;
   return true;
 }
 
@@ -70,17 +66,14 @@ std::uint32_t BiffReader::read_u32() {
 }
 
 void BiffReader::read_bytes(void *out, const std::size_t count) {
-  char *cursor = static_cast<char *>(out);
+  auto *cursor = static_cast<char *>(out);
   std::size_t left = count;
   while (left > 0) {
     if (m_remaining == 0) {
       next_continue();
     }
     const std::size_t take = std::min(left, m_remaining);
-    m_in->read(cursor, static_cast<std::streamsize>(take));
-    if (!*m_in) {
-      throw std::runtime_error("xls: unexpected end of record stream");
-    }
+    util::byte_stream::read(*m_in, cursor, take);
     cursor += take;
     left -= take;
     m_remaining -= take;
@@ -125,7 +118,7 @@ std::string BiffReader::read_unicode_chars(const std::size_t cch,
     } else {
       for (std::size_t i = 0; i < take; ++i) {
         // Compressed characters are code points U+0000 to U+00FF.
-        buffer.push_back(static_cast<char16_t>(read_u8()));
+        buffer.push_back(read_u8());
       }
     }
     left -= take;
@@ -134,38 +127,53 @@ std::string BiffReader::read_unicode_chars(const std::size_t cch,
   return util::string::u16string_to_string(buffer);
 }
 
-std::string read_short_xl_unicode_string(BiffReader &reader) {
-  const std::uint8_t cch = reader.read_u8();
-  const std::uint8_t flags = reader.read_u8();
-  return reader.read_unicode_chars(cch, (flags & 0x01) != 0);
+std::string BiffReader::read_short_xl_unicode_string() {
+  const std::uint8_t cch = read_u8();
+  const std::uint8_t flags = read_u8();
+  return read_unicode_chars(cch, (flags & 0x01) != 0);
 }
 
-std::string read_xl_unicode_string(BiffReader &reader) {
-  const std::uint16_t cch = reader.read_u16();
-  const std::uint8_t flags = reader.read_u8();
-  return reader.read_unicode_chars(cch, (flags & 0x01) != 0);
+std::string BiffReader::read_xl_unicode_string() {
+  const std::uint16_t cch = read_u16();
+  const std::uint8_t flags = read_u8();
+  return read_unicode_chars(cch, (flags & 0x01) != 0);
 }
 
-std::string read_xl_unicode_rich_extended_string(BiffReader &reader) {
-  const std::uint16_t cch = reader.read_u16();
-  const std::uint8_t flags = reader.read_u8();
+std::string BiffReader::read_xl_unicode_rich_extended_string() {
+  const std::uint16_t cch = read_u16();
+  const std::uint8_t flags = read_u8();
   const bool high_byte = (flags & 0x01) != 0;
   const bool ext_st = (flags & 0x04) != 0;
   const bool rich_st = (flags & 0x08) != 0;
 
-  const std::uint16_t c_run = rich_st ? reader.read_u16() : 0;
-  const std::uint32_t cb_ext_rst = ext_st ? reader.read_u32() : 0;
+  const std::uint16_t c_run = rich_st ? read_u16() : 0;
+  const std::uint32_t cb_ext_rst = ext_st ? read_u32() : 0;
 
-  std::string result = reader.read_unicode_chars(cch, high_byte);
+  std::string result = read_unicode_chars(cch, high_byte);
 
   // Drop the formatting runs (FormatRun is 4 bytes) and the phonetic data.
-  reader.skip_bytes(static_cast<std::size_t>(c_run) * 4);
-  reader.skip_bytes(cb_ext_rst);
+  skip_bytes(static_cast<std::size_t>(c_run) * 4);
+  skip_bytes(cb_ext_rst);
 
   return result;
 }
 
-double decode_rk(const std::uint32_t rk) {
+void BiffReader::expect_bof() {
+  if (!next_record() || record_type() != biff_bof) {
+    throw std::runtime_error("xls: expected BOF record");
+  }
+  const auto bof = read<BofFixed>();
+  if (bof.vers != bof_vers_biff8) {
+    throw std::runtime_error("xls: unsupported BIFF version " +
+                             std::to_string(bof.vers));
+  }
+}
+
+} // namespace odr::internal::oldms::spreadsheet
+
+namespace odr::internal::oldms {
+
+double spreadsheet::decode_rk(const std::uint32_t rk) {
   const bool x100 = (rk & 0x01) != 0;
   const bool is_int = (rk & 0x02) != 0;
 
@@ -183,7 +191,7 @@ double decode_rk(const std::uint32_t rk) {
   return x100 ? value / 100.0 : value;
 }
 
-std::string format_number(const double value) {
+std::string spreadsheet::format_number(const double value) {
   if (std::isnan(value)) {
     return "NaN";
   }
@@ -193,7 +201,7 @@ std::string format_number(const double value) {
   return buffer;
 }
 
-std::string error_code_string(const std::uint8_t error) {
+std::string spreadsheet::error_code_string(const std::uint8_t error) {
   switch (error) {
   case 0x00:
     return "#NULL!";
@@ -216,4 +224,4 @@ std::string error_code_string(const std::uint8_t error) {
   }
 }
 
-} // namespace odr::internal::oldms::spreadsheet
+} // namespace odr::internal::oldms
