@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
+
 #include <cstdint>
 #include <iosfwd>
 #include <string>
@@ -73,10 +75,6 @@ private:
   /// Hops into the following CONTINUE record; throws if it is anything else.
   void next_continue();
 };
-
-/// Decodes an RkNumber ([MS-XLS] 2.5.217): bit 0 = fX100 (divide by 100),
-/// bit 1 = fInt (30-bit signed integer vs. high 30 bits of an IEEE double).
-double decode_rk(std::uint32_t rk);
 
 /// Formats a numeric cell value roughly like Excel's "General" format
 /// (up to 15 significant digits, no trailing zeros).

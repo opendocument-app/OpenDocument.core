@@ -104,7 +104,7 @@ find_child(std::istream &in, const RecordHeader &container,
   ChildCursor children(in, container);
   while (const std::optional<RecordHeader> child = children.next()) {
     if (child->recType == rec_type &&
-        (!rec_instance.has_value() || child->rec_instance() == *rec_instance)) {
+        (!rec_instance.has_value() || child->recInstance == *rec_instance)) {
       return child; // stream is positioned at the child body
     }
   }

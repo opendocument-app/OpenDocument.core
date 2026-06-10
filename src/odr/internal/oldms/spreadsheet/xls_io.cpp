@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
 #include <istream>
 #include <stdexcept>
 
@@ -104,7 +103,7 @@ std::string BiffReader::read_unicode_chars(const std::size_t cch,
       // Character data continued in a CONTINUE record starts with a fresh
       // flags byte re-declaring the encoding ([MS-XLS] 2.5.293).
       next_continue();
-      high_byte = (read_u8() & 0x01) != 0;
+      high_byte = read<UnicodeStringFlags>().fHighByte != 0;
     }
     const std::size_t available = high_byte ? m_remaining / 2 : m_remaining;
     if (available == 0) {
@@ -129,27 +128,24 @@ std::string BiffReader::read_unicode_chars(const std::size_t cch,
 
 std::string BiffReader::read_short_xl_unicode_string() {
   const std::uint8_t cch = read_u8();
-  const std::uint8_t flags = read_u8();
-  return read_unicode_chars(cch, (flags & 0x01) != 0);
+  const auto flags = read<UnicodeStringFlags>();
+  return read_unicode_chars(cch, flags.fHighByte != 0);
 }
 
 std::string BiffReader::read_xl_unicode_string() {
   const std::uint16_t cch = read_u16();
-  const std::uint8_t flags = read_u8();
-  return read_unicode_chars(cch, (flags & 0x01) != 0);
+  const auto flags = read<UnicodeStringFlags>();
+  return read_unicode_chars(cch, flags.fHighByte != 0);
 }
 
 std::string BiffReader::read_xl_unicode_rich_extended_string() {
   const std::uint16_t cch = read_u16();
-  const std::uint8_t flags = read_u8();
-  const bool high_byte = (flags & 0x01) != 0;
-  const bool ext_st = (flags & 0x04) != 0;
-  const bool rich_st = (flags & 0x08) != 0;
+  const auto flags = read<UnicodeStringFlags>();
 
-  const std::uint16_t c_run = rich_st ? read_u16() : 0;
-  const std::uint32_t cb_ext_rst = ext_st ? read_u32() : 0;
+  const std::uint16_t c_run = flags.fRichSt != 0 ? read_u16() : 0;
+  const std::uint32_t cb_ext_rst = flags.fExtSt != 0 ? read_u32() : 0;
 
-  std::string result = read_unicode_chars(cch, high_byte);
+  std::string result = read_unicode_chars(cch, flags.fHighByte != 0);
 
   // Drop the formatting runs (FormatRun is 4 bytes) and the phonetic data.
   skip_bytes(static_cast<std::size_t>(c_run) * 4);
@@ -172,24 +168,6 @@ void BiffReader::expect_bof() {
 } // namespace odr::internal::oldms::spreadsheet
 
 namespace odr::internal::oldms {
-
-double spreadsheet::decode_rk(const std::uint32_t rk) {
-  const bool x100 = (rk & 0x01) != 0;
-  const bool is_int = (rk & 0x02) != 0;
-
-  double value;
-  if (is_int) {
-    // 30-bit signed integer in the high bits.
-    value = static_cast<std::int32_t>(rk) >> 2;
-  } else {
-    // High 30 bits are the high 30 bits of an IEEE double, the rest is zero.
-    const std::uint64_t bits = static_cast<std::uint64_t>(rk & 0xFFFFFFFC)
-                               << 32;
-    value = std::bit_cast<double>(bits);
-  }
-
-  return x100 ? value / 100.0 : value;
-}
 
 std::string spreadsheet::format_number(const double value) {
   if (std::isnan(value)) {

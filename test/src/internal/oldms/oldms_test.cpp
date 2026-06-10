@@ -11,6 +11,8 @@
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 
+#include <bit>
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -147,16 +149,21 @@ TEST(OldMs, xls_rich_string_runs_across_continue) {
 }
 
 // RkNumber ([MS-XLS] 2.5.217): bit 0 = fX100, bit 1 = fInt, the rest is a
-// 30-bit signed integer or the high 30 bits of an IEEE double.
+// 30-bit signed integer or the high 30 bits of an IEEE double. Building the
+// inputs from raw on-disk encodings also pins the bit-field layout.
 TEST(OldMs, xls_decode_rk) {
-  using internal::oldms::spreadsheet::decode_rk;
   using internal::oldms::spreadsheet::format_number;
+  using internal::oldms::spreadsheet::RkNumber;
 
-  EXPECT_EQ(decode_rk((1234u << 2) | 0x2), 1234.0);
-  EXPECT_EQ(decode_rk((static_cast<std::uint32_t>(-56) << 2) | 0x2), -56.0);
-  EXPECT_EQ(decode_rk((12345u << 2) | 0x2 | 0x1), 123.45);
+  const auto rk = [](const std::uint32_t raw) {
+    return std::bit_cast<RkNumber>(raw);
+  };
+
+  EXPECT_EQ(rk((1234u << 2) | 0x2).decode(), 1234.0);
+  EXPECT_EQ(rk((static_cast<std::uint32_t>(-56) << 2) | 0x2).decode(), -56.0);
+  EXPECT_EQ(rk((12345u << 2) | 0x2 | 0x1).decode(), 123.45);
   // 0.5 = 0x3FE0000000000000; its high 30 bits survive RK encoding.
-  EXPECT_EQ(decode_rk(0x3FE00000), 0.5);
+  EXPECT_EQ(rk(0x3FE00000).decode(), 0.5);
 
   EXPECT_EQ(format_number(32.0), "32");
   EXPECT_EQ(format_number(123.45), "123.45");

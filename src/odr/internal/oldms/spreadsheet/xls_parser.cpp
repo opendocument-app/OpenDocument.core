@@ -99,7 +99,7 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     case biff_rk: {
       const auto rk = reader.read<RkBody>();
       add_cell(registry, sheet_id, rk.col, rk.rw,
-               format_number(decode_rk(rk.rk)));
+               format_number(rk.rk.decode()));
     } break;
     case biff_mulrk: {
       // rw, colFirst, (colLast - colFirst + 1) RkRecs, colLast
@@ -112,9 +112,9 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
       const std::size_t count = (reader.remaining() - 2) / 6;
       for (std::size_t i = 0; i < count; ++i) {
         reader.read_u16(); // ixfe
-        const std::uint32_t rk = reader.read_u32();
+        const auto rk = reader.read<RkNumber>();
         add_cell(registry, sheet_id, column_first + i, row,
-                 format_number(decode_rk(rk)));
+                 format_number(rk.decode()));
       }
     } break;
     case biff_number: {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bit>
 #include <cstdint>
 #include <stdexcept>
 
@@ -8,6 +9,8 @@ namespace odr::internal::oldms::spreadsheet {
 
 // Filled by copying file bytes straight in (see xls_io), so multi-byte fields
 // use host byte order — correct only on little-endian hosts (see xls_io.hpp).
+// Bit-fields additionally assume LSB-first allocation, which all supported
+// compilers use on little-endian targets (same as the sibling .doc module).
 
 /// BIFF8 record type values handled here ([MS-XLS] 2.3 Record Enumeration).
 enum BiffRecordType : std::uint16_t {
@@ -60,8 +63,9 @@ constexpr std::uint16_t bof_vers_biff8 = 0x0600;
 /// (a ShortXLUnicodeString) follows.
 struct BoundSheet8Fixed {
   std::uint32_t lbPlyPos; //< stream offset of the sheet substream's BOF record
-  std::uint8_t hsState;   //< hidden state in the low 2 bits
-  std::uint8_t dt;        //< sheet type
+  std::uint8_t hsState : 2; //< hidden state
+  std::uint8_t unused : 6;
+  std::uint8_t dt; //< sheet type
 };
 static_assert(sizeof(BoundSheet8Fixed) == 6);
 
@@ -94,13 +98,35 @@ struct LabelSstBody {
 };
 static_assert(sizeof(LabelSstBody) == 10);
 
+/// An RK-encoded number ([MS-XLS] 2.5.217).
+struct RkNumber {
+  std::uint32_t fX100 : 1; //< value is divided by 100
+  std::uint32_t fInt : 1;  //< num is a signed integer, else Xnum high bits
+  std::int32_t num : 30;   //< the integer, or the high 30 bits of a double
+
+  [[nodiscard]] double decode() const {
+    double value;
+    if (fInt != 0) {
+      value = num;
+    } else {
+      // num is the high 30 bits of an IEEE double, the rest is zero. The cast
+      // chain keeps num's 30 bits and shifts them to the top; the two
+      // sign-extension bits fall off the end.
+      const std::uint64_t bits = static_cast<std::uint64_t>(num) << 34;
+      value = std::bit_cast<double>(bits);
+    }
+    return fX100 != 0 ? value / 100.0 : value;
+  }
+};
+static_assert(sizeof(RkNumber) == 4);
+
 /// RK record body ([MS-XLS] 2.4.220): rw, col, then an RkRec ([MS-XLS]
 /// 2.5.218) = ixfe + RK-encoded number.
 struct RkBody {
   std::uint16_t rw;
   std::uint16_t col;
   std::uint16_t ixfe;
-  std::uint32_t rk;
+  RkNumber rk;
 };
 static_assert(sizeof(RkBody) == 10);
 
@@ -150,11 +176,17 @@ struct FormulaValue {
 static_assert(sizeof(FormulaValue) == 8);
 
 /// Fixed part of the Formula record body ([MS-XLS] 2.4.127); the parsed
-/// formula expression follows and is skipped.
+/// formula expression follows and is skipped. The flag bits are not consumed.
 struct FormulaFixed {
   CellRef cell;
   FormulaValue val;
-  std::uint16_t flags;
+  std::uint16_t fAlwaysCalc : 1;
+  std::uint16_t reserved1 : 1;
+  std::uint16_t fFill : 1;
+  std::uint16_t fShrFmla : 1;
+  std::uint16_t reserved2 : 1;
+  std::uint16_t fClearErrors : 1;
+  std::uint16_t reserved3 : 10;
   std::uint32_t chn;
 };
 static_assert(sizeof(FormulaFixed) == 20);
@@ -167,6 +199,18 @@ struct SstHead {
   std::int32_t cstUnique;
 };
 static_assert(sizeof(SstHead) == 8);
+
+/// Option flags byte of the XLUnicodeString family ([MS-XLS] 2.5.240/293/294).
+/// fExtSt/fRichSt exist only in the rich extended variant; plain strings have
+/// those bits reserved as zero.
+struct UnicodeStringFlags {
+  std::uint8_t fHighByte : 1; //< 2 bytes per character (UTF-16LE), else 1
+  std::uint8_t reserved : 1;
+  std::uint8_t fExtSt : 1;  //< phonetic data follows the characters
+  std::uint8_t fRichSt : 1; //< formatting runs follow the characters
+  std::uint8_t unused : 4;
+};
+static_assert(sizeof(UnicodeStringFlags) == 1);
 
 #pragma pack(pop)
 
