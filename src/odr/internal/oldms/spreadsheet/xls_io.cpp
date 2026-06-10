@@ -180,8 +180,7 @@ double spreadsheet::decode_rk(const std::uint32_t rk) {
   double value;
   if (is_int) {
     // 30-bit signed integer in the high bits.
-    const std::uint64_t bits = static_cast<std::uint64_t>(rk) >> 2;
-    value = std::bit_cast<double>(bits);
+    value = static_cast<std::int32_t>(rk) >> 2;
   } else {
     // High 30 bits are the high 30 bits of an IEEE double, the rest is zero.
     const std::uint64_t bits = static_cast<std::uint64_t>(rk & 0xFFFFFFFC)
