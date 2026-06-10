@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <stdexcept>
 
 namespace odr::internal::oldms::spreadsheet {
 
