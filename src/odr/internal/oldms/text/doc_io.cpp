@@ -5,6 +5,7 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 
 namespace odr::internal::oldms::text {
