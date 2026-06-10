@@ -28,6 +28,14 @@ enum BiffRecordType : std::uint16_t {
   biff_bof = 0x0809,        //< [MS-XLS] 2.4.21
 };
 
+/// FormulaValue type discriminator when fExprO == 0xFFFF ([MS-XLS] 2.5.133).
+enum FormulaValueType : std::uint8_t {
+  formula_value_string = 0x00, //< value follows in a String record
+  formula_value_boolean = 0x01,
+  formula_value_error = 0x02,
+  formula_value_blank = 0x03,
+};
+
 #pragma pack(push, 1)
 
 /// Every record is `type, size, byte data[size]` ([MS-XLS] 2.1.4).
@@ -111,12 +119,32 @@ struct BoolErrBody {
 static_assert(sizeof(BoolErrBody) == 8);
 
 /// FormulaValue ([MS-XLS] 2.5.133): the 8 bytes are an Xnum double unless
-/// fExprO == 0xFFFF, then bytes[0] is the value type (0 string in a following
-/// String record, 1 boolean, 2 error, 3 blank) and bytes[2] the bool/error
-/// value.
+/// fExprO == 0xFFFF, then bytes[0] is a FormulaValueType and bytes[2] the
+/// bool/error value.
 struct FormulaValue {
   std::array<std::uint8_t, 6> bytes;
   std::uint16_t fExprO;
+
+  [[nodiscard]] bool is_xnum() const { return fExprO != 0xFFFF; }
+  [[nodiscard]] double as_xnum() const {
+    if (!is_xnum()) {
+      throw std::runtime_error("xls: formula value is not an Xnum");
+    }
+    return std::bit_cast<double>(*this);
+  }
+  [[nodiscard]] FormulaValueType type() const {
+    if (is_xnum()) {
+      throw std::runtime_error("xls: formula value is an Xnum, not a type");
+    }
+    return static_cast<FormulaValueType>(bytes[0]);
+  }
+  [[nodiscard]] std::uint8_t bool_err_value() const {
+    if (is_xnum()) {
+      throw std::runtime_error(
+          "xls: formula value is an Xnum, not a bool/error");
+    }
+    return bytes[2];
+  }
 };
 static_assert(sizeof(FormulaValue) == 8);
 

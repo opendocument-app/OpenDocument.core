@@ -137,27 +137,27 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     case biff_formula: {
       const auto formula = reader.read<FormulaFixed>();
       const TablePosition position(formula.cell.col, formula.cell.rw);
-      if (formula.val.fExprO != 0xFFFF) {
-        double value;
-        static_assert(sizeof(formula.val) == sizeof(value));
-        std::memcpy(&value, &formula.val, sizeof(value));
+      if (formula.val.is_xnum()) {
+        const double value = formula.val.as_xnum();
         add_cell(registry, sheet_id, position.column, position.row,
                  format_number(value));
       } else {
-        switch (formula.val.bytes[0]) {
-        case 0x00: // string value in the following String record
+        switch (formula.val.type()) {
+        case formula_value_string:
           pending_string_cell = position;
           break;
-        case 0x01: // boolean
+        case formula_value_boolean:
           add_cell(registry, sheet_id, position.column, position.row,
-                   formula.val.bytes[2] != 0 ? "TRUE" : "FALSE");
+                   formula.val.bool_err_value() != 0 ? "TRUE" : "FALSE");
           break;
-        case 0x02: // error
+        case formula_value_error:
           add_cell(registry, sheet_id, position.column, position.row,
-                   error_code_string(formula.val.bytes[2]));
+                   error_code_string(formula.val.bool_err_value()));
           break;
-        default: // 0x03 blank string
+        case formula_value_blank:
           break;
+        default:
+          throw std::runtime_error("xls: unknown formula value type");
         }
       }
     } break;
