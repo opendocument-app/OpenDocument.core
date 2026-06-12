@@ -39,6 +39,7 @@ add_executable(odr_test
 
         "src/internal/pdf/pdf_document_parser.cpp"
         "src/internal/pdf/pdf_file_parser.cpp"
+        "src/internal/pdf/pdf_filter.cpp"
 
         "src/internal/svm/svm_test.cpp"
 

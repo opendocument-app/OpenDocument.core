@@ -9,6 +9,11 @@
 
 namespace odr::internal::oldms::text {
 
+// Filled by copying file bytes straight in (see doc_io), so multi-byte fields
+// use host byte order — correct only on little-endian hosts. Bit-fields
+// additionally assume LSB-first allocation, which all supported compilers use
+// on little-endian targets (shared oldms/ assumption).
+
 enum NFibValues : std::uint16_t {
   nFib97 = 0x00C1,
   nFib2000 = 0x00D9,

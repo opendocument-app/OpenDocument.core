@@ -1,5 +1,4 @@
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -52,12 +51,11 @@ TEST(DocumentParser, foo) {
   }
 
   Page *first_page = ordered_pages.front();
-  std::string stream;
+  std::string first_page_content;
   for (const auto &content_reference : first_page->contents_reference) {
-    IndirectObject page_contents_object = parser.read_object(content_reference);
-    stream += parser.read_object_stream(page_contents_object);
+    first_page_content += parser.read_decoded_stream(content_reference);
+    first_page_content += '\n';
   }
-  std::string first_page_content = crypto::util::zlib_inflate(stream);
 
   std::istringstream ss(first_page_content);
   GraphicsOperatorParser parser2(ss);

@@ -4,7 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
-#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
@@ -118,12 +117,9 @@ public:
 
       std::string stream;
       for (const auto &content_reference : page->contents_reference) {
-        pdf::IndirectObject page_contents_object =
-            parser.read_object(content_reference);
-        std::string page_content =
-            parser.read_object_stream(page_contents_object);
-        page_content = crypto::util::zlib_inflate(page_content);
-        stream += page_content;
+        // streams of one page join at token boundaries (ISO 32000-1 7.7.3.3)
+        stream += parser.read_decoded_stream(content_reference);
+        stream += '\n';
       }
 
       std::istringstream ss(stream);

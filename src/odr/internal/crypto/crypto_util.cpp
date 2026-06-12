@@ -204,4 +204,13 @@ std::string util::zlib_inflate(const std::string &input) {
   return result;
 }
 
+std::string util::zlib_deflate(const std::string &input) {
+  std::string out;
+  CryptoPP::ZlibCompressor compressor(new CryptoPP::StringSink(out));
+  compressor.Put(reinterpret_cast<const CryptoPP::byte *>(input.data()),
+                 input.size());
+  compressor.MessageEnd();
+  return out;
+}
+
 } // namespace odr::internal::crypto
