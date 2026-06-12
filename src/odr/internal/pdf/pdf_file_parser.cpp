@@ -23,9 +23,10 @@ IndirectObject FileParser::read_indirect_object() {
   m_parser.skip_whitespace();
   result.reference.gen = m_parser.read_unsigned_integer();
   m_parser.skip_whitespace();
-  if (const std::string line = m_parser.read_line(); line != "obj") {
-    throw std::runtime_error("expected obj");
-  }
+  // `obj` is not necessarily followed by a newline; some producers keep the
+  // object on the same line
+  m_parser.expect_characters("obj");
+  m_parser.skip_whitespace();
 
   result.object = m_parser.read_object();
   m_parser.skip_whitespace();
@@ -81,15 +82,16 @@ Xref FileParser::read_xref() {
     m_parser.skip_line();
 
     for (std::uint32_t i = 0; i < entry_count; ++i) {
-      Xref::Entry entry;
-
-      entry.position = m_parser.read_unsigned_integer();
+      const std::uint32_t field1 = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
-      const std::uint64_t generation = m_parser.read_unsigned_integer();
+      const std::uint32_t field2 = m_parser.read_unsigned_integer();
       m_parser.skip_whitespace();
-      entry.in_use = m_parser.read_line().at(0) == 'n';
+      const bool in_use = m_parser.read_line().at(0) == 'n';
 
-      result.table.emplace(ObjectReference(first_id + i, generation), entry);
+      const Xref::Entry entry =
+          in_use ? Xref::Entry(Xref::UsedEntry{field1})
+                 : Xref::Entry(Xref::FreeEntry{field1, field2});
+      result.table.emplace(ObjectReference(first_id + i, field2), entry);
     }
   }
 }

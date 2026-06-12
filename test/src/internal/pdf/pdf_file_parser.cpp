@@ -105,23 +105,25 @@ TEST(FileParser, bar) {
     }
   }
 
-  std::cout << "xref" << std::endl;
+  EXPECT_FALSE(xref.table.empty());
   for (const auto &[ref, entry] : xref.table) {
-    std::cout << ref << " " << entry.position << " " << entry.in_use
-              << std::endl;
+    if (ref.id == 0) {
+      EXPECT_TRUE(entry.is_free());
+    } else {
+      EXPECT_TRUE(entry.is_used());
+      EXPECT_GT(entry.as_used().position, 0);
+    }
   }
 
-  std::cout << "trailer" << std::endl;
-  for (const auto &key : trailer | std::views::keys) {
-    std::cout << key << std::endl;
-  }
+  ASSERT_TRUE(trailer.has_key("Root"));
 
   const ObjectReference root_ref = trailer["Root"].as_reference();
-  const std::uint32_t root_pos = xref.table.at(root_ref).position;
+  const std::uint32_t root_pos = xref.table.at(root_ref).as_used().position;
   parser.in().seekg(root_pos);
   IndirectObject root = parser.read_indirect_object();
-  std::cout << "root" << std::endl;
+  EXPECT_EQ(root.reference.id, root_ref.id);
+  EXPECT_EQ(root.reference.gen, root_ref.gen);
   const ObjectReference root_pages_ref =
       root.object.as_dictionary()["Pages"].as_reference();
-  std::cout << root_pages_ref.id << " " << root_pages_ref.gen << std::endl;
+  EXPECT_TRUE(xref.table.contains(root_pages_ref));
 }

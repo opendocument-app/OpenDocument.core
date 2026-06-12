@@ -6,6 +6,11 @@
 #include <iosfwd>
 #include <map>
 #include <memory>
+#include <utility>
+
+namespace odr {
+class Logger;
+}
 
 namespace odr::internal::pdf {
 
@@ -14,6 +19,7 @@ struct Document;
 class DocumentParser {
 public:
   explicit DocumentParser(std::istream &);
+  DocumentParser(std::istream &, Logger &logger);
 
   [[nodiscard]] std::istream &in();
   [[nodiscard]] FileParser &parser();
@@ -35,9 +41,18 @@ public:
   std::unique_ptr<Document> parse_document();
 
 private:
+  /// Read one cross-reference section (classic table or cross-reference
+  /// stream, ISO 32000-1 7.5.4 / 7.5.8) at `position`. The returned
+  /// dictionary is the trailer dictionary (the stream dictionary doubles as
+  /// one for cross-reference streams).
+  std::pair<Xref, Dictionary> read_xref_section(std::uint32_t position);
+  ObjectStream &load_object_stream(std::uint32_t stream_id);
+
   FileParser m_parser;
+  Logger *m_logger;
   Xref m_xref;
   std::map<ObjectReference, IndirectObject> m_objects;
+  std::map<std::uint32_t, ObjectStream> m_object_streams;
 };
 
 } // namespace odr::internal::pdf
