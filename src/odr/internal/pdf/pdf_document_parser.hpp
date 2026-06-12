@@ -22,6 +22,9 @@ public:
   const IndirectObject &read_object(const ObjectReference &reference);
   std::string read_object_stream(const ObjectReference &reference);
   std::string read_object_stream(const IndirectObject &object);
+  /// `read_object_stream` plus the `/Filter` chain (image codecs throw).
+  std::string read_decoded_stream(const ObjectReference &reference);
+  std::string read_decoded_stream(const IndirectObject &object);
 
   void resolve_object(Object &object);
   void deep_resolve_object(Object &object);

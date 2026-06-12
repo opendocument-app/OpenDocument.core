@@ -1,10 +1,10 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 
-#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
+#include <odr/internal/pdf/pdf_filter.hpp>
 
 #include <ranges>
 #include <sstream>
@@ -28,11 +28,9 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   font->object = Object(dictionary);
 
   if (dictionary.has_key("ToUnicode")) {
-    IndirectObject to_unicode_obj =
-        parser.read_object(dictionary["ToUnicode"].as_reference());
-    std::string stream = parser.read_object_stream(to_unicode_obj);
-    std::string inflate = crypto::util::zlib_inflate(stream);
-    std::istringstream ss(inflate);
+    std::string stream =
+        parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
+    std::istringstream ss(stream);
     CMapParser cmap_parser(ss);
     font->cmap = cmap_parser.parse_cmap();
   }
@@ -204,6 +202,32 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
 
   in().seekg(object.stream_position.value());
   return m_parser.read_stream(static_cast<std::int32_t>(size));
+}
+
+std::string
+DocumentParser::read_decoded_stream(const ObjectReference &reference) {
+  return read_decoded_stream(read_object(reference));
+}
+
+std::string DocumentParser::read_decoded_stream(const IndirectObject &object) {
+  std::string raw = read_object_stream(object);
+
+  const Dictionary &dictionary = object.object.as_dictionary();
+  Object filter;
+  Object decode_parms;
+  if (dictionary.has_key("Filter")) {
+    filter = deep_resolve_object_copy(dictionary["Filter"]);
+  }
+  if (dictionary.has_key("DecodeParms")) {
+    decode_parms = deep_resolve_object_copy(dictionary["DecodeParms"]);
+  }
+
+  DecodeResult result = decode(filter, decode_parms, std::move(raw));
+  if (result.stopped_at_filter.has_value()) {
+    throw std::runtime_error("unexpected image filter: " +
+                             *result.stopped_at_filter);
+  }
+  return std::move(result.data);
 }
 
 std::unique_ptr<Document> DocumentParser::parse_document() {
