@@ -260,7 +260,7 @@ std::string pdf::ascii_hex_decode(const std::string &input) {
   std::string result;
   result.reserve(input.size() / 2);
 
-  std::optional<std::uint8_t> first = 0;
+  std::optional<std::uint8_t> first;
   for (const char c : input) {
     if (ObjectParser::is_whitespace(c)) {
       continue;
