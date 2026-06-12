@@ -32,5 +32,6 @@ std::string inflate(const std::string &input);
 std::size_t padding(const std::string &input);
 
 std::string zlib_inflate(const std::string &input);
+std::string zlib_deflate(const std::string &input);
 
 } // namespace odr::internal::crypto::util

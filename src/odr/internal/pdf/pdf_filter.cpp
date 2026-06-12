@@ -1,23 +1,17 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
 
 #include <algorithm>
-#include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
 #include <vector>
 
 namespace odr::internal::pdf {
-
 namespace {
 
-bool is_whitespace(const char c) {
-  return c == '\0' || c == '\t' || c == '\n' || c == '\f' || c == '\r' ||
-         c == ' ';
-}
-
-int hex_value(const char c) {
+std::uint8_t hex_value(const char c) {
   if (c >= '0' && c <= '9') {
     return c - '0';
   }
@@ -27,7 +21,7 @@ int hex_value(const char c) {
   if (c >= 'a' && c <= 'f') {
     return c - 'a' + 10;
   }
-  return -1;
+  throw std::runtime_error("invalid character in ASCIIHexDecode");
 }
 
 /// Inline-image abbreviations are accepted for regular streams, too; real
@@ -113,10 +107,121 @@ std::string apply_filter(const std::string &name, const Object &parms,
   throw std::runtime_error("unknown stream filter: " + name);
 }
 
-} // namespace
+std::string apply_tiff_predictor(std::string data, const Integer colors,
+                                 const Integer bits_per_component,
+                                 const Integer columns) {
+  if (bits_per_component != 8 && bits_per_component != 16) {
+    throw std::runtime_error("unsupported TIFF predictor bits per component: " +
+                             std::to_string(bits_per_component));
+  }
 
-DecodeResult decode(const Object &filter, const Object &decode_parms,
-                    std::string data) {
+  const std::size_t component_bytes = bits_per_component / 8;
+  const std::size_t pixel_bytes = colors * component_bytes;
+  const std::size_t row_bytes = columns * pixel_bytes;
+  if (row_bytes == 0 || data.size() % row_bytes != 0) {
+    throw std::runtime_error("TIFF predictor: data not a whole number of rows");
+  }
+
+  for (std::size_t row = 0; row < data.size(); row += row_bytes) {
+    for (std::size_t i = pixel_bytes; i < row_bytes; i += component_bytes) {
+      if (component_bytes == 1) {
+        data[row + i] = static_cast<char>(
+            static_cast<std::uint8_t>(data[row + i]) +
+            static_cast<std::uint8_t>(data[row + i - pixel_bytes]));
+      } else {
+        const std::uint32_t left =
+            (static_cast<std::uint8_t>(data[row + i - pixel_bytes]) << 8) |
+            static_cast<std::uint8_t>(data[row + i - pixel_bytes + 1]);
+        const std::uint32_t value =
+            (static_cast<std::uint8_t>(data[row + i]) << 8) |
+            static_cast<std::uint8_t>(data[row + i + 1]);
+        const std::uint32_t sum = value + left;
+        data[row + i] = static_cast<char>((sum >> 8) & 0xff);
+        data[row + i + 1] = static_cast<char>(sum & 0xff);
+      }
+    }
+  }
+
+  return data;
+}
+
+std::string apply_png_predictor(const std::string &data, const Integer colors,
+                                const Integer bits_per_component,
+                                const Integer columns) {
+  const std::size_t row_bytes = (columns * colors * bits_per_component + 7) / 8;
+  const std::size_t pixel_bytes =
+      std::max<Integer>(1, colors * bits_per_component / 8);
+  if (row_bytes == 0 || data.size() % (row_bytes + 1) != 0) {
+    throw std::runtime_error("PNG predictor: data not a whole number of rows");
+  }
+
+  std::string result;
+  result.reserve(data.size());
+  std::string up_row(row_bytes, '\0');
+  std::string row(row_bytes, '\0');
+
+  for (std::size_t in = 0; in < data.size(); in += row_bytes + 1) {
+    const auto tag = static_cast<std::uint8_t>(data[in]);
+    for (std::size_t i = 0; i < row_bytes; ++i) {
+      const auto raw = static_cast<std::uint8_t>(data[in + 1 + i]);
+      const std::uint8_t left =
+          i >= pixel_bytes ? static_cast<std::uint8_t>(row[i - pixel_bytes])
+                           : 0;
+      const auto up = static_cast<std::uint8_t>(up_row[i]);
+      const std::uint8_t up_left =
+          i >= pixel_bytes ? static_cast<std::uint8_t>(up_row[i - pixel_bytes])
+                           : 0;
+
+      std::uint8_t value;
+      switch (tag) {
+      case 0: // None
+        value = raw;
+        break;
+      case 1: // Sub
+        value = raw + left;
+        break;
+      case 2: // Up
+        value = raw + up;
+        break;
+      case 3: // Average
+        value = raw + static_cast<std::uint8_t>((left + up) / 2);
+        break;
+      case 4: { // Paeth
+        const std::int32_t p = left + up - up_left;
+        const std::int32_t pa = std::abs(p - left);
+        const std::int32_t pb = std::abs(p - up);
+        const std::int32_t pc = std::abs(p - up_left);
+        std::uint8_t predicted;
+        if (pa <= pb && pa <= pc) {
+          predicted = left;
+        } else if (pb <= pc) {
+          predicted = up;
+        } else {
+          predicted = up_left;
+        }
+        value = raw + predicted;
+        break;
+      }
+      default:
+        throw std::runtime_error("PNG predictor: unknown row tag " +
+                                 std::to_string(tag));
+      }
+      row[i] = static_cast<char>(value);
+    }
+    result += row;
+    std::swap(up_row, row);
+  }
+
+  return result;
+}
+
+} // namespace
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
+                              std::string data) {
   DecodeResult result;
 
   std::vector<Object> filters;
@@ -151,44 +256,39 @@ DecodeResult decode(const Object &filter, const Object &decode_parms,
   return result;
 }
 
-std::string ascii_hex_decode(const std::string &input) {
+std::string pdf::ascii_hex_decode(const std::string &input) {
   std::string result;
   result.reserve(input.size() / 2);
 
-  bool have_first = false;
-  int first = 0;
+  std::optional<std::uint8_t> first = 0;
   for (const char c : input) {
-    if (is_whitespace(c)) {
+    if (ObjectParser::is_whitespace(c)) {
       continue;
     }
     if (c == '>') {
       break;
     }
-    const int value = hex_value(c);
-    if (value < 0) {
-      throw std::runtime_error("invalid character in ASCIIHexDecode");
-    }
-    if (have_first) {
-      result.push_back(static_cast<char>((first << 4) | value));
-      have_first = false;
+    const std::uint8_t value = hex_value(c);
+    if (first.has_value()) {
+      result.push_back(static_cast<char>((*first << 4) | value));
+      first.reset();
     } else {
       first = value;
-      have_first = true;
     }
   }
-  if (have_first) {
+  if (first.has_value()) {
     // odd number of digits: behave as if a 0 followed (7.4.2)
-    result.push_back(static_cast<char>(first << 4));
+    result.push_back(static_cast<char>(*first << 4));
   }
 
   return result;
 }
 
-std::string ascii85_decode(const std::string &input) {
+std::string pdf::ascii85_decode(const std::string &input) {
   std::string result;
   result.reserve(input.size() * 4 / 5);
 
-  std::uint32_t digits[5];
+  std::array<std::uint32_t, 5> digits{};
   std::size_t n = 0;
 
   const auto flush = [&](const std::size_t count) {
@@ -207,9 +307,8 @@ std::string ascii85_decode(const std::string &input) {
     }
   };
 
-  for (std::size_t i = 0; i < input.size(); ++i) {
-    const char c = input[i];
-    if (is_whitespace(c)) {
+  for (const char c : input) {
+    if (ObjectParser::is_whitespace(c)) {
       continue;
     }
     if (c == 'z') {
@@ -241,7 +340,8 @@ std::string ascii85_decode(const std::string &input) {
   return result;
 }
 
-std::string lzw_decode(const std::string &input, const Integer early_change) {
+std::string pdf::lzw_decode(const std::string &input,
+                            const Integer early_change) {
   std::string result;
 
   std::vector<std::string> table; // codes 258 and up
@@ -256,7 +356,7 @@ std::string lzw_decode(const std::string &input, const Integer early_change) {
     }
     std::uint32_t code = 0;
     for (std::uint32_t i = 0; i < width; ++i, ++bit_position) {
-      const auto byte = static_cast<unsigned char>(input[bit_position >> 3]);
+      const auto byte = static_cast<std::uint8_t>(input[bit_position >> 3]);
       code = (code << 1) | ((byte >> (7 - (bit_position & 7))) & 1);
     }
     return code;
@@ -314,7 +414,7 @@ std::string run_length_decode(const std::string &input) {
 
   std::size_t i = 0;
   while (i < input.size()) {
-    const auto length = static_cast<unsigned char>(input[i++]);
+    const auto length = static_cast<std::uint8_t>(input[i++]);
     if (length == 128) {
       break;
     }
@@ -335,122 +435,10 @@ std::string run_length_decode(const std::string &input) {
   return result;
 }
 
-namespace {
-
-std::string apply_tiff_predictor(std::string data, const Integer colors,
+std::string pdf::apply_predictor(std::string data, const Integer predictor,
+                                 const Integer colors,
                                  const Integer bits_per_component,
                                  const Integer columns) {
-  if (bits_per_component != 8 && bits_per_component != 16) {
-    throw std::runtime_error("unsupported TIFF predictor bits per component: " +
-                             std::to_string(bits_per_component));
-  }
-
-  const std::size_t component_bytes = bits_per_component / 8;
-  const std::size_t pixel_bytes = colors * component_bytes;
-  const std::size_t row_bytes = columns * pixel_bytes;
-  if (row_bytes == 0 || data.size() % row_bytes != 0) {
-    throw std::runtime_error("TIFF predictor: data not a whole number of rows");
-  }
-
-  for (std::size_t row = 0; row < data.size(); row += row_bytes) {
-    for (std::size_t i = pixel_bytes; i < row_bytes; i += component_bytes) {
-      if (component_bytes == 1) {
-        data[row + i] = static_cast<char>(
-            static_cast<unsigned char>(data[row + i]) +
-            static_cast<unsigned char>(data[row + i - pixel_bytes]));
-      } else {
-        const std::uint32_t left =
-            (static_cast<unsigned char>(data[row + i - pixel_bytes]) << 8) |
-            static_cast<unsigned char>(data[row + i - pixel_bytes + 1]);
-        const std::uint32_t value =
-            (static_cast<unsigned char>(data[row + i]) << 8) |
-            static_cast<unsigned char>(data[row + i + 1]);
-        const std::uint32_t sum = value + left;
-        data[row + i] = static_cast<char>((sum >> 8) & 0xff);
-        data[row + i + 1] = static_cast<char>(sum & 0xff);
-      }
-    }
-  }
-
-  return data;
-}
-
-std::string apply_png_predictor(const std::string &data, const Integer colors,
-                                const Integer bits_per_component,
-                                const Integer columns) {
-  const std::size_t row_bytes = (columns * colors * bits_per_component + 7) / 8;
-  const std::size_t pixel_bytes =
-      std::max<Integer>(1, colors * bits_per_component / 8);
-  if (row_bytes == 0 || data.size() % (row_bytes + 1) != 0) {
-    throw std::runtime_error("PNG predictor: data not a whole number of rows");
-  }
-
-  std::string result;
-  result.reserve(data.size());
-  std::string up_row(row_bytes, '\0');
-  std::string row(row_bytes, '\0');
-
-  for (std::size_t in = 0; in < data.size(); in += row_bytes + 1) {
-    const auto tag = static_cast<unsigned char>(data[in]);
-    for (std::size_t i = 0; i < row_bytes; ++i) {
-      const auto raw = static_cast<unsigned char>(data[in + 1 + i]);
-      const unsigned char left =
-          i >= pixel_bytes ? static_cast<unsigned char>(row[i - pixel_bytes])
-                           : 0;
-      const auto up = static_cast<unsigned char>(up_row[i]);
-      const unsigned char up_left =
-          i >= pixel_bytes ? static_cast<unsigned char>(up_row[i - pixel_bytes])
-                           : 0;
-
-      unsigned char value;
-      switch (tag) {
-      case 0: // None
-        value = raw;
-        break;
-      case 1: // Sub
-        value = raw + left;
-        break;
-      case 2: // Up
-        value = raw + up;
-        break;
-      case 3: // Average
-        value = raw + static_cast<unsigned char>((left + up) / 2);
-        break;
-      case 4: { // Paeth
-        const int p = left + up - up_left;
-        const int pa = std::abs(p - left);
-        const int pb = std::abs(p - up);
-        const int pc = std::abs(p - up_left);
-        unsigned char predicted;
-        if (pa <= pb && pa <= pc) {
-          predicted = left;
-        } else if (pb <= pc) {
-          predicted = up;
-        } else {
-          predicted = up_left;
-        }
-        value = raw + predicted;
-        break;
-      }
-      default:
-        throw std::runtime_error("PNG predictor: unknown row tag " +
-                                 std::to_string(tag));
-      }
-      row[i] = static_cast<char>(value);
-    }
-    result += row;
-    std::swap(up_row, row);
-  }
-
-  return result;
-}
-
-} // namespace
-
-std::string apply_predictor(std::string data, const Integer predictor,
-                            const Integer colors,
-                            const Integer bits_per_component,
-                            const Integer columns) {
   if (predictor <= 1) {
     return data;
   }
@@ -464,4 +452,4 @@ std::string apply_predictor(std::string data, const Integer predictor,
   throw std::runtime_error("unknown predictor: " + std::to_string(predictor));
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

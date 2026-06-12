@@ -1,26 +1,17 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
+
+#include "odr/internal/crypto/crypto_util.hpp"
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <stdexcept>
 #include <string>
 
-#include <cryptopp/filters.h>
-#include <cryptopp/zlib.h>
-
 #include <gtest/gtest.h>
 
 using namespace odr::internal::pdf;
+using namespace odr::internal::crypto::util;
 
 namespace {
-
-std::string zlib_deflate(const std::string &in) {
-  std::string out;
-  CryptoPP::ZlibCompressor compressor(new CryptoPP::StringSink(out));
-  compressor.Put(reinterpret_cast<const CryptoPP::byte *>(in.data()),
-                 in.size());
-  compressor.MessageEnd();
-  return out;
-}
 
 Object name(const std::string &string) { return Object(Name(string)); }
 
