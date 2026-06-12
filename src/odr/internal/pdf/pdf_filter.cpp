@@ -409,7 +409,7 @@ std::string pdf::lzw_decode(const std::string &input,
   return result;
 }
 
-std::string run_length_decode(const std::string &input) {
+std::string pdf::run_length_decode(const std::string &input) {
   std::string result;
 
   std::size_t i = 0;
