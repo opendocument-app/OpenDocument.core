@@ -256,8 +256,8 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
                                std::optional<Decryptor> decryptor,
                                const Logger &logger)
-    : m_stream(std::move(in)), m_parser(*m_stream),
-      m_decryptor(std::move(decryptor)), m_logger{&logger} {
+    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{&logger},
+      m_decryptor(std::move(decryptor)) {
   auto [xref, trailer] = read_trailer_chain();
   m_xref = std::move(xref);
   m_trailer = std::move(trailer);
