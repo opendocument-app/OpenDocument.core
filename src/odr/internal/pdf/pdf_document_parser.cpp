@@ -100,7 +100,7 @@ struct PageAttributes {
 
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
-                             Document &document, Element *parent,
+                             Document &document, Pages *parent,
                              const PageAttributes &inherited);
 
 Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
@@ -110,7 +110,6 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
-  font->type = Type::font;
   font->object_reference = reference;
   font->object = Object(dictionary);
 
@@ -131,7 +130,6 @@ Resources *parse_resources(DocumentParser &parser, const Object &object,
 
   Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
 
-  resources->type = Type::resources;
   resources->object = Object(dictionary);
 
   if (!dictionary["Font"].is_null()) {
@@ -153,7 +151,6 @@ Annotation *parse_annotation(DocumentParser &parser,
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
-  annotation->type = Type::annotation;
   annotation->object_reference = reference;
   annotation->object = Object(dictionary);
 
@@ -161,17 +158,15 @@ Annotation *parse_annotation(DocumentParser &parser,
 }
 
 Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
-                 Document &document, Element *parent,
-                 PageAttributes attributes) {
+                 Document &document, Pages *parent, PageAttributes attributes) {
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
-  page->type = Type::page;
   page->object_reference = reference;
   page->object = Object(dictionary);
-  page->parent = dynamic_cast<Pages *>(parent);
+  page->parent = parent;
 
   // the page overlays its own inheritable entries, then the accumulated
   // attributes are resolved into the page with Table-30 defaults (7.7.3.4)
@@ -207,7 +202,6 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
 
-  pages->type = Type::pages;
   pages->object_reference = reference;
   pages->object = Object(dictionary);
   pages->count = dictionary["Count"].as_integer();
@@ -225,7 +219,7 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
 
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
-                             Document &document, Element *parent,
+                             Document &document, Pages *parent,
                              const PageAttributes &inherited) {
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
@@ -250,7 +244,6 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
   const Dictionary &dictionary = object.object.as_dictionary();
   const ObjectReference &pages_reference = dictionary["Pages"].as_reference();
 
-  catalog->type = Type::catalog;
   catalog->object_reference = reference;
   catalog->object = Object(dictionary);
   catalog->pages = parse_pages(parser, pages_reference, document, {});
