@@ -34,8 +34,8 @@ public:
   std::string bumpnc(std::size_t n);
   void ungetc();
 
-  static int_type octet_char_to_int(char_type c);
-  static int_type hex_char_to_int(char_type c);
+  static std::uint8_t octet_char_to_int(char_type c);
+  static std::uint8_t hex_char_to_int(char_type c);
   static char_type two_hex_to_char(char_type first, char_type second);
   static char_type three_octet_to_char(char_type first, char_type second,
                                        char_type third);
