@@ -9,8 +9,14 @@ namespace odr::internal::crypto::util {
 std::string base64_encode(const std::string &);
 std::string base64_decode(const std::string &);
 
+std::string md5(const std::string &);
 std::string sha1(const std::string &);
 std::string sha256(const std::string &);
+std::string sha384(const std::string &);
+std::string sha512(const std::string &);
+
+/// RC4 stream cipher; symmetric, so the same call encrypts and decrypts.
+std::string rc4(const std::string &key, const std::string &input);
 
 std::string pbkdf2(std::size_t key_size, const std::string &start_key,
                    const std::string &salt, std::size_t iteration_count);

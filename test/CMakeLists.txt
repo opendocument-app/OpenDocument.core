@@ -30,6 +30,8 @@ add_executable(odr_test
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_range_test.cpp"
 
+        "src/internal/crypto/crypto_util_test.cpp"
+
         "src/internal/csv/csv_file_test.cpp"
         "src/internal/csv/csv_test.cpp"
 

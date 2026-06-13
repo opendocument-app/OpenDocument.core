@@ -2,12 +2,18 @@
 
 #include <cstdint>
 
+// RC4 and MD5 are retained in Crypto++ only for legacy formats (here: the PDF
+// standard security handler, R 2-4); opt in to the Weak:: namespace.
+#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
+
 #include <cryptopp/aes.h>
+#include <cryptopp/arc4.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/blowfish.h>
 #include <cryptopp/des.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/gcm.h>
+#include <cryptopp/md5.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
@@ -36,6 +42,13 @@ std::string util::base64_decode(const std::string &in) {
   return out;
 }
 
+std::string util::md5(const std::string &in) {
+  byte out[CryptoPP::Weak::MD5::DIGESTSIZE];
+  CryptoPP::Weak::MD5().CalculateDigest(
+      out, reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out), CryptoPP::Weak::MD5::DIGESTSIZE};
+}
+
 std::string util::sha1(const std::string &in) {
   byte out[CryptoPP::SHA1::DIGESTSIZE];
   CryptoPP::SHA1().CalculateDigest(
@@ -48,6 +61,29 @@ std::string util::sha256(const std::string &in) {
   CryptoPP::SHA256().CalculateDigest(
       out, reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out), CryptoPP::SHA256::DIGESTSIZE};
+}
+
+std::string util::sha384(const std::string &in) {
+  byte out[CryptoPP::SHA384::DIGESTSIZE];
+  CryptoPP::SHA384().CalculateDigest(
+      out, reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out), CryptoPP::SHA384::DIGESTSIZE};
+}
+
+std::string util::sha512(const std::string &in) {
+  byte out[CryptoPP::SHA512::DIGESTSIZE];
+  CryptoPP::SHA512().CalculateDigest(
+      out, reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out), CryptoPP::SHA512::DIGESTSIZE};
+}
+
+std::string util::rc4(const std::string &key, const std::string &input) {
+  std::string result(input.size(), '\0');
+  CryptoPP::Weak::ARC4 rc4(reinterpret_cast<const byte *>(key.data()),
+                           key.size());
+  rc4.ProcessData(reinterpret_cast<byte *>(result.data()),
+                  reinterpret_cast<const byte *>(input.data()), input.size());
+  return result;
 }
 
 std::string util::pbkdf2(const std::size_t key_size,
