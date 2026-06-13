@@ -77,8 +77,7 @@ public:
 
     std::unique_ptr<pdf::Document> document = parser.parse_document();
 
-    const std::vector<pdf::Page *> pages =
-        pdf::ordered_pages(*document->catalog->pages);
+    const std::vector<pdf::Page *> pages = document->collect_pages();
 
     out.write_begin();
     out.write_header_begin();

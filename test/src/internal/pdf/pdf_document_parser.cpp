@@ -79,9 +79,9 @@ void check_fixture_parses(const std::string &short_path) {
   const auto in = file->stream();
   DocumentParser parser(*in);
 
-  std::unique_ptr<Document> document = parser.parse_document();
+  const std::unique_ptr<Document> document = parser.parse_document();
 
-  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
+  const std::vector<Page *> pages = document->collect_pages();
 
   EXPECT_FALSE(pages.empty());
 
@@ -116,7 +116,7 @@ TEST(DocumentParser, inherited_page_attributes) {
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
   const std::unique_ptr<Document> document = parser.parse_document();
-  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
+  const std::vector<Page *> pages = document->collect_pages();
 
   ASSERT_EQ(pages.size(), 3);
 
@@ -155,7 +155,7 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
   const std::unique_ptr<Document> document = parser.parse_document();
-  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
+  const std::vector<Page *> pages = document->collect_pages();
 
   ASSERT_EQ(pages.size(), 1);
   const Page *page = pages[0];
