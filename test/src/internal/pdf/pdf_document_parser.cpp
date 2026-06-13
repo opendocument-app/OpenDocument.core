@@ -118,22 +118,20 @@ namespace {
 // root carries MediaBox/Resources/Rotate; inner overrides Rotate; page 4
 // overrides MediaBox; page 5 inherits everything; page 6 lives directly under
 // root and supplies no attributes at all (missing-MediaBox lenience path).
-std::vector<Page *>
-parse_inheritance_tree(DocumentParser &parser,
-                       std::unique_ptr<Document> &document) {
-  document = parser.parse_document();
-
-  std::vector<Page *> pages;
+std::vector<const Page *> parse_inheritance_tree(const Document &document) {
+  std::vector<const Page *> pages;
   const std::function<void(const Pages *)> recurse = [&](const Pages *node) {
-    for (Element *kid : node->kids) {
-      if (auto *inner = dynamic_cast<Pages *>(kid); inner != nullptr) {
+    for (const Element *kid : node->kids) {
+      if (const auto *inner = dynamic_cast<const Pages *>(kid);
+          inner != nullptr) {
         recurse(inner);
-      } else if (auto *page = dynamic_cast<Page *>(kid); page != nullptr) {
+      } else if (const auto *page = dynamic_cast<const Page *>(kid);
+                 page != nullptr) {
         pages.push_back(page);
       }
     }
   };
-  recurse(document->catalog->pages);
+  recurse(document.catalog->pages);
   return pages;
 }
 
@@ -156,8 +154,8 @@ TEST(DocumentParser, inherited_page_attributes) {
 
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
-  std::unique_ptr<Document> document;
-  std::vector<Page *> pages = parse_inheritance_tree(parser, document);
+  const std::unique_ptr<Document> document = parser.parse_document();
+  std::vector<const Page *> pages = parse_inheritance_tree(*document);
 
   ASSERT_EQ(pages.size(), 3);
 
@@ -195,8 +193,8 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
 
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
-  std::unique_ptr<Document> document;
-  std::vector<Page *> pages = parse_inheritance_tree(parser, document);
+  const std::unique_ptr<Document> document = parser.parse_document();
+  std::vector<const Page *> pages = parse_inheritance_tree(*document);
 
   ASSERT_EQ(pages.size(), 1);
   const Page *page = pages[0];
