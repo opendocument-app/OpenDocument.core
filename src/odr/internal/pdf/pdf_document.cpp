@@ -11,10 +11,10 @@ namespace {
 template <typename Collection>
 void collect_pages_impl(const Pages &pages, Collection &out) {
   for (Element *kid : pages.kids) {
-    if (auto *inner = dynamic_cast<Pages *>(kid); inner != nullptr) {
-      collect_pages_impl(*inner, out);
-    } else if (auto *page = dynamic_cast<Page *>(kid); page != nullptr) {
-      out.push_back(page);
+    if (kid->is<Pages>()) {
+      collect_pages_impl(kid->as<Pages>(), out);
+    } else if (kid->is<Page>()) {
+      out.push_back(&kid->as<Page>());
     } else {
       throw std::runtime_error("unexpected element in PDF page tree");
     }

@@ -3,6 +3,7 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <concepts>
 #include <unordered_map>
 #include <vector>
 
@@ -14,22 +15,30 @@ struct Annotation;
 struct Resources;
 struct Font;
 
-enum class Type {
-  unknown,
-  catalog,
-  pages,
-  page,
-  annotation,
-  resources,
-  font,
-};
-
 struct Element {
   virtual ~Element() = default;
 
-  Type type{Type::unknown};
   ObjectReference object_reference;
   Object object;
+
+  // Value-semantic discrimination over the element hierarchy, backed by RTTI;
+  // mirrors `Object`'s `is_*`/`as_*` surface. `T` must be a complete derived
+  // type at the call site.
+  template <typename T>
+    requires std::derived_from<T, Element>
+  [[nodiscard]] bool is() const {
+    return dynamic_cast<const T *>(this) != nullptr;
+  }
+  template <typename T>
+    requires std::derived_from<T, Element>
+  [[nodiscard]] T &as() {
+    return dynamic_cast<T &>(*this);
+  }
+  template <typename T>
+    requires std::derived_from<T, Element>
+  [[nodiscard]] const T &as() const {
+    return dynamic_cast<const T &>(*this);
+  }
 };
 
 struct Catalog final : Element {
