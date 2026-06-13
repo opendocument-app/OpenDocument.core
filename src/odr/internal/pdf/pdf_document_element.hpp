@@ -3,7 +3,6 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
-#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
