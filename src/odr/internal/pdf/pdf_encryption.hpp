@@ -37,18 +37,12 @@ public:
   /// Try `password` (UTF-8/PDFDocEncoded bytes) as the user password, then as
   /// the owner password. On success the file key is established and
   /// `authenticated()` becomes true. The empty password is the usual case
-  /// (owner-locked-only files).
+  /// (owner-locked-only files). Once authenticated, the derived key lives only
+  /// inside this object — there is no accessor; callers carry the whole
+  /// authenticated `Decryptor` forward (e.g. from the encryption probe to the
+  /// render parse) rather than the bare key, so the password is never retained.
   bool authenticate(const std::string &password);
   [[nodiscard]] bool authenticated() const;
-
-  /// The file encryption key established by `authenticate` — the opaque token
-  /// that decrypts the document. A caller can stash it and later `set_file_key`
-  /// a fresh decryptor instead of holding on to the password. Precondition:
-  /// `authenticated()`.
-  [[nodiscard]] const std::string &file_key() const { return *m_file_key; }
-  /// Restore the authenticated state from a `file_key()` token, skipping
-  /// password derivation.
-  void set_file_key(std::string key) { m_file_key = std::move(key); }
 
   [[nodiscard]] std::int64_t permissions() const { return m_p; }
 

@@ -11,6 +11,10 @@ namespace odr::internal {
 class AbsPath;
 }
 
+namespace odr::internal::pdf {
+class Decryptor;
+}
+
 namespace odr::internal::abstract {
 class Image;
 class Archive;
@@ -104,12 +108,13 @@ public:
     return "application/pdf";
   }
 
-  /// The derived file encryption key that unlocks this file (`nullopt` when no
+  /// The authenticated decryptor that unlocks this file (`nullptr` when no
   /// decryption is needed), for the HTML service to feed the document parser
-  /// without retaining the user's password.
-  [[nodiscard]] virtual std::optional<std::string>
-  decryption_key() const noexcept {
-    return std::nullopt;
+  /// without retaining the user's password. The derived key stays sealed inside
+  /// the (opaque, PDF-specific) `Decryptor`.
+  [[nodiscard]] virtual std::shared_ptr<const pdf::Decryptor>
+  decryptor() const noexcept {
+    return nullptr;
   }
 };
 

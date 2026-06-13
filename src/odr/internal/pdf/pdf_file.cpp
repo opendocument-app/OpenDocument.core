@@ -4,10 +4,10 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_encryption.hpp>
 
 #include <istream>
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace odr::internal {
@@ -21,9 +21,9 @@ namespace {
 struct ProbeResult {
   bool encrypted{false};
   bool authenticated{true};
-  /// The derived file key when `authenticated` (the token cached in place of
-  /// the password); `nullopt` otherwise.
-  std::optional<std::string> file_key;
+  /// The authenticated decryptor when `authenticated` (carried in place of the
+  /// password); `nullptr` otherwise.
+  std::shared_ptr<const pdf::Decryptor> decryptor;
 };
 
 ProbeResult probe_encryption(const abstract::File &file,
@@ -32,9 +32,9 @@ ProbeResult probe_encryption(const abstract::File &file,
     const std::unique_ptr<std::istream> in = file.stream();
     pdf::DocumentParser parser(*in);
     parser.probe_encryption(password);
-    return {parser.encrypted(), parser.authenticated(), parser.file_key()};
+    return {parser.encrypted(), parser.authenticated(), parser.decryptor()};
   } catch (...) {
-    return {false, true, std::nullopt};
+    return {false, true, nullptr};
   }
 }
 
@@ -50,10 +50,10 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
   if (probe.encrypted) {
     m_file_meta.password_encrypted = !probe.authenticated;
     if (probe.authenticated) {
-      // Owner-locked only: opens with the empty user password. Keep the derived
-      // file key so rendering needs neither the password nor a decrypt() call.
+      // Owner-locked only: opens with the empty user password. Keep the
+      // decryptor so rendering needs neither the password nor a decrypt() call.
       m_encryption_state = EncryptionState::not_encrypted;
-      m_decryption_key = probe.file_key;
+      m_decryptor = probe.decryptor;
     } else {
       m_encryption_state = EncryptionState::encrypted;
     }
@@ -89,8 +89,8 @@ PdfFile::decrypt(const std::string &password) const {
   }
 
   auto decrypted = std::make_shared<PdfFile>(*this);
-  // Cache the derived file key (the token) and drop the password.
-  decrypted->m_decryption_key = probe.file_key;
+  // Carry the authenticated decryptor and drop the password.
+  decrypted->m_decryptor = probe.decryptor;
   decrypted->m_encryption_state = EncryptionState::decrypted;
   decrypted->m_file_meta.password_encrypted = false;
   return decrypted;
@@ -100,8 +100,8 @@ bool PdfFile::is_decodable() const noexcept {
   return m_encryption_state != EncryptionState::encrypted;
 }
 
-std::optional<std::string> PdfFile::decryption_key() const noexcept {
-  return m_decryption_key;
+std::shared_ptr<const pdf::Decryptor> PdfFile::decryptor() const noexcept {
+  return m_decryptor;
 }
 
 } // namespace odr::internal

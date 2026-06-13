@@ -76,10 +76,10 @@ public:
     auto in = m_pdf_file.file().stream();
     pdf::DocumentParser parser(*in, *m_logger);
 
-    const std::optional<std::string> key = m_pdf_file.impl()->decryption_key();
+    // The file carries the authenticated decryptor when it was unlocked, so
+    // rendering needs neither the password nor a fresh derivation.
     std::unique_ptr<pdf::Document> document =
-        key.has_value() ? parser.parse_document_with_key(*key)
-                        : parser.parse_document();
+        parser.parse_document(m_pdf_file.impl()->decryptor());
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 

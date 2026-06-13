@@ -65,10 +65,11 @@ public:
   /// Whether the password supplied so far unlocked the file (true when not
   /// encrypted at all).
   [[nodiscard]] bool authenticated() const;
-  /// The derived file encryption key once a password has authenticated, or
-  /// `nullopt` if the document is not encrypted / not yet unlocked. `PdfFile`
-  /// caches this token so it can re-open the file without the password.
-  [[nodiscard]] std::optional<std::string> file_key() const;
+  /// The authenticated decryptor once a password has unlocked the file, or
+  /// `nullptr` if the document is not encrypted / not yet unlocked. `PdfFile`
+  /// holds onto this so it can re-open the file without the password — the key
+  /// stays sealed inside the `Decryptor`, never exposed as a bare token.
+  [[nodiscard]] std::shared_ptr<const Decryptor> decryptor() const;
 
   /// Walk the trailer chain and set up the decryptor with `password` (the
   /// empty string handles owner-locked files), without parsing the page tree.
@@ -76,10 +77,12 @@ public:
   void probe_encryption(const std::string &password = "");
 
   std::unique_ptr<Document> parse_document(const std::string &password = "");
-  /// As `parse_document`, but unlock with a `file_key()` token rather than a
-  /// password — the standard render path, so the password is never retained.
+  /// As `parse_document`, but unlock with an already-authenticated `Decryptor`
+  /// (from `decryptor()`) rather than a password — the standard render path, so
+  /// the password is never retained. A null `decryptor` parses an unencrypted
+  /// document (and, defensively, retries the empty password if encrypted).
   std::unique_ptr<Document>
-  parse_document_with_key(const std::string &file_key);
+  parse_document(std::shared_ptr<const Decryptor> decryptor);
 
 private:
   /// Read one cross-reference section (classic table or cross-reference
@@ -95,13 +98,15 @@ private:
   /// Parse a page tree into a `Document` once any decryptor is in place.
   std::unique_ptr<Document> build_document(const Dictionary &trailer);
   /// Build the (un-authenticated) decryptor from the trailer `/Encrypt` and
-  /// `/ID` (ISO 32000-1 7.6). Throws if the trailer is not encrypted.
-  void create_decryptor(const Dictionary &trailer);
-  /// Build the decryptor and try `password`.
+  /// `/ID` (ISO 32000-1 7.6), recording the `/Encrypt` reference for the
+  /// self-skip guard. Throws if the trailer is not encrypted.
+  Decryptor create_decryptor(const Dictionary &trailer);
+  /// Build the decryptor, try `password`, and install it as `m_decryptor`.
   void setup_encryption(const Dictionary &trailer, const std::string &password);
-  /// Build the decryptor and unlock it with a known `file_key()` token.
-  void setup_encryption_with_key(const Dictionary &trailer,
-                                 const std::string &file_key);
+  /// Install an already-authenticated `decryptor` (from another parse of this
+  /// file), re-recording the `/Encrypt` reference without reading the dict.
+  void adopt_decryptor(const Dictionary &trailer,
+                       std::shared_ptr<const Decryptor> decryptor);
   /// Decrypt every string leaf of `object` in place with the owning object's
   /// reference (ISO 32000-1 7.6.2). Used on freshly read indirect objects.
   void decrypt_strings(Object &object, const ObjectReference &reference);
@@ -111,7 +116,7 @@ private:
   Xref m_xref;
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<std::uint32_t, ObjectStream> m_object_streams;
-  std::optional<Decryptor> m_decryptor;
+  std::shared_ptr<const Decryptor> m_decryptor;
   std::optional<ObjectReference> m_encrypt_reference;
 };
 

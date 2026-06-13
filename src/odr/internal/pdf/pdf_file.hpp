@@ -2,10 +2,14 @@
 
 #include <odr/internal/abstract/file.hpp>
 
-#include <optional>
+#include <memory>
 #include <string>
 
 namespace odr::internal {
+
+namespace pdf {
+class Decryptor;
+}
 
 class PdfFile final : public abstract::PdfFile {
 public:
@@ -23,18 +27,19 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  /// The derived file key that unlocks this file (`nullopt` for files that open
-  /// without decryption), for the HTML service to feed the document parser.
-  [[nodiscard]] std::optional<std::string>
-  decryption_key() const noexcept override;
+  /// The authenticated decryptor that unlocks this file (`nullptr` for files
+  /// that open without decryption), for the HTML service to feed the document
+  /// parser.
+  [[nodiscard]] std::shared_ptr<const pdf::Decryptor>
+  decryptor() const noexcept override;
 
 private:
   std::shared_ptr<abstract::File> m_file;
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
-  /// The file encryption key derived when the file was unlocked; the user's
-  /// password is never stored. See [[pdf-encryption]] `Decryptor::file_key`.
-  std::optional<std::string> m_decryption_key;
+  /// The decryptor established when the file was unlocked; the user's password
+  /// is never stored, the derived key stays sealed inside the `Decryptor`.
+  std::shared_ptr<const pdf::Decryptor> m_decryptor;
 };
 
 } // namespace odr::internal
