@@ -31,6 +31,12 @@ Integer normalize_rotate(Integer rotate) {
 /// nearest ancestor that carried it (possibly an indirect reference, resolved
 /// lazily at the leaf); a null slot means no ancestor set it.
 struct PageAttributes {
+  /// Default page size used when no `MediaBox` is present anywhere in the
+  /// page tree (US Letter, 612 × 792 pt). The spec requires `MediaBox`, so
+  /// this is a lenience for malformed files. (`Object` is not a literal type,
+  /// hence `static const` rather than `constexpr`.)
+  static const Object default_media_box;
+
   Object resources;
   Object media_box;
   Object crop_box;
@@ -63,9 +69,7 @@ struct PageAttributes {
       ODR_WARNING(parser.logger(),
                   "pdf: page " << reference
                                << " has no /MediaBox, defaulting to US Letter");
-      page.media_box =
-          Object(Array({Object(Integer(0)), Object(Integer(0)),
-                        Object(Integer(612)), Object(Integer(792))}));
+      page.media_box = default_media_box;
     }
 
     page.crop_box = parser.resolve_object_copy(crop_box);
@@ -88,6 +92,10 @@ struct PageAttributes {
     return resources;
   }
 };
+
+const Object PageAttributes::default_media_box =
+    Object(Array({Object(Integer(0)), Object(Integer(0)), Object(Integer(612)),
+                  Object(Integer(792))}));
 
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
