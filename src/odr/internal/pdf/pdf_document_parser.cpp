@@ -35,7 +35,12 @@ struct PageAttributes {
   /// page tree (US Letter, 612 × 792 pt). The spec requires `MediaBox`, so
   /// this is a lenience for malformed files. (`Object` is not a literal type,
   /// hence `static const` rather than `constexpr`.)
-  static const Object default_media_box;
+  static const Object &default_media_box() {
+    static const auto value =
+        Object(Array({Object(Integer(0)), Object(Integer(0)),
+                      Object(Integer(612)), Object(Integer(792))}));
+    return value;
+  }
 
   Object resources;
   Object media_box;
@@ -69,7 +74,7 @@ struct PageAttributes {
       ODR_WARNING(parser.logger(),
                   "pdf: page " << reference
                                << " has no /MediaBox, defaulting to US Letter");
-      page.media_box = default_media_box;
+      page.media_box = default_media_box();
     }
 
     page.crop_box = parser.resolve_object_copy(crop_box);
@@ -93,10 +98,6 @@ struct PageAttributes {
   }
 };
 
-const Object PageAttributes::default_media_box =
-    Object(Array({Object(Integer(0)), Object(Integer(0)), Object(Integer(612)),
-                  Object(Integer(792))}));
-
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document, Element *parent,
@@ -116,7 +117,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   if (dictionary.has_key("ToUnicode")) {
     std::string stream =
         parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
-    std::istringstream ss(stream);
+    std::istringstream ss(std::move(stream));
     CMapParser cmap_parser(ss);
     font->cmap = cmap_parser.parse_cmap();
   }
@@ -175,7 +176,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   // the page overlays its own inheritable entries, then the accumulated
   // attributes are resolved into the page with Table-30 defaults (7.7.3.4)
   attributes.overlay(dictionary);
-  Object resources = attributes.resolve_into(*page, parser, reference);
+  const Object resources = attributes.resolve_into(*page, parser, reference);
   page->resources = parse_resources(parser, resources, document);
 
   if (dictionary["Contents"].is_reference()) {
