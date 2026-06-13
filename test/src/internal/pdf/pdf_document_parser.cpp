@@ -81,24 +81,11 @@ void check_fixture_parses(const std::string &short_path) {
 
   std::unique_ptr<Document> document = parser.parse_document();
 
-  std::vector<Page *> ordered_pages;
-  const std::function<void(Pages * pages)> recurse_pages =
-      [&](const Pages *pages) {
-        for (Element *kid : pages->kids) {
-          if (const auto p = dynamic_cast<Pages *>(kid); p != nullptr) {
-            recurse_pages(p);
-          } else if (auto page = dynamic_cast<Page *>(kid); page != nullptr) {
-            ordered_pages.push_back(page);
-          } else {
-            FAIL() << "unhandled element";
-          }
-        }
-      };
-  recurse_pages(document->catalog->pages);
+  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
 
-  EXPECT_FALSE(ordered_pages.empty());
+  EXPECT_FALSE(pages.empty());
 
-  for (const Page *page : ordered_pages) {
+  for (const Page *page : pages) {
     for (const auto &content_reference : page->contents_reference) {
       EXPECT_FALSE(parser.read_decoded_stream(content_reference).empty());
     }
@@ -110,32 +97,6 @@ void check_fixture_parses(const std::string &short_path) {
 TEST(DocumentParser, classic_xref_fixture) {
   check_fixture_parses("odr-public/pdf/style-various-1.pdf");
 }
-
-namespace {
-
-// Page tree exercising inherited page attributes (ISO 32000-1 7.7.3.3):
-//   Catalog → Pages(root) → Pages(inner) → Page(4), Page(5)
-// root carries MediaBox/Resources/Rotate; inner overrides Rotate; page 4
-// overrides MediaBox; page 5 inherits everything; page 6 lives directly under
-// root and supplies no attributes at all (missing-MediaBox lenience path).
-std::vector<const Page *> parse_inheritance_tree(const Document &document) {
-  std::vector<const Page *> pages;
-  const std::function<void(const Pages *)> recurse = [&](const Pages *node) {
-    for (const Element *kid : node->kids) {
-      if (const auto *inner = dynamic_cast<const Pages *>(kid);
-          inner != nullptr) {
-        recurse(inner);
-      } else if (const auto *page = dynamic_cast<const Page *>(kid);
-                 page != nullptr) {
-        pages.push_back(page);
-      }
-    }
-  };
-  recurse(document.catalog->pages);
-  return pages;
-}
-
-} // namespace
 
 TEST(DocumentParser, inherited_page_attributes) {
   PdfFileBuilder builder;
@@ -155,7 +116,7 @@ TEST(DocumentParser, inherited_page_attributes) {
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
   const std::unique_ptr<Document> document = parser.parse_document();
-  std::vector<const Page *> pages = parse_inheritance_tree(*document);
+  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
 
   ASSERT_EQ(pages.size(), 3);
 
@@ -194,7 +155,7 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
   std::istringstream in(builder.build_classic());
   DocumentParser parser(in);
   const std::unique_ptr<Document> document = parser.parse_document();
-  std::vector<const Page *> pages = parse_inheritance_tree(*document);
+  const std::vector<Page *> pages = ordered_pages(*document->catalog->pages);
 
   ASSERT_EQ(pages.size(), 1);
   const Page *page = pages[0];
