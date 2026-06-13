@@ -1,12 +1,16 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 
+#include <odr/logger.hpp>
+
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
 
+#include <optional>
 #include <ranges>
+#include <set>
 #include <sstream>
 
 namespace odr::internal::pdf {
@@ -163,7 +167,11 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 
 } // namespace
 
-DocumentParser::DocumentParser(std::istream &in) : m_parser(in) {}
+DocumentParser::DocumentParser(std::istream &in)
+    : DocumentParser(in, Logger::null()) {}
+
+DocumentParser::DocumentParser(std::istream &in, Logger &logger)
+    : m_parser(in), m_logger{&logger} {}
 
 std::istream &DocumentParser::in() { return m_parser.in(); }
 
@@ -177,11 +185,61 @@ DocumentParser::read_object(const ObjectReference &reference) {
     return it->second;
   }
 
-  const std::uint32_t position = m_xref.table.at(reference).position;
-  in().seekg(position);
-  IndirectObject object = parser().read_indirect_object();
+  IndirectObject object;
+  object.reference = reference;
+
+  const auto entry_it = m_xref.table.find(reference);
+  if (entry_it == std::end(m_xref.table)) {
+    ODR_WARNING(*m_logger, "pdf: object " << reference
+                                          << " not in cross-reference table, "
+                                             "treating as null");
+  } else if (const Xref::Entry &entry = entry_it->second; entry.is_used()) {
+    in().seekg(entry.as_used().position);
+    object = parser().read_indirect_object();
+  } else if (entry.is_compressed()) {
+    const auto &[stream_id, index] = entry.as_compressed();
+    const ObjectStream &members = load_object_stream(stream_id);
+    if (index >= members.size()) {
+      throw std::runtime_error("object stream member index out of range");
+    }
+    if (members[index].id != reference.id) {
+      ODR_WARNING(*m_logger, "pdf: object stream "
+                                 << stream_id << " member " << index
+                                 << " has id " << members[index].id
+                                 << ", expected " << reference.id);
+    }
+    object.object = members[index].object;
+  } else {
+    ODR_WARNING(*m_logger, "pdf: reference " << reference
+                                             << " to freed object, treating "
+                                                "as null");
+  }
 
   return m_objects.emplace(reference, std::move(object)).first->second;
+}
+
+const ObjectStream &
+DocumentParser::load_object_stream(const std::uint32_t stream_id) {
+  if (const auto it = m_object_streams.find(stream_id);
+      it != std::end(m_object_streams)) {
+    return it->second;
+  }
+
+  const IndirectObject &object = read_object(ObjectReference(stream_id, 0));
+  if (!object.has_stream) {
+    throw std::runtime_error("object stream " + std::to_string(stream_id) +
+                             " has no stream data");
+  }
+  const Dictionary &dictionary = object.object.as_dictionary();
+
+  std::string data = read_decoded_stream(object);
+  const std::uint32_t n = resolve_object_copy(dictionary["N"]).as_integer();
+  const std::uint32_t first =
+      resolve_object_copy(dictionary["First"]).as_integer();
+
+  std::istringstream in(std::move(data));
+  return m_object_streams.emplace(stream_id, parse_object_stream(in, n, first))
+      .first->second;
 }
 
 std::string
@@ -230,34 +288,108 @@ std::string DocumentParser::read_decoded_stream(const IndirectObject &object) {
   return std::move(result.data);
 }
 
+std::pair<Xref, Dictionary>
+DocumentParser::read_xref_section(const std::uint32_t position) {
+  in().clear();
+  in().seekg(position);
+  parser().parser().skip_whitespace();
+
+  if (!parser().parser().peek_number()) {
+    // classic cross-reference table
+    Xref xref = parser().read_xref();
+    parser().parser().skip_whitespace();
+    Trailer trailer = parser().read_trailer();
+    return {std::move(xref), std::move(trailer.dictionary)};
+  }
+
+  // cross-reference stream (ISO 32000-1 7.5.8); its dictionary doubles as
+  // the trailer dictionary
+  IndirectObject object = parser().read_indirect_object();
+  const Dictionary &dictionary = object.object.as_dictionary();
+
+  if (!object.has_stream) {
+    throw std::runtime_error("cross-reference stream has no stream data");
+  }
+  if (!dictionary.has_key("Type") || !dictionary["Type"].is_name() ||
+      dictionary["Type"].as_name() != "XRef") {
+    ODR_WARNING(*m_logger, "pdf: cross-reference stream at "
+                               << position << " is not marked /Type /XRef");
+  }
+
+  // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
+  // cross-reference streams (7.5.8.2), so no reference resolution here.
+  std::string data = read_object_stream(object);
+  DecodeResult decoded = decode(
+      dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
+      dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
+      std::move(data));
+  if (decoded.stopped_at_filter.has_value()) {
+    throw std::runtime_error("unexpected image filter in cross-reference "
+                             "stream: " +
+                             *decoded.stopped_at_filter);
+  }
+
+  const Array &widths = dictionary["W"].as_array();
+  if (widths.size() != 3) {
+    throw std::runtime_error(
+        "expected three field widths in cross-reference stream /W");
+  }
+  const std::array<std::uint32_t, 3> field_widths = {
+      static_cast<std::uint32_t>(widths[0].as_integer()),
+      static_cast<std::uint32_t>(widths[1].as_integer()),
+      static_cast<std::uint32_t>(widths[2].as_integer())};
+
+  std::vector<std::pair<std::uint32_t, std::uint32_t>> subsections;
+  if (dictionary.has_key("Index")) {
+    const Array &index = dictionary["Index"].as_array();
+    for (std::size_t i = 0; i + 1 < index.size(); i += 2) {
+      subsections.emplace_back(index[i].as_integer(),
+                               index[i + 1].as_integer());
+    }
+  } else {
+    subsections.emplace_back(0, dictionary["Size"].as_integer());
+  }
+
+  Xref xref = parse_xref_stream_table(decoded.data, field_widths, subsections);
+  return {std::move(xref), dictionary};
+}
+
 std::unique_ptr<Document> DocumentParser::parse_document() {
   parser().seek_start_xref();
   const StartXref start_xref = parser().read_start_xref();
 
-  std::uint32_t xref_position = start_xref.start;
-  std::optional<Trailer> trailer;
+  std::optional<Dictionary> trailer;
+  std::optional<std::uint32_t> position = start_xref.start;
+  std::set<std::uint32_t> visited; // guards against `Prev` cycles
 
-  while (true) {
-    in().seekg(xref_position);
+  while (position.has_value() && visited.insert(*position).second) {
+    auto [xref, trailer_dict] = read_xref_section(*position);
 
-    m_xref.append(parser().read_xref());
-    parser().parser().skip_whitespace();
-    Trailer new_trailer = parser().read_trailer();
-    if (!trailer) {
-      trailer = new_trailer;
+    // hybrid-reference file (7.5.8.4): the `XRefStm` entries fill in what
+    // the classic table leaves absent or marks free, before older sections
+    // are appended
+    if (trailer_dict.has_key("XRefStm")) {
+      auto [stream_xref, stream_dict] =
+          read_xref_section(trailer_dict["XRefStm"].as_integer());
+      xref.merge_hybrid(stream_xref);
     }
 
-    if (new_trailer.dictionary.has_key("Prev")) {
-      xref_position = new_trailer.dictionary["Prev"].as_integer();
-      continue;
+    m_xref.append(xref);
+
+    if (trailer_dict.has_key("Prev")) {
+      position = trailer_dict["Prev"].as_integer();
+    } else {
+      position.reset();
     }
 
-    break;
+    if (!trailer.has_value()) {
+      trailer = std::move(trailer_dict);
+    }
   }
 
   auto document = std::make_unique<Document>();
   document->catalog =
-      parse_catalog(*this, trailer->root_reference(), *document);
+      parse_catalog(*this, (*trailer)["Root"].as_reference(), *document);
   return document;
 }
 

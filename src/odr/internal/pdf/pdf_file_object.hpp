@@ -2,8 +2,13 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <array>
+#include <iosfwd>
 #include <map>
 #include <optional>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace odr::internal::pdf {
 
@@ -25,16 +30,90 @@ struct Trailer {
 };
 
 struct Xref {
-  struct Entry {
-    std::uint32_t position{};
-    bool in_use{};
+  /// classic `f` / stream type 0: object on the free list
+  struct FreeEntry {
+    std::uint32_t next_free_id{};
+    std::uint32_t next_generation{};
   };
+  /// classic `n` / stream type 1: object stored at a byte offset
+  struct UsedEntry {
+    std::uint32_t position{};
+  };
+  /// stream type 2: object stored compressed in an object stream
+  struct CompressedEntry {
+    std::uint32_t stream_id{};
+    std::uint32_t index{};
+  };
+
+  class Entry {
+  public:
+    using Holder = std::variant<FreeEntry, UsedEntry, CompressedEntry>;
+
+    Entry() = default;
+    explicit Entry(const FreeEntry &entry) : m_holder{entry} {}
+    explicit Entry(const UsedEntry &entry) : m_holder{entry} {}
+    explicit Entry(const CompressedEntry &entry) : m_holder{entry} {}
+
+    [[nodiscard]] bool is_free() const {
+      return std::holds_alternative<FreeEntry>(m_holder);
+    }
+    [[nodiscard]] bool is_used() const {
+      return std::holds_alternative<UsedEntry>(m_holder);
+    }
+    [[nodiscard]] bool is_compressed() const {
+      return std::holds_alternative<CompressedEntry>(m_holder);
+    }
+
+    [[nodiscard]] const FreeEntry &as_free() const {
+      return std::get<FreeEntry>(m_holder);
+    }
+    [[nodiscard]] const UsedEntry &as_used() const {
+      return std::get<UsedEntry>(m_holder);
+    }
+    [[nodiscard]] const CompressedEntry &as_compressed() const {
+      return std::get<CompressedEntry>(m_holder);
+    }
+
+  private:
+    Holder m_holder{FreeEntry{}};
+  };
+
   using Table = std::map<ObjectReference, Entry>;
 
   Table table;
 
+  /// Merge an older section into this one; existing (newer) entries win.
   void append(const Xref &xref);
+  /// Hybrid-reference combine (ISO 32000-1 7.5.8.4): adopt entries from the
+  /// `XRefStm` cross-reference stream for ids this (classic) section lacks
+  /// or marks free.
+  void merge_hybrid(const Xref &xref_stream);
 };
+
+/// Decode the entry table of a cross-reference stream (ISO 32000-1 7.5.8.3)
+/// from the already de-filtered `data`. `field_widths` is the `/W` array
+/// (three big-endian byte widths; width 0 means the field defaults: type 1,
+/// other fields 0), `subsections` the `/Index` pairs (first id, count).
+/// Entries of unknown type are treated as absent.
+[[nodiscard]] Xref parse_xref_stream_table(
+    const std::string &data, const std::array<std::uint32_t, 3> &field_widths,
+    const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections);
+
+/// One member of a decoded object stream: its object id and parsed value.
+struct ObjectStreamMember {
+  std::uint64_t id{};
+  Object object;
+};
+
+using ObjectStream = std::vector<ObjectStreamMember>;
+
+/// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
+/// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`
+/// (id, offset) integer pairs followed by the member objects (bare values —
+/// no `n g obj` wrapper, no stream) at `first + offset`. `n` and `first` are
+/// the `/N` and `/First` dictionary entries.
+[[nodiscard]] ObjectStream
+parse_object_stream(std::istream &in, std::uint32_t n, std::uint32_t first);
 
 struct StartXref {
   std::uint32_t start{};

@@ -73,7 +73,7 @@ public:
     HtmlResources resources;
 
     auto in = m_pdf_file.file().stream();
-    pdf::DocumentParser parser(*in);
+    pdf::DocumentParser parser(*in, *m_logger);
 
     std::unique_ptr<pdf::Document> document = parser.parse_document();
 
