@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <string>
 
 using namespace odr::internal::crypto;
@@ -9,16 +10,7 @@ using namespace odr::internal::crypto;
 namespace {
 // Render a byte string as lowercase hex so known-answer vectors can be written
 // the way the standards publish them.
-std::string to_hex(const std::string &in) {
-  static constexpr char digits[] = "0123456789abcdef";
-  std::string out;
-  out.reserve(in.size() * 2);
-  for (const unsigned char c : in) {
-    out.push_back(digits[c >> 4]);
-    out.push_back(digits[c & 0x0f]);
-  }
-  return out;
-}
+std::string to_hex(const std::string &in) { return util::hex_encode(in); }
 } // namespace
 
 // RFC 1321, appendix A.5.
@@ -40,6 +32,20 @@ TEST(CryptoUtil, sha512) {
   EXPECT_EQ(to_hex(util::sha512("abc")),
             "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
             "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
+}
+
+TEST(CryptoUtil, hex_roundtrip) {
+  EXPECT_EQ(util::hex_encode(std::string("\x00\x48\xff", 3)), "0048ff");
+  EXPECT_EQ(util::hex_decode("0048FF"), std::string("\x00\x48\xff", 3));
+  EXPECT_EQ(util::hex_decode(""), "");
+}
+
+// The decoder is strict: it rejects an odd digit count or any non-hex
+// character (unlike the lenient ASCIIHexDecode PDF filter).
+TEST(CryptoUtil, hex_decode_rejects_bad_input) {
+  EXPECT_THROW(util::hex_decode("abc"), std::invalid_argument);
+  EXPECT_THROW(util::hex_decode("4G"), std::invalid_argument);
+  EXPECT_THROW(util::hex_decode("48 65"), std::invalid_argument);
 }
 
 // Well-known RC4 test vector (key "Key", plaintext "Plaintext").

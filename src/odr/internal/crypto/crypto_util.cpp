@@ -1,6 +1,8 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
+#include <array>
 #include <cstdint>
+#include <stdexcept>
 
 // RC4 and MD5 are retained in Crypto++ only for legacy formats (here: the PDF
 // standard security handler, R 2-4); opt in to the Weak:: namespace.
@@ -13,6 +15,7 @@
 #include <cryptopp/des.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/gcm.h>
+#include <cryptopp/hex.h>
 #include <cryptopp/md5.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/pwdbased.h>
@@ -42,39 +45,63 @@ std::string util::base64_decode(const std::string &in) {
   return out;
 }
 
+std::string util::hex_encode(const std::string &in) {
+  std::string out;
+  CryptoPP::HexEncoder e(new CryptoPP::StringSink(out), /*uppercase=*/false);
+  e.Put(reinterpret_cast<const byte *>(in.data()), in.size());
+  e.MessageEnd();
+  return out;
+}
+
+std::string util::hex_decode(const std::string &in) {
+  if (in.size() % 2 != 0) {
+    throw std::invalid_argument("hex_decode: odd number of digits");
+  }
+  std::string out;
+  CryptoPP::HexDecoder d(new CryptoPP::StringSink(out));
+  d.Put(reinterpret_cast<const byte *>(in.data()), in.size());
+  d.MessageEnd();
+  // HexDecoder silently drops anything outside [0-9A-Fa-f] (including
+  // whitespace), so a short result is the only signal of a bad digit.
+  if (out.size() * 2 != in.size()) {
+    throw std::invalid_argument("hex_decode: invalid hex digit");
+  }
+  return out;
+}
+
 std::string util::md5(const std::string &in) {
-  byte out[CryptoPP::Weak::MD5::DIGESTSIZE];
+  std::array<byte, CryptoPP::Weak::MD5::DIGESTSIZE> out;
   CryptoPP::Weak::MD5().CalculateDigest(
-      out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return {reinterpret_cast<char *>(out), CryptoPP::Weak::MD5::DIGESTSIZE};
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
 std::string util::sha1(const std::string &in) {
-  byte out[CryptoPP::SHA1::DIGESTSIZE];
+  std::array<byte, CryptoPP::SHA1::DIGESTSIZE> out;
   CryptoPP::SHA1().CalculateDigest(
-      out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return {reinterpret_cast<char *>(out), CryptoPP::SHA1::DIGESTSIZE};
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
 std::string util::sha256(const std::string &in) {
-  byte out[CryptoPP::SHA256::DIGESTSIZE];
+  std::array<byte, CryptoPP::SHA256::DIGESTSIZE> out;
   CryptoPP::SHA256().CalculateDigest(
-      out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return {reinterpret_cast<char *>(out), CryptoPP::SHA256::DIGESTSIZE};
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
 std::string util::sha384(const std::string &in) {
-  byte out[CryptoPP::SHA384::DIGESTSIZE];
+  std::array<byte, CryptoPP::SHA384::DIGESTSIZE> out;
   CryptoPP::SHA384().CalculateDigest(
-      out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return {reinterpret_cast<char *>(out), CryptoPP::SHA384::DIGESTSIZE};
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
 std::string util::sha512(const std::string &in) {
-  byte out[CryptoPP::SHA512::DIGESTSIZE];
+  std::array<byte, CryptoPP::SHA512::DIGESTSIZE> out;
   CryptoPP::SHA512().CalculateDigest(
-      out, reinterpret_cast<const byte *>(in.data()), in.size());
-  return {reinterpret_cast<char *>(out), CryptoPP::SHA512::DIGESTSIZE};
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
 std::string util::rc4(const std::string &key, const std::string &input) {
