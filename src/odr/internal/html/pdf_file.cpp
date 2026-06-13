@@ -77,22 +77,7 @@ public:
 
     std::unique_ptr<pdf::Document> document = parser.parse_document();
 
-    std::vector<pdf::Page *> ordered_pages;
-    std::function<void(pdf::Pages * pages)> recurse_pages =
-        [&](const pdf::Pages *pages) {
-          for (pdf::Element *kid : pages->kids) {
-            if (auto *p = dynamic_cast<pdf::Pages *>(kid); p != nullptr) {
-              recurse_pages(p);
-            } else if (auto page = dynamic_cast<pdf::Page *>(kid);
-                       page != nullptr) {
-              ordered_pages.push_back(page);
-            } else {
-              throw std::runtime_error("unhandled element");
-            }
-          }
-        };
-
-    recurse_pages(document->catalog->pages);
+    const std::vector<pdf::Page *> pages = document->collect_pages();
 
     out.write_begin();
     out.write_header_begin();
@@ -105,8 +90,8 @@ public:
 
     out.write_body_begin();
 
-    for (pdf::Page *page : ordered_pages) {
-      pdf::Array page_box = page->object.as_dictionary()["MediaBox"].as_array();
+    for (pdf::Page *page : pages) {
+      const pdf::Array &page_box = page->media_box.as_array();
 
       out.write_element_begin(
           "div", HtmlElementOptions().set_style([&](std::ostream &o) {

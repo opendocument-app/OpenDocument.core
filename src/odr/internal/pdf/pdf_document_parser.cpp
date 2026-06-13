@@ -14,11 +14,94 @@
 #include <sstream>
 
 namespace odr::internal::pdf {
+
 namespace {
+
+// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
+// but real files carry 360 and negatives.
+Integer normalize_rotate(Integer rotate) {
+  rotate = ((rotate % 360) + 360) % 360;
+  return (rotate / 90) * 90;
+}
+
+/// The page attributes that are inherited through the `Pages` tree
+/// (ISO 32000-1 7.7.3.3, Table 30: exactly `Resources`, `MediaBox`,
+/// `CropBox`, `Rotate`). Threaded down the tree instead of walking `Parent`
+/// pointers — no cycle risk, no re-reads. Each slot holds the value set by the
+/// nearest ancestor that carried it (possibly an indirect reference, resolved
+/// lazily at the leaf); a null slot means no ancestor set it.
+struct PageAttributes {
+  /// Default page size used when no `MediaBox` is present anywhere in the
+  /// page tree (US Letter, 612 × 792 pt). The spec requires `MediaBox`, so
+  /// this is a lenience for malformed files. (`Object` is not a literal type,
+  /// hence `static const` rather than `constexpr`.)
+  static const Object &default_media_box() {
+    static const auto value =
+        Object(Array({Object(Integer(0)), Object(Integer(0)),
+                      Object(Integer(612)), Object(Integer(792))}));
+    return value;
+  }
+
+  Object resources;
+  Object media_box;
+  Object crop_box;
+  Object rotate;
+
+  /// Overlay this node's own inheritable entries from `dictionary`. A
+  /// present-but-null entry counts as absent (7.3.9: null is equivalent to
+  /// omitting the entry) and leaves the inherited value untouched.
+  void overlay(const Dictionary &dictionary) {
+    const auto take = [&](Object &slot, const std::string &key) {
+      if (dictionary.has_key(key) && !dictionary[key].is_null()) {
+        slot = dictionary[key];
+      }
+    };
+    take(resources, "Resources");
+    take(media_box, "MediaBox");
+    take(crop_box, "CropBox");
+    take(rotate, "Rotate");
+  }
+
+  /// Resolve the accumulated attributes into final values (7.7.3.4): write the
+  /// resolved `media_box`/`crop_box`/`rotate` onto `page` (references
+  /// resolved, missing `MediaBox` → US Letter, `CropBox` → `MediaBox`,
+  /// `Rotate` normalized) and return the `Resources` object (resolved, or an
+  /// empty dictionary if absent) for the caller to parse.
+  Object resolve_into(Page &page, DocumentParser &parser,
+                      const ObjectReference &reference) const {
+    page.media_box = parser.resolve_object_copy(media_box);
+    if (!page.media_box.is_array()) {
+      ODR_WARNING(parser.logger(),
+                  "pdf: page " << reference
+                               << " has no /MediaBox, defaulting to US Letter");
+      page.media_box = default_media_box();
+    }
+
+    page.crop_box = parser.resolve_object_copy(crop_box);
+    if (!page.crop_box.is_array()) {
+      page.crop_box = page.media_box;
+    }
+
+    const Object resolved_rotate = parser.resolve_object_copy(rotate);
+    page.rotate = resolved_rotate.is_integer()
+                      ? normalize_rotate(resolved_rotate.as_integer())
+                      : 0;
+
+    if (resources.is_null()) {
+      ODR_WARNING(parser.logger(),
+                  "pdf: page "
+                      << reference
+                      << " has no /Resources, using an empty dictionary");
+      return Object(Dictionary());
+    }
+    return resources;
+  }
+};
 
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
-                             Document &document, Element *parent);
+                             Document &document, Element *parent,
+                             const PageAttributes &inherited);
 
 Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
                  Document &document) {
@@ -34,7 +117,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   if (dictionary.has_key("ToUnicode")) {
     std::string stream =
         parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
-    std::istringstream ss(stream);
+    std::istringstream ss(std::move(stream));
     CMapParser cmap_parser(ss);
     font->cmap = cmap_parser.parse_cmap();
   }
@@ -78,7 +161,8 @@ Annotation *parse_annotation(DocumentParser &parser,
 }
 
 Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
-                 Document &document, Element *parent) {
+                 Document &document, Element *parent,
+                 PageAttributes attributes) {
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
@@ -88,7 +172,12 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->object_reference = reference;
   page->object = Object(dictionary);
   page->parent = dynamic_cast<Pages *>(parent);
-  page->resources = parse_resources(parser, dictionary["Resources"], document);
+
+  // the page overlays its own inheritable entries, then the accumulated
+  // attributes are resolved into the page with Table-30 defaults (7.7.3.4)
+  attributes.overlay(dictionary);
+  const Object resources = attributes.resolve_into(*page, parser, reference);
+  page->resources = parse_resources(parser, resources, document);
 
   if (dictionary["Contents"].is_reference()) {
     page->contents_reference = {dictionary["Contents"].as_reference()};
@@ -112,7 +201,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 }
 
 Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
-                   Document &document) {
+                   Document &document, PageAttributes attributes) {
   auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
@@ -123,9 +212,12 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
   pages->object = Object(dictionary);
   pages->count = dictionary["Count"].as_integer();
 
+  // this node overlays its own inheritable attributes before recursing
+  attributes.overlay(dictionary);
+
   for (const Object &kid : dictionary["Kids"].as_array()) {
-    pages->kids.push_back(
-        parse_page_or_pages(parser, kid.as_reference(), document, pages));
+    pages->kids.push_back(parse_page_or_pages(parser, kid.as_reference(),
+                                              document, pages, attributes));
   }
 
   return pages;
@@ -133,17 +225,18 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
 
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
-                             Document &document, Element *parent) {
+                             Document &document, Element *parent,
+                             const PageAttributes &inherited) {
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
   const std::string &type = dictionary["Type"].as_string();
 
   if (type == "Pages") {
-    return parse_pages(parser, reference, document);
+    return parse_pages(parser, reference, document, inherited);
   }
   if (type == "Page") {
-    return parse_page(parser, reference, document, parent);
+    return parse_page(parser, reference, document, parent, inherited);
   }
 
   throw std::runtime_error("unknown element");
@@ -160,7 +253,7 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
   catalog->type = Type::catalog;
   catalog->object_reference = reference;
   catalog->object = Object(dictionary);
-  catalog->pages = parse_pages(parser, pages_reference, document);
+  catalog->pages = parse_pages(parser, pages_reference, document, {});
 
   return catalog;
 }
@@ -178,6 +271,8 @@ std::istream &DocumentParser::in() { return m_parser.in(); }
 FileParser &DocumentParser::parser() { return m_parser; }
 
 const Xref &DocumentParser::xref() const { return m_xref; }
+
+Logger &DocumentParser::logger() const { return *m_logger; }
 
 const IndirectObject &
 DocumentParser::read_object(const ObjectReference &reference) {
