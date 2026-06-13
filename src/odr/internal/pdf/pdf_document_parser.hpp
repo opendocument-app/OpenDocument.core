@@ -1,11 +1,14 @@
 #pragma once
 
+#include <odr/internal/pdf/pdf_encryption.hpp>
 #include <odr/internal/pdf/pdf_file_object.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 
 #include <iosfwd>
 #include <map>
 #include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -56,7 +59,19 @@ public:
   Object resolve_object_copy(const Object &object);
   Object deep_resolve_object_copy(const Object &object);
 
-  std::unique_ptr<Document> parse_document();
+  /// Whether the document declares an `/Encrypt` dictionary (set once the
+  /// trailer chain has been walked by `probe_encryption`/`parse_document`).
+  [[nodiscard]] bool encrypted() const;
+  /// Whether the password supplied so far unlocked the file (true when not
+  /// encrypted at all).
+  [[nodiscard]] bool authenticated() const;
+
+  /// Walk the trailer chain and set up the decryptor with `password` (the
+  /// empty string handles owner-locked files), without parsing the page tree.
+  /// Lets `PdfFile` answer `password_encrypted()` cheaply.
+  void probe_encryption(const std::string &password = "");
+
+  std::unique_ptr<Document> parse_document(const std::string &password = "");
 
 private:
   /// Read one cross-reference section (classic table or cross-reference
@@ -66,11 +81,23 @@ private:
   std::pair<Xref, Dictionary> read_xref_section(std::uint32_t position);
   const ObjectStream &load_object_stream(std::uint32_t stream_id);
 
+  /// Walk the `startxref` → `Prev` chain, merging sections into `m_xref`, and
+  /// return the newest (first-seen) trailer dictionary.
+  Dictionary read_trailer_chain();
+  /// Build the decryptor from the trailer `/Encrypt` and `/ID` and try
+  /// `password` (ISO 32000-1 7.6). No-op when the trailer is not encrypted.
+  void setup_encryption(const Dictionary &trailer, const std::string &password);
+  /// Decrypt every string leaf of `object` in place with the owning object's
+  /// reference (ISO 32000-1 7.6.2). Used on freshly read indirect objects.
+  void decrypt_strings(Object &object, const ObjectReference &reference);
+
   FileParser m_parser;
   Logger *m_logger{nullptr};
   Xref m_xref;
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<std::uint32_t, ObjectStream> m_object_streams;
+  std::optional<Decryptor> m_decryptor;
+  std::optional<ObjectReference> m_encrypt_reference;
 };
 
 } // namespace odr::internal::pdf

@@ -102,6 +102,10 @@ public:
   [[nodiscard]] std::string_view mimetype() const noexcept final {
     return "application/pdf";
   }
+
+  /// The password that unlocks this file (empty when none is needed), for the
+  /// HTML service to feed the document parser.
+  [[nodiscard]] virtual std::string password() const noexcept { return {}; }
 };
 
 } // namespace odr::internal::abstract

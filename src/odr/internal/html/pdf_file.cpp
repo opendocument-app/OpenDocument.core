@@ -4,6 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
+#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
@@ -75,7 +76,8 @@ public:
     auto in = m_pdf_file.file().stream();
     pdf::DocumentParser parser(*in, *m_logger);
 
-    std::unique_ptr<pdf::Document> document = parser.parse_document();
+    std::unique_ptr<pdf::Document> document =
+        parser.parse_document(m_pdf_file.impl()->password());
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 

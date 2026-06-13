@@ -43,6 +43,10 @@ bool ObjectReference::operator<(const ObjectReference &rhs) const {
   return id != rhs.id ? id < rhs.id : gen < rhs.gen;
 }
 
+bool ObjectReference::operator==(const ObjectReference &rhs) const {
+  return id == rhs.id && gen == rhs.gen;
+}
+
 std::size_t ObjectReference::hash() const noexcept {
   std::size_t result = 0;
   util::hash::hash_combine(result, gen, id);

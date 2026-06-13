@@ -51,6 +51,7 @@ struct ObjectReference {
       : id{_id}, gen{_gen} {}
 
   [[nodiscard]] bool operator<(const ObjectReference &rhs) const;
+  [[nodiscard]] bool operator==(const ObjectReference &rhs) const;
 
   [[nodiscard]] std::size_t hash() const noexcept;
 

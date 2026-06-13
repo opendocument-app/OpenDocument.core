@@ -9,6 +9,7 @@
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
+#include <filesystem>
 #include <memory>
 #include <sstream>
 
@@ -70,7 +71,8 @@ TEST(DocumentParser, mini_pdf_with_xref_stream) {
 
 namespace {
 
-void check_fixture_parses(const std::string &short_path) {
+void check_fixture_parses(const std::string &short_path,
+                          const std::string &password = "") {
   SCOPED_TRACE(short_path);
 
   const auto file =
@@ -79,7 +81,7 @@ void check_fixture_parses(const std::string &short_path) {
   const auto in = file->stream();
   DocumentParser parser(*in);
 
-  const std::unique_ptr<Document> document = parser.parse_document();
+  const std::unique_ptr<Document> document = parser.parse_document(password);
 
   const std::vector<Page *> pages = document->collect_pages();
 
@@ -96,6 +98,23 @@ void check_fixture_parses(const std::string &short_path) {
 
 TEST(DocumentParser, classic_xref_fixture) {
   check_fixture_parses("odr-public/pdf/style-various-1.pdf");
+}
+
+// Encrypted fixtures decrypt and parse end to end: object streams, string and
+// content-stream decryption all run through the standard security handler.
+TEST(DocumentParser, encrypted_rc4_fixture) {
+  // R 2 / RC4-40, owner-locked: opens with the empty user password.
+  check_fixture_parses("odr-public/pdf/Casio_WVA-M650-7AJF.pdf");
+}
+
+TEST(DocumentParser, encrypted_aes256_fixture) {
+  // R 6 / V 5 / AESV3; password from the private-fixture index.csv. The
+  // submodule is not always present, so skip when the file is absent.
+  const std::string path = "odr-private/pdf/encrypted_fontfile3_opentype.pdf";
+  if (!std::filesystem::exists(TestData::test_file_path(path))) {
+    GTEST_SKIP() << "private fixture not available";
+  }
+  check_fixture_parses(path, "sample-user-password");
 }
 
 TEST(DocumentParser, inherited_page_attributes) {
