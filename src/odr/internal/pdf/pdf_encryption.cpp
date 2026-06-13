@@ -3,10 +3,31 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
 #include <algorithm>
+#include <array>
 
 namespace odr::internal::pdf {
 
 namespace cu = crypto::util;
+
+// Standard-security algorithms with no callers outside this file (the rest are
+// declared in the header for known-answer tests).
+namespace standard_security {
+
+/// The 32-byte password padding constant (ISO 32000-1 Algorithm 2, step a).
+extern const std::string padding;
+
+/// Algorithm 7: recover the (padded) user password from `/O` using an owner
+/// password, for R 2-4.
+std::string recover_user_password(const std::string &owner_password,
+                                  const std::string &o, std::int64_t r,
+                                  std::size_t key_length);
+
+/// ISO 32000-2 Algorithm 2.B: the R 6 hardened hash. `udata` is empty for the
+/// user password and the 48-byte `/U` value for the owner password.
+std::string hash_r6(const std::string &password, const std::string &salt,
+                    const std::string &udata);
+
+} // namespace standard_security
 
 namespace {
 
@@ -23,9 +44,9 @@ std::string int32_le(std::int64_t p) {
 }
 
 /// XOR every byte of `key` with the constant `x` (Algorithms 5/7, R 3+).
-std::string xor_key(std::string key, unsigned char x) {
+std::string xor_key(std::string key, std::uint8_t x) {
   for (char &c : key) {
-    c = static_cast<char>(static_cast<unsigned char>(c) ^ x);
+    c = static_cast<char>(static_cast<std::uint8_t>(c) ^ x);
   }
   return key;
 }
@@ -45,7 +66,7 @@ std::string strip_pkcs7(std::string data) {
   if (data.empty()) {
     return data;
   }
-  const auto n = static_cast<unsigned char>(data.back());
+  const auto n = static_cast<std::uint8_t>(data.back());
   if (n >= 1 && n <= aes_block && n <= data.size()) {
     data.resize(data.size() - n);
   }
@@ -55,11 +76,12 @@ std::string strip_pkcs7(std::string data) {
 } // namespace
 
 const std::string standard_security::padding = [] {
-  static constexpr unsigned char bytes[32] = {
+  static constexpr std::array<std::uint8_t, 32> bytes = {
       0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E,
       0x56, 0xFF, 0xFA, 0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68,
       0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A};
-  return std::string(reinterpret_cast<const char *>(bytes), sizeof(bytes));
+  return std::string(reinterpret_cast<const char *>(bytes.data()),
+                     bytes.size());
 }();
 
 std::string standard_security::compute_key_r2_r4(
@@ -92,7 +114,7 @@ std::string standard_security::compute_u_r2_r4(const std::string &key,
   // Algorithm 5 (R >= 3): MD5(padding + ID[0]), RC4 with the key, then 19
   // further RC4 passes with the key XORed by the iteration number.
   std::string x = cu::rc4(key, cu::md5(padding + id0));
-  for (unsigned char i = 1; i <= 19; ++i) {
+  for (std::uint8_t i = 1; i <= 19; ++i) {
     x = cu::rc4(xor_key(key, i), x);
   }
   return x;
@@ -116,7 +138,7 @@ std::string standard_security::recover_user_password(
     return cu::rc4(rc4_key, user);
   }
   for (int i = 19; i >= 0; --i) {
-    user = cu::rc4(xor_key(rc4_key, static_cast<unsigned char>(i)), user);
+    user = cu::rc4(xor_key(rc4_key, static_cast<std::uint8_t>(i)), user);
   }
   return user;
 }
@@ -130,7 +152,7 @@ std::string standard_security::hash_r6(const std::string &password,
   std::string k = cu::sha256(password + salt + udata);
   std::string e;
   for (int round = 0;
-       round < 64 || static_cast<unsigned char>(e.back()) > round - 32;
+       round < 64 || static_cast<std::uint8_t>(e.back()) > round - 32;
        ++round) {
     const std::string block = password + k + udata;
     std::string k1;
@@ -142,7 +164,7 @@ std::string standard_security::hash_r6(const std::string &password,
 
     int mod = 0; // the first 16 bytes of E as a big-endian integer, mod 3
     for (std::size_t i = 0; i < 16; ++i) {
-      mod = (mod * 256 + static_cast<unsigned char>(e[i])) % 3;
+      mod = (mod * 256 + static_cast<std::uint8_t>(e[i])) % 3;
     }
     if (mod == 0) {
       k = cu::sha256(e);

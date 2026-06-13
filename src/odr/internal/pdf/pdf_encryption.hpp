@@ -69,11 +69,10 @@ private:
 };
 
 /// Pure password/key algorithms of the standard security handler, exposed for
-/// known-answer tests (every one is a `string -> string` function).
+/// known-answer tests (each is a `string -> string` function). The remaining
+/// algorithms (Algorithm 7 owner-password recovery, the R 6 hardened hash) are
+/// file-local to `pdf_encryption.cpp` — they have no callers outside.
 namespace standard_security {
-
-/// The 32-byte password padding constant (ISO 32000-1 Algorithm 2, step a).
-extern const std::string padding;
 
 /// Algorithm 2: the file encryption key for R 2-4.
 std::string compute_key_r2_r4(const std::string &password, const std::string &o,
@@ -85,17 +84,6 @@ std::string compute_key_r2_r4(const std::string &password, const std::string &o,
 /// R 2 yields all 32 bytes; R 3+ yields 16 (callers compare the first 16).
 std::string compute_u_r2_r4(const std::string &key, const std::string &id0,
                             std::int64_t r);
-
-/// Algorithm 7: recover the (padded) user password from `/O` using an owner
-/// password, for R 2-4.
-std::string recover_user_password(const std::string &owner_password,
-                                  const std::string &o, std::int64_t r,
-                                  std::size_t key_length);
-
-/// ISO 32000-2 Algorithm 2.B: the R 6 hardened hash. `udata` is empty for the
-/// user password and the 48-byte `/U` value for the owner password.
-std::string hash_r6(const std::string &password, const std::string &salt,
-                    const std::string &udata);
 
 } // namespace standard_security
 
