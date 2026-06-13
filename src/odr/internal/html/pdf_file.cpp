@@ -74,10 +74,6 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
-    // The file builds a parser that owns the stream and carries the
-    // authenticated decryptor (when the file was unlocked), so rendering needs
-    // neither the password nor a fresh derivation. The in-house engine only
-    // ever backs this service with a `pdf::PdfFile`.
     const auto &pdf_file =
         dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);

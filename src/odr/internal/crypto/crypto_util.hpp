@@ -9,8 +9,6 @@ namespace odr::internal::crypto::util {
 std::string base64_encode(const std::string &);
 std::string base64_decode(const std::string &);
 
-/// Lowercase hex, two digits per byte (and its inverse). Handy for writing
-/// known-answer test vectors the way the standards publish them.
 std::string hex_encode(const std::string &);
 std::string hex_decode(const std::string &);
 

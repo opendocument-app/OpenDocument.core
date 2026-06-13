@@ -47,7 +47,7 @@ std::string util::base64_decode(const std::string &in) {
 
 std::string util::hex_encode(const std::string &in) {
   std::string out;
-  CryptoPP::HexEncoder e(new CryptoPP::StringSink(out), /*uppercase=*/false);
+  CryptoPP::HexEncoder e(new CryptoPP::StringSink(out), false);
   e.Put(reinterpret_cast<const byte *>(in.data()), in.size());
   e.MessageEnd();
   return out;

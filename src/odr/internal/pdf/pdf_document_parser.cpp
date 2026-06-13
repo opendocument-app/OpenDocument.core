@@ -287,7 +287,7 @@ DocumentParser::read_object(const ObjectReference &reference) {
     // Decrypt string leaves (7.6.2). Skip the /Encrypt dictionary itself (its
     // strings are the un-decrypted /O,/U,…) — it is read before the decryptor
     // exists, so this is defensive.
-    if (m_decryptor && m_decryptor->authenticated() &&
+    if (m_decryptor != nullptr && m_decryptor->authenticated() &&
         m_encrypt_reference != object.reference) {
       decrypt_strings(object.object, object.reference);
     }
@@ -360,7 +360,7 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   // during the trailer-chain walk, before the decryptor exists, so they are
   // never decrypted (7.5.8.2); object streams are decrypted here as a whole,
   // leaving their members plaintext.
-  if (m_decryptor && m_decryptor->authenticated()) {
+  if (m_decryptor != nullptr && m_decryptor->authenticated()) {
     raw = m_decryptor->decrypt_stream(object.reference, std::move(raw));
   }
   return raw;
@@ -548,7 +548,7 @@ void DocumentParser::note_encrypt_reference(const Dictionary &trailer) {
 }
 
 std::shared_ptr<const Decryptor> DocumentParser::decryptor() const {
-  if (m_decryptor && m_decryptor->authenticated()) {
+  if (m_decryptor != nullptr && m_decryptor->authenticated()) {
     return m_decryptor;
   }
   return nullptr;
@@ -576,7 +576,7 @@ void DocumentParser::decrypt_strings(Object &object,
 bool DocumentParser::encrypted() const { return m_decryptor != nullptr; }
 
 bool DocumentParser::authenticated() const {
-  return !m_decryptor || m_decryptor->authenticated();
+  return m_decryptor == nullptr || m_decryptor->authenticated();
 }
 
 void DocumentParser::probe_encryption(const std::string &password) {
