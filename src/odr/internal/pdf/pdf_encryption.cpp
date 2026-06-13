@@ -7,9 +7,9 @@
 
 namespace odr::internal::pdf {
 
-// Standard-security algorithms with no callers outside this file (the rest are
-// declared in the header for known-answer tests).
-namespace standard_security {
+namespace {
+
+constexpr std::size_t aes_block = 16;
 
 /// The 32-byte password padding constant (ISO 32000-1 Algorithm 2, step a).
 const std::string padding = [] {
@@ -20,23 +20,6 @@ const std::string padding = [] {
   return std::string(reinterpret_cast<const char *>(bytes.data()),
                      bytes.size());
 }();
-
-/// Algorithm 7: recover the (padded) user password from `/O` using an owner
-/// password, for R 2-4.
-std::string recover_user_password(const std::string &owner_password,
-                                  const std::string &o, std::int64_t r,
-                                  std::size_t key_length);
-
-/// ISO 32000-2 Algorithm 2.B: the R 6 hardened hash. `udata` is empty for the
-/// user password and the 48-byte `/U` value for the owner password.
-std::string hash_r6(const std::string &password, const std::string &salt,
-                    const std::string &udata);
-
-} // namespace standard_security
-
-namespace {
-
-constexpr std::size_t aes_block = 16;
 
 /// `p` as a signed 32-bit little-endian value (Algorithm 2, step d).
 std::string int32_le(const std::int64_t p) {
@@ -61,7 +44,7 @@ std::string xor_key(std::string key, const std::uint8_t x) {
 std::string pad_password(const std::string &password) {
   std::string pw =
       password.substr(0, std::min<std::size_t>(password.size(), 32));
-  pw += standard_security::padding.substr(0, 32 - pw.size());
+  pw += padding.substr(0, 32 - pw.size());
   return pw;
 }
 
@@ -79,6 +62,73 @@ std::string strip_pkcs7(std::string data) {
 }
 
 } // namespace
+
+// Standard-security algorithms with no callers outside this file (the rest are
+// declared in the header for known-answer tests).
+namespace standard_security {
+
+/// Algorithm 7: recover the (padded) user password from `/O` using an owner
+/// password, for R 2-4.
+std::string recover_user_password(const std::string &owner_password,
+                                  const std::string &o, const std::int64_t r,
+                                  const std::size_t key_length) {
+  // Algorithm 7: derive the RC4 key from the owner password, then RC4-decrypt
+  // /O to recover the user password.
+  std::string hash = crypto::util::md5(pad_password(owner_password));
+  if (r >= 3) {
+    for (int i = 0; i < 50; ++i) {
+      hash = crypto::util::md5(hash.substr(0, key_length));
+    }
+  }
+  const std::string rc4_key = hash.substr(0, key_length);
+
+  std::string user = o.substr(0, 32);
+  if (r == 2) {
+    return crypto::util::rc4(rc4_key, user);
+  }
+  for (int i = 19; i >= 0; --i) {
+    user =
+        crypto::util::rc4(xor_key(rc4_key, static_cast<std::uint8_t>(i)), user);
+  }
+  return user;
+}
+
+/// ISO 32000-2 Algorithm 2.B: the R 6 hardened hash. `udata` is empty for the
+/// user password and the 48-byte `/U` value for the owner password.
+std::string hash_r6(const std::string &password, const std::string &salt,
+                    const std::string &udata) {
+  // ISO 32000-2 Algorithm 2.B: SHA-256 seed, then rounds of AES-128-CBC over a
+  // 64x-repeated block, the digest function chosen by (E mod 3). At least 64
+  // rounds; stop once the last byte of E is small enough.
+  std::string k = crypto::util::sha256(password + salt + udata);
+  std::string e;
+  for (int round = 0;
+       round < 64 || static_cast<std::uint8_t>(e.back()) > round - 32;
+       ++round) {
+    const std::string block = password + k + udata;
+    std::string k1;
+    k1.reserve(block.size() * 64);
+    for (int i = 0; i < 64; ++i) {
+      k1 += block;
+    }
+    e = crypto::util::encrypt_aes_cbc(k.substr(0, 16), k.substr(16, 16), k1);
+
+    int mod = 0; // the first 16 bytes of E as a big-endian integer, mod 3
+    for (std::size_t i = 0; i < 16; ++i) {
+      mod = (mod * 256 + static_cast<std::uint8_t>(e[i])) % 3;
+    }
+    if (mod == 0) {
+      k = crypto::util::sha256(e);
+    } else if (mod == 1) {
+      k = crypto::util::sha384(e);
+    } else {
+      k = crypto::util::sha512(e);
+    }
+  }
+  return k.substr(0, 32);
+}
+
+} // namespace standard_security
 
 std::string standard_security::compute_key_r2_r4(
     const std::string &password, const std::string &o, const std::int64_t p,
@@ -114,64 +164,6 @@ std::string standard_security::compute_u_r2_r4(const std::string &key,
     x = crypto::util::rc4(xor_key(key, i), x);
   }
   return x;
-}
-
-std::string standard_security::recover_user_password(
-    const std::string &owner_password, const std::string &o,
-    const std::int64_t r, const std::size_t key_length) {
-  // Algorithm 7: derive the RC4 key from the owner password, then RC4-decrypt
-  // /O to recover the user password.
-  std::string hash = crypto::util::md5(pad_password(owner_password));
-  if (r >= 3) {
-    for (int i = 0; i < 50; ++i) {
-      hash = crypto::util::md5(hash.substr(0, key_length));
-    }
-  }
-  const std::string rc4_key = hash.substr(0, key_length);
-
-  std::string user = o.substr(0, 32);
-  if (r == 2) {
-    return crypto::util::rc4(rc4_key, user);
-  }
-  for (int i = 19; i >= 0; --i) {
-    user =
-        crypto::util::rc4(xor_key(rc4_key, static_cast<std::uint8_t>(i)), user);
-  }
-  return user;
-}
-
-std::string standard_security::hash_r6(const std::string &password,
-                                       const std::string &salt,
-                                       const std::string &udata) {
-  // ISO 32000-2 Algorithm 2.B: SHA-256 seed, then rounds of AES-128-CBC over a
-  // 64x-repeated block, the digest function chosen by (E mod 3). At least 64
-  // rounds; stop once the last byte of E is small enough.
-  std::string k = crypto::util::sha256(password + salt + udata);
-  std::string e;
-  for (int round = 0;
-       round < 64 || static_cast<std::uint8_t>(e.back()) > round - 32;
-       ++round) {
-    const std::string block = password + k + udata;
-    std::string k1;
-    k1.reserve(block.size() * 64);
-    for (int i = 0; i < 64; ++i) {
-      k1 += block;
-    }
-    e = crypto::util::encrypt_aes_cbc(k.substr(0, 16), k.substr(16, 16), k1);
-
-    int mod = 0; // the first 16 bytes of E as a big-endian integer, mod 3
-    for (std::size_t i = 0; i < 16; ++i) {
-      mod = (mod * 256 + static_cast<std::uint8_t>(e[i])) % 3;
-    }
-    if (mod == 0) {
-      k = crypto::util::sha256(e);
-    } else if (mod == 1) {
-      k = crypto::util::sha384(e);
-    } else {
-      k = crypto::util::sha512(e);
-    }
-  }
-  return k.substr(0, 32);
 }
 
 namespace {

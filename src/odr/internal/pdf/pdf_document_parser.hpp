@@ -107,12 +107,6 @@ private:
   /// table together with the newest (first-seen) trailer dictionary.
   [[nodiscard]] std::pair<Xref, Dictionary> read_trailer_chain();
 
-  /// Build an `Authenticator` from the trailer `/Encrypt` and `/ID`
-  /// (ISO 32000-1 7.6), caching the `/Encrypt` dictionary and its reference
-  /// (the self-skip guard that keeps its own `/O`,`/U` strings un-decrypted).
-  /// Returns `nullopt` if the trailer declares no `/Encrypt`.
-  [[nodiscard]] std::optional<Authenticator> create_authenticator();
-
   [[nodiscard]] std::unique_ptr<Document>
   build_document(const Dictionary &trailer);
 

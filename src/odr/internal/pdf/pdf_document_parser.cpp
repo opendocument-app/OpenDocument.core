@@ -262,7 +262,34 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
   m_xref = std::move(xref);
   m_trailer = std::move(trailer);
 
-  m_authenticator = create_authenticator();
+  if (m_trailer.has_key("Encrypt")) {
+    // Build an `Authenticator` from the trailer `/Encrypt` and `/ID`
+    // (ISO 32000-1 7.6), caching the `/Encrypt` dictionary and its reference
+    // (the self-skip guard that keeps its own `/O`,`/U` strings un-decrypted).
+    // Returns `nullopt` if the trailer declares no `/Encrypt`.
+
+    Object encrypt = m_trailer["Encrypt"];
+    if (encrypt.is_reference()) {
+      m_encrypt_reference = encrypt.as_reference();
+      encrypt = read_object(*m_encrypt_reference).object;
+    }
+    if (!encrypt.is_dictionary()) {
+      throw std::runtime_error("pdf: /Encrypt is not a dictionary");
+    }
+    m_encrypt_dict = std::move(encrypt);
+
+    // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
+    std::string id0;
+    if (m_trailer.has_key("ID") && m_trailer["ID"].is_array()) {
+      const Array &id = m_trailer["ID"].as_array();
+      if (id.size() > 0 && id[0].is_string()) {
+        id0 = id[0].as_string();
+      }
+    }
+
+    m_authenticator =
+        Authenticator::create(m_encrypt_dict->as_dictionary(), id0);
+  }
 }
 
 std::istream &DocumentParser::in() { return m_parser.in(); }
@@ -521,35 +548,6 @@ std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
   }
 
   return {std::move(result_xref), std::move(result_trailer).value()};
-}
-
-std::optional<Authenticator> DocumentParser::create_authenticator() {
-  if (!m_trailer.has_key("Encrypt")) {
-    return std::nullopt;
-  }
-
-  // Read the /Encrypt dictionary while the decryptor does not yet exist, so
-  // its own strings (/O, /U, …) stay un-decrypted; it is then cached.
-  Object encrypt = m_trailer["Encrypt"];
-  if (encrypt.is_reference()) {
-    m_encrypt_reference = encrypt.as_reference();
-    encrypt = read_object(*m_encrypt_reference).object;
-  }
-  if (!encrypt.is_dictionary()) {
-    throw std::runtime_error("pdf: /Encrypt is not a dictionary");
-  }
-  m_encrypt_dict = std::move(encrypt);
-
-  // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
-  std::string id0;
-  if (m_trailer.has_key("ID") && m_trailer["ID"].is_array()) {
-    const Array &id = m_trailer["ID"].as_array();
-    if (id.size() > 0 && id[0].is_string()) {
-      id0 = id[0].as_string();
-    }
-  }
-
-  return Authenticator::create(m_encrypt_dict->as_dictionary(), id0);
 }
 
 void DocumentParser::decrypt_strings(Object &object,
