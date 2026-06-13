@@ -94,3 +94,124 @@ TEST(PdfEncryption, fontfile3_r6_aesv3) {
   EXPECT_FALSE(wrong->authenticate("wrong-password"));
   EXPECT_FALSE(wrong->authenticated());
 }
+
+// The fixtures above cover R 2 (RC4-40) and R 6 (AES-256). The remaining R 3
+// (RC4-128) and R 4 (AES-128 / AESV2) paths have no real-world fixture, so the
+// vectors below were produced by `qpdf --encrypt user owner 128 ...` over a
+// one-object content stream holding the marker "KAT-MARKER-12345". Decrypting
+// qpdf's output back to the marker proves the whole chain — file key,
+// per-object key (Algorithm 1, incl. the AES "sAlT"), RC4 / AES-128-CBC +
+// PKCS#7 — against an independent implementation, with no fixture file to ship.
+namespace {
+
+constexpr const char *kMarker = "KAT-MARKER-12345";
+const ObjectReference kContentRef{4, 0};
+
+Dictionary standard_encrypt(Integer v, Integer r, Integer length_bits,
+                            const std::string &o, const std::string &u) {
+  Dictionary e;
+  e["Filter"] = Object(Name("Standard"));
+  e["V"] = Object(v);
+  e["R"] = Object(r);
+  e["Length"] = Object(length_bits);
+  e["P"] = Object(Integer(-4));
+  e["O"] = Object(StandardString(o));
+  e["U"] = Object(StandardString(u));
+  return e;
+}
+
+// V 4 with a single AESV2 StdCF crypt filter for both streams and strings.
+Dictionary aesv2_encrypt(const std::string &o, const std::string &u,
+                         bool encrypt_metadata) {
+  Dictionary e = standard_encrypt(4, 4, 128, o, u);
+  Dictionary std_cf;
+  std_cf["CFM"] = Object(Name("AESV2"));
+  Dictionary cf;
+  cf["StdCF"] = Object(std::move(std_cf));
+  e["CF"] = Object(std::move(cf));
+  e["StmF"] = Object(Name("StdCF"));
+  e["StrF"] = Object(Name("StdCF"));
+  if (!encrypt_metadata) {
+    e["EncryptMetadata"] = Object(false);
+  }
+  return e;
+}
+
+} // namespace
+
+TEST(PdfEncryption, qpdf_rc4_128_r3) {
+  const Dictionary e = standard_encrypt(
+      2, 3, 128,
+      unhex("0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
+      unhex(
+          "cfc31bd6a458aadef418ac4b427dfe010021446990b9e4114071a4d9104984c1"));
+
+  auto d = Decryptor::create(e, unhex("5aff498eede5e840196289c653e0eb44"));
+  ASSERT_TRUE(d.has_value());
+  ASSERT_TRUE(d->authenticate("user"));
+  const std::string content = d->decrypt_stream(
+      kContentRef,
+      unhex("aedffca5d3c5f617143550c4ef045a59853eb36b790c4a08e24b104ed1eb55e1"
+            "31bccd2aa62905dfa1dcd6cd56c1a46c"));
+  EXPECT_NE(content.find(kMarker), std::string::npos);
+}
+
+TEST(PdfEncryption, qpdf_aes_128_r4) {
+  const Dictionary e = aesv2_encrypt(
+      unhex("0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
+      unhex("be561e5a355dee484698c6050e4d47680021446990b9e4114071a4d9104984c1"),
+      /*encrypt_metadata=*/true);
+
+  auto d = Decryptor::create(e, unhex("e0ab9dc9926ecd79c7ea59739043f1fa"));
+  ASSERT_TRUE(d.has_value());
+  ASSERT_TRUE(d->authenticate("user"));
+  const std::string content = d->decrypt_stream(
+      kContentRef,
+      unhex("1cdcf005888596d73142dfd077adce936261e5c7a369cfd8301ea2af46161262"
+            "08ece51b9e09e3559b0c3391baa43e00cfa9fd74eacb83ea0659d3543fc29040"
+            "0520fe64db7c4afc4ba9c9762a7c793c"));
+  EXPECT_NE(content.find(kMarker), std::string::npos);
+}
+
+// EncryptMetadata false adds the 0xFFFFFFFF salt to the key derivation
+// (Algorithm 2, step f).
+TEST(PdfEncryption, qpdf_aes_128_r4_cleartext_metadata) {
+  const Dictionary e = aesv2_encrypt(
+      unhex("0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
+      unhex("08deff331b7a9a4643ae51064bcfd6510021446990b9e4114071a4d9104984c1"),
+      /*encrypt_metadata=*/false);
+
+  auto d = Decryptor::create(e, unhex("1444f0ada1f2311db55de9a7cb4ded37"));
+  ASSERT_TRUE(d.has_value());
+  ASSERT_TRUE(d->authenticate("user"));
+  const std::string content = d->decrypt_stream(
+      kContentRef,
+      unhex("95ad3265670d8686bfe7913688cb4ef23a0b864db3192bb2584d58882d5aff85"
+            "cf0f1663e136e96669c6ef3ab2a1848dc16e212d068a8501a13ed831323d894f"
+            "056d6a0bfab626eca402b3f3d2b44513"));
+  EXPECT_NE(content.find(kMarker), std::string::npos);
+}
+
+// Owner-locked file (empty user password): the empty user password opens it,
+// and the owner password recovers the same key via Algorithm 7.
+TEST(PdfEncryption, qpdf_aes_128_r4_owner_password) {
+  const std::string o =
+      unhex("566fa873ee33c797cd3b904fdadf814afa34df9a38f6ed41b984e2c6da2aa6f5");
+  const std::string u =
+      unhex("5148a4f9990604380199d16040dc7dc30021446990b9e4114071a4d9104984c1");
+  const std::string id0 = unhex("db3ccbe95b12f1337444fa5c35e345cf");
+  const std::string stream =
+      unhex("3250f1387c26e539cfbeb2662e0d6a203cc530bdbb9ae1d6c8edb8aa2a4c4c5d"
+            "a7ed75f1ea892c0a938d47a831920948d911c53157874e5b6a3568589353ad03"
+            "4ac8982fbe8385589f5175e5cbec5148");
+
+  auto user = Decryptor::create(aesv2_encrypt(o, u, true), id0);
+  ASSERT_TRUE(user->authenticate(""));
+  EXPECT_NE(user->decrypt_stream(kContentRef, stream).find(kMarker),
+            std::string::npos);
+
+  auto owner = Decryptor::create(aesv2_encrypt(o, u, true), id0);
+  ASSERT_TRUE(owner->authenticate("owner"));
+  EXPECT_NE(owner->decrypt_stream(kContentRef, stream).find(kMarker),
+            std::string::npos);
+}
