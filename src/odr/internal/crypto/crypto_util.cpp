@@ -135,6 +135,19 @@ std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
   return result;
 }
 
+std::string util::encrypt_aes_cbc(const std::string &key, const std::string &iv,
+                                  const std::string &input) {
+  std::string result(input.size(), '\0');
+  CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption encryption;
+  encryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
+                          key.size(), reinterpret_cast<const byte *>(iv.data()),
+                          iv.size());
+  encryption.ProcessData(reinterpret_cast<byte *>(result.data()),
+                         reinterpret_cast<const byte *>(input.data()),
+                         input.size());
+  return result;
+}
+
 std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
                                   const std::string &input) {
   // follows https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM

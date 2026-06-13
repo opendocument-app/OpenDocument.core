@@ -27,6 +27,10 @@ std::string argon2id(std::size_t key_size, const std::string &start_key,
 std::string decrypt_aes_ecb(const std::string &key, const std::string &input);
 std::string decrypt_aes_cbc(const std::string &key, const std::string &iv,
                             const std::string &input);
+/// Raw AES-CBC encryption, no padding (`input` must be a multiple of the block
+/// size). Needed by the PDF R 6 hardened-hash algorithm (ISO 32000-2 2.B).
+std::string encrypt_aes_cbc(const std::string &key, const std::string &iv,
+                            const std::string &input);
 std::string decrypt_aes_gcm(const std::string &key, const std::string &iv,
                             const std::string &input);
 std::string decrypt_triple_des(const std::string &key, const std::string &iv,
