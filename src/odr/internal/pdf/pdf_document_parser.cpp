@@ -14,6 +14,7 @@
 #include <sstream>
 
 namespace odr::internal::pdf {
+
 namespace {
 
 /// The set of page attributes that a `Page` inherits from its `Pages`
@@ -22,7 +23,7 @@ namespace {
 /// walking `Parent` pointers — no cycle risk, no re-reads. Each slot holds
 /// the nearest ancestor's value (possibly an indirect reference, resolved
 /// lazily at the leaf); a null slot means no ancestor set it.
-struct InheritedAttributes {
+struct PageInheritedAttributes {
   Object resources;
   Object media_box;
   Object crop_box;
@@ -39,7 +40,7 @@ Integer normalize_rotate(Integer rotate) {
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document, Element *parent,
-                             const InheritedAttributes &inherited);
+                             const PageInheritedAttributes &inherited);
 
 Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
                  Document &document) {
@@ -100,7 +101,7 @@ Annotation *parse_annotation(DocumentParser &parser,
 
 Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
                  Document &document, Element *parent,
-                 const InheritedAttributes &inherited) {
+                 const PageInheritedAttributes &inherited) {
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
@@ -112,11 +113,12 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->parent = dynamic_cast<Pages *>(parent);
 
   // resolve the inheritable attributes: page dict value → inherited value →
-  // default (ISO 32000-1 7.7.3.4)
+  // default (ISO 32000-1 7.7.3.4). A present-but-null entry counts as absent
+  // and keeps inheriting (7.3.9: null is equivalent to omitting the entry).
   const auto resolve_inherited = [&](const std::string &key,
                                      const Object &fallback) {
-    return parser.resolve_object_copy(dictionary.has_key(key) ? dictionary[key]
-                                                              : fallback);
+    const bool present = dictionary.has_key(key) && !dictionary[key].is_null();
+    return parser.resolve_object_copy(present ? dictionary[key] : fallback);
   };
 
   page->media_box = resolve_inherited("MediaBox", inherited.media_box);
@@ -138,8 +140,10 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->rotate =
       rotate.is_integer() ? normalize_rotate(rotate.as_integer()) : 0;
 
-  Object resources = dictionary.has_key("Resources") ? dictionary["Resources"]
-                                                     : inherited.resources;
+  Object resources =
+      (dictionary.has_key("Resources") && !dictionary["Resources"].is_null())
+          ? dictionary["Resources"]
+          : inherited.resources;
   if (resources.is_null()) {
     ODR_WARNING(parser.logger(),
                 "pdf: page "
@@ -171,7 +175,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 }
 
 Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
-                   Document &document, InheritedAttributes inherited) {
+                   Document &document, PageInheritedAttributes inherited) {
   auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
@@ -182,9 +186,11 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
   pages->object = Object(dictionary);
   pages->count = dictionary["Count"].as_integer();
 
-  // this node overlays its own inheritable attributes before recursing
+  // this node overlays its own inheritable attributes before recursing; a
+  // present-but-null entry counts as absent (7.3.9) and leaves the inherited
+  // value untouched
   const auto overlay = [&](Object &slot, const std::string &key) {
-    if (dictionary.has_key(key)) {
+    if (dictionary.has_key(key) && !dictionary[key].is_null()) {
       slot = dictionary[key];
     }
   };
@@ -204,7 +210,7 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document, Element *parent,
-                             const InheritedAttributes &inherited) {
+                             const PageInheritedAttributes &inherited) {
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();

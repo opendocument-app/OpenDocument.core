@@ -143,12 +143,13 @@ TEST(DocumentParser, inherited_page_attributes) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R 7 0 R] /Count 3 "
-              "/MediaBox [0 0 612 792] /Resources << >> /Rotate 90 >>")
+              "/MediaBox [0 0 400 500] /Resources << >> /Rotate 90 >>")
       .object("<< /Type /Pages /Parent 2 0 R /Kids [4 0 R 5 0 R] /Count 2 "
               "/Rotate 180 >>")
       .object("<< /Type /Page /Parent 3 0 R /MediaBox [0 0 200 300] "
               "/Contents 6 0 R >>")
-      .object("<< /Type /Page /Parent 3 0 R /Contents 6 0 R >>")
+      .object("<< /Type /Page /Parent 3 0 R /MediaBox null /Resources null "
+              "/Rotate null /Contents 6 0 R >>")
       .stream_object("", "BT ET")
       .object("<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>")
       .trailer("/Root 1 0 R");
@@ -170,16 +171,17 @@ TEST(DocumentParser, inherited_page_attributes) {
   EXPECT_EQ(page4->rotate, 180);
   ASSERT_NE(page4->resources, nullptr);
 
-  // page 5: everything inherited (MediaBox/Resources from root, Rotate from
-  // inner Pages)
+  // page 5: explicit null entries count as absent (7.3.9), so everything
+  // still inherits (MediaBox/Resources from root, Rotate from inner Pages)
   const Page *page5 = pages[1];
-  EXPECT_EQ(page5->media_box.as_array()[2].as_real(), 612.0);
-  EXPECT_EQ(page5->media_box.as_array()[3].as_real(), 792.0);
+  EXPECT_EQ(page5->media_box.as_array()[2].as_real(), 400.0);
+  EXPECT_EQ(page5->media_box.as_array()[3].as_real(), 500.0);
   EXPECT_EQ(page5->rotate, 180);
+  ASSERT_NE(page5->resources, nullptr);
 
   // page 6: MediaBox/Rotate inherited from root only
   const Page *page6 = pages[2];
-  EXPECT_EQ(page6->media_box.as_array()[2].as_real(), 612.0);
+  EXPECT_EQ(page6->media_box.as_array()[2].as_real(), 400.0);
   EXPECT_EQ(page6->rotate, 90);
 }
 
