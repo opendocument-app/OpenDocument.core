@@ -116,11 +116,11 @@ std::string FileParser::read_stream(const std::int32_t size) {
   if (size >= 0) {
     result = util::stream::read(in(), size);
 
-    m_parser.skip_line();
-
-    if (const std::string line = m_parser.read_line(); line != "endstream") {
-      throw std::runtime_error("expected endstream");
-    }
+    // The EOL before `endstream` is recommended but not counted in the stream
+    // length, and some producers omit it entirely (7.3.8.1) — so skip optional
+    // whitespace rather than assuming a whole line precedes the keyword.
+    m_parser.skip_whitespace();
+    m_parser.expect_characters("endstream");
   } else {
     // TODO improve poor solution
     while (true) {
@@ -133,6 +133,7 @@ std::string FileParser::read_stream(const std::int32_t size) {
     }
   }
 
+  m_parser.skip_whitespace();
   if (const std::string line = m_parser.read_line(); line != "endobj") {
     throw std::runtime_error("expected endobj");
   }

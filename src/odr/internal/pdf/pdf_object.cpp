@@ -1,5 +1,6 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/hash_util.hpp>
 
 #include <iomanip>
@@ -21,8 +22,7 @@ std::string StandardString::to_string() const {
 }
 
 void HexString::to_stream(std::ostream &out) const {
-  // TODO hex
-  out << "<" << string << ">";
+  out << "<" << crypto::util::hex_encode(string) << ">";
 }
 
 std::string HexString::to_string() const {
@@ -41,6 +41,10 @@ std::string Name::to_string() const {
 
 bool ObjectReference::operator<(const ObjectReference &rhs) const {
   return id != rhs.id ? id < rhs.id : gen < rhs.gen;
+}
+
+bool ObjectReference::operator==(const ObjectReference &rhs) const {
+  return id == rhs.id && gen == rhs.gen;
 }
 
 std::size_t ObjectReference::hash() const noexcept {

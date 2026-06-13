@@ -178,6 +178,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_cmap_parser.cpp"
         "src/odr/internal/pdf/pdf_document.cpp"
         "src/odr/internal/pdf/pdf_document_parser.cpp"
+        "src/odr/internal/pdf/pdf_encryption.cpp"
         "src/odr/internal/pdf/pdf_file.cpp"
         "src/odr/internal/pdf/pdf_file_object.cpp"
         "src/odr/internal/pdf/pdf_file_parser.cpp"

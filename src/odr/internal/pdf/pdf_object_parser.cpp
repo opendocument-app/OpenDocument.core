@@ -3,6 +3,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -57,18 +58,24 @@ void ObjectParser::ungetc() {
   }
 }
 
-ObjectParser::int_type ObjectParser::octet_char_to_int(const char_type c) {
-  return c - '0';
+std::uint8_t ObjectParser::octet_char_to_int(const char_type c) {
+  if (c >= '0' && c <= '7') {
+    return c - '0';
+  }
+  throw std::runtime_error("invalid character in octet_char_to_int");
 }
 
-ObjectParser::int_type ObjectParser::hex_char_to_int(const char_type c) {
-  if (c >= 'a') {
-    return 10 + (c - 'a');
+std::uint8_t ObjectParser::hex_char_to_int(const char_type c) {
+  if (c >= '0' && c <= '9') {
+    return c - '0';
   }
-  if (c >= 'A') {
-    return 10 + (c - 'A');
+  if (c >= 'A' && c <= 'F') {
+    return c - 'A' + 10;
   }
-  return c - '0';
+  if (c >= 'a' && c <= 'f') {
+    return c - 'a' + 10;
+  }
+  throw std::runtime_error("invalid character in hex_char_to_int");
 }
 
 ObjectParser::char_type ObjectParser::two_hex_to_char(const char_type first,
@@ -305,15 +312,29 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
   }
 
   if (c == '<') {
+    // 7.3.4.3: whitespace between digits is ignored, and an odd final digit is
+    // assumed to be followed by a 0.
+    std::optional<int_type> high;
     while (true) {
       c = bumpc();
 
       if (c == '>') {
+        if (high.has_value()) {
+          string.push_back(static_cast<char_type>(*high << 4));
+        }
         return HexString(std::move(string));
       }
+      if (is_whitespace(c)) {
+        continue;
+      }
 
-      const char_type c2 = bumpc();
-      string += two_hex_to_char(c, c2);
+      const int_type nibble = hex_char_to_int(c);
+      if (high.has_value()) {
+        string.push_back(static_cast<char_type>((*high << 4) | nibble));
+        high.reset();
+      } else {
+        high = nibble;
+      }
     }
   }
 

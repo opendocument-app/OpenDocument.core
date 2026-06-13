@@ -11,19 +11,6 @@
 namespace odr::internal::pdf {
 namespace {
 
-std::uint8_t hex_value(const char c) {
-  if (c >= '0' && c <= '9') {
-    return c - '0';
-  }
-  if (c >= 'A' && c <= 'F') {
-    return c - 'A' + 10;
-  }
-  if (c >= 'a' && c <= 'f') {
-    return c - 'a' + 10;
-  }
-  throw std::runtime_error("invalid character in ASCIIHexDecode");
-}
-
 /// Inline-image abbreviations are accepted for regular streams, too; real
 /// producers use them there.
 std::string canonical_filter_name(const std::string &name) {
@@ -268,7 +255,7 @@ std::string pdf::ascii_hex_decode(const std::string &input) {
     if (c == '>') {
       break;
     }
-    const std::uint8_t value = hex_value(c);
+    const std::uint8_t value = ObjectParser::hex_char_to_int(c);
     if (first.has_value()) {
       result.push_back(static_cast<char>((*first << 4) | value));
       first.reset();

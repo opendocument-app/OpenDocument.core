@@ -1,8 +1,17 @@
 #pragma once
 
-#include <odr/internal/abstract/file.hpp>
+#include <odr/logger.hpp>
 
-namespace odr::internal {
+#include <odr/internal/abstract/file.hpp>
+#include <odr/internal/pdf/pdf_encryption.hpp>
+
+#include <memory>
+#include <string>
+
+namespace odr::internal::pdf {
+
+class DocumentParser;
+class Decryptor;
 
 class PdfFile final : public abstract::PdfFile {
 public:
@@ -20,9 +29,16 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
+  [[nodiscard]] DocumentParser
+  create_parser(const Logger &logger = Logger::null()) const;
+
 private:
   std::shared_ptr<abstract::File> m_file;
+  std::optional<Authenticator> m_authenticator;
+  std::optional<Decryptor> m_decryptor;
+
   FileMeta m_file_meta;
+  EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 };
 
-} // namespace odr::internal
+} // namespace odr::internal::pdf

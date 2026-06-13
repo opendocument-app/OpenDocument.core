@@ -9,8 +9,11 @@
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <sstream>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -33,8 +36,7 @@ std::string two_object_mini_pdf(const bool classic) {
 }
 
 void check_mini_pdf(const std::string &pdf) {
-  std::istringstream in(pdf);
-  DocumentParser parser(in);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
 
   std::unique_ptr<Document> document = parser.parse_document();
 
@@ -57,9 +59,7 @@ TEST(DocumentParser, mini_pdf_with_classic_xref_table) {
 TEST(DocumentParser, mini_pdf_with_xref_stream) {
   const std::string pdf = two_object_mini_pdf(false);
 
-  std::istringstream in(pdf);
-  DocumentParser parser(in);
-  parser.parse_document();
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
 
   // 4 objects, the cross-reference stream itself, and the free head
   EXPECT_EQ(parser.xref().table.size(), 6);
@@ -70,14 +70,17 @@ TEST(DocumentParser, mini_pdf_with_xref_stream) {
 
 namespace {
 
-void check_fixture_parses(const std::string &short_path) {
+void check_fixture_parses(const std::string &short_path,
+                          const std::string &password = "") {
   SCOPED_TRACE(short_path);
 
   const auto file =
       std::make_shared<DiskFile>(TestData::test_file_path(short_path));
 
-  const auto in = file->stream();
-  DocumentParser parser(*in);
+  DocumentParser parser(file->stream());
+  if (parser.is_encrypted()) {
+    parser.authenticate(password);
+  }
 
   const std::unique_ptr<Document> document = parser.parse_document();
 
@@ -98,6 +101,53 @@ TEST(DocumentParser, classic_xref_fixture) {
   check_fixture_parses("odr-public/pdf/style-various-1.pdf");
 }
 
+// Encrypted fixtures decrypt and parse end to end: object streams, string and
+// content-stream decryption all run through the standard security handler.
+TEST(DocumentParser, encrypted_rc4_fixture) {
+  // R 2 / RC4-40, owner-locked: opens with the empty user password.
+  check_fixture_parses("odr-public/pdf/Casio_WVA-M650-7AJF.pdf");
+}
+
+TEST(DocumentParser, encrypted_aes256_fixture) {
+  // R 6 / V 5 / AESV3; password from the private-fixture index.csv. The
+  // submodule is not always present, so skip when the file is absent.
+  const std::string path = "odr-private/pdf/encrypted_fontfile3_opentype.pdf";
+  if (!std::filesystem::exists(TestData::test_file_path(path))) {
+    GTEST_SKIP() << "private fixture not available";
+  }
+  check_fixture_parses(path, "sample-user-password");
+}
+
+// The render path re-opens an encrypted file with the authenticated decryptor
+// (carried from the initial open) instead of the password. Deriving it once and
+// replaying it must decrypt the document just as the password does.
+TEST(DocumentParser, reopen_with_decryptor) {
+  const std::string short_path = "odr-public/pdf/Casio_WVA-M650-7AJF.pdf";
+  const auto file =
+      std::make_shared<DiskFile>(TestData::test_file_path(short_path));
+
+  // Authenticate via the empty user password (owner-locked file) and keep the
+  // decryptor.
+  std::optional<Decryptor> decryptor;
+  {
+    const DocumentParser parser(file->stream());
+    decryptor = parser.authenticator().value().authenticate("").value();
+  }
+
+  // Re-open with the decryptor only; content streams must still decrypt.
+  {
+    DocumentParser parser(file->stream(), decryptor);
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const std::vector<Page *> pages = document->collect_pages();
+    EXPECT_FALSE(pages.empty());
+    for (const Page *page : pages) {
+      for (const auto &content_reference : page->contents_reference) {
+        EXPECT_FALSE(parser.read_decoded_stream(content_reference).empty());
+      }
+    }
+  }
+}
+
 TEST(DocumentParser, inherited_page_attributes) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
@@ -113,8 +163,8 @@ TEST(DocumentParser, inherited_page_attributes) {
       .object("<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>")
       .trailer("/Root 1 0 R");
 
-  std::istringstream in(builder.build_classic());
-  DocumentParser parser(in);
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(builder.build_classic()));
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 
@@ -152,8 +202,8 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
       .stream_object("", "BT ET")
       .trailer("/Root 1 0 R");
 
-  std::istringstream in(builder.build_classic());
-  DocumentParser parser(in);
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(builder.build_classic()));
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 

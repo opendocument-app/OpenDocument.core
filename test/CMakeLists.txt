@@ -30,6 +30,8 @@ add_executable(odr_test
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_range_test.cpp"
 
+        "src/internal/crypto/crypto_util_test.cpp"
+
         "src/internal/csv/csv_file_test.cpp"
         "src/internal/csv/csv_test.cpp"
 
@@ -38,9 +40,11 @@ add_executable(odr_test
         "src/internal/ooxml/ooxml_crypto_test.cpp"
 
         "src/internal/pdf/pdf_document_parser.cpp"
+        "src/internal/pdf/pdf_encryption.cpp"
         "src/internal/pdf/pdf_file_object.cpp"
         "src/internal/pdf/pdf_file_parser.cpp"
         "src/internal/pdf/pdf_filter.cpp"
+        "src/internal/pdf/pdf_object_parser.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
         "src/internal/svm/svm_test.cpp"

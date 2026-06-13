@@ -15,12 +15,13 @@ class NullLogger final : public Logger {
 public:
   [[nodiscard]] bool will_log(LogLevel) const override { return false; }
 
-  void log_impl(Time, LogLevel, const std::string &,
-                const std::source_location &) override {
+  void flush() override {
     // Do nothing
   }
 
-  void flush() override {
+protected:
+  void log_impl(Time, LogLevel, const std::string &,
+                const std::source_location &) const override {
     // Do nothing
   }
 };
@@ -42,14 +43,15 @@ public:
     return level >= m_level;
   }
 
+  void flush() override { m_output->flush(); }
+
+protected:
   void log_impl(const Time time, const LogLevel level,
                 const std::string &message,
-                const std::source_location &location) override {
+                const std::source_location &location) const override {
     print_head(*m_output, time, level, m_name, location, m_format);
     *m_output << message << "\n";
   }
-
-  void flush() override { m_output->flush(); }
 
 private:
   std::string m_name;
@@ -75,20 +77,21 @@ public:
     });
   }
 
+  void flush() override {
+    for (const auto &logger : m_loggers) {
+      logger->flush();
+    }
+  }
+
+protected:
   void log_impl(const Time time, const LogLevel level,
                 const std::string &message,
-                const std::source_location &location) override {
+                const std::source_location &location) const override {
     for (const auto &logger : m_loggers) {
       if (!logger->will_log(level)) {
         continue;
       }
       logger->log(level, message, time, location);
-    }
-  }
-
-  void flush() override {
-    for (const auto &logger : m_loggers) {
-      logger->flush();
     }
   }
 

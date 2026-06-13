@@ -4,6 +4,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace odr::internal {

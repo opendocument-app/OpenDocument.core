@@ -4,11 +4,13 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
+#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
@@ -72,9 +74,9 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
-    auto in = m_pdf_file.file().stream();
-    pdf::DocumentParser parser(*in, *m_logger);
-
+    const auto &pdf_file =
+        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
+    pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
     std::unique_ptr<pdf::Document> document = parser.parse_document();
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
