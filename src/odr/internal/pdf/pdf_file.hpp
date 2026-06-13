@@ -3,6 +3,7 @@
 #include <odr/logger.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/pdf/pdf_encryption.hpp>
 
 #include <memory>
 #include <string>
@@ -33,11 +34,11 @@ public:
 
 private:
   std::shared_ptr<abstract::File> m_file;
+  std::optional<Authenticator> m_authenticator;
+  std::optional<Decryptor> m_decryptor;
+
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
-  /// The decryptor established when the file was unlocked; the user's password
-  /// is never stored, the derived key stays sealed inside the `Decryptor`.
-  std::shared_ptr<const pdf::Decryptor> m_decryptor;
 };
 
 } // namespace odr::internal::pdf

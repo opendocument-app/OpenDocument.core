@@ -3,48 +3,31 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <string>
 
 namespace odr::internal::pdf {
 
-/// PDF standard security handler (ISO 32000-1 7.6; AES-256 / R 6 per
-/// ISO 32000-2 7.6.4). Read-only: once a password authenticates, it decrypts
-/// the strings and streams of indirect objects. Permission bits (`/P`) are
-/// recorded but not enforced — same stance as the rest of the engine.
-///
-/// Supported configurations (anything else → `create` returns `nullopt`):
-///   - `V 1/2`, `R 2/3` — RC4, 40-128 bit.
-///   - `V 4`, `R 4` — crypt filters `StdCF` with `CFM` `V2` (RC4) or `AESV2`
-///     (AES-128-CBC), plus `Identity`; honours `StmF`/`StrF`.
-///   - `V 5`, `R 6` — AES-256-CBC, file key used directly (no per-object key).
+/// Per-stream / per-string decryption method, named by the crypt filter `/CFM`
+/// (V 4/5) or implied by `V` (RC4 for V 1/2).
+enum class EncryptionMethod {
+  none, ///< Identity crypt filter — pass through unchanged.
+  rc4,
+  aes_v2, ///< AES-128-CBC, per-object key.
+  aes_v3, ///< AES-256-CBC, file key used directly (V 5).
+};
+
+/// The decrypting half of the PDF standard security handler (ISO 32000-1 7.6):
+/// holds the derived file encryption key and the stream/string methods, and
+/// decrypts the strings and streams of indirect objects. Obtained from
+/// `Authenticator::authenticate`; immutable and always usable — there is no
+/// un-authenticated state. Read-only: permission bits are not enforced.
 class Decryptor {
 public:
-  enum class Method {
-    none, ///< Identity crypt filter — pass through unchanged.
-    rc4,
-    aes_v2, ///< AES-128-CBC, per-object key.
-    aes_v3, ///< AES-256-CBC, file key used directly (V 5).
-  };
-
-  /// Build from the already-reference-resolved `/Encrypt` dictionary and the
-  /// first element of the trailer `/ID`. Returns `nullopt` for a non-standard
-  /// handler or an unsupported `V`/`R`/`CFM` combination.
-  static std::optional<Decryptor> create(const Dictionary &encrypt,
-                                         const std::string &file_id0);
-
-  /// Try `password` (UTF-8/PDFDocEncoded bytes) as the user password, then as
-  /// the owner password. On success the file key is established and
-  /// `authenticated()` becomes true. The empty password is the usual case
-  /// (owner-locked-only files). Once authenticated, the derived key lives only
-  /// inside this object — there is no accessor; callers carry the whole
-  /// authenticated `Decryptor` forward (e.g. from the encryption probe to the
-  /// render parse) rather than the bare key, so the password is never retained.
-  bool authenticate(const std::string &password);
-  [[nodiscard]] bool authenticated() const;
-
-  [[nodiscard]] std::int64_t permissions() const { return m_p; }
+  /// Wrap an already-derived file key and the resolved stream/string methods.
+  /// Normally produced by `Authenticator::authenticate` rather than directly.
+  Decryptor(std::string key, EncryptionMethod stream_method,
+            EncryptionMethod string_method);
 
   /// Decrypt the raw bytes of a stream / string belonging to indirect object
   /// `reference`. Streams are decrypted before `/Filter` decoding (7.6.2).
@@ -54,21 +37,63 @@ public:
                                            std::string data) const;
 
 private:
-  std::string object_key(const ObjectReference &reference, Method method) const;
-  std::string decrypt(const ObjectReference &reference, std::string data,
-                      Method method) const;
+  [[nodiscard]] std::string object_key(const ObjectReference &reference,
+                                       EncryptionMethod method) const;
+  [[nodiscard]] std::string decrypt(const ObjectReference &reference,
+                                    std::string data,
+                                    EncryptionMethod method) const;
 
+  std::string m_key;
+  EncryptionMethod m_stream_method{EncryptionMethod::rc4};
+  EncryptionMethod m_string_method{EncryptionMethod::rc4};
+};
+
+/// The authenticating half of the PDF standard security handler (ISO 32000-1
+/// 7.6; AES-256 / R 6 per ISO 32000-2 7.6.4): parses the `/Encrypt` dictionary
+/// and validates a password, producing a `Decryptor` on success. Permission
+/// bits (`/P`) are recorded but not enforced — same stance as the rest of the
+/// engine.
+///
+/// Supported configurations (anything else → `create` returns `nullopt`):
+///   - `V 1/2`, `R 2/3` — RC4, 40-128 bit.
+///   - `V 4`, `R 4` — crypt filters `StdCF` with `CFM` `V2` (RC4) or `AESV2`
+///     (AES-128-CBC), plus `Identity`; honours `StmF`/`StrF`.
+///   - `V 5`, `R 6` — AES-256-CBC, file key used directly (no per-object key).
+class Authenticator {
+public:
+  /// Build from the already-reference-resolved `/Encrypt` dictionary and the
+  /// first element of the trailer `/ID`. Returns `nullopt` for a non-standard
+  /// handler or an unsupported `V`/`R`/`CFM` combination.
+  static std::optional<Authenticator> create(const Dictionary &encrypt,
+                                             const std::string &file_id0);
+
+  /// The raw `/P` permission bitfield (recorded, not enforced).
+  [[nodiscard]] std::int64_t permissions() const { return m_p; }
+
+  /// Try `password` (UTF-8/PDFDocEncoded bytes) as the user password, then as
+  /// the owner password. Returns a ready-to-use `Decryptor` on success, or
+  /// `nullopt` if neither matches. The empty password is the usual case
+  /// (owner-locked-only files). The derived key lives only inside the returned
+  /// `Decryptor` — callers carry the `Decryptor` forward (e.g. to re-open the
+  /// file for rendering) rather than the bare key, so the password is never
+  /// retained.
+  [[nodiscard]] std::optional<Decryptor>
+  authenticate(const std::string &password) const;
+
+private:
   std::int64_t m_v{};
   std::int64_t m_r{};
-  std::size_t m_key_length{5}; // file key length in bytes
-  std::string m_o, m_u, m_oe, m_ue;
+  std::size_t m_key_length{5}; ///< file key length in bytes
+  std::string m_o;
+  std::string m_u;
+  std::string m_oe;
+  std::string m_ue;
   std::int64_t m_p{};
   std::string m_id0;
   bool m_encrypt_metadata{true};
-  Method m_stream_method{Method::rc4};
-  Method m_string_method{Method::rc4};
 
-  std::optional<std::string> m_file_key;
+  EncryptionMethod m_stream_method{EncryptionMethod::rc4};
+  EncryptionMethod m_string_method{EncryptionMethod::rc4};
 };
 
 /// Pure password/key algorithms of the standard security handler, exposed for

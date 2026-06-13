@@ -11,47 +11,28 @@
 
 namespace odr::internal::pdf {
 
-namespace {
-
-/// Walk the trailer chain just far enough to learn whether the file is
-/// encrypted and whether `password` unlocks it. Defensive: any parse failure
-/// is reported as "not encrypted" so file detection never breaks on a
-/// malformed PDF — the real error then surfaces when HTML is requested.
-struct ProbeResult {
-  bool encrypted{false};
-  bool authenticated{true};
-  /// The authenticated decryptor when `authenticated` (carried in place of the
-  /// password); `nullptr` otherwise.
-  std::shared_ptr<const Decryptor> decryptor;
-};
-
-ProbeResult probe_encryption(const abstract::File &file,
-                             const std::string &password) {
-  try {
-    DocumentParser parser(file.stream());
-    parser.probe_encryption(password);
-    return {parser.encrypted(), parser.authenticated(), parser.decryptor()};
-  } catch (...) {
-    return {false, true, nullptr};
-  }
-}
-
-} // namespace
-
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
+  if (m_file == nullptr) {
+    throw std::invalid_argument("pdf: file is null");
+  }
+
+  DocumentParser parser(m_file->stream());
+  m_authenticator = parser.authenticator();
+
   m_file_meta.type = FileType::portable_document_format;
 
   // Most "protected" PDFs are owner-locked only, so try the empty user
   // password first; if it opens the file, no password is required.
-  const ProbeResult probe = probe_encryption(*m_file, "");
-  if (probe.encrypted) {
-    m_file_meta.password_encrypted = !probe.authenticated;
-    if (probe.authenticated) {
+  if (m_authenticator.has_value()) {
+    m_decryptor = m_authenticator->authenticate("");
+  }
+  if (parser.is_encrypted()) {
+    m_file_meta.password_encrypted = !m_authenticator.has_value();
+    if (m_decryptor.has_value()) {
       // Owner-locked only: opens with the empty user password. Keep the
       // decryptor so rendering needs neither the password nor a decrypt() call.
       m_encryption_state = EncryptionState::not_encrypted;
-      m_decryptor = probe.decryptor;
     } else {
       m_encryption_state = EncryptionState::encrypted;
     }
@@ -81,14 +62,16 @@ PdfFile::decrypt(const std::string &password) const {
   if (m_encryption_state != EncryptionState::encrypted) {
     throw NotEncryptedError();
   }
-  const ProbeResult probe = probe_encryption(*m_file, password);
-  if (!probe.authenticated) {
+  if (!m_authenticator.has_value()) {
+    throw std::logic_error("pdf: no authenticator for encrypted file");
+  }
+  std::optional<Decryptor> decryptor = m_authenticator->authenticate(password);
+  if (!decryptor.has_value()) {
     throw WrongPasswordError();
   }
 
   auto decrypted = std::make_shared<PdfFile>(*this);
-  // Carry the authenticated decryptor and drop the password.
-  decrypted->m_decryptor = probe.decryptor;
+  decrypted->m_decryptor = std::move(decryptor);
   decrypted->m_encryption_state = EncryptionState::decrypted;
   decrypted->m_file_meta.password_encrypted = false;
   return decrypted;

@@ -39,11 +39,10 @@ TEST(PdfEncryption, casio_r2_authenticate_empty) {
   encrypt["U"] = Object(StandardString(hex_decode(
       "d3f7b55d8d09b0efb6b4c1cc158ea7eaa579f693d93aeccf2d87e99b78376a18")));
 
-  auto decryptor = Decryptor::create(
+  const auto authenticator = Authenticator::create(
       encrypt, hex_decode("f2bffd9443e6910523d547b66f58e0c8"));
-  ASSERT_TRUE(decryptor.has_value());
-  EXPECT_TRUE(decryptor->authenticate(""));
-  EXPECT_TRUE(decryptor->authenticated());
+  ASSERT_TRUE(authenticator.has_value());
+  EXPECT_TRUE(authenticator->authenticate("").has_value());
 }
 
 // R 6 / V 5 / AESV3 fixture (odr-private/pdf/encrypted_fontfile3_opentype.pdf);
@@ -69,14 +68,10 @@ TEST(PdfEncryption, fontfile3_r6_aesv3) {
       "973fa8deba0ffd1cf8a58783d15532316097831d51ea722465283873c7bf2954")));
   const std::string id0 = hex_decode("48f4ed84fa38cfb32c9641b2442e6a7d");
 
-  auto decryptor = Decryptor::create(encrypt, id0);
-  ASSERT_TRUE(decryptor.has_value());
-  EXPECT_TRUE(decryptor->authenticate("sample-user-password"));
-  EXPECT_TRUE(decryptor->authenticated());
-
-  auto wrong = Decryptor::create(encrypt, id0);
-  EXPECT_FALSE(wrong->authenticate("wrong-password"));
-  EXPECT_FALSE(wrong->authenticated());
+  const auto authenticator = Authenticator::create(encrypt, id0);
+  ASSERT_TRUE(authenticator.has_value());
+  EXPECT_TRUE(authenticator->authenticate("sample-user-password").has_value());
+  EXPECT_FALSE(authenticator->authenticate("wrong-password").has_value());
 }
 
 // The fixtures above cover R 2 (RC4-40) and R 6 (AES-256). The remaining R 3
@@ -125,17 +120,19 @@ Dictionary aesv2_encrypt(const std::string &o, const std::string &u,
 } // namespace
 
 TEST(PdfEncryption, qpdf_rc4_128_r3) {
-  const Dictionary e = standard_encrypt(
+  const Dictionary encrypt = standard_encrypt(
       2, 3, 128,
       hex_decode(
           "0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
       hex_decode(
           "cfc31bd6a458aadef418ac4b427dfe010021446990b9e4114071a4d9104984c1"));
 
-  auto d = Decryptor::create(e, hex_decode("5aff498eede5e840196289c653e0eb44"));
-  ASSERT_TRUE(d.has_value());
-  ASSERT_TRUE(d->authenticate("user"));
-  const std::string content = d->decrypt_stream(
+  const auto authenticator = Authenticator::create(
+      encrypt, hex_decode("5aff498eede5e840196289c653e0eb44"));
+  ASSERT_TRUE(authenticator.has_value());
+  const auto decryptor = authenticator->authenticate("user");
+  ASSERT_TRUE(decryptor.has_value());
+  const std::string content = decryptor->decrypt_stream(
       kContentRef,
       hex_decode(
           "aedffca5d3c5f617143550c4ef045a59853eb36b790c4a08e24b104ed1eb55e1"
@@ -144,17 +141,19 @@ TEST(PdfEncryption, qpdf_rc4_128_r3) {
 }
 
 TEST(PdfEncryption, qpdf_aes_128_r4) {
-  const Dictionary e = aesv2_encrypt(
+  const Dictionary encrypt = aesv2_encrypt(
       hex_decode(
           "0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
       hex_decode(
           "be561e5a355dee484698c6050e4d47680021446990b9e4114071a4d9104984c1"),
       true);
 
-  auto d = Decryptor::create(e, hex_decode("e0ab9dc9926ecd79c7ea59739043f1fa"));
-  ASSERT_TRUE(d.has_value());
-  ASSERT_TRUE(d->authenticate("user"));
-  const std::string content = d->decrypt_stream(
+  const auto authenticator = Authenticator::create(
+      encrypt, hex_decode("e0ab9dc9926ecd79c7ea59739043f1fa"));
+  ASSERT_TRUE(authenticator.has_value());
+  const auto decryptor = authenticator->authenticate("user");
+  ASSERT_TRUE(decryptor.has_value());
+  const std::string content = decryptor->decrypt_stream(
       kContentRef,
       hex_decode(
           "1cdcf005888596d73142dfd077adce936261e5c7a369cfd8301ea2af46161262"
@@ -166,17 +165,19 @@ TEST(PdfEncryption, qpdf_aes_128_r4) {
 // EncryptMetadata false adds the 0xFFFFFFFF salt to the key derivation
 // (Algorithm 2, step f).
 TEST(PdfEncryption, qpdf_aes_128_r4_cleartext_metadata) {
-  const Dictionary e = aesv2_encrypt(
+  const Dictionary encrypt = aesv2_encrypt(
       hex_decode(
           "0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671"),
       hex_decode(
           "08deff331b7a9a4643ae51064bcfd6510021446990b9e4114071a4d9104984c1"),
       false);
 
-  auto d = Decryptor::create(e, hex_decode("1444f0ada1f2311db55de9a7cb4ded37"));
-  ASSERT_TRUE(d.has_value());
-  ASSERT_TRUE(d->authenticate("user"));
-  const std::string content = d->decrypt_stream(
+  const auto authenticator = Authenticator::create(
+      encrypt, hex_decode("1444f0ada1f2311db55de9a7cb4ded37"));
+  ASSERT_TRUE(authenticator.has_value());
+  const auto decryptor = authenticator->authenticate("user");
+  ASSERT_TRUE(decryptor.has_value());
+  const std::string content = decryptor->decrypt_stream(
       kContentRef,
       hex_decode(
           "95ad3265670d8686bfe7913688cb4ef23a0b864db3192bb2584d58882d5aff85"
@@ -198,13 +199,17 @@ TEST(PdfEncryption, qpdf_aes_128_r4_owner_password) {
       "a7ed75f1ea892c0a938d47a831920948d911c53157874e5b6a3568589353ad03"
       "4ac8982fbe8385589f5175e5cbec5148");
 
-  auto user = Decryptor::create(aesv2_encrypt(o, u, true), id0);
-  ASSERT_TRUE(user->authenticate(""));
-  EXPECT_NE(user->decrypt_stream(kContentRef, stream).find(kMarker),
+  const auto authenticator =
+      Authenticator::create(aesv2_encrypt(o, u, true), id0);
+  ASSERT_TRUE(authenticator.has_value());
+
+  const auto decryptor_user = authenticator->authenticate("");
+  ASSERT_TRUE(decryptor_user.has_value());
+  EXPECT_NE(decryptor_user->decrypt_stream(kContentRef, stream).find(kMarker),
             std::string::npos);
 
-  auto owner = Decryptor::create(aesv2_encrypt(o, u, true), id0);
-  ASSERT_TRUE(owner->authenticate("owner"));
-  EXPECT_NE(owner->decrypt_stream(kContentRef, stream).find(kMarker),
+  const auto decryptor_owner = authenticator->authenticate("owner");
+  ASSERT_TRUE(decryptor_owner.has_value());
+  EXPECT_NE(decryptor_owner->decrypt_stream(kContentRef, stream).find(kMarker),
             std::string::npos);
 }

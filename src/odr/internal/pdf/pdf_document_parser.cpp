@@ -254,18 +254,47 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 } // namespace
 
 DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
-                               std::shared_ptr<const Decryptor> decryptor,
+                               std::optional<Decryptor> decryptor,
                                const Logger &logger)
-    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{&logger},
-      m_decryptor(std::move(decryptor)) {}
+    : m_stream(std::move(in)), m_parser(*m_stream),
+      m_decryptor(std::move(decryptor)), m_logger{&logger} {
+  auto [xref, trailer] = read_trailer_chain();
+  m_xref = std::move(xref);
+  m_trailer = std::move(trailer);
+
+  m_authenticator = create_authenticator();
+}
 
 std::istream &DocumentParser::in() { return m_parser.in(); }
 
 FileParser &DocumentParser::parser() { return m_parser; }
 
+const Logger &DocumentParser::logger() const { return *m_logger; }
+
 const Xref &DocumentParser::xref() const { return m_xref; }
 
-const Logger &DocumentParser::logger() const { return *m_logger; }
+const Dictionary &DocumentParser::trailer() const { return m_trailer; }
+
+bool DocumentParser::is_encrypted() const { return m_encrypt_dict.has_value(); }
+
+const std::optional<Authenticator> &DocumentParser::authenticator() const {
+  return m_authenticator;
+}
+
+const std::optional<Decryptor> &DocumentParser::decryptor() const {
+  return m_decryptor;
+}
+
+bool DocumentParser::authenticate(const std::string &password) {
+  if (m_decryptor.has_value()) {
+    throw std::runtime_error("pdf: document is already authenticated");
+  }
+  if (!m_authenticator.has_value()) {
+    throw std::runtime_error("pdf: document is not encrypted");
+  }
+  m_decryptor = m_authenticator->authenticate(password);
+  return m_decryptor.has_value();
+}
 
 const IndirectObject &
 DocumentParser::read_object(const ObjectReference &reference) {
@@ -287,8 +316,7 @@ DocumentParser::read_object(const ObjectReference &reference) {
     // Decrypt string leaves (7.6.2). Skip the /Encrypt dictionary itself (its
     // strings are the un-decrypted /O,/U,…) — it is read before the decryptor
     // exists, so this is defensive.
-    if (m_decryptor != nullptr && m_decryptor->authenticated() &&
-        m_encrypt_reference != object.reference) {
+    if (m_decryptor.has_value() && m_encrypt_reference != object.reference) {
       decrypt_strings(object.object, object.reference);
     }
   } else if (entry.is_compressed()) {
@@ -359,8 +387,8 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   // Decrypt before filter decoding (7.6.2). Cross-reference streams are read
   // during the trailer-chain walk, before the decryptor exists, so they are
   // never decrypted (7.5.8.2); object streams are decrypted here as a whole,
-  // leaving their members plaintext.
-  if (m_decryptor != nullptr && m_decryptor->authenticated()) {
+  // leaving their members' plaintext.
+  if (m_decryptor.has_value()) {
     raw = m_decryptor->decrypt_stream(object.reference, std::move(raw));
   }
   return raw;
@@ -458,11 +486,12 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   return {std::move(xref), dictionary};
 }
 
-Dictionary DocumentParser::read_trailer_chain() {
+std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
   parser().seek_start_xref();
   const StartXref start_xref = parser().read_start_xref();
 
-  std::optional<Dictionary> trailer;
+  Xref result_xref;
+  std::optional<Dictionary> result_trailer;
   std::optional<std::uint32_t> position = start_xref.start;
   std::set<std::uint32_t> visited; // guards against `Prev` cycles
 
@@ -478,7 +507,7 @@ Dictionary DocumentParser::read_trailer_chain() {
       xref.merge_hybrid(stream_xref);
     }
 
-    m_xref.append(xref);
+    result_xref.append(xref);
 
     if (trailer_dict.has_key("Prev")) {
       position = trailer_dict["Prev"].as_integer();
@@ -486,31 +515,22 @@ Dictionary DocumentParser::read_trailer_chain() {
       position.reset();
     }
 
-    if (!trailer.has_value()) {
-      trailer = std::move(trailer_dict);
+    if (!result_trailer.has_value()) {
+      result_trailer = std::move(trailer_dict);
     }
   }
 
-  return std::move(trailer).value();
+  return {std::move(result_xref), std::move(result_trailer).value()};
 }
 
-Decryptor DocumentParser::create_decryptor(const Dictionary &trailer) {
-  if (!trailer.has_key("Encrypt")) {
-    throw std::runtime_error("pdf: document is not encrypted");
-  }
-
-  // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
-  std::string id0;
-  if (trailer.has_key("ID") && trailer["ID"].is_array()) {
-    const Array &id = trailer["ID"].as_array();
-    if (id.size() > 0 && id[0].is_string()) {
-      id0 = id[0].as_string();
-    }
+std::optional<Authenticator> DocumentParser::create_authenticator() {
+  if (!m_trailer.has_key("Encrypt")) {
+    return std::nullopt;
   }
 
   // Read the /Encrypt dictionary while the decryptor does not yet exist, so
   // its own strings (/O, /U, …) stay un-decrypted; it is then cached.
-  Object encrypt = trailer["Encrypt"];
+  Object encrypt = m_trailer["Encrypt"];
   if (encrypt.is_reference()) {
     m_encrypt_reference = encrypt.as_reference();
     encrypt = read_object(*m_encrypt_reference).object;
@@ -518,40 +538,18 @@ Decryptor DocumentParser::create_decryptor(const Dictionary &trailer) {
   if (!encrypt.is_dictionary()) {
     throw std::runtime_error("pdf: /Encrypt is not a dictionary");
   }
+  m_encrypt_dict = std::move(encrypt);
 
-  std::optional<Decryptor> decryptor =
-      Decryptor::create(encrypt.as_dictionary(), id0);
-  if (!decryptor.has_value()) {
-    throw std::runtime_error("pdf: unsupported encryption");
+  // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
+  std::string id0;
+  if (m_trailer.has_key("ID") && m_trailer["ID"].is_array()) {
+    const Array &id = m_trailer["ID"].as_array();
+    if (id.size() > 0 && id[0].is_string()) {
+      id0 = id[0].as_string();
+    }
   }
-  return std::move(*decryptor);
-}
 
-void DocumentParser::setup_encryption(const Dictionary &trailer,
-                                      const std::string &password) {
-  Decryptor decryptor = create_decryptor(trailer);
-  if (!decryptor.authenticate(password)) {
-    ODR_WARNING(*m_logger, "pdf: encrypted document, password not accepted");
-  }
-  m_decryptor = std::make_shared<const Decryptor>(std::move(decryptor));
-}
-
-void DocumentParser::note_encrypt_reference(const Dictionary &trailer) {
-  // Preserve the /Encrypt self-skip guard (its /O,/U strings must stay
-  // un-decrypted) without re-reading the dictionary.
-  if (!trailer.has_key("Encrypt")) {
-    return;
-  }
-  if (const Object &encrypt = trailer["Encrypt"]; encrypt.is_reference()) {
-    m_encrypt_reference = encrypt.as_reference();
-  }
-}
-
-std::shared_ptr<const Decryptor> DocumentParser::decryptor() const {
-  if (m_decryptor != nullptr && m_decryptor->authenticated()) {
-    return m_decryptor;
-  }
-  return nullptr;
+  return Authenticator::create(m_encrypt_dict->as_dictionary(), id0);
 }
 
 void DocumentParser::decrypt_strings(Object &object,
@@ -573,19 +571,6 @@ void DocumentParser::decrypt_strings(Object &object,
   }
 }
 
-bool DocumentParser::encrypted() const { return m_decryptor != nullptr; }
-
-bool DocumentParser::authenticated() const {
-  return m_decryptor == nullptr || m_decryptor->authenticated();
-}
-
-void DocumentParser::probe_encryption(const std::string &password) {
-  const Dictionary trailer = read_trailer_chain();
-  if (trailer.has_key("Encrypt")) {
-    setup_encryption(trailer, password);
-  }
-}
-
 std::unique_ptr<Document>
 DocumentParser::build_document(const Dictionary &trailer) {
   auto document = std::make_unique<Document>();
@@ -594,19 +579,8 @@ DocumentParser::build_document(const Dictionary &trailer) {
   return document;
 }
 
-std::unique_ptr<Document>
-DocumentParser::parse_document(const std::string &password) {
-  const Dictionary trailer = read_trailer_chain();
-  if (m_decryptor) {
-    // Decryptor supplied at construction; just guard the /Encrypt dict.
-    note_encrypt_reference(trailer);
-  } else if (trailer.has_key("Encrypt")) {
-    setup_encryption(trailer, password);
-  }
-  if (!authenticated()) {
-    throw std::runtime_error("pdf: document is encrypted, password required");
-  }
-  return build_document(trailer);
+std::unique_ptr<Document> DocumentParser::parse_document() {
+  return build_document(m_trailer);
 }
 
 void DocumentParser::resolve_object(Object &object) {

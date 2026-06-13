@@ -60,7 +60,6 @@ TEST(DocumentParser, mini_pdf_with_xref_stream) {
   const std::string pdf = two_object_mini_pdf(false);
 
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
-  parser.parse_document();
 
   // 4 objects, the cross-reference stream itself, and the free head
   EXPECT_EQ(parser.xref().table.size(), 6);
@@ -79,8 +78,11 @@ void check_fixture_parses(const std::string &short_path,
       std::make_shared<DiskFile>(TestData::test_file_path(short_path));
 
   DocumentParser parser(file->stream());
+  if (parser.is_encrypted()) {
+    parser.authenticate(password);
+  }
 
-  const std::unique_ptr<Document> document = parser.parse_document(password);
+  const std::unique_ptr<Document> document = parser.parse_document();
 
   const std::vector<Page *> pages = document->collect_pages();
 
@@ -117,7 +119,7 @@ TEST(DocumentParser, encrypted_aes256_fixture) {
 }
 
 // The render path re-opens an encrypted file with the authenticated decryptor
-// (carried from the probe parse) instead of the password. Deriving it once and
+// (carried from the initial open) instead of the password. Deriving it once and
 // replaying it must decrypt the document just as the password does.
 TEST(DocumentParser, reopen_with_decryptor) {
   const std::string short_path = "odr-public/pdf/Casio_WVA-M650-7AJF.pdf";
@@ -126,14 +128,10 @@ TEST(DocumentParser, reopen_with_decryptor) {
 
   // Authenticate via the empty user password (owner-locked file) and keep the
   // decryptor.
-  std::shared_ptr<const Decryptor> decryptor;
+  std::optional<Decryptor> decryptor;
   {
-    DocumentParser parser(file->stream());
-    parser.probe_encryption("");
-    ASSERT_TRUE(parser.encrypted());
-    ASSERT_TRUE(parser.authenticated());
-    decryptor = parser.decryptor();
-    ASSERT_NE(decryptor, nullptr);
+    const DocumentParser parser(file->stream());
+    decryptor = parser.authenticator().value().authenticate("").value();
   }
 
   // Re-open with the decryptor only; content streams must still decrypt.
