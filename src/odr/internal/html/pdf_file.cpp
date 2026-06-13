@@ -106,7 +106,7 @@ public:
     out.write_body_begin();
 
     for (pdf::Page *page : ordered_pages) {
-      pdf::Array page_box = page->object.as_dictionary()["MediaBox"].as_array();
+      const pdf::Array &page_box = page->media_box.as_array();
 
       out.write_element_begin(
           "div", HtmlElementOptions().set_style([&](std::ostream &o) {

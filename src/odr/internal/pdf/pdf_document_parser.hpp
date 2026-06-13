@@ -41,6 +41,7 @@ public:
   [[nodiscard]] std::istream &in();
   [[nodiscard]] FileParser &parser();
   [[nodiscard]] const Xref &xref() const;
+  [[nodiscard]] Logger &logger() const;
 
   const IndirectObject &read_object(const ObjectReference &reference);
   std::string read_object_stream(const ObjectReference &reference);

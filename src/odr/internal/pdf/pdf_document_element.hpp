@@ -47,6 +47,11 @@ struct Page final : Element {
   Resources *resources{nullptr};
   std::vector<Annotation *> annotations;
 
+  // resolved inheritable attributes (ISO 32000-1 7.7.3.3, Table 30)
+  Object media_box;  // rectangle array
+  Object crop_box;   // rectangle array (defaults to media_box)
+  Integer rotate{0}; // normalized to {0, 90, 180, 270}
+
   // TODO remove
   std::vector<ObjectReference> contents_reference;
 };
