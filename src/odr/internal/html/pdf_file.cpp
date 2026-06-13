@@ -10,6 +10,7 @@
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
@@ -73,13 +74,14 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
-    auto in = m_pdf_file.file().stream();
-    pdf::DocumentParser parser(*in, *m_logger);
-
-    // The file carries the authenticated decryptor when it was unlocked, so
-    // rendering needs neither the password nor a fresh derivation.
-    std::unique_ptr<pdf::Document> document =
-        parser.parse_document(m_pdf_file.impl()->decryptor());
+    // The file builds a parser that owns the stream and carries the
+    // authenticated decryptor (when the file was unlocked), so rendering needs
+    // neither the password nor a fresh derivation. The in-house engine only
+    // ever backs this service with a `pdf::PdfFile`.
+    const auto &pdf_file =
+        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
+    pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
+    std::unique_ptr<pdf::Document> document = parser.parse_document();
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 

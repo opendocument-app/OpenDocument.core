@@ -1,15 +1,16 @@
 #pragma once
 
+#include <odr/logger.hpp>
+
 #include <odr/internal/abstract/file.hpp>
 
 #include <memory>
 #include <string>
 
-namespace odr::internal {
+namespace odr::internal::pdf {
 
-namespace pdf {
+class DocumentParser;
 class Decryptor;
-}
 
 class PdfFile final : public abstract::PdfFile {
 public:
@@ -27,11 +28,8 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  /// The authenticated decryptor that unlocks this file (`nullptr` for files
-  /// that open without decryption), for the HTML service to feed the document
-  /// parser.
-  [[nodiscard]] std::shared_ptr<const pdf::Decryptor>
-  decryptor() const noexcept override;
+  [[nodiscard]] DocumentParser
+  create_parser(const Logger &logger = Logger::null()) const;
 
 private:
   std::shared_ptr<abstract::File> m_file;
@@ -42,4 +40,4 @@ private:
   std::shared_ptr<const pdf::Decryptor> m_decryptor;
 };
 
-} // namespace odr::internal
+} // namespace odr::internal::pdf

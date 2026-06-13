@@ -36,8 +36,7 @@ std::string two_object_mini_pdf(const bool classic) {
 }
 
 void check_mini_pdf(const std::string &pdf) {
-  std::istringstream in(pdf);
-  DocumentParser parser(in);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
 
   std::unique_ptr<Document> document = parser.parse_document();
 
@@ -60,8 +59,7 @@ TEST(DocumentParser, mini_pdf_with_classic_xref_table) {
 TEST(DocumentParser, mini_pdf_with_xref_stream) {
   const std::string pdf = two_object_mini_pdf(false);
 
-  std::istringstream in(pdf);
-  DocumentParser parser(in);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
   parser.parse_document();
 
   // 4 objects, the cross-reference stream itself, and the free head
@@ -80,8 +78,7 @@ void check_fixture_parses(const std::string &short_path,
   const auto file =
       std::make_shared<DiskFile>(TestData::test_file_path(short_path));
 
-  const auto in = file->stream();
-  DocumentParser parser(*in);
+  DocumentParser parser(file->stream());
 
   const std::unique_ptr<Document> document = parser.parse_document(password);
 
@@ -131,8 +128,7 @@ TEST(DocumentParser, reopen_with_decryptor) {
   // decryptor.
   std::shared_ptr<const Decryptor> decryptor;
   {
-    const auto in = file->stream();
-    DocumentParser parser(*in);
+    DocumentParser parser(file->stream());
     parser.probe_encryption("");
     ASSERT_TRUE(parser.encrypted());
     ASSERT_TRUE(parser.authenticated());
@@ -142,9 +138,8 @@ TEST(DocumentParser, reopen_with_decryptor) {
 
   // Re-open with the decryptor only; content streams must still decrypt.
   {
-    const auto in = file->stream();
-    DocumentParser parser(*in);
-    const std::unique_ptr<Document> document = parser.parse_document(decryptor);
+    DocumentParser parser(file->stream(), decryptor);
+    const std::unique_ptr<Document> document = parser.parse_document();
     const std::vector<Page *> pages = document->collect_pages();
     EXPECT_FALSE(pages.empty());
     for (const Page *page : pages) {
@@ -170,8 +165,8 @@ TEST(DocumentParser, inherited_page_attributes) {
       .object("<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>")
       .trailer("/Root 1 0 R");
 
-  std::istringstream in(builder.build_classic());
-  DocumentParser parser(in);
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(builder.build_classic()));
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 
@@ -209,8 +204,8 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
       .stream_object("", "BT ET")
       .trailer("/Root 1 0 R");
 
-  std::istringstream in(builder.build_classic());
-  DocumentParser parser(in);
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(builder.build_classic()));
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 

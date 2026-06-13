@@ -22,7 +22,6 @@
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <algorithm>
-#include <utility>
 
 namespace odr::internal {
 
@@ -231,7 +230,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
   }
   if (file_type == FileType::portable_document_format) {
     ODR_VERBOSE(logger, "open as pdf");
-    return std::make_unique<PdfFile>(file);
+    return std::make_unique<pdf::PdfFile>(file);
   }
   if (file_type == FileType::portable_network_graphics ||
       file_type == FileType::graphics_interchange_format ||
@@ -386,7 +385,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     if (with == DecoderEngine::odr) {
       ODR_VERBOSE(logger, "using odr engine");
       try {
-        return std::make_unique<PdfFile>(file);
+        return std::make_unique<pdf::PdfFile>(file);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as pdf with odr engine");
       }

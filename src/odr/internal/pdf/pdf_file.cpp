@@ -6,11 +6,10 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_encryption.hpp>
 
-#include <istream>
 #include <memory>
 #include <string>
 
-namespace odr::internal {
+namespace odr::internal::pdf {
 
 namespace {
 
@@ -23,14 +22,13 @@ struct ProbeResult {
   bool authenticated{true};
   /// The authenticated decryptor when `authenticated` (carried in place of the
   /// password); `nullptr` otherwise.
-  std::shared_ptr<const pdf::Decryptor> decryptor;
+  std::shared_ptr<const Decryptor> decryptor;
 };
 
 ProbeResult probe_encryption(const abstract::File &file,
                              const std::string &password) {
   try {
-    const std::unique_ptr<std::istream> in = file.stream();
-    pdf::DocumentParser parser(*in);
+    DocumentParser parser(file.stream());
     parser.probe_encryption(password);
     return {parser.encrypted(), parser.authenticated(), parser.decryptor()};
   } catch (...) {
@@ -100,8 +98,8 @@ bool PdfFile::is_decodable() const noexcept {
   return m_encryption_state != EncryptionState::encrypted;
 }
 
-std::shared_ptr<const pdf::Decryptor> PdfFile::decryptor() const noexcept {
-  return m_decryptor;
+DocumentParser PdfFile::create_parser(const Logger &logger) const {
+  return DocumentParser(m_file->stream(), m_decryptor, logger);
 }
 
-} // namespace odr::internal
+} // namespace odr::internal::pdf

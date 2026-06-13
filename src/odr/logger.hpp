@@ -48,10 +48,10 @@ public:
 
   [[nodiscard]] virtual bool will_log(LogLevel level) const = 0;
 
-  void
-  log(const LogLevel level, const std::string &message,
-      Time time = Clock::now(),
-      const std::source_location &location = std::source_location::current()) {
+  void log(const LogLevel level, const std::string &message,
+           const Time time = Clock::now(),
+           const std::source_location &location =
+               std::source_location::current()) const {
     if (will_log(level)) {
       log_impl(time, level, message, location);
     }
@@ -61,7 +61,7 @@ public:
 
 protected:
   virtual void log_impl(Time time, LogLevel level, const std::string &message,
-                        const std::source_location &location) = 0;
+                        const std::source_location &location) const = 0;
 };
 
 } // namespace odr
