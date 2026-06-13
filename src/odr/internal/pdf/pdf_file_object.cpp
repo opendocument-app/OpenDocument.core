@@ -4,40 +4,23 @@
 
 #include <stdexcept>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
-const ObjectReference &Trailer::root_reference() const {
-  return dictionary["Root"].as_reference();
-}
+namespace {
 
-void Xref::append(const Xref &xref) {
-  table.insert(std::begin(xref.table), std::end(xref.table));
-}
+/// Cross-reference stream entry type (ISO 32000-1 7.5.8.3, Table 18, field 1).
+/// Other values shall be treated as references to the null object (ignored).
+enum class XrefStreamType : std::uint64_t {
+  free = 0,
+  uncompressed = 1,
+  compressed = 2,
+};
 
-void Xref::merge_hybrid(const Xref &xref_stream) {
-  for (const auto &[reference, entry] : xref_stream.table) {
-    bool absent_or_free = true;
-    for (auto it = table.lower_bound(ObjectReference(reference.id, 0));
-         it != std::end(table) && it->first.id == reference.id; ++it) {
-      if (!it->second.is_free()) {
-        absent_or_free = false;
-        break;
-      }
-    }
-    if (absent_or_free) {
-      table.insert_or_assign(reference, entry);
-    }
-  }
-}
+} // namespace
 
-Xref parse_xref_stream_table(
-    const std::string &data, const std::vector<std::uint32_t> &field_widths,
+pdf::Xref pdf::parse_xref_stream_table(
+    const std::string &data, const std::array<std::uint32_t, 3> &field_widths,
     const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections) {
-  if (field_widths.size() != 3) {
-    throw std::runtime_error(
-        "expected three field widths in cross-reference stream /W");
-  }
-
   const std::size_t entry_size = static_cast<std::size_t>(field_widths[0]) +
                                  field_widths[1] + field_widths[2];
   std::size_t position = 0;
@@ -62,25 +45,31 @@ Xref parse_xref_stream_table(
         throw std::runtime_error("cross-reference stream data exhausted");
       }
 
-      const std::uint64_t type = read_field(field_widths[0], 1);
+      const auto type = static_cast<XrefStreamType>(
+          read_field(field_widths[0],
+                     static_cast<std::uint64_t>(XrefStreamType::uncompressed)));
       const std::uint64_t second = read_field(field_widths[1], 0);
       const std::uint64_t third = read_field(field_widths[2], 0);
       const std::uint32_t id = first_id + i;
 
-      if (type == 0) {
+      switch (type) {
+      case XrefStreamType::free:
         result.table.emplace(
             ObjectReference(id, third),
             Xref::FreeEntry{static_cast<std::uint32_t>(second),
                             static_cast<std::uint32_t>(third)});
-      } else if (type == 1) {
+        break;
+      case XrefStreamType::uncompressed:
         result.table.emplace(
             ObjectReference(id, third),
             Xref::UsedEntry{static_cast<std::uint32_t>(second)});
-      } else if (type == 2) {
+        break;
+      case XrefStreamType::compressed:
         result.table.emplace(
             ObjectReference(id, 0),
             Xref::CompressedEntry{static_cast<std::uint32_t>(second),
                                   static_cast<std::uint32_t>(third)});
+        break;
       }
     }
   }
@@ -88,29 +77,64 @@ Xref parse_xref_stream_table(
   return result;
 }
 
-ObjectStream::ObjectStream(std::string data, const std::uint32_t n,
-                           const std::uint32_t first)
-    : m_in{std::move(data)} {
-  ObjectParser parser(m_in);
-  m_members.reserve(n);
-  for (std::uint32_t i = 0; i < n; ++i) {
-    parser.skip_whitespace();
-    const std::uint64_t id = parser.read_unsigned_integer();
-    parser.skip_whitespace();
-    const std::uint64_t offset = parser.read_unsigned_integer();
-    m_members.emplace_back(id, first + static_cast<std::uint32_t>(offset));
+pdf::ObjectStream pdf::parse_object_stream(std::istream &in,
+                                           const std::uint32_t n,
+                                           const std::uint32_t first) {
+  // Read the header of `n` (id, offset) pairs, recording the absolute payload
+  // position of each member.
+  std::vector<std::pair<std::uint64_t, std::uint32_t>> offsets;
+  offsets.reserve(n);
+  {
+    ObjectParser parser(in);
+    for (std::uint32_t i = 0; i < n; ++i) {
+      parser.skip_whitespace();
+      const std::uint64_t id = parser.read_unsigned_integer();
+      parser.skip_whitespace();
+      const std::uint64_t offset = parser.read_unsigned_integer();
+      offsets.emplace_back(id, first + static_cast<std::uint32_t>(offset));
+    }
   }
+
+  // Parse each member object (a bare value) at its position.
+  ObjectStream members;
+  members.reserve(n);
+  for (const auto &[id, position] : offsets) {
+    in.clear();
+    in.seekg(position);
+    ObjectParser parser(in);
+    parser.skip_whitespace();
+    members.push_back({id, parser.read_object()});
+  }
+
+  return members;
 }
 
-Object ObjectStream::member_object(const std::uint32_t index) {
-  if (index >= m_members.size()) {
-    throw std::runtime_error("object stream member index out of range");
+} // namespace odr::internal
+
+namespace odr::internal::pdf {
+
+const ObjectReference &Trailer::root_reference() const {
+  return dictionary["Root"].as_reference();
+}
+
+void Xref::append(const Xref &xref) {
+  table.insert(std::begin(xref.table), std::end(xref.table));
+}
+
+void Xref::merge_hybrid(const Xref &xref_stream) {
+  for (const auto &[reference, entry] : xref_stream.table) {
+    bool absent_or_free = true;
+    for (auto it = table.lower_bound(ObjectReference(reference.id, 0));
+         it != std::end(table) && it->first.id == reference.id; ++it) {
+      if (!it->second.is_free()) {
+        absent_or_free = false;
+        break;
+      }
+    }
+    if (absent_or_free) {
+      table.insert_or_assign(reference, entry);
+    }
   }
-  m_in.clear();
-  m_in.seekg(m_members[index].second);
-  ObjectParser parser(m_in);
-  parser.skip_whitespace();
-  return parser.read_object();
 }
 
 } // namespace odr::internal::pdf

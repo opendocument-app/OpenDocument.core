@@ -1,7 +1,9 @@
 #include <odr/internal/pdf/pdf_file_object.hpp>
 
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -98,34 +100,25 @@ TEST(XrefStreamTable, exhausted_data_throws) {
                std::runtime_error);
 }
 
-TEST(XrefStreamTable, wrong_field_width_count_throws) {
-  EXPECT_THROW((void)parse_xref_stream_table("", {1, 2}, {}),
-               std::runtime_error);
-}
-
-TEST(ObjectStream, header_and_member_lookup) {
+TEST(ObjectStream, parse_members) {
   // two members: object 11 (a dictionary) at relative offset 0, object 12
   // (an array) at relative offset 9; /First is 10 (the header length)
   const std::string data = "11 0 12 9\n<</A 1>> [1 2 3]";
 
-  ObjectStream object_stream(data, 2, 10);
+  std::istringstream in(data);
+  const std::vector<ObjectStreamMember> members =
+      parse_object_stream(in, 2, 10);
 
-  ASSERT_EQ(object_stream.members().size(), 2);
-  EXPECT_EQ(object_stream.members()[0].first, 11);
-  EXPECT_EQ(object_stream.members()[0].second, 10);
-  EXPECT_EQ(object_stream.members()[1].first, 12);
-  EXPECT_EQ(object_stream.members()[1].second, 19);
+  ASSERT_EQ(members.size(), 2);
+  EXPECT_EQ(members[0].id, 11);
+  EXPECT_EQ(members[1].id, 12);
 
-  const Object first = object_stream.member_object(0);
-  ASSERT_TRUE(first.is_dictionary());
-  EXPECT_EQ(first.as_dictionary()["A"].as_integer(), 1);
+  ASSERT_TRUE(members[0].object.is_dictionary());
+  EXPECT_EQ(members[0].object.as_dictionary()["A"].as_integer(), 1);
 
-  const Object second = object_stream.member_object(1);
-  ASSERT_TRUE(second.is_array());
-  ASSERT_EQ(second.as_array().size(), 3);
-  EXPECT_EQ(second.as_array()[2].as_integer(), 3);
-
-  EXPECT_THROW((void)object_stream.member_object(2), std::runtime_error);
+  ASSERT_TRUE(members[1].object.is_array());
+  ASSERT_EQ(members[1].object.as_array().size(), 3);
+  EXPECT_EQ(members[1].object.as_array()[2].as_integer(), 3);
 }
 
 TEST(Xref, append_keeps_newest_entry) {

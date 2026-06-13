@@ -198,18 +198,17 @@ DocumentParser::read_object(const ObjectReference &reference) {
     object = parser().read_indirect_object();
   } else if (entry.is_compressed()) {
     const auto &[stream_id, index] = entry.as_compressed();
-    ObjectStream &object_stream = load_object_stream(stream_id);
-    if (index >= object_stream.members().size()) {
+    const ObjectStream &members = load_object_stream(stream_id);
+    if (index >= members.size()) {
       throw std::runtime_error("object stream member index out of range");
     }
-    if (object_stream.members()[index].first != reference.id) {
+    if (members[index].id != reference.id) {
       ODR_WARNING(*m_logger, "pdf: object stream "
                                  << stream_id << " member " << index
-                                 << " has id "
-                                 << object_stream.members()[index].first
+                                 << " has id " << members[index].id
                                  << ", expected " << reference.id);
     }
-    object.object = object_stream.member_object(index);
+    object.object = members[index].object;
   } else {
     ODR_WARNING(*m_logger, "pdf: reference " << reference
                                              << " to freed object, treating "
@@ -219,7 +218,7 @@ DocumentParser::read_object(const ObjectReference &reference) {
   return m_objects.emplace(reference, std::move(object)).first->second;
 }
 
-ObjectStream &
+const ObjectStream &
 DocumentParser::load_object_stream(const std::uint32_t stream_id) {
   if (const auto it = m_object_streams.find(stream_id);
       it != std::end(m_object_streams)) {
@@ -238,8 +237,8 @@ DocumentParser::load_object_stream(const std::uint32_t stream_id) {
   const std::uint32_t first =
       resolve_object_copy(dictionary["First"]).as_integer();
 
-  return m_object_streams
-      .emplace(stream_id, ObjectStream(std::move(data), n, first))
+  std::istringstream in(std::move(data));
+  return m_object_streams.emplace(stream_id, parse_object_stream(in, n, first))
       .first->second;
 }
 
@@ -330,10 +329,15 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
                              *decoded.stopped_at_filter);
   }
 
-  std::vector<std::uint32_t> field_widths;
-  for (const Object &width : dictionary["W"].as_array()) {
-    field_widths.push_back(width.as_integer());
+  const Array &widths = dictionary["W"].as_array();
+  if (widths.size() != 3) {
+    throw std::runtime_error(
+        "expected three field widths in cross-reference stream /W");
   }
+  const std::array<std::uint32_t, 3> field_widths = {
+      static_cast<std::uint32_t>(widths[0].as_integer()),
+      static_cast<std::uint32_t>(widths[1].as_integer()),
+      static_cast<std::uint32_t>(widths[2].as_integer())};
 
   std::vector<std::pair<std::uint32_t, std::uint32_t>> subsections;
   if (dictionary.has_key("Index")) {

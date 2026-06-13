@@ -2,9 +2,10 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <array>
+#include <iosfwd>
 #include <map>
 #include <optional>
-#include <sstream>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -49,9 +50,9 @@ struct Xref {
     using Holder = std::variant<FreeEntry, UsedEntry, CompressedEntry>;
 
     Entry() = default;
-    Entry(const FreeEntry &entry) : m_holder{entry} {}
-    Entry(const UsedEntry &entry) : m_holder{entry} {}
-    Entry(const CompressedEntry &entry) : m_holder{entry} {}
+    explicit Entry(const FreeEntry &entry) : m_holder{entry} {}
+    explicit Entry(const UsedEntry &entry) : m_holder{entry} {}
+    explicit Entry(const CompressedEntry &entry) : m_holder{entry} {}
 
     [[nodiscard]] bool is_free() const {
       return std::holds_alternative<FreeEntry>(m_holder);
@@ -95,31 +96,24 @@ struct Xref {
 /// other fields 0), `subsections` the `/Index` pairs (first id, count).
 /// Entries of unknown type are treated as absent.
 [[nodiscard]] Xref parse_xref_stream_table(
-    const std::string &data, const std::vector<std::uint32_t> &field_widths,
+    const std::string &data, const std::array<std::uint32_t, 3> &field_widths,
     const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections);
 
-/// Decoded object stream (`/Type /ObjStm`, ISO 32000-1 7.5.7): a header of
-/// `n` (id, offset) integer pairs followed by the member objects.
-class ObjectStream {
-public:
-  /// `data` is the de-filtered stream payload, `n` and `first` the `/N` and
-  /// `/First` dictionary entries.
-  ObjectStream(std::string data, std::uint32_t n, std::uint32_t first);
-
-  /// Member object ids with their absolute payload offsets (`first` applied).
-  [[nodiscard]] const std::vector<std::pair<std::uint64_t, std::uint32_t>> &
-  members() const {
-    return m_members;
-  }
-
-  /// Parse the member object at `index` (a bare value — no `n g obj`
-  /// wrapper, no stream).
-  [[nodiscard]] Object member_object(std::uint32_t index);
-
-private:
-  std::istringstream m_in;
-  std::vector<std::pair<std::uint64_t, std::uint32_t>> m_members;
+/// One member of a decoded object stream: its object id and parsed value.
+struct ObjectStreamMember {
+  std::uint64_t id{};
+  Object object;
 };
+
+using ObjectStream = std::vector<ObjectStreamMember>;
+
+/// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
+/// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`
+/// (id, offset) integer pairs followed by the member objects (bare values —
+/// no `n g obj` wrapper, no stream) at `first + offset`. `n` and `first` are
+/// the `/N` and `/First` dictionary entries.
+[[nodiscard]] ObjectStream
+parse_object_stream(std::istream &in, std::uint32_t n, std::uint32_t first);
 
 struct StartXref {
   std::uint32_t start{};

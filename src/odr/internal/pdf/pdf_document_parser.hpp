@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace odr {
 class Logger;
@@ -16,6 +17,22 @@ namespace odr::internal::pdf {
 
 struct Document;
 
+/// Resolution/memoization layer on top of the sequential `FileParser`: maps
+/// `ObjectReference`s to file positions via the cross-reference table and
+/// hands out resolved objects by reference.
+///
+/// Reads are memoized in `m_objects` / `m_object_streams`. This is intrinsic,
+/// not a convenience: a compressed object can only be read by inflating and
+/// parsing the whole object stream that holds it, and only this class knows
+/// (from the xref) which objects share a stream — so the caller cannot dedupe
+/// that work. `read_object` is also reentrant (length resolution, object-stream
+/// loading, deep resolution), and the object graph has heavy sharing, so the
+/// cache must live here.
+///
+/// Both caches grow monotonically and are never evicted, which is safe only
+/// because a `DocumentParser` is a transient per-render object: build one,
+/// produce a `Document`, read its lazy streams, then discard it. Do not hold it
+/// long-lived or share it across documents.
 class DocumentParser {
 public:
   explicit DocumentParser(std::istream &);
@@ -46,10 +63,10 @@ private:
   /// dictionary is the trailer dictionary (the stream dictionary doubles as
   /// one for cross-reference streams).
   std::pair<Xref, Dictionary> read_xref_section(std::uint32_t position);
-  ObjectStream &load_object_stream(std::uint32_t stream_id);
+  const ObjectStream &load_object_stream(std::uint32_t stream_id);
 
   FileParser m_parser;
-  Logger *m_logger;
+  Logger *m_logger{nullptr};
   Xref m_xref;
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<std::uint32_t, ObjectStream> m_object_streams;

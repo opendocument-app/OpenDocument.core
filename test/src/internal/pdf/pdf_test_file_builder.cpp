@@ -6,6 +6,22 @@
 
 namespace odr::test::pdf {
 
+namespace {
+
+/// header plus the wrapped objects; `offsets` receives one byte offset per
+/// object
+std::string assemble_body(const std::vector<std::string> &objects,
+                          std::vector<std::uint32_t> &offsets) {
+  std::string result = "%PDF-1.7\n";
+  for (std::size_t i = 0; i < objects.size(); ++i) {
+    offsets.push_back(result.size());
+    result += std::to_string(i + 1) + " 0 obj\n" + objects[i] + "\nendobj\n";
+  }
+  return result;
+}
+
+} // namespace
+
 PdfFileBuilder &PdfFileBuilder::object(std::string body) {
   m_objects.push_back(std::move(body));
   return *this;
@@ -25,22 +41,6 @@ PdfFileBuilder &PdfFileBuilder::trailer(std::string entries) {
   m_trailer_entries = std::move(entries);
   return *this;
 }
-
-namespace {
-
-/// header plus the wrapped objects; `offsets` receives one byte offset per
-/// object
-std::string assemble_body(const std::vector<std::string> &objects,
-                          std::vector<std::uint32_t> &offsets) {
-  std::string result = "%PDF-1.7\n";
-  for (std::size_t i = 0; i < objects.size(); ++i) {
-    offsets.push_back(result.size());
-    result += std::to_string(i + 1) + " 0 obj\n" + objects[i] + "\nendobj\n";
-  }
-  return result;
-}
-
-} // namespace
 
 std::string PdfFileBuilder::build_classic() const {
   std::vector<std::uint32_t> offsets;
