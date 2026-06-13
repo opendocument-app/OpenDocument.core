@@ -494,10 +494,9 @@ Dictionary DocumentParser::read_trailer_chain() {
   return std::move(trailer).value();
 }
 
-void DocumentParser::setup_encryption(const Dictionary &trailer,
-                                      const std::string &password) {
+void DocumentParser::create_decryptor(const Dictionary &trailer) {
   if (!trailer.has_key("Encrypt")) {
-    return;
+    throw std::runtime_error("pdf: document is not encrypted");
   }
 
   // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
@@ -524,9 +523,27 @@ void DocumentParser::setup_encryption(const Dictionary &trailer,
   if (!m_decryptor.has_value()) {
     throw std::runtime_error("pdf: unsupported encryption");
   }
+}
+
+void DocumentParser::setup_encryption(const Dictionary &trailer,
+                                      const std::string &password) {
+  create_decryptor(trailer);
   if (!m_decryptor->authenticate(password)) {
     ODR_WARNING(*m_logger, "pdf: encrypted document, password not accepted");
   }
+}
+
+void DocumentParser::setup_encryption_with_key(const Dictionary &trailer,
+                                               const std::string &file_key) {
+  create_decryptor(trailer);
+  m_decryptor->set_file_key(file_key);
+}
+
+std::optional<std::string> DocumentParser::file_key() const {
+  if (m_decryptor.has_value() && m_decryptor->authenticated()) {
+    return m_decryptor->file_key();
+  }
+  return std::nullopt;
 }
 
 void DocumentParser::decrypt_strings(Object &object,
@@ -555,21 +572,39 @@ bool DocumentParser::authenticated() const {
 }
 
 void DocumentParser::probe_encryption(const std::string &password) {
-  setup_encryption(read_trailer_chain(), password);
+  const Dictionary trailer = read_trailer_chain();
+  if (trailer.has_key("Encrypt")) {
+    setup_encryption(trailer, password);
+  }
+}
+
+std::unique_ptr<Document>
+DocumentParser::build_document(const Dictionary &trailer) {
+  auto document = std::make_unique<Document>();
+  document->catalog =
+      parse_catalog(*this, trailer["Root"].as_reference(), *document);
+  return document;
 }
 
 std::unique_ptr<Document>
 DocumentParser::parse_document(const std::string &password) {
   const Dictionary trailer = read_trailer_chain();
-  setup_encryption(trailer, password);
+  if (trailer.has_key("Encrypt")) {
+    setup_encryption(trailer, password);
+  }
   if (!authenticated()) {
     throw std::runtime_error("pdf: document is encrypted, password required");
   }
+  return build_document(trailer);
+}
 
-  auto document = std::make_unique<Document>();
-  document->catalog =
-      parse_catalog(*this, trailer["Root"].as_reference(), *document);
-  return document;
+std::unique_ptr<Document>
+DocumentParser::parse_document_with_key(const std::string &file_key) {
+  const Dictionary trailer = read_trailer_chain();
+  if (trailer.has_key("Encrypt")) {
+    setup_encryption_with_key(trailer, file_key);
+  }
+  return build_document(trailer);
 }
 
 void DocumentParser::resolve_object(Object &object) {

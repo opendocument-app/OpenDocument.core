@@ -2,6 +2,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 
+#include <optional>
 #include <string>
 
 namespace odr::internal {
@@ -22,15 +23,18 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  /// The password that unlocks this file (empty for files that open without
-  /// one), for the HTML service to feed the document parser.
-  [[nodiscard]] std::string password() const noexcept override;
+  /// The derived file key that unlocks this file (`nullopt` for files that open
+  /// without decryption), for the HTML service to feed the document parser.
+  [[nodiscard]] std::optional<std::string>
+  decryption_key() const noexcept override;
 
 private:
   std::shared_ptr<abstract::File> m_file;
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
-  std::string m_password;
+  /// The file encryption key derived when the file was unlocked; the user's
+  /// password is never stored. See [[pdf-encryption]] `Decryptor::file_key`.
+  std::optional<std::string> m_decryption_key;
 };
 
 } // namespace odr::internal

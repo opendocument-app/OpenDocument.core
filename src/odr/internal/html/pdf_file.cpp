@@ -76,8 +76,10 @@ public:
     auto in = m_pdf_file.file().stream();
     pdf::DocumentParser parser(*in, *m_logger);
 
+    const std::optional<std::string> key = m_pdf_file.impl()->decryption_key();
     std::unique_ptr<pdf::Document> document =
-        parser.parse_document(m_pdf_file.impl()->password());
+        key.has_value() ? parser.parse_document_with_key(*key)
+                        : parser.parse_document();
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 

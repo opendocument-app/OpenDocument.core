@@ -41,6 +41,15 @@ public:
   bool authenticate(const std::string &password);
   [[nodiscard]] bool authenticated() const;
 
+  /// The file encryption key established by `authenticate` — the opaque token
+  /// that decrypts the document. A caller can stash it and later `set_file_key`
+  /// a fresh decryptor instead of holding on to the password. Precondition:
+  /// `authenticated()`.
+  [[nodiscard]] const std::string &file_key() const { return *m_file_key; }
+  /// Restore the authenticated state from a `file_key()` token, skipping
+  /// password derivation.
+  void set_file_key(std::string key) { m_file_key = std::move(key); }
+
   [[nodiscard]] std::int64_t permissions() const { return m_p; }
 
   /// Decrypt the raw bytes of a stream / string belonging to indirect object

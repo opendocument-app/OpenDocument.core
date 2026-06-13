@@ -4,6 +4,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace odr::internal {
@@ -103,9 +104,13 @@ public:
     return "application/pdf";
   }
 
-  /// The password that unlocks this file (empty when none is needed), for the
-  /// HTML service to feed the document parser.
-  [[nodiscard]] virtual std::string password() const noexcept { return {}; }
+  /// The derived file encryption key that unlocks this file (`nullopt` when no
+  /// decryption is needed), for the HTML service to feed the document parser
+  /// without retaining the user's password.
+  [[nodiscard]] virtual std::optional<std::string>
+  decryption_key() const noexcept {
+    return std::nullopt;
+  }
 };
 
 } // namespace odr::internal::abstract

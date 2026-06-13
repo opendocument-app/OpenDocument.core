@@ -11,7 +11,9 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <sstream>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -115,6 +117,43 @@ TEST(DocumentParser, encrypted_aes256_fixture) {
     GTEST_SKIP() << "private fixture not available";
   }
   check_fixture_parses(path, "sample-user-password");
+}
+
+// The render path re-opens an encrypted file with the derived key token
+// (parse_document_with_key) instead of the password. Deriving the key once and
+// replaying it must decrypt the document just as the password does.
+TEST(DocumentParser, reopen_with_key_token) {
+  const std::string short_path = "odr-public/pdf/Casio_WVA-M650-7AJF.pdf";
+  const auto file =
+      std::make_shared<DiskFile>(TestData::test_file_path(short_path));
+
+  // Derive the file-key token via the empty user password (owner-locked file).
+  std::optional<std::string> key;
+  {
+    const auto in = file->stream();
+    DocumentParser parser(*in);
+    parser.probe_encryption("");
+    ASSERT_TRUE(parser.encrypted());
+    ASSERT_TRUE(parser.authenticated());
+    key = parser.file_key();
+    ASSERT_TRUE(key.has_value());
+    EXPECT_FALSE(key->empty());
+  }
+
+  // Re-open with the token only; content streams must still decrypt.
+  {
+    const auto in = file->stream();
+    DocumentParser parser(*in);
+    const std::unique_ptr<Document> document =
+        parser.parse_document_with_key(*key);
+    const std::vector<Page *> pages = document->collect_pages();
+    EXPECT_FALSE(pages.empty());
+    for (const Page *page : pages) {
+      for (const auto &content_reference : page->contents_reference) {
+        EXPECT_FALSE(parser.read_decoded_stream(content_reference).empty());
+      }
+    }
+  }
 }
 
 TEST(DocumentParser, inherited_page_attributes) {
