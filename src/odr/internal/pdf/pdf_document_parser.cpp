@@ -17,19 +17,6 @@ namespace odr::internal::pdf {
 
 namespace {
 
-/// The set of page attributes that a `Page` inherits from its `Pages`
-/// ancestors (ISO 32000-1 7.7.3.3, Table 30: exactly `Resources`,
-/// `MediaBox`, `CropBox`, `Rotate`). Threaded down the tree instead of
-/// walking `Parent` pointers — no cycle risk, no re-reads. Each slot holds
-/// the nearest ancestor's value (possibly an indirect reference, resolved
-/// lazily at the leaf); a null slot means no ancestor set it.
-struct PageInheritedAttributes {
-  Object resources;
-  Object media_box;
-  Object crop_box;
-  Object rotate;
-};
-
 // Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
 // but real files carry 360 and negatives.
 Integer normalize_rotate(Integer rotate) {
@@ -37,10 +24,75 @@ Integer normalize_rotate(Integer rotate) {
   return (rotate / 90) * 90;
 }
 
+/// The page attributes that are inherited through the `Pages` tree
+/// (ISO 32000-1 7.7.3.3, Table 30: exactly `Resources`, `MediaBox`,
+/// `CropBox`, `Rotate`). Threaded down the tree instead of walking `Parent`
+/// pointers — no cycle risk, no re-reads. Each slot holds the value set by the
+/// nearest ancestor that carried it (possibly an indirect reference, resolved
+/// lazily at the leaf); a null slot means no ancestor set it.
+struct PageAttributes {
+  Object resources;
+  Object media_box;
+  Object crop_box;
+  Object rotate;
+
+  /// Overlay this node's own inheritable entries from `dictionary`. A
+  /// present-but-null entry counts as absent (7.3.9: null is equivalent to
+  /// omitting the entry) and leaves the inherited value untouched.
+  void overlay(const Dictionary &dictionary) {
+    const auto take = [&](Object &slot, const std::string &key) {
+      if (dictionary.has_key(key) && !dictionary[key].is_null()) {
+        slot = dictionary[key];
+      }
+    };
+    take(resources, "Resources");
+    take(media_box, "MediaBox");
+    take(crop_box, "CropBox");
+    take(rotate, "Rotate");
+  }
+
+  /// Resolve the accumulated attributes into final values (7.7.3.4): write the
+  /// resolved `media_box`/`crop_box`/`rotate` onto `page` (references
+  /// resolved, missing `MediaBox` → US Letter, `CropBox` → `MediaBox`,
+  /// `Rotate` normalized) and return the `Resources` object (resolved, or an
+  /// empty dictionary if absent) for the caller to parse.
+  Object resolve_into(Page &page, DocumentParser &parser,
+                      const ObjectReference &reference) const {
+    page.media_box = parser.resolve_object_copy(media_box);
+    if (!page.media_box.is_array()) {
+      ODR_WARNING(parser.logger(),
+                  "pdf: page " << reference
+                               << " has no /MediaBox, defaulting to US Letter");
+      page.media_box =
+          Object(Array({Object(Integer(0)), Object(Integer(0)),
+                        Object(Integer(612)), Object(Integer(792))}));
+    }
+
+    page.crop_box = parser.resolve_object_copy(crop_box);
+    if (!page.crop_box.is_array()) {
+      page.crop_box = page.media_box;
+    }
+
+    const Object resolved_rotate = parser.resolve_object_copy(rotate);
+    page.rotate = resolved_rotate.is_integer()
+                      ? normalize_rotate(resolved_rotate.as_integer())
+                      : 0;
+
+    if (resources.is_null()) {
+      ODR_WARNING(parser.logger(),
+                  "pdf: page "
+                      << reference
+                      << " has no /Resources, using an empty dictionary");
+      return Object(Dictionary());
+    }
+    return resources;
+  }
+};
+
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document, Element *parent,
-                             const PageInheritedAttributes &inherited);
+                             const PageAttributes &inherited);
 
 Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
                  Document &document) {
@@ -101,7 +153,7 @@ Annotation *parse_annotation(DocumentParser &parser,
 
 Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
                  Document &document, Element *parent,
-                 const PageInheritedAttributes &inherited) {
+                 PageAttributes attributes) {
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
@@ -112,45 +164,10 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   page->object = Object(dictionary);
   page->parent = dynamic_cast<Pages *>(parent);
 
-  // resolve the inheritable attributes: page dict value → inherited value →
-  // default (ISO 32000-1 7.7.3.4). A present-but-null entry counts as absent
-  // and keeps inheriting (7.3.9: null is equivalent to omitting the entry).
-  const auto resolve_inherited = [&](const std::string &key,
-                                     const Object &fallback) {
-    const bool present = dictionary.has_key(key) && !dictionary[key].is_null();
-    return parser.resolve_object_copy(present ? dictionary[key] : fallback);
-  };
-
-  page->media_box = resolve_inherited("MediaBox", inherited.media_box);
-  if (!page->media_box.is_array()) {
-    ODR_WARNING(parser.logger(),
-                "pdf: page " << reference
-                             << " has no /MediaBox, defaulting to US Letter");
-    page->media_box =
-        Object(Array({Object(Integer(0)), Object(Integer(0)),
-                      Object(Integer(612)), Object(Integer(792))}));
-  }
-
-  page->crop_box = resolve_inherited("CropBox", inherited.crop_box);
-  if (!page->crop_box.is_array()) {
-    page->crop_box = page->media_box;
-  }
-
-  Object rotate = resolve_inherited("Rotate", inherited.rotate);
-  page->rotate =
-      rotate.is_integer() ? normalize_rotate(rotate.as_integer()) : 0;
-
-  Object resources =
-      (dictionary.has_key("Resources") && !dictionary["Resources"].is_null())
-          ? dictionary["Resources"]
-          : inherited.resources;
-  if (resources.is_null()) {
-    ODR_WARNING(parser.logger(),
-                "pdf: page "
-                    << reference
-                    << " has no /Resources, using an empty dictionary");
-    resources = Object(Dictionary());
-  }
+  // the page overlays its own inheritable entries, then the accumulated
+  // attributes are resolved into the page with Table-30 defaults (7.7.3.4)
+  attributes.overlay(dictionary);
+  Object resources = attributes.resolve_into(*page, parser, reference);
   page->resources = parse_resources(parser, resources, document);
 
   if (dictionary["Contents"].is_reference()) {
@@ -175,7 +192,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
 }
 
 Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
-                   Document &document, PageInheritedAttributes inherited) {
+                   Document &document, PageAttributes attributes) {
   auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
@@ -186,22 +203,12 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
   pages->object = Object(dictionary);
   pages->count = dictionary["Count"].as_integer();
 
-  // this node overlays its own inheritable attributes before recursing; a
-  // present-but-null entry counts as absent (7.3.9) and leaves the inherited
-  // value untouched
-  const auto overlay = [&](Object &slot, const std::string &key) {
-    if (dictionary.has_key(key) && !dictionary[key].is_null()) {
-      slot = dictionary[key];
-    }
-  };
-  overlay(inherited.resources, "Resources");
-  overlay(inherited.media_box, "MediaBox");
-  overlay(inherited.crop_box, "CropBox");
-  overlay(inherited.rotate, "Rotate");
+  // this node overlays its own inheritable attributes before recursing
+  attributes.overlay(dictionary);
 
   for (const Object &kid : dictionary["Kids"].as_array()) {
     pages->kids.push_back(parse_page_or_pages(parser, kid.as_reference(),
-                                              document, pages, inherited));
+                                              document, pages, attributes));
   }
 
   return pages;
@@ -210,7 +217,7 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
 Element *parse_page_or_pages(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document, Element *parent,
-                             const PageInheritedAttributes &inherited) {
+                             const PageAttributes &inherited) {
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
