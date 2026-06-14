@@ -1,9 +1,11 @@
 #pragma once
 
 #include <odr/internal/pdf/pdf_cmap.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <concepts>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -21,9 +23,9 @@ struct Element {
   ObjectReference object_reference;
   Object object;
 
-  // Value-semantic discrimination over the element hierarchy, backed by RTTI;
-  // mirrors `Object`'s `is_*`/`as_*` surface. `T` must be a complete derived
-  // type at the call site.
+  /// Value-semantic discrimination over the element hierarchy, backed by RTTI;
+  /// mirrors `Object`'s `is_*`/`as_*` surface. `T` must be a complete-derived
+  /// type at the call site.
   template <typename T>
     requires std::derived_from<T, Element>
   [[nodiscard]] bool is() const {
@@ -72,7 +74,15 @@ struct Resources final : Element {
 };
 
 struct Font final : Element {
+  /// `ToUnicode` CMap, the primary code -> Unicode path when present.
   CMap cmap;
+  /// Simple-font `/Encoding` (base + `/Differences`), the text-extraction
+  /// fallback used when no `ToUnicode` CMap is present.
+  std::optional<Encoding> encoding;
+
+  /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
+  /// when present (authoritative), else the `/Encoding`, else identity bytes.
+  [[nodiscard]] std::string to_unicode(const std::string &codes) const;
 };
 
 } // namespace odr::internal::pdf

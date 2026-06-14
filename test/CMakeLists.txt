@@ -41,6 +41,7 @@ add_executable(odr_test
 
         "src/internal/pdf/pdf_cmap.cpp"
         "src/internal/pdf/pdf_document_parser.cpp"
+        "src/internal/pdf/pdf_encoding.cpp"
         "src/internal/pdf/pdf_encryption.cpp"
         "src/internal/pdf/pdf_file_object.cpp"
         "src/internal/pdf/pdf_file_parser.cpp"

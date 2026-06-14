@@ -29,4 +29,16 @@ std::vector<Page *> Document::collect_pages() const {
   return pages;
 }
 
+std::string Font::to_unicode(const std::string &codes) const {
+  if (!cmap.empty()) {
+    return cmap.translate_string(codes);
+  }
+  if (encoding.has_value()) {
+    return encoding->translate_string(codes);
+  }
+  // Neither a `ToUnicode` CMap nor an `/Encoding`: keep the historic identity
+  // fallback (single-byte code -> code point).
+  return cmap.translate_string(codes);
+}
+
 } // namespace odr::internal::pdf
