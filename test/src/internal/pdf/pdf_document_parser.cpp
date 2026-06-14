@@ -211,10 +211,10 @@ TEST(DocumentParser, inherited_page_attributes) {
 
 namespace {
 
-// A mini-PDF whose single page references one composite (Type0) font `F0`:
-// `Identity-H` over a descendant `CIDFontType2` with an `Adobe`/`Identity`
-// `/CIDSystemInfo`, optionally carrying a 2-byte `/ToUnicode` CMap (mapping the
-// code 0x0041 to `A`).
+/// A mini-PDF whose single page references one composite (Type0) font `F0`:
+/// `Identity-H` over a descendant `CIDFontType2` with an `Adobe`/`Identity`
+/// `/CIDSystemInfo`, optionally carrying a 2-byte `/ToUnicode` CMap (mapping
+/// the code 0x0041 to `A`).
 std::string composite_font_mini_pdf(const bool with_to_unicode) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")

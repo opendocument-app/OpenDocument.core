@@ -183,8 +183,8 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
 /// stage 1.3 (part B). The Type0 `/Encoding` (code -> CID) is `Identity-H/V` or
 /// a predefined CJK CMap; only `/ToUnicode` is used for extraction in part A.
 void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
-                          Font *font) {
-  font->composite = true;
+                          Font &font) {
+  font.composite = true;
 
   if (!dictionary.has_key("DescendantFonts")) {
     return;
@@ -212,11 +212,11 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   const Dictionary &system_info_dictionary = system_info.as_dictionary();
   if (system_info_dictionary.has_key("Registry") &&
       system_info_dictionary["Registry"].is_string()) {
-    font->cid_registry = system_info_dictionary["Registry"].as_string();
+    font.cid_registry = system_info_dictionary["Registry"].as_string();
   }
   if (system_info_dictionary.has_key("Ordering") &&
       system_info_dictionary["Ordering"].is_string()) {
-    font->cid_ordering = system_info_dictionary["Ordering"].as_string();
+    font.cid_ordering = system_info_dictionary["Ordering"].as_string();
   }
 }
 
@@ -247,7 +247,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
     // simple-font glyph-name encoding, so it must not go through
     // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above) in
     // stage 1.3 part A.
-    parse_composite_font(parser, dictionary, font);
+    parse_composite_font(parser, dictionary, *font);
   } else if (dictionary.has_key("Encoding")) {
     // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
     // `/BaseEncoding` + `/Differences`. The text-extraction fallback for fonts
