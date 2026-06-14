@@ -3,7 +3,6 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
-#include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 
 #include <test_util.hpp>
 
@@ -38,7 +37,7 @@ std::string two_object_mini_pdf(const bool classic) {
 void check_mini_pdf(const std::string &pdf) {
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
 
-  std::unique_ptr<Document> document = parser.parse_document();
+  const std::unique_ptr<Document> document = parser.parse_document();
 
   ASSERT_EQ(document->catalog->pages->count, 1);
   ASSERT_EQ(document->catalog->pages->kids.size(), 1);
@@ -59,7 +58,7 @@ TEST(DocumentParser, mini_pdf_with_classic_xref_table) {
 TEST(DocumentParser, mini_pdf_with_xref_stream) {
   const std::string pdf = two_object_mini_pdf(false);
 
-  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const DocumentParser parser(std::make_unique<std::istringstream>(pdf));
 
   // 4 objects, the cross-reference stream itself, and the free head
   EXPECT_EQ(parser.xref().table.size(), 6);
@@ -78,7 +77,7 @@ void check_fixture_parses(const std::string &short_path,
       std::make_shared<DiskFile>(TestData::test_file_path(short_path));
 
   DocumentParser parser(file->stream());
-  if (parser.is_encrypted()) {
+  if (parser.authenticator().has_value()) {
     parser.authenticate(password);
   }
 

@@ -256,27 +256,30 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
                                std::optional<Decryptor> decryptor,
                                const Logger &logger)
-    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{&logger},
-      m_decryptor(std::move(decryptor)) {
+    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{&logger} {
   auto [xref, trailer] = read_trailer_chain();
   m_xref = std::move(xref);
   m_trailer = std::move(trailer);
 
   if (m_trailer.has_key("Encrypt")) {
     // Build an `Authenticator` from the trailer `/Encrypt` and `/ID`
-    // (ISO 32000-1 7.6), caching the `/Encrypt` dictionary and its reference
-    // (the self-skip guard that keeps its own `/O`,`/U` strings un-decrypted).
-    // Returns `nullopt` if the trailer declares no `/Encrypt`.
+    // (ISO 32000-1 7.6). `m_is_encrypted` records that the file declares
+    // encryption regardless of whether we can authenticate it, so an
+    // unsupported handler still reports as encrypted.
+    m_is_encrypted = true;
 
+    // The `/Encrypt` dictionary's own `/O`,`/U`,… strings are never encrypted
+    // (7.6.2), and need no explicit self-skip guard: it is resolved here while
+    // `m_decryptor` is still empty (installed only after this block), so
+    // `read_object` leaves its strings raw and caches that copy — every later
+    // lookup hits the cache and never re-decrypts it.
     Object encrypt = m_trailer["Encrypt"];
     if (encrypt.is_reference()) {
-      m_encrypt_reference = encrypt.as_reference();
-      encrypt = read_object(*m_encrypt_reference).object;
+      encrypt = read_object(encrypt.as_reference()).object;
     }
     if (!encrypt.is_dictionary()) {
       throw std::runtime_error("pdf: /Encrypt is not a dictionary");
     }
-    m_encrypt_dict = std::move(encrypt);
 
     // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
     std::string id0;
@@ -287,9 +290,12 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
       }
     }
 
-    m_authenticator =
-        Authenticator::create(m_encrypt_dict->as_dictionary(), id0);
+    m_authenticator = Authenticator::create(encrypt.as_dictionary(), id0);
   }
+
+  // Install the decryptor only after read_trailer_chain(): cross-reference
+  // streams are read during that walk and must stay un-decrypted (7.5.8.2).
+  m_decryptor = std::move(decryptor);
 }
 
 std::istream &DocumentParser::in() { return m_parser.in(); }
@@ -302,7 +308,7 @@ const Xref &DocumentParser::xref() const { return m_xref; }
 
 const Dictionary &DocumentParser::trailer() const { return m_trailer; }
 
-bool DocumentParser::is_encrypted() const { return m_encrypt_dict.has_value(); }
+bool DocumentParser::is_encrypted() const { return m_is_encrypted; }
 
 const std::optional<Authenticator> &DocumentParser::authenticator() const {
   return m_authenticator;
@@ -340,10 +346,11 @@ DocumentParser::read_object(const ObjectReference &reference) {
   } else if (const Xref::Entry &entry = entry_it->second; entry.is_used()) {
     in().seekg(entry.as_used().position);
     object = parser().read_indirect_object();
-    // Decrypt string leaves (7.6.2). Skip the /Encrypt dictionary itself (its
-    // strings are the un-decrypted /O,/U,…) — it is read before the decryptor
-    // exists, so this is defensive.
-    if (m_decryptor.has_value() && m_encrypt_reference != object.reference) {
+    // Decrypt string leaves (7.6.2). The /Encrypt dictionary needs no special
+    // case here: it is read and cached during construction before the
+    // decryptor is installed, so its un-decrypted /O,/U,… strings are served
+    // from the cache and never reach this path.
+    if (m_decryptor.has_value()) {
       decrypt_strings(object.object, object.reference);
     }
   } else if (entry.is_compressed()) {

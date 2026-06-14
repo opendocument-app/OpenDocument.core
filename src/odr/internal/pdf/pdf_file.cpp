@@ -17,25 +17,24 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     throw std::invalid_argument("pdf: file is null");
   }
 
-  DocumentParser parser(m_file->stream());
-  m_authenticator = parser.authenticator();
+  const DocumentParser parser(m_file->stream());
 
   m_file_meta.type = FileType::portable_document_format;
 
   // Most "protected" PDFs are owner-locked only, so try the empty user
   // password first; if it opens the file, no password is required.
+  m_authenticator = parser.authenticator();
   if (m_authenticator.has_value()) {
     m_decryptor = m_authenticator->authenticate("");
   }
+
   if (parser.is_encrypted()) {
-    m_file_meta.password_encrypted = !m_authenticator.has_value();
-    if (m_decryptor.has_value()) {
-      // Owner-locked only: opens with the empty user password. Keep the
-      // decryptor so rendering needs neither the password nor a decrypt() call.
-      m_encryption_state = EncryptionState::not_encrypted;
-    } else {
-      m_encryption_state = EncryptionState::encrypted;
-    }
+    // Owner-locked only: opens with the empty user password. Keep the
+    // decryptor so rendering needs neither the password nor a decrypt() call.
+    m_file_meta.password_encrypted = !m_decryptor.has_value();
+    m_encryption_state = m_decryptor.has_value()
+                             ? EncryptionState::not_encrypted
+                             : EncryptionState::encrypted;
   }
 }
 
