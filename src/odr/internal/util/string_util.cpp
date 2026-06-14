@@ -1,7 +1,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <cstdint>
 #include <iomanip>
 #include <sstream>
 
@@ -19,22 +18,40 @@ bool string::ends_with(const std::string &string, const std::string &with) {
              0;
 }
 
-void string::ltrim(std::string &s) {
+void string::ltrim_inplace(std::string &s) {
   s.erase(s.begin(), std::ranges::find_if(s, [](const std::uint8_t ch) {
             return !std::isspace(ch);
           }));
 }
 
-void string::rtrim(std::string &s) {
+void string::rtrim_inplace(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
                        [](const std::uint8_t ch) { return !std::isspace(ch); })
               .base(),
           s.end());
 }
 
-void string::trim(std::string &s) {
-  rtrim(s);
-  ltrim(s);
+void string::trim_inplace(std::string &s) {
+  rtrim_inplace(s);
+  ltrim_inplace(s);
+}
+
+std::string string::ltrim(const std::string &s) {
+  std::string result = s;
+  ltrim_inplace(result);
+  return result;
+}
+
+std::string string::rtrim(const std::string &s) {
+  std::string result = s;
+  rtrim_inplace(result);
+  return result;
+}
+
+std::string string::trim(const std::string &s) {
+  std::string result = s;
+  trim_inplace(result);
+  return result;
 }
 
 void string::replace_all(std::string &string, const std::string &search,

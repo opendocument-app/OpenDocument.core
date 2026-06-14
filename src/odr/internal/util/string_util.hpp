@@ -9,9 +9,13 @@ namespace odr::internal::util::string {
 bool starts_with(const std::string &string, const std::string &with);
 bool ends_with(const std::string &string, const std::string &with);
 
-void ltrim(std::string &s);
-void rtrim(std::string &s);
-void trim(std::string &s);
+void ltrim_inplace(std::string &s);
+void rtrim_inplace(std::string &s);
+void trim_inplace(std::string &s);
+
+std::string ltrim(const std::string &s);
+std::string rtrim(const std::string &s);
+std::string trim(const std::string &s);
 
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
