@@ -93,6 +93,8 @@ cmake --build cmake-build-relwithdebinfo --target odr_test
 cmake --build cmake-build-relwithdebinfo --target translate
 ```
 
+- **Use `cmake-build-relwithdebinfo`** as the default build/test directory (not
+  `cmake-build-debug`).
 - **Only run the full suite when really necessary** — it takes a while. Default
   to a targeted `--gtest_filter` for the area you touched.
 - **Run the test binary from the build directory** (as above) so any files it
