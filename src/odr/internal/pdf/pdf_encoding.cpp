@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <stdexcept>
 
 namespace odr::internal {
 
