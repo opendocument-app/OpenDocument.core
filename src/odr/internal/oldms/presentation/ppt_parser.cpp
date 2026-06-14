@@ -128,7 +128,7 @@ std::string clean_text(const std::string &in) {
   std::string out;
   out.reserve(in.size());
   for (const char c : in) {
-    const auto uc = static_cast<unsigned char>(c);
+    const auto uc = static_cast<std::uint8_t>(c);
     // Keep tab and any non-control byte (>= 0x20, including UTF-8 lead and
     // continuation bytes); drop the remaining control characters.
     if (uc < 0x20 && c != '\x09') {

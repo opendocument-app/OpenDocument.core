@@ -54,7 +54,7 @@ std::string presentation::read_text_bytes(std::istream &in,
     if (c == eof) {
       break;
     }
-    buffer.push_back(static_cast<unsigned char>(c));
+    buffer.push_back(static_cast<std::uint8_t>(c));
   }
   return util::string::u16string_to_string(buffer);
 }

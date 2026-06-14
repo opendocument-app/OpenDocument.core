@@ -32,7 +32,7 @@ pdf::Xref pdf::parse_xref_stream_table(
     }
     std::uint64_t value = 0;
     for (std::uint32_t i = 0; i < width; ++i) {
-      value = (value << 8) | static_cast<unsigned char>(data[position++]);
+      value = (value << 8) | static_cast<std::uint8_t>(data[position++]);
     }
     return value;
   };

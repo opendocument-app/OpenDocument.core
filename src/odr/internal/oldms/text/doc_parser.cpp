@@ -78,7 +78,7 @@ std::string clean_text(const std::string &in) {
       break;
     default:
       // Drop remaining control/anchor characters (< 0x20); keep the rest.
-      if (static_cast<unsigned char>(c) >= 0x20) {
+      if (static_cast<std::uint8_t>(c) >= 0x20) {
         out.push_back(c);
       }
       break;
