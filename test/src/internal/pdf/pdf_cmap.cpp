@@ -99,6 +99,35 @@ TEST(PdfCMap, reversed_bfrange_is_skipped) {
   EXPECT_EQ(cmap.translate_string("\x41"), "A");
 }
 
+TEST(PdfCMap, bfrange_maximum_span_is_mapped) {
+  // 256 codes (span 0xFF) is the largest conforming range (only the last byte
+  // of the code varies, §9.10.3); it must still be expanded.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "1 beginbfrange\n"
+                    "<0000> <00FF> <0041>\n"
+                    "endbfrange\n");
+
+  // Code 0x0000 maps to U+0041; identity would be the null character instead.
+  EXPECT_EQ(cmap.translate_string(std::string("\x00\x00", 2)), "A");
+}
+
+TEST(PdfCMap, oversized_bfrange_is_skipped) {
+  // 257 codes (span 0x100) exceeds the cap; the range is skipped rather than
+  // materializing an unbounded number of entries.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "1 beginbfrange\n"
+                    "<0000> <0100> <0041>\n"
+                    "endbfrange\n");
+
+  // Code 0x0041 lies inside the skipped range, so it falls back to identity
+  // ('A') rather than the value the range would have assigned.
+  EXPECT_EQ(cmap.translate_string(std::string("\x00\x41", 2)), "A");
+}
+
 TEST(PdfCMap, oversized_code_is_skipped) {
   // A five-byte code cannot be represented; the entry is skipped while a valid
   // sibling entry still maps.

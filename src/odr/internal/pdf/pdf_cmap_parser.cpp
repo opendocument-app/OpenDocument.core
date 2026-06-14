@@ -22,6 +22,12 @@ namespace {
 // stray caller fails loudly rather than silently corrupting the mapping.
 constexpr std::size_t max_code_width = 4;
 
+// A conforming `bfrange`'s low/high codes differ only in their last byte
+// (PDF 32000-1 §9.10.3), so a range spans at most 256 codes. We treat that as a
+// hard cap: with up-to-4-byte codes an out-of-spec range could otherwise span
+// millions of codes and explode the eagerly materialized mapping.
+constexpr std::uint32_t max_bfrange_span = 0xff;
+
 bool valid_code_width(const std::size_t width) {
   return width >= 1 && width <= max_code_width;
 }
@@ -170,29 +176,36 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
                                  << high_code << ")");
       continue; // a reversed range would otherwise wrap `code` below
     }
+    if (high_code - low_code > max_bfrange_span) {
+      ODR_WARNING(*m_logger, "pdf: skipping oversized bfrange (0x"
+                                 << std::hex << low_code << "-0x" << high_code
+                                 << " spans more than " << std::dec
+                                 << (max_bfrange_span + 1) << " codes)");
+      continue;
+    }
+    // The span fits in 32 bits without wrapping, so the loops below can count.
+    const std::uint32_t span = high_code - low_code;
 
     if (destination.is_array()) {
-      // `<lo> <hi> [ <dst0> <dst1> … ]`: one destination per code.
-      std::uint32_t code = low_code;
-      for (const Object &element : destination.as_array()) {
-        if (code > high_code) {
-          break;
-        }
-        if (element.is_string()) {
-          if (const std::string &dst = element.as_string();
-              dst.size() % 2 == 0) {
-            cmap.map_single(uint_to_code(code, width),
-                            utf16be_to_u16string(dst));
-          } else {
-            ODR_WARNING(*m_logger,
-                        "pdf: skipping odd-length bfrange array destination ("
-                            << dst.size() << " bytes)");
-          }
-        } else {
+      // `<lo> <hi> [ <dst0> <dst1> … ]`: one destination per code, in order.
+      const Array &destinations = destination.as_array();
+      for (std::uint32_t offset = 0;
+           offset <= span && offset < destinations.size(); ++offset) {
+        const Object &element = destinations[offset];
+        if (!element.is_string()) {
           ODR_WARNING(*m_logger,
                       "pdf: skipping non-string bfrange array destination");
+          continue;
         }
-        ++code;
+        const std::string &dst = element.as_string();
+        if (dst.size() % 2 != 0) {
+          ODR_WARNING(*m_logger,
+                      "pdf: skipping odd-length bfrange array destination ("
+                          << dst.size() << " bytes)");
+          continue;
+        }
+        cmap.map_single(uint_to_code(low_code + offset, width),
+                        utf16be_to_u16string(dst));
       }
     } else if (destination.is_string()) {
       // `<lo> <hi> <dst>`: the destination's last UTF-16 unit increments across
@@ -205,11 +218,8 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
         continue;
       }
       std::u16string unicode = utf16be_to_u16string(dst);
-      for (std::uint32_t code = low_code;; ++code) {
-        cmap.map_single(uint_to_code(code, width), unicode);
-        if (code == high_code) {
-          break;
-        }
+      for (std::uint32_t offset = 0; offset <= span; ++offset) {
+        cmap.map_single(uint_to_code(low_code + offset, width), unicode);
         if (!unicode.empty()) {
           ++unicode.back();
         }
