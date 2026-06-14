@@ -97,6 +97,8 @@ cmake --build cmake-build-relwithdebinfo --target translate
   `cmake-build-debug`).
 - **Only run the full suite when really necessary** — it takes a while. Default
   to a targeted `--gtest_filter` for the area you touched.
+- **For debugging, prefer the `translate` CLI** over the test suite — build and
+  run it on a single file to reproduce/inspect behaviour quickly.
 - **Run the test binary from the build directory** (as above) so any files it
   writes land there, not in the repo working tree.
 
