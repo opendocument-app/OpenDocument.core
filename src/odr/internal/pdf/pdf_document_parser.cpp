@@ -146,8 +146,11 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
       if (const auto named = base_encoding_from_name(base_object.as_name())) {
         base = *named;
       } else {
+        // An explicitly named base we cannot represent: bail out rather than
+        // silently translating every byte through the wrong (Standard) table.
         ODR_WARNING(parser.logger(),
                     "pdf: unsupported /BaseEncoding " << base_object.as_name());
+        return std::nullopt;
       }
     }
   }
