@@ -90,13 +90,13 @@ std::size_t text::determine_size_Fib(std::istream &in) {
 
   ignore(sizeof(FibBase));
   const std::uint16_t csw = read_uint16_t();
-  ignore(csw * 2);
+  ignore(static_cast<std::size_t>(csw) * 2);
   const std::uint16_t cslw = read_uint16_t();
-  ignore(cslw * 4);
+  ignore(static_cast<std::size_t>(cslw) * 4);
   const std::uint16_t cbRgFcLcb = read_uint16_t();
-  ignore(cbRgFcLcb * 8);
+  ignore(static_cast<std::size_t>(cbRgFcLcb) * 8);
   const std::uint16_t cswNew = read_uint16_t();
-  ignore(cswNew * 2);
+  ignore(static_cast<std::size_t>(cswNew) * 2);
 
   return result;
 }
@@ -105,20 +105,22 @@ void text::read(std::istream &in, ParsedFib &out) {
   read(in, out.base);
 
   util::byte_stream::read(in, out.csw);
-  if (out.csw * 2 < sizeof(out.fibRgW)) {
+  if (static_cast<std::size_t>(out.csw) * 2 < sizeof(out.fibRgW)) {
     throw std::runtime_error("Unexpected Fib.csw value: " +
                              std::to_string(out.csw));
   }
   util::byte_stream::read(in, out.fibRgW);
-  in.ignore(static_cast<std::streamsize>(out.csw * 2 - sizeof(out.fibRgW)));
+  in.ignore(static_cast<std::streamsize>(static_cast<std::size_t>(out.csw) * 2 -
+                                         sizeof(out.fibRgW)));
 
   util::byte_stream::read(in, out.cslw);
-  if (out.cslw * 4 < sizeof(out.fibRgLw)) {
+  if (static_cast<std::size_t>(out.cslw) * 4 < sizeof(out.fibRgLw)) {
     throw std::runtime_error("Unexpected Fib.cslw value: " +
                              std::to_string(out.cslw));
   }
   util::byte_stream::read(in, out.fibRgLw);
-  in.ignore(static_cast<std::streamsize>(out.cslw * 4 - sizeof(out.fibRgLw)));
+  in.ignore(static_cast<std::streamsize>(
+      static_cast<std::size_t>(out.cslw) * 4 - sizeof(out.fibRgLw)));
 
   // ccpText ([MS-DOC] 2.5.5) MUST be >= 0; reject a negative value as
   // malformed.
@@ -128,8 +130,9 @@ void text::read(std::istream &in, ParsedFib &out) {
   }
 
   util::byte_stream::read(in, out.cbRgFcLcb);
-  const auto fibRgFcLcb = std::make_unique<char[]>(out.cbRgFcLcb * 8);
-  in.read(fibRgFcLcb.get(), out.cbRgFcLcb * 8);
+  const auto fibRgFcLcb =
+      std::make_unique<char[]>(static_cast<std::size_t>(out.cbRgFcLcb) * 8);
+  in.read(fibRgFcLcb.get(), static_cast<std::streamsize>(out.cbRgFcLcb) * 8);
 
   util::byte_stream::read(in, out.cswNew);
   if (out.cswNew > 0) {
@@ -137,7 +140,7 @@ void text::read(std::istream &in, ParsedFib &out) {
     read(in, *out.fibRgCswNew);
   }
   const std::uint16_t nFib =
-      out.cswNew != 0 ? out.fibRgCswNew.value().nFibNew : out.base.nFib;
+      out.fibRgCswNew.has_value() ? out.fibRgCswNew->nFibNew : out.base.nFib;
 
   out.fibRgFcLcb = type_dispatch_FibRgFcLcb(
       nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
@@ -147,7 +150,8 @@ void text::read(std::istream &in, ParsedFib &out) {
         // shorter one leaves the rest zero-initialised. fcClx is always
         // covered.
         const std::size_t copy =
-            std::min<std::size_t>(sizeof(FibRgFcLcbType), out.cbRgFcLcb * 8);
+            std::min<std::size_t>(sizeof(FibRgFcLcbType),
+                                  static_cast<std::size_t>(out.cbRgFcLcb) * 8);
         std::memcpy(result.get(), fibRgFcLcb.get(), copy);
         return result;
       });

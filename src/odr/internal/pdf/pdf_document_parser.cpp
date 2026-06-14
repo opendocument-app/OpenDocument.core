@@ -592,6 +592,8 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
     throw std::runtime_error("unknown length property");
   }
 
+  // a stream object always carries a stream position
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   in().seekg(object.stream_position.value());
   std::string raw = m_parser.read_stream(static_cast<std::int32_t>(size));
 
@@ -734,6 +736,8 @@ std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
     }
   }
 
+  // a valid xref chain always sets the trailer
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return {std::move(result_xref), std::move(result_trailer).value()};
 }
 
@@ -867,7 +871,7 @@ void DocumentParser::recover_xref() {
              const auto &[key, value] : dict) {
           trailer[key] = value; // last trailer wins per key
         }
-      } catch (const std::exception &) {
+      } catch (const std::exception &) { // NOLINT(bugprone-empty-catch)
         // ignore a malformed trailer and keep scanning
       }
       stream.clear();
@@ -917,7 +921,7 @@ void DocumentParser::index_object_streams() {
                                      static_cast<std::uint32_t>(reference.id),
                                      static_cast<std::uint32_t>(i)}));
       }
-    } catch (const std::exception &) {
+    } catch (const std::exception &) { // NOLINT(bugprone-empty-catch)
       // an unreadable (or, when encrypted, undecryptable) object stream is
       // simply not indexed
     }
@@ -941,7 +945,7 @@ void DocumentParser::recover_root() {
         m_trailer["Root"] = Object(reference);
         return;
       }
-    } catch (const std::exception &) {
+    } catch (const std::exception &) { // NOLINT(bugprone-empty-catch)
       // skip objects that fail to read during the catalog search
     }
   }
@@ -950,6 +954,10 @@ void DocumentParser::recover_root() {
 
 void DocumentParser::decrypt_strings(Object &object,
                                      const ObjectReference &reference) {
+  // only ever called once a decryptor is installed; guard keeps that explicit
+  if (!m_decryptor.has_value()) {
+    return;
+  }
   if (object.is_standard_string()) {
     object = Object(StandardString(
         m_decryptor->decrypt_string(reference, object.as_standard_string())));

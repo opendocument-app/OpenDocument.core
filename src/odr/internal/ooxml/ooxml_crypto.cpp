@@ -31,7 +31,9 @@ ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
   std::memcpy(&m_encryption_header, offset, sizeof(m_encryption_header));
   const std::u16string csp_name_u16(
       reinterpret_cast<const char16_t *>(offset + sizeof(m_encryption_header)));
-  const std::string csp_name = util::string::u16string_to_string(csp_name_u16);
+  // the CSP name field is parsed but currently unused
+  [[maybe_unused]] const std::string csp_name =
+      util::string::u16string_to_string(csp_name_u16);
   offset += standard_header.encryption_header_size;
 
   std::memcpy(&m_encryption_verifier, offset, sizeof(m_encryption_verifier));
@@ -41,8 +43,7 @@ ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
       offset, encryption_info.size() - (offset - encryption_info.data()));
 }
 
-std::string
-ECMA376Standard::derive_key(const std::string &password) const noexcept {
+std::string ECMA376Standard::derive_key(const std::string &password) const {
   // https://msdn.microsoft.com/en-us/library/dd925430(v=office.12).aspx
 
   std::string hash;
@@ -60,7 +61,9 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
     std::string ibytes(4, ' ');
     for (std::uint32_t i = 0; i < ITER_COUNT; ++i) {
       util::byte::to_little_endian(i, ibytes);
-      hash = internal::crypto::util::sha1(ibytes + hash);
+      std::string ih = ibytes;
+      ih += hash;
+      hash = internal::crypto::util::sha1(ih);
     }
     util::byte::to_little_endian(static_cast<std::uint32_t>(0), ibytes);
     hash = internal::crypto::util::sha1(hash + ibytes);
@@ -87,7 +90,7 @@ ECMA376Standard::derive_key(const std::string &password) const noexcept {
   return result;
 }
 
-bool ECMA376Standard::verify(const std::string &key) const noexcept {
+bool ECMA376Standard::verify(const std::string &key) const {
   // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
 
   const std::string verifier = internal::crypto::util::decrypt_aes_ecb(
@@ -102,7 +105,7 @@ bool ECMA376Standard::verify(const std::string &key) const noexcept {
 }
 
 std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
-                                     const std::string &key) const noexcept {
+                                     const std::string &key) const {
   const std::uint64_t total_size =
       *reinterpret_cast<const std::uint64_t *>(encrypted_package.data());
   std::string result =
@@ -127,28 +130,23 @@ Util::Util(const std::string &encryption_info) {
        version_info.major == 4) &&
       version_info.minor == 2) {
     impl = std::make_unique<ECMA376Standard>(encryption_info);
-  } else if (version_info.major == 4 && version_info.minor == 4) {
-    throw MsUnsupportedCryptoAlgorithm(); // agile
-  } else if ((version_info.major == 3 || version_info.major == 4) &&
-             version_info.minor == 3) {
-    throw MsUnsupportedCryptoAlgorithm(); // extensible
   } else {
-    throw MsUnsupportedCryptoAlgorithm(); // unknown
+    // everything else (agile 4.4, extensible 3.3/4.3, and unknown variants) is
+    // unsupported
+    throw MsUnsupportedCryptoAlgorithm();
   }
 }
 
 Util::~Util() noexcept = default;
 
-std::string Util::derive_key(const std::string &password) const noexcept {
+std::string Util::derive_key(const std::string &password) const {
   return impl->derive_key(password);
 }
 
-bool Util::verify(const std::string &key) const noexcept {
-  return impl->verify(key);
-}
+bool Util::verify(const std::string &key) const { return impl->verify(key); }
 
 std::string Util::decrypt(const std::string &encrypted_package,
-                          const std::string &key) const noexcept {
+                          const std::string &key) const {
   return impl->decrypt(encrypted_package, key);
 }
 

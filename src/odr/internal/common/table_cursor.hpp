@@ -9,12 +9,12 @@ namespace odr::internal {
 
 class TableCursor final {
 public:
-  TableCursor() noexcept;
+  TableCursor();
 
   void add_column(std::uint32_t repeat = 1) noexcept;
-  void add_row(std::uint32_t repeat = 1) noexcept;
+  void add_row(std::uint32_t repeat = 1);
   void add_cell(std::uint32_t colspan = 1, std::uint32_t rowspan = 1,
-                std::uint32_t repeat = 1) noexcept;
+                std::uint32_t repeat = 1);
 
   [[nodiscard]] TablePosition position() const noexcept;
   [[nodiscard]] std::uint32_t column() const noexcept;

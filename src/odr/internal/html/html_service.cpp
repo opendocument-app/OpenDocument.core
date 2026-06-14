@@ -67,11 +67,12 @@ bool HtmlResource::is_external() const { return m_is_external; }
 bool HtmlResource::is_accessible() const { return m_is_accessible; }
 
 void HtmlResource::write_resource(std::ostream &os) const {
-  if (!is_accessible() || !file().has_value()) {
+  const std::optional<File> &resource_file = file();
+  if (!is_accessible() || !resource_file.has_value()) {
     throw ResourceNotAccessible(name(), path());
   }
 
-  util::stream::pipe(*file()->stream(), os);
+  util::stream::pipe(*resource_file->stream(), os);
 }
 
 } // namespace odr::internal::html

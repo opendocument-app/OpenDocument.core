@@ -44,10 +44,14 @@ std::string_view OfficeOpenXmlFile::mimetype() const noexcept {
 FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value().document_type;
 }
 
 DocumentMeta OfficeOpenXmlFile::document_meta() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value();
 }
 

@@ -1,38 +1,21 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*'
-WarningsAsErrors: ''
-HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
-FormatStyle:     none
-User:            andreas
-CheckOptions:
-  - key:             cert-dcl16-c.NewSuffixes
-    value:           'L;LL;LU;LLU'
-  - key:             cert-oop54-cpp.WarnOnlyIfThisHasSuspiciousField
-    value:           '0'
-  - key:             cppcoreguidelines-explicit-virtual-functions.IgnoreDestructors
-    value:           '1'
-  - key:             cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
-    value:           '1'
-  - key:             google-readability-braces-around-statements.ShortStatementLines
-    value:           '1'
-  - key:             google-readability-function-size.StatementThreshold
-    value:           '800'
-  - key:             google-readability-namespace-comments.ShortNamespaceLines
-    value:           '10'
-  - key:             google-readability-namespace-comments.SpacesBeforeComments
-    value:           '2'
-  - key:             modernize-loop-convert.MaxCopySize
-    value:           '16'
-  - key:             modernize-loop-convert.MinConfidence
-    value:           reasonable
-  - key:             modernize-loop-convert.NamingStyle
-    value:           CamelCase
-  - key:             modernize-pass-by-value.IncludeStyle
-    value:           llvm
-  - key:             modernize-replace-auto-ptr.IncludeStyle
-    value:           llvm
-  - key:             modernize-use-nullptr.NullMacros
-    value:           'NULL'
-...
-
+# High-signal static analysis. The bug-finding groups are enabled wholesale;
+# the negative entries switch off checks that conflict with deliberate project
+# conventions (#pragma once) or that are pure style churn / very high false
+# positive rate. Everything left enabled is expected to stay at zero findings,
+# which WarningsAsErrors enforces.
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  portability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -performance-enum-size,
+  -portability-avoid-pragma-once,
+# clang-analyzer-* stays enabled but advisory: its only findings are inside
+# third-party -isystem headers (cryptopp/httplib/csv), which we cannot patch.
+WarningsAsErrors: '*,-clang-analyzer-*'
+HeaderFilterRegex: '(^|/)src/odr/'
+FormatStyle: file

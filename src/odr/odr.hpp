@@ -15,10 +15,10 @@ enum class DocumentType;
 
 /// @brief Get the version of the library.
 /// @return The version of the library.
-[[nodiscard]] std::string version() noexcept;
+[[nodiscard]] std::string version();
 /// @brief Get the commit hash of the library.
 /// @return The commit hash of the library.
-[[nodiscard]] std::string commit_hash() noexcept;
+[[nodiscard]] std::string commit_hash();
 /// @brief Check if the library is dirty (i.e., has uncommitted changes).
 /// @return True if the library is dirty, false otherwise.
 [[nodiscard]] bool is_dirty() noexcept;
@@ -45,15 +45,15 @@ file_type_by_file_extension(const std::string &extension) noexcept;
 /// @brief Get the file type as a string.
 /// @param type The file type.
 /// @return The file type as a string.
-[[nodiscard]] std::string file_type_to_string(FileType type) noexcept;
+[[nodiscard]] std::string file_type_to_string(FileType type);
 /// @brief Get the file category as a string.
 /// @param type The file type.
 /// @return The file type as a string.
-[[nodiscard]] std::string file_category_to_string(FileCategory type) noexcept;
+[[nodiscard]] std::string file_category_to_string(FileCategory type);
 /// @brief Get the document type as a string.
 /// @param type The file type.
 /// @return The file type as a string.
-[[nodiscard]] std::string document_type_to_string(DocumentType type) noexcept;
+[[nodiscard]] std::string document_type_to_string(DocumentType type);
 /// @brief Get the file type by the MIME type.
 /// @param mimetype The MIME type.
 /// @return The file type.

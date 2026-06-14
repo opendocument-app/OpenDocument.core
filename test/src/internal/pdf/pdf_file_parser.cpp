@@ -32,46 +32,45 @@ TEST(FileParser, foo) {
       const auto &[size, dictionary] = entry.as_trailer();
 
       for (const auto &key : dictionary | std::views::keys) {
-        std::cout << key << std::endl;
+        std::cout << key << '\n';
       }
     }
     if (entry.is_object()) {
       const IndirectObject &object = entry.as_object();
 
       std::cout << "object " << object.reference.id << " "
-                << object.reference.gen << std::endl;
+                << object.reference.gen << '\n';
 
       if (object.object.is_integer()) {
-        std::cout << "integer " << object.object.as_integer() << std::endl;
+        std::cout << "integer " << object.object.as_integer() << '\n';
       }
       if (object.object.is_array()) {
-        std::cout << "array size " << object.object.as_array().size()
-                  << std::endl;
+        std::cout << "array size " << object.object.as_array().size() << '\n';
       }
       if (object.object.is_dictionary()) {
         const auto &dictionary = object.object.as_dictionary();
-        std::cout << "dictionary size " << dictionary.size() << std::endl;
+        std::cout << "dictionary size " << dictionary.size() << '\n';
         for (const auto &key : dictionary | std::views::keys) {
-          std::cout << key << std::endl;
+          std::cout << key << '\n';
         }
       }
 
       if (object.has_stream) {
         const Dictionary &dictionary = object.object.as_dictionary();
         std::string stream = parser.read_stream(-1);
-        std::cout << stream.size() << std::endl;
+        std::cout << stream.size() << '\n';
 
         if (dictionary.has_key("Filter")) {
           const std::string &filter = dictionary["Filter"].as_string();
-          std::cout << filter << std::endl;
+          std::cout << filter << '\n';
           if (filter == "FlateDecode") {
             std::string inflated = crypto::util::zlib_inflate(stream);
-            std::cout << inflated.size() << std::endl;
+            std::cout << inflated.size() << '\n';
           }
         }
       }
 
-      std::cout << std::endl;
+      std::cout << '\n';
     }
   }
 }

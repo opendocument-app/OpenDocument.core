@@ -91,7 +91,7 @@ TEST_P(HtmlOutputTests, html_meta) {
     const std::string meta_output = output_path + "/meta.json";
     const nlohmann::json json = util::meta::meta_to_json(file_meta);
     std::ofstream o(meta_output);
-    o << std::setw(4) << json << std::endl;
+    o << std::setw(4) << json << '\n';
     EXPECT_TRUE(fs::is_regular_file(meta_output));
     EXPECT_LT(0, fs::file_size(meta_output));
   }
@@ -142,7 +142,7 @@ TEST_P(HtmlOutputTests, html_meta) {
       const std::string meta_output = output_path + "/meta-decrypted.json";
       const nlohmann::json json = util::meta::meta_to_json(file_meta);
       std::ofstream o(meta_output);
-      o << std::setw(4) << json << std::endl;
+      o << std::setw(4) << json << '\n';
       EXPECT_TRUE(fs::is_regular_file(meta_output));
       EXPECT_LT(0, fs::file_size(meta_output));
     }

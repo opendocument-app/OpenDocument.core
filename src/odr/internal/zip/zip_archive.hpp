@@ -11,11 +11,6 @@ namespace odr::internal::abstract {
 class File;
 }
 
-namespace odr::internal::common {
-class MemoryFile;
-class DiskFile;
-} // namespace odr::internal::common
-
 namespace odr::internal::zip {
 namespace util {
 class Archive;

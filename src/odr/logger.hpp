@@ -66,6 +66,9 @@ protected:
 
 } // namespace odr
 
+// `message` is a streaming expression (e.g. `"x=" << x`), so it deliberately
+// must not be parenthesized.
+// NOLINTBEGIN(bugprone-macro-parentheses)
 #define ODR_LOG(logger, level, message)                                        \
   do {                                                                         \
     if ((logger).will_log(level)) {                                            \
@@ -74,6 +77,7 @@ protected:
       (logger).log(level, ss.str());                                           \
     }                                                                          \
   } while (0)
+// NOLINTEND(bugprone-macro-parentheses)
 #define ODR_VERBOSE(logger, message) ODR_LOG(logger, LogLevel::verbose, message)
 #define ODR_DEBUG(logger, message) ODR_LOG(logger, LogLevel::debug, message)
 #define ODR_INFO(logger, message) ODR_LOG(logger, LogLevel::info, message)

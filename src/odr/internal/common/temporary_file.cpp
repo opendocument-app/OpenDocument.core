@@ -21,6 +21,7 @@ TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
 
 TemporaryDiskFile::~TemporaryDiskFile() {
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access): always backed by a path
   std::filesystem::remove(disk_path()->string());
 }
 

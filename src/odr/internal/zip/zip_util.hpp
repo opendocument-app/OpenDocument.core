@@ -13,8 +13,6 @@
 
 namespace odr::internal {
 class RelPath;
-class MemoryFile;
-class DiskFile;
 } // namespace odr::internal
 
 namespace odr::internal::zip::util {

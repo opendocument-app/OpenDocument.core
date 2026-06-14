@@ -80,7 +80,8 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
   for (; is_text_node(last.next_sibling()); last = last.next_sibling()) {
   }
 
-  const auto &[element_id, _, __] = registry.create_text_element(first, last);
+  const auto &[element_id, _, unused] =
+      registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }
@@ -239,7 +240,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
 
         for (std::uint32_t column_repeat = 0; column_repeat < columns_repeated;
              ++column_repeat) {
-          const auto &[cell_id, _, __] = registry.create_sheet_cell_element(
+          const auto &[cell_id, _, unused] = registry.create_sheet_cell_element(
               cell_node, cursor.position(), is_repeated);
           registry.append_sheet_cell(element_id, cell_id);
           sheet.register_cell(cursor.column(), cursor.row(), 1, 1, cell_node,

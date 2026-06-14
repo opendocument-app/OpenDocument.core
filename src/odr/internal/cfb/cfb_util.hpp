@@ -10,10 +10,6 @@
 #include <memory>
 #include <string>
 
-namespace odr::abstract {
-class File;
-} // namespace odr::abstract
-
 namespace odr::internal::cfb::impl {
 class CompoundFileReader;
 struct CompoundFileEntry;
@@ -80,8 +76,13 @@ public:
     static Iterator begin(const Entry &entry) { return Iterator(entry); }
     static Iterator end() { return {}; }
 
-    [[nodiscard]] reference operator*() const { return *m_entry; }
-    [[nodiscard]] pointer operator->() const { return &*m_entry; }
+    // deref requires a valid (non-end) iterator
+    [[nodiscard]] reference operator*() const {
+      return *m_entry; // NOLINT(bugprone-unchecked-optional-access)
+    }
+    [[nodiscard]] pointer operator->() const {
+      return &*m_entry; // NOLINT(bugprone-unchecked-optional-access)
+    }
 
     [[nodiscard]] bool operator==(const Iterator &other) const {
       return m_entry == other.m_entry;

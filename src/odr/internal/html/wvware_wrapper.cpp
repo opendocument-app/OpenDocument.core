@@ -245,6 +245,8 @@ void output_from_unicode(const wvParseStruct *ps, const std::uint16_t eachchar,
 
   {
     g_iconv_handle = g_iconv_open(outputtype, "UCS-2");
+    // (GIConv)-1 is glib's documented error value
+    // NOLINTNEXTLINE(performance-no-int-to-ptr)
     if (g_iconv_handle == reinterpret_cast<GIConv>(-1)) {
       std::cerr << "g_iconv_open fail: " << errno
                 << ", cannot convert UCS-2 to " << outputtype << "\n";
@@ -408,11 +410,11 @@ int dump_metafile(wvParseStruct *ps, const std::string &name,
       fputc(read_8ubit(pwv), tmp);
     }
 
-    rewind(tmp);
+    fseek(tmp, 0, SEEK_SET);
     decompress(tmp, out, bitmap->m_cbSave, bitmap->m_cb);
     fclose(tmp);
 
-    rewind(out);
+    fseek(out, 0, SEEK_SET);
 
     for (std::size_t i = 0; i < bitmap->m_cb; i++) {
       fputc(fgetc(out), fd);

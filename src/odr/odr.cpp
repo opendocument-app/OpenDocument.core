@@ -6,13 +6,9 @@
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/project_info.hpp>
 
-std::string odr::version() noexcept {
-  return internal::project_info::version();
-}
+std::string odr::version() { return internal::project_info::version(); }
 
-std::string odr::commit_hash() noexcept {
-  return internal::git_info::commit_hash();
-}
+std::string odr::commit_hash() { return internal::git_info::commit_hash(); }
 
 bool odr::is_dirty() noexcept { return internal::git_info::is_dirty(); }
 
@@ -163,7 +159,7 @@ odr::document_type_by_file_type(const FileType type) noexcept {
   }
 }
 
-std::string odr::file_type_to_string(const FileType type) noexcept {
+std::string odr::file_type_to_string(const FileType type) {
   switch (type) {
   case FileType::unknown:
     return "unknown";
@@ -218,7 +214,7 @@ std::string odr::file_type_to_string(const FileType type) noexcept {
   }
 }
 
-std::string odr::file_category_to_string(const FileCategory type) noexcept {
+std::string odr::file_category_to_string(const FileCategory type) {
   switch (type) {
   case FileCategory::unknown:
     return "unknown";
@@ -235,7 +231,7 @@ std::string odr::file_category_to_string(const FileCategory type) noexcept {
   }
 }
 
-std::string odr::document_type_to_string(const DocumentType type) noexcept {
+std::string odr::document_type_to_string(const DocumentType type) {
   switch (type) {
   case DocumentType::unknown:
     return "unknown";

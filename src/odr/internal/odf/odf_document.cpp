@@ -876,7 +876,7 @@ public:
     try {
       const AbsPath path = Path(image_href(element_id)).make_absolute();
       return m_document->as_filesystem()->is_file(path);
-    } catch (...) {
+    } catch (...) { // NOLINT(bugprone-empty-catch): any error => not internal
     }
     return false;
   }

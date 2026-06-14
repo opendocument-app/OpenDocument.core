@@ -82,7 +82,8 @@ parse_text_element(ElementRegistry &registry,
        last = last.next_sibling()) {
   }
 
-  const auto &[element_id, _, __] = registry.create_text_element(first, last);
+  const auto &[element_id, _, unused] =
+      registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }

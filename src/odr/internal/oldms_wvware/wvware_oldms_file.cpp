@@ -26,9 +26,9 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
 
   m_parser_state = std::make_shared<ParserState>();
 
-  if (m_file->disk_path().has_value()) {
+  if (const std::optional<AbsPath> disk_path = m_file->disk_path()) {
     m_parser_state->gsf_input =
-        gsf_input_stdio_new(m_file->disk_path()->string().c_str(), &error);
+        gsf_input_stdio_new(disk_path->string().c_str(), &error);
   } else if (m_file->memory_data() != nullptr) {
     m_parser_state->gsf_input = gsf_input_memory_new(
         reinterpret_cast<const guint8 *>(m_file->memory_data()),
@@ -98,6 +98,8 @@ DocumentType WvWareLegacyMicrosoftFile::document_type() const {
 }
 
 DocumentMeta WvWareLegacyMicrosoftFile::document_meta() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value();
 }
 

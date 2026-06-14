@@ -1,0 +1,7 @@
+---
+# Test code establishes optional state through gtest assertion macros
+# (e.g. ASSERT_TRUE(opt.has_value())) that clang-tidy's dataflow analysis
+# cannot see through, so bugprone-unchecked-optional-access reports only false
+# positives here. Everything else from the top-level config still applies.
+InheritParentConfig: true
+Checks: '-bugprone-unchecked-optional-access'

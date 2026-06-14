@@ -99,7 +99,7 @@ bool DocumentPath::operator!=(const DocumentPath &other) const noexcept {
   return m_components != other.m_components;
 }
 
-std::string DocumentPath::to_string() const noexcept {
+std::string DocumentPath::to_string() const {
   std::string result;
 
   for (auto &&component : m_components) {

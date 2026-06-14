@@ -401,9 +401,9 @@ void html::translate_image(const Element &element, const WritingState &state) {
   odr::HtmlResource resource;
   HtmlResourceLocation resource_location;
   if (image.is_internal()) {
-    resource = HtmlResource::create(HtmlResourceType::image, "image/jpg",
-                                    image.href(), image.href(),
-                                    image.file().value(), false, false, true);
+    resource =
+        HtmlResource::create(HtmlResourceType::image, "image/jpg", image.href(),
+                             image.href(), image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
   } else {
@@ -424,6 +424,8 @@ void html::translate_image(const Element &element, const WritingState &state) {
               clb("src", resource_location.value());
             } else {
               clb("src", [&](std::ostream &o) {
+                // reached only for internal images, which have a file
+                // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
                 translate_image_src(image.file().value(), o, state.config());
               });
             }

@@ -252,11 +252,13 @@ std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
   if (std::strcmp("nil", val) == 0) {
     return {};
   }
+  const std::optional<Measure> size =
+      read_half_point_attribute(node.attribute("w:sz"));
+  if (!size.has_value()) {
+    return {};
+  }
   std::string result;
-  result
-      .append(
-          read_half_point_attribute(node.attribute("w:sz")).value().to_string())
-      .append(" ");
+  result.append(size->to_string()).append(" ");
   if (std::strcmp("none", val) == 0) {
     result.append(node.attribute("w:val").value()).append(" ");
   } else {
