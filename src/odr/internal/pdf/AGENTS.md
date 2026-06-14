@@ -303,9 +303,8 @@ per-code Unicode (or "unknown", which stage 3 handles). The stage is **too
 large for one change** — it bundles work of very different size and dependency,
 so it is split into the sub-stages below. They are independently useful and
 ordered by corpus frequency; each is its own branch/PR off this roadmap. Sub-
-stage 1.1 has landed; **1.2 is the current work** (branch
-`pdf-encoding-to-unicode`); 1.4 is blocked on stage 3 and stays deferred until
-then.
+stages 1.1 and 1.2 have landed; **1.3 (composite/CID fonts) is the next work**;
+1.4 is blocked on stage 3 and stays deferred until then.
 
 ### 1.1 — `ToUnicode` CMap: multi-byte codes, `bfrange`, multi-char targets — **done**
 
@@ -342,7 +341,7 @@ inline-string test convention for the module.
 Out of scope for 1.1: anything needing `/Encoding`, the AGL, predefined CMaps,
 or font-file reading — those are 1.2–1.4.
 
-### 1.2 — simple-font encoding → Unicode — **in progress**
+### 1.2 — simple-font encoding → Unicode — **done**
 
 `/Encoding` base (WinAnsi/MacRoman/Standard) + `/Differences` → glyph names →
 Unicode via the Adobe Glyph List (incl. `uniXXXX`/`uXXXXXX` names). Carries the
