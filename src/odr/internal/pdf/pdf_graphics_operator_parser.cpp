@@ -166,9 +166,33 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     std::cerr << "unknown operator: " << operator_name << std::endl;
   }
 
+  // After `ID` the raw image bytes follow inline; consume them up to `EI` so
+  // they are not mis-tokenized as operators (which corrupts the parse state).
+  if (result.type == GraphicsOperatorType::begin_inline_image_data) {
+    skip_inline_image_data();
+  }
+
   m_parser.skip_whitespace();
 
   return result;
+}
+
+void GraphicsOperatorParser::skip_inline_image_data() {
+  // Exactly one white-space character separates `ID` from the data (8.9.7).
+  if (m_parser.geti() != eof) {
+    m_parser.bumpc();
+  }
+
+  // The length is not encoded, so scan for the `EI` terminator. `EI` also
+  // occurs inside the raw image bytes, so only accept one that is followed by
+  // white-space or eof; otherwise keep scanning past it.
+  while (m_parser.skip_past("EI")) {
+    const int_type after = m_parser.geti();
+    if (after == eof ||
+        ObjectParser::is_whitespace(static_cast<char_type>(after))) {
+      return;
+    }
+  }
 }
 
 } // namespace odr::internal::pdf

@@ -94,7 +94,7 @@ ooxml::read_pct_attribute(const pugi::xml_attribute attribute) {
   // potentially this should be moved to a table parser
 
   std::string val = attribute.value();
-  util::string::trim(val);
+  util::string::trim_inplace(val);
 
   if (val.find('%') != std::string::npos) {
     util::string::replace_all(val, "%", "");

@@ -70,14 +70,6 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO fix pdf implementation
-  if (engine == DecoderEngine::odr &&
-      test_file.type == FileType::portable_document_format &&
-      (test_file.short_path.starts_with("odr-private") ||
-       test_file.short_path == "odr-public/pdf/Casio_WVA-M650-7AJF.pdf")) {
-    GTEST_SKIP();
-  }
-
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;

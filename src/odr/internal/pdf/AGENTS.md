@@ -9,7 +9,8 @@ module (poppler / pdf2htmlEX, behind `ODR_WITH_PDF2HTMLEX`) is the
 production-quality alternative engine.
 
 **Scope today.** Parse the PDF object/file structure (classic cross-reference
-tables, cross-reference streams, object streams, hybrid files), build the page
+tables, cross-reference streams, object streams, hybrid files, with a
+forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
 text spans per `Tj`, pages sized from `MediaBox`. Encrypted files are decrypted
@@ -42,6 +43,15 @@ not production-quality — the HTML path still contains debug `std::cout` output
   Lenient where the wild demands: `/Type /XRef` only warns, references to free
   or absent objects resolve to null with a `Logger` warning, `n g obj` need not
   end with a newline.
+- **Cross-reference recovery**: when the trailer-chain walk throws (missing or
+  garbage `startxref`, a broken `Prev` chain) or the document fails to build
+  (no `/Root`, offsets pointing at the wrong objects), the whole file is
+  forward-scanned for `n g obj` starts, rebuilding a synthetic xref (last
+  definition of an id wins). `trailer` dictionaries are collected for `/Root`,
+  `/Encrypt`, `/ID`; recovered `/Type /ObjStm` members are indexed as
+  compressed entries; and, when no trailer supplied a `/Root`, a `/Type
+  /Catalog` object is searched. Handles e.g. an HTTP response saved as `.pdf`
+  (every offset shifted by the header).
 - **Page tree**: `Catalog` → `Pages` (recursive) → `Page` with per-page
   `Resources` (fonts only) and `Annots` (raw dictionary only). Objects cached by
   reference (`DocumentParser::m_objects`).
@@ -186,7 +196,9 @@ surprises **throw** `std::runtime_error` (missing `obj`/`endobj`/`stream`/
 operators ignored by `execute`, annotations keep their raw dictionary, CMap
 `codespacerange`/`bfrange` parsed past without effect. References to free/absent
 objects resolve to null with a warning; unknown xref-stream entry types treated
-as absent (7.5.8.3).
+as absent (7.5.8.3). A structural throw in the cross-reference layer is not
+fatal, though: it is caught once and the file is forward-scanned to rebuild the
+table (*Cross-reference recovery* above) before giving up.
 
 **Debug output still in place.** `html/pdf_file.cpp`, `pdf_graphics_state.cpp`,
 `pdf_graphics_operator_parser.cpp` and `pdf_cmap_parser.cpp` print diagnostics
@@ -222,11 +234,16 @@ and routes its warnings through it — new diagnostics should do the same.
   variants), plus inherited-page-attribute coverage (a multi-level `Pages` tree:
   per-page resolved `MediaBox`/`CropBox`/`Rotate`/`Resources`, override vs.
   inheritance, the `CropBox` ← `MediaBox` default, the missing-`MediaBox`
-  US-Letter lenience). End-to-end: the classic fixture
+  US-Letter lenience), plus cross-reference-recovery coverage (inline broken
+  mini-PDFs: garbage prepended, a bad `startxref`, no trailer at all → catalog
+  scan, a duplicate id → last definition wins, a page tree living in an object
+  stream). End-to-end: the classic fixture
   `odr-public/pdf/style-various-1.pdf`, plus decryption of
   `odr-public/pdf/Casio_WVA-M650-7AJF.pdf` (RC4, empty password) and
   `odr-private/pdf/encrypted_fontfile3_opentype.pdf` (AES-256; skipped when the
-  private submodule is absent). The `odr-private` xref-stream/objstm/hybrid
+  private submodule is absent), and recovery of the real
+  `odr-private/pdf/order-EK52VKL0.pdf` (an HTTP response saved as `.pdf`;
+  likewise skipped when absent). The `odr-private` xref-stream/objstm/hybrid
   fixtures (`basic_text.pdf`, `geneve_1564.pdf`, `test_fail.pdf`, `Kayla….pdf`,
   `svg_background…issue402.pdf`, `Core_v5.1.pdf`, `onepage.pdf`) were verified
   manually but are not pinned in unit tests. Also still contains the original
@@ -248,31 +265,16 @@ are ordered by what they unlock; 0–2 are roughly sequential, 3 and 4 are
 independent, 5 builds on whatever pages already render. Each stage gets its own
 detailed design before implementation.
 
-## Stage 0 — file-format compatibility (prerequisite) — **mostly done**
+## Stage 0 — file-format compatibility (prerequisite) — **done**
 
-Modern producers write PDF 1.5+ structures the original parser rejected.
-Cross-reference/object streams + hybrid files, the filter framework (incl. PNG
-predictors), inherited page attributes, and encryption (RC4 / AES-128 / AES-256)
-are **all implemented** (see *What works*). The one remaining piece:
-
-**Xref recovery for broken files** (post-stage-0; the WP2 code left room):
-- Trigger: any structural throw during xref-chain walking or a failed object
-  lookup (`startxref` missing/garbage, offsets wrong).
-- Recovery: a single forward scan for `n g obj` line starts (the existing
-  sequential `read_entry` machinery is most of this), building a synthetic
-  `Xref` (last definition of an id wins), collecting `trailer` dicts and
-  `/Type /Catalog` objects as `Root` candidates; objstm members indexed by
-  scanning recovered object streams.
-- Tests fit inline strings well: the scan ignores xref offsets, so a broken
-  mini-PDF needs no offset bookkeeping — write a literal with a garbage
-  `startxref`, duplicate ids, or a missing trailer, and assert what got rebuilt.
-  Real-world fixture: `odr-private/pdf/order-EK52VKL0.pdf` — an HTTP response
-  accidentally saved as `.pdf` (starts with `HTTP/1.0 200 OK`).
-
-Remaining encryption edge cases (deferred until a real file needs them):
-per-stream `/Crypt` filter `Name` overrides, the `EncryptMetadata false`
-metadata-stream `Identity` special case, and `Perms` (Algorithm 13) validation;
-the public-key security handler and R 5 are out of scope.
+The prerequisite for everything below: read the structures modern producers
+write that the original parser rejected, so a real-world `.pdf` reaches the page
+tree at all. All of it has landed (see *What works*): the stream-filter
+framework (incl. PNG predictors), PDF 1.5+ cross-reference/object streams and
+hybrid files, inherited page attributes, encryption (RC4 / AES-128 / AES-256),
+and last-resort cross-reference recovery for broken files. Remaining odds and
+ends are folded into *Other known gaps* below; the staged renderer work now
+builds on a parser that opens the common corpus.
 
 ## Stage 1 — text extraction: the code → Unicode chain
 
@@ -441,6 +443,15 @@ tree, little else.
 
 ## Other known gaps
 
+- **Encryption edge cases** (deferred from stage 0 until a real file needs
+  them): per-stream `/Crypt` filter `Name` overrides, the `EncryptMetadata
+  false` metadata-stream `Identity` special case, and `Perms` (Algorithm 13)
+  validation. The public-key security handler and revision 5 are out of scope.
+- **Recovery limitations** (deferred from stage 0): when several `/Type
+  /Catalog` objects survive, the first in id order is picked rather than the
+  newest; the constructor-triggered recovery path cannot decode object streams
+  in an *encrypted* broken file (no decryptor yet), so such members go
+  unindexed. Both are edge cases beyond the corpus seen so far.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
 - **CMap coverage**: only single-byte `bfchar`; `bfrange`/`codespacerange`

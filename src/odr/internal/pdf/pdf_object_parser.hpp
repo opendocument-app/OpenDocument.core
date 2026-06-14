@@ -5,6 +5,7 @@
 #include <array>
 #include <istream>
 #include <stdexcept>
+#include <string_view>
 #include <variant>
 
 namespace odr::internal::pdf {
@@ -45,9 +46,16 @@ public:
   void skip_whitespace();
   void skip_line();
   std::string read_line(bool inclusive = false);
+  /// Advance the cursor just past the next occurrence of `marker`. Returns true
+  /// if it was found; on false the stream has been consumed to eof. Operates on
+  /// raw bytes, so the marker may straddle line breaks.
+  bool skip_past(std::string_view marker);
   void expect_characters(const std::string &string);
 
   [[nodiscard]] bool peek_number();
+  [[nodiscard]] bool peek_unsigned_integer();
+  [[nodiscard]] std::pair<UnsignedInteger, std::uint32_t>
+  read_unsigned_integer_and_count();
   [[nodiscard]] UnsignedInteger read_unsigned_integer();
   [[nodiscard]] Integer read_integer();
   [[nodiscard]] Real read_number();

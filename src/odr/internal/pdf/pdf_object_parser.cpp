@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::pdf {
 
@@ -121,6 +122,45 @@ std::string ObjectParser::read_line(const bool inclusive) {
   return util::stream::read_line(in(), inclusive);
 }
 
+bool ObjectParser::skip_past(const std::string_view marker) {
+  if (marker.empty()) {
+    return true;
+  }
+
+  // KMP failure function over the (typically tiny) marker, so the streaming
+  // scan stays correct even when the marker has internal repetition (e.g. the
+  // two `e`s in `endstream`).
+  std::vector<std::size_t> fail(marker.size(), 0);
+  for (std::size_t i = 1, k = 0; i < marker.size(); ++i) {
+    while (k > 0 && marker[i] != marker[k]) {
+      k = fail[k - 1];
+    }
+    if (marker[i] == marker[k]) {
+      ++k;
+    }
+    fail[i] = k;
+  }
+
+  std::size_t matched = 0;
+  while (true) {
+    const int_type c = sb().sbumpc();
+    if (c == eof) {
+      in().setstate(std::ios::eofbit);
+      return false;
+    }
+    const auto ch = static_cast<char_type>(c);
+    while (matched > 0 && ch != marker[matched]) {
+      matched = fail[matched - 1];
+    }
+    if (ch == marker[matched]) {
+      ++matched;
+      if (matched == marker.size()) {
+        return true;
+      }
+    }
+  }
+}
+
 void ObjectParser::expect_characters(const std::string &string) {
   const std::string observed = bumpnc(string.size());
   if (observed != string) {
@@ -135,20 +175,38 @@ bool ObjectParser::peek_number() {
   return c != eof && (c == '+' || c == '-' || c == '.' || std::isdigit(c));
 }
 
-UnsignedInteger ObjectParser::read_unsigned_integer() {
+bool ObjectParser::peek_unsigned_integer() {
+  const int_type c = geti();
+  return c != eof && std::isdigit(c);
+}
+
+std::pair<UnsignedInteger, std::uint32_t>
+ObjectParser::read_unsigned_integer_and_count() {
   UnsignedInteger result = 0;
+  std::uint32_t count = 0;
 
   while (true) {
     const int_type c = geti();
     if (c == eof) {
-      return result;
+      break;
     }
     if (!std::isdigit(c)) {
-      return result;
+      break;
     }
     result = result * 10 + (c - '0');
+    ++count;
     bumpc();
   }
+
+  if (count == 0) {
+    throw std::runtime_error("expected unsigned integer, but got none");
+  }
+
+  return {result, count};
+}
+
+UnsignedInteger ObjectParser::read_unsigned_integer() {
+  return read_unsigned_integer_and_count().first;
 }
 
 Integer ObjectParser::read_integer() {
@@ -172,23 +230,34 @@ Real ObjectParser::read_number() {
 }
 
 std::variant<Integer, Real> ObjectParser::read_integer_or_real() {
-  Integer i = 0;
+  Integer sign = 1;
+  if (geti() == '-') {
+    sign = -1;
+    bumpc();
+  } else if (geti() == '+') {
+    bumpc();
+  }
 
-  if (char_type c = getc(); c != '.') {
-    i = read_integer();
-    c = getc();
-    if (c != '.') {
-      return i;
-    }
+  UnsignedInteger i = 0;
+
+  if (geti() != '.') {
+    i = read_unsigned_integer();
+  }
+  if (geti() != '.') {
+    return static_cast<Integer>(sign * i);
   }
   bumpc();
 
-  const pos_type begin = in().tellg();
-  const UnsignedInteger i2 = read_unsigned_integer();
-  const pos_type end = in().tellg();
+  Real r = static_cast<Real>(i);
 
-  return static_cast<Real>(i) +
-         static_cast<Real>(i2) * std::pow(10.0, begin - end);
+  if (peek_unsigned_integer()) {
+    const auto [fraction, decimals] = read_unsigned_integer_and_count();
+    // `decimals` is unsigned; negate as floating point to avoid wrap-around.
+    r += static_cast<Real>(fraction) *
+         std::pow(10.0, -static_cast<Real>(decimals));
+  }
+
+  return static_cast<Real>(sign) * r;
 }
 
 bool ObjectParser::peek_name() {

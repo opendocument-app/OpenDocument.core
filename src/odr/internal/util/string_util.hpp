@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::util::string {
@@ -9,9 +10,33 @@ namespace odr::internal::util::string {
 bool starts_with(const std::string &string, const std::string &with);
 bool ends_with(const std::string &string, const std::string &with);
 
-void ltrim(std::string &s);
-void rtrim(std::string &s);
-void trim(std::string &s);
+/// Predicate deciding whether a byte counts as whitespace for the `*_view`
+/// trims. Takes a single `char`; implementations must handle the full byte
+/// range without relying on the sign of `char`.
+using CharPredicate = bool (*)(char);
+
+/// `std::isspace` for the default C locale, made safe for any `char` value.
+bool is_ascii_space(char c);
+
+void ltrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
+void rtrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
+void trim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
+
+std::string ltrim(const std::string &s,
+                  CharPredicate is_space = is_ascii_space);
+std::string rtrim(const std::string &s,
+                  CharPredicate is_space = is_ascii_space);
+std::string trim(const std::string &s, CharPredicate is_space = is_ascii_space);
+
+/// Trim leading/trailing whitespace and return a view into `s`. The result is a
+/// subrange of `s`, so the leading offset is recoverable as
+/// `result.data() - s.data()`.
+std::string_view ltrim_view(std::string_view s,
+                            CharPredicate is_space = is_ascii_space);
+std::string_view rtrim_view(std::string_view s,
+                            CharPredicate is_space = is_ascii_space);
+std::string_view trim_view(std::string_view s,
+                           CharPredicate is_space = is_ascii_space);
 
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
