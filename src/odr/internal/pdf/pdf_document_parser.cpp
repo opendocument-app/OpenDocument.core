@@ -186,6 +186,17 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
                           Font &font) {
   font.composite = true;
 
+  // The Type0 `/Encoding`: a predefined CMap name (`Identity-H`,
+  // `UniGB-UCS2-H`, …) or an embedded CMap stream. Record the name; the stream
+  // case is left empty (deferred). Drives the predefined Unicode-CMap path in
+  // `Font::to_unicode`.
+  if (dictionary.has_key("Encoding")) {
+    const Object encoding = parser.resolve_object_copy(dictionary["Encoding"]);
+    if (encoding.is_name()) {
+      font.cid_encoding_name = encoding.as_name();
+    }
+  }
+
   if (!dictionary.has_key("DescendantFonts")) {
     return;
   }
