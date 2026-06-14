@@ -191,7 +191,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
     font->cmap = cmap_parser.parse_cmap();
   }
 
-  // Simple-font `/Encoding` (stage 1.2): a base-encoding name, or a dictionary
+  // Simple-font `/Encoding`: a base-encoding name, or a dictionary
   // with `/BaseEncoding` + `/Differences`. The text-extraction fallback for
   // fonts without a `ToUnicode` CMap.
   if (dictionary.has_key("Encoding")) {

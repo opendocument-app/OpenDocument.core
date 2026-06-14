@@ -357,10 +357,11 @@ byte by byte; an unmapped name yields "no Unicode" (empty), left for stage 1.5.
 **Data as committed generated source.** `tools/pdf/generate_encoding_data.py`
 emits `pdf_encoding_data.{hpp,cpp}` (the three full base-encoding tables + the
 AGL as a name-sorted array for binary search); the build only compiles the
-result, so there is no build-time codegen dependency. The base tables are
-embedded in the script; re-run with `--agl glyphlist.txt`
-([Adobe's AGL](https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt))
-to refresh the ~4,300-entry AGL.
+result, so there is no build-time codegen dependency. All source data is
+vendored next to the script as `.txt` files (the base encodings plus
+[Adobe's AGL](https://github.com/adobe-type-tools/agl-aglfn)); re-run the script
+with no arguments to regenerate. See [`tools/pdf/README.md`](../../../../tools/pdf/README.md)
+for the data files and their provenance/licensing.
 
 Landed:
 - `pdf_encoding.{hpp,cpp}`: `BaseEncoding` (Standard/WinAnsi/MacRoman),

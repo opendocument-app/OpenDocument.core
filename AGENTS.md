@@ -72,6 +72,7 @@ Two pieces per engine:
 | `src/odr/internal/pdf/`, `pdf_poppler/` | PDF (own parser + poppler/pdf2htmlEX path). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
+| `tools/pdf/` | Developer tooling (not built): generators for the PDF engine's committed encoding data, see [`tools/pdf/README.md`](tools/pdf/README.md). |
 | `test/src/` | GoogleTest suites; data in `test/data` (git submodules, see below). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (PDF + extracted markdown), see [Specs](#specs). |
 | `docs/design/README.md` | High-level design rationale. |

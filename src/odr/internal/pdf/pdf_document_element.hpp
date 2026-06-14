@@ -77,7 +77,7 @@ struct Font final : Element {
   // `ToUnicode` CMap, the primary code -> Unicode path when present.
   CMap cmap;
   // Simple-font `/Encoding` (base + `/Differences`), the text-extraction
-  // fallback used when no `ToUnicode` CMap is present (stage 1.2).
+  // fallback used when no `ToUnicode` CMap is present.
   std::optional<Encoding> encoding;
 
   // Translate a string of character codes to Unicode: the `ToUnicode` CMap when

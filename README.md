@@ -34,6 +34,10 @@ Potential test files: https://file-examples.com/
 
 ## [Documentation](docs/README.md)
 
+## Tooling
+
+- [`tools/pdf`](tools/pdf/README.md) — generators for the PDF engine's committed encoding data.
+
 ## Build
 
 This project comes with CMake as a build system and Conan as package manager. In principle they should be independent and one can build without Conan.
