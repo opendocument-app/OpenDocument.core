@@ -135,4 +135,8 @@ UnsupportedFileEncoding::UnsupportedFileEncoding(const std::string &message)
 FileEncryptedError::FileEncryptedError()
     : std::runtime_error("file encrypted error") {}
 
+UnauthenticatedReadError::UnauthenticatedReadError()
+    : std::runtime_error(
+          "cannot read encrypted object without authentication") {}
+
 } // namespace odr

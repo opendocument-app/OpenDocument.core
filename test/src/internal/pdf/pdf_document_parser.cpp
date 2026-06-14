@@ -1,3 +1,5 @@
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -145,6 +147,19 @@ TEST(DocumentParser, reopen_with_decryptor) {
       }
     }
   }
+}
+
+// Reading an encrypted file without authenticating must throw rather than serve
+// undecrypted bytes. The file reports as encrypted but not authenticated.
+TEST(DocumentParser, read_without_authentication_throws) {
+  const auto file = std::make_shared<DiskFile>(
+      TestData::test_file_path("odr-public/pdf/Casio_WVA-M650-7AJF.pdf"));
+
+  DocumentParser parser(file->stream());
+  EXPECT_TRUE(parser.is_encrypted());
+  EXPECT_FALSE(parser.is_authenticated());
+
+  EXPECT_THROW((void)parser.parse_document(), odr::UnauthenticatedReadError);
 }
 
 TEST(DocumentParser, inherited_page_attributes) {

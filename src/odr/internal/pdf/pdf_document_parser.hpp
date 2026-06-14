@@ -61,6 +61,9 @@ public:
 
   /// Whether the file declares an `/Encrypt` dictionary.
   [[nodiscard]] bool is_encrypted() const;
+  /// Whether the file is encrypted and a decryptor is installed, so reads can
+  /// decrypt. False for an encrypted file that has not been unlocked.
+  [[nodiscard]] bool is_authenticated() const;
   /// The authenticator for an encrypted file (validates passwords and produces
   /// a `Decryptor`), or `nullopt` if the file is not encrypted.
   [[nodiscard]] const std::optional<Authenticator> &authenticator() const;

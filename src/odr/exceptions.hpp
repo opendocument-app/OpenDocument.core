@@ -230,4 +230,9 @@ struct FileEncryptedError final : std::runtime_error {
   explicit FileEncryptedError();
 };
 
+/// @brief Read attempted on an encrypted file that has not been authenticated
+struct UnauthenticatedReadError final : std::runtime_error {
+  explicit UnauthenticatedReadError();
+};
+
 } // namespace odr
