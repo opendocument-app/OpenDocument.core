@@ -110,6 +110,21 @@ private:
   /// table together with the newest (first-seen) trailer dictionary.
   [[nodiscard]] std::pair<Xref, Dictionary> read_trailer_chain();
 
+  /// Last-resort cross-reference recovery for broken files (missing/garbage
+  /// `startxref`, wrong offsets, a damaged chain): forward-scan the whole file
+  /// for `n g obj` starts, rebuilding `m_xref` (last definition of an id wins)
+  /// and collecting `trailer` dictionaries into `m_trailer`. Then object-stream
+  /// members are indexed (`index_object_streams`) and, if no `trailer` supplied
+  /// a `/Root`, a `/Type /Catalog` object is searched (`recover_root`). Sets
+  /// `m_recovered`. Any object cached from the failed attempt is dropped first.
+  void recover_xref();
+  /// Index the members of every recovered `/Type /ObjStm` object as compressed
+  /// cross-reference entries (additive; an existing direct entry wins).
+  void index_object_streams();
+  /// Search the recovered objects for a `/Type /Catalog` and install it as the
+  /// trailer `/Root`.
+  void recover_root();
+
   [[nodiscard]] std::unique_ptr<Document>
   build_document(const Dictionary &trailer);
 
@@ -125,6 +140,7 @@ private:
 
   Xref m_xref;
   Dictionary m_trailer;
+  bool m_recovered{false};
 
   bool m_is_encrypted{false};
   std::optional<Authenticator> m_authenticator;
