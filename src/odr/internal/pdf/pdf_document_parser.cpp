@@ -1,5 +1,6 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/logger.hpp>
 
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
@@ -263,10 +264,7 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
 
   if (m_trailer.has_key("Encrypt")) {
     // Build an `Authenticator` from the trailer `/Encrypt` and `/ID`
-    // (ISO 32000-1 7.6). `m_is_encrypted` records that the file declares
-    // encryption regardless of whether we can authenticate it, so an
-    // unsupported handler still reports as encrypted.
-    m_is_encrypted = true;
+    // (ISO 32000-1 7.6).
 
     // The `/Encrypt` dictionary's own `/O`,`/U`,… strings are never encrypted
     // (7.6.2), and need no explicit self-skip guard: it is resolved here while
@@ -290,6 +288,12 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
       }
     }
 
+    // Set only after resolving `/Encrypt` above: `read_object` throws on an
+    // encrypted-but-unauthenticated read, and that resolution runs before any
+    // decryptor exists. `m_is_encrypted` records that the file declares
+    // encryption regardless of whether we can authenticate it, so an
+    // unsupported handler still reports as encrypted.
+    m_is_encrypted = true;
     m_authenticator = Authenticator::create(encrypt.as_dictionary(), id0);
   }
 
@@ -309,6 +313,10 @@ const Xref &DocumentParser::xref() const { return m_xref; }
 const Dictionary &DocumentParser::trailer() const { return m_trailer; }
 
 bool DocumentParser::is_encrypted() const { return m_is_encrypted; }
+
+bool DocumentParser::is_authenticated() const {
+  return m_is_encrypted && m_decryptor.has_value();
+}
 
 const std::optional<Authenticator> &DocumentParser::authenticator() const {
   return m_authenticator;
@@ -350,6 +358,9 @@ DocumentParser::read_object(const ObjectReference &reference) {
     // case here: it is read and cached during construction before the
     // decryptor is installed, so its un-decrypted /O,/U,… strings are served
     // from the cache and never reach this path.
+    if (is_encrypted() && !is_authenticated()) {
+      throw UnauthenticatedReadError();
+    }
     if (m_decryptor.has_value()) {
       decrypt_strings(object.object, object.reference);
     }
@@ -422,6 +433,9 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   // during the trailer-chain walk, before the decryptor exists, so they are
   // never decrypted (7.5.8.2); object streams are decrypted here as a whole,
   // leaving their members' plaintext.
+  if (is_encrypted() && !is_authenticated()) {
+    throw UnauthenticatedReadError();
+  }
   if (m_decryptor.has_value()) {
     raw = m_decryptor->decrypt_stream(object.reference, std::move(raw));
   }
