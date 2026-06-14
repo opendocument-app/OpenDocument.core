@@ -33,6 +33,15 @@ std::string Font::to_unicode(const std::string &codes) const {
   if (!cmap.empty()) {
     return cmap.translate_string(codes);
   }
+  if (composite) {
+    // A composite (Type0) font with no `ToUnicode` CMap: code -> CID is known
+    // (identity for `Identity-H/V`) but CID -> Unicode needs either a
+    // predefined CID -> Unicode table (stage 1.3 part B) or the embedded font
+    // program (stage 1.4). Emit "no Unicode" rather than mis-splitting the
+    // multi-byte codes into byte-sized garbage through the identity fallback
+    // below. Stage 1.5 will mark these runs for re-encoding.
+    return {};
+  }
   if (encoding.has_value()) {
     return encoding->translate_string(codes);
   }

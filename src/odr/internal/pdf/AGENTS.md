@@ -93,8 +93,16 @@ not production-quality — the HTML path still contains debug `std::cout` output
   bytes). When a simple font carries no `ToUnicode` CMap, `Font::to_unicode`
   falls back to its `/Encoding` — a base encoding (Standard/WinAnsi/MacRoman)
   overlaid with `/Differences`, each code → glyph name → Unicode via the Adobe
-  Glyph List (incl. the `uniXXXX`/`uXXXXXX` forms), stage 1.2. Predefined CJK
-  CMaps and embedded-font fallbacks are still stage 1.3–1.4.
+  Glyph List (incl. the `uniXXXX`/`uXXXXXX` forms), stage 1.2. **Composite
+  (Type0) fonts** (stage 1.3, part A) are recognized: the descendant CIDFont's
+  `/CIDSystemInfo` `/Registry`/`/Ordering` is recorded on the `Font`, and the
+  Type0 `/Encoding` (a code → CID CMap such as `Identity-H`) is kept out of the
+  simple-font encoding path. Extraction is driven by the `/ToUnicode` CMap (the
+  common case — every Type0 font in the corpus carries one); a composite font
+  *without* a `/ToUnicode` yields "no Unicode" (not byte-garbage) until the
+  predefined CID → Unicode tables (part B) or the embedded font program
+  (stage 1.4) land. Predefined CJK CMaps and embedded-font fallbacks are still
+  stage 1.3 (part B)–1.4.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, text
@@ -117,7 +125,7 @@ not production-quality — the HTML path still contains debug `std::cout` output
 | `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
-| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` |
+| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts and `to_unicode`) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
@@ -247,7 +255,10 @@ and routes its warnings through it — new diagnostics should do the same.
   US-Letter lenience), plus cross-reference-recovery coverage (inline broken
   mini-PDFs: garbage prepended, a bad `startxref`, no trailer at all → catalog
   scan, a duplicate id → last definition wins, a page tree living in an object
-  stream). End-to-end: the classic fixture
+  stream), plus composite-font coverage (a Type0 font over an `Identity-H`
+  descendant `CIDFontType2`: `composite`/`/CIDSystemInfo` recorded, 2-byte
+  `/ToUnicode` extraction, and the no-`/ToUnicode` "no Unicode" fallback).
+  End-to-end: the classic fixture
   `odr-public/pdf/style-various-1.pdf`, plus decryption of
   `odr-public/pdf/Casio_WVA-M650-7AJF.pdf` (RC4, empty password) and
   `odr-private/pdf/encrypted_fontfile3_opentype.pdf` (AES-256; skipped when the
@@ -303,8 +314,10 @@ per-code Unicode (or "unknown", which stage 3 handles). The stage is **too
 large for one change** — it bundles work of very different size and dependency,
 so it is split into the sub-stages below. They are independently useful and
 ordered by corpus frequency; each is its own branch/PR off this roadmap. Sub-
-stages 1.1 and 1.2 have landed; **1.3 (composite/CID fonts) is the next work**;
-1.4 is blocked on stage 3 and stays deferred until then.
+stages 1.1 and 1.2 have landed, as has **1.3 part A** (Type0 structure +
+`Identity-H/V` + `/ToUnicode`-driven extraction); **1.3 part B (predefined CJK
+CMaps + CID → Unicode tables) is the next work**; 1.4 is blocked on stage 3 and
+stays deferred until then.
 
 ### 1.1 — `ToUnicode` CMap: multi-byte codes, `bfrange`, multi-char targets — **done**
 
@@ -386,7 +399,28 @@ Remaining (1.2 deferrals):
 
 `Identity-H/V` plus the predefined CMaps (CJK); map CID → Unicode via the CID
 system info where defined. The predefined CMaps are large external data sets —
-the heaviest data chunk of the stage. Own branch.
+the heaviest data chunk of the stage. Split into two parts because the data
+weight is concentrated in part B, and the whole local corpus (every Type0 font
+is `Identity-H` + `/ToUnicode`) is covered by part A alone.
+
+**Part A — Type0 structure + `Identity-H/V` + `/ToUnicode` — done.** `parse_font`
+detects `/Subtype /Type0`, walks `/DescendantFonts[0]` to record the descendant
+CIDFont's `/CIDSystemInfo` `/Registry`/`/Ordering` on `Font` (`composite`,
+`cid_registry`, `cid_ordering`), and keeps the Type0 `/Encoding` (a code → CID
+CMap, not a glyph-name encoding) out of `parse_encoding` — so `Identity-H` no
+longer trips the "unsupported /Encoding name" warning. Extraction runs through
+the existing multi-byte `/ToUnicode` path (stage 1.1); `Font::to_unicode`
+returns "no Unicode" for a composite font lacking a `/ToUnicode` rather than
+mis-splitting its multi-byte codes through the single-byte identity fallback.
+Tests: `DocumentParser.composite_font_with_to_unicode` /
+`…_without_to_unicode_yields_no_unicode`.
+
+**Part B — predefined CJK CMaps + CID → Unicode — next.** Vendor Adobe's
+`cmap-resources` (the predefined code → CID CMaps) and the CID → Unicode mapping
+tables, generated to committed C++ like the AGL in 1.2 (`tools/pdf`). Select the
+table by the recorded `/Registry`+`/Ordering`. **Blocked on a CJK test fixture**
+— the corpus has none, so this could not be validated as part of part A. Own
+branch.
 
 ### 1.4 — embedded-font fallback — **deferred (needs stage 3)**
 
@@ -563,8 +597,11 @@ tree, little else.
 - **CMap coverage**: the `ToUnicode` CMap is fully handled (multi-byte codes,
   `bfchar`, both `bfrange` forms, multi-char targets — stage 1.1), and a simple
   font's `/Encoding` (base + `/Differences` → AGL) is the fallback when no
-  `ToUnicode` stream is present (stage 1.2). Still open: predefined CJK CMaps and
-  embedded-font reverse maps (stages 1.3–1.4); symbolic fonts with a built-in
-  encoding default to StandardEncoding until 1.4.
+  `ToUnicode` stream is present (stage 1.2). Composite (Type0) fonts are
+  recognized and extract through their `/ToUnicode` (stage 1.3 part A). Still
+  open: predefined CJK CMaps and the CID → Unicode tables for composite fonts
+  without a `/ToUnicode` (stage 1.3 part B), and embedded-font reverse maps
+  (stage 1.4); symbolic fonts with a built-in encoding default to
+  StandardEncoding until 1.4.
 - **Annotations** are collected but their content is not interpreted (stage 5).
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

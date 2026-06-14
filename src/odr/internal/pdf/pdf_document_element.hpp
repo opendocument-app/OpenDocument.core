@@ -80,8 +80,23 @@ struct Font final : Element {
   /// fallback used when no `ToUnicode` CMap is present.
   std::optional<Encoding> encoding;
 
+  /// True for composite (Type0) fonts (stage 1.3). Their character codes are
+  /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
+  /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
+  /// CID -> Unicode tables are stage 1.3 (part B); embedded-font reverse maps
+  /// are stage 1.4.
+  bool composite{false};
+  /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
+  /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the
+  /// predefined CID -> Unicode table selection of stage 1.3 (part B); empty for
+  /// simple fonts.
+  std::string cid_registry;
+  std::string cid_ordering;
+
   /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
-  /// when present (authoritative), else the `/Encoding`, else identity bytes.
+  /// when present (authoritative), else, for a composite font, "no Unicode"
+  /// (stage 1.3 part B / 1.4 territory), else the simple-font `/Encoding`, else
+  /// identity bytes.
   [[nodiscard]] std::string to_unicode(const std::string &codes) const;
 };
 
