@@ -85,8 +85,13 @@ not production-quality — the HTML path still contains debug `std::cout` output
   document without re-deriving the key. Permission bits (`/P`) are recorded, not
   enforced.
 - **Fonts / text mapping**: a font's `ToUnicode` CMap stream is decoded and
-  parsed; `bfchar` mappings with 1-byte glyph codes and single UTF-16 units are
-  applied. Unmapped glyphs pass through as their byte value.
+  parsed. The `CMap` is multi-byte aware: `codespacerange` declares the code
+  widths, `bfchar` and both `bfrange` forms (destination increment and explicit
+  array) are applied, and destinations may be multi-character (ligatures).
+  `translate_string` splits a string into codes of the codespace-declared width;
+  an unmapped code passes through as its numeric value (identity for single
+  bytes). Glyph-name `/Encoding`, predefined CJK CMaps and embedded-font
+  fallbacks are still stage 1.2–1.4.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, text
@@ -251,9 +256,13 @@ and routes its warnings through it — new diagnostics should do the same.
 - `test/src/internal/pdf/pdf_file_parser.cpp` — sequential `read_entry` walk
   (smoke) + assertion-based xref/trailer/root navigation over
   `style-various-1.pdf`.
+- `test/src/internal/pdf/pdf_cmap.cpp` — **assertion-based**, inline CMap
+  strings parsed through `CMapParser`: single- and two-byte `bfchar`, both
+  `bfrange` forms, multi-character (ligature) targets, the identity fallback for
+  unmapped codes, and mixed code widths driven by `codespacerange`.
 
-No assertion-based coverage of the tokenizer (escapes, references, hex strings),
-the CMap, or the HTML output.
+No assertion-based coverage of the tokenizer (escapes, references, hex strings)
+or the HTML output.
 
 ---
 
@@ -279,20 +288,72 @@ builds on a parser that opens the common corpus.
 ## Stage 1 — text extraction: the code → Unicode chain
 
 PDF strings are **character codes**; per font, walk this chain and record
-per-code Unicode (or "unknown", which stage 3 handles):
+per-code Unicode (or "unknown", which stage 3 handles). The stage is **too
+large for one change** — it bundles work of very different size and dependency,
+so it is split into the sub-stages below. They are independently useful and
+ordered by corpus frequency; each is its own branch/PR off this roadmap. Sub-
+stage **1.1 is the current work** (branch `pdf-text-extraction`); 1.4 is blocked
+on stage 3 and stays deferred until then.
 
-1. **`ToUnicode` CMap** — extend the existing `CMap`: `bfrange`,
-   `codespacerange` (multi-byte codes), multi-character targets.
-2. **Simple fonts**: `/Encoding` base (WinAnsi/MacRoman/Standard) +
-   `/Differences` → glyph names → Unicode via the Adobe Glyph List (incl.
-   `uniXXXX`/`uXXXXXX` names).
-3. **Composite (Type0/CID) fonts**: `Identity-H/V` plus the predefined CMaps
-   (CJK); map CID → Unicode via the CID system info where defined.
-4. **Embedded font fallback** (needs stage 3's font *reading*): reverse the
-   TrueType `cmap`; read glyph names from Type1/CFF charstrings.
-5. Nothing applies → mark the run "no Unicode" for stage 3's re-encoding.
+### 1.1 — `ToUnicode` CMap: multi-byte codes, `bfrange`, multi-char targets — **done**
 
+The narrowest, most self-contained chunk: it only extends the existing `CMap`
+(`pdf_cmap.{hpp,cpp}`) and its parser (`pdf_cmap_parser.cpp`), with no new data
+tables and no new font plumbing. Today the map is single-byte
+(`std::unordered_map<char, char16_t>`), `read_bfchar` warns on multi-byte glyphs
+/ multi-char targets via `std::cerr`, and `read_bfrange` / `read_codespacerange`
+are empty `// TODO` stubs.
+
+Scope of this one change:
+- **Code keys become multi-byte.** Key the map on the full character code, not a
+  single `char` (e.g. a `std::uint32_t` code + the byte length, or a
+  `std::string` code). `codespacerange` defines the code byte-lengths; record the
+  ranges so `translate_string` can chunk a string into codes of the right width
+  (most `ToUnicode` CMaps are fixed 1- or 2-byte, but the ranges are authoritative).
+- **`bfrange`.** Both forms: `<lo> <hi> <dst>` (increment the last UTF-16 unit of
+  `dst` across the code range, per spec only the low byte) and
+  `<lo> <hi> [ <dst0> <dst1> … ]` (array of per-code destinations).
+- **Multi-character targets.** A code may map to a *string* of UTF-16 units
+  (ligatures, e.g. `ﬁ` → `f` `i`); `map_bfchar`'s value type widens from
+  `char16_t` to `std::u16string` (or a small-string equivalent).
+- **`translate_string`** chunks the input by the codespace widths, looks up each
+  code, and falls back to the identity/​byte value (today's behaviour) on a miss
+  — keeping the "unknown" path for later sub-stages to refine.
+- Replace the two `std::cerr` warnings with the module's `Logger` (thread one in,
+  as `DocumentParser` already does), or drop them once the cases are handled.
+
+Tests (assertion-based, inline CMap strings — no fixtures): a 2-byte
+`codespacerange`; `bfrange` increment form and array form; a multi-char `bfchar`
+target; mixed widths; a miss falling back to identity. This matches the existing
+inline-string test convention for the module.
+
+Out of scope for 1.1: anything needing `/Encoding`, the AGL, predefined CMaps,
+or font-file reading — those are 1.2–1.4.
+
+### 1.2 — simple-font encoding → Unicode
+
+`/Encoding` base (WinAnsi/MacRoman/Standard) + `/Differences` → glyph names →
+Unicode via the Adobe Glyph List (incl. `uniXXXX`/`uXXXXXX` names). Carries the
+data weight of the three base-encoding tables **and** the full AGL (~4,300
+entries) — likely a generated data file. Own branch.
+
+### 1.3 — composite (Type0/CID) fonts
+
+`Identity-H/V` plus the predefined CMaps (CJK); map CID → Unicode via the CID
+system info where defined. The predefined CMaps are large external data sets —
+the heaviest data chunk of the stage. Own branch.
+
+### 1.4 — embedded-font fallback — **deferred (needs stage 3)**
+
+Reverse the TrueType `cmap`; read glyph names from Type1/CFF charstrings.
+Explicitly depends on stage 3's font *reading*, so it cannot start until that
+machinery exists.
+
+### 1.5 — "no Unicode" runs + `/ActualText`
+
+Nothing applies → mark the run "no Unicode" for stage 3's re-encoding.
 `/ActualText` (tagged PDFs, ligatures) overrides the whole chain for extraction.
+Small, but rides on the run/state plumbing the sub-stages above introduce.
 
 ## Stage 2 — text positioning & metrics
 
@@ -454,8 +515,10 @@ tree, little else.
   unindexed. Both are edge cases beyond the corpus seen so far.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
-- **CMap coverage**: only single-byte `bfchar`; `bfrange`/`codespacerange`
-  skipped, multi-byte codes unsupported, fonts without `ToUnicode` fall back to
-  identity bytes (stage 1).
+- **CMap coverage**: the `ToUnicode` CMap is fully handled (multi-byte codes,
+  `bfchar`, both `bfrange` forms, multi-char targets — stage 1.1). Still open:
+  fonts *without* a `ToUnicode` stream (glyph-name `/Encoding`, predefined CJK
+  CMaps, embedded-font reverse maps) fall back to identity bytes until stages
+  1.2–1.4.
 - **Annotations** are collected but their content is not interpreted (stage 5).
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

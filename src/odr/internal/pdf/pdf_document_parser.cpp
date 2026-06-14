@@ -125,7 +125,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
     std::string stream =
         parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
     std::istringstream ss(std::move(stream));
-    CMapParser cmap_parser(ss);
+    CMapParser cmap_parser(ss, parser.logger());
     font->cmap = cmap_parser.parse_cmap();
   }
 
