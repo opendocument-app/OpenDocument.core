@@ -39,7 +39,6 @@ base_encoding_from_name(std::string_view name);
 /// `ToUnicode` CMap.
 class Encoding {
 public:
-  Encoding() = default;
   explicit Encoding(BaseEncoding base);
 
   /// Override a single code's glyph name (a `/Differences` entry).
@@ -54,8 +53,7 @@ public:
   [[nodiscard]] std::string translate_string(const std::string &codes) const;
 
 private:
-  // Points into the static base table; empty until a base encoding is set.
-  std::array<std::string_view, 256> m_base{};
+  const std::array<std::string_view, 256> *m_base{};
   std::unordered_map<std::uint8_t, std::string> m_differences;
 };
 

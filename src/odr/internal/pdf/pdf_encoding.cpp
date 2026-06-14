@@ -6,10 +6,10 @@
 #include <algorithm>
 #include <charconv>
 
-namespace odr::internal::pdf {
+namespace odr::internal {
 
 const std::array<std::string_view, 256> &
-base_encoding_table(const BaseEncoding encoding) {
+pdf::base_encoding_table(const BaseEncoding encoding) {
   switch (encoding) {
   case BaseEncoding::standard:
     return encoding_data::standard_encoding;
@@ -18,11 +18,11 @@ base_encoding_table(const BaseEncoding encoding) {
   case BaseEncoding::mac_roman:
     return encoding_data::mac_roman_encoding;
   }
-  return encoding_data::standard_encoding;
+  throw std::invalid_argument("Unknown base encoding");
 }
 
-std::optional<BaseEncoding>
-base_encoding_from_name(const std::string_view name) {
+std::optional<pdf::BaseEncoding>
+pdf::base_encoding_from_name(const std::string_view name) {
   if (name == "StandardEncoding") {
     return BaseEncoding::standard;
   }
@@ -85,7 +85,7 @@ std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
 
 } // namespace
 
-std::u16string glyph_name_to_unicode(std::string_view glyph_name) {
+std::u16string pdf::glyph_name_to_unicode(std::string_view glyph_name) {
   // A composite name (`a.alt`, `f_i`) is out of scope for this stage; use the
   // part before the first '.' as the AGL spec prescribes, leave '_' joins to a
   // later refinement.
@@ -106,8 +106,12 @@ std::u16string glyph_name_to_unicode(std::string_view glyph_name) {
   return algorithmic_glyph_name_to_unicode(glyph_name);
 }
 
+} // namespace odr::internal
+
+namespace odr::internal::pdf {
+
 Encoding::Encoding(const BaseEncoding base)
-    : m_base{base_encoding_table(base)} {}
+    : m_base{&base_encoding_table(base)} {}
 
 void Encoding::set_difference(const std::uint8_t code, std::string glyph_name) {
   m_differences[code] = std::move(glyph_name);
@@ -117,7 +121,7 @@ std::string_view Encoding::glyph_name(const std::uint8_t code) const {
   if (const auto it = m_differences.find(code); it != m_differences.end()) {
     return it->second;
   }
-  return m_base[code];
+  return m_base->at(code);
 }
 
 std::string Encoding::translate_string(const std::string &codes) const {
