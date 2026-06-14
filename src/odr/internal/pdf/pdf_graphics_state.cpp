@@ -63,7 +63,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     std::cout << "dash pattern not implemented" << std::endl;
     break;
   case GraphicsOperatorType::set_color_rendering_intent:
-    current().general.color_rendering_intent = op.arguments.at(0).as_real();
+    current().general.color_rendering_intent = op.arguments.at(0).as_name();
     break;
   case GraphicsOperatorType::set_flatness_tolerance:
     current().general.flatness_tolerance = op.arguments.at(0).as_real();

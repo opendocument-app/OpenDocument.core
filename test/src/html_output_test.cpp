@@ -70,11 +70,14 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO fix pdf implementation
+  // TODO in-house pdf rendering still throws on these files
+  // - Core_v5.1.pdf: bad any cast in the graphics operator parser
+  // - invalid_unicode_issue477.pdf: bad any cast during document parsing
   if (engine == DecoderEngine::odr &&
       test_file.type == FileType::portable_document_format &&
-      (test_file.short_path.starts_with("odr-private") ||
-       test_file.short_path == "odr-public/pdf/Casio_WVA-M650-7AJF.pdf")) {
+      (test_file.short_path == "odr-private/pdf/Core_v5.1.pdf" ||
+       test_file.short_path ==
+           "odr-private/pdf/invalid_unicode_issue477.pdf")) {
     GTEST_SKIP();
   }
 

@@ -22,7 +22,7 @@ struct GraphicsState {
     int join_style{};
     double miter_limit{};
     int dash_pattern{};
-    double color_rendering_intent{};
+    std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
     std::array<double, 6> transform_matrix{1, 0, 0, 1, 0, 0};
