@@ -5,6 +5,7 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
@@ -143,7 +144,7 @@ public:
                 o << "bottom:" << offset[1] / 72.0 << "in;";
                 o << "font-size:" << size << "pt;";
               }));
-          out.write_raw(unicode);
+          out.write_raw(escape_text(unicode));
           out.write_element_end("span");
         } else if (op.type ==
                    pdf::GraphicsOperatorType::show_text_manual_spacing) {
