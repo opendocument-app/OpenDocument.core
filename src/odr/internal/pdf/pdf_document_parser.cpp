@@ -26,8 +26,8 @@ namespace odr::internal::pdf {
 
 namespace {
 
-// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
-// but real files carry 360 and negatives.
+/// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
+/// but real files carry 360 and negatives.
 Integer normalize_rotate(Integer rotate) {
   rotate = ((rotate % 360) + 360) % 360;
   return (rotate / 90) * 90;
@@ -112,10 +112,11 @@ Element *parse_page_or_pages(DocumentParser &parser,
                              Document &document, Pages *parent,
                              const PageAttributes &inherited);
 
-// Parse a simple-font `/Encoding`: either a base-encoding name, or a dictionary
-// with an optional `/BaseEncoding` name overlaid with a `/Differences` array
-// (`code name name … code name …`). Returns `nullopt` for an encoding this
-// stage cannot represent (e.g. an unsupported base name with no differences).
+/// Parse a simple-font `/Encoding`: either a base-encoding name, or a
+/// dictionary with an optional `/BaseEncoding` name overlaid with a
+/// `/Differences` array
+/// (`code name name … code name …`). Returns `nullopt` for an encoding this
+/// stage cannot represent (e.g. an unsupported base name with no differences).
 std::optional<Encoding> parse_encoding(DocumentParser &parser,
                                        const Object &encoding_object) {
   Object resolved = parser.resolve_object_copy(encoding_object);
@@ -138,7 +139,7 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
   // No `/BaseEncoding` means "the font's built-in encoding"; that needs the
   // font program (stage 1.4). Default to StandardEncoding for now, which is the
   // right base for the non-symbolic Latin fonts this stage targets.
-  BaseEncoding base = BaseEncoding::standard;
+  auto base = BaseEncoding::standard;
   if (dictionary.has_key("BaseEncoding")) {
     const Object &base_object = dictionary["BaseEncoding"];
     if (base_object.is_name()) {

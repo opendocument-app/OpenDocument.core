@@ -37,9 +37,9 @@ pdf::base_encoding_from_name(const std::string_view name) {
 
 namespace {
 
-// Parse the algorithmic glyph-name forms: `uniXXXX` (one or more UTF-16 code
-// units, 4 hex digits each) and `uXXXXXX` (a single 4-6 hex-digit scalar). See
-// the AGL specification, "Step 2". Returns empty on any deviation.
+/// Parse the algorithmic glyph-name forms: `uniXXXX` (one or more UTF-16 code
+/// units, 4 hex digits each) and `uXXXXXX` (a single 4-6 hex-digit scalar). See
+/// the AGL specification, "Step 2". Returns empty on any deviation.
 std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
   const auto parse_hex =
       [](const std::string_view hex) -> std::optional<std::uint32_t> {
