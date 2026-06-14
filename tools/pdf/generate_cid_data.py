@@ -77,7 +77,7 @@ def ensure_data() -> None:
         for member in archive.getmembers():
             if not member.isfile() or not member.name.startswith(prefix):
                 continue
-            rel = member.name[len(prefix):]
+            rel = member.name[len(prefix) :]
             target = os.path.join(_DATA_DIR, rel)
             os.makedirs(os.path.dirname(target), exist_ok=True)
             src = archive.extractfile(member)
@@ -331,7 +331,9 @@ _BANNER = (
 
 
 def _write_hpp(collection_count: int, cmap_count: int) -> None:
-    text = _BANNER + f"""#pragma once
+    text = (
+        _BANNER
+        + f"""#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -391,6 +393,7 @@ extern const PredefinedCMap predefined_cmaps[predefined_cmap_count];
 
 }} // namespace odr::internal::pdf::cid_data
 """
+    )
     with open(os.path.join(_OUT_DIR, "pdf_cid_data.hpp"), "w", encoding="ascii") as f:
         f.write(text)
 
@@ -418,19 +421,28 @@ def _write_cpp(
 ) -> None:
     out = io.StringIO()
     out.write(_BANNER)
-    out.write('#include <odr/internal/pdf/pdf_cid_data.hpp>\n\n')
+    out.write("#include <odr/internal/pdf/pdf_cid_data.hpp>\n\n")
     out.write("namespace odr::internal::pdf::cid_data {\n\nnamespace {\n\n")
 
     _emit_pool(
-        out, "CodespaceRange", "codespace_pool", codespace_pool,
+        out,
+        "CodespaceRange",
+        "codespace_pool",
+        codespace_pool,
         lambda r: f"{{0x{r[0]:x},0x{r[1]:x},{r[2]}}}",
     )
     _emit_pool(
-        out, "CidRange", "cid_pool", cid_pool,
+        out,
+        "CidRange",
+        "cid_pool",
+        cid_pool,
         lambda r: f"{{0x{r[0]:x},0x{r[1]:x},{r[2]},{r[3]}}}",
     )
     _emit_pool(
-        out, "UnicodeRange", "unicode_pool", unicode_pool,
+        out,
+        "UnicodeRange",
+        "unicode_pool",
+        unicode_pool,
         lambda r: f"{{{r[0]},{r[1]},0x{r[2]:x}}}",
     )
 
@@ -444,9 +456,7 @@ def _write_cpp(
         )
     out.write("};\n\n")
 
-    out.write(
-        f"const PredefinedCMap predefined_cmaps[predefined_cmap_count] = {{\n"
-    )
+    out.write(f"const PredefinedCMap predefined_cmaps[predefined_cmap_count] = {{\n")
     for c in cmaps:
         out.write(
             f'    {{"{c["name"]}", codespace_pool + {c["cs_off"]}, {c["cs_cnt"]}, '
