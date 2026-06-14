@@ -10,6 +10,7 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <cctype>
 #include <optional>
@@ -606,18 +607,11 @@ namespace {
 /// of the first non-whitespace byte (so the caller can map back to a file
 /// position) and a view of the trimmed content.
 std::pair<std::size_t, std::string_view> trim_line(const std::string &line) {
-  const auto is_ws = [](const char c) {
-    return ObjectParser::is_whitespace(c);
-  };
-  std::size_t begin = 0;
-  while (begin < line.size() && is_ws(line[begin])) {
-    ++begin;
-  }
-  std::size_t end = line.size();
-  while (end > begin && is_ws(line[end - 1])) {
-    --end;
-  }
-  return {begin, std::string_view(line).substr(begin, end - begin)};
+  const std::string_view content =
+      util::string::trim_view(line, &ObjectParser::is_whitespace);
+  // `content` is a subrange of `line`, so the leading offset is the distance
+  // between their data pointers.
+  return {static_cast<std::size_t>(content.data() - line.data()), content};
 }
 
 /// Recognize an `n g obj` object header at the start of `content` (already
