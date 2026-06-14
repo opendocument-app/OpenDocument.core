@@ -10,28 +10,31 @@ base-encoding tables and the Adobe Glyph List used to map simple-font
 `/Encoding` glyph names to Unicode. The build only compiles the generated
 result, so there is no build-time dependency on Python.
 
-Regenerate (no arguments; all source data is vendored next to the script):
+Regenerate (no arguments):
 
 ```bash
 python3 tools/pdf/generate_encoding_data.py
 ```
 
-### Vendored data files
+### Source data files
 
 All four share one on-disk convention: `#` comment lines, blank lines ignored,
 and two `;`-delimited fields per record.
 
-| File | Contents | Format |
-|------|----------|--------|
-| `glyphlist.txt` | Adobe Glyph List | `glyphname;CCCC CCCC` (hex UTF-16 code points) |
-| `standard_encoding.txt` | StandardEncoding (ISO 32000-1 Annex D) | `HH;glyphname` (sparse; missing = .notdef) |
-| `win_ansi_encoding.txt` | WinAnsiEncoding | `HH;glyphname` |
-| `mac_roman_encoding.txt` | MacRomanEncoding | `HH;glyphname` |
+| File | Contents | Format | Origin |
+|------|----------|--------|--------|
+| `glyphlist.txt` | Adobe Glyph List | `glyphname;CCCC CCCC` (hex UTF-16 code points) | downloaded (pinned commit) |
+| `standard_encoding.txt` | StandardEncoding (ISO 32000-1 Annex D) | `HH;glyphname` (sparse; missing = .notdef) | vendored |
+| `win_ansi_encoding.txt` | WinAnsiEncoding | `HH;glyphname` | vendored |
+| `mac_roman_encoding.txt` | MacRomanEncoding | `HH;glyphname` | vendored |
 
-To refresh the AGL, replace `glyphlist.txt` from
-[adobe-type-tools/agl-aglfn](https://github.com/adobe-type-tools/agl-aglfn) and
-rerun the script. The base-encoding tables are fixed by the PDF spec and should
-not change.
+Like `generate_cid_data.py`, the AGL is **not** vendored: the script downloads
+`glyphlist.txt` from a commit-pinned
+[adobe-type-tools/agl-aglfn](https://github.com/adobe-type-tools/agl-aglfn)
+(`_AGL_COMMIT` in the script) into `tools/pdf/glyphlist.txt`, which is
+git-ignored, on first run and reuses it afterwards. To refresh the AGL, bump
+`_AGL_COMMIT`, delete the cached file, and rerun. The base-encoding tables are
+fixed by the PDF spec, have no canonical download, and stay vendored.
 
 See [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) for the provenance and
 licensing of the vendored data.

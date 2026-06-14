@@ -63,3 +63,6 @@ offline/
 
 ## PDF CJK CMap input data (fetched by tools/pdf/generate_cid_data.py)
 tools/pdf/cmap-resources/
+
+## Adobe Glyph List (fetched by tools/pdf/generate_encoding_data.py)
+tools/pdf/glyphlist.txt

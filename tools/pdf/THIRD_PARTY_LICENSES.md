@@ -1,17 +1,22 @@
 # Third-party data in `tools/pdf/`
 
-These data files are vendored from third parties and read by
-`generate_encoding_data.py` to produce `src/odr/internal/pdf/pdf_encoding_data.{hpp,cpp}`.
+These data files are read by the generator scripts to produce committed C++ in
+`src/odr/internal/pdf/`. Some are vendored in this directory; others (the Adobe
+Glyph List and the CMap resources) are downloaded from pinned commits and are
+git-ignored — see the per-entry notes below.
 
 ## Adobe Glyph List — `glyphlist.txt`
 
-- Source: https://github.com/adobe-type-tools/agl-aglfn (`glyphlist.txt`)
+- Source: https://github.com/adobe-type-tools/agl-aglfn (`glyphlist.txt`, pinned
+  by commit in `_AGL_COMMIT` in `generate_encoding_data.py`)
 - Copyright 2002–2019 Adobe (http://www.adobe.com/).
 - License: BSD-3-Clause (full text retained in the file's header).
 
-BSD-3-Clause is GPL-compatible, so redistributing this data inside this
-GPLv3 project is permitted; the only obligation — retaining the copyright
-notice and license text — is met by keeping the header intact in `glyphlist.txt`.
+Unlike the base encodings below this file is **not vendored**: the script
+downloads it into `tools/pdf/glyphlist.txt` (git-ignored) on first run.
+BSD-3-Clause is GPL-compatible, so redistributing this data inside this GPLv3
+project is permitted; the obligation to retain the copyright notice and license
+text is carried into the generated source's banner.
 
 ## Base encodings — `standard_encoding.txt`, `win_ansi_encoding.txt`, `mac_roman_encoding.txt`
 
