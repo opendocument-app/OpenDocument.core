@@ -18,6 +18,10 @@ public:
   [[nodiscard]] GraphicsOperator read_operator();
 
 private:
+  // Consume the binary image data of an inline image, from just after the `ID`
+  // keyword up to and including its `EI` terminator (8.9.7).
+  void skip_inline_image_data();
+
   ObjectParser m_parser;
 };
 

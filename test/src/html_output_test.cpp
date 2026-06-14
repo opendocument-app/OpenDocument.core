@@ -70,17 +70,6 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO in-house pdf rendering still throws on these files
-  // - Core_v5.1.pdf: bad any cast in the graphics operator parser
-  // - invalid_unicode_issue477.pdf: bad any cast during document parsing
-  if (engine == DecoderEngine::odr &&
-      test_file.type == FileType::portable_document_format &&
-      (test_file.short_path == "odr-private/pdf/Core_v5.1.pdf" ||
-       test_file.short_path ==
-           "odr-private/pdf/invalid_unicode_issue477.pdf")) {
-    GTEST_SKIP();
-  }
-
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;

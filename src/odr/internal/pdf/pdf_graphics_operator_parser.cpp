@@ -166,9 +166,51 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     std::cerr << "unknown operator: " << operator_name << std::endl;
   }
 
+  // After `ID` the raw image bytes follow inline; consume them up to `EI` so
+  // they are not mis-tokenized as operators (which corrupts the parse state).
+  if (result.type == GraphicsOperatorType::begin_inline_image_data) {
+    skip_inline_image_data();
+  }
+
   m_parser.skip_whitespace();
 
   return result;
+}
+
+void GraphicsOperatorParser::skip_inline_image_data() {
+  // Exactly one white-space character separates `ID` from the data (8.9.7).
+  if (m_parser.geti() != eof) {
+    m_parser.bumpc();
+  }
+
+  // The length is not encoded, so scan for the `EI` terminator: an `EI` that is
+  // preceded by white-space and followed by white-space, a delimiter, or eof.
+  int_type prev = eof;
+  while (true) {
+    const int_type c = m_parser.geti();
+    if (c == eof) {
+      return;
+    }
+    if (c == 'E' && prev != eof &&
+        ObjectParser::is_whitespace(static_cast<char_type>(prev))) {
+      m_parser.bumpc(); // 'E'
+      if (m_parser.geti() == 'I') {
+        m_parser.bumpc(); // 'I'
+        const int_type after = m_parser.geti();
+        if (after == eof ||
+            ObjectParser::is_whitespace(static_cast<char_type>(after))) {
+          return;
+        }
+        // not a real terminator; keep scanning from after the 'I'
+        prev = 'I';
+        continue;
+      }
+      prev = 'E';
+      continue;
+    }
+    m_parser.bumpc();
+    prev = c;
+  }
 }
 
 } // namespace odr::internal::pdf

@@ -31,7 +31,10 @@ IndirectObject FileParser::read_indirect_object() {
   result.object = m_parser.read_object();
   m_parser.skip_whitespace();
 
-  const std::string next = m_parser.read_line();
+  // the keyword may carry trailing whitespace (`endobj \n`) or a CR from a
+  // CRLF line ending (`stream\r\n`), so compare against the trimmed token
+  std::string next = m_parser.read_line();
+  util::string::rtrim_inplace(next);
 
   if (next == "endobj") {
     m_parser.skip_whitespace();
@@ -125,7 +128,7 @@ std::string FileParser::read_stream(const std::int32_t size) {
     // TODO improve poor solution
     while (true) {
       std::string line = m_parser.read_line(true);
-      if (line == "endstream\n") {
+      if (util::string::trim(line) == "endstream") {
         result.pop_back();
         break;
       }
@@ -134,10 +137,7 @@ std::string FileParser::read_stream(const std::int32_t size) {
   }
 
   m_parser.skip_whitespace();
-  if (const std::string line = m_parser.read_line(); line != "endobj") {
-    throw std::runtime_error("expected endobj");
-  }
-
+  m_parser.expect_characters("endobj");
   m_parser.skip_whitespace();
 
   return result;

@@ -150,17 +150,19 @@ Resources *parse_resources(DocumentParser &parser, const Object &object,
   return resources;
 }
 
+Annotation *parse_annotation(Document &document, const Dictionary &dictionary) {
+  auto *annotation = document.create_element<Annotation>();
+  annotation->object = Object(dictionary);
+  return annotation;
+}
+
 Annotation *parse_annotation(DocumentParser &parser,
                              const ObjectReference &reference,
                              Document &document) {
-  auto *annotation = document.create_element<Annotation>();
-
   IndirectObject object = parser.read_object(reference);
-  const Dictionary &dictionary = object.object.as_dictionary();
-
+  Annotation *annotation =
+      parse_annotation(document, object.object.as_dictionary());
   annotation->object_reference = reference;
-  annotation->object = Object(dictionary);
-
   return annotation;
 }
 
@@ -181,12 +183,19 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   const Object resources = attributes.resolve_into(*page, parser, reference);
   page->resources = parse_resources(parser, resources, document);
 
-  if (dictionary["Contents"].is_reference()) {
-    page->contents_reference = {dictionary["Contents"].as_reference()};
-  } else {
-    for (const Object &e : dictionary["Contents"].as_array()) {
+  // /Contents is a content stream or an array of them, supplied directly or
+  // through an indirect reference (7.7.3.3). Resolve a reference first so that
+  // a reference to an array is expanded into its stream references rather than
+  // mistaken for a single stream.
+  const Object &contents = dictionary["Contents"];
+  const Object resolved_contents =
+      contents.is_reference() ? parser.resolve_object_copy(contents) : contents;
+  if (resolved_contents.is_array()) {
+    for (const Object &e : resolved_contents.as_array()) {
       page->contents_reference.push_back(e.as_reference());
     }
+  } else if (contents.is_reference()) {
+    page->contents_reference = {contents.as_reference()};
   }
 
   if (dictionary.has_key("Annots")) {
@@ -194,8 +203,15 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
     Array annotations =
         parser.resolve_object_copy(dictionary["Annots"]).as_array();
     for (const Object &annotation : annotations) {
-      page->annotations.push_back(
-          parse_annotation(parser, annotation.as_reference(), document));
+      // entries are usually indirect references, but inline annotation
+      // dictionaries are equally valid (12.5.2)
+      if (annotation.is_reference()) {
+        page->annotations.push_back(
+            parse_annotation(parser, annotation.as_reference(), document));
+      } else if (annotation.is_dictionary()) {
+        page->annotations.push_back(
+            parse_annotation(document, annotation.as_dictionary()));
+      }
     }
   }
 
