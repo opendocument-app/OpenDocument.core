@@ -18,6 +18,10 @@ public:
   void add_codespace_range(std::string low_code, std::string high_code);
   void map_single(std::string code, std::u16string unicode);
 
+  // True when no code -> Unicode mapping was parsed (e.g. the font carries no
+  // `ToUnicode` CMap); the caller then falls back to the `/Encoding`.
+  [[nodiscard]] bool empty() const { return m_map.empty(); }
+
   [[nodiscard]] std::string translate_string(const std::string &codes) const;
 
 private:

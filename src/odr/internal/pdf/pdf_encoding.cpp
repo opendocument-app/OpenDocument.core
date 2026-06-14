@@ -17,8 +17,6 @@ base_encoding_table(const BaseEncoding encoding) {
     return encoding_data::win_ansi_encoding;
   case BaseEncoding::mac_roman:
     return encoding_data::mac_roman_encoding;
-  case BaseEncoding::pdf_doc:
-    return encoding_data::pdf_doc_encoding;
   }
   return encoding_data::standard_encoding;
 }
@@ -33,9 +31,6 @@ base_encoding_from_name(const std::string_view name) {
   }
   if (name == "MacRomanEncoding") {
     return BaseEncoding::mac_roman;
-  }
-  if (name == "PDFDocEncoding") {
-    return BaseEncoding::pdf_doc;
   }
   return std::nullopt;
 }

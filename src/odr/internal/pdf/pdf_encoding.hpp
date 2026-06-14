@@ -15,7 +15,6 @@ enum class BaseEncoding {
   standard,  // StandardEncoding
   win_ansi,  // WinAnsiEncoding
   mac_roman, // MacRomanEncoding
-  pdf_doc,   // PDFDocEncoding
 };
 
 /// The 256-entry glyph-name table for `encoding`; the empty string is

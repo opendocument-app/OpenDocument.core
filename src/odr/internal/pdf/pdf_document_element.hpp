@@ -79,6 +79,10 @@ struct Font final : Element {
   // Simple-font `/Encoding` (base + `/Differences`), the text-extraction
   // fallback used when no `ToUnicode` CMap is present (stage 1.2).
   std::optional<Encoding> encoding;
+
+  // Translate a string of character codes to Unicode: the `ToUnicode` CMap when
+  // present (authoritative), else the `/Encoding`, else identity bytes.
+  [[nodiscard]] std::string to_unicode(const std::string &codes) const;
 };
 
 } // namespace odr::internal::pdf

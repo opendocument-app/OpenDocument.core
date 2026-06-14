@@ -131,7 +131,7 @@ public:
           pdf::Font *font = page->resources->font.at(font_ref);
 
           const std::string &glyphs = op.arguments[0].as_string();
-          std::string unicode = font->cmap.translate_string(glyphs);
+          std::string unicode = font->to_unicode(glyphs);
 
           if (unicode.find("Colored Line") != std::string::npos) {
             std::cout << "hi" << std::endl;
@@ -159,7 +159,7 @@ public:
               std::cout << "spacing: " << element.as_real() << std::endl;
             } else if (element.is_string()) {
               const std::string &glyphs = element.as_string();
-              std::string unicode = font->cmap.translate_string(glyphs);
+              std::string unicode = font->to_unicode(glyphs);
               std::cout << "show text manual spacing: font=" << font
                         << ", size=" << size << ", text=" << unicode
                         << std::endl;
