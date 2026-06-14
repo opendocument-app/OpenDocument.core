@@ -3,6 +3,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
 
 namespace odr::internal::pdf {
 
