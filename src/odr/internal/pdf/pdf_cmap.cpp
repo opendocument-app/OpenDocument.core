@@ -16,10 +16,10 @@ void CMap::map_single(std::string code, std::u16string unicode) {
 
 std::size_t CMap::code_length(const std::string &codes,
                               const std::size_t pos) const {
-  const auto first = static_cast<unsigned char>(codes[pos]);
+  const auto first = static_cast<std::uint8_t>(codes[pos]);
   for (const CodespaceRange &range : m_codespace_ranges) {
-    if (first >= static_cast<unsigned char>(range.low.front()) &&
-        first <= static_cast<unsigned char>(range.high.front())) {
+    if (first >= static_cast<std::uint8_t>(range.low.front()) &&
+        first <= static_cast<std::uint8_t>(range.high.front())) {
       return range.low.size();
     }
   }
@@ -49,7 +49,7 @@ std::string CMap::translate_string(const std::string &codes) const {
     // these "no Unicode" runs.
     std::uint32_t value = 0;
     for (const char c : code) {
-      value = (value << 8) | static_cast<unsigned char>(c);
+      value = (value << 8) | static_cast<std::uint8_t>(c);
     }
     result += static_cast<char16_t>(value);
   }

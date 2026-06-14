@@ -85,6 +85,47 @@ TEST(PdfCMap, unmapped_code_falls_back_to_identity) {
   EXPECT_EQ(cmap.translate_string(std::string("\x00\x41", 2)), "A");
 }
 
+TEST(PdfCMap, reversed_bfrange_is_skipped) {
+  // `<43> <41>` is reversed; the range must be ignored rather than wrapping the
+  // code counter through ~4 billion iterations.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<00> <FF>\n"
+                    "endcodespacerange\n"
+                    "1 beginbfrange\n"
+                    "<43> <41> <0041>\n"
+                    "endbfrange\n");
+
+  // Nothing was mapped, so codes fall back to identity.
+  EXPECT_EQ(cmap.translate_string("\x41"), "A");
+}
+
+TEST(PdfCMap, oversized_code_is_skipped) {
+  // A five-byte code cannot be represented; the entry is skipped while a valid
+  // sibling entry still maps.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<00> <FF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfchar\n"
+                    "<0102030405> <0041>\n"
+                    "<42> <0042>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string("\x42"), "B");
+}
+
+TEST(PdfCMap, odd_length_destination_is_skipped) {
+  // A destination that is not a whole number of UTF-16 units is skipped.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<00> <FF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfchar\n"
+                    "<41> <00>\n"
+                    "<42> <0042>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string("\x42"), "B");
+}
+
 TEST(PdfCMap, mixed_code_widths) {
   // Single-byte codes start in 0x00..0x80; two-byte codes start in 0x81..0xFF.
   CMap cmap = parse("2 begincodespacerange\n"

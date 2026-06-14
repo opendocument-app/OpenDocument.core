@@ -7,12 +7,12 @@
 
 namespace odr::internal::pdf {
 
-// Maps PDF character codes to Unicode, as described by a `ToUnicode` CMap.
-//
-// A code is a sequence of bytes (1 or more, big-endian) whose width is defined
-// by the codespace ranges; a destination is a sequence of UTF-16 units (more
-// than one for ligatures). `translate_string` splits an input string into codes
-// of the right width and concatenates their destinations.
+/// Maps PDF character codes to Unicode, as described by a `ToUnicode` CMap.
+///
+/// A code is a sequence of bytes (1 or more, big-endian) whose width is defined
+/// by the codespace ranges; a destination is a sequence of UTF-16 units (more
+/// than one for ligatures). `translate_string` splits an input string into
+/// codes of the right width and concatenates their destinations.
 class CMap {
 public:
   void add_codespace_range(std::string low_code, std::string high_code);
