@@ -123,10 +123,9 @@ private:
   Xref m_xref;
   Dictionary m_trailer;
 
+  bool m_is_encrypted{false};
   std::optional<Authenticator> m_authenticator;
   std::optional<Decryptor> m_decryptor;
-  std::optional<ObjectReference> m_encrypt_reference;
-  std::optional<Object> m_encrypt_dict;
 
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<std::uint32_t, ObjectStream> m_object_streams;
