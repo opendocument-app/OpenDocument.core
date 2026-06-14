@@ -1,9 +1,11 @@
 #pragma once
 
 #include <odr/internal/pdf/pdf_cmap.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <concepts>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -72,7 +74,11 @@ struct Resources final : Element {
 };
 
 struct Font final : Element {
+  // `ToUnicode` CMap, the primary code -> Unicode path when present.
   CMap cmap;
+  // Simple-font `/Encoding` (base + `/Differences`), the text-extraction
+  // fallback used when no `ToUnicode` CMap is present (stage 1.2).
+  std::optional<Encoding> encoding;
 };
 
 } // namespace odr::internal::pdf

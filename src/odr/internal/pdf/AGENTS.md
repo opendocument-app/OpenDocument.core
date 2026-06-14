@@ -117,6 +117,8 @@ not production-quality — the HTML path still contains debug `std::cout` output
 | `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
+| `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
+| `pdf_encoding_data.{hpp,cpp}`          | **Generated** (`tools/pdf/generate_encoding_data.py`): base-encoding tables + the Adobe Glyph List as a name-sorted array |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
 | `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset |
@@ -260,6 +262,11 @@ and routes its warnings through it — new diagnostics should do the same.
   strings parsed through `CMapParser`: single- and two-byte `bfchar`, both
   `bfrange` forms, multi-character (ligature) targets, the identity fallback for
   unmapped codes, and mixed code widths driven by `codespacerange`.
+- `test/src/internal/pdf/pdf_encoding.cpp` — **assertion-based**, no fixtures:
+  `base_encoding_from_name`, glyph-name → Unicode via the AGL (incl. a ligature
+  and the `name.suffix` form) and the algorithmic `uniXXXX`/`uXXXXXX` forms,
+  `Encoding::translate_string` with a base encoding, a `/Differences` override,
+  and the WinAnsi-vs-Standard `0x27` divergence (stage 1.2).
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output.
@@ -292,8 +299,9 @@ per-code Unicode (or "unknown", which stage 3 handles). The stage is **too
 large for one change** — it bundles work of very different size and dependency,
 so it is split into the sub-stages below. They are independently useful and
 ordered by corpus frequency; each is its own branch/PR off this roadmap. Sub-
-stage **1.1 is the current work** (branch `pdf-text-extraction`); 1.4 is blocked
-on stage 3 and stays deferred until then.
+stage 1.1 has landed; **1.2 is the current work** (branch
+`pdf-encoding-to-unicode`); 1.4 is blocked on stage 3 and stays deferred until
+then.
 
 ### 1.1 — `ToUnicode` CMap: multi-byte codes, `bfrange`, multi-char targets — **done**
 
@@ -330,12 +338,43 @@ inline-string test convention for the module.
 Out of scope for 1.1: anything needing `/Encoding`, the AGL, predefined CMaps,
 or font-file reading — those are 1.2–1.4.
 
-### 1.2 — simple-font encoding → Unicode
+### 1.2 — simple-font encoding → Unicode — **in progress**
 
 `/Encoding` base (WinAnsi/MacRoman/Standard) + `/Differences` → glyph names →
 Unicode via the Adobe Glyph List (incl. `uniXXXX`/`uXXXXXX` names). Carries the
 data weight of the three base-encoding tables **and** the full AGL (~4,300
-entries) — likely a generated data file. Own branch.
+entries) — a generated data file. Own branch.
+
+The chain, per simple font that has no `ToUnicode` CMap: a 1-byte code → glyph
+name (base encoding, overlaid with `/Differences`) → Unicode (AGL lookup, or the
+algorithmic `uniXXXX`/`uXXXXXX` forms). `translate_string` walks a code string
+byte by byte; an unmapped name yields "no Unicode" (empty), left for stage 1.5.
+
+**Data as committed generated source.** `tools/pdf/generate_encoding_data.py`
+emits `pdf_encoding_data.{hpp,cpp}` (the base-encoding tables + the AGL as a
+name-sorted array for binary search); the build only compiles the result, so
+there is no build-time codegen dependency. Re-run the script with Adobe's
+`glyphlist.txt` to populate the full AGL.
+
+Scope landed so far (foundation/scaffolding):
+- `pdf_encoding.{hpp,cpp}`: `BaseEncoding`, `base_encoding_table` /
+  `base_encoding_from_name`, `glyph_name_to_unicode` (AGL + `uniXXXX`/`uXXXXXX`),
+  and the `Encoding` class (base + `/Differences` → `translate_string`).
+- `/Encoding` parsing wired into `parse_font` (`parse_encoding`): a base name, or
+  a dictionary with `/BaseEncoding` + `/Differences`. Stored on `Font::encoding`
+  (a `std::optional<Encoding>`).
+- The generator + a committed seed data file (basic Latin + a few extras) so the
+  module compiles and the inline tests pass.
+
+Remaining (follow-up commits on this branch):
+- Populate the **full** base-encoding tables (ISO 32000-1 Annex D: the complete
+  Latin set, MacRoman, the Latin-1 upper half of WinAnsi) and the **full AGL**
+  via the generator.
+- Use `Font::encoding` as the fallback in the HTML text path
+  (`html/pdf_file.cpp`) when the font has no `ToUnicode` CMap — currently parsed
+  and stored but not yet consulted during emission.
+- Symbolic fonts / the "built-in encoding" default (no `/BaseEncoding`) need the
+  font program — defer to stage 1.4; for now StandardEncoding is the default base.
 
 ### 1.3 — composite (Type0/CID) fonts
 

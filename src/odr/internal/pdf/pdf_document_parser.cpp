@@ -6,6 +6,7 @@
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
 
@@ -111,6 +112,67 @@ Element *parse_page_or_pages(DocumentParser &parser,
                              Document &document, Pages *parent,
                              const PageAttributes &inherited);
 
+// Parse a simple-font `/Encoding`: either a base-encoding name, or a dictionary
+// with an optional `/BaseEncoding` name overlaid with a `/Differences` array
+// (`code name name … code name …`). Returns `nullopt` for an encoding this
+// stage cannot represent (e.g. an unsupported base name with no differences).
+std::optional<Encoding> parse_encoding(DocumentParser &parser,
+                                       const Object &encoding_object) {
+  Object resolved = parser.resolve_object_copy(encoding_object);
+
+  if (resolved.is_name()) {
+    if (const auto base = base_encoding_from_name(resolved.as_name())) {
+      return Encoding(*base);
+    }
+    ODR_WARNING(parser.logger(),
+                "pdf: unsupported /Encoding name " << resolved.as_name());
+    return std::nullopt;
+  }
+
+  if (!resolved.is_dictionary()) {
+    return std::nullopt;
+  }
+
+  const Dictionary &dictionary = resolved.as_dictionary();
+
+  // No `/BaseEncoding` means "the font's built-in encoding"; that needs the
+  // font program (stage 1.4). Default to StandardEncoding for now, which is the
+  // right base for the non-symbolic Latin fonts this stage targets.
+  BaseEncoding base = BaseEncoding::standard;
+  if (dictionary.has_key("BaseEncoding")) {
+    const Object &base_object = dictionary["BaseEncoding"];
+    if (base_object.is_name()) {
+      if (const auto named = base_encoding_from_name(base_object.as_name())) {
+        base = *named;
+      } else {
+        ODR_WARNING(parser.logger(),
+                    "pdf: unsupported /BaseEncoding " << base_object.as_name());
+      }
+    }
+  }
+
+  Encoding encoding(base);
+
+  if (dictionary.has_key("Differences")) {
+    const Object differences =
+        parser.resolve_object_copy(dictionary["Differences"]);
+    if (differences.is_array()) {
+      std::uint32_t code = 0;
+      for (const Object &item : differences.as_array()) {
+        if (item.is_integer()) {
+          code = static_cast<std::uint32_t>(item.as_integer());
+        } else if (item.is_name() && code <= 0xFF) {
+          encoding.set_difference(static_cast<std::uint8_t>(code),
+                                  item.as_name());
+          ++code;
+        }
+      }
+    }
+  }
+
+  return encoding;
+}
+
 Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
                  Document &document) {
   Font *font = document.create_element<Font>();
@@ -127,6 +189,13 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
     std::istringstream ss(std::move(stream));
     CMapParser cmap_parser(ss, parser.logger());
     font->cmap = cmap_parser.parse_cmap();
+  }
+
+  // Simple-font `/Encoding` (stage 1.2): a base-encoding name, or a dictionary
+  // with `/BaseEncoding` + `/Differences`. The text-extraction fallback for
+  // fonts without a `ToUnicode` CMap.
+  if (dictionary.has_key("Encoding")) {
+    font->encoding = parse_encoding(parser, dictionary["Encoding"]);
   }
 
   return font;
