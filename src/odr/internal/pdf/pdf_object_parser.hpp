@@ -48,6 +48,9 @@ public:
   void expect_characters(const std::string &string);
 
   [[nodiscard]] bool peek_number();
+  [[nodiscard]] bool peek_unsigned_integer();
+  [[nodiscard]] std::pair<UnsignedInteger, std::uint32_t>
+  read_unsigned_integer_and_count();
   [[nodiscard]] UnsignedInteger read_unsigned_integer();
   [[nodiscard]] Integer read_integer();
   [[nodiscard]] Real read_number();

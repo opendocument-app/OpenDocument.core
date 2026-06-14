@@ -135,20 +135,38 @@ bool ObjectParser::peek_number() {
   return c != eof && (c == '+' || c == '-' || c == '.' || std::isdigit(c));
 }
 
-UnsignedInteger ObjectParser::read_unsigned_integer() {
+bool ObjectParser::peek_unsigned_integer() {
+  const int_type c = geti();
+  return c != eof && std::isdigit(c);
+}
+
+std::pair<UnsignedInteger, std::uint32_t>
+ObjectParser::read_unsigned_integer_and_count() {
   UnsignedInteger result = 0;
+  std::uint32_t count = 0;
 
   while (true) {
     const int_type c = geti();
     if (c == eof) {
-      return result;
+      break;
     }
     if (!std::isdigit(c)) {
-      return result;
+      break;
     }
     result = result * 10 + (c - '0');
+    ++count;
     bumpc();
   }
+
+  if (count == 0) {
+    throw std::runtime_error("expected unsigned integer, but got none");
+  }
+
+  return {result, count};
+}
+
+UnsignedInteger ObjectParser::read_unsigned_integer() {
+  return read_unsigned_integer_and_count().first;
 }
 
 Integer ObjectParser::read_integer() {
@@ -172,23 +190,34 @@ Real ObjectParser::read_number() {
 }
 
 std::variant<Integer, Real> ObjectParser::read_integer_or_real() {
-  Integer i = 0;
+  Integer sign = 1;
+  if (geti() == '-') {
+    sign = -1;
+    bumpc();
+  } else if (geti() == '+') {
+    bumpc();
+  }
 
-  if (char_type c = getc(); c != '.') {
-    i = read_integer();
-    c = getc();
-    if (c != '.') {
-      return i;
-    }
+  UnsignedInteger i = 0;
+
+  if (geti() != '.') {
+    i = read_unsigned_integer();
+  }
+  if (geti() != '.') {
+    return static_cast<Integer>(sign * i);
   }
   bumpc();
 
-  const pos_type begin = in().tellg();
-  const UnsignedInteger i2 = read_unsigned_integer();
-  const pos_type end = in().tellg();
+  Real r = static_cast<Real>(i);
 
-  return static_cast<Real>(i) +
-         static_cast<Real>(i2) * std::pow(10.0, begin - end);
+  if (peek_unsigned_integer()) {
+    const auto [fraction, decimals] = read_unsigned_integer_and_count();
+    // `decimals` is unsigned; negate as floating point to avoid wrap-around.
+    r += static_cast<Real>(fraction) *
+         std::pow(10.0, -static_cast<Real>(decimals));
+  }
+
+  return static_cast<Real>(sign) * r;
 }
 
 bool ObjectParser::peek_name() {
