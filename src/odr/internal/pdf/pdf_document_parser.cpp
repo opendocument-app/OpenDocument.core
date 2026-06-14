@@ -179,9 +179,9 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
 
 /// Parse a composite (Type0) font's descendant CIDFont (`/DescendantFonts` is a
 /// one-element array of the CIDFont): records the `/CIDSystemInfo`
-/// `/Registry`/`/Ordering` used to pick a predefined CID -> Unicode table in
-/// stage 1.3 (part B). The Type0 `/Encoding` (code -> CID) is `Identity-H/V` or
-/// a predefined CJK CMap; only `/ToUnicode` is used for extraction in part A.
+/// `/Registry`/`/Ordering` used to pick a predefined CID -> Unicode table.
+/// The Type0 `/Encoding` (code -> CID) is `Identity-H/V` or a predefined CJK
+/// CMap; only `/ToUnicode` is used for extraction.
 void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
                           Font &font) {
   font.composite = true;
@@ -256,8 +256,7 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   if (is_type0) {
     // Composite (Type0) font: the `/Encoding` is a code -> CID CMap, not a
     // simple-font glyph-name encoding, so it must not go through
-    // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above) in
-    // stage 1.3 part A.
+    // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above).
     parse_composite_font(parser, dictionary, *font);
   } else if (dictionary.has_key("Encoding")) {
     // Simple-font `/Encoding`: a base-encoding name, or a dictionary with

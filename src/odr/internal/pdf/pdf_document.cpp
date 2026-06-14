@@ -37,7 +37,7 @@ std::string Font::to_unicode(const std::string &codes) const {
   if (composite) {
     // A composite (Type0) font with no `ToUnicode` CMap. A predefined Unicode
     // `/Encoding` (the `Uni*-UCS2/UTF16/UTF32` CMaps) carries Unicode directly
-    // in its codes, so decode it (stage 1.3 part B). Otherwise code -> CID is
+    // in its codes, so decode it. Otherwise code -> CID is
     // known (identity for `Identity-H/V`) but CID -> Unicode needs a predefined
     // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font
     // program (stage 3): emit "no Unicode" rather than mis-splitting the

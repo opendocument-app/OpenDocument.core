@@ -46,8 +46,8 @@ std::string CMap::translate_string(const std::string &codes) const {
     }
 
     // Unknown code: fall back to its numeric value as a single UTF-16 unit
-    // (identity for single-byte codes). Stage 1.5 will refine the handling of
-    // these "no Unicode" runs.
+    // (identity for single-byte codes). These "no Unicode" runs are left for
+    // later re-encoding.
     std::uint32_t value = 0;
     for (const char c : code) {
       value = (value << 8) | static_cast<std::uint8_t>(c);

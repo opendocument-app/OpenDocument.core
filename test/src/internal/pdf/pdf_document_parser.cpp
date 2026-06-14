@@ -249,7 +249,7 @@ const Font *first_page_font(const Document &document, const std::string &name) {
 
 // A composite (Type0) font is recognized, its descendant CIDFont's
 // `/CIDSystemInfo` recorded, and its `/ToUnicode` CMap drives extraction over
-// 2-byte codes (stage 1.3).
+// 2-byte codes.
 TEST(DocumentParser, composite_font_with_to_unicode) {
   const std::string pdf = composite_font_mini_pdf(true);
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -265,9 +265,9 @@ TEST(DocumentParser, composite_font_with_to_unicode) {
 }
 
 // A composite font without a `/ToUnicode` CMap cannot yet resolve CID ->
-// Unicode (predefined CJK tables are stage 1.3 part B; embedded reverse maps
-// stage 1.4), so extraction yields "no Unicode" rather than the byte-garbage
-// the simple-font identity fallback would produce on multi-byte codes.
+// Unicode (predefined CJK tables and embedded reverse maps are deferred), so
+// extraction yields "no Unicode" rather than the byte-garbage the simple-font
+// identity fallback would produce on multi-byte codes.
 TEST(DocumentParser, composite_font_without_to_unicode_yields_no_unicode) {
   const std::string pdf = composite_font_mini_pdf(false);
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -282,7 +282,7 @@ TEST(DocumentParser, composite_font_without_to_unicode_yields_no_unicode) {
 
 // A composite font whose `/Encoding` is a predefined Unicode CMap
 // (`Uni*-UCS2/UTF16/UTF32`) extracts directly from the codes (they are Unicode)
-// even without a `/ToUnicode` CMap (stage 1.3 part B).
+// even without a `/ToUnicode` CMap.
 TEST(DocumentParser, composite_font_predefined_unicode_cmap) {
   const std::string pdf = composite_font_mini_pdf(false, "UniGB-UCS2-H");
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));

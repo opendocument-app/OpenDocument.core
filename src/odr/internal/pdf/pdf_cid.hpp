@@ -10,12 +10,12 @@ namespace odr::internal::pdf {
 /// (a composite font's `/Encoding` named in the PDF, e.g. `UniGB-UCS2-H`),
 /// returning the UTF-8 text.
 ///
-/// Stage 1.3 (part B) supports the predefined **Unicode** CMaps — the
+/// Supports the predefined **Unicode** CMaps — the
 /// `Uni*-UCS2`, `Uni*-UTF16` and `Uni*-UTF32` families — whose character codes
 /// already *are* Unicode (big-endian), so they are decoded directly with no
 /// data tables. Returns `nullopt` for the legacy CJK code→CID CMaps
 /// (RKSJ/EUC/Big5/GBK/KSC) and for `Identity-H/V`, which need CID→Unicode
-/// tables (the legacy half of part B, deferred — see
+/// tables (the legacy CMaps, deferred — see
 /// `tools/pdf/generate_cid_data.py`) or the embedded font program (stage 3);
 /// the caller then treats the run as "no Unicode".
 [[nodiscard]] std::optional<std::string>
