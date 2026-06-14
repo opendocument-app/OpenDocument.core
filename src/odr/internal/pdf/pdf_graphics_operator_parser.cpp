@@ -183,33 +183,15 @@ void GraphicsOperatorParser::skip_inline_image_data() {
     m_parser.bumpc();
   }
 
-  // The length is not encoded, so scan for the `EI` terminator: an `EI` that is
-  // preceded by white-space and followed by white-space, a delimiter, or eof.
-  int_type prev = eof;
-  while (true) {
-    const int_type c = m_parser.geti();
-    if (c == eof) {
+  // The length is not encoded, so scan for the `EI` terminator. `EI` also
+  // occurs inside the raw image bytes, so only accept one that is followed by
+  // white-space or eof; otherwise keep scanning past it.
+  while (m_parser.skip_past("EI")) {
+    const int_type after = m_parser.geti();
+    if (after == eof ||
+        ObjectParser::is_whitespace(static_cast<char_type>(after))) {
       return;
     }
-    if (c == 'E' && prev != eof &&
-        ObjectParser::is_whitespace(static_cast<char_type>(prev))) {
-      m_parser.bumpc(); // 'E'
-      if (m_parser.geti() == 'I') {
-        m_parser.bumpc(); // 'I'
-        const int_type after = m_parser.geti();
-        if (after == eof ||
-            ObjectParser::is_whitespace(static_cast<char_type>(after))) {
-          return;
-        }
-        // not a real terminator; keep scanning from after the 'I'
-        prev = 'I';
-        continue;
-      }
-      prev = 'E';
-      continue;
-    }
-    m_parser.bumpc();
-    prev = c;
   }
 }
 

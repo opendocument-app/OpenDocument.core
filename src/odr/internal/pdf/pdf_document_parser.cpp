@@ -714,17 +714,9 @@ void DocumentParser::recover_xref() {
 
     if (opens_stream_body(content)) {
       // Skip the stream body so its (possibly object-shaped) bytes are not
-      // mis-scanned. The length is unknown here, so scan to `endstream`.
-      while (true) {
-        stream.clear();
-        const std::int64_t at = stream.tellg();
-        if (at < 0 || static_cast<std::uint32_t>(at) >= size) {
-          break;
-        }
-        if (p.read_line().find("endstream") != std::string::npos) {
-          break;
-        }
-      }
+      // mis-scanned. The length is unknown here, so scan past `endstream`.
+      stream.clear();
+      p.skip_past("endstream");
       continue;
     }
 

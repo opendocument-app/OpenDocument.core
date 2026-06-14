@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::pdf {
 
@@ -119,6 +120,45 @@ void ObjectParser::skip_line() { read_line(); }
 
 std::string ObjectParser::read_line(const bool inclusive) {
   return util::stream::read_line(in(), inclusive);
+}
+
+bool ObjectParser::skip_past(const std::string_view marker) {
+  if (marker.empty()) {
+    return true;
+  }
+
+  // KMP failure function over the (typically tiny) marker, so the streaming
+  // scan stays correct even when the marker has internal repetition (e.g. the
+  // two `e`s in `endstream`).
+  std::vector<std::size_t> fail(marker.size(), 0);
+  for (std::size_t i = 1, k = 0; i < marker.size(); ++i) {
+    while (k > 0 && marker[i] != marker[k]) {
+      k = fail[k - 1];
+    }
+    if (marker[i] == marker[k]) {
+      ++k;
+    }
+    fail[i] = k;
+  }
+
+  std::size_t matched = 0;
+  while (true) {
+    const int_type c = sb().sbumpc();
+    if (c == eof) {
+      in().setstate(std::ios::eofbit);
+      return false;
+    }
+    const auto ch = static_cast<char_type>(c);
+    while (matched > 0 && ch != marker[matched]) {
+      matched = fail[matched - 1];
+    }
+    if (ch == marker[matched]) {
+      ++matched;
+      if (matched == marker.size()) {
+        return true;
+      }
+    }
+  }
 }
 
 void ObjectParser::expect_characters(const std::string &string) {

@@ -2,6 +2,8 @@
 
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -36,6 +38,21 @@ Integer read_integer(const std::string &input) {
   std::istringstream in(input);
   ObjectParser parser(in);
   return parser.read_integer();
+}
+
+// Runs skip_past(marker) on `input` and reports whether the marker was found
+// together with the bytes left after the cursor, so a test can pin both the
+// result and the resulting position.
+std::pair<bool, std::string> skip_past(const std::string &input,
+                                       const std::string_view marker) {
+  std::istringstream in(input);
+  ObjectParser parser(in);
+  const bool found = parser.skip_past(marker);
+  std::string rest;
+  while (parser.geti() != ObjectParser::eof) {
+    rest.push_back(parser.bumpc());
+  }
+  return {found, rest};
 }
 } // namespace
 
@@ -82,6 +99,33 @@ TEST(PdfObjectParser, read_integer) {
   EXPECT_EQ(read_integer("-5"), -5);
   EXPECT_EQ(read_integer("+7"), 7);
   EXPECT_EQ(read_integer("0"), 0);
+}
+
+// skip_past advances just past the first occurrence of the marker and reports
+// whether it was found; on a miss it consumes the whole stream.
+TEST(PdfObjectParser, skip_past) {
+  using Result = std::pair<bool, std::string>;
+
+  // cursor lands immediately after the marker
+  EXPECT_EQ(skip_past("hello world", "world"), Result(true, ""));
+  EXPECT_EQ(skip_past("abcXYdef", "XY"), Result(true, "def"));
+
+  // the first occurrence wins
+  EXPECT_EQ(skip_past("aXYbXYc", "XY"), Result(true, "bXYc"));
+
+  // not found: the stream is consumed to eof
+  EXPECT_EQ(skip_past("abcdef", "XY"), Result(false, ""));
+
+  // an empty marker matches immediately and consumes nothing
+  EXPECT_EQ(skip_past("abc", ""), Result(true, "abc"));
+
+  // markers with internal repetition must still match across an overlapping
+  // partial match (KMP correctness): "aab" in "aaab", and the doubled-`e` /
+  // doubled prefix cases for "endstream"
+  EXPECT_EQ(skip_past("aaab rest", "aab"), Result(true, " rest"));
+  EXPECT_EQ(skip_past("eendstream!", "endstream"), Result(true, "!"));
+  EXPECT_EQ(skip_past("<<...>>stream\nbytes\nendstreamX", "endstream"),
+            Result(true, "X"));
 }
 
 // 7.3.4.3: a hex string is the bytes of its hex digits, with whitespace ignored
