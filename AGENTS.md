@@ -78,17 +78,17 @@ Two pieces per engine:
 
 ## Build & test
 
-A configured build dir already exists (`cmake-build-debug`, also `…-release`,
-`…-relwithdebinfo`). Typical loop:
+A configured build dir already exists (`cmake-build-relwithdebinfo`, also `…-debug`,
+`…-release`). Typical loop:
 
 ```bash
 # library
-cmake --build cmake-build-debug --target odr
+cmake --build cmake-build-relwithdebinfo --target odr
 # tests (the ODR_TEST option is on in this build dir)
-cmake --build cmake-build-debug --target odr_test
-./cmake-build-debug/test/odr_test --gtest_filter='OldMs.*'
+cmake --build cmake-build-relwithdebinfo --target odr_test
+./cmake-build-relwithdebinfo/test/odr_test --gtest_filter='OldMs.*'
 # CLI (renders a file to a directory of HTML)
-cmake --build cmake-build-debug --target translate
+cmake --build cmake-build-relwithdebinfo --target translate
 ```
 
 Notable CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`,
