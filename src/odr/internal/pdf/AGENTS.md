@@ -104,7 +104,7 @@ not production-quality — the HTML path still contains debug `std::cout` output
   part B), since those character codes already are Unicode (big-endian); any
   other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
   Unicode" (not byte-garbage) until the legacy CID → Unicode tables (the
-  deferred half of part B) or the embedded font program (stage 1.4) land.
+  deferred half of part B) or the embedded font program (stage 3) land.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, text
@@ -315,156 +315,34 @@ and last-resort cross-reference recovery for broken files. Remaining odds and
 ends are folded into *Other known gaps* below; the staged renderer work now
 builds on a parser that opens the common corpus.
 
-## Stage 1 — text extraction: the code → Unicode chain
+## Stage 1 — text extraction: the code → Unicode chain — **done**
 
-PDF strings are **character codes**; per font, walk this chain and record
-per-code Unicode (or "unknown", which stage 3 handles). The stage is **too
-large for one change** — it bundles work of very different size and dependency,
-so it is split into the sub-stages below. They are independently useful and
-ordered by corpus frequency; each is its own branch/PR off this roadmap. Sub-
-stages 1.1 and 1.2 have landed, as has **1.3 part A** (Type0 structure +
-`Identity-H/V` + `/ToUnicode`-driven extraction) and the predefined-Unicode-CMap
-slice of **1.3 part B** (`Uni*-UCS2/UTF16/UTF32`, no data tables); **the legacy
-CJK CMaps + CID → Unicode tables are the remaining deferred work**; 1.4 is
-blocked on stage 3 and stays deferred until then.
+**Goal.** PDF strings are **character codes**; per font, walk code → Unicode and
+record it per code (or "no Unicode", which stage 3 re-encodes). The work was
+split into sub-stages by data weight and dependency; 1.1–1.3 have landed and
+cover the local corpus and the bulk of real-world PDFs. The mechanics live in
+*Fonts / text mapping* under *What works*; this is the summary.
 
-### 1.1 — `ToUnicode` CMap: multi-byte codes, `bfrange`, multi-char targets — **done**
+**Achieved**
+- **1.1 — `ToUnicode` CMap.** Multi-byte codes (codespace-driven chunking), both
+  `bfrange` forms, multi-character (ligature) targets.
+- **1.2 — simple-font `/Encoding`.** Standard/WinAnsi/MacRoman base encodings +
+  `/Differences` → glyph name → Unicode via the generated Adobe Glyph List (incl.
+  the algorithmic `uniXXXX`/`uXXXXXX` forms).
+- **1.3 — composite (Type0/CID) fonts.** Type0 structure + `/CIDSystemInfo`,
+  `Identity-H/V`, `/ToUnicode`-driven extraction, and the predefined Unicode
+  CMaps (`Uni*-UCS2/UTF16/UTF32`, decoded directly with no data tables).
 
-The narrowest, most self-contained chunk: it only extends the existing `CMap`
-(`pdf_cmap.{hpp,cpp}`) and its parser (`pdf_cmap_parser.cpp`), with no new data
-tables and no new font plumbing. Today the map is single-byte
-(`std::unordered_map<char, char16_t>`), `read_bfchar` warns on multi-byte glyphs
-/ multi-char targets via `std::cerr`, and `read_bfrange` / `read_codespacerange`
-are empty `// TODO` stubs.
-
-Scope of this one change:
-- **Code keys become multi-byte.** Key the map on the full character code, not a
-  single `char` (e.g. a `std::uint32_t` code + the byte length, or a
-  `std::string` code). `codespacerange` defines the code byte-lengths; record the
-  ranges so `translate_string` can chunk a string into codes of the right width
-  (most `ToUnicode` CMaps are fixed 1- or 2-byte, but the ranges are authoritative).
-- **`bfrange`.** Both forms: `<lo> <hi> <dst>` (increment the last UTF-16 unit of
-  `dst` across the code range, per spec only the low byte) and
-  `<lo> <hi> [ <dst0> <dst1> … ]` (array of per-code destinations).
-- **Multi-character targets.** A code may map to a *string* of UTF-16 units
-  (ligatures, e.g. `ﬁ` → `f` `i`); `map_bfchar`'s value type widens from
-  `char16_t` to `std::u16string` (or a small-string equivalent).
-- **`translate_string`** chunks the input by the codespace widths, looks up each
-  code, and falls back to the identity/​byte value (today's behaviour) on a miss
-  — keeping the "unknown" path for later sub-stages to refine.
-- Replace the two `std::cerr` warnings with the module's `Logger` (thread one in,
-  as `DocumentParser` already does), or drop them once the cases are handled.
-
-Tests (assertion-based, inline CMap strings — no fixtures): a 2-byte
-`codespacerange`; `bfrange` increment form and array form; a multi-char `bfchar`
-target; mixed widths; a miss falling back to identity. This matches the existing
-inline-string test convention for the module.
-
-Out of scope for 1.1: anything needing `/Encoding`, the AGL, predefined CMaps,
-or font-file reading — those are 1.2–1.4.
-
-### 1.2 — simple-font encoding → Unicode — **done**
-
-`/Encoding` base (WinAnsi/MacRoman/Standard) + `/Differences` → glyph names →
-Unicode via the Adobe Glyph List (incl. `uniXXXX`/`uXXXXXX` names). Carries the
-data weight of the three base-encoding tables **and** the full AGL (~4,300
-entries) — a generated data file. Own branch.
-
-The chain, per simple font that has no `ToUnicode` CMap: a 1-byte code → glyph
-name (base encoding, overlaid with `/Differences`) → Unicode (AGL lookup, or the
-algorithmic `uniXXXX`/`uXXXXXX` forms). `translate_string` walks a code string
-byte by byte; an unmapped name yields "no Unicode" (empty), left for stage 1.5.
-
-**Data as committed generated source.** `tools/pdf/generate_encoding_data.py`
-emits `pdf_encoding_data.{hpp,cpp}` (the three full base-encoding tables + the
-AGL as a name-sorted array for binary search); the build only compiles the
-result, so there is no build-time codegen dependency. All source data is
-vendored next to the script as `.txt` files (the base encodings plus
-[Adobe's AGL](https://github.com/adobe-type-tools/agl-aglfn)); re-run the script
-with no arguments to regenerate. See [`tools/pdf/README.md`](../../../../tools/pdf/README.md)
-for the data files and their provenance/licensing.
-
-Landed:
-- `pdf_encoding.{hpp,cpp}`: `BaseEncoding` (Standard/WinAnsi/MacRoman),
-  `base_encoding_table` / `base_encoding_from_name`, `glyph_name_to_unicode`
-  (AGL + `uniXXXX`/`uXXXXXX`), and the `Encoding` class (base + `/Differences` →
-  `translate_string`).
-- `pdf_encoding_data.{hpp,cpp}`: the full Annex D tables + the full AGL (4,281
-  entries), generated.
-- `/Encoding` parsing wired into `parse_font` (`parse_encoding`): a base name, or
-  a dictionary with `/BaseEncoding` + `/Differences`. Stored on `Font::encoding`
-  (a `std::optional<Encoding>`).
-- `Font::to_unicode` picks the path — `ToUnicode` CMap when present (via
-  `CMap::empty`), else the `/Encoding`, else identity — and the HTML text path
-  (`html/pdf_file.cpp`) calls it instead of the CMap directly, so simple fonts
-  with only an `/Encoding` now extract text.
-
-Remaining (1.2 deferrals):
-- Symbolic fonts / the "built-in encoding" default (no `/BaseEncoding`) need the
-  font program — defer to stage 1.4; for now StandardEncoding is the default base.
-- An unmapped glyph name still yields "no Unicode" (empty) — refined in 1.5.
-
-### 1.3 — composite (Type0/CID) fonts — **functionally done; legacy CJK CMaps deferred**
-
-**Status.** Everything composite fonts need for the corpus seen is in place:
-Type0 structure, `Identity-H/V`, `/ToUnicode`-driven extraction (part A), and the
-predefined Unicode CMaps (part B, `Uni*-UCS2/UTF16/UTF32`). The **one** remaining
-piece is the legacy CJK code→CID CMaps (RKSJ/EUC/Big5/GBK/KSC) plus their
-`CID → Unicode` tables — large external data, no fixture in the corpus, and an
-uncommon case in modern PDFs. It is treated as a documented deferral (a follow-up
-on the landed generator scaffolding), not a blocker: 1.3 can be considered closed
-for the renderer's purposes, with the legacy tables an optional add-on.
-
-`Identity-H/V` plus the predefined CMaps (CJK); map CID → Unicode via the CID
-system info where defined. The predefined CMaps are large external data sets —
-the heaviest data chunk of the stage. Split into two parts because the data
-weight is concentrated in part B, and the whole local corpus (every Type0 font
-is `Identity-H` + `/ToUnicode`) is covered by part A alone.
-
-**Part A — Type0 structure + `Identity-H/V` + `/ToUnicode` — done.** `parse_font`
-detects `/Subtype /Type0`, walks `/DescendantFonts[0]` to record the descendant
-CIDFont's `/CIDSystemInfo` `/Registry`/`/Ordering` on `Font` (`composite`,
-`cid_registry`, `cid_ordering`), and keeps the Type0 `/Encoding` (a code → CID
-CMap, not a glyph-name encoding) out of `parse_encoding` — so `Identity-H` no
-longer trips the "unsupported /Encoding name" warning. Extraction runs through
-the existing multi-byte `/ToUnicode` path (stage 1.1); `Font::to_unicode`
-returns "no Unicode" for a composite font lacking a `/ToUnicode` rather than
-mis-splitting its multi-byte codes through the single-byte identity fallback.
-Tests: `DocumentParser.composite_font_with_to_unicode` /
-`…_without_to_unicode_yields_no_unicode`.
-
-**Part B — predefined CMaps.** A composite font names a predefined CMap as its
-`/Encoding`. These split by data weight:
-
-- **Unicode CMaps (`Uni*-UCS2/UTF16/UTF32`) — done.** Their character codes
-  already *are* Unicode (big-endian), so `pdf_cid.cpp` decodes them directly with
-  **no data tables**: `Font::to_unicode` records the Type0 `/Encoding` name
-  (`Font::cid_encoding_name`) and, lacking a `/ToUnicode`, routes it through
-  `translate_predefined_cmap` (UCS2/UTF16 → 2-byte UTF-16BE incl. surrogate
-  pairs; UTF32 → 4-byte). Tests: `PdfCid.*` and
-  `DocumentParser.composite_font_predefined_unicode_cmap`. This covers the bulk
-  of modern CJK PDFs.
-- **Legacy CJK CMaps (RKSJ/EUC/Big5/GBK/KSC) — deferred.** These map
-  `code → CID`, so they need the per-collection `CID → Unicode` table too
-  (selected by the recorded `/Registry`+`/Ordering`). The data is large:
-  `tools/pdf/generate_cid_data.py` already fetches Adobe's `cmap-resources`
-  (git-ignored input) and emits block-encoded range arrays, measured at ~3.3 MB
-  of committed C++ (~855 KB if zlib+base64-compressed). The decision on how to
-  store it compactly — and the C++ lookup over it — is the remaining work. **No
-  CJK fixture in the corpus**, so this is validated with synthetic inline
-  mini-PDFs.
-
-### 1.4 — embedded-font fallback — **deferred (needs stage 3)**
-
-Reverse the TrueType `cmap`; read glyph names from Type1/CFF charstrings.
-Explicitly depends on stage 3's font *reading*, so it cannot start until that
-machinery exists.
-
-### 1.5 — "no Unicode" runs + `/ActualText`
-
-Nothing applies → mark the run "no Unicode" for stage 3's re-encoding.
-`/ActualText` (tagged PDFs, ligatures) overrides the whole chain for extraction.
-Small, but rides on the run/state plumbing the sub-stages above introduce.
+**Deferred — relocated to later stages.** None blocks the renderer and no corpus
+fixture needs them yet:
+- **Legacy CJK code→CID CMaps** (RKSJ/EUC/Big5/GBK/KSC) + their `CID → Unicode`
+  tables — large external data; the generator/fetch scaffolding is landed
+  (`tools/pdf/generate_cid_data.py`), the storage decision and C++ lookup remain.
+  Tracked under *Other known gaps* (CMap coverage).
+- **Embedded-font reverse map** (was 1.4) — needs the font reading machinery;
+  folded into **stage 3**.
+- **"No Unicode" run marking + `/ActualText`** (was 1.5) — rides on the run/state
+  plumbing introduced by **stage 2**, where it now lives.
 
 ## Stage 2 — text positioning & metrics
 
@@ -488,6 +366,10 @@ Independent of Unicode work; fixes layout even with today's partial CMaps.
 - HTML mapping decision: per-run spans with CSS `transform` (cheap, breaks on
   heavy kerning) vs. per-glyph positioning (exact, verbose) — likely per-run
   with a kerning threshold that splits runs, like pdf2htmlEX.
+- **Extraction refinements** (was stage 1.5, rides on the run plumbing above):
+  mark a run "no Unicode" when the code → Unicode chain yields nothing, so stage 3
+  can re-encode it; honour `/ActualText` (tagged PDFs, ligatures) as an extraction
+  override of the whole chain.
 
 ## Stage 3 — fonts in HTML
 
@@ -499,8 +381,11 @@ cost of a notoriously heavy build. No trimmed off-the-shelf alternative does
 what we need (FreeType/stb_truetype are read-only; hb-subset can only subset
 along the *existing* `cmap`, so it cannot inject the PUA mappings below).
 Expected ~5–8k lines of focused C++ — on the order of an `oldms/` module.
-Reading (SFNT tables, CFF charsets) is the easy part and is needed by stage 1.4
-anyway.
+Reading (SFNT tables, CFF charsets) is the easy part and also yields the
+**embedded-font reverse map** (was stage 1.4): a font with no usable
+`/ToUnicode` or `/Encoding` gets code → Unicode from its embedded program — the
+TrueType `cmap` reversed, or Type1/CFF charstring glyph names through the AGL —
+closing the last gap in the stage-1 extraction chain.
 
 **Architecture: IR for facts, pass-through for glyphs.** No glyph-level font IR:
 decompiling and recompiling outlines is the FontForge model — loses hinting,
@@ -510,7 +395,7 @@ byte-for-byte; even Type1 → Type2 charstrings is a direct sibling-format
 translation. What *is* shared: a thin `FontProgram`-style interface — per-flavor
 readers producing the facts every consumer needs (glyph count, glyph → Unicode,
 advance widths, units-per-em, name, bbox, symbolic flag) with raw bytes kept
-alongside. Stage 1.4 reads Unicode from it, the OTF wrap synthesizes
+alongside. The embedded-font reverse map (above) reads Unicode from it, the OTF wrap synthesizes
 `head`/`hhea`/`hmtx`/`OS/2` from it, the re-encoder assigns PUA code points from
 its glyph count.
 
@@ -633,8 +518,10 @@ tree, little else.
   recognized and extract through their `/ToUnicode` (stage 1.3 part A) or, when
   absent, a predefined Unicode `/Encoding` (`Uni*-UCS2/UTF16/UTF32`, stage 1.3
   part B). Still open: the legacy CJK code→CID CMaps (RKSJ/EUC/Big5/GBK/KSC) and
-  their CID → Unicode tables (the deferred half of part B), and embedded-font
-  reverse maps (stage 1.4); symbolic fonts with a built-in encoding default to
-  StandardEncoding until 1.4.
+  their CID → Unicode tables (large external data; the generator scaffolding in
+  `tools/pdf/generate_cid_data.py` is landed, the storage decision and lookup
+  remain), and embedded-font reverse maps (stage 3); symbolic fonts with a
+  built-in encoding default to StandardEncoding until the font program is read
+  (stage 3).
 - **Annotations** are collected but their content is not interpreted (stage 5).
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

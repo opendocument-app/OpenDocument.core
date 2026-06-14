@@ -16,7 +16,7 @@ namespace odr::internal::pdf {
 /// data tables. Returns `nullopt` for the legacy CJK code→CID CMaps
 /// (RKSJ/EUC/Big5/GBK/KSC) and for `Identity-H/V`, which need CID→Unicode
 /// tables (the legacy half of part B, deferred — see
-/// `tools/pdf/generate_cid_data.py`) or the embedded font program (stage 1.4);
+/// `tools/pdf/generate_cid_data.py`) or the embedded font program (stage 3);
 /// the caller then treats the run as "no Unicode".
 [[nodiscard]] std::optional<std::string>
 translate_predefined_cmap(std::string_view name, const std::string &codes);

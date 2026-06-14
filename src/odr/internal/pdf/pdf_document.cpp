@@ -40,9 +40,9 @@ std::string Font::to_unicode(const std::string &codes) const {
     // in its codes, so decode it (stage 1.3 part B). Otherwise code -> CID is
     // known (identity for `Identity-H/V`) but CID -> Unicode needs a predefined
     // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font
-    // program (stage 1.4): emit "no Unicode" rather than mis-splitting the
+    // program (stage 3): emit "no Unicode" rather than mis-splitting the
     // multi-byte codes into byte-sized garbage through the identity fallback
-    // below. Stage 1.5 will mark these runs for re-encoding.
+    // below. Stage 2 will mark these runs for re-encoding.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
               translate_predefined_cmap(cid_encoding_name, codes)) {

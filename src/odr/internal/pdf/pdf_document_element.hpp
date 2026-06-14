@@ -84,7 +84,7 @@ struct Font final : Element {
   /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
   /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
   /// CID -> Unicode tables are stage 1.3 (part B); embedded-font reverse maps
-  /// are stage 1.4.
+  /// are stage 3.
   bool composite{false};
   /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
   /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the

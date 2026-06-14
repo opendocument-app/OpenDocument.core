@@ -137,7 +137,7 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
   const Dictionary &dictionary = resolved.as_dictionary();
 
   // No `/BaseEncoding` means "the font's built-in encoding"; that needs the
-  // font program (stage 1.4). Default to StandardEncoding for now, which is the
+  // font program (stage 3). Default to StandardEncoding for now, which is the
   // right base for the non-symbolic Latin fonts this stage targets.
   auto base = BaseEncoding::standard;
   if (dictionary.has_key("BaseEncoding")) {
