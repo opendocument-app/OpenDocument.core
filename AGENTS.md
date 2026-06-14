@@ -87,10 +87,20 @@ A configured build dir already exists (`cmake-build-relwithdebinfo`, also `…-d
 cmake --build cmake-build-relwithdebinfo --target odr
 # tests (the ODR_TEST option is on in this build dir)
 cmake --build cmake-build-relwithdebinfo --target odr_test
-./cmake-build-relwithdebinfo/test/odr_test --gtest_filter='OldMs.*'
+# run from inside the build dir so any test output stays out of the repo tree
+(cd cmake-build-relwithdebinfo && ./test/odr_test --gtest_filter='OldMs.*')
 # CLI (renders a file to a directory of HTML)
 cmake --build cmake-build-relwithdebinfo --target translate
 ```
+
+- **Use `cmake-build-relwithdebinfo`** as the default build/test directory (not
+  `cmake-build-debug`).
+- **Only run the full suite when really necessary** — it takes a while. Default
+  to a targeted `--gtest_filter` for the area you touched.
+- **For debugging, prefer the `translate` CLI** over the test suite — build and
+  run it on a single file to reproduce/inspect behaviour quickly.
+- **Run the test binary from the build directory** (as above) so any files it
+  writes land there, not in the repo working tree.
 
 Notable CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`,
 `ODR_WITH_PDF2HTMLEX`, `ODR_WITH_WVWARE`, `ODR_WITH_LIBMAGIC`, `ODR_CLANG_TIDY`.
@@ -123,6 +133,14 @@ A new `.cpp` must be added to the `ODR_SOURCE_FILES` list in `CMakeLists.txt`.
   restate the code or spell out every case; cite the spec instead of paraphrasing
   it. The detailed design rationale belongs in the per-module `AGENTS.md`, not in
   source comments.
+- **Doc-comment markers**: document functions, classes, structs and enums with
+  `///` doc comments; use a trailing `///<` for the short note on the same line
+  (e.g. an enumerator or member). Keep them terse per the rule above.
+- **Fixed-width integer types**: prefer `<cstdint>` types (`std::uint8_t`,
+  `std::uint32_t`, …) over `unsigned char` / `unsigned` / `long` and friends
+  whenever the width matters (byte buffers, on-disk/wire fields, bit math).
+- **Pull requests**: put the `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
+  line **at the top** of the PR body.
 
 ## Adding / extending a document format
 
