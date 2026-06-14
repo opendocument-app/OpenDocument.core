@@ -264,6 +264,33 @@ TEST(DocumentParser, recovery_last_definition_wins) {
   EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 200.0);
 }
 
+// Recovery: an object that inlines its dictionary and the `stream` token on a
+// single line (`N G obj<<...>>stream`) must still have its body skipped, so
+// object-shaped bytes inside the stream (here a fake `1 0 obj`) do not
+// overwrite the real recovered entry.
+TEST(DocumentParser, recovery_skips_same_line_stream_body) {
+  const std::string pdf =
+      "%PDF-1.7\n"
+      "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+      "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+      "/Resources << >> /Contents 4 0 R >>\nendobj\n"
+      // dictionary and `stream` keyword share the object's first line; the body
+      // contains a decoy `1 0 obj` that must not be recorded
+      "4 0 obj<< /Length 20 >>stream\n1 0 obj garbage BT "
+      "ET\nendstream\nendobj\n"
+      "trailer\n<< /Root 1 0 R >>\n%%EOF\n";
+
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+  const std::vector<Page *> pages = document->collect_pages();
+
+  ASSERT_EQ(pages.size(), 1);
+  // the real catalog (object 1) survived; the decoy inside the stream did not
+  // clobber it
+  EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 612.0);
+}
+
 // Recovery: the page tree lives in an (uncompressed) object stream. After the
 // forward scan finds the stream, its members are indexed as compressed entries
 // so the catalog and pages resolve.

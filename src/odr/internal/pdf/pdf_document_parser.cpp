@@ -655,6 +655,21 @@ std::optional<ObjectReference> match_object_start(std::string_view content) {
   return ObjectReference(id, gen);
 }
 
+/// True if `content` (already trimmed) ends with the `stream` keyword on a word
+/// boundary. This covers both a bare `stream` line and a compact object that
+/// inlines its dictionary and the `stream` token on one line
+/// (`N G obj<<...>>stream`). The boundary check rejects `endstream` and
+/// identifiers that merely end in `stream`.
+bool opens_stream_body(std::string_view content) {
+  constexpr std::string_view keyword = "stream";
+  if (!content.ends_with(keyword)) {
+    return false;
+  }
+  const std::size_t begin = content.size() - keyword.size();
+  return begin == 0 ||
+         !std::isalnum(static_cast<unsigned char>(content[begin - 1]));
+}
+
 } // namespace
 
 void DocumentParser::recover_xref() {
@@ -689,10 +704,15 @@ void DocumentParser::recover_xref() {
       // last definition of an id wins (operator[] overwrites)
       xref.table[*ref] = Xref::Entry(
           Xref::UsedEntry{static_cast<std::uint32_t>(position + lead)});
-      continue;
+      // A compact object may inline its dictionary and the `stream` token on
+      // this same line; fall through to skip the body below. Otherwise the
+      // header is fully consumed and we advance to the next line.
+      if (!opens_stream_body(content)) {
+        continue;
+      }
     }
 
-    if (content == "stream") {
+    if (opens_stream_body(content)) {
       // Skip the stream body so its (possibly object-shaped) bytes are not
       // mis-scanned. The length is unknown here, so scan to `endstream`.
       while (true) {
