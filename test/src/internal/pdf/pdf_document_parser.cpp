@@ -209,6 +209,74 @@ TEST(DocumentParser, inherited_page_attributes) {
   EXPECT_EQ(page6->rotate, 90);
 }
 
+namespace {
+
+/// A mini-PDF whose single page references one composite (Type0) font `F0`:
+/// `Identity-H` over a descendant `CIDFontType2` with an `Adobe`/`Identity`
+/// `/CIDSystemInfo`, optionally carrying a 2-byte `/ToUnicode` CMap (mapping
+/// the code 0x0041 to `A`).
+std::string composite_font_mini_pdf(const bool with_to_unicode) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /Font << /F0 5 0 R >> >> /Contents 4 0 R >>")
+      .stream_object("", "BT ET")
+      .object(std::string("<< /Type /Font /Subtype /Type0 /BaseFont /AAAAAA+X "
+                          "/Encoding /Identity-H /DescendantFonts [6 0 R]") +
+              (with_to_unicode ? " /ToUnicode 7 0 R >>" : " >>"))
+      .object("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+X "
+              "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) "
+              "/Supplement 0 >> /CIDToGIDMap /Identity >>");
+  if (with_to_unicode) {
+    builder.stream_object("", "1 begincodespacerange\n<0000> <FFFF>\n"
+                              "endcodespacerange\n1 beginbfchar\n"
+                              "<0041> <0041>\nendbfchar\n");
+  }
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
+const Font *first_page_font(const Document &document, const std::string &name) {
+  const auto *page =
+      dynamic_cast<Page *>(document.catalog->pages->kids.front());
+  return page->resources->font.at(name);
+}
+
+} // namespace
+
+// A composite (Type0) font is recognized, its descendant CIDFont's
+// `/CIDSystemInfo` recorded, and its `/ToUnicode` CMap drives extraction over
+// 2-byte codes (stage 1.3).
+TEST(DocumentParser, composite_font_with_to_unicode) {
+  const std::string pdf = composite_font_mini_pdf(true);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Font *font = first_page_font(*document, "F0");
+  ASSERT_NE(font, nullptr);
+  EXPECT_TRUE(font->composite);
+  EXPECT_EQ(font->cid_registry, "Adobe");
+  EXPECT_EQ(font->cid_ordering, "Identity");
+  // The 2-byte code 0x0041 maps to `A` via the `/ToUnicode` CMap.
+  EXPECT_EQ(font->to_unicode(std::string("\x00\x41", 2)), "A");
+}
+
+// A composite font without a `/ToUnicode` CMap cannot yet resolve CID ->
+// Unicode (predefined CJK tables are stage 1.3 part B; embedded reverse maps
+// stage 1.4), so extraction yields "no Unicode" rather than the byte-garbage
+// the simple-font identity fallback would produce on multi-byte codes.
+TEST(DocumentParser, composite_font_without_to_unicode_yields_no_unicode) {
+  const std::string pdf = composite_font_mini_pdf(false);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Font *font = first_page_font(*document, "F0");
+  ASSERT_NE(font, nullptr);
+  EXPECT_TRUE(font->composite);
+  EXPECT_EQ(font->cid_registry, "Adobe");
+  EXPECT_TRUE(font->to_unicode(std::string("\x00\x41", 2)).empty());
+}
+
 // Recovery: a valid file with garbage prepended (the real fixture
 // `order-EK52VKL0.pdf` is an HTTP response saved as `.pdf`) has every xref
 // offset and the `startxref` shifted, so the chain walk fails. A forward scan

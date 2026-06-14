@@ -60,3 +60,6 @@ __pycache__/
 CMakeUserPresets.json
 
 offline/
+
+## PDF CJK CMap input data (fetched by tools/pdf/generate_cid_data.py)
+tools/pdf/cmap-resources/
