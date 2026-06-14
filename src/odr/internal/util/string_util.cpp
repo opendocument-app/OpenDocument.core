@@ -21,7 +21,7 @@ bool string::ends_with(const std::string &string, const std::string &with) {
 }
 
 bool string::is_ascii_space(const char c) {
-  return std::isspace(static_cast<unsigned char>(c)) != 0;
+  return std::isspace(static_cast<std::uint8_t>(c)) != 0;
 }
 
 void string::ltrim_inplace(std::string &s, const CharPredicate is_space) {

@@ -649,7 +649,7 @@ std::optional<ObjectReference> match_object_start(std::string_view content) {
     return std::nullopt;
   }
   if (tail.size() > 3 &&
-      (std::isalnum(static_cast<unsigned char>(tail[3])) || tail[3] == '.')) {
+      (std::isalnum(static_cast<std::uint8_t>(tail[3])) || tail[3] == '.')) {
     return std::nullopt;
   }
   return ObjectReference(id, gen);
@@ -667,7 +667,7 @@ bool opens_stream_body(std::string_view content) {
   }
   const std::size_t begin = content.size() - keyword.size();
   return begin == 0 ||
-         !std::isalnum(static_cast<unsigned char>(content[begin - 1]));
+         !std::isalnum(static_cast<std::uint8_t>(content[begin - 1]));
 }
 
 } // namespace
