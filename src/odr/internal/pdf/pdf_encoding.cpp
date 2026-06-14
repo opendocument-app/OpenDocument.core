@@ -59,7 +59,7 @@ std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
     std::u16string result;
     for (std::size_t pos = 3; pos < name.size(); pos += 4) {
       const auto unit = parse_hex(name.substr(pos, 4));
-      if (!unit) {
+      if (!unit.has_value()) {
         return {};
       }
       result.push_back(static_cast<char16_t>(*unit));
@@ -69,7 +69,7 @@ std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
 
   if (name.starts_with("u") && name.size() >= 5 && name.size() <= 7) {
     const auto scalar = parse_hex(name.substr(1));
-    if (!scalar || *scalar > 0x10FFFF ||
+    if (!scalar.has_value() || *scalar > 0x10FFFF ||
         (*scalar >= 0xD800 && *scalar <= 0xDFFF)) {
       return {};
     }

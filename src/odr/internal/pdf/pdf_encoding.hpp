@@ -12,9 +12,9 @@ namespace odr::internal::pdf {
 /// The predefined simple-font base encodings (ISO 32000-1 Annex D). Each maps a
 /// 1-byte character code to an Adobe glyph name.
 enum class BaseEncoding {
-  standard,  // StandardEncoding
-  win_ansi,  // WinAnsiEncoding
-  mac_roman, // MacRomanEncoding
+  standard,  ///< StandardEncoding
+  win_ansi,  ///< WinAnsiEncoding
+  mac_roman, ///< MacRomanEncoding
 };
 
 /// The 256-entry glyph-name table for `encoding`; the empty string is
