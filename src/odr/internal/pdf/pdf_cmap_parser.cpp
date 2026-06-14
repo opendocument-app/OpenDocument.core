@@ -1,9 +1,9 @@
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 
 #include <odr/internal/pdf/pdf_cmap.hpp>
-
 #include <odr/logger.hpp>
 
+#include <cstdint>
 #include <sstream>
 #include <stdexcept>
 
