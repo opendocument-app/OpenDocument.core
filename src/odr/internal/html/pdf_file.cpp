@@ -99,7 +99,7 @@ public:
 
     // CSS uses 96px to the inch, PDF user space 72 units to the inch.
     static constexpr double pt_to_px = 96.0 / 72.0;
-    static constexpr double to_in = 1 / 72.0;
+    static constexpr double pt_to_in = 1 / 72.0;
 
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
