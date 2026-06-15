@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/util/math_util.hpp>
+
 #include <array>
 #include <string>
 #include <vector>
@@ -25,7 +27,7 @@ struct GraphicsState {
     std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
-    std::array<double, 6> transform_matrix{1, 0, 0, 1, 0, 0};
+    util::math::Transform2D transform_matrix; // CTM
   };
 
   struct Path {
@@ -34,16 +36,16 @@ struct GraphicsState {
   };
 
   struct Text {
-    double char_spacing{0};
-    double word_spacing{0};
-    double horizontal_scaling{1};
-    double leading{0};
-    std::string font;
-    double size{};
-    int rendering_mode{0};
-    double rise{0};
-    std::array<double, 2> offset{0, 0};
-    std::array<double, 6> transform_matrix{1, 0, 0, 1, 0, 0};
+    double char_spacing{0};              // Tc
+    double word_spacing{0};              // Tw
+    double horizontal_scaling{100};      // Tz, in percent (100 = normal)
+    double leading{0};                   // TL
+    std::string font;                    // Tf resource name
+    double size{};                       // Tf size
+    int rendering_mode{0};               // Tr
+    double rise{0};                      // Ts
+    util::math::Transform2D matrix;      // Tm
+    util::math::Transform2D line_matrix; // Tlm
     std::array<double, 2> glyph_width{};
     std::array<double, 4> glyph_bounding_box{};
   };
@@ -72,6 +74,18 @@ struct GraphicsState {
   [[nodiscard]] const State &current() const;
 
   void execute(const GraphicsOperator &);
+
+  /// Text rendering transform *excluding* the font size: maps text space (1
+  /// unit = 1 em at the current font size) to user space, with horizontal
+  /// scaling and rise folded in. The font size is applied separately (as the
+  /// rendered font-size), which keeps the run-vs-glyph mapping decision in the
+  /// renderer.
+  [[nodiscard]] util::math::Transform2D text_placement_transform() const;
+
+private:
+  /// Move to the start of a new text line: `Tlm = translate(tx, ty) * Tlm` and
+  /// `Tm = Tlm` (the shared mechanic behind `Td`, `TD`, `T*`, `'`, `"`).
+  void next_line(double tx, double ty);
 };
 
 } // namespace odr::internal::pdf

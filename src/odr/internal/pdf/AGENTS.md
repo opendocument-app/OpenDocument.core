@@ -13,9 +13,10 @@ tables, cross-reference streams, object streams, hybrid files, with a
 forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
-text spans per `Tj`, pages sized from `MediaBox`. Encrypted files are decrypted
-(RC4, AES-128, AES-256). No graphics, no images, no font files. Experimental and
-not production-quality — the HTML path still contains debug `std::cout` output.
+text spans, one per show operation, placed by the full text transform (CTM ×
+text matrix, stage 2.1), pages sized from `MediaBox`. Encrypted files are
+decrypted (RC4, AES-128, AES-256). No glyph advances yet (stage 2.2), no
+graphics, no images, no font files. Experimental and not production-quality.
 
 ---
 
@@ -107,13 +108,28 @@ not production-quality — the HTML path still contains debug `std::cout` output
   deferred half of part B) or the embedded font program (stage 3) land.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
-  line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, text
-  positioning `Td`/`TD`, grey/RGB/CMYK colors, glyph metrics `d0`/`d1`). Unknown
+  line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, glyph metrics
+  `d0`/`d1`, grey/RGB/CMYK colors). The CTM **concatenates** on `cm` (ISO 32000-1
+  8.4.4); the text matrix `Tm` and text line matrix `Tlm` are tracked as 2-D
+  affine `Transform2D` values (`util/math_util.hpp`), with `BT` resetting them, `Td`/`TD`
+  /`T*` (and the line-move half of `'`/`"`) advancing `Tlm` → `Tm`. Unknown
   operators are logged to stderr and skipped.
+- **Text layout** (`pdf_page_text`, stage 2.1): `extract_text` runs the operator
+  parser + `GraphicsState` over a page's content and emits a renderer-agnostic
+  `TextElement` per show operation (`Tj`/`TJ`/`'`/`"`) — its text-space → user-
+  space transform (CTM × `Tm`, with horizontal scaling and rise folded in, font
+  size kept separate), the resolved font, size, spacing parameters, raw codes,
+  and the CMap-translated Unicode. Font lookup is lenient (unknown ref → warn,
+  raw codes). **Glyph advances are not yet applied** (stage 2.2): each show op
+  yields one element at its starting origin, `TJ`'s numeric adjustments are
+  dropped, and `Tc`/`Tw`/`Tz`-driven spacing is carried but not consumed.
 - **HTML**: one `document.html` view; each page is a `div` sized from `MediaBox`
-  (points → inches), each `Tj` becomes an absolutely positioned `span` at the
-  text-state offset with `font-size` from `Tf` and the CMap-translated text.
-  `TJ`/`'`/`"` are recognized but only printed to stdout, not rendered.
+  (points → inches). Each `TextElement` becomes an absolutely positioned `span`
+  carrying a CSS `transform` matrix (the placement transform mapped from PDF user
+  space — y-up, MediaBox origin — into the page box in CSS pixels, the glyphs
+  un-mirrored so text stays upright), `font-size` from the text state, and the
+  Unicode text. Precise baseline placement (needs font ascent metrics) is
+  deferred; the baseline currently sits at the span's box top.
 
 ## Module layout
 
@@ -133,9 +149,11 @@ not production-quality — the HTML path still contains debug `std::cout` output
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
 | `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: the `Uni*-UCS2/UTF16/UTF32` CMaps decoded directly (no data tables), stage 1.3 part B; legacy CJK CMaps deferred (see `tools/pdf/generate_cid_data.py`) |
 | `pdf_encoding_data.{hpp,cpp}`          | **Generated** (`tools/pdf/generate_encoding_data.py`): base-encoding tables + the Adobe Glyph List as a name-sorted array |
+| `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
-| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset |
+| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode) per show operation (stage 2.1) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -170,11 +188,14 @@ selection) and `html/pdf_file.cpp` (`create_pdf_service`).
 5. **Decode content.** Per page (depth-first), the `Contents` streams are read,
    decoded through their `/Filter` chain (`read_decoded_stream`), concatenated
    with a newline between streams.
-6. **Execute and emit.** `GraphicsOperatorParser` tokenizes; `GraphicsState`
-   updates the state stack. `T*` advances the text offset by `size + leading`;
-   `Tj` emits a positioned `span` using `state.text.offset` and the `Tf` size,
-   glyphs translated through the font's CMap. The text and transform matrices
-   are tracked but **not applied** to positioning.
+6. **Lay out and emit.** `extract_text` runs `GraphicsOperatorParser` +
+   `GraphicsState` over the content and returns a `TextElement` per show
+   operation, each placed by `text_placement_matrix()` (CTM × `Tm`, with
+   horizontal scaling and rise folded in), its glyphs translated through the
+   font's CMap. The HTML layer maps each element to a positioned `span` with a
+   CSS `transform` (PDF user space → the page box in CSS pixels) and `font-size`
+   from the text state. Glyph advances are **not yet applied** (stage 2.2), so
+   shows without an explicit move overlap.
 
 ---
 
@@ -221,12 +242,12 @@ as absent (7.5.8.3). A structural throw in the cross-reference layer is not
 fatal, though: it is caught once and the file is forward-scanned to rebuild the
 table (*Cross-reference recovery* above) before giving up.
 
-**Debug output still in place.** `html/pdf_file.cpp`, `pdf_graphics_state.cpp`,
-`pdf_graphics_operator_parser.cpp` and `pdf_cmap_parser.cpp` print diagnostics
-(and one leftover `"hi"` breakpoint marker) to stdout/stderr instead of
-`Logger`. Proof-of-concept residue; should move to `Logger` or be removed.
-`DocumentParser` itself takes an optional `Logger &` (default `Logger::null()`)
-and routes its warnings through it — new diagnostics should do the same.
+**Debug output still in place.** `pdf_graphics_state.cpp` (dash pattern, stroke/
+other color) and `pdf_graphics_operator_parser.cpp` still print diagnostics to
+stdout/stderr instead of `Logger`. The text path is now clean: `html/pdf_file.cpp`
+and `pdf_page_text.cpp` route through `Logger` and the leftover `"hi"` marker is
+gone (stage 2.1). `DocumentParser` and `extract_text` take a `Logger &` (default
+`Logger::null()`) — new diagnostics should do the same.
 
 **Rendering is deferred to the browser; display and text are decoupled.** We emit
 no rasterized output: glyphs render via the embedded font (`@font-face`, stage 3)
@@ -302,9 +323,17 @@ such PDFs look right, their text just isn't selectable until the tables land.
   `translate_predefined_cmap` over the predefined Unicode CMaps — `UCS2`/`UTF16`
   (incl. a surrogate pair) and `UTF32` decoding, a `-V` writing-mode variant, and
   the `nullopt` for `Identity-H` and the legacy CJK CMaps (stage 1.3 part B).
+- `test/src/internal/util/math_util_test.cpp` — **assertion-based**, no fixtures:
+  `Transform2D` point-apply (identity/translation/scaling), the ordered
+  (row-vector) composition, and compose-then-apply ≡ sequential apply (stage 2.1).
+- `test/src/internal/pdf/pdf_page_text.cpp` — **assertion-based**, inline content
+  streams through `extract_text` (empty resources, so codes pass through as
+  `text`): `Td` translation, `Tm` scaling, `cm` CTM concatenation under `Tm`,
+  horizontal scaling and rise in the transform, `TJ` string concatenation, and
+  the `T*`/`'`/`"` line moves with their leading and spacing (stage 2.1).
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
-or the HTML output.
+or the HTML output itself (the span emission / CSS transform mapping).
 
 ---
 
@@ -358,30 +387,80 @@ fixture needs them yet:
 
 ## Stage 2 — text positioning & metrics
 
-Independent of Unicode work; fixes layout even with today's partial CMaps.
+Independent of Unicode work; fixes layout even with today's partial CMaps. Split
+into sub-stages (mirroring stage 1's slicing), each its own PR.
 
-- Apply the full transform: text matrix × CTM (both tracked in `GraphicsState`
-  but never applied), text rise, horizontal scaling.
-- **Glyph advances**: `/Widths` + `/MissingWidth` (simple), `/W` + `/DW` (CID),
-  char/word spacing, the numeric adjustments in `TJ` — so `TJ`, `'`, `"` finally
-  render and `Tj` runs land correctly.
-- **Form XObjects** (`Do` on a `/Form`): recursive content-stream execution with
-  scoped `/Resources` and the form matrix. Many producers put most page content
-  inside forms, and tiling patterns (stage 4) and annotation appearances
-  (stage 5) run on the same machinery — a structural prerequisite.
-- **Text render modes** (`Tr`): mode 3 (invisible text, OCR-over-scan) must stay
-  selectable but unpainted; stroke/clip modes (1–2, 4–7) need graceful
-  degradation.
-- **Space inference**: PDFs routinely encode no spaces; insert them from
-  glyph-gap heuristics (as pdf2htmlEX does) so copy/paste and search work.
-- Layout side of bidi (RTL run ordering) and vertical writing (Identity-V/CJK).
-- HTML mapping decision: per-run spans with CSS `transform` (cheap, breaks on
-  heavy kerning) vs. per-glyph positioning (exact, verbose) — likely per-run
-  with a kerning threshold that splits runs, like pdf2htmlEX.
-- **Extraction refinements** (was stage 1.5, rides on the run plumbing above):
-  mark a run "no Unicode" when the code → Unicode chain yields nothing, so stage 3
-  can re-encode it; honour `/ActualText` (tagged PDFs, ligatures) as an extraction
-  override of the whole chain.
+**Architecture decision (2026-06): a renderer-agnostic placed-text emission.**
+The content executor produces a per-page list of **placed text items**, each
+carrying its text-space → user-space transform (CTM × text matrix, with font
+size / horizontal scaling / rise folded in), the resolved font, size, the
+text-state spacing parameters, the raw character codes, and a Unicode
+representation (which may lack inferred spaces). The HTML layer consumes that
+list and decides how to map it — per-run spans with a CSS `transform` vs.
+per-glyph positioning. **The core never commits to either**; this pushes the
+run-vs-glyph question all the way down to rendering. (The earlier framing of an
+up-front "HTML mapping decision" is dissolved into this.)
+
+### 2.1 — transforms & the placed-text emission — **in progress**
+
+The geometry foundation plus the emission contract, *without* glyph advances:
+- A 2-D affine `Transform2D` (`util/math_util.hpp`): compose, point-apply,
+  translation/scaling factories.
+- Apply the full transform chain in `GraphicsState`: the CTM now *concatenates*
+  on `cm` (it was overwritten); the text matrix `Tm` and text line matrix `Tlm`
+  are tracked properly (`BT` resets them, `Tm` sets both, `Td`/`TD`/`T*` and the
+  line-move half of `'`/`"` update `Tlm` → `Tm`); text rise and horizontal
+  scaling fold into the text rendering matrix.
+- A `TextElement` emission (`pdf_page_text.{hpp,cpp}`): `extract_text(content,
+  resources, logger)` runs the operator parser + state and yields one placed item
+  per show operation (`Tj`/`TJ`/`'`/`"`), positioned by the text rendering
+  matrix. Font lookup is lenient (unknown ref → warn, codes pass through).
+- The HTML layer maps each `TextElement` to an absolutely-positioned span with a
+  CSS `transform` (full matrix, incl. rotation/scaling), font size from the text
+  state, the page y-axis flipped once per page. The text-path debug `std::cout`
+  (incl. the `"hi"` marker) is removed.
+
+**Deliberately out of scope here (→ 2.2):** glyph advances (`/Widths`,
+`/W`/`/DW`) and the *application* of char/word spacing and the `TJ` numeric
+adjustments, so consecutive shows on a line without an explicit move still
+overlap, and `TJ` renders its strings concatenated at one origin. Precise
+baseline placement (needs font ascent metrics) is likewise deferred. Whether 2.2
+folds into this PR or branches off is an open call once 2.1 lands.
+
+### 2.2 — glyph advances & metrics
+
+Parse `/Widths` + `/MissingWidth` (simple) and `/W` + `/DW` (CID); apply char/word
+spacing, horizontal scaling and the `TJ` numeric adjustments to advance the text
+matrix per glyph — so `TJ`, `'`, `"` land correctly, `Tj` runs space correctly,
+and the emission can be subdivided per glyph (which makes the renderer's
+per-glyph option exercisable).
+
+### 2.3 — Form XObjects
+
+`Do` on a `/Form`: recursive content-stream execution with scoped `/Resources`
+and the form matrix; extend `Resources` parsing to the XObject table. Many
+producers put most page content inside forms, and tiling patterns (stage 4) and
+annotation appearances (stage 5) run on the same machinery — a structural
+prerequisite.
+
+### 2.4 — text render modes & extraction refinements
+
+**Text render modes** (`Tr`): mode 3 (invisible text, OCR-over-scan) must stay
+selectable but unpainted; stroke/clip modes (1–2, 4–7) need graceful
+degradation. Plus **extraction refinements** (was stage 1.5, rides on the run
+plumbing): mark a run "no Unicode" when the code → Unicode chain yields nothing,
+so stage 3 can re-encode it; honour `/ActualText` (tagged PDFs, ligatures) as an
+extraction override of the whole chain.
+
+### 2.5 — space inference
+
+PDFs routinely encode no spaces; insert them from glyph-gap heuristics (as
+pdf2htmlEX does) so copy/paste and search work.
+
+### 2.6 — bidi & vertical writing (deferral candidate)
+
+Layout side of bidi (RTL run ordering) and vertical writing (Identity-V/CJK). No
+corpus fixture needs it yet — likely pushed out until one does.
 
 ## Stage 3 — fonts in HTML
 

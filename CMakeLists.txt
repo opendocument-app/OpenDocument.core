@@ -190,6 +190,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_graphics_state.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
         "src/odr/internal/pdf/pdf_object_parser.cpp"
+        "src/odr/internal/pdf/pdf_page_text.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"
