@@ -14,6 +14,8 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_page_text.hpp>
 
+#include <cmath>
+
 namespace odr::internal::html {
 
 namespace {
@@ -84,6 +86,13 @@ public:
     out.write_header_title("odr");
     out.write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
+    // Constant per-page and per-glyph styling lives in classes so it is not
+    // repeated inline on every one of the (potentially millions of) spans.
+    out.write_header_style_begin();
+    out.out() << ".p{position:relative}";
+    out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
+                 "white-space:pre}";
+    out.write_header_style_end();
     out.write_header_end();
 
     out.write_body_begin();
@@ -100,10 +109,10 @@ public:
       const double height = page_box[3].as_real() - box_y0;
 
       out.write_element_begin(
-          "div", HtmlElementOptions().set_style([&](std::ostream &o) {
-            o << "position:relative;";
-            o << "width:" << width * to_in << "in;";
-            o << "height:" << height * to_in << "in;";
+          "div",
+          HtmlElementOptions().set_class("p").set_style([&](std::ostream &o) {
+            o << "width:" << width * pt_to_in << "in;";
+            o << "height:" << height * pt_to_in << "in;";
           }));
 
       std::string stream;
@@ -116,26 +125,41 @@ public:
       // Map PDF user space (origin at the MediaBox corner, y up) to the page
       // box in CSS pixels (origin top-left, y down). `flip_glyph` un-mirrors
       // the glyphs so text stays upright after the page flip.
-      const util::math::Transform2D flip_glyph{1, 0, 0, -1, 0, 0};
+      constexpr util::math::Transform2D flip_glyph =
+          util::math::Transform2D::scaling(1, -1);
       const util::math::Transform2D to_box =
           util::math::Transform2D::translation(-box_x0, -box_y0) *
-          util::math::Transform2D{1, 0, 0, -1, 0, height};
+          util::math::Transform2D::translation_scaling(1, -1, 0, height);
+
+      // Round CSS coordinates to 0.01px; sub-pixel precision beyond that is
+      // invisible and the extra digits add up over millions of spans.
+      const auto round2 = [](const double v) {
+        return std::round(v * 100.0) / 100.0;
+      };
 
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
         const util::math::Transform2D m = flip_glyph * text.transform * to_box;
 
         out.write_element_begin(
-            "span", HtmlElementOptions().set_style([&](std::ostream &o) {
-              o << "position:absolute;left:0;top:0;";
-              o << "transform-origin:0 0;";
-              // TODO baseline sits at the box top until font ascent metrics
-              // land
-              o << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
-                << m.d << "," << m.e * pt_to_px << "," << m.f * pt_to_px
-                << ");";
-              o << "font-size:" << text.size * pt_to_px << "px;";
-              o << "white-space:pre;";
+            "span",
+            HtmlElementOptions().set_class("t").set_style([&](std::ostream &o) {
+              // TODO baseline sits at the box top until font ascent
+              // metrics land
+              if (m.b == 0 && m.c == 0 && m.a == m.d) {
+                // Upright uniform scale: fold the scale into the
+                // font size and place the origin with left/top, so
+                // the (otherwise near-universal) matrix is dropped.
+                o << "left:" << round2(m.e * pt_to_px) << "px;";
+                o << "top:" << round2(m.f * pt_to_px) << "px;";
+                o << "font-size:" << round2(m.a * text.size * pt_to_px)
+                  << "px;";
+              } else {
+                o << "transform:matrix(" << m.a << "," << m.b << "," << m.c
+                  << "," << m.d << "," << round2(m.e * pt_to_px) << ","
+                  << round2(m.f * pt_to_px) << ");";
+                o << "font-size:" << round2(text.size * pt_to_px) << "px;";
+              }
             }));
         out.write_raw(escape_text(text.text));
         out.write_element_end("span");
