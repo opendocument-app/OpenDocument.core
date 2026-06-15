@@ -80,27 +80,26 @@ struct Font final : Element {
   /// fallback used when no `ToUnicode` CMap is present.
   std::optional<Encoding> encoding;
 
-  /// True for composite (Type0) fonts (stage 1.3). Their character codes are
+  /// True for composite (Type0) fonts. Their character codes are
   /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
   /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
-  /// CID -> Unicode tables are stage 1.3 (part B); embedded-font reverse maps
-  /// are stage 1.4.
+  /// CID -> Unicode tables are deferred; embedded-font reverse maps
+  /// are stage 3.
   bool composite{false};
   /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
   /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the
-  /// predefined CID -> Unicode table selection of stage 1.3 (part B); empty for
+  /// predefined CID -> Unicode table selection; empty for
   /// simple fonts.
   std::string cid_registry;
   std::string cid_ordering;
   /// The composite font's `/Encoding` when it is a *predefined* CMap name (e.g.
   /// `Identity-H`, `UniGB-UCS2-H`); empty for an embedded CMap stream. Drives
-  /// the predefined Unicode-CMap extraction path (stage 1.3 part B).
+  /// the predefined Unicode-CMap extraction path.
   std::string cid_encoding_name;
 
   /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
-  /// when present (authoritative), else, for a composite font, "no Unicode"
-  /// (stage 1.3 part B / 1.4 territory), else the simple-font `/Encoding`, else
-  /// identity bytes.
+  /// when present (authoritative), else, for a composite font, "no Unicode",
+  /// else the simple-font `/Encoding`, else identity bytes.
   [[nodiscard]] std::string to_unicode(const std::string &codes) const;
 };
 

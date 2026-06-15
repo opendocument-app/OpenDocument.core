@@ -30,7 +30,7 @@ base_encoding_from_name(std::string_view name);
 /// Glyph name -> Unicode (UTF-16) via the Adobe Glyph List, plus the
 /// algorithmic `uniXXXX` / `uXXXXXX` forms (ISO 32000-1 9.10.2 / the AGL
 /// specification). Returns an empty string for a name with no mapping — the
-/// caller treats that as "no Unicode" (refined in stage 1.5).
+/// caller treats that as "no Unicode" (run marking refined in stage 2).
 [[nodiscard]] std::u16string glyph_name_to_unicode(std::string_view glyph_name);
 
 /// A simple font's `/Encoding`: a base encoding optionally overlaid with
