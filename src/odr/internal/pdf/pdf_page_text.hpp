@@ -30,17 +30,27 @@ struct TextElement {
   double horizontal_scaling{100}; // Tz, percent
   double rise{0};                 // Ts
   int rendering_mode{0};          // Tr
-  /// Raw character codes shown (for `TJ`, the array's strings concatenated).
+  /// Raw character codes shown by this segment (one `Tj`, or one string of a
+  /// `TJ` array).
   std::string codes;
   /// Unicode representation of `codes`; may lack spaces the producer cannot
   /// infer (space inference is stage 2.5).
   std::string text;
+  /// Total advance of this segment, in text-space units (the displacement
+  /// applied to the text matrix after it — already scaled by the font size and
+  /// including char/word spacing and horizontal scaling). 0 when the font is
+  /// unknown. A renderer wanting per-glyph placement can re-derive per-code
+  /// advances from `font->advance_width` over `codes`.
+  double width{0};
 };
 
 /// Execute a page's (decoded, concatenated) content stream and collect the text
 /// it shows as placed elements. Non-text operators update the graphics state
-/// but produce no output. Glyph advances are not yet applied (stage 2.2), so
-/// each show operation yields a single element at its starting origin.
+/// but produce no output. Each shown segment (one `Tj`/`'`/`"`, or one string
+/// of a `TJ` array) yields one element at its origin; the text matrix is
+/// advanced by the glyph widths (`font->advance_width`) plus char/word spacing
+/// and the `TJ` numeric adjustments, so segments and lines land in the right
+/// place.
 std::vector<TextElement> extract_text(const std::string &content,
                                       const Resources &resources,
                                       const Logger &logger);

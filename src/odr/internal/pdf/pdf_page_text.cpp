@@ -25,9 +25,35 @@ Font *lookup_font(const Resources &resources, const std::string &name,
   return nullptr;
 }
 
-void emit(std::vector<TextElement> &out, const GraphicsState &state,
+/// Total advance of a shown string, in text-space units: the per-code glyph
+/// width times the font size, plus char spacing (every code) and word spacing
+/// (single-byte code 0x20 only), the whole scaled by horizontal scaling
+/// (ISO 32000-1 9.4.4). 0 when the font is unknown.
+double segment_advance(const GraphicsState::Text &text, const Font *font,
+                       const std::string &codes) {
+  if (font == nullptr) {
+    return 0.0;
+  }
+  const int width = font->code_byte_width();
+  double tx = 0.0;
+  for (std::size_t i = 0; i + width <= codes.size(); i += width) {
+    std::uint32_t code = 0;
+    for (int k = 0; k < width; ++k) {
+      code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
+    }
+    tx += font->advance_width(code) * text.size + text.char_spacing;
+    if (!font->composite && code == ' ') {
+      tx += text.word_spacing;
+    }
+  }
+  return tx * (text.horizontal_scaling / 100.0);
+}
+
+/// Emit one placed segment and advance the text matrix by its width.
+void show(std::vector<TextElement> &out, GraphicsState &state,
           std::string codes, Font *font) {
   const GraphicsState::Text &text = state.current().text;
+  const double advance = segment_advance(text, font, codes);
 
   TextElement element;
   element.transform = state.text_placement_transform();
@@ -40,20 +66,10 @@ void emit(std::vector<TextElement> &out, const GraphicsState &state,
   element.rendering_mode = text.rendering_mode;
   element.text = font != nullptr ? font->to_unicode(codes) : codes;
   element.codes = std::move(codes);
+  element.width = advance;
 
   out.push_back(std::move(element));
-}
-
-/// Concatenate the string elements of a `TJ` array, dropping the numeric
-/// position adjustments (their application is stage 2.2).
-std::string join_array_strings(const Array &array) {
-  std::string codes;
-  for (const Object &element : array) {
-    if (element.is_string()) {
-      codes += element.as_string();
-    }
-  }
-  return codes;
+  state.advance_text(advance, 0);
 }
 
 } // namespace
@@ -81,18 +97,28 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
     case GraphicsOperatorType::show_text_next_line: { // Tj, '
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      emit(result, state, op.arguments.at(0).as_string(), font);
+      show(result, state, op.arguments.at(0).as_string(), font);
     } break;
     case GraphicsOperatorType::show_text_manual_spacing: { // TJ
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      emit(result, state, join_array_strings(op.arguments.at(0).as_array()),
-           font);
+      const GraphicsState::Text &text = state.current().text;
+      for (const Object &item : op.arguments.at(0).as_array()) {
+        if (item.is_string()) {
+          show(result, state, item.as_string(), font);
+        } else if (item.is_real()) {
+          // a number translates the next glyph left by adj/1000 text-space
+          // units, scaled by the font size and horizontal scaling (9.4.3).
+          const double adjust = -item.as_real() / 1000.0 * text.size *
+                                (text.horizontal_scaling / 100.0);
+          state.advance_text(adjust, 0);
+        }
+      }
     } break;
     case GraphicsOperatorType::show_text_next_line_set_spacing: { // "
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      emit(result, state, op.arguments.at(2).as_string(), font);
+      show(result, state, op.arguments.at(2).as_string(), font);
     } break;
     default:
       break;

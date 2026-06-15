@@ -30,6 +30,20 @@ std::vector<Page *> Document::collect_pages() const {
   return pages;
 }
 
+double Font::advance_width(const std::uint32_t code) const {
+  if (composite) {
+    if (const auto it = cid_widths.find(code); it != cid_widths.end()) {
+      return it->second / 1000.0;
+    }
+    return cid_default_width / 1000.0;
+  }
+  const long index = static_cast<long>(code) - first_char;
+  if (index >= 0 && index < static_cast<long>(widths.size())) {
+    return widths[static_cast<std::size_t>(index)] / 1000.0;
+  }
+  return missing_width / 1000.0;
+}
+
 std::string Font::to_unicode(const std::string &codes) const {
   if (!cmap.empty()) {
     return cmap.translate_string(codes);

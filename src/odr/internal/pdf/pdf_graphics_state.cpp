@@ -53,6 +53,11 @@ void GraphicsState::next_line(const double tx, const double ty) {
   text.matrix = text.line_matrix;
 }
 
+void GraphicsState::advance_text(double tx, double ty) {
+  Text &text = current().text;
+  text.matrix = Matrix::translation(tx, ty) * text.matrix;
+}
+
 void GraphicsState::execute(const GraphicsOperator &op) {
   switch (op.type) {
   case GraphicsOperatorType::save_state:

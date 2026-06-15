@@ -177,6 +177,77 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
   return encoding;
 }
 
+/// Parse a CIDFont's `/W` array into the `cid -> width` map. Entries are either
+/// `c [w1 w2 ...]` (CIDs c, c+1, ... get the listed widths) or `c_first c_last
+/// w` (the whole CID range gets `w`) — ISO 32000-1 9.7.4.3.
+void parse_cid_widths(const Array &w, Font &font) {
+  // guard against a pathological `c_first c_last` range exhausting memory
+  static constexpr std::uint32_t max_range = 70000;
+
+  std::size_t i = 0;
+  while (i < w.size()) {
+    if (!w[i].is_integer()) {
+      ++i;
+      continue;
+    }
+    const auto first = static_cast<std::uint32_t>(w[i].as_integer());
+    if (i + 1 < w.size() && w[i + 1].is_array()) {
+      const Array &list = w[i + 1].as_array();
+      for (std::size_t j = 0; j < list.size(); ++j) {
+        if (list[j].is_real()) {
+          font.cid_widths[first + static_cast<std::uint32_t>(j)] =
+              list[j].as_real();
+        }
+      }
+      i += 2;
+    } else if (i + 2 < w.size() && w[i + 1].is_integer() &&
+               w[i + 2].is_real()) {
+      const auto last = static_cast<std::uint32_t>(w[i + 1].as_integer());
+      const double width = w[i + 2].as_real();
+      if (last >= first && last - first < max_range) {
+        for (std::uint32_t c = first; c <= last; ++c) {
+          font.cid_widths[c] = width;
+        }
+      }
+      i += 3;
+    } else {
+      ++i;
+    }
+  }
+}
+
+/// Parse a simple font's `/FirstChar`, `/Widths` and `/FontDescriptor`
+/// `/MissingWidth` glyph metrics (ISO 32000-1 9.2.4).
+void parse_simple_font_widths(DocumentParser &parser,
+                              const Dictionary &dictionary, Font &font) {
+  if (dictionary.has_key("FirstChar")) {
+    const Object first = parser.resolve_object_copy(dictionary["FirstChar"]);
+    if (first.is_integer()) {
+      font.first_char = static_cast<int>(first.as_integer());
+    }
+  }
+  if (dictionary.has_key("Widths")) {
+    const Object widths = parser.resolve_object_copy(dictionary["Widths"]);
+    if (widths.is_array()) {
+      for (const Object &width : widths.as_array()) {
+        font.widths.push_back(width.is_real() ? width.as_real() : 0.0);
+      }
+    }
+  }
+  if (dictionary.has_key("FontDescriptor")) {
+    const Object descriptor =
+        parser.resolve_object_copy(dictionary["FontDescriptor"]);
+    if (descriptor.is_dictionary() &&
+        descriptor.as_dictionary().has_key("MissingWidth")) {
+      const Object missing = parser.resolve_object_copy(
+          descriptor.as_dictionary()["MissingWidth"]);
+      if (missing.is_real()) {
+        font.missing_width = missing.as_real();
+      }
+    }
+  }
+}
+
 /// Parse a composite (Type0) font's descendant CIDFont (`/DescendantFonts` is a
 /// one-element array of the CIDFont): records the `/CIDSystemInfo`
 /// `/Registry`/`/Ordering` used to pick a predefined CID -> Unicode table.
@@ -211,6 +282,20 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
     return;
   }
   const Dictionary &cid_font_dictionary = cid_font.as_dictionary();
+
+  if (cid_font_dictionary.has_key("DW")) {
+    const Object dw = parser.resolve_object_copy(cid_font_dictionary["DW"]);
+    if (dw.is_real()) {
+      font.cid_default_width = dw.as_real();
+    }
+  }
+  if (cid_font_dictionary.has_key("W")) {
+    const Object w = parser.resolve_object_copy(cid_font_dictionary["W"]);
+    if (w.is_array()) {
+      parse_cid_widths(w.as_array(), font);
+    }
+  }
+
   if (!cid_font_dictionary.has_key("CIDSystemInfo")) {
     return;
   }
@@ -258,11 +343,14 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
     // simple-font glyph-name encoding, so it must not go through
     // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above).
     parse_composite_font(parser, dictionary, *font);
-  } else if (dictionary.has_key("Encoding")) {
-    // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
-    // `/BaseEncoding` + `/Differences`. The text-extraction fallback for fonts
-    // without a `ToUnicode` CMap.
-    font->encoding = parse_encoding(parser, dictionary["Encoding"]);
+  } else {
+    parse_simple_font_widths(parser, dictionary, *font);
+    if (dictionary.has_key("Encoding")) {
+      // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
+      // `/BaseEncoding` + `/Differences`. The text-extraction fallback for
+      // fonts without a `ToUnicode` CMap.
+      font->encoding = parse_encoding(parser, dictionary["Encoding"]);
+    }
   }
 
   return font;

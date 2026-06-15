@@ -82,6 +82,10 @@ struct GraphicsState {
   /// renderer.
   [[nodiscard]] util::math::Transform2D text_placement_transform() const;
 
+  /// Advance the text matrix `Tm` by `(tx, ty)` in text space after showing
+  /// glyphs (the text line matrix `Tlm` is unaffected).
+  void advance_text(double tx, double ty);
+
 private:
   /// Move to the start of a new text line: `Tlm = translate(tx, ty) * Tlm` and
   /// `Tm = Tlm` (the shared mechanic behind `Td`, `TD`, `T*`, `'`, `"`).
