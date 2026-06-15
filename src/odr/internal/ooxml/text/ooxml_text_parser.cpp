@@ -79,7 +79,7 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
        last = last.next_sibling()) {
   }
 
-  const auto &[element_id, _, unused] =
+  const auto &[element_id, unused1, unused2] =
       registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
@@ -165,7 +165,8 @@ parse_table_element(ElementRegistry &registry, const pugi::xml_node node) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const auto &[element_id, _, unused] = registry.create_table_element(node);
+  const auto &[element_id, unused1, unused2] =
+      registry.create_table_element(node);
 
   for (const pugi::xml_node column_node :
        node.child("w:tblGrid").children("w:gridCol")) {

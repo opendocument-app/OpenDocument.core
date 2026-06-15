@@ -26,7 +26,8 @@ WvWareLegacyMicrosoftFile::WvWareLegacyMicrosoftFile(
 
   m_parser_state = std::make_shared<ParserState>();
 
-  if (const std::optional<AbsPath> disk_path = m_file->disk_path()) {
+  if (const std::optional<AbsPath> disk_path = m_file->disk_path();
+      disk_path.has_value()) {
     m_parser_state->gsf_input =
         gsf_input_stdio_new(disk_path->string().c_str(), &error);
   } else if (m_file->memory_data() != nullptr) {
