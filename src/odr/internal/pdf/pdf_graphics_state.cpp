@@ -55,7 +55,7 @@ void GraphicsState::next_line(const double tx, const double ty) {
 
 void GraphicsState::advance_text(double tx, double ty) {
   Text &text = current().text;
-  text.matrix = Matrix::translation(tx, ty) * text.matrix;
+  text.matrix = util::math::Transform2D::translation(tx, ty) * text.matrix;
 }
 
 void GraphicsState::execute(const GraphicsOperator &op) {
