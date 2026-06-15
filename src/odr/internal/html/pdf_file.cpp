@@ -109,13 +109,8 @@ public:
       const double height = page_box[3].as_real() - box_y0;
 
       out.write_element_begin(
-<<<<<<< HEAD
           "div",
           HtmlElementOptions().set_class("p").set_style([&](std::ostream &o) {
-=======
-          "div", HtmlElementOptions().set_style([&](std::ostream &o) {
-            o << "position:relative;";
->>>>>>> 09d848cc (minor)
             o << "width:" << width * pt_to_in << "in;";
             o << "height:" << height * pt_to_in << "in;";
           }));
