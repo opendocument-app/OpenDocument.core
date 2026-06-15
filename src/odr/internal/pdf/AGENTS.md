@@ -228,6 +228,18 @@ table (*Cross-reference recovery* above) before giving up.
 `DocumentParser` itself takes an optional `Logger &` (default `Logger::null()`)
 and routes its warnings through it — new diagnostics should do the same.
 
+**Rendering is deferred to the browser; display and text are decoupled.** We emit
+no rasterized output: glyphs render via the embedded font (`@font-face`, stage 3)
+and vector content via SVG (stage 4) — the browser draws everything. Because
+display is driven by the *glyph*, not the extracted Unicode, **text-extraction
+gaps degrade only selectability and search — never display.** Every deferred
+code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
+`/ToUnicode`, stage 1.4 reverse maps) still renders correctly once stage 3 lands:
+glyphs with no recoverable Unicode are re-encoded to the Private Use Area and the
+run is marked non-extractable (`user-select: none`, `aria-hidden`). So the
+deferred CJK/legacy-CMap work is a *selectability* gap, not a rendering risk —
+such PDFs look right, their text just isn't selectable until the tables land.
+
 ---
 
 ## Tests
@@ -373,7 +385,13 @@ Independent of Unicode work; fixes layout even with today's partial CMaps.
 
 ## Stage 3 — fonts in HTML
 
-Needed for visual fidelity regardless of text extraction.
+Needed for visual fidelity regardless of text extraction. **Display fidelity is
+entirely a stage-3 deliverable**: stages 1–2 produce text + position only, and
+today's PoC emits Unicode text in spans with no embedded font
+(see *What works*), so even *correctly extracted* text currently renders in a
+fallback system font — wrong shapes/metrics, and CJK may show tofu. "Render the
+actual glyph" only goes live here; the current fallback-font rendering is
+expected, not a bug.
 
 **Decision (2026-06): in-house, no FontForge.** pdf.js proves complete font
 conversion is doable without a font library; pdf2htmlEX uses FontForge at the
