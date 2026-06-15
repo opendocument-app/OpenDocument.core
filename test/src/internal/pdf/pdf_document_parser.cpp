@@ -212,10 +212,12 @@ TEST(DocumentParser, inherited_page_attributes) {
 namespace {
 
 /// A mini-PDF whose single page references one composite (Type0) font `F0`:
-/// `Identity-H` over a descendant `CIDFontType2` with an `Adobe`/`Identity`
-/// `/CIDSystemInfo`, optionally carrying a 2-byte `/ToUnicode` CMap (mapping
-/// the code 0x0041 to `A`).
-std::string composite_font_mini_pdf(const bool with_to_unicode) {
+/// `encoding` (a predefined CMap name) over a descendant `CIDFontType2` with an
+/// `Adobe`/`Identity` `/CIDSystemInfo`, optionally carrying a 2-byte
+/// `/ToUnicode` CMap (mapping the code 0x0041 to `A`).
+std::string
+composite_font_mini_pdf(const bool with_to_unicode,
+                        const std::string &encoding = "Identity-H") {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
@@ -223,7 +225,8 @@ std::string composite_font_mini_pdf(const bool with_to_unicode) {
               "/Resources << /Font << /F0 5 0 R >> >> /Contents 4 0 R >>")
       .stream_object("", "BT ET")
       .object(std::string("<< /Type /Font /Subtype /Type0 /BaseFont /AAAAAA+X "
-                          "/Encoding /Identity-H /DescendantFonts [6 0 R]") +
+                          "/Encoding /") +
+              encoding + " /DescendantFonts [6 0 R]" +
               (with_to_unicode ? " /ToUnicode 7 0 R >>" : " >>"))
       .object("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+X "
               "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) "
@@ -275,6 +278,23 @@ TEST(DocumentParser, composite_font_without_to_unicode_yields_no_unicode) {
   EXPECT_TRUE(font->composite);
   EXPECT_EQ(font->cid_registry, "Adobe");
   EXPECT_TRUE(font->to_unicode(std::string("\x00\x41", 2)).empty());
+}
+
+// A composite font whose `/Encoding` is a predefined Unicode CMap
+// (`Uni*-UCS2/UTF16/UTF32`) extracts directly from the codes (they are Unicode)
+// even without a `/ToUnicode` CMap (stage 1.3 part B).
+TEST(DocumentParser, composite_font_predefined_unicode_cmap) {
+  const std::string pdf = composite_font_mini_pdf(false, "UniGB-UCS2-H");
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Font *font = first_page_font(*document, "F0");
+  ASSERT_NE(font, nullptr);
+  EXPECT_TRUE(font->composite);
+  EXPECT_EQ(font->cid_encoding_name, "UniGB-UCS2-H");
+  // The 2-byte codes are UTF-16BE: U+0041 'A', U+4E2D '中' (UTF-8 e4 b8 ad).
+  EXPECT_EQ(font->to_unicode(std::string("\x00\x41\x4e\x2d", 4)),
+            "A\xe4\xb8\xad");
 }
 
 // Recovery: a valid file with garbage prepended (the real fixture

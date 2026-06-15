@@ -92,6 +92,10 @@ struct Font final : Element {
   /// simple fonts.
   std::string cid_registry;
   std::string cid_ordering;
+  /// The composite font's `/Encoding` when it is a *predefined* CMap name (e.g.
+  /// `Identity-H`, `UniGB-UCS2-H`); empty for an embedded CMap stream. Drives
+  /// the predefined Unicode-CMap extraction path (stage 1.3 part B).
+  std::string cid_encoding_name;
 
   /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
   /// when present (authoritative), else, for a composite font, "no Unicode"

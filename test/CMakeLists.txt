@@ -39,6 +39,7 @@ add_executable(odr_test
 
         "src/internal/ooxml/ooxml_crypto_test.cpp"
 
+        "src/internal/pdf/pdf_cid.cpp"
         "src/internal/pdf/pdf_cmap.cpp"
         "src/internal/pdf/pdf_document_parser.cpp"
         "src/internal/pdf/pdf_encoding.cpp"
