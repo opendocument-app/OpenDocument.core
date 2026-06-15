@@ -12,7 +12,6 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
-#include <odr/internal/pdf/pdf_geometry.hpp>
 #include <odr/internal/pdf/pdf_page_text.hpp>
 
 namespace odr::internal::html {
@@ -74,7 +73,7 @@ public:
     const auto &pdf_file =
         dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
-    std::unique_ptr<pdf::Document> document = parser.parse_document();
+    const std::unique_ptr<pdf::Document> document = parser.parse_document();
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 
@@ -116,13 +115,14 @@ public:
       // Map PDF user space (origin at the MediaBox corner, y up) to the page
       // box in CSS pixels (origin top-left, y down). `flip_glyph` un-mirrors
       // the glyphs so text stays upright after the page flip.
-      const pdf::Matrix flip_glyph{1, 0, 0, -1, 0, 0};
-      const pdf::Matrix to_box = pdf::Matrix::translation(-box_x0, -box_y0) *
-                                 pdf::Matrix{1, 0, 0, -1, 0, height};
+      const util::math::Transform2D flip_glyph{1, 0, 0, -1, 0, 0};
+      const util::math::Transform2D to_box =
+          util::math::Transform2D::translation(-box_x0, -box_y0) *
+          util::math::Transform2D{1, 0, 0, -1, 0, height};
 
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
-        const pdf::Matrix m = flip_glyph * text.transform * to_box;
+        const util::math::Transform2D m = flip_glyph * text.transform * to_box;
 
         out.write_element_begin(
             "span", HtmlElementOptions().set_style([&](std::ostream &o) {

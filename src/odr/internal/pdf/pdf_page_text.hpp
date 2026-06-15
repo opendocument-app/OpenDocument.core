@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/pdf/pdf_geometry.hpp>
+#include <odr/internal/util/math_util.hpp>
 
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ struct Font;
 struct TextElement {
   /// Text-space -> user-space, font size *not* applied (see
   /// `GraphicsState::text_placement_matrix`).
-  Matrix transform;
+  util::math::Transform2D transform;
   /// Resolved font, or `nullptr` when the `/Font` resource name was unknown.
   Font *font{nullptr};
   double size{0};                 // Tf size

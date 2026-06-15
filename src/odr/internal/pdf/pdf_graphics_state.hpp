@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/pdf/pdf_geometry.hpp>
+#include <odr/internal/util/math_util.hpp>
 
 #include <array>
 #include <string>
@@ -27,7 +27,7 @@ struct GraphicsState {
     std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
-    Matrix transform_matrix; // CTM
+    util::math::Transform2D transform_matrix; // CTM
   };
 
   struct Path {
@@ -36,16 +36,16 @@ struct GraphicsState {
   };
 
   struct Text {
-    double char_spacing{0};         // Tc
-    double word_spacing{0};         // Tw
-    double horizontal_scaling{100}; // Tz, in percent (100 = normal)
-    double leading{0};              // TL
-    std::string font;               // Tf resource name
-    double size{};                  // Tf size
-    int rendering_mode{0};          // Tr
-    double rise{0};                 // Ts
-    Matrix matrix;                  // Tm
-    Matrix line_matrix;             // Tlm
+    double char_spacing{0};              // Tc
+    double word_spacing{0};              // Tw
+    double horizontal_scaling{100};      // Tz, in percent (100 = normal)
+    double leading{0};                   // TL
+    std::string font;                    // Tf resource name
+    double size{};                       // Tf size
+    int rendering_mode{0};               // Tr
+    double rise{0};                      // Ts
+    util::math::Transform2D matrix;      // Tm
+    util::math::Transform2D line_matrix; // Tlm
     std::array<double, 2> glyph_width{};
     std::array<double, 4> glyph_bounding_box{};
   };
@@ -79,7 +79,7 @@ struct GraphicsState {
   /// 1 em at the current font size) to user space, with horizontal scaling and
   /// rise folded in. The font size is applied separately (as the rendered
   /// font-size), which keeps the run-vs-glyph mapping decision in the renderer.
-  [[nodiscard]] Matrix text_placement_matrix() const;
+  [[nodiscard]] util::math::Transform2D text_placement_matrix() const;
 
 private:
   /// Move to the start of a new text line: `Tlm = translate(tx, ty) * Tlm` and

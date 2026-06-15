@@ -20,7 +20,7 @@ ColorSpace color_space_name_to_enum(const std::string &name) {
   return util::map::lookup_default(mapping, name, ColorSpace::unknown);
 }
 
-Matrix matrix_from_args(const GraphicsOperator &op) {
+util::math::Transform2D matrix_from_args(const GraphicsOperator &op) {
   return {op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
           op.arguments.at(2).as_real(), op.arguments.at(3).as_real(),
           op.arguments.at(4).as_real(), op.arguments.at(5).as_real()};
@@ -36,17 +36,19 @@ const GraphicsState::State &GraphicsState::current() const {
   return stack.back();
 }
 
-Matrix GraphicsState::text_placement_matrix() const {
+util::math::Transform2D GraphicsState::text_placement_matrix() const {
   const Text &text = current().text;
   // text rendering matrix without the font size (ISO 32000-1 9.4.4): the font
   // size scales x and y, horizontal scaling scales x only, rise offsets y.
-  Matrix params{text.horizontal_scaling / 100.0, 0, 0, 1, 0, text.rise};
+  util::math::Transform2D params{
+      text.horizontal_scaling / 100.0, 0, 0, 1, 0, text.rise};
   return params * text.matrix * current().general.transform_matrix;
 }
 
-void GraphicsState::next_line(double tx, double ty) {
+void GraphicsState::next_line(const double tx, const double ty) {
   Text &text = current().text;
-  text.line_matrix = Matrix::translation(tx, ty) * text.line_matrix;
+  text.line_matrix =
+      util::math::Transform2D::translation(tx, ty) * text.line_matrix;
   text.matrix = text.line_matrix;
 }
 
@@ -145,8 +147,8 @@ void GraphicsState::execute(const GraphicsOperator &op) {
 
   case GraphicsOperatorType::begin_text:
     // BT initializes both the text matrix and the text line matrix to identity.
-    current().text.matrix = Matrix();
-    current().text.line_matrix = Matrix();
+    current().text.matrix = util::math::Transform2D();
+    current().text.line_matrix = util::math::Transform2D();
     break;
   case GraphicsOperatorType::text_next_line_relative: // Td
     next_line(op.arguments.at(0).as_real(), op.arguments.at(1).as_real());
