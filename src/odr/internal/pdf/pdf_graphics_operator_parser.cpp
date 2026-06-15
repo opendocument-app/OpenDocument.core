@@ -163,7 +163,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
   const std::string operator_name = read_operator_name();
   result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
-    std::cerr << "unknown operator: " << operator_name << std::endl;
+    std::cerr << "unknown operator: " << operator_name << '\n';
   }
 
   // After `ID` the raw image bytes follow inline; consume them up to `EI` so

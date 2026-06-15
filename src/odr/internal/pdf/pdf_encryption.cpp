@@ -105,7 +105,11 @@ std::string hash_r6(const std::string &password, const std::string &salt,
   for (int round = 0;
        round < 64 || static_cast<std::uint8_t>(e.back()) > round - 32;
        ++round) {
-    const std::string block = password + k + udata;
+    std::string block;
+    block.reserve(password.size() + k.size() + udata.size());
+    block += password;
+    block += k;
+    block += udata;
     std::string k1;
     k1.reserve(block.size() * 64);
     for (int i = 0; i < 64; ++i) {

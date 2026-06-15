@@ -22,6 +22,7 @@ void PopplerPdfFile::open(const std::optional<std::string> &password) {
   if (const std::shared_ptr disk_file =
           std::dynamic_pointer_cast<DiskFile>(m_file);
       disk_file != nullptr) {
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access): a DiskFile has a path
     auto file_path_goo =
         std::make_unique<GooString>(disk_file->disk_path()->string().c_str());
     m_pdf_doc = std::make_shared<PDFDoc>(std::move(file_path_goo), password_goo,

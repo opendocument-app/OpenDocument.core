@@ -115,7 +115,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     for (const pugi::xml_node cell_node : row_node.children("c")) {
       TablePosition position(cell_node.attribute("r").value());
 
-      const auto &[cell_id, _, __] =
+      const auto &[cell_id, unused1, unused2] =
           registry.create_sheet_cell_element(cell_node, position);
       registry.append_sheet_cell(element_id, cell_id);
       sheet.register_cell(position.column, position.row, cell_node, cell_id);
@@ -191,7 +191,8 @@ parse_text_element(ElementRegistry &registry,
        last = last.next_sibling()) {
   }
 
-  const auto &[element_id, _, __] = registry.create_text_element(first, last);
+  const auto &[element_id, unused1, unused2] =
+      registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }

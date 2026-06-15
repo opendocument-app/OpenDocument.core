@@ -61,7 +61,7 @@ public:
   bool operator==(const DocumentPath &other) const noexcept;
   bool operator!=(const DocumentPath &other) const noexcept;
 
-  [[nodiscard]] std::string to_string() const noexcept;
+  [[nodiscard]] std::string to_string() const;
 
   [[nodiscard]] bool empty() const noexcept;
 

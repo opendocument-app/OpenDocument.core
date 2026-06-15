@@ -18,7 +18,8 @@ std::string svm::read_ascii_string(std::istream &in,
 std::string svm::read_utf16_string(std::istream &in,
                                    const std::uint32_t length) {
   std::u16string result_u16(length, ' ');
-  in.read(reinterpret_cast<char *>(result_u16.data()), length * 2);
+  in.read(reinterpret_cast<char *>(result_u16.data()),
+          static_cast<std::streamsize>(length) * 2);
   return util::string::u16string_to_string(result_u16);
 }
 

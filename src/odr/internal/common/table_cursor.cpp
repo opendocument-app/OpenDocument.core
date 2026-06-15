@@ -4,13 +4,13 @@
 
 namespace odr::internal {
 
-TableCursor::TableCursor() noexcept { m_sparse.emplace_back(); }
+TableCursor::TableCursor() { m_sparse.emplace_back(); }
 
 void TableCursor::add_column(const uint32_t repeat) noexcept {
   m_column += repeat;
 }
 
-void TableCursor::add_row(const std::uint32_t repeat) noexcept {
+void TableCursor::add_row(const std::uint32_t repeat) {
   m_row += repeat;
   m_column = 0;
   if (repeat > 1) {
@@ -27,7 +27,7 @@ void TableCursor::add_row(const std::uint32_t repeat) noexcept {
 
 void TableCursor::add_cell(const std::uint32_t colspan,
                            const std::uint32_t rowspan,
-                           const std::uint32_t repeat) noexcept {
+                           const std::uint32_t repeat) {
   const std::uint32_t next_column = m_column + colspan * repeat;
 
   // handle rowspan

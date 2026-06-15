@@ -46,13 +46,13 @@ struct StandardHeader {
 
 class Algorithm {
 public:
-  virtual ~Algorithm() noexcept = default;
+  virtual ~Algorithm() = default;
   [[nodiscard]] virtual std::string
-  derive_key(const std::string &password) const noexcept = 0;
-  [[nodiscard]] virtual bool verify(const std::string &key) const noexcept = 0;
+  derive_key(const std::string &password) const = 0;
+  [[nodiscard]] virtual bool verify(const std::string &key) const = 0;
   [[nodiscard]] virtual std::string
   decrypt(const std::string &encrypted_package,
-          const std::string &key) const noexcept = 0;
+          const std::string &key) const = 0;
 };
 
 class ECMA376Standard final : public Algorithm {
@@ -62,11 +62,10 @@ public:
   explicit ECMA376Standard(const std::string &encryption_info);
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const noexcept override;
-  [[nodiscard]] bool verify(const std::string &key) const noexcept override;
-  [[nodiscard]] std::string
-  decrypt(const std::string &encrypted_package,
-          const std::string &key) const noexcept override;
+  derive_key(const std::string &password) const override;
+  [[nodiscard]] bool verify(const std::string &key) const override;
+  [[nodiscard]] std::string decrypt(const std::string &encrypted_package,
+                                    const std::string &key) const override;
 
 private:
   static constexpr auto ITER_COUNT = 50000;
@@ -79,14 +78,13 @@ private:
 class Util final : public Algorithm {
 public:
   explicit Util(const std::string &encryption_info);
-  ~Util() noexcept override;
+  ~Util() override;
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const noexcept override;
-  [[nodiscard]] bool verify(const std::string &key) const noexcept override;
-  [[nodiscard]] std::string
-  decrypt(const std::string &encrypted_package,
-          const std::string &key) const noexcept override;
+  derive_key(const std::string &password) const override;
+  [[nodiscard]] bool verify(const std::string &key) const override;
+  [[nodiscard]] std::string decrypt(const std::string &encrypted_package,
+                                    const std::string &key) const override;
 
 private:
   std::unique_ptr<Algorithm> impl;

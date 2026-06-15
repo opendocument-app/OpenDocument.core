@@ -83,10 +83,14 @@ std::string_view LegacyMicrosoftFile::mimetype() const noexcept {
 FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType LegacyMicrosoftFile::document_type() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value().document_type;
 }
 
 DocumentMeta LegacyMicrosoftFile::document_meta() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value();
 }
 

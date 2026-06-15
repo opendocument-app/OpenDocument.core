@@ -3,6 +3,7 @@
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <cassert>
 #include <fstream>
 #include <utility>
 
@@ -21,7 +22,9 @@ TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
 
 TemporaryDiskFile::~TemporaryDiskFile() {
-  std::filesystem::remove(disk_path()->string());
+  assert(disk_path().has_value());
+  std::error_code ec;
+  std::filesystem::remove(disk_path()->string(), ec);
 }
 
 TemporaryDiskFile &

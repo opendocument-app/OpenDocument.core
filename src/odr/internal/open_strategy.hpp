@@ -16,10 +16,6 @@ class DecodedFile;
 class DocumentFile;
 } // namespace odr::internal::abstract
 
-namespace odr::internal::common {
-class Path;
-} // namespace odr::internal::common
-
 namespace odr::internal::open_strategy {
 
 std::vector<FileType>

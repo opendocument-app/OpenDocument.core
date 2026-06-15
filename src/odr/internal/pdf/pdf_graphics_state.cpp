@@ -60,7 +60,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().general.miter_limit = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_dash_pattern:
-    std::cout << "dash pattern not implemented" << std::endl;
+    std::cout << "dash pattern not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_color_rendering_intent:
     current().general.color_rendering_intent = op.arguments.at(0).as_name();
@@ -146,11 +146,11 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     break;
   case GraphicsOperatorType::set_stroke_color:
     // TODO
-    std::cout << "stroke color not implemented" << std::endl;
+    std::cout << "stroke color not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_stroke_color_name:
     // TODO
-    std::cout << "stroke color name not implemented" << std::endl;
+    std::cout << "stroke color name not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_stroke_grey_color:
     current().stroke_color.grey = op.arguments.at(0).as_real();
@@ -172,11 +172,11 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     break;
   case GraphicsOperatorType::set_other_color:
     // TODO
-    std::cout << "other color not implemented" << std::endl;
+    std::cout << "other color not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_other_color_name:
     // TODO
-    std::cout << "other color name not implemented" << std::endl;
+    std::cout << "other color name not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_other_grey_color:
     current().other_color.grey = op.arguments.at(0).as_real();

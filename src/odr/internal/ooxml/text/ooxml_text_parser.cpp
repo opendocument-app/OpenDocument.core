@@ -79,7 +79,8 @@ parse_text_element(ElementRegistry &registry, const pugi::xml_node first) {
        last = last.next_sibling()) {
   }
 
-  const auto &[element_id, _, __] = registry.create_text_element(first, last);
+  const auto &[element_id, unused1, unused2] =
+      registry.create_text_element(first, last);
 
   return {element_id, last.next_sibling()};
 }
@@ -131,8 +132,8 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
 
     registry.append_child(base_id, item_id);
 
-    auto [child_id, __] = parse_element_tree(registry, ElementType::paragraph,
-                                             node, parse_any_element_children);
+    auto [child_id, unused] = parse_element_tree(
+        registry, ElementType::paragraph, node, parse_any_element_children);
     registry.append_child(item_id, child_id);
   }
 
@@ -164,7 +165,8 @@ parse_table_element(ElementRegistry &registry, const pugi::xml_node node) {
     return {null_element_id, pugi::xml_node()};
   }
 
-  const auto &[element_id, _, __] = registry.create_table_element(node);
+  const auto &[element_id, unused1, unused2] =
+      registry.create_table_element(node);
 
   for (const pugi::xml_node column_node :
        node.child("w:tblGrid").children("w:gridCol")) {

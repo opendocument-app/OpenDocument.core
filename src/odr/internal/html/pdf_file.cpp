@@ -134,7 +134,7 @@ public:
           std::string unicode = font->to_unicode(glyphs);
 
           if (unicode.find("Colored Line") != std::string::npos) {
-            std::cout << "hi" << std::endl;
+            std::cout << "hi" << '\n';
           }
 
           out.write_element_begin(
@@ -152,24 +152,23 @@ public:
           pdf::Font *font = page->resources->font.at(font_ref);
           double size = state.current().text.size;
 
-          std::cout << font->object << std::endl;
+          std::cout << font->object << '\n';
 
           for (const auto &element : op.arguments[0].as_array()) {
             if (element.is_real()) {
-              std::cout << "spacing: " << element.as_real() << std::endl;
+              std::cout << "spacing: " << element.as_real() << '\n';
             } else if (element.is_string()) {
               const std::string &glyphs = element.as_string();
               std::string unicode = font->to_unicode(glyphs);
               std::cout << "show text manual spacing: font=" << font
-                        << ", size=" << size << ", text=" << unicode
-                        << std::endl;
+                        << ", size=" << size << ", text=" << unicode << '\n';
             }
           }
         } else if (op.type == pdf::GraphicsOperatorType::show_text_next_line) {
-          std::cout << "TODO show_text_next_line" << std::endl;
+          std::cout << "TODO show_text_next_line" << '\n';
         } else if (op.type ==
                    pdf::GraphicsOperatorType::show_text_next_line_set_spacing) {
-          std::cout << "TODO show_text_next_line_set_spacing" << std::endl;
+          std::cout << "TODO show_text_next_line_set_spacing" << '\n';
         }
       }
 

@@ -22,7 +22,8 @@ std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
   if (attribute) {
     try {
       return Measure(attribute.value());
-    } catch (...) {
+    } catch (...) { // NOLINT(bugprone-empty-catch)
+      // an unparsable measure yields nullopt
       // TODO log
     }
   }

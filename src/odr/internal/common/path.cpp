@@ -102,7 +102,7 @@ bool Path::operator>(const Path &b) const noexcept {
 
 const std::string &Path::string() const noexcept { return m_path; }
 
-std::filesystem::path Path::path() const noexcept { return m_path; }
+std::filesystem::path Path::path() const { return m_path; }
 
 std::size_t Path::hash() const noexcept {
   return std::hash<std::string>{}(m_path);
@@ -167,7 +167,7 @@ RelPath Path::make_relative() const {
   return RelPath(m_path.substr(1));
 }
 
-std::string Path::basename() const noexcept {
+std::string Path::basename() const {
   const auto find = m_path.rfind('/');
   if (find == std::string::npos) {
     return m_path;
@@ -175,7 +175,7 @@ std::string Path::basename() const noexcept {
   return m_path.substr(find + 1);
 }
 
-std::string Path::extension() const noexcept {
+std::string Path::extension() const {
   // The extension is the last dot-separated segment of the file name, without
   // the leading dot (e.g. "a.b.ppt" -> "ppt"). Delegate to std::filesystem so
   // edge cases (no extension, dot-files like ".bashrc") match the platform's
@@ -336,7 +336,7 @@ AbsPath AbsPath::current_working_directory() {
   return AbsPath(std::filesystem::current_path());
 }
 
-AbsPath::AbsPath() noexcept : Path("/") {}
+AbsPath::AbsPath() : Path("/") {}
 
 AbsPath::AbsPath(const char *c_string) : Path(c_string) {
   if (!absolute()) {
@@ -382,7 +382,7 @@ AbsPath AbsPath::common_root(const AbsPath &other) const {
   return Path::common_root(other).as_absolute();
 }
 
-RelPath::RelPath() noexcept : Path("") {}
+RelPath::RelPath() : Path("") {}
 
 RelPath::RelPath(const char *c_string) : Path(c_string) {
   if (!relative()) {

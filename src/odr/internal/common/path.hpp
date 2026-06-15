@@ -18,10 +18,10 @@ public:
   explicit Path(std::string_view string_view);
   explicit Path(const std::filesystem::path &path);
 
-  Path(const Path &other) noexcept = default;
+  Path(const Path &other) = default;
   Path(Path &&other) noexcept = default;
-  virtual ~Path() noexcept = default;
-  Path &operator=(const Path &other) noexcept = default;
+  virtual ~Path() = default;
+  Path &operator=(const Path &other) = default;
   Path &operator=(Path &&other) noexcept = default;
 
   bool operator==(const Path &other) const noexcept;
@@ -30,7 +30,7 @@ public:
   bool operator>(const Path &other) const noexcept;
 
   [[nodiscard]] const std::string &string() const noexcept;
-  [[nodiscard]] std::filesystem::path path() const noexcept;
+  [[nodiscard]] std::filesystem::path path() const;
   [[nodiscard]] std::size_t hash() const noexcept;
 
   [[nodiscard]] bool empty() const noexcept;
@@ -52,8 +52,8 @@ public:
   [[nodiscard]] AbsPath make_absolute() const;
   [[nodiscard]] RelPath make_relative() const;
 
-  [[nodiscard]] std::string basename() const noexcept;
-  [[nodiscard]] std::string extension() const noexcept;
+  [[nodiscard]] std::string basename() const;
+  [[nodiscard]] std::string extension() const;
 
   [[nodiscard]] Path parent() const;
   [[nodiscard]] Path join(const RelPath &other) const;
@@ -111,7 +111,7 @@ class AbsPath final : public Path {
 public:
   static AbsPath current_working_directory();
 
-  AbsPath() noexcept;
+  AbsPath();
   explicit AbsPath(const char *c_string);
   explicit AbsPath(const std::string &string);
   explicit AbsPath(std::string_view string_view);
@@ -126,7 +126,7 @@ public:
 
 class RelPath final : public Path {
 public:
-  RelPath() noexcept;
+  RelPath();
   explicit RelPath(const char *c_string);
   explicit RelPath(const std::string &string);
   explicit RelPath(std::string_view string_view);

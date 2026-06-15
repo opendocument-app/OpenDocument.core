@@ -51,10 +51,14 @@ std::string_view OpenDocumentFile::mimetype() const noexcept {
 FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OpenDocumentFile::document_type() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value().document_type;
 }
 
 DocumentMeta OpenDocumentFile::document_meta() const {
+  // document_meta is always set for document files
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   return m_file_meta.document_meta.value();
 }
 

@@ -6,8 +6,10 @@
 
 #include <memory>
 
+// NOLINTNEXTLINE(bugprone-reserved-identifier) - wvware's own (C) struct name
 struct _wvParseStruct;
-using wvParseStruct = struct _wvParseStruct;
+using wvParseStruct =
+    struct _wvParseStruct; // NOLINT(bugprone-reserved-identifier)
 
 namespace odr::internal {
 

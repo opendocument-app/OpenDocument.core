@@ -145,7 +145,8 @@ std::string FileParser::read_stream(const std::int32_t size) {
 
 void FileParser::read_header() {
   const std::string header1 = m_parser.read_line();
-  const std::string header2 = m_parser.read_line();
+  // the second line is an optional binary-marker comment; read past it
+  [[maybe_unused]] const std::string header2 = m_parser.read_line();
 
   if (!util::string::starts_with(header1, "%PDF-")) {
     throw std::runtime_error("illegal header");

@@ -217,7 +217,8 @@ Sector CompoundFileReader::resolve_next_sector(std::istream &in,
   const std::uint32_t fatSectorLocation =
       resolve_fat_sector_location(in, fatSectorNumber);
   const std::uint64_t address = sector_offset_to_address(
-      {fatSectorLocation, sector % entriesPerSector * 4});
+      {fatSectorLocation,
+       static_cast<std::uint64_t>(sector % entriesPerSector) * 4});
   in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
 }
@@ -225,7 +226,8 @@ Sector CompoundFileReader::resolve_next_sector(std::istream &in,
 Sector CompoundFileReader::resolve_next_mini_sector(
     std::istream &in, const std::uint32_t mini_sector) const {
   const SectorOffset sector_offset = normalize_sector_offset(
-      in, {m_header.first_mini_fat_sector_location, mini_sector * 4});
+      in, {m_header.first_mini_fat_sector_location,
+           static_cast<std::uint64_t>(mini_sector) * 4});
   const std::uint64_t address = sector_offset_to_address(sector_offset);
   in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
@@ -294,8 +296,8 @@ std::uint32_t CompoundFileReader::resolve_fat_sector_location(
     in.seekg(static_cast<std::streampos>(address));
     difatSectorLocation = parse_uint32(in);
   }
-  const std::uint64_t address =
-      sector_offset_to_address({difatSectorLocation, fat_sector_number * 4});
+  const std::uint64_t address = sector_offset_to_address(
+      {difatSectorLocation, static_cast<std::uint64_t>(fat_sector_number) * 4});
   in.seekg(static_cast<std::streampos>(address));
   return parse_uint32(in);
 }
