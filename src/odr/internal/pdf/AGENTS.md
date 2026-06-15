@@ -111,7 +111,7 @@ graphics, no images, no font files. Experimental and not production-quality.
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, glyph metrics
   `d0`/`d1`, grey/RGB/CMYK colors). The CTM **concatenates** on `cm` (ISO 32000-1
   8.4.4); the text matrix `Tm` and text line matrix `Tlm` are tracked as 2-D
-  affine `Matrix` values (`pdf_geometry.hpp`), with `BT` resetting them, `Td`/`TD`
+  affine `Transform2D` values (`util/math_util.hpp`), with `BT` resetting them, `Td`/`TD`
   /`T*` (and the line-move half of `'`/`"`) advancing `Tlm` → `Tm`. Unknown
   operators are logged to stderr and skipped.
 - **Text layout** (`pdf_page_text`, stage 2.1): `extract_text` runs the operator
@@ -149,10 +149,10 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
 | `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: the `Uni*-UCS2/UTF16/UTF32` CMaps decoded directly (no data tables), stage 1.3 part B; legacy CJK CMaps deferred (see `tools/pdf/generate_cid_data.py`) |
 | `pdf_encoding_data.{hpp,cpp}`          | **Generated** (`tools/pdf/generate_encoding_data.py`): base-encoding tables + the Adobe Glyph List as a name-sorted array |
-| `pdf_geometry.hpp`                     | `Matrix`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
+| `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
-| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Matrix`, `text_placement_matrix()` for the text rendering transform sans font size |
+| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size |
 | `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode) per show operation (stage 2.1) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
@@ -323,8 +323,8 @@ such PDFs look right, their text just isn't selectable until the tables land.
   `translate_predefined_cmap` over the predefined Unicode CMaps — `UCS2`/`UTF16`
   (incl. a surrogate pair) and `UTF32` decoding, a `-V` writing-mode variant, and
   the `nullopt` for `Identity-H` and the legacy CJK CMaps (stage 1.3 part B).
-- `test/src/internal/pdf/pdf_geometry.cpp` — **assertion-based**, no fixtures:
-  `Matrix` point-apply (identity/translation/scaling), the ordered
+- `test/src/internal/util/math_util_test.cpp` — **assertion-based**, no fixtures:
+  `Transform2D` point-apply (identity/translation/scaling), the ordered
   (row-vector) composition, and compose-then-apply ≡ sequential apply (stage 2.1).
 - `test/src/internal/pdf/pdf_page_text.cpp` — **assertion-based**, inline content
   streams through `extract_text` (empty resources, so codes pass through as
@@ -404,7 +404,7 @@ up-front "HTML mapping decision" is dissolved into this.)
 ### 2.1 — transforms & the placed-text emission — **in progress**
 
 The geometry foundation plus the emission contract, *without* glyph advances:
-- A 2-D affine `Matrix` (`pdf_geometry.hpp`): compose, point-apply,
+- A 2-D affine `Transform2D` (`util/math_util.hpp`): compose, point-apply,
   translation/scaling factories.
 - Apply the full transform chain in `GraphicsState`: the CTM now *concatenates*
   on `cm` (it was overwritten); the text matrix `Tm` and text line matrix `Tlm`
