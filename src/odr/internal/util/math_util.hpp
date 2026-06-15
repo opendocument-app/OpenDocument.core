@@ -22,20 +22,30 @@ struct Transform2D {
   double e{0};
   double f{0};
 
-  Transform2D() = default;
-  Transform2D(const double a_, const double b_, const double c_,
-              const double d_, const double e_, const double f_)
+  constexpr Transform2D() noexcept = default;
+  constexpr Transform2D(const double a_, const double b_, const double c_,
+                        const double d_, const double e_,
+                        const double f_) noexcept
       : a{a_}, b{b_}, c{c_}, d{d_}, e{e_}, f{f_} {}
 
-  static Transform2D translation(const double x, const double y) {
+  constexpr static Transform2D translation(const double x,
+                                           const double y) noexcept {
     return {1, 0, 0, 1, x, y};
   }
-  static Transform2D scaling(const double x, const double y) {
+  constexpr static Transform2D scaling(const double x,
+                                       const double y) noexcept {
     return {x, 0, 0, y, 0, 0};
+  }
+  constexpr static Transform2D translation_scaling(const double x,
+                                                   const double y,
+                                                   const double sx,
+                                                   const double sy) noexcept {
+    return {sx, 0, 0, sy, x, y};
   }
 
   /// `*this` applied first, then `rhs`.
-  [[nodiscard]] Transform2D operator*(const Transform2D &rhs) const {
+  [[nodiscard]] constexpr Transform2D
+  operator*(const Transform2D &rhs) const noexcept {
     return {
         a * rhs.a + b * rhs.c,         a * rhs.b + b * rhs.d,
         c * rhs.a + d * rhs.c,         c * rhs.b + d * rhs.d,
@@ -44,8 +54,8 @@ struct Transform2D {
   }
 
   /// Map the point `(x, y)` through the transform.
-  [[nodiscard]] std::array<double, 2> apply(const double x,
-                                            const double y) const {
+  [[nodiscard]] constexpr std::array<double, 2>
+  apply(const double x, const double y) const noexcept {
     return {a * x + c * y + e, b * x + d * y + f};
   }
 };

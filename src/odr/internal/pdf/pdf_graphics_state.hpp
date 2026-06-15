@@ -75,11 +75,12 @@ struct GraphicsState {
 
   void execute(const GraphicsOperator &);
 
-  /// Text rendering matrix *excluding* the font size: maps text space (1 unit =
-  /// 1 em at the current font size) to user space, with horizontal scaling and
-  /// rise folded in. The font size is applied separately (as the rendered
-  /// font-size), which keeps the run-vs-glyph mapping decision in the renderer.
-  [[nodiscard]] util::math::Transform2D text_placement_matrix() const;
+  /// Text rendering transform *excluding* the font size: maps text space (1
+  /// unit = 1 em at the current font size) to user space, with horizontal
+  /// scaling and rise folded in. The font size is applied separately (as the
+  /// rendered font-size), which keeps the run-vs-glyph mapping decision in the
+  /// renderer.
+  [[nodiscard]] util::math::Transform2D text_placement_transform() const;
 
 private:
   /// Move to the start of a new text line: `Tlm = translate(tx, ty) * Tlm` and

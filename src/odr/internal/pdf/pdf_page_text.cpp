@@ -11,7 +11,6 @@
 #include <sstream>
 
 namespace odr::internal::pdf {
-
 namespace {
 
 Font *lookup_font(const Resources &resources, const std::string &name,
@@ -31,7 +30,7 @@ void emit(std::vector<TextElement> &out, const GraphicsState &state,
   const GraphicsState::Text &text = state.current().text;
 
   TextElement element;
-  element.transform = state.text_placement_matrix();
+  element.transform = state.text_placement_transform();
   element.font = font;
   element.size = text.size;
   element.char_spacing = text.char_spacing;
@@ -59,9 +58,13 @@ std::string join_array_strings(const Array &array) {
 
 } // namespace
 
-std::vector<TextElement> extract_text(const std::string &content,
-                                      const Resources &resources,
-                                      const Logger &logger) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
+                                                const Resources &resources,
+                                                const Logger &logger) {
   std::vector<TextElement> result;
   std::set<std::string> warned;
 
@@ -99,4 +102,4 @@ std::vector<TextElement> extract_text(const std::string &content,
   return result;
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

@@ -90,6 +90,7 @@ public:
 
     // CSS uses 96px to the inch, PDF user space 72 units to the inch.
     static constexpr double pt_to_px = 96.0 / 72.0;
+    static constexpr double to_in = 1 / 72.0;
 
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
@@ -101,8 +102,8 @@ public:
       out.write_element_begin(
           "div", HtmlElementOptions().set_style([&](std::ostream &o) {
             o << "position:relative;";
-            o << "width:" << width / 72.0 << "in;";
-            o << "height:" << height / 72.0 << "in;";
+            o << "width:" << width * to_in << "in;";
+            o << "height:" << height * to_in << "in;";
           }));
 
       std::string stream;

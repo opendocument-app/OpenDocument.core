@@ -36,12 +36,13 @@ const GraphicsState::State &GraphicsState::current() const {
   return stack.back();
 }
 
-util::math::Transform2D GraphicsState::text_placement_matrix() const {
+util::math::Transform2D GraphicsState::text_placement_transform() const {
   const Text &text = current().text;
   // text rendering matrix without the font size (ISO 32000-1 9.4.4): the font
   // size scales x and y, horizontal scaling scales x only, rise offsets y.
-  util::math::Transform2D params{
-      text.horizontal_scaling / 100.0, 0, 0, 1, 0, text.rise};
+  const util::math::Transform2D params =
+      util::math::Transform2D::translation_scaling(
+          0, text.rise, text.horizontal_scaling / 100.0, 1);
   return params * text.matrix * current().general.transform_matrix;
 }
 
