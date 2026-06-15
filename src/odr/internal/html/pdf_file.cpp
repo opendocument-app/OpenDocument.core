@@ -12,12 +12,8 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
-#include <odr/internal/pdf/pdf_graphics_operator.hpp>
-#include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
-#include <odr/internal/pdf/pdf_graphics_state.hpp>
-
-#include <fstream>
-#include <iostream>
+#include <odr/internal/pdf/pdf_geometry.hpp>
+#include <odr/internal/pdf/pdf_page_text.hpp>
 
 namespace odr::internal::html {
 
@@ -93,14 +89,21 @@ public:
 
     out.write_body_begin();
 
+    // CSS uses 96px to the inch, PDF user space 72 units to the inch.
+    static constexpr double pt_to_px = 96.0 / 72.0;
+
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
+      const double box_x0 = page_box[0].as_real();
+      const double box_y0 = page_box[1].as_real();
+      const double width = page_box[2].as_real() - box_x0;
+      const double height = page_box[3].as_real() - box_y0;
 
       out.write_element_begin(
           "div", HtmlElementOptions().set_style([&](std::ostream &o) {
             o << "position:relative;";
-            o << "width:" << page_box[2].as_real() / 72.0 << "in;";
-            o << "height:" << page_box[3].as_real() / 72.0 << "in;";
+            o << "width:" << width / 72.0 << "in;";
+            o << "height:" << height / 72.0 << "in;";
           }));
 
       std::string stream;
@@ -110,66 +113,31 @@ public:
         stream += '\n';
       }
 
-      std::istringstream ss(stream);
-      pdf::GraphicsOperatorParser parser2(ss);
-      pdf::GraphicsState state;
-      while (!ss.eof()) {
-        pdf::GraphicsOperator op = parser2.read_operator();
-        state.execute(op);
+      // Map PDF user space (origin at the MediaBox corner, y up) to the page
+      // box in CSS pixels (origin top-left, y down). `flip_glyph` un-mirrors
+      // the glyphs so text stays upright after the page flip.
+      const pdf::Matrix flip_glyph{1, 0, 0, -1, 0, 0};
+      const pdf::Matrix to_box = pdf::Matrix::translation(-box_x0, -box_y0) *
+                                 pdf::Matrix{1, 0, 0, -1, 0, height};
 
-        if (op.type == pdf::GraphicsOperatorType::text_next_line) {
-          double leading = state.current().text.leading;
-          double size = state.current().text.size;
+      for (const pdf::TextElement &text :
+           pdf::extract_text(stream, *page->resources, *m_logger)) {
+        const pdf::Matrix m = flip_glyph * text.transform * to_box;
 
-          state.current().text.offset[1] -= size + leading;
-        } else if (op.type == pdf::GraphicsOperatorType::show_text) {
-          const std::string &font_ref = state.current().text.font;
-          double size = state.current().text.size;
-
-          std::array<double, 2> offset = state.current().text.offset;
-
-          pdf::Font *font = page->resources->font.at(font_ref);
-
-          const std::string &glyphs = op.arguments[0].as_string();
-          std::string unicode = font->to_unicode(glyphs);
-
-          if (unicode.find("Colored Line") != std::string::npos) {
-            std::cout << "hi" << '\n';
-          }
-
-          out.write_element_begin(
-              "span", HtmlElementOptions().set_style([&](std::ostream &o) {
-                o << "position:absolute;";
-                o << "left:" << offset[0] / 72.0 << "in;";
-                o << "bottom:" << offset[1] / 72.0 << "in;";
-                o << "font-size:" << size << "pt;";
-              }));
-          out.write_raw(escape_text(unicode));
-          out.write_element_end("span");
-        } else if (op.type ==
-                   pdf::GraphicsOperatorType::show_text_manual_spacing) {
-          const std::string &font_ref = state.current().text.font;
-          pdf::Font *font = page->resources->font.at(font_ref);
-          double size = state.current().text.size;
-
-          std::cout << font->object << '\n';
-
-          for (const auto &element : op.arguments[0].as_array()) {
-            if (element.is_real()) {
-              std::cout << "spacing: " << element.as_real() << '\n';
-            } else if (element.is_string()) {
-              const std::string &glyphs = element.as_string();
-              std::string unicode = font->to_unicode(glyphs);
-              std::cout << "show text manual spacing: font=" << font
-                        << ", size=" << size << ", text=" << unicode << '\n';
-            }
-          }
-        } else if (op.type == pdf::GraphicsOperatorType::show_text_next_line) {
-          std::cout << "TODO show_text_next_line" << '\n';
-        } else if (op.type ==
-                   pdf::GraphicsOperatorType::show_text_next_line_set_spacing) {
-          std::cout << "TODO show_text_next_line_set_spacing" << '\n';
-        }
+        out.write_element_begin(
+            "span", HtmlElementOptions().set_style([&](std::ostream &o) {
+              o << "position:absolute;left:0;top:0;";
+              o << "transform-origin:0 0;";
+              // TODO baseline sits at the box top until font ascent metrics
+              // land
+              o << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
+                << m.d << "," << m.e * pt_to_px << "," << m.f * pt_to_px
+                << ");";
+              o << "font-size:" << text.size * pt_to_px << "px;";
+              o << "white-space:pre;";
+            }));
+        out.write_raw(escape_text(text.text));
+        out.write_element_end("span");
       }
 
       out.write_element_end("div");
