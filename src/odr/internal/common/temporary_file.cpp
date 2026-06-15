@@ -21,7 +21,7 @@ TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
 
 TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
 
-TemporaryDiskFile::~TemporaryDiskFile() noexcept {
+TemporaryDiskFile::~TemporaryDiskFile() {
   assert(disk_path().has_value());
   std::error_code ec;
   std::filesystem::remove(disk_path()->string(), ec);

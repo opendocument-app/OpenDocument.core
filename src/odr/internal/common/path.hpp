@@ -20,7 +20,7 @@ public:
 
   Path(const Path &other) = default;
   Path(Path &&other) noexcept = default;
-  virtual ~Path() noexcept = default;
+  virtual ~Path() = default;
   Path &operator=(const Path &other) = default;
   Path &operator=(Path &&other) noexcept = default;
 

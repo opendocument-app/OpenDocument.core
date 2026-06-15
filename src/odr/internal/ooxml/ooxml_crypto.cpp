@@ -137,7 +137,7 @@ Util::Util(const std::string &encryption_info) {
   }
 }
 
-Util::~Util() noexcept = default;
+Util::~Util() = default;
 
 std::string Util::derive_key(const std::string &password) const {
   return impl->derive_key(password);

@@ -14,7 +14,7 @@ public:
   explicit TemporaryDiskFile(AbsPath path);
   TemporaryDiskFile(const TemporaryDiskFile &);
   TemporaryDiskFile(TemporaryDiskFile &&) noexcept;
-  ~TemporaryDiskFile() noexcept override;
+  ~TemporaryDiskFile() override;
   TemporaryDiskFile &operator=(const TemporaryDiskFile &);
   TemporaryDiskFile &operator=(TemporaryDiskFile &&) noexcept;
 };

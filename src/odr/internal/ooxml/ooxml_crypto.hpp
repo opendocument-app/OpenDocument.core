@@ -46,7 +46,7 @@ struct StandardHeader {
 
 class Algorithm {
 public:
-  virtual ~Algorithm() noexcept = default;
+  virtual ~Algorithm() = default;
   [[nodiscard]] virtual std::string
   derive_key(const std::string &password) const = 0;
   [[nodiscard]] virtual bool verify(const std::string &key) const = 0;
@@ -78,7 +78,7 @@ private:
 class Util final : public Algorithm {
 public:
   explicit Util(const std::string &encryption_info);
-  ~Util() noexcept override;
+  ~Util() override;
 
   [[nodiscard]] std::string
   derive_key(const std::string &password) const override;
