@@ -230,12 +230,31 @@ composite_font_mini_pdf(const bool with_to_unicode,
               (with_to_unicode ? " /ToUnicode 7 0 R >>" : " >>"))
       .object("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+X "
               "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) "
-              "/Supplement 0 >> /CIDToGIDMap /Identity >>");
+              "/Supplement 0 >> /CIDToGIDMap /Identity "
+              "/DW 1000 /W [0 [500 600]] >>");
   if (with_to_unicode) {
     builder.stream_object("", "1 begincodespacerange\n<0000> <FFFF>\n"
                               "endcodespacerange\n1 beginbfchar\n"
                               "<0041> <0041>\nendbfchar\n");
   }
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
+/// A mini-PDF whose single page references one simple TrueType font `F1` with
+/// `/FirstChar` 65, `/Widths` for `A`/`B`, and a `/FontDescriptor` carrying
+/// `/MissingWidth`.
+std::string simple_font_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>")
+      .stream_object("", "BT ET")
+      .object("<< /Type /Font /Subtype /TrueType /BaseFont /Helvetica "
+              "/FirstChar 65 /LastChar 66 /Widths [500 600] "
+              "/FontDescriptor 6 0 R >>")
+      .object("<< /Type /FontDescriptor /FontName /Helvetica "
+              "/MissingWidth 250 >>");
   return builder.trailer("/Root 1 0 R").build_classic();
 }
 
@@ -295,6 +314,35 @@ TEST(DocumentParser, composite_font_predefined_unicode_cmap) {
   // The 2-byte codes are UTF-16BE: U+0041 'A', U+4E2D '中' (UTF-8 e4 b8 ad).
   EXPECT_EQ(font->to_unicode(std::string("\x00\x41\x4e\x2d", 4)),
             "A\xe4\xb8\xad");
+}
+
+// A composite font's `/W` array and `/DW` default drive CID advance widths.
+TEST(DocumentParser, composite_font_cid_widths) {
+  const std::string pdf = composite_font_mini_pdf(true);
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Font *font = first_page_font(*document, "F0");
+  ASSERT_NE(font, nullptr);
+  EXPECT_DOUBLE_EQ(font->cid_default_width, 1000);
+  EXPECT_DOUBLE_EQ(font->advance_width(0), 0.5); // W [0 [500 600]]
+  EXPECT_DOUBLE_EQ(font->advance_width(1), 0.6);
+  EXPECT_DOUBLE_EQ(font->advance_width(2), 1.0); // /DW default
+}
+
+// A simple font's `/FirstChar`, `/Widths` and `/MissingWidth` drive advances.
+TEST(DocumentParser, simple_font_widths) {
+  const std::string pdf = simple_font_mini_pdf();
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Font *font = first_page_font(*document, "F1");
+  ASSERT_NE(font, nullptr);
+  EXPECT_FALSE(font->composite);
+  EXPECT_EQ(font->first_char, 65);
+  EXPECT_DOUBLE_EQ(font->advance_width(65), 0.5);  // 'A'
+  EXPECT_DOUBLE_EQ(font->advance_width(66), 0.6);  // 'B'
+  EXPECT_DOUBLE_EQ(font->advance_width(67), 0.25); // 'C' -> /MissingWidth
 }
 
 // Recovery: a valid file with garbage prepended (the real fixture

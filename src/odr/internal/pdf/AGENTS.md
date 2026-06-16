@@ -13,9 +13,9 @@ tables, cross-reference streams, object streams, hybrid files, with a
 forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
-text spans, one per show operation, placed by the full text transform (CTM ×
-text matrix, stage 2.1), pages sized from `MediaBox`. Encrypted files are
-decrypted (RC4, AES-128, AES-256). No glyph advances yet (stage 2.2), no
+text spans, one per shown segment, placed by the full text transform (CTM × text
+matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), pages sized
+from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
 graphics, no images, no font files. Experimental and not production-quality.
 
 ---
@@ -106,6 +106,13 @@ graphics, no images, no font files. Experimental and not production-quality.
   other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
   Unicode" (not byte-garbage) until the legacy CID → Unicode tables (the
   deferred half of part B) or the embedded font program (stage 3) land.
+- **Glyph metrics** (stage 2.2): a font's advance widths are parsed —
+  `/FirstChar` + `/Widths` + `/FontDescriptor` `/MissingWidth` for simple fonts,
+  `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
+  forms) for composite fonts. `Font::advance_width(code)` returns the advance in
+  text-space units (glyph-space / 1000), falling back to `/MissingWidth` or `/DW`.
+  Codes outside the corpus are interpreted as CIDs for composite fonts (identity);
+  AFM widths for the non-embedded standard-14 fonts are stage 3.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, glyph metrics
@@ -114,15 +121,22 @@ graphics, no images, no font files. Experimental and not production-quality.
   affine `Transform2D` values (`util/math_util.hpp`), with `BT` resetting them, `Td`/`TD`
   /`T*` (and the line-move half of `'`/`"`) advancing `Tlm` → `Tm`. Unknown
   operators are logged to stderr and skipped.
-- **Text layout** (`pdf_page_text`, stage 2.1): `extract_text` runs the operator
-  parser + `GraphicsState` over a page's content and emits a renderer-agnostic
-  `TextElement` per show operation (`Tj`/`TJ`/`'`/`"`) — its text-space → user-
-  space transform (CTM × `Tm`, with horizontal scaling and rise folded in, font
-  size kept separate), the resolved font, size, spacing parameters, raw codes,
-  and the CMap-translated Unicode. Font lookup is lenient (unknown ref → warn,
-  raw codes). **Glyph advances are not yet applied** (stage 2.2): each show op
-  yields one element at its starting origin, `TJ`'s numeric adjustments are
-  dropped, and `Tc`/`Tw`/`Tz`-driven spacing is carried but not consumed.
+- **Text layout** (`pdf_page_text`, stages 2.1–2.2): `extract_text` runs the
+  operator parser + `GraphicsState` over a page's content and emits a
+  renderer-agnostic `TextElement` per shown *segment* (one `Tj`/`'`/`"`, or one
+  string of a `TJ` array) — its text-space → user-space transform (CTM × `Tm`,
+  with horizontal scaling and rise folded in, font size kept separate), the
+  resolved font, size, spacing parameters, raw codes, the CMap-translated
+  Unicode, and the segment's per-code advances plus their total. Font lookup is
+  lenient (unknown ref → warn, raw codes). **Glyph advances are applied** (stage
+  2.2): after each segment the text matrix `Tm` advances by the glyph widths ×
+  font size plus char/word spacing (× horizontal scaling), and a `TJ` number
+  translates `Tm` by `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines
+  land in the right place. The element carries the per-code advances directly, so
+  a renderer wanting per-glyph placement need not re-derive them from
+  `font->advance_width`. Still deferred: intra-segment glyph shaping (the browser
+  lays a segment out in a fallback font until stage 3) and vertical writing-mode
+  advances (stage 2.6).
 - **HTML**: one `document.html` view; each page is a `div` sized from `MediaBox`
   (points → inches). Each `TextElement` becomes an absolutely positioned `span`
   carrying a CSS `transform` matrix (the placement transform mapped from PDF user
@@ -143,7 +157,7 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
-| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts and `to_unicode`) |
+| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
@@ -152,8 +166,8 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
-| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode) per show operation (stage 2.1) |
+| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -189,13 +203,15 @@ selection) and `html/pdf_file.cpp` (`create_pdf_service`).
    decoded through their `/Filter` chain (`read_decoded_stream`), concatenated
    with a newline between streams.
 6. **Lay out and emit.** `extract_text` runs `GraphicsOperatorParser` +
-   `GraphicsState` over the content and returns a `TextElement` per show
-   operation, each placed by `text_placement_matrix()` (CTM × `Tm`, with
-   horizontal scaling and rise folded in), its glyphs translated through the
-   font's CMap. The HTML layer maps each element to a positioned `span` with a
-   CSS `transform` (PDF user space → the page box in CSS pixels) and `font-size`
-   from the text state. Glyph advances are **not yet applied** (stage 2.2), so
-   shows without an explicit move overlap.
+   `GraphicsState` over the content and returns a `TextElement` per shown
+   segment, each placed by `text_placement_matrix()` (CTM × `Tm`, with horizontal
+   scaling and rise folded in), its glyphs translated through the font's CMap.
+   After each segment `Tm` is advanced by the glyph widths (`advance_width`) plus
+   char/word spacing, and `TJ` numbers translate `Tm` directly, so segments and
+   lines land correctly. The HTML layer maps each element to a positioned `span`
+   with a CSS `transform` (PDF user space → the page box in CSS pixels) and
+   `font-size` from the text state. Intra-segment glyph shaping is the browser's
+   until the embedded font lands (stage 3).
 
 ---
 
@@ -294,8 +310,10 @@ such PDFs look right, their text just isn't selectable until the tables land.
   stream), plus composite-font coverage (a Type0 font over an `Identity-H`
   descendant `CIDFontType2`: `composite`/`/CIDSystemInfo` recorded, 2-byte
   `/ToUnicode` extraction, the no-`/ToUnicode` "no Unicode" fallback, and a
-  predefined `Uni*-UCS2-H` `/Encoding` extracting without a `/ToUnicode`).
-  End-to-end: the classic fixture
+  predefined `Uni*-UCS2-H` `/Encoding` extracting without a `/ToUnicode`), plus
+  glyph-metric coverage (the composite `/W`+`/DW` and a simple
+  `/FirstChar`/`/Widths`/`/MissingWidth` font, asserted through `advance_width`,
+  stage 2.2). End-to-end: the classic fixture
   `odr-public/pdf/style-various-1.pdf`, plus decryption of
   `odr-public/pdf/Casio_WVA-M650-7AJF.pdf` (RC4, empty password) and
   `odr-private/pdf/encrypted_fontfile3_opentype.pdf` (AES-256; skipped when the
@@ -327,10 +345,13 @@ such PDFs look right, their text just isn't selectable until the tables land.
   `Transform2D` point-apply (identity/translation/scaling), the ordered
   (row-vector) composition, and compose-then-apply ≡ sequential apply (stage 2.1).
 - `test/src/internal/pdf/pdf_page_text.cpp` — **assertion-based**, inline content
-  streams through `extract_text` (empty resources, so codes pass through as
-  `text`): `Td` translation, `Tm` scaling, `cm` CTM concatenation under `Tm`,
-  horizontal scaling and rise in the transform, `TJ` string concatenation, and
-  the `T*`/`'`/`"` line moves with their leading and spacing (stage 2.1).
+  streams through `extract_text`: `Td` translation, `Tm` scaling, `cm` CTM
+  concatenation under `Tm`, horizontal scaling and rise in the transform, and the
+  `T*`/`'`/`"` line moves with their leading and spacing (stage 2.1); plus
+  glyph-advance coverage with hand-built `Font`s — simple `/Widths` advancing a
+  following show, `TJ` emitting per string with the numeric adjustment applied,
+  char spacing, word spacing on the single-byte space, the composite 2-byte `/DW`
+  advance, and the `advance_width` fallbacks (stage 2.2).
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output itself (the span emission / CSS transform mapping).
@@ -401,7 +422,7 @@ per-glyph positioning. **The core never commits to either**; this pushes the
 run-vs-glyph question all the way down to rendering. (The earlier framing of an
 up-front "HTML mapping decision" is dissolved into this.)
 
-### 2.1 — transforms & the placed-text emission — **in progress**
+### 2.1 — transforms & the placed-text emission — **done**
 
 The geometry foundation plus the emission contract, *without* glyph advances:
 - A 2-D affine `Transform2D` (`util/math_util.hpp`): compose, point-apply,
@@ -420,20 +441,29 @@ The geometry foundation plus the emission contract, *without* glyph advances:
   state, the page y-axis flipped once per page. The text-path debug `std::cout`
   (incl. the `"hi"` marker) is removed.
 
-**Deliberately out of scope here (→ 2.2):** glyph advances (`/Widths`,
-`/W`/`/DW`) and the *application* of char/word spacing and the `TJ` numeric
-adjustments, so consecutive shows on a line without an explicit move still
-overlap, and `TJ` renders its strings concatenated at one origin. Precise
-baseline placement (needs font ascent metrics) is likewise deferred. Whether 2.2
-folds into this PR or branches off is an open call once 2.1 lands.
+**Deliberately out of scope here (→ 2.2):** glyph advances. (Precise baseline
+placement — needs font ascent metrics — stays deferred past 2.2 too.)
 
-### 2.2 — glyph advances & metrics
+### 2.2 — glyph advances & metrics — **done**
 
-Parse `/Widths` + `/MissingWidth` (simple) and `/W` + `/DW` (CID); apply char/word
-spacing, horizontal scaling and the `TJ` numeric adjustments to advance the text
-matrix per glyph — so `TJ`, `'`, `"` land correctly, `Tj` runs space correctly,
-and the emission can be subdivided per glyph (which makes the renderer's
-per-glyph option exercisable).
+Glyph metrics and the per-glyph text-matrix advance, on top of 2.1's emission:
+- **Width parsing** (`pdf_document_parser`, `Font`): `/FirstChar` + `/Widths` +
+  `/FontDescriptor` `/MissingWidth` (simple), `/W` + `/DW` (the descendant
+  CIDFont, both `c [w…]` and `c_first c_last w` forms). `Font::advance_width(code)`
+  returns the advance in text-space units, with the `/MissingWidth` / `/DW`
+  fallbacks; `code_byte_width()` is 1 (simple) / 2 (composite).
+- **Advance application** (`extract_text`, `GraphicsState::advance_text`): a
+  `TextElement` is now emitted per shown *segment* (one `Tj`/`'`/`"`, or one
+  string of a `TJ` array); after each segment `Tm` advances by Σ(width × Tfs + Tc
+  [+ Tw for single-byte 0x20]) × Th, and a `TJ` number translates `Tm` by
+  `−n/1000 × Tfs × Th`. So `TJ`/`'`/`"` land correctly and `Tj` segments space
+  correctly. The element carries both its per-code advances and their total, so
+  per-glyph placement needs no re-derivation from `font->advance_width`, keeping
+  the run-vs-glyph choice in the renderer.
+
+Out of scope (later): intra-segment glyph shaping (browser fallback until the
+embedded font, stage 3), AFM widths for non-embedded standard-14 fonts (stage 3),
+vertical writing-mode advances (stage 2.6).
 
 ### 2.3 — Form XObjects
 

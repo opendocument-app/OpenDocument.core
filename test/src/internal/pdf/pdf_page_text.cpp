@@ -14,11 +14,25 @@ using odr::Logger;
 
 namespace {
 
+std::vector<TextElement> run(const std::string &content,
+                             const Resources &resources) {
+  return extract_text(content, resources, Logger::null());
+}
+
 // Run a content stream with no font resources: fonts resolve to null, so the
-// emitted `text` is the raw codes and we can assert positioning in isolation.
+// emitted `text` is the raw codes and advances are zero — lets us assert
+// transform positioning in isolation.
 std::vector<TextElement> run(const std::string &content) {
   Resources resources;
-  return extract_text(content, resources, Logger::null());
+  return run(content, resources);
+}
+
+// A simple font `widths` (glyph space, 1/1000 em) starting at `first_char`.
+Font simple_font(int first_char, std::vector<double> widths) {
+  Font font;
+  font.first_char = first_char;
+  font.widths = std::move(widths);
+  return font;
 }
 
 } // namespace
@@ -74,12 +88,101 @@ TEST(PdfPageText, text_rise) {
   EXPECT_DOUBLE_EQ(texts[0].rise, 5);
 }
 
-// `TJ` concatenates its strings; the numeric adjustments are dropped
-// (stage 2.2).
-TEST(PdfPageText, tj_concatenates_strings) {
+// `TJ` emits one element per string; with no font the strings stay put (zero
+// advance) but the numeric adjustments still move the origin.
+TEST(PdfPageText, tj_emits_per_string_with_adjustments) {
+  // adjustment -120 -> +120/1000 * 10 = +1.2 between the two strings
   const auto texts = run("BT /F1 10 Tf 0 0 Td [(Ab) -120 (cd)] TJ ET");
-  ASSERT_EQ(texts.size(), 1);
-  EXPECT_EQ(texts[0].codes, "Abcd");
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[0].codes, "Ab");
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 0);
+  EXPECT_EQ(texts[1].codes, "cd");
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 1.2);
+}
+
+// Simple-font `/Widths` advance the text matrix, so a following show lands past
+// the previous one.
+TEST(PdfPageText, simple_font_widths_advance) {
+  Font font = simple_font('A', {500, 600, 700}); // A=0.5, B=0.6, C=0.7 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  const auto texts = run("BT /F1 10 Tf 0 0 Td (AB) Tj (C) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 0);
+  EXPECT_DOUBLE_EQ(texts[0].width, 11); // 5 + 6
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 11);
+  EXPECT_DOUBLE_EQ(texts[1].width, 7);
+}
+
+// A `TJ` adjustment combines with the glyph width to place the next string.
+TEST(PdfPageText, tj_adjustment_after_width) {
+  Font font = simple_font('A', {500, 600}); // A=0.5, B=0.6 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  // (A): width 5; -100 -> +1.0; (B) lands at 6.0
+  const auto texts = run("BT /F1 10 Tf 0 0 Td [(A) -100 (B)] TJ ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 0);
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 6);
+}
+
+// Char spacing adds to every glyph's advance.
+TEST(PdfPageText, char_spacing_advance) {
+  Font font = simple_font('A', {500, 500});
+  Resources res;
+  res.font["F1"] = &font;
+
+  // Tc=2: each of A,B advances 5 + 2 = 7 -> 14 total
+  const auto texts = run("BT /F1 10 Tf 2 Tc 0 0 Td (AB) Tj (x) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].width, 14);
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 14);
+}
+
+// Word spacing adds to the single-byte space (0x20) only.
+TEST(PdfPageText, word_spacing_applies_to_space) {
+  Font font = simple_font(32, {250}); // space = 0.25 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  // Tw=5: the space advances 2.5 + 5 = 7.5
+  const auto texts = run("BT /F1 10 Tf 5 Tw 0 0 Td ( ) Tj (x) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].width, 7.5);
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 7.5);
+}
+
+// Composite (Type0) fonts use 2-byte codes and the `/DW` default width.
+TEST(PdfPageText, composite_default_width_advance) {
+  Font font;
+  font.composite = true;
+  font.cid_default_width = 1000; // 1.0 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  // <0001> and <0002> are one 2-byte code each; size 10 -> advance 10 apiece
+  const auto texts = run("BT /F1 10 Tf 0 0 Td <0001> Tj <0002> Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].width, 10);
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 10);
+}
+
+// `Font::advance_width` falls back to `/MissingWidth` (simple) and `/DW`
+// (composite) for absent codes.
+TEST(PdfPageText, advance_width_fallbacks) {
+  Font simple = simple_font('A', {500});
+  simple.missing_width = 250;
+  EXPECT_DOUBLE_EQ(simple.advance_width('A'), 0.5);
+  EXPECT_DOUBLE_EQ(simple.advance_width('B'), 0.25); // out of range
+
+  Font composite;
+  composite.composite = true;
+  composite.cid_default_width = 1000;
+  composite.cid_widths[1] = 2000;
+  EXPECT_DOUBLE_EQ(composite.advance_width(1), 2.0);
+  EXPECT_DOUBLE_EQ(composite.advance_width(2), 1.0); // default
 }
 
 // `T*` moves down one line by the leading set with `TL`.

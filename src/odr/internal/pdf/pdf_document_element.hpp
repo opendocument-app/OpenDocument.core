@@ -97,6 +97,28 @@ struct Font final : Element {
   /// the predefined Unicode-CMap extraction path.
   std::string cid_encoding_name;
 
+  /// Simple-font glyph metrics (ISO 32000-1 9.2.4): `/Widths`, in glyph space
+  /// (1/1000 text-space units), indexed by `code - first_char`; codes outside
+  /// the range fall back to `missing_width` (`/MissingWidth`).
+  int first_char{0};
+  std::vector<double> widths;
+  double missing_width{0};
+
+  /// Composite-font glyph metrics (9.7.4.3): the `/DW` default width and the
+  /// `/W` map CID -> width, both glyph-space units. Codes are interpreted as
+  /// CIDs (identity), the common `Identity-H/V` case.
+  double cid_default_width{1000};
+  std::unordered_map<std::uint32_t, double> cid_widths;
+
+  /// Bytes per character code: 2 for composite (Type0) fonts (the
+  /// `Identity-H/V` and common CID case), 1 for simple fonts.
+  [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
+
+  /// Glyph advance width of a single character code, in text-space units
+  /// (glyph-space / 1000; multiply by the font size for user space). Falls back
+  /// to `/MissingWidth` (simple) or `/DW` (composite) for absent codes.
+  [[nodiscard]] double advance_width(std::uint32_t code) const;
+
   /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
   /// when present (authoritative), else, for a composite font, "no Unicode",
   /// else the simple-font `/Encoding`, else identity bytes.
