@@ -21,7 +21,6 @@ class Logger;
 namespace odr::internal::pdf {
 
 struct Document;
-struct XObject;
 
 /// Resolution/memoization layer on top of the sequential `FileParser`: maps
 /// `ObjectReference`s to file positions via the cross-reference table and
