@@ -658,9 +658,7 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
     // `read_object` leaves its strings raw and caches that copy — every later
     // lookup hits the cache and never re-decrypts it.
     Object encrypt = m_trailer["Encrypt"];
-    if (encrypt.is_reference()) {
-      encrypt = read_object(encrypt.as_reference()).object;
-    }
+    resolve_object(encrypt);
     if (!encrypt.is_dictionary()) {
       throw std::runtime_error("pdf: /Encrypt is not a dictionary");
     }
@@ -752,7 +750,8 @@ DocumentParser::read_object(const ObjectReference &reference) {
     }
   } else if (entry.is_compressed()) {
     const auto &[stream_id, index] = entry.as_compressed();
-    const ObjectStream &members = load_object_stream(stream_id);
+    const ObjectStream &members =
+        load_object_stream(ObjectReference(stream_id, 0));
     if (index >= members.size()) {
       throw std::runtime_error("object stream member index out of range");
     }
@@ -773,15 +772,15 @@ DocumentParser::read_object(const ObjectReference &reference) {
 }
 
 const ObjectStream &
-DocumentParser::load_object_stream(const std::uint32_t stream_id) {
-  if (const auto it = m_object_streams.find(stream_id);
+DocumentParser::load_object_stream(const ObjectReference &reference) {
+  if (const auto it = m_object_streams.find(reference);
       it != std::end(m_object_streams)) {
     return it->second;
   }
 
-  const IndirectObject &object = read_object(ObjectReference(stream_id, 0));
+  const IndirectObject &object = read_object(reference);
   if (!object.has_stream) {
-    throw std::runtime_error("object stream " + std::to_string(stream_id) +
+    throw std::runtime_error("object stream " + reference.to_string() +
                              " has no stream data");
   }
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -792,7 +791,7 @@ DocumentParser::load_object_stream(const std::uint32_t stream_id) {
       resolve_object_copy(dictionary["First"]).as_integer();
 
   std::istringstream in(std::move(data));
-  return m_object_streams.emplace(stream_id, parse_object_stream(in, n, first))
+  return m_object_streams.emplace(reference, parse_object_stream(in, n, first))
       .first->second;
 }
 
@@ -802,15 +801,12 @@ DocumentParser::read_object_stream(const ObjectReference &reference) {
 }
 
 std::string DocumentParser::read_object_stream(const IndirectObject &object) {
-  const Object length = object.object.as_dictionary()["Length"];
-  std::uint32_t size = 0;
-  if (length.is_integer()) {
-    size = length.as_integer();
-  } else if (length.is_reference()) {
-    size = read_object(length.as_reference()).object.as_integer();
-  } else {
+  Object length = object.object.as_dictionary()["Length"];
+  resolve_object(length);
+  if (!length.is_integer()) {
     throw std::runtime_error("unknown length property");
   }
+  const std::uint32_t size = length.as_integer();
 
   // a stream object always carries a stream position
   // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
@@ -887,7 +883,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
   // cross-reference streams (7.5.8.2), so no reference resolution here.
   std::string data = read_object_stream(object);
-  DecodeResult decoded = decode(
+  const DecodeResult decoded = decode(
       dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
       dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
       std::move(data));
@@ -1061,7 +1057,8 @@ void DocumentParser::recover_xref() {
     const std::string line = p.read_line();
     const auto [lead, content] = trim_line(line);
 
-    if (std::optional<ObjectReference> ref = match_object_start(content)) {
+    if (const std::optional<ObjectReference> ref =
+            match_object_start(content)) {
       // last definition of an id wins (operator[] overwrites)
       xref.table[*ref] = Xref::Entry(
           Xref::UsedEntry{static_cast<std::uint32_t>(position + lead)});
@@ -1134,7 +1131,7 @@ void DocumentParser::index_object_streams() {
           dictionary["Type"].as_name() != "ObjStm") {
         continue;
       }
-      const ObjectStream &members = load_object_stream(reference.id);
+      const ObjectStream &members = load_object_stream(reference);
       for (std::size_t i = 0; i < members.size(); ++i) {
         // a directly recovered object wins over its compressed copy
         m_xref.table.try_emplace(ObjectReference(members[i].id, 0),
@@ -1177,7 +1174,7 @@ void DocumentParser::decrypt_strings(Object &object,
                                      const ObjectReference &reference) {
   // only ever called once a decryptor is installed; guard keeps that explicit
   if (!m_decryptor.has_value()) {
-    return;
+    throw std::logic_error("pdf: decrypt_strings called without a decryptor");
   }
   if (object.is_standard_string()) {
     object = Object(StandardString(
