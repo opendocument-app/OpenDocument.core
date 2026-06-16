@@ -143,7 +143,7 @@ struct PageAttributes {
 /// no differences).
 std::optional<Encoding> parse_encoding(DocumentParser &parser,
                                        const Object &encoding_object) {
-  Object resolved = parser.resolve_object_copy(encoding_object);
+  const Object resolved = parser.resolve_object_copy(encoding_object);
 
   if (resolved.is_name()) {
     if (const auto base = base_encoding_from_name(resolved.as_name())) {
@@ -242,7 +242,8 @@ void parse_cid_widths(const Array &w, Font &font) {
 
 /// The `/Matrix` of a form XObject: a 6-element number array `[a b c d e f]`,
 /// defaulting to identity when absent or malformed.
-util::math::Transform2D parse_matrix(const Object &object) {
+util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
+  parser.resolve_object(object);
   if (!object.is_array()) {
     return {};
   }
@@ -443,8 +444,8 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
   }
 
   x_object->subtype = XObject::Subtype::form;
-  if (dictionary.has_key("Matrix")) {
-    x_object->matrix = parse_matrix(dictionary["Matrix"]);
+  if (dictionary.has_key("Matrix") && !dictionary["Matrix"].is_null()) {
+    x_object->matrix = parse_matrix(parser, dictionary["Matrix"]);
   }
   // Read the content eagerly so text extraction needs no parser handle.
   x_object->content = parser.read_decoded_stream(object);
@@ -462,12 +463,13 @@ Resources *parse_resources(State &state, const Object &object) {
 
   auto *resources = document.create_element<Resources>();
 
-  Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
+  const Dictionary dictionary =
+      parser.resolve_object_copy(object).as_dictionary();
 
   resources->object = Object(dictionary);
 
   if (!dictionary["Font"].is_null()) {
-    Dictionary font_table =
+    const Dictionary font_table =
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
       resources->font[key] = parse_font(state, value.as_reference());
@@ -528,8 +530,7 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
   // a reference to an array is expanded into its stream references rather than
   // mistaken for a single stream.
   const Object &contents = dictionary["Contents"];
-  const Object resolved_contents =
-      contents.is_reference() ? parser.resolve_object_copy(contents) : contents;
+  const Object resolved_contents = parser.resolve_object_copy(contents);
   if (resolved_contents.is_array()) {
     for (const Object &e : resolved_contents.as_array()) {
       page->contents_reference.push_back(e.as_reference());
@@ -540,7 +541,7 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
 
   if (dictionary.has_key("Annots")) {
     // TODO why rvalue not working?
-    Array annotations =
+    const Array annotations =
         parser.resolve_object_copy(dictionary["Annots"]).as_array();
     for (const Object &annotation : annotations) {
       // entries are usually indirect references, but inline annotation
@@ -1234,16 +1235,14 @@ void DocumentParser::deep_resolve_object(Object &object) {
   }
 }
 
-Object DocumentParser::resolve_object_copy(const Object &object) {
-  Object result = object;
-  resolve_object(result);
-  return result;
+Object DocumentParser::resolve_object_copy(Object object) {
+  resolve_object(object);
+  return object;
 }
 
-Object DocumentParser::deep_resolve_object_copy(const Object &object) {
-  Object result = object;
-  deep_resolve_object(result);
-  return result;
+Object DocumentParser::deep_resolve_object_copy(Object object) {
+  deep_resolve_object(object);
+  return object;
 }
 
 } // namespace odr::internal::pdf

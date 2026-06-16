@@ -95,8 +95,8 @@ public:
   void resolve_object(Object &object);
   void deep_resolve_object(Object &object);
 
-  [[nodiscard]] Object resolve_object_copy(const Object &object);
-  [[nodiscard]] Object deep_resolve_object_copy(const Object &object);
+  [[nodiscard]] Object resolve_object_copy(Object object);
+  [[nodiscard]] Object deep_resolve_object_copy(Object object);
 
 private:
   /// Read one cross-reference section (classic table or cross-reference
