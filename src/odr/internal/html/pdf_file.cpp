@@ -129,7 +129,7 @@ public:
           util::math::Transform2D::scaling(1, -1);
       const util::math::Transform2D to_box =
           util::math::Transform2D::translation(-box_x0, -box_y0) *
-          util::math::Transform2D::translation_scaling(1, -1, 0, height);
+          util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
       // Round CSS coordinates to 0.01px; sub-pixel precision beyond that is
       // invisible and the extra digits add up over millions of spans.

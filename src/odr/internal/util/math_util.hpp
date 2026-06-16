@@ -36,10 +36,13 @@ struct Transform2D {
                                        const double y) noexcept {
     return {x, 0, 0, y, 0, 0};
   }
-  constexpr static Transform2D translation_scaling(const double x,
-                                                   const double y,
-                                                   const double sx,
-                                                   const double sy) noexcept {
+  /// `scaling(sx, sy)` then `translation(x, y)`: the point is scaled first and
+  /// the translation `(x, y)` is applied in the output space (it is not
+  /// scaled).
+  constexpr static Transform2D scaling_translation(const double sx,
+                                                   const double sy,
+                                                   const double x,
+                                                   const double y) noexcept {
     return {sx, 0, 0, sy, x, y};
   }
 

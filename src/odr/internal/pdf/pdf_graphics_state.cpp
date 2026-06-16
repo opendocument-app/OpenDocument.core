@@ -41,8 +41,8 @@ util::math::Transform2D GraphicsState::text_placement_transform() const {
   // text rendering matrix without the font size (ISO 32000-1 9.4.4): the font
   // size scales x and y, horizontal scaling scales x only, rise offsets y.
   const util::math::Transform2D params =
-      util::math::Transform2D::translation_scaling(
-          0, text.rise, text.horizontal_scaling / 100.0, 1);
+      util::math::Transform2D::scaling_translation(
+          text.horizontal_scaling / 100.0, 1, 0, text.rise);
   return params * text.matrix * current().general.transform_matrix;
 }
 
