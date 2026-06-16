@@ -25,35 +25,43 @@ Font *lookup_font(const Resources &resources, const std::string &name,
   return nullptr;
 }
 
-/// Total advance of a shown string, in text-space units: the per-code glyph
-/// width times the font size, plus char spacing (every code) and word spacing
-/// (single-byte code 0x20 only), the whole scaled by horizontal scaling
-/// (ISO 32000-1 9.4.4). 0 when the font is unknown.
-double segment_advance(const GraphicsState::Text &text, const Font *font,
-                       const std::string &codes) {
-  if (font == nullptr) {
-    return 0.0;
-  }
-  const int width = font->code_byte_width();
-  double tx = 0.0;
+/// Per-code advances of a shown string and their total, in text-space units.
+struct SegmentAdvances {
+  /// Advance of each character code, in code order. Sums to `total`.
+  std::vector<double> advances;
+  /// Total advance applied to the text matrix after the segment.
+  double total{0};
+};
+
+/// Advance of each code in a shown string and their total, in text-space units:
+/// the per-code glyph width times the font size, plus char spacing (every code)
+/// and word spacing (single-byte code 0x20 only), each scaled by horizontal
+/// scaling (ISO 32000-1 9.4.4).
+SegmentAdvances segment_advances(const GraphicsState::Text &text,
+                                 const Font &font, const std::string &codes) {
+  const int width = font.code_byte_width();
+  const double scaling = text.horizontal_scaling / 100.0;
+  SegmentAdvances result;
   for (std::size_t i = 0; i + width <= codes.size(); i += width) {
     std::uint32_t code = 0;
     for (int k = 0; k < width; ++k) {
       code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
     }
-    tx += font->advance_width(code) * text.size + text.char_spacing;
-    if (!font->composite && code == ' ') {
+    double tx = font.advance_width(code) * text.size + text.char_spacing;
+    if (!font.composite && code == ' ') {
       tx += text.word_spacing;
     }
+    tx *= scaling;
+    result.advances.push_back(tx);
+    result.total += tx;
   }
-  return tx * (text.horizontal_scaling / 100.0);
+  return result;
 }
 
 /// Emit one placed segment and advance the text matrix by its width.
 void show(std::vector<TextElement> &out, GraphicsState &state,
           std::string codes, Font *font) {
   const GraphicsState::Text &text = state.current().text;
-  const double advance = segment_advance(text, font, codes);
 
   TextElement element;
   element.transform = state.text_placement_transform();
@@ -66,8 +74,13 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
   element.rendering_mode = text.rendering_mode;
   element.text = font != nullptr ? font->to_unicode(codes) : codes;
   element.codes = std::move(codes);
-  element.width = advance;
+  if (font != nullptr) {
+    auto [advances, total] = segment_advances(text, *font, element.codes);
+    element.width = total;
+    element.advances = std::move(advances);
+  }
 
+  const double advance = element.width;
   out.push_back(std::move(element));
   state.advance_text(advance, 0);
 }

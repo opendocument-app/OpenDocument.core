@@ -39,9 +39,12 @@ struct TextElement {
   /// Total advance of this segment, in text-space units (the displacement
   /// applied to the text matrix after it — already scaled by the font size and
   /// including char/word spacing and horizontal scaling). 0 when the font is
-  /// unknown. A renderer wanting per-glyph placement can re-derive per-code
-  /// advances from `font->advance_width` over `codes`.
+  /// unknown. Equal to the sum of `advances`.
   double width{0};
+  /// Per-character-code advance, in code order and text-space units, summing to
+  /// `width`. Empty when the font is unknown. Lets a renderer place glyphs
+  /// individually without re-deriving widths from `font->advance_width`.
+  std::vector<double> advances;
 };
 
 /// Execute a page's (decoded, concatenated) content stream and collect the text

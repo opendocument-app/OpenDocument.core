@@ -127,12 +127,13 @@ graphics, no images, no font files. Experimental and not production-quality.
   string of a `TJ` array) — its text-space → user-space transform (CTM × `Tm`,
   with horizontal scaling and rise folded in, font size kept separate), the
   resolved font, size, spacing parameters, raw codes, the CMap-translated
-  Unicode, and the segment's total advance. Font lookup is lenient (unknown ref →
-  warn, raw codes). **Glyph advances are applied** (stage 2.2): after each segment
-  the text matrix `Tm` advances by the glyph widths × font size plus char/word
-  spacing (× horizontal scaling), and a `TJ` number translates `Tm` by
-  `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines land in the right
-  place. A renderer wanting per-glyph placement re-derives per-code advances from
+  Unicode, and the segment's per-code advances plus their total. Font lookup is
+  lenient (unknown ref → warn, raw codes). **Glyph advances are applied** (stage
+  2.2): after each segment the text matrix `Tm` advances by the glyph widths ×
+  font size plus char/word spacing (× horizontal scaling), and a `TJ` number
+  translates `Tm` by `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines
+  land in the right place. The element carries the per-code advances directly, so
+  a renderer wanting per-glyph placement need not re-derive them from
   `font->advance_width`. Still deferred: intra-segment glyph shaping (the browser
   lays a segment out in a fallback font until stage 3) and vertical writing-mode
   advances (stage 2.6).
@@ -166,7 +167,7 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
 | `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2) |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -456,9 +457,9 @@ Glyph metrics and the per-glyph text-matrix advance, on top of 2.1's emission:
   string of a `TJ` array); after each segment `Tm` advances by Σ(width × Tfs + Tc
   [+ Tw for single-byte 0x20]) × Th, and a `TJ` number translates `Tm` by
   `−n/1000 × Tfs × Th`. So `TJ`/`'`/`"` land correctly and `Tj` segments space
-  correctly. The element carries its total advance; per-glyph placement is
-  re-derivable from `font->advance_width`, keeping the run-vs-glyph choice in the
-  renderer.
+  correctly. The element carries both its per-code advances and their total, so
+  per-glyph placement needs no re-derivation from `font->advance_width`, keeping
+  the run-vs-glyph choice in the renderer.
 
 Out of scope (later): intra-segment glyph shaping (browser fallback until the
 embedded font, stage 3), AFM widths for non-embedded standard-14 fonts (stage 3),
