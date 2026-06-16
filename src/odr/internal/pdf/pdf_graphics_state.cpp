@@ -53,7 +53,7 @@ void GraphicsState::next_line(const double tx, const double ty) {
   text.matrix = text.line_matrix;
 }
 
-void GraphicsState::advance_text(double tx, double ty) {
+void GraphicsState::advance_text(const double tx, const double ty) {
   Text &text = current().text;
   text.matrix = util::math::Transform2D::translation(tx, ty) * text.matrix;
 }
