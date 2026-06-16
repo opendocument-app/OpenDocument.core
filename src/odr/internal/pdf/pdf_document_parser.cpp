@@ -26,6 +26,35 @@ namespace odr::internal::pdf {
 
 namespace {
 
+struct State {
+  State(DocumentParser &parser, Document &document)
+      : m_parser(&parser), m_document(&document) {}
+
+  DocumentParser &parser() const { return *m_parser; }
+  Document &document() const { return *m_document; }
+
+  [[nodiscard]] XObject *find_x_object(const ObjectReference &reference) const {
+    const auto it = m_x_objects.find(reference);
+    return it != m_x_objects.end() ? it->second : nullptr;
+  }
+  void cache_x_object(const ObjectReference &reference, XObject *x_object) {
+    m_x_objects[reference] = x_object;
+  }
+
+private:
+  DocumentParser *m_parser{};
+  Document *m_document{};
+
+  /// Memoized XObject elements by pointer. A shared form/image XObject (e.g.
+  /// a header reused on every page) is parsed once, and a cyclic form reference
+  /// resolves to the existing — possibly still-being-built — element instead of
+  /// recursing forever, so the in-memory graph mirrors the file (cycles
+  /// included). `find_x_object` returns `nullptr` when not yet parsed;
+  /// `cache_x_object` must register the element *before* its `/Resources` are
+  /// parsed. The drawing side guards against the resulting cycles.
+  std::map<ObjectReference, XObject *> m_x_objects;
+};
+
 /// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
 /// but real files carry 360 and negatives.
 Integer normalize_rotate(Integer rotate) {
@@ -106,11 +135,6 @@ struct PageAttributes {
     return resources;
   }
 };
-
-Element *parse_page_or_pages(DocumentParser &parser,
-                             const ObjectReference &reference,
-                             Document &document, Pages *parent,
-                             const PageAttributes &inherited);
 
 /// Parse a simple-font `/Encoding`: either a base-encoding name, or a
 /// dictionary with an optional `/BaseEncoding` name overlaid with a
@@ -216,6 +240,20 @@ void parse_cid_widths(const Array &w, Font &font) {
   }
 }
 
+/// The `/Matrix` of a form XObject: a 6-element number array `[a b c d e f]`,
+/// defaulting to identity when absent or malformed.
+util::math::Transform2D parse_matrix(const Object &object) {
+  if (!object.is_array()) {
+    return {};
+  }
+  const Array &array = object.as_array();
+  if (array.size() != 6) {
+    return {};
+  }
+  return {array[0].as_real(), array[1].as_real(), array[2].as_real(),
+          array[3].as_real(), array[4].as_real(), array[5].as_real()};
+}
+
 /// Parse a simple font's `/FirstChar`, `/Widths` and `/FontDescriptor`
 /// `/MissingWidth` glyph metrics (ISO 32000-1 9.2.4).
 void parse_simple_font_widths(DocumentParser &parser,
@@ -316,8 +354,10 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   }
 }
 
-Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
-                 Document &document) {
+Font *parse_font(const State &state, const ObjectReference &reference) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   Font *font = document.create_element<Font>();
 
   IndirectObject object = parser.read_object(reference);
@@ -356,39 +396,29 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   return font;
 }
 
+Element *parse_page_or_pages(State &state, const ObjectReference &reference,
+                             Pages *parent, const PageAttributes &inherited);
+
 // parse_resources and parse_x_object are mutually recursive: a form XObject
 // carries its own /Resources, which may list further XObjects (possibly back to
 // an enclosing form). The parser's XObject cache breaks such cycles by handing
 // back the in-progress element, so the in-memory graph mirrors the file.
-Resources *parse_resources(DocumentParser &parser, const Object &object,
-                           Document &document);
+Resources *parse_resources(State &state, const Object &object);
 
-/// The `/Matrix` of a form XObject: a 6-element number array `[a b c d e f]`,
-/// defaulting to identity when absent or malformed.
-util::math::Transform2D parse_matrix(const Object &object) {
-  if (!object.is_array()) {
-    return {};
-  }
-  const Array &array = object.as_array();
-  if (array.size() != 6) {
-    return {};
-  }
-  return {array[0].as_real(), array[1].as_real(), array[2].as_real(),
-          array[3].as_real(), array[4].as_real(), array[5].as_real()};
-}
+XObject *parse_x_object(State &state, const ObjectReference &reference) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
 
-XObject *parse_x_object(DocumentParser &parser,
-                        const ObjectReference &reference, Document &document) {
   // Shared XObjects are parsed once; a cyclic form reference resolves to the
   // existing (possibly still-being-built) element instead of recursing.
-  if (XObject *cached = parser.find_x_object(reference); cached != nullptr) {
+  if (XObject *cached = state.find_x_object(reference); cached != nullptr) {
     return cached;
   }
 
   auto *x_object = document.create_element<XObject>();
   // Register before parsing /Resources so a cycle back to this form resolves
   // here rather than recursing forever.
-  parser.cache_x_object(reference, x_object);
+  state.cache_x_object(reference, x_object);
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
@@ -420,15 +450,16 @@ XObject *parse_x_object(DocumentParser &parser,
   x_object->content = parser.read_decoded_stream(object);
 
   if (dictionary.has_key("Resources")) {
-    x_object->resources =
-        parse_resources(parser, dictionary["Resources"], document);
+    x_object->resources = parse_resources(state, dictionary["Resources"]);
   }
 
   return x_object;
 }
 
-Resources *parse_resources(DocumentParser &parser, const Object &object,
-                           Document &document) {
+Resources *parse_resources(State &state, const Object &object) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   auto *resources = document.create_element<Resources>();
 
   Dictionary dictionary = parser.resolve_object_copy(object).as_dictionary();
@@ -439,16 +470,15 @@ Resources *parse_resources(DocumentParser &parser, const Object &object,
     Dictionary font_table =
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
-      resources->font[key] = parse_font(parser, value.as_reference(), document);
+      resources->font[key] = parse_font(state, value.as_reference());
     }
   }
 
   if (!dictionary["XObject"].is_null()) {
-    Dictionary x_object_table =
+    const Dictionary x_object_table =
         parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
     for (const auto &[key, value] : x_object_table) {
-      resources->x_object[key] =
-          parse_x_object(parser, value.as_reference(), document);
+      resources->x_object[key] = parse_x_object(state, value.as_reference());
     }
   }
 
@@ -461,9 +491,11 @@ Annotation *parse_annotation(Document &document, const Dictionary &dictionary) {
   return annotation;
 }
 
-Annotation *parse_annotation(DocumentParser &parser,
-                             const ObjectReference &reference,
-                             Document &document) {
+Annotation *parse_annotation(const State &state,
+                             const ObjectReference &reference) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   IndirectObject object = parser.read_object(reference);
   Annotation *annotation =
       parse_annotation(document, object.object.as_dictionary());
@@ -471,8 +503,11 @@ Annotation *parse_annotation(DocumentParser &parser,
   return annotation;
 }
 
-Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
-                 Document &document, Pages *parent, PageAttributes attributes) {
+Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
+                 PageAttributes attributes) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   Page *page = document.create_element<Page>();
 
   IndirectObject object = parser.read_object(reference);
@@ -486,7 +521,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   // attributes are resolved into the page with Table-30 defaults (7.7.3.4)
   attributes.overlay(dictionary);
   const Object resources = attributes.resolve_into(*page, parser, reference);
-  page->resources = parse_resources(parser, resources, document);
+  page->resources = parse_resources(state, resources);
 
   // /Contents is a content stream or an array of them, supplied directly or
   // through an indirect reference (7.7.3.3). Resolve a reference first so that
@@ -512,7 +547,7 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
       // dictionaries are equally valid (12.5.2)
       if (annotation.is_reference()) {
         page->annotations.push_back(
-            parse_annotation(parser, annotation.as_reference(), document));
+            parse_annotation(state, annotation.as_reference()));
       } else if (annotation.is_dictionary()) {
         page->annotations.push_back(
             parse_annotation(document, annotation.as_dictionary()));
@@ -523,8 +558,11 @@ Page *parse_page(DocumentParser &parser, const ObjectReference &reference,
   return page;
 }
 
-Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
-                   Document &document, PageAttributes attributes) {
+Pages *parse_pages(State &state, const ObjectReference &reference,
+                   PageAttributes attributes) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   auto *pages = document.create_element<Pages>();
 
   IndirectObject object = parser.read_object(reference);
@@ -538,34 +576,37 @@ Pages *parse_pages(DocumentParser &parser, const ObjectReference &reference,
   attributes.overlay(dictionary);
 
   for (const Object &kid : dictionary["Kids"].as_array()) {
-    pages->kids.push_back(parse_page_or_pages(parser, kid.as_reference(),
-                                              document, pages, attributes));
+    pages->kids.push_back(
+        parse_page_or_pages(state, kid.as_reference(), pages, attributes));
   }
 
   return pages;
 }
 
-Element *parse_page_or_pages(DocumentParser &parser,
-                             const ObjectReference &reference,
-                             Document &document, Pages *parent,
-                             const PageAttributes &inherited) {
+Element *parse_page_or_pages(State &state, const ObjectReference &reference,
+                             Pages *parent, const PageAttributes &inherited) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
   const std::string &type = dictionary["Type"].as_string();
 
   if (type == "Pages") {
-    return parse_pages(parser, reference, document, inherited);
+    return parse_pages(state, reference, inherited);
   }
   if (type == "Page") {
-    return parse_page(parser, reference, document, parent, inherited);
+    return parse_page(state, reference, parent, inherited);
   }
 
   throw std::runtime_error("unknown element");
 }
 
-Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
-                       Document &document) {
+Catalog *parse_catalog(State &state, const ObjectReference &reference) {
+  DocumentParser &parser = state.parser();
+  Document &document = state.document();
+
   auto *catalog = document.create_element<Catalog>();
 
   IndirectObject object = parser.read_object(reference);
@@ -574,9 +615,20 @@ Catalog *parse_catalog(DocumentParser &parser, const ObjectReference &reference,
 
   catalog->object_reference = reference;
   catalog->object = Object(dictionary);
-  catalog->pages = parse_pages(parser, pages_reference, document, {});
+  catalog->pages = parse_pages(state, pages_reference, {});
 
   return catalog;
+}
+
+std::unique_ptr<Document> parse_document_impl(DocumentParser &parser,
+                                              const Dictionary &trailer) {
+  auto document = std::make_unique<Document>();
+
+  State state(parser, *document);
+
+  document->catalog = parse_catalog(state, trailer["Root"].as_reference());
+
+  return document;
 }
 
 } // namespace
@@ -925,7 +977,8 @@ std::pair<std::size_t, std::string_view> trim_line(const std::string &line) {
 /// Recognize an `n g obj` object header at the start of `content` (already
 /// trimmed). The dictionary/value may follow on the same line (`12 0 obj<<`),
 /// so only the leading `id gen obj` token is required.
-std::optional<ObjectReference> match_object_start(std::string_view content) {
+std::optional<ObjectReference>
+match_object_start(const std::string_view content) {
   util::stream::ViewStreamBuf buffer(content);
   std::istream stream(&buffer);
   ObjectParser parser(stream);
@@ -968,7 +1021,7 @@ std::optional<ObjectReference> match_object_start(std::string_view content) {
 /// inlines its dictionary and the `stream` token on one line
 /// (`N G obj<<...>>stream`). The boundary check rejects `endstream` and
 /// identifiers that merely end in `stream`.
-bool opens_stream_body(std::string_view content) {
+bool opens_stream_body(const std::string_view content) {
   constexpr std::string_view keyword = "stream";
   if (!content.ends_with(keyword)) {
     return false;
@@ -1143,17 +1196,9 @@ void DocumentParser::decrypt_strings(Object &object,
   }
 }
 
-std::unique_ptr<Document>
-DocumentParser::build_document(const Dictionary &trailer) {
-  auto document = std::make_unique<Document>();
-  document->catalog =
-      parse_catalog(*this, trailer["Root"].as_reference(), *document);
-  return document;
-}
-
 std::unique_ptr<Document> DocumentParser::parse_document() {
   try {
-    return build_document(m_trailer);
+    return parse_document_impl(*this, m_trailer);
   } catch (const std::exception &e) {
     // The cross-reference table parsed cleanly but does not describe a usable
     // document (no `/Root`, offsets pointing at the wrong objects, …). Scan the
@@ -1165,18 +1210,8 @@ std::unique_ptr<Document> DocumentParser::parse_document() {
                                << e.what()
                                << "), scanning the file to recover");
     recover_xref();
-    return build_document(m_trailer);
+    return parse_document_impl(*this, m_trailer);
   }
-}
-
-XObject *DocumentParser::find_x_object(const ObjectReference &reference) const {
-  const auto it = m_x_objects.find(reference);
-  return it != m_x_objects.end() ? it->second : nullptr;
-}
-
-void DocumentParser::cache_x_object(const ObjectReference &reference,
-                                    XObject *x_object) {
-  m_x_objects[reference] = x_object;
 }
 
 void DocumentParser::resolve_object(Object &object) {

@@ -26,6 +26,19 @@ using PdfFileBuilder = odr::test::pdf::PdfFileBuilder;
 
 namespace {
 
+const Page *first_page(const Document &document) {
+  return dynamic_cast<Page *>(document.catalog->pages->kids.front());
+}
+
+const Font *first_page_font(const Document &document, const std::string &name) {
+  const auto *page = first_page(document);
+  return page->resources->font.at(name);
+}
+
+} // namespace
+
+namespace {
+
 std::string two_object_mini_pdf(const bool classic) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
@@ -258,12 +271,6 @@ std::string simple_font_mini_pdf() {
   return builder.trailer("/Root 1 0 R").build_classic();
 }
 
-const Font *first_page_font(const Document &document, const std::string &name) {
-  const auto *page =
-      dynamic_cast<Page *>(document.catalog->pages->kids.front());
-  return page->resources->font.at(name);
-}
-
 /// A mini-PDF whose page lists a form XObject `Fm0` (with a `/Matrix`). `Fm0`
 /// and `Fm1` reference each other through their `/Resources`, forming a cycle
 /// (Fm0 -> Fm1 -> Fm0).
@@ -282,10 +289,6 @@ std::string form_xobject_cycle_mini_pdf() {
                      "/Resources << /XObject << /Fm0 5 0 R >> >>",
                      "/Fm0 Do");
   return builder.trailer("/Root 1 0 R").build_classic();
-}
-
-const Page *first_page(const Document &document) {
-  return dynamic_cast<Page *>(document.catalog->pages->kids.front());
 }
 
 /// A mini-PDF with two pages whose resources both reference the same form
