@@ -587,7 +587,6 @@ Pages *parse_pages(State &state, const ObjectReference &reference,
 Element *parse_page_or_pages(State &state, const ObjectReference &reference,
                              Pages *parent, const PageAttributes &inherited) {
   DocumentParser &parser = state.parser();
-  Document &document = state.document();
 
   // TODO we are parsing twice
   IndirectObject object = parser.read_object(reference);
