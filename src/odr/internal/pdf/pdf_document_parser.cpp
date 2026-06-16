@@ -356,6 +356,77 @@ Font *parse_font(DocumentParser &parser, const ObjectReference &reference,
   return font;
 }
 
+// parse_resources and parse_x_object are mutually recursive: a form XObject
+// carries its own /Resources, which may list further XObjects (possibly back to
+// an enclosing form). The parser's XObject cache breaks such cycles by handing
+// back the in-progress element, so the in-memory graph mirrors the file.
+Resources *parse_resources(DocumentParser &parser, const Object &object,
+                           Document &document);
+
+/// The `/Matrix` of a form XObject: a 6-element number array `[a b c d e f]`,
+/// defaulting to identity when absent or malformed.
+util::math::Transform2D parse_matrix(const Object &object) {
+  if (!object.is_array()) {
+    return {};
+  }
+  const Array &array = object.as_array();
+  if (array.size() != 6) {
+    return {};
+  }
+  return {array[0].as_real(), array[1].as_real(), array[2].as_real(),
+          array[3].as_real(), array[4].as_real(), array[5].as_real()};
+}
+
+XObject *parse_x_object(DocumentParser &parser,
+                        const ObjectReference &reference, Document &document) {
+  // Shared XObjects are parsed once; a cyclic form reference resolves to the
+  // existing (possibly still-being-built) element instead of recursing.
+  if (XObject *cached = parser.find_x_object(reference); cached != nullptr) {
+    return cached;
+  }
+
+  auto *x_object = document.create_element<XObject>();
+  // Register before parsing /Resources so a cycle back to this form resolves
+  // here rather than recursing forever.
+  parser.cache_x_object(reference, x_object);
+
+  IndirectObject object = parser.read_object(reference);
+  const Dictionary &dictionary = object.object.as_dictionary();
+
+  x_object->object_reference = reference;
+  x_object->object = Object(dictionary);
+
+  const std::string subtype =
+      dictionary.has_key("Subtype") && dictionary["Subtype"].is_name()
+          ? dictionary["Subtype"].as_name()
+          : "";
+  if (subtype == "Image") {
+    // Image XObjects carry raster data, not a content stream: recognized but
+    // not decoded until stage 4 (and `read_decoded_stream` would throw on the
+    // image codec anyway).
+    x_object->subtype = XObject::Subtype::image;
+    return x_object;
+  }
+  if (subtype != "Form") {
+    // Unknown subtype: keep the element but leave it inexecutable.
+    return x_object;
+  }
+
+  x_object->subtype = XObject::Subtype::form;
+  if (dictionary.has_key("Matrix")) {
+    x_object->matrix = parse_matrix(dictionary["Matrix"]);
+  }
+  // Read the content eagerly so text extraction needs no parser handle.
+  x_object->content = parser.read_decoded_stream(object);
+
+  if (dictionary.has_key("Resources")) {
+    x_object->resources =
+        parse_resources(parser, dictionary["Resources"], document);
+  }
+
+  return x_object;
+}
+
 Resources *parse_resources(DocumentParser &parser, const Object &object,
                            Document &document) {
   auto *resources = document.create_element<Resources>();
@@ -369,6 +440,15 @@ Resources *parse_resources(DocumentParser &parser, const Object &object,
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
       resources->font[key] = parse_font(parser, value.as_reference(), document);
+    }
+  }
+
+  if (!dictionary["XObject"].is_null()) {
+    Dictionary x_object_table =
+        parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
+    for (const auto &[key, value] : x_object_table) {
+      resources->x_object[key] =
+          parse_x_object(parser, value.as_reference(), document);
     }
   }
 
@@ -1087,6 +1167,16 @@ std::unique_ptr<Document> DocumentParser::parse_document() {
     recover_xref();
     return build_document(m_trailer);
   }
+}
+
+XObject *DocumentParser::find_x_object(const ObjectReference &reference) const {
+  const auto it = m_x_objects.find(reference);
+  return it != m_x_objects.end() ? it->second : nullptr;
+}
+
+void DocumentParser::cache_x_object(const ObjectReference &reference,
+                                    XObject *x_object) {
+  m_x_objects[reference] = x_object;
 }
 
 void DocumentParser::resolve_object(Object &object) {

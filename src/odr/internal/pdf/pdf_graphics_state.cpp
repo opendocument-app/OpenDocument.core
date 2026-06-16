@@ -58,19 +58,28 @@ void GraphicsState::advance_text(const double tx, const double ty) {
   text.matrix = util::math::Transform2D::translation(tx, ty) * text.matrix;
 }
 
+void GraphicsState::save() { stack.push_back(stack.back()); }
+
+void GraphicsState::restore() { stack.pop_back(); }
+
+void GraphicsState::concat_matrix(const util::math::Transform2D &matrix) {
+  // CTM = matrix * CTM (ISO 32000-1 8.4.4).
+  current().general.transform_matrix =
+      matrix * current().general.transform_matrix;
+}
+
 void GraphicsState::execute(const GraphicsOperator &op) {
   switch (op.type) {
   case GraphicsOperatorType::save_state:
-    stack.push_back(stack.back());
+    save();
     break;
   case GraphicsOperatorType::restore_state:
-    stack.pop_back();
+    restore();
     break;
 
   case GraphicsOperatorType::set_matrix:
     // `cm` concatenates: CTM = matrix * CTM (ISO 32000-1 8.4.4).
-    current().general.transform_matrix =
-        matrix_from_args(op) * current().general.transform_matrix;
+    concat_matrix(matrix_from_args(op));
     break;
 
   case GraphicsOperatorType::set_line_width:

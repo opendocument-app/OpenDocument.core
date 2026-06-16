@@ -21,6 +21,7 @@ class Logger;
 namespace odr::internal::pdf {
 
 struct Document;
+struct XObject;
 
 /// Resolution/memoization layer on top of the sequential `FileParser`: maps
 /// `ObjectReference`s to file positions via the cross-reference table and
@@ -92,6 +93,16 @@ public:
   read_decoded_stream(const ObjectReference &reference);
   [[nodiscard]] std::string read_decoded_stream(const IndirectObject &object);
 
+  /// Memoized XObject elements by reference. A shared form/image XObject (e.g.
+  /// a header reused on every page) is parsed once, and a cyclic form reference
+  /// resolves to the existing — possibly still-being-built — element instead of
+  /// recursing forever, so the in-memory graph mirrors the file (cycles
+  /// included). `find_x_object` returns `nullptr` when not yet parsed;
+  /// `cache_x_object` must register the element *before* its `/Resources` are
+  /// parsed. The drawing side guards against the resulting cycles.
+  [[nodiscard]] XObject *find_x_object(const ObjectReference &reference) const;
+  void cache_x_object(const ObjectReference &reference, XObject *x_object);
+
   void resolve_object(Object &object);
   void deep_resolve_object(Object &object);
 
@@ -148,6 +159,7 @@ private:
 
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<std::uint32_t, ObjectStream> m_object_streams;
+  std::map<ObjectReference, XObject *> m_x_objects;
 };
 
 } // namespace odr::internal::pdf

@@ -75,6 +75,14 @@ struct GraphicsState {
 
   void execute(const GraphicsOperator &);
 
+  /// Push a copy of the current state (`q`).
+  void save();
+  /// Pop the current state (`Q`).
+  void restore();
+  /// Concatenate `matrix` onto the CTM (`CTM = matrix * CTM`), as `cm` does and
+  /// as invoking a form XObject does with its `/Matrix`.
+  void concat_matrix(const util::math::Transform2D &matrix);
+
   /// Text rendering transform *excluding* the font size: maps text space (1
   /// unit = 1 em at the current font size) to user space, with horizontal
   /// scaling and rise folded in. The font size is applied separately (as the

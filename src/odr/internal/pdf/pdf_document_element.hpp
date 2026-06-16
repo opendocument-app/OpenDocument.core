@@ -3,9 +3,11 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/util/math_util.hpp>
 
 #include <concepts>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -16,6 +18,7 @@ struct Page;
 struct Annotation;
 struct Resources;
 struct Font;
+struct XObject;
 
 struct Element {
   virtual ~Element() = default;
@@ -71,6 +74,31 @@ struct Annotation final : Element {};
 
 struct Resources final : Element {
   std::unordered_map<std::string, Font *> font;
+  std::unordered_map<std::string, XObject *> x_object;
+};
+
+/// An external object referenced by `Do` and listed in a resource dictionary's
+/// `/XObject` subdictionary (ISO 32000-1 7.8.3, 8.8). Form XObjects carry a
+/// reusable content stream; image XObjects are recognized but not rendered
+/// until stage 4.
+struct XObject final : Element {
+  enum class Subtype {
+    unknown, ///< neither `/Form` nor `/Image`
+    form,    ///< `/Form`: an executable content stream
+    image,   ///< `/Image`: raster data (stage 4)
+  };
+
+  Subtype subtype{Subtype::unknown};
+
+  /// Form XObject only: the `/Matrix` (default identity), concatenated onto the
+  /// CTM when the form is invoked (8.10.1).
+  util::math::Transform2D matrix;
+  /// Form XObject only: the form's own `/Resources`, or `nullptr` to inherit
+  /// the invoking scope's resources (7.8.3).
+  Resources *resources{nullptr};
+  /// Form XObject only: the decoded (filter-applied) content stream, read
+  /// eagerly at parse time so text extraction needs no parser handle.
+  std::string content;
 };
 
 struct Font final : Element {

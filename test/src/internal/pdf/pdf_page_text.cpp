@@ -11,6 +11,7 @@
 
 using namespace odr::internal::pdf;
 using odr::Logger;
+using odr::internal::util::math::Transform2D;
 
 namespace {
 
@@ -209,4 +210,118 @@ TEST(PdfPageText, show_next_line_set_spacing) {
   EXPECT_EQ(texts[1].codes, "b");
   EXPECT_DOUBLE_EQ(texts[1].word_spacing, 1);
   EXPECT_DOUBLE_EQ(texts[1].char_spacing, 2);
+}
+
+namespace {
+
+// A form XObject carrying an (already decoded) content stream.
+XObject form_x_object(std::string content) {
+  XObject x_object;
+  x_object.subtype = XObject::Subtype::form;
+  x_object.content = std::move(content);
+  return x_object;
+}
+
+} // namespace
+
+// `Do` on a form XObject runs its content stream and emits its text.
+TEST(PdfPageText, form_xobject_invoked) {
+  XObject form = form_x_object("BT /F1 10 Tf 0 0 Td (Hi) Tj ET");
+  Resources res;
+  res.x_object["Fm0"] = &form;
+
+  const auto texts = run("/Fm0 Do", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].codes, "Hi");
+}
+
+// The form `/Matrix` concatenates onto the CTM, placing the form's content.
+TEST(PdfPageText, form_xobject_matrix_applies) {
+  XObject form = form_x_object("BT /F1 10 Tf 0 0 Td (X) Tj ET");
+  form.matrix = Transform2D::translation(100, 200);
+  Resources res;
+  res.x_object["Fm0"] = &form;
+
+  const auto texts = run("/Fm0 Do", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100);
+  EXPECT_DOUBLE_EQ(texts[0].transform.f, 200);
+}
+
+// The CTM (incl. the form matrix) is restored after the form, so following page
+// content is unaffected.
+TEST(PdfPageText, form_xobject_restores_state) {
+  XObject form = form_x_object("BT /F1 10 Tf 0 0 Td (a) Tj ET");
+  form.matrix = Transform2D::translation(100, 0);
+  Resources res;
+  res.x_object["Fm0"] = &form;
+
+  const auto texts = run("/Fm0 Do BT /F1 10 Tf 5 0 Td (b) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100); // shifted by the form matrix
+  EXPECT_DOUBLE_EQ(texts[1].transform.e, 5);   // outside the form, not shifted
+}
+
+// A form resolves fonts against its own `/Resources`, not the invoking scope.
+TEST(PdfPageText, form_xobject_uses_own_resources) {
+  Font font = simple_font('A', {500});
+  Resources form_res;
+  form_res.font["F1"] = &font;
+  XObject form = form_x_object("BT /F1 10 Tf 0 0 Td (A) Tj ET");
+  form.resources = &form_res;
+
+  Resources res; // no F1 here
+  res.x_object["Fm0"] = &form;
+
+  const auto texts = run("/Fm0 Do", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_DOUBLE_EQ(texts[0].width, 5); // width resolved via the form's font
+}
+
+// Forms nest: a form may invoke another form (resolved in its own resources).
+TEST(PdfPageText, form_xobject_nested) {
+  XObject inner = form_x_object("BT /F1 10 Tf 0 0 Td (in) Tj ET");
+  Resources inner_res;
+  inner_res.x_object["Inner"] = &inner;
+  XObject outer = form_x_object("/Inner Do");
+  outer.resources = &inner_res;
+
+  Resources res;
+  res.x_object["Outer"] = &outer;
+
+  const auto texts = run("/Outer Do", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].codes, "in");
+}
+
+// Image XObjects are recognized but not rendered (stage 4): `Do` is a no-op.
+TEST(PdfPageText, image_xobject_ignored) {
+  XObject image;
+  image.subtype = XObject::Subtype::image;
+  Resources res;
+  res.x_object["Im0"] = &image;
+
+  EXPECT_TRUE(run("/Im0 Do", res).empty());
+}
+
+// An unknown XObject name is skipped without throwing.
+TEST(PdfPageText, unknown_xobject_ignored) {
+  EXPECT_TRUE(run("/Missing Do").empty());
+}
+
+// A form that invokes itself (a cyclic graph, as the parser now represents it)
+// terminates at render time: the body runs once, the re-entrant `Do` is
+// skipped.
+TEST(PdfPageText, form_xobject_self_cycle_terminates) {
+  XObject form = form_x_object("BT /F1 10 Tf 0 0 Td (a) Tj ET /Self Do");
+  Resources form_res;
+  form_res.x_object["Self"] = &form; // the form references itself
+  form.resources = &form_res;
+
+  Resources res;
+  res.x_object["Fm0"] = &form;
+
+  const auto texts = run("/Fm0 Do", res);
+  ASSERT_EQ(texts.size(), 1); // body emitted once, the cycle is cut
+  EXPECT_EQ(texts[0].codes, "a");
 }

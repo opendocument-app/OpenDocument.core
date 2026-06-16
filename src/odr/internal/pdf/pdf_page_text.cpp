@@ -85,21 +85,58 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
   state.advance_text(advance, 0);
 }
 
-} // namespace
+/// Form XObjects currently being rendered, by element identity. The parser
+/// represents the file faithfully, so the XObject graph may contain cycles
+/// (the spec forbids them — ISO 32000-1 8.10.1 — but real files err); this set
+/// breaks them at render time.
+using ActiveForms = std::set<const XObject *>;
 
-} // namespace odr::internal::pdf
+void run_content(const std::string &content, const Resources &resources,
+                 GraphicsState &state, std::vector<TextElement> &out,
+                 const Logger &logger, std::set<std::string> &warned,
+                 ActiveForms &active);
 
-namespace odr::internal {
+/// Invoke a form XObject named by `Do`: save the state, concatenate the form's
+/// `/Matrix` onto the CTM, run its content with the form's own `/Resources`
+/// (falling back to the enclosing scope), then restore (ISO 32000-1 8.10.1).
+/// `/BBox` clipping is deferred (text-only). Image and unknown XObjects are
+/// skipped, and a form already on the render stack is skipped (cycle guard).
+void invoke_x_object(const std::string &name, const Resources &resources,
+                     GraphicsState &state, std::vector<TextElement> &out,
+                     const Logger &logger, std::set<std::string> &warned,
+                     ActiveForms &active) {
+  const auto it = resources.x_object.find(name);
+  if (it == resources.x_object.end()) {
+    if (warned.insert("xobject:" + name).second) {
+      ODR_WARNING(logger, "pdf: unknown XObject resource '" + name + "'");
+    }
+    return;
+  }
 
-std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
-                                                const Resources &resources,
-                                                const Logger &logger) {
-  std::vector<TextElement> result;
-  std::set<std::string> warned;
+  const XObject *x_object = it->second;
+  if (x_object->subtype != XObject::Subtype::form) {
+    return; // image XObjects are stage 4; unknown subtypes are inexecutable
+  }
+  if (!active.insert(x_object).second) {
+    ODR_WARNING(logger, "pdf: cyclic form XObject invocation, skipping");
+    return; // already on the render stack
+  }
 
+  state.save();
+  state.concat_matrix(x_object->matrix);
+  const Resources &scope =
+      x_object->resources != nullptr ? *x_object->resources : resources;
+  run_content(x_object->content, scope, state, out, logger, warned, active);
+  state.restore();
+  active.erase(x_object);
+}
+
+void run_content(const std::string &content, const Resources &resources,
+                 GraphicsState &state, std::vector<TextElement> &out,
+                 const Logger &logger, std::set<std::string> &warned,
+                 ActiveForms &active) {
   std::istringstream ss(content);
   GraphicsOperatorParser parser(ss);
-  GraphicsState state;
 
   while (!ss.eof()) {
     const GraphicsOperator op = parser.read_operator();
@@ -110,7 +147,7 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
     case GraphicsOperatorType::show_text_next_line: { // Tj, '
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(result, state, op.arguments.at(0).as_string(), font);
+      show(out, state, op.arguments.at(0).as_string(), font);
     } break;
     case GraphicsOperatorType::show_text_manual_spacing: { // TJ
       Font *font =
@@ -118,7 +155,7 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
       const GraphicsState::Text &text = state.current().text;
       for (const Object &item : op.arguments.at(0).as_array()) {
         if (item.is_string()) {
-          show(result, state, item.as_string(), font);
+          show(out, state, item.as_string(), font);
         } else if (item.is_real()) {
           // a number translates the next glyph left by adj/1000 text-space
           // units, scaled by the font size and horizontal scaling (9.4.3).
@@ -131,12 +168,33 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
     case GraphicsOperatorType::show_text_next_line_set_spacing: { // "
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(result, state, op.arguments.at(2).as_string(), font);
+      show(out, state, op.arguments.at(2).as_string(), font);
     } break;
+    case GraphicsOperatorType::draw_object: // Do
+      invoke_x_object(op.arguments.at(0).as_string(), resources, state, out,
+                      logger, warned, active);
+      break;
     default:
       break;
     }
   }
+}
+
+} // namespace
+
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
+                                                const Resources &resources,
+                                                const Logger &logger) {
+  std::vector<TextElement> result;
+  std::set<std::string> warned;
+  ActiveForms active;
+  GraphicsState state;
+
+  run_content(content, resources, state, result, logger, warned, active);
 
   return result;
 }

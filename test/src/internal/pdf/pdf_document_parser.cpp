@@ -264,6 +264,45 @@ const Font *first_page_font(const Document &document, const std::string &name) {
   return page->resources->font.at(name);
 }
 
+/// A mini-PDF whose page lists a form XObject `Fm0` (with a `/Matrix`). `Fm0`
+/// and `Fm1` reference each other through their `/Resources`, forming a cycle
+/// (Fm0 -> Fm1 -> Fm0).
+std::string form_xobject_cycle_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /XObject << /Fm0 5 0 R >> >> /Contents 4 0 R >>")
+      .stream_object("", "/Fm0 Do")
+      .stream_object("/Type /XObject /Subtype /Form /BBox [0 0 100 100] "
+                     "/Matrix [1 0 0 1 10 20] "
+                     "/Resources << /XObject << /Fm1 6 0 R >> >>",
+                     "/Fm1 Do")
+      .stream_object("/Type /XObject /Subtype /Form /BBox [0 0 100 100] "
+                     "/Resources << /XObject << /Fm0 5 0 R >> >>",
+                     "/Fm0 Do");
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
+const Page *first_page(const Document &document) {
+  return dynamic_cast<Page *>(document.catalog->pages->kids.front());
+}
+
+/// A mini-PDF with two pages whose resources both reference the same form
+/// XObject (object 6).
+std::string shared_form_xobject_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /XObject << /Fm0 6 0 R >> >> /Contents 5 0 R >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /XObject << /Fm0 6 0 R >> >> /Contents 5 0 R >>")
+      .stream_object("", "/Fm0 Do")
+      .stream_object("/Type /XObject /Subtype /Form /BBox [0 0 100 100]", "");
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
 } // namespace
 
 // A composite (Type0) font is recognized, its descendant CIDFont's
@@ -328,6 +367,53 @@ TEST(DocumentParser, composite_font_cid_widths) {
   EXPECT_DOUBLE_EQ(font->advance_width(0), 0.5); // W [0 [500 600]]
   EXPECT_DOUBLE_EQ(font->advance_width(1), 0.6);
   EXPECT_DOUBLE_EQ(font->advance_width(2), 1.0); // /DW default
+}
+
+// Form XObjects are parsed onto the resources with their `/Matrix` and decoded
+// content. A cyclic `/Resources` reference (Fm0 -> Fm1 -> Fm0) terminates via
+// the parser's XObject cache and is represented faithfully: the back-edge
+// points at the very same `Fm0` element (no duplicate, no clipping).
+TEST(DocumentParser, form_xobject_cycle_is_represented_via_cache) {
+  const std::string pdf = form_xobject_cycle_mini_pdf();
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Page *page = first_page(*document);
+  ASSERT_NE(page->resources, nullptr);
+
+  const XObject *fm0 = page->resources->x_object.at("Fm0");
+  ASSERT_NE(fm0, nullptr);
+  EXPECT_EQ(fm0->subtype, XObject::Subtype::form);
+  EXPECT_EQ(fm0->content, "/Fm1 Do");
+  EXPECT_DOUBLE_EQ(fm0->matrix.e, 10); // /Matrix [1 0 0 1 10 20]
+  EXPECT_DOUBLE_EQ(fm0->matrix.f, 20);
+
+  ASSERT_NE(fm0->resources, nullptr);
+  const XObject *fm1 = fm0->resources->x_object.at("Fm1");
+  ASSERT_NE(fm1, nullptr);
+  EXPECT_EQ(fm1->subtype, XObject::Subtype::form);
+
+  // Fm1 -> Fm0 closes the cycle: it resolves to the same cached element.
+  ASSERT_NE(fm1->resources, nullptr);
+  EXPECT_EQ(fm1->resources->x_object.at("Fm0"), fm0);
+}
+
+// A form XObject shared by two pages is parsed once: both pages' resources
+// point at the same element (the parser's XObject cache dedups by reference).
+TEST(DocumentParser, shared_form_xobject_is_parsed_once) {
+  const std::string pdf = shared_form_xobject_mini_pdf();
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const std::vector<Page *> pages = document->collect_pages();
+  ASSERT_EQ(pages.size(), 2);
+  ASSERT_NE(pages[0]->resources, nullptr);
+  ASSERT_NE(pages[1]->resources, nullptr);
+
+  const XObject *fm_a = pages[0]->resources->x_object.at("Fm0");
+  const XObject *fm_b = pages[1]->resources->x_object.at("Fm0");
+  ASSERT_NE(fm_a, nullptr);
+  EXPECT_EQ(fm_a, fm_b);
 }
 
 // A simple font's `/FirstChar`, `/Widths` and `/MissingWidth` drive advances.

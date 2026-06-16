@@ -14,8 +14,8 @@ forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
 text spans, one per shown segment, placed by the full text transform (CTM × text
-matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), pages sized
-from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
+matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), recursing into
+form XObjects (stage 2.3), pages sized from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
 graphics, no images, no font files. Experimental and not production-quality.
 
 ---
@@ -137,6 +137,21 @@ graphics, no images, no font files. Experimental and not production-quality.
   `font->advance_width`. Still deferred: intra-segment glyph shaping (the browser
   lays a segment out in a fallback font until stage 3) and vertical writing-mode
   advances (stage 2.6).
+- **Form XObjects** (stage 2.3): a resource dictionary's `/XObject`
+  subdictionary is parsed into `Resources::x_object`; each `/Subtype /Form` is an
+  `XObject` element carrying its `/Matrix` (default identity), its decoded
+  content stream (read eagerly at parse time, so text extraction needs no parser
+  handle), and its own parsed `/Resources` (or `nullptr` to inherit the invoking
+  scope). `Do` in `extract_text` saves the state, concatenates the form `/Matrix`
+  onto the CTM, runs the form content against the form's resources (falling back
+  to the enclosing scope), then restores — so text inside forms is placed
+  correctly. Image XObjects (`/Subtype /Image`) are recognized but not rendered
+  (stage 4); unknown subtypes are inexecutable. The parser memoizes XObjects by
+  reference (`ObjectReference -> XObject*`), so a form shared across pages is
+  parsed once and a cyclic form reference resolves to the existing element — the
+  in-memory graph mirrors the file, cycles included. A render-time active-set
+  guard cuts cyclic invocation (the spec forbids it, 8.10.1, but real files
+  contain it). `/BBox` clipping is deferred.
 - **HTML**: one `document.html` view; each page is a `div` sized from `MediaBox`
   (points → inches). Each `TextElement` becomes an absolutely positioned `span`
   carrying a CSS `transform` matrix (the placement transform mapped from PDF user
@@ -154,10 +169,10 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_file_object.{hpp,cpp}`            | File-structure entries: `Header`, `IndirectObject`, `Trailer`, `Xref` (tagged-union entries, `append`/`merge_hybrid`), `StartXref`, `Eof`, the `Entry` any-holder; `parse_xref_stream_table` and the `ObjectStream` payload wrapper |
 | `pdf_file_parser.{hpp,cpp}`            | File-level reads on top of `ObjectParser`: indirect objects, xref, trailer, startxref, stream payloads, `seek_start_xref` |
 | `pdf_filter.{hpp,cpp}`                 | Stream filter framework: `decode()` over the `/Filter`/`/DecodeParms` chain; ASCIIHex/ASCII85/LZW/Flate/RunLength decoders, TIFF/PNG predictors; image codecs returned undecoded (`DecodeResult::stopped_at_filter`) |
-| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution |
+| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
-| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources`, `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
+| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
@@ -166,8 +181,8 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
-| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2) |
+| `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance, `save()`/`restore()`/`concat_matrix()` reused by `q`/`Q`/`cm` and by form-XObject invocation |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -193,8 +208,10 @@ selection) and `html/pdf_file.cpp` (`create_pdf_service`).
    (cycle-guarded). The first/newest trailer provides `Root`.
 4. **Build the page tree.** `parse_catalog` → `parse_pages` recurses over
    `Kids` (dispatching on `Type`). Each `Page` keeps its raw dictionary, its
-   `Contents` reference(s), parsed `Resources` (the `Font` table; each font's
-   `ToUnicode` CMap is parsed if present) and `Annots` (raw). `read_object`
+   `Contents` reference(s), parsed `Resources` (the `Font` table — each font's
+   `ToUnicode` CMap parsed if present — and the `/XObject` table, with form
+   XObjects' content/`/Matrix`/nested `/Resources` read eagerly and memoized by
+   reference) and `Annots` (raw). `read_object`
    dispatches on the xref entry kind: used → seek + `read_indirect_object`;
    compressed → owning object stream decoded once, cached, member parsed from
    the cached payload; free/absent → null with a warning. Parsed objects cached
@@ -208,7 +225,10 @@ selection) and `html/pdf_file.cpp` (`create_pdf_service`).
    scaling and rise folded in), its glyphs translated through the font's CMap.
    After each segment `Tm` is advanced by the glyph widths (`advance_width`) plus
    char/word spacing, and `TJ` numbers translate `Tm` directly, so segments and
-   lines land correctly. The HTML layer maps each element to a positioned `span`
+   lines land correctly. `Do` recurses into a form XObject — state saved, the
+   form `/Matrix` concatenated onto the CTM, the form content run against its own
+   resources (or the enclosing scope), state restored — guarded against cyclic
+   invocation. The HTML layer maps each element to a positioned `span`
    with a CSS `transform` (PDF user space → the page box in CSS pixels) and
    `font-size` from the text state. Intra-segment glyph shaping is the browser's
    until the embedded font lands (stage 3).
@@ -313,7 +333,10 @@ such PDFs look right, their text just isn't selectable until the tables land.
   predefined `Uni*-UCS2-H` `/Encoding` extracting without a `/ToUnicode`), plus
   glyph-metric coverage (the composite `/W`+`/DW` and a simple
   `/FirstChar`/`/Widths`/`/MissingWidth` font, asserted through `advance_width`,
-  stage 2.2). End-to-end: the classic fixture
+  stage 2.2), plus form-XObject coverage (stage 2.3): a cyclic `/Resources`
+  reference (Fm0 → Fm1 → Fm0) terminating via the XObject cache and represented
+  faithfully (the back-edge points at the same cached element), and a form shared
+  by two pages parsed once. End-to-end: the classic fixture
   `odr-public/pdf/style-various-1.pdf`, plus decryption of
   `odr-public/pdf/Casio_WVA-M650-7AJF.pdf` (RC4, empty password) and
   `odr-private/pdf/encrypted_fontfile3_opentype.pdf` (AES-256; skipped when the
@@ -351,7 +374,11 @@ such PDFs look right, their text just isn't selectable until the tables land.
   glyph-advance coverage with hand-built `Font`s — simple `/Widths` advancing a
   following show, `TJ` emitting per string with the numeric adjustment applied,
   char spacing, word spacing on the single-byte space, the composite 2-byte `/DW`
-  advance, and the `advance_width` fallbacks (stage 2.2).
+  advance, and the `advance_width` fallbacks (stage 2.2); plus form-XObject
+  coverage (stage 2.3) with hand-built `XObject`s — invocation via `Do`, the
+  `/Matrix` placement, state restoration after the form, the form's own
+  `/Resources` scope, nested forms, image/unknown XObjects ignored, and a
+  self-referential form terminating at render time via the active-set guard.
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output itself (the span emission / CSS transform mapping).
@@ -465,13 +492,30 @@ Out of scope (later): intra-segment glyph shaping (browser fallback until the
 embedded font, stage 3), AFM widths for non-embedded standard-14 fonts (stage 3),
 vertical writing-mode advances (stage 2.6).
 
-### 2.3 — Form XObjects
+### 2.3 — Form XObjects — **done**
 
 `Do` on a `/Form`: recursive content-stream execution with scoped `/Resources`
-and the form matrix; extend `Resources` parsing to the XObject table. Many
+and the form matrix; `Resources` parsing extended to the `/XObject` table. Many
 producers put most page content inside forms, and tiling patterns (stage 4) and
 annotation appearances (stage 5) run on the same machinery — a structural
-prerequisite.
+prerequisite. The mechanics live in *Form XObjects* under *What works*; this is
+the summary.
+
+- **Parsing.** `Resources::x_object` holds the `/XObject` table. Each
+  `/Subtype /Form` becomes an `XObject` element with its `/Matrix`, eagerly
+  decoded content stream, and own parsed `/Resources` (`nullptr` ⇒ inherit the
+  invoking scope). Image XObjects are tagged but not decoded (stage 4).
+- **Faithful in-memory model.** The parser memoizes XObjects by reference
+  (`ObjectReference → XObject*`, registered before recursing), so a shared form
+  is parsed once and a cyclic form reference resolves to the existing element —
+  the graph mirrors the file rather than clipping cycles.
+- **Execution.** `extract_text`'s `Do` saves the state, concatenates the form
+  `/Matrix`, runs the form content against the scoped resources, restores, and
+  guards cyclic invocation with a render-time active-set (the spec forbids cycles
+  per 8.10.1, but real files contain them).
+
+Deferred: `/BBox` clipping (text-only for now); the form machinery is reused by
+stage 4 (tiling patterns) and stage 5 (annotation appearances).
 
 ### 2.4 — text render modes & extraction refinements
 
