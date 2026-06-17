@@ -468,7 +468,7 @@ Resources *parse_resources(State &state, const Object &object) {
 
   resources->object = Object(dictionary);
 
-  if (!dictionary["Font"].is_null()) {
+  if (dictionary.has_key("Font") && !dictionary["Font"].is_null()) {
     const Dictionary font_table =
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
@@ -476,7 +476,7 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
-  if (!dictionary["XObject"].is_null()) {
+  if (dictionary.has_key("XObject") && !dictionary["XObject"].is_null()) {
     const Dictionary x_object_table =
         parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
     for (const auto &[key, value] : x_object_table) {
