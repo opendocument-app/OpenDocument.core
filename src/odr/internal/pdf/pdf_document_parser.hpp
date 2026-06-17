@@ -95,8 +95,8 @@ public:
   void resolve_object(Object &object);
   void deep_resolve_object(Object &object);
 
-  [[nodiscard]] Object resolve_object_copy(const Object &object);
-  [[nodiscard]] Object deep_resolve_object_copy(const Object &object);
+  [[nodiscard]] Object resolve_object_copy(Object object);
+  [[nodiscard]] Object deep_resolve_object_copy(Object object);
 
 private:
   /// Read one cross-reference section (classic table or cross-reference
@@ -125,10 +125,8 @@ private:
   /// trailer `/Root`.
   void recover_root();
 
-  [[nodiscard]] std::unique_ptr<Document>
-  build_document(const Dictionary &trailer);
-
-  [[nodiscard]] const ObjectStream &load_object_stream(std::uint32_t stream_id);
+  [[nodiscard]] const ObjectStream &
+  load_object_stream(const ObjectReference &reference);
 
   /// Decrypt every string leaf of `object` in place with the owning object's
   /// reference (ISO 32000-1 7.6.2). Used on freshly read indirect objects.
@@ -147,7 +145,7 @@ private:
   std::optional<Decryptor> m_decryptor;
 
   std::map<ObjectReference, IndirectObject> m_objects;
-  std::map<std::uint32_t, ObjectStream> m_object_streams;
+  std::map<ObjectReference, ObjectStream> m_object_streams;
 };
 
 } // namespace odr::internal::pdf
