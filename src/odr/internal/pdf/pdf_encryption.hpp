@@ -36,6 +36,10 @@ public:
   [[nodiscard]] std::string decrypt_string(const ObjectReference &reference,
                                            std::string data) const;
 
+  /// Decrypt every string leaf of `object` in place with the owning object's
+  /// reference (ISO 32000-1 7.6.2). Used on freshly read indirect objects.
+  void decrypt_strings(Object &object, const ObjectReference &reference);
+
 private:
   [[nodiscard]] std::string object_key(const ObjectReference &reference,
                                        EncryptionMethod method) const;
