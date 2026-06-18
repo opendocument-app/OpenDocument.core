@@ -372,6 +372,15 @@ TEST(PdfPageText, actual_text_utf16be) {
   EXPECT_EQ(texts[0].text, "AB");
 }
 
+// A non-BOM `/ActualText` is PDFDocEncoding, not Latin-1: the upper-half bytes
+// 0x83/0x84 decode to ellipsis/em dash, not the C1 controls Latin-1 would give.
+TEST(PdfPageText, actual_text_pdfdocencoding) {
+  const auto texts = run("BT /F1 10 Tf 0 0 Td /Span <</ActualText "
+                         "<8384>>> BDC (zz) Tj EMC ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "…—"); // U+2026 U+2014
+}
+
 // `/ActualText` covers the whole sequence: it is emitted once, and the
 // remaining shows in the sequence carry no extractable text of their own.
 TEST(PdfPageText, actual_text_emitted_once_then_suppressed) {
