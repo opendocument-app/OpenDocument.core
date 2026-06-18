@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <streambuf>
 
 namespace odr::internal::util {
 
@@ -111,3 +112,30 @@ std::string stream::read_until(std::istream &in, const char until_char,
 }
 
 } // namespace odr::internal::util
+
+namespace odr::internal::util::stream {
+
+namespace {
+
+/// Read-only stream buffer over an existing `string_view`, so a `std::istream`
+/// can scan it without copying into a `std::string`/`std::istringstream`. The
+/// view must outlive the buffer. Only the get area is exposed; seeking is not
+/// supported.
+class ViewStreamBuf : public std::streambuf {
+public:
+  explicit ViewStreamBuf(std::string_view view) {
+    // The get area is only ever read, never written through, so dropping the
+    // `const` is safe.
+    auto *begin = const_cast<char *>(view.data());
+    setg(begin, begin, begin + view.size());
+  }
+};
+
+} // namespace
+
+ViewStream::ViewStream(std::string_view view)
+    : std::istream(nullptr), m_sbuf{std::make_unique<ViewStreamBuf>(view)} {
+  rdbuf(m_sbuf.get());
+}
+
+} // namespace odr::internal::util::stream
