@@ -92,6 +92,9 @@ public:
     out.out() << ".p{position:relative}";
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
                  "white-space:pre}";
+    // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
+    // search (OCR-over-scan), but not painted.
+    out.out() << ".i{color:transparent}";
     out.write_header_style_end();
     out.write_header_end();
 
@@ -139,28 +142,42 @@ public:
 
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
+        // Nothing extractable here yet: a code with no recoverable Unicode
+        // (`no_unicode`) renders only once the embedded font lands (stage 3),
+        // and an `/ActualText`-suppressed segment carries no text of its own.
+        if (text.text.empty()) {
+          continue;
+        }
+
         const util::math::Transform2D m = flip_glyph * text.transform * to_box;
+
+        // Tr 3 (invisible) and Tr 7 (clip-only) paint nothing; keep them
+        // selectable via the transparent `.i` class.
+        const bool invisible =
+            text.rendering_mode == 3 || text.rendering_mode == 7;
+        const std::string css_class = invisible ? "t i" : "t";
 
         out.write_element_begin(
             "span",
-            HtmlElementOptions().set_class("t").set_style([&](std::ostream &o) {
-              // TODO baseline sits at the box top until font ascent
-              // metrics land
-              if (m.b == 0 && m.c == 0 && m.a == m.d) {
-                // Upright uniform scale: fold the scale into the
-                // font size and place the origin with left/top, so
-                // the (otherwise near-universal) matrix is dropped.
-                o << "left:" << round2(m.e * pt_to_px) << "px;";
-                o << "top:" << round2(m.f * pt_to_px) << "px;";
-                o << "font-size:" << round2(m.a * text.size * pt_to_px)
-                  << "px;";
-              } else {
-                o << "transform:matrix(" << m.a << "," << m.b << "," << m.c
-                  << "," << m.d << "," << round2(m.e * pt_to_px) << ","
-                  << round2(m.f * pt_to_px) << ");";
-                o << "font-size:" << round2(text.size * pt_to_px) << "px;";
-              }
-            }));
+            HtmlElementOptions().set_class(css_class).set_style(
+                [&](std::ostream &o) {
+                  // TODO baseline sits at the box top until font ascent
+                  // metrics land
+                  if (m.b == 0 && m.c == 0 && m.a == m.d) {
+                    // Upright uniform scale: fold the scale into the
+                    // font size and place the origin with left/top, so
+                    // the (otherwise near-universal) matrix is dropped.
+                    o << "left:" << round2(m.e * pt_to_px) << "px;";
+                    o << "top:" << round2(m.f * pt_to_px) << "px;";
+                    o << "font-size:" << round2(m.a * text.size * pt_to_px)
+                      << "px;";
+                  } else {
+                    o << "transform:matrix(" << m.a << "," << m.b << "," << m.c
+                      << "," << m.d << "," << round2(m.e * pt_to_px) << ","
+                      << round2(m.f * pt_to_px) << ");";
+                    o << "font-size:" << round2(text.size * pt_to_px) << "px;";
+                  }
+                }));
         out.write_raw(escape_text(text.text));
         out.write_element_end("span");
       }

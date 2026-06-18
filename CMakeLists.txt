@@ -43,6 +43,11 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif ()
 
+# MSVC reads sources in the system codepage by default; force UTF-8 so non-ASCII
+# literals (e.g. the PDFDocEncoding table) compile (C2015) and encode correctly.
+# GCC/Clang already default to UTF-8.
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 find_package(pugixml REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)

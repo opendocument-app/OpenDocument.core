@@ -56,7 +56,8 @@ std::string Font::to_unicode(const std::string &codes) const {
     // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font
     // program (stage 3): emit "no Unicode" rather than mis-splitting the
     // multi-byte codes into byte-sized garbage through the identity fallback
-    // below. Stage 2 will mark these runs for re-encoding.
+    // below. `extract_text` marks such runs `no_unicode` (stage 2.4); stage 3
+    // re-encodes their glyphs to the PUA.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
               translate_predefined_cmap(cid_encoding_name, codes)) {
