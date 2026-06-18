@@ -53,6 +53,8 @@ add_executable(odr_test
         "src/internal/pdf/pdf_page_text.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
+        "src/internal/font/sfnt_font.cpp"
+
         "src/internal/svm/svm_test.cpp"
 
         "src/internal/text/text_file_test.cpp"

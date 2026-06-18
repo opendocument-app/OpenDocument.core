@@ -1,0 +1,74 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <string>
+
+namespace odr::internal::font {
+
+/// @brief Source flavor of a font program.
+enum class FontFormat {
+  unknown,
+  truetype,     ///< SFNT with `glyf` outlines (incl. CIDFontType2)
+  opentype_cff, ///< SFNT wrapping a `CFF ` table (`OTTO`)
+  cff,          ///< bare CFF / Type1C (stage 3.4)
+  type1,        ///< Type1 / `eexec` (stage 3.5)
+};
+
+/// @brief Glyph-space bounding box, in font design units.
+struct FontBBox {
+  std::int16_t x_min{};
+  std::int16_t y_min{};
+  std::int16_t x_max{};
+  std::int16_t y_max{};
+};
+
+/// @brief Read-only view over a font program, exposing the *facts* every
+/// stage-3 consumer needs while the raw glyph bytes pass through untouched.
+///
+/// Per the stage-3 architecture ("IR for facts, pass-through for glyphs") this
+/// never decompiles outlines: it reports counts / metrics / names and hands
+/// back the original bytes. The embedded-font reverse map reads Unicode from
+/// it (3.3), the OTF wrap synthesizes the SFNT skeleton from it (3.1/3.4), and
+/// the PUA re-encoder assigns code points from its glyph count.
+class FontProgram {
+public:
+  virtual ~FontProgram() = default;
+
+  [[nodiscard]] virtual FontFormat format() const noexcept = 0;
+
+  /// PostScript name (`name` ID 6) when available, else the full font name
+  /// (ID 4); empty when the font names nothing.
+  [[nodiscard]] virtual std::string name() const = 0;
+
+  /// Number of glyphs; valid glyph ids are `[0, glyph_count())`.
+  [[nodiscard]] virtual std::uint16_t glyph_count() const noexcept = 0;
+
+  /// Font design units per em (typically 1000 or 2048).
+  [[nodiscard]] virtual std::uint16_t units_per_em() const noexcept = 0;
+
+  /// Whether the font declares a symbolic (non-standard) character set.
+  [[nodiscard]] virtual bool symbolic() const noexcept = 0;
+
+  [[nodiscard]] virtual FontBBox bounding_box() const noexcept = 0;
+
+  /// Advance width of @p glyph in design units, 0 when unknown.
+  [[nodiscard]] virtual std::uint16_t
+  advance_width(std::uint16_t glyph) const = 0;
+
+  /// The font's own forward map: Unicode code point -> glyph id, 0 (`.notdef`)
+  /// when unmapped. Seeds the specimen page and the PUA re-encode.
+  [[nodiscard]] virtual std::uint16_t
+  glyph_for_code_point(char32_t code_point) const = 0;
+
+  /// The reverse map: glyph id -> Unicode code point, when the font's character
+  /// map reaches the glyph. This is the embedded-font reverse map that closes
+  /// the stage-1 extraction gap (3.3); `nullopt` when no code point maps.
+  [[nodiscard]] virtual std::optional<char32_t>
+  code_point_for_glyph(std::uint16_t glyph) const = 0;
+
+  /// The original, unmodified font bytes (pass-through for the OTF wrap).
+  [[nodiscard]] virtual const std::string &data() const noexcept = 0;
+};
+
+} // namespace odr::internal::font
