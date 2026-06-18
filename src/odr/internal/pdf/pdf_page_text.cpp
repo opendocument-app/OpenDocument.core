@@ -294,8 +294,13 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
       infer_space(*pen, start)) {
     element.text.insert(element.text.begin(), ' ');
   }
-  const bool trailing_space =
-      !element.text.empty() && element.text.back() == ' ';
+  // A segment with no extractable text (suppressed glyphs, `no_unicode`, or a
+  // subsequent show inside an already-emitted `/ActualText` span) must not
+  // clear a trailing space carried by the previous segment, or the next gap
+  // would infer a second space.
+  const bool trailing_space = element.text.empty()
+                                  ? (pen.has_value() && pen->trailing_space)
+                                  : element.text.back() == ' ';
 
   const double advance = element.width;
   out.push_back(std::move(element));

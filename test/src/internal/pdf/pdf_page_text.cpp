@@ -470,6 +470,25 @@ TEST(PdfPageText, space_inferred_on_new_line) {
   EXPECT_EQ(texts[1].text, " B");
 }
 
+// A suppressed segment (the tail of an `/ActualText` span, a `no_unicode`
+// glyph) carries no extractable text, but must not clear the trailing space of
+// the segment before it, or the next gap would infer a second space.
+TEST(PdfPageText, trailing_space_survives_suppressed_segment) {
+  Font font = simple_font('A', {500, 500}); // A, B = 0.5 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  // "A " is emitted once for the span; (B) is suppressed (empty). Despite the
+  // 50-unit gap before the following show, no extra space is inferred.
+  const auto texts = run("BT /F1 10 Tf 0 0 Td /Span <</ActualText (A )>> BDC "
+                         "(A) Tj (B) Tj EMC 50 0 Td (A) Tj ET",
+                         res);
+  ASSERT_EQ(texts.size(), 3);
+  EXPECT_EQ(texts[0].text, "A ");
+  EXPECT_TRUE(texts[1].text.empty());
+  EXPECT_EQ(texts[2].text, "A");
+}
+
 // A segment whose text already ends in a space suppresses the inferred one.
 TEST(PdfPageText, no_double_space_after_trailing_space) {
   Font font = simple_font('A', {500, 500}); // 'A'=5, the space falls back to 0
