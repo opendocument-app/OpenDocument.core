@@ -16,9 +16,9 @@ operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
 text spans, one per shown segment, placed by the full text transform (CTM × text
 matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), recursing into
 form XObjects (stage 2.3), with text render modes and `/ActualText` honoured
-(stage 2.4), pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
-AES-128, AES-256). No graphics, no images, no font files. Experimental and not
-production-quality.
+(stage 2.4) and omitted spaces inferred from glyph gaps (stage 2.5), pages sized
+from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
+graphics, no images, no font files. Experimental and not production-quality.
 
 ---
 
@@ -145,10 +145,15 @@ production-quality.
   across form invocation): a sequence carrying `/ActualText` (inline property
   dictionary, or a name resolved through the `/Properties` resource) overrides the
   per-glyph Unicode of its enclosed shows — the decoded text (UTF-16BE BOM or
-  PDFDocEncoding) emitted once and the rest of the sequence suppressed. Still
+  PDFDocEncoding) emitted once and the rest of the sequence suppressed.
+  **Space inference** (stage 2.5): a running pen (the user-space origin after
+  each segment, with the writing-line direction and em scale) is threaded through
+  the executor, and a single space is prepended to a segment's `text` when the
+  gap past the previous pen exceeds ~0.2 em along the line (a word break) or
+  ~0.5 em perpendicular (a new line) — recovering the inter-word/-line spaces the
+  producer omitted, in `text` only (codes/advances/placement untouched). Still
   deferred: intra-segment glyph shaping (the browser lays a segment out in a
-  fallback font until stage 3), space inference (stage 2.5) and vertical
-  writing-mode advances (stage 2.6).
+  fallback font until stage 3) and vertical writing-mode advances (stage 2.6).
 - **Form XObjects** (stage 2.3): a resource dictionary's `/XObject`
   subdictionary is parsed into `Resources::x_object`; each `/Subtype /Form` is an
   `XObject` element carrying its `/Matrix` (default identity), its decoded
@@ -197,7 +202,7 @@ production-quality.
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
 | `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance, `save()`/`restore()`/`concat_matrix()` reused by `q`/`Q`/`cm` and by form-XObject invocation |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance + render mode + `no_unicode` flag) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3); a marked-content stack applies `/ActualText` and the no-Unicode marking (stage 2.4) |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance + render mode + `no_unicode` flag) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3); a marked-content stack applies `/ActualText` and the no-Unicode marking (stage 2.4); a running pen infers omitted inter-word/-line spaces (stage 2.5) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -399,7 +404,9 @@ such PDFs look right, their text just isn't selectable until the tables land.
   empty text, and `/ActualText` overriding a segment (literal and UTF-16BE),
   emitted once then suppressed across the sequence, resolved via a named
   `/Properties` entry, the no-`/ActualText` passthrough, and a tolerated stray
-  `EMC`.
+  `EMC`; plus space-inference coverage (stage 2.5) — a word-gap space, no space
+  when segments abut, the `TJ`-kern threshold (sub- vs. supra-threshold), a
+  new-line space, and the no-double-space after a trailing space.
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output itself (the span emission / CSS transform mapping).
@@ -454,10 +461,14 @@ fixture needs them yet:
 - **"No Unicode" run marking + `/ActualText`** (was 1.5) — rides on the run/state
   plumbing introduced by **stage 2**, where it now lives.
 
-## Stage 2 — text positioning & metrics
+## Stage 2 — text positioning & metrics — **done (2.6 deferred)**
 
 Independent of Unicode work; fixes layout even with today's partial CMaps. Split
-into sub-stages (mirroring stage 1's slicing), each its own PR.
+into sub-stages (mirroring stage 1's slicing), each its own PR. 2.1–2.5 have
+landed and cover the local corpus and the bulk of real-world PDFs (see *Text
+layout* / *HTML* under *What works*); **2.6 (bidi & vertical writing) is deferred
+until a corpus fixture needs it** — relocated to *Other known gaps*, as the
+legacy-CJK CMap work was out of stage 1.
 
 **Architecture decision (2026-06): a renderer-agnostic placed-text emission.**
 The content executor produces a per-page list of **placed text items**, each
@@ -555,15 +566,26 @@ suppressed (the glyphs still place and, in stage 3, display). The mechanics live
 in *Text layout* under *What works*. Deferred: `/MCID`-driven structure-tree
 reordering and `/Alt` (those are stage 5 navigation, not extraction).
 
-### 2.5 — space inference
+### 2.5 — space inference — **done**
 
-PDFs routinely encode no spaces; insert them from glyph-gap heuristics (as
-pdf2htmlEX does) so copy/paste and search work.
+PDFs routinely encode no space glyphs; `extract_text` infers them from the
+inter-segment pen gap (as pdf2htmlEX does) so copy/paste and search work. A
+running pen (user-space origin after each shown segment, plus the writing-line
+direction and em scale) is threaded through the executor; before a segment a
+single space is prepended to its `text` when the gap past the previous pen
+exceeds ~0.2 em along the writing line (a word break) or ~0.5 em perpendicular (a
+new line), unless the two already abut a space. The thresholds scale with the
+font's em, so they track size; the inferred space lands only in `text` (codes,
+advances and placement are untouched, keeping the run-vs-glyph choice in the
+renderer). The mechanics live in *Text layout* under *What works*.
 
-### 2.6 — bidi & vertical writing (deferral candidate)
+### 2.6 — bidi & vertical writing — **deferred**
 
-Layout side of bidi (RTL run ordering) and vertical writing (Identity-V/CJK). No
-corpus fixture needs it yet — likely pushed out until one does.
+The layout side of bidi (RTL run ordering) and vertical writing
+(`Identity-V`/CJK, the `/W2`/`/DW2` vertical metrics and the perpendicular pen
+advance). No corpus fixture needs it yet, so it is pushed out until one does —
+collected under *Other known gaps* alongside the deferred legacy-CJK CMap work
+(both wait on a real file). With 2.6 deferred, stages 2.1–2.5 close out stage 2.
 
 ## Stage 3 — fonts in HTML
 
@@ -723,5 +745,10 @@ tree, little else.
   remain), and embedded-font reverse maps (stage 3); symbolic fonts with a
   built-in encoding default to StandardEncoding until the font program is read
   (stage 3).
+- **Bidi & vertical writing** (stage 2.6, deferred): RTL run reordering for the
+  layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
+  `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
+  horizontal-only `extract_text` and space inference assume away). No corpus
+  fixture needs either yet; revisit when one does.
 - **Annotations** are collected but their content is not interpreted (stage 5).
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

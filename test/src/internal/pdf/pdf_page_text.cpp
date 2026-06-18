@@ -419,3 +419,66 @@ TEST(PdfPageText, stray_emc_tolerated) {
   ASSERT_EQ(texts.size(), 1);
   EXPECT_EQ(texts[0].text, "ok");
 }
+
+// --- Stage 2.5: space inference ---
+
+// A forward gap past ~0.2 em between segments on a line infers a space, so a
+// producer that emits no space glyph still yields separable words.
+TEST(PdfPageText, space_inferred_on_word_gap) {
+  Font font = simple_font('A', {500, 500}); // A, B = 0.5 em
+  Resources res;
+  res.font["F1"] = &font;
+
+  // (A) ends at x=5; (B) starts at x=8 -> gap 3 > 0.2 * 10 em -> space
+  const auto texts = run("BT /F1 10 Tf 0 0 Td (A) Tj 8 0 Td (B) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[0].text, "A");
+  EXPECT_EQ(texts[1].text, " B");
+}
+
+// Abutting segments (the next begins where the last ended) get no space.
+TEST(PdfPageText, no_space_when_abutting) {
+  Font font = simple_font('A', {500, 500});
+  Resources res;
+  res.font["F1"] = &font;
+
+  const auto texts = run("BT /F1 10 Tf 0 0 Td (A) Tj (B) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[1].text, "B");
+}
+
+// A small `TJ` kern stays below threshold (no space); a large one crosses it.
+TEST(PdfPageText, tj_kern_threshold) {
+  Font font = simple_font('A', {500, 500});
+  Resources res;
+  res.font["F1"] = &font;
+
+  // -50 -> +0.5 gap, below 0.2 em
+  EXPECT_EQ(run("BT /F1 10 Tf 0 0 Td [(A) -50 (B)] TJ ET", res)[1].text, "B");
+  // -400 -> +4 gap, above 0.2 em
+  EXPECT_EQ(run("BT /F1 10 Tf 0 0 Td [(A) -400 (B)] TJ ET", res)[1].text, " B");
+}
+
+// A perpendicular jump (a new text line) infers a space so lines don't merge.
+TEST(PdfPageText, space_inferred_on_new_line) {
+  Font font = simple_font('A', {500, 500});
+  Resources res;
+  res.font["F1"] = &font;
+
+  const auto texts = run("BT /F1 10 Tf 12 TL 0 20 Td (A) Tj T* (B) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[1].text, " B");
+}
+
+// A segment whose text already ends in a space suppresses the inferred one.
+TEST(PdfPageText, no_double_space_after_trailing_space) {
+  Font font = simple_font('A', {500, 500}); // 'A'=5, the space falls back to 0
+  Resources res;
+  res.font["F1"] = &font;
+
+  // "A " ends in a space; despite the big gap before (B), none is inferred.
+  const auto texts = run("BT /F1 10 Tf 0 0 Td (A ) Tj 50 0 Td (B) Tj ET", res);
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[0].text, "A ");
+  EXPECT_EQ(texts[1].text, "B");
+}

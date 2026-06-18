@@ -8,6 +8,8 @@
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <array>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -222,9 +224,42 @@ SegmentAdvances segment_advances(const GraphicsState::Text &text,
   return result;
 }
 
+/// The pen left by the previous shown segment, in user space, used to infer
+/// inter-word spaces PDFs routinely omit (stage 2.5). `position` is the segment
+/// origin *after* its advance; `direction`/`em` give the writing line and scale
+/// the gap threshold; `trailing_space` suppresses a doubled space.
+struct Pen {
+  std::array<double, 2> position{0, 0};
+  std::array<double, 2> direction{1, 0};
+  double em{0};
+  bool trailing_space{false};
+};
+
+/// Whether a space should be inferred before a segment starting at `start`
+/// (user space). A forward gap past ~0.2 em along the writing line (a word
+/// break) or a perpendicular jump past ~0.5 em (a new line) triggers one,
+/// scaled by the previous segment's em so it tracks the font size.
+bool infer_space(const Pen &pen, const std::array<double, 2> &start) {
+  if (pen.em <= 0 || pen.trailing_space) {
+    return false;
+  }
+  const double gap_x = start[0] - pen.position[0];
+  const double gap_y = start[1] - pen.position[1];
+  const double along = gap_x * pen.direction[0] + gap_y * pen.direction[1];
+  const double perp = std::hypot(gap_x - along * pen.direction[0],
+                                 gap_y - along * pen.direction[1]);
+  constexpr double word_gap = 0.2;
+  constexpr double new_line = 0.5;
+  if (perp > new_line * pen.em) {
+    return true; // a different line
+  }
+  return along > word_gap * pen.em; // a within-line word break
+}
+
 /// Emit one placed segment and advance the text matrix by its width.
 void show(std::vector<TextElement> &out, GraphicsState &state,
-          MarkedContentStack &marked, std::string codes, Font *font) {
+          MarkedContentStack &marked, std::optional<Pen> &pen,
+          std::string codes, Font *font) {
   const GraphicsState::Text &text = state.current().text;
 
   TextElement element;
@@ -246,9 +281,30 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
     element.advances = std::move(advances);
   }
 
+  // Space inference (stage 2.5): prepend a space when the segment starts far
+  // enough past the previous one's pen. The geometry is read from the placement
+  // transform (origin and writing-line basis) in user space.
+  const util::math::Transform2D &m = element.transform;
+  const std::array<double, 2> start{m.e, m.f};
+  const double basis = std::hypot(m.a, m.b);
+  const std::array<double, 2> direction =
+      basis > 0 ? std::array<double, 2>{m.a / basis, m.b / basis}
+                : std::array<double, 2>{1, 0};
+  if (!element.text.empty() && element.text.front() != ' ' && pen.has_value() &&
+      infer_space(*pen, start)) {
+    element.text.insert(element.text.begin(), ' ');
+  }
+  const bool trailing_space =
+      !element.text.empty() && element.text.back() == ' ';
+
   const double advance = element.width;
   out.push_back(std::move(element));
   state.advance_text(advance, 0);
+
+  // Record the pen at the true post-advance origin (so `TJ` adjustments and any
+  // explicit repositioning before the next segment fold into the next gap).
+  const util::math::Transform2D after = state.text_placement_transform();
+  pen = Pen{{after.e, after.f}, direction, text.size * basis, trailing_space};
 }
 
 /// Form XObjects currently being rendered, by element identity. The parser
@@ -260,7 +316,8 @@ using ActiveForms = std::set<const XObject *>;
 void run_content(const std::string &content, const Resources &resources,
                  GraphicsState &state, std::vector<TextElement> &out,
                  const Logger &logger, std::set<std::string> &warned,
-                 ActiveForms &active, MarkedContentStack &marked);
+                 ActiveForms &active, MarkedContentStack &marked,
+                 std::optional<Pen> &pen);
 
 /// Open a marked-content sequence (`BMC`/`BDC`), recording its `/ActualText`
 /// when one is present. `BDC`'s property list is either an inline dictionary or
@@ -292,7 +349,8 @@ void begin_marked_content(const GraphicsOperator &op,
 void invoke_x_object(const std::string &name, const Resources &resources,
                      GraphicsState &state, std::vector<TextElement> &out,
                      const Logger &logger, std::set<std::string> &warned,
-                     ActiveForms &active, MarkedContentStack &marked) {
+                     ActiveForms &active, MarkedContentStack &marked,
+                     std::optional<Pen> &pen) {
   const auto it = resources.x_object.find(name);
   if (it == resources.x_object.end()) {
     if (warned.insert("xobject:" + name).second) {
@@ -318,7 +376,7 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   // depth afterwards so an unbalanced form cannot corrupt the enclosing scope.
   const std::size_t depth = marked.size();
   run_content(x_object->content, scope, state, out, logger, warned, active,
-              marked);
+              marked, pen);
   marked.resize(depth);
   state.restore();
   active.erase(x_object);
@@ -327,7 +385,8 @@ void invoke_x_object(const std::string &name, const Resources &resources,
 void run_content(const std::string &content, const Resources &resources,
                  GraphicsState &state, std::vector<TextElement> &out,
                  const Logger &logger, std::set<std::string> &warned,
-                 ActiveForms &active, MarkedContentStack &marked) {
+                 ActiveForms &active, MarkedContentStack &marked,
+                 std::optional<Pen> &pen) {
   std::istringstream ss(content);
   GraphicsOperatorParser parser(ss);
 
@@ -340,7 +399,7 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::show_text_next_line: { // Tj, '
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(out, state, marked, op.arguments.at(0).as_string(), font);
+      show(out, state, marked, pen, op.arguments.at(0).as_string(), font);
     } break;
     case GraphicsOperatorType::show_text_manual_spacing: { // TJ
       Font *font =
@@ -348,7 +407,7 @@ void run_content(const std::string &content, const Resources &resources,
       const GraphicsState::Text &text = state.current().text;
       for (const Object &item : op.arguments.at(0).as_array()) {
         if (item.is_string()) {
-          show(out, state, marked, item.as_string(), font);
+          show(out, state, marked, pen, item.as_string(), font);
         } else if (item.is_real()) {
           // a number translates the next glyph left by adj/1000 text-space
           // units, scaled by the font size and horizontal scaling (9.4.3).
@@ -361,11 +420,11 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::show_text_next_line_set_spacing: { // "
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(out, state, marked, op.arguments.at(2).as_string(), font);
+      show(out, state, marked, pen, op.arguments.at(2).as_string(), font);
     } break;
     case GraphicsOperatorType::draw_object: // Do
       invoke_x_object(op.arguments.at(0).as_string(), resources, state, out,
-                      logger, warned, active, marked);
+                      logger, warned, active, marked, pen);
       break;
     case GraphicsOperatorType::begin_marked_content_seq:       // BMC
     case GraphicsOperatorType::begin_marked_content_seq_props: // BDC
@@ -395,10 +454,11 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
   std::set<std::string> warned;
   ActiveForms active;
   MarkedContentStack marked;
+  std::optional<Pen> pen;
   GraphicsState state;
 
-  run_content(content, resources, state, result, logger, warned, active,
-              marked);
+  run_content(content, resources, state, result, logger, warned, active, marked,
+              pen);
 
   return result;
 }

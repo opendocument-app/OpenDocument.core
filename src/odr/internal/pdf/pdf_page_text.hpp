@@ -33,11 +33,12 @@ struct TextElement {
   /// Raw character codes shown by this segment (one `Tj`, or one string of a
   /// `TJ` array).
   std::string codes;
-  /// Unicode representation of `codes`; may lack spaces the producer cannot
-  /// infer (space inference is stage 2.5). Empty when the segment carries no
-  /// extractable text — either the code -> Unicode chain yielded nothing (see
-  /// `no_unicode`) or an enclosing `/ActualText` already emitted the run's
-  /// text.
+  /// Unicode representation of `codes`, with an inferred leading space when a
+  /// large enough gap precedes this segment (space inference, stage 2.5) so the
+  /// producer's omitted inter-word/-line spaces are recovered. Empty when the
+  /// segment carries no extractable text — either the code -> Unicode chain
+  /// yielded nothing (see `no_unicode`) or an enclosing `/ActualText` already
+  /// emitted the run's text.
   std::string text;
   /// True when the font's code -> Unicode chain yielded nothing for this
   /// segment (a composite font with no `/ToUnicode` or usable predefined
