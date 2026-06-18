@@ -62,6 +62,13 @@ struct ObjectReference final {
 class Array;
 class Dictionary;
 
+template <typename T>
+concept ObjectType = std::same_as<T, Boolean> || std::same_as<T, Integer> ||
+                     std::same_as<T, Real> || std::same_as<T, StandardString> ||
+                     std::same_as<T, HexString> || std::same_as<T, Name> ||
+                     std::same_as<T, Array> || std::same_as<T, Dictionary> ||
+                     std::same_as<T, ObjectReference>;
+
 class Object final {
 public:
   using Holder = std::any;
@@ -85,6 +92,37 @@ public:
   [[nodiscard]] Holder &holder() { return m_holder; }
   [[nodiscard]] const Holder &holder() const { return m_holder; }
 
+  template <ObjectType T> [[nodiscard]] bool is() const {
+    return m_holder.type() == typeid(T);
+  }
+  template <ObjectType T> [[nodiscard]] const T &as() const & {
+    return std::any_cast<const T &>(m_holder);
+  }
+  template <ObjectType T> [[nodiscard]] T &as() & {
+    return std::any_cast<T &>(m_holder);
+  }
+  template <ObjectType T> [[nodiscard]] T &&as() && {
+    return std::any_cast<T &&>(std::move(m_holder));
+  }
+  template <ObjectType T> [[nodiscard]] const T *as_ptr() const & {
+    return std::any_cast<const T *>(m_holder);
+  }
+  template <ObjectType T> [[nodiscard]] T *as_ptr() & {
+    return std::any_cast<T>(m_holder);
+  }
+  template <ObjectType T> [[nodiscard]] std::optional<T> as_opt() const & {
+    if (const T *ptr = std::any_cast<const T *>(&m_holder)) {
+      return *ptr;
+    }
+    return std::nullopt;
+  }
+  template <ObjectType T> [[nodiscard]] std::optional<T> as_opt() && {
+    if (T *ptr = std::any_cast<T *>(&m_holder)) {
+      return std::move(*ptr);
+    }
+    return std::nullopt;
+  }
+
   [[nodiscard]] bool is_null() const { return !m_holder.has_value(); }
   [[nodiscard]] bool is_bool() const { return is<Boolean>(); }
   [[nodiscard]] bool is_integer() const { return is<Integer>(); }
@@ -105,49 +143,32 @@ public:
     return is<Real>() ? as<Real>() : static_cast<Real>(as_integer());
   }
   [[nodiscard]] const std::string &as_standard_string() const {
-    return as<const StandardString &>().string;
+    return as<StandardString>().string;
   }
   [[nodiscard]] const std::string &as_hex_string() const {
-    return as<const HexString &>().string;
+    return as<HexString>().string;
   }
-  [[nodiscard]] const std::string &as_name() const {
-    return as<const Name &>().string;
-  }
+  [[nodiscard]] const std::string &as_name() const { return as<Name>().string; }
   [[nodiscard]] const std::string &as_string() const;
-  [[nodiscard]] const Array &as_array() const & { return as<const Array &>(); }
+  [[nodiscard]] const Array &as_array() const & { return as<Array>(); }
   [[nodiscard]] const Dictionary &as_dictionary() const & {
-    return as<const Dictionary &>();
+    return as<Dictionary>();
   }
   [[nodiscard]] const ObjectReference &as_reference() const {
-    return as<const ObjectReference &>();
+    return as<ObjectReference>();
   }
 
-  Array &as_array() & { return as<Array &>(); }
-  Dictionary &as_dictionary() & { return as<Dictionary &>(); }
+  Array &as_array() & { return as<Array>(); }
+  Dictionary &as_dictionary() & { return as<Dictionary>(); }
 
-  Array &&as_array() && { return std::move(*this).as<Array &&>(); }
-  Dictionary &&as_dictionary() && {
-    return std::move(*this).as<Dictionary &&>();
-  }
+  Array &&as_array() && { return std::move(*this).as<Array>(); }
+  Dictionary &&as_dictionary() && { return std::move(*this).as<Dictionary>(); }
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
 
 private:
   Holder m_holder;
-
-  template <typename T> [[nodiscard]] bool is() const {
-    return m_holder.type() == typeid(T);
-  }
-  template <typename T> [[nodiscard]] T as() const & {
-    return std::any_cast<T>(m_holder);
-  }
-  template <typename T> [[nodiscard]] T as() & {
-    return std::any_cast<T>(m_holder);
-  }
-  template <typename T> [[nodiscard]] T as() && {
-    return std::any_cast<T>(std::move(m_holder));
-  }
 };
 
 class Array final {
@@ -230,8 +251,8 @@ public:
     return it != end() && !it->second.is_null();
   }
 
-  [[nodiscard]] Object &get(const std::string &name,
-                            Object default_value = Object::null()) {
+  [[nodiscard]] Object &get_emplace(const std::string &name,
+                                    Object default_value = Object::null()) {
     const auto [it, success] = m_holder.try_emplace(name, default_value);
     return it->second;
   }

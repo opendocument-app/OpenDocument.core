@@ -49,10 +49,8 @@ Integer parms_integer(const Object &parms, const std::string &key,
     return default_value;
   }
   const Dictionary &dictionary = parms.as_dictionary();
-  if (!dictionary.has_key(key)) {
-    return default_value;
-  }
-  return dictionary[key].as_integer();
+  const Object &value = dictionary.get(key);
+  return value.is_integer() ? value.as_integer() : default_value;
 }
 
 std::string apply_filter(const std::string &name, const Object &parms,

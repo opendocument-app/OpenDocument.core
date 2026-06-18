@@ -197,15 +197,15 @@ std::optional<EncryptionMethod> resolve_crypt_filter(const Dictionary &encrypt,
   if (name == "Identity") {
     return EncryptionMethod::none;
   }
-  if (!encrypt.has_key("CF") || !encrypt["CF"].is_dictionary()) {
+  if (!encrypt.get("CF").is_dictionary()) {
     return std::nullopt;
   }
   const Dictionary &cf = encrypt["CF"].as_dictionary();
-  if (!cf.has_key(name) || !cf[name].is_dictionary()) {
+  if (!cf.get(name).is_dictionary()) {
     return std::nullopt;
   }
   const Dictionary &filter = cf[name].as_dictionary();
-  if (!filter.has_key("CFM") || !filter["CFM"].is_name()) {
+  if (!filter.get("CFM").is_name()) {
     return std::nullopt;
   }
   return cfm_method(filter["CFM"].as_name());
@@ -216,11 +216,11 @@ std::optional<EncryptionMethod> resolve_crypt_filter(const Dictionary &encrypt,
 std::optional<Authenticator>
 Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
   // Only the standard security handler is supported.
-  if (!encrypt.has_key("Filter") || !encrypt["Filter"].is_name() ||
+  if (!encrypt.get("Filter").is_name() ||
       encrypt["Filter"].as_name() != "Standard") {
     return std::nullopt;
   }
-  if (!encrypt.has_key("R") || !encrypt["R"].is_integer()) {
+  if (!encrypt.get("R").is_integer()) {
     return std::nullopt;
   }
 
@@ -231,8 +231,7 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
   d.m_u = encrypt["U"].as_string();
   d.m_p = encrypt["P"].as_integer();
   d.m_id0 = file_id0;
-  if (encrypt.has_key("EncryptMetadata") &&
-      encrypt["EncryptMetadata"].is_bool()) {
+  if (encrypt.get("EncryptMetadata").is_bool()) {
     d.m_encrypt_metadata = encrypt["EncryptMetadata"].as_bool();
   }
 
@@ -264,13 +263,9 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
     // Crypt filters select the method for streams and strings; the defaults
     // are Identity (Table 20).
     const std::string stmf =
-        encrypt.has_key("StmF") && encrypt["StmF"].is_name()
-            ? encrypt["StmF"].as_name()
-            : "Identity";
+        encrypt.get("StmF").is_name() ? encrypt["StmF"].as_name() : "Identity";
     const std::string strf =
-        encrypt.has_key("StrF") && encrypt["StrF"].is_name()
-            ? encrypt["StrF"].as_name()
-            : "Identity";
+        encrypt.get("StrF").is_name() ? encrypt["StrF"].as_name() : "Identity";
     const auto stream_method = resolve_crypt_filter(encrypt, stmf);
     const auto string_method = resolve_crypt_filter(encrypt, strf);
     if (!stream_method || !string_method) {

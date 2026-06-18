@@ -90,7 +90,7 @@ struct PageAttributes {
   /// omitting the entry) and leaves the inherited value untouched.
   void overlay(const Dictionary &dictionary) {
     const auto take = [&](Object &slot, const std::string &key) {
-      if (dictionary.has_key(key) && !dictionary[key].is_null()) {
+      if (dictionary.has_value(key)) {
         slot = dictionary[key];
       }
     };
@@ -345,12 +345,10 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
     return;
   }
   const Dictionary &system_info_dictionary = system_info.as_dictionary();
-  if (system_info_dictionary.has_key("Registry") &&
-      system_info_dictionary["Registry"].is_string()) {
+  if (system_info_dictionary.get("Registry").is_string()) {
     font.cid_registry = system_info_dictionary["Registry"].as_string();
   }
-  if (system_info_dictionary.has_key("Ordering") &&
-      system_info_dictionary["Ordering"].is_string()) {
+  if (system_info_dictionary.get("Ordering").is_string()) {
     font.cid_ordering = system_info_dictionary["Ordering"].as_string();
   }
 }
@@ -367,8 +365,7 @@ Font *parse_font(const State &state, const ObjectReference &reference) {
   font->object_reference = reference;
   font->object = Object(dictionary);
 
-  const bool is_type0 = dictionary.has_key("Subtype") &&
-                        dictionary["Subtype"].is_name() &&
+  const bool is_type0 = dictionary.get("Subtype").is_name() &&
                         dictionary["Subtype"].as_name() == "Type0";
 
   if (dictionary.has_key("ToUnicode")) {
@@ -427,10 +424,9 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
   x_object->object_reference = reference;
   x_object->object = Object(dictionary);
 
-  const std::string subtype =
-      dictionary.has_key("Subtype") && dictionary["Subtype"].is_name()
-          ? dictionary["Subtype"].as_name()
-          : "";
+  const std::string subtype = dictionary.get("Subtype").is_name()
+                                  ? dictionary["Subtype"].as_name()
+                                  : "";
   if (subtype == "Image") {
     // Image XObjects carry raster data, not a content stream: recognized but
     // not decoded until stage 4 (and `read_decoded_stream` would throw on the
@@ -444,7 +440,7 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
   }
 
   x_object->subtype = XObject::Subtype::form;
-  if (dictionary.has_key("Matrix") && !dictionary["Matrix"].is_null()) {
+  if (dictionary.has_value("Matrix")) {
     x_object->matrix = parse_matrix(parser, dictionary["Matrix"]);
   }
   // Read the content eagerly so text extraction needs no parser handle.
@@ -468,7 +464,7 @@ Resources *parse_resources(State &state, const Object &object) {
 
   resources->object = Object(dictionary);
 
-  if (dictionary.has_key("Font") && !dictionary["Font"].is_null()) {
+  if (dictionary.has_value("Font")) {
     const Dictionary font_table =
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
@@ -476,7 +472,7 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
-  if (dictionary.has_key("XObject") && !dictionary["XObject"].is_null()) {
+  if (dictionary.has_value("XObject")) {
     const Dictionary x_object_table =
         parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
     for (const auto &[key, value] : x_object_table) {
@@ -665,7 +661,7 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
 
     // The trailer /ID[0] feeds the R 2-4 key derivation (raw bytes).
     std::string id0;
-    if (m_trailer.has_key("ID") && m_trailer["ID"].is_array()) {
+    if (m_trailer.get("ID").is_array()) {
       const Array &id = m_trailer["ID"].as_array();
       if (id.size() > 0 && id[0].is_string()) {
         id0 = id[0].as_string();
@@ -905,7 +901,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   if (!object.has_stream) {
     throw std::runtime_error("cross-reference stream has no stream data");
   }
-  if (!dictionary.has_key("Type") || !dictionary["Type"].is_name() ||
+  if (!dictionary.get("Type").is_name() ||
       dictionary["Type"].as_name() != "XRef") {
     ODR_WARNING(*m_logger, "pdf: cross-reference stream at "
                                << position << " is not marked /Type /XRef");
@@ -915,9 +911,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   // cross-reference streams (7.5.8.2), so no reference resolution here.
   std::string data = read_object_stream(object);
   const DecodeResult decoded = decode(
-      dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
-      dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
-      std::move(data));
+      dictionary.get("Filter"), dictionary.get("DecodeParms"), std::move(data));
   if (decoded.stopped_at_filter.has_value()) {
     throw std::runtime_error("unexpected image filter in cross-reference "
                              "stream: " +
@@ -1022,7 +1016,7 @@ void DocumentParser::index_object_streams() {
         continue;
       }
       const Dictionary &dictionary = object.object.as_dictionary();
-      if (!dictionary.has_key("Type") || !dictionary["Type"].is_name() ||
+      if (!dictionary.get("Type").is_name() ||
           dictionary["Type"].as_name() != "ObjStm") {
         continue;
       }
@@ -1052,7 +1046,7 @@ void DocumentParser::recover_root() {
         continue;
       }
       const Dictionary &dictionary = object.object.as_dictionary();
-      if (dictionary.has_key("Type") && dictionary["Type"].is_name() &&
+      if (dictionary.get("Type").is_name() &&
           dictionary["Type"].as_name() == "Catalog") {
         ODR_WARNING(*m_logger, "pdf: recovered document catalog " << reference);
         m_trailer["Root"] = Object(reference);

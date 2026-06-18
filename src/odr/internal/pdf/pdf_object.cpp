@@ -91,11 +91,11 @@ void Object::to_stream(std::ostream &out) const {
   } else if (is_real()) {
     out << std::setprecision(4) << as_real();
   } else if (is_standard_string()) {
-    as<const StandardString &>().to_stream(out);
+    as<StandardString>().to_stream(out);
   } else if (is_hex_string()) {
-    as<const HexString &>().to_stream(out);
+    as<HexString>().to_stream(out);
   } else if (is_name()) {
-    as<const Name &>().to_stream(out);
+    as<Name>().to_stream(out);
   } else if (is_array()) {
     as_array().to_stream(out);
   } else if (is_dictionary()) {
