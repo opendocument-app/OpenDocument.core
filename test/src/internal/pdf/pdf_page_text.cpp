@@ -326,8 +326,6 @@ TEST(PdfPageText, form_xobject_self_cycle_terminates) {
   EXPECT_EQ(texts[0].codes, "a");
 }
 
-// --- Stage 2.4: render modes & extraction refinements ---
-
 // The text rendering mode (`Tr`) rides along on each element; the HTML layer
 // turns the unpainted modes (3 invisible, 7 clip-only) into transparent but
 // still selectable spans.

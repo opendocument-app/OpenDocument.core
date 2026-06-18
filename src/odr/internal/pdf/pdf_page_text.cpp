@@ -32,20 +32,20 @@ Font *lookup_font(const Resources &resources, const std::string &name,
 /// approximated here as Latin-1, which is exact over ASCII and the common
 /// `/ActualText` payloads (the few upper-half divergences are rare).
 std::string decode_text_string(const std::string &string) {
-  if (string.size() >= 2 && static_cast<unsigned char>(string[0]) == 0xFE &&
-      static_cast<unsigned char>(string[1]) == 0xFF) {
+  if (string.size() >= 2 && static_cast<std::uint8_t>(string[0]) == 0xFE &&
+      static_cast<std::uint8_t>(string[1]) == 0xFF) {
     std::u16string units;
     units.reserve((string.size() - 2) / 2);
     for (std::size_t i = 2; i + 1 < string.size(); i += 2) {
       units.push_back(
-          static_cast<char16_t>((static_cast<unsigned char>(string[i]) << 8) |
-                                static_cast<unsigned char>(string[i + 1])));
+          static_cast<char16_t>((static_cast<std::uint8_t>(string[i]) << 8) |
+                                static_cast<std::uint8_t>(string[i + 1])));
     }
     return util::string::u16string_to_string(units);
   }
   std::string result;
   for (const char c : string) {
-    util::string::append_c32(static_cast<unsigned char>(c), result);
+    util::string::append_c32(static_cast<std::uint8_t>(c), result);
   }
   return result;
 }
