@@ -9,6 +9,7 @@
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <odr/internal/util/string_util.hpp>
 
@@ -371,9 +372,9 @@ Font *parse_font(const State &state, const ObjectReference &reference) {
                         dictionary["Subtype"].as_name() == "Type0";
 
   if (dictionary.has_key("ToUnicode")) {
-    std::string stream =
+    const std::string stream =
         parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
-    std::istringstream ss(std::move(stream));
+    util::stream::ViewStream ss(stream);
     CMapParser cmap_parser(ss, parser.logger());
     font->cmap = cmap_parser.parse_cmap();
   }
@@ -784,12 +785,12 @@ DocumentParser::load_object_stream(const ObjectReference &reference) {
   }
   const Dictionary &dictionary = object.object.as_dictionary();
 
-  std::string data = read_decoded_stream(object);
+  const std::string data = read_decoded_stream(object);
   const std::uint32_t n = resolve_object_copy(dictionary["N"]).as_integer();
   const std::uint32_t first =
       resolve_object_copy(dictionary["First"]).as_integer();
 
-  std::istringstream in(std::move(data));
+  util::stream::ViewStream in(data);
   return m_object_streams
       .emplace(reference, FileParser(in).read_object_stream(n, first))
       .first->second;
@@ -913,7 +914,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
   // cross-reference streams (7.5.8.2), so no reference resolution here.
   std::string data = read_object_stream(object);
-  DecodeResult decoded = decode(
+  const DecodeResult decoded = decode(
       dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
       dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
       std::move(data));
@@ -944,7 +945,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
     subsections.emplace_back(0, dictionary["Size"].as_integer());
   }
 
-  std::istringstream in(std::move(decoded.data));
+  util::stream::ViewStream in(decoded.data);
   Xref xref = FileParser(in).read_xref_stream_table(field_widths, subsections);
   return {std::move(xref), dictionary};
 }

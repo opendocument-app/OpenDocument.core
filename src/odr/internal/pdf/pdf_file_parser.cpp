@@ -308,8 +308,7 @@ std::pair<std::size_t, std::string_view> trim_line(const std::string &line) {
 /// so only the leading `id gen obj` token is required.
 std::optional<ObjectReference>
 match_object_start(const std::string_view content) {
-  util::stream::ViewStreamBuf buffer(content);
-  std::istream stream(&buffer);
+  util::stream::ViewStream stream(content);
   ObjectParser parser(stream);
 
   // `peek_unsigned_integer` guards each read so a non-matching line is rejected
