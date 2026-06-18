@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iosfwd>
 #include <map>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
