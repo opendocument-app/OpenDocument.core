@@ -356,7 +356,7 @@ std::string Decryptor::object_key(const ObjectReference &reference,
 }
 
 std::string Decryptor::decrypt(const ObjectReference &reference,
-                               std::string data,
+                               const std::string &data,
                                const EncryptionMethod method) const {
   if (method == EncryptionMethod::none) {
     return data;
@@ -384,13 +384,13 @@ std::string Decryptor::decrypt(const ObjectReference &reference,
 }
 
 std::string Decryptor::decrypt_stream(const ObjectReference &reference,
-                                      std::string data) const {
-  return decrypt(reference, std::move(data), m_stream_method);
+                                      const std::string &data) const {
+  return decrypt(reference, data, m_stream_method);
 }
 
 std::string Decryptor::decrypt_string(const ObjectReference &reference,
-                                      std::string data) const {
-  return decrypt(reference, std::move(data), m_string_method);
+                                      const std::string &data) const {
+  return decrypt(reference, data, m_string_method);
 }
 
 void Decryptor::decrypt_strings(Object &object,

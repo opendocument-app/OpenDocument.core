@@ -913,7 +913,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
   // cross-reference streams (7.5.8.2), so no reference resolution here.
   std::string data = read_object_stream(object);
-  const DecodeResult decoded = decode(
+  DecodeResult decoded = decode(
       dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
       dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
       std::move(data));
@@ -944,7 +944,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
     subsections.emplace_back(0, dictionary["Size"].as_integer());
   }
 
-  std::istringstream in(std::move(data));
+  std::istringstream in(std::move(decoded.data));
   Xref xref = FileParser(in).read_xref_stream_table(field_widths, subsections);
   return {std::move(xref), dictionary};
 }
