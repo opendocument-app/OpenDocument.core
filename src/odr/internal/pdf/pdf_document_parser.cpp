@@ -10,7 +10,6 @@
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
 
-#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <cctype>
@@ -746,7 +745,7 @@ DocumentParser::read_object(const ObjectReference &reference) {
       throw UnauthenticatedReadError();
     }
     if (m_decryptor.has_value()) {
-      decrypt_strings(object.object, object.reference);
+      m_decryptor->decrypt_strings(object.object, object.reference);
     }
   } else if (entry.is_compressed()) {
     const auto &[stream_id, index] = entry.as_compressed();
@@ -791,7 +790,8 @@ DocumentParser::load_object_stream(const ObjectReference &reference) {
       resolve_object_copy(dictionary["First"]).as_integer();
 
   std::istringstream in(std::move(data));
-  return m_object_streams.emplace(reference, parse_object_stream(in, n, first))
+  return m_object_streams
+      .emplace(reference, FileParser(in).read_object_stream(n, first))
       .first->second;
 }
 
@@ -852,6 +852,36 @@ std::string DocumentParser::read_decoded_stream(const IndirectObject &object) {
   return std::move(result.data);
 }
 
+void DocumentParser::resolve_object(Object &object) {
+  if (object.is_reference()) {
+    object = read_object(object.as_reference()).object;
+  }
+}
+
+void DocumentParser::deep_resolve_object(Object &object) {
+  if (object.is_reference()) {
+    object = read_object(object.as_reference()).object;
+  } else if (object.is_array()) {
+    for (Object &e : object.as_array()) {
+      deep_resolve_object(e);
+    }
+  } else if (object.is_dictionary()) {
+    for (Object &v : object.as_dictionary() | std::views::values) {
+      deep_resolve_object(v);
+    }
+  }
+}
+
+Object DocumentParser::resolve_object_copy(Object object) {
+  resolve_object(object);
+  return object;
+}
+
+Object DocumentParser::deep_resolve_object_copy(Object object) {
+  deep_resolve_object(object);
+  return object;
+}
+
 std::pair<Xref, Dictionary>
 DocumentParser::read_xref_section(const std::uint32_t position) {
   in().clear();
@@ -868,7 +898,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
 
   // cross-reference stream (ISO 32000-1 7.5.8); its dictionary doubles as
   // the trailer dictionary
-  IndirectObject object = parser().read_indirect_object();
+  const IndirectObject object = parser().read_indirect_object();
   const Dictionary &dictionary = object.object.as_dictionary();
 
   if (!object.has_stream) {
@@ -883,7 +913,7 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
   // cross-reference streams (7.5.8.2), so no reference resolution here.
   std::string data = read_object_stream(object);
-  const DecodeResult decoded = decode(
+  DecodeResult decoded = decode(
       dictionary.has_key("Filter") ? dictionary["Filter"] : Object(),
       dictionary.has_key("DecodeParms") ? dictionary["DecodeParms"] : Object(),
       std::move(data));
@@ -914,7 +944,8 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
     subsections.emplace_back(0, dictionary["Size"].as_integer());
   }
 
-  Xref xref = parse_xref_stream_table(decoded.data, field_widths, subsections);
+  std::istringstream in(std::move(decoded.data));
+  Xref xref = FileParser(in).read_xref_stream_table(field_widths, subsections);
   return {std::move(xref), dictionary};
 }
 
@@ -957,78 +988,6 @@ std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
   return {std::move(result_xref), std::move(result_trailer).value()};
 }
 
-namespace {
-
-/// Trim leading and trailing PDF whitespace from `line`, returning the offset
-/// of the first non-whitespace byte (so the caller can map back to a file
-/// position) and a view of the trimmed content.
-std::pair<std::size_t, std::string_view> trim_line(const std::string &line) {
-  const std::string_view content =
-      util::string::trim_view(line, &ObjectParser::is_whitespace);
-  // `content` is a subrange of `line`, so the leading offset is the distance
-  // between their data pointers.
-  return {static_cast<std::size_t>(content.data() - line.data()), content};
-}
-
-/// Recognize an `n g obj` object header at the start of `content` (already
-/// trimmed). The dictionary/value may follow on the same line (`12 0 obj<<`),
-/// so only the leading `id gen obj` token is required.
-std::optional<ObjectReference>
-match_object_start(const std::string_view content) {
-  util::stream::ViewStreamBuf buffer(content);
-  std::istream stream(&buffer);
-  ObjectParser parser(stream);
-
-  // `peek_unsigned_integer` guards each read so a non-matching line is rejected
-  // without `read_unsigned_integer` throwing (the common case while scanning).
-  if (!parser.peek_unsigned_integer()) {
-    return std::nullopt;
-  }
-  const UnsignedInteger id = parser.read_unsigned_integer();
-  if (!parser.peek_whitespace()) {
-    return std::nullopt;
-  }
-  parser.skip_whitespace();
-  if (!parser.peek_unsigned_integer()) {
-    return std::nullopt;
-  }
-  const UnsignedInteger gen = parser.read_unsigned_integer();
-  if (!parser.peek_whitespace()) {
-    return std::nullopt;
-  }
-  parser.skip_whitespace();
-
-  // the `obj` keyword must follow; guard against identifiers like `object`
-  // that merely start with `obj`
-  const std::string rest = parser.read_line();
-  const std::string_view tail(rest);
-  if (!tail.starts_with("obj")) {
-    return std::nullopt;
-  }
-  if (tail.size() > 3 &&
-      (std::isalnum(static_cast<std::uint8_t>(tail[3])) || tail[3] == '.')) {
-    return std::nullopt;
-  }
-  return ObjectReference(id, gen);
-}
-
-/// True if `content` (already trimmed) ends with the `stream` keyword on a word
-/// boundary. This covers both a bare `stream` line and a compact object that
-/// inlines its dictionary and the `stream` token on one line
-/// (`N G obj<<...>>stream`). The boundary check rejects `endstream` and
-/// identifiers that merely end in `stream`.
-bool opens_stream_body(const std::string_view content) {
-  constexpr std::string_view keyword = "stream";
-  if (!content.ends_with(keyword)) {
-    return false;
-  }
-  const std::size_t begin = content.size() - keyword.size();
-  return begin == 0 ||
-         !std::isalnum(static_cast<std::uint8_t>(content[begin - 1]));
-}
-
-} // namespace
-
 void DocumentParser::recover_xref() {
   // Offsets from the failed attempt may be wrong, so anything cached from it is
   // suspect.
@@ -1036,72 +995,7 @@ void DocumentParser::recover_xref() {
   m_object_streams.clear();
   m_recovered = true;
 
-  ObjectParser &p = parser().parser();
-  std::istream &stream = in();
-  stream.clear();
-  stream.seekg(0, std::ios::end);
-  const auto size = static_cast<std::uint32_t>(stream.tellg());
-
-  Xref xref;
-  Dictionary trailer;
-
-  stream.seekg(0);
-  while (true) {
-    stream.clear(); // drop any eofbit set by the previous read_line
-    const std::int64_t tell = stream.tellg();
-    if (tell < 0 || static_cast<std::uint32_t>(tell) >= size) {
-      break;
-    }
-    const auto position = static_cast<std::uint32_t>(tell);
-
-    const std::string line = p.read_line();
-    const auto [lead, content] = trim_line(line);
-
-    if (const std::optional<ObjectReference> ref =
-            match_object_start(content)) {
-      // last definition of an id wins (operator[] overwrites)
-      xref.table[*ref] = Xref::Entry(
-          Xref::UsedEntry{static_cast<std::uint32_t>(position + lead)});
-      // A compact object may inline its dictionary and the `stream` token on
-      // this same line; fall through to skip the body below. Otherwise the
-      // header is fully consumed and we advance to the next line.
-      if (!opens_stream_body(content)) {
-        continue;
-      }
-    }
-
-    if (opens_stream_body(content)) {
-      // Skip the stream body so its (possibly object-shaped) bytes are not
-      // mis-scanned. The length is unknown here, so scan past `endstream`.
-      stream.clear();
-      p.skip_past("endstream");
-      continue;
-    }
-
-    if (content.starts_with("trailer")) {
-      const std::int64_t after = stream.tellg(); // start of the next line
-      try {
-        stream.clear();
-        stream.seekg(static_cast<std::int64_t>(position + lead) +
-                     7); // "trailer"
-        p.skip_whitespace();
-        for (const Dictionary dict = p.read_dictionary();
-             const auto &[key, value] : dict) {
-          trailer[key] = value; // last trailer wins per key
-        }
-      } catch (const std::exception &) { // NOLINT(bugprone-empty-catch)
-        // ignore a malformed trailer and keep scanning
-      }
-      stream.clear();
-      if (after >= 0) {
-        stream.seekg(after);
-      }
-      continue;
-    }
-  }
-
-  m_xref = std::move(xref);
-  m_trailer = std::move(trailer);
+  std::tie(m_xref, m_trailer) = parser().recover_xref();
 
   index_object_streams();
 
@@ -1170,29 +1064,6 @@ void DocumentParser::recover_root() {
   ODR_WARNING(*m_logger, "pdf: recovery found no document catalog");
 }
 
-void DocumentParser::decrypt_strings(Object &object,
-                                     const ObjectReference &reference) {
-  // only ever called once a decryptor is installed; guard keeps that explicit
-  if (!m_decryptor.has_value()) {
-    throw std::logic_error("pdf: decrypt_strings called without a decryptor");
-  }
-  if (object.is_standard_string()) {
-    object = Object(StandardString(
-        m_decryptor->decrypt_string(reference, object.as_standard_string())));
-  } else if (object.is_hex_string()) {
-    object = Object(HexString(
-        m_decryptor->decrypt_string(reference, object.as_hex_string())));
-  } else if (object.is_array()) {
-    for (Object &element : object.as_array()) {
-      decrypt_strings(element, reference);
-    }
-  } else if (object.is_dictionary()) {
-    for (Object &value : object.as_dictionary() | std::views::values) {
-      decrypt_strings(value, reference);
-    }
-  }
-}
-
 std::unique_ptr<Document> DocumentParser::parse_document() {
   try {
     return parse_document_impl(*this, m_trailer);
@@ -1209,36 +1080,6 @@ std::unique_ptr<Document> DocumentParser::parse_document() {
     recover_xref();
     return parse_document_impl(*this, m_trailer);
   }
-}
-
-void DocumentParser::resolve_object(Object &object) {
-  if (object.is_reference()) {
-    object = read_object(object.as_reference()).object;
-  }
-}
-
-void DocumentParser::deep_resolve_object(Object &object) {
-  if (object.is_reference()) {
-    object = read_object(object.as_reference()).object;
-  } else if (object.is_array()) {
-    for (Object &e : object.as_array()) {
-      deep_resolve_object(e);
-    }
-  } else if (object.is_dictionary()) {
-    for (Object &v : object.as_dictionary() | std::views::values) {
-      deep_resolve_object(v);
-    }
-  }
-}
-
-Object DocumentParser::resolve_object_copy(Object object) {
-  resolve_object(object);
-  return object;
-}
-
-Object DocumentParser::deep_resolve_object_copy(Object object) {
-  deep_resolve_object(object);
-  return object;
 }
 
 } // namespace odr::internal::pdf

@@ -15,7 +15,7 @@ using Integer = std::int64_t;
 using Real = double;
 using Boolean = bool;
 
-struct StandardString {
+struct StandardString final {
   std::string string;
 
   explicit StandardString(std::string _string) : string{std::move(_string)} {}
@@ -24,7 +24,7 @@ struct StandardString {
   [[nodiscard]] std::string to_string() const;
 };
 
-struct HexString {
+struct HexString final {
   std::string string;
 
   explicit HexString(std::string _string) : string{std::move(_string)} {}
@@ -33,7 +33,7 @@ struct HexString {
   [[nodiscard]] std::string to_string() const;
 };
 
-struct Name {
+struct Name final {
   std::string string;
 
   explicit Name(std::string _string) : string{std::move(_string)} {}
@@ -42,7 +42,7 @@ struct Name {
   [[nodiscard]] std::string to_string() const;
 };
 
-struct ObjectReference {
+struct ObjectReference final {
   std::uint64_t id{};
   std::uint64_t gen{};
 
@@ -62,9 +62,14 @@ struct ObjectReference {
 class Array;
 class Dictionary;
 
-class Object {
+class Object final {
 public:
   using Holder = std::any;
+
+  static const Object &null() {
+    static const Object cache{};
+    return cache;
+  }
 
   Object() = default;
   explicit Object(Boolean boolean) : m_holder{boolean} {}
@@ -145,7 +150,7 @@ private:
   }
 };
 
-class Array {
+class Array final {
 public:
   using Holder = std::vector<Object>;
 
@@ -178,7 +183,7 @@ private:
   Holder m_holder;
 };
 
-class Dictionary {
+class Dictionary final {
 public:
   using Holder = std::map<std::string, Object>;
 
@@ -189,20 +194,52 @@ public:
   [[nodiscard]] const Holder &holder() const { return m_holder; }
 
   [[nodiscard]] std::size_t size() const { return m_holder.size(); }
-  [[nodiscard]] Holder::iterator begin() { return m_holder.begin(); }
-  [[nodiscard]] Holder::iterator end() { return m_holder.end(); }
-  [[nodiscard]] Holder::const_iterator begin() const {
-    return m_holder.cbegin();
-  }
-  [[nodiscard]] Holder::const_iterator end() const { return m_holder.cend(); }
+
+  using iterator = Holder::iterator;
+  using const_iterator = Holder::const_iterator;
+
+  [[nodiscard]] iterator begin() { return m_holder.begin(); }
+  [[nodiscard]] iterator end() { return m_holder.end(); }
+  [[nodiscard]] const_iterator begin() const { return m_holder.cbegin(); }
+  [[nodiscard]] const_iterator end() const { return m_holder.cend(); }
 
   Object &operator[](const std::string &name) { return m_holder[name]; }
   const Object &operator[](const std::string &name) const {
     return m_holder.at(name);
   }
 
+  [[nodiscard]] Object &at(const std::string &name) {
+    return m_holder.at(name);
+  }
+  [[nodiscard]] const Object &at(const std::string &name) const {
+    return m_holder.at(name);
+  }
+
+  [[nodiscard]] Holder::iterator find(const std::string &name) {
+    return m_holder.find(name);
+  }
+  [[nodiscard]] Holder::const_iterator find(const std::string &name) const {
+    return m_holder.find(name);
+  }
+
   [[nodiscard]] bool has_key(const std::string &name) const {
     return m_holder.contains(name);
+  }
+  [[nodiscard]] bool has_value(const std::string &name) const {
+    const auto it = find(name);
+    return it != end() && !it->second.is_null();
+  }
+
+  [[nodiscard]] Object &get(const std::string &name,
+                            Object default_value = Object::null()) {
+    const auto [it, success] = m_holder.try_emplace(name, default_value);
+    return it->second;
+  }
+  [[nodiscard]] const Object &
+  get(const std::string &name,
+      const Object &default_value = Object::null()) const {
+    const auto it = find(name);
+    return it != end() ? it->second : default_value;
   }
 
   void to_stream(std::ostream &) const;

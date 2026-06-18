@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 
 namespace odr::internal::pdf {
 
@@ -355,7 +356,7 @@ std::string Decryptor::object_key(const ObjectReference &reference,
 }
 
 std::string Decryptor::decrypt(const ObjectReference &reference,
-                               std::string data,
+                               const std::string &data,
                                const EncryptionMethod method) const {
   if (method == EncryptionMethod::none) {
     return data;
@@ -383,13 +384,32 @@ std::string Decryptor::decrypt(const ObjectReference &reference,
 }
 
 std::string Decryptor::decrypt_stream(const ObjectReference &reference,
-                                      std::string data) const {
-  return decrypt(reference, std::move(data), m_stream_method);
+                                      const std::string &data) const {
+  return decrypt(reference, data, m_stream_method);
 }
 
 std::string Decryptor::decrypt_string(const ObjectReference &reference,
-                                      std::string data) const {
-  return decrypt(reference, std::move(data), m_string_method);
+                                      const std::string &data) const {
+  return decrypt(reference, data, m_string_method);
+}
+
+void Decryptor::decrypt_strings(Object &object,
+                                const ObjectReference &reference) {
+  if (object.is_standard_string()) {
+    object = Object(
+        StandardString(decrypt_string(reference, object.as_standard_string())));
+  } else if (object.is_hex_string()) {
+    object =
+        Object(HexString(decrypt_string(reference, object.as_hex_string())));
+  } else if (object.is_array()) {
+    for (Object &element : object.as_array()) {
+      decrypt_strings(element, reference);
+    }
+  } else if (object.is_dictionary()) {
+    for (Object &value : object.as_dictionary() | std::views::values) {
+      decrypt_strings(value, reference);
+    }
+  }
 }
 
 } // namespace odr::internal::pdf

@@ -32,15 +32,19 @@ public:
   /// Decrypt the raw bytes of a stream / string belonging to indirect object
   /// `reference`. Streams are decrypted before `/Filter` decoding (7.6.2).
   [[nodiscard]] std::string decrypt_stream(const ObjectReference &reference,
-                                           std::string data) const;
+                                           const std::string &data) const;
   [[nodiscard]] std::string decrypt_string(const ObjectReference &reference,
-                                           std::string data) const;
+                                           const std::string &data) const;
+
+  /// Decrypt every string leaf of `object` in place with the owning object's
+  /// reference (ISO 32000-1 7.6.2). Used on freshly read indirect objects.
+  void decrypt_strings(Object &object, const ObjectReference &reference);
 
 private:
   [[nodiscard]] std::string object_key(const ObjectReference &reference,
                                        EncryptionMethod method) const;
   [[nodiscard]] std::string decrypt(const ObjectReference &reference,
-                                    std::string data,
+                                    const std::string &data,
                                     EncryptionMethod method) const;
 
   std::string m_key;

@@ -90,15 +90,6 @@ struct Xref {
   void merge_hybrid(const Xref &xref_stream);
 };
 
-/// Decode the entry table of a cross-reference stream (ISO 32000-1 7.5.8.3)
-/// from the already de-filtered `data`. `field_widths` is the `/W` array
-/// (three big-endian byte widths; width 0 means the field defaults: type 1,
-/// other fields 0), `subsections` the `/Index` pairs (first id, count).
-/// Entries of unknown type are treated as absent.
-[[nodiscard]] Xref parse_xref_stream_table(
-    const std::string &data, const std::array<std::uint32_t, 3> &field_widths,
-    const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections);
-
 /// One member of a decoded object stream: its object id and parsed value.
 struct ObjectStreamMember {
   std::uint64_t id{};
@@ -106,14 +97,6 @@ struct ObjectStreamMember {
 };
 
 using ObjectStream = std::vector<ObjectStreamMember>;
-
-/// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
-/// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`
-/// (id, offset) integer pairs followed by the member objects (bare values —
-/// no `n g obj` wrapper, no stream) at `first + offset`. `n` and `first` are
-/// the `/N` and `/First` dictionary entries.
-[[nodiscard]] ObjectStream
-parse_object_stream(std::istream &in, std::uint32_t n, std::uint32_t first);
 
 struct StartXref {
   std::uint32_t start{};
