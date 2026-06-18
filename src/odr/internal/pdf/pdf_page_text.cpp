@@ -225,7 +225,7 @@ SegmentAdvances segment_advances(const GraphicsState::Text &text,
 }
 
 /// The pen left by the previous shown segment, in user space, used to infer
-/// inter-word spaces PDFs routinely omit (stage 2.5). `position` is the segment
+/// inter-word spaces PDFs routinely omit. `position` is the segment
 /// origin *after* its advance; `direction`/`em` give the writing line and scale
 /// the gap threshold; `trailing_space` suppresses a doubled space.
 struct Pen {
@@ -281,7 +281,7 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
     element.advances = std::move(advances);
   }
 
-  // Space inference (stage 2.5): prepend a space when the segment starts far
+  // Space inference: prepend a space when the segment starts far
   // enough past the previous one's pen. The geometry is read from the placement
   // transform (origin and writing-line basis) in user space.
   const util::math::Transform2D &m = element.transform;

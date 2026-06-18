@@ -14,11 +14,11 @@ forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
 text spans, one per shown segment, placed by the full text transform (CTM × text
-matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), recursing into
-form XObjects (stage 2.3), with text render modes and `/ActualText` honoured
-(stage 2.4) and omitted spaces inferred from glyph gaps (stage 2.5), pages sized
-from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
-graphics, no images, no font files. Experimental and not production-quality.
+matrix) and advanced by the parsed glyph widths, recursing into form XObjects,
+with text render modes and `/ActualText` honoured and omitted spaces inferred
+from glyph gaps, pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
+AES-128, AES-256). No graphics, no images, no font files. Experimental and not
+production-quality.
 
 ---
 
@@ -96,19 +96,19 @@ graphics, no images, no font files. Experimental and not production-quality.
   bytes). When a simple font carries no `ToUnicode` CMap, `Font::to_unicode`
   falls back to its `/Encoding` — a base encoding (Standard/WinAnsi/MacRoman)
   overlaid with `/Differences`, each code → glyph name → Unicode via the Adobe
-  Glyph List (incl. the `uniXXXX`/`uXXXXXX` forms), stage 1.2. **Composite
-  (Type0) fonts** (stage 1.3, part A) are recognized: the descendant CIDFont's
+  Glyph List (incl. the `uniXXXX`/`uXXXXXX` forms). **Composite
+  (Type0) fonts** are recognized: the descendant CIDFont's
   `/CIDSystemInfo` `/Registry`/`/Ordering` is recorded on the `Font`, and the
   Type0 `/Encoding` (a code → CID CMap such as `Identity-H`) is kept out of the
   simple-font encoding path. Extraction is driven by the `/ToUnicode` CMap (the
   common case — every Type0 font in the corpus carries one). When a composite
   font has no `/ToUnicode`, a **predefined Unicode `/Encoding`** — the
-  `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`, stage 1.3
-  part B), since those character codes already are Unicode (big-endian); any
+  `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`), since those
+  character codes already are Unicode (big-endian); any
   other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
-  Unicode" (not byte-garbage) until the legacy CID → Unicode tables (the
-  deferred half of part B) or the embedded font program (stage 3) land.
-- **Glyph metrics** (stage 2.2): a font's advance widths are parsed —
+  Unicode" (not byte-garbage) until the legacy CID → Unicode tables or the
+  embedded font program (stage 3) land.
+- **Glyph metrics**: a font's advance widths are parsed —
   `/FirstChar` + `/Widths` + `/FontDescriptor` `/MissingWidth` for simple fonts,
   `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
   forms) for composite fonts. `Font::advance_width(code)` returns the advance in
@@ -123,22 +123,21 @@ graphics, no images, no font files. Experimental and not production-quality.
   affine `Transform2D` values (`util/math_util.hpp`), with `BT` resetting them, `Td`/`TD`
   /`T*` (and the line-move half of `'`/`"`) advancing `Tlm` → `Tm`. Unknown
   operators are logged to stderr and skipped.
-- **Text layout** (`pdf_page_text`, stages 2.1–2.2): `extract_text` runs the
+- **Text layout** (`pdf_page_text`): `extract_text` runs the
   operator parser + `GraphicsState` over a page's content and emits a
   renderer-agnostic `TextElement` per shown *segment* (one `Tj`/`'`/`"`, or one
   string of a `TJ` array) — its text-space → user-space transform (CTM × `Tm`,
   with horizontal scaling and rise folded in, font size kept separate), the
   resolved font, size, spacing parameters, raw codes, the CMap-translated
   Unicode, and the segment's per-code advances plus their total. Font lookup is
-  lenient (unknown ref → warn, raw codes). **Glyph advances are applied** (stage
-  2.2): after each segment the text matrix `Tm` advances by the glyph widths ×
-  font size plus char/word spacing (× horizontal scaling), and a `TJ` number
-  translates `Tm` by `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines
-  land in the right place. The element carries the per-code advances directly, so
-  a renderer wanting per-glyph placement need not re-derive them from
-  `font->advance_width`. **Extraction refinements** (stage 2.4): each element
-  carries its text render mode (`Tr`) and a `no_unicode` flag — set when the
-  font's code → Unicode chain yields nothing (a composite font with no
+  lenient (unknown ref → warn, raw codes). **Glyph advances are applied**: after
+  each segment the text matrix `Tm` advances by the glyph widths × font size plus
+  char/word spacing (× horizontal scaling), and a `TJ` number translates `Tm` by
+  `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines land in the right
+  place. The element carries the per-code advances directly, so a renderer wanting
+  per-glyph placement need not re-derive them from `font->advance_width`. Each
+  element also carries its text render mode (`Tr`) and a `no_unicode` flag — set
+  when the font's code → Unicode chain yields nothing (a composite font with no
   `/ToUnicode` or usable predefined encoding), so `text` is empty and the run is
   knowingly non-extractable until stage 3 re-encodes the glyphs to the PUA.
   Marked content is tracked (`BMC`/`BDC … EMC`, balanced per stream and reset
@@ -146,15 +145,16 @@ graphics, no images, no font files. Experimental and not production-quality.
   dictionary, or a name resolved through the `/Properties` resource) overrides the
   per-glyph Unicode of its enclosed shows — the decoded text (UTF-16BE BOM or
   PDFDocEncoding) emitted once and the rest of the sequence suppressed.
-  **Space inference** (stage 2.5): a running pen (the user-space origin after
+  **Space inference**: a running pen (the user-space origin after
   each segment, with the writing-line direction and em scale) is threaded through
   the executor, and a single space is prepended to a segment's `text` when the
   gap past the previous pen exceeds ~0.2 em along the line (a word break) or
   ~0.5 em perpendicular (a new line) — recovering the inter-word/-line spaces the
   producer omitted, in `text` only (codes/advances/placement untouched). Still
   deferred: intra-segment glyph shaping (the browser lays a segment out in a
-  fallback font until stage 3) and vertical writing-mode advances (stage 2.6).
-- **Form XObjects** (stage 2.3): a resource dictionary's `/XObject`
+  fallback font until stage 3) and vertical writing-mode advances (the deferred
+  bidi & vertical writing work, see *Other known gaps*).
+- **Form XObjects**: a resource dictionary's `/XObject`
   subdictionary is parsed into `Resources::x_object`; each `/Subtype /Form` is an
   `XObject` element carrying its `/Matrix` (default identity), its decoded
   content stream (read eagerly at parse time, so text extraction needs no parser
@@ -195,14 +195,14 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject + `/Properties` tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
-| `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
-| `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: the `Uni*-UCS2/UTF16/UTF32` CMaps decoded directly (no data tables), stage 1.3 part B; legacy CJK CMaps deferred (see `tools/pdf/generate_cid_data.py`) |
+| `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` |
+| `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: the `Uni*-UCS2/UTF16/UTF32` CMaps decoded directly (no data tables); legacy CJK CMaps deferred (see `tools/pdf/generate_cid_data.py`) |
 | `pdf_encoding_data.{hpp,cpp}`          | **Generated** (`tools/pdf/generate_encoding_data.py`): base-encoding tables + the Adobe Glyph List as a name-sorted array |
-| `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories (stage 2.1) |
+| `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
 | `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance, `save()`/`restore()`/`concat_matrix()` reused by `q`/`Q`/`cm` and by form-XObject invocation |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance + render mode + `no_unicode` flag) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3); a marked-content stack applies `/ActualText` and the no-Unicode marking (stage 2.4); a running pen infers omitted inter-word/-line spaces (stage 2.5) |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance + render mode + `no_unicode` flag) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments; `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard; a marked-content stack applies `/ActualText` and the no-Unicode marking; a running pen infers omitted inter-word/-line spaces |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -300,9 +300,9 @@ table (*Cross-reference recovery* above) before giving up.
 
 **Debug output still in place.** `pdf_graphics_state.cpp` (dash pattern, stroke/
 other color) and `pdf_graphics_operator_parser.cpp` still print diagnostics to
-stdout/stderr instead of `Logger`. The text path is now clean: `html/pdf_file.cpp`
-and `pdf_page_text.cpp` route through `Logger` and the leftover `"hi"` marker is
-gone (stage 2.1). `DocumentParser` and `extract_text` take a `Logger &` (default
+stdout/stderr instead of `Logger`. The text path is clean: `html/pdf_file.cpp`
+and `pdf_page_text.cpp` route through `Logger`. `DocumentParser` and
+`extract_text` take a `Logger &` (default
 `Logger::null()`) — new diagnostics should do the same.
 
 **Rendering is deferred to the browser; display and text are decoupled.** We emit
@@ -311,7 +311,7 @@ and vector content via SVG (stage 4) — the browser draws everything. Because
 display is driven by the *glyph*, not the extracted Unicode, **text-extraction
 gaps degrade only selectability and search — never display.** Every deferred
 code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
-`/ToUnicode`, stage 1.4 reverse maps) still renders correctly once stage 3 lands:
+`/ToUnicode`, embedded-font reverse maps) still renders correctly once stage 3 lands:
 glyphs with no recoverable Unicode are re-encoded to the Private Use Area and the
 run is marked non-extractable (`user-select: none`, `aria-hidden`). So the
 deferred CJK/legacy-CMap work is a *selectability* gap, not a rendering risk —
@@ -352,8 +352,8 @@ such PDFs look right, their text just isn't selectable until the tables land.
   `/ToUnicode` extraction, the no-`/ToUnicode` "no Unicode" fallback, and a
   predefined `Uni*-UCS2-H` `/Encoding` extracting without a `/ToUnicode`), plus
   glyph-metric coverage (the composite `/W`+`/DW` and a simple
-  `/FirstChar`/`/Widths`/`/MissingWidth` font, asserted through `advance_width`,
-  stage 2.2), plus form-XObject coverage (stage 2.3): a cyclic `/Resources`
+  `/FirstChar`/`/Widths`/`/MissingWidth` font, asserted through `advance_width`),
+  plus form-XObject coverage: a cyclic `/Resources`
   reference (Fm0 → Fm1 → Fm0) terminating via the XObject cache and represented
   faithfully (the back-edge points at the same cached element), and a form shared
   by two pages parsed once. End-to-end: the classic fixture
@@ -379,32 +379,32 @@ such PDFs look right, their text just isn't selectable until the tables land.
   a multi-code-point decomposition, and the `name.suffix` form) and the
   algorithmic `uniXXXX`/`uXXXXXX` forms, `Encoding::translate_string` with a base
   encoding, the Latin-1 upper half (WinAnsi/MacRoman), a `/Differences` override,
-  and the WinAnsi-vs-Standard `0x27` divergence (stage 1.2).
+  and the WinAnsi-vs-Standard `0x27` divergence.
 - `test/src/internal/pdf/pdf_cid.cpp` — **assertion-based**, no fixtures:
   `translate_predefined_cmap` over the predefined Unicode CMaps — `UCS2`/`UTF16`
   (incl. a surrogate pair) and `UTF32` decoding, a `-V` writing-mode variant, and
-  the `nullopt` for `Identity-H` and the legacy CJK CMaps (stage 1.3 part B).
+  the `nullopt` for `Identity-H` and the legacy CJK CMaps.
 - `test/src/internal/util/math_util_test.cpp` — **assertion-based**, no fixtures:
   `Transform2D` point-apply (identity/translation/scaling), the ordered
-  (row-vector) composition, and compose-then-apply ≡ sequential apply (stage 2.1).
+  (row-vector) composition, and compose-then-apply ≡ sequential apply.
 - `test/src/internal/pdf/pdf_page_text.cpp` — **assertion-based**, inline content
   streams through `extract_text`: `Td` translation, `Tm` scaling, `cm` CTM
   concatenation under `Tm`, horizontal scaling and rise in the transform, and the
-  `T*`/`'`/`"` line moves with their leading and spacing (stage 2.1); plus
+  `T*`/`'`/`"` line moves with their leading and spacing; plus
   glyph-advance coverage with hand-built `Font`s — simple `/Widths` advancing a
   following show, `TJ` emitting per string with the numeric adjustment applied,
   char spacing, word spacing on the single-byte space, the composite 2-byte `/DW`
-  advance, and the `advance_width` fallbacks (stage 2.2); plus form-XObject
-  coverage (stage 2.3) with hand-built `XObject`s — invocation via `Do`, the
+  advance, and the `advance_width` fallbacks; plus form-XObject
+  coverage with hand-built `XObject`s — invocation via `Do`, the
   `/Matrix` placement, state restoration after the form, the form's own
   `/Resources` scope, nested forms, image/unknown XObjects ignored, and a
   self-referential form terminating at render time via the active-set guard;
-  plus render-mode and extraction-refinement coverage (stage 2.4) — `Tr`
+  plus render-mode and extraction-refinement coverage — `Tr`
   propagation, a composite font with no `/ToUnicode` marked `no_unicode` with
   empty text, and `/ActualText` overriding a segment (literal and UTF-16BE),
   emitted once then suppressed across the sequence, resolved via a named
   `/Properties` entry, the no-`/ActualText` passthrough, and a tolerated stray
-  `EMC`; plus space-inference coverage (stage 2.5) — a word-gap space, no space
+  `EMC`; plus space-inference coverage — a word-gap space, no space
   when segments abut, the `TJ`-kern threshold (sub- vs. supra-threshold), a
   new-line space, and the no-double-space after a trailing space.
 
@@ -435,20 +435,21 @@ builds on a parser that opens the common corpus.
 ## Stage 1 — text extraction: the code → Unicode chain — **done**
 
 **Goal.** PDF strings are **character codes**; per font, walk code → Unicode and
-record it per code (or "no Unicode", which stage 3 re-encodes). The work was
-split into sub-stages by data weight and dependency; 1.1–1.3 have landed and
-cover the local corpus and the bulk of real-world PDFs. The mechanics live in
+record it per code (or "no Unicode", which stage 3 re-encodes). The landed work
+covers the local corpus and the bulk of real-world PDFs. The mechanics live in
 *Fonts / text mapping* under *What works*; this is the summary.
 
 **Achieved**
-- **1.1 — `ToUnicode` CMap.** Multi-byte codes (codespace-driven chunking), both
+- **`ToUnicode` CMap.** Multi-byte codes (codespace-driven chunking), both
   `bfrange` forms, multi-character (ligature) targets.
-- **1.2 — simple-font `/Encoding`.** Standard/WinAnsi/MacRoman base encodings +
+- **Simple-font `/Encoding`.** Standard/WinAnsi/MacRoman base encodings +
   `/Differences` → glyph name → Unicode via the generated Adobe Glyph List (incl.
   the algorithmic `uniXXXX`/`uXXXXXX` forms).
-- **1.3 — composite (Type0/CID) fonts.** Type0 structure + `/CIDSystemInfo`,
+- **Composite (Type0/CID) fonts.** Type0 structure + `/CIDSystemInfo`,
   `Identity-H/V`, `/ToUnicode`-driven extraction, and the predefined Unicode
   CMaps (`Uni*-UCS2/UTF16/UTF32`, decoded directly with no data tables).
+- **"No Unicode" run marking + `/ActualText`** landed with stage 2 (run/state
+  plumbing); see *Text layout* under *What works*.
 
 **Deferred — relocated to later stages.** None blocks the renderer and no corpus
 fixture needs them yet:
@@ -456,136 +457,64 @@ fixture needs them yet:
   tables — large external data; the generator/fetch scaffolding is landed
   (`tools/pdf/generate_cid_data.py`), the storage decision and C++ lookup remain.
   Tracked under *Other known gaps* (CMap coverage).
-- **Embedded-font reverse map** (was 1.4) — needs the font reading machinery;
-  folded into **stage 3**.
-- **"No Unicode" run marking + `/ActualText`** (was 1.5) — rides on the run/state
-  plumbing introduced by **stage 2**, where it now lives.
+- **Embedded-font reverse map** — needs the font reading machinery; folded into
+  **stage 3**.
 
-## Stage 2 — text positioning & metrics — **done (2.6 deferred)**
+## Stage 2 — text positioning & metrics — **done (bidi & vertical writing deferred)**
 
-Independent of Unicode work; fixes layout even with today's partial CMaps. Split
-into sub-stages (mirroring stage 1's slicing), each its own PR. 2.1–2.5 have
-landed and cover the local corpus and the bulk of real-world PDFs (see *Text
-layout* / *HTML* under *What works*); **2.6 (bidi & vertical writing) is deferred
-until a corpus fixture needs it** — relocated to *Other known gaps*, as the
-legacy-CJK CMap work was out of stage 1.
+Independent of the Unicode work; fixes layout even with today's partial CMaps.
+The landed work covers the local corpus and the bulk of real-world PDFs. The
+mechanics live in *Text layout* / *Form XObjects* / *HTML* under *What works*;
+this is the summary.
 
 **Architecture decision (2026-06): a renderer-agnostic placed-text emission.**
 The content executor produces a per-page list of **placed text items**, each
 carrying its text-space → user-space transform (CTM × text matrix, with font
 size / horizontal scaling / rise folded in), the resolved font, size, the
-text-state spacing parameters, the raw character codes, and a Unicode
-representation (which may lack inferred spaces). The HTML layer consumes that
-list and decides how to map it — per-run spans with a CSS `transform` vs.
-per-glyph positioning. **The core never commits to either**; this pushes the
-run-vs-glyph question all the way down to rendering. (The earlier framing of an
-up-front "HTML mapping decision" is dissolved into this.)
+text-state spacing parameters, the raw character codes, a Unicode representation,
+and per-code advances. The HTML layer consumes that list and decides how to map
+it — per-run spans with a CSS `transform` vs. per-glyph positioning. **The core
+never commits to either**, pushing the run-vs-glyph question all the way down to
+rendering.
 
-### 2.1 — transforms & the placed-text emission — **done**
+**Achieved**
+- **Transforms & the placed-text emission.** A 2-D affine `Transform2D`
+  (`util/math_util.hpp`); the CTM *concatenates* on `cm`, `Tm`/`Tlm` tracked
+  properly (`BT` resets, `Td`/`TD`/`T*` and the line-move half of `'`/`"` advance
+  `Tlm` → `Tm`), rise and horizontal scaling folded into the text rendering
+  matrix; `extract_text` yields one placed `TextElement` per shown segment, which
+  the HTML layer maps to a positioned CSS-`transform` span (page y-axis flipped
+  once per page).
+- **Glyph advances & metrics.** `/FirstChar`+`/Widths`+`/MissingWidth` (simple)
+  and `/W`+`/DW` (composite) parsed into `Font::advance_width`; after each segment
+  `Tm` advances by Σ(width × Tfs + Tc [+ Tw for 0x20]) × Th and a `TJ` number
+  translates `Tm` by `−n/1000 × Tfs × Th`, so segments, kerning and lines land
+  correctly. The element carries the per-code advances so the renderer needn't
+  re-derive them.
+- **Form XObjects.** `Do` on a `/Form` runs the form content against scoped
+  `/Resources` under its `/Matrix`; the `/XObject` table is memoized by reference
+  (shared forms parsed once, cyclic references resolve to the existing element)
+  and cyclic invocation is guarded at render time. Image XObjects are tagged but
+  not decoded (stage 4). Reused by stage 4 (tiling patterns) and stage 5
+  (annotation appearances).
+- **Render modes & extraction refinements.** The text render mode (`Tr`) rides on
+  every element (unpainted 3/7 → transparent-but-selectable span, 1–2/4–6 → a
+  painted fill); a segment whose code → Unicode chain yields nothing is marked
+  `no_unicode`; an `/ActualText` marked-content sequence overrides the per-glyph
+  Unicode of its enclosed shows.
+- **Space inference.** A running pen infers the inter-word/-line spaces producers
+  omit (in `text` only, codes/advances/placement untouched), so copy/paste and
+  search work.
 
-The geometry foundation plus the emission contract, *without* glyph advances:
-- A 2-D affine `Transform2D` (`util/math_util.hpp`): compose, point-apply,
-  translation/scaling factories.
-- Apply the full transform chain in `GraphicsState`: the CTM now *concatenates*
-  on `cm` (it was overwritten); the text matrix `Tm` and text line matrix `Tlm`
-  are tracked properly (`BT` resets them, `Tm` sets both, `Td`/`TD`/`T*` and the
-  line-move half of `'`/`"` update `Tlm` → `Tm`); text rise and horizontal
-  scaling fold into the text rendering matrix.
-- A `TextElement` emission (`pdf_page_text.{hpp,cpp}`): `extract_text(content,
-  resources, logger)` runs the operator parser + state and yields one placed item
-  per show operation (`Tj`/`TJ`/`'`/`"`), positioned by the text rendering
-  matrix. Font lookup is lenient (unknown ref → warn, codes pass through).
-- The HTML layer maps each `TextElement` to an absolutely-positioned span with a
-  CSS `transform` (full matrix, incl. rotation/scaling), font size from the text
-  state, the page y-axis flipped once per page. The text-path debug `std::cout`
-  (incl. the `"hi"` marker) is removed.
-
-**Deliberately out of scope here (→ 2.2):** glyph advances. (Precise baseline
-placement — needs font ascent metrics — stays deferred past 2.2 too.)
-
-### 2.2 — glyph advances & metrics — **done**
-
-Glyph metrics and the per-glyph text-matrix advance, on top of 2.1's emission:
-- **Width parsing** (`pdf_document_parser`, `Font`): `/FirstChar` + `/Widths` +
-  `/FontDescriptor` `/MissingWidth` (simple), `/W` + `/DW` (the descendant
-  CIDFont, both `c [w…]` and `c_first c_last w` forms). `Font::advance_width(code)`
-  returns the advance in text-space units, with the `/MissingWidth` / `/DW`
-  fallbacks; `code_byte_width()` is 1 (simple) / 2 (composite).
-- **Advance application** (`extract_text`, `GraphicsState::advance_text`): a
-  `TextElement` is now emitted per shown *segment* (one `Tj`/`'`/`"`, or one
-  string of a `TJ` array); after each segment `Tm` advances by Σ(width × Tfs + Tc
-  [+ Tw for single-byte 0x20]) × Th, and a `TJ` number translates `Tm` by
-  `−n/1000 × Tfs × Th`. So `TJ`/`'`/`"` land correctly and `Tj` segments space
-  correctly. The element carries both its per-code advances and their total, so
-  per-glyph placement needs no re-derivation from `font->advance_width`, keeping
-  the run-vs-glyph choice in the renderer.
-
-Out of scope (later): intra-segment glyph shaping (browser fallback until the
-embedded font, stage 3), AFM widths for non-embedded standard-14 fonts (stage 3),
-vertical writing-mode advances (stage 2.6).
-
-### 2.3 — Form XObjects — **done**
-
-`Do` on a `/Form`: recursive content-stream execution with scoped `/Resources`
-and the form matrix; `Resources` parsing extended to the `/XObject` table. Many
-producers put most page content inside forms, and tiling patterns (stage 4) and
-annotation appearances (stage 5) run on the same machinery — a structural
-prerequisite. The mechanics live in *Form XObjects* under *What works*; this is
-the summary.
-
-- **Parsing.** `Resources::x_object` holds the `/XObject` table. Each
-  `/Subtype /Form` becomes an `XObject` element with its `/Matrix`, eagerly
-  decoded content stream, and own parsed `/Resources` (`nullptr` ⇒ inherit the
-  invoking scope). Image XObjects are tagged but not decoded (stage 4).
-- **Faithful in-memory model.** The parser memoizes XObjects by reference
-  (`ObjectReference → XObject*`, registered before recursing), so a shared form
-  is parsed once and a cyclic form reference resolves to the existing element —
-  the graph mirrors the file rather than clipping cycles.
-- **Execution.** `extract_text`'s `Do` saves the state, concatenates the form
-  `/Matrix`, runs the form content against the scoped resources, restores, and
-  guards cyclic invocation with a render-time active-set (the spec forbids cycles
-  per 8.10.1, but real files contain them).
-
-Deferred: `/BBox` clipping (text-only for now); the form machinery is reused by
-stage 4 (tiling patterns) and stage 5 (annotation appearances).
-
-### 2.4 — text render modes & extraction refinements — **done**
-
-**Text render modes** (`Tr`): the mode rides on every `TextElement` and the HTML
-layer turns the unpainted modes — 3 (invisible text, OCR-over-scan) and 7
-(clip-only) — into a transparent-but-selectable span (the `.i` class); the
-stroke/fill+stroke/clip modes (1–2, 4–6) degrade gracefully to a painted fill.
-**Extraction refinements** (was stage 1.5, on the run plumbing): a segment whose
-code → Unicode chain yields nothing is marked `no_unicode` (empty `text`) so
-stage 3 can re-encode it to the PUA — until then the run simply renders nothing
-and isn't selectable. `/ActualText` is honoured as an extraction override of the
-whole chain: a `BMC`/`BDC … EMC` marked-content sequence (property list inline or
-named via the `/Properties` resource) carrying `/ActualText` replaces the
-per-glyph Unicode of the enclosed shows — emitted once for the sequence, the rest
-suppressed (the glyphs still place and, in stage 3, display). The mechanics live
-in *Text layout* under *What works*. Deferred: `/MCID`-driven structure-tree
-reordering and `/Alt` (those are stage 5 navigation, not extraction).
-
-### 2.5 — space inference — **done**
-
-PDFs routinely encode no space glyphs; `extract_text` infers them from the
-inter-segment pen gap (as pdf2htmlEX does) so copy/paste and search work. A
-running pen (user-space origin after each shown segment, plus the writing-line
-direction and em scale) is threaded through the executor; before a segment a
-single space is prepended to its `text` when the gap past the previous pen
-exceeds ~0.2 em along the writing line (a word break) or ~0.5 em perpendicular (a
-new line), unless the two already abut a space. The thresholds scale with the
-font's em, so they track size; the inferred space lands only in `text` (codes,
-advances and placement are untouched, keeping the run-vs-glyph choice in the
-renderer). The mechanics live in *Text layout* under *What works*.
-
-### 2.6 — bidi & vertical writing — **deferred**
-
-The layout side of bidi (RTL run ordering) and vertical writing
-(`Identity-V`/CJK, the `/W2`/`/DW2` vertical metrics and the perpendicular pen
-advance). No corpus fixture needs it yet, so it is pushed out until one does —
-collected under *Other known gaps* alongside the deferred legacy-CJK CMap work
-(both wait on a real file). With 2.6 deferred, stages 2.1–2.5 close out stage 2.
+**Deferred**
+- **Bidi & vertical writing** — RTL run ordering and vertical writing mode
+  (`Identity-V`/CJK, the `/W2`/`/DW2` metrics and a perpendicular pen advance). No
+  corpus fixture needs it yet; tracked under *Other known gaps* alongside the
+  legacy-CJK CMap work (both wait on a real file).
+- **Intra-segment glyph shaping** (browser fallback) and **AFM widths for the
+  non-embedded standard-14 fonts** — folded into **stage 3**. `/BBox` clipping,
+  `/MCID`-driven structure-tree reordering and `/Alt` (stage 5), and precise
+  baseline placement (needs font ascent metrics) are likewise deferred.
 
 ## Stage 3 — fonts in HTML
 
@@ -604,10 +533,10 @@ what we need (FreeType/stb_truetype are read-only; hb-subset can only subset
 along the *existing* `cmap`, so it cannot inject the PUA mappings below).
 Expected ~5–8k lines of focused C++ — on the order of an `oldms/` module.
 Reading (SFNT tables, CFF charsets) is the easy part and also yields the
-**embedded-font reverse map** (was stage 1.4): a font with no usable
-`/ToUnicode` or `/Encoding` gets code → Unicode from its embedded program — the
-TrueType `cmap` reversed, or Type1/CFF charstring glyph names through the AGL —
-closing the last gap in the stage-1 extraction chain.
+**embedded-font reverse map**: a font with no usable `/ToUnicode` or `/Encoding`
+gets code → Unicode from its embedded program — the TrueType `cmap` reversed, or
+Type1/CFF charstring glyph names through the AGL — closing the last gap in the
+stage-1 extraction chain.
 
 **Architecture: IR for facts, pass-through for glyphs.** No glyph-level font IR:
 decompiling and recompiling outlines is the FontForge model — loses hinting,
@@ -734,18 +663,17 @@ tree, little else.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
 - **CMap coverage**: the `ToUnicode` CMap is fully handled (multi-byte codes,
-  `bfchar`, both `bfrange` forms, multi-char targets — stage 1.1), and a simple
-  font's `/Encoding` (base + `/Differences` → AGL) is the fallback when no
-  `ToUnicode` stream is present (stage 1.2). Composite (Type0) fonts are
-  recognized and extract through their `/ToUnicode` (stage 1.3 part A) or, when
-  absent, a predefined Unicode `/Encoding` (`Uni*-UCS2/UTF16/UTF32`, stage 1.3
-  part B). Still open: the legacy CJK code→CID CMaps (RKSJ/EUC/Big5/GBK/KSC) and
-  their CID → Unicode tables (large external data; the generator scaffolding in
-  `tools/pdf/generate_cid_data.py` is landed, the storage decision and lookup
-  remain), and embedded-font reverse maps (stage 3); symbolic fonts with a
-  built-in encoding default to StandardEncoding until the font program is read
-  (stage 3).
-- **Bidi & vertical writing** (stage 2.6, deferred): RTL run reordering for the
+  `bfchar`, both `bfrange` forms, multi-char targets), and a simple font's
+  `/Encoding` (base + `/Differences` → AGL) is the fallback when no `ToUnicode`
+  stream is present. Composite (Type0) fonts are recognized and extract through
+  their `/ToUnicode` or, when absent, a predefined Unicode `/Encoding`
+  (`Uni*-UCS2/UTF16/UTF32`). Still open: the legacy CJK code→CID CMaps
+  (RKSJ/EUC/Big5/GBK/KSC) and their CID → Unicode tables (large external data; the
+  generator scaffolding in `tools/pdf/generate_cid_data.py` is landed, the storage
+  decision and lookup remain), and embedded-font reverse maps (stage 3); symbolic
+  fonts with a built-in encoding default to StandardEncoding until the font
+  program is read (stage 3).
+- **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
   horizontal-only `extract_text` and space inference assume away). No corpus

@@ -34,7 +34,7 @@ struct TextElement {
   /// `TJ` array).
   std::string codes;
   /// Unicode representation of `codes`, with an inferred leading space when a
-  /// large enough gap precedes this segment (space inference, stage 2.5) so the
+  /// large enough gap precedes this segment (space inference) so the
   /// producer's omitted inter-word/-line spaces are recovered. Empty when the
   /// segment carries no extractable text — either the code -> Unicode chain
   /// yielded nothing (see `no_unicode`) or an enclosing `/ActualText` already
