@@ -4,6 +4,7 @@
 #include <odr/internal/util/hash_util.hpp>
 
 #include <iomanip>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -67,7 +68,7 @@ Object::Object(Array array) : m_holder{std::move(array)} {}
 
 Object::Object(Dictionary dictionary) : m_holder{std::move(dictionary)} {}
 
-const std::string &Object::as_string() const {
+const std::string &Object::as_string() const & {
   if (is_standard_string()) {
     return as_standard_string();
   }
@@ -75,6 +76,39 @@ const std::string &Object::as_string() const {
     return as_hex_string();
   }
   return as_name();
+}
+
+std::string &Object::as_string() & {
+  if (is_standard_string()) {
+    return as_standard_string();
+  }
+  if (is_hex_string()) {
+    return as_hex_string();
+  }
+  return as_name();
+}
+
+std::string &&Object::as_string() && {
+  if (is_standard_string()) {
+    return std::move(*this).as_standard_string();
+  }
+  if (is_hex_string()) {
+    return std::move(*this).as_hex_string();
+  }
+  return std::move(*this).as_name();
+}
+
+std::optional<std::string> Object::as_string_opt() && {
+  if (is_standard_string()) {
+    return std::move(*this).as_standard_string_opt();
+  }
+  if (is_hex_string()) {
+    return std::move(*this).as_hex_string_opt();
+  }
+  if (is_name()) {
+    return std::move(*this).as_name_opt();
+  }
+  return std::nullopt;
 }
 
 void Object::to_stream(std::ostream &out) const {

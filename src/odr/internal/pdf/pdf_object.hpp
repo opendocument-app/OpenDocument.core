@@ -106,19 +106,19 @@ public:
     return std::any_cast<T &&>(std::move(m_holder));
   }
   template <ObjectType T> [[nodiscard]] const T *as_ptr() const & {
-    return std::any_cast<const T *>(m_holder);
+    return std::any_cast<T>(&m_holder);
   }
   template <ObjectType T> [[nodiscard]] T *as_ptr() & {
-    return std::any_cast<T>(m_holder);
+    return std::any_cast<T>(&m_holder);
   }
   template <ObjectType T> [[nodiscard]] std::optional<T> as_opt() const & {
-    if (const T *ptr = std::any_cast<const T *>(&m_holder)) {
+    if (const T *ptr = std::any_cast<T>(&m_holder)) {
       return *ptr;
     }
     return std::nullopt;
   }
   template <ObjectType T> [[nodiscard]] std::optional<T> as_opt() && {
-    if (T *ptr = std::any_cast<T *>(&m_holder)) {
+    if (T *ptr = std::any_cast<T>(&m_holder)) {
       return std::move(*ptr);
     }
     return std::nullopt;
@@ -143,14 +143,16 @@ public:
   [[nodiscard]] Real as_real() const {
     return is<Real>() ? as<Real>() : static_cast<Real>(as_integer());
   }
-  [[nodiscard]] const std::string &as_standard_string() const {
+  [[nodiscard]] const std::string &as_standard_string() const & {
     return as<StandardString>().string;
   }
-  [[nodiscard]] const std::string &as_hex_string() const {
+  [[nodiscard]] const std::string &as_hex_string() const & {
     return as<HexString>().string;
   }
-  [[nodiscard]] const std::string &as_name() const { return as<Name>().string; }
-  [[nodiscard]] const std::string &as_string() const;
+  [[nodiscard]] const std::string &as_name() const & {
+    return as<Name>().string;
+  }
+  [[nodiscard]] const std::string &as_string() const &;
   [[nodiscard]] const Array &as_array() const & { return as<Array>(); }
   [[nodiscard]] const Dictionary &as_dictionary() const & {
     return as<Dictionary>();
@@ -159,16 +161,80 @@ public:
     return as<ObjectReference>();
   }
 
+  [[nodiscard]] std::string &as_standard_string() & {
+    return as<StandardString>().string;
+  }
+  [[nodiscard]] std::string &as_hex_string() & {
+    return as<HexString>().string;
+  }
+  [[nodiscard]] std::string &as_name() & { return as<Name>().string; }
+  [[nodiscard]] std::string &as_string() &;
   Array &as_array() & { return as<Array>(); }
   Dictionary &as_dictionary() & { return as<Dictionary>(); }
 
+  [[nodiscard]] std::string &&as_standard_string() && {
+    return std::move(*this).as<StandardString>().string;
+  }
+  [[nodiscard]] std::string &&as_hex_string() && {
+    return std::move(*this).as<HexString>().string;
+  }
+  [[nodiscard]] std::string &&as_name() && {
+    return std::move(*this).as<Name>().string;
+  }
+  [[nodiscard]] std::string &&as_string() &&;
   Array &&as_array() && { return std::move(*this).as<Array>(); }
   Dictionary &&as_dictionary() && { return std::move(*this).as<Dictionary>(); }
+
+  [[nodiscard]] std::optional<Boolean> as_bool_opt() const {
+    return as_opt<Boolean>();
+  }
+  [[nodiscard]] std::optional<Integer> as_integer_opt() const {
+    return as_opt<Integer>();
+  }
+  [[nodiscard]] std::optional<Real> as_real_opt() const {
+    if (is<Real>()) {
+      return as<Real>();
+    }
+    if (const Integer *integer = as_ptr<Integer>()) {
+      return static_cast<Real>(*integer);
+    }
+    return std::nullopt;
+  }
+  [[nodiscard]] std::optional<ObjectReference> as_reference_opt() const {
+    return as_opt<ObjectReference>();
+  }
+
+  [[nodiscard]] std::optional<std::string> as_standard_string_opt() && {
+    return std::move(*this).string_opt<StandardString>();
+  }
+  [[nodiscard]] std::optional<std::string> as_hex_string_opt() && {
+    return std::move(*this).string_opt<HexString>();
+  }
+  [[nodiscard]] std::optional<std::string> as_name_opt() && {
+    return std::move(*this).string_opt<Name>();
+  }
+  [[nodiscard]] std::optional<std::string> as_string_opt() &&;
+
+  [[nodiscard]] const Array *as_array_ptr() const & { return as_ptr<Array>(); }
+  [[nodiscard]] const Dictionary *as_dictionary_ptr() const & {
+    return as_ptr<Dictionary>();
+  }
+
+  Array *as_array_ptr() & { return as_ptr<Array>(); }
+  Dictionary *as_dictionary_ptr() & { return as_ptr<Dictionary>(); }
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
 
 private:
+  template <ObjectType T>
+  [[nodiscard]] std::optional<std::string> string_opt() && {
+    if (T *string = as_ptr<T>()) {
+      return std::move(string->string);
+    }
+    return std::nullopt;
+  }
+
   Holder m_holder;
 };
 
