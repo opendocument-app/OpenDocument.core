@@ -480,6 +480,16 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
+  if (dictionary.has_key("Properties") && !dictionary["Properties"].is_null()) {
+    // Named property lists for `BDC`; resolved eagerly so text extraction can
+    // recover `/ActualText` without a parser handle (cf. form XObjects).
+    const Dictionary property_table =
+        parser.resolve_object_copy(dictionary["Properties"]).as_dictionary();
+    for (const auto &[key, value] : property_table) {
+      resources->properties[key] = parser.resolve_object_copy(value);
+    }
+  }
+
   return resources;
 }
 

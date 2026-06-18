@@ -75,6 +75,10 @@ struct Annotation final : Element {};
 struct Resources final : Element {
   std::unordered_map<std::string, Font *> font;
   std::unordered_map<std::string, XObject *> x_object;
+  /// The `/Properties` subdictionary (ISO 32000-1 7.8.3): named property lists
+  /// referenced by `BDC`. Each value is the resolved property-list dictionary
+  /// `Object`; used to recover `/ActualText` for a `BDC /Tag /Name` sequence.
+  std::unordered_map<std::string, Object> properties;
 };
 
 /// An external object referenced by `Do` and listed in a resource dictionary's

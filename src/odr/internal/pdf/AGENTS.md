@@ -15,8 +15,10 @@ tree with fonts and annotations, tokenize page content streams into graphics
 operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
 text spans, one per shown segment, placed by the full text transform (CTM × text
 matrix) and advanced by the parsed glyph widths (stages 2.1–2.2), recursing into
-form XObjects (stage 2.3), pages sized from `MediaBox`. Encrypted files are decrypted (RC4, AES-128, AES-256). No
-graphics, no images, no font files. Experimental and not production-quality.
+form XObjects (stage 2.3), with text render modes and `/ActualText` honoured
+(stage 2.4), pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
+AES-128, AES-256). No graphics, no images, no font files. Experimental and not
+production-quality.
 
 ---
 
@@ -134,9 +136,19 @@ graphics, no images, no font files. Experimental and not production-quality.
   translates `Tm` by `−n/1000 × Tfs × Th` — so segments, `TJ` kerning and lines
   land in the right place. The element carries the per-code advances directly, so
   a renderer wanting per-glyph placement need not re-derive them from
-  `font->advance_width`. Still deferred: intra-segment glyph shaping (the browser
-  lays a segment out in a fallback font until stage 3) and vertical writing-mode
-  advances (stage 2.6).
+  `font->advance_width`. **Extraction refinements** (stage 2.4): each element
+  carries its text render mode (`Tr`) and a `no_unicode` flag — set when the
+  font's code → Unicode chain yields nothing (a composite font with no
+  `/ToUnicode` or usable predefined encoding), so `text` is empty and the run is
+  knowingly non-extractable until stage 3 re-encodes the glyphs to the PUA.
+  Marked content is tracked (`BMC`/`BDC … EMC`, balanced per stream and reset
+  across form invocation): a sequence carrying `/ActualText` (inline property
+  dictionary, or a name resolved through the `/Properties` resource) overrides the
+  per-glyph Unicode of its enclosed shows — the decoded text (UTF-16BE BOM or
+  PDFDocEncoding) emitted once and the rest of the sequence suppressed. Still
+  deferred: intra-segment glyph shaping (the browser lays a segment out in a
+  fallback font until stage 3), space inference (stage 2.5) and vertical
+  writing-mode advances (stage 2.6).
 - **Form XObjects** (stage 2.3): a resource dictionary's `/XObject`
   subdictionary is parsed into `Resources::x_object`; each `/Subtype /Form` is an
   `XObject` element carrying its `/Matrix` (default identity), its decoded
@@ -157,8 +169,11 @@ graphics, no images, no font files. Experimental and not production-quality.
   carrying a CSS `transform` matrix (the placement transform mapped from PDF user
   space — y-up, MediaBox origin — into the page box in CSS pixels, the glyphs
   un-mirrored so text stays upright), `font-size` from the text state, and the
-  Unicode text. Precise baseline placement (needs font ascent metrics) is
-  deferred; the baseline currently sits at the span's box top.
+  Unicode text. Invisible render modes (`Tr` 3/7) keep the span but paint it
+  transparent (the `.i` class) so OCR-over-scan text stays selectable; segments
+  with no extractable text (a `no_unicode` run or an `/ActualText`-suppressed
+  show) emit no span at all for now. Precise baseline placement (needs font
+  ascent metrics) is deferred; the baseline currently sits at the span's box top.
 
 ## Module layout
 
@@ -172,7 +187,7 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
-| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
+| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject + `/Properties` tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` (stage 1.2) |
@@ -182,7 +197,7 @@ graphics, no images, no font files. Experimental and not production-quality.
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
 | `pdf_graphics_operator_parser.{hpp,cpp}` | Content-stream tokenizer: arguments then operator name |
 | `pdf_graphics_state.{hpp,cpp}`         | `GraphicsState`: stack of `State` (general/path/text/color), `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm` as `Transform2D`, `text_placement_matrix()` for the text rendering transform sans font size, `advance_text()` for the post-glyph `Tm` advance, `save()`/`restore()`/`concat_matrix()` reused by `q`/`Q`/`cm` and by form-XObject invocation |
-| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3) |
+| `pdf_page_text.{hpp,cpp}`             | `extract_text`: run the content stream through `GraphicsState`, emit a `TextElement` (placed transform + font/size/spacing + codes + Unicode + per-code advances + total advance + render mode + `no_unicode` flag) per shown segment, advancing `Tm` by the glyph widths and `TJ` adjustments (stages 2.1–2.2); `Do` recurses into a form XObject (state save / `/Matrix` concat / scoped resources / restore) with an active-set cycle guard (stage 2.3); a marked-content stack applies `/ActualText` and the no-Unicode marking (stage 2.4) |
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
@@ -378,7 +393,13 @@ such PDFs look right, their text just isn't selectable until the tables land.
   coverage (stage 2.3) with hand-built `XObject`s — invocation via `Do`, the
   `/Matrix` placement, state restoration after the form, the form's own
   `/Resources` scope, nested forms, image/unknown XObjects ignored, and a
-  self-referential form terminating at render time via the active-set guard.
+  self-referential form terminating at render time via the active-set guard;
+  plus render-mode and extraction-refinement coverage (stage 2.4) — `Tr`
+  propagation, a composite font with no `/ToUnicode` marked `no_unicode` with
+  empty text, and `/ActualText` overriding a segment (literal and UTF-16BE),
+  emitted once then suppressed across the sequence, resolved via a named
+  `/Properties` entry, the no-`/ActualText` passthrough, and a tolerated stray
+  `EMC`.
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output itself (the span emission / CSS transform mapping).
@@ -517,14 +538,22 @@ the summary.
 Deferred: `/BBox` clipping (text-only for now); the form machinery is reused by
 stage 4 (tiling patterns) and stage 5 (annotation appearances).
 
-### 2.4 — text render modes & extraction refinements
+### 2.4 — text render modes & extraction refinements — **done**
 
-**Text render modes** (`Tr`): mode 3 (invisible text, OCR-over-scan) must stay
-selectable but unpainted; stroke/clip modes (1–2, 4–7) need graceful
-degradation. Plus **extraction refinements** (was stage 1.5, rides on the run
-plumbing): mark a run "no Unicode" when the code → Unicode chain yields nothing,
-so stage 3 can re-encode it; honour `/ActualText` (tagged PDFs, ligatures) as an
-extraction override of the whole chain.
+**Text render modes** (`Tr`): the mode rides on every `TextElement` and the HTML
+layer turns the unpainted modes — 3 (invisible text, OCR-over-scan) and 7
+(clip-only) — into a transparent-but-selectable span (the `.i` class); the
+stroke/fill+stroke/clip modes (1–2, 4–6) degrade gracefully to a painted fill.
+**Extraction refinements** (was stage 1.5, on the run plumbing): a segment whose
+code → Unicode chain yields nothing is marked `no_unicode` (empty `text`) so
+stage 3 can re-encode it to the PUA — until then the run simply renders nothing
+and isn't selectable. `/ActualText` is honoured as an extraction override of the
+whole chain: a `BMC`/`BDC … EMC` marked-content sequence (property list inline or
+named via the `/Properties` resource) carrying `/ActualText` replaces the
+per-glyph Unicode of the enclosed shows — emitted once for the sequence, the rest
+suppressed (the glyphs still place and, in stage 3, display). The mechanics live
+in *Text layout* under *What works*. Deferred: `/MCID`-driven structure-tree
+reordering and `/Alt` (those are stage 5 navigation, not extraction).
 
 ### 2.5 — space inference
 

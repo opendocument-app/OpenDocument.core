@@ -325,3 +325,90 @@ TEST(PdfPageText, form_xobject_self_cycle_terminates) {
   ASSERT_EQ(texts.size(), 1); // body emitted once, the cycle is cut
   EXPECT_EQ(texts[0].codes, "a");
 }
+
+// --- Stage 2.4: render modes & extraction refinements ---
+
+// The text rendering mode (`Tr`) rides along on each element; the HTML layer
+// turns the unpainted modes (3 invisible, 7 clip-only) into transparent but
+// still selectable spans.
+TEST(PdfPageText, rendering_mode_propagates) {
+  const auto texts = run("BT /F1 10 Tf 3 Tr 0 0 Td (x) Tj ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].rendering_mode, 3);
+}
+
+// A composite font with no `/ToUnicode` and no usable predefined encoding has
+// no recoverable Unicode: the segment is marked `no_unicode` with empty text
+// (the glyphs render once the embedded font lands in stage 3).
+TEST(PdfPageText, no_unicode_marks_composite_without_tounicode) {
+  Font font;
+  font.composite = true; // 2-byte codes, empty cmap, no cid_encoding_name
+  Resources res;
+  res.font["F1"] = &font;
+
+  const auto texts = run("BT /F1 10 Tf 0 0 Td <0001> Tj ET", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_TRUE(texts[0].text.empty());
+  EXPECT_TRUE(texts[0].no_unicode);
+  EXPECT_EQ(texts[0].codes, std::string("\x00\x01", 2));
+}
+
+// `/ActualText` on a marked-content sequence overrides the per-glyph text for
+// extraction (ligatures, reordered glyphs); a literal string is taken as-is.
+TEST(PdfPageText, actual_text_overrides_segment) {
+  const auto texts =
+      run("BT /F1 10 Tf 0 0 Td /Span <</ActualText (OK)>> BDC (xyz) Tj EMC ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "OK");
+  EXPECT_EQ(texts[0].codes, "xyz"); // glyphs unchanged, only the text differs
+  EXPECT_FALSE(texts[0].no_unicode);
+}
+
+// A UTF-16BE `/ActualText` (the common form, opening with the FE FF BOM) is
+// decoded to UTF-8.
+TEST(PdfPageText, actual_text_utf16be) {
+  // <FEFF 0041 0042> = "AB"
+  const auto texts = run("BT /F1 10 Tf 0 0 Td /Span <</ActualText "
+                         "<FEFF00410042>>> BDC (zz) Tj EMC ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "AB");
+}
+
+// `/ActualText` covers the whole sequence: it is emitted once, and the
+// remaining shows in the sequence carry no extractable text of their own.
+TEST(PdfPageText, actual_text_emitted_once_then_suppressed) {
+  const auto texts = run("BT /F1 10 Tf 0 0 Td /Span <</ActualText (Sum)>> BDC "
+                         "(a) Tj (b) Tj EMC ET");
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_EQ(texts[0].text, "Sum");
+  EXPECT_TRUE(texts[1].text.empty());
+}
+
+// A named property list (`BDC /Tag /Name`) resolves `/ActualText` through the
+// `/Properties` resource subdictionary.
+TEST(PdfPageText, actual_text_named_property) {
+  Dictionary props;
+  props["ActualText"] = Object(StandardString("Z"));
+  Resources res;
+  res.properties["MC0"] = Object(props);
+
+  const auto texts =
+      run("BT /F1 10 Tf 0 0 Td /Span /MC0 BDC (q) Tj EMC ET", res);
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "Z");
+}
+
+// Marked content without `/ActualText` (a plain `BMC`, or a `BDC` whose
+// property list carries none) leaves extraction untouched.
+TEST(PdfPageText, marked_content_without_actual_text_passthrough) {
+  const auto texts = run("BT /F1 10 Tf 0 0 Td /Tag BMC (hi) Tj EMC ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "hi"); // no font -> raw codes, no override
+}
+
+// A stray `EMC` (more ends than begins) is tolerated, not a crash.
+TEST(PdfPageText, stray_emc_tolerated) {
+  const auto texts = run("BT /F1 10 Tf 0 0 Td EMC (ok) Tj ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].text, "ok");
+}
