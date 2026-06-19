@@ -218,6 +218,13 @@ public:
 
         std::string classes = invisible ? "t i" : "t";
         // TODO baseline sits at the box top until font ascent metrics land
+
+        // Tc/Tw are absolute text-space lengths (not scaled by the font size).
+        // One text-space unit is `scale * pt_to_px` CSS px, where `scale` is
+        // the linear factor we apply to the glyphs: folded into `font-size` in
+        // the uniform branch, carried by the CSS matrix in the general branch
+        // (so spacing there is expressed pre-transform, scale == 1).
+        double scale;
         if (m.b == 0 && m.c == 0 && m.a == m.d) {
           // Upright uniform scale: fold the scale into the font size and place
           // the origin with left/top, so the (otherwise near-universal) matrix
@@ -226,6 +233,7 @@ public:
           add_class(classes, "t", px_decl("top", round2(m.f * pt_to_px)));
           add_class(classes, "f",
                     px_decl("font-size", round2(m.a * text.size * pt_to_px)));
+          scale = m.a;
         } else {
           std::ostringstream tm;
           tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
@@ -234,6 +242,25 @@ public:
           add_class(classes, "m", std::move(tm).str());
           add_class(classes, "f",
                     px_decl("font-size", round2(text.size * pt_to_px)));
+          scale = 1;
+        }
+
+        // PDF char/word spacing (Tc/Tw) translate directly to CSS. TJ kerning
+        // needs no expression here: `extract_text` emits a separate segment per
+        // TJ string and folds the adjustment into the following segment's
+        // `transform`, so a segment only carries its constant spacing. Emitted
+        // only when non-zero to keep the (overwhelmingly common) unspaced span
+        // small. Note CSS `word-spacing` keys on every U+0020 while Tw keys on
+        // the single-byte code 0x20 — equivalent for simple fonts.
+        if (text.char_spacing != 0) {
+          add_class(classes, "s",
+                    px_decl("letter-spacing",
+                            round2(text.char_spacing * scale * pt_to_px)));
+        }
+        if (text.word_spacing != 0) {
+          add_class(classes, "w",
+                    px_decl("word-spacing",
+                            round2(text.word_spacing * scale * pt_to_px)));
         }
 
         page_out.spans.push_back({std::move(classes), escape_text(text.text)});
