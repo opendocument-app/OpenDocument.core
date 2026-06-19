@@ -220,10 +220,10 @@ public:
         // TODO baseline sits at the box top until font ascent metrics land
 
         // Tc/Tw are absolute text-space lengths (not scaled by the font size).
-        // One text-space unit is `scale * pt_to_px` CSS px, where `scale` is the
-        // linear factor we apply to the glyphs: folded into `font-size` in the
-        // uniform branch, carried by the CSS matrix in the general branch (so
-        // spacing there is expressed pre-transform, scale == 1).
+        // One text-space unit is `scale * pt_to_px` CSS px, where `scale` is
+        // the linear factor we apply to the glyphs: folded into `font-size` in
+        // the uniform branch, carried by the CSS matrix in the general branch
+        // (so spacing there is expressed pre-transform, scale == 1).
         double scale;
         if (m.b == 0 && m.c == 0 && m.a == m.d) {
           // Upright uniform scale: fold the scale into the font size and place
