@@ -1,6 +1,6 @@
 #pragma once
 
-#include <odr/internal/font/font_program.hpp>
+#include <odr/internal/abstract/font.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -19,12 +19,12 @@ namespace odr::internal::font {
 /// tables needed for the stage-3 facts; glyph outlines are not touched. A
 /// TrueType Collection (`ttcf`) is read through its first font. Throws
 /// `std::runtime_error` on a structurally invalid SFNT.
-class SfntFontProgram final : public FontProgram {
+class SfntFont final : public abstract::Font {
 public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  explicit SfntFontProgram(std::string data);
+  explicit SfntFont(std::string data);
 
   [[nodiscard]] FontFormat format() const noexcept override;
   [[nodiscard]] std::string name() const override;

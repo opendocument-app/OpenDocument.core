@@ -109,7 +109,7 @@ void append_utf8(std::string &out, const char32_t cp) {
 
 } // namespace
 
-SfntFontProgram::SfntFontProgram(std::string data) : m_data(std::move(data)) {
+SfntFont::SfntFont(std::string data) : m_data(std::move(data)) {
   const std::string tag = tag_at(m_data, 0);
   std::uint32_t sfnt_offset = 0;
   if (tag == "ttcf") {
@@ -125,7 +125,7 @@ SfntFontProgram::SfntFontProgram(std::string data) : m_data(std::move(data)) {
   parse_name();
 }
 
-bool SfntFontProgram::is_sfnt(const std::string_view data) {
+bool SfntFont::is_sfnt(const std::string_view data) {
   if (data.size() < 4) {
     return false;
   }
@@ -134,7 +134,7 @@ bool SfntFontProgram::is_sfnt(const std::string_view data) {
          tag == "true" || tag == "ttcf" || tag == "typ1";
 }
 
-void SfntFontProgram::parse_directory(std::uint32_t sfnt_offset) {
+void SfntFont::parse_directory(std::uint32_t sfnt_offset) {
   const std::string version = tag_at(m_data, sfnt_offset);
   m_format =
       version == "OTTO" ? FontFormat::opentype_cff : FontFormat::truetype;
@@ -147,7 +147,7 @@ void SfntFontProgram::parse_directory(std::uint32_t sfnt_offset) {
   }
 }
 
-void SfntFontProgram::parse_head() {
+void SfntFont::parse_head() {
   const auto head = table("head");
   if (!head) {
     return; // tolerate; keep the unitsPerEm default
@@ -157,7 +157,7 @@ void SfntFontProgram::parse_head() {
             s16(m_data, head->offset + 40), s16(m_data, head->offset + 42)};
 }
 
-void SfntFontProgram::parse_maxp() {
+void SfntFont::parse_maxp() {
   const auto maxp = table("maxp");
   if (!maxp) {
     return;
@@ -165,7 +165,7 @@ void SfntFontProgram::parse_maxp() {
   m_glyph_count = u16(m_data, maxp->offset + 4);
 }
 
-void SfntFontProgram::parse_hhea() {
+void SfntFont::parse_hhea() {
   const auto hhea = table("hhea");
   if (!hhea) {
     return;
@@ -173,7 +173,7 @@ void SfntFontProgram::parse_hhea() {
   m_number_of_h_metrics = u16(m_data, hhea->offset + 34);
 }
 
-void SfntFontProgram::parse_hmtx() {
+void SfntFont::parse_hmtx() {
   const auto hmtx = table("hmtx");
   if (!hmtx) {
     return;
@@ -184,7 +184,7 @@ void SfntFontProgram::parse_hmtx() {
   }
 }
 
-void SfntFontProgram::parse_cmap() {
+void SfntFont::parse_cmap() {
   const auto cmap = table("cmap");
   if (!cmap) {
     return;
@@ -209,7 +209,7 @@ void SfntFontProgram::parse_cmap() {
   }
 }
 
-void SfntFontProgram::parse_cmap_subtable(const std::uint32_t offset) {
+void SfntFont::parse_cmap_subtable(const std::uint32_t offset) {
   const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
@@ -284,7 +284,7 @@ void SfntFontProgram::parse_cmap_subtable(const std::uint32_t offset) {
   }
 }
 
-void SfntFontProgram::parse_name() {
+void SfntFont::parse_name() {
   const auto name = table("name");
   if (!name) {
     return;
@@ -317,23 +317,19 @@ void SfntFontProgram::parse_name() {
   }
 }
 
-FontFormat SfntFontProgram::format() const noexcept { return m_format; }
+FontFormat SfntFont::format() const noexcept { return m_format; }
 
-std::string SfntFontProgram::name() const { return m_name; }
+std::string SfntFont::name() const { return m_name; }
 
-std::uint16_t SfntFontProgram::glyph_count() const noexcept {
-  return m_glyph_count;
-}
+std::uint16_t SfntFont::glyph_count() const noexcept { return m_glyph_count; }
 
-std::uint16_t SfntFontProgram::units_per_em() const noexcept {
-  return m_units_per_em;
-}
+std::uint16_t SfntFont::units_per_em() const noexcept { return m_units_per_em; }
 
-bool SfntFontProgram::symbolic() const noexcept { return m_symbolic; }
+bool SfntFont::symbolic() const noexcept { return m_symbolic; }
 
-FontBBox SfntFontProgram::bounding_box() const noexcept { return m_bbox; }
+FontBBox SfntFont::bounding_box() const noexcept { return m_bbox; }
 
-std::uint16_t SfntFontProgram::advance_width(const std::uint16_t glyph) const {
+std::uint16_t SfntFont::advance_width(const std::uint16_t glyph) const {
   if (m_advance_widths.empty()) {
     return 0;
   }
@@ -344,14 +340,13 @@ std::uint16_t SfntFontProgram::advance_width(const std::uint16_t glyph) const {
   return m_advance_widths[glyph];
 }
 
-std::uint16_t
-SfntFontProgram::glyph_for_code_point(const char32_t code_point) const {
+std::uint16_t SfntFont::glyph_for_code_point(const char32_t code_point) const {
   const auto it = m_cmap.find(code_point);
   return it == m_cmap.end() ? 0 : it->second;
 }
 
 std::optional<char32_t>
-SfntFontProgram::code_point_for_glyph(const std::uint16_t glyph) const {
+SfntFont::code_point_for_glyph(const std::uint16_t glyph) const {
   const auto it = m_reverse.find(glyph);
   if (it == m_reverse.end()) {
     return std::nullopt;
@@ -359,10 +354,10 @@ SfntFontProgram::code_point_for_glyph(const std::uint16_t glyph) const {
   return it->second;
 }
 
-const std::string &SfntFontProgram::data() const noexcept { return m_data; }
+const std::string &SfntFont::data() const noexcept { return m_data; }
 
-std::optional<SfntFontProgram::Table>
-SfntFontProgram::table(const std::string_view tag) const {
+std::optional<SfntFont::Table>
+SfntFont::table(const std::string_view tag) const {
   const auto it = m_tables.find(tag);
   if (it == m_tables.end()) {
     return std::nullopt;

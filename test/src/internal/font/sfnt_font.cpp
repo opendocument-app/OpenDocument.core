@@ -1,11 +1,14 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
+#include <odr/font.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
+using namespace odr;
 using namespace odr::internal::font;
 
 namespace {
@@ -168,9 +171,8 @@ std::string sample_font(const std::string &cmap) {
 
 } // namespace
 
-TEST(SfntFontProgram, reads_facts) {
-  const SfntFontProgram font(
-      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+TEST(SfntFont, reads_facts) {
+  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.format(), FontFormat::truetype);
   EXPECT_EQ(font.glyph_count(), 5);
@@ -185,9 +187,8 @@ TEST(SfntFontProgram, reads_facts) {
   EXPECT_EQ(bbox.y_max, 800);
 }
 
-TEST(SfntFontProgram, advance_widths_with_monospace_tail) {
-  const SfntFontProgram font(
-      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+TEST(SfntFont, advance_widths_with_monospace_tail) {
+  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.advance_width(0), 500);
   EXPECT_EQ(font.advance_width(3), 222);
@@ -196,9 +197,8 @@ TEST(SfntFontProgram, advance_widths_with_monospace_tail) {
   EXPECT_EQ(font.advance_width(99), 333);
 }
 
-TEST(SfntFontProgram, cmap_format4_forward_and_reverse) {
-  const SfntFontProgram font(
-      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+TEST(SfntFont, cmap_format4_forward_and_reverse) {
+  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.glyph_for_code_point('A'), 1);
   EXPECT_EQ(font.glyph_for_code_point('C'), 3);
@@ -209,8 +209,8 @@ TEST(SfntFontProgram, cmap_format4_forward_and_reverse) {
   EXPECT_FALSE(font.code_point_for_glyph(4).has_value()); // no code maps here
 }
 
-TEST(SfntFontProgram, cmap_format12_astral_plane) {
-  const SfntFontProgram font(
+TEST(SfntFont, cmap_format12_astral_plane) {
+  const SfntFont font(
       sample_font(cmap_table(3, 10, cmap_format12(0x1f600, 2))));
 
   EXPECT_EQ(font.glyph_for_code_point(0x1f600), 1);
@@ -218,33 +218,31 @@ TEST(SfntFontProgram, cmap_format12_astral_plane) {
   EXPECT_EQ(font.code_point_for_glyph(2), static_cast<char32_t>(0x1f601));
 }
 
-TEST(SfntFontProgram, symbolic_flag_from_platform_3_encoding_0) {
-  const SfntFontProgram font(
-      sample_font(cmap_table(3, 0, cmap_format4(0xf020, 3))));
+TEST(SfntFont, symbolic_flag_from_platform_3_encoding_0) {
+  const SfntFont font(sample_font(cmap_table(3, 0, cmap_format4(0xf020, 3))));
 
   EXPECT_TRUE(font.symbolic());
   EXPECT_EQ(font.glyph_for_code_point(0xf020), 1);
 }
 
-TEST(SfntFontProgram, table_lookup) {
-  const SfntFontProgram font(
-      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+TEST(SfntFont, table_lookup) {
+  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_TRUE(font.table("cmap").has_value());
   EXPECT_TRUE(font.table("head").has_value());
   EXPECT_FALSE(font.table("CFF ").has_value());
 }
 
-TEST(SfntFontProgram, is_sfnt) {
-  EXPECT_TRUE(SfntFontProgram::is_sfnt(std::string("\x00\x01\x00\x00", 4)));
-  EXPECT_TRUE(SfntFontProgram::is_sfnt("OTTO"));
-  EXPECT_TRUE(SfntFontProgram::is_sfnt("true"));
-  EXPECT_TRUE(SfntFontProgram::is_sfnt("ttcf"));
-  EXPECT_FALSE(SfntFontProgram::is_sfnt("%PDF"));
-  EXPECT_FALSE(SfntFontProgram::is_sfnt("ab"));
+TEST(SfntFont, is_sfnt) {
+  EXPECT_TRUE(SfntFont::is_sfnt(std::string("\x00\x01\x00\x00", 4)));
+  EXPECT_TRUE(SfntFont::is_sfnt("OTTO"));
+  EXPECT_TRUE(SfntFont::is_sfnt("true"));
+  EXPECT_TRUE(SfntFont::is_sfnt("ttcf"));
+  EXPECT_FALSE(SfntFont::is_sfnt("%PDF"));
+  EXPECT_FALSE(SfntFont::is_sfnt("ab"));
 }
 
-TEST(SfntFontProgram, throws_on_truncated) {
-  EXPECT_THROW(SfntFontProgram(std::string("\x00\x01\x00\x00", 4)),
+TEST(SfntFont, throws_on_truncated) {
+  EXPECT_THROW(SfntFont(std::string("\x00\x01\x00\x00", 4)),
                std::runtime_error);
 }

@@ -1,27 +1,12 @@
 #pragma once
 
+#include <odr/font.hpp>
+
 #include <cstdint>
 #include <optional>
 #include <string>
 
-namespace odr::internal::font {
-
-/// @brief Source flavor of a font program.
-enum class FontFormat {
-  unknown,
-  truetype,     ///< SFNT with `glyf` outlines (incl. CIDFontType2)
-  opentype_cff, ///< SFNT wrapping a `CFF ` table (`OTTO`)
-  cff,          ///< bare CFF / Type1C (stage 3.4)
-  type1,        ///< Type1 / `eexec` (stage 3.5)
-};
-
-/// @brief Glyph-space bounding box, in font design units.
-struct FontBBox {
-  std::int16_t x_min{};
-  std::int16_t y_min{};
-  std::int16_t x_max{};
-  std::int16_t y_max{};
-};
+namespace odr::internal::abstract {
 
 /// @brief Read-only view over a font program, exposing the *facts* every
 /// stage-3 consumer needs while the raw glyph bytes pass through untouched.
@@ -31,9 +16,9 @@ struct FontBBox {
 /// back the original bytes. The embedded-font reverse map reads Unicode from
 /// it (3.3), the OTF wrap synthesizes the SFNT skeleton from it (3.1/3.4), and
 /// the PUA re-encoder assigns code points from its glyph count.
-class FontProgram {
+class Font {
 public:
-  virtual ~FontProgram() = default;
+  virtual ~Font() = default;
 
   [[nodiscard]] virtual FontFormat format() const noexcept = 0;
 
@@ -71,4 +56,4 @@ public:
   [[nodiscard]] virtual const std::string &data() const noexcept = 0;
 };
 
-} // namespace odr::internal::font
+} // namespace odr::internal::abstract
