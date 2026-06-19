@@ -312,8 +312,10 @@ display is driven by the *glyph*, not the extracted Unicode, **text-extraction
 gaps degrade only selectability and search — never display.** Every deferred
 code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
 `/ToUnicode`, embedded-font reverse maps) still renders correctly once stage 3 lands:
-glyphs with no recoverable Unicode are re-encoded to the Private Use Area and the
-run is marked non-extractable (`user-select: none`, `aria-hidden`). So the
+all glyphs are re-encoded to the Private Use Area for display (stage 3's uniform
+re-encode, decision 2026-06-19), with the extracted Unicode carried separately to
+drive selection/search; runs with no recoverable Unicode are additionally marked
+non-extractable (`user-select: none`, `aria-hidden`). So the
 deferred CJK/legacy-CMap work is a *selectability* gap, not a rendering risk —
 such PDFs look right, their text just isn't selectable until the tables land.
 
@@ -543,55 +545,94 @@ decompiling and recompiling outlines is the FontForge model — loses hinting,
 risks fidelity, and with one output format (SFNT) the M×N payoff never
 materializes. Glyph data (outlines, hinting, charstrings) passes through
 byte-for-byte; even Type1 → Type2 charstrings is a direct sibling-format
-translation. What *is* shared: a thin `FontProgram`-style interface — per-flavor
+translation. What *is* shared: a thin `abstract::Font` interface — per-flavor
 readers producing the facts every consumer needs (glyph count, glyph → Unicode,
 advance widths, units-per-em, name, bbox, symbolic flag) with raw bytes kept
 alongside. The embedded-font reverse map (above) reads Unicode from it, the OTF wrap synthesizes
 `head`/`hhea`/`hmtx`/`OS/2` from it, the re-encoder assigns PUA code points from
 its glyph count.
 
-**Intermediate milestone — fonts as first-class library citizens.** Before
-wiring fonts into PDF output, ship them standalone:
-- **Font files as a `DecodedFile` type** (precedent: `SvmFile`, `ImageFile`):
-  `FileType` entries + magic detection (SFNT `0x00010000`/`OTTO`/`wOFF`), a
-  `FontFile` category, and `html::translate(FontFile)` emitting a **specimen
-  page** — name/metrics header plus a glyph grid, font served via `@font-face`.
-  Keep the UI at "specimen page"; no font-editor scope creep.
-- The glyph grid must show **every** glyph, including ones no `cmap` reaches —
-  which forces building the PUA re-encoding, table-directory rebuild, and OTF
-  wrap *first*, against a directly viewable deliverable with font-only tests.
-- **In parallel: PDF as a container.** Expose embedded fonts as an
-  `abstract::Filesystem` (`/fonts/F1.ttf`, …) and reuse the filesystem HTML
-  service (as for ZIP/CFB). Doubles as the corpus harvester.
+**Decision (2026-06-19): standalone-first, uniform PUA, Type3 stays in-stage.**
+Three sequencing/scope choices fix the sub-stage plan below:
+- **Standalone-first.** Fonts ship as a library deliverable — a `FontFile`
+  `DecodedFile` plus a specimen-page HTML view, with font-only tests — *before*
+  being wired into PDF output. The specimen page's glyph grid must show *every*
+  glyph, which forces the PUA re-encode, table-directory rebuild and OTF wrap
+  first, against a directly viewable, independently testable artifact.
+- **Uniform PUA re-encode.** *Every* font is re-encoded to deterministic Private
+  Use Area code points (`U+E000 + glyph index`) for **display** — one pipeline,
+  no mapped-vs-unmapped branch (pdf2htmlEX's model), so display is always
+  glyph-exact. The extracted Unicode (the stage-1 chain, plus the new
+  embedded-font reverse map) is **not** discarded: it rides on the element as
+  today and the HTML layer surfaces it for **selection/search** — the
+  display/text decoupling holds (see *Design decisions*). Runs with no
+  recoverable Unicode are additionally marked non-extractable (`user-select:
+  none`, `aria-hidden`).
+- **Type3 stays in stage 3.** Type3 glyphs are drawing procedures, so they need
+  path → SVG rendering that otherwise belongs to stage 4; a minimal path → SVG
+  capability is pulled forward into sub-stage 3.6 rather than waiting on stage 4.
 
-Sub-stages, ordered by corpus frequency, each independently useful:
-1. **TrueType** (`FontFile2`, CIDFontType2 — bulk of modern PDFs): serve nearly
-   as-is via `@font-face`; implement the `cmap` rewrite (format-4/12 subtable,
-   splice the table directory, recompute `head.checkSumAdjustment`).
-2. **Bare CFF** (`FontFile3`/Type1C): wrap into an OTF container by synthesizing
-   the ~8 required tables; take advance widths from `/Widths`/`/W` rather than
-   interpreting charstrings.
-3. **Type1** (`FontFile` — older docs, pdfTeX/academic PDFs): `eexec`
-   decryption, Type1 → Type2 charstrings, build a CFF, reuse sub-stage 2. The
-   hardest single piece but precisely specified (Adobe T1 spec; pdf.js as
-   reference).
-4. **Type3** (drawing procedures, no font file — scientific plots) → SVG glyphs
-   reusing stage 4's path rendering; plus **non-embedded fonts**: substitute the
-   standard 14 + common names with CSS fallbacks + metrics from `/Widths`.
+**Sub-stages.** Ordered so each lands an independently testable (and, from 3.2,
+viewable) artifact; the risky core — read a font, produce a sanitizer-clean,
+fully re-encoded one — is proven by font-only tests before any PDF wiring. Sizing
+mirrors stage 2 (one PR each). Each gets its own detailed design before
+implementation.
 
-Mechanisms and guards:
-- **Re-encoding for unmapped glyphs** (the general workaround): rewrite the
-  `cmap` so deterministic PUA code points (`U+E000 + glyph index`) map to the
-  glyphs, emit those in the HTML, mark such runs non-extractable
-  (`user-select: none`, `aria-hidden`). Display correct; copy/search knowingly
-  garbage. Option: re-encode *all* fonts this way (pdf2htmlEX's choice) for one
-  uniform pipeline.
-- **Broken-font long tail**: real embedded fonts are routinely malformed, and
+- **3.0 — `abstract::Font` interface + SFNT/TrueType reader (facts only).**
+  **Done.** The thin per-flavor reader interface (`abstract::Font`,
+  `internal/abstract/font.hpp`) producing the facts every consumer needs (glyph
+  count, glyph → Unicode, advance widths, units-per-em, name, bbox, symbolic
+  flag), raw glyph bytes kept alongside. First implementation: `SfntFont`
+  (`internal/font/sfnt_font.{hpp,cpp}`) — reads the font from a `std::istream`
+  (seeking per table, the bytes materialized lazily for the pass-through `data()`),
+  parsing the table directory and `head`/`maxp`/`hhea`/`hmtx`/`cmap` (formats
+  0/4/6/12)/`name`; `post`/`OS/2` deferred until a consumer needs them. Font-only
+  unit tests; no HTML, no PDF wiring.
+- **3.1 — OTF wrap + uniform PUA re-encode + table-directory rebuild.** Given an
+  `abstract::Font`, emit a browser-loadable, OTS-clean SFNT: rewrite `cmap` to the
+  deterministic PUA map over *every* glyph, splice/rebuild the table directory,
+  recompute `head.checkSumAdjustment`. The single riskiest piece — exercised by
+  font-only round-trip + OTS tests before any UI.
+- **3.2 — `FontFile` as a `DecodedFile` + specimen-page HTML (the standalone
+  deliverable).** Precedent: `SvmFile`, `ImageFile`. `FileType` entries + magic
+  detection (SFNT `0x00010000`/`OTTO`/`true`/`ttcf`, `wOFF`), a `FontFile`
+  `FileCategory`, and `html::translate(FontFile)` emitting a specimen page: a
+  name/metrics header plus a glyph grid that shows *every* glyph (incl.
+  `cmap`-unreachable ones — exactly what 3.1's re-encode makes addressable), the
+  font served via `@font-face`. Scope capped at "specimen page" — no font-editor
+  creep. *Optional parallel:* PDF as a container — expose embedded fonts as an
+  `abstract::Filesystem` (`/fonts/F1.ttf`, …) reusing the filesystem HTML service
+  (as for ZIP/CFB); doubles as the corpus harvester.
+- **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).** Read
+  embedded `FontFile2`/`CIDFontType2` programs through the `abstract::Font`
+  interface, run them through the 3.1 wrap/PUA pipeline, and emit `@font-face` +
+  PUA-encoded spans in the PDF HTML — replacing today's fallback-font span for the
+  bulk of modern PDFs. Also lands the **embedded-font reverse map**: code →
+  Unicode from the reversed TrueType `cmap`, surfaced for selection (closing the
+  stage-1 extraction gap for these fonts).
+- **3.4 — bare CFF (`FontFile3`/Type1C).** A CFF reader (charset, charstrings,
+  private dict) producing an `abstract::Font`; wrap into OTF by synthesizing the ~8
+  required SFNT tables (advance widths from `/Widths`/`/W`, not by interpreting
+  charstrings). Reuses 3.1 (wrap/PUA), 3.2 (specimen) and 3.3 (PDF wiring)
+  unchanged.
+- **3.5 — Type1 (`FontFile`).** `eexec` decryption, Type1 → Type2 charstring
+  translation, build a CFF, reuse 3.4's CFF → OTF path. Reverse map via charstring
+  glyph names → AGL. The hardest single piece, but precisely specified (Adobe T1
+  spec; pdf.js as reference).
+- **3.6 — Type3 + non-embedded fonts.** Type3 glyph procedures (mini content
+  streams, already tokenized by the operator parser) → SVG glyphs via a minimal
+  path → SVG capability pulled forward from stage 4. Plus non-embedded fonts:
+  substitute the standard 14 + common names with CSS fallbacks and metrics from
+  `/Widths` (AFM widths for the standard-14 — closes stage 2's deferred item).
+
+**Mechanisms & guards (ride through 3.1–3.5).**
+- **Broken-font long tail.** Real embedded fonts are routinely malformed, and
   browsers run web fonts through a sanitizer (OTS) that silently rejects them.
-  Regenerating the table directory (which the re-encode/wrap does anyway) covers
-  most of it; start strict, add repair heuristics as real files demand. CI gate:
-  run **OTS** over every produced font (test-time only); optionally FreeType as
-  a second oracle. Neither ships in the product.
+  Regenerating the table directory (which the wrap/re-encode does anyway) covers
+  most of it; start strict, add repair heuristics as real files demand.
+- **Test oracles (never shipped).** CI gate: run **OTS** over every produced font
+  (test-time only); optionally FreeType as a second oracle. Neither is linked into
+  the product.
 
 ## Stage 4 — graphics
 
