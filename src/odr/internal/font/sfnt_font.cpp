@@ -1,129 +1,46 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
-#include <stdexcept>
+#include <istream>
+#include <memory>
+#include <utility>
 
-namespace odr::internal::font {
+namespace odr::internal::font::sfnt {
 
 namespace {
 
-// All SFNT integers are big-endian; these read with bounds checks so a
-// truncated/garbage font throws rather than reads out of bounds.
-
-[[nodiscard]] std::uint8_t u8(const std::string &d, const std::size_t o) {
-  if (o + 1 > d.size()) {
-    throw std::runtime_error("sfnt: read past end");
-  }
-  return static_cast<std::uint8_t>(d[o]);
-}
-
-[[nodiscard]] std::uint16_t u16(const std::string &d, const std::size_t o) {
-  return static_cast<std::uint16_t>(u8(d, o) << 8 | u8(d, o + 1));
-}
-
-[[nodiscard]] std::int16_t s16(const std::string &d, const std::size_t o) {
-  return static_cast<std::int16_t>(u16(d, o));
-}
-
-[[nodiscard]] std::uint32_t u32(const std::string &d, const std::size_t o) {
-  return static_cast<std::uint32_t>(u16(d, o)) << 16 | u16(d, o + 2);
-}
-
-[[nodiscard]] std::string tag_at(const std::string &d, const std::size_t o) {
-  if (o + 4 > d.size()) {
-    throw std::runtime_error("sfnt: read past end");
-  }
-  return d.substr(o, 4);
-}
-
-void append_utf8(std::string &out, const char32_t cp) {
-  if (cp < 0x80) {
-    out += static_cast<char>(cp);
-  } else if (cp < 0x800) {
-    out += static_cast<char>(0xc0 | (cp >> 6));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  } else if (cp < 0x10000) {
-    out += static_cast<char>(0xe0 | (cp >> 12));
-    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3f));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  } else {
-    out += static_cast<char>(0xf0 | (cp >> 18));
-    out += static_cast<char>(0x80 | ((cp >> 12) & 0x3f));
-    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3f));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  }
-}
-
-// Decode a UTF-16BE `name` string (Windows/Unicode platforms), surrogate pairs
-// included, into UTF-8.
-[[nodiscard]] std::string decode_utf16be(const std::string &d,
-                                         const std::size_t o,
-                                         const std::size_t len) {
-  std::string out;
-  for (std::size_t i = 0; i + 1 < len; i += 2) {
-    char32_t cp = u16(d, o + i);
-    if (cp >= 0xd800 && cp <= 0xdbff && i + 3 < len) {
-      const char32_t lo = u16(d, o + i + 2);
-      if (lo >= 0xdc00 && lo <= 0xdfff) {
-        cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
-        i += 2;
-      }
+/// Preference among `cmap` subtables: Unicode full > Unicode BMP > symbol >
+/// Mac.
+[[nodiscard]] int cmap_score(const PlatformId platform,
+                             const std::uint16_t encoding) {
+  switch (platform) {
+  case PlatformId::windows:
+    switch (static_cast<WindowsEncoding>(encoding)) {
+    case WindowsEncoding::unicode_full:
+      return 5;
+    case WindowsEncoding::unicode_bmp:
+      return 4;
+    case WindowsEncoding::symbol:
+      return 2;
     }
-    append_utf8(out, cp);
-  }
-  return out;
-}
-
-// Decode a single-byte (Mac/Latin-1) `name` string into UTF-8.
-[[nodiscard]] std::string decode_latin1(const std::string &d,
-                                        const std::size_t o,
-                                        const std::size_t len) {
-  std::string out;
-  for (std::size_t i = 0; i < len; ++i) {
-    append_utf8(out, u8(d, o + i));
-  }
-  return out;
-}
-
-// Preference among `cmap` subtables: Unicode full > Unicode BMP > symbol > Mac.
-[[nodiscard]] int cmap_score(std::uint16_t platform, std::uint16_t encoding) {
-  if (platform == 3 && encoding == 10) {
-    return 5;
-  }
-  if (platform == 0 && (encoding == 4 || encoding == 6)) {
-    return 5;
-  }
-  if (platform == 3 && encoding == 1) {
-    return 4;
-  }
-  if (platform == 0) {
+    return 0;
+  case PlatformId::unicode:
+    if (static_cast<UnicodeEncoding>(encoding) ==
+            UnicodeEncoding::unicode_2_0_full ||
+        static_cast<UnicodeEncoding>(encoding) ==
+            UnicodeEncoding::unicode_full) {
+      return 5;
+    }
     return 3;
-  }
-  if (platform == 3 && encoding == 0) {
-    return 2; // symbol
-  }
-  if (platform == 1 && encoding == 0) {
-    return 1; // Mac Roman (treated as Latin-1 — correct for ASCII)
+  case PlatformId::macintosh:
+    // Mac Roman is treated as Latin-1 — correct for ASCII.
+    return static_cast<MacintoshEncoding>(encoding) == MacintoshEncoding::roman
+               ? 1
+               : 0;
   }
   return 0;
 }
 
 } // namespace
-
-SfntFont::SfntFont(std::string data) : m_data(std::move(data)) {
-  const std::string tag = tag_at(m_data, 0);
-  std::uint32_t sfnt_offset = 0;
-  if (tag == "ttcf") {
-    // TrueType Collection: read the first member's offset table.
-    sfnt_offset = u32(m_data, 12);
-  }
-  parse_directory(sfnt_offset);
-  parse_head();
-  parse_maxp();
-  parse_hhea();
-  parse_hmtx();
-  parse_cmap();
-  parse_name();
-}
 
 bool SfntFont::is_sfnt(const std::string_view data) {
   if (data.size() < 4) {
@@ -134,82 +51,122 @@ bool SfntFont::is_sfnt(const std::string_view data) {
          tag == "true" || tag == "ttcf" || tag == "typ1";
 }
 
-void SfntFont::parse_directory(std::uint32_t sfnt_offset) {
-  const std::string version = tag_at(m_data, sfnt_offset);
+SfntFont::SfntFont(std::unique_ptr<std::istream> stream)
+    : m_in{std::move(stream)}, m_parser{*m_in} {
+  if (m_in == nullptr) {
+    throw std::invalid_argument("sfnt: null input stream");
+  }
+
+  m_parser.seek(0);
+  const std::string tag = m_parser.read_tag();
+  std::uint32_t sfnt_offset = 0;
+  if (tag == "ttcf") {
+    // TrueType Collection: read the first member's offset table.
+    m_parser.seek(12);
+    sfnt_offset = m_parser.read_u32();
+  }
+  m_parser.seek(sfnt_offset);
+  read_directory();
+  read_head();
+  read_maxp();
+  read_hhea();
+  read_hmtx();
+  read_cmap();
+  read_name();
+}
+
+void SfntFont::read_directory() {
+  const std::string version = m_parser.read_tag();
   m_format =
       version == "OTTO" ? FontFormat::opentype_cff : FontFormat::truetype;
+  const std::uint16_t num_tables = m_parser.read_u16();
 
-  const std::uint16_t num_tables = u16(m_data, sfnt_offset + 4);
-  std::size_t record = sfnt_offset + 12;
-  for (std::uint16_t i = 0; i < num_tables; ++i, record += 16) {
-    m_tables.emplace(tag_at(m_data, record),
-                     Table{u32(m_data, record + 8), u32(m_data, record + 12)});
+  m_parser.ignore(6); // searchRange, entrySelector, rangeShift
+
+  for (std::uint16_t i = 0; i < num_tables; ++i) {
+    std::string tag = m_parser.read_tag();
+    m_parser.ignore(4); // checkSum
+    const std::uint32_t offset = m_parser.read_u32();
+    const std::uint32_t length = m_parser.read_u32();
+    m_tables.emplace(std::move(tag), Table{offset, length});
   }
 }
 
-void SfntFont::parse_head() {
+void SfntFont::read_head() {
   const auto head = table("head");
-  if (!head) {
+  if (!head.has_value()) {
     return; // tolerate; keep the unitsPerEm default
   }
-  m_units_per_em = u16(m_data, head->offset + 18);
-  m_bbox = {s16(m_data, head->offset + 36), s16(m_data, head->offset + 38),
-            s16(m_data, head->offset + 40), s16(m_data, head->offset + 42)};
+  m_parser.seek(head->offset + 18);
+  m_units_per_em = m_parser.read_u16();
+  m_parser.seek(head->offset + 36);
+  m_bbox = m_parser.read_bbox();
 }
 
-void SfntFont::parse_maxp() {
+void SfntFont::read_maxp() {
   const auto maxp = table("maxp");
-  if (!maxp) {
+  if (!maxp.has_value()) {
     return;
   }
-  m_glyph_count = u16(m_data, maxp->offset + 4);
+  m_parser.seek(maxp->offset + 4);
+  m_glyph_count = m_parser.read_u16();
 }
 
-void SfntFont::parse_hhea() {
+void SfntFont::read_hhea() {
   const auto hhea = table("hhea");
-  if (!hhea) {
+  if (!hhea.has_value()) {
     return;
   }
-  m_number_of_h_metrics = u16(m_data, hhea->offset + 34);
+  m_parser.seek(hhea->offset + 34);
+  m_number_of_h_metrics = m_parser.read_u16();
 }
 
-void SfntFont::parse_hmtx() {
+void SfntFont::read_hmtx() {
   const auto hmtx = table("hmtx");
-  if (!hmtx) {
+  if (!hmtx.has_value()) {
     return;
   }
+  m_parser.seek(hmtx->offset);
   m_advance_widths.reserve(m_number_of_h_metrics);
   for (std::uint16_t i = 0; i < m_number_of_h_metrics; ++i) {
-    m_advance_widths.push_back(u16(m_data, hmtx->offset + i * 4U));
+    m_advance_widths.push_back(m_parser.read_u16());
+    m_parser.ignore(2); // leftSideBearing
   }
 }
 
-void SfntFont::parse_cmap() {
+void SfntFont::read_cmap() {
   const auto cmap = table("cmap");
-  if (!cmap) {
+  if (!cmap.has_value()) {
     return;
   }
-  const std::uint16_t count = u16(m_data, cmap->offset + 2);
-  int best_score = 0;
-  std::uint32_t best_offset = 0;
+  m_parser.seek(cmap->offset + 2);
+  const std::uint16_t count = m_parser.read_u16();
+
+  std::vector<CmapEntry> entries;
+  entries.reserve(count);
   for (std::uint16_t i = 0; i < count; ++i) {
-    const std::size_t record = cmap->offset + 4 + i * 8U;
-    const std::uint16_t platform = u16(m_data, record);
-    const std::uint16_t encoding = u16(m_data, record + 2);
-    if (platform == 3 && encoding == 0) {
-      m_symbolic = true;
-    }
-    if (const int score = cmap_score(platform, encoding); score > best_score) {
-      best_score = score;
-      best_offset = cmap->offset + u32(m_data, record + 4);
-    }
+    entries.emplace_back(m_parser.read_cmap_entry());
   }
-  if (best_score > 0) {
-    parse_cmap_subtable(best_offset);
+
+  m_symbolic = std::ranges::any_of(entries, [](const CmapEntry &entry) {
+    return entry.platform == PlatformId::windows &&
+           static_cast<WindowsEncoding>(entry.encoding) ==
+               WindowsEncoding::symbol;
+  });
+
+  const auto best_entry =
+      std::ranges::max_element(entries, {}, [](const CmapEntry &entry) {
+        return cmap_score(entry.platform, entry.encoding);
+      });
+
+  if (best_entry != entries.end() &&
+      cmap_score(best_entry->platform, best_entry->encoding) > 0) {
+    m_parser.seek(cmap->offset + best_entry->offset);
+    read_cmap_subtable();
   }
 }
 
-void SfntFont::parse_cmap_subtable(const std::uint32_t offset) {
+void SfntFont::read_cmap_subtable() {
   const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
@@ -220,35 +177,58 @@ void SfntFont::parse_cmap_subtable(const std::uint32_t offset) {
       m_reverse[glyph] = code;
     }
   };
+  const auto read_u16_vector = [this](const std::size_t count) {
+    std::vector<std::uint16_t> out;
+    out.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+      out.push_back(m_parser.read_u16());
+    }
+    return out;
+  };
 
-  const std::uint16_t format = u16(m_data, offset);
-  switch (format) {
-  case 0: { // byte encoding table
+  const std::uint16_t format = m_parser.read_u16();
+  switch (static_cast<CmapFormat>(format)) {
+  case CmapFormat::byte_encoding: {
+    m_parser.ignore(4); // length, language
     for (std::uint32_t code = 0; code < 256; ++code) {
-      map(code, u8(m_data, offset + 6 + code));
+      map(code, m_parser.read_u8());
     }
     break;
   }
-  case 4: { // segment mapping to delta values
-    const std::size_t segs = u16(m_data, offset + 6) / 2U;
-    const std::size_t end_codes = offset + 14;
-    const std::size_t start_codes = end_codes + segs * 2 + 2;
-    const std::size_t id_deltas = start_codes + segs * 2;
-    const std::size_t id_range_offsets = id_deltas + segs * 2;
+  case CmapFormat::segment_mapping: { // segment mapping to delta values
+    const std::uint16_t length = m_parser.read_u16();
+    m_parser.ignore(2); // language
+    const std::size_t segs = m_parser.read_u16() / 2U;
+    m_parser.ignore(6); // searchRange, entrySelector, rangeShift
+    const std::vector<std::uint16_t> end_codes = read_u16_vector(segs);
+    m_parser.ignore(2); // reservedPad
+    const std::vector<std::uint16_t> start_codes = read_u16_vector(segs);
+    const std::vector<std::uint16_t> id_deltas = read_u16_vector(segs);
+    const std::vector<std::uint16_t> id_range_offsets = read_u16_vector(segs);
+    // Whatever remains of the subtable is the glyphIdArray that non-zero
+    // idRangeOffsets index into; preload it so the inner loop is a plain
+    // lookup. The header up to this point is 16 + 8*segs bytes.
+    const std::size_t header = 16 + 8 * segs;
+    if (length < header) {
+      throw std::runtime_error("sfnt: cmap format 4 subtable too short");
+    }
+    const std::vector<std::uint16_t> glyph_ids =
+        read_u16_vector((length - header) / 2);
     for (std::size_t s = 0; s < segs; ++s) {
-      const std::uint16_t end = u16(m_data, end_codes + s * 2);
-      const std::uint16_t start = u16(m_data, start_codes + s * 2);
-      const std::int16_t delta = s16(m_data, id_deltas + s * 2);
-      const std::uint16_t range = u16(m_data, id_range_offsets + s * 2);
+      const std::uint16_t start = start_codes.at(s);
+      const std::uint16_t end = end_codes.at(s);
+      const std::uint16_t delta = id_deltas.at(s);
+      const std::uint16_t range = id_range_offsets.at(s);
       for (std::uint32_t code = start; code <= end && code != 0xffff; ++code) {
         std::uint16_t glyph = 0;
         if (range == 0) {
           glyph = static_cast<std::uint16_t>(code + delta);
         } else {
-          // idRangeOffset indexes into the glyphIdArray that follows.
-          const std::size_t at = id_range_offsets + s * 2 + range +
-                                 static_cast<std::size_t>(code - start) * 2;
-          glyph = u16(m_data, at);
+          // idRangeOffset is a self-relative byte offset from
+          // &idRangeOffset[s]; as an index into glyphIdArray it is range/2 +
+          // (code-start) - (segs-s).
+          const std::size_t index = range / 2U + (code - start) - (segs - s);
+          glyph = glyph_ids.at(index);
           if (glyph != 0) {
             glyph = static_cast<std::uint16_t>(glyph + delta);
           }
@@ -258,21 +238,22 @@ void SfntFont::parse_cmap_subtable(const std::uint32_t offset) {
     }
     break;
   }
-  case 6: { // trimmed table mapping
-    const std::uint16_t first = u16(m_data, offset + 6);
-    const std::uint16_t entries = u16(m_data, offset + 8);
+  case CmapFormat::trimmed_mapping: {
+    m_parser.ignore(4); // length, language
+    const std::uint16_t first = m_parser.read_u16();
+    const std::uint16_t entries = m_parser.read_u16();
     for (std::uint16_t i = 0; i < entries; ++i) {
-      map(first + i, u16(m_data, offset + 10 + i * 2U));
+      map(first + i, m_parser.read_u16());
     }
     break;
   }
-  case 12: { // segmented coverage
-    const std::uint32_t groups = u32(m_data, offset + 12);
+  case CmapFormat::segmented_coverage: {
+    m_parser.ignore(10); // reserved, length, language
+    const std::uint32_t groups = m_parser.read_u32();
     for (std::uint32_t g = 0; g < groups; ++g) {
-      const std::size_t at = offset + 16 + g * 12U;
-      const std::uint32_t start = u32(m_data, at);
-      const std::uint32_t end = u32(m_data, at + 4);
-      const std::uint32_t start_glyph = u32(m_data, at + 8);
+      const std::uint32_t start = m_parser.read_u32();
+      const std::uint32_t end = m_parser.read_u32();
+      const std::uint32_t start_glyph = m_parser.read_u32();
       for (std::uint32_t code = start; code <= end; ++code) {
         map(code, static_cast<std::uint16_t>(start_glyph + (code - start)));
       }
@@ -284,36 +265,40 @@ void SfntFont::parse_cmap_subtable(const std::uint32_t offset) {
   }
 }
 
-void SfntFont::parse_name() {
+void SfntFont::read_name() {
   const auto name = table("name");
-  if (!name) {
+  if (!name.has_value()) {
     return;
   }
-  const std::uint16_t count = u16(m_data, name->offset + 2);
-  const std::uint16_t string_offset = u16(m_data, name->offset + 4);
+  m_parser.seek(name->offset + 2);
+  const std::uint16_t count = m_parser.read_u16();
+  const std::uint16_t string_offset = m_parser.read_u16();
   const std::size_t strings = name->offset + string_offset;
 
-  int best_score = 0;
+  std::vector<NameEntry> entries;
+  entries.reserve(count);
   for (std::uint16_t i = 0; i < count; ++i) {
-    const std::size_t record = name->offset + 6 + i * 12U;
-    const std::uint16_t platform = u16(m_data, record);
-    const std::uint16_t name_id = u16(m_data, record + 6);
-    if (name_id != 6 && name_id != 4) {
-      continue;
+    entries.emplace_back(m_parser.read_name_entry());
+  }
+
+  const auto score_entry = [](const NameEntry &entry) {
+    // Only the full (4) and PostScript (6) names are usable; everything else
+    // scores below the empty default so it is never selected.
+    if (entry.name_id != NameId::full && entry.name_id != NameId::postscript) {
+      return 0;
     }
-    // Prefer the PostScript name (6) over the full name (4), and a decodable
-    // platform; higher score wins.
-    const int score =
-        (name_id == 6 ? 10 : 0) + (platform == 3 || platform == 0 ? 2 : 1);
-    if (score <= best_score) {
-      continue;
-    }
-    const std::uint16_t length = u16(m_data, record + 8);
-    const std::uint16_t local_offset = u16(m_data, record + 10);
-    m_name = (platform == 3 || platform == 0)
-                 ? decode_utf16be(m_data, strings + local_offset, length)
-                 : decode_latin1(m_data, strings + local_offset, length);
-    best_score = score;
+    const int score = (entry.name_id == NameId::postscript ? 10 : 0) +
+                      (entry.utf16() ? 2 : 1);
+    return score;
+  };
+
+  const auto best_entry = std::ranges::max_element(entries, {}, score_entry);
+
+  if (best_entry != entries.end() && score_entry(*best_entry) > 0) {
+    m_parser.seek(strings + best_entry->name_local_offset);
+    m_name = best_entry->utf16()
+                 ? m_parser.read_utf16be(best_entry->name_length)
+                 : m_parser.read_latin1(best_entry->name_length);
   }
 }
 
@@ -354,8 +339,6 @@ SfntFont::code_point_for_glyph(const std::uint16_t glyph) const {
   return it->second;
 }
 
-const std::string &SfntFont::data() const noexcept { return m_data; }
-
 std::optional<SfntFont::Table>
 SfntFont::table(const std::string_view tag) const {
   const auto it = m_tables.find(tag);
@@ -365,4 +348,4 @@ SfntFont::table(const std::string_view tag) const {
   return it->second;
 }
 
-} // namespace odr::internal::font
+} // namespace odr::internal::font::sfnt

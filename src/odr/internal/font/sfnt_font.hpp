@@ -1,18 +1,21 @@
 #pragma once
 
 #include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/sfnt_parser.hpp>
 
 #include <cstdint>
 #include <functional>
+#include <iosfwd>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace odr::internal::font {
+namespace odr::internal::font::sfnt {
 
-/// @brief `FontProgram` over an SFNT-wrapped font — TrueType (`glyf`) or
+/// @brief `abstract::Font` over an SFNT-wrapped font — TrueType (`glyf`) or
 /// OpenType/CFF (`OTTO`) — parsed from its raw bytes.
 ///
 /// Reads the table directory and the `head`/`maxp`/`hhea`/`hmtx`/`cmap`/`name`
@@ -24,7 +27,9 @@ public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  explicit SfntFont(std::string data);
+  /// Takes ownership of @p in and parses the facts from it (seeking per table);
+  /// the raw bytes are materialized lazily for pass-through (see `data()`).
+  explicit SfntFont(std::unique_ptr<std::istream> stream);
 
   [[nodiscard]] FontFormat format() const noexcept override;
   [[nodiscard]] std::string name() const override;
@@ -37,7 +42,6 @@ public:
   glyph_for_code_point(char32_t code_point) const override;
   [[nodiscard]] std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const override;
-  [[nodiscard]] const std::string &data() const noexcept override;
 
   /// A located table within the SFNT: byte offset + length into `data()`.
   struct Table {
@@ -49,16 +53,20 @@ public:
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
 
 private:
-  void parse_directory(std::uint32_t sfnt_offset);
-  void parse_head();
-  void parse_maxp();
-  void parse_hhea();
-  void parse_hmtx();
-  void parse_cmap();
-  void parse_name();
-  void parse_cmap_subtable(std::uint32_t offset);
+  std::istream &in() const { return *m_in; }
 
-  std::string m_data;
+  void read_directory();
+  void read_head();
+  void read_maxp();
+  void read_hhea();
+  void read_hmtx();
+  void read_cmap();
+  void read_name();
+  void read_cmap_subtable();
+
+  std::unique_ptr<std::istream> m_in;
+  SfntParser m_parser;
+
   FontFormat m_format{FontFormat::unknown};
   std::map<std::string, Table, std::less<>> m_tables;
 
@@ -74,4 +82,4 @@ private:
   std::string m_name;
 };
 
-} // namespace odr::internal::font
+} // namespace odr::internal::font::sfnt

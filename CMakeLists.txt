@@ -198,6 +198,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_page_text.cpp"
 
         "src/odr/internal/font/sfnt_font.cpp"
+        "src/odr/internal/font/sfnt_parser.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"

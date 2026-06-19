@@ -51,9 +51,6 @@ public:
   /// the stage-1 extraction gap (3.3); `nullopt` when no code point maps.
   [[nodiscard]] virtual std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const = 0;
-
-  /// The original, unmodified font bytes (pass-through for the OTF wrap).
-  [[nodiscard]] virtual const std::string &data() const noexcept = 0;
 };
 
 } // namespace odr::internal::abstract

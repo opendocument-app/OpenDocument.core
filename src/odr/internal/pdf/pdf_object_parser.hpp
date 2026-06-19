@@ -17,7 +17,7 @@ public:
   static constexpr int_type eof = std::streambuf::traits_type::eof();
   using pos_type = std::streambuf::pos_type;
 
-  explicit ObjectParser(std::istream &);
+  explicit ObjectParser(std::istream &in);
 
   [[nodiscard]] std::istream &in();
   [[nodiscard]] std::streambuf &sb();

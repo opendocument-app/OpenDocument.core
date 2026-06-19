@@ -5,13 +5,21 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
 using namespace odr;
-using namespace odr::internal::font;
+using namespace odr::internal::font::sfnt;
 
 namespace {
+
+/// Parse a font from its in-memory bytes (the reader consumes an
+/// `std::istream`).
+SfntFont sfnt_font_from_string(std::string bytes) {
+  return SfntFont(std::make_unique<std::istringstream>(std::move(bytes)));
+}
 
 void put16(std::string &s, const std::uint16_t v) {
   s += static_cast<char>(v >> 8);
@@ -23,7 +31,7 @@ void put32(std::string &s, const std::uint32_t v) {
   put16(s, static_cast<std::uint16_t>(v & 0xffff));
 }
 
-// A `head` table: only unitsPerEm (offset 18) and the bbox (36..42) are read.
+/// A `head` table: only unitsPerEm (offset 18) and the bbox (36..42) are read.
 std::string head_table() {
   std::string t(54, '\0');
   const auto u16 = [&](std::size_t o, std::uint16_t v) {
@@ -62,8 +70,8 @@ std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
   return t;
 }
 
-// Format-4 subtable mapping the contiguous run [start, start+count) to glyph
-// ids [1, count] via a single idDelta segment, plus the required terminator.
+/// Format-4 subtable mapping the contiguous run [start, start+count) to glyph
+/// ids [1, count] via a single idDelta segment, plus the required terminator.
 std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   std::string t;
   put16(t, 4);  // format
@@ -82,6 +90,36 @@ std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   put16(t, 1);                                     // idDelta[1]
   put16(t, 0);                                     // idRangeOffset[0]
   put16(t, 0);                                     // idRangeOffset[1]
+  return t;
+}
+
+/// Format-4 subtable mapping [start, start+count) to glyph ids [1, count] via a
+/// non-zero idRangeOffset[0] that indexes the glyphIdArray, plus the
+/// terminator. idRangeOffset[0] == 4 points at glyphIdArray[0] (past the one
+/// remaining idRangeOffset entry), and idDelta[0] == 0 takes the glyph id
+/// straight from the array.
+std::string cmap_format4_glyph_array(const char16_t start,
+                                     const std::uint16_t count) {
+  std::string t;
+  put16(t, 4);                                             // format
+  put16(t, static_cast<std::uint16_t>(32 + 2 * count));    // length
+  put16(t, 0);                                             // language
+  put16(t, 4);                                             // segCountX2
+  put16(t, 0);                                             // searchRange
+  put16(t, 0);                                             // entrySelector
+  put16(t, 0);                                             // rangeShift
+  put16(t, static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
+  put16(t, 0xffff);                                        // endCode[1]
+  put16(t, 0);                                             // reservedPad
+  put16(t, start);                                         // startCode[0]
+  put16(t, 0xffff);                                        // startCode[1]
+  put16(t, 0);                                             // idDelta[0]
+  put16(t, 1);                                             // idDelta[1]
+  put16(t, 4); // idRangeOffset[0] -> glyphIdArray[0]
+  put16(t, 0); // idRangeOffset[1]
+  for (std::uint16_t i = 0; i < count; ++i) {
+    put16(t, static_cast<std::uint16_t>(i + 1)); // glyphIdArray
+  }
   return t;
 }
 
@@ -172,7 +210,8 @@ std::string sample_font(const std::string &cmap) {
 } // namespace
 
 TEST(SfntFont, reads_facts) {
-  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.format(), FontFormat::truetype);
   EXPECT_EQ(font.glyph_count(), 5);
@@ -188,7 +227,8 @@ TEST(SfntFont, reads_facts) {
 }
 
 TEST(SfntFont, advance_widths_with_monospace_tail) {
-  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.advance_width(0), 500);
   EXPECT_EQ(font.advance_width(3), 222);
@@ -198,7 +238,8 @@ TEST(SfntFont, advance_widths_with_monospace_tail) {
 }
 
 TEST(SfntFont, cmap_format4_forward_and_reverse) {
-  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_EQ(font.glyph_for_code_point('A'), 1);
   EXPECT_EQ(font.glyph_for_code_point('C'), 3);
@@ -209,8 +250,20 @@ TEST(SfntFont, cmap_format4_forward_and_reverse) {
   EXPECT_FALSE(font.code_point_for_glyph(4).has_value()); // no code maps here
 }
 
+TEST(SfntFont, cmap_format4_glyph_id_array) {
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 1, cmap_format4_glyph_array('A', 3))));
+
+  EXPECT_EQ(font.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(font.glyph_for_code_point('B'), 2);
+  EXPECT_EQ(font.glyph_for_code_point('C'), 3);
+  EXPECT_EQ(font.glyph_for_code_point('D'), 0); // outside the segment
+
+  EXPECT_EQ(font.code_point_for_glyph(2), U'B');
+}
+
 TEST(SfntFont, cmap_format12_astral_plane) {
-  const SfntFont font(
+  const SfntFont font = sfnt_font_from_string(
       sample_font(cmap_table(3, 10, cmap_format12(0x1f600, 2))));
 
   EXPECT_EQ(font.glyph_for_code_point(0x1f600), 1);
@@ -219,14 +272,16 @@ TEST(SfntFont, cmap_format12_astral_plane) {
 }
 
 TEST(SfntFont, symbolic_flag_from_platform_3_encoding_0) {
-  const SfntFont font(sample_font(cmap_table(3, 0, cmap_format4(0xf020, 3))));
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 0, cmap_format4(0xf020, 3))));
 
   EXPECT_TRUE(font.symbolic());
   EXPECT_EQ(font.glyph_for_code_point(0xf020), 1);
 }
 
 TEST(SfntFont, table_lookup) {
-  const SfntFont font(sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
+  const SfntFont font = sfnt_font_from_string(
+      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
 
   EXPECT_TRUE(font.table("cmap").has_value());
   EXPECT_TRUE(font.table("head").has_value());
@@ -243,6 +298,6 @@ TEST(SfntFont, is_sfnt) {
 }
 
 TEST(SfntFont, throws_on_truncated) {
-  EXPECT_THROW(SfntFont(std::string("\x00\x01\x00\x00", 4)),
+  EXPECT_THROW(sfnt_font_from_string(std::string("\x00\x01\x00\x00", 4)),
                std::runtime_error);
 }

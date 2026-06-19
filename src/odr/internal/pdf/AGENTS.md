@@ -545,7 +545,7 @@ decompiling and recompiling outlines is the FontForge model — loses hinting,
 risks fidelity, and with one output format (SFNT) the M×N payoff never
 materializes. Glyph data (outlines, hinting, charstrings) passes through
 byte-for-byte; even Type1 → Type2 charstrings is a direct sibling-format
-translation. What *is* shared: a thin `FontProgram`-style interface — per-flavor
+translation. What *is* shared: a thin `abstract::Font` interface — per-flavor
 readers producing the facts every consumer needs (glyph count, glyph → Unicode,
 advance widths, units-per-em, name, bbox, symbolic flag) with raw bytes kept
 alongside. The embedded-font reverse map (above) reads Unicode from it, the OTF wrap synthesizes
@@ -578,14 +578,18 @@ fully re-encoded one — is proven by font-only tests before any PDF wiring. Siz
 mirrors stage 2 (one PR each). Each gets its own detailed design before
 implementation.
 
-- **3.0 — `FontProgram` interface + SFNT/TrueType reader (facts only).** The thin
-  per-flavor reader interface producing the facts every consumer needs (glyph
+- **3.0 — `abstract::Font` interface + SFNT/TrueType reader (facts only).**
+  **Done.** The thin per-flavor reader interface (`abstract::Font`,
+  `internal/abstract/font.hpp`) producing the facts every consumer needs (glyph
   count, glyph → Unicode, advance widths, units-per-em, name, bbox, symbolic
-  flag), raw glyph bytes kept alongside. First implementation: SFNT/TrueType —
-  parse the table directory and `head`/`hhea`/`hmtx`/`maxp`/`cmap` (formats
-  4/12)/`name`/`post`/`OS/2`. Font-only unit tests; no HTML, no PDF wiring.
-- **3.1 — OTF wrap + uniform PUA re-encode + table-directory rebuild.** Given a
-  `FontProgram`, emit a browser-loadable, OTS-clean SFNT: rewrite `cmap` to the
+  flag), raw glyph bytes kept alongside. First implementation: `SfntFont`
+  (`internal/font/sfnt_font.{hpp,cpp}`) — reads the font from a `std::istream`
+  (seeking per table, the bytes materialized lazily for the pass-through `data()`),
+  parsing the table directory and `head`/`maxp`/`hhea`/`hmtx`/`cmap` (formats
+  0/4/6/12)/`name`; `post`/`OS/2` deferred until a consumer needs them. Font-only
+  unit tests; no HTML, no PDF wiring.
+- **3.1 — OTF wrap + uniform PUA re-encode + table-directory rebuild.** Given an
+  `abstract::Font`, emit a browser-loadable, OTS-clean SFNT: rewrite `cmap` to the
   deterministic PUA map over *every* glyph, splice/rebuild the table directory,
   recompute `head.checkSumAdjustment`. The single riskiest piece — exercised by
   font-only round-trip + OTS tests before any UI.
@@ -600,14 +604,14 @@ implementation.
   `abstract::Filesystem` (`/fonts/F1.ttf`, …) reusing the filesystem HTML service
   (as for ZIP/CFB); doubles as the corpus harvester.
 - **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).** Read
-  embedded `FontFile2`/`CIDFontType2` programs through the `FontProgram`
+  embedded `FontFile2`/`CIDFontType2` programs through the `abstract::Font`
   interface, run them through the 3.1 wrap/PUA pipeline, and emit `@font-face` +
   PUA-encoded spans in the PDF HTML — replacing today's fallback-font span for the
   bulk of modern PDFs. Also lands the **embedded-font reverse map**: code →
   Unicode from the reversed TrueType `cmap`, surfaced for selection (closing the
   stage-1 extraction gap for these fonts).
 - **3.4 — bare CFF (`FontFile3`/Type1C).** A CFF reader (charset, charstrings,
-  private dict) producing a `FontProgram`; wrap into OTF by synthesizing the ~8
+  private dict) producing an `abstract::Font`; wrap into OTF by synthesizing the ~8
   required SFNT tables (advance widths from `/Widths`/`/W`, not by interpreting
   charstrings). Reuses 3.1 (wrap/PUA), 3.2 (specimen) and 3.3 (PDF wiring)
   unchanged.
