@@ -1,5 +1,6 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
+#include <algorithm>
 #include <istream>
 #include <memory>
 #include <utility>
