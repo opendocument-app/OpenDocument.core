@@ -15,10 +15,56 @@
 #include <odr/internal/pdf/pdf_page_text.hpp>
 
 #include <cmath>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace odr::internal::html {
 
 namespace {
+
+/// Deduplicates CSS declarations into atomic, single-property classes. PDF text
+/// emits one absolutely-positioned span per glyph run, and the same font sizes,
+/// offsets and spacings recur across the (potentially millions of) spans.
+/// Writing each declaration inline bloats the document — the Bluetooth Core
+/// spec reference output crossed GitHub's 100 MB file limit. Instead, every
+/// distinct declaration is registered once here, named `<prefix><n>` in
+/// first-seen order (e.g. `f1`, `f2` for font sizes, `t1` for a top offset),
+/// emitted once in <head>, and referenced by class on each span. This is
+/// representation-only: the computed style of every element is unchanged.
+class AtomicStyles {
+public:
+  /// `prefix` selects the property family; `declaration` is a full CSS
+  /// declaration without trailing ';' (e.g. "font-size:13.28px"). Returns the
+  /// class name to add to the element.
+  const std::string &intern(const std::string &prefix,
+                            std::string declaration) {
+    const auto [it, inserted] =
+        m_class_by_declaration.try_emplace(std::move(declaration));
+    if (inserted) {
+      it->second = prefix + std::to_string(++m_count_by_prefix[prefix]);
+      m_order.push_back(&*it);
+    }
+    return it->second;
+  }
+
+  /// Writes one rule per line (`.f1{font-size:13.28px}`) so regeneration diffs
+  /// stay legible. Each rule is preceded by a newline; the caller has already
+  /// written the constant rules on the opening `<style>` line.
+  void write_rules(std::ostream &o) const {
+    for (const auto *entry : m_order) {
+      o << "\n." << entry->second << '{' << entry->first << '}';
+    }
+  }
+
+private:
+  // Node-based map: pointers stored in `m_order` stay valid across insertions.
+  std::unordered_map<std::string, std::string> m_class_by_declaration;
+  std::unordered_map<std::string, int> m_count_by_prefix;
+  std::vector<const std::pair<const std::string, std::string> *> m_order;
+};
 
 class HtmlServiceImpl final : public HtmlService {
 public:
@@ -69,6 +115,18 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
+  // One emitted glyph run. The styling is fully resolved into class tokens
+  // during the first pass; only the (already escaped) text and class list
+  // survive to the writing pass.
+  struct SpanOut {
+    std::string classes;
+    std::string text;
+  };
+  struct PageOut {
+    std::string classes;
+    std::vector<SpanOut> spans;
+  };
+
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
@@ -79,30 +137,34 @@ public:
 
     const std::vector<pdf::Page *> pages = document->collect_pages();
 
-    out.write_begin();
-    out.write_header_begin();
-    out.write_header_charset("UTF-8");
-    out.write_header_target("_blank");
-    out.write_header_title("odr");
-    out.write_header_viewport(
-        "width=device-width,initial-scale=1.0,user-scalable=yes");
-    // Constant per-page and per-glyph styling lives in classes so it is not
-    // repeated inline on every one of the (potentially millions of) spans.
-    out.write_header_style_begin();
-    out.out() << ".p{position:relative}";
-    out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre}";
-    // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
-    // search (OCR-over-scan), but not painted.
-    out.out() << ".i{color:transparent}";
-    out.write_header_style_end();
-    out.write_header_end();
-
-    out.write_body_begin();
-
     // CSS uses 96px to the inch, PDF user space 72 units to the inch.
     static constexpr double pt_to_px = 96.0 / 72.0;
     static constexpr double pt_to_in = 1 / 72.0;
+
+    // Round CSS coordinates to 0.01px; sub-pixel precision beyond that is
+    // invisible and the extra digits add up over millions of spans.
+    const auto round2 = [](const double v) {
+      return std::round(v * 100.0) / 100.0;
+    };
+
+    // Pass 1: resolve every page and span into class tokens, building the
+    // atomic-style catalog so it can be emitted in <head> ahead of the body.
+    AtomicStyles styles;
+    std::vector<PageOut> pages_out;
+    pages_out.reserve(pages.size());
+
+    // Appends `prefix:value` (interned) as a class token on `classes`.
+    const auto add_class = [&styles](std::string &classes,
+                                     const std::string &prefix,
+                                     std::string declaration) {
+      classes += ' ';
+      classes += styles.intern(prefix, std::move(declaration));
+    };
+    const auto px_decl = [](const char *property, const double value) {
+      std::ostringstream s;
+      s << property << ':' << value << "px";
+      return std::move(s).str();
+    };
 
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
@@ -111,12 +173,16 @@ public:
       const double width = page_box[2].as_real() - box_x0;
       const double height = page_box[3].as_real() - box_y0;
 
-      out.write_element_begin(
-          "div",
-          HtmlElementOptions().set_class("p").set_style([&](std::ostream &o) {
-            o << "width:" << width * pt_to_in << "in;";
-            o << "height:" << height * pt_to_in << "in;";
-          }));
+      PageOut &page_out = pages_out.emplace_back();
+      page_out.classes = "p";
+      {
+        std::ostringstream w;
+        w << "width:" << width * pt_to_in << "in";
+        add_class(page_out.classes, "x", std::move(w).str());
+        std::ostringstream h;
+        h << "height:" << height * pt_to_in << "in";
+        add_class(page_out.classes, "y", std::move(h).str());
+      }
 
       std::string stream;
       for (const auto &content_reference : page->contents_reference) {
@@ -134,12 +200,6 @@ public:
           util::math::Transform2D::translation(-box_x0, -box_y0) *
           util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
-      // Round CSS coordinates to 0.01px; sub-pixel precision beyond that is
-      // invisible and the extra digits add up over millions of spans.
-      const auto round2 = [](const double v) {
-        return std::round(v * 100.0) / 100.0;
-      };
-
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
         // Nothing extractable here yet: a code with no recoverable Unicode
@@ -155,36 +215,65 @@ public:
         // selectable via the transparent `.i` class.
         const bool invisible =
             text.rendering_mode == 3 || text.rendering_mode == 7;
-        const std::string css_class = invisible ? "t i" : "t";
 
-        out.write_element_begin(
-            "span",
-            HtmlElementOptions().set_class(css_class).set_style(
-                [&](std::ostream &o) {
-                  // TODO baseline sits at the box top until font ascent
-                  // metrics land
-                  if (m.b == 0 && m.c == 0 && m.a == m.d) {
-                    // Upright uniform scale: fold the scale into the
-                    // font size and place the origin with left/top, so
-                    // the (otherwise near-universal) matrix is dropped.
-                    o << "left:" << round2(m.e * pt_to_px) << "px;";
-                    o << "top:" << round2(m.f * pt_to_px) << "px;";
-                    o << "font-size:" << round2(m.a * text.size * pt_to_px)
-                      << "px;";
-                  } else {
-                    o << "transform:matrix(" << m.a << "," << m.b << "," << m.c
-                      << "," << m.d << "," << round2(m.e * pt_to_px) << ","
-                      << round2(m.f * pt_to_px) << ");";
-                    o << "font-size:" << round2(text.size * pt_to_px) << "px;";
-                  }
-                }));
-        out.write_raw(escape_text(text.text));
-        out.write_element_end("span");
+        std::string classes = invisible ? "t i" : "t";
+        // TODO baseline sits at the box top until font ascent metrics land
+        if (m.b == 0 && m.c == 0 && m.a == m.d) {
+          // Upright uniform scale: fold the scale into the font size and place
+          // the origin with left/top, so the (otherwise near-universal) matrix
+          // is dropped.
+          add_class(classes, "l", px_decl("left", round2(m.e * pt_to_px)));
+          add_class(classes, "t", px_decl("top", round2(m.f * pt_to_px)));
+          add_class(classes, "f",
+                    px_decl("font-size", round2(m.a * text.size * pt_to_px)));
+        } else {
+          std::ostringstream tm;
+          tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
+             << m.d << "," << round2(m.e * pt_to_px) << ","
+             << round2(m.f * pt_to_px) << ")";
+          add_class(classes, "m", std::move(tm).str());
+          add_class(classes, "f",
+                    px_decl("font-size", round2(text.size * pt_to_px)));
+        }
+
+        page_out.spans.push_back({std::move(classes), escape_text(text.text)});
       }
-
-      out.write_element_end("div");
     }
 
+    // Pass 2: write the document, now that the catalog is complete.
+    out.write_begin();
+    out.write_header_begin();
+    out.write_header_charset("UTF-8");
+    out.write_header_target("_blank");
+    out.write_header_title("odr");
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
+    // Constant per-page and per-glyph styling lives in classes so it is not
+    // repeated inline on every one of the (potentially millions of) spans.
+    out.write_header_style_begin();
+    out.out() << ".p{position:relative}";
+    out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
+                 "white-space:pre}";
+    // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
+    // search (OCR-over-scan), but not painted.
+    out.out() << ".i{color:transparent}";
+    // Per-value atomic classes (font sizes, offsets, transforms, ...).
+    styles.write_rules(out.out());
+    out.write_header_style_end();
+    out.write_header_end();
+
+    out.write_body_begin();
+    for (const PageOut &page : pages_out) {
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class(page.classes));
+      for (const SpanOut &span : page.spans) {
+        out.write_element_begin("span",
+                                HtmlElementOptions().set_class(span.classes));
+        out.write_raw(span.text);
+        out.write_element_end("span");
+      }
+      out.write_element_end("div");
+    }
     out.write_body_end();
     out.write_end();
 
