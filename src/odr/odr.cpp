@@ -126,6 +126,9 @@ odr::file_category_by_file_type(const FileType type) noexcept {
   case FileType::javascript_object_notation:
   case FileType::markdown:
     return FileCategory::text;
+  case FileType::truetype_font:
+  case FileType::opentype_font:
+    return FileCategory::font;
   default:
     return FileCategory::unknown;
   }
@@ -203,6 +206,10 @@ std::string odr::file_type_to_string(const FileType type) {
     return "bmp";
   case FileType::starview_metafile:
     return "svm";
+  case FileType::truetype_font:
+    return "ttf";
+  case FileType::opentype_font:
+    return "otf";
   case FileType::text_file:
     return "txt";
   case FileType::comma_separated_values:
@@ -226,6 +233,8 @@ std::string odr::file_category_to_string(const FileCategory type) {
     return "image";
   case FileCategory::text:
     return "text";
+  case FileCategory::font:
+    return "font";
   default:
     return "unnamed";
   }
@@ -381,6 +390,12 @@ std::string_view odr::mimetype_by_file_type(const FileType type) {
   }
   if (type == FileType::bitmap_image_file) {
     return "image/bmp";
+  }
+  if (type == FileType::truetype_font) {
+    return "font/ttf";
+  }
+  if (type == FileType::opentype_font) {
+    return "font/otf";
   }
   throw UnsupportedFileType(type);
 }

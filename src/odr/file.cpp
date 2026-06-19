@@ -166,6 +166,11 @@ bool DecodedFile::is_pdf_file() const {
          nullptr;
 }
 
+bool DecodedFile::is_font_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::FontFile>(m_impl) !=
+         nullptr;
+}
+
 TextFile DecodedFile::as_text_file() const {
   if (const std::shared_ptr text_file =
           std::dynamic_pointer_cast<internal::abstract::TextFile>(m_impl);
@@ -209,6 +214,15 @@ PdfFile DecodedFile::as_pdf_file() const {
     return PdfFile(pdf_file);
   }
   throw NoPdfFile();
+}
+
+FontFile DecodedFile::as_font_file() const {
+  if (const std::shared_ptr font_file =
+          std::dynamic_pointer_cast<internal::abstract::FontFile>(m_impl);
+      font_file != nullptr) {
+    return FontFile(font_file);
+  }
+  throw NoFontFile();
 }
 
 TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)
@@ -280,6 +294,17 @@ PdfFile PdfFile::decrypt(const std::string &password) const {
 }
 
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
+  return m_impl;
+}
+
+FontFile::FontFile(std::shared_ptr<internal::abstract::FontFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+std::unique_ptr<std::istream> FontFile::stream() const {
+  return m_impl->file()->stream();
+}
+
+std::shared_ptr<internal::abstract::FontFile> FontFile::impl() const {
   return m_impl;
 }
 

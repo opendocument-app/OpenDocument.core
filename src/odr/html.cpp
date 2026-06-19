@@ -11,6 +11,7 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/document.hpp>
 #include <odr/internal/html/filesystem.hpp>
+#include <odr/internal/html/font_file.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/pdf2htmlex_wrapper.hpp>
@@ -231,6 +232,10 @@ HtmlService html::translate(const DecodedFile &file,
   if (file.is_pdf_file()) {
     return translate(file.as_pdf_file(), cache_path, config, std::move(logger));
   }
+  if (file.is_font_file()) {
+    return translate(file.as_font_file(), cache_path, config,
+                     std::move(logger));
+  }
 
   throw UnsupportedFileType(file.file_type());
 }
@@ -326,6 +331,15 @@ HtmlService html::translate(const PdfFile &pdf_file,
 
   return internal::html::create_pdf_service(pdf_file, cache_path, config,
                                             std::move(logger));
+}
+
+HtmlService html::translate(const FontFile &font_file,
+                            const std::string &cache_path,
+                            const HtmlConfig &config,
+                            std::shared_ptr<Logger> logger) {
+  std::filesystem::create_directories(cache_path);
+  return internal::html::create_font_service(font_file, cache_path, config,
+                                             std::move(logger));
 }
 
 HtmlService html::translate(const Filesystem &filesystem,

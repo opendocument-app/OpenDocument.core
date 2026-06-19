@@ -69,6 +69,8 @@ NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
 
 NoPdfFile::NoPdfFile() : std::runtime_error("not a pdf file") {}
 
+NoFontFile::NoFontFile() : std::runtime_error("not a font file") {}
+
 NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
     : std::runtime_error("not a legacy microsoft office file") {}
 

@@ -16,6 +16,7 @@ class ImageFile;
 class ArchiveFile;
 class DocumentFile;
 class PdfFile;
+class FontFile;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -24,6 +25,7 @@ class ImageFile;
 class ArchiveFile;
 class DocumentFile;
 class PdfFile;
+class FontFile;
 
 class Archive;
 class Document;
@@ -78,6 +80,11 @@ enum class FileType {
   bitmap_image_file,
 
   starview_metafile,
+
+  // https://en.wikipedia.org/wiki/TrueType
+  truetype_font,
+  // https://en.wikipedia.org/wiki/OpenType
+  opentype_font,
 };
 
 /// @brief Collection of file categories.
@@ -87,6 +94,7 @@ enum class FileCategory {
   image,
   archive,
   document,
+  font,
 };
 
 /// @brief Collection of file locations.
@@ -215,12 +223,14 @@ public:
   [[nodiscard]] bool is_archive_file() const;
   [[nodiscard]] bool is_document_file() const;
   [[nodiscard]] bool is_pdf_file() const;
+  [[nodiscard]] bool is_font_file() const;
 
   [[nodiscard]] TextFile as_text_file() const;
   [[nodiscard]] ImageFile as_image_file() const;
   [[nodiscard]] ArchiveFile as_archive_file() const;
   [[nodiscard]] DocumentFile as_document_file() const;
   [[nodiscard]] PdfFile as_pdf_file() const;
+  [[nodiscard]] FontFile as_font_file() const;
 
 protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;
@@ -296,6 +306,19 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::PdfFile> m_impl;
+};
+
+/// @brief Represents a font file.
+class FontFile final : public DecodedFile {
+public:
+  explicit FontFile(std::shared_ptr<internal::abstract::FontFile>);
+
+  [[nodiscard]] std::unique_ptr<std::istream> stream() const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::FontFile> impl() const;
+
+private:
+  std::shared_ptr<internal::abstract::FontFile> m_impl;
 };
 
 } // namespace odr

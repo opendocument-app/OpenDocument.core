@@ -15,6 +15,7 @@ namespace odr::internal::abstract {
 class Image;
 class Archive;
 class Document;
+class Font;
 
 class File {
 public:
@@ -103,6 +104,17 @@ public:
   [[nodiscard]] std::string_view mimetype() const noexcept final {
     return "application/pdf";
   }
+};
+
+class FontFile : public DecodedFile {
+public:
+  [[nodiscard]] FileCategory file_category() const noexcept final {
+    return FileCategory::font;
+  }
+
+  /// The parsed font program, exposing the stage-3 facts and the bytes to
+  /// re-encode for `@font-face`.
+  [[nodiscard]] virtual std::shared_ptr<Font> font_program() const = 0;
 };
 
 } // namespace odr::internal::abstract

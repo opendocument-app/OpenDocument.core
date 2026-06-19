@@ -66,6 +66,14 @@ FileType magic::file_type(const std::string &magic) {
   if (match_magic(magic, "FF 57 50 43")) {
     return FileType::word_perfect;
   }
+  if (match_magic(magic, "4F 54 54 4F")) { // 'OTTO' — OpenType with CFF
+    return FileType::opentype_font;
+  }
+  if (match_magic(magic, "00 01 00 00") || // TrueType outlines (sfnt 1.0)
+      match_magic(magic, "74 72 75 65") || // 'true'
+      match_magic(magic, "74 74 63 66")) { // 'ttcf' — TrueType Collection
+    return FileType::truetype_font;
+  }
   return FileType::unknown;
 }
 

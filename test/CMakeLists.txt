@@ -55,6 +55,7 @@ add_executable(odr_test
 
         "src/internal/font/sfnt_font.cpp"
         "src/internal/font/sfnt_transform.cpp"
+        "src/internal/font/font_file.cpp"
 
         "src/internal/svm/svm_test.cpp"
 
