@@ -21,10 +21,10 @@ namespace odr::internal::font {
 /// `std::runtime_error` on a structurally invalid SFNT.
 class SfntFontProgram final : public FontProgram {
 public:
-  explicit SfntFontProgram(std::string data);
-
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
-  [[nodiscard]] static bool is_sfnt(std::string_view data) noexcept;
+  [[nodiscard]] static bool is_sfnt(std::string_view data);
+
+  explicit SfntFontProgram(std::string data);
 
   [[nodiscard]] FontFormat format() const noexcept override;
   [[nodiscard]] std::string name() const override;

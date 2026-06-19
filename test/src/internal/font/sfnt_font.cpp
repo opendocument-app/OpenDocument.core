@@ -10,12 +10,12 @@ using namespace odr::internal::font;
 
 namespace {
 
-void put16(std::string &s, std::uint16_t v) {
+void put16(std::string &s, const std::uint16_t v) {
   s += static_cast<char>(v >> 8);
   s += static_cast<char>(v & 0xff);
 }
 
-void put32(std::string &s, std::uint32_t v) {
+void put32(std::string &s, const std::uint32_t v) {
   put16(s, static_cast<std::uint16_t>(v >> 16));
   put16(s, static_cast<std::uint16_t>(v & 0xffff));
 }
@@ -35,7 +35,7 @@ std::string head_table() {
   return t;
 }
 
-std::string maxp_table(std::uint16_t glyphs) {
+std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
   put32(t, 0x00010000); // version 1.0
   put16(t, glyphs);
@@ -43,7 +43,7 @@ std::string maxp_table(std::uint16_t glyphs) {
   return t;
 }
 
-std::string hhea_table(std::uint16_t number_of_h_metrics) {
+std::string hhea_table(const std::uint16_t number_of_h_metrics) {
   std::string t(36, '\0');
   t[34] = static_cast<char>(number_of_h_metrics >> 8);
   t[35] = static_cast<char>(number_of_h_metrics & 0xff);
@@ -61,7 +61,7 @@ std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
 
 // Format-4 subtable mapping the contiguous run [start, start+count) to glyph
 // ids [1, count] via a single idDelta segment, plus the required terminator.
-std::string cmap_format4(char16_t start, std::uint16_t count) {
+std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   std::string t;
   put16(t, 4);  // format
   put16(t, 32); // length
@@ -83,7 +83,7 @@ std::string cmap_format4(char16_t start, std::uint16_t count) {
 }
 
 // Format-12 subtable: one group mapping [start, start+count) to [1, count].
-std::string cmap_format12(char32_t start, std::uint32_t count) {
+std::string cmap_format12(const char32_t start, const std::uint32_t count) {
   std::string t;
   put16(t, 12); // format
   put16(t, 0);  // reserved
@@ -96,7 +96,8 @@ std::string cmap_format12(char32_t start, std::uint32_t count) {
   return t;
 }
 
-std::string cmap_table(std::uint16_t platform, std::uint16_t encoding,
+std::string cmap_table(const std::uint16_t platform,
+                       const std::uint16_t encoding,
                        const std::string &subtable) {
   std::string t;
   put16(t, 0); // version

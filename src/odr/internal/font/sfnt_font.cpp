@@ -8,33 +8,34 @@ namespace {
 
 // All SFNT integers are big-endian; these read with bounds checks so a
 // truncated/garbage font throws rather than reads out of bounds.
-[[nodiscard]] std::uint8_t u8(const std::string &d, std::size_t o) {
+
+[[nodiscard]] std::uint8_t u8(const std::string &d, const std::size_t o) {
   if (o + 1 > d.size()) {
     throw std::runtime_error("sfnt: read past end");
   }
   return static_cast<std::uint8_t>(d[o]);
 }
 
-[[nodiscard]] std::uint16_t u16(const std::string &d, std::size_t o) {
+[[nodiscard]] std::uint16_t u16(const std::string &d, const std::size_t o) {
   return static_cast<std::uint16_t>(u8(d, o) << 8 | u8(d, o + 1));
 }
 
-[[nodiscard]] std::int16_t s16(const std::string &d, std::size_t o) {
+[[nodiscard]] std::int16_t s16(const std::string &d, const std::size_t o) {
   return static_cast<std::int16_t>(u16(d, o));
 }
 
-[[nodiscard]] std::uint32_t u32(const std::string &d, std::size_t o) {
+[[nodiscard]] std::uint32_t u32(const std::string &d, const std::size_t o) {
   return static_cast<std::uint32_t>(u16(d, o)) << 16 | u16(d, o + 2);
 }
 
-[[nodiscard]] std::string tag_at(const std::string &d, std::size_t o) {
+[[nodiscard]] std::string tag_at(const std::string &d, const std::size_t o) {
   if (o + 4 > d.size()) {
     throw std::runtime_error("sfnt: read past end");
   }
   return d.substr(o, 4);
 }
 
-void append_utf8(std::string &out, char32_t cp) {
+void append_utf8(std::string &out, const char32_t cp) {
   if (cp < 0x80) {
     out += static_cast<char>(cp);
   } else if (cp < 0x800) {
@@ -54,8 +55,9 @@ void append_utf8(std::string &out, char32_t cp) {
 
 // Decode a UTF-16BE `name` string (Windows/Unicode platforms), surrogate pairs
 // included, into UTF-8.
-[[nodiscard]] std::string decode_utf16be(const std::string &d, std::size_t o,
-                                         std::size_t len) {
+[[nodiscard]] std::string decode_utf16be(const std::string &d,
+                                         const std::size_t o,
+                                         const std::size_t len) {
   std::string out;
   for (std::size_t i = 0; i + 1 < len; i += 2) {
     char32_t cp = u16(d, o + i);
@@ -72,8 +74,9 @@ void append_utf8(std::string &out, char32_t cp) {
 }
 
 // Decode a single-byte (Mac/Latin-1) `name` string into UTF-8.
-[[nodiscard]] std::string decode_latin1(const std::string &d, std::size_t o,
-                                        std::size_t len) {
+[[nodiscard]] std::string decode_latin1(const std::string &d,
+                                        const std::size_t o,
+                                        const std::size_t len) {
   std::string out;
   for (std::size_t i = 0; i < len; ++i) {
     append_utf8(out, u8(d, o + i));
@@ -122,7 +125,7 @@ SfntFontProgram::SfntFontProgram(std::string data) : m_data(std::move(data)) {
   parse_name();
 }
 
-bool SfntFontProgram::is_sfnt(std::string_view data) noexcept {
+bool SfntFontProgram::is_sfnt(const std::string_view data) {
   if (data.size() < 4) {
     return false;
   }
@@ -206,8 +209,8 @@ void SfntFontProgram::parse_cmap() {
   }
 }
 
-void SfntFontProgram::parse_cmap_subtable(std::uint32_t offset) {
-  const auto map = [this](char32_t code, std::uint16_t glyph) {
+void SfntFontProgram::parse_cmap_subtable(const std::uint32_t offset) {
+  const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
     }
@@ -218,7 +221,8 @@ void SfntFontProgram::parse_cmap_subtable(std::uint32_t offset) {
     }
   };
 
-  switch (const std::uint16_t format = u16(m_data, offset)) {
+  const std::uint16_t format = u16(m_data, offset);
+  switch (format) {
   case 0: { // byte encoding table
     for (std::uint32_t code = 0; code < 256; ++code) {
       map(code, u8(m_data, offset + 6 + code));
@@ -329,7 +333,7 @@ bool SfntFontProgram::symbolic() const noexcept { return m_symbolic; }
 
 FontBBox SfntFontProgram::bounding_box() const noexcept { return m_bbox; }
 
-std::uint16_t SfntFontProgram::advance_width(std::uint16_t glyph) const {
+std::uint16_t SfntFontProgram::advance_width(const std::uint16_t glyph) const {
   if (m_advance_widths.empty()) {
     return 0;
   }
@@ -340,13 +344,14 @@ std::uint16_t SfntFontProgram::advance_width(std::uint16_t glyph) const {
   return m_advance_widths[glyph];
 }
 
-std::uint16_t SfntFontProgram::glyph_for_code_point(char32_t code_point) const {
+std::uint16_t
+SfntFontProgram::glyph_for_code_point(const char32_t code_point) const {
   const auto it = m_cmap.find(code_point);
   return it == m_cmap.end() ? 0 : it->second;
 }
 
 std::optional<char32_t>
-SfntFontProgram::code_point_for_glyph(std::uint16_t glyph) const {
+SfntFontProgram::code_point_for_glyph(const std::uint16_t glyph) const {
   const auto it = m_reverse.find(glyph);
   if (it == m_reverse.end()) {
     return std::nullopt;
@@ -357,7 +362,7 @@ SfntFontProgram::code_point_for_glyph(std::uint16_t glyph) const {
 const std::string &SfntFontProgram::data() const noexcept { return m_data; }
 
 std::optional<SfntFontProgram::Table>
-SfntFontProgram::table(std::string_view tag) const {
+SfntFontProgram::table(const std::string_view tag) const {
   const auto it = m_tables.find(tag);
   if (it == m_tables.end()) {
     return std::nullopt;
