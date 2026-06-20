@@ -1,13 +1,15 @@
-#include <odr/internal/font/otf_writer.hpp>
+#include <odr/internal/font/sfnt_transform.hpp>
 
 #include <odr/internal/font/sfnt_font.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace odr::internal::font;
@@ -18,6 +20,24 @@ namespace {
 /// `std::istream`).
 sfnt::SfntFont parse(std::string bytes) {
   return sfnt::SfntFont(std::make_unique<std::istringstream>(std::move(bytes)));
+}
+
+/// Serialize an SFNT to bytes (the writer emits to an `std::ostream`).
+std::string
+build_font(std::uint32_t version,
+           std::vector<std::pair<std::string, std::string>> tables) {
+  std::ostringstream out;
+  build_sfnt(out, version, std::move(tables));
+  return out.str();
+}
+
+/// Parse @p bytes, re-encode it to the PUA in place, and write it back out.
+std::string reencoded(std::string bytes) {
+  sfnt::SfntFont font = parse(std::move(bytes));
+  reencode_to_pua(font);
+  std::ostringstream out;
+  font.write(out);
+  return out.str();
 }
 
 void put16(std::string &s, const std::uint16_t v) {
@@ -83,7 +103,7 @@ std::string name_table(const std::string &ascii) {
 // A 3-glyph TrueType font (no original cmap — the re-encode supplies one),
 // assembled through the library's own serializer.
 std::string sample_font(std::uint16_t glyphs = 3) {
-  return build_sfnt(0x00010000, {{"head", head_table()},
+  return build_font(0x00010000, {{"head", head_table()},
                                  {"maxp", maxp_table(glyphs)},
                                  {"hhea", hhea_table(3)},
                                  {"hmtx", hmtx_table({500, 600, 700})},
@@ -107,12 +127,12 @@ std::uint32_t file_checksum(const std::string &data) {
 
 } // namespace
 
-TEST(OtfWriter, pua_code_point_is_deterministic) {
+TEST(SfntTransform, pua_code_point_is_deterministic) {
   EXPECT_EQ(pua_code_point(0), static_cast<char32_t>(0xe000));
   EXPECT_EQ(pua_code_point(5), static_cast<char32_t>(0xe005));
 }
 
-TEST(OtfWriter, build_sfnt_has_valid_checksum_and_sorted_directory) {
+TEST(SfntTransform, build_sfnt_has_valid_checksum_and_parses) {
   const std::string font = sample_font();
 
   // A correct head.checkSumAdjustment makes the whole-file checksum the magic.
@@ -124,18 +144,50 @@ TEST(OtfWriter, build_sfnt_has_valid_checksum_and_sorted_directory) {
   EXPECT_EQ(parsed.name(), "TestFont");
 }
 
-TEST(OtfWriter, reencode_maps_every_glyph_to_pua) {
-  const sfnt::SfntFont parsed = parse(reencode_to_pua(parse(sample_font())));
+TEST(SfntTransform, serialize_cmap_round_trips_multiple_segments) {
+  // 'A','B' form one arithmetic run (codes and glyphs consecutive); 'Z' is a
+  // second segment — exercises the segment builder beyond a single run.
+  const std::map<char32_t, std::uint16_t> map{{'A', 1}, {'B', 2}, {'Z', 5}};
+  const std::string font =
+      build_font(0x00010000, {{"head", head_table()},
+                              {"maxp", maxp_table(6)},
+                              {"hhea", hhea_table(0)},
+                              {"cmap", serialize_cmap(map)}});
 
-  // Glyphs are addressable at their deterministic PUA code points.
+  const sfnt::SfntFont parsed = parse(font);
+  EXPECT_EQ(parsed.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(parsed.glyph_for_code_point('B'), 2);
+  EXPECT_EQ(parsed.glyph_for_code_point('Z'), 5);
+  EXPECT_EQ(parsed.glyph_for_code_point('C'), 0); // gap between the segments
+}
+
+TEST(SfntTransform, serialize_cmap_rejects_beyond_bmp) {
+  const std::map<char32_t, std::uint16_t> map{{0x1f600, 1}};
+  EXPECT_THROW((void)serialize_cmap(map), std::runtime_error);
+}
+
+TEST(SfntTransform, reencode_mutates_the_font_in_place) {
+  sfnt::SfntFont font = parse(sample_font());
+  reencode_to_pua(font);
+
+  // The mutated object itself reflects the new map — accessors read cmap().
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(1)), 1);
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
+  EXPECT_EQ(font.code_point_for_glyph(1), pua_code_point(1));
+  EXPECT_EQ(font.code_point_for_glyph(2), pua_code_point(2));
+}
+
+TEST(SfntTransform, reencode_maps_every_glyph_to_pua_after_round_trip) {
+  const sfnt::SfntFont parsed = parse(reencoded(sample_font()));
+
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(1)), 1);
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(2)), 2);
   EXPECT_EQ(parsed.code_point_for_glyph(1), pua_code_point(1));
   EXPECT_EQ(parsed.code_point_for_glyph(2), pua_code_point(2));
 }
 
-TEST(OtfWriter, reencode_preserves_passthrough_tables_and_checksum) {
-  const std::string out = reencode_to_pua(parse(sample_font()));
+TEST(SfntTransform, write_preserves_passthrough_tables_and_checksum) {
+  const std::string out = reencoded(sample_font());
 
   EXPECT_EQ(file_checksum(out), 0xb1b0afbaU);
 
@@ -145,10 +197,9 @@ TEST(OtfWriter, reencode_preserves_passthrough_tables_and_checksum) {
   EXPECT_EQ(parsed.advance_width(0), 500);
   EXPECT_EQ(parsed.advance_width(2), 700);
   EXPECT_EQ(parsed.name(), "TestFont");
-  EXPECT_TRUE(parsed.table("cmap").has_value());
 }
 
-TEST(OtfWriter, reencode_rejects_too_many_glyphs) {
-  EXPECT_THROW((void)reencode_to_pua(parse(sample_font(7000))),
-               std::runtime_error);
+TEST(SfntTransform, reencode_rejects_too_many_glyphs) {
+  sfnt::SfntFont font = parse(sample_font(7000));
+  EXPECT_THROW(reencode_to_pua(font), std::runtime_error);
 }
