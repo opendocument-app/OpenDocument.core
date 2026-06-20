@@ -20,12 +20,12 @@ sfnt::SfntFont parse(std::string bytes) {
   return sfnt::SfntFont(std::make_unique<std::istringstream>(std::move(bytes)));
 }
 
-void put16(std::string &s, std::uint16_t v) {
+void put16(std::string &s, const std::uint16_t v) {
   s += static_cast<char>(v >> 8);
   s += static_cast<char>(v & 0xff);
 }
 
-void put32(std::string &s, std::uint32_t v) {
+void put32(std::string &s, const std::uint32_t v) {
   put16(s, static_cast<std::uint16_t>(v >> 16));
   put16(s, static_cast<std::uint16_t>(v & 0xffff));
 }
@@ -37,7 +37,7 @@ std::string head_table() {
   return t;
 }
 
-std::string maxp_table(std::uint16_t glyphs) {
+std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
   put32(t, 0x00010000);
   put16(t, glyphs);
@@ -45,7 +45,7 @@ std::string maxp_table(std::uint16_t glyphs) {
   return t;
 }
 
-std::string hhea_table(std::uint16_t number_of_h_metrics) {
+std::string hhea_table(const std::uint16_t number_of_h_metrics) {
   std::string t(36, '\0');
   t[34] = static_cast<char>(number_of_h_metrics >> 8);
   t[35] = static_cast<char>(number_of_h_metrics & 0xff);
@@ -149,5 +149,6 @@ TEST(OtfWriter, reencode_preserves_passthrough_tables_and_checksum) {
 }
 
 TEST(OtfWriter, reencode_rejects_too_many_glyphs) {
-  EXPECT_THROW(reencode_to_pua(parse(sample_font(7000))), std::runtime_error);
+  EXPECT_THROW((void)reencode_to_pua(parse(sample_font(7000))),
+               std::runtime_error);
 }

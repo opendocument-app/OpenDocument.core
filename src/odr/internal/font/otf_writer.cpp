@@ -88,15 +88,19 @@ std::string build_pua_cmap(std::uint16_t glyph_count) {
 
 } // namespace
 
-char32_t pua_code_point(std::uint16_t glyph) noexcept {
+} // namespace odr::internal::font
+
+namespace odr::internal {
+
+char32_t font::pua_code_point(std::uint16_t glyph) noexcept {
   return pua_base + glyph;
 }
 
 std::string
-build_sfnt(std::uint32_t sfnt_version,
-           std::vector<std::pair<std::string, std::string>> tables) {
-  std::sort(tables.begin(), tables.end(),
-            [](const auto &a, const auto &b) { return a.first < b.first; });
+font::build_sfnt(std::uint32_t sfnt_version,
+                 std::vector<std::pair<std::string, std::string>> tables) {
+  std::ranges::sort(
+      tables, {}, [](const auto &e) -> const std::string & { return e.first; });
 
   const auto count = static_cast<std::uint16_t>(tables.size());
   // Largest power of two <= count, for the binary-search hint fields.
@@ -146,7 +150,7 @@ build_sfnt(std::uint32_t sfnt_version,
   return out;
 }
 
-std::string reencode_to_pua(const sfnt::SfntFont &font) {
+std::string font::reencode_to_pua(const sfnt::SfntFont &font) {
   if (font.glyph_count() > pua_capacity) {
     throw std::runtime_error(
         "otf_writer: glyph count exceeds BMP PUA capacity");
@@ -167,4 +171,4 @@ std::string reencode_to_pua(const sfnt::SfntFont &font) {
   return build_sfnt(version, std::move(tables));
 }
 
-} // namespace odr::internal::font
+} // namespace odr::internal
