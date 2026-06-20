@@ -149,6 +149,5 @@ TEST(OtfWriter, reencode_preserves_passthrough_tables_and_checksum) {
 }
 
 TEST(OtfWriter, reencode_rejects_too_many_glyphs) {
-  EXPECT_THROW(reencode_to_pua(parse(sample_font(7000))),
-               std::runtime_error);
+  EXPECT_THROW(reencode_to_pua(parse(sample_font(7000))), std::runtime_error);
 }
