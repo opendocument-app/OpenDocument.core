@@ -52,6 +52,14 @@ public:
   /// OTF writer (3.1).
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
 
+  /// The 4-char tags of every table present, in directory order. Exposed for
+  /// the OTF writer (3.1) so it can copy tables through.
+  [[nodiscard]] std::vector<std::string> table_tags() const;
+
+  /// The raw bytes of the table @p tag (read from the stream), or empty if the
+  /// table is absent. Exposed for the OTF writer (3.1) to pass tables through.
+  [[nodiscard]] std::string table_data(std::string_view tag) const;
+
 private:
   std::istream &in() const { return *m_in; }
 

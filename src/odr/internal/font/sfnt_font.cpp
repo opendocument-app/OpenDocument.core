@@ -1,5 +1,7 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
+#include <odr/internal/util/stream_util.hpp>
+
 #include <algorithm>
 #include <istream>
 #include <memory>
@@ -338,6 +340,24 @@ SfntFont::code_point_for_glyph(const std::uint16_t glyph) const {
     return std::nullopt;
   }
   return it->second;
+}
+
+std::vector<std::string> SfntFont::table_tags() const {
+  std::vector<std::string> tags;
+  tags.reserve(m_tables.size());
+  for (const auto &[tag, location] : m_tables) {
+    tags.push_back(tag);
+  }
+  return tags;
+}
+
+std::string SfntFont::table_data(const std::string_view tag) const {
+  const auto location = table(tag);
+  if (!location.has_value()) {
+    return {};
+  }
+  in().seekg(location->offset);
+  return util::stream::read(in(), location->length);
 }
 
 std::optional<SfntFont::Table>

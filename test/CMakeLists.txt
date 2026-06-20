@@ -54,6 +54,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
         "src/internal/font/sfnt_font.cpp"
+        "src/internal/font/otf_writer.cpp"
 
         "src/internal/svm/svm_test.cpp"
 
