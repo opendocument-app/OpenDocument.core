@@ -3,6 +3,7 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <stdexcept>
 
@@ -13,17 +14,17 @@ namespace {
 constexpr char32_t pua_base = 0xe000;
 constexpr std::uint16_t pua_capacity = 0xf8ff - 0xe000 + 1; // 6400
 
-void put16(std::string &s, std::uint16_t v) {
+void put16(std::string &s, const std::uint16_t v) {
   s += static_cast<char>(v >> 8);
   s += static_cast<char>(v & 0xff);
 }
 
-void put32(std::string &s, std::uint32_t v) {
+void put32(std::string &s, const std::uint32_t v) {
   put16(s, static_cast<std::uint16_t>(v >> 16));
   put16(s, static_cast<std::uint16_t>(v & 0xffff));
 }
 
-void write32(std::string &s, std::size_t at, std::uint32_t v) {
+void write32(std::string &s, const std::size_t at, const std::uint32_t v) {
   s[at] = static_cast<char>(v >> 24);
   s[at + 1] = static_cast<char>((v >> 16) & 0xff);
   s[at + 2] = static_cast<char>((v >> 8) & 0xff);
@@ -36,8 +37,8 @@ void pad4(std::string &s) {
   }
 }
 
-// SFNT checksum: the sum (mod 2^32) of the data read as big-endian uint32
-// words, zero-padded to a 4-byte boundary.
+/// SFNT checksum: the sum (mod 2^32) of the data read as big-endian uint32
+/// words, zero-padded to a 4-byte boundary.
 std::uint32_t checksum(const std::string &data) {
   std::uint32_t sum = 0;
   for (std::size_t i = 0; i < data.size(); i += 4) {
@@ -51,9 +52,9 @@ std::uint32_t checksum(const std::string &data) {
   return sum;
 }
 
-// A `cmap` with a single (3,1) format-4 subtable mapping U+E000+i -> glyph i
-// over the contiguous run of all glyphs (`glyph_count` <= the PUA capacity).
-std::string build_pua_cmap(std::uint16_t glyph_count) {
+/// A `cmap` with a single (3,1) format-4 subtable mapping U+E000+i -> glyph i
+/// over the contiguous run of all glyphs (`glyph_count` <= the PUA capacity).
+std::string build_pua_cmap(const std::uint16_t glyph_count) {
   const auto last = static_cast<std::uint16_t>(pua_base + glyph_count - 1);
 
   std::string sub;
@@ -92,22 +93,20 @@ std::string build_pua_cmap(std::uint16_t glyph_count) {
 
 namespace odr::internal {
 
-char32_t font::pua_code_point(std::uint16_t glyph) noexcept {
+char32_t font::pua_code_point(const std::uint16_t glyph) noexcept {
   return pua_base + glyph;
 }
 
 std::string
-font::build_sfnt(std::uint32_t sfnt_version,
+font::build_sfnt(const std::uint32_t sfnt_version,
                  std::vector<std::pair<std::string, std::string>> tables) {
   std::ranges::sort(
       tables, {}, [](const auto &e) -> const std::string & { return e.first; });
 
   const auto count = static_cast<std::uint16_t>(tables.size());
   // Largest power of two <= count, for the binary-search hint fields.
-  std::uint16_t entry_selector = 0;
-  while ((1U << (entry_selector + 1)) <= count) {
-    ++entry_selector;
-  }
+  const auto entry_selector =
+      static_cast<std::uint16_t>(std::bit_width(count) - 1);
   const auto search_range =
       static_cast<std::uint16_t>((1U << entry_selector) * 16);
   const auto range_shift =
