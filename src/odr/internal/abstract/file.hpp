@@ -112,9 +112,7 @@ public:
     return FileCategory::font;
   }
 
-  /// The parsed font program, exposing the stage-3 facts and the bytes to
-  /// re-encode for `@font-face`.
-  [[nodiscard]] virtual std::shared_ptr<Font> font_program() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<Font> font() const = 0;
 };
 
 } // namespace odr::internal::abstract

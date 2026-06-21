@@ -11,9 +11,7 @@ class Font;
 
 namespace odr::internal::font {
 
-/// @brief A standalone font file (`.ttf`/`.otf`) as a `DecodedFile`, so a font
-/// can be opened and rendered (specimen page) on its own — the standalone-first
-/// deliverable of stage 3 (decision 2026-06-19).
+/// A standalone font file (`.ttf`/`.otf`) as a `DecodedFile`
 class FontFile final : public abstract::FontFile {
 public:
   FontFile(std::shared_ptr<abstract::File> file, FileType file_type);
@@ -27,12 +25,12 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  [[nodiscard]] std::shared_ptr<abstract::Font> font_program() const override;
+  [[nodiscard]] std::shared_ptr<abstract::Font> font() const override;
 
 private:
   std::shared_ptr<abstract::File> m_file;
   FileType m_file_type;
-  std::shared_ptr<abstract::Font> m_program;
+  std::shared_ptr<abstract::Font> m_font;
 };
 
 } // namespace odr::internal::font

@@ -22,26 +22,6 @@ namespace {
 
 constexpr std::uint16_t max_grid_glyphs = 4096;
 
-std::string escape(const std::string &text) {
-  std::string out;
-  for (const char c : text) {
-    switch (c) {
-    case '&':
-      out += "&amp;";
-      break;
-    case '<':
-      out += "&lt;";
-      break;
-    case '>':
-      out += "&gt;";
-      break;
-    default:
-      out += c;
-    }
-  }
-  return out;
-}
-
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(FontFile font_file, HtmlConfig config,
@@ -87,8 +67,8 @@ public:
   HtmlResources write_font(HtmlWriter &out) const {
     HtmlResources resources;
 
-    const auto program = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-        m_font_file.impl()->font_program());
+    const auto font = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+        m_font_file.impl()->font());
 
     out.write_begin();
     out.write_header_begin();
@@ -101,7 +81,7 @@ public:
 
     out.write_body_begin();
 
-    if (program == nullptr) {
+    if (font == nullptr) {
       out.out() << "<p>unsupported font</p>";
       out.write_body_end();
       out.write_end();
@@ -114,7 +94,7 @@ public:
     try {
       // Re-encode a fresh parse: reencode_to_pua mutates the cmap in place, and
       // the grid below still reads each glyph's original Unicode from
-      // `program`.
+      // `font`.
       font::sfnt::SfntFont embed(m_font_file.impl()->file()->stream());
       font::reencode_to_pua(embed);
       std::ostringstream sfnt_out;
@@ -126,10 +106,8 @@ public:
       out.write_end();
       return resources;
     }
-    const std::string mime = m_font_file.file_type() == FileType::opentype_font
-                                 ? "font/otf"
-                                 : "font/ttf";
-    const std::string url = file_to_url(reencoded, mime);
+    const std::string url =
+        file_to_url(reencoded, std::string(m_font_file.impl()->mimetype()));
 
     out.out() << "<style>";
     out.out() << "@font-face{font-family:'odr-specimen';src:url(" << url
@@ -144,22 +122,22 @@ public:
     out.out() << ".gid{font-size:.6em;color:#888;}";
     out.out() << "</style>";
 
-    out.out() << "<h1>" << escape(program->name()) << "</h1>";
-    out.out() << "<p>glyphs: " << program->glyph_count()
-              << " &middot; units/em: " << program->units_per_em()
+    out.out() << "<h1>" << escape_text(font->name()) << "</h1>";
+    out.out() << "<p>glyphs: " << font->glyph_count()
+              << " &middot; units/em: " << font->units_per_em()
               << " &middot; format: "
-              << (program->format() == FontFormat::opentype_cff ? "OpenType/CFF"
-                                                                : "TrueType")
-              << (program->symbolic() ? " &middot; symbolic" : "") << "</p>";
+              << (font->format() == FontFormat::opentype_cff ? "OpenType/CFF"
+                                                             : "TrueType")
+              << (font->symbolic() ? " &middot; symbolic" : "") << "</p>";
 
     const std::uint16_t shown =
-        std::min<std::uint16_t>(program->glyph_count(), max_grid_glyphs);
+        std::min<std::uint16_t>(font->glyph_count(), max_grid_glyphs);
     out.out() << "<div class=\"grid\">";
     for (std::uint16_t gid = 1; gid < shown; ++gid) {
       out.out() << "<div class=\"cell\"><span class=\"glyph\">&#x" << std::hex
                 << static_cast<std::uint32_t>(font::pua_code_point(gid))
                 << std::dec << ";</span><span class=\"gid\">" << gid;
-      if (const auto cp = program->code_point_for_glyph(gid)) {
+      if (const auto cp = font->code_point_for_glyph(gid)) {
         out.out() << " U+" << std::hex << std::uppercase
                   << static_cast<std::uint32_t>(*cp) << std::nouppercase
                   << std::dec;
@@ -168,7 +146,7 @@ public:
     }
     out.out() << "</div>";
 
-    if (program->glyph_count() > shown) {
+    if (font->glyph_count() > shown) {
       out.out() << "<p>(showing first " << shown << " glyphs)</p>";
     }
 
@@ -178,7 +156,7 @@ public:
     return resources;
   }
 
-protected:
+private:
   FontFile m_font_file;
   HtmlViews m_views;
 };

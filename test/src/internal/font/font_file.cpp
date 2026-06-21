@@ -149,11 +149,11 @@ TEST(FontFileTest, font_file_facts) {
   EXPECT_EQ(font_file.file_category(), FileCategory::font);
   EXPECT_TRUE(font_file.is_decodable());
 
-  const auto program = font_file.font_program();
-  ASSERT_NE(program, nullptr);
-  EXPECT_EQ(program->name(), "TestFont");
-  EXPECT_EQ(program->glyph_count(), 4);
-  EXPECT_EQ(program->glyph_for_code_point('A'), 1);
+  const auto font = font_file.font();
+  ASSERT_NE(font, nullptr);
+  EXPECT_EQ(font->name(), "TestFont");
+  EXPECT_EQ(font->glyph_count(), 4);
+  EXPECT_EQ(font->glyph_for_code_point('A'), 1);
 }
 
 TEST(FontFileTest, specimen_page_embeds_font_and_glyph_grid) {

@@ -12,7 +12,7 @@ FontFile::FontFile(std::shared_ptr<abstract::File> file,
     : m_file{std::move(file)}, m_file_type{file_type} {
   // Parse eagerly: a parse failure is how detection rejects a non-font, so the
   // open-strategy try/catch can fall through.
-  m_program = std::make_shared<sfnt::SfntFont>(m_file->stream());
+  m_font = std::make_shared<sfnt::SfntFont>(m_file->stream());
 }
 
 std::shared_ptr<abstract::File> FontFile::file() const noexcept {
@@ -35,8 +35,6 @@ FileMeta FontFile::file_meta() const noexcept {
 
 bool FontFile::is_decodable() const noexcept { return true; }
 
-std::shared_ptr<abstract::Font> FontFile::font_program() const {
-  return m_program;
-}
+std::shared_ptr<abstract::Font> FontFile::font() const { return m_font; }
 
 } // namespace odr::internal::font
