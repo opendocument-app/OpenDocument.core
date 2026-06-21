@@ -127,6 +127,11 @@ struct NoPdfFile final : std::runtime_error {
   NoPdfFile();
 };
 
+/// @brief No font file exception
+struct NoFontFile final : std::runtime_error {
+  NoFontFile();
+};
+
 /// @brief No legacy Microsoft Office file
 struct NoLegacyMicrosoftFile final : std::runtime_error {
   NoLegacyMicrosoftFile();

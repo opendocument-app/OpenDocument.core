@@ -10,6 +10,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/image_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
+#include <odr/internal/font/font_file.hpp>
 #include <odr/internal/json/json_file.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
@@ -242,6 +243,11 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(file);
   }
+  if (file_type == FileType::truetype_font ||
+      file_type == FileType::opentype_font) {
+    ODR_VERBOSE(logger, "open as font");
+    return std::make_unique<font::FontFile>(file, file_type);
+  }
   if (file_type == FileType::unknown) {
     ODR_VERBOSE(logger, "handle unknown file type");
 
@@ -437,6 +443,22 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       throw NoSvmFile();
     }
     ODR_ERROR(logger, "unsupported decoder engine for svm "
+                          << decoder_engine_to_string(with));
+    throw UnsupportedDecoderEngine(with);
+  }
+
+  if (as == FileType::truetype_font || as == FileType::opentype_font) {
+    ODR_VERBOSE(logger, "open as font");
+    if (with == DecoderEngine::odr) {
+      ODR_VERBOSE(logger, "using odr engine");
+      try {
+        return std::make_unique<font::FontFile>(file, as);
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as font with odr engine");
+      }
+      throw NoFontFile();
+    }
+    ODR_ERROR(logger, "unsupported decoder engine for font "
                           << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
   }

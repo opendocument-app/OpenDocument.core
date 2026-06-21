@@ -260,6 +260,17 @@ HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
                       const HtmlConfig &config,
                       std::shared_ptr<Logger> logger = Logger::create_null());
 
+/// @brief Translates a font file to HTML (a specimen page).
+///
+/// @param font_file Font file to translate.
+/// @param cache_path Directory path for temporary output.
+/// @param config Configuration for the HTML output.
+/// @param logger Logger to use for logging.
+/// @return HTML output.
+HtmlService translate(const FontFile &font_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      std::shared_ptr<Logger> logger = Logger::create_null());
+
 /// @brief Translates a filesystem to HTML.
 ///
 /// @param filesystem Filesystem to translate.
