@@ -5,7 +5,7 @@
 
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/font/otf_writer.hpp>
+#include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/magic.hpp>
 
 #include <gtest/gtest.h>
@@ -15,6 +15,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace odr;
@@ -112,13 +113,22 @@ std::string name_table(const std::string &ascii) {
   return t;
 }
 
+std::string
+build_sfnt_bytes(std::uint32_t version,
+                 std::vector<std::pair<std::string, std::string>> tables) {
+  std::ostringstream out;
+  build_sfnt(out, version, std::move(tables));
+  return out.str();
+}
+
 std::string sample_ttf() {
-  return build_sfnt(0x00010000, {{"cmap", cmap_table()},
-                                 {"head", head_table()},
-                                 {"hhea", hhea_table(4)},
-                                 {"hmtx", hmtx_table({500, 600, 700, 800})},
-                                 {"maxp", maxp_table(4)},
-                                 {"name", name_table("TestFont")}});
+  return build_sfnt_bytes(0x00010000,
+                          {{"cmap", cmap_table()},
+                           {"head", head_table()},
+                           {"hhea", hhea_table(4)},
+                           {"hmtx", hmtx_table({500, 600, 700, 800})},
+                           {"maxp", maxp_table(4)},
+                           {"name", name_table("TestFont")}});
 }
 
 } // namespace

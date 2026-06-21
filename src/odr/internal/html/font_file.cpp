@@ -6,14 +6,15 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/font.hpp>
-#include <odr/internal/font/otf_writer.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 
 namespace odr::internal::html {
@@ -111,7 +112,14 @@ public:
     // at its deterministic PUA code point.
     std::string reencoded;
     try {
-      reencoded = font::reencode_to_pua(*program);
+      // Re-encode a fresh parse: reencode_to_pua mutates the cmap in place, and
+      // the grid below still reads each glyph's original Unicode from
+      // `program`.
+      font::sfnt::SfntFont embed(m_font_file.impl()->file()->stream());
+      font::reencode_to_pua(embed);
+      std::ostringstream sfnt_out;
+      embed.write(sfnt_out);
+      reencoded = sfnt_out.str();
     } catch (...) {
       out.out() << "<p>font has too many glyphs to display</p>";
       out.write_body_end();
