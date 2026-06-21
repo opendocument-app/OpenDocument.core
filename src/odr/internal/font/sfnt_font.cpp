@@ -1,8 +1,12 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
+#include <odr/internal/font/sfnt_transform.hpp>
+#include <odr/internal/util/stream_util.hpp>
+
 #include <algorithm>
 #include <istream>
 #include <memory>
+#include <ostream>
 #include <utility>
 
 namespace odr::internal::font::sfnt {
@@ -165,6 +169,17 @@ void SfntFont::read_cmap() {
     m_parser.seek(cmap->offset + best_entry->offset);
     read_cmap_subtable();
   }
+
+  update_reverse();
+}
+
+void SfntFont::update_reverse() {
+  // Lowest code point wins; m_cmap iterates code points ascending, so the
+  // first time a glyph is seen is its lowest code point.
+  m_reverse.clear();
+  for (const auto &[code, glyph] : m_cmap) {
+    m_reverse.emplace(glyph, code);
+  }
 }
 
 void SfntFont::read_cmap_subtable() {
@@ -173,10 +188,6 @@ void SfntFont::read_cmap_subtable() {
       return;
     }
     m_cmap[code] = glyph;
-    if (const auto it = m_reverse.find(glyph);
-        it == m_reverse.end() || code < it->second) {
-      m_reverse[glyph] = code;
-    }
   };
   const auto read_u16_vector = [this](const std::size_t count) {
     std::vector<std::uint16_t> out;
@@ -338,6 +349,33 @@ SfntFont::code_point_for_glyph(const std::uint16_t glyph) const {
     return std::nullopt;
   }
   return it->second;
+}
+
+const std::map<char32_t, std::uint16_t> &SfntFont::cmap() const noexcept {
+  return m_cmap;
+}
+
+void SfntFont::set_cmap(std::map<char32_t, std::uint16_t> cmap) {
+  m_cmap = std::move(cmap);
+  update_reverse();
+}
+
+void SfntFont::write(std::ostream &out) const {
+  std::vector<std::pair<std::string, std::string>> tables;
+  tables.reserve(m_tables.size() + 1);
+  for (const auto &[tag, location] : m_tables) {
+    if (tag == "cmap") {
+      continue; // rebuilt from the cmap() model below
+    }
+    in().seekg(location.offset);
+    tables.emplace_back(tag, util::stream::read(in(), location.length));
+  }
+  tables.emplace_back("cmap", serialize_cmap(m_cmap));
+
+  const std::uint32_t version = m_format == FontFormat::opentype_cff
+                                    ? 0x4f54544fU /* 'OTTO' */
+                                    : 0x00010000U;
+  build_sfnt(out, version, std::move(tables));
 }
 
 std::optional<SfntFont::Table>

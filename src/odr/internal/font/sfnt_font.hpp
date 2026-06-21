@@ -43,17 +43,33 @@ public:
   [[nodiscard]] std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const override;
 
-  /// A located table within the SFNT: byte offset + length into `data()`.
+  /// The font's character map: code point -> glyph index. This is the single
+  /// source of truth — `glyph_for_code_point` / `code_point_for_glyph` read it,
+  /// and `write()` serializes it back into the `cmap` table (every other table
+  /// is copied through verbatim).
+  [[nodiscard]] const std::map<char32_t, std::uint16_t> &cmap() const noexcept;
+
+  /// Replace the character map, rebuilding the reverse (glyph -> lowest code
+  /// point) lookup so the font stays self-consistent. Use this to transform the
+  /// font (see `sfnt_transform.hpp`'s `reencode_to_pua`), then `write()`.
+  void set_cmap(std::map<char32_t, std::uint16_t> cmap);
+
+  /// Serialize the current state to @p out: the (possibly mutated) `cmap`
+  /// rebuilt from `cmap()`, every other table copied verbatim from the source
+  /// stream, with a freshly computed table directory and checksums. @p out need
+  /// only be a forward sink (see `build_sfnt`).
+  void write(std::ostream &out) const;
+
+private:
+  std::istream &in() const { return *m_in; }
+
+  /// A located table within the SFNT: byte offset + length into the source.
   struct Table {
     std::uint32_t offset{};
     std::uint32_t length{};
   };
-  /// Table by 4-char tag (e.g. `"cmap"`), `nullopt` if absent. Exposed for the
-  /// OTF writer (3.1).
+  /// Table by 4-char tag (e.g. `"cmap"`), `nullopt` if absent.
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
-
-private:
-  std::istream &in() const { return *m_in; }
 
   void read_directory();
   void read_head();
@@ -63,6 +79,8 @@ private:
   void read_cmap();
   void read_name();
   void read_cmap_subtable();
+  /// Rebuild m_reverse (glyph -> lowest code point) from m_cmap.
+  void update_reverse();
 
   std::unique_ptr<std::istream> m_in;
   SfntParser m_parser;
@@ -78,7 +96,7 @@ private:
 
   std::vector<std::uint16_t> m_advance_widths;
   std::map<char32_t, std::uint16_t> m_cmap;
-  std::map<std::uint16_t, char32_t> m_reverse;
+  std::map<std::uint16_t, char32_t> m_reverse; // glyph -> lowest code point
   std::string m_name;
 };
 

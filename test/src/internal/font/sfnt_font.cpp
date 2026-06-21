@@ -279,15 +279,6 @@ TEST(SfntFont, symbolic_flag_from_platform_3_encoding_0) {
   EXPECT_EQ(font.glyph_for_code_point(0xf020), 1);
 }
 
-TEST(SfntFont, table_lookup) {
-  const SfntFont font = sfnt_font_from_string(
-      sample_font(cmap_table(3, 1, cmap_format4('A', 3))));
-
-  EXPECT_TRUE(font.table("cmap").has_value());
-  EXPECT_TRUE(font.table("head").has_value());
-  EXPECT_FALSE(font.table("CFF ").has_value());
-}
-
 TEST(SfntFont, is_sfnt) {
   EXPECT_TRUE(SfntFont::is_sfnt(std::string("\x00\x01\x00\x00", 4)));
   EXPECT_TRUE(SfntFont::is_sfnt("OTTO"));

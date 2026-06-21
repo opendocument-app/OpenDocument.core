@@ -593,6 +593,25 @@ implementation.
   deterministic PUA map over *every* glyph, splice/rebuild the table directory,
   recompute `head.checkSumAdjustment`. The single riskiest piece — exercised by
   font-only round-trip + OTS tests before any UI.
+  - **Mechanism (`internal/font/`).** `SfntFont` carries `cmap` as a
+    `code point -> glyph` model that is the single source of truth (the
+    accessors read it; `write(std::ostream&)` serializes it back into the `cmap`
+    table and copies every other table through verbatim). It is read via
+    `cmap()` and replaced via `set_cmap()`, which rebuilds the reverse
+    (glyph -> lowest code point) lookup so the font stays self-consistent.
+    Transforms live *outside* the font in `sfnt_transform` —
+    `reencode_to_pua(font)` builds the PUA map and hands it to `set_cmap`.
+    Writing is stream-based, mirroring the reader's `std::istream`; the
+    whole-file checksum is computed analytically from the additive
+    per-table/directory checksums (no second pass, no seekable sink).
+  - **LIMITATION — `cmap` serialization is BMP-only.** `serialize_cmap` emits a
+    single Windows (3,1) **format-4** subtable: code points must be `<= U+FFFF`,
+    and a map containing a beyond-BMP code point (which would need a format-12
+    subtable) throws. Within the BMP there is no restriction — the map is split
+    into maximal arithmetic runs (`idRangeOffset = 0`, singletons allowed), so
+    `glyphIdArray` is never needed. This covers the uniform PUA re-encode (one
+    run) and ordinary remaps; format-12 / multi-plane PUA spill-over (and the
+    matching >6400-glyph case) is a follow-up.
 - **3.2 — `FontFile` as a `DecodedFile` + specimen-page HTML (the standalone
   deliverable).** Precedent: `SvmFile`, `ImageFile`. `FileType` entries + magic
   detection (SFNT `0x00010000`/`OTTO`/`true`/`ttcf`, `wOFF`), a `FontFile`
