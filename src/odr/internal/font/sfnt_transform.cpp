@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <ostream>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -93,7 +94,7 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
   const auto [search_range, entry_selector, range_shift] =
       search_hints(count, 16);
 
-  const std::size_t header_size = 12;
+  constexpr std::size_t header_size = 12;
   const auto offset_table_size =
       header_size + static_cast<std::size_t>(count) * 16;
 
@@ -142,7 +143,7 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
 
   out.write(header.data(), static_cast<std::streamsize>(header.size()));
   out.write(directory.data(), static_cast<std::streamsize>(directory.size()));
-  for (const auto &[tag, data] : tables) {
+  for (const auto &data : tables | std::views::values) {
     out.write(data.data(), static_cast<std::streamsize>(data.size()));
   }
 }
