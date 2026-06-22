@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -110,6 +111,29 @@ std::string sample_font(std::uint16_t glyphs = 3) {
                                  {"name", name_table("TestFont")}});
 }
 
+// The body of the named table in a serialized SFNT, located via the table
+// directory (12-byte header + 16 bytes per entry: tag, checksum, offset,
+// length). Returns nullopt when the tag is absent.
+std::optional<std::string> table(const std::string &data,
+                                 const std::string &tag) {
+  const auto u16 = [&](const std::size_t at) {
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint8_t>(data[at]) << 8) |
+        static_cast<std::uint8_t>(data[at + 1]));
+  };
+  const auto u32 = [&](const std::size_t at) {
+    return static_cast<std::uint32_t>((u16(at) << 16) | u16(at + 2));
+  };
+  const std::uint16_t count = u16(4);
+  for (std::size_t i = 0; i < count; ++i) {
+    const std::size_t entry = 12 + i * 16;
+    if (data.compare(entry, 4, tag) == 0) {
+      return data.substr(u32(entry + 8), u32(entry + 12));
+    }
+  }
+  return std::nullopt;
+}
+
 // Whole-file SFNT checksum (independent of the writer's), which must equal the
 // magic constant once head.checkSumAdjustment is set.
 std::uint32_t file_checksum(const std::string &data) {
@@ -202,4 +226,35 @@ TEST(SfntTransform, write_preserves_passthrough_tables_and_checksum) {
 TEST(SfntTransform, reencode_rejects_too_many_glyphs) {
   sfnt::SfntFont font = parse(sample_font(7000));
   EXPECT_THROW(reencode_to_pua(font), std::runtime_error);
+}
+
+TEST(SfntTransform, write_synthesizes_post_when_absent) {
+  // `sample_font()` carries no `post` table; the writer must add a minimal
+  // format-3.0 one (OTS rejects the whole font otherwise, so browsers drop the
+  // `@font-face` and render tofu).
+  ASSERT_FALSE(table(sample_font(), "post").has_value());
+
+  const std::string out = reencoded(sample_font());
+  const std::optional<std::string> post = table(out, "post");
+  ASSERT_TRUE(post.has_value());
+  EXPECT_EQ(post->size(), 32u);
+  EXPECT_EQ(post->substr(0, 4), std::string("\x00\x03\x00\x00", 4)); // v3.0
+  EXPECT_EQ(file_checksum(out), 0xb1b0afbaU);
+}
+
+TEST(SfntTransform, write_keeps_existing_post) {
+  std::string original_post(32, '\0');
+  original_post[1] = 0x02; // version 2.0 marker, distinct from the synthesized
+  const std::string font = build_font(0x00010000, {{"head", head_table()},
+                                                   {"maxp", maxp_table(3)},
+                                                   {"hhea", hhea_table(0)},
+                                                   {"post", original_post}});
+
+  sfnt::SfntFont parsed = parse(font);
+  reencode_to_pua(parsed);
+  std::ostringstream out;
+  parsed.write(out);
+
+  // The source `post` is copied through verbatim, not replaced.
+  EXPECT_EQ(table(out.str(), "post"), original_post);
 }

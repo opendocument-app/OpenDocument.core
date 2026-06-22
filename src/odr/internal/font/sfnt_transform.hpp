@@ -45,6 +45,17 @@ void build_sfnt(std::ostream &out, std::uint32_t sfnt_version,
 [[nodiscard]] std::string
 serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
 
+/// Serialize a minimal version-3.0 `post` table (header only, no glyph names).
+///
+/// OTS (the font sanitizer in Chrome/Firefox) lists `post` among the tables an
+/// SFNT must carry and rejects the whole font when it is absent — the browser
+/// then drops the `@font-face` and renders tofu. PDF-embedded TrueType fonts
+/// routinely omit `post` (the viewer needs no glyph names), so a font copied
+/// through verbatim would be rejected. Format 3.0 declares "no glyph names",
+/// which is all a re-encoded display font needs.
+
+[[nodiscard]] std::string serialize_post();
+
 /// Re-encode @p font in place for the browser: replace its `cmap` with a fresh
 /// map from the deterministic PUA code points (`pua_code_point`) to *every*
 /// glyph, so the font renders every glyph — including ones the original `cmap`

@@ -212,6 +212,20 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   return cmap;
 }
 
+std::string font::serialize_post() {
+  std::string post;
+  put32(post, 0x00030000); // version 3.0: no glyph names
+  put32(post, 0);          // italicAngle
+  put16(post, 0);          // underlinePosition
+  put16(post, 0);          // underlineThickness
+  put32(post, 0);          // isFixedPitch
+  put32(post, 0);          // minMemType42
+  put32(post, 0);          // maxMemType42
+  put32(post, 0);          // minMemType1
+  put32(post, 0);          // maxMemType1
+  return post;
+}
+
 void font::reencode_to_pua(sfnt::SfntFont &font) {
   if (font.glyph_count() > pua_capacity) {
     throw std::runtime_error(

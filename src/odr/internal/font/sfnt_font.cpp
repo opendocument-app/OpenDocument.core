@@ -372,6 +372,12 @@ void SfntFont::write(std::ostream &out) const {
   }
   tables.emplace_back("cmap", serialize_cmap(m_cmap));
 
+  // A `post` table is required by OTS; PDF-embedded TrueType fonts often omit
+  // it. Synthesize a minimal one so the browser accepts the `@font-face`.
+  if (!m_tables.contains("post")) {
+    tables.emplace_back("post", serialize_post());
+  }
+
   const std::uint32_t version = m_format == FontFormat::opentype_cff
                                     ? 0x4f54544fU /* 'OTTO' */
                                     : 0x00010000U;
