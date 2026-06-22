@@ -93,6 +93,12 @@ odr::file_type_by_file_extension(const std::string &extension) noexcept {
   if (extension == "json") {
     return FileType::javascript_object_notation;
   }
+  if (extension == "ttf") {
+    return FileType::truetype_font;
+  }
+  if (extension == "otf") {
+    return FileType::opentype_font;
+  }
   return FileType::unknown;
 }
 
@@ -324,6 +330,15 @@ odr::file_type_by_mimetype(const std::string_view mimetype) noexcept {
   }
   if (mimetype == "image/bmp") {
     return FileType::bitmap_image_file;
+  }
+  if (mimetype == "font/ttf" || mimetype == "application/x-font-ttf" ||
+      mimetype == "application/x-font-truetype") {
+    return FileType::truetype_font;
+  }
+  if (mimetype == "font/otf" || mimetype == "application/x-font-otf" ||
+      mimetype == "application/x-font-opentype" ||
+      mimetype == "application/vnd.ms-opentype") {
+    return FileType::opentype_font;
   }
   return FileType::unknown;
 }
