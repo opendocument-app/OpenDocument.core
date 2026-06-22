@@ -44,6 +44,14 @@ struct State {
     m_x_objects[reference] = x_object;
   }
 
+  [[nodiscard]] Font *find_font(const ObjectReference &reference) const {
+    const auto it = m_fonts.find(reference);
+    return it != m_fonts.end() ? it->second : nullptr;
+  }
+  void cache_font(const ObjectReference &reference, Font *font) {
+    m_fonts[reference] = font;
+  }
+
 private:
   DocumentParser *m_parser{};
   Document *m_document{};
@@ -56,6 +64,14 @@ private:
   /// `cache_x_object` must register the element *before* its `/Resources` are
   /// parsed. The drawing side guards against the resulting cycles.
   std::map<ObjectReference, XObject *> m_x_objects;
+
+  /// Memoized Font elements by reference. Fonts are shared by indirect
+  /// reference across every page that uses them, so without this each page's
+  /// `/Resources` would parse a fresh `Font` element. The HTML writer dedups
+  /// embedded `@font-face` rules by `Font` pointer, so duplicate elements would
+  /// re-inline the (base64) font program once per page — a multi-page document
+  /// reusing one font would balloon to gigabytes.
+  std::map<ObjectReference, Font *> m_fonts;
 };
 
 /// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
@@ -420,11 +436,18 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   }
 }
 
-Font *parse_font(const State &state, const ObjectReference &reference) {
+Font *parse_font(State &state, const ObjectReference &reference) {
+  // Shared fonts are parsed once; every page referencing the same font object
+  // resolves to the one element so the HTML writer inlines it a single time.
+  if (Font *cached = state.find_font(reference); cached != nullptr) {
+    return cached;
+  }
+
   DocumentParser &parser = state.parser();
   Document &document = state.document();
 
   Font *font = document.create_element<Font>();
+  state.cache_font(reference, font);
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();
