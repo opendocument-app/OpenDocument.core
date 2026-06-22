@@ -6,10 +6,15 @@
 #include <odr/internal/util/math_util.hpp>
 
 #include <concepts>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace odr::internal::abstract {
+class Font;
+}
 
 namespace odr::internal::pdf {
 
@@ -145,6 +150,27 @@ struct Font final : Element {
   /// Bytes per character code: 2 for composite (Type0) fonts (the
   /// `Identity-H/V` and common CID case), 1 for simple fonts.
   [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
+
+  /// Embedded font program (stage 3.3): the SFNT parsed from `/FontFile2`
+  /// (a simple TrueType font, or a composite `CIDFontType2`), or `nullptr` when
+  /// nothing is embedded or the program is an unsupported flavor (`/FontFile3`
+  /// CFF → stage 3.4, `/FontFile` Type1 → stage 3.5). When present, the HTML
+  /// layer re-encodes it to the PUA and renders the actual glyphs via
+  /// `@font-face`, and `to_unicode` reads the embedded reverse map.
+  std::shared_ptr<abstract::Font> program;
+
+  /// Composite-font `/CIDToGIDMap` (ISO 32000-1 9.7.4.3) when given as an
+  /// explicit stream: `GID = cid_to_gid[CID]`. Empty means `Identity`
+  /// (`GID = CID`, the common case).
+  std::vector<std::uint16_t> cid_to_gid;
+
+  /// Map a single character code (as split by `code_byte_width`) to a glyph id
+  /// in the embedded `program`. For a composite font the code is the CID
+  /// (`Identity-H/V`), mapped to a GID via `/CIDToGIDMap`; for a simple
+  /// TrueType font the embedded `cmap` (or, failing that, the code's Unicode)
+  /// selects the glyph (ISO 32000-1 9.6.6.4). Returns 0 (`.notdef`) when there
+  /// is no program or no mapping.
+  [[nodiscard]] std::uint16_t glyph_for_code(std::uint32_t code) const;
 
   /// Glyph advance width of a single character code, in text-space units
   /// (glyph-space / 1000; multiply by the font size for user space). Falls back

@@ -3,6 +3,8 @@
 #include <odr/exceptions.hpp>
 #include <odr/logger.hpp>
 
+#include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -14,6 +16,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <cctype>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -255,6 +258,30 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
           array[3].as_real(), array[4].as_real(), array[5].as_real()};
 }
 
+/// Load the embedded font program from a `/FontDescriptor` (stage 3.3). Only
+/// `/FontFile2` (embedded TrueType / `CIDFontType2`) is read here, through the
+/// `abstract::Font` interface; `/FontFile3` (CFF) and `/FontFile` (Type1) are
+/// stages 3.4/3.5 and leave `font.program` null, so such fonts keep rendering
+/// through the fallback path. A malformed program is logged and left null.
+void load_font_program(DocumentParser &parser, const Dictionary &descriptor,
+                       Font &font) {
+  if (!descriptor.has_key("FontFile2")) {
+    return;
+  }
+  const Object file = descriptor["FontFile2"];
+  if (!file.is_reference()) {
+    return;
+  }
+  try {
+    std::string program = parser.read_decoded_stream(file.as_reference());
+    font.program = std::make_shared<font::sfnt::SfntFont>(
+        std::make_unique<std::istringstream>(std::move(program)));
+  } catch (const std::exception &e) {
+    ODR_WARNING(parser.logger(),
+                "pdf: failed to read embedded font program: " << e.what());
+  }
+}
+
 /// Parse a simple font's `/FirstChar`, `/Widths` and `/FontDescriptor`
 /// `/MissingWidth` glyph metrics (ISO 32000-1 9.2.4).
 void parse_simple_font_widths(DocumentParser &parser,
@@ -276,14 +303,40 @@ void parse_simple_font_widths(DocumentParser &parser,
   if (dictionary.has_key("FontDescriptor")) {
     const Object descriptor =
         parser.resolve_object_copy(dictionary["FontDescriptor"]);
-    if (descriptor.is_dictionary() &&
-        descriptor.as_dictionary().has_key("MissingWidth")) {
-      const Object missing = parser.resolve_object_copy(
-          descriptor.as_dictionary()["MissingWidth"]);
-      if (missing.is_real()) {
-        font.missing_width = missing.as_real();
+    if (descriptor.is_dictionary()) {
+      const Dictionary &descriptor_dictionary = descriptor.as_dictionary();
+      if (descriptor_dictionary.has_key("MissingWidth")) {
+        const Object missing =
+            parser.resolve_object_copy(descriptor_dictionary["MissingWidth"]);
+        if (missing.is_real()) {
+          font.missing_width = missing.as_real();
+        }
       }
+      load_font_program(parser, descriptor_dictionary, font);
     }
+  }
+}
+
+/// Parse a composite CIDFont's `/CIDToGIDMap` (ISO 32000-1 9.7.4.3): a stream
+/// of big-endian `uint16` GIDs indexed by CID, or the name `Identity`. Leaves
+/// `font.cid_to_gid` empty for `Identity` (so `glyph_for_code` uses `GID =
+/// CID`).
+void parse_cid_to_gid_map(DocumentParser &parser, const Object &map,
+                          Font &font) {
+  if (!map.is_reference()) {
+    return; // name `/Identity` (or absent): Identity mapping
+  }
+  try {
+    const std::string data = parser.read_decoded_stream(map.as_reference());
+    font.cid_to_gid.reserve(data.size() / 2);
+    for (std::size_t i = 0; i + 1 < data.size(); i += 2) {
+      font.cid_to_gid.push_back(static_cast<std::uint16_t>(
+          (static_cast<unsigned char>(data[i]) << 8) |
+          static_cast<unsigned char>(data[i + 1])));
+    }
+  } catch (const std::exception &e) {
+    ODR_WARNING(parser.logger(),
+                "pdf: failed to read /CIDToGIDMap: " << e.what());
   }
 }
 
@@ -333,6 +386,19 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
     if (w.is_array()) {
       parse_cid_widths(w.as_array(), font);
     }
+  }
+
+  // The embedded program (stage 3.3) and CID -> GID mapping live on the
+  // descendant CIDFont (the CIDFontType2 case; CIDFontType0/CFF is stage 3.4).
+  if (cid_font_dictionary.has_key("FontDescriptor")) {
+    const Object descriptor =
+        parser.resolve_object_copy(cid_font_dictionary["FontDescriptor"]);
+    if (descriptor.is_dictionary()) {
+      load_font_program(parser, descriptor.as_dictionary(), font);
+    }
+  }
+  if (cid_font_dictionary.has_key("CIDToGIDMap")) {
+    parse_cid_to_gid_map(parser, cid_font_dictionary["CIDToGIDMap"], font);
   }
 
   if (!cid_font_dictionary.has_key("CIDSystemInfo")) {

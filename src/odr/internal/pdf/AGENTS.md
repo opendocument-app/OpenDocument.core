@@ -622,13 +622,19 @@ implementation.
   creep. *Optional parallel:* PDF as a container — expose embedded fonts as an
   `abstract::Filesystem` (`/fonts/F1.ttf`, …) reusing the filesystem HTML service
   (as for ZIP/CFB); doubles as the corpus harvester.
-- **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).** Read
+- **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).**
+  **In progress** (design: [`STAGE_3.3_DESIGN.md`](STAGE_3.3_DESIGN.md)). Read
   embedded `FontFile2`/`CIDFontType2` programs through the `abstract::Font`
   interface, run them through the 3.1 wrap/PUA pipeline, and emit `@font-face` +
   PUA-encoded spans in the PDF HTML — replacing today's fallback-font span for the
   bulk of modern PDFs. Also lands the **embedded-font reverse map**: code →
   Unicode from the reversed TrueType `cmap`, surfaced for selection (closing the
-  stage-1 extraction gap for these fonts).
+  stage-1 extraction gap for these fonts). The HTML emission is a **dual layer**:
+  a visible PUA glyph layer in the embedded font + a transparent selectable layer
+  carrying the real Unicode (so copy/search work). `Font::program` /
+  `Font::glyph_for_code` / `Font::cid_to_gid` on the PDF font element; the
+  reverse map is the new fallback in `Font::to_unicode`. Simple-TrueType glyph
+  selection is best-effort (ISO 32000-1 9.6.6.4); CFF/Type1 stay null here.
 - **3.4 — bare CFF (`FontFile3`/Type1C).** A CFF reader (charset, charstrings,
   private dict) producing an `abstract::Font`; wrap into OTF by synthesizing the ~8
   required SFNT tables (advance widths from `/Widths`/`/W`, not by interpreting
