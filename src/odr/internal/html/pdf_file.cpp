@@ -214,19 +214,17 @@ public:
     // The PUA glyph string for a run: each character code -> glyph id ->
     // deterministic PUA code point (`U+E000 + glyph`), matching the re-encode.
     const auto glyph_run = [](const pdf::Font &font, const std::string &codes) {
-      std::string out;
-      const int width = font.code_byte_width();
-      for (std::size_t i = 0;
-           i + static_cast<std::size_t>(width) <= codes.size();
-           i += static_cast<std::size_t>(width)) {
+      std::string new_codes;
+      const std::size_t width = font.code_byte_width();
+      for (std::size_t i = 0; i + width <= codes.size(); i += width) {
         std::uint32_t code = 0;
-        for (int k = 0; k < width; ++k) {
+        for (std::size_t k = 0; k < width; ++k) {
           code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
         }
         util::string::append_c32(
-            font::pua_code_point(font.glyph_for_code(code)), out);
+            font::pua_code_point(font.glyph_for_code(code)), new_codes);
       }
-      return out;
+      return new_codes;
     };
 
     // Appends `prefix:value` (interned) as a class token on `classes`.

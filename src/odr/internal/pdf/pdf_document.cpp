@@ -50,7 +50,7 @@ namespace {
 
 /// Embedded-font reverse map: translate `codes` to Unicode via the embedded
 /// font's own character map (`code -> glyph -> code_point_for_glyph`). The
-/// last resort before byte-identity, closing the stage-1 extraction gap for
+/// last resort before byte-identity, closing the extraction gap for
 /// fonts with neither a `/ToUnicode` CMap nor a usable `/Encoding`. Returns
 /// empty (so the run stays `no_unicode`) when nothing maps or no font is
 /// embedded; a partially mapped run yields the code points it could recover.
@@ -58,13 +58,12 @@ std::string reverse_map_unicode(const Font &font, const std::string &codes) {
   if (font.embedded_font == nullptr) {
     return {};
   }
-  const int width = font.code_byte_width();
+  const std::size_t width = font.code_byte_width();
   std::string result;
   bool any = false;
-  for (std::size_t i = 0; i + static_cast<std::size_t>(width) <= codes.size();
-       i += static_cast<std::size_t>(width)) {
+  for (std::size_t i = 0; i + width <= codes.size(); i += width) {
     std::uint32_t code = 0;
-    for (int k = 0; k < width; ++k) {
+    for (std::size_t k = 0; k < width; ++k) {
       code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
     }
     if (const std::optional<char32_t> cp =
