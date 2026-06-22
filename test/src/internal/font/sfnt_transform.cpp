@@ -258,3 +258,43 @@ TEST(SfntTransform, write_keeps_existing_post) {
   // The source `post` is copied through verbatim, not replaced.
   EXPECT_EQ(table(out.str(), "post"), original_post);
 }
+
+TEST(SfntTransform, write_synthesizes_os2_when_absent) {
+  // `sample_font()` carries no `OS/2` table; OTS requires one, so the writer
+  // must synthesize a version-4 table for the `@font-face` to be accepted.
+  ASSERT_FALSE(table(sample_font(), "OS/2").has_value());
+
+  const std::string out = reencoded(sample_font());
+  const std::optional<std::string> os2 = table(out, "OS/2");
+  ASSERT_TRUE(os2.has_value());
+  EXPECT_EQ(os2->size(), 96u);
+  const auto u16 = [&](const std::size_t at) {
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint8_t>((*os2)[at]) << 8) |
+        static_cast<std::uint8_t>((*os2)[at + 1]));
+  };
+  EXPECT_EQ(u16(0), 4u);   // version 4
+  EXPECT_EQ(u16(4), 400u); // usWeightClass: regular
+  EXPECT_EQ(u16(6), 5u);   // usWidthClass: medium
+  EXPECT_EQ(u16(64),
+            0xe000); // usFirstCharIndex: PUA base (3 glyphs re-encoded)
+  EXPECT_EQ(u16(66), 0xe002); // usLastCharIndex
+  EXPECT_EQ(file_checksum(out), 0xb1b0afbaU);
+}
+
+TEST(SfntTransform, write_keeps_existing_os2) {
+  std::string original_os2(96, '\0');
+  original_os2[1] = 0x02; // version 2 marker, distinct from the synthesized 4
+  const std::string font = build_font(0x00010000, {{"head", head_table()},
+                                                   {"maxp", maxp_table(3)},
+                                                   {"hhea", hhea_table(0)},
+                                                   {"OS/2", original_os2}});
+
+  sfnt::SfntFont parsed = parse(font);
+  reencode_to_pua(parsed);
+  std::ostringstream out;
+  parsed.write(out);
+
+  // The source `OS/2` is copied through verbatim, not replaced.
+  EXPECT_EQ(table(out.str(), "OS/2"), original_os2);
+}

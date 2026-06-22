@@ -56,6 +56,23 @@ serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
 
 [[nodiscard]] std::string serialize_post();
 
+/// Serialize a minimal version-4 `OS/2` table.
+///
+/// OTS (the font sanitizer in Chrome/Firefox) also requires `OS/2` and rejects
+/// the whole font when it is absent — like `post`, PDF-embedded TrueType fonts
+/// routinely omit it (the viewer takes its metrics elsewhere), so a font copied
+/// through verbatim is rejected. The synthesized table carries neutral weight
+/// and width (regular, medium) with the vertical metrics and character-range
+/// bounds derived from the arguments; OTS reconciles the remaining fields (e.g.
+/// the `fsSelection` style bits against `head`). @p units_per_em scales the
+/// sub/superscript and strikeout defaults; @p y_min / @p y_max are the font
+/// bounding box (ascender/descender fall back to 0.8/0.2 em when degenerate);
+/// @p first_char / @p last_char bound the `cmap`.
+[[nodiscard]] std::string serialize_os2(std::uint16_t units_per_em,
+                                        std::int16_t y_min, std::int16_t y_max,
+                                        std::uint16_t first_char,
+                                        std::uint16_t last_char);
+
 /// Re-encode @p font in place for the browser: replace its `cmap` with a fresh
 /// map from the deterministic PUA code points (`pua_code_point`) to *every*
 /// glyph, so the font renders every glyph — including ones the original `cmap`
