@@ -23,6 +23,7 @@ void put16(std::string &s, const std::uint16_t v) {
   s += static_cast<char>(v >> 8);
   s += static_cast<char>(v & 0xff);
 }
+
 void put32(std::string &s, const std::uint32_t v) {
   put16(s, static_cast<std::uint16_t>(v >> 16));
   put16(s, static_cast<std::uint16_t>(v & 0xffff));
@@ -34,6 +35,7 @@ std::string head_table() {
   t[19] = static_cast<char>(0xe8); // unitsPerEm = 1000
   return t;
 }
+
 std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
   put32(t, 0x00010000);
@@ -41,12 +43,14 @@ std::string maxp_table(const std::uint16_t glyphs) {
   t.resize(32, '\0');
   return t;
 }
+
 std::string hhea_table(const std::uint16_t h_metrics) {
   std::string t(36, '\0');
   t[34] = static_cast<char>(h_metrics >> 8);
   t[35] = static_cast<char>(h_metrics & 0xff);
   return t;
 }
+
 std::string hmtx_table(const std::uint16_t count) {
   std::string t;
   for (std::uint16_t i = 0; i < count; ++i) {
@@ -55,6 +59,7 @@ std::string hmtx_table(const std::uint16_t count) {
   }
   return t;
 }
+
 /// Format-4 (3,1) subtable mapping [start, start+count) to glyph ids [1,
 /// count].
 std::string cmap_format4(const char16_t start, const std::uint16_t count) {
@@ -77,6 +82,7 @@ std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   put16(t, 0);
   return t;
 }
+
 std::string cmap_table(const std::string &subtable) {
   std::string t;
   put16(t, 0);
@@ -87,6 +93,7 @@ std::string cmap_table(const std::string &subtable) {
   t += subtable;
   return t;
 }
+
 std::string
 build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
   const auto count = static_cast<std::uint16_t>(tables.size());
@@ -134,7 +141,7 @@ std::string codes2(const std::vector<std::uint16_t> &cids) {
 
 } // namespace
 
-TEST(PdfFontProgram, composite_identity_glyph_for_code) {
+TEST(PdfFont, composite_identity_glyph_for_code) {
   Font font;
   font.composite = true;
   font.embedded_font = sample_font();
@@ -144,7 +151,7 @@ TEST(PdfFontProgram, composite_identity_glyph_for_code) {
   EXPECT_EQ(font.glyph_for_code(3), 3);
 }
 
-TEST(PdfFontProgram, composite_cid_to_gid_map) {
+TEST(PdfFont, composite_cid_to_gid_map) {
   Font font;
   font.composite = true;
   font.embedded_font = sample_font();
@@ -156,7 +163,7 @@ TEST(PdfFontProgram, composite_cid_to_gid_map) {
   EXPECT_EQ(font.glyph_for_code(9), 0); // out of range -> .notdef
 }
 
-TEST(PdfFontProgram, embedded_reverse_map_closes_the_gap) {
+TEST(PdfFont, embedded_reverse_map_closes_the_gap) {
   // A composite font with no /ToUnicode and no predefined CMap name: extraction
   // was "no Unicode" before stage 3.3; now the embedded font's reverse map
   // recovers it (CID 1 -> GID 1 -> 'A', etc.).
@@ -169,7 +176,7 @@ TEST(PdfFontProgram, embedded_reverse_map_closes_the_gap) {
   EXPECT_EQ(font.to_unicode(codes2({4})), "");
 }
 
-TEST(PdfFontProgram, to_unicode_prefers_cmap_over_reverse_map) {
+TEST(PdfFont, to_unicode_prefers_cmap_over_reverse_map) {
   // An explicit /ToUnicode CMap wins over the embedded reverse map.
   Font font;
   font.composite = true;
@@ -180,7 +187,7 @@ TEST(PdfFontProgram, to_unicode_prefers_cmap_over_reverse_map) {
   EXPECT_EQ(font.to_unicode(codes2({1})), "Z");
 }
 
-TEST(PdfFontProgram, simple_font_glyph_for_code_via_cmap) {
+TEST(PdfFont, simple_font_glyph_for_code_via_cmap) {
   // A simple (1-byte) TrueType font: the code's Unicode reaches the glyph
   // through the embedded (3,1) cmap.
   Font font;
@@ -190,7 +197,7 @@ TEST(PdfFontProgram, simple_font_glyph_for_code_via_cmap) {
   EXPECT_EQ(font.glyph_for_code('C'), 3);
 }
 
-TEST(PdfFontProgram, no_program_yields_no_glyph) {
+TEST(PdfFont, no_font_yields_no_glyph) {
   Font font;
   font.composite = true;
   EXPECT_EQ(font.glyph_for_code(1), 0);

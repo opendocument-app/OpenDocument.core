@@ -19,6 +19,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <cmath>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -162,24 +163,52 @@ public:
     std::vector<PageOut> pages_out;
     pages_out.reserve(pages.size());
 
-    // Embedded fonts encountered, in first-seen order. Each gets a
-    // PUA re-encode + `@font-face` (emitted after this pass) and a
-    // `font-family` class `odr-fN`. A font whose embedded font is absent or not
-    // an SFNT renders through the fallback path, exactly as before.
-    std::vector<std::pair<pdf::Font *, std::shared_ptr<font::sfnt::SfntFont>>>
-        embedded_fonts;
+    // Embedded fonts get a PUA re-encode, an `@font-face`, and a `font-family`
+    // class `odr-fN`, assigned on first encounter in `font_family`. A font
+    // whose embedded font is absent, not an SFNT, or not re-encodable keeps
+    // index 0 and renders through the fallback path, exactly as before.
+    // `font_faces` collects the rules for the accepted fonts, emitted in <head>
+    // below.
+    int family_count = 0;
+    std::string font_faces;
     std::unordered_map<const pdf::Font *, int> family_index;
     const auto font_family = [&](pdf::Font *font) -> int {
       const auto [it, inserted] = family_index.try_emplace(font, 0);
-      if (inserted) {
-        auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-            font->embedded_font);
-        if (sfnt != nullptr) {
-          it->second = static_cast<int>(embedded_fonts.size()) + 1;
-          embedded_fonts.emplace_back(font, std::move(sfnt));
-        }
+      if (!inserted) {
+        return it->second; // already classified
       }
-      return it->second; // 0 when the font has no usable embedded font
+      auto sfnt =
+          std::dynamic_pointer_cast<font::sfnt::SfntFont>(font->embedded_font);
+      if (sfnt == nullptr) {
+        return 0; // no usable embedded font: fallback path
+      }
+      // Re-encode to the PUA up front so taking the embedded-font path is gated
+      // on success: a font we cannot re-encode (more glyphs than the BMP PUA
+      // holds, or a serialization failure) keeps index 0 and renders through
+      // the legible fallback path, never emitting orphaned PUA glyph spans. The
+      // re-encode mutates the cmap in place, but `glyph_for_code` reads it
+      // during extraction below, so snapshot the original cmap and restore it
+      // after.
+      std::string reencoded;
+      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
+      try {
+        font::reencode_to_pua(*sfnt);
+        std::ostringstream sfnt_out;
+        sfnt->write(sfnt_out);
+        reencoded = std::move(sfnt_out).str();
+      } catch (...) {
+        reencoded.clear();
+      }
+      sfnt->set_cmap(std::move(original_cmap));
+      if (reencoded.empty()) {
+        return 0; // not re-encodable: fallback path
+      }
+      const int index = ++family_count;
+      it->second = index;
+      const std::string url = file_to_url(reencoded, "font/ttf");
+      font_faces += "@font-face{font-family:'odr-f" + std::to_string(index) +
+                    "';src:url(" + url + ");}";
+      return index;
     };
 
     // The PUA glyph string for a run: each character code -> glyph id ->
@@ -348,28 +377,6 @@ public:
               {std::move(classes), escape_text(text.text), false});
         }
       }
-    }
-
-    // Re-encode each embedded font to the PUA and register an `@font-face`.
-    // Done after extraction so the in-place re-encode cannot disturb the
-    // reverse-map / glyph lookups, which read the original `cmap`.
-    std::string font_faces;
-    for (const auto &[font, sfnt] : embedded_fonts) {
-      const int index = family_index.at(font);
-      std::string reencoded;
-      try {
-        font::reencode_to_pua(*sfnt);
-        std::ostringstream sfnt_out;
-        sfnt->write(sfnt_out);
-        reencoded = std::move(sfnt_out).str();
-      } catch (...) {
-        // Too many glyphs for the BMP PUA, or a serialization failure: the
-        // glyph spans then fall back to the default font (still legible).
-        continue;
-      }
-      const std::string url = file_to_url(reencoded, "font/ttf");
-      font_faces += "@font-face{font-family:'odr-f" + std::to_string(index) +
-                    "';src:url(" + url + ");}";
     }
 
     // Pass 2: write the document, now that the catalog is complete.
