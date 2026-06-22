@@ -215,12 +215,7 @@ public:
     // deterministic PUA code point (`U+E000 + glyph`), matching the re-encode.
     const auto glyph_run = [](const pdf::Font &font, const std::string &codes) {
       std::string new_codes;
-      const std::size_t width = font.code_byte_width();
-      for (std::size_t i = 0; i + width <= codes.size(); i += width) {
-        std::uint32_t code = 0;
-        for (std::size_t k = 0; k < width; ++k) {
-          code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
-        }
+      for (const std::uint32_t code : font.codes(codes)) {
         util::string::append_c32(
             font::pua_code_point(font.glyph_for_code(code)), new_codes);
       }

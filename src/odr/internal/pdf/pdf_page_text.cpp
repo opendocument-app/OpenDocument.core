@@ -205,14 +205,9 @@ struct SegmentAdvances {
 /// scaling (ISO 32000-1 9.4.4).
 SegmentAdvances segment_advances(const GraphicsState::Text &text,
                                  const Font &font, const std::string &codes) {
-  const int width = font.code_byte_width();
   const double scaling = text.horizontal_scaling / 100.0;
   SegmentAdvances result;
-  for (std::size_t i = 0; i + width <= codes.size(); i += width) {
-    std::uint32_t code = 0;
-    for (int k = 0; k < width; ++k) {
-      code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
-    }
+  for (const std::uint32_t code : font.codes(codes)) {
     double tx = font.advance_width(code) * text.size + text.char_spacing;
     if (!font.composite && code == ' ') {
       tx += text.word_spacing;

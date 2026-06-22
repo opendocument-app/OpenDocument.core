@@ -58,14 +58,9 @@ std::string reverse_map_unicode(const Font &font, const std::string &codes) {
   if (font.embedded_font == nullptr) {
     return {};
   }
-  const std::size_t width = font.code_byte_width();
   std::string result;
   bool any = false;
-  for (std::size_t i = 0; i + width <= codes.size(); i += width) {
-    std::uint32_t code = 0;
-    for (std::size_t k = 0; k < width; ++k) {
-      code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
-    }
+  for (const std::uint32_t code : font.codes(codes)) {
     if (const std::optional<char32_t> cp =
             font.embedded_font->code_point_for_glyph(
                 font.glyph_for_code(code))) {
