@@ -163,9 +163,9 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
 
   const Dictionary &dictionary = resolved.as_dictionary();
 
-  // No `/BaseEncoding` means "the font's built-in encoding"; that needs the
-  // font program (stage 3). Default to StandardEncoding for now, which is the
-  // right base for the non-symbolic Latin fonts this stage targets.
+  // No `/BaseEncoding` means "the font's built-in encoding"; reading that from
+  // the font program is not wired here. Default to StandardEncoding, the right
+  // base for the non-symbolic Latin fonts this path targets.
   auto base = BaseEncoding::standard;
   if (dictionary.has_key("BaseEncoding")) {
     const Object &base_object = dictionary["BaseEncoding"];
@@ -258,13 +258,14 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
           array[3].as_real(), array[4].as_real(), array[5].as_real()};
 }
 
-/// Load the embedded font program from a `/FontDescriptor` (stage 3.3). Only
-/// `/FontFile2` (embedded TrueType / `CIDFontType2`) is read here, through the
+/// Load the embedded font from a `/FontDescriptor`. Only `/FontFile2`
+/// (embedded TrueType / `CIDFontType2`) is read here, through the
 /// `abstract::Font` interface; `/FontFile3` (CFF) and `/FontFile` (Type1) are
-/// stages 3.4/3.5 and leave `font.program` null, so such fonts keep rendering
-/// through the fallback path. A malformed program is logged and left null.
-void load_font_program(DocumentParser &parser, const Dictionary &descriptor,
-                       Font &font) {
+/// not yet read and leave `font.embedded_font` null, so such fonts keep
+/// rendering through the fallback path. A malformed font is logged and left
+/// null.
+void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
+                        Font &font) {
   if (!descriptor.has_key("FontFile2")) {
     return;
   }
@@ -273,12 +274,12 @@ void load_font_program(DocumentParser &parser, const Dictionary &descriptor,
     return;
   }
   try {
-    std::string program = parser.read_decoded_stream(file.as_reference());
-    font.program = std::make_shared<font::sfnt::SfntFont>(
-        std::make_unique<std::istringstream>(std::move(program)));
+    std::string data = parser.read_decoded_stream(file.as_reference());
+    font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
+        std::make_unique<std::istringstream>(std::move(data)));
   } catch (const std::exception &e) {
     ODR_WARNING(parser.logger(),
-                "pdf: failed to read embedded font program: " << e.what());
+                "pdf: failed to read embedded font: " << e.what());
   }
 }
 
@@ -312,7 +313,7 @@ void parse_simple_font_widths(DocumentParser &parser,
           font.missing_width = missing.as_real();
         }
       }
-      load_font_program(parser, descriptor_dictionary, font);
+      load_embedded_font(parser, descriptor_dictionary, font);
     }
   }
 }
@@ -388,13 +389,13 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
     }
   }
 
-  // The embedded program (stage 3.3) and CID -> GID mapping live on the
-  // descendant CIDFont (the CIDFontType2 case; CIDFontType0/CFF is stage 3.4).
+  // The embedded font and CID -> GID mapping live on the descendant CIDFont
+  // (the CIDFontType2 case; CIDFontType0/CFF is not yet read).
   if (cid_font_dictionary.has_key("FontDescriptor")) {
     const Object descriptor =
         parser.resolve_object_copy(cid_font_dictionary["FontDescriptor"]);
     if (descriptor.is_dictionary()) {
-      load_font_program(parser, descriptor.as_dictionary(), font);
+      load_embedded_font(parser, descriptor.as_dictionary(), font);
     }
   }
   if (cid_font_dictionary.has_key("CIDToGIDMap")) {

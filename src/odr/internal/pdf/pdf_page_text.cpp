@@ -166,7 +166,7 @@ using MarkedContentStack = std::vector<MarkedContent>;
 /// `/ActualText` sequence, if any, governs: its text is emitted for the first
 /// segment and the rest of the sequence is suppressed (empty). Otherwise the
 /// font's code -> Unicode chain applies; an empty result for non-empty codes is
-/// reported as `no_unicode` (the run is not extractable until stage 3).
+/// reported as `no_unicode` (the run is not extractable, only displayable).
 struct ResolvedText {
   std::string text;
   bool no_unicode{false};

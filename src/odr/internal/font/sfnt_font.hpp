@@ -19,9 +19,9 @@ namespace odr::internal::font::sfnt {
 /// OpenType/CFF (`OTTO`) — parsed from its raw bytes.
 ///
 /// Reads the table directory and the `head`/`maxp`/`hhea`/`hmtx`/`cmap`/`name`
-/// tables needed for the stage-3 facts; glyph outlines are not touched. A
-/// TrueType Collection (`ttcf`) is read through its first font. Throws
-/// `std::runtime_error` on a structurally invalid SFNT.
+/// tables needed for the `abstract::Font` facts; glyph outlines are not
+/// touched. A TrueType Collection (`ttcf`) is read through its first font.
+/// Throws `std::runtime_error` on a structurally invalid SFNT.
 class SfntFont final : public abstract::Font {
 public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.

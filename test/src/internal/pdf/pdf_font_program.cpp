@@ -113,7 +113,7 @@ build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
 }
 
 /// A 5-glyph font whose `cmap` maps 'A','B','C' (U+0041..0043) to gids 1,2,3.
-std::shared_ptr<abstract::Font> sample_program() {
+std::shared_ptr<abstract::Font> sample_font() {
   std::string sfnt = build_sfnt({{"cmap", cmap_table(cmap_format4('A', 3))},
                                  {"head", head_table()},
                                  {"hhea", hhea_table(5)},
@@ -137,7 +137,7 @@ std::string codes2(const std::vector<std::uint16_t> &cids) {
 TEST(PdfFontProgram, composite_identity_glyph_for_code) {
   Font font;
   font.composite = true;
-  font.program = sample_program();
+  font.embedded_font = sample_font();
 
   // Identity-H with an Identity /CIDToGIDMap: GID = CID = code.
   EXPECT_EQ(font.glyph_for_code(1), 1);
@@ -147,7 +147,7 @@ TEST(PdfFontProgram, composite_identity_glyph_for_code) {
 TEST(PdfFontProgram, composite_cid_to_gid_map) {
   Font font;
   font.composite = true;
-  font.program = sample_program();
+  font.embedded_font = sample_font();
   // CID 1 -> GID 3, CID 2 -> GID 1.
   font.cid_to_gid = {0, 3, 1};
 
@@ -158,11 +158,11 @@ TEST(PdfFontProgram, composite_cid_to_gid_map) {
 
 TEST(PdfFontProgram, embedded_reverse_map_closes_the_gap) {
   // A composite font with no /ToUnicode and no predefined CMap name: extraction
-  // was "no Unicode" before stage 3.3; now the embedded program's reverse map
+  // was "no Unicode" before stage 3.3; now the embedded font's reverse map
   // recovers it (CID 1 -> GID 1 -> 'A', etc.).
   Font font;
   font.composite = true;
-  font.program = sample_program();
+  font.embedded_font = sample_font();
 
   EXPECT_EQ(font.to_unicode(codes2({1, 2, 3})), "ABC");
   // A glyph the cmap never reaches stays unmapped (gid 4 has no code point).
@@ -173,7 +173,7 @@ TEST(PdfFontProgram, to_unicode_prefers_cmap_over_reverse_map) {
   // An explicit /ToUnicode CMap wins over the embedded reverse map.
   Font font;
   font.composite = true;
-  font.program = sample_program();
+  font.embedded_font = sample_font();
   font.cmap.add_codespace_range(codes2({0}), codes2({0xffff}));
   font.cmap.map_single(codes2({1}), u"Z");
 
@@ -184,7 +184,7 @@ TEST(PdfFontProgram, simple_font_glyph_for_code_via_cmap) {
   // A simple (1-byte) TrueType font: the code's Unicode reaches the glyph
   // through the embedded (3,1) cmap.
   Font font;
-  font.program = sample_program();
+  font.embedded_font = sample_font();
 
   EXPECT_EQ(font.glyph_for_code('A'), 1);
   EXPECT_EQ(font.glyph_for_code('C'), 3);

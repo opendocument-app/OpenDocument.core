@@ -125,7 +125,7 @@ public:
   // the writing pass. A text run with an embedded font emits two overlaid
   // spans: a visible glyph layer (PUA code points in the `@font-face` font,
   // `glyph == true`, marked `aria-hidden`/unselectable) and a transparent
-  // selectable layer carrying the real Unicode (stage 3.3 dual layer).
+  // selectable layer carrying the real Unicode (the dual layer).
   struct SpanOut {
     std::string classes;
     std::string text;
@@ -162,24 +162,24 @@ public:
     std::vector<PageOut> pages_out;
     pages_out.reserve(pages.size());
 
-    // Embedded fonts encountered, in first-seen order (stage 3.3). Each gets a
+    // Embedded fonts encountered, in first-seen order. Each gets a
     // PUA re-encode + `@font-face` (emitted after this pass) and a
-    // `font-family` class `odr-fN`. A font whose program is absent or not an
-    // SFNT renders through the fallback path, exactly as before.
+    // `font-family` class `odr-fN`. A font whose embedded font is absent or not
+    // an SFNT renders through the fallback path, exactly as before.
     std::vector<std::pair<pdf::Font *, std::shared_ptr<font::sfnt::SfntFont>>>
         embedded_fonts;
     std::unordered_map<const pdf::Font *, int> family_index;
     const auto font_family = [&](pdf::Font *font) -> int {
       const auto [it, inserted] = family_index.try_emplace(font, 0);
       if (inserted) {
-        auto sfnt =
-            std::dynamic_pointer_cast<font::sfnt::SfntFont>(font->program);
+        auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+            font->embedded_font);
         if (sfnt != nullptr) {
           it->second = static_cast<int>(embedded_fonts.size()) + 1;
           embedded_fonts.emplace_back(font, std::move(sfnt));
         }
       }
-      return it->second; // 0 when the font has no usable embedded program
+      return it->second; // 0 when the font has no usable embedded font
     };
 
     // The PUA glyph string for a run: each character code -> glyph id ->
@@ -249,8 +249,8 @@ public:
 
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
-        // The font index is non-zero when an embedded program (stage 3.3) lets
-        // us render the actual glyphs; 0 falls through to the legacy path.
+        // The font index is non-zero when an embedded font lets us render
+        // the actual glyphs; 0 falls through to the legacy path.
         const int font = text.font != nullptr ? font_family(text.font) : 0;
         // Without an embedded font, an empty `text` has nothing to show: a code
         // with no recoverable Unicode (`no_unicode`) or an `/ActualText`-
@@ -350,9 +350,9 @@ public:
       }
     }
 
-    // Re-encode each embedded font to the PUA and register an `@font-face`
-    // (stage 3.3). Done after extraction so the in-place re-encode cannot
-    // disturb the reverse-map / glyph lookups, which read the original `cmap`.
+    // Re-encode each embedded font to the PUA and register an `@font-face`.
+    // Done after extraction so the in-place re-encode cannot disturb the
+    // reverse-map / glyph lookups, which read the original `cmap`.
     std::string font_faces;
     for (const auto &[font, sfnt] : embedded_fonts) {
       const int index = family_index.at(font);
@@ -389,9 +389,8 @@ public:
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
     out.out() << ".i{color:transparent}";
-    // The visible glyph layer (stage 3.3): not selectable, so the real text
-    // layer overlaid on top owns copy/search and the PUA code points stay off
-    // the clipboard.
+    // The visible glyph layer: not selectable, so the real text layer overlaid
+    // on top owns copy/search and the PUA code points stay off the clipboard.
     out.out() << ".g{user-select:none}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;

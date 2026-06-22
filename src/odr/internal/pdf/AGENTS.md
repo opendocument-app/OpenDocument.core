@@ -17,8 +17,9 @@ text spans, one per shown segment, placed by the full text transform (CTM × tex
 matrix) and advanced by the parsed glyph widths, recursing into form XObjects,
 with text render modes and `/ActualText` honoured and omitted spaces inferred
 from glyph gaps, pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
-AES-128, AES-256). No graphics, no images, no font files. Experimental and not
-production-quality.
+AES-128, AES-256). Embedded TrueType fonts render through `@font-face` (other
+font flavors fall back to a system font); no graphics, no images yet.
+Experimental and not production-quality.
 
 ---
 
@@ -106,8 +107,9 @@ production-quality.
   `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`), since those
   character codes already are Unicode (big-endian); any
   other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
-  Unicode" (not byte-garbage) until the legacy CID → Unicode tables or the
-  embedded font program (stage 3) land.
+  Unicode" (not byte-garbage) until the legacy CID → Unicode tables land or —
+  for an embedded TrueType program — the reverse map below recovers it (stage
+  3.3).
 - **Glyph metrics**: a font's advance widths are parsed —
   `/FirstChar` + `/Widths` + `/FontDescriptor` `/MissingWidth` for simple fonts,
   `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
@@ -115,6 +117,19 @@ production-quality.
   text-space units (glyph-space / 1000), falling back to `/MissingWidth` or `/DW`.
   Codes outside the corpus are interpreted as CIDs for composite fonts (identity);
   AFM widths for the non-embedded standard-14 fonts are stage 3.
+- **Embedded font programs** (stage 3.3): a TrueType `/FontFile2` (a simple font,
+  or a composite `CIDFontType2`) is decoded into an `abstract::Font` (`SfntFont`)
+  and held on `Font::embedded_font`; an explicit `/CIDToGIDMap` stream is read into
+  `Font::cid_to_gid` (empty = `Identity`). `Font::glyph_for_code(code)` maps a
+  character code to a glyph id — composite: CID → GID via `/CIDToGIDMap`; simple
+  TrueType: the embedded `cmap`, else the code's Unicode, else the code as a GID
+  (best effort, ISO 32000-1 9.6.6.4). Two consumers read it: the HTML layer
+  renders the actual glyphs (see *HTML*), and `Font::to_unicode` gains an
+  **embedded-font reverse map** as its final fallback (code → glyph →
+  `code_point_for_glyph`), so a font with neither a `/ToUnicode` CMap nor a
+  usable `/Encoding` becomes selectable — closing the stage-1 extraction gap for
+  these fonts; a partially mapped run recovers what it can. CFF (`/FontFile3`)
+  and Type1 (`/FontFile`) leave `embedded_font` null (stages 3.4 / 3.5).
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, glyph metrics
@@ -175,10 +190,20 @@ production-quality.
   space — y-up, MediaBox origin — into the page box in CSS pixels, the glyphs
   un-mirrored so text stays upright), `font-size` from the text state, and the
   Unicode text. Invisible render modes (`Tr` 3/7) keep the span but paint it
-  transparent (the `.i` class) so OCR-over-scan text stays selectable; segments
-  with no extractable text (a `no_unicode` run or an `/ActualText`-suppressed
-  show) emit no span at all for now. Precise baseline placement (needs font
-  ascent metrics) is deferred; the baseline currently sits at the span's box top.
+  transparent (the `.i` class) so OCR-over-scan text stays selectable.
+  **Embedded fonts** (stage 3.3): a run whose font carries a usable program is
+  emitted as a **dual layer** — a visible glyph layer (PUA code points in the
+  font's `@font-face`, `aria-hidden` + `user-select:none`) overlaid by a
+  transparent selectable layer carrying the real Unicode, so display is
+  glyph-exact while copy/search read the Unicode (and the PUA code points never
+  reach the clipboard). Each embedded SFNT is re-encoded to the PUA once — after
+  extraction, so the in-place re-encode can't disturb the reverse-map / glyph
+  lookups that read the original `cmap` — and served as an inline `@font-face`;
+  too many glyphs for the BMP PUA falls back to the default font. A run with no
+  embedded program keeps the single-span fallback path; one with neither a
+  program nor extractable text (a `no_unicode` run or an `/ActualText`-suppressed
+  show) still emits no span. Precise baseline placement (needs font ascent
+  metrics) is deferred; the baseline currently sits at the span's box top.
 
 ## Module layout
 
@@ -189,10 +214,10 @@ production-quality.
 | `pdf_file_object.{hpp,cpp}`            | File-structure entries: `Header`, `IndirectObject`, `Trailer`, `Xref` (tagged-union entries, `append`/`merge_hybrid`), `StartXref`, `Eof`, the `Entry` any-holder; `parse_xref_stream_table` and the `ObjectStream` payload wrapper |
 | `pdf_file_parser.{hpp,cpp}`            | File-level reads on top of `ObjectParser`: indirect objects, xref, trailer, startxref, stream payloads, `seek_start_xref` |
 | `pdf_filter.{hpp,cpp}`                 | Stream filter framework: `decode()` over the `/Filter`/`/DecodeParms` chain; ASCIIHex/ASCII85/LZW/Flate/RunLength decoders, TIFF/PNG predictors; image codecs returned undecoded (`DecodeResult::stopped_at_filter`) |
-| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references |
+| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references; loads each font's embedded program (`/FontFile2` → `SfntFont`) and `/CIDToGIDMap` (stage 3.3) |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
-| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject + `/Properties` tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, and `to_unicode`) |
+| `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject + `/Properties` tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, the `embedded_font`/`cid_to_gid` + `glyph_for_code`, and `to_unicode` with its embedded reverse-map fallback) |
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` |
@@ -206,7 +231,9 @@ production-quality.
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
-selection) and `html/pdf_file.cpp` (`create_pdf_service`).
+selection) and `html/pdf_file.cpp` (`create_pdf_service`; also the stage-3.3
+per-font PUA re-encode + `@font-face` and the dual-layer glyph/Unicode span
+emission, using `font/sfnt_*`).
 
 ## Pipeline: how a `.pdf` becomes HTML
 
@@ -311,7 +338,7 @@ and vector content via SVG (stage 4) — the browser draws everything. Because
 display is driven by the *glyph*, not the extracted Unicode, **text-extraction
 gaps degrade only selectability and search — never display.** Every deferred
 code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
-`/ToUnicode`, embedded-font reverse maps) still renders correctly once stage 3 lands:
+`/ToUnicode`, the remaining CFF/Type1 reverse maps) still renders correctly once stage 3 lands:
 all glyphs are re-encoded to the Private Use Area for display (stage 3's uniform
 re-encode, decision 2026-06-19), with the extracted Unicode carried separately to
 drive selection/search; runs with no recoverable Unicode are additionally marked
@@ -409,9 +436,18 @@ such PDFs look right, their text just isn't selectable until the tables land.
   `EMC`; plus space-inference coverage — a word-gap space, no space
   when segments abut, the `TJ`-kern threshold (sub- vs. supra-threshold), a
   new-line space, and the no-double-space after a trailing space.
+- `test/src/internal/pdf/pdf_font_program.cpp` — **assertion-based**, no
+  fixtures: hand-built `Font`s over tiny in-memory `SfntFont`s (a compact SFNT
+  builder mapping a code run to glyph ids). `glyph_for_code` — composite
+  `Identity`, an explicit `/CIDToGIDMap` (incl. an out-of-range CID → `.notdef`),
+  a simple-font code reaching its glyph through the embedded `(3,1)` `cmap`, and
+  the no-program zero — and the embedded reverse-map `to_unicode`: recovery when
+  there is no `/ToUnicode` (with an unreachable glyph staying unmapped) and a
+  `/ToUnicode` CMap taking precedence over the reverse map.
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
-or the HTML output itself (the span emission / CSS transform mapping).
+or the HTML output itself (the span emission / CSS transform mapping, incl. the
+stage-3.3 dual layer).
 
 ---
 
@@ -623,18 +659,14 @@ implementation.
   `abstract::Filesystem` (`/fonts/F1.ttf`, …) reusing the filesystem HTML service
   (as for ZIP/CFB); doubles as the corpus harvester.
 - **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).**
-  **In progress** (design: [`STAGE_3.3_DESIGN.md`](STAGE_3.3_DESIGN.md)). Read
-  embedded `FontFile2`/`CIDFontType2` programs through the `abstract::Font`
-  interface, run them through the 3.1 wrap/PUA pipeline, and emit `@font-face` +
-  PUA-encoded spans in the PDF HTML — replacing today's fallback-font span for the
-  bulk of modern PDFs. Also lands the **embedded-font reverse map**: code →
-  Unicode from the reversed TrueType `cmap`, surfaced for selection (closing the
-  stage-1 extraction gap for these fonts). The HTML emission is a **dual layer**:
-  a visible PUA glyph layer in the embedded font + a transparent selectable layer
-  carrying the real Unicode (so copy/search work). `Font::program` /
-  `Font::glyph_for_code` / `Font::cid_to_gid` on the PDF font element; the
-  reverse map is the new fallback in `Font::to_unicode`. Simple-TrueType glyph
-  selection is best-effort (ISO 32000-1 9.6.6.4); CFF/Type1 stay null here.
+  **Done.** Embedded `FontFile2`/`CIDFontType2` programs are read through
+  `abstract::Font`, re-encoded to the PUA (3.1 pipeline) and emitted as
+  `@font-face` + glyph spans (a dual layer: visible PUA glyphs + a transparent
+  selectable Unicode layer), and their reversed `cmap` recovers Unicode for
+  selection — the mechanics live in *Embedded font programs* and *HTML* under
+  *What works*. Simple-TrueType glyph selection is best-effort (ISO 32000-1
+  9.6.6.4); CFF (`/FontFile3`, 3.4) and Type1 (`/FontFile`, 3.5) leave
+  `Font::embedded_font` null and keep the fallback path.
 - **3.4 — bare CFF (`FontFile3`/Type1C).** A CFF reader (charset, charstrings,
   private dict) producing an `abstract::Font`; wrap into OTF by synthesizing the ~8
   required SFNT tables (advance widths from `/Widths`/`/W`, not by interpreting
@@ -736,9 +768,10 @@ tree, little else.
   (`Uni*-UCS2/UTF16/UTF32`). Still open: the legacy CJK code→CID CMaps
   (RKSJ/EUC/Big5/GBK/KSC) and their CID → Unicode tables (large external data; the
   generator scaffolding in `tools/pdf/generate_cid_data.py` is landed, the storage
-  decision and lookup remain), and embedded-font reverse maps (stage 3); symbolic
-  fonts with a built-in encoding default to StandardEncoding until the font
-  program is read (stage 3).
+  decision and lookup remain), and the CFF/Type1 embedded-font reverse maps
+  (stages 3.4/3.5 — the TrueType one landed in 3.3); symbolic fonts with a
+  built-in encoding default to StandardEncoding until the font program is read
+  (now read for TrueType; CFF/Type1 still pending).
 - **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the

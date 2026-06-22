@@ -120,8 +120,8 @@ struct Font final : Element {
   /// True for composite (Type0) fonts. Their character codes are
   /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
   /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
-  /// CID -> Unicode tables are deferred; embedded-font reverse maps
-  /// are stage 3.
+  /// CID -> Unicode tables are deferred; an embedded TrueType font also
+  /// supplies a reverse map (see `glyph_for_code` / `to_unicode`).
   bool composite{false};
   /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
   /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the
@@ -151,13 +151,13 @@ struct Font final : Element {
   /// `Identity-H/V` and common CID case), 1 for simple fonts.
   [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
 
-  /// Embedded font program (stage 3.3): the SFNT parsed from `/FontFile2`
-  /// (a simple TrueType font, or a composite `CIDFontType2`), or `nullptr` when
-  /// nothing is embedded or the program is an unsupported flavor (`/FontFile3`
-  /// CFF → stage 3.4, `/FontFile` Type1 → stage 3.5). When present, the HTML
-  /// layer re-encodes it to the PUA and renders the actual glyphs via
-  /// `@font-face`, and `to_unicode` reads the embedded reverse map.
-  std::shared_ptr<abstract::Font> program;
+  /// Embedded font: the SFNT parsed from `/FontFile2` (a simple TrueType font,
+  /// or a composite `CIDFontType2`), or `nullptr` when nothing is embedded or
+  /// the font is an unsupported flavor (`/FontFile3` CFF, `/FontFile` Type1 —
+  /// both not yet read). When present, the HTML layer re-encodes it to the PUA
+  /// and renders the actual glyphs via `@font-face`, and `to_unicode` reads the
+  /// embedded reverse map.
+  std::shared_ptr<abstract::Font> embedded_font;
 
   /// Composite-font `/CIDToGIDMap` (ISO 32000-1 9.7.4.3) when given as an
   /// explicit stream: `GID = cid_to_gid[CID]`. Empty means `Identity`
@@ -165,11 +165,11 @@ struct Font final : Element {
   std::vector<std::uint16_t> cid_to_gid;
 
   /// Map a single character code (as split by `code_byte_width`) to a glyph id
-  /// in the embedded `program`. For a composite font the code is the CID
+  /// in the `embedded_font`. For a composite font the code is the CID
   /// (`Identity-H/V`), mapped to a GID via `/CIDToGIDMap`; for a simple
   /// TrueType font the embedded `cmap` (or, failing that, the code's Unicode)
   /// selects the glyph (ISO 32000-1 9.6.6.4). Returns 0 (`.notdef`) when there
-  /// is no program or no mapping.
+  /// is no embedded font or no mapping.
   [[nodiscard]] std::uint16_t glyph_for_code(std::uint32_t code) const;
 
   /// Glyph advance width of a single character code, in text-space units

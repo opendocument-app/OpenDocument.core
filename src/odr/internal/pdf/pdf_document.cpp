@@ -48,14 +48,14 @@ double Font::advance_width(const std::uint32_t code) const {
 
 namespace {
 
-/// Embedded-font reverse map (stage 3.3): translate `codes` to Unicode via the
-/// program's own character map (`code -> glyph -> code_point_for_glyph`). The
+/// Embedded-font reverse map: translate `codes` to Unicode via the embedded
+/// font's own character map (`code -> glyph -> code_point_for_glyph`). The
 /// last resort before byte-identity, closing the stage-1 extraction gap for
 /// fonts with neither a `/ToUnicode` CMap nor a usable `/Encoding`. Returns
-/// empty (so the run stays `no_unicode`) when nothing maps or no program is
+/// empty (so the run stays `no_unicode`) when nothing maps or no font is
 /// embedded; a partially mapped run yields the code points it could recover.
 std::string reverse_map_unicode(const Font &font, const std::string &codes) {
-  if (font.program == nullptr) {
+  if (font.embedded_font == nullptr) {
     return {};
   }
   const int width = font.code_byte_width();
@@ -68,7 +68,8 @@ std::string reverse_map_unicode(const Font &font, const std::string &codes) {
       code = (code << 8) | static_cast<unsigned char>(codes[i + k]);
     }
     if (const std::optional<char32_t> cp =
-            font.program->code_point_for_glyph(font.glyph_for_code(code))) {
+            font.embedded_font->code_point_for_glyph(
+                font.glyph_for_code(code))) {
       util::string::append_c32(*cp, result);
       any = true;
     }
@@ -79,7 +80,7 @@ std::string reverse_map_unicode(const Font &font, const std::string &codes) {
 } // namespace
 
 std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
-  if (program == nullptr) {
+  if (embedded_font == nullptr) {
     return 0;
   }
   if (composite) {
@@ -93,7 +94,7 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
   // on the byte code first (symbolic (3,0)/(1,0) fonts), then on the code's
   // Unicode (via the /Encoding glyph name), then the code as a GID.
   if (const std::uint16_t glyph =
-          program->glyph_for_code_point(static_cast<char32_t>(code));
+          embedded_font->glyph_for_code_point(static_cast<char32_t>(code));
       glyph != 0) {
     return glyph;
   }
@@ -102,7 +103,7 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
         encoding->glyph_name(static_cast<std::uint8_t>(code)));
     if (!unicode.empty()) {
       if (const std::uint16_t glyph =
-              program->glyph_for_code_point(unicode.front());
+              embedded_font->glyph_for_code_point(unicode.front());
           glyph != 0) {
         return glyph;
       }
@@ -120,26 +121,25 @@ std::string Font::to_unicode(const std::string &codes) const {
     // `/Encoding` (the `Uni*-UCS2/UTF16/UTF32` CMaps) carries Unicode directly
     // in its codes, so decode it. Otherwise code -> CID is
     // known (identity for `Identity-H/V`) but CID -> Unicode needs a predefined
-    // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font
-    // program (stage 3): emit "no Unicode" rather than mis-splitting the
-    // multi-byte codes into byte-sized garbage through the identity fallback
-    // below. `extract_text` marks such runs `no_unicode`; stage 3
-    // re-encodes their glyphs to the PUA.
+    // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font's
+    // reverse map (below): emit "no Unicode" rather than
+    // mis-splitting the multi-byte codes into byte-sized garbage through the
+    // identity fallback below. `extract_text` marks such runs `no_unicode`;
+    // their glyphs are still re-encoded to the PUA for display.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
               translate_predefined_cmap(cid_encoding_name, codes)) {
         return *unicode;
       }
     }
-    // The embedded font program's reverse map (stage 3.3) before giving up.
+    // The embedded font's reverse map before giving up.
     return reverse_map_unicode(*this, codes);
   }
   if (encoding.has_value()) {
     return encoding->translate_string(codes);
   }
-  // No `ToUnicode` CMap and no `/Encoding`: try the embedded reverse map
-  // (stage 3.3), else keep the historic identity fallback (1-byte code -> code
-  // point).
+  // No `ToUnicode` CMap and no `/Encoding`: try the embedded reverse map,
+  // else keep the historic identity fallback (1-byte code -> code point).
   if (std::string unicode = reverse_map_unicode(*this, codes);
       !unicode.empty()) {
     return unicode;

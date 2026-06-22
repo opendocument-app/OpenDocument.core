@@ -14,7 +14,7 @@ class SfntFont;
 }
 
 /// The deterministic Private Use Area code point that the uniform
-/// re-encode (stage 3, decision 2026-06-19) assigns to glyph @p glyph:
+/// re-encode assigns to glyph @p glyph:
 /// `U+E000 + glyph` in the BMP PUA. Every consumer (the specimen page, the PDF
 /// `@font-face` emission) derives the displayed code point from this — no
 /// per-font table needed.
