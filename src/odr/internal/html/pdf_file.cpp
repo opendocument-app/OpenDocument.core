@@ -123,14 +123,18 @@ public:
 
   // One emitted span. The styling is fully resolved into class tokens during
   // the first pass; only the (already escaped) text and class list survive to
-  // the writing pass. A text run with an embedded font emits two overlaid
-  // spans: a visible glyph layer (PUA code points in the `@font-face` font,
-  // `glyph == true`, marked `aria-hidden`/unselectable) and a transparent
-  // selectable layer carrying the real Unicode (the dual layer).
+  // the writing pass. A text run with an embedded font emits the dual layer as
+  // a transparent selectable span carrying the real Unicode with the visible
+  // glyph layer (PUA code points in the `@font-face` font) nested inside it:
+  // the child is absolutely positioned at the run origin and inherits the
+  // font size, spacing, and transform from the parent, so the placement
+  // classes live only on the parent. `glyph_classes` is empty when there is no
+  // nested layer (the legacy fallback path and display-only runs).
   struct SpanOut {
     std::string classes;
     std::string text;
-    bool glyph{false};
+    std::string glyph_classes;
+    std::string glyph_text;
   };
   struct PageOut {
     std::string classes;
@@ -338,26 +342,39 @@ public:
         }
 
         if (font != 0) {
-          // Visible glyph layer: PUA code points in the embedded font. Painted
-          // unless the render mode is invisible; never selected (the text layer
-          // below owns selection), so the PUA code points never reach the
-          // clipboard.
-          std::string glyph_classes = base + " g";
-          add_class(glyph_classes, "ff",
-                    "font-family:'odr-f" + std::to_string(font) + "'");
-          if (invisible) {
-            glyph_classes += " i";
-          }
-          page_out.spans.push_back(
-              {std::move(glyph_classes),
-               escape_text(glyph_run(*text.font, text.codes)), true});
+          // The visible glyph layer: PUA code points in the embedded font.
+          // Painted unless the render mode is invisible; never selected (the
+          // text layer owns selection via `.g`), so the PUA code points never
+          // reach the clipboard.
+          const std::string font_family =
+              "font-family:'odr-f" + std::to_string(font) + "'";
+          std::string glyph_text =
+              escape_text(glyph_run(*text.font, text.codes));
+          // The glyph layer paints (opaque `.gv`) unless the render mode is
+          // invisible (transparent `.i`). The painted color is set explicitly
+          // because, when nested, the layer would otherwise inherit the
+          // `.i` text layer's `transparent`.
+          const char *const paint = invisible ? " i" : " gv";
 
-          // Transparent selectable layer: the real Unicode, for copy/search.
-          // Omitted when nothing is extractable (the run is then display-only,
-          // non-selectable — exactly the `no_unicode`/`aria-hidden` case).
           if (!text.text.empty()) {
+            // Dual layer: a transparent selectable span carrying the real
+            // Unicode (for copy/search) with the glyph layer nested inside.
+            // The nested `.t` child overlays the run origin and inherits the
+            // placement, so only `g`/paint/`ff` need restating on it.
+            std::string glyph_classes = "t g";
+            glyph_classes += paint;
+            add_class(glyph_classes, "ff", font_family);
+            page_out.spans.push_back({base + " i", escape_text(text.text),
+                                      std::move(glyph_classes),
+                                      std::move(glyph_text)});
+          } else {
+            // Display-only run: nothing is extractable (the `no_unicode` case),
+            // so the glyph layer stands alone and carries the placement itself.
+            std::string glyph_classes = base + " g";
+            glyph_classes += paint;
+            add_class(glyph_classes, "ff", font_family);
             page_out.spans.push_back(
-                {base + " i", escape_text(text.text), false});
+                {std::move(glyph_classes), std::move(glyph_text), {}, {}});
           }
         } else {
           // Legacy single-layer path: no embedded font, render the Unicode in a
@@ -367,7 +384,7 @@ public:
             classes += " i";
           }
           page_out.spans.push_back(
-              {std::move(classes), escape_text(text.text), false});
+              {std::move(classes), escape_text(text.text), {}, {}});
         }
       }
     }
@@ -389,9 +406,11 @@ public:
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
     out.out() << ".i{color:transparent}";
-    // The visible glyph layer: not selectable, so the real text layer overlaid
-    // on top owns copy/search and the PUA code points stay off the clipboard.
-    out.out() << ".g{user-select:none}";
+    // The visible glyph layer: not selectable, so the enclosing text layer
+    // owns copy/search and the PUA code points stay off the clipboard. `.gv`
+    // paints it; set explicitly because the nested layer would otherwise
+    // inherit the `.i` text layer's `transparent`.
+    out.out() << ".g{user-select:none}.gv{color:#000}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;
     // Per-value atomic classes (font sizes, offsets, transforms, ...).
@@ -404,15 +423,20 @@ public:
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
       for (const SpanOut &span : page.spans) {
-        HtmlElementOptions options =
-            HtmlElementOptions().set_class(span.classes);
-        // Hide the visible glyph layer (PUA code points) from assistive tech
-        // and search; the overlaid text layer carries the real Unicode.
-        if (span.glyph) {
-          options.set_extra(std::string("aria-hidden=\"true\""));
-        }
-        out.write_element_begin("span", options);
+        // Inline so the whole run (and its nested glyph layer) stays on one
+        // line: smaller output and a more legible diff than the open/text/close
+        // split, while each run still gets its own line under the page div.
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(span.classes));
         out.write_raw(span.text);
+        if (!span.glyph_classes.empty()) {
+          out.write_element_begin(
+              "span", HtmlElementOptions().set_inline(true).set_class(
+                          span.glyph_classes));
+          out.write_raw(span.glyph_text);
+          out.write_element_end("span");
+        }
         out.write_element_end("span");
       }
       out.write_element_end("div");
