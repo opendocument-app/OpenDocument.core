@@ -56,6 +56,7 @@ add_executable(odr_test
 
         "src/internal/font/cff_font.cpp"
         "src/internal/font/type1_crypt.cpp"
+        "src/internal/font/type1_font.cpp"
         "src/internal/font/sfnt_font.cpp"
         "src/internal/font/sfnt_transform.cpp"
         "src/internal/font/font_file.cpp"
