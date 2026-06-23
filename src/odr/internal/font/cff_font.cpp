@@ -1,0 +1,490 @@
+#include <odr/internal/font/cff_font.hpp>
+
+#include <odr/internal/util/stream_util.hpp>
+
+#include <cmath>
+#include <cstdint>
+#include <istream>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
+namespace odr::internal::font::cff {
+
+namespace {
+
+/// CFF Top/Private DICT operators we care about. Two-byte (escape `12 b`)
+/// operators are encoded as `1200 + b` so they share one keyspace.
+enum Operator : int {
+  op_charset = 15,
+  op_encoding = 16,
+  op_char_strings = 17,
+  op_private = 18,
+  op_default_width_x = 20,
+  op_nominal_width_x = 21,
+  op_font_matrix = 1207,
+  op_font_bbox = 5,
+  op_ros = 1230,
+  op_charstring_type = 1206,
+};
+
+[[nodiscard]] std::uint8_t u8(std::string_view d, std::uint32_t p) {
+  if (p >= d.size()) {
+    throw std::runtime_error("cff: read past end");
+  }
+  return static_cast<std::uint8_t>(d[p]);
+}
+
+/// Read a big-endian unsigned of @p size bytes (1..4) at @p p.
+[[nodiscard]] std::uint32_t read_be(std::string_view d, std::uint32_t p,
+                                    std::uint32_t size) {
+  std::uint32_t value = 0;
+  for (std::uint32_t i = 0; i < size; ++i) {
+    value = (value << 8) | u8(d, p + i);
+  }
+  return value;
+}
+
+/// A parsed DICT: operator -> operands. Reals are decoded to double; integers
+/// stay exact within double range (CFF integers fit).
+using Dict = std::map<int, std::vector<double>>;
+
+/// Parse a CFF DICT occupying the byte range [begin, end) of @p d.
+[[nodiscard]] Dict parse_dict(std::string_view d, std::uint32_t begin,
+                              std::uint32_t end) {
+  Dict dict;
+  std::vector<double> operands;
+  std::uint32_t p = begin;
+  while (p < end) {
+    const std::uint8_t b0 = u8(d, p);
+    if (b0 <= 21) {
+      // operator
+      int op = b0;
+      ++p;
+      if (b0 == 12) {
+        op = 1200 + u8(d, p);
+        ++p;
+      }
+      dict[op] = operands;
+      operands.clear();
+    } else if (b0 == 28) {
+      operands.push_back(static_cast<std::int16_t>(read_be(d, p + 1, 2)));
+      p += 3;
+    } else if (b0 == 29) {
+      operands.push_back(static_cast<std::int32_t>(read_be(d, p + 1, 4)));
+      p += 5;
+    } else if (b0 == 30) {
+      // real number: packed BCD nibbles, terminated by nibble 0xf.
+      ++p;
+      std::string number;
+      bool done = false;
+      while (!done && p < end) {
+        const std::uint8_t byte = u8(d, p++);
+        for (const int nibble : {byte >> 4, byte & 0x0f}) {
+          if (nibble <= 9) {
+            number += static_cast<char>('0' + nibble);
+          } else if (nibble == 0x0a) {
+            number += '.';
+          } else if (nibble == 0x0b) {
+            number += 'E';
+          } else if (nibble == 0x0c) {
+            number += "E-";
+          } else if (nibble == 0x0e) {
+            number += '-';
+          } else if (nibble == 0x0f) {
+            done = true;
+            break;
+          }
+        }
+      }
+      try {
+        operands.push_back(number.empty() ? 0.0 : std::stod(number));
+      } catch (const std::exception &) {
+        operands.push_back(0.0);
+      }
+    } else if (b0 >= 32 && b0 <= 246) {
+      operands.push_back(static_cast<int>(b0) - 139);
+      ++p;
+    } else if (b0 >= 247 && b0 <= 250) {
+      operands.push_back((static_cast<int>(b0) - 247) * 256 + u8(d, p + 1) +
+                         108);
+      p += 2;
+    } else if (b0 >= 251 && b0 <= 254) {
+      operands.push_back(-(static_cast<int>(b0) - 251) * 256 - u8(d, p + 1) -
+                         108);
+      p += 2;
+    } else {
+      throw std::runtime_error("cff: invalid DICT byte");
+    }
+  }
+  return dict;
+}
+
+} // namespace
+
+bool CffFont::is_cff(const std::string_view data) {
+  // major version 1, header size >= 4, offSize in 1..4.
+  return data.size() >= 4 && static_cast<std::uint8_t>(data[0]) == 1 &&
+         static_cast<std::uint8_t>(data[2]) >= 4 &&
+         static_cast<std::uint8_t>(data[3]) >= 1 &&
+         static_cast<std::uint8_t>(data[3]) <= 4;
+}
+
+CffFont::CffFont(std::unique_ptr<std::istream> stream) {
+  if (stream == nullptr) {
+    throw std::invalid_argument("cff: null input stream");
+  }
+  m_data = util::stream::read(*stream);
+  parse();
+}
+
+CffFont::CffFont(std::string data) : m_data{std::move(data)} { parse(); }
+
+std::vector<CffFont::Range> CffFont::read_index(const std::uint32_t offset,
+                                                std::uint32_t &end) const {
+  const std::string_view d{m_data};
+  const std::uint16_t count = static_cast<std::uint16_t>(read_be(d, offset, 2));
+  if (count == 0) {
+    end = offset + 2;
+    return {};
+  }
+  const std::uint8_t off_size = u8(d, offset + 2);
+  if (off_size < 1 || off_size > 4) {
+    throw std::runtime_error("cff: bad INDEX offSize");
+  }
+  const std::uint32_t offset_array = offset + 3;
+  const std::uint32_t data_base = offset_array + (count + 1) * off_size - 1;
+
+  std::vector<Range> members;
+  members.reserve(count);
+  std::uint32_t prev = read_be(d, offset_array, off_size);
+  for (std::uint16_t i = 1; i <= count; ++i) {
+    const std::uint32_t next =
+        read_be(d, offset_array + i * off_size, off_size);
+    members.push_back({data_base + prev, next - prev});
+    prev = next;
+  }
+  end = data_base + prev;
+  return members;
+}
+
+void CffFont::parse() {
+  const std::string_view d{m_data};
+  if (!is_cff(d)) {
+    throw std::runtime_error("cff: not a CFF font");
+  }
+  const std::uint8_t header_size = u8(d, 2);
+
+  std::uint32_t pos = header_size;
+  std::uint32_t end = 0;
+
+  // Name INDEX (one entry per font; we read the first as the font name).
+  const std::vector<Range> names = read_index(pos, end);
+  if (!names.empty()) {
+    m_name = std::string(d.substr(names[0].offset, names[0].length));
+  }
+  pos = end;
+
+  // Top DICT INDEX (one entry — the font's Top DICT).
+  const std::vector<Range> top_dicts = read_index(pos, end);
+  if (top_dicts.empty()) {
+    throw std::runtime_error("cff: empty Top DICT INDEX");
+  }
+  pos = end;
+
+  // String INDEX (custom strings, SID >= 391).
+  m_strings = read_index(pos, end);
+  pos = end;
+
+  // Global Subr INDEX follows; not needed for the facts (skipped).
+
+  parse_top_dict(top_dicts[0]);
+}
+
+void CffFont::parse_top_dict(const Range top_dict) {
+  const std::string_view d{m_data};
+  const Dict dict =
+      parse_dict(d, top_dict.offset, top_dict.offset + top_dict.length);
+
+  m_cid_keyed = dict.find(op_ros) != dict.end();
+
+  if (const auto it = dict.find(op_font_matrix);
+      it != dict.end() && it->second.size() == 6 && it->second[0] != 0.0) {
+    // unitsPerEm = 1 / FontMatrix[0] (design units per em).
+    const double upm = 1.0 / it->second[0];
+    if (upm > 0 && upm < 65536) {
+      m_units_per_em = static_cast<std::uint16_t>(std::lround(upm));
+    }
+  }
+
+  if (const auto it = dict.find(op_font_bbox);
+      it != dict.end() && it->second.size() == 4) {
+    m_bbox = {static_cast<std::int16_t>(it->second[0]),
+              static_cast<std::int16_t>(it->second[1]),
+              static_cast<std::int16_t>(it->second[2]),
+              static_cast<std::int16_t>(it->second[3])};
+  }
+
+  if (const auto it = dict.find(op_char_strings); it != dict.end()) {
+    std::uint32_t end = 0;
+    m_charstrings =
+        read_index(static_cast<std::uint32_t>(it->second.at(0)), end);
+  }
+
+  if (const auto it = dict.find(op_private);
+      it != dict.end() && it->second.size() == 2) {
+    const auto size = static_cast<std::uint32_t>(it->second[0]);
+    const auto offset = static_cast<std::uint32_t>(it->second[1]);
+    parse_private_dict({offset, size});
+  }
+
+  // charset: default 0 (ISOAdobe predefined); a custom charset is an offset
+  // past the predefined ids (0/1/2).
+  if (const auto it = dict.find(op_charset); it != dict.end()) {
+    const auto offset = static_cast<std::uint32_t>(it->second.at(0));
+    if (offset > 2) {
+      parse_charset(offset);
+    }
+  }
+}
+
+void CffFont::parse_private_dict(const Range private_dict) {
+  if (private_dict.length == 0) {
+    return;
+  }
+  const std::string_view d{m_data};
+  const Dict dict = parse_dict(d, private_dict.offset,
+                               private_dict.offset + private_dict.length);
+  if (const auto it = dict.find(op_default_width_x); it != dict.end()) {
+    m_default_width = it->second.at(0);
+  }
+  if (const auto it = dict.find(op_nominal_width_x); it != dict.end()) {
+    m_nominal_width = it->second.at(0);
+  }
+}
+
+void CffFont::parse_charset(const std::uint32_t offset) {
+  const std::string_view d{m_data};
+  const std::uint16_t glyphs = glyph_count();
+  m_charset.assign(glyphs, 0); // glyph 0 (.notdef) -> SID/CID 0
+
+  const std::uint8_t format = u8(d, offset);
+  std::uint32_t p = offset + 1;
+  std::uint16_t gid = 1; // glyph 0 is implicit
+  if (format == 0) {
+    for (; gid < glyphs; ++gid) {
+      m_charset[gid] = static_cast<std::uint16_t>(read_be(d, p, 2));
+      p += 2;
+    }
+  } else if (format == 1 || format == 2) {
+    const std::uint32_t n_left_size = (format == 1) ? 1 : 2;
+    while (gid < glyphs) {
+      const auto first = static_cast<std::uint16_t>(read_be(d, p, 2));
+      p += 2;
+      const std::uint32_t n_left = read_be(d, p, n_left_size);
+      p += n_left_size;
+      for (std::uint32_t i = 0; i <= n_left && gid < glyphs; ++i, ++gid) {
+        m_charset[gid] = static_cast<std::uint16_t>(first + i);
+      }
+    }
+  } else {
+    throw std::runtime_error("cff: unknown charset format");
+  }
+}
+
+std::string CffFont::string_for_sid(const std::uint16_t sid) const {
+  // SID 0..390 index the CFF standard strings; 391+ index the String INDEX.
+  // TODO(stage 3.4): the 391-entry standard-strings table (generated like the
+  // AGL in pdf_encoding_data) is not yet inlined, so standard SIDs resolve to
+  // "" for now — custom (subset) charsets, which dominate embedded PDF fonts,
+  // resolve fully through the String INDEX below.
+  constexpr std::uint16_t standard_string_count = 391;
+  if (sid < standard_string_count) {
+    return {};
+  }
+  const std::uint16_t index = sid - standard_string_count;
+  if (index >= m_strings.size()) {
+    return {};
+  }
+  const std::string_view d{m_data};
+  return std::string(
+      d.substr(m_strings[index].offset, m_strings[index].length));
+}
+
+std::optional<int> CffFont::charstring_width(const std::uint16_t glyph) const {
+  if (glyph >= m_charstrings.size()) {
+    return std::nullopt;
+  }
+  const std::string_view d{m_data};
+  const Range cs = m_charstrings[glyph];
+  const std::uint32_t end = cs.offset + cs.length;
+  std::uint32_t p = cs.offset;
+
+  // Walk operands until the first width-bearing operator; the Type2 width, when
+  // present, is the first operand and makes the operand count exceed the
+  // operator's nominal arity (ISO/Adobe Type2 charstring spec, "width").
+  int count = 0;
+  double first = 0.0;
+  while (p < end) {
+    const std::uint8_t b0 = u8(d, p);
+    if (b0 >= 32 || b0 == 28) {
+      // operand
+      double value = 0.0;
+      if (b0 == 28) {
+        value = static_cast<std::int16_t>(read_be(d, p + 1, 2));
+        p += 3;
+      } else if (b0 <= 246) {
+        value = static_cast<int>(b0) - 139;
+        p += 1;
+      } else if (b0 <= 250) {
+        value = (static_cast<int>(b0) - 247) * 256 + u8(d, p + 1) + 108;
+        p += 2;
+      } else if (b0 <= 254) {
+        value = -(static_cast<int>(b0) - 251) * 256 - u8(d, p + 1) - 108;
+        p += 2;
+      } else { // 255: 16.16 fixed
+        value = static_cast<std::int32_t>(read_be(d, p + 1, 4)) / 65536.0;
+        p += 5;
+      }
+      if (count == 0) {
+        first = value;
+      }
+      ++count;
+    } else {
+      // operator
+      int op = b0;
+      if (b0 == 12) {
+        op = 1200 + u8(d, p + 1);
+      }
+      bool width_possible = false;
+      switch (op) {
+      case 1:  // hstem
+      case 3:  // vstem
+      case 18: // hstemhm
+      case 23: // vstemhm
+      case 19: // hintmask
+      case 20: // cntrmask
+        width_possible = (count % 2) == 1;
+        break;
+      case 21: // rmoveto (2 args)
+        width_possible = count > 2;
+        break;
+      case 22: // hmoveto (1 arg)
+      case 4:  // vmoveto (1 arg)
+        width_possible = count > 1;
+        break;
+      case 14: // endchar (0 args, or 4 for seac)
+        width_possible = (count % 2) == 1;
+        break;
+      default:
+        // Any other operator before a width-bearing one: no explicit width.
+        return std::nullopt;
+      }
+      return width_possible ? std::optional<int>(static_cast<int>(first))
+                            : std::nullopt;
+    }
+  }
+  return std::nullopt;
+}
+
+FontFormat CffFont::format() const noexcept { return FontFormat::cff; }
+
+std::string CffFont::name() const { return m_name; }
+
+std::uint16_t CffFont::glyph_count() const noexcept {
+  return static_cast<std::uint16_t>(m_charstrings.size());
+}
+
+std::uint16_t CffFont::units_per_em() const noexcept { return m_units_per_em; }
+
+bool CffFont::symbolic() const noexcept {
+  // A CID-keyed CFF has no name-based encoding; treat it as symbolic. A
+  // name-keyed CFF is reported non-symbolic (its charset gives glyph names).
+  return m_cid_keyed;
+}
+
+FontBBox CffFont::bounding_box() const noexcept { return m_bbox; }
+
+std::uint16_t CffFont::advance_width(const std::uint16_t glyph) const {
+  if (const std::optional<int> width = charstring_width(glyph);
+      width.has_value()) {
+    return static_cast<std::uint16_t>(m_nominal_width + *width);
+  }
+  return static_cast<std::uint16_t>(m_default_width);
+}
+
+std::uint16_t CffFont::glyph_for_code_point(const char32_t code_point) const {
+  // Reverse of code_point_for_glyph over the resolvable (custom) charset.
+  for (std::uint16_t glyph = 1; glyph < glyph_count(); ++glyph) {
+    if (code_point_for_glyph(glyph) == code_point) {
+      return glyph;
+    }
+  }
+  return 0;
+}
+
+std::optional<char32_t>
+CffFont::code_point_for_glyph(const std::uint16_t glyph) const {
+  const std::string name = glyph_name(glyph);
+  if (name.empty()) {
+    return std::nullopt;
+  }
+  // Algorithmic glyph-name -> Unicode (the `uniXXXX` / `uXXXXXX` forms). The
+  // full Adobe Glyph List lookup is deferred (it lives in the pdf module today;
+  // hoisting it to a shared spot is a review decision — see the design doc).
+  const auto hex = [](const std::string_view s) -> std::optional<char32_t> {
+    char32_t value = 0;
+    for (const char c : s) {
+      value <<= 4;
+      if (c >= '0' && c <= '9') {
+        value |= static_cast<char32_t>(c - '0');
+      } else if (c >= 'A' && c <= 'F') {
+        value |= static_cast<char32_t>(c - 'A' + 10);
+      } else {
+        return std::nullopt;
+      }
+    }
+    return value;
+  };
+  if (name.size() == 7 && name.compare(0, 3, "uni") == 0) {
+    return hex(std::string_view(name).substr(3, 4));
+  }
+  if (name.size() >= 5 && name.size() <= 7 && name[0] == 'u') {
+    return hex(std::string_view(name).substr(1));
+  }
+  return std::nullopt;
+}
+
+bool CffFont::is_cid_keyed() const noexcept { return m_cid_keyed; }
+
+std::string CffFont::glyph_name(const std::uint16_t glyph) const {
+  if (m_cid_keyed || glyph >= m_charset.size()) {
+    return {};
+  }
+  return string_for_sid(m_charset[glyph]);
+}
+
+std::uint16_t CffFont::cid_for_glyph(const std::uint16_t glyph) const {
+  if (!m_cid_keyed || glyph >= m_charset.size()) {
+    return 0;
+  }
+  return m_charset[glyph];
+}
+
+std::uint16_t CffFont::glyph_for_cid(const std::uint16_t cid) const {
+  if (!m_cid_keyed) {
+    return cid; // identity when not CID-keyed
+  }
+  for (std::size_t glyph = 0; glyph < m_charset.size(); ++glyph) {
+    if (m_charset[glyph] == cid) {
+      return static_cast<std::uint16_t>(glyph);
+    }
+  }
+  return 0;
+}
+
+std::string_view CffFont::data() const noexcept { return m_data; }
+
+} // namespace odr::internal::font::cff
