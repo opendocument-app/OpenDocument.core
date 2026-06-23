@@ -64,9 +64,11 @@ std::string build_index(const std::vector<std::string> &members) {
   return out;
 }
 
-/// Build a minimal name-keyed CFF: two glyphs (.notdef + one named "myglyph"),
-/// the second carrying an explicit charstring width.
-std::string build_cff() {
+/// Build a minimal name-keyed CFF: two glyphs (.notdef + one named glyph). When
+/// @p glyph1_sid is a custom SID (>= 391) the name comes from the String INDEX
+/// ("myglyph"); a standard SID (< 391) names the glyph via the CFF standard
+/// strings (no String INDEX entry needed).
+std::string build_cff(const std::uint16_t glyph1_sid = 391) {
   // Charstrings (Type2): glyph 0 = endchar; glyph 1 = width-operand 50,
   // endchar. operand 50 -> single byte 50 + 139 = 189; endchar = 14.
   const std::string cs_notdef(1, static_cast<char>(14));
@@ -75,10 +77,10 @@ std::string build_cff() {
   cs_glyph += static_cast<char>(14);
   const std::string charstrings = build_index({cs_notdef, cs_glyph});
 
-  // charset format 0: glyph 1 -> SID 391 (first String INDEX entry).
+  // charset format 0: glyph 1 -> the requested SID.
   std::string charset;
   charset += static_cast<char>(0); // format 0
-  put16(charset, 391);
+  put16(charset, glyph1_sid);
 
   // Private DICT: defaultWidthX 500 (op 20), nominalWidthX 200 (op 21).
   std::string private_dict;
@@ -88,7 +90,8 @@ std::string build_cff() {
   private_dict += static_cast<char>(21);
 
   const std::string name_index = build_index({"TestFont"});
-  const std::string string_index = build_index({"myglyph"});
+  const std::string string_index =
+      glyph1_sid >= 391 ? build_index({"myglyph"}) : build_index({});
   const std::string global_subrs = build_index({});
 
   // Top DICT body with placeholder offsets to measure its (fixed) size, then
@@ -169,6 +172,19 @@ TEST(CffFontTest, ResolvesCustomGlyphNameAndWidth) {
   EXPECT_EQ(font.advance_width(1), 250);
   // glyph 0 has no explicit width: defaultWidthX (500).
   EXPECT_EQ(font.advance_width(0), 500);
+}
+
+TEST(CffFontTest, ResolvesStandardStringAndReverseMap) {
+  // CFF standard string SID 34 is "A"; the glyph -> name -> Unicode reverse map
+  // goes through the AGL (pdf module).
+  const CffFont font{build_cff(/*glyph1_sid=*/34)};
+
+  EXPECT_EQ(font.glyph_name(1), "A");
+  // reverse map: glyph 1 ("A") -> U+0041 via the AGL.
+  ASSERT_TRUE(font.code_point_for_glyph(1).has_value());
+  EXPECT_EQ(font.code_point_for_glyph(1), U'A');
+  // forward: U+0041 -> glyph 1.
+  EXPECT_EQ(font.glyph_for_code_point(U'A'), 1);
 }
 
 TEST(CffFontTest, IsCffMagic) {

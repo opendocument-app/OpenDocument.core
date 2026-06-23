@@ -1,5 +1,7 @@
 #include <odr/internal/font/cff_font.hpp>
 
+#include <odr/internal/font/cff_standard_strings.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
@@ -295,16 +297,13 @@ void CffFont::parse_charset(const std::uint32_t offset) {
 }
 
 std::string CffFont::string_for_sid(const std::uint16_t sid) const {
-  // SID 0..390 index the CFF standard strings; 391+ index the String INDEX.
-  // TODO(stage 3.4): the 391-entry standard-strings table (generated like the
-  // AGL in pdf_encoding_data) is not yet inlined, so standard SIDs resolve to
-  // "" for now — custom (subset) charsets, which dominate embedded PDF fonts,
-  // resolve fully through the String INDEX below.
-  constexpr std::uint16_t standard_string_count = 391;
-  if (sid < standard_string_count) {
-    return {};
+  // SID 0..390 index the generated CFF standard strings; 391+ index the font's
+  // String INDEX.
+  if (sid < cff_standard_strings_size) {
+    return std::string(cff_standard_strings[sid]);
   }
-  const std::uint16_t index = sid - standard_string_count;
+  const auto index =
+      static_cast<std::uint16_t>(sid - cff_standard_strings_size);
   if (index >= m_strings.size()) {
     return {};
   }
@@ -431,30 +430,19 @@ CffFont::code_point_for_glyph(const std::uint16_t glyph) const {
   if (name.empty()) {
     return std::nullopt;
   }
-  // Algorithmic glyph-name -> Unicode (the `uniXXXX` / `uXXXXXX` forms). The
-  // full Adobe Glyph List lookup is deferred (it lives in the pdf module today;
-  // hoisting it to a shared spot is a review decision — see the design doc).
-  const auto hex = [](const std::string_view s) -> std::optional<char32_t> {
-    char32_t value = 0;
-    for (const char c : s) {
-      value <<= 4;
-      if (c >= '0' && c <= '9') {
-        value |= static_cast<char32_t>(c - '0');
-      } else if (c >= 'A' && c <= 'F') {
-        value |= static_cast<char32_t>(c - 'A' + 10);
-      } else {
-        return std::nullopt;
-      }
-    }
-    return value;
-  };
-  if (name.size() == 7 && name.compare(0, 3, "uni") == 0) {
-    return hex(std::string_view(name).substr(3, 4));
+  // Glyph name -> Unicode via the Adobe Glyph List (and the algorithmic
+  // `uniXXXX`/`uXXXXXX` forms), reusing the pdf module's AGL. The first code
+  // point of a (possibly multi-character) mapping is returned; surrogate pairs
+  // are recombined.
+  const std::u16string utf16 = pdf::glyph_name_to_unicode(name);
+  if (utf16.empty()) {
+    return std::nullopt;
   }
-  if (name.size() >= 5 && name.size() <= 7 && name[0] == 'u') {
-    return hex(std::string_view(name).substr(1));
+  char32_t code_point = utf16[0];
+  if (code_point >= 0xd800 && code_point <= 0xdbff && utf16.size() >= 2) {
+    code_point = 0x10000 + ((code_point - 0xd800) << 10) + (utf16[1] - 0xdc00);
   }
-  return std::nullopt;
+  return code_point;
 }
 
 bool CffFont::is_cid_keyed() const noexcept { return m_cid_keyed; }
