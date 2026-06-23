@@ -78,4 +78,11 @@ private:
   int m_len_iv{4};
 };
 
+/// Convert a parsed Type1 program to a **CFF** font: translate every glyph's
+/// charstring to Type2 (`to_type2`, flattening the program's `/Subrs`) and
+/// assemble via the CFF builder, with `.notdef` placed at glyph 0. The result
+/// is a bare CFF that `cff::CffFont` reads and `cff::wrap_to_otf` wraps for the
+/// browser — so an embedded Type1 font reuses the entire 3.4 CFF path.
+[[nodiscard]] std::string to_cff(const Type1Program &program);
+
 } // namespace odr::internal::font::type1

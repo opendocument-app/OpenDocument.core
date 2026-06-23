@@ -5,6 +5,7 @@
 
 #include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/font/type1_font.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -276,9 +277,10 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
 /// interface: `/FontFile2` (TrueType / `CIDFontType2`) -> `SfntFont`, and
 /// `/FontFile3` (CFF / `Type1C` / `CIDFontType0C`, or OpenType-CFF) -> either
 /// an `SfntFont` (when the program is already a full SFNT, `/Subtype
-/// /OpenType`) or a bare `CffFont`. `/FontFile` (Type1) is not yet read and
-/// leaves `font.embedded_font` null, so such fonts keep rendering through the
-/// fallback path. A malformed font is logged and left null.
+/// /OpenType`) or a bare `CffFont`. `/FontFile` (Type1) is translated to a CFF
+/// (`type1::to_cff`) and read as a `CffFont`, so it reuses the whole CFF path.
+/// A malformed font is logged and leaves `font.embedded_font` null, so such
+/// fonts keep rendering through the fallback path.
 void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
                         Font &font) {
   try {
@@ -301,6 +303,15 @@ void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
         font.embedded_font =
             std::make_shared<font::cff::CffFont>(std::move(data));
       }
+    } else if (descriptor.has_key("FontFile") &&
+               descriptor["FontFile"].is_reference()) {
+      // Type1 (`/FontFile`): translate the program to a CFF, then read it as a
+      // CffFont so the whole CFF path (re-encode / wrap / reverse map) applies.
+      std::string data =
+          parser.read_decoded_stream(descriptor["FontFile"].as_reference());
+      const font::type1::Type1Program program(data);
+      font.embedded_font =
+          std::make_shared<font::cff::CffFont>(font::type1::to_cff(program));
     }
   } catch (const std::exception &e) {
     ODR_WARNING(parser.logger(),
