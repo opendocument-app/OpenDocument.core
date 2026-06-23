@@ -6,6 +6,8 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/cff_font.hpp>
+#include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/html/common.hpp>
@@ -183,31 +185,39 @@ public:
       if (!inserted) {
         return it->second; // already classified
       }
-      auto sfnt =
-          std::dynamic_pointer_cast<font::sfnt::SfntFont>(font->embedded_font);
-      if (sfnt == nullptr) {
-        return 0; // no usable embedded font: fallback path
-      }
-      // Re-encode to the PUA up front so taking the embedded-font path is gated
-      // on success: a font we cannot re-encode (more glyphs than the BMP PUA
-      // holds, or a serialization failure) keeps index 0 and renders through
-      // the legible fallback path, never emitting orphaned PUA glyph spans. The
-      // re-encode mutates the cmap in place, but `glyph_for_code` reads it
-      // during extraction below, so snapshot the original cmap and restore it
-      // after.
+      // Re-encode the embedded font to the PUA and serialize a browser-loadable
+      // SFNT up front, so taking the embedded-font path is gated on success: a
+      // font we cannot re-encode (more glyphs than the BMP PUA holds, or a
+      // serialization failure) keeps index 0 and renders through the legible
+      // fallback path, never emitting orphaned PUA glyph spans.
       std::string reencoded;
-      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
-      try {
-        font::reencode_to_pua(*sfnt);
-        std::ostringstream sfnt_out;
-        sfnt->write(sfnt_out);
-        reencoded = std::move(sfnt_out).str();
-      } catch (...) {
-        reencoded.clear();
+      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+              font->embedded_font)) {
+        // SFNT (TrueType / OpenType): the re-encode mutates the cmap in place,
+        // but `glyph_for_code` reads it during extraction below, so snapshot
+        // the original cmap and restore it after.
+        std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
+        try {
+          font::reencode_to_pua(*sfnt);
+          std::ostringstream sfnt_out;
+          sfnt->write(sfnt_out);
+          reencoded = std::move(sfnt_out).str();
+        } catch (...) {
+          reencoded.clear();
+        }
+        sfnt->set_cmap(std::move(original_cmap));
+      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
+                     font->embedded_font)) {
+        // Bare CFF (`/FontFile3`): wrap into an OTTO with the PUA cmap baked in
+        // (no in-place mutation, so nothing to restore).
+        try {
+          reencoded = font::cff::wrap_to_otf(*cff);
+        } catch (...) {
+          reencoded.clear();
+        }
       }
-      sfnt->set_cmap(std::move(original_cmap));
       if (reencoded.empty()) {
-        return 0; // not re-encodable: fallback path
+        return 0; // no usable embedded font: fallback path
       }
       const int index = ++family_count;
       it->second = index;

@@ -1,10 +1,15 @@
 #include <odr/internal/font/cff_font.hpp>
 
 #include <odr/font.hpp>
+#include <odr/internal/font/cff_transform.hpp>
+#include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/font/sfnt_transform.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -170,4 +175,22 @@ TEST(CffFontTest, IsCffMagic) {
   EXPECT_TRUE(CffFont::is_cff(build_cff()));
   EXPECT_FALSE(CffFont::is_cff(std::string("\x00\x01\x00\x00", 4)));
   EXPECT_FALSE(CffFont::is_cff("not a font"));
+}
+
+TEST(CffFontTest, WrapsToLoadableOtf) {
+  using namespace odr::internal::font;
+  const CffFont cff{build_cff()};
+  const std::string otf = cff::wrap_to_otf(cff);
+
+  // The wrap is a valid OTTO that parses back as an SFNT carrying the CFF as a
+  // pass-through table and a uniform PUA cmap over every glyph.
+  ASSERT_TRUE(sfnt::SfntFont::is_sfnt(otf));
+  const sfnt::SfntFont wrapped{std::make_unique<std::istringstream>(otf)};
+  EXPECT_EQ(wrapped.format(), FontFormat::opentype_cff);
+  EXPECT_EQ(wrapped.glyph_count(), cff.glyph_count());
+  // PUA code point U+E000+glyph maps back to that glyph.
+  EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(1)), 1);
+  EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(0)), 0);
+  // The synthesized hmtx carries the CFF advance widths.
+  EXPECT_EQ(wrapped.advance_width(1), 250);
 }
