@@ -5,6 +5,9 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
@@ -13,8 +16,11 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_page_text.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <cmath>
+#include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -115,12 +121,20 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  // One emitted glyph run. The styling is fully resolved into class tokens
-  // during the first pass; only the (already escaped) text and class list
-  // survive to the writing pass.
+  // One emitted span. The styling is fully resolved into class tokens during
+  // the first pass; only the (already escaped) text and class list survive to
+  // the writing pass. A text run with an embedded font emits the dual layer as
+  // a transparent selectable span carrying the real Unicode with the visible
+  // glyph layer (PUA code points in the `@font-face` font) nested inside it:
+  // the child is absolutely positioned at the run origin and inherits the
+  // font size, spacing, and transform from the parent, so the placement
+  // classes live only on the parent. `glyph_classes` is empty when there is no
+  // nested layer (the legacy fallback path and display-only runs).
   struct SpanOut {
     std::string classes;
     std::string text;
+    std::string glyph_classes;
+    std::string glyph_text;
   };
   struct PageOut {
     std::string classes;
@@ -152,6 +166,65 @@ public:
     AtomicStyles styles;
     std::vector<PageOut> pages_out;
     pages_out.reserve(pages.size());
+
+    // Embedded fonts get a PUA re-encode, an `@font-face`, and a `font-family`
+    // class `odr-fN`, assigned on first encounter in `font_family`. A font
+    // whose embedded font is absent, not an SFNT, or not re-encodable keeps
+    // index 0 and renders through the fallback path, exactly as before.
+    // `font_faces` collects the rules for the accepted fonts, emitted in <head>
+    // below.
+    int family_count = 0;
+    std::string font_faces;
+    std::unordered_map<const pdf::Font *, int> family_index;
+    const auto font_family = [&](pdf::Font *font) -> int {
+      const auto [it, inserted] = family_index.try_emplace(font, 0);
+      if (!inserted) {
+        return it->second; // already classified
+      }
+      auto sfnt =
+          std::dynamic_pointer_cast<font::sfnt::SfntFont>(font->embedded_font);
+      if (sfnt == nullptr) {
+        return 0; // no usable embedded font: fallback path
+      }
+      // Re-encode to the PUA up front so taking the embedded-font path is gated
+      // on success: a font we cannot re-encode (more glyphs than the BMP PUA
+      // holds, or a serialization failure) keeps index 0 and renders through
+      // the legible fallback path, never emitting orphaned PUA glyph spans. The
+      // re-encode mutates the cmap in place, but `glyph_for_code` reads it
+      // during extraction below, so snapshot the original cmap and restore it
+      // after.
+      std::string reencoded;
+      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
+      try {
+        font::reencode_to_pua(*sfnt);
+        std::ostringstream sfnt_out;
+        sfnt->write(sfnt_out);
+        reencoded = std::move(sfnt_out).str();
+      } catch (...) {
+        reencoded.clear();
+      }
+      sfnt->set_cmap(std::move(original_cmap));
+      if (reencoded.empty()) {
+        return 0; // not re-encodable: fallback path
+      }
+      const int index = ++family_count;
+      it->second = index;
+      const std::string url = file_to_url(reencoded, "font/ttf");
+      font_faces += "@font-face{font-family:'odr-f" + std::to_string(index) +
+                    "';src:url(" + url + ");}";
+      return index;
+    };
+
+    // The PUA glyph string for a run: each character code -> glyph id ->
+    // deterministic PUA code point (`U+E000 + glyph`), matching the re-encode.
+    const auto glyph_run = [](const pdf::Font &font, const std::string &codes) {
+      std::string new_codes;
+      for (const std::uint32_t code : font.codes(codes)) {
+        util::string::append_c32(
+            font::pua_code_point(font.glyph_for_code(code)), new_codes);
+      }
+      return new_codes;
+    };
 
     // Appends `prefix:value` (interned) as a class token on `classes`.
     const auto add_class = [&styles](std::string &classes,
@@ -202,10 +275,13 @@ public:
 
       for (const pdf::TextElement &text :
            pdf::extract_text(stream, *page->resources, *m_logger)) {
-        // Nothing extractable here yet: a code with no recoverable Unicode
-        // (`no_unicode`) renders only once the embedded font lands (stage 3),
-        // and an `/ActualText`-suppressed segment carries no text of its own.
-        if (text.text.empty()) {
+        // The font index is non-zero when an embedded font lets us render
+        // the actual glyphs; 0 falls through to the legacy path.
+        const int font = text.font != nullptr ? font_family(text.font) : 0;
+        // Without an embedded font, an empty `text` has nothing to show: a code
+        // with no recoverable Unicode (`no_unicode`) or an `/ActualText`-
+        // suppressed segment. With one, the glyphs still render (PUA layer).
+        if (text.text.empty() && font == 0) {
           continue;
         }
 
@@ -216,7 +292,9 @@ public:
         const bool invisible =
             text.rendering_mode == 3 || text.rendering_mode == 7;
 
-        std::string classes = invisible ? "t i" : "t";
+        // Placement and spacing are shared by both layers of a run; build them
+        // once on `base`.
+        std::string base = "t";
         // TODO baseline sits at the box top until font ascent metrics land
 
         // Tc/Tw are absolute text-space lengths (not scaled by the font size).
@@ -229,9 +307,9 @@ public:
           // Upright uniform scale: fold the scale into the font size and place
           // the origin with left/top, so the (otherwise near-universal) matrix
           // is dropped.
-          add_class(classes, "l", px_decl("left", round2(m.e * pt_to_px)));
-          add_class(classes, "t", px_decl("top", round2(m.f * pt_to_px)));
-          add_class(classes, "f",
+          add_class(base, "l", px_decl("left", round2(m.e * pt_to_px)));
+          add_class(base, "t", px_decl("top", round2(m.f * pt_to_px)));
+          add_class(base, "f",
                     px_decl("font-size", round2(m.a * text.size * pt_to_px)));
           scale = m.a;
         } else {
@@ -239,8 +317,8 @@ public:
           tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
              << m.d << "," << round2(m.e * pt_to_px) << ","
              << round2(m.f * pt_to_px) << ")";
-          add_class(classes, "m", std::move(tm).str());
-          add_class(classes, "f",
+          add_class(base, "m", std::move(tm).str());
+          add_class(base, "f",
                     px_decl("font-size", round2(text.size * pt_to_px)));
           scale = 1;
         }
@@ -253,17 +331,61 @@ public:
         // small. Note CSS `word-spacing` keys on every U+0020 while Tw keys on
         // the single-byte code 0x20 — equivalent for simple fonts.
         if (text.char_spacing != 0) {
-          add_class(classes, "s",
+          add_class(base, "s",
                     px_decl("letter-spacing",
                             round2(text.char_spacing * scale * pt_to_px)));
         }
         if (text.word_spacing != 0) {
-          add_class(classes, "w",
+          add_class(base, "w",
                     px_decl("word-spacing",
                             round2(text.word_spacing * scale * pt_to_px)));
         }
 
-        page_out.spans.push_back({std::move(classes), escape_text(text.text)});
+        if (font != 0) {
+          // The visible glyph layer: PUA code points in the embedded font.
+          // Painted unless the render mode is invisible; never selected (the
+          // text layer owns selection via `.g`), so the PUA code points never
+          // reach the clipboard.
+          const std::string font_family =
+              "font-family:'odr-f" + std::to_string(font) + "'";
+          std::string glyph_text =
+              escape_text(glyph_run(*text.font, text.codes));
+          // The glyph layer paints (opaque `.gv`) unless the render mode is
+          // invisible (transparent `.i`). The painted color is set explicitly
+          // because, when nested, the layer would otherwise inherit the
+          // `.i` text layer's `transparent`.
+          const char *const paint = invisible ? " i" : " gv";
+
+          if (!text.text.empty()) {
+            // Dual layer: a transparent selectable span carrying the real
+            // Unicode (for copy/search) with the glyph layer nested inside.
+            // The nested `.t` child overlays the run origin and inherits the
+            // placement, so only `g`/paint/`ff` need restating on it.
+            std::string glyph_classes = "t g";
+            glyph_classes += paint;
+            add_class(glyph_classes, "ff", font_family);
+            page_out.spans.push_back({base + " i", escape_text(text.text),
+                                      std::move(glyph_classes),
+                                      std::move(glyph_text)});
+          } else {
+            // Display-only run: nothing is extractable (the `no_unicode` case),
+            // so the glyph layer stands alone and carries the placement itself.
+            std::string glyph_classes = base + " g";
+            glyph_classes += paint;
+            add_class(glyph_classes, "ff", font_family);
+            page_out.spans.push_back(
+                {std::move(glyph_classes), std::move(glyph_text), {}, {}});
+          }
+        } else {
+          // Legacy single-layer path: no embedded font, render the Unicode in a
+          // fallback font.
+          std::string classes = base;
+          if (invisible) {
+            classes += " i";
+          }
+          page_out.spans.push_back(
+              {std::move(classes), escape_text(text.text), {}, {}});
+        }
       }
     }
 
@@ -284,6 +406,13 @@ public:
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
     out.out() << ".i{color:transparent}";
+    // The visible glyph layer: not selectable, so the enclosing text layer
+    // owns copy/search and the PUA code points stay off the clipboard. `.gv`
+    // paints it; set explicitly because the nested layer would otherwise
+    // inherit the `.i` text layer's `transparent`.
+    out.out() << ".g{user-select:none}.gv{color:#000}";
+    // Embedded fonts, re-encoded to the PUA and served inline.
+    out.out() << font_faces;
     // Per-value atomic classes (font sizes, offsets, transforms, ...).
     styles.write_rules(out.out());
     out.write_header_style_end();
@@ -294,9 +423,20 @@ public:
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
       for (const SpanOut &span : page.spans) {
-        out.write_element_begin("span",
-                                HtmlElementOptions().set_class(span.classes));
+        // Inline so the whole run (and its nested glyph layer) stays on one
+        // line: smaller output and a more legible diff than the open/text/close
+        // split, while each run still gets its own line under the page div.
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(span.classes));
         out.write_raw(span.text);
+        if (!span.glyph_classes.empty()) {
+          out.write_element_begin(
+              "span", HtmlElementOptions().set_inline(true).set_class(
+                          span.glyph_classes));
+          out.write_raw(span.glyph_text);
+          out.write_element_end("span");
+        }
         out.write_element_end("span");
       }
       out.write_element_end("div");

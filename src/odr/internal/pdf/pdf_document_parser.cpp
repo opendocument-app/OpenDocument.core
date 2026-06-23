@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/logger.hpp>
 
+#include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -11,9 +12,8 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
-#include <odr/internal/util/string_util.hpp>
-
 #include <cctype>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -41,6 +41,14 @@ struct State {
     m_x_objects[reference] = x_object;
   }
 
+  [[nodiscard]] Font *find_font(const ObjectReference &reference) const {
+    const auto it = m_fonts.find(reference);
+    return it != m_fonts.end() ? it->second : nullptr;
+  }
+  void cache_font(const ObjectReference &reference, Font *font) {
+    m_fonts[reference] = font;
+  }
+
 private:
   DocumentParser *m_parser{};
   Document *m_document{};
@@ -53,6 +61,14 @@ private:
   /// `cache_x_object` must register the element *before* its `/Resources` are
   /// parsed. The drawing side guards against the resulting cycles.
   std::map<ObjectReference, XObject *> m_x_objects;
+
+  /// Memoized Font elements by reference. Fonts are shared by indirect
+  /// reference across every page that uses them, so without this each page's
+  /// `/Resources` would parse a fresh `Font` element. The HTML writer dedups
+  /// embedded `@font-face` rules by `Font` pointer, so duplicate elements would
+  /// re-inline the (base64) font program once per page — a multi-page document
+  /// reusing one font would balloon to gigabytes.
+  std::map<ObjectReference, Font *> m_fonts;
 };
 
 /// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
@@ -160,9 +176,9 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
 
   const Dictionary &dictionary = resolved.as_dictionary();
 
-  // No `/BaseEncoding` means "the font's built-in encoding"; that needs the
-  // font program (stage 3). Default to StandardEncoding for now, which is the
-  // right base for the non-symbolic Latin fonts this stage targets.
+  // No `/BaseEncoding` means "the font's built-in encoding"; reading that from
+  // the font program is not wired here. Default to StandardEncoding, the right
+  // base for the non-symbolic Latin fonts this path targets.
   auto base = BaseEncoding::standard;
   if (dictionary.has_key("BaseEncoding")) {
     const Object &base_object = dictionary["BaseEncoding"];
@@ -255,6 +271,31 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
           array[3].as_real(), array[4].as_real(), array[5].as_real()};
 }
 
+/// Load the embedded font from a `/FontDescriptor`. Only `/FontFile2`
+/// (embedded TrueType / `CIDFontType2`) is read here, through the
+/// `abstract::Font` interface; `/FontFile3` (CFF) and `/FontFile` (Type1) are
+/// not yet read and leave `font.embedded_font` null, so such fonts keep
+/// rendering through the fallback path. A malformed font is logged and left
+/// null.
+void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
+                        Font &font) {
+  if (!descriptor.has_key("FontFile2")) {
+    return;
+  }
+  const Object file = descriptor["FontFile2"];
+  if (!file.is_reference()) {
+    return;
+  }
+  try {
+    std::string data = parser.read_decoded_stream(file.as_reference());
+    font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
+        std::make_unique<std::istringstream>(std::move(data)));
+  } catch (const std::exception &e) {
+    ODR_WARNING(parser.logger(),
+                "pdf: failed to read embedded font: " << e.what());
+  }
+}
+
 /// Parse a simple font's `/FirstChar`, `/Widths` and `/FontDescriptor`
 /// `/MissingWidth` glyph metrics (ISO 32000-1 9.2.4).
 void parse_simple_font_widths(DocumentParser &parser,
@@ -276,14 +317,40 @@ void parse_simple_font_widths(DocumentParser &parser,
   if (dictionary.has_key("FontDescriptor")) {
     const Object descriptor =
         parser.resolve_object_copy(dictionary["FontDescriptor"]);
-    if (descriptor.is_dictionary() &&
-        descriptor.as_dictionary().has_key("MissingWidth")) {
-      const Object missing = parser.resolve_object_copy(
-          descriptor.as_dictionary()["MissingWidth"]);
-      if (missing.is_real()) {
-        font.missing_width = missing.as_real();
+    if (descriptor.is_dictionary()) {
+      const Dictionary &descriptor_dictionary = descriptor.as_dictionary();
+      if (descriptor_dictionary.has_key("MissingWidth")) {
+        const Object missing =
+            parser.resolve_object_copy(descriptor_dictionary["MissingWidth"]);
+        if (missing.is_real()) {
+          font.missing_width = missing.as_real();
+        }
       }
+      load_embedded_font(parser, descriptor_dictionary, font);
     }
+  }
+}
+
+/// Parse a composite CIDFont's `/CIDToGIDMap` (ISO 32000-1 9.7.4.3): a stream
+/// of big-endian `uint16` GIDs indexed by CID, or the name `Identity`. Leaves
+/// `font.cid_to_gid` empty for `Identity` (so `glyph_for_code` uses `GID =
+/// CID`).
+void parse_cid_to_gid_map(DocumentParser &parser, const Object &map,
+                          Font &font) {
+  if (!map.is_reference()) {
+    return; // name `/Identity` (or absent): Identity mapping
+  }
+  try {
+    const std::string data = parser.read_decoded_stream(map.as_reference());
+    font.cid_to_gid.reserve(data.size() / 2);
+    for (std::size_t i = 0; i + 1 < data.size(); i += 2) {
+      font.cid_to_gid.push_back(static_cast<std::uint16_t>(
+          (static_cast<unsigned char>(data[i]) << 8) |
+          static_cast<unsigned char>(data[i + 1])));
+    }
+  } catch (const std::exception &e) {
+    ODR_WARNING(parser.logger(),
+                "pdf: failed to read /CIDToGIDMap: " << e.what());
   }
 }
 
@@ -335,6 +402,19 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
     }
   }
 
+  // The embedded font and CID -> GID mapping live on the descendant CIDFont
+  // (the CIDFontType2 case; CIDFontType0/CFF is not yet read).
+  if (cid_font_dictionary.has_key("FontDescriptor")) {
+    const Object descriptor =
+        parser.resolve_object_copy(cid_font_dictionary["FontDescriptor"]);
+    if (descriptor.is_dictionary()) {
+      load_embedded_font(parser, descriptor.as_dictionary(), font);
+    }
+  }
+  if (cid_font_dictionary.has_key("CIDToGIDMap")) {
+    parse_cid_to_gid_map(parser, cid_font_dictionary["CIDToGIDMap"], font);
+  }
+
   if (!cid_font_dictionary.has_key("CIDSystemInfo")) {
     return;
   }
@@ -353,11 +433,18 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   }
 }
 
-Font *parse_font(const State &state, const ObjectReference &reference) {
+Font *parse_font(State &state, const ObjectReference &reference) {
+  // Shared fonts are parsed once; every page referencing the same font object
+  // resolves to the one element so the HTML writer inlines it a single time.
+  if (Font *cached = state.find_font(reference); cached != nullptr) {
+    return cached;
+  }
+
   DocumentParser &parser = state.parser();
   Document &document = state.document();
 
   Font *font = document.create_element<Font>();
+  state.cache_font(reference, font);
 
   IndirectObject object = parser.read_object(reference);
   const Dictionary &dictionary = object.object.as_dictionary();

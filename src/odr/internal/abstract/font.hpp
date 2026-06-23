@@ -9,13 +9,13 @@
 namespace odr::internal::abstract {
 
 /// @brief Read-only view over a font program, exposing the *facts* every
-/// stage-3 consumer needs while the raw glyph bytes pass through untouched.
+/// consumer needs while the raw glyph bytes pass through untouched.
 ///
-/// Per the stage-3 architecture ("IR for facts, pass-through for glyphs") this
-/// never decompiles outlines: it reports counts / metrics / names and hands
-/// back the original bytes. The embedded-font reverse map reads Unicode from
-/// it (3.3), the OTF wrap synthesizes the SFNT skeleton from it (3.1/3.4), and
-/// the PUA re-encoder assigns code points from its glyph count.
+/// Per the "IR for facts, pass-through for glyphs" architecture this never
+/// decompiles outlines: it reports counts / metrics / names and hands back the
+/// original bytes. The embedded-font reverse map reads Unicode from it, the OTF
+/// wrap synthesizes the SFNT skeleton from it, and the PUA re-encoder assigns
+/// code points from its glyph count.
 class Font {
 public:
   virtual ~Font() = default;

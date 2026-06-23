@@ -14,7 +14,7 @@ class SfntFont;
 }
 
 /// The deterministic Private Use Area code point that the uniform
-/// re-encode (stage 3, decision 2026-06-19) assigns to glyph @p glyph:
+/// re-encode assigns to glyph @p glyph:
 /// `U+E000 + glyph` in the BMP PUA. Every consumer (the specimen page, the PDF
 /// `@font-face` emission) derives the displayed code point from this — no
 /// per-font table needed.
@@ -44,6 +44,33 @@ void build_sfnt(std::ostream &out, std::uint32_t sfnt_version,
 /// coverage is a follow-up.
 [[nodiscard]] std::string
 serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
+
+/// Serialize a minimal version-3.0 `post` table (header only, no glyph names).
+///
+/// OTS (the font sanitizer in Chrome/Firefox) lists `post` among the tables an
+/// SFNT must carry and rejects the whole font when it is absent — the browser
+/// then drops the `@font-face` and renders tofu. PDF-embedded TrueType fonts
+/// routinely omit `post` (the viewer needs no glyph names), so a font copied
+/// through verbatim would be rejected. Format 3.0 declares "no glyph names",
+/// which is all a re-encoded display font needs.
+[[nodiscard]] std::string serialize_post();
+
+/// Serialize a minimal version-4 `OS/2` table.
+///
+/// OTS (the font sanitizer in Chrome/Firefox) also requires `OS/2` and rejects
+/// the whole font when it is absent — like `post`, PDF-embedded TrueType fonts
+/// routinely omit it (the viewer takes its metrics elsewhere), so a font copied
+/// through verbatim is rejected. The synthesized table carries neutral weight
+/// and width (regular, medium) with the vertical metrics and character-range
+/// bounds derived from the arguments; OTS reconciles the remaining fields (e.g.
+/// the `fsSelection` style bits against `head`). @p units_per_em scales the
+/// sub/superscript and strikeout defaults; @p y_min / @p y_max are the font
+/// bounding box (ascender/descender fall back to 0.8/0.2 em when degenerate);
+/// @p first_char / @p last_char bound the `cmap`.
+[[nodiscard]] std::string serialize_os2(std::uint16_t units_per_em,
+                                        std::int16_t y_min, std::int16_t y_max,
+                                        std::uint16_t first_char,
+                                        std::uint16_t last_char);
 
 /// Re-encode @p font in place for the browser: replace its `cmap` with a fresh
 /// map from the deterministic PUA code points (`pua_code_point`) to *every*

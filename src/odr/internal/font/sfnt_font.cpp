@@ -372,6 +372,29 @@ void SfntFont::write(std::ostream &out) const {
   }
   tables.emplace_back("cmap", serialize_cmap(m_cmap));
 
+  // A `post` table is required by OTS; PDF-embedded TrueType fonts often omit
+  // it. Synthesize a minimal one so the browser accepts the `@font-face`.
+  if (!m_tables.contains("post")) {
+    tables.emplace_back("post", serialize_post());
+  }
+
+  // `OS/2` is likewise required by OTS and likewise often omitted. Synthesize
+  // it from the cmap bounds and bounding box (build_sfnt sorts the directory,
+  // so the insertion order here does not matter).
+  if (!m_tables.contains("OS/2")) {
+    std::uint16_t first_char = 0;
+    std::uint16_t last_char = 0;
+    if (!m_cmap.empty()) {
+      first_char = static_cast<std::uint16_t>(
+          std::min<char32_t>(m_cmap.begin()->first, 0xffff));
+      last_char = static_cast<std::uint16_t>(
+          std::min<char32_t>(m_cmap.rbegin()->first, 0xffff));
+    }
+    tables.emplace_back("OS/2",
+                        serialize_os2(m_units_per_em, m_bbox.y_min,
+                                      m_bbox.y_max, first_char, last_char));
+  }
+
   const std::uint32_t version = m_format == FontFormat::opentype_cff
                                     ? 0x4f54544fU /* 'OTTO' */
                                     : 0x00010000U;

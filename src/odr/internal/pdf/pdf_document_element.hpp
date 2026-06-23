@@ -6,10 +6,18 @@
 #include <odr/internal/util/math_util.hpp>
 
 #include <concepts>
+#include <cstdint>
+#include <iterator>
+#include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
+
+namespace odr::internal::abstract {
+class Font;
+}
 
 namespace odr::internal::pdf {
 
@@ -105,6 +113,77 @@ struct XObject final : Element {
   std::string content;
 };
 
+/// A non-owning view over a string of PDF character codes, splitting it into
+/// fixed-width (`Font::code_byte_width()`) big-endian codes on iteration. Holds
+/// only a `string_view`, so it must not outlive the underlying bytes; iterate
+/// it directly (`for (std::uint32_t code : font.codes(...))`). Trailing bytes
+/// shorter than a full code are dropped, matching the PDF text-showing
+/// operators.
+class CodeRange {
+public:
+  class Iterator {
+  public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type = std::uint32_t;
+    using difference_type = std::ptrdiff_t;
+    using pointer = void;
+    using reference = std::uint32_t;
+
+    Iterator() = default;
+    Iterator(const char *position, std::size_t width)
+        : m_position{position}, m_width{width} {}
+
+    std::uint32_t operator*() const {
+      std::uint32_t code = 0;
+      for (std::size_t k = 0; k < m_width; ++k) {
+        code = (code << 8) | static_cast<unsigned char>(m_position[k]);
+      }
+      return code;
+    }
+
+    Iterator &operator++() {
+      m_position += m_width;
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator copy = *this;
+      ++*this;
+      return copy;
+    }
+
+    bool operator==(const Iterator &other) const {
+      return m_position == other.m_position;
+    }
+
+  private:
+    const char *m_position{nullptr};
+    std::size_t m_width{1};
+  };
+
+  CodeRange(std::string_view codes, std::size_t width)
+      : m_codes{codes}, m_width{width} {}
+
+  // `data()` is used as a bounded byte range delimited by `end()`, not as a
+  // null-terminated string; the suspicious-data-usage check does not apply.
+  [[nodiscard]] Iterator begin() const {
+    return {m_codes.data(),
+            m_width}; // NOLINT(bugprone-suspicious-stringview-data-usage)
+  }
+  [[nodiscard]] Iterator end() const {
+    // round down to a whole number of codes
+    return {
+        m_codes.data() +
+            (m_codes.size() -
+             m_codes.size() %
+                 m_width), // NOLINT(bugprone-suspicious-stringview-data-usage)
+        m_width};
+  }
+
+private:
+  std::string_view m_codes;
+  std::size_t m_width{};
+};
+
 struct Font final : Element {
   /// `ToUnicode` CMap, the primary code -> Unicode path when present.
   CMap cmap;
@@ -115,8 +194,8 @@ struct Font final : Element {
   /// True for composite (Type0) fonts. Their character codes are
   /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
   /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
-  /// CID -> Unicode tables are deferred; embedded-font reverse maps
-  /// are stage 3.
+  /// CID -> Unicode tables are deferred; an embedded TrueType font also
+  /// supplies a reverse map (see `glyph_for_code` / `to_unicode`).
   bool composite{false};
   /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
   /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the
@@ -145,6 +224,33 @@ struct Font final : Element {
   /// Bytes per character code: 2 for composite (Type0) fonts (the
   /// `Identity-H/V` and common CID case), 1 for simple fonts.
   [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
+
+  /// View `codes` as a sequence of character codes split per
+  /// `code_byte_width()`. The result borrows `codes`; do not outlive it.
+  [[nodiscard]] CodeRange codes(std::string_view codes) const {
+    return {codes, static_cast<std::size_t>(code_byte_width())};
+  }
+
+  /// Embedded font: the SFNT parsed from `/FontFile2` (a simple TrueType font,
+  /// or a composite `CIDFontType2`), or `nullptr` when nothing is embedded or
+  /// the font is an unsupported flavor (`/FontFile3` CFF, `/FontFile` Type1 —
+  /// both not yet read). When present, the HTML layer re-encodes it to the PUA
+  /// and renders the actual glyphs via `@font-face`, and `to_unicode` reads the
+  /// embedded reverse map.
+  std::shared_ptr<abstract::Font> embedded_font;
+
+  /// Composite-font `/CIDToGIDMap` (ISO 32000-1 9.7.4.3) when given as an
+  /// explicit stream: `GID = cid_to_gid[CID]`. Empty means `Identity`
+  /// (`GID = CID`, the common case).
+  std::vector<std::uint16_t> cid_to_gid;
+
+  /// Map a single character code (as split by `code_byte_width`) to a glyph id
+  /// in the `embedded_font`. For a composite font the code is the CID
+  /// (`Identity-H/V`), mapped to a GID via `/CIDToGIDMap`; for a simple
+  /// TrueType font the embedded `cmap` (or, failing that, the code's Unicode)
+  /// selects the glyph (ISO 32000-1 9.6.6.4). Returns 0 (`.notdef`) when there
+  /// is no embedded font or no mapping.
+  [[nodiscard]] std::uint16_t glyph_for_code(std::uint32_t code) const;
 
   /// Glyph advance width of a single character code, in text-space units
   /// (glyph-space / 1000; multiply by the font size for user space). Falls back

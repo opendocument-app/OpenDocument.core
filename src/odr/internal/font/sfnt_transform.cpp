@@ -212,6 +212,77 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   return cmap;
 }
 
+std::string font::serialize_post() {
+  std::string post;
+  put32(post, 0x00030000); // version 3.0: no glyph names
+  put32(post, 0);          // italicAngle
+  put16(post, 0);          // underlinePosition
+  put16(post, 0);          // underlineThickness
+  put32(post, 0);          // isFixedPitch
+  put32(post, 0);          // minMemType42
+  put32(post, 0);          // maxMemType42
+  put32(post, 0);          // minMemType1
+  put32(post, 0);          // maxMemType1
+  return post;
+}
+
+std::string font::serialize_os2(const std::uint16_t units_per_em,
+                                const std::int16_t y_min,
+                                const std::int16_t y_max,
+                                const std::uint16_t first_char,
+                                const std::uint16_t last_char) {
+  // Scale a default expressed against a 1000-unit em to this font's em.
+  const auto em = [&](const int per_1000) {
+    return static_cast<std::uint16_t>(per_1000 * units_per_em / 1000);
+  };
+  // Ascender/descender from the bounding box, falling back to 0.8/0.2 em when
+  // the box is degenerate so the line metrics are never zero.
+  const auto ascender = static_cast<std::int16_t>(y_max > 0 ? y_max : em(800));
+  const auto descender =
+      static_cast<std::int16_t>(y_min < 0 ? y_min : -em(200));
+
+  std::string os2;
+  put16(os2, 4);                                     // version
+  put16(os2, em(500));                               // xAvgCharWidth (estimate)
+  put16(os2, 400);                                   // usWeightClass: regular
+  put16(os2, 5);                                     // usWidthClass: medium
+  put16(os2, 0);                                     // fsType: installable
+  put16(os2, em(650));                               // ySubscriptXSize
+  put16(os2, em(600));                               // ySubscriptYSize
+  put16(os2, 0);                                     // ySubscriptXOffset
+  put16(os2, em(75));                                // ySubscriptYOffset
+  put16(os2, em(650));                               // ySuperscriptXSize
+  put16(os2, em(600));                               // ySuperscriptYSize
+  put16(os2, 0);                                     // ySuperscriptXOffset
+  put16(os2, em(350));                               // ySuperscriptYOffset
+  put16(os2, em(50));                                // yStrikeoutSize
+  put16(os2, em(258));                               // yStrikeoutPosition
+  put16(os2, 0);                                     // sFamilyClass
+  os2.append(10, '\0');                              // panose: any
+  put32(os2, 0);                                     // ulUnicodeRange1
+  put32(os2, 0);                                     // ulUnicodeRange2
+  put32(os2, 0);                                     // ulUnicodeRange3
+  put32(os2, 0);                                     // ulUnicodeRange4
+  os2.append("ODR ", 4);                             // achVendID
+  put16(os2, 0x0040);                                // fsSelection: REGULAR
+  put16(os2, first_char);                            // usFirstCharIndex
+  put16(os2, last_char);                             // usLastCharIndex
+  put16(os2, static_cast<std::uint16_t>(ascender));  // sTypoAscender
+  put16(os2, static_cast<std::uint16_t>(descender)); // sTypoDescender
+  put16(os2, 0);                                     // sTypoLineGap
+  put16(os2, static_cast<std::uint16_t>(ascender));  // usWinAscent
+  put16(os2,
+        static_cast<std::uint16_t>(-descender)); // usWinDescent (positive)
+  put32(os2, 0);                                 // ulCodePageRange1
+  put32(os2, 0);                                 // ulCodePageRange2
+  put16(os2, 0);                                 // sxHeight
+  put16(os2, 0);                                 // sCapHeight
+  put16(os2, 0);                                 // usDefaultChar
+  put16(os2, 0x20);                              // usBreakChar: space
+  put16(os2, 0);                                 // usMaxContext
+  return os2;
+}
+
 void font::reencode_to_pua(sfnt::SfntFont &font) {
   if (font.glyph_count() > pua_capacity) {
     throw std::runtime_error(

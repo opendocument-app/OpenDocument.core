@@ -42,10 +42,10 @@ struct TextElement {
   std::string text;
   /// True when the font's code -> Unicode chain yielded nothing for this
   /// segment (a composite font with no `/ToUnicode` or usable predefined
-  /// encoding is the common case), so `text` is empty. The glyphs still display
-  /// once the embedded font lands (stage 3), which re-encodes them to the
-  /// Private Use Area and marks the run non-extractable; until then the run is
-  /// simply not selectable. An `/ActualText` override clears this.
+  /// encoding is the common case), so `text` is empty. When the font has an
+  /// embedded font its glyphs still display (re-encoded to the Private Use
+  /// Area) with the run marked non-extractable; otherwise the run is simply not
+  /// selectable. An `/ActualText` override clears this.
   bool no_unicode{false};
   /// Total advance of this segment, in text-space units (the displacement
   /// applied to the text matrix after it — already scaled by the font size and
