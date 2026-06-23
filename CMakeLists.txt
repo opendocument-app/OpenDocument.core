@@ -202,6 +202,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/cff_standard_strings.cpp"
         "src/odr/internal/font/cff_transform.cpp"
         "src/odr/internal/font/type1_crypt.cpp"
+        "src/odr/internal/font/type1_font.cpp"
         "src/odr/internal/font/sfnt_font.cpp"
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
