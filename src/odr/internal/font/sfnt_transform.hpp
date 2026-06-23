@@ -53,7 +53,6 @@ serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
 /// routinely omit `post` (the viewer needs no glyph names), so a font copied
 /// through verbatim would be rejected. Format 3.0 declares "no glyph names",
 /// which is all a re-encoded display font needs.
-
 [[nodiscard]] std::string serialize_post();
 
 /// Serialize a minimal version-4 `OS/2` table.

@@ -3,7 +3,6 @@
 #include <odr/exceptions.hpp>
 #include <odr/logger.hpp>
 
-#include <odr/internal/abstract/font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
@@ -12,8 +11,6 @@
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
 #include <odr/internal/util/stream_util.hpp>
-
-#include <odr/internal/util/string_util.hpp>
 
 #include <cctype>
 #include <memory>

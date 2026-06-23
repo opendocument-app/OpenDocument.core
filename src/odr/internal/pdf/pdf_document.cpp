@@ -62,13 +62,13 @@ std::string reverse_map_unicode(const Font &font, const std::string &codes) {
   bool any = false;
   for (const std::uint32_t code : font.codes(codes)) {
     if (const std::optional<char32_t> cp =
-            font.embedded_font->code_point_for_glyph(
-                font.glyph_for_code(code))) {
+            font.embedded_font->code_point_for_glyph(font.glyph_for_code(code));
+        cp.has_value()) {
       util::string::append_c32(*cp, result);
       any = true;
     }
   }
-  return any ? result : std::string{};
+  return any ? result : "";
 }
 
 } // namespace
