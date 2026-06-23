@@ -1,5 +1,9 @@
 #include <odr/internal/font/type1_font.hpp>
 
+#include <odr/internal/font/cff_font.hpp>
+#include <odr/internal/font/cff_transform.hpp>
+#include <odr/internal/font/sfnt_font.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -108,4 +112,22 @@ TEST(Type1FontTest, DecryptsCharstringsAndSubrs) {
 
   ASSERT_EQ(font.subrs().size(), 1u);
   EXPECT_EQ(font.subrs()[0], std::string("\x0b", 1)); // return
+}
+
+TEST(Type1FontTest, ConvertsToLoadableCff) {
+  namespace cff = odr::internal::font::cff;
+  namespace sfnt = odr::internal::font::sfnt;
+
+  const Type1Program program{build_type1()};
+  const std::string cff_bytes = to_cff(program);
+
+  const cff::CffFont font{cff_bytes};
+  EXPECT_EQ(font.format(), odr::FontFormat::cff);
+  // .notdef (synthesized, since the test font has none) + A + B.
+  EXPECT_EQ(font.glyph_count(), 3);
+  EXPECT_EQ(font.glyph_name(1), "A");
+  EXPECT_EQ(font.glyph_name(2), "B");
+
+  // The converted CFF wraps into a browser-loadable OTTO (the 3.4 path).
+  EXPECT_TRUE(sfnt::SfntFont::is_sfnt(cff::wrap_to_otf(font)));
 }
