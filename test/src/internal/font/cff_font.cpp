@@ -1,6 +1,7 @@
 #include <odr/internal/font/cff_font.hpp>
 
 #include <odr/font.hpp>
+#include <odr/internal/font/cff_builder.hpp>
 #include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
@@ -390,6 +391,37 @@ TEST(CffFontTest, IsCffMagic) {
   EXPECT_TRUE(CffFont::is_cff(build_cff()));
   EXPECT_FALSE(CffFont::is_cff(std::string("\x00\x01\x00\x00", 4)));
   EXPECT_FALSE(CffFont::is_cff("not a font"));
+}
+
+TEST(CffFontTest, BuildCffRoundTripsThroughReader) {
+  using odr::internal::font::cff::build_cff;
+  using odr::internal::font::cff::BuilderGlyph;
+
+  // Type2 charstrings: .notdef = endchar; "A" = width-operand 50 then endchar
+  // (50 -> single byte 50 + 139 = 0xBD; endchar = 0x0E).
+  std::vector<BuilderGlyph> glyphs = {
+      {".notdef", std::string("\x0e", 1)},
+      {"A", std::string("\xbd\x0e", 2)},
+  };
+  const std::string cff_bytes =
+      build_cff("MyType1", glyphs, /*default_width=*/0, /*nominal_width=*/100,
+                FontBBox{0, -200, 700, 800});
+
+  const CffFont font{cff_bytes};
+  EXPECT_EQ(font.format(), FontFormat::cff);
+  EXPECT_EQ(font.name(), "MyType1");
+  EXPECT_EQ(font.glyph_count(), 2);
+  EXPECT_FALSE(font.is_cid_keyed());
+  EXPECT_EQ(font.glyph_name(1), "A");
+  EXPECT_EQ(font.bounding_box().x_max, 700);
+  // explicit charstring width: nominalWidthX (100) + 50.
+  EXPECT_EQ(font.advance_width(1), 150);
+  // no explicit width: defaultWidthX (0).
+  EXPECT_EQ(font.advance_width(0), 0);
+
+  // The built CFF wraps into a loadable OTTO (3.4 path) end to end.
+  const std::string otf = odr::internal::font::cff::wrap_to_otf(font);
+  EXPECT_TRUE(odr::internal::font::sfnt::SfntFont::is_sfnt(otf));
 }
 
 TEST(CffFontTest, WrapsToLoadableOtf) {
