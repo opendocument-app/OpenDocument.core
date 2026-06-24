@@ -313,7 +313,7 @@ void SfntFont::update_reverse() {
   }
 }
 
-void SfntFont::read_cmap_subtable(const std::string_view subtable) {
+void SfntFont::read_cmap_subtable(const std::string_view s) {
   const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
@@ -321,42 +321,35 @@ void SfntFont::read_cmap_subtable(const std::string_view subtable) {
     m_cmap[code] = glyph;
   };
 
-  // A forward cursor over the subtable: each read consumes from the front.
-  std::string_view c = subtable;
-  const auto u8 = [&c] {
-    const std::uint8_t v = bs::read_u8(c);
-    c.remove_prefix(1);
-    return v;
-  };
-  const auto u16 = [&c] {
-    const std::uint16_t v = bs::read_u16_be(c);
-    c.remove_prefix(2);
-    return v;
-  };
-  const auto u32 = [&c] {
-    const std::uint32_t v = bs::read_u32_be(c);
-    c.remove_prefix(4);
-    return v;
-  };
-  const auto skip = [&c](const std::size_t n) { c.remove_prefix(n); };
-  const auto read_u16_vector = [&u16](const std::size_t count) {
-    std::vector<std::uint16_t> out;
-    out.reserve(count);
-    for (std::size_t i = 0; i < count; ++i) {
-      out.push_back(u16());
-    }
-    return out;
-  };
-
-  switch (static_cast<CmapFormat>(u16())) {
+  // Formats 0/6/12 have a fixed-layout header, so each field is read at its
+  // known offset (matching the rest of this file). Format 4 chains
+  // variable-length arrays and is read with a forward cursor instead.
+  switch (static_cast<CmapFormat>(bs::read_u16_be(s))) {
   case CmapFormat::byte_encoding: {
-    skip(4); // length, language
+    // format(0), length(2), language(4), then a 256-byte glyphIdArray(6).
     for (std::uint32_t code = 0; code < 256; ++code) {
-      map(code, u8());
+      map(code, bs::read_u8(s.substr(6 + code)));
     }
     break;
   }
   case CmapFormat::segment_mapping: { // segment mapping to delta values
+    // The segs-sized arrays follow one another, so read with a forward cursor
+    // positioned past the format word.
+    std::string_view c = s.substr(2);
+    const auto u16 = [&c] {
+      const std::uint16_t v = bs::read_u16_be(c);
+      c.remove_prefix(2);
+      return v;
+    };
+    const auto skip = [&c](const std::size_t n) { c.remove_prefix(n); };
+    const auto read_u16_vector = [&u16](const std::size_t count) {
+      std::vector<std::uint16_t> out;
+      out.reserve(count);
+      for (std::size_t i = 0; i < count; ++i) {
+        out.push_back(u16());
+      }
+      return out;
+    };
     const std::uint16_t length = u16();
     skip(2); // language
     const std::size_t segs = u16() / 2U;
@@ -375,20 +368,20 @@ void SfntFont::read_cmap_subtable(const std::string_view subtable) {
     }
     const std::vector<std::uint16_t> glyph_ids =
         read_u16_vector((length - header) / 2);
-    for (std::size_t s = 0; s < segs; ++s) {
-      const std::uint16_t start = start_codes.at(s);
-      const std::uint16_t end = end_codes.at(s);
-      const std::uint16_t delta = id_deltas.at(s);
-      const std::uint16_t range = id_range_offsets.at(s);
+    for (std::size_t seg = 0; seg < segs; ++seg) {
+      const std::uint16_t start = start_codes.at(seg);
+      const std::uint16_t end = end_codes.at(seg);
+      const std::uint16_t delta = id_deltas.at(seg);
+      const std::uint16_t range = id_range_offsets.at(seg);
       for (std::uint32_t code = start; code <= end && code != 0xffff; ++code) {
         std::uint16_t glyph = 0;
         if (range == 0) {
           glyph = static_cast<std::uint16_t>(code + delta);
         } else {
           // idRangeOffset is a self-relative byte offset from
-          // &idRangeOffset[s]; as an index into glyphIdArray it is range/2 +
-          // (code-start) - (segs-s).
-          const std::size_t index = range / 2U + (code - start) - (segs - s);
+          // &idRangeOffset[seg]; as an index into glyphIdArray it is range/2 +
+          // (code-start) - (segs-seg).
+          const std::size_t index = range / 2U + (code - start) - (segs - seg);
           glyph = glyph_ids.at(index);
           if (glyph != 0) {
             glyph = static_cast<std::uint16_t>(glyph + delta);
@@ -400,21 +393,25 @@ void SfntFont::read_cmap_subtable(const std::string_view subtable) {
     break;
   }
   case CmapFormat::trimmed_mapping: {
-    skip(4); // length, language
-    const std::uint16_t first = u16();
-    const std::uint16_t entries = u16();
+    // format(0), length(2), language(4), firstCode(6), entryCount(8), then the
+    // glyphIdArray(10).
+    const std::uint16_t first = bs::read_u16_be(s.substr(6));
+    const std::uint16_t entries = bs::read_u16_be(s.substr(8));
     for (std::uint16_t i = 0; i < entries; ++i) {
-      map(first + i, u16());
+      map(first + i,
+          bs::read_u16_be(s.substr(10 + static_cast<std::size_t>(i) * 2)));
     }
     break;
   }
   case CmapFormat::segmented_coverage: {
-    skip(10); // reserved, length, language
-    const std::uint32_t groups = u32();
+    // format(0), reserved(2), length(4), language(8), numGroups(12), then the
+    // groups(16), each a 12-byte startCharCode/endCharCode/startGlyphID.
+    const std::uint32_t groups = bs::read_u32_be(s.substr(12));
     for (std::uint32_t g = 0; g < groups; ++g) {
-      const std::uint32_t start = u32();
-      const std::uint32_t end = u32();
-      const std::uint32_t start_glyph = u32();
+      const std::size_t base = 16 + static_cast<std::size_t>(g) * 12;
+      const std::uint32_t start = bs::read_u32_be(s.substr(base));
+      const std::uint32_t end = bs::read_u32_be(s.substr(base + 4));
+      const std::uint32_t start_glyph = bs::read_u32_be(s.substr(base + 8));
       for (std::uint32_t code = start; code <= end; ++code) {
         map(code, static_cast<std::uint16_t>(start_glyph + (code - start)));
       }
