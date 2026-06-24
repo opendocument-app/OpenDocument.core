@@ -158,7 +158,7 @@ struct PageAttributes {
 /// Parse a simple-font `/Encoding`: either a base-encoding name, or a
 /// dictionary with an optional `/BaseEncoding` name overlaid with a
 /// `/Differences` array (`code name name … code name …`). Returns `nullopt` for
-/// an encoding this stage cannot represent (e.g. an unsupported base name with
+/// an encoding that cannot be represented (e.g. an unsupported base name with
 /// no differences).
 std::optional<Encoding> parse_encoding(DocumentParser &parser,
                                        const Object &encoding_object) {
