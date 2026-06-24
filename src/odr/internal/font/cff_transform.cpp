@@ -144,7 +144,7 @@ namespace odr::internal::font {
 std::string cff::wrap_to_otf(const CffFont &font) {
   const std::uint16_t glyphs = font.glyph_count();
 
-  // The uniform PUA re-encode (stage 3.1): pua_code_point(glyph) -> glyph over
+  // The uniform PUA re-encode: pua_code_point(glyph) -> glyph over
   // every glyph. serialize_cmap throws if a code point is beyond the BMP, which
   // also bounds the glyph count to the PUA capacity.
   std::map<char32_t, std::uint16_t> pua;

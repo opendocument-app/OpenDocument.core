@@ -13,7 +13,7 @@ class CffFont;
 /// `maxp` (v0.5) / `hmtx` / `name` / `post` / `OS/2` — from the
 /// `abstract::Font` facts and embeds the original CFF verbatim as the `CFF `
 /// table (pass-through, no outline interpretation). The `cmap` is the **uniform
-/// PUA re-encode** (stage 3.1): `pua_code_point(glyph) -> glyph` over every
+/// PUA re-encode**: `pua_code_point(glyph) -> glyph` over every
 /// glyph, so the font renders every glyph — including charset-unreachable ones
 /// — when loaded via `@font-face`, matching the PUA code points the PDF HTML
 /// layer emits.

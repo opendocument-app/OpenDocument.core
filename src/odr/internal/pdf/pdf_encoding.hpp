@@ -23,7 +23,7 @@ enum class BaseEncoding {
 base_encoding_table(BaseEncoding encoding);
 
 /// Maps a `/BaseEncoding` (or `/Encoding`) name to a `BaseEncoding`; `nullopt`
-/// for names this stage does not yet support (e.g. `MacExpertEncoding`).
+/// for names not yet supported (e.g. `MacExpertEncoding`).
 [[nodiscard]] std::optional<BaseEncoding>
 base_encoding_from_name(std::string_view name);
 

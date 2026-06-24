@@ -87,9 +87,9 @@ std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
 } // namespace
 
 std::u16string pdf::glyph_name_to_unicode(std::string_view glyph_name) {
-  // A composite name (`a.alt`, `f_i`) is out of scope for this stage; use the
-  // part before the first '.' as the AGL spec prescribes, leave '_' joins to a
-  // later refinement.
+  // A composite name (`a.alt`, `f_i`) is not yet handled; use the part before
+  // the first '.' as the AGL spec prescribes, leave '_' joins to a later
+  // refinement.
   if (const auto dot = glyph_name.find('.'); dot != std::string_view::npos) {
     glyph_name = glyph_name.substr(0, dot);
   }
