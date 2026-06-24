@@ -198,6 +198,9 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_object_parser.cpp"
         "src/odr/internal/pdf/pdf_page_text.cpp"
 
+        "src/odr/internal/font/cff_font.cpp"
+        "src/odr/internal/font/cff_standard_strings.cpp"
+        "src/odr/internal/font/cff_transform.cpp"
         "src/odr/internal/font/sfnt_font.cpp"
         "src/odr/internal/font/sfnt_parser.cpp"
         "src/odr/internal/font/sfnt_transform.cpp"
