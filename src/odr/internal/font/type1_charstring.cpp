@@ -79,7 +79,7 @@ class Translator {
 public:
   explicit Translator(const std::vector<std::string> &subrs) : m_subrs(subrs) {}
 
-  Type2Charstring run(std::string_view charstring) {
+  Type2Charstring run(const std::string_view charstring) {
     execute(charstring, 0);
     if (!m_ended) {
       m_out += static_cast<char>(t1_endchar);
@@ -112,7 +112,7 @@ private:
     m_out += static_cast<char>(op);
   }
 
-  void execute(std::string_view cs, const std::int32_t depth) {
+  void execute(const std::string_view cs, const std::int32_t depth) {
     if (depth > 16 || m_ended) {
       return;
     }
@@ -416,9 +416,13 @@ private:
 
 } // namespace
 
-Type2Charstring to_type2(const std::string_view type1,
-                         const std::vector<std::string> &subrs) {
+} // namespace odr::internal::font::type1
+
+namespace odr::internal::font {
+
+type1::Type2Charstring type1::to_type2(const std::string_view type1,
+                                       const std::vector<std::string> &subrs) {
   return Translator(subrs).run(type1);
 }
 
-} // namespace odr::internal::font::type1
+} // namespace odr::internal::font

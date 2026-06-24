@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-namespace odr::internal::font::type1 {
+namespace odr::internal::font {
 
-std::string to_cff(const Type1Font &font) {
+std::string type1::to_cff(const Type1Font &font) {
   // Order glyphs with `.notdef` at index 0 (CFF requires it). Translate each
   // Type1 charstring to Type2; the width rides in the charstring (the CFF
   // builder uses nominalWidthX = 0).
@@ -46,4 +46,4 @@ std::string to_cff(const Type1Font &font) {
                         /*nominal_width=*/0, font.font_bbox());
 }
 
-} // namespace odr::internal::font::type1
+} // namespace odr::internal::font

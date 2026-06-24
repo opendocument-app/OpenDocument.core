@@ -11,17 +11,17 @@ namespace {
 constexpr std::uint16_t c1 = 52845;
 constexpr std::uint16_t c2 = 22719;
 
-[[nodiscard]] bool is_hex_digit(const unsigned char c) {
+[[nodiscard]] bool is_hex_digit(const std::uint8_t c) {
   return std::isxdigit(c) != 0;
 }
 
 /// Hex-decode @p in, skipping whitespace; stops at the first non-hex, non-space
 /// byte (the binary `eexec` form never reaches here).
-[[nodiscard]] std::string hex_decode(std::string_view in) {
+[[nodiscard]] std::string hex_decode(const std::string_view in) {
   std::string out;
   std::int32_t high = -1;
   for (const char ch : in) {
-    const auto c = static_cast<unsigned char>(ch);
+    const auto c = static_cast<std::uint8_t>(ch);
     if (std::isspace(c) != 0) {
       continue;
     }
@@ -43,10 +43,10 @@ constexpr std::uint16_t c2 = 22719;
 
 /// Whether @p eexec is the ASCII-hex form: the first four non-space bytes are
 /// all hex digits (Type1 spec 7.2 — the binary form is detected as not-this).
-[[nodiscard]] bool looks_like_hex(std::string_view eexec) {
+[[nodiscard]] bool looks_like_hex(const std::string_view eexec) {
   std::int32_t seen = 0;
   for (const char ch : eexec) {
-    const auto c = static_cast<unsigned char>(ch);
+    const auto c = static_cast<std::uint8_t>(ch);
     if (std::isspace(c) != 0) {
       continue;
     }
@@ -62,8 +62,12 @@ constexpr std::uint16_t c2 = 22719;
 
 } // namespace
 
-std::string decrypt(const std::string_view cipher, const std::uint16_t key,
-                    const std::size_t skip) {
+} // namespace odr::internal::font::type1
+
+namespace odr::internal::font {
+
+std::string type1::decrypt(const std::string_view cipher,
+                           const std::uint16_t key, const std::size_t skip) {
   std::uint16_t r = key;
   std::string out;
   out.reserve(cipher.size());
@@ -78,7 +82,7 @@ std::string decrypt(const std::string_view cipher, const std::uint16_t key,
   return out.substr(skip);
 }
 
-std::string decrypt_eexec(const std::string_view eexec) {
+std::string type1::decrypt_eexec(const std::string_view eexec) {
   if (looks_like_hex(eexec)) {
     const std::string binary = hex_decode(eexec);
     return decrypt(binary, 55665, 4);
@@ -86,9 +90,9 @@ std::string decrypt_eexec(const std::string_view eexec) {
   return decrypt(eexec, 55665, 4);
 }
 
-std::string decrypt_charstring(const std::string_view charstring,
-                               const std::size_t len_iv) {
+std::string type1::decrypt_charstring(const std::string_view charstring,
+                                      const std::size_t len_iv) {
   return decrypt(charstring, 4330, len_iv);
 }
 
-} // namespace odr::internal::font::type1
+} // namespace odr::internal::font

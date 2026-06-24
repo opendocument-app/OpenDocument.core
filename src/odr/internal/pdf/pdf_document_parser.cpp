@@ -308,7 +308,7 @@ void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
                descriptor["FontFile"].is_reference()) {
       // Type1 (`/FontFile`): translate the font to a CFF, then read it as a
       // CffFont so the whole CFF path (re-encode / wrap / reverse map) applies.
-      std::string data =
+      const std::string data =
           parser.read_decoded_stream(descriptor["FontFile"].as_reference());
       const font::type1::Type1Font type1_font(data);
       font.embedded_font =

@@ -1,5 +1,7 @@
 #include <odr/internal/font/cff_builder.hpp>
 
+#include <odr/internal/util/byte_string.hpp>
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -7,11 +9,6 @@
 namespace odr::internal::font::cff {
 
 namespace {
-
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
 
 /// A CFF DICT integer in the compact encoding (used for widths / bbox).
 void dict_int(std::string &s, const std::int32_t v) {
@@ -27,7 +24,7 @@ void dict_int(std::string &s, const std::int32_t v) {
     s += static_cast<char>(u & 0xff);
   } else if (v >= -32768 && v <= 32767) {
     s += static_cast<char>(28);
-    put16(s, static_cast<std::uint16_t>(v));
+    util::byte_string::put_u16_be(s, static_cast<std::uint16_t>(v));
   } else {
     s += static_cast<char>(29);
     s += static_cast<char>((v >> 24) & 0xff);
@@ -59,7 +56,8 @@ void dict_operator(std::string &s, const std::int32_t op) {
 /// Serialize a CFF INDEX from its members.
 std::string build_index(const std::vector<std::string> &members) {
   std::string out;
-  put16(out, static_cast<std::uint16_t>(members.size()));
+  util::byte_string::put_u16_be(out,
+                                static_cast<std::uint16_t>(members.size()));
   if (members.empty()) {
     return out; // count 0: no offSize/offsets
   }
@@ -91,10 +89,14 @@ std::string build_index(const std::vector<std::string> &members) {
 
 } // namespace
 
-std::string build_cff(const std::string_view name,
-                      const std::vector<BuilderGlyph> &glyphs,
-                      const double default_width, const double nominal_width,
-                      const FontBBox bbox) {
+} // namespace odr::internal::font::cff
+
+namespace odr::internal::font {
+
+std::string cff::build_cff(const std::string_view name,
+                           const std::vector<BuilderGlyph> &glyphs,
+                           const double default_width,
+                           const double nominal_width, const FontBBox bbox) {
   // CharStrings INDEX (one Type2 charstring per glyph).
   std::vector<std::string> charstrings;
   charstrings.reserve(glyphs.size());
@@ -116,7 +118,8 @@ std::string build_cff(const std::string_view name,
   std::string charset;
   charset += static_cast<char>(0); // format 0
   for (std::size_t i = 1; i < glyphs.size(); ++i) {
-    put16(charset, static_cast<std::uint16_t>(391 + (i - 1)));
+    util::byte_string::put_u16_be(charset,
+                                  static_cast<std::uint16_t>(391 + (i - 1)));
   }
 
   // Private DICT: defaultWidthX (20), nominalWidthX (21).
@@ -181,4 +184,4 @@ std::string build_cff(const std::string_view name,
   return out;
 }
 
-} // namespace odr::internal::font::cff
+} // namespace odr::internal::font

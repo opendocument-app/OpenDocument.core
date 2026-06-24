@@ -1,6 +1,7 @@
 #include <odr/internal/font/type1_font.hpp>
 
 #include <odr/internal/font/type1_crypt.hpp>
+#include <odr/internal/util/byte_util.hpp>
 
 #include <charconv>
 #include <cstdint>
@@ -20,7 +21,7 @@ namespace {
 }
 
 /// Skip PostScript whitespace starting at @p p.
-[[nodiscard]] std::size_t skip_space(std::string_view s, std::size_t p) {
+[[nodiscard]] std::size_t skip_space(const std::string_view s, std::size_t p) {
   while (p < s.size() && is_ps_space(s[p])) {
     ++p;
   }
@@ -28,7 +29,8 @@ namespace {
 }
 
 /// Read a whitespace-delimited token starting at @p p; advances @p p past it.
-[[nodiscard]] std::string_view read_token(std::string_view s, std::size_t &p) {
+[[nodiscard]] std::string_view read_token(const std::string_view s,
+                                          std::size_t &p) {
   p = skip_space(s, p);
   const std::size_t begin = p;
   while (p < s.size() && !is_ps_space(s[p])) {
@@ -37,14 +39,14 @@ namespace {
   return s.substr(begin, p - begin);
 }
 
-[[nodiscard]] bool parse_int(std::string_view token, std::int32_t &out) {
+[[nodiscard]] bool parse_int(const std::string_view token, std::int32_t &out) {
   const char *begin = token.data();
   const char *end = begin + token.size();
   const auto [ptr, ec] = std::from_chars(begin, end, out);
   return ec == std::errc() && ptr == end;
 }
 
-[[nodiscard]] double parse_double(std::string_view token) {
+[[nodiscard]] double parse_double(const std::string_view token) {
   // std::from_chars for double is not universally available; std::stod needs a
   // null-terminated copy.
   try {
@@ -55,8 +57,8 @@ namespace {
 }
 
 /// Parse the numbers inside the next `[...]` or `{...}` after @p key in @p s.
-[[nodiscard]] std::vector<double> parse_number_array(std::string_view s,
-                                                     std::string_view key) {
+[[nodiscard]] std::vector<double>
+parse_number_array(const std::string_view s, const std::string_view key) {
   std::vector<double> out;
   const std::size_t k = s.find(key);
   if (k == std::string_view::npos) {
@@ -85,8 +87,8 @@ namespace {
 /// length integer, then the RD operator, then exactly one space, then the
 /// bytes. On success returns the bytes and advances @p p past them; on failure
 /// returns nullopt.
-[[nodiscard]] std::optional<std::string_view> read_rd_binary(std::string_view s,
-                                                             std::size_t &p) {
+[[nodiscard]] std::optional<std::string_view>
+read_rd_binary(const std::string_view s, std::size_t &p) {
   std::size_t q = p;
   const std::string_view length_token = read_token(s, q);
   std::int32_t length = 0;
@@ -131,12 +133,8 @@ Type1Font::Type1Font(std::string_view data) {
       if (type == 3) {
         break;
       }
-      const std::uint32_t len =
-          static_cast<std::uint8_t>(data[p + 2]) |
-          (static_cast<std::uint8_t>(data[p + 3]) << 8) |
-          (static_cast<std::uint8_t>(data[p + 4]) << 16) |
-          (static_cast<std::uint32_t>(static_cast<std::uint8_t>(data[p + 5]))
-           << 24);
+      const auto len =
+          util::byte::from_little_endian<std::uint32_t>(data.substr(p + 2, 4));
       p += 6;
       if (p + len > data.size()) {
         break;
@@ -170,11 +168,7 @@ void Type1Font::parse_clear(const std::string_view clear) {
     std::size_t p = clear.find('/', k + 1);
     if (p != std::string_view::npos) {
       ++p;
-      const std::size_t begin = p;
-      while (p < clear.size() && !is_ps_space(clear[p])) {
-        ++p;
-      }
-      m_name = std::string(clear.substr(begin, p - begin));
+      m_name = std::string(read_token(clear, p));
     }
   }
 
@@ -209,11 +203,7 @@ void Type1Font::parse_clear(const std::string_view clear) {
         const std::size_t slash = after.find('/', q);
         if (parse_int(code_token, code) && slash != std::string_view::npos) {
           std::size_t r = slash + 1;
-          const std::size_t begin = r;
-          while (r < after.size() && !is_ps_space(after[r])) {
-            ++r;
-          }
-          m_encoding[code] = std::string(after.substr(begin, r - begin));
+          m_encoding[code] = std::string(read_token(after, r));
         }
         p = q;
       }
@@ -276,11 +266,7 @@ void Type1Font::parse_private(const std::string_view decrypted) {
       break;
     }
     std::size_t q = slash + 1;
-    const std::size_t name_begin = q;
-    while (q < decrypted.size() && !is_ps_space(decrypted[q])) {
-      ++q;
-    }
-    std::string name(decrypted.substr(name_begin, q - name_begin));
+    std::string name(read_token(decrypted, q));
     const std::optional<std::string_view> bytes = read_rd_binary(decrypted, q);
     if (!bytes.has_value()) {
       // Not a charstring entry (e.g. `end`); advance past this slash.
