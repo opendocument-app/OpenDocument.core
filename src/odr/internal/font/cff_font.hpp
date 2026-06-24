@@ -20,7 +20,7 @@ namespace odr::internal::font::cff {
 /// CFF structure (INDEXes, DICTs, charset, Private DICT) for the facts every
 /// consumer needs but never interprets glyph charstrings as outlines — the raw
 /// CFF bytes are kept for pass-through (`data()`), to be embedded verbatim as a
-/// `CFF ` table when wrapping into an OTF (stage 3.4 wrap). Reads CFF format 1
+/// `CFF ` table when wrapping into an OTF. Reads CFF format 1
 /// (Adobe TN #5176); CFF2 is out of scope.
 ///
 /// Throws `std::runtime_error` on a structurally invalid CFF.

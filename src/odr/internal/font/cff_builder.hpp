@@ -25,9 +25,9 @@ struct BuilderGlyph {
 /// (`defaultWidthX`/`nominalWidthX`). Glyph 0 is the implicit `.notdef`; the
 /// caller orders @p glyphs so glyph 0 is `.notdef`.
 ///
-/// This is the assembly target for the Type1 -> CFF path (stage 3.5): the
-/// translated Type2 charstrings go in here, the result feeds `CffFont` +
-/// `wrap_to_otf` (3.4). No `FontMatrix` is emitted, so the font is 1000
+/// This is the assembly target for the Type1 -> CFF path: the translated Type2
+/// charstrings go in here, the result feeds `CffFont` + `wrap_to_otf`. No
+/// `FontMatrix` is emitted, so the font is 1000
 /// units/em (the Type1 default); a non-default matrix is a follow-up.
 ///
 /// Offsets in the Top DICT use the fixed-width 5-byte integer form so the

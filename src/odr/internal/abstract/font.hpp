@@ -47,8 +47,9 @@ public:
   glyph_for_code_point(char32_t code_point) const = 0;
 
   /// The reverse map: glyph id -> Unicode code point, when the font's character
-  /// map reaches the glyph. This is the embedded-font reverse map that closes
-  /// the stage-1 extraction gap (3.3); `nullopt` when no code point maps.
+  /// map reaches the glyph. This is the embedded-font reverse map used to
+  /// recover Unicode for a font with no usable `/ToUnicode` or `/Encoding`;
+  /// `nullopt` when no code point maps.
   [[nodiscard]] virtual std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const = 0;
 };

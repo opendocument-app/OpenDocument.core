@@ -17,9 +17,9 @@ text spans, one per shown segment, placed by the full text transform (CTM × tex
 matrix) and advanced by the parsed glyph widths, recursing into form XObjects,
 with text render modes and `/ActualText` honoured and omitted spaces inferred
 from glyph gaps, pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
-AES-128, AES-256). Embedded TrueType fonts render through `@font-face` (other
-font flavors fall back to a system font); no graphics, no images yet.
-Experimental and not production-quality.
+AES-128, AES-256). Embedded font programs (TrueType, CFF, Type1) render through
+`@font-face`; non-embedded fonts fall back to a system font; no graphics, no
+images yet. Experimental and not production-quality.
 
 ---
 
@@ -108,8 +108,7 @@ Experimental and not production-quality.
   character codes already are Unicode (big-endian); any
   other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
   Unicode" (not byte-garbage) until the legacy CID → Unicode tables land or —
-  for an embedded TrueType program — the reverse map below recovers it (stage
-  3.3).
+  for an embedded font program — the reverse map below recovers it.
 - **Glyph metrics**: a font's advance widths are parsed —
   `/FirstChar` + `/Widths` + `/FontDescriptor` `/MissingWidth` for simple fonts,
   `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
@@ -117,19 +116,21 @@ Experimental and not production-quality.
   text-space units (glyph-space / 1000), falling back to `/MissingWidth` or `/DW`.
   Codes outside the corpus are interpreted as CIDs for composite fonts (identity);
   AFM widths for the non-embedded standard-14 fonts are stage 4.
-- **Embedded font programs** (stage 3.3): a TrueType `/FontFile2` (a simple font,
-  or a composite `CIDFontType2`) is decoded into an `abstract::Font` (`SfntFont`)
-  and held on `Font::embedded_font`; an explicit `/CIDToGIDMap` stream is read into
-  `Font::cid_to_gid` (empty = `Identity`). `Font::glyph_for_code(code)` maps a
-  character code to a glyph id — composite: CID → GID via `/CIDToGIDMap`; simple
-  TrueType: the embedded `cmap`, else the code's Unicode, else the code as a GID
-  (best effort, ISO 32000-1 9.6.6.4). Two consumers read it: the HTML layer
+- **Embedded font programs**: every embedded flavor is decoded into an
+  `abstract::Font` held on `Font::embedded_font` — `/FontFile2` (TrueType, simple
+  or composite `CIDFontType2`) → `SfntFont`; `/FontFile3` (CFF / `Type1C` /
+  `CIDFontType0C`) → a bare `CffFont`, or an `SfntFont` when the program is a full
+  OpenType SFNT; `/FontFile` (Type1) → translated to a CFF (`type1::to_cff`) and
+  read as a `CffFont`, so it reuses the whole CFF path. An explicit `/CIDToGIDMap`
+  stream is read into `Font::cid_to_gid` (empty = `Identity`). A malformed program
+  is logged and leaves `embedded_font` null (fallback path). `Font::glyph_for_code(code)`
+  maps a character code to a glyph id — composite: CID → GID via `/CIDToGIDMap`;
+  simple TrueType: the embedded `cmap`, else the code's Unicode, else the code as a
+  GID (best effort, ISO 32000-1 9.6.6.4). Two consumers read it: the HTML layer
   renders the actual glyphs (see *HTML*), and `Font::to_unicode` gains an
   **embedded-font reverse map** as its final fallback (code → glyph →
-  `code_point_for_glyph`), so a font with neither a `/ToUnicode` CMap nor a
-  usable `/Encoding` becomes selectable — closing the stage-1 extraction gap for
-  these fonts; a partially mapped run recovers what it can. CFF (`/FontFile3`)
-  and Type1 (`/FontFile`) leave `embedded_font` null (stages 3.4 / 3.5).
+  `code_point_for_glyph`), so a font with neither a `/ToUnicode` CMap nor a usable
+  `/Encoding` becomes selectable; a partially mapped run recovers what it can.
 - **Content streams**: the full graphics-operator vocabulary is tokenized;
   `GraphicsState` executes a subset (state stack `q`/`Q`, matrices `cm`/`Tm`,
   line parameters, text state `Tc`/`Tw`/`Tz`/`TL`/`Tf`/`Tr`/`Ts`, glyph metrics
@@ -154,7 +155,8 @@ Experimental and not production-quality.
   element also carries its text render mode (`Tr`) and a `no_unicode` flag — set
   when the font's code → Unicode chain yields nothing (a composite font with no
   `/ToUnicode` or usable predefined encoding), so `text` is empty and the run is
-  knowingly non-extractable until stage 3 re-encodes the glyphs to the PUA.
+  knowingly non-extractable (its glyphs still render via the embedded program's
+  PUA re-encode; see *HTML*).
   Marked content is tracked (`BMC`/`BDC … EMC`, balanced per stream and reset
   across form invocation): a sequence carrying `/ActualText` (inline property
   dictionary, or a name resolved through the `/Properties` resource) overrides the
@@ -166,9 +168,8 @@ Experimental and not production-quality.
   gap past the previous pen exceeds ~0.2 em along the line (a word break) or
   ~0.5 em perpendicular (a new line) — recovering the inter-word/-line spaces the
   producer omitted, in `text` only (codes/advances/placement untouched). Still
-  deferred: intra-segment glyph shaping (the browser lays a segment out in a
-  fallback font until stage 3) and vertical writing-mode advances (the deferred
-  bidi & vertical writing work, see *Other known gaps*).
+  deferred: vertical writing-mode advances (the deferred bidi & vertical writing
+  work, see *Other known gaps*).
 - **Form XObjects**: a resource dictionary's `/XObject`
   subdictionary is parsed into `Resources::x_object`; each `/Subtype /Form` is an
   `XObject` element carrying its `/Matrix` (default identity), its decoded
@@ -191,14 +192,15 @@ Experimental and not production-quality.
   un-mirrored so text stays upright), `font-size` from the text state, and the
   Unicode text. Invisible render modes (`Tr` 3/7) keep the span but paint it
   transparent (the `.i` class) so OCR-over-scan text stays selectable.
-  **Embedded fonts** (stage 3.3): a run whose font carries a usable program is
+  **Embedded fonts**: a run whose font carries a usable program is
   emitted as a **dual layer** — a visible glyph layer (PUA code points in the
   font's `@font-face`, `aria-hidden` + `user-select:none`) overlaid by a
   transparent selectable layer carrying the real Unicode, so display is
   glyph-exact while copy/search read the Unicode (and the PUA code points never
-  reach the clipboard). Each embedded SFNT is re-encoded to the PUA once — after
-  extraction, so the in-place re-encode can't disturb the reverse-map / glyph
-  lookups that read the original `cmap` — and served as an inline `@font-face`;
+  reach the clipboard). Each embedded program is re-encoded to the PUA once and
+  wrapped into an OTF — after extraction, so the in-place re-encode can't disturb
+  the reverse-map / glyph lookups that read the original `cmap` — and served as an
+  inline `@font-face`;
   too many glyphs for the BMP PUA falls back to the default font. A run with no
   embedded program keeps the single-span fallback path; one with neither a
   program nor extractable text (a `no_unicode` run or an `/ActualText`-suppressed
@@ -214,7 +216,7 @@ Experimental and not production-quality.
 | `pdf_file_object.{hpp,cpp}`            | File-structure entries: `Header`, `IndirectObject`, `Trailer`, `Xref` (tagged-union entries, `append`/`merge_hybrid`), `StartXref`, `Eof`, the `Entry` any-holder; `parse_xref_stream_table` and the `ObjectStream` payload wrapper |
 | `pdf_file_parser.{hpp,cpp}`            | File-level reads on top of `ObjectParser`: indirect objects, xref, trailer, startxref, stream payloads, `seek_start_xref` |
 | `pdf_filter.{hpp,cpp}`                 | Stream filter framework: `decode()` over the `/Filter`/`/DecodeParms` chain; ASCIIHex/ASCII85/LZW/Flate/RunLength decoders, TIFF/PNG predictors; image codecs returned undecoded (`DecodeResult::stopped_at_filter`) |
-| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references; loads each font's embedded program (`/FontFile2` → `SfntFont`) and `/CIDToGIDMap` (stage 3.3) |
+| `pdf_document_parser.{hpp,cpp}`        | `parse_document()`: xref/trailer chain → catalog → page tree; lazy object reads with cache; (deep) reference resolution; resources incl. the `/XObject` table, with an `ObjectReference → XObject*` cache that dedups shared forms and breaks cyclic form references; loads each font's embedded program (`/FontFile2` → `SfntFont`, `/FontFile3` → `CffFont`/`SfntFont`, `/FontFile` Type1 → `CffFont` via `type1::to_cff`) and `/CIDToGIDMap` |
 | `pdf_encryption.{hpp,cpp}`             | Standard security handler: `Authenticator` (parse `/Encrypt`, authenticate password → `Decryptor`) and `Decryptor` (decrypt strings/streams; RC4, AES-128, AES-256), plus a `standard_security` namespace of pure key/password algorithms for known-answer tests |
 | `pdf_document.hpp`                     | `Document`: arena of `Element`s + `catalog` pointer |
 | `pdf_document_element.hpp`             | Element structs: `Catalog`, `Pages`, `Page`, `Annotation`, `Resources` (font + XObject + `/Properties` tables), `XObject` (Form/Image subtype, `/Matrix`, decoded content, own `/Resources`), `Font` (incl. the `composite`/`cid_registry`/`cid_ordering` Type0 facts, the `/Widths`-`/W`/`/DW` glyph metrics + `advance_width`, the `embedded_font`/`cid_to_gid` + `glyph_for_code`, and `to_unicode` with its embedded reverse-map fallback) |
@@ -231,9 +233,9 @@ Experimental and not production-quality.
 | `pdf_file.{hpp,cpp}`                   | `abstract::PdfFile` wrapper; probes encryption at construction and implements `password_encrypted()`/`decrypt()`, carrying the authenticated `Decryptor` (not the password) so rendering needs no re-derivation |
 
 Consumers outside the module: `open_strategy.cpp` (detection / engine
-selection) and `html/pdf_file.cpp` (`create_pdf_service`; also the stage-3.3
-per-font PUA re-encode + `@font-face` and the dual-layer glyph/Unicode span
-emission, using `font/sfnt_*`).
+selection) and `html/pdf_file.cpp` (`create_pdf_service`; also the per-font PUA
+re-encode + OTF wrap + `@font-face` and the dual-layer glyph/Unicode span
+emission, using the `font/` module — `sfnt_*`, `cff_*`, `type1_*`).
 
 ## Pipeline: how a `.pdf` becomes HTML
 
@@ -277,8 +279,9 @@ emission, using `font/sfnt_*`).
    resources (or the enclosing scope), state restored — guarded against cyclic
    invocation. The HTML layer maps each element to a positioned `span`
    with a CSS `transform` (PDF user space → the page box in CSS pixels) and
-   `font-size` from the text state. Intra-segment glyph shaping is the browser's
-   until the embedded font lands (stage 3).
+   `font-size` from the text state. An embedded font program renders the real
+   glyphs via `@font-face` (dual layer); a non-embedded font falls back to a
+   browser font until substitution lands (stage 4).
 
 ---
 
@@ -333,18 +336,18 @@ and `pdf_page_text.cpp` route through `Logger`. `DocumentParser` and
 `Logger::null()`) — new diagnostics should do the same.
 
 **Rendering is deferred to the browser; display and text are decoupled.** We emit
-no rasterized output: glyphs render via the embedded font (`@font-face`, stage 3)
-and vector content via SVG (stage 4) — the browser draws everything. Because
-display is driven by the *glyph*, not the extracted Unicode, **text-extraction
-gaps degrade only selectability and search — never display.** Every deferred
+no rasterized output: glyphs render via the embedded font (`@font-face`) and
+vector content via SVG (stage 4) — the browser draws everything. Because display
+is driven by the *glyph*, not the extracted Unicode, **text-extraction gaps
+degrade only selectability and search — never display.** Every deferred
 code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
-`/ToUnicode`, the remaining CFF/Type1 reverse maps) still renders correctly once stage 3 lands:
-all glyphs are re-encoded to the Private Use Area for display (stage 3's uniform
-re-encode, decision 2026-06-19), with the extracted Unicode carried separately to
-drive selection/search; runs with no recoverable Unicode are additionally marked
-non-extractable (`user-select: none`, `aria-hidden`). So the
-deferred CJK/legacy-CMap work is a *selectability* gap, not a rendering risk —
-such PDFs look right, their text just isn't selectable until the tables land.
+`/ToUnicode`) still renders correctly: all glyphs are re-encoded to the Private
+Use Area for display (the uniform re-encode, decision 2026-06-19), with the
+extracted Unicode carried separately to drive selection/search; runs with no
+recoverable Unicode are additionally marked non-extractable (`user-select: none`,
+`aria-hidden`). So the deferred CJK/legacy-CMap work is a *selectability* gap, not
+a rendering risk — such PDFs look right, their text just isn't selectable until
+the tables land.
 
 ---
 
@@ -447,7 +450,7 @@ such PDFs look right, their text just isn't selectable until the tables land.
 
 No assertion-based coverage of the tokenizer (escapes, references, hex strings)
 or the HTML output itself (the span emission / CSS transform mapping, incl. the
-stage-3.3 dual layer).
+dual-layer glyph/Unicode emission).
 
 ---
 
@@ -455,243 +458,51 @@ stage-3.3 dual layer).
 
 Goal: faithful read-only HTML for common real-world PDFs through the odr engine,
 so the poppler/pdf2htmlEX engine becomes optional rather than required. Stages
-are ordered by what they unlock; 0–2 are roughly sequential, 3 and 4 are
-independent, 5 builds on whatever pages already render. Each stage gets its own
-detailed design before implementation.
-
-## Stage 0 — file-format compatibility (prerequisite) — **done**
-
-The prerequisite for everything below: read the structures modern producers
-write that the original parser rejected, so a real-world `.pdf` reaches the page
-tree at all. All of it has landed (see *What works*): the stream-filter
-framework (incl. PNG predictors), PDF 1.5+ cross-reference/object streams and
-hybrid files, inherited page attributes, encryption (RC4 / AES-128 / AES-256),
-and last-resort cross-reference recovery for broken files. Remaining odds and
-ends are folded into *Other known gaps* below; the staged renderer work now
-builds on a parser that opens the common corpus.
-
-## Stage 1 — text extraction: the code → Unicode chain — **done**
-
-**Goal.** PDF strings are **character codes**; per font, walk code → Unicode and
-record it per code (or "no Unicode", which stage 3 re-encodes). The landed work
-covers the local corpus and the bulk of real-world PDFs. The mechanics live in
-*Fonts / text mapping* under *What works*; this is the summary.
-
-**Achieved**
-- **`ToUnicode` CMap.** Multi-byte codes (codespace-driven chunking), both
-  `bfrange` forms, multi-character (ligature) targets.
-- **Simple-font `/Encoding`.** Standard/WinAnsi/MacRoman base encodings +
-  `/Differences` → glyph name → Unicode via the generated Adobe Glyph List (incl.
-  the algorithmic `uniXXXX`/`uXXXXXX` forms).
-- **Composite (Type0/CID) fonts.** Type0 structure + `/CIDSystemInfo`,
-  `Identity-H/V`, `/ToUnicode`-driven extraction, and the predefined Unicode
-  CMaps (`Uni*-UCS2/UTF16/UTF32`, decoded directly with no data tables).
-- **"No Unicode" run marking + `/ActualText`** landed with stage 2 (run/state
-  plumbing); see *Text layout* under *What works*.
-
-**Deferred — relocated to later stages.** None blocks the renderer and no corpus
-fixture needs them yet:
-- **Legacy CJK code→CID CMaps** (RKSJ/EUC/Big5/GBK/KSC) + their `CID → Unicode`
-  tables — large external data; the generator/fetch scaffolding is landed
-  (`tools/pdf/generate_cid_data.py`), the storage decision and C++ lookup remain.
-  Tracked under *Other known gaps* (CMap coverage).
-- **Embedded-font reverse map** — needs the font reading machinery; folded into
-  **stage 3**.
-
-## Stage 2 — text positioning & metrics — **done (bidi & vertical writing deferred)**
-
-Independent of the Unicode work; fixes layout even with today's partial CMaps.
-The landed work covers the local corpus and the bulk of real-world PDFs. The
-mechanics live in *Text layout* / *Form XObjects* / *HTML* under *What works*;
-this is the summary.
-
-**Architecture decision (2026-06): a renderer-agnostic placed-text emission.**
-The content executor produces a per-page list of **placed text items**, each
-carrying its text-space → user-space transform (CTM × text matrix, with font
-size / horizontal scaling / rise folded in), the resolved font, size, the
-text-state spacing parameters, the raw character codes, a Unicode representation,
-and per-code advances. The HTML layer consumes that list and decides how to map
-it — per-run spans with a CSS `transform` vs. per-glyph positioning. **The core
-never commits to either**, pushing the run-vs-glyph question all the way down to
-rendering.
-
-**Achieved**
-- **Transforms & the placed-text emission.** A 2-D affine `Transform2D`
-  (`util/math_util.hpp`); the CTM *concatenates* on `cm`, `Tm`/`Tlm` tracked
-  properly (`BT` resets, `Td`/`TD`/`T*` and the line-move half of `'`/`"` advance
-  `Tlm` → `Tm`), rise and horizontal scaling folded into the text rendering
-  matrix; `extract_text` yields one placed `TextElement` per shown segment, which
-  the HTML layer maps to a positioned CSS-`transform` span (page y-axis flipped
-  once per page).
-- **Glyph advances & metrics.** `/FirstChar`+`/Widths`+`/MissingWidth` (simple)
-  and `/W`+`/DW` (composite) parsed into `Font::advance_width`; after each segment
-  `Tm` advances by Σ(width × Tfs + Tc [+ Tw for 0x20]) × Th and a `TJ` number
-  translates `Tm` by `−n/1000 × Tfs × Th`, so segments, kerning and lines land
-  correctly. The element carries the per-code advances so the renderer needn't
-  re-derive them.
-- **Form XObjects.** `Do` on a `/Form` runs the form content against scoped
-  `/Resources` under its `/Matrix`; the `/XObject` table is memoized by reference
-  (shared forms parsed once, cyclic references resolve to the existing element)
-  and cyclic invocation is guarded at render time. Image XObjects are tagged but
-  not decoded (stage 4). Reused by stage 4 (tiling patterns) and stage 5
-  (annotation appearances).
-- **Render modes & extraction refinements.** The text render mode (`Tr`) rides on
-  every element (unpainted 3/7 → transparent-but-selectable span, 1–2/4–6 → a
-  painted fill); a segment whose code → Unicode chain yields nothing is marked
-  `no_unicode`; an `/ActualText` marked-content sequence overrides the per-glyph
-  Unicode of its enclosed shows.
-- **Space inference.** A running pen infers the inter-word/-line spaces producers
-  omit (in `text` only, codes/advances/placement untouched), so copy/paste and
-  search work.
-
-**Deferred**
-- **Bidi & vertical writing** — RTL run ordering and vertical writing mode
-  (`Identity-V`/CJK, the `/W2`/`/DW2` metrics and a perpendicular pen advance). No
-  corpus fixture needs it yet; tracked under *Other known gaps* alongside the
-  legacy-CJK CMap work (both wait on a real file).
-- **Intra-segment glyph shaping** (browser fallback) — folded into **stage 3**;
-  **AFM widths for the non-embedded standard-14 fonts** — folded into **stage 4**
-  with non-embedded substitution. `/BBox` clipping,
-  `/MCID`-driven structure-tree reordering and `/Alt` (stage 5), and precise
-  baseline placement (needs font ascent metrics) are likewise deferred.
-
-## Stage 3 — fonts in HTML
-
-Needed for visual fidelity regardless of text extraction. **Display fidelity is
-entirely a stage-3 deliverable**: stages 1–2 produce text + position only, and
-today's PoC emits Unicode text in spans with no embedded font
-(see *What works*), so even *correctly extracted* text currently renders in a
-fallback system font — wrong shapes/metrics, and CJK may show tofu. "Render the
-actual glyph" only goes live here; the current fallback-font rendering is
-expected, not a bug.
-
-**Decision (2026-06): in-house, no FontForge.** pdf.js proves complete font
-conversion is doable without a font library; pdf2htmlEX uses FontForge at the
-cost of a notoriously heavy build. No trimmed off-the-shelf alternative does
-what we need (FreeType/stb_truetype are read-only; hb-subset can only subset
-along the *existing* `cmap`, so it cannot inject the PUA mappings below).
-Expected ~5–8k lines of focused C++ — on the order of an `oldms/` module.
-Reading (SFNT tables, CFF charsets) is the easy part and also yields the
-**embedded-font reverse map**: a font with no usable `/ToUnicode` or `/Encoding`
-gets code → Unicode from its embedded program — the TrueType `cmap` reversed, or
-Type1/CFF charstring glyph names through the AGL — closing the last gap in the
-stage-1 extraction chain.
-
-**Architecture: IR for facts, pass-through for glyphs.** No glyph-level font IR:
-decompiling and recompiling outlines is the FontForge model — loses hinting,
-risks fidelity, and with one output format (SFNT) the M×N payoff never
-materializes. Glyph data (outlines, hinting, charstrings) passes through
-byte-for-byte; even Type1 → Type2 charstrings is a direct sibling-format
-translation. What *is* shared: a thin `abstract::Font` interface — per-flavor
-readers producing the facts every consumer needs (glyph count, glyph → Unicode,
-advance widths, units-per-em, name, bbox, symbolic flag) with raw bytes kept
-alongside. The embedded-font reverse map (above) reads Unicode from it, the OTF wrap synthesizes
-`head`/`hhea`/`hmtx`/`OS/2` from it, the re-encoder assigns PUA code points from
-its glyph count.
-
-**Decision (2026-06-19, revised 2026-06-24): standalone-first, uniform PUA;
-Type3 + non-embedded deferred to stage 4.**
-Two sequencing/scope choices fix the sub-stage plan below:
-- **Standalone-first.** Fonts ship as a library deliverable — a `FontFile`
-  `DecodedFile` plus a specimen-page HTML view, with font-only tests — *before*
-  being wired into PDF output. The specimen page's glyph grid must show *every*
-  glyph, which forces the PUA re-encode, table-directory rebuild and OTF wrap
-  first, against a directly viewable, independently testable artifact.
-- **Uniform PUA re-encode.** *Every* font is re-encoded to deterministic Private
-  Use Area code points (`U+E000 + glyph index`) for **display** — one pipeline,
-  no mapped-vs-unmapped branch (pdf2htmlEX's model), so display is always
-  glyph-exact. The extracted Unicode (the stage-1 chain, plus the new
-  embedded-font reverse map) is **not** discarded: it rides on the element as
-  today and the HTML layer surfaces it for **selection/search** — the
-  display/text decoupling holds (see *Design decisions*). Runs with no
-  recoverable Unicode are additionally marked non-extractable (`user-select:
-  none`, `aria-hidden`).
-- **Type3 + non-embedded deferred to stage 4.** Type3 glyphs are drawing
-  procedures needing path → SVG rendering, which belongs to stage 4; rather than
-  pull a minimal path → SVG slice forward into stage 3, Type3 now rides stage
-  4's vector machinery. Non-embedded standard-14 substitution (and its AFM
-  widths) goes with it, so stage 3 ends at the embedded-program flavors
-  (TrueType / CFF / Type1).
-
-**Sub-stages.** Ordered so each lands an independently testable (and, from 3.2,
-viewable) artifact; the risky core — read a font, produce a sanitizer-clean,
-fully re-encoded one — is proven by font-only tests before any PDF wiring. Sizing
-mirrors stage 2 (one PR each). Each gets its own detailed design before
+are ordered by what they unlock; 0–3 are **done** (summarized below — the
+mechanics live in *What works*), 4 is independent, 5 builds on whatever pages
+already render. Each remaining stage gets its own detailed design before
 implementation.
 
-- **3.0 — `abstract::Font` interface + SFNT/TrueType reader (facts only).**
-  **Done.** The thin per-flavor reader interface (`abstract::Font`,
-  `internal/abstract/font.hpp`) producing the facts every consumer needs (glyph
-  count, glyph → Unicode, advance widths, units-per-em, name, bbox, symbolic
-  flag), raw glyph bytes kept alongside. First implementation: `SfntFont`
-  (`internal/font/sfnt_font.{hpp,cpp}`) — reads the font from a `std::istream`
-  (seeking per table, the bytes materialized lazily for the pass-through `data()`),
-  parsing the table directory and `head`/`maxp`/`hhea`/`hmtx`/`cmap` (formats
-  0/4/6/12)/`name`; `post`/`OS/2` deferred until a consumer needs them. Font-only
-  unit tests; no HTML, no PDF wiring.
-- **3.1 — OTF wrap + uniform PUA re-encode + table-directory rebuild.** Given an
-  `abstract::Font`, emit a browser-loadable, OTS-clean SFNT: rewrite `cmap` to the
-  deterministic PUA map over *every* glyph, splice/rebuild the table directory,
-  recompute `head.checkSumAdjustment`. The single riskiest piece — exercised by
-  font-only round-trip + OTS tests before any UI.
-  - **Mechanism (`internal/font/`).** `SfntFont` carries `cmap` as a
-    `code point -> glyph` model that is the single source of truth (the
-    accessors read it; `write(std::ostream&)` serializes it back into the `cmap`
-    table and copies every other table through verbatim). It is read via
-    `cmap()` and replaced via `set_cmap()`, which rebuilds the reverse
-    (glyph -> lowest code point) lookup so the font stays self-consistent.
-    Transforms live *outside* the font in `sfnt_transform` —
-    `reencode_to_pua(font)` builds the PUA map and hands it to `set_cmap`.
-    Writing is stream-based, mirroring the reader's `std::istream`; the
-    whole-file checksum is computed analytically from the additive
-    per-table/directory checksums (no second pass, no seekable sink).
-  - **LIMITATION — `cmap` serialization is BMP-only.** `serialize_cmap` emits a
-    single Windows (3,1) **format-4** subtable: code points must be `<= U+FFFF`,
-    and a map containing a beyond-BMP code point (which would need a format-12
-    subtable) throws. Within the BMP there is no restriction — the map is split
-    into maximal arithmetic runs (`idRangeOffset = 0`, singletons allowed), so
-    `glyphIdArray` is never needed. This covers the uniform PUA re-encode (one
-    run) and ordinary remaps; format-12 / multi-plane PUA spill-over (and the
-    matching >6400-glyph case) is a follow-up.
-- **3.2 — `FontFile` as a `DecodedFile` + specimen-page HTML (the standalone
-  deliverable).** Precedent: `SvmFile`, `ImageFile`. `FileType` entries + magic
-  detection (SFNT `0x00010000`/`OTTO`/`true`/`ttcf`, `wOFF`), a `FontFile`
-  `FileCategory`, and `html::translate(FontFile)` emitting a specimen page: a
-  name/metrics header plus a glyph grid that shows *every* glyph (incl.
-  `cmap`-unreachable ones — exactly what 3.1's re-encode makes addressable), the
-  font served via `@font-face`. Scope capped at "specimen page" — no font-editor
-  creep. *Optional parallel:* PDF as a container — expose embedded fonts as an
-  `abstract::Filesystem` (`/fonts/F1.ttf`, …) reusing the filesystem HTML service
-  (as for ZIP/CFB); doubles as the corpus harvester.
-- **3.3 — wire TrueType into PDF `@font-face` (first end-to-end PDF win).**
-  **Done.** Embedded `FontFile2`/`CIDFontType2` programs are read through
-  `abstract::Font`, re-encoded to the PUA (3.1 pipeline) and emitted as
-  `@font-face` + glyph spans (a dual layer: visible PUA glyphs + a transparent
-  selectable Unicode layer), and their reversed `cmap` recovers Unicode for
-  selection — the mechanics live in *Embedded font programs* and *HTML* under
-  *What works*. Simple-TrueType glyph selection is best-effort (ISO 32000-1
-  9.6.6.4); CFF (`/FontFile3`, 3.4) and Type1 (`/FontFile`, 3.5) leave
-  `Font::embedded_font` null and keep the fallback path.
-- **3.4 — bare CFF (`FontFile3`/Type1C).** A CFF reader (charset, charstrings,
-  private dict) producing an `abstract::Font`; wrap into OTF by synthesizing the ~8
-  required SFNT tables (advance widths from `/Widths`/`/W`, not by interpreting
-  charstrings). Reuses 3.1 (wrap/PUA), 3.2 (specimen) and 3.3 (PDF wiring)
-  unchanged.
-- **3.5 — Type1 (`FontFile`).** `eexec` decryption, Type1 → Type2 charstring
-  translation, build a CFF, reuse 3.4's CFF → OTF path. Reverse map via charstring
-  glyph names → AGL. The hardest single piece, but precisely specified (Adobe T1
-  spec; pdf.js as reference).
-Type3 and non-embedded fonts were a sub-stage 3.6 here; they are deferred to
-**stage 4** (the path → SVG machinery they need lives there). Stage 3 ends at 3.5.
+## Stages 0–3 — done
 
-**Mechanisms & guards (ride through 3.1–3.5).**
-- **Broken-font long tail.** Real embedded fonts are routinely malformed, and
-  browsers run web fonts through a sanitizer (OTS) that silently rejects them.
-  Regenerating the table directory (which the wrap/re-encode does anyway) covers
-  most of it; start strict, add repair heuristics as real files demand.
-- **Test oracles (never shipped).** CI gate: run **OTS** over every produced font
-  (test-time only); optionally FreeType as a second oracle. Neither is linked into
-  the product.
+- **Stage 0 — file-format compatibility.** Reads the structures modern producers
+  write that the original parser rejected: the stream-filter framework (incl. PNG
+  predictors), PDF 1.5+ cross-reference/object streams and hybrid files, inherited
+  page attributes, encryption (RC4 / AES-128 / AES-256), and last-resort
+  cross-reference recovery for broken files.
+- **Stage 1 — text extraction (code → Unicode).** Per font, code → Unicode: the
+  `ToUnicode` CMap (multi-byte codes, both `bfrange` forms, ligature targets), the
+  simple-font `/Encoding` (base + `/Differences` → AGL), composite (Type0/CID)
+  fonts via `/ToUnicode` or the predefined Unicode CMaps, and the embedded-font
+  reverse map for fonts with neither. A run with no recoverable Unicode is marked
+  `no_unicode`; `/ActualText` overrides the per-glyph Unicode of its shows.
+- **Stage 2 — text positioning & metrics.** A renderer-agnostic placed-text
+  emission: the executor produces one placed `TextElement` per shown segment
+  (text-space → user-space transform, font/size/spacing, codes, Unicode, per-code
+  advances), and the HTML layer maps it to a CSS-`transform` span — **the core
+  never commits to run-vs-glyph placement**. Glyph advances/metrics
+  (`/Widths`+`/MissingWidth`, `/W`+`/DW`), form XObjects (scoped `/Resources`,
+  `/Matrix`, memoized + cycle-guarded), text render modes, and space inference all
+  land here.
+- **Stage 3 — fonts in HTML.** Display fidelity: embedded programs render as real
+  glyphs via `@font-face` (the dual-layer glyph/Unicode emission). **Key
+  decisions:** in-house font handling, no FontForge (pdf.js proves it; FontForge
+  is a heavy build, and no read-only library can inject the PUA mappings we need);
+  **IR for facts, pass-through for glyphs** — a thin `abstract::Font` interface
+  exposes the facts every consumer needs (glyph count, glyph → Unicode, advance
+  widths, units-per-em, name, bbox, symbolic flag) while glyph data passes through
+  byte-for-byte (no outline decompile/recompile); a **uniform PUA re-encode**
+  (`U+E000 + glyph index`) for display over *every* glyph, with the extracted
+  Unicode carried separately for selection/search. Landed flavor by flavor:
+  `abstract::Font` + SFNT reader (3.0), OTF wrap + PUA re-encode + checksum rebuild
+  (3.1), `FontFile` as a `DecodedFile` + specimen-page HTML (3.2), embedded
+  TrueType into PDF (3.3), bare CFF / `FontFile3` / Type1C (3.4), and Type1 /
+  `FontFile` via `type1::to_cff` reusing the CFF path (3.5). Type3 and
+  non-embedded fonts were deferred to **stage 4** (they need the path → SVG
+  machinery). Test oracle (never shipped): OTS over every produced font in CI.
+  Two known limits: `cmap` serialization is BMP-only (a single Windows (3,1)
+  format-4 subtable; format-12 / >6400-glyph spill-over is a follow-up), and
+  simple-TrueType glyph selection is best-effort (ISO 32000-1 9.6.6.4).
 
 ## Stage 4 — graphics
 
@@ -712,15 +523,15 @@ stage exists to avoid.
 - **Type3 fonts** (deferred from stage 3): glyph char procs are mini content
   streams (already tokenized by the operator parser) → SVG glyphs via the same
   path → SVG machinery; each glyph placed at the text transform (CTM × `Tm` ×
-  `/FontMatrix`, font size folded in), Unicode for selection from the stage-1
-  chain. No glyph program → no PUA re-encode and no reverse map, so the
+  `/FontMatrix`, font size folded in), Unicode for selection from the
+  code → Unicode chain. No glyph program → no PUA re-encode and no reverse map, so the
   dual-layer model holds (SVG glyph layer + transparent Unicode layer).
 - **Non-embedded fonts** (deferred from stage 3): a font with no `/FontFile*` is
   substituted, not rendered — map the standard 14 (Helvetica/Times/Courier +
   Symbol/ZapfDingbats) and common names to CSS `font-family` fallback stacks
   (serif/sans/mono by flags + name, bold/italic from `/Flags` and the name);
   drive placement from `/Widths`, with **AFM widths** for the standard 14 (which
-  usually ship none — closes stage 2's deferred item) as a generated data table.
+  usually ship none — the deferred AFM-widths item) as a generated data table.
   Glyph shapes are the browser's fallback font.
 - **Images**: `DCTDecode` → `<img>` JPEG pass-through; Flate/LZW raster → PNG
   encode; inline images (`BI`/`ID`/`EI` — currently not even tokenized correctly
@@ -780,13 +591,12 @@ tree, little else.
   `/Encoding` (base + `/Differences` → AGL) is the fallback when no `ToUnicode`
   stream is present. Composite (Type0) fonts are recognized and extract through
   their `/ToUnicode` or, when absent, a predefined Unicode `/Encoding`
-  (`Uni*-UCS2/UTF16/UTF32`). Still open: the legacy CJK code→CID CMaps
-  (RKSJ/EUC/Big5/GBK/KSC) and their CID → Unicode tables (large external data; the
-  generator scaffolding in `tools/pdf/generate_cid_data.py` is landed, the storage
-  decision and lookup remain), and the CFF/Type1 embedded-font reverse maps
-  (stages 3.4/3.5 — the TrueType one landed in 3.3); symbolic fonts with a
-  built-in encoding default to StandardEncoding until the font program is read
-  (now read for TrueType; CFF/Type1 still pending).
+  (`Uni*-UCS2/UTF16/UTF32`), and the embedded-font reverse map (TrueType `cmap`,
+  CFF/Type1 charstring glyph names) recovers Unicode for a font with neither.
+  Still open: the legacy CJK code→CID CMaps (RKSJ/EUC/Big5/GBK/KSC) and their
+  CID → Unicode tables (large external data; the generator scaffolding in
+  `tools/pdf/generate_cid_data.py` is landed, the storage decision and lookup
+  remain).
 - **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
