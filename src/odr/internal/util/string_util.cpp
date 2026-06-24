@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include <utf8/unchecked.h>
 #include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal::util {
@@ -112,6 +113,10 @@ std::string string::to_string(const double d, const int precision) {
   std::stringstream stream;
   stream << std::fixed << std::setprecision(precision) << d;
   return stream.str();
+}
+
+std::size_t string::utf8_length(const std::string &string) {
+  return utf8::unchecked::distance(string.begin(), string.end());
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {

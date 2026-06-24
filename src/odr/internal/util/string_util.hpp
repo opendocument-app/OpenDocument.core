@@ -48,6 +48,8 @@ std::vector<std::string> split(const std::string &string,
 
 std::string to_string(double d, int precision);
 
+std::size_t utf8_length(const std::string &string);
+
 std::string u16string_to_string(const std::u16string &string);
 std::u16string string_to_u16string(const std::string &string);
 std::string c16str_to_string(const char16_t *c16str, std::size_t length);

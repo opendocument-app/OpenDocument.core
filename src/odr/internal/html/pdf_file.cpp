@@ -18,6 +18,8 @@
 #include <odr/internal/pdf/pdf_page_text.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <utf8cpp/utf8/unchecked.h>
+
 #include <cmath>
 #include <map>
 #include <memory>
@@ -328,14 +330,31 @@ public:
         // TJ string and folds the adjustment into the following segment's
         // `transform`, so a segment only carries its constant spacing. Emitted
         // only when non-zero to keep the (overwhelmingly common) unspaced span
-        // small. Note CSS `word-spacing` keys on every U+0020 while Tw keys on
-        // the single-byte code 0x20 — equivalent for simple fonts.
-        if (text.char_spacing != 0) {
+        // small.
+        //
+        // CSS letter-/word-spacing key on the *rendered* string's character and
+        // space boundaries, but PDF Tc/Tw advance the text matrix per raw code
+        // (Tw only on a simple font's single-byte 0x20; ISO 32000-1 9.3.3). The
+        // two coincide only when the rendered run is 1:1 with the codes. The
+        // glyph layer always is (one PUA code point per code, `font != 0`); the
+        // Unicode text layer is not when a /ToUnicode CMap expands a code into
+        // several characters (ligatures), /ActualText substitutes text, or a
+        // space was inferred — there CSS would insert gaps the segment advances
+        // never accounted for, splitting glyphs and drifting the next
+        // absolutely-positioned segment. Gate emission on that correspondence;
+        // word spacing additionally never applies to a composite font.
+        const bool spacing_one_to_one =
+            font != 0 ||
+            (text.font != nullptr &&
+             util::string::utf8_length(text.text) ==
+                 static_cast<std::ptrdiff_t>(text.advances.size()));
+        if (text.char_spacing != 0 && spacing_one_to_one) {
           add_class(base, "s",
                     px_decl("letter-spacing",
                             round2(text.char_spacing * scale * pt_to_px)));
         }
-        if (text.word_spacing != 0) {
+        if (text.word_spacing != 0 && spacing_one_to_one &&
+            !(text.font != nullptr && text.font->composite)) {
           add_class(base, "w",
                     px_decl("word-spacing",
                             round2(text.word_spacing * scale * pt_to_px)));
