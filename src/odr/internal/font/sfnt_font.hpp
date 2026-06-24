@@ -1,7 +1,6 @@
 #pragma once
 
 #include <odr/internal/abstract/font.hpp>
-#include <odr/internal/font/sfnt_parser.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -73,15 +72,19 @@ private:
   };
   /// Table by 4-char tag (e.g. `"cmap"`), `nullopt` if absent.
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
+  /// The bytes of @p table as a view into `m_data`.
+  [[nodiscard]] std::string_view table_data(Table table) const;
 
-  void read_directory(SfntParser &parser);
-  void read_head(SfntParser &parser);
-  void read_maxp(SfntParser &parser);
-  void read_hhea(SfntParser &parser);
-  void read_hmtx(SfntParser &parser);
-  void read_cmap(SfntParser &parser);
-  void read_name(SfntParser &parser);
-  void read_cmap_subtable(SfntParser &parser);
+  /// @p sfnt is the offset table (the whole file, or a TTC member).
+  void read_directory(std::string_view sfnt);
+  void read_head();
+  void read_maxp();
+  void read_hhea();
+  void read_hmtx();
+  void read_cmap();
+  void read_name();
+  /// @p subtable is the chosen `cmap` subtable, positioned at its format word.
+  void read_cmap_subtable(std::string_view subtable);
   /// Rebuild m_reverse (glyph -> lowest code point) from m_cmap.
   void update_reverse();
 
