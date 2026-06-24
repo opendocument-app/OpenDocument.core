@@ -1,12 +1,11 @@
 #include <odr/internal/font/sfnt_font.hpp>
 
 #include <odr/font.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -15,20 +14,11 @@ using namespace odr::internal::font::sfnt;
 
 namespace {
 
-/// Parse a font from its in-memory bytes (the reader consumes an
-/// `std::istream`).
+namespace bs = odr::internal::util::byte_string;
+
+/// Parse a font from its in-memory bytes.
 SfntFont sfnt_font_from_string(std::string bytes) {
-  return SfntFont(std::make_unique<std::istringstream>(std::move(bytes)));
-}
-
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
-
-void put32(std::string &s, const std::uint32_t v) {
-  put16(s, static_cast<std::uint16_t>(v >> 16));
-  put16(s, static_cast<std::uint16_t>(v & 0xffff));
+  return SfntFont(std::move(bytes));
 }
 
 /// A `head` table: only unitsPerEm (offset 18) and the bbox (36..42) are read.
@@ -48,8 +38,8 @@ std::string head_table() {
 
 std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
-  put32(t, 0x00010000); // version 1.0
-  put16(t, glyphs);
+  bs::put_u32_be(t, 0x00010000); // version 1.0
+  bs::put_u16_be(t, glyphs);
   t.resize(32, '\0');
   return t;
 }
@@ -64,8 +54,8 @@ std::string hhea_table(const std::uint16_t number_of_h_metrics) {
 std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
   std::string t;
   for (const std::uint16_t a : advances) {
-    put16(t, a); // advanceWidth
-    put16(t, 0); // leftSideBearing
+    bs::put_u16_be(t, a); // advanceWidth
+    bs::put_u16_be(t, 0); // leftSideBearing
   }
   return t;
 }
@@ -74,22 +64,24 @@ std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
 /// ids [1, count] via a single idDelta segment, plus the required terminator.
 std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   std::string t;
-  put16(t, 4);  // format
-  put16(t, 32); // length
-  put16(t, 0);  // language
-  put16(t, 4);  // segCountX2 (2 segments)
-  put16(t, 0);  // searchRange
-  put16(t, 0);  // entrySelector
-  put16(t, 0);  // rangeShift
-  put16(t, static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
-  put16(t, 0xffff);                                        // endCode[1]
-  put16(t, 0);                                             // reservedPad
-  put16(t, start);                                         // startCode[0]
-  put16(t, 0xffff);                                        // startCode[1]
-  put16(t, static_cast<std::uint16_t>(1 - start)); // idDelta[0] -> gid 1..count
-  put16(t, 1);                                     // idDelta[1]
-  put16(t, 0);                                     // idRangeOffset[0]
-  put16(t, 0);                                     // idRangeOffset[1]
+  bs::put_u16_be(t, 4);  // format
+  bs::put_u16_be(t, 32); // length
+  bs::put_u16_be(t, 0);  // language
+  bs::put_u16_be(t, 4);  // segCountX2 (2 segments)
+  bs::put_u16_be(t, 0);  // searchRange
+  bs::put_u16_be(t, 0);  // entrySelector
+  bs::put_u16_be(t, 0);  // rangeShift
+  bs::put_u16_be(t,
+                 static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
+  bs::put_u16_be(t, 0xffff);                                     // endCode[1]
+  bs::put_u16_be(t, 0);                                          // reservedPad
+  bs::put_u16_be(t, start);                                      // startCode[0]
+  bs::put_u16_be(t, 0xffff);                                     // startCode[1]
+  bs::put_u16_be(
+      t, static_cast<std::uint16_t>(1 - start)); // idDelta[0] -> gid 1..count
+  bs::put_u16_be(t, 1);                          // idDelta[1]
+  bs::put_u16_be(t, 0);                          // idRangeOffset[0]
+  bs::put_u16_be(t, 0);                          // idRangeOffset[1]
   return t;
 }
 
@@ -101,24 +93,25 @@ std::string cmap_format4(const char16_t start, const std::uint16_t count) {
 std::string cmap_format4_glyph_array(const char16_t start,
                                      const std::uint16_t count) {
   std::string t;
-  put16(t, 4);                                             // format
-  put16(t, static_cast<std::uint16_t>(32 + 2 * count));    // length
-  put16(t, 0);                                             // language
-  put16(t, 4);                                             // segCountX2
-  put16(t, 0);                                             // searchRange
-  put16(t, 0);                                             // entrySelector
-  put16(t, 0);                                             // rangeShift
-  put16(t, static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
-  put16(t, 0xffff);                                        // endCode[1]
-  put16(t, 0);                                             // reservedPad
-  put16(t, start);                                         // startCode[0]
-  put16(t, 0xffff);                                        // startCode[1]
-  put16(t, 0);                                             // idDelta[0]
-  put16(t, 1);                                             // idDelta[1]
-  put16(t, 4); // idRangeOffset[0] -> glyphIdArray[0]
-  put16(t, 0); // idRangeOffset[1]
+  bs::put_u16_be(t, 4);                                          // format
+  bs::put_u16_be(t, static_cast<std::uint16_t>(32 + 2 * count)); // length
+  bs::put_u16_be(t, 0);                                          // language
+  bs::put_u16_be(t, 4);                                          // segCountX2
+  bs::put_u16_be(t, 0);                                          // searchRange
+  bs::put_u16_be(t, 0); // entrySelector
+  bs::put_u16_be(t, 0); // rangeShift
+  bs::put_u16_be(t,
+                 static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
+  bs::put_u16_be(t, 0xffff);                                     // endCode[1]
+  bs::put_u16_be(t, 0);                                          // reservedPad
+  bs::put_u16_be(t, start);                                      // startCode[0]
+  bs::put_u16_be(t, 0xffff);                                     // startCode[1]
+  bs::put_u16_be(t, 0);                                          // idDelta[0]
+  bs::put_u16_be(t, 1);                                          // idDelta[1]
+  bs::put_u16_be(t, 4); // idRangeOffset[0] -> glyphIdArray[0]
+  bs::put_u16_be(t, 0); // idRangeOffset[1]
   for (std::uint16_t i = 0; i < count; ++i) {
-    put16(t, static_cast<std::uint16_t>(i + 1)); // glyphIdArray
+    bs::put_u16_be(t, static_cast<std::uint16_t>(i + 1)); // glyphIdArray
   }
   return t;
 }
@@ -126,14 +119,14 @@ std::string cmap_format4_glyph_array(const char16_t start,
 // Format-12 subtable: one group mapping [start, start+count) to [1, count].
 std::string cmap_format12(const char32_t start, const std::uint32_t count) {
   std::string t;
-  put16(t, 12); // format
-  put16(t, 0);  // reserved
-  put32(t, 28); // length
-  put32(t, 0);  // language
-  put32(t, 1);  // nGroups
-  put32(t, start);
-  put32(t, start + count - 1);
-  put32(t, 1); // startGlyphID
+  bs::put_u16_be(t, 12); // format
+  bs::put_u16_be(t, 0);  // reserved
+  bs::put_u32_be(t, 28); // length
+  bs::put_u32_be(t, 0);  // language
+  bs::put_u32_be(t, 1);  // nGroups
+  bs::put_u32_be(t, start);
+  bs::put_u32_be(t, start + count - 1);
+  bs::put_u32_be(t, 1); // startGlyphID
   return t;
 }
 
@@ -141,11 +134,11 @@ std::string cmap_table(const std::uint16_t platform,
                        const std::uint16_t encoding,
                        const std::string &subtable) {
   std::string t;
-  put16(t, 0); // version
-  put16(t, 1); // numTables
-  put16(t, platform);
-  put16(t, encoding);
-  put32(t, 12); // offset to the single subtable
+  bs::put_u16_be(t, 0); // version
+  bs::put_u16_be(t, 1); // numTables
+  bs::put_u16_be(t, platform);
+  bs::put_u16_be(t, encoding);
+  bs::put_u32_be(t, 12); // offset to the single subtable
   t += subtable;
   return t;
 }
@@ -154,18 +147,18 @@ std::string cmap_table(const std::uint16_t platform,
 std::string name_table(const std::string &ascii) {
   std::string strings;
   for (const char c : ascii) {
-    put16(strings, static_cast<std::uint8_t>(c));
+    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
   }
   std::string t;
-  put16(t, 0);     // format
-  put16(t, 1);     // count
-  put16(t, 18);    // stringOffset (6 header + 12 record)
-  put16(t, 3);     // platformID (Windows)
-  put16(t, 1);     // encodingID
-  put16(t, 0x409); // languageID
-  put16(t, 6);     // nameID (PostScript)
-  put16(t, static_cast<std::uint16_t>(strings.size()));
-  put16(t, 0); // offset within string storage
+  bs::put_u16_be(t, 0);     // format
+  bs::put_u16_be(t, 1);     // count
+  bs::put_u16_be(t, 18);    // stringOffset (6 header + 12 record)
+  bs::put_u16_be(t, 3);     // platformID (Windows)
+  bs::put_u16_be(t, 1);     // encodingID
+  bs::put_u16_be(t, 0x409); // languageID
+  bs::put_u16_be(t, 6);     // nameID (PostScript)
+  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
+  bs::put_u16_be(t, 0); // offset within string storage
   t += strings;
   return t;
 }
@@ -175,19 +168,19 @@ std::string
 build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
   const auto count = static_cast<std::uint16_t>(tables.size());
   std::string out;
-  put32(out, 0x00010000); // sfntVersion (TrueType)
-  put16(out, count);
-  put16(out, 0); // searchRange
-  put16(out, 0); // entrySelector
-  put16(out, 0); // rangeShift
+  bs::put_u32_be(out, 0x00010000); // sfntVersion (TrueType)
+  bs::put_u16_be(out, count);
+  bs::put_u16_be(out, 0); // searchRange
+  bs::put_u16_be(out, 0); // entrySelector
+  bs::put_u16_be(out, 0); // rangeShift
 
   std::uint32_t offset = 12 + count * 16U;
   std::string body;
   for (const auto &[tag, data] : tables) {
     out += tag;
-    put32(out, 0); // checksum (not validated by the reader)
-    put32(out, offset);
-    put32(out, static_cast<std::uint32_t>(data.size()));
+    bs::put_u32_be(out, 0); // checksum (not validated by the reader)
+    bs::put_u32_be(out, offset);
+    bs::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
     body += data;
     while (body.size() % 4 != 0) {
       body += '\0';

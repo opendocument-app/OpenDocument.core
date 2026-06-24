@@ -1,11 +1,12 @@
 #include <odr/internal/font/sfnt_parser.hpp>
 
-#include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
-#include <istream>
+#include <stdexcept>
 
 namespace odr::internal::font::sfnt {
+
+namespace bs = util::byte_string;
 
 namespace {
 
@@ -38,25 +39,45 @@ bool SfntParser::is_sfnt(const std::string_view data) {
          tag == "true" || tag == "ttcf" || tag == "typ1";
 }
 
-SfntParser::SfntParser(std::istream &in) : m_in{&in} {}
+SfntParser::SfntParser(const std::string_view data)
+    : m_data{data}, m_cursor{data} {}
 
-void SfntParser::seek(const std::streampos offset) { in().seekg(offset); }
+void SfntParser::seek(const std::size_t offset) {
+  m_cursor = m_data.substr(offset);
+}
 
-std::streampos SfntParser::tell() { return in().tellg(); }
+std::size_t SfntParser::tell() const { return m_data.size() - m_cursor.size(); }
 
-void SfntParser::ignore(const std::streamsize count) { in().ignore(count); }
+void SfntParser::ignore(const std::size_t count) {
+  m_cursor.remove_prefix(count);
+}
 
-std::uint8_t SfntParser::read_u8() { return util::byte_stream::read_u8(in()); }
+std::uint8_t SfntParser::read_u8() {
+  const std::uint8_t value = bs::read_u8(m_cursor);
+  m_cursor.remove_prefix(1);
+  return value;
+}
 
 std::uint16_t SfntParser::read_u16() {
-  return util::byte_stream::read_u16_be(in());
+  const std::uint16_t value = bs::read_u16_be(m_cursor);
+  m_cursor.remove_prefix(2);
+  return value;
 }
 
 std::uint32_t SfntParser::read_u32() {
-  return util::byte_stream::read_u32_be(in());
+  const std::uint32_t value = bs::read_u32_be(m_cursor);
+  m_cursor.remove_prefix(4);
+  return value;
 }
 
-std::string SfntParser::read_tag() { return util::stream::read(in(), 4); }
+std::string SfntParser::read_tag() {
+  if (m_cursor.size() < 4) {
+    throw std::runtime_error("sfnt: read past end");
+  }
+  std::string tag{m_cursor.substr(0, 4)};
+  m_cursor.remove_prefix(4);
+  return tag;
+}
 
 std::string SfntParser::read_utf16be(const std::size_t len) {
   std::string out;

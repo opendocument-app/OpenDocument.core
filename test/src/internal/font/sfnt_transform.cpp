@@ -1,6 +1,7 @@
 #include <odr/internal/font/sfnt_transform.hpp>
 
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
@@ -16,6 +17,8 @@
 using namespace odr::internal::font;
 
 namespace {
+
+namespace bs = odr::internal::util::byte_string;
 
 /// Parse a font from its in-memory bytes (the reader consumes an
 /// `std::istream`).
@@ -41,16 +44,6 @@ std::string reencoded(std::string bytes) {
   return out.str();
 }
 
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
-
-void put32(std::string &s, const std::uint32_t v) {
-  put16(s, static_cast<std::uint16_t>(v >> 16));
-  put16(s, static_cast<std::uint16_t>(v & 0xffff));
-}
-
 std::string head_table() {
   std::string t(54, '\0');
   t[18] = 0x03; // unitsPerEm = 1000 (0x03E8)
@@ -60,8 +53,8 @@ std::string head_table() {
 
 std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
-  put32(t, 0x00010000);
-  put16(t, glyphs);
+  bs::put_u32_be(t, 0x00010000);
+  bs::put_u16_be(t, glyphs);
   t.resize(32, '\0');
   return t;
 }
@@ -76,8 +69,8 @@ std::string hhea_table(const std::uint16_t number_of_h_metrics) {
 std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
   std::string t;
   for (const std::uint16_t a : advances) {
-    put16(t, a);
-    put16(t, 0);
+    bs::put_u16_be(t, a);
+    bs::put_u16_be(t, 0);
   }
   return t;
 }
@@ -85,18 +78,18 @@ std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
 std::string name_table(const std::string &ascii) {
   std::string strings;
   for (const char c : ascii) {
-    put16(strings, static_cast<std::uint8_t>(c));
+    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
   }
   std::string t;
-  put16(t, 0);
-  put16(t, 1);
-  put16(t, 18);
-  put16(t, 3);
-  put16(t, 1);
-  put16(t, 0x409);
-  put16(t, 6);
-  put16(t, static_cast<std::uint16_t>(strings.size()));
-  put16(t, 0);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 18);
+  bs::put_u16_be(t, 3);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 0x409);
+  bs::put_u16_be(t, 6);
+  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
+  bs::put_u16_be(t, 0);
   t += strings;
   return t;
 }

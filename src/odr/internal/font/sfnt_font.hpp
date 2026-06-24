@@ -27,9 +27,11 @@ public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  /// Takes ownership of @p in and parses the facts from it (seeking per table);
-  /// the raw bytes are materialized lazily for pass-through (see `data()`).
+  /// Reads @p stream fully into an in-memory buffer and parses the facts from
+  /// it; the bytes are retained for pass-through (see `write()`).
   explicit SfntFont(std::unique_ptr<std::istream> stream);
+  /// Parses the facts from an in-memory SFNT blob (retained for `write()`).
+  explicit SfntFont(std::string data);
 
   [[nodiscard]] FontFormat format() const noexcept override;
   [[nodiscard]] std::string name() const override;
@@ -61,7 +63,8 @@ public:
   void write(std::ostream &out) const;
 
 private:
-  std::istream &in() const { return *m_in; }
+  /// Parse the facts from `m_data` (called by both constructors).
+  void parse();
 
   /// A located table within the SFNT: byte offset + length into the source.
   struct Table {
@@ -71,19 +74,18 @@ private:
   /// Table by 4-char tag (e.g. `"cmap"`), `nullopt` if absent.
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
 
-  void read_directory();
-  void read_head();
-  void read_maxp();
-  void read_hhea();
-  void read_hmtx();
-  void read_cmap();
-  void read_name();
-  void read_cmap_subtable();
+  void read_directory(SfntParser &parser);
+  void read_head(SfntParser &parser);
+  void read_maxp(SfntParser &parser);
+  void read_hhea(SfntParser &parser);
+  void read_hmtx(SfntParser &parser);
+  void read_cmap(SfntParser &parser);
+  void read_name(SfntParser &parser);
+  void read_cmap_subtable(SfntParser &parser);
   /// Rebuild m_reverse (glyph -> lowest code point) from m_cmap.
   void update_reverse();
 
-  std::unique_ptr<std::istream> m_in;
-  SfntParser m_parser;
+  std::string m_data;
 
   FontFormat m_format{FontFormat::unknown};
   std::map<std::string, Table, std::less<>> m_tables;

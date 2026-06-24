@@ -2,9 +2,9 @@
 
 #include <odr/internal/abstract/font.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iosfwd>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -77,13 +77,13 @@ public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  explicit SfntParser(std::istream &stream);
+  /// Parse over @p data; the cursor starts at its front. @p data must outlive
+  /// the parser (it is held as a view).
+  explicit SfntParser(std::string_view data);
 
-  std::istream &in() const { return *m_in; }
-
-  void seek(std::streampos offset);
-  [[nodiscard]] std::streampos tell();
-  void ignore(std::streamsize count);
+  void seek(std::size_t offset);
+  [[nodiscard]] std::size_t tell() const;
+  void ignore(std::size_t count);
 
   [[nodiscard]] std::uint8_t read_u8();
   [[nodiscard]] std::uint16_t read_u16();
@@ -99,7 +99,8 @@ public:
   [[nodiscard]] NameEntry read_name_entry();
 
 private:
-  std::istream *m_in{};
+  std::string_view m_data;   // whole buffer, for absolute seeks
+  std::string_view m_cursor; // remaining bytes from the current position
 };
 
 } // namespace odr::internal::font::sfnt

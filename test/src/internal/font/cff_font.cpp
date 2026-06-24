@@ -4,6 +4,7 @@
 #include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
@@ -18,10 +19,7 @@ using namespace odr::internal::font::cff;
 
 namespace {
 
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
+namespace bs = odr::internal::util::byte_string;
 
 /// A DICT integer, always in the 5-byte `29 + int32` form so the Top DICT has a
 /// fixed size independent of the (offset) values — lets the builder lay the
@@ -37,7 +35,7 @@ void dict_int(std::string &s, const std::int32_t v) {
 /// Serialize a CFF INDEX from its members.
 std::string build_index(const std::vector<std::string> &members) {
   std::string out;
-  put16(out, static_cast<std::uint16_t>(members.size()));
+  bs::put_u16_be(out, static_cast<std::uint16_t>(members.size()));
   if (members.empty()) {
     return out; // count 0: no offSize/offsets
   }
@@ -80,7 +78,7 @@ std::string build_cff(const std::uint16_t glyph1_sid = 391) {
   // charset format 0: glyph 1 -> the requested SID.
   std::string charset;
   charset += static_cast<char>(0); // format 0
-  put16(charset, glyph1_sid);
+  bs::put_u16_be(charset, glyph1_sid);
 
   // Private DICT: defaultWidthX 500 (op 20), nominalWidthX 200 (op 21).
   std::string private_dict;
@@ -236,8 +234,8 @@ std::string build_cid_keyed_cff() {
   // charset format 0: glyph 1 -> CID 5, glyph 2 -> CID 9.
   std::string charset;
   charset += static_cast<char>(0); // format 0
-  put16(charset, 5);
-  put16(charset, 9);
+  bs::put_u16_be(charset, 5);
+  bs::put_u16_be(charset, 9);
 
   std::string private_dict;
   dict_int(private_dict, 500);
