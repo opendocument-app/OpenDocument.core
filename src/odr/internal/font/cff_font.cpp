@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <istream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -168,6 +169,40 @@ using Dict = std::map<std::uint16_t, std::vector<double>>;
   return dict;
 }
 
+/// Predefined charset ids (Adobe TN #5176 §13). A Top DICT `/charset` of 0/1/2
+/// (or an omitted `/charset`, defaulting to 0) selects one of these instead of
+/// a charset offset.
+enum PredefinedCharset : std::uint32_t {
+  predefined_charset_iso_adobe = 0,
+  predefined_charset_expert = 1,
+  predefined_charset_expert_subset = 2,
+};
+
+/// Predefined Expert charset: glyph -> SID (Adobe TN #5176 Appendix C). The
+/// ISOAdobe charset is the identity (SID == GID) so it needs no table.
+constexpr std::uint16_t expert_charset[] = {
+    0,   1,   229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 13,  14,
+    15,  99,  239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 27,  28,
+    249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262,
+    263, 264, 265, 266, 109, 110, 267, 268, 269, 270, 271, 272, 273, 274,
+    275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288,
+    289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302,
+    303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316,
+    317, 318, 158, 155, 163, 319, 320, 321, 322, 323, 324, 325, 326, 150,
+    164, 169, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338,
+    339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352,
+    353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366,
+    367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378};
+
+/// Predefined ExpertSubset charset: glyph -> SID (Adobe TN #5176 Appendix C).
+constexpr std::uint16_t expert_subset_charset[] = {
+    0,   1,   231, 232, 235, 236, 237, 238, 13,  14,  15,  99,  239, 240, 241,
+    242, 243, 244, 245, 246, 247, 248, 27,  28,  249, 250, 251, 253, 254, 255,
+    256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 109, 110, 267, 268,
+    269, 270, 272, 300, 301, 302, 305, 314, 315, 158, 155, 163, 320, 321, 322,
+    323, 324, 325, 326, 150, 164, 169, 327, 328, 329, 330, 331, 332, 333, 334,
+    335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346};
+
 } // namespace
 
 bool CffFont::is_cff(const std::string_view data) {
@@ -286,13 +321,42 @@ void CffFont::parse_top_dict(const Range top_dict) {
     parse_private_dict({offset, size});
   }
 
-  // charset: default 0 (ISOAdobe predefined); a custom charset is an offset
-  // past the predefined ids (0/1/2).
+  // charset: an offset past the predefined ids (0/1/2) is a custom charset;
+  // 0/1/2 (or an omitted `/charset`, defaulting to 0 = ISOAdobe) select a
+  // predefined charset. CID-keyed fonts always carry a custom (CID) charset, so
+  // the predefined name charsets only apply to name-keyed fonts.
+  std::uint32_t charset = predefined_charset_iso_adobe;
   if (const auto it = dict.find(op_charset); it != dict.end()) {
-    const auto offset = static_cast<std::uint32_t>(it->second.at(0));
-    if (offset > 2) {
-      parse_charset(offset);
+    charset = static_cast<std::uint32_t>(it->second.at(0));
+  }
+  if (charset > predefined_charset_expert_subset) {
+    parse_charset(charset);
+  } else if (!m_cid_keyed) {
+    load_predefined_charset(charset);
+  }
+}
+
+void CffFont::load_predefined_charset(const std::uint32_t id) {
+  const std::uint16_t glyphs = glyph_count();
+  m_charset.assign(glyphs, 0); // glyph 0 (.notdef) -> SID 0
+  if (id == predefined_charset_iso_adobe) {
+    // ISOAdobe is the identity: glyph i carries SID i (Adobe TN #5176 App. C).
+    for (std::uint16_t gid = 1; gid < glyphs; ++gid) {
+      m_charset[gid] = gid;
     }
+    return;
+  }
+  const std::uint16_t *table = nullptr;
+  std::size_t size = 0;
+  if (id == predefined_charset_expert) {
+    table = expert_charset;
+    size = std::size(expert_charset);
+  } else { // predefined_charset_expert_subset
+    table = expert_subset_charset;
+    size = std::size(expert_subset_charset);
+  }
+  for (std::uint16_t gid = 1; gid < glyphs && gid < size; ++gid) {
+    m_charset[gid] = table[gid];
   }
 }
 

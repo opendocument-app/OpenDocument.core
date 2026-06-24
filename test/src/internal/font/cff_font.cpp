@@ -145,6 +145,165 @@ std::string build_cff(const std::uint16_t glyph1_sid = 391) {
   return out;
 }
 
+/// Build a name-keyed CFF with @p glyphs glyphs (`.notdef` + named) whose Top
+/// DICT selects a predefined charset rather than laying out a custom one. When
+/// @p omit_charset_op is set the `/charset` operator is dropped entirely (the
+/// default, which is ISOAdobe); otherwise @p charset_id (0/1/2) is written as
+/// the `/charset` operand. No charset table is emitted.
+std::string build_cff_predefined_charset(const std::uint32_t charset_id,
+                                         const std::uint16_t glyphs = 3,
+                                         const bool omit_charset_op = false) {
+  std::vector<std::string> cs;
+  cs.emplace_back(1, static_cast<char>(14)); // glyph 0: endchar
+  for (std::uint16_t g = 1; g < glyphs; ++g) {
+    std::string c;
+    c += static_cast<char>(50 + 139); // width operand 50
+    c += static_cast<char>(14);       // endchar
+    cs.push_back(std::move(c));
+  }
+  const std::string charstrings = build_index(cs);
+
+  std::string private_dict;
+  dict_int(private_dict, 500);
+  private_dict += static_cast<char>(20);
+  dict_int(private_dict, 200);
+  private_dict += static_cast<char>(21);
+
+  const std::string name_index = build_index({"TestFont"});
+  const std::string string_index = build_index({});
+  const std::string global_subrs = build_index({});
+
+  const auto top_dict = [&](std::uint32_t cs_off, std::uint32_t priv_off) {
+    std::string d;
+    dict_int(d, 0);
+    dict_int(d, -200);
+    dict_int(d, 600);
+    dict_int(d, 800);
+    d += static_cast<char>(5); // FontBBox
+    if (!omit_charset_op) {
+      dict_int(d, static_cast<std::int32_t>(charset_id));
+      d += static_cast<char>(15); // charset (predefined id)
+    }
+    dict_int(d, static_cast<std::int32_t>(cs_off));
+    d += static_cast<char>(17); // CharStrings
+    dict_int(d, static_cast<std::int32_t>(private_dict.size()));
+    dict_int(d, static_cast<std::int32_t>(priv_off));
+    d += static_cast<char>(18); // Private [size offset]
+    return d;
+  };
+
+  const std::string top_dict_index_probe = build_index({top_dict(0, 0)});
+  const std::uint32_t header_size = 4;
+  const std::uint32_t prefix =
+      header_size + static_cast<std::uint32_t>(name_index.size()) +
+      static_cast<std::uint32_t>(top_dict_index_probe.size()) +
+      static_cast<std::uint32_t>(string_index.size()) +
+      static_cast<std::uint32_t>(global_subrs.size());
+  const std::uint32_t cs_off = prefix;
+  const std::uint32_t priv_off =
+      cs_off + static_cast<std::uint32_t>(charstrings.size());
+
+  const std::string top_dict_index = build_index({top_dict(cs_off, priv_off)});
+
+  std::string out;
+  out += static_cast<char>(1); // major
+  out += static_cast<char>(0); // minor
+  out += static_cast<char>(4); // hdrSize
+  out += static_cast<char>(1); // offSize
+  out += name_index;
+  out += top_dict_index;
+  out += string_index;
+  out += global_subrs;
+  out += charstrings;
+  out += private_dict;
+  return out;
+}
+
+/// Build a minimal CID-keyed CFF (Top DICT carries `ROS`): three glyphs whose
+/// charset maps glyph -> CID non-identically (glyph 1 -> CID 5, glyph 2 -> CID
+/// 9), exercising the CID -> GID map a `CIDFontType0C` font relies on.
+std::string build_cid_keyed_cff() {
+  std::vector<std::string> cs;
+  cs.emplace_back(1, static_cast<char>(14)); // glyph 0: endchar
+  for (int g = 1; g < 3; ++g) {
+    std::string c;
+    c += static_cast<char>(50 + 139);
+    c += static_cast<char>(14);
+    cs.push_back(std::move(c));
+  }
+  const std::string charstrings = build_index(cs);
+
+  // charset format 0: glyph 1 -> CID 5, glyph 2 -> CID 9.
+  std::string charset;
+  charset += static_cast<char>(0); // format 0
+  put16(charset, 5);
+  put16(charset, 9);
+
+  std::string private_dict;
+  dict_int(private_dict, 500);
+  private_dict += static_cast<char>(20);
+  dict_int(private_dict, 200);
+  private_dict += static_cast<char>(21);
+
+  const std::string name_index = build_index({"CIDFont"});
+  const std::string string_index = build_index({});
+  const std::string global_subrs = build_index({});
+
+  const auto top_dict = [&](std::uint32_t cs_off, std::uint32_t charset_off,
+                            std::uint32_t priv_off) {
+    std::string d;
+    // ROS registry/ordering/supplement, operator escape `12 30`.
+    dict_int(d, 0);
+    dict_int(d, 0);
+    dict_int(d, 0);
+    d += static_cast<char>(12);
+    d += static_cast<char>(30); // ROS
+    dict_int(d, 0);
+    dict_int(d, -200);
+    dict_int(d, 600);
+    dict_int(d, 800);
+    d += static_cast<char>(5); // FontBBox
+    dict_int(d, static_cast<std::int32_t>(charset_off));
+    d += static_cast<char>(15); // charset
+    dict_int(d, static_cast<std::int32_t>(cs_off));
+    d += static_cast<char>(17); // CharStrings
+    dict_int(d, static_cast<std::int32_t>(private_dict.size()));
+    dict_int(d, static_cast<std::int32_t>(priv_off));
+    d += static_cast<char>(18); // Private [size offset]
+    return d;
+  };
+
+  const std::string top_dict_index_probe = build_index({top_dict(0, 0, 0)});
+  const std::uint32_t header_size = 4;
+  const std::uint32_t prefix =
+      header_size + static_cast<std::uint32_t>(name_index.size()) +
+      static_cast<std::uint32_t>(top_dict_index_probe.size()) +
+      static_cast<std::uint32_t>(string_index.size()) +
+      static_cast<std::uint32_t>(global_subrs.size());
+  const std::uint32_t cs_off = prefix;
+  const std::uint32_t charset_off =
+      cs_off + static_cast<std::uint32_t>(charstrings.size());
+  const std::uint32_t priv_off =
+      charset_off + static_cast<std::uint32_t>(charset.size());
+
+  const std::string top_dict_index =
+      build_index({top_dict(cs_off, charset_off, priv_off)});
+
+  std::string out;
+  out += static_cast<char>(1);
+  out += static_cast<char>(0);
+  out += static_cast<char>(4);
+  out += static_cast<char>(1);
+  out += name_index;
+  out += top_dict_index;
+  out += string_index;
+  out += global_subrs;
+  out += charstrings;
+  out += charset;
+  out += private_dict;
+  return out;
+}
+
 } // namespace
 
 TEST(CffFontTest, ParsesFactsFromMinimalFont) {
@@ -185,6 +344,48 @@ TEST(CffFontTest, ResolvesStandardStringAndReverseMap) {
   EXPECT_EQ(font.code_point_for_glyph(1), U'A');
   // forward: U+0041 -> glyph 1.
   EXPECT_EQ(font.glyph_for_code_point(U'A'), 1);
+}
+
+TEST(CffFontTest, MaterializesIsoAdobePredefinedCharset) {
+  // `/charset 0` (and an omitted `/charset`) selects the ISOAdobe charset, the
+  // identity SID == GID; without materializing it the glyphs would be
+  // unresolved and fall back to code-as-GID.
+  for (const CffFont &font :
+       {CffFont{build_cff_predefined_charset(0)},
+        CffFont{build_cff_predefined_charset(0, /*glyphs=*/3,
+                                             /*omit_charset_op=*/true)}}) {
+    EXPECT_EQ(font.glyph_name(1), "space");  // SID 1
+    EXPECT_EQ(font.glyph_name(2), "exclam"); // SID 2
+    EXPECT_EQ(font.code_point_for_glyph(1), U' ');
+    EXPECT_EQ(font.code_point_for_glyph(2), U'!');
+    EXPECT_EQ(font.glyph_for_code_point(U'!'), 2);
+  }
+}
+
+TEST(CffFontTest, MaterializesExpertPredefinedCharsets) {
+  // The Expert / ExpertSubset predefined charsets are explicit SID sequences;
+  // glyph 2 distinguishes them (ISOAdobe SID 2, Expert SID 229, ExpertSubset
+  // SID 231).
+  const CffFont expert{build_cff_predefined_charset(1)};
+  EXPECT_EQ(expert.glyph_name(2), "exclamsmall"); // SID 229
+
+  const CffFont expert_subset{build_cff_predefined_charset(2)};
+  EXPECT_EQ(expert_subset.glyph_name(2), "dollaroldstyle"); // SID 231
+}
+
+TEST(CffFontTest, MapsCidToGlyphThroughCharset) {
+  // CID-keyed CFF: the charset is the CID -> GID map (CIDFontType0C). The PDF
+  // composite-font path resolves a CID to its local glyph through this.
+  const CffFont font{build_cid_keyed_cff()};
+
+  EXPECT_TRUE(font.is_cid_keyed());
+  EXPECT_EQ(font.glyph_name(1), ""); // CID-keyed: no names
+  EXPECT_EQ(font.cid_for_glyph(1), 5);
+  EXPECT_EQ(font.cid_for_glyph(2), 9);
+  EXPECT_EQ(font.glyph_for_cid(5), 1);
+  EXPECT_EQ(font.glyph_for_cid(9), 2);
+  EXPECT_EQ(font.glyph_for_cid(0), 0); // .notdef
+  EXPECT_EQ(font.glyph_for_cid(7), 0); // unmapped CID
 }
 
 TEST(CffFontTest, IsCffMagic) {

@@ -77,6 +77,10 @@ private:
   void parse_top_dict(Range top_dict);
   void parse_private_dict(Range private_dict);
   void parse_charset(std::uint32_t offset);
+  /// Materialize a predefined charset (id 0 ISOAdobe / 1 Expert / 2
+  /// ExpertSubset) into `m_charset`, used when `/charset` is a predefined id or
+  /// omitted (Adobe TN #5176 §13, Appendix C).
+  void load_predefined_charset(std::uint32_t id);
 
   /// Parse a CFF INDEX starting at @p offset, returning one `Range` per member
   /// (into `m_data`); @p end receives the offset just past the INDEX.

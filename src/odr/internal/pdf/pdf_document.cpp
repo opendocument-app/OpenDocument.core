@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_document.hpp>
 
 #include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/pdf/pdf_cid.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -78,7 +79,16 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
     return 0;
   }
   if (composite) {
-    // The code is the CID (Identity-H/V); map it to a GID via /CIDToGIDMap.
+    // The code is the CID (Identity-H/V). A CID-keyed CFF (`CIDFontType0C`)
+    // carries the CID -> GID map in its own charset (ISO 32000-1 9.7.4.2);
+    // `/CIDToGIDMap` is only defined for TrueType `CIDFontType2` and is
+    // Identity for CIDFontType0, so route CID-keyed CFF through the CFF charset
+    // first.
+    if (const auto *cff =
+            dynamic_cast<const font::cff::CffFont *>(embedded_font.get());
+        cff != nullptr && cff->is_cid_keyed()) {
+      return cff->glyph_for_cid(static_cast<std::uint16_t>(code));
+    }
     if (cid_to_gid.empty()) {
       return static_cast<std::uint16_t>(code); // Identity
     }
