@@ -143,7 +143,11 @@ std::string serialize_name(const std::string &font_name) {
 
 } // namespace
 
-std::string wrap_to_otf(const CffFont &font) {
+} // namespace odr::internal::font::cff
+
+namespace odr::internal::font {
+
+std::string cff::wrap_to_otf(const CffFont &font) {
   const std::uint16_t glyphs = font.glyph_count();
 
   // The uniform PUA re-encode (stage 3.1): pua_code_point(glyph) -> glyph over
@@ -182,4 +186,4 @@ std::string wrap_to_otf(const CffFont &font) {
   return std::move(out).str();
 }
 
-} // namespace odr::internal::font::cff
+} // namespace odr::internal::font

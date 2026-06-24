@@ -356,8 +356,7 @@ public:
         const bool spacing_one_to_one =
             font != 0 ||
             (text.font != nullptr &&
-             util::string::utf8_length(text.text) ==
-                 static_cast<std::ptrdiff_t>(text.advances.size()));
+             util::string::utf8_length(text.text) == text.advances.size());
         if (text.char_spacing != 0 && spacing_one_to_one) {
           add_class(base, "s",
                     px_decl("letter-spacing",
