@@ -321,9 +321,19 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     m_cmap[code] = glyph;
   };
 
-  // Formats 0/6/12 have a fixed-layout header, so each field is read at its
-  // known offset (matching the rest of this file). Format 4 chains
-  // variable-length arrays and is read with a forward cursor instead.
+  // Every subtable format has a fixed-layout header, so each field is read at
+  // its known offset (matching the rest of this file). Format 4's arrays are
+  // variable-length, but each one's offset is a fixed function of segCount.
+  const auto read_u16_vector = [](const std::string_view v,
+                                  const std::size_t count) {
+    std::vector<std::uint16_t> out;
+    out.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+      out.push_back(bs::read_u16_be(v.substr(i * 2)));
+    }
+    return out;
+  };
+
   switch (static_cast<CmapFormat>(bs::read_u16_be(s))) {
   case CmapFormat::byte_encoding: {
     // format(0), length(2), language(4), then a 256-byte glyphIdArray(6).
@@ -333,32 +343,20 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     break;
   }
   case CmapFormat::segment_mapping: { // segment mapping to delta values
-    // The segs-sized arrays follow one another, so read with a forward cursor
-    // positioned past the format word.
-    std::string_view c = s.substr(2);
-    const auto u16 = [&c] {
-      const std::uint16_t v = bs::read_u16_be(c);
-      c.remove_prefix(2);
-      return v;
-    };
-    const auto skip = [&c](const std::size_t n) { c.remove_prefix(n); };
-    const auto read_u16_vector = [&u16](const std::size_t count) {
-      std::vector<std::uint16_t> out;
-      out.reserve(count);
-      for (std::size_t i = 0; i < count; ++i) {
-        out.push_back(u16());
-      }
-      return out;
-    };
-    const std::uint16_t length = u16();
-    skip(2); // language
-    const std::size_t segs = u16() / 2U;
-    skip(6); // searchRange, entrySelector, rangeShift
-    const std::vector<std::uint16_t> end_codes = read_u16_vector(segs);
-    skip(2); // reservedPad
-    const std::vector<std::uint16_t> start_codes = read_u16_vector(segs);
-    const std::vector<std::uint16_t> id_deltas = read_u16_vector(segs);
-    const std::vector<std::uint16_t> id_range_offsets = read_u16_vector(segs);
+    // format(0), length(2), language(4), segCountX2(6), then searchRange(8),
+    // entrySelector(10), rangeShift(12). The four parallel segs-sized arrays
+    // follow: endCode(14), reservedPad, startCode, idDelta, idRangeOffset, each
+    // starting at a fixed offset once segCount is known.
+    const std::uint16_t length = bs::read_u16_be(s.substr(2));
+    const std::size_t segs = bs::read_u16_be(s.substr(6)) / 2U;
+    const std::vector<std::uint16_t> end_codes =
+        read_u16_vector(s.substr(14), segs);
+    const std::vector<std::uint16_t> start_codes =
+        read_u16_vector(s.substr(16 + 2 * segs), segs);
+    const std::vector<std::uint16_t> id_deltas =
+        read_u16_vector(s.substr(16 + 4 * segs), segs);
+    const std::vector<std::uint16_t> id_range_offsets =
+        read_u16_vector(s.substr(16 + 6 * segs), segs);
     // Whatever remains of the subtable is the glyphIdArray that non-zero
     // idRangeOffsets index into; preload it so the inner loop is a plain
     // lookup. The header up to this point is 16 + 8*segs bytes.
@@ -367,7 +365,7 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
       throw std::runtime_error("sfnt: cmap format 4 subtable too short");
     }
     const std::vector<std::uint16_t> glyph_ids =
-        read_u16_vector((length - header) / 2);
+        read_u16_vector(s.substr(header), (length - header) / 2);
     for (std::size_t seg = 0; seg < segs; ++seg) {
       const std::uint16_t start = start_codes.at(seg);
       const std::uint16_t end = end_codes.at(seg);
