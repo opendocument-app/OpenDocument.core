@@ -1,4 +1,4 @@
-#include <odr/internal/pdf/pdf_page_text.hpp>
+#include <odr/internal/pdf/pdf_page_extractor.hpp>
 
 #include <odr/logger.hpp>
 
@@ -252,7 +252,7 @@ bool infer_space(const Pen &pen, const std::array<double, 2> &start) {
 }
 
 /// Emit one placed segment and advance the text matrix by its width.
-void show(std::vector<TextElement> &out, GraphicsState &state,
+void show(std::vector<PageElement> &out, GraphicsState &state,
           MarkedContentStack &marked, std::optional<Pen> &pen,
           std::string codes, Font *font) {
   const GraphicsState::Text &text = state.current().text;
@@ -307,6 +307,33 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
   pen = Pen{{after.e, after.f}, direction, text.size * basis, trailing_space};
 }
 
+/// Emit a path-painting element from the path accumulated in `state` and the
+/// current paint state, then clear the path (as every painting operator does).
+/// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
+void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
+                bool stroke, bool even_odd, bool close) {
+  if (close) {
+    state.path_close();
+  }
+  const GraphicsState::State &s = state.current();
+  PathElement element;
+  element.subpaths = state.path;
+  element.fill = fill;
+  element.stroke = stroke;
+  element.even_odd = even_odd;
+  element.fill_color = s.other_color;
+  element.stroke_color = s.stroke_color;
+  element.line_width = s.general.line_width;
+  element.line_cap = s.general.cap_style;
+  element.line_join = s.general.join_style;
+  element.miter_limit = s.general.miter_limit;
+  // The geometry above is flattened to user space, so the CTM can no longer be
+  // recovered from it; capture it for the stroke metrics (ISO 32000-1 8.4.3.2).
+  element.ctm = s.general.transform_matrix;
+  out.push_back(std::move(element));
+  state.clear_path();
+}
+
 /// Form XObjects currently being rendered, by element identity. The parser
 /// represents the file faithfully, so the XObject graph may contain cycles
 /// (the spec forbids them — ISO 32000-1 8.10.1 — but real files err); this set
@@ -314,7 +341,7 @@ void show(std::vector<TextElement> &out, GraphicsState &state,
 using ActiveForms = std::set<const XObject *>;
 
 void run_content(const std::string &content, const Resources &resources,
-                 GraphicsState &state, std::vector<TextElement> &out,
+                 GraphicsState &state, std::vector<PageElement> &out,
                  const Logger &logger, std::set<std::string> &warned,
                  ActiveForms &active, MarkedContentStack &marked,
                  std::optional<Pen> &pen);
@@ -347,7 +374,7 @@ void begin_marked_content(const GraphicsOperator &op,
 /// `/BBox` clipping is deferred (text-only). Image and unknown XObjects are
 /// skipped, and a form already on the render stack is skipped (cycle guard).
 void invoke_x_object(const std::string &name, const Resources &resources,
-                     GraphicsState &state, std::vector<TextElement> &out,
+                     GraphicsState &state, std::vector<PageElement> &out,
                      const Logger &logger, std::set<std::string> &warned,
                      ActiveForms &active, MarkedContentStack &marked,
                      std::optional<Pen> &pen) {
@@ -383,7 +410,7 @@ void invoke_x_object(const std::string &name, const Resources &resources,
 }
 
 void run_content(const std::string &content, const Resources &resources,
-                 GraphicsState &state, std::vector<TextElement> &out,
+                 GraphicsState &state, std::vector<PageElement> &out,
                  const Logger &logger, std::set<std::string> &warned,
                  ActiveForms &active, MarkedContentStack &marked,
                  std::optional<Pen> &pen) {
@@ -426,6 +453,36 @@ void run_content(const std::string &content, const Resources &resources,
       invoke_x_object(op.arguments.at(0).as_string(), resources, state, out,
                       logger, warned, active, marked, pen);
       break;
+
+    case GraphicsOperatorType::stroke: // S
+      paint_path(out, state, false, true, false, false);
+      break;
+    case GraphicsOperatorType::close_stroke: // s
+      paint_path(out, state, false, true, false, true);
+      break;
+    case GraphicsOperatorType::fill_nonzero: // f, F
+      paint_path(out, state, true, false, false, false);
+      break;
+    case GraphicsOperatorType::fill_evenodd: // f*
+      paint_path(out, state, true, false, true, false);
+      break;
+    case GraphicsOperatorType::fill_nonzero_stroke: // B
+      paint_path(out, state, true, true, false, false);
+      break;
+    case GraphicsOperatorType::fill_evenodd_stroke: // B*
+      paint_path(out, state, true, true, true, false);
+      break;
+    case GraphicsOperatorType::close_fill_nonzero_stroke: // b
+      paint_path(out, state, true, true, false, true);
+      break;
+    case GraphicsOperatorType::close_fill_evenodd_stroke: // b*
+      paint_path(out, state, true, true, true, true);
+      break;
+    case GraphicsOperatorType::end_path: // n
+      // Path painted with no marks (used after a clip operator, stage 4.3);
+      // discard the geometry.
+      state.clear_path();
+      break;
     case GraphicsOperatorType::begin_marked_content_seq:       // BMC
     case GraphicsOperatorType::begin_marked_content_seq_props: // BDC
       begin_marked_content(op, resources, marked);
@@ -447,10 +504,10 @@ void run_content(const std::string &content, const Resources &resources,
 
 namespace odr::internal {
 
-std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
+std::vector<pdf::PageElement> pdf::extract_page(const std::string &content,
                                                 const Resources &resources,
                                                 const Logger &logger) {
-  std::vector<TextElement> result;
+  std::vector<PageElement> result;
   std::set<std::string> warned;
   ActiveForms active;
   MarkedContentStack marked;
@@ -460,6 +517,18 @@ std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
   run_content(content, resources, state, result, logger, warned, active, marked,
               pen);
 
+  return result;
+}
+
+std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
+                                                const Resources &resources,
+                                                const Logger &logger) {
+  std::vector<TextElement> result;
+  for (PageElement &element : extract_page(content, resources, logger)) {
+    if (auto *text = std::get_if<TextElement>(&element)) {
+      result.push_back(std::move(*text));
+    }
+  }
   return result;
 }
 

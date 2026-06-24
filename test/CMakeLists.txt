@@ -51,7 +51,7 @@ add_executable(odr_test
         "src/internal/util/math_util_test.cpp"
         "src/internal/pdf/pdf_object.cpp"
         "src/internal/pdf/pdf_object_parser.cpp"
-        "src/internal/pdf/pdf_page_text.cpp"
+        "src/internal/pdf/pdf_page_extractor.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
         "src/internal/font/cff_font.cpp"

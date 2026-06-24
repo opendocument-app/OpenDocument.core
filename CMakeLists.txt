@@ -196,7 +196,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_graphics_state.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
         "src/odr/internal/pdf/pdf_object_parser.cpp"
-        "src/odr/internal/pdf/pdf_page_text.cpp"
+        "src/odr/internal/pdf/pdf_page_extractor.cpp"
 
         "src/odr/internal/font/cff_builder.cpp"
         "src/odr/internal/font/cff_font.cpp"

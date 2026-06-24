@@ -1,17 +1,14 @@
 #pragma once
 
+#include <odr/internal/pdf/pdf_graphics_state.hpp>
 #include <odr/internal/util/math_util.hpp>
 
 #include <string>
+#include <variant>
 #include <vector>
-
-namespace odr {
-class Logger;
-}
 
 namespace odr::internal::pdf {
 
-struct Resources;
 struct Font;
 
 /// One show-text operation laid out in user space. The transform places the
@@ -58,15 +55,40 @@ struct TextElement {
   std::vector<double> advances;
 };
 
-/// Execute a page's (decoded, concatenated) content stream and collect the text
-/// it shows as placed elements. Non-text operators update the graphics state
-/// but produce no output. Each shown segment (one `Tj`/`'`/`"`, or one string
-/// of a `TJ` array) yields one element at its origin; the text matrix is
-/// advanced by the glyph widths (`font->advance_width`) plus char/word spacing
-/// and the `TJ` numeric adjustments, so segments and lines land in the right
-/// place.
-std::vector<TextElement> extract_text(const std::string &content,
-                                      const Resources &resources,
-                                      const Logger &logger);
+/// One path-painting operation (`S`/`s`/`f`/`F`/`f*`/`B`/…), laid out in user
+/// space. The geometry is fully resolved (the CTM applied at construction), so
+/// a renderer maps it through the page transform alone. The paint intent and
+/// the paint-relevant graphics state are snapshotted; colors are kept as PDF
+/// device colors and converted to RGB by the renderer. `/Pattern` color and
+/// clipping are stage 4.3+ and not yet represented.
+struct PathElement {
+  /// The subpaths to paint, in user space.
+  std::vector<Subpath> subpaths;
+  bool fill{false};
+  bool stroke{false};
+  /// Fill rule: false = nonzero winding, true = even-odd.
+  bool even_odd{false};
+  /// Non-stroking (fill) color and stroking color, as device colors.
+  GraphicsState::Color fill_color;
+  GraphicsState::Color stroke_color;
+  /// Stroke parameters. `line_width` is the raw PDF value in *unscaled* user
+  /// space; PDF stroke width scales with the CTM (ISO 32000-1 8.4.3.2), but the
+  /// path geometry above is already flattened to user space, so the CTM is no
+  /// longer recoverable from it. `ctm` is the paint-time CTM, captured here so
+  /// the renderer can derive the device stroke width (and handle non-uniform
+  /// scaling) at stage 4.2.
+  double line_width{1};
+  int line_cap{0};
+  int line_join{0};
+  double miter_limit{10};
+  /// Paint-time CTM (the geometry's user space -> the unscaled space line
+  /// width/dash lengths live in).
+  util::math::Transform2D ctm;
+};
+
+/// A single page-content element in paint (z) order: a shown text segment or a
+/// painted path. Images, shadings and patterns join this variant in later
+/// stage-4 PRs.
+using PageElement = std::variant<TextElement, PathElement>;
 
 } // namespace odr::internal::pdf
