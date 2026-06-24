@@ -3,7 +3,6 @@
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/util/map_util.hpp>
 
-#include <iostream>
 #include <unordered_map>
 
 namespace odr::internal::pdf {
@@ -168,9 +167,17 @@ void GraphicsState::execute(const GraphicsOperator &op) {
   case GraphicsOperatorType::set_miter_limit:
     current().general.miter_limit = op.arguments.at(0).as_real();
     break;
-  case GraphicsOperatorType::set_dash_pattern:
-    std::cout << "dash pattern not implemented" << '\n';
-    break;
+  case GraphicsOperatorType::set_dash_pattern: {
+    // `[a1 a2 …] phase d` (ISO 32000-1 8.4.3.6).
+    Dash dash;
+    if (op.arguments.at(0).is_array()) {
+      for (const Object &item : op.arguments.at(0).as_array()) {
+        dash.array.push_back(item.as_real());
+      }
+    }
+    dash.phase = op.arguments.at(1).as_real();
+    current().general.dash = std::move(dash);
+  } break;
   case GraphicsOperatorType::set_color_rendering_intent:
     current().general.color_rendering_intent = op.arguments.at(0).as_name();
     break;
@@ -267,12 +274,8 @@ void GraphicsState::execute(const GraphicsOperator &op) {
         color_space_name_to_enum(op.arguments.at(0).as_string());
     break;
   case GraphicsOperatorType::set_stroke_color:
-    // TODO
-    std::cout << "stroke color not implemented" << '\n';
-    break;
   case GraphicsOperatorType::set_stroke_color_name:
-    // TODO
-    std::cout << "stroke color name not implemented" << '\n';
+    // SC/SCN over a named/ICC/Separation/Pattern color space: stage 4.4.
     break;
   case GraphicsOperatorType::set_stroke_grey_color:
     current().stroke_color.space = ColorSpace::device_grey;
@@ -296,12 +299,8 @@ void GraphicsState::execute(const GraphicsOperator &op) {
         color_space_name_to_enum(op.arguments.at(0).as_string());
     break;
   case GraphicsOperatorType::set_other_color:
-    // TODO
-    std::cout << "other color not implemented" << '\n';
-    break;
   case GraphicsOperatorType::set_other_color_name:
-    // TODO
-    std::cout << "other color name not implemented" << '\n';
+    // sc/scn over a named/ICC/Separation/Pattern color space: stage 4.4.
     break;
   case GraphicsOperatorType::set_other_grey_color:
     current().other_color.space = ColorSpace::device_grey;

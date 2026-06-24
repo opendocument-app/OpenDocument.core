@@ -642,18 +642,6 @@ TEST(PdfPageExtractor, path_snapshots_line_params) {
   EXPECT_DOUBLE_EQ(p.miter_limit, 5);
 }
 
-// The paint-time CTM is captured so the renderer can scale the (unscaled) line
-// width even though the geometry is already flattened to user space.
-TEST(PdfPageExtractor, path_captures_paint_ctm) {
-  const auto page = run_page("2 0 0 3 5 7 cm 0 0 m 10 0 l S");
-  ASSERT_EQ(page.size(), 1);
-  const PathElement &p = path_at(page, 0);
-  EXPECT_DOUBLE_EQ(p.ctm.a, 2);
-  EXPECT_DOUBLE_EQ(p.ctm.d, 3);
-  EXPECT_DOUBLE_EQ(p.ctm.e, 5);
-  EXPECT_DOUBLE_EQ(p.ctm.f, 7);
-}
-
 // Text and paths come out interleaved in paint order.
 TEST(PdfPageExtractor, page_preserves_paint_order) {
   const auto page =
@@ -662,4 +650,48 @@ TEST(PdfPageExtractor, page_preserves_paint_order) {
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[0]));
   EXPECT_TRUE(std::holds_alternative<TextElement>(page[1]));
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[2]));
+}
+
+// --- stage 4.2: stroke parameters ----------------------------------------
+
+// Line width and cap/join/miter snapshot onto the stroked element; the default
+// line width is 1 (ISO 32000-1 8.4.1).
+TEST(PdfPageExtractor, stroke_line_params) {
+  const auto def = run_page("0 0 m 10 0 l S");
+  EXPECT_DOUBLE_EQ(path_at(def, 0).line_width, 1);
+
+  const auto page = run_page("4 w 2 J 1 j 6 M 0 0 m 10 0 l S");
+  const PathElement &p = path_at(page, 0);
+  EXPECT_DOUBLE_EQ(p.line_width, 4);
+  EXPECT_EQ(p.line_cap, 2);
+  EXPECT_EQ(p.line_join, 1);
+  EXPECT_DOUBLE_EQ(p.miter_limit, 6);
+}
+
+// The dash array and phase parse onto the element.
+TEST(PdfPageExtractor, stroke_dash_pattern) {
+  const auto page = run_page("[3 2] 1 d 0 0 m 10 0 l S");
+  const PathElement &p = path_at(page, 0);
+  ASSERT_EQ(p.dash_array.size(), 2);
+  EXPECT_DOUBLE_EQ(p.dash_array[0], 3);
+  EXPECT_DOUBLE_EQ(p.dash_array[1], 2);
+  EXPECT_DOUBLE_EQ(p.dash_phase, 1);
+}
+
+// A scaling CTM folds into the stroke width, the dash lengths and the phase, so
+// they share the geometry's user space.
+TEST(PdfPageExtractor, stroke_width_and_dash_scale_with_ctm) {
+  const auto page = run_page("3 0 0 3 0 0 cm 4 w [3 2] 1 d 0 0 m 10 0 l S");
+  const PathElement &p = path_at(page, 0);
+  EXPECT_DOUBLE_EQ(p.line_width, 12); // 4 * 3
+  ASSERT_EQ(p.dash_array.size(), 2);
+  EXPECT_DOUBLE_EQ(p.dash_array[0], 9); // 3 * 3
+  EXPECT_DOUBLE_EQ(p.dash_array[1], 6); // 2 * 3
+  EXPECT_DOUBLE_EQ(p.dash_phase, 3);    // 1 * 3
+}
+
+// An empty dash array clears a previous one (solid line).
+TEST(PdfPageExtractor, stroke_dash_reset_to_solid) {
+  const auto page = run_page("[3 2] 0 d [] 0 d 0 0 m 10 0 l S");
+  EXPECT_TRUE(path_at(page, 0).dash_array.empty());
 }

@@ -71,19 +71,15 @@ struct PathElement {
   /// Non-stroking (fill) color and stroking color, as device colors.
   GraphicsState::Color fill_color;
   GraphicsState::Color stroke_color;
-  /// Stroke parameters. `line_width` is the raw PDF value in *unscaled* user
-  /// space; PDF stroke width scales with the CTM (ISO 32000-1 8.4.3.2), but the
-  /// path geometry above is already flattened to user space, so the CTM is no
-  /// longer recoverable from it. `ctm` is the paint-time CTM, captured here so
-  /// the renderer can derive the device stroke width (and handle non-uniform
-  /// scaling) at stage 4.2.
+  /// Stroke parameters. `line_width` and the dash lengths are in the path's
+  /// user space (the CTM scale is already folded in, so they live in the same
+  /// space as the geometry). A `line_width` of 0 means a device-thin line.
   double line_width{1};
   int line_cap{0};
   int line_join{0};
   double miter_limit{10};
-  /// Paint-time CTM (the geometry's user space -> the unscaled space line
-  /// width/dash lengths live in).
-  util::math::Transform2D ctm;
+  std::vector<double> dash_array; // empty = solid
+  double dash_phase{0};
 };
 
 /// A single page-content element in paint (z) order: a shown text segment or a

@@ -111,6 +111,65 @@ std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
   return std::move(d).str();
 }
 
+/// Serialize a painted path to an SVG `<path .../>` fragment in the page
+/// viewBox, or "" when it paints nothing. Fill honours the even-odd rule;
+/// stroke carries width (CTM-scaled in user space), caps, joins, miter limit
+/// and the dash pattern. A zero stroke width renders as a thin hairline.
+std::string svg_path_fragment(const pdf::PathElement &path,
+                              const util::math::Transform2D &to_box) {
+  if ((!path.fill && !path.stroke) || path.subpaths.empty()) {
+    return {};
+  }
+  std::ostringstream f;
+  f << "<path d=\"" << svg_path_d(path.subpaths, to_box) << '"';
+
+  if (path.fill) {
+    f << " fill=\"" << device_color_to_css(path.fill_color) << '"';
+    if (path.even_odd) {
+      f << " fill-rule=\"evenodd\"";
+    }
+  } else {
+    f << " fill=\"none\"";
+  }
+
+  if (path.stroke) {
+    f << " stroke=\"" << device_color_to_css(path.stroke_color) << '"';
+    // A 0 width is "device-thinnest" in PDF; SVG would draw nothing, so floor
+    // it to a sub-point hairline.
+    const double width = path.line_width > 0 ? path.line_width : 0.5;
+    f << " stroke-width=\"" << round2(width) << '"';
+    if (path.line_cap == 1) {
+      f << " stroke-linecap=\"round\"";
+    } else if (path.line_cap == 2) {
+      f << " stroke-linecap=\"square\"";
+    }
+    if (path.line_join == 1) {
+      f << " stroke-linejoin=\"round\"";
+    } else if (path.line_join == 2) {
+      f << " stroke-linejoin=\"bevel\"";
+    } else {
+      // miter join: SVG defaults the limit to 4, PDF to 10 — state it.
+      f << " stroke-miterlimit=\"" << round2(path.miter_limit) << '"';
+    }
+    const bool dashed =
+        std::any_of(path.dash_array.begin(), path.dash_array.end(),
+                    [](const double v) { return v > 0; });
+    if (dashed) {
+      f << " stroke-dasharray=\"";
+      for (std::size_t i = 0; i < path.dash_array.size(); ++i) {
+        f << (i == 0 ? "" : ",") << round2(path.dash_array[i]);
+      }
+      f << '"';
+      if (path.dash_phase != 0) {
+        f << " stroke-dashoffset=\"" << round2(path.dash_phase) << '"';
+      }
+    }
+  }
+
+  f << "/>";
+  return std::move(f).str();
+}
+
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned span per glyph run, and the same font sizes,
 /// offsets and spacings recur across the (potentially millions of) spans.
@@ -370,20 +429,13 @@ public:
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
-        // A painted path: serialize its filled subpaths to an SVG `<path>`
-        // fragment in the page viewBox. Stroke-only paths wait for stage 4.2.
+        // A painted path: serialize its subpaths to an SVG `<path>` fragment in
+        // the page viewBox (fill and/or stroke).
         if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
-          if (!path->fill || path->subpaths.empty()) {
-            continue;
+          std::string fragment = svg_path_fragment(*path, to_box);
+          if (!fragment.empty()) {
+            page_out.items.push_back(PathOut{std::move(fragment)});
           }
-          std::ostringstream frag;
-          frag << "<path d=\"" << svg_path_d(path->subpaths, to_box)
-               << "\" fill=\"" << device_color_to_css(path->fill_color) << "\"";
-          if (path->even_odd) {
-            frag << " fill-rule=\"evenodd\"";
-          }
-          frag << "/>";
-          page_out.items.push_back(PathOut{std::move(frag).str()});
           continue;
         }
 

@@ -38,6 +38,13 @@ struct Subpath {
 };
 
 struct GraphicsState {
+  /// Dash pattern (`d`): the on/off lengths and the starting phase, in user
+  /// space. An empty array is a solid line (ISO 32000-1 8.4.3.6).
+  struct Dash {
+    std::vector<double> array;
+    double phase{0};
+  };
+
   struct General {
     // PDF initial graphics state (ISO 32000-1 Table 52): line width 1.0, butt
     // cap, miter join, miter limit 10.0. Defaulting these to 0 would emit
@@ -47,7 +54,7 @@ struct GraphicsState {
     int cap_style{};
     int join_style{};
     double miter_limit{10};
-    int dash_pattern{};
+    Dash dash;
     std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
