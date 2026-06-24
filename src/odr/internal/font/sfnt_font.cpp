@@ -3,6 +3,7 @@
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -82,24 +83,6 @@ struct NameEntry {
   }
 };
 
-void append_utf8(std::string &out, const char32_t cp) {
-  if (cp < 0x80) {
-    out += static_cast<char>(cp);
-  } else if (cp < 0x800) {
-    out += static_cast<char>(0xc0 | (cp >> 6));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  } else if (cp < 0x10000) {
-    out += static_cast<char>(0xe0 | (cp >> 12));
-    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3f));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  } else {
-    out += static_cast<char>(0xf0 | (cp >> 18));
-    out += static_cast<char>(0x80 | ((cp >> 12) & 0x3f));
-    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3f));
-    out += static_cast<char>(0x80 | (cp & 0x3f));
-  }
-}
-
 // The decoders below read a fixed record from the **front** of @p d (the view
 // is positioned at the record by the caller); the remaining bytes are ignored.
 
@@ -138,7 +121,7 @@ void append_utf8(std::string &out, const char32_t cp) {
         i += 2;
       }
     }
-    append_utf8(out, cp);
+    util::string::append_c32(cp, out);
   }
   return out;
 }
@@ -148,7 +131,7 @@ void append_utf8(std::string &out, const char32_t cp) {
 [[nodiscard]] std::string read_latin1(const std::string_view d) {
   std::string out;
   for (const char c : d) {
-    append_utf8(out, static_cast<std::uint8_t>(c));
+    util::string::append_c32(static_cast<std::uint8_t>(c), out);
   }
   return out;
 }
