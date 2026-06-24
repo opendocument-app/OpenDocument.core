@@ -14,15 +14,15 @@ void put16(std::string &s, const std::uint16_t v) {
 }
 
 /// A CFF DICT integer in the compact encoding (used for widths / bbox).
-void dict_int(std::string &s, const int v) {
+void dict_int(std::string &s, const std::int32_t v) {
   if (v >= -107 && v <= 107) {
     s += static_cast<char>(v + 139);
   } else if (v >= 108 && v <= 1131) {
-    const int u = v - 108;
+    const std::int32_t u = v - 108;
     s += static_cast<char>((u >> 8) + 247);
     s += static_cast<char>(u & 0xff);
   } else if (v >= -1131 && v <= -108) {
-    const int u = -v - 108;
+    const std::int32_t u = -v - 108;
     s += static_cast<char>((u >> 8) + 251);
     s += static_cast<char>(u & 0xff);
   } else if (v >= -32768 && v <= 32767) {
@@ -47,7 +47,7 @@ void dict_int_fixed(std::string &s, const std::int32_t v) {
   s += static_cast<char>(v & 0xff);
 }
 
-void dict_operator(std::string &s, const int op) {
+void dict_operator(std::string &s, const std::int32_t op) {
   if (op >= 1200) {
     s += static_cast<char>(12);
     s += static_cast<char>(op - 1200);
@@ -73,7 +73,7 @@ std::string build_index(const std::vector<std::string> &members) {
                                                     : 4;
   out += static_cast<char>(off_size);
   const auto put_off = [&](const std::uint32_t off) {
-    for (int i = off_size - 1; i >= 0; --i) {
+    for (std::int32_t i = off_size - 1; i >= 0; --i) {
       out += static_cast<char>((off >> (8 * i)) & 0xff);
     }
   };
@@ -121,9 +121,9 @@ std::string build_cff(const std::string_view name,
 
   // Private DICT: defaultWidthX (20), nominalWidthX (21).
   std::string private_dict;
-  dict_int(private_dict, static_cast<int>(default_width));
+  dict_int(private_dict, static_cast<std::int32_t>(default_width));
   dict_operator(private_dict, 20);
-  dict_int(private_dict, static_cast<int>(nominal_width));
+  dict_int(private_dict, static_cast<std::int32_t>(nominal_width));
   dict_operator(private_dict, 21);
 
   const std::string name_index =

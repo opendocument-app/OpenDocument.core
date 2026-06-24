@@ -19,7 +19,7 @@ constexpr std::uint16_t c2 = 22719;
 /// byte (the binary `eexec` form never reaches here).
 [[nodiscard]] std::string hex_decode(std::string_view in) {
   std::string out;
-  int high = -1;
+  std::int32_t high = -1;
   for (const char ch : in) {
     const auto c = static_cast<unsigned char>(ch);
     if (std::isspace(c) != 0) {
@@ -28,9 +28,9 @@ constexpr std::uint16_t c2 = 22719;
     if (!is_hex_digit(c)) {
       break;
     }
-    const int value = (c <= '9')   ? c - '0'
-                      : (c <= 'F') ? c - 'A' + 10
-                                   : c - 'a' + 10;
+    const std::int32_t value = (c <= '9')   ? c - '0'
+                               : (c <= 'F') ? c - 'A' + 10
+                                            : c - 'a' + 10;
     if (high < 0) {
       high = value;
     } else {
@@ -44,7 +44,7 @@ constexpr std::uint16_t c2 = 22719;
 /// Whether @p eexec is the ASCII-hex form: the first four non-space bytes are
 /// all hex digits (Type1 spec 7.2 — the binary form is detected as not-this).
 [[nodiscard]] bool looks_like_hex(std::string_view eexec) {
-  int seen = 0;
+  std::int32_t seen = 0;
   for (const char ch : eexec) {
     const auto c = static_cast<unsigned char>(ch);
     if (std::isspace(c) != 0) {

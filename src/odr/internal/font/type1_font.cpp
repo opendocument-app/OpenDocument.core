@@ -1,7 +1,5 @@
 #include <odr/internal/font/type1_font.hpp>
 
-#include <odr/internal/font/cff_builder.hpp>
-#include <odr/internal/font/type1_charstring.hpp>
 #include <odr/internal/font/type1_crypt.hpp>
 
 #include <charconv>
@@ -39,7 +37,7 @@ namespace {
   return s.substr(begin, p - begin);
 }
 
-[[nodiscard]] bool parse_int(std::string_view token, int &out) {
+[[nodiscard]] bool parse_int(std::string_view token, std::int32_t &out) {
   const char *begin = token.data();
   const char *end = begin + token.size();
   const auto [ptr, ec] = std::from_chars(begin, end, out);
@@ -91,7 +89,7 @@ namespace {
                                                              std::size_t &p) {
   std::size_t q = p;
   const std::string_view length_token = read_token(s, q);
-  int length = 0;
+  std::int32_t length = 0;
   if (!parse_int(length_token, length) || length < 0) {
     return std::nullopt;
   }
@@ -114,7 +112,7 @@ namespace {
 
 } // namespace
 
-bool Type1Program::is_type1(const std::string_view data) {
+bool Type1Font::is_type1(const std::string_view data) {
   if (data.size() >= 2 && static_cast<std::uint8_t>(data[0]) == 0x80) {
     return true; // PFB segment marker
   }
@@ -122,44 +120,43 @@ bool Type1Program::is_type1(const std::string_view data) {
          data.substr(0, 256).find("%!FontType1") != std::string_view::npos;
 }
 
-Type1Program::Type1Program(std::string_view program) {
+Type1Font::Type1Font(std::string_view data) {
   // Strip PFB segment framing if present: each segment is `0x80 type len32le`
   // followed by `len` bytes (type 1 = ASCII, 2 = binary, 3 = EOF).
   std::string unframed;
-  if (!program.empty() && static_cast<std::uint8_t>(program[0]) == 0x80) {
+  if (!data.empty() && static_cast<std::uint8_t>(data[0]) == 0x80) {
     std::size_t p = 0;
-    while (p + 6 <= program.size() &&
-           static_cast<std::uint8_t>(program[p]) == 0x80) {
-      const std::uint8_t type = static_cast<std::uint8_t>(program[p + 1]);
+    while (p + 6 <= data.size() && static_cast<std::uint8_t>(data[p]) == 0x80) {
+      const std::uint8_t type = static_cast<std::uint8_t>(data[p + 1]);
       if (type == 3) {
         break;
       }
       const std::uint32_t len =
-          static_cast<std::uint8_t>(program[p + 2]) |
-          (static_cast<std::uint8_t>(program[p + 3]) << 8) |
-          (static_cast<std::uint8_t>(program[p + 4]) << 16) |
-          (static_cast<std::uint32_t>(static_cast<std::uint8_t>(program[p + 5]))
+          static_cast<std::uint8_t>(data[p + 2]) |
+          (static_cast<std::uint8_t>(data[p + 3]) << 8) |
+          (static_cast<std::uint8_t>(data[p + 4]) << 16) |
+          (static_cast<std::uint32_t>(static_cast<std::uint8_t>(data[p + 5]))
            << 24);
       p += 6;
-      if (p + len > program.size()) {
+      if (p + len > data.size()) {
         break;
       }
-      unframed.append(program.substr(p, len));
+      unframed.append(data.substr(p, len));
       p += len;
     }
-    program = unframed;
+    data = unframed;
   }
 
-  const std::size_t eexec = program.find("eexec");
+  const std::size_t eexec = data.find("eexec");
   if (eexec == std::string_view::npos) {
     throw std::runtime_error("type1: no eexec section");
   }
 
-  parse_clear(program.substr(0, eexec));
+  parse_clear(data.substr(0, eexec));
 
   // The encrypted blob begins after `eexec` and its trailing whitespace.
-  const std::size_t blob = skip_space(program, eexec + 5);
-  const std::string decrypted = decrypt_eexec(program.substr(blob));
+  const std::size_t blob = skip_space(data, eexec + 5);
+  const std::string decrypted = decrypt_eexec(data.substr(blob));
   parse_private(decrypted);
 
   if (m_glyphs.empty()) {
@@ -167,7 +164,7 @@ Type1Program::Type1Program(std::string_view program) {
   }
 }
 
-void Type1Program::parse_clear(const std::string_view clear) {
+void Type1Font::parse_clear(const std::string_view clear) {
   if (const std::size_t k = clear.find("/FontName");
       k != std::string_view::npos) {
     std::size_t p = clear.find('/', k + 1);
@@ -184,7 +181,8 @@ void Type1Program::parse_clear(const std::string_view clear) {
   if (const std::vector<double> matrix =
           parse_number_array(clear, "/FontMatrix");
       matrix.size() == 6) {
-    m_font_matrix = matrix;
+    m_font_matrix = {matrix[0], matrix[1], matrix[2],
+                     matrix[3], matrix[4], matrix[5]};
   }
   if (const std::vector<double> bbox = parse_number_array(clear, "/FontBBox");
       bbox.size() == 4) {
@@ -206,7 +204,7 @@ void Type1Program::parse_clear(const std::string_view clear) {
       std::size_t p = 0;
       while ((p = after.find("dup ", p)) != std::string_view::npos) {
         std::size_t q = p + 4;
-        int code = 0;
+        std::int32_t code = 0;
         const std::string_view code_token = read_token(after, q);
         const std::size_t slash = after.find('/', q);
         if (parse_int(code_token, code) && slash != std::string_view::npos) {
@@ -223,12 +221,12 @@ void Type1Program::parse_clear(const std::string_view clear) {
   }
 }
 
-void Type1Program::parse_private(const std::string_view decrypted) {
-  int len_iv = 4;
+void Type1Font::parse_private(const std::string_view decrypted) {
+  std::int32_t len_iv = 4;
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
-    int value = 0;
+    std::int32_t value = 0;
     if (parse_int(read_token(decrypted, p), value)) {
       len_iv = value;
     }
@@ -246,7 +244,7 @@ void Type1Program::parse_private(const std::string_view decrypted) {
         break;
       }
       std::size_t q = p + 4;
-      int index = 0;
+      std::int32_t index = 0;
       if (!parse_int(read_token(decrypted, q), index) || index < 0) {
         p += 4;
         continue;
@@ -257,7 +255,7 @@ void Type1Program::parse_private(const std::string_view decrypted) {
         p += 4;
         continue;
       }
-      if (static_cast<int>(m_subrs.size()) <= index) {
+      if (static_cast<std::int32_t>(m_subrs.size()) <= index) {
         m_subrs.resize(index + 1);
       }
       m_subrs[index] = decrypt_charstring(*bytes, len_iv);
@@ -292,41 +290,6 @@ void Type1Program::parse_private(const std::string_view decrypted) {
     m_glyphs.push_back({std::move(name), decrypt_charstring(*bytes, len_iv)});
     p = q;
   }
-}
-
-std::string to_cff(const Type1Program &program) {
-  // Order glyphs with `.notdef` at index 0 (CFF requires it). Translate each
-  // Type1 charstring to Type2; the width rides in the charstring (the CFF
-  // builder uses nominalWidthX = 0).
-  std::vector<cff::BuilderGlyph> glyphs;
-  glyphs.reserve(program.glyphs().size() + 1);
-
-  const auto translate = [&](const Glyph &glyph) {
-    Type2Charstring t2 = to_type2(glyph.charstring, program.subrs());
-    glyphs.push_back({glyph.name, std::move(t2.charstring)});
-  };
-
-  // .notdef first.
-  std::size_t notdef = program.glyphs().size();
-  for (std::size_t i = 0; i < program.glyphs().size(); ++i) {
-    if (program.glyphs()[i].name == ".notdef") {
-      notdef = i;
-      break;
-    }
-  }
-  if (notdef < program.glyphs().size()) {
-    translate(program.glyphs()[notdef]);
-  } else {
-    glyphs.push_back({".notdef", std::string(1, static_cast<char>(14))});
-  }
-  for (std::size_t i = 0; i < program.glyphs().size(); ++i) {
-    if (i != notdef) {
-      translate(program.glyphs()[i]);
-    }
-  }
-
-  return cff::build_cff(program.name(), glyphs, /*default_width=*/0,
-                        /*nominal_width=*/0, program.font_bbox());
 }
 
 } // namespace odr::internal::font::type1

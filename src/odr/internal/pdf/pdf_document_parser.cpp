@@ -6,6 +6,7 @@
 #include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/type1_font.hpp>
+#include <odr/internal/font/type1_transform.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -15,11 +16,11 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cctype>
+#include <istream>
 #include <memory>
 #include <optional>
 #include <ranges>
 #include <set>
-#include <sstream>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -288,8 +289,8 @@ void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
         descriptor["FontFile2"].is_reference()) {
       std::string data =
           parser.read_decoded_stream(descriptor["FontFile2"].as_reference());
-      font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
-          std::make_unique<std::istringstream>(std::move(data)));
+      font.embedded_font =
+          std::make_shared<font::sfnt::SfntFont>(std::move(data));
     } else if (descriptor.has_key("FontFile3") &&
                descriptor["FontFile3"].is_reference()) {
       std::string data =
@@ -297,21 +298,21 @@ void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
       // The program may be a full SFNT (`/Subtype /OpenType`) or a bare CFF
       // (`Type1C` / `CIDFontType0C`); dispatch on the magic.
       if (font::sfnt::SfntFont::is_sfnt(data)) {
-        font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
-            std::make_unique<std::istringstream>(std::move(data)));
+        font.embedded_font =
+            std::make_shared<font::sfnt::SfntFont>(std::move(data));
       } else {
         font.embedded_font =
             std::make_shared<font::cff::CffFont>(std::move(data));
       }
     } else if (descriptor.has_key("FontFile") &&
                descriptor["FontFile"].is_reference()) {
-      // Type1 (`/FontFile`): translate the program to a CFF, then read it as a
+      // Type1 (`/FontFile`): translate the font to a CFF, then read it as a
       // CffFont so the whole CFF path (re-encode / wrap / reverse map) applies.
       std::string data =
           parser.read_decoded_stream(descriptor["FontFile"].as_reference());
-      const font::type1::Type1Program program(data);
+      const font::type1::Type1Font type1_font(data);
       font.embedded_font =
-          std::make_shared<font::cff::CffFont>(font::type1::to_cff(program));
+          std::make_shared<font::cff::CffFont>(font::type1::to_cff(type1_font));
     }
   } catch (const std::exception &e) {
     ODR_WARNING(parser.logger(),

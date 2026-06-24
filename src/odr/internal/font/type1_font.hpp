@@ -1,7 +1,9 @@
 #pragma once
 
 #include <odr/font.hpp>
+#include <odr/internal/util/math_util.hpp>
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <string_view>
@@ -29,26 +31,27 @@ struct Glyph {
 ///
 /// Throws `std::runtime_error` when the program has no `eexec` section or no
 /// `/CharStrings`.
-class Type1Program {
+class Type1Font {
 public:
   /// Cheap magic test: the PostScript font sentinel (`%!PS-AdobeFont`,
   /// `%!FontType1`) or a PFB segment marker (`0x80`).
   [[nodiscard]] static bool is_type1(std::string_view data);
 
-  /// Parse @p program (the raw `/FontFile` bytes, PFB markers stripped if
+  /// Parse @p data (the raw `/FontFile` bytes, PFB markers stripped if
   /// present).
-  explicit Type1Program(std::string_view program);
+  explicit Type1Font(std::string_view data);
 
   [[nodiscard]] std::string_view name() const noexcept { return m_name; }
-  /// The 6-element `/FontMatrix` (defaults to `[0.001 0 0 0.001 0 0]`).
-  [[nodiscard]] const std::vector<double> &font_matrix() const noexcept {
+  /// The `/FontMatrix` (defaults to `[0.001 0 0 0.001 0 0]`).
+  [[nodiscard]] const util::math::Transform2D &font_matrix() const noexcept {
     return m_font_matrix;
   }
   [[nodiscard]] FontBBox font_bbox() const noexcept { return m_font_bbox; }
 
   /// `/Encoding` as code -> glyph name. Empty when the font uses
   /// `StandardEncoding` (see `standard_encoding`).
-  [[nodiscard]] const std::map<int, std::string> &encoding() const noexcept {
+  [[nodiscard]] const std::map<std::int32_t, std::string> &
+  encoding() const noexcept {
     return m_encoding;
   }
   [[nodiscard]] bool standard_encoding() const noexcept {
@@ -69,20 +72,13 @@ private:
   void parse_private(std::string_view decrypted);
 
   std::string m_name;
-  std::vector<double> m_font_matrix{0.001, 0.0, 0.0, 0.001, 0.0, 0.0};
+  util::math::Transform2D m_font_matrix{0.001, 0.0, 0.0, 0.001, 0.0, 0.0};
   FontBBox m_font_bbox{};
-  std::map<int, std::string> m_encoding;
+  std::map<std::int32_t, std::string> m_encoding;
   bool m_standard_encoding{true};
   std::vector<Glyph> m_glyphs;
   std::vector<std::string> m_subrs;
-  int m_len_iv{4};
+  std::int32_t m_len_iv{4};
 };
-
-/// Convert a parsed Type1 program to a **CFF** font: translate every glyph's
-/// charstring to Type2 (`to_type2`, flattening the program's `/Subrs`) and
-/// assemble via the CFF builder, with `.notdef` placed at glyph 0. The result
-/// is a bare CFF that `cff::CffFont` reads and `cff::wrap_to_otf` wraps for the
-/// browser — so an embedded Type1 font reuses the entire 3.4 CFF path.
-[[nodiscard]] std::string to_cff(const Type1Program &program);
 
 } // namespace odr::internal::font::type1

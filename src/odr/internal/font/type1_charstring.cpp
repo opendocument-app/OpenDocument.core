@@ -11,7 +11,7 @@ namespace odr::internal::font::type1 {
 namespace {
 
 // Type1 charstring operators (single byte; 12 = escape to a two-byte op).
-enum T1 : int {
+enum T1 : std::int32_t {
   t1_hstem = 1,
   t1_vstem = 3,
   t1_vmoveto = 4,
@@ -40,15 +40,15 @@ enum T1 : int {
 };
 
 /// Encode an integer operand in the Type2 charstring number forms.
-void emit_int(std::string &out, const int v) {
+void emit_int(std::string &out, const std::int32_t v) {
   if (v >= -107 && v <= 107) {
     out += static_cast<char>(v + 139);
   } else if (v >= 108 && v <= 1131) {
-    const int u = v - 108;
+    const std::int32_t u = v - 108;
     out += static_cast<char>((u >> 8) + 247);
     out += static_cast<char>(u & 0xff);
   } else if (v >= -1131 && v <= -108) {
-    const int u = -v - 108;
+    const std::int32_t u = -v - 108;
     out += static_cast<char>((u >> 8) + 251);
     out += static_cast<char>(u & 0xff);
   } else {
@@ -62,7 +62,7 @@ void emit_int(std::string &out, const int v) {
 /// range, else the Type2 16.16 fixed form (`255 + int32`).
 void emit_num(std::string &out, const double v) {
   if (v == std::floor(v) && v >= -32768 && v <= 32767) {
-    emit_int(out, static_cast<int>(v));
+    emit_int(out, static_cast<std::int32_t>(v));
     return;
   }
   const auto fixed = static_cast<std::int32_t>(std::lround(v * 65536.0));
@@ -106,13 +106,13 @@ private:
   }
 
   // Emit width + operands + a one-byte operator, clearing the stack.
-  void emit_op(const int op) {
+  void emit_op(const std::int32_t op) {
     emit_width();
     flush_stack();
     m_out += static_cast<char>(op);
   }
 
-  void execute(std::string_view cs, const int depth) {
+  void execute(std::string_view cs, const std::int32_t depth) {
     if (depth > 16 || m_ended) {
       return;
     }
@@ -123,14 +123,14 @@ private:
         // operand
         double value = 0.0;
         if (b <= 246) {
-          value = static_cast<int>(b) - 139;
+          value = static_cast<std::int32_t>(b) - 139;
           p += 1;
         } else if (b <= 250) {
-          value = (static_cast<int>(b) - 247) * 256 +
+          value = (static_cast<std::int32_t>(b) - 247) * 256 +
                   static_cast<std::uint8_t>(cs[p + 1]) + 108;
           p += 2;
         } else if (b <= 254) {
-          value = -(static_cast<int>(b) - 251) * 256 -
+          value = -(static_cast<std::int32_t>(b) - 251) * 256 -
                   static_cast<std::uint8_t>(cs[p + 1]) - 108;
           p += 2;
         } else { // 255: Type1 32-bit integer
@@ -144,7 +144,7 @@ private:
         m_stack.push_back(value);
         continue;
       }
-      int op = b;
+      std::int32_t op = b;
       ++p;
       if (b == 12) {
         op = 1200 + static_cast<std::uint8_t>(cs[p]);
@@ -154,12 +154,12 @@ private:
     }
   }
 
-  void handle(const int op, const int depth) {
+  void handle(const std::int32_t op, const std::int32_t depth) {
     switch (op) {
     case t1_hsbw:
       if (m_stack.size() >= 2) {
         m_sbx = m_stack[0];
-        m_width = static_cast<int>(m_stack[1]);
+        m_width = static_cast<std::int32_t>(m_stack[1]);
         m_has_width = true;
         m_width_pending = true;
         m_sbx_pending = true;
@@ -169,7 +169,7 @@ private:
     case t1_sbw:
       if (m_stack.size() >= 4) {
         m_sbx = m_stack[0];
-        m_width = static_cast<int>(m_stack[2]);
+        m_width = static_cast<std::int32_t>(m_stack[2]);
         m_has_width = true;
         m_width_pending = true;
         m_sbx_pending = true;
@@ -249,9 +249,9 @@ private:
       if (m_stack.empty()) {
         break;
       }
-      const auto index = static_cast<int>(m_stack.back());
+      const auto index = static_cast<std::int32_t>(m_stack.back());
       m_stack.pop_back();
-      if (index >= 0 && index < static_cast<int>(m_subrs.size())) {
+      if (index >= 0 && index < static_cast<std::int32_t>(m_subrs.size())) {
         execute(m_subrs[index], depth + 1);
       }
       break;
@@ -296,13 +296,13 @@ private:
       m_stack.clear();
       return;
     }
-    const auto othersubr = static_cast<int>(m_stack.back());
+    const auto othersubr = static_cast<std::int32_t>(m_stack.back());
     m_stack.pop_back();
-    const auto argc = static_cast<int>(m_stack.back());
+    const auto argc = static_cast<std::int32_t>(m_stack.back());
     m_stack.pop_back();
 
     std::vector<double> args;
-    for (int i = 0; i < argc && !m_stack.empty(); ++i) {
+    for (std::int32_t i = 0; i < argc && !m_stack.empty(); ++i) {
       args.push_back(m_stack.back());
       m_stack.pop_back();
     }
@@ -403,7 +403,7 @@ private:
   std::vector<double> m_stack;
   std::vector<double> m_ps_stack;
 
-  int m_width{};
+  std::int32_t m_width{};
   bool m_has_width{};
   bool m_width_pending{};
   double m_sbx{};

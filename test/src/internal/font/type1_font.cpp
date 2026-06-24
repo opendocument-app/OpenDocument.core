@@ -1,4 +1,5 @@
 #include <odr/internal/font/type1_font.hpp>
+#include <odr/internal/font/type1_transform.hpp>
 
 #include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/cff_transform.hpp>
@@ -83,17 +84,17 @@ std::string build_type1() {
 } // namespace
 
 TEST(Type1FontTest, IsType1Magic) {
-  EXPECT_TRUE(Type1Program::is_type1(build_type1()));
-  EXPECT_FALSE(Type1Program::is_type1("not a font program at all"));
+  EXPECT_TRUE(Type1Font::is_type1(build_type1()));
+  EXPECT_FALSE(Type1Font::is_type1("not a font program at all"));
 }
 
 TEST(Type1FontTest, ParsesHeaderAndEncoding) {
-  const Type1Program font{build_type1()};
+  const Type1Font font{build_type1()};
 
   EXPECT_EQ(font.name(), "TestType1");
   EXPECT_FALSE(font.standard_encoding());
-  ASSERT_EQ(font.font_matrix().size(), 6u);
-  EXPECT_DOUBLE_EQ(font.font_matrix()[0], 0.001);
+  EXPECT_DOUBLE_EQ(font.font_matrix().a, 0.001);
+  EXPECT_DOUBLE_EQ(font.font_matrix().d, 0.001);
   EXPECT_EQ(font.font_bbox().y_min, -200);
   EXPECT_EQ(font.font_bbox().x_max, 700);
 
@@ -102,7 +103,7 @@ TEST(Type1FontTest, ParsesHeaderAndEncoding) {
 }
 
 TEST(Type1FontTest, DecryptsCharstringsAndSubrs) {
-  const Type1Program font{build_type1()};
+  const Type1Font font{build_type1()};
 
   ASSERT_EQ(font.glyphs().size(), 2u);
   EXPECT_EQ(font.glyphs()[0].name, "A");
@@ -118,8 +119,8 @@ TEST(Type1FontTest, ConvertsToLoadableCff) {
   namespace cff = odr::internal::font::cff;
   namespace sfnt = odr::internal::font::sfnt;
 
-  const Type1Program program{build_type1()};
-  const std::string cff_bytes = to_cff(program);
+  const Type1Font type1_font{build_type1()};
+  const std::string cff_bytes = to_cff(type1_font);
 
   const cff::CffFont font{cff_bytes};
   EXPECT_EQ(font.format(), odr::FontFormat::cff);

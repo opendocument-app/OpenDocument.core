@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,7 +10,7 @@ namespace odr::internal::font::type1 {
 /// The result of translating a Type1 charstring to Type2 (CFF).
 struct Type2Charstring {
   std::string charstring; ///< the Type2 charstring (no leading width)
-  int width{};            ///< advance width from `hsbw`/`sbw`, in glyph units
+  std::int32_t width{};   ///< advance width from `hsbw`/`sbw`, in glyph units
   bool has_width{};       ///< whether an `hsbw`/`sbw` set the width
 };
 
