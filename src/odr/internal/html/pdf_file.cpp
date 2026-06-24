@@ -428,7 +428,14 @@ public:
     // Constant per-page and per-glyph styling lives in classes so it is not
     // repeated inline on every one of the (potentially millions of) spans.
     out.write_header_style_begin();
-    out.out() << ".p{position:relative}";
+    // Page presentation: a neutral backdrop with each page as a centered white
+    // sheet and a soft drop shadow, mirroring the familiar PDF-viewer look.
+    // This is purely cosmetic chrome around the page box; the
+    // absolutely-positioned spans inside are unaffected (they anchor to the
+    // `.p` box, which keeps `position:relative`).
+    out.out() << "body{margin:0;background:#525659}";
+    out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
+                 "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
                  "white-space:pre}";
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
