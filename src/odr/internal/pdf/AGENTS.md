@@ -116,7 +116,7 @@ Experimental and not production-quality.
   forms) for composite fonts. `Font::advance_width(code)` returns the advance in
   text-space units (glyph-space / 1000), falling back to `/MissingWidth` or `/DW`.
   Codes outside the corpus are interpreted as CIDs for composite fonts (identity);
-  AFM widths for the non-embedded standard-14 fonts are stage 3.
+  AFM widths for the non-embedded standard-14 fonts are stage 4.
 - **Embedded font programs** (stage 3.3): a TrueType `/FontFile2` (a simple font,
   or a composite `CIDFontType2`) is decoded into an `abstract::Font` (`SfntFont`)
   and held on `Font::embedded_font`; an explicit `/CIDToGIDMap` stream is read into
@@ -549,8 +549,9 @@ rendering.
   (`Identity-V`/CJK, the `/W2`/`/DW2` metrics and a perpendicular pen advance). No
   corpus fixture needs it yet; tracked under *Other known gaps* alongside the
   legacy-CJK CMap work (both wait on a real file).
-- **Intra-segment glyph shaping** (browser fallback) and **AFM widths for the
-  non-embedded standard-14 fonts** — folded into **stage 3**. `/BBox` clipping,
+- **Intra-segment glyph shaping** (browser fallback) — folded into **stage 3**;
+  **AFM widths for the non-embedded standard-14 fonts** — folded into **stage 4**
+  with non-embedded substitution. `/BBox` clipping,
   `/MCID`-driven structure-tree reordering and `/Alt` (stage 5), and precise
   baseline placement (needs font ascent metrics) are likewise deferred.
 
@@ -588,8 +589,9 @@ alongside. The embedded-font reverse map (above) reads Unicode from it, the OTF 
 `head`/`hhea`/`hmtx`/`OS/2` from it, the re-encoder assigns PUA code points from
 its glyph count.
 
-**Decision (2026-06-19): standalone-first, uniform PUA, Type3 stays in-stage.**
-Three sequencing/scope choices fix the sub-stage plan below:
+**Decision (2026-06-19, revised 2026-06-24): standalone-first, uniform PUA;
+Type3 + non-embedded deferred to stage 4.**
+Two sequencing/scope choices fix the sub-stage plan below:
 - **Standalone-first.** Fonts ship as a library deliverable — a `FontFile`
   `DecodedFile` plus a specimen-page HTML view, with font-only tests — *before*
   being wired into PDF output. The specimen page's glyph grid must show *every*
@@ -604,9 +606,12 @@ Three sequencing/scope choices fix the sub-stage plan below:
   display/text decoupling holds (see *Design decisions*). Runs with no
   recoverable Unicode are additionally marked non-extractable (`user-select:
   none`, `aria-hidden`).
-- **Type3 stays in stage 3.** Type3 glyphs are drawing procedures, so they need
-  path → SVG rendering that otherwise belongs to stage 4; a minimal path → SVG
-  capability is pulled forward into sub-stage 3.6 rather than waiting on stage 4.
+- **Type3 + non-embedded deferred to stage 4.** Type3 glyphs are drawing
+  procedures needing path → SVG rendering, which belongs to stage 4; rather than
+  pull a minimal path → SVG slice forward into stage 3, Type3 now rides stage
+  4's vector machinery. Non-embedded standard-14 substitution (and its AFM
+  widths) goes with it, so stage 3 ends at the embedded-program flavors
+  (TrueType / CFF / Type1).
 
 **Sub-stages.** Ordered so each lands an independently testable (and, from 3.2,
 viewable) artifact; the risky core — read a font, produce a sanitizer-clean,
@@ -676,11 +681,8 @@ implementation.
   translation, build a CFF, reuse 3.4's CFF → OTF path. Reverse map via charstring
   glyph names → AGL. The hardest single piece, but precisely specified (Adobe T1
   spec; pdf.js as reference).
-- **3.6 — Type3 + non-embedded fonts.** Type3 glyph procedures (mini content
-  streams, already tokenized by the operator parser) → SVG glyphs via a minimal
-  path → SVG capability pulled forward from stage 4. Plus non-embedded fonts:
-  substitute the standard 14 + common names with CSS fallbacks and metrics from
-  `/Widths` (AFM widths for the standard-14 — closes stage 2's deferred item).
+Type3 and non-embedded fonts were a sub-stage 3.6 here; they are deferred to
+**stage 4** (the path → SVG machinery they need lives there). Stage 3 ends at 3.5.
 
 **Mechanisms & guards (ride through 3.1–3.5).**
 - **Broken-font long tail.** Real embedded fonts are routinely malformed, and
@@ -707,6 +709,19 @@ stage exists to avoid.
   fill rules, stroke parameters, transforms; clipping → nested `<clipPath>`;
   tiling patterns → `<pattern>` (form-XObject machinery from stage 2);
   axial/radial shadings (types 2/3) → `linearGradient`/`radialGradient`.
+- **Type3 fonts** (deferred from stage 3): glyph char procs are mini content
+  streams (already tokenized by the operator parser) → SVG glyphs via the same
+  path → SVG machinery; each glyph placed at the text transform (CTM × `Tm` ×
+  `/FontMatrix`, font size folded in), Unicode for selection from the stage-1
+  chain. No glyph program → no PUA re-encode and no reverse map, so the
+  dual-layer model holds (SVG glyph layer + transparent Unicode layer).
+- **Non-embedded fonts** (deferred from stage 3): a font with no `/FontFile*` is
+  substituted, not rendered — map the standard 14 (Helvetica/Times/Courier +
+  Symbol/ZapfDingbats) and common names to CSS `font-family` fallback stacks
+  (serif/sans/mono by flags + name, bold/italic from `/Flags` and the name);
+  drive placement from `/Widths`, with **AFM widths** for the standard 14 (which
+  usually ship none — closes stage 2's deferred item) as a generated data table.
+  Glyph shapes are the browser's fallback font.
 - **Images**: `DCTDecode` → `<img>` JPEG pass-through; Flate/LZW raster → PNG
   encode; inline images (`BI`/`ID`/`EI` — currently not even tokenized correctly
   past `ID`); image masks and SMasks later.
