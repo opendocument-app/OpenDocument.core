@@ -7,6 +7,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/magic.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
@@ -24,15 +25,7 @@ using namespace odr::internal::font;
 
 namespace {
 
-void put16(std::string &s, std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
-
-void put32(std::string &s, std::uint32_t v) {
-  put16(s, static_cast<std::uint16_t>(v >> 16));
-  put16(s, static_cast<std::uint16_t>(v & 0xffff));
-}
+namespace bs = odr::internal::util::byte_string;
 
 std::string head_table() {
   std::string t(54, '\0');
@@ -43,8 +36,8 @@ std::string head_table() {
 
 std::string maxp_table(std::uint16_t glyphs) {
   std::string t;
-  put32(t, 0x00010000);
-  put16(t, glyphs);
+  bs::put_u32_be(t, 0x00010000);
+  bs::put_u16_be(t, glyphs);
   t.resize(32, '\0');
   return t;
 }
@@ -59,37 +52,38 @@ std::string hhea_table(std::uint16_t metrics) {
 std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
   std::string t;
   for (const std::uint16_t a : advances) {
-    put16(t, a);
-    put16(t, 0);
+    bs::put_u16_be(t, a);
+    bs::put_u16_be(t, 0);
   }
   return t;
 }
 
 std::string cmap_table() {
   std::string sub;
-  put16(sub, 4);
-  put16(sub, 32);
-  put16(sub, 0);
-  put16(sub, 4);
-  put16(sub, 0);
-  put16(sub, 0);
-  put16(sub, 0);
-  put16(sub, 'C');    // endCode[0]
-  put16(sub, 0xffff); // endCode[1]
-  put16(sub, 0);
-  put16(sub, 'A');                                 // startCode[0]
-  put16(sub, 0xffff);                              // startCode[1]
-  put16(sub, static_cast<std::uint16_t>(1 - 'A')); // idDelta[0]: A->1,B->2,C->3
-  put16(sub, 1);                                   // idDelta[1]
-  put16(sub, 0);
-  put16(sub, 0);
+  bs::put_u16_be(sub, 4);
+  bs::put_u16_be(sub, 32);
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 4);
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 'C');    // endCode[0]
+  bs::put_u16_be(sub, 0xffff); // endCode[1]
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 'A');    // startCode[0]
+  bs::put_u16_be(sub, 0xffff); // startCode[1]
+  bs::put_u16_be(
+      sub, static_cast<std::uint16_t>(1 - 'A')); // idDelta[0]: A->1,B->2,C->3
+  bs::put_u16_be(sub, 1);                        // idDelta[1]
+  bs::put_u16_be(sub, 0);
+  bs::put_u16_be(sub, 0);
 
   std::string t;
-  put16(t, 0);
-  put16(t, 1);
-  put16(t, 3);
-  put16(t, 1);
-  put32(t, 12);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 3);
+  bs::put_u16_be(t, 1);
+  bs::put_u32_be(t, 12);
   t += sub;
   return t;
 }
@@ -97,18 +91,18 @@ std::string cmap_table() {
 std::string name_table(const std::string &ascii) {
   std::string strings;
   for (const char c : ascii) {
-    put16(strings, static_cast<std::uint8_t>(c));
+    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
   }
   std::string t;
-  put16(t, 0);
-  put16(t, 1);
-  put16(t, 18);
-  put16(t, 3);
-  put16(t, 1);
-  put16(t, 0x409);
-  put16(t, 6);
-  put16(t, static_cast<std::uint16_t>(strings.size()));
-  put16(t, 0);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 18);
+  bs::put_u16_be(t, 3);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 0x409);
+  bs::put_u16_be(t, 6);
+  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
+  bs::put_u16_be(t, 0);
   t += strings;
   return t;
 }

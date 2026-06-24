@@ -2,6 +2,7 @@
 
 #include <odr/internal/font/cff_standard_strings.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
@@ -73,22 +74,25 @@ enum CharstringOp : std::uint8_t {
   cs_vstemhm = 23,
 };
 
+namespace bs = util::byte_string;
+
+/// CFF is offset-addressed, so these adapt `byte_string`'s front-relative reads
+/// to an absolute offset @p p into the buffer. An out-of-range @p p yields an
+/// empty view, which `byte_string` reports as a (throwing) short read.
+[[nodiscard]] std::string_view at(const std::string_view d,
+                                  const std::uint32_t p) {
+  return p <= d.size() ? d.substr(p) : std::string_view{};
+}
+
 [[nodiscard]] std::uint8_t u8(const std::string_view d, const std::uint32_t p) {
-  if (p >= d.size()) {
-    throw std::runtime_error("cff: read past end");
-  }
-  return static_cast<std::uint8_t>(d[p]);
+  return bs::read_u8(at(d, p));
 }
 
 /// Read a big-endian unsigned of @p size bytes (1..4) at @p p.
 [[nodiscard]] std::uint32_t read_be(const std::string_view d,
                                     const std::uint32_t p,
                                     const std::uint32_t size) {
-  std::uint32_t value = 0;
-  for (std::uint32_t i = 0; i < size; ++i) {
-    value = (value << 8) | u8(d, p + i);
-  }
-  return value;
+  return bs::read_uint_be(at(d, p), size);
 }
 
 /// A parsed DICT: operator -> operands. Reals are decoded to double; integers

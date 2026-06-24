@@ -202,7 +202,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/cff_standard_strings.cpp"
         "src/odr/internal/font/cff_transform.cpp"
         "src/odr/internal/font/sfnt_font.cpp"
-        "src/odr/internal/font/sfnt_parser.cpp"
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
 
@@ -215,6 +214,7 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/util/byte_util.cpp"
         "src/odr/internal/util/byte_stream_util.cpp"
+        "src/odr/internal/util/byte_string.cpp"
         "src/odr/internal/util/document_util.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"

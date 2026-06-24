@@ -1,7 +1,6 @@
 #pragma once
 
 #include <odr/internal/abstract/font.hpp>
-#include <odr/internal/font/sfnt_parser.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -27,9 +26,11 @@ public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  /// Takes ownership of @p in and parses the facts from it (seeking per table);
-  /// the raw bytes are materialized lazily for pass-through (see `data()`).
+  /// Reads @p stream fully into an in-memory buffer and parses the facts from
+  /// it; the bytes are retained for pass-through (see `write()`).
   explicit SfntFont(std::unique_ptr<std::istream> stream);
+  /// Parses the facts from an in-memory SFNT blob (retained for `write()`).
+  explicit SfntFont(std::string data);
 
   [[nodiscard]] FontFormat format() const noexcept override;
   [[nodiscard]] std::string name() const override;
@@ -61,7 +62,8 @@ public:
   void write(std::ostream &out) const;
 
 private:
-  std::istream &in() const { return *m_in; }
+  /// Parse the facts from `m_data` (called by both constructors).
+  void parse();
 
   /// A located table within the SFNT: byte offset + length into the source.
   struct Table {
@@ -70,20 +72,23 @@ private:
   };
   /// Table by 4-char tag (e.g. `"cmap"`), `nullopt` if absent.
   [[nodiscard]] std::optional<Table> table(std::string_view tag) const;
+  /// The bytes of @p table as a view into `m_data`.
+  [[nodiscard]] std::string_view table_data(Table table) const;
 
-  void read_directory();
+  /// @p sfnt is the offset table (the whole file, or a TTC member).
+  void read_directory(std::string_view sfnt);
   void read_head();
   void read_maxp();
   void read_hhea();
   void read_hmtx();
   void read_cmap();
   void read_name();
-  void read_cmap_subtable();
+  /// @p subtable is the chosen `cmap` subtable, positioned at its format word.
+  void read_cmap_subtable(std::string_view subtable);
   /// Rebuild m_reverse (glyph -> lowest code point) from m_cmap.
   void update_reverse();
 
-  std::unique_ptr<std::istream> m_in;
-  SfntParser m_parser;
+  std::string m_data;
 
   FontFormat m_format{FontFormat::unknown};
   std::map<std::string, Table, std::less<>> m_tables;

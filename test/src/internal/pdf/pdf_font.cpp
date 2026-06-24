@@ -1,6 +1,7 @@
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
@@ -16,18 +17,10 @@ using odr::internal::pdf::Font;
 
 namespace {
 
+namespace bs = odr::internal::util::byte_string;
+
 // A compact SFNT builder, just enough for an `SfntFont` that maps a contiguous
 // run of code points to glyph ids 1..n (mirrors the font unit test's builder).
-
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
-
-void put32(std::string &s, const std::uint32_t v) {
-  put16(s, static_cast<std::uint16_t>(v >> 16));
-  put16(s, static_cast<std::uint16_t>(v & 0xffff));
-}
 
 std::string head_table() {
   std::string t(54, '\0');
@@ -38,8 +31,8 @@ std::string head_table() {
 
 std::string maxp_table(const std::uint16_t glyphs) {
   std::string t;
-  put32(t, 0x00010000);
-  put16(t, glyphs);
+  bs::put_u32_be(t, 0x00010000);
+  bs::put_u16_be(t, glyphs);
   t.resize(32, '\0');
   return t;
 }
@@ -54,8 +47,8 @@ std::string hhea_table(const std::uint16_t h_metrics) {
 std::string hmtx_table(const std::uint16_t count) {
   std::string t;
   for (std::uint16_t i = 0; i < count; ++i) {
-    put16(t, 500);
-    put16(t, 0);
+    bs::put_u16_be(t, 500);
+    bs::put_u16_be(t, 0);
   }
   return t;
 }
@@ -64,32 +57,33 @@ std::string hmtx_table(const std::uint16_t count) {
 /// count].
 std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   std::string t;
-  put16(t, 4);
-  put16(t, 32);
-  put16(t, 0);
-  put16(t, 4); // segCountX2
-  put16(t, 0);
-  put16(t, 0);
-  put16(t, 0);
-  put16(t, static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
-  put16(t, 0xffff);
-  put16(t, 0);
-  put16(t, start); // startCode[0]
-  put16(t, 0xffff);
-  put16(t, static_cast<std::uint16_t>(1 - start)); // idDelta[0]
-  put16(t, 1);
-  put16(t, 0); // idRangeOffset[0]
-  put16(t, 0);
+  bs::put_u16_be(t, 4);
+  bs::put_u16_be(t, 32);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 4); // segCountX2
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t,
+                 static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
+  bs::put_u16_be(t, 0xffff);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, start); // startCode[0]
+  bs::put_u16_be(t, 0xffff);
+  bs::put_u16_be(t, static_cast<std::uint16_t>(1 - start)); // idDelta[0]
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 0); // idRangeOffset[0]
+  bs::put_u16_be(t, 0);
   return t;
 }
 
 std::string cmap_table(const std::string &subtable) {
   std::string t;
-  put16(t, 0);
-  put16(t, 1);
-  put16(t, 3); // Windows
-  put16(t, 1); // Unicode BMP
-  put32(t, 12);
+  bs::put_u16_be(t, 0);
+  bs::put_u16_be(t, 1);
+  bs::put_u16_be(t, 3); // Windows
+  bs::put_u16_be(t, 1); // Unicode BMP
+  bs::put_u32_be(t, 12);
   t += subtable;
   return t;
 }
@@ -98,18 +92,18 @@ std::string
 build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
   const auto count = static_cast<std::uint16_t>(tables.size());
   std::string out;
-  put32(out, 0x00010000);
-  put16(out, count);
-  put16(out, 0);
-  put16(out, 0);
-  put16(out, 0);
+  bs::put_u32_be(out, 0x00010000);
+  bs::put_u16_be(out, count);
+  bs::put_u16_be(out, 0);
+  bs::put_u16_be(out, 0);
+  bs::put_u16_be(out, 0);
   std::uint32_t offset = 12 + count * 16U;
   std::string body;
   for (const auto &[tag, data] : tables) {
     out += tag;
-    put32(out, 0);
-    put32(out, offset);
-    put32(out, static_cast<std::uint32_t>(data.size()));
+    bs::put_u32_be(out, 0);
+    bs::put_u32_be(out, offset);
+    bs::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
     body += data;
     while (body.size() % 4 != 0) {
       body += '\0';
@@ -134,7 +128,7 @@ std::shared_ptr<abstract::Font> sample_font() {
 std::string codes2(const std::vector<std::uint16_t> &cids) {
   std::string s;
   for (const std::uint16_t cid : cids) {
-    put16(s, cid);
+    bs::put_u16_be(s, cid);
   }
   return s;
 }

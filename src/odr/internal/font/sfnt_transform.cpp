@@ -1,6 +1,7 @@
 #include <odr/internal/font/sfnt_transform.hpp>
 
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <algorithm>
 #include <bit>
@@ -15,25 +16,10 @@ namespace odr::internal::font {
 
 namespace {
 
+namespace bs = util::byte_string;
+
 constexpr char32_t pua_base = 0xe000;
 constexpr std::uint16_t pua_capacity = 0xf8ff - 0xe000 + 1; // 6400
-
-void put16(std::string &s, const std::uint16_t v) {
-  s += static_cast<char>(v >> 8);
-  s += static_cast<char>(v & 0xff);
-}
-
-void put32(std::string &s, const std::uint32_t v) {
-  put16(s, static_cast<std::uint16_t>(v >> 16));
-  put16(s, static_cast<std::uint16_t>(v & 0xffff));
-}
-
-void write32(std::string &s, const std::size_t at, const std::uint32_t v) {
-  s[at] = static_cast<char>(v >> 24);
-  s[at + 1] = static_cast<char>((v >> 16) & 0xff);
-  s[at + 2] = static_cast<char>((v >> 8) & 0xff);
-  s[at + 3] = static_cast<char>(v & 0xff);
-}
 
 void pad4(std::string &s) {
   while (s.size() % 4 != 0) {
@@ -114,23 +100,23 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
     if (tag == "head" && data.size() >= 12) {
       head_index = i;
       // checkSumAdjustment must be zero while checksums are computed.
-      write32(data, 8, 0);
+      bs::write_u32_be(data, 8, 0);
     }
     const std::uint32_t table_checksum = checksum(data);
     bodies_checksum += table_checksum;
     directory.append(tag);
-    put32(directory, table_checksum);
-    put32(directory, offset);
-    put32(directory, length);
+    bs::put_u32_be(directory, table_checksum);
+    bs::put_u32_be(directory, offset);
+    bs::put_u32_be(directory, length);
     offset += static_cast<std::uint32_t>(data.size());
   }
 
   std::string header;
-  put32(header, sfnt_version);
-  put16(header, count);
-  put16(header, search_range);
-  put16(header, entry_selector);
-  put16(header, range_shift);
+  bs::put_u32_be(header, sfnt_version);
+  bs::put_u16_be(header, count);
+  bs::put_u16_be(header, search_range);
+  bs::put_u16_be(header, entry_selector);
+  bs::put_u16_be(header, range_shift);
 
   // checksum(file) = checksum(header) + checksum(directory) + Σ checksum(table)
   // because every segment sits on a 4-byte boundary. Patching head with
@@ -138,7 +124,7 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
   if (head_index != tables.size()) {
     const std::uint32_t file_checksum =
         checksum(header) + checksum(directory) + bodies_checksum;
-    write32(tables[head_index].second, 8, 0xb1b0afbaU - file_checksum);
+    bs::write_u32_be(tables[head_index].second, 8, 0xb1b0afbaU - file_checksum);
   }
 
   out.write(header.data(), static_cast<std::streamsize>(header.size()));
@@ -180,49 +166,49 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
       search_hints(seg_count, 2);
 
   std::string sub;
-  put16(sub, 4); // format
+  bs::put_u16_be(sub, 4); // format
   // length: 7 u16 header + reservedPad + 4 u16 arrays of seg_count entries.
-  put16(sub, static_cast<std::uint16_t>(16 + 8 * seg_count));
-  put16(sub, 0);                                         // language
-  put16(sub, static_cast<std::uint16_t>(seg_count * 2)); // segCountX2
-  put16(sub, search_range);
-  put16(sub, entry_selector);
-  put16(sub, range_shift);
+  bs::put_u16_be(sub, static_cast<std::uint16_t>(16 + 8 * seg_count));
+  bs::put_u16_be(sub, 0);                                         // language
+  bs::put_u16_be(sub, static_cast<std::uint16_t>(seg_count * 2)); // segCountX2
+  bs::put_u16_be(sub, search_range);
+  bs::put_u16_be(sub, entry_selector);
+  bs::put_u16_be(sub, range_shift);
   for (const auto &s : segments) {
-    put16(sub, s.end);
+    bs::put_u16_be(sub, s.end);
   }
-  put16(sub, 0); // reservedPad
+  bs::put_u16_be(sub, 0); // reservedPad
   for (const auto &s : segments) {
-    put16(sub, s.start);
+    bs::put_u16_be(sub, s.start);
   }
   for (const auto &s : segments) {
-    put16(sub, s.delta);
+    bs::put_u16_be(sub, s.delta);
   }
   for (std::uint16_t i = 0; i < seg_count; ++i) {
-    put16(sub, 0); // idRangeOffset (always 0: no glyphIdArray)
+    bs::put_u16_be(sub, 0); // idRangeOffset (always 0: no glyphIdArray)
   }
 
   std::string cmap;
-  put16(cmap, 0);  // version
-  put16(cmap, 1);  // numTables
-  put16(cmap, 3);  // platformID (Windows)
-  put16(cmap, 1);  // encodingID (Unicode BMP)
-  put32(cmap, 12); // offset to the subtable
+  bs::put_u16_be(cmap, 0);  // version
+  bs::put_u16_be(cmap, 1);  // numTables
+  bs::put_u16_be(cmap, 3);  // platformID (Windows)
+  bs::put_u16_be(cmap, 1);  // encodingID (Unicode BMP)
+  bs::put_u32_be(cmap, 12); // offset to the subtable
   cmap += sub;
   return cmap;
 }
 
 std::string font::serialize_post() {
   std::string post;
-  put32(post, 0x00030000); // version 3.0: no glyph names
-  put32(post, 0);          // italicAngle
-  put16(post, 0);          // underlinePosition
-  put16(post, 0);          // underlineThickness
-  put32(post, 0);          // isFixedPitch
-  put32(post, 0);          // minMemType42
-  put32(post, 0);          // maxMemType42
-  put32(post, 0);          // minMemType1
-  put32(post, 0);          // maxMemType1
+  bs::put_u32_be(post, 0x00030000); // version 3.0: no glyph names
+  bs::put_u32_be(post, 0);          // italicAngle
+  bs::put_u16_be(post, 0);          // underlinePosition
+  bs::put_u16_be(post, 0);          // underlineThickness
+  bs::put_u32_be(post, 0);          // isFixedPitch
+  bs::put_u32_be(post, 0);          // minMemType42
+  bs::put_u32_be(post, 0);          // maxMemType42
+  bs::put_u32_be(post, 0);          // minMemType1
+  bs::put_u32_be(post, 0);          // maxMemType1
   return post;
 }
 
@@ -242,44 +228,45 @@ std::string font::serialize_os2(const std::uint16_t units_per_em,
       static_cast<std::int16_t>(y_min < 0 ? y_min : -em(200));
 
   std::string os2;
-  put16(os2, 4);                                     // version
-  put16(os2, em(500));                               // xAvgCharWidth (estimate)
-  put16(os2, 400);                                   // usWeightClass: regular
-  put16(os2, 5);                                     // usWidthClass: medium
-  put16(os2, 0);                                     // fsType: installable
-  put16(os2, em(650));                               // ySubscriptXSize
-  put16(os2, em(600));                               // ySubscriptYSize
-  put16(os2, 0);                                     // ySubscriptXOffset
-  put16(os2, em(75));                                // ySubscriptYOffset
-  put16(os2, em(650));                               // ySuperscriptXSize
-  put16(os2, em(600));                               // ySuperscriptYSize
-  put16(os2, 0);                                     // ySuperscriptXOffset
-  put16(os2, em(350));                               // ySuperscriptYOffset
-  put16(os2, em(50));                                // yStrikeoutSize
-  put16(os2, em(258));                               // yStrikeoutPosition
-  put16(os2, 0);                                     // sFamilyClass
-  os2.append(10, '\0');                              // panose: any
-  put32(os2, 0);                                     // ulUnicodeRange1
-  put32(os2, 0);                                     // ulUnicodeRange2
-  put32(os2, 0);                                     // ulUnicodeRange3
-  put32(os2, 0);                                     // ulUnicodeRange4
-  os2.append("ODR ", 4);                             // achVendID
-  put16(os2, 0x0040);                                // fsSelection: REGULAR
-  put16(os2, first_char);                            // usFirstCharIndex
-  put16(os2, last_char);                             // usLastCharIndex
-  put16(os2, static_cast<std::uint16_t>(ascender));  // sTypoAscender
-  put16(os2, static_cast<std::uint16_t>(descender)); // sTypoDescender
-  put16(os2, 0);                                     // sTypoLineGap
-  put16(os2, static_cast<std::uint16_t>(ascender));  // usWinAscent
-  put16(os2,
-        static_cast<std::uint16_t>(-descender)); // usWinDescent (positive)
-  put32(os2, 0);                                 // ulCodePageRange1
-  put32(os2, 0);                                 // ulCodePageRange2
-  put16(os2, 0);                                 // sxHeight
-  put16(os2, 0);                                 // sCapHeight
-  put16(os2, 0);                                 // usDefaultChar
-  put16(os2, 0x20);                              // usBreakChar: space
-  put16(os2, 0);                                 // usMaxContext
+  bs::put_u16_be(os2, 4);          // version
+  bs::put_u16_be(os2, em(500));    // xAvgCharWidth (estimate)
+  bs::put_u16_be(os2, 400);        // usWeightClass: regular
+  bs::put_u16_be(os2, 5);          // usWidthClass: medium
+  bs::put_u16_be(os2, 0);          // fsType: installable
+  bs::put_u16_be(os2, em(650));    // ySubscriptXSize
+  bs::put_u16_be(os2, em(600));    // ySubscriptYSize
+  bs::put_u16_be(os2, 0);          // ySubscriptXOffset
+  bs::put_u16_be(os2, em(75));     // ySubscriptYOffset
+  bs::put_u16_be(os2, em(650));    // ySuperscriptXSize
+  bs::put_u16_be(os2, em(600));    // ySuperscriptYSize
+  bs::put_u16_be(os2, 0);          // ySuperscriptXOffset
+  bs::put_u16_be(os2, em(350));    // ySuperscriptYOffset
+  bs::put_u16_be(os2, em(50));     // yStrikeoutSize
+  bs::put_u16_be(os2, em(258));    // yStrikeoutPosition
+  bs::put_u16_be(os2, 0);          // sFamilyClass
+  os2.append(10, '\0');            // panose: any
+  bs::put_u32_be(os2, 0);          // ulUnicodeRange1
+  bs::put_u32_be(os2, 0);          // ulUnicodeRange2
+  bs::put_u32_be(os2, 0);          // ulUnicodeRange3
+  bs::put_u32_be(os2, 0);          // ulUnicodeRange4
+  os2.append("ODR ", 4);           // achVendID
+  bs::put_u16_be(os2, 0x0040);     // fsSelection: REGULAR
+  bs::put_u16_be(os2, first_char); // usFirstCharIndex
+  bs::put_u16_be(os2, last_char);  // usLastCharIndex
+  bs::put_u16_be(os2, static_cast<std::uint16_t>(ascender));  // sTypoAscender
+  bs::put_u16_be(os2, static_cast<std::uint16_t>(descender)); // sTypoDescender
+  bs::put_u16_be(os2, 0);                                     // sTypoLineGap
+  bs::put_u16_be(os2, static_cast<std::uint16_t>(ascender));  // usWinAscent
+  bs::put_u16_be(
+      os2,
+      static_cast<std::uint16_t>(-descender)); // usWinDescent (positive)
+  bs::put_u32_be(os2, 0);                      // ulCodePageRange1
+  bs::put_u32_be(os2, 0);                      // ulCodePageRange2
+  bs::put_u16_be(os2, 0);                      // sxHeight
+  bs::put_u16_be(os2, 0);                      // sCapHeight
+  bs::put_u16_be(os2, 0);                      // usDefaultChar
+  bs::put_u16_be(os2, 0x20);                   // usBreakChar: space
+  bs::put_u16_be(os2, 0);                      // usMaxContext
   return os2;
 }
 
