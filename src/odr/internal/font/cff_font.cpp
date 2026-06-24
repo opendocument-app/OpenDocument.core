@@ -17,9 +17,13 @@ namespace odr::internal::font::cff {
 
 namespace {
 
+/// Two-byte operators (`escape b`) are folded into the one-byte keyspace as
+/// `escape_op_base + b` so a single map keys every operator.
+constexpr std::uint16_t escape_op_base = 1200;
+
 /// CFF Top/Private DICT operators we care about. Two-byte (escape `12 b`)
-/// operators are encoded as `1200 + b` so they share one keyspace.
-enum Operator : int {
+/// operators are encoded as `escape_op_base + b` so they share one keyspace.
+enum Operator : std::uint16_t {
   op_charset = 15,
   op_encoding = 16,
   op_char_strings = 17,
@@ -32,7 +36,43 @@ enum Operator : int {
   op_charstring_type = 1206,
 };
 
-[[nodiscard]] std::uint8_t u8(std::string_view d, std::uint32_t p) {
+/// Number-operand byte markers shared by DICT data and Type2 charstrings
+/// (Adobe TN #5176 Table 3 / TN #5177). Bytes 32..254 encode small integers
+/// directly; these are the out-of-band markers.
+enum NumberMarker : std::uint8_t {
+  marker_escape = 12,   // two-byte operator escape (DICT/charstring)
+  marker_shortint = 28, // big-endian int16 follows
+  marker_longint = 29,  // big-endian int32 follows (DICT only)
+  marker_real = 30,     // packed-BCD real follows (DICT only)
+  marker_int_min = 32,  // first byte of the direct small-integer range
+  marker_fixed = 255,   // 16.16 fixed follows (charstring only)
+};
+
+/// BCD nibble codes for a DICT real number (Adobe TN #5176 Table 5).
+enum RealNibble : std::uint8_t {
+  nibble_dot = 0x0a,
+  nibble_exp = 0x0b,
+  nibble_exp_neg = 0x0c,
+  nibble_minus = 0x0e,
+  nibble_end = 0x0f,
+};
+
+/// Type2 charstring operators relevant to leading-width detection (Adobe
+/// TN #5177).
+enum CharstringOp : std::uint8_t {
+  cs_hstem = 1,
+  cs_vstem = 3,
+  cs_vmoveto = 4,
+  cs_endchar = 14,
+  cs_hstemhm = 18,
+  cs_hintmask = 19,
+  cs_cntrmask = 20,
+  cs_rmoveto = 21,
+  cs_hmoveto = 22,
+  cs_vstemhm = 23,
+};
+
+[[nodiscard]] std::uint8_t u8(const std::string_view d, const std::uint32_t p) {
   if (p >= d.size()) {
     throw std::runtime_error("cff: read past end");
   }
@@ -40,8 +80,9 @@ enum Operator : int {
 }
 
 /// Read a big-endian unsigned of @p size bytes (1..4) at @p p.
-[[nodiscard]] std::uint32_t read_be(std::string_view d, std::uint32_t p,
-                                    std::uint32_t size) {
+[[nodiscard]] std::uint32_t read_be(const std::string_view d,
+                                    const std::uint32_t p,
+                                    const std::uint32_t size) {
   std::uint32_t value = 0;
   for (std::uint32_t i = 0; i < size; ++i) {
     value = (value << 8) | u8(d, p + i);
@@ -51,11 +92,12 @@ enum Operator : int {
 
 /// A parsed DICT: operator -> operands. Reals are decoded to double; integers
 /// stay exact within double range (CFF integers fit).
-using Dict = std::map<int, std::vector<double>>;
+using Dict = std::map<std::uint16_t, std::vector<double>>;
 
 /// Parse a CFF DICT occupying the byte range [begin, end) of @p d.
-[[nodiscard]] Dict parse_dict(std::string_view d, std::uint32_t begin,
-                              std::uint32_t end) {
+[[nodiscard]] Dict parse_dict(const std::string_view d,
+                              const std::uint32_t begin,
+                              const std::uint32_t end) {
   Dict dict;
   std::vector<double> operands;
   std::uint32_t p = begin;
@@ -63,39 +105,41 @@ using Dict = std::map<int, std::vector<double>>;
     const std::uint8_t b0 = u8(d, p);
     if (b0 <= 21) {
       // operator
-      int op = b0;
+      std::uint16_t op = b0;
       ++p;
-      if (b0 == 12) {
-        op = 1200 + u8(d, p);
+      if (b0 == marker_escape) {
+        op = escape_op_base + u8(d, p);
         ++p;
       }
       dict[op] = operands;
       operands.clear();
-    } else if (b0 == 28) {
+    } else if (b0 == marker_shortint) {
       operands.push_back(static_cast<std::int16_t>(read_be(d, p + 1, 2)));
       p += 3;
-    } else if (b0 == 29) {
+    } else if (b0 == marker_longint) {
       operands.push_back(static_cast<std::int32_t>(read_be(d, p + 1, 4)));
       p += 5;
-    } else if (b0 == 30) {
-      // real number: packed BCD nibbles, terminated by nibble 0xf.
+    } else if (b0 == marker_real) {
+      // real number: packed BCD nibbles, terminated by nibble_end.
       ++p;
       std::string number;
       bool done = false;
       while (!done && p < end) {
         const std::uint8_t byte = u8(d, p++);
-        for (const int nibble : {byte >> 4, byte & 0x0f}) {
+        for (const std::uint8_t nibble :
+             {static_cast<std::uint8_t>(byte >> 4),
+              static_cast<std::uint8_t>(byte & 0x0f)}) {
           if (nibble <= 9) {
             number += static_cast<char>('0' + nibble);
-          } else if (nibble == 0x0a) {
+          } else if (nibble == nibble_dot) {
             number += '.';
-          } else if (nibble == 0x0b) {
+          } else if (nibble == nibble_exp) {
             number += 'E';
-          } else if (nibble == 0x0c) {
+          } else if (nibble == nibble_exp_neg) {
             number += "E-";
-          } else if (nibble == 0x0e) {
+          } else if (nibble == nibble_minus) {
             number += '-';
-          } else if (nibble == 0x0f) {
+          } else if (nibble == nibble_end) {
             done = true;
             break;
           }
@@ -312,7 +356,8 @@ std::string CffFont::string_for_sid(const std::uint16_t sid) const {
       d.substr(m_strings[index].offset, m_strings[index].length));
 }
 
-std::optional<int> CffFont::charstring_width(const std::uint16_t glyph) const {
+std::optional<std::int32_t>
+CffFont::charstring_width(const std::uint16_t glyph) const {
   if (glyph >= m_charstrings.size()) {
     return std::nullopt;
   }
@@ -324,14 +369,14 @@ std::optional<int> CffFont::charstring_width(const std::uint16_t glyph) const {
   // Walk operands until the first width-bearing operator; the Type2 width, when
   // present, is the first operand and makes the operand count exceed the
   // operator's nominal arity (ISO/Adobe Type2 charstring spec, "width").
-  int count = 0;
+  std::int32_t count = 0;
   double first = 0.0;
   while (p < end) {
     const std::uint8_t b0 = u8(d, p);
-    if (b0 >= 32 || b0 == 28) {
+    if (b0 >= marker_int_min || b0 == marker_shortint) {
       // operand
       double value = 0.0;
-      if (b0 == 28) {
+      if (b0 == marker_shortint) {
         value = static_cast<std::int16_t>(read_be(d, p + 1, 2));
         p += 3;
       } else if (b0 <= 246) {
@@ -343,7 +388,7 @@ std::optional<int> CffFont::charstring_width(const std::uint16_t glyph) const {
       } else if (b0 <= 254) {
         value = -(static_cast<int>(b0) - 251) * 256 - u8(d, p + 1) - 108;
         p += 2;
-      } else { // 255: 16.16 fixed
+      } else { // marker_fixed: 16.16 fixed
         value = static_cast<std::int32_t>(read_be(d, p + 1, 4)) / 65536.0;
         p += 5;
       }
@@ -353,36 +398,37 @@ std::optional<int> CffFont::charstring_width(const std::uint16_t glyph) const {
       ++count;
     } else {
       // operator
-      int op = b0;
-      if (b0 == 12) {
-        op = 1200 + u8(d, p + 1);
+      std::uint16_t op = b0;
+      if (b0 == marker_escape) {
+        op = escape_op_base + u8(d, p + 1);
       }
       bool width_possible = false;
       switch (op) {
-      case 1:  // hstem
-      case 3:  // vstem
-      case 18: // hstemhm
-      case 23: // vstemhm
-      case 19: // hintmask
-      case 20: // cntrmask
+      case cs_hstem:
+      case cs_vstem:
+      case cs_hstemhm:
+      case cs_vstemhm:
+      case cs_hintmask:
+      case cs_cntrmask:
         width_possible = (count % 2) == 1;
         break;
-      case 21: // rmoveto (2 args)
+      case cs_rmoveto: // 2 args
         width_possible = count > 2;
         break;
-      case 22: // hmoveto (1 arg)
-      case 4:  // vmoveto (1 arg)
+      case cs_hmoveto: // 1 arg
+      case cs_vmoveto: // 1 arg
         width_possible = count > 1;
         break;
-      case 14: // endchar (0 args, or 4 for seac)
+      case cs_endchar: // 0 args, or 4 for seac
         width_possible = (count % 2) == 1;
         break;
       default:
         // Any other operator before a width-bearing one: no explicit width.
         return std::nullopt;
       }
-      return width_possible ? std::optional<int>(static_cast<int>(first))
-                            : std::nullopt;
+      return width_possible
+                 ? std::optional<std::int32_t>(static_cast<std::int32_t>(first))
+                 : std::nullopt;
     }
   }
   return std::nullopt;
@@ -407,7 +453,7 @@ bool CffFont::symbolic() const noexcept {
 FontBBox CffFont::bounding_box() const noexcept { return m_bbox; }
 
 std::uint16_t CffFont::advance_width(const std::uint16_t glyph) const {
-  if (const std::optional<int> width = charstring_width(glyph);
+  if (const std::optional<std::int32_t> width = charstring_width(glyph);
       width.has_value()) {
     return static_cast<std::uint16_t>(m_nominal_width + *width);
   }

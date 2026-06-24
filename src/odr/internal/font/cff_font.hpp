@@ -86,7 +86,8 @@ private:
   [[nodiscard]] std::string string_for_sid(std::uint16_t sid) const;
   /// Extract the optional leading width from glyph @p glyph's Type2 charstring,
   /// in design units; `nullopt` when the charstring carries no explicit width.
-  [[nodiscard]] std::optional<int> charstring_width(std::uint16_t glyph) const;
+  [[nodiscard]] std::optional<std::int32_t>
+  charstring_width(std::uint16_t glyph) const;
 
   std::string m_data;
 
