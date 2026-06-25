@@ -58,6 +58,78 @@ void GraphicsState::advance_text(const double tx, const double ty) {
   text.matrix = util::math::Transform2D::translation(tx, ty) * text.matrix;
 }
 
+std::array<double, 2> GraphicsState::to_user(const double x,
+                                             const double y) const {
+  return current().general.transform_matrix.apply(x, y);
+}
+
+void GraphicsState::append_segment(const PathSegment &segment) {
+  if (path.empty()) {
+    // A construction operator before any `m` is malformed; tolerate it by
+    // opening a subpath at the current point.
+    path.push_back(Subpath{m_current_point, {}, false});
+  }
+  path.back().segments.push_back(segment);
+  m_current_point = segment.end;
+}
+
+void GraphicsState::path_move_to(const double x, const double y) {
+  m_current_point = to_user(x, y);
+  m_subpath_start = m_current_point;
+  path.push_back(Subpath{m_current_point, {}, false});
+}
+
+void GraphicsState::path_line_to(const double x, const double y) {
+  append_segment({PathSegment::Kind::line, {}, {}, to_user(x, y)});
+}
+
+void GraphicsState::path_cubic_to(const double x1, const double y1,
+                                  const double x2, const double y2,
+                                  const double x3, const double y3) {
+  append_segment({PathSegment::Kind::cubic, to_user(x1, y1), to_user(x2, y2),
+                  to_user(x3, y3)});
+}
+
+void GraphicsState::path_cubic_to_v(const double x2, const double y2,
+                                    const double x3, const double y3) {
+  append_segment({PathSegment::Kind::cubic, m_current_point, to_user(x2, y2),
+                  to_user(x3, y3)});
+}
+
+void GraphicsState::path_cubic_to_y(const double x1, const double y1,
+                                    const double x3, const double y3) {
+  const std::array<double, 2> end = to_user(x3, y3);
+  append_segment({PathSegment::Kind::cubic, to_user(x1, y1), end, end});
+}
+
+void GraphicsState::path_close() {
+  if (path.empty()) {
+    return;
+  }
+  path.back().closed = true;
+  m_current_point = m_subpath_start;
+}
+
+void GraphicsState::path_rectangle(const double x, const double y,
+                                   const double w, const double h) {
+  // `re` appends a complete closed rectangle and leaves the current point at
+  // its origin (ISO 32000-1 8.5.2.1).
+  Subpath rect{to_user(x, y), {}, true};
+  rect.segments.push_back({PathSegment::Kind::line, {}, {}, to_user(x + w, y)});
+  rect.segments.push_back(
+      {PathSegment::Kind::line, {}, {}, to_user(x + w, y + h)});
+  rect.segments.push_back({PathSegment::Kind::line, {}, {}, to_user(x, y + h)});
+  path.push_back(std::move(rect));
+  m_current_point = to_user(x, y);
+  m_subpath_start = m_current_point;
+}
+
+void GraphicsState::clear_path() {
+  path.clear();
+  m_current_point = {0, 0};
+  m_subpath_start = {0, 0};
+}
+
 void GraphicsState::save() { stack.push_back(stack.back()); }
 
 void GraphicsState::restore() { stack.pop_back(); }
@@ -110,30 +182,31 @@ void GraphicsState::execute(const GraphicsOperator &op) {
         op.arguments.at(0).as_string();
     break;
 
-  case GraphicsOperatorType::path_move_to:
-    for (int i = 0; i < 2; ++i) {
-      current().path.current_position.at(i) = op.arguments.at(i).as_real();
-    }
+  case GraphicsOperatorType::path_move_to: // m
+    path_move_to(op.arguments.at(0).as_real(), op.arguments.at(1).as_real());
     break;
-  case GraphicsOperatorType::path_line_to:
-    for (int i = 0; i < 2; ++i) {
-      current().path.current_position.at(i) = op.arguments.at(i).as_real();
-    }
+  case GraphicsOperatorType::path_line_to: // l
+    path_line_to(op.arguments.at(0).as_real(), op.arguments.at(1).as_real());
     break;
-  case GraphicsOperatorType::path_cubic_bezier_to:
-    for (int i = 0; i < 2; ++i) {
-      current().path.current_position.at(i) = op.arguments.at(i + 4).as_real();
-    }
+  case GraphicsOperatorType::path_cubic_bezier_to: // c
+    path_cubic_to(op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
+                  op.arguments.at(2).as_real(), op.arguments.at(3).as_real(),
+                  op.arguments.at(4).as_real(), op.arguments.at(5).as_real());
     break;
-  case GraphicsOperatorType::path_cubic_bezier_0eq1_to:
-    for (int i = 0; i < 2; ++i) {
-      current().path.current_position.at(i) = op.arguments.at(i + 2).as_real();
-    }
+  case GraphicsOperatorType::path_cubic_bezier_0eq1_to: // v
+    path_cubic_to_v(op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
+                    op.arguments.at(2).as_real(), op.arguments.at(3).as_real());
     break;
-  case GraphicsOperatorType::path_cubic_bezier_2eq3_to:
-    for (int i = 0; i < 2; ++i) {
-      current().path.current_position.at(i) = op.arguments.at(i + 2).as_real();
-    }
+  case GraphicsOperatorType::path_cubic_bezier_2eq3_to: // y
+    path_cubic_to_y(op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
+                    op.arguments.at(2).as_real(), op.arguments.at(3).as_real());
+    break;
+  case GraphicsOperatorType::close_path: // h
+    path_close();
+    break;
+  case GraphicsOperatorType::rectangle: // re
+    path_rectangle(op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
+                   op.arguments.at(2).as_real(), op.arguments.at(3).as_real());
     break;
 
   case GraphicsOperatorType::set_text_char_spacing:
@@ -202,14 +275,17 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     std::cout << "stroke color name not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_stroke_grey_color:
+    current().stroke_color.space = ColorSpace::device_grey;
     current().stroke_color.grey = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_stroke_rgb_color:
+    current().stroke_color.space = ColorSpace::device_rgb;
     for (int i = 0; i < 3; ++i) {
       current().stroke_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
     break;
   case GraphicsOperatorType::set_stroke_cmyk_color:
+    current().stroke_color.space = ColorSpace::device_cmyk;
     for (int i = 0; i < 4; ++i) {
       current().stroke_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }
@@ -228,14 +304,17 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     std::cout << "other color name not implemented" << '\n';
     break;
   case GraphicsOperatorType::set_other_grey_color:
+    current().other_color.space = ColorSpace::device_grey;
     current().other_color.grey = op.arguments.at(0).as_real();
     break;
   case GraphicsOperatorType::set_other_rgb_color:
+    current().other_color.space = ColorSpace::device_rgb;
     for (int i = 0; i < 3; ++i) {
       current().other_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
     break;
   case GraphicsOperatorType::set_other_cmyk_color:
+    current().other_color.space = ColorSpace::device_cmyk;
     for (int i = 0; i < 4; ++i) {
       current().other_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }

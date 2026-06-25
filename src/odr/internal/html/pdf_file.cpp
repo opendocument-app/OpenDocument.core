@@ -17,7 +17,7 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
-#include <odr/internal/pdf/pdf_page_text.hpp>
+#include <odr/internal/pdf/pdf_page_extractor.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <utf8cpp/utf8/unchecked.h>

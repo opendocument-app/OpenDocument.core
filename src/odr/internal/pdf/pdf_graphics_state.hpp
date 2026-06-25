@@ -17,22 +17,41 @@ enum class ColorSpace {
   device_cmyk,
 };
 
+/// One segment of a subpath, in user space (the CTM is already applied at
+/// construction time, ISO 32000-1 8.5.2.1). A line carries only `end`; a cubic
+/// Bézier carries its two control points as well.
+struct PathSegment {
+  enum class Kind { line, cubic };
+  Kind kind{Kind::line};
+  std::array<double, 2> c1{};  // cubic control point 1 (unused for a line)
+  std::array<double, 2> c2{};  // cubic control point 2 (unused for a line)
+  std::array<double, 2> end{}; // segment endpoint
+};
+
+/// A subpath: a start point (from `m`/`re`), its segments, and whether it was
+/// explicitly closed (`h` or a close-and-paint operator). Coordinates are user
+/// space.
+struct Subpath {
+  std::array<double, 2> start{};
+  std::vector<PathSegment> segments;
+  bool closed{false};
+};
+
 struct GraphicsState {
   struct General {
-    double line_width{};
+    // PDF initial graphics state (ISO 32000-1 Table 52): line width 1.0, butt
+    // cap, miter join, miter limit 10.0. Defaulting these to 0 would emit
+    // zero-width/invalid-miter path elements for streams that stroke without an
+    // explicit `w`/`M`.
+    double line_width{1};
     int cap_style{};
     int join_style{};
-    double miter_limit{};
+    double miter_limit{10};
     int dash_pattern{};
     std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
     util::math::Transform2D transform_matrix; // CTM
-  };
-
-  struct Path {
-    std::array<double, 2> current_position{0, 0};
-    // TODO clipping
   };
 
   struct Text {
@@ -60,7 +79,6 @@ struct GraphicsState {
 
   struct State {
     General general;
-    Path path;
     Text text;
     Color stroke_color;
     Color other_color;
@@ -68,12 +86,34 @@ struct GraphicsState {
 
   std::vector<State> stack;
 
+  /// The path under construction. Unlike the rest of the state it is *not* part
+  /// of the `q`/`Q` stack (ISO 32000-1 8.5.2): it accumulates across
+  /// `m`/`l`/`c`/ `re`/… and is consumed (and cleared) by a path-painting
+  /// operator.
+  std::vector<Subpath> path;
+
   GraphicsState();
 
   State &current();
   [[nodiscard]] const State &current() const;
 
   void execute(const GraphicsOperator &);
+
+  /// Path construction. Operands are taken in the operator's coordinate space;
+  /// each point is mapped through the current CTM and stored in user space.
+  void path_move_to(double x, double y);
+  void path_line_to(double x, double y);
+  void path_cubic_to(double x1, double y1, double x2, double y2, double x3,
+                     double y3);
+  /// `v`: the first control point is the current point.
+  void path_cubic_to_v(double x2, double y2, double x3, double y3);
+  /// `y`: the second control point coincides with the endpoint.
+  void path_cubic_to_y(double x1, double y1, double x3, double y3);
+  void path_close();
+  void path_rectangle(double x, double y, double w, double h);
+  /// Close the current subpath (without the `h`-style "closed" mark) and drop
+  /// the accumulated path, as every path-painting operator does on completion.
+  void clear_path();
 
   /// Push a copy of the current state (`q`).
   void save();
@@ -98,6 +138,15 @@ private:
   /// Move to the start of a new text line: `Tlm = translate(tx, ty) * Tlm` and
   /// `Tm = Tlm` (the shared mechanic behind `Td`, `TD`, `T*`, `'`, `"`).
   void next_line(double tx, double ty);
+
+  /// Map an operand point through the current CTM into user space.
+  [[nodiscard]] std::array<double, 2> to_user(double x, double y) const;
+  /// Append `segment` to the current subpath, starting one at the current point
+  /// if a construction operator other than `m`/`re` opens the path (lenient).
+  void append_segment(const PathSegment &segment);
+
+  std::array<double, 2> m_current_point{0, 0}; // user space
+  std::array<double, 2> m_subpath_start{0, 0}; // user space, for `h`/close
 };
 
 } // namespace odr::internal::pdf
