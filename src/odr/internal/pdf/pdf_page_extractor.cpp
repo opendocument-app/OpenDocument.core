@@ -323,13 +323,21 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
   element.even_odd = even_odd;
   element.fill_color = s.other_color;
   element.stroke_color = s.stroke_color;
-  element.line_width = s.general.line_width;
+  // The stroke width and dash lengths are given in the CTM's space; fold the
+  // CTM scale in so they live in the same user space as the geometry. Use the
+  // area-preserving factor sqrt|det| (an anisotropic CTM can't be expressed as
+  // a single SVG pen width; ISO 32000-1 8.4.3.2).
+  const util::math::Transform2D &m = s.general.transform_matrix;
+  const double scale = std::sqrt(std::abs(m.a * m.d - m.b * m.c));
+  element.line_width = s.general.line_width * scale;
   element.line_cap = s.general.cap_style;
   element.line_join = s.general.join_style;
   element.miter_limit = s.general.miter_limit;
-  // The geometry above is flattened to user space, so the CTM can no longer be
-  // recovered from it; capture it for the stroke metrics (ISO 32000-1 8.4.3.2).
-  element.ctm = s.general.transform_matrix;
+  element.dash_array.reserve(s.general.dash.array.size());
+  for (const double on_off : s.general.dash.array) {
+    element.dash_array.push_back(on_off * scale);
+  }
+  element.dash_phase = s.general.dash.phase * scale;
   out.push_back(std::move(element));
   state.clear_path();
 }
