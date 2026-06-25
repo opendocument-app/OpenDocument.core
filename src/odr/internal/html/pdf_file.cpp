@@ -550,9 +550,11 @@ public:
     // Vector graphics: one or more `<svg>` overlays per page, each filling the
     // page box (viewBox in PDF points). `overflow:visible` defers clipping to
     // stage 4.3; `preserveAspectRatio:none` keeps the points->box mapping
-    // exact.
+    // exact. `pointer-events:none` so a full-page overlay painted after text
+    // (paint order) does not swallow selection/clicks over its transparent
+    // areas — the graphics are decorative, the text layer owns interaction.
     out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
-                 "overflow:visible}";
+                 "overflow:visible;pointer-events:none}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;
     // Per-value atomic classes (font sizes, offsets, transforms, ...).
