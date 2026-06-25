@@ -548,13 +548,17 @@ public:
     // inherit the `.i` text layer's `transparent`.
     out.out() << ".g{user-select:none}.gv{color:#000}";
     // Vector graphics: one or more `<svg>` overlays per page, each filling the
-    // page box (viewBox in PDF points). `overflow:visible` defers clipping to
-    // stage 4.3; `preserveAspectRatio:none` keeps the points->box mapping
-    // exact. `pointer-events:none` so a full-page overlay painted after text
+    // page box (viewBox in PDF points). `overflow:hidden` clips each overlay to
+    // the page box, matching a PDF viewer: content drawn outside the MediaBox
+    // (e.g. a background rectangle that bleeds past the left edge) is never
+    // visible, and without this it spills into the centered page's margin.
+    // Arbitrary in-page clip paths still wait for stage 4.3.
+    // `preserveAspectRatio:none` keeps the points->box mapping exact.
+    // `pointer-events:none` so a full-page overlay painted after text
     // (paint order) does not swallow selection/clicks over its transparent
     // areas — the graphics are decorative, the text layer owns interaction.
     out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
-                 "overflow:visible;pointer-events:none}";
+                 "overflow:hidden;pointer-events:none}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;
     // Per-value atomic classes (font sizes, offsets, transforms, ...).
