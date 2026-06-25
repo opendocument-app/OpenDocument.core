@@ -2,8 +2,10 @@
 
 #include <odr/logger.hpp>
 
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -694,6 +696,89 @@ TEST(PdfPageExtractor, stroke_width_and_dash_scale_with_ctm) {
 TEST(PdfPageExtractor, stroke_dash_reset_to_solid) {
   const auto page = run_page("[3 2] 0 d [] 0 d 0 0 m 10 0 l S");
   EXPECT_TRUE(path_at(page, 0).dash_array.empty());
+}
+
+// --- stage 4.4: colour spaces ---------------------------------------------
+
+namespace {
+
+std::shared_ptr<ColorSpaceDef> rgb_space() {
+  auto def = std::make_shared<ColorSpaceDef>();
+  def->kind = ColorSpaceKind::device_rgb;
+  def->components = 3;
+  return def;
+}
+
+} // namespace
+
+// `cs`/`scn` over a named resource colour space resolve the fill colour to RGB.
+TEST(PdfPageExtractor, scn_resolves_named_color_space) {
+  Resources res;
+  res.color_space["CS0"] = rgb_space();
+
+  const auto page = extract_page("/CS0 cs 0.2 0.4 0.6 scn 0 0 10 10 re f", res,
+                                 Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  EXPECT_EQ(p.fill_color.space, ColorSpace::device_rgb);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[0], 0.2);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.4);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[2], 0.6);
+}
+
+// A Separation space samples its tint transform to RGB at `scn` time.
+TEST(PdfPageExtractor, scn_separation_through_tint) {
+  // tint: type 2, C0 = white, C1 = red -> tint(t) = (1, 1-t, 1-t).
+  Dictionary tint;
+  tint["FunctionType"] = Object(Integer{2});
+  tint["Domain"] = [] {
+    std::vector<Object> h{Object(Real{0}), Object(Real{1})};
+    return Object(Array(std::move(h)));
+  }();
+  tint["C0"] = [] {
+    std::vector<Object> h{Object(Real{1}), Object(Real{1}), Object(Real{1})};
+    return Object(Array(std::move(h)));
+  }();
+  tint["C1"] = [] {
+    std::vector<Object> h{Object(Real{1}), Object(Real{0}), Object(Real{0})};
+    return Object(Array(std::move(h)));
+  }();
+  tint["N"] = Object(Real{1});
+  std::vector<Object> array{Object(Name{"Separation"}), Object(Name{"Spot"}),
+                            Object(Name{"DeviceRGB"}), Object(tint)};
+  ColorSpaceContext ctx;
+  ctx.resolve = [](const Object &o) { return o; };
+  ctx.load_stream = [](const Object &) { return std::string{}; };
+  ctx.named = nullptr;
+
+  Resources res;
+  res.color_space["Sep"] =
+      parse_color_space(Object(Array(std::move(array))), ctx);
+
+  const auto page =
+      extract_page("/Sep cs 1.0 scn 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  EXPECT_EQ(p.fill_color.space, ColorSpace::device_rgb);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[0], 1.0); // full tint -> red
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[2], 0.0);
+}
+
+// A device colour operator (`rg`) clears a previously set resource colour
+// space, so a following device colour is not mis-resolved through it.
+TEST(PdfPageExtractor, device_color_clears_color_space) {
+  Resources res;
+  res.color_space["CS0"] = rgb_space();
+
+  const auto page = extract_page("/CS0 cs 0.1 0.2 0.3 scn 1 0 0 rg "
+                                 "0 0 10 10 re f",
+                                 res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  EXPECT_EQ(p.fill_color.space, ColorSpace::device_rgb);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[0], 1.0);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
 }
 
 // --- stage 4.3: clipping --------------------------------------------------

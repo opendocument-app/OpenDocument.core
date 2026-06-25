@@ -28,6 +28,7 @@ struct Annotation;
 struct Resources;
 struct Font;
 struct XObject;
+struct ColorSpaceDef;
 
 struct Element {
   virtual ~Element() = default;
@@ -84,6 +85,12 @@ struct Annotation final : Element {};
 struct Resources final : Element {
   std::unordered_map<std::string, Font *> font;
   std::unordered_map<std::string, XObject *> x_object;
+  /// The `/ColorSpace` subdictionary (ISO 32000-1 8.6.3): named colour spaces
+  /// referenced by `cs`/`CS`. Resolved eagerly (ICC alternates, Separation tint
+  /// transforms, …) so extraction can convert `sc`/`scn` colours to RGB without
+  /// a parser handle. The device spaces (`/DeviceRGB`, …) are not stored here —
+  /// they resolve by name at use time.
+  std::unordered_map<std::string, std::shared_ptr<ColorSpaceDef>> color_space;
   /// The `/Properties` subdictionary (ISO 32000-1 7.8.3): named property lists
   /// referenced by `BDC`. Each value is the resolved property-list dictionary
   /// `Object`; used to recover `/ActualText` for a `BDC /Tag /Name` sequence.

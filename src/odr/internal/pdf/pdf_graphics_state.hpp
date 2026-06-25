@@ -9,6 +9,7 @@
 namespace odr::internal::pdf {
 
 struct GraphicsOperator;
+struct ColorSpaceDef;
 
 enum class ColorSpace {
   unknown,
@@ -91,6 +92,12 @@ struct GraphicsState {
     double grey{};
     std::array<double, 3> rgb{};
     std::array<double, 4> cmyk{};
+    /// The active non-device colour space set by `cs`/`CS` (a `/ColorSpace`
+    /// resource: ICCBased, Separation, Indexed, …), owned by `Resources`. When
+    /// set, `sc`/`scn` components are converted through it to the `rgb` above
+    /// at the time the operator runs; null for a device colour space. Cleared
+    /// by the device colour operators (`g`/`rg`/`k`).
+    const ColorSpaceDef *def{nullptr};
   };
 
   struct State {

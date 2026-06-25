@@ -2,6 +2,7 @@
 
 #include <odr/logger.hpp>
 
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
@@ -307,6 +308,70 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   pen = Pen{{after.e, after.f}, direction, text.size * basis, trailing_space};
 }
 
+/// Resolve a colour-space operator (`cs`/`CS`): set the active colour space on
+/// `color` from the resource `/ColorSpace` table (or a device space named
+/// inline) and reset it to the space's initial colour (ISO 32000-1 8.6.8).
+void set_color_space(GraphicsState::Color &color, const std::string &name,
+                     const Resources &resources) {
+  color = GraphicsState::Color{};
+  if (name == "DeviceGray" || name == "G") {
+    color.space = ColorSpace::device_grey;
+  } else if (name == "DeviceRGB" || name == "RGB") {
+    color.space = ColorSpace::device_rgb;
+  } else if (name == "DeviceCMYK" || name == "CMYK") {
+    color.space = ColorSpace::device_cmyk;
+    color.cmyk = {0, 0, 0, 1}; // initial DeviceCMYK colour is black
+  } else if (const auto it = resources.color_space.find(name);
+             it != resources.color_space.end() && it->second != nullptr) {
+    color.def = it->second.get();
+    color.space = ColorSpace::device_rgb;
+    color.rgb = color.def->to_rgb(color.def->initial_components());
+  } else {
+    color.space = ColorSpace::unknown;
+  }
+}
+
+/// Resolve a general colour operator (`sc`/`scn`/`SC`/`SCN`): convert the
+/// operand components through the active colour space to RGB. With no resource
+/// colour space, interpret the components as a device colour by their count
+/// (ISO 32000-1 8.6.8). A trailing name operand (a `/Pattern`) carries no
+/// convertible components — left as-is (stage 4.9/4.10).
+void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
+  std::vector<double> components;
+  bool has_pattern_name = false;
+  for (const Object &argument : op.arguments) {
+    if (argument.is_name()) {
+      has_pattern_name = true;
+    } else if (argument.is_real()) {
+      components.push_back(argument.as_real());
+    }
+  }
+  if (color.def != nullptr) {
+    color.space = ColorSpace::device_rgb;
+    color.rgb = color.def->to_rgb(components);
+    return;
+  }
+  if (has_pattern_name) {
+    return;
+  }
+  switch (components.size()) {
+  case 1:
+    color.space = ColorSpace::device_grey;
+    color.grey = components[0];
+    break;
+  case 3:
+    color.space = ColorSpace::device_rgb;
+    color.rgb = {components[0], components[1], components[2]};
+    break;
+  case 4:
+    color.space = ColorSpace::device_cmyk;
+    color.cmyk = {components[0], components[1], components[2], components[3]};
+    break;
+  default:
+    break;
+  }
+}
+
 /// Emit a path-painting element from the path accumulated in `state` and the
 /// current paint state, then clear the path (as every painting operator does).
 /// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
@@ -506,6 +571,31 @@ void run_content(const std::string &content, const Resources &resources,
       state.commit_clip();
       state.clear_path();
       break;
+
+    // Colour-space and general-colour operators are resolved here (not in
+    // `GraphicsState::execute`) because they consult the `/ColorSpace`
+    // resources. The device colour operators stay in `execute`.
+    case GraphicsOperatorType::set_other_color_space: // cs
+      if (!op.arguments.empty()) {
+        set_color_space(state.current().other_color,
+                        op.arguments.at(0).as_string(), resources);
+      }
+      break;
+    case GraphicsOperatorType::set_stroke_color_space: // CS
+      if (!op.arguments.empty()) {
+        set_color_space(state.current().stroke_color,
+                        op.arguments.at(0).as_string(), resources);
+      }
+      break;
+    case GraphicsOperatorType::set_other_color:      // sc
+    case GraphicsOperatorType::set_other_color_name: // scn
+      set_color(state.current().other_color, op);
+      break;
+    case GraphicsOperatorType::set_stroke_color:      // SC
+    case GraphicsOperatorType::set_stroke_color_name: // SCN
+      set_color(state.current().stroke_color, op);
+      break;
+
     case GraphicsOperatorType::begin_marked_content_seq:       // BMC
     case GraphicsOperatorType::begin_marked_content_seq_props: // BDC
       begin_marked_content(op, resources, marked);
