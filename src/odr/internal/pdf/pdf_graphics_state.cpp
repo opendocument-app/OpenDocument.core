@@ -129,6 +129,28 @@ void GraphicsState::clear_path() {
   m_subpath_start = {0, 0};
 }
 
+void GraphicsState::set_pending_clip(const bool even_odd) {
+  m_pending_clip = even_odd ? PendingClip::even_odd : PendingClip::nonzero;
+}
+
+void GraphicsState::commit_clip() {
+  if (m_pending_clip == PendingClip::none) {
+    return;
+  }
+  current().clip.push_back(
+      ClipPath{path, m_pending_clip == PendingClip::even_odd});
+  m_pending_clip = PendingClip::none;
+}
+
+void GraphicsState::clip_bounding_box(const double x0, const double y0,
+                                      const double x1, const double y1) {
+  Subpath rect{to_user(x0, y0), {}, true};
+  rect.segments.push_back({PathSegment::Kind::line, {}, {}, to_user(x1, y0)});
+  rect.segments.push_back({PathSegment::Kind::line, {}, {}, to_user(x1, y1)});
+  rect.segments.push_back({PathSegment::Kind::line, {}, {}, to_user(x0, y1)});
+  current().clip.push_back(ClipPath{{std::move(rect)}, false});
+}
+
 void GraphicsState::save() { stack.push_back(stack.back()); }
 
 void GraphicsState::restore() { stack.pop_back(); }
@@ -214,6 +236,13 @@ void GraphicsState::execute(const GraphicsOperator &op) {
   case GraphicsOperatorType::rectangle: // re
     path_rectangle(op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
                    op.arguments.at(2).as_real(), op.arguments.at(3).as_real());
+    break;
+
+  case GraphicsOperatorType::set_clipping_nonzero: // W
+    set_pending_clip(false);
+    break;
+  case GraphicsOperatorType::set_clipping_evenodd: // W*
+    set_pending_clip(true);
     break;
 
   case GraphicsOperatorType::set_text_char_spacing:

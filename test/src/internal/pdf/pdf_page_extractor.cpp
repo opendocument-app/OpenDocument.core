@@ -695,3 +695,75 @@ TEST(PdfPageExtractor, stroke_dash_reset_to_solid) {
   const auto page = run_page("[3 2] 0 d [] 0 d 0 0 m 10 0 l S");
   EXPECT_TRUE(path_at(page, 0).dash_array.empty());
 }
+
+// --- stage 4.3: clipping --------------------------------------------------
+
+// A `W n` clip rect limits a later fill: the fill carries the clip region (the
+// rect), nonzero rule, while the clip itself paints nothing.
+TEST(PdfPageExtractor, clip_rect_limits_later_fill) {
+  const auto page = run_page("0 0 100 100 re W n 10 10 200 200 re f");
+  ASSERT_EQ(page.size(), 1); // only the fill emits an element
+  const PathElement &p = path_at(page, 0);
+  EXPECT_TRUE(p.fill);
+  ASSERT_EQ(p.clip.size(), 1);
+  EXPECT_FALSE(p.clip[0].even_odd);
+  ASSERT_EQ(p.clip[0].subpaths.size(), 1);
+  EXPECT_DOUBLE_EQ(p.clip[0].subpaths[0].start[0], 0);
+  EXPECT_DOUBLE_EQ(p.clip[0].subpaths[0].segments[0].end[0], 100); // 0 + 100
+}
+
+// `W*` selects the even-odd clip rule.
+TEST(PdfPageExtractor, clip_evenodd_rule) {
+  const auto page = run_page("0 0 10 10 re W* n 0 0 5 5 re f");
+  ASSERT_EQ(page.size(), 1);
+  ASSERT_EQ(path_at(page, 0).clip.size(), 1);
+  EXPECT_TRUE(path_at(page, 0).clip[0].even_odd);
+}
+
+// The painting operator that installs a clip is itself clipped only by the
+// *previous* clip, not the one it establishes (ISO 32000-1 8.5.4).
+TEST(PdfPageExtractor, clip_excludes_its_own_paint) {
+  // `re W f`: the fill paints under no clip; the rect becomes a clip
+  // afterwards.
+  const auto page = run_page("0 0 10 10 re W f 0 0 5 5 re f");
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_TRUE(path_at(page, 0).clip.empty()); // the clip-establishing fill
+  ASSERT_EQ(path_at(page, 1).clip.size(), 1); // the next fill is clipped
+}
+
+// Nested clips intersect: a second `W n` adds a region, so a later fill carries
+// both, in order.
+TEST(PdfPageExtractor, clip_nested_intersect) {
+  const auto page =
+      run_page("0 0 100 100 re W n 10 10 50 50 re W n 20 20 10 10 re f");
+  ASSERT_EQ(page.size(), 1);
+  ASSERT_EQ(path_at(page, 0).clip.size(), 2);
+}
+
+// The clip is part of the saved/restored graphics state: a clip set inside
+// `q`/`Q` does not leak to content after the `Q`.
+TEST(PdfPageExtractor, clip_save_restore) {
+  const auto page = run_page("q 0 0 10 10 re W n 0 0 5 5 re f Q 0 0 5 5 re f");
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_EQ(path_at(page, 0).clip.size(), 1); // inside q/Q: clipped
+  EXPECT_TRUE(path_at(page, 1).clip.empty()); // after Q: clip gone
+}
+
+// A form XObject's `/BBox` clips its content (ISO 32000-1 8.10.2), mapped
+// through the form `/Matrix` + CTM; the clip is scoped to the form.
+TEST(PdfPageExtractor, form_bbox_clips_content) {
+  XObject form = form_x_object("0 0 100 100 re f");
+  form.bbox = std::array<double, 4>{10, 20, 30, 40};
+  Resources res;
+  res.x_object["Fm0"] = &form;
+
+  const auto page = extract_page("/Fm0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  ASSERT_EQ(p.clip.size(), 1);
+  const Subpath &s = p.clip[0].subpaths[0];
+  EXPECT_DOUBLE_EQ(s.start[0], 10);
+  EXPECT_DOUBLE_EQ(s.start[1], 20);
+  EXPECT_DOUBLE_EQ(s.segments[1].end[0], 30); // x1
+  EXPECT_DOUBLE_EQ(s.segments[1].end[1], 40); // y1
+}
