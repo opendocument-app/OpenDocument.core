@@ -450,8 +450,9 @@ void begin_marked_content(const GraphicsOperator &op,
 /// Invoke a form XObject named by `Do`: save the state, concatenate the form's
 /// `/Matrix` onto the CTM, run its content with the form's own `/Resources`
 /// (falling back to the enclosing scope), then restore (ISO 32000-1 8.10.1).
-/// `/BBox` clipping is deferred (text-only). Image and unknown XObjects are
-/// skipped, and a form already on the render stack is skipped (cycle guard).
+/// `/BBox` clips the form's content. An image XObject emits an `ImageElement`
+/// (when its codec passes through); unknown subtypes are skipped, and a form
+/// already on the render stack is skipped (cycle guard).
 void invoke_x_object(const std::string &name, const Resources &resources,
                      GraphicsState &state, std::vector<PageElement> &out,
                      const Logger &logger, std::set<std::string> &warned,
@@ -466,8 +467,22 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   }
 
   const XObject *x_object = it->second;
+  if (x_object->subtype == XObject::Subtype::image) {
+    // An image is placed by the CTM in effect (its unit square maps to user
+    // space), under the current clip. Only codecs with bytes ready for the
+    // browser carry `image_data` (stage 4.5: JPEG); the rest are skipped.
+    if (!x_object->image_data.empty()) {
+      ImageElement image;
+      image.transform = state.current().general.transform_matrix;
+      image.clip = state.current().clip;
+      image.data = x_object->image_data;
+      image.mime = x_object->image_mime;
+      out.push_back(std::move(image));
+    }
+    return;
+  }
   if (x_object->subtype != XObject::Subtype::form) {
-    return; // image XObjects are stage 4; unknown subtypes are inexecutable
+    return; // unknown subtypes are inexecutable
   }
   if (!active.insert(x_object).second) {
     ODR_WARNING(logger, "pdf: cyclic form XObject invocation, skipping");

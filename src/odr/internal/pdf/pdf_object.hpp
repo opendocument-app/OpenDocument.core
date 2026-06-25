@@ -254,6 +254,7 @@ public:
   [[nodiscard]] const Holder &holder() const { return m_holder; }
 
   [[nodiscard]] std::size_t size() const { return m_holder.size(); }
+  [[nodiscard]] bool empty() const { return m_holder.empty(); }
   [[nodiscard]] Holder::iterator begin() { return m_holder.begin(); }
   [[nodiscard]] Holder::iterator end() { return m_holder.end(); }
   [[nodiscard]] Holder::const_iterator begin() const {
@@ -263,6 +264,11 @@ public:
 
   Object &operator[](const std::size_t i) { return m_holder.at(i); }
   const Object &operator[](const std::size_t i) const { return m_holder.at(i); }
+
+  Object &front() { return m_holder.front(); }
+  [[nodiscard]] const Object &front() const { return m_holder.front(); }
+  Object &back() { return m_holder.back(); }
+  [[nodiscard]] const Object &back() const { return m_holder.back(); }
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;

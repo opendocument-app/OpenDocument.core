@@ -852,3 +852,73 @@ TEST(PdfPageExtractor, device_color_clears_color_space) {
   EXPECT_DOUBLE_EQ(p.fill_color.rgb[0], 1.0);
   EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
 }
+
+// --- stage 4.5: image XObjects (JPEG pass-through) ------------------------
+
+namespace {
+
+XObject jpeg_x_object(std::string data) {
+  XObject x_object;
+  x_object.subtype = XObject::Subtype::image;
+  x_object.image_data = std::move(data);
+  x_object.image_mime = "image/jpeg";
+  return x_object;
+}
+
+} // namespace
+
+// `Do` on a pass-through image XObject emits an `ImageElement` placed by the
+// CTM, carrying the encoded bytes verbatim.
+TEST(PdfPageExtractor, image_xobject_emitted_at_ctm) {
+  XObject image = jpeg_x_object("JFIF-bytes");
+  Resources res;
+  res.x_object["Im0"] = &image;
+
+  const auto page =
+      extract_page("q 2 0 0 3 10 20 cm /Im0 Do Q", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const ImageElement &img = std::get<ImageElement>(page[0]);
+  EXPECT_EQ(img.data, "JFIF-bytes");
+  EXPECT_EQ(img.mime, "image/jpeg");
+  EXPECT_DOUBLE_EQ(img.transform.a, 2); // unit square -> 2 wide
+  EXPECT_DOUBLE_EQ(img.transform.d, 3); // 3 tall
+  EXPECT_DOUBLE_EQ(img.transform.e, 10);
+  EXPECT_DOUBLE_EQ(img.transform.f, 20);
+}
+
+// An image whose codec is not a pass-through (no `image_data`) is skipped, as
+// is an unknown XObject — `Do` emits nothing.
+TEST(PdfPageExtractor, image_xobject_without_data_skipped) {
+  XObject image; // subtype image, but no decoded pass-through bytes
+  image.subtype = XObject::Subtype::image;
+  Resources res;
+  res.x_object["Im0"] = &image;
+
+  EXPECT_TRUE(extract_page("/Im0 Do", res, Logger::null()).empty());
+}
+
+// An image is clipped by the current clip, like a path.
+TEST(PdfPageExtractor, image_xobject_carries_clip) {
+  XObject image = jpeg_x_object("bytes");
+  Resources res;
+  res.x_object["Im0"] = &image;
+
+  const auto page =
+      extract_page("0 0 50 50 re W n /Im0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(std::get<ImageElement>(page[0]).clip.size(), 1);
+}
+
+// Images interleave with paths and text in paint order.
+TEST(PdfPageExtractor, image_in_paint_order) {
+  XObject image = jpeg_x_object("bytes");
+  Resources res;
+  res.x_object["Im0"] = &image;
+
+  const auto page =
+      extract_page("0 0 10 10 re f /Im0 Do 5 5 m 6 6 l S", res, Logger::null());
+  ASSERT_EQ(page.size(), 3);
+  EXPECT_TRUE(std::holds_alternative<PathElement>(page[0]));
+  EXPECT_TRUE(std::holds_alternative<ImageElement>(page[1]));
+  EXPECT_TRUE(std::holds_alternative<PathElement>(page[2]));
+}
