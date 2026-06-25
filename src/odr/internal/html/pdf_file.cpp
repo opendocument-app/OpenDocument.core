@@ -22,6 +22,7 @@
 
 #include <utf8cpp/utf8/unchecked.h>
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <memory>
@@ -34,6 +35,81 @@
 namespace odr::internal::html {
 
 namespace {
+
+/// Round to 0.01 user-space units; sub-precision beyond that is invisible and
+/// the extra digits add up across a page full of path data.
+double round2(const double v) { return std::round(v * 100.0) / 100.0; }
+
+/// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
+/// spaces (Separation/ICCBased/… — stage 4.4) and the unknown space fall back
+/// to black, the PDF initial color.
+std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
+  const auto to255 = [](const double v) {
+    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+  };
+  int r = 0;
+  int g = 0;
+  int b = 0;
+  switch (color.space) {
+  case pdf::ColorSpace::device_grey:
+    r = g = b = to255(color.grey);
+    break;
+  case pdf::ColorSpace::device_rgb:
+    r = to255(color.rgb[0]);
+    g = to255(color.rgb[1]);
+    b = to255(color.rgb[2]);
+    break;
+  case pdf::ColorSpace::device_cmyk: {
+    // Naive CMYK -> RGB (no ICC); refined in stage 4.4.
+    const double c = color.cmyk[0];
+    const double m = color.cmyk[1];
+    const double y = color.cmyk[2];
+    const double k = color.cmyk[3];
+    r = to255((1 - c) * (1 - k));
+    g = to255((1 - m) * (1 - k));
+    b = to255((1 - y) * (1 - k));
+    break;
+  }
+  case pdf::ColorSpace::unknown:
+    break;
+  }
+  std::ostringstream s;
+  s << "rgb(" << r << ',' << g << ',' << b << ')';
+  return std::move(s).str();
+}
+
+/// Build an SVG `d` attribute from a path's subpaths, each point mapped through
+/// `to_box` (PDF user space -> the page box, y-down). Lines become `L`, cubic
+/// Béziers `C`, and an explicitly closed subpath ends with `Z`.
+std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
+                       const util::math::Transform2D &to_box) {
+  std::ostringstream d;
+  const auto point = [&](const std::array<double, 2> &p) {
+    const std::array<double, 2> q = to_box.apply(p[0], p[1]);
+    d << ' ' << round2(q[0]) << ' ' << round2(q[1]);
+  };
+  bool first = true;
+  for (const pdf::Subpath &sub : subpaths) {
+    d << (first ? "M" : " M");
+    first = false;
+    point(sub.start);
+    for (const pdf::PathSegment &seg : sub.segments) {
+      if (seg.kind == pdf::PathSegment::Kind::line) {
+        d << " L";
+        point(seg.end);
+      } else {
+        d << " C";
+        point(seg.c1);
+        point(seg.c2);
+        point(seg.end);
+      }
+    }
+    if (sub.closed) {
+      d << " Z";
+    }
+  }
+  return std::move(d).str();
+}
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned span per glyph run, and the same font sizes,
@@ -140,9 +216,20 @@ public:
     std::string glyph_classes;
     std::string glyph_text;
   };
+  // One painted path, already serialized to an SVG `<path .../>` fragment in
+  // the page's viewBox (PDF points, y-down). Contiguous paths share one `<svg>`
+  // at write time.
+  struct PathOut {
+    std::string svg;
+  };
+  // Page content in paint (z) order: text spans and paths interleave, so a
+  // later fill occludes earlier text and vice versa.
+  using PageItem = std::variant<SpanOut, PathOut>;
   struct PageOut {
     std::string classes;
-    std::vector<SpanOut> spans;
+    double width{0};  // page box width, PDF points (for the SVG viewBox)
+    double height{0}; // page box height, PDF points
+    std::vector<PageItem> items;
   };
 
   HtmlResources write_document(HtmlWriter &out) const {
@@ -158,12 +245,6 @@ public:
     // CSS uses 96px to the inch, PDF user space 72 units to the inch.
     static constexpr double pt_to_px = 96.0 / 72.0;
     static constexpr double pt_to_in = 1 / 72.0;
-
-    // Round CSS coordinates to 0.01px; sub-pixel precision beyond that is
-    // invisible and the extra digits add up over millions of spans.
-    const auto round2 = [](const double v) {
-      return std::round(v * 100.0) / 100.0;
-    };
 
     // Pass 1: resolve every page and span into class tokens, building the
     // atomic-style catalog so it can be emitted in <head> ahead of the body.
@@ -260,6 +341,8 @@ public:
 
       PageOut &page_out = pages_out.emplace_back();
       page_out.classes = "p";
+      page_out.width = width;
+      page_out.height = height;
       {
         std::ostringstream w;
         w << "width:" << width * pt_to_in << "in";
@@ -285,8 +368,26 @@ public:
           util::math::Transform2D::translation(-box_x0, -box_y0) *
           util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
-      for (const pdf::TextElement &text :
-           pdf::extract_text(stream, *page->resources, *m_logger)) {
+      for (const pdf::PageElement &element :
+           pdf::extract_page(stream, *page->resources, *m_logger)) {
+        // A painted path: serialize its filled subpaths to an SVG `<path>`
+        // fragment in the page viewBox. Stroke-only paths wait for stage 4.2.
+        if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+          if (!path->fill || path->subpaths.empty()) {
+            continue;
+          }
+          std::ostringstream frag;
+          frag << "<path d=\"" << svg_path_d(path->subpaths, to_box)
+               << "\" fill=\"" << device_color_to_css(path->fill_color) << "\"";
+          if (path->even_odd) {
+            frag << " fill-rule=\"evenodd\"";
+          }
+          frag << "/>";
+          page_out.items.push_back(PathOut{std::move(frag).str()});
+          continue;
+        }
+
+        const pdf::TextElement &text = std::get<pdf::TextElement>(element);
         // The font index is non-zero when an embedded font lets us render
         // the actual glyphs; 0 falls through to the legacy path.
         const int font = text.font != nullptr ? font_family(text.font) : 0;
@@ -392,17 +493,17 @@ public:
             std::string glyph_classes = "t g";
             glyph_classes += paint;
             add_class(glyph_classes, "ff", font_family);
-            page_out.spans.push_back({base + " i", escape_text(text.text),
-                                      std::move(glyph_classes),
-                                      std::move(glyph_text)});
+            page_out.items.push_back(
+                SpanOut{base + " i", escape_text(text.text),
+                        std::move(glyph_classes), std::move(glyph_text)});
           } else {
             // Display-only run: nothing is extractable (the `no_unicode` case),
             // so the glyph layer stands alone and carries the placement itself.
             std::string glyph_classes = base + " g";
             glyph_classes += paint;
             add_class(glyph_classes, "ff", font_family);
-            page_out.spans.push_back(
-                {std::move(glyph_classes), std::move(glyph_text), {}, {}});
+            page_out.items.push_back(SpanOut{
+                std::move(glyph_classes), std::move(glyph_text), {}, {}});
           }
         } else {
           // Legacy single-layer path: no embedded font, render the Unicode in a
@@ -411,8 +512,8 @@ public:
           if (invisible) {
             classes += " i";
           }
-          page_out.spans.push_back(
-              {std::move(classes), escape_text(text.text), {}, {}});
+          page_out.items.push_back(
+              SpanOut{std::move(classes), escape_text(text.text), {}, {}});
         }
       }
     }
@@ -446,6 +547,18 @@ public:
     // paints it; set explicitly because the nested layer would otherwise
     // inherit the `.i` text layer's `transparent`.
     out.out() << ".g{user-select:none}.gv{color:#000}";
+    // Vector graphics: one or more `<svg>` overlays per page, each filling the
+    // page box (viewBox in PDF points). `overflow:hidden` clips each overlay to
+    // the page box, matching a PDF viewer: content drawn outside the MediaBox
+    // (e.g. a background rectangle that bleeds past the left edge) is never
+    // visible, and without this it spills into the centered page's margin.
+    // Arbitrary in-page clip paths still wait for stage 4.3.
+    // `preserveAspectRatio:none` keeps the points->box mapping exact.
+    // `pointer-events:none` so a full-page overlay painted after text
+    // (paint order) does not swallow selection/clicks over its transparent
+    // areas — the graphics are decorative, the text layer owns interaction.
+    out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
+                 "overflow:hidden;pointer-events:none}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;
     // Per-value atomic classes (font sizes, offsets, transforms, ...).
@@ -453,27 +566,54 @@ public:
     out.write_header_style_end();
     out.write_header_end();
 
+    const auto write_span = [&out](const SpanOut &span) {
+      // Inline so the whole run (and its nested glyph layer) stays on one line:
+      // smaller output and a more legible diff than the open/text/close split,
+      // while each run still gets its own line under the page div.
+      out.write_element_begin(
+          "span",
+          HtmlElementOptions().set_inline(true).set_class(span.classes));
+      out.write_raw(span.text);
+      if (!span.glyph_classes.empty()) {
+        out.write_element_begin("span",
+                                HtmlElementOptions().set_inline(true).set_class(
+                                    span.glyph_classes));
+        out.write_raw(span.glyph_text);
+        out.write_element_end("span");
+      }
+      out.write_element_end("span");
+    };
+
     out.write_body_begin();
     for (const PageOut &page : pages_out) {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
-      for (const SpanOut &span : page.spans) {
-        // Inline so the whole run (and its nested glyph layer) stays on one
-        // line: smaller output and a more legible diff than the open/text/close
-        // split, while each run still gets its own line under the page div.
-        out.write_element_begin(
-            "span",
-            HtmlElementOptions().set_inline(true).set_class(span.classes));
-        out.write_raw(span.text);
-        if (!span.glyph_classes.empty()) {
-          out.write_element_begin(
-              "span", HtmlElementOptions().set_inline(true).set_class(
-                          span.glyph_classes));
-          out.write_raw(span.glyph_text);
-          out.write_element_end("span");
+      // Walk the page's elements in paint order, coalescing contiguous paths
+      // into a single `<svg>` so spans and vector graphics layer by DOM order.
+      bool svg_open = false;
+      const auto close_svg = [&] {
+        if (svg_open) {
+          out.write_raw("</svg>");
+          svg_open = false;
         }
-        out.write_element_end("span");
+      };
+      for (const PageItem &item : page.items) {
+        if (const auto *path = std::get_if<PathOut>(&item)) {
+          if (!svg_open) {
+            std::ostringstream open;
+            open << "<svg class=\"s\" viewBox=\"0 0 " << round2(page.width)
+                 << ' ' << round2(page.height)
+                 << "\" preserveAspectRatio=\"none\">";
+            out.write_raw(std::move(open).str());
+            svg_open = true;
+          }
+          out.write_raw(path->svg);
+        } else {
+          close_svg();
+          write_span(std::get<SpanOut>(item));
+        }
       }
+      close_svg();
       out.write_element_end("div");
     }
     out.write_body_end();
