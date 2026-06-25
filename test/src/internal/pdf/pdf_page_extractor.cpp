@@ -337,8 +337,7 @@ TEST(PdfPageExtractor, rendering_mode_propagates) {
 }
 
 // A composite font with no `/ToUnicode` and no usable predefined encoding has
-// no recoverable Unicode: the segment is marked `no_unicode` with empty text
-// (the glyphs render once the embedded font lands in stage 3).
+// no recoverable Unicode: the segment is marked `no_unicode` with empty text.
 TEST(PdfPageExtractor, no_unicode_marks_composite_without_tounicode) {
   Font font;
   font.composite = true; // 2-byte codes, empty cmap, no cid_encoding_name
@@ -420,8 +419,6 @@ TEST(PdfPageExtractor, stray_emc_tolerated) {
   ASSERT_EQ(texts.size(), 1);
   EXPECT_EQ(texts[0].text, "ok");
 }
-
-// --- Stage 2.5: space inference ---
 
 // A forward gap past ~0.2 em between segments on a line infers a space, so a
 // producer that emits no space glyph still yields separable words.
