@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <map>
 #include <string>
 
 namespace odr::internal::font::cff {
@@ -18,9 +20,17 @@ class CffFont;
 /// — when loaded via `@font-face`, matching the PUA code points the PDF HTML
 /// layer emits.
 ///
+/// @p extra adds real-Unicode -> glyph entries alongside the PUA range, so a
+/// run whose codes map 1:1 to those scalars can render the *real* Unicode
+/// directly (the HTML layer then collapses its dual selectable/visible spans
+/// into one). Keys must be in the BMP and outside the PUA (`U+E000..U+F8FF`);
+/// the caller guarantees this. The PUA range is always kept as a fallback.
+///
 /// Reuses the `sfnt_transform` serializers (`build_sfnt`, `serialize_cmap`,
 /// `serialize_post`, `serialize_os2`). Throws `std::runtime_error` if the glyph
 /// count exceeds the BMP PUA capacity (6400).
-[[nodiscard]] std::string wrap_to_otf(const CffFont &font);
+[[nodiscard]] std::string
+wrap_to_otf(const CffFont &font,
+            const std::map<char32_t, std::uint16_t> &extra = {});
 
 } // namespace odr::internal::font::cff

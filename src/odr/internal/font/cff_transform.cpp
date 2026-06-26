@@ -141,7 +141,8 @@ std::string serialize_name(const std::string &font_name) {
 
 namespace odr::internal::font {
 
-std::string cff::wrap_to_otf(const CffFont &font) {
+std::string cff::wrap_to_otf(const CffFont &font,
+                             const std::map<char32_t, std::uint16_t> &extra) {
   const std::uint16_t glyphs = font.glyph_count();
 
   // The uniform PUA re-encode: pua_code_point(glyph) -> glyph over
@@ -151,6 +152,11 @@ std::string cff::wrap_to_otf(const CffFont &font) {
   for (std::uint16_t glyph = 0; glyph < glyphs; ++glyph) {
     pua[pua_code_point(glyph)] = glyph;
   }
+  // Real-Unicode entries: caller guarantees BMP, non-PUA keys, so these never
+  // collide with the PUA range filled above.
+  for (const auto &[code, glyph] : extra) {
+    pua[code] = glyph;
+  }
 
   std::uint16_t advance_width_max = 0;
   for (std::uint16_t glyph = 0; glyph < glyphs; ++glyph) {
@@ -158,8 +164,10 @@ std::string cff::wrap_to_otf(const CffFont &font) {
   }
 
   const FontBBox bbox = font.bounding_box();
-  const char32_t first = pua_code_point(0);
-  const char32_t last = pua_code_point(glyphs == 0 ? 0 : glyphs - 1);
+  // `cmap`-bounding OS/2 indices over the full map (the real-Unicode entries
+  // can sit below the PUA range).
+  const char32_t first = pua.empty() ? 0 : pua.begin()->first;
+  const char32_t last = pua.empty() ? 0 : pua.rbegin()->first;
 
   std::vector<std::pair<std::string, std::string>> tables;
   tables.emplace_back("CFF ", std::string(font.data()));

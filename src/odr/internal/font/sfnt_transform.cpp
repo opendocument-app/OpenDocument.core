@@ -270,7 +270,8 @@ std::string font::serialize_os2(const std::uint16_t units_per_em,
   return os2;
 }
 
-void font::reencode_to_pua(sfnt::SfntFont &font) {
+void font::reencode_to_pua(sfnt::SfntFont &font,
+                           const std::map<char32_t, std::uint16_t> &extra) {
   if (font.glyph_count() > pua_capacity) {
     throw std::runtime_error(
         "sfnt_transform: glyph count exceeds BMP PUA capacity");
@@ -279,6 +280,11 @@ void font::reencode_to_pua(sfnt::SfntFont &font) {
   std::map<char32_t, std::uint16_t> map;
   for (std::uint16_t glyph = 0; glyph < font.glyph_count(); ++glyph) {
     map[pua_code_point(glyph)] = glyph;
+  }
+  // Real-Unicode entries: caller guarantees BMP, non-PUA keys, so these never
+  // collide with the PUA range filled above.
+  for (const auto &[code, glyph] : extra) {
+    map[code] = glyph;
   }
   font.set_cmap(std::move(map));
 }

@@ -315,22 +315,31 @@ public:
     // class `odr-fN`, assigned on first encounter in `font_family`. A font
     // whose embedded font is absent, not an SFNT, or not re-encodable keeps
     // index 0 and renders through the fallback path, exactly as before.
-    // `font_faces` collects the rules for the accepted fonts, emitted in <head>
-    // below.
+    //
+    // The `@font-face` rules are *not* built here: a font also gets
+    // real-Unicode `cmap` entries for the scalars its 1:1 runs use (so those
+    // runs can collapse to a single span), and that used-scalar set is only
+    // complete after the first pass. `font_family` therefore just validates and
+    // indexes the font; `accepted_fonts` / `used_unicode` (indexed by `index -
+    // 1`) carry it to the post-pass that re-encodes with the extra entries and
+    // emits `font_faces`.
     int family_count = 0;
     std::string font_faces;
+    std::vector<pdf::Font *> accepted_fonts;
+    std::vector<std::map<char32_t, std::uint16_t>> used_unicode;
     std::unordered_map<const pdf::Font *, int> family_index;
     const auto font_family = [&](pdf::Font *font) -> int {
       const auto [it, inserted] = family_index.try_emplace(font, 0);
       if (!inserted) {
         return it->second; // already classified
       }
-      // Re-encode the embedded font to the PUA and serialize a browser-loadable
-      // SFNT up front, so taking the embedded-font path is gated on success: a
+      // Gate the embedded-font path on a trial PUA re-encode + serialize: a
       // font we cannot re-encode (more glyphs than the BMP PUA holds, or a
       // serialization failure) keeps index 0 and renders through the legible
-      // fallback path, never emitting orphaned PUA glyph spans.
-      std::string reencoded;
+      // fallback path, never emitting orphaned PUA glyph spans. The trial
+      // output is discarded; the post-pass re-encodes for real (with the
+      // real-Unicode entries) once the used-scalar set is known.
+      bool usable = false;
       if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
               font->embedded_font)) {
         // SFNT (TrueType / OpenType): the re-encode mutates the cmap in place,
@@ -341,9 +350,9 @@ public:
           font::reencode_to_pua(*sfnt);
           std::ostringstream sfnt_out;
           sfnt->write(sfnt_out);
-          reencoded = std::move(sfnt_out).str();
+          usable = true;
         } catch (...) {
-          reencoded.clear();
+          usable = false;
         }
         sfnt->set_cmap(std::move(original_cmap));
       } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
@@ -351,20 +360,27 @@ public:
         // Bare CFF (`/FontFile3`): wrap into an OTTO with the PUA cmap baked in
         // (no in-place mutation, so nothing to restore).
         try {
-          reencoded = font::cff::wrap_to_otf(*cff);
+          (void)font::cff::wrap_to_otf(*cff);
+          usable = true;
         } catch (...) {
-          reencoded.clear();
+          usable = false;
         }
       }
-      if (reencoded.empty()) {
+      if (!usable) {
         return 0; // no usable embedded font: fallback path
       }
       const int index = ++family_count;
       it->second = index;
-      const std::string url = file_to_url(reencoded, "font/ttf");
-      font_faces += "@font-face{font-family:'odr-f" + std::to_string(index) +
-                    "';src:url(" + url + ");}";
+      accepted_fonts.push_back(font);
+      used_unicode.emplace_back();
       return index;
+    };
+
+    // A real-Unicode scalar may carry a `cmap` entry (letting its run collapse)
+    // only inside the BMP and outside the PUA (`U+E000..U+F8FF`), so a glyph's
+    // own deterministic PUA code point (`pua_code_point`) is never shadowed.
+    const auto collapsible_unicode = [](const char32_t c) {
+      return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
     };
 
     // The PUA glyph string for a run: each character code -> glyph id ->
@@ -522,7 +538,61 @@ public:
                             round2(text.word_spacing * scale * pt_to_px)));
         }
 
-        if (font != 0) {
+        // A run collapses to a single span — selectable *and* visible, the real
+        // Unicode rendered directly in the embedded font — when it has an
+        // embedded font, carries text, is 1:1 with its codes (no /ToUnicode
+        // expansion, /ActualText, or inferred space), and every glyph wins a
+        // real-Unicode `cmap` entry. The winner of a scalar is the first
+        // collapse-candidate run (in document order) to use it; processing
+        // order *is* document order, so an earlier run's claim is already
+        // visible and no later run can unseat it — the decision is final here.
+        const bool collapse_candidate =
+            font != 0 && !text.text.empty() && text.font != nullptr &&
+            util::string::utf8_length(text.text) == text.advances.size();
+
+        if (collapse_candidate) {
+          // Stake first-wins real-Unicode -> glyph claims and decide collapse
+          // in one walk: the run collapses iff each code's glyph wins (or
+          // matches) its scalar. Claims are staked for every collapsible scalar
+          // even when the run ends up dual, so later runs see them. The
+          // post-pass only bakes the won scalars into the shared font's `cmap`.
+          std::map<char32_t, std::uint16_t> &won = used_unicode[font - 1];
+          bool collapse = true;
+          auto cp = text.text.begin();
+          for (const std::uint32_t code : text.font->codes(text.codes)) {
+            const char32_t uchar = utf8::unchecked::next(cp);
+            const std::uint16_t glyph = text.font->glyph_for_code(code);
+            if (!collapsible_unicode(uchar)) {
+              collapse = false;
+              continue;
+            }
+            const auto [it, inserted] = won.emplace(uchar, glyph);
+            if (!inserted && it->second != glyph) {
+              collapse = false;
+            }
+          }
+          const std::string font_family =
+              "font-family:'odr-f" + std::to_string(font) + "'";
+          if (collapse) {
+            // One span: the real Unicode rendered in the embedded font, visible
+            // (`.gv` black) or transparent (`.i`), and selectable either way.
+            std::string classes = std::move(base);
+            classes += invisible ? " i" : " gv";
+            add_class(classes, "ff", font_family);
+            page_out.items.push_back(
+                SpanOut{std::move(classes), escape_text(text.text), {}, {}});
+          } else {
+            // Dual layer (a glyph lost its scalar to an earlier one): a
+            // transparent selectable Unicode span with the PUA glyph layer
+            // nested inside.
+            std::string glyph_classes = "t g";
+            glyph_classes += invisible ? " i" : " gv";
+            add_class(glyph_classes, "ff", font_family);
+            page_out.items.push_back(SpanOut{
+                base + " i", escape_text(text.text), std::move(glyph_classes),
+                escape_text(glyph_run(*text.font, text.codes))});
+          }
+        } else if (font != 0) {
           // The visible glyph layer: PUA code points in the embedded font.
           // Painted unless the render mode is invisible; never selected (the
           // text layer owns selection via `.g`), so the PUA code points never
@@ -570,6 +640,31 @@ public:
       }
     }
 
+    // Post-pass: every page has been scanned, so the per-font used-scalar sets
+    // are complete.
+    //
+    // Re-encode each accepted font with its real-Unicode entries baked into the
+    // `cmap` (the PUA range is kept as a fallback) and emit the `@font-face`
+    // rules in index order, so the output stays deterministic.
+    for (int i = 0; i < family_count; ++i) {
+      pdf::Font *font = accepted_fonts[i];
+      const std::map<char32_t, std::uint16_t> &extra = used_unicode[i];
+      std::string reencoded;
+      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+              font->embedded_font)) {
+        font::reencode_to_pua(*sfnt, extra);
+        std::ostringstream sfnt_out;
+        sfnt->write(sfnt_out);
+        reencoded = std::move(sfnt_out).str();
+      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
+                     font->embedded_font)) {
+        reencoded = font::cff::wrap_to_otf(*cff, extra);
+      }
+      const std::string url = file_to_url(reencoded, "font/ttf");
+      font_faces += "@font-face{font-family:'odr-f" + std::to_string(i + 1) +
+                    "';src:url(" + url + ");}";
+    }
+
     // Pass 2: write the document, now that the catalog is complete.
     out.write_begin();
     out.write_header_begin();
@@ -589,8 +684,16 @@ public:
     out.out() << "body{margin:0;background:#525659}";
     out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
                  "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+    // `font-kerning:none` + `font-variant-ligatures:none` keep the browser from
+    // applying the embedded font's GPOS/GSUB tables. A collapsed run now emits
+    // real Unicode in that font, so without this a sequence like `fi`/`AV`
+    // could be re-shaped (ligature substitution, kerning) after this code
+    // already fixed the PDF glyph IDs and advances, shifting pixels and run
+    // widths for otherwise 1:1 text. The PUA glyph layer was immune; restore
+    // that here.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre}";
+                 "white-space:pre;font-kerning:none;"
+                 "font-variant-ligatures:none}";
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
     out.out() << ".i{color:transparent}";
