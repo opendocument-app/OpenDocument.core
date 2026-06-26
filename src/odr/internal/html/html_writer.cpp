@@ -122,17 +122,10 @@ HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
 
 HtmlWriter::HtmlWriter(std::ostream &out, const bool format, std::string indent,
                        const std::uint32_t current_indent)
-    // `indent` is emitted once per nesting level (a single tab by default). A
-    // tab keeps the nesting depth visible in a diff while costing one byte per
-    // level instead of several. This matters most for the PDF text layer, whose
-    // millions of one-per-line spans spend megabytes on leading whitespace. An
-    // empty string keeps the historical "no indentation" opt-out.
     : m_out{&out}, m_format{format}, m_indent(std::move(indent)),
       m_current_indent{current_indent} {}
 
 HtmlWriter::HtmlWriter(std::ostream &out, const HtmlConfig &config)
-    // Repeat the indent unit `html_indent` times to form the per-level indent
-    // (`html_indent == 0` yields an empty string, i.e. no indentation).
     : HtmlWriter{out, config.format_html,
                  util::string::repeat(config.html_indent_string,
                                       config.html_indent)} {}

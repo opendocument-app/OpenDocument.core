@@ -47,7 +47,7 @@ struct HtmlElementOptions {
 
 class HtmlWriter {
 public:
-  HtmlWriter(std::ostream &out, bool format, std::string indent = "\t",
+  HtmlWriter(std::ostream &out, bool format, std::string indent,
              std::uint32_t current_indent = 0);
   HtmlWriter(std::ostream &out, const HtmlConfig &config);
 
