@@ -41,6 +41,9 @@ std::string_view trim_view(std::string_view s,
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
 
+/// Concatenate `count` copies of `unit` (empty for `count == 0`).
+std::string repeat(const std::string &unit, std::size_t count);
+
 void split(const std::string &string, const std::string &delimiter,
            const std::function<void(const std::string &)> &callback);
 std::vector<std::string> split(const std::string &string,
