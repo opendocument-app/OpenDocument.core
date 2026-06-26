@@ -275,22 +275,6 @@ public:
     std::string glyph_classes;
     std::string glyph_text;
   };
-  // A text run with an embedded font that *might* collapse to a single span (it
-  // is 1:1 and carries real Unicode). Whether it actually collapses depends on
-  // the font's final re-encoded `cmap`, which is only known once every page has
-  // been scanned (a glyph wins a real-Unicode entry only if no earlier glyph
-  // claimed that scalar first). So these runs are buffered raw and resolved
-  // into a `SpanOut` — collapsed or dual — after the first pass. `pdf_font` and
-  // `codes` re-derive the per-code glyphs; `text` is the raw (unescaped)
-  // Unicode, escaped at resolution.
-  struct PendingText {
-    std::string base; // placement + spacing classes
-    int font{0};      // `@font-face` index (>= 1)
-    bool invisible{false};
-    std::string text;
-    std::string codes;
-    const pdf::Font *pdf_font{nullptr};
-  };
   // One painted path, already serialized to an SVG `<path .../>` fragment in
   // the page's viewBox (PDF points, y-down). Contiguous paths share one `<svg>`
   // at write time.
@@ -298,9 +282,8 @@ public:
     std::string svg;
   };
   // Page content in paint (z) order: text spans and paths interleave, so a
-  // later fill occludes earlier text and vice versa. `PendingText` survives
-  // only until the post-pass resolution rewrites it to a `SpanOut`.
-  using PageItem = std::variant<SpanOut, PathOut, PendingText>;
+  // later fill occludes earlier text and vice versa.
+  using PageItem = std::variant<SpanOut, PathOut>;
   struct PageOut {
     std::string classes;
     double width{0};  // page box width, PDF points (for the SVG viewBox)
@@ -557,30 +540,58 @@ public:
 
         // A run collapses to a single span — selectable *and* visible, the real
         // Unicode rendered directly in the embedded font — when it has an
-        // embedded font, carries text, and is 1:1 with its codes (no /ToUnicode
-        // expansion, /ActualText, or inferred space). Whether it actually
-        // collapses also needs every glyph to win a real-Unicode `cmap` entry,
-        // resolved in the post-pass; defer such runs as `PendingText`.
+        // embedded font, carries text, is 1:1 with its codes (no /ToUnicode
+        // expansion, /ActualText, or inferred space), and every glyph wins a
+        // real-Unicode `cmap` entry. The winner of a scalar is the first
+        // collapse-candidate run (in document order) to use it; processing
+        // order *is* document order, so an earlier run's claim is already
+        // visible and no later run can unseat it — the decision is final here.
         const bool collapse_candidate =
             font != 0 && !text.text.empty() && text.font != nullptr &&
             util::string::utf8_length(text.text) == text.advances.size();
 
         if (collapse_candidate) {
-          // Stake first-wins real-Unicode -> glyph claims for this run's
-          // scalars. The post-pass bakes the winners into the font's `cmap` and
-          // decides per run whether it collapses or falls back to the dual
-          // layer (a later glyph that lost its scalar stays dual).
+          // Stake first-wins real-Unicode -> glyph claims and decide collapse
+          // in one walk: the run collapses iff each code's glyph wins (or
+          // matches) its scalar. Claims are staked for every collapsible scalar
+          // even when the run ends up dual, so later runs see them. The
+          // post-pass only bakes the won scalars into the shared font's `cmap`.
           std::map<char32_t, std::uint16_t> &won = used_unicode[font - 1];
+          bool collapse = true;
           auto cp = text.text.begin();
           for (const std::uint32_t code : text.font->codes(text.codes)) {
             const char32_t uchar = utf8::unchecked::next(cp);
-            if (collapsible_unicode(uchar)) {
-              won.emplace(uchar, text.font->glyph_for_code(code));
+            const std::uint16_t glyph = text.font->glyph_for_code(code);
+            if (!collapsible_unicode(uchar)) {
+              collapse = false;
+              continue;
+            }
+            const auto [it, inserted] = won.emplace(uchar, glyph);
+            if (!inserted && it->second != glyph) {
+              collapse = false;
             }
           }
-          page_out.items.push_back(PendingText{std::move(base), font, invisible,
-                                               text.text, text.codes,
-                                               text.font});
+          const std::string font_family =
+              "font-family:'odr-f" + std::to_string(font) + "'";
+          if (collapse) {
+            // One span: the real Unicode rendered in the embedded font, visible
+            // (`.gv` black) or transparent (`.i`), and selectable either way.
+            std::string classes = std::move(base);
+            classes += invisible ? " i" : " gv";
+            add_class(classes, "ff", font_family);
+            page_out.items.push_back(
+                SpanOut{std::move(classes), escape_text(text.text), {}, {}});
+          } else {
+            // Dual layer (a glyph lost its scalar to an earlier one): a
+            // transparent selectable Unicode span with the PUA glyph layer
+            // nested inside.
+            std::string glyph_classes = "t g";
+            glyph_classes += invisible ? " i" : " gv";
+            add_class(glyph_classes, "ff", font_family);
+            page_out.items.push_back(SpanOut{
+                base + " i", escape_text(text.text), std::move(glyph_classes),
+                escape_text(glyph_run(*text.font, text.codes))});
+          }
         } else if (font != 0) {
           // The visible glyph layer: PUA code points in the embedded font.
           // Painted unless the render mode is invisible; never selected (the
@@ -630,63 +641,8 @@ public:
     }
 
     // Post-pass: every page has been scanned, so the per-font used-scalar sets
-    // are complete. First resolve each deferred `PendingText` into a collapsed
-    // or dual `SpanOut` (this reads `glyph_for_code` on the *original* cmaps,
-    // so it must run before the in-place SFNT re-encode below), then re-encode
-    // the fonts with their real-Unicode entries and emit the `@font-face`
-    // rules.
-    const auto resolve_pending = [&](const PendingText &pt) -> SpanOut {
-      const std::map<char32_t, std::uint16_t> &won = used_unicode[pt.font - 1];
-      const std::string font_family =
-          "font-family:'odr-f" + std::to_string(pt.font) + "'";
-
-      // Collapse iff every code's glyph won this run's scalar; the walk also
-      // re-checks the exact 1:1 correspondence.
-      bool collapse = true;
-      auto cp = pt.text.begin();
-      const auto cp_end = pt.text.end();
-      for (const std::uint32_t code : pt.pdf_font->codes(pt.codes)) {
-        if (cp == cp_end) {
-          collapse = false;
-          break;
-        }
-        const char32_t uchar = utf8::unchecked::next(cp);
-        const auto entry = won.find(uchar);
-        if (entry == won.end() ||
-            entry->second != pt.pdf_font->glyph_for_code(code)) {
-          collapse = false;
-          break;
-        }
-      }
-      if (cp != cp_end) {
-        collapse = false;
-      }
-
-      if (collapse) {
-        // One span: the real Unicode rendered in the embedded font, visible
-        // (`.gv` black) or transparent (`.i`), and selectable either way.
-        std::string classes = pt.base;
-        classes += pt.invisible ? " i" : " gv";
-        add_class(classes, "ff", font_family);
-        return SpanOut{std::move(classes), escape_text(pt.text), {}, {}};
-      }
-      // Dual layer (a glyph lost its scalar to an earlier one): a transparent
-      // selectable Unicode span with the PUA glyph layer nested inside.
-      std::string glyph_classes = "t g";
-      glyph_classes += pt.invisible ? " i" : " gv";
-      add_class(glyph_classes, "ff", font_family);
-      return SpanOut{pt.base + " i", escape_text(pt.text),
-                     std::move(glyph_classes),
-                     escape_text(glyph_run(*pt.pdf_font, pt.codes))};
-    };
-    for (PageOut &page_out : pages_out) {
-      for (PageItem &item : page_out.items) {
-        if (const auto *pending = std::get_if<PendingText>(&item)) {
-          item = resolve_pending(*pending);
-        }
-      }
-    }
-
+    // are complete.
+    //
     // Re-encode each accepted font with its real-Unicode entries baked into the
     // `cmap` (the PUA range is kept as a fallback) and emit the `@font-face`
     // rules in index order, so the output stays deterministic.
