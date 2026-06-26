@@ -97,7 +97,10 @@ struct HtmlConfig {
 
   // formatting
   bool format_html{false};
-  std::uint8_t html_indent{2};
+  // Indentation when `format_html` is set: `html_indent_string` is repeated
+  // `html_indent` times per nesting level (0 disables indentation entirely).
+  std::uint8_t html_indent{1};
+  std::string html_indent_string{"\t"};
 
   // background image
   std::string background_image_format{"png"};

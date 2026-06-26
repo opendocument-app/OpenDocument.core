@@ -87,6 +87,15 @@ void string::replace_all(std::string &string, const std::string &search,
   }
 }
 
+std::string string::repeat(const std::string &unit, const std::size_t count) {
+  std::string result;
+  result.reserve(unit.size() * count);
+  for (std::size_t i = 0; i < count; ++i) {
+    result += unit;
+  }
+  return result;
+}
+
 void string::split(const std::string &string, const std::string &delimiter,
                    const std::function<void(const std::string &)> &callback) {
   std::size_t last_end = 0;

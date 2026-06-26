@@ -1,10 +1,12 @@
 #include <odr/internal/html/html_writer.hpp>
 
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
+#include <utility>
 
 namespace odr::internal::html {
 
@@ -118,14 +120,15 @@ HtmlElementOptions::set_extra(std::optional<HtmlWritable> _extra) {
   return *this;
 }
 
-HtmlWriter::HtmlWriter(std::ostream &out, const bool format,
-                       const std::uint8_t indent,
+HtmlWriter::HtmlWriter(std::ostream &out, const bool format, std::string indent,
                        const std::uint32_t current_indent)
-    : m_out{&out}, m_format{format}, m_indent(indent, ' '),
+    : m_out{&out}, m_format{format}, m_indent(std::move(indent)),
       m_current_indent{current_indent} {}
 
 HtmlWriter::HtmlWriter(std::ostream &out, const HtmlConfig &config)
-    : HtmlWriter{out, config.format_html, config.html_indent} {}
+    : HtmlWriter{out, config.format_html,
+                 util::string::repeat(config.html_indent_string,
+                                      config.html_indent)} {}
 
 void HtmlWriter::write_begin() {
   out() << "<!DOCTYPE html>\n";
