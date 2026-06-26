@@ -172,7 +172,8 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   config.format_html = true;
-  config.html_indent = 2;
+  config.html_indent = 1;
+  config.html_indent_string = "\t";
 
   std::string output_path_tmp = output_path + "/tmp";
   std::filesystem::create_directories(output_path_tmp);
