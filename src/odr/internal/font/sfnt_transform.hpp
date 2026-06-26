@@ -78,8 +78,16 @@ serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
 /// never reached — when loaded via `@font-face`. `font.write()` then emits the
 /// re-encoded SFNT.
 ///
+/// @p extra adds real-Unicode -> glyph entries alongside the PUA range, so a
+/// run whose codes map 1:1 to those scalars can render the *real* Unicode
+/// directly (the HTML layer then collapses its dual selectable/visible spans
+/// into one). Keys must be in the BMP and outside the PUA (`U+E000..U+F8FF`) so
+/// they never shadow a glyph's own PUA code point; the caller guarantees this.
+/// The PUA range is always kept as a fallback.
+///
 /// Throws `std::runtime_error` if the glyph count exceeds the BMP PUA capacity
 /// (6400); multi-plane PUA spill-over is a follow-up.
-void reencode_to_pua(sfnt::SfntFont &font);
+void reencode_to_pua(sfnt::SfntFont &font,
+                     const std::map<char32_t, std::uint16_t> &extra = {});
 
 } // namespace odr::internal::font

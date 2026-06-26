@@ -203,6 +203,34 @@ TEST(SfntTransform, reencode_maps_every_glyph_to_pua_after_round_trip) {
   EXPECT_EQ(parsed.code_point_for_glyph(2), pua_code_point(2));
 }
 
+TEST(SfntTransform, reencode_with_extra_adds_real_unicode_beside_pua) {
+  sfnt::SfntFont font = parse(sample_font());
+  // Real Unicode 'A' -> glyph 1 and 'B' -> glyph 2, alongside the PUA range.
+  reencode_to_pua(font, {{U'A', 1}, {U'B', 2}});
+
+  // Real-Unicode entries resolve to their glyphs ...
+  EXPECT_EQ(font.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(font.glyph_for_code_point('B'), 2);
+  // ... and the PUA fallback for every glyph is still present.
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(0)), 0);
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(1)), 1);
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
+}
+
+TEST(SfntTransform, reencode_with_extra_round_trips_through_write) {
+  sfnt::SfntFont font = parse(sample_font());
+  // 'A' is adjacent to nothing; 'Z' forces a second cmap segment past the PUA.
+  reencode_to_pua(font, {{U'A', 1}, {U'Z', 2}});
+  std::ostringstream out;
+  font.write(out);
+
+  const sfnt::SfntFont parsed = parse(std::move(out).str());
+  EXPECT_EQ(parsed.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(parsed.glyph_for_code_point('Z'), 2);
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(1)), 1);
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(2)), 2);
+}
+
 TEST(SfntTransform, write_preserves_passthrough_tables_and_checksum) {
   const std::string out = reencoded(sample_font());
 
