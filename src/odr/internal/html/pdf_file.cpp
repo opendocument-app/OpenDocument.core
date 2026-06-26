@@ -728,8 +728,16 @@ public:
     out.out() << "body{margin:0;background:#525659}";
     out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
                  "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+    // `font-kerning:none` + `font-variant-ligatures:none` keep the browser from
+    // applying the embedded font's GPOS/GSUB tables. A collapsed run now emits
+    // real Unicode in that font, so without this a sequence like `fi`/`AV`
+    // could be re-shaped (ligature substitution, kerning) after this code
+    // already fixed the PDF glyph IDs and advances, shifting pixels and run
+    // widths for otherwise 1:1 text. The PUA glyph layer was immune; restore
+    // that here.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre}";
+                 "white-space:pre;font-kerning:none;"
+                 "font-variant-ligatures:none}";
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
     out.out() << ".i{color:transparent}";
