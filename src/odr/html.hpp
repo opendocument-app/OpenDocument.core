@@ -97,6 +97,8 @@ struct HtmlConfig {
 
   // formatting
   bool format_html{false};
+  // Indentation when `format_html` is set: 0 disables it, any non-zero value
+  // emits one tab per nesting level (the width hint is no longer used).
   std::uint8_t html_indent{2};
 
   // background image
