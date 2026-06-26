@@ -98,6 +98,18 @@ Deliverable: IR only. Visual output unchanged.
   clipping (deferred in stage 2) also lands here, since it's the same machinery.
 - Tests: a clip rect limits a later fill; nested clips intersect; `q`/`Q`
   save/restore the clip; form `/BBox` clips its content.
+- **Follow-up: clip text too.** The clip is snapshotted onto `PathElement` and
+  realized as SVG `<clipPath>` referenced by the path fragments. `TextElement`
+  carries no clip and text is emitted as HTML `<span>`s (decision: "text stays
+  HTML, graphics become SVG"), so an SVG `<clipPath>` does not affect it — a
+  stream that clips and then shows text (`… re W n BT … Tj ET`, or text inside a
+  `/BBox`-clipped form) still paints text outside the region. Not a one-liner:
+  each span has its own CSS transform, so the clip geometry must be expressed in
+  that span's local space, and a `clip-path: url(#…)` against a `userSpaceOnUse`
+  clipPath on a transformed HTML element is the flaky cross-browser case. Likely
+  needs a per-span baked `clip-path: polygon(...)` plus intersection/even-odd
+  handling that the SVG nesting currently gets for free. Rare in practice
+  (clipping mostly masks images/graphics), so deferred as its own piece of work.
 
 ## 4.4 — PDF function evaluator + color spaces
 

@@ -540,6 +540,10 @@ public:
         }
 
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
+        // TODO(clip text): the active clip is not applied to text. Paths carry
+        // a clip snapshot realized as an SVG `<clipPath>`, but text is emitted
+        // as HTML spans that the clipPath cannot reach, so clipped text paints
+        // outside its region. See STAGE4_PLAN.md "4.3 — Clipping" follow-up.
         // The font index is non-zero when an embedded font lets us render
         // the actual glyphs; 0 falls through to the legacy path.
         const std::uint32_t font =
