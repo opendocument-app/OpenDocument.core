@@ -324,7 +324,7 @@ public:
     // indexes the font; `accepted_fonts` / `used_unicode` (indexed by `index -
     // 1`) carry it to the post-pass that re-encodes with the extra entries and
     // emits `font_faces`.
-    int family_count = 0;
+    std::uint32_t family_count = 0;
     std::string font_faces;
     std::string glyph_styles; // combined per-font `.fvN`/`.fnN`/`.gvN`/`.giN`
     std::vector<pdf::Font *> accepted_fonts;
@@ -333,8 +333,8 @@ public:
     // <head>. Slots: [0]=`.fvN` (plain visible), [1]=`.fnN` (plain invisible),
     // [2]=`.gvN` (nested-glyph visible), [3]=`.giN` (nested-glyph invisible).
     std::vector<std::array<bool, 4>> font_class_used;
-    std::unordered_map<const pdf::Font *, int> family_index;
-    const auto font_family = [&](pdf::Font *font) -> int {
+    std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
+    const auto font_family = [&](pdf::Font *font) -> std::uint32_t {
       const auto [it, inserted] = family_index.try_emplace(font, 0);
       if (!inserted) {
         return it->second; // already classified
@@ -375,7 +375,7 @@ public:
       if (!usable) {
         return 0; // no usable embedded font: fallback path
       }
-      const int index = ++family_count;
+      const std::uint32_t index = ++family_count;
       it->second = index;
       accepted_fonts.push_back(font);
       used_unicode.emplace_back();
@@ -389,7 +389,7 @@ public:
     // spans. A `nested` glyph layer additionally folds in the `.t .g` placement
     // (absolute at the run origin, unselectable). Records the combo as used so
     // only the rules that occur are emitted in <head>.
-    const auto font_class = [&](const int font, const bool inv,
+    const auto font_class = [&](const std::uint32_t font, const bool inv,
                                 const bool nested) {
       const int slot = nested ? (inv ? 3 : 2) : (inv ? 1 : 0);
       font_class_used[font - 1][slot] = true;
@@ -480,7 +480,8 @@ public:
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
         // The font index is non-zero when an embedded font lets us render
         // the actual glyphs; 0 falls through to the legacy path.
-        const int font = text.font != nullptr ? font_family(text.font) : 0;
+        const std::uint32_t font =
+            text.font != nullptr ? font_family(text.font) : 0;
         // Without an embedded font, an empty `text` has nothing to show: a code
         // with no recoverable Unicode (`no_unicode`) or an `/ActualText`-
         // suppressed segment. With one, the glyphs still render (PUA layer).
@@ -655,7 +656,7 @@ public:
     // Re-encode each accepted font with its real-Unicode entries baked into the
     // `cmap` (the PUA range is kept as a fallback) and emit the `@font-face`
     // rules in index order, so the output stays deterministic.
-    for (int i = 0; i < family_count; ++i) {
+    for (std::uint32_t i = 0; i < family_count; ++i) {
       pdf::Font *font = accepted_fonts[i];
       const std::map<char32_t, std::uint16_t> &extra = used_unicode[i];
       std::string reencoded;
