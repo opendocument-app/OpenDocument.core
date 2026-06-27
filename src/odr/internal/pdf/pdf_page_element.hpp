@@ -59,11 +59,15 @@ struct TextElement {
 /// space. The geometry is fully resolved (the CTM applied at construction), so
 /// a renderer maps it through the page transform alone. The paint intent and
 /// the paint-relevant graphics state are snapshotted; colors are kept as PDF
-/// device colors and converted to RGB by the renderer. `/Pattern` color and
-/// clipping are stage 4.3+ and not yet represented.
+/// device colors and converted to RGB by the renderer. `/Pattern` color is
+/// stage 4.9+ and not yet represented.
 struct PathElement {
   /// The subpaths to paint, in user space.
   std::vector<Subpath> subpaths;
+  /// The clip in force when this path was painted: the intersection of these
+  /// regions (empty = unclipped). Snapshotted from the graphics state at paint
+  /// time so the renderer can install it without replaying the clip stack.
+  std::vector<ClipPath> clip;
   bool fill{false};
   bool stroke{false};
   /// Fill rule: false = nonzero winding, true = even-odd.
