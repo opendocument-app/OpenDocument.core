@@ -88,9 +88,9 @@ struct PathElement {
 
 /// One image XObject painted by `Do`, placed by the CTM in effect when it was
 /// invoked (ISO 32000-1 8.10.5): the image fills the unit square in user space,
-/// which `transform` maps. The encoded bytes pass straight through to the
-/// browser (stage 4.5: JPEG / `DCTDecode`), `mime` naming the codec. The clip
-/// is snapshotted as for a path.
+/// which `transform` maps. The encoded bytes are browser-ready — a JPEG passed
+/// through (`DCTDecode`) or a raster re-encoded as PNG — with `mime` naming the
+/// format. The clip is snapshotted as for a path.
 struct ImageElement {
   /// CTM at `Do` time: maps the image's unit square to user space.
   util::math::Transform2D transform;

@@ -639,4 +639,15 @@ tree, little else.
   horizontal-only `extract_text` and space inference assume away). No corpus
   fixture needs either yet; revisit when one does.
 - **Annotations** are collected but their content is not interpreted (stage 5).
+- **Image colour space from a named resource** (deferred from stage 4.6): a
+  decodable raster image whose `/ColorSpace` is a *name* (e.g. `/CS0`, defined in
+  the enclosing `/Resources /ColorSpace`) is dropped instead of PNG-encoded.
+  `parse_image_data` builds a `ColorSpaceContext` with no `named` resolver
+  (device spaces and inline Indexed/ICCBased arrays resolve fine), because the
+  XObject is parsed before — and without access to — the resource ColorSpace
+  table (`parse_resources` parses the `/XObject` table at the top, the
+  `/ColorSpace` table further down). A proper fix reorders `parse_resources` to
+  build the ColorSpace table first and threads it into `parse_x_object`, or
+  defers image colour-space resolution to `Do`-invocation time where the
+  resource chain is known. Inline images and JPEG pass-through are unaffected.
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

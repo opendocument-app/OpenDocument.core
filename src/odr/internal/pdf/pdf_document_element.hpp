@@ -124,10 +124,11 @@ struct XObject final : Element {
   /// eagerly at parse time so text extraction needs no parser handle.
   std::string content;
 
-  /// Image XObject only: the encoded image bytes passed through to the browser
-  /// (stage 4.5: JPEG / `DCTDecode`), with `image_mime` naming the codec. Empty
-  /// for an image whose codec is not yet a pass-through (Flate/LZW raster,
-  /// image masks — later stages) and for non-image XObjects, so `Do` skips it.
+  /// Image XObject only: the encoded image bytes for the browser — a JPEG
+  /// passed through (`DCTDecode`) or a raster re-encoded as PNG (Flate/LZW/raw
+  /// samples assembled through the colour space) — with `image_mime` naming the
+  /// format. Empty for a codec not yet handled (JPX/CCITT/JBIG2), an image mask
+  /// (later stages) and non-image XObjects, so `Do` skips it.
   std::string image_data;
   std::string image_mime;
 };

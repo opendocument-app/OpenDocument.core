@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace odr::internal::crypto::util {
 
@@ -12,6 +14,8 @@ std::string base64_decode(const std::string &);
 std::string hex_encode(const std::string &);
 std::string hex_decode(const std::string &);
 
+/// CRC-32 (ISO 3309 / PNG Annex D, polynomial 0xEDB88320).
+std::uint32_t crc32(std::string_view input);
 std::string md5(const std::string &);
 std::string sha1(const std::string &);
 std::string sha256(const std::string &);

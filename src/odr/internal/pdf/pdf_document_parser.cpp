@@ -14,6 +14,7 @@
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_file_parser.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
+#include <odr/internal/pdf/pdf_image.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cctype>
@@ -524,6 +525,94 @@ Element *parse_page_or_pages(State &state, const ObjectReference &reference,
 // back the in-progress element, so the in-memory graph mirrors the file.
 Resources *parse_resources(State &state, const Object &object);
 
+/// Build the browser-ready bytes of an image XObject (ISO 32000-1 8.9). A JPEG
+/// (`DCTDecode`) passes through undecoded; a fully decodable raster
+/// (Flate/LZW/RunLength/ASCII/raw) is decoded, its samples assembled through
+/// the image's colour space and re-encoded as an 8-bit RGB PNG. Codecs we
+/// cannot yet hand off (JPXDecode, CCITTFaxDecode, JBIG2Decode) and unresolved
+/// colour spaces leave the bytes empty, so `Do` skips the image.
+void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
+                      const IndirectObject &object, XObject &x_object) {
+  Object filter;
+  if (dictionary.has_key("Filter")) {
+    filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
+  }
+  Object decode_parms;
+  if (dictionary.has_key("DecodeParms")) {
+    decode_parms = parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
+  }
+  const std::optional<std::string> terminal = terminal_image_codec(filter);
+
+  if (terminal == "DCTDecode") {
+    DecodeResult result =
+        decode(filter, decode_parms, parser.read_object_stream(object));
+    if (result.stopped_at_filter == "DCTDecode") {
+      x_object.image_data = std::move(result.data);
+      x_object.image_mime = "image/jpeg";
+    }
+    return;
+  }
+  if (terminal.has_value()) {
+    return; // JPX/CCITT/JBIG2: not yet a pass-through (later stages)
+  }
+
+  // A fully decodable raster: assemble its samples and PNG-encode. Needs a
+  // resolvable colour space (a device space or an inline Indexed/ICCBased
+  // array; a bare named resource space is out of scope here — no resource
+  // dictionary at parse time).
+  if (!dictionary.has_value("ColorSpace")) {
+    return;
+  }
+  ColorSpaceContext context;
+  context.resolve = [&parser](const Object &o) {
+    return parser.resolve_object_copy(o);
+  };
+  context.load_stream = [&parser](const Object &o) {
+    return o.is_reference() ? parser.read_decoded_stream(o.as_reference())
+                            : std::string{};
+  };
+  const std::shared_ptr<ColorSpaceDef> color_space =
+      parse_color_space(dictionary.get("ColorSpace"), context);
+  if (color_space == nullptr) {
+    return;
+  }
+
+  const std::optional<Integer> width =
+      parser.resolve_object_copy(dictionary.get("Width")).as_integer_opt();
+  const std::optional<Integer> height =
+      parser.resolve_object_copy(dictionary.get("Height")).as_integer_opt();
+  if (!width.has_value() || !height.has_value()) {
+    return;
+  }
+  const auto bits_per_component = static_cast<std::int32_t>(
+      parser.resolve_object_copy(dictionary.get("BitsPerComponent"))
+          .as_integer_opt()
+          .value_or(8));
+
+  std::vector<double> decode_array;
+  const Object decode_object =
+      parser.resolve_object_copy(dictionary.get("Decode"));
+  if (decode_object.is_array()) {
+    for (const Object &item : decode_object.as_array()) {
+      decode_array.push_back(item.as_real());
+    }
+  }
+
+  DecodeResult result =
+      decode(filter, decode_parms, parser.read_object_stream(object));
+  if (result.stopped_at_filter.has_value()) {
+    return;
+  }
+  std::string png =
+      encode_image_png(result.data, static_cast<std::int32_t>(*width),
+                       static_cast<std::int32_t>(*height), bits_per_component,
+                       *color_space, decode_array);
+  if (!png.empty()) {
+    x_object.image_data = std::move(png);
+    x_object.image_mime = "image/png";
+  }
+}
+
 XObject *parse_x_object(State &state, const ObjectReference &reference) {
   DocumentParser &parser = state.parser();
   Document &document = state.document();
@@ -550,32 +639,13 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
                                   : "";
   if (subtype == "Image") {
     x_object->subtype = XObject::Subtype::image;
-    // Stage 4.5: pass a JPEG (`DCTDecode`) image through to the browser
-    // undecoded. `/ImageMask` stencils, color-key masks and the non-JPEG raster
-    // codecs are later stages; leave their bytes empty so `Do` skips them.
+    // `/ImageMask` stencils and colour-key masks are a later stage (4.8); leave
+    // their bytes empty so `Do` skips them. Everything else is handed to the
+    // browser as JPEG (pass-through) or PNG (raster), or skipped.
     const bool image_mask =
         dictionary.get("ImageMask").as_bool_opt().value_or(false);
-    Object filter;
-    if (!image_mask && dictionary.has_key("Filter")) {
-      filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
-    }
-    // Only a JPEG passes straight through to the browser. Gate on the chain's
-    // terminal codec so a non-pass-through raster (e.g. FlateDecode with a
-    // predictor) is left empty without inflating it — that decode is wasted for
-    // a skipped image and can throw on parameters we don't support, which would
-    // otherwise abort the whole document. `Do` skips an image with no bytes.
-    if (!image_mask && terminal_image_codec(filter) == "DCTDecode") {
-      Object decode_parms;
-      if (dictionary.has_key("DecodeParms")) {
-        decode_parms =
-            parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
-      }
-      std::string raw = parser.read_object_stream(object);
-      DecodeResult result = decode(filter, decode_parms, std::move(raw));
-      if (result.stopped_at_filter == "DCTDecode") {
-        x_object->image_data = std::move(result.data);
-        x_object->image_mime = "image/jpeg";
-      }
+    if (!image_mask) {
+      parse_image_data(parser, dictionary, object, *x_object);
     }
     return x_object;
   }
