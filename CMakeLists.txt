@@ -194,6 +194,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_file_parser.cpp"
         "src/odr/internal/pdf/pdf_filter.cpp"
         "src/odr/internal/pdf/pdf_function.cpp"
+        "src/odr/internal/pdf/pdf_image.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
         "src/odr/internal/pdf/pdf_graphics_state.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
