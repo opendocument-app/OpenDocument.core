@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -23,14 +24,10 @@ public:
   /// values; a short input is zero-padded, a long one truncated.
   [[nodiscard]] std::vector<double> eval(std::vector<double> in) const;
 
-  [[nodiscard]] int input_arity() const {
-    return static_cast<int>(m_domain.size() / 2);
-  }
+  [[nodiscard]] std::size_t input_arity() const { return m_domain.size() / 2; }
   /// Declared output arity, or 0 when the function carries no `/Range` (only
   /// type 0 and 4 must; type 2/3 may omit it).
-  [[nodiscard]] int output_arity() const {
-    return static_cast<int>(m_range.size() / 2);
-  }
+  [[nodiscard]] std::size_t output_arity() const { return m_range.size() / 2; }
 
 protected:
   Function(std::vector<double> domain, std::vector<double> range)

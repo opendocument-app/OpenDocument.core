@@ -49,6 +49,7 @@ public:
       : Function(std::move(domain), std::move(range)), m_c0{std::move(c0)},
         m_c1{std::move(c1)}, m_n{n} {}
 
+protected:
   std::vector<double> compute(const std::vector<double> &in) const override {
     const double x = in.empty() ? 0.0 : in[0];
     const double xn = std::pow(x, m_n);
@@ -76,6 +77,7 @@ public:
         m_functions{std::move(functions)}, m_bounds{std::move(bounds)},
         m_encode{std::move(encode)} {}
 
+protected:
   std::vector<double> compute(const std::vector<double> &in) const override {
     if (m_functions.empty()) {
       return {};
@@ -112,48 +114,49 @@ private:
 class SampledFunction final : public Function {
 public:
   SampledFunction(std::vector<double> domain, std::vector<double> range,
-                  std::vector<int> size, int bits_per_sample,
+                  std::vector<std::size_t> size, std::int32_t bits_per_sample,
                   std::vector<double> encode, std::vector<double> decode,
                   std::string samples)
       : Function(std::move(domain), std::move(range)), m_size{std::move(size)},
         m_bits{bits_per_sample}, m_encode{std::move(encode)},
         m_decode{std::move(decode)}, m_samples{std::move(samples)} {}
 
+protected:
   std::vector<double> compute(const std::vector<double> &in) const override {
-    const int m = static_cast<int>(m_size.size());
-    const int n = output_arity();
+    const std::size_t m = m_size.size();
+    const std::size_t n = output_arity();
     if (m == 0 || n == 0) {
       return {};
     }
 
     // Encode each input coordinate into its sample grid [0, size_i - 1].
     std::vector<double> e(m);
-    for (int i = 0; i < m; ++i) {
-      const std::size_t d = 2 * static_cast<std::size_t>(i);
-      const double x = i < static_cast<int>(in.size()) ? in[i] : m_domain[d];
+    for (std::size_t i = 0; i < m; ++i) {
+      const std::size_t d = 2 * i;
+      const double x = i < in.size() ? in[i] : m_domain[d];
       const double enc = interpolate(x, m_domain[d], m_domain[d + 1],
                                      m_encode[d], m_encode[d + 1]);
-      e[i] = clamp(enc, 0.0, m_size[i] - 1.0);
+      e[i] = clamp(enc, 0.0, static_cast<double>(m_size[i]) - 1.0);
     }
 
     // Multilinear interpolation across the 2^m surrounding grid corners.
-    std::vector<int> base(m);
+    std::vector<std::size_t> base(m);
     std::vector<double> frac(m);
-    for (int i = 0; i < m; ++i) {
-      const int floor_i =
-          std::min(static_cast<int>(std::floor(e[i])), m_size[i] - 1);
+    for (std::size_t i = 0; i < m; ++i) {
+      const std::size_t floor_i =
+          std::min(static_cast<std::size_t>(std::floor(e[i])), m_size[i] - 1);
       base[i] = floor_i;
-      frac[i] = e[i] - floor_i;
+      frac[i] = e[i] - static_cast<double>(floor_i);
     }
 
     std::vector<double> out(n, 0.0);
-    const int corners = 1 << m;
-    for (int c = 0; c < corners; ++c) {
+    const std::size_t corners = std::size_t{1} << m;
+    for (std::size_t c = 0; c < corners; ++c) {
       double weight = 1.0;
-      std::vector<int> coord(m);
-      for (int i = 0; i < m; ++i) {
-        const bool high = (c >> i) & 1;
-        int ci = base[i] + (high ? 1 : 0);
+      std::vector<std::size_t> coord(m);
+      for (std::size_t i = 0; i < m; ++i) {
+        const bool high = ((c >> i) & 1U) != 0;
+        std::size_t ci = base[i] + (high ? 1 : 0);
         ci = std::min(ci, m_size[i] - 1);
         coord[i] = ci;
         weight *= high ? frac[i] : (1.0 - frac[i]);
@@ -162,15 +165,15 @@ public:
         continue;
       }
       const std::size_t index = sample_index(coord);
-      for (int j = 0; j < n; ++j) {
+      for (std::size_t j = 0; j < n; ++j) {
         out[j] += weight * raw_sample(index * n + j);
       }
     }
 
     // Decode each output from [0, 2^bits - 1] onto its Decode range.
     const double max_value = std::ldexp(1.0, m_bits) - 1.0;
-    for (int j = 0; j < n; ++j) {
-      const std::size_t d = 2 * static_cast<std::size_t>(j);
+    for (std::size_t j = 0; j < n; ++j) {
+      const std::size_t d = 2 * j;
       out[j] =
           interpolate(out[j], 0.0, max_value, m_decode[d], m_decode[d + 1]);
     }
@@ -178,12 +181,13 @@ public:
   }
 
 private:
-  [[nodiscard]] std::size_t sample_index(const std::vector<int> &coord) const {
+  [[nodiscard]] std::size_t
+  sample_index(const std::vector<std::size_t> &coord) const {
     std::size_t index = 0;
     std::size_t stride = 1;
     for (std::size_t i = 0; i < coord.size(); ++i) {
-      index += static_cast<std::size_t>(coord[i]) * stride;
-      stride *= static_cast<std::size_t>(m_size[i]);
+      index += coord[i] * stride;
+      stride *= m_size[i];
     }
     return index;
   }
@@ -192,21 +196,21 @@ private:
   [[nodiscard]] double raw_sample(const std::size_t k) const {
     const std::size_t bit_offset = k * static_cast<std::size_t>(m_bits);
     std::uint64_t value = 0;
-    for (int i = 0; i < m_bits; ++i) {
-      const std::size_t bit = bit_offset + i;
+    for (std::int32_t i = 0; i < m_bits; ++i) {
+      const std::size_t bit = bit_offset + static_cast<std::size_t>(i);
       const std::size_t byte = bit / 8;
-      int sample_bit = 0;
+      std::uint64_t sample_bit = 0;
       if (byte < m_samples.size()) {
         const auto b = static_cast<std::uint8_t>(m_samples[byte]);
-        sample_bit = (b >> (7 - bit % 8)) & 1;
+        sample_bit = (b >> (7 - bit % 8)) & 1U;
       }
-      value = (value << 1) | static_cast<std::uint64_t>(sample_bit);
+      value = (value << 1) | sample_bit;
     }
     return static_cast<double>(value);
   }
 
-  std::vector<int> m_size;
-  int m_bits;
+  std::vector<std::size_t> m_size;
+  std::int32_t m_bits;
   std::vector<double> m_encode;
   std::vector<double> m_decode;
   std::string m_samples;
@@ -231,6 +235,7 @@ public:
       : Function(std::move(domain), std::move(range)),
         m_program{std::move(program)} {}
 
+protected:
   std::vector<double> compute(const std::vector<double> &in) const override {
     std::vector<Item> stack;
     stack.reserve(in.size());
@@ -243,11 +248,11 @@ public:
       return std::vector<double>(output_arity(), 0.0);
     }
 
-    const int n = output_arity();
-    std::vector<double> out(static_cast<std::size_t>(n), 0.0);
+    const std::size_t n = output_arity();
+    std::vector<double> out(n, 0.0);
     // The function leaves n results on the stack, the last output on top.
-    for (int j = n - 1; j >= 0 && !stack.empty(); --j) {
-      out[static_cast<std::size_t>(j)] = std::get<double>(stack.back());
+    for (std::size_t j = n; j-- > 0 && !stack.empty();) {
+      out[j] = std::get<double>(stack.back());
       stack.pop_back();
     }
     return out;
@@ -317,13 +322,14 @@ private:
           return 0.0;
         }
         // NOLINTNEXTLINE(bugprone-integer-division): idiv is integer division
-        return static_cast<double>(static_cast<long>(a) / static_cast<long>(b));
+        return static_cast<double>(static_cast<std::int32_t>(a) /
+                                   static_cast<std::int32_t>(b));
       });
     } else if (op == "mod") {
       binary([](double a, double b) {
         return b == 0 ? 0.0
-                      : static_cast<double>(static_cast<long>(a) %
-                                            static_cast<long>(b));
+                      : static_cast<double>(static_cast<std::int32_t>(a) %
+                                            static_cast<std::int32_t>(b));
       });
     } else if (op == "neg") {
       unary([](double a) { return -a; });
@@ -373,26 +379,26 @@ private:
       binary([](double a, double b) { return a <= b ? 1.0 : 0.0; });
     } else if (op == "and") {
       bitwise_or_logical(
-          s, [](long a, long b) { return a & b; },
+          s, [](std::int32_t a, std::int32_t b) { return a & b; },
           [](bool a, bool b) { return a && b; });
     } else if (op == "or") {
       bitwise_or_logical(
-          s, [](long a, long b) { return a | b; },
+          s, [](std::int32_t a, std::int32_t b) { return a | b; },
           [](bool a, bool b) { return a || b; });
     } else if (op == "xor") {
       bitwise_or_logical(
-          s, [](long a, long b) { return a ^ b; },
+          s, [](std::int32_t a, std::int32_t b) { return a ^ b; },
           [](bool a, bool b) { return a != b; });
     } else if (op == "not") {
       const double a = pop_number(s);
       if (a == 0.0 || a == 1.0) {
         s.emplace_back(a == 0.0 ? 1.0 : 0.0);
       } else {
-        s.emplace_back(static_cast<double>(~static_cast<long>(a)));
+        s.emplace_back(static_cast<double>(~static_cast<std::int32_t>(a)));
       }
     } else if (op == "bitshift") {
-      const auto shift = static_cast<long>(pop_number(s));
-      const auto value = static_cast<long>(pop_number(s));
+      const auto shift = static_cast<std::int32_t>(pop_number(s));
+      const auto value = static_cast<std::int32_t>(pop_number(s));
       s.emplace_back(
           static_cast<double>(shift >= 0 ? value << shift : value >> -shift));
     } else if (op == "true") {
@@ -418,11 +424,11 @@ private:
       const auto i = static_cast<std::size_t>(pop_number(s));
       s.push_back(s.at(s.size() - 1 - i));
     } else if (op == "roll") {
-      const auto j = static_cast<long>(pop_number(s));
-      const auto count = static_cast<long>(pop_number(s));
+      const auto j = static_cast<std::int32_t>(pop_number(s));
+      const auto count = static_cast<std::int32_t>(pop_number(s));
       if (count > 0) {
         const auto first = s.end() - count;
-        long shift = ((j % count) + count) % count;
+        const std::int32_t shift = ((j % count) + count) % count;
         std::rotate(first, s.end() - shift, s.end());
       }
     } else if (op == "if") {
@@ -451,7 +457,7 @@ private:
       s.emplace_back(bool_op(a != 0.0, b != 0.0) ? 1.0 : 0.0);
     } else {
       s.emplace_back(static_cast<double>(
-          int_op(static_cast<long>(a), static_cast<long>(b))));
+          int_op(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b))));
     }
   }
 
@@ -513,26 +519,30 @@ std::vector<PostScriptItem> parse_postscript(const std::string &text,
 } // namespace
 
 std::vector<double> Function::eval(std::vector<double> in) const {
-  const int m = input_arity();
-  in.resize(static_cast<std::size_t>(m), 0.0);
-  for (int i = 0; i < m; ++i) {
-    const std::size_t d = 2 * static_cast<std::size_t>(i);
+  const std::size_t m = input_arity();
+  in.resize(m, 0.0);
+  for (std::size_t i = 0; i < m; ++i) {
+    const std::size_t d = 2 * i;
     in[i] = clamp(in[i], m_domain[d], m_domain[d + 1]);
   }
   std::vector<double> out = compute(in);
-  const int n = output_arity();
+  const std::size_t n = output_arity();
   if (n != 0) {
-    out.resize(static_cast<std::size_t>(n), 0.0);
-    for (int j = 0; j < n; ++j) {
-      const std::size_t d = 2 * static_cast<std::size_t>(j);
+    out.resize(n, 0.0);
+    for (std::size_t j = 0; j < n; ++j) {
+      const std::size_t d = 2 * j;
       out[j] = clamp(out[j], m_range[d], m_range[d + 1]);
     }
   }
   return out;
 }
 
-std::shared_ptr<Function> parse_function(const Object &object,
-                                         const FunctionContext &context) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::shared_ptr<pdf::Function>
+pdf::parse_function(const Object &object, const FunctionContext &context) {
   const Object resolved = context.resolve(object);
   if (!resolved.is_dictionary()) {
     return nullptr;
@@ -541,7 +551,8 @@ std::shared_ptr<Function> parse_function(const Object &object,
   if (!dict.get("FunctionType").is_integer()) {
     return nullptr;
   }
-  const int type = static_cast<int>(dict.get("FunctionType").as_integer());
+  const std::int32_t type =
+      static_cast<std::int32_t>(dict.get("FunctionType").as_integer());
 
   std::vector<double> domain = read_numbers(dict, "Domain");
   std::vector<double> range = read_numbers(dict, "Range");
@@ -580,18 +591,19 @@ std::shared_ptr<Function> parse_function(const Object &object,
         std::move(bounds), std::move(encode));
   }
   case 0: {
-    std::vector<int> size;
+    std::vector<std::size_t> size;
     if (const Object &s = dict.get("Size"); s.is_array()) {
       for (const Object &item : s.as_array()) {
-        size.push_back(static_cast<int>(item.as_integer()));
+        size.push_back(static_cast<std::size_t>(item.as_integer()));
       }
     }
-    const int bits = static_cast<int>(dict.get("BitsPerSample").as_integer());
+    const std::int32_t bits =
+        static_cast<std::int32_t>(dict.get("BitsPerSample").as_integer());
     std::vector<double> encode = read_numbers(dict, "Encode");
     if (encode.empty()) {
-      for (const int dim : size) {
+      for (const std::size_t dim : size) {
         encode.push_back(0.0);
-        encode.push_back(dim - 1.0);
+        encode.push_back(static_cast<double>(dim) - 1.0);
       }
     }
     std::vector<double> decode = read_numbers(dict, "Decode");
@@ -629,4 +641,4 @@ std::shared_ptr<Function> parse_function(const Object &object,
   }
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

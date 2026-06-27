@@ -46,7 +46,7 @@ std::array<double, 3> lab_to_rgb(const double l_star, const double a_star,
 }
 
 std::shared_ptr<ColorSpaceDef> device_space(const ColorSpaceKind kind,
-                                            const int components) {
+                                            const std::int32_t components) {
   auto def = std::make_shared<ColorSpaceDef>();
   def->kind = kind;
   def->components = components;
@@ -123,12 +123,13 @@ ColorSpaceDef::to_rgb(const std::vector<double> &c) const {
     if (base == nullptr) {
       return {0, 0, 0};
     }
-    const int n = base->components;
-    const auto index = static_cast<int>(std::lround(at(0)));
-    const auto offset = static_cast<std::size_t>(std::clamp(index, 0, hival)) *
-                        static_cast<std::size_t>(n);
+    const std::int32_t n = base->components;
+    const auto index = static_cast<std::int32_t>(std::lround(at(0)));
+    const auto offset =
+        static_cast<std::size_t>(std::clamp<std::int32_t>(index, 0, hival)) *
+        static_cast<std::size_t>(n);
     std::vector<double> base_components(static_cast<std::size_t>(n), 0.0);
-    for (int j = 0; j < n; ++j) {
+    for (std::int32_t j = 0; j < n; ++j) {
       const std::size_t k = offset + static_cast<std::size_t>(j);
       base_components[static_cast<std::size_t>(j)] =
           k < lookup.size() ? static_cast<std::uint8_t>(lookup[k]) / 255.0
@@ -165,12 +166,16 @@ std::vector<double> ColorSpaceDef::initial_components() const {
     return {0.0, 0.0, 0.0, 1.0};
   default:
     return std::vector<double>(
-        static_cast<std::size_t>(std::max(components, 1)), 0.0);
+        static_cast<std::size_t>(std::max<std::int32_t>(components, 1)), 0.0);
   }
 }
 
-std::shared_ptr<ColorSpaceDef>
-parse_color_space(const Object &object, const ColorSpaceContext &context) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::shared_ptr<pdf::ColorSpaceDef>
+pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
   const Object resolved = context.resolve(object);
 
   if (resolved.is_name()) {
@@ -196,9 +201,10 @@ parse_color_space(const Object &object, const ColorSpaceContext &context) {
     const Object stream_dict = context.resolve(array[1]);
     if (stream_dict.is_dictionary()) {
       const Dictionary &dict = stream_dict.as_dictionary();
-      def->components = dict.get("N").is_integer()
-                            ? static_cast<int>(dict.get("N").as_integer())
-                            : 3;
+      def->components =
+          dict.get("N").is_integer()
+              ? static_cast<std::int32_t>(dict.get("N").as_integer())
+              : 3;
       if (dict.has_value("Alternate")) {
         def->alternate = parse_color_space(dict.get("Alternate"), context);
       }
@@ -239,7 +245,8 @@ parse_color_space(const Object &object, const ColorSpaceContext &context) {
     def->kind = ColorSpaceKind::indexed;
     def->components = 1;
     def->base = parse_color_space(array[1], context);
-    def->hival = static_cast<int>(context.resolve(array[2]).as_integer());
+    def->hival =
+        static_cast<std::int32_t>(context.resolve(array[2]).as_integer());
     const Object lookup = context.resolve(array[3]);
     if (lookup.is_string()) {
       def->lookup = lookup.as_string();
@@ -267,8 +274,9 @@ parse_color_space(const Object &object, const ColorSpaceContext &context) {
     auto def = std::make_shared<ColorSpaceDef>();
     def->kind = ColorSpaceKind::device_n;
     const Object names = context.resolve(array[1]);
-    def->components =
-        names.is_array() ? static_cast<int>(names.as_array().size()) : 1;
+    def->components = names.is_array()
+                          ? static_cast<std::int32_t>(names.as_array().size())
+                          : 1;
     def->alternate = parse_color_space(array[2], context);
     def->tint = parse_function(
         array[3], FunctionContext{context.resolve, context.load_stream});
@@ -285,4 +293,4 @@ parse_color_space(const Object &object, const ColorSpaceContext &context) {
   return nullptr;
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

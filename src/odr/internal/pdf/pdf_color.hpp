@@ -3,6 +3,7 @@
 #include <odr/internal/pdf/pdf_function.hpp>
 
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -37,7 +38,7 @@ enum class ColorSpaceKind {
 struct ColorSpaceDef {
   ColorSpaceKind kind{ColorSpaceKind::unknown};
   /// Number of input components a colour in this space carries.
-  int components{1};
+  std::int32_t components{1};
 
   // Lab (8.6.5.4): the white point and the a*/b* component ranges.
   std::array<double, 3> white_point{0.9505, 1.0, 1.089};
@@ -46,7 +47,7 @@ struct ColorSpaceDef {
   // Indexed (8.6.6.3): the base space, the packed palette and the max index.
   std::shared_ptr<ColorSpaceDef> base;
   std::string lookup;
-  int hival{0};
+  std::int32_t hival{0};
 
   // Separation / DeviceN (8.6.6.4): the alternate space and the tint transform.
   std::shared_ptr<ColorSpaceDef> alternate;
