@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
