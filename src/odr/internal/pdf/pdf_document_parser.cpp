@@ -549,10 +549,34 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
                                   ? dictionary["Subtype"].as_name()
                                   : "";
   if (subtype == "Image") {
-    // Image XObjects carry raster data, not a content stream: recognized but
-    // not decoded until stage 4 (and `read_decoded_stream` would throw on the
-    // image codec anyway).
     x_object->subtype = XObject::Subtype::image;
+    // Stage 4.5: pass a JPEG (`DCTDecode`) image through to the browser
+    // undecoded. `/ImageMask` stencils, color-key masks and the non-JPEG raster
+    // codecs are later stages; leave their bytes empty so `Do` skips them.
+    const bool image_mask =
+        dictionary.get("ImageMask").as_bool_opt().value_or(false);
+    Object filter;
+    if (!image_mask && dictionary.has_key("Filter")) {
+      filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
+    }
+    // Only a JPEG passes straight through to the browser. Gate on the chain's
+    // terminal codec so a non-pass-through raster (e.g. FlateDecode with a
+    // predictor) is left empty without inflating it — that decode is wasted for
+    // a skipped image and can throw on parameters we don't support, which would
+    // otherwise abort the whole document. `Do` skips an image with no bytes.
+    if (!image_mask && terminal_image_codec(filter) == "DCTDecode") {
+      Object decode_parms;
+      if (dictionary.has_key("DecodeParms")) {
+        decode_parms =
+            parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
+      }
+      std::string raw = parser.read_object_stream(object);
+      DecodeResult result = decode(filter, decode_parms, std::move(raw));
+      if (result.stopped_at_filter == "DCTDecode") {
+        x_object->image_data = std::move(result.data);
+        x_object->image_mime = "image/jpeg";
+      }
+    }
     return x_object;
   }
   if (subtype != "Form") {

@@ -241,6 +241,27 @@ pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
   return result;
 }
 
+std::optional<std::string> pdf::terminal_image_codec(const Object &filter) {
+  Object last;
+  if (filter.is_array()) {
+    const Array &array = filter.as_array();
+    if (array.empty()) {
+      return std::nullopt;
+    }
+    last = array.back();
+  } else if (!filter.is_null()) {
+    last = filter;
+  } else {
+    return std::nullopt;
+  }
+
+  std::string name = canonical_filter_name(last.as_string());
+  if (is_image_codec(name)) {
+    return name;
+  }
+  return std::nullopt;
+}
+
 std::string pdf::ascii_hex_decode(const std::string &input) {
   std::string result;
   result.reserve(input.size() / 2);

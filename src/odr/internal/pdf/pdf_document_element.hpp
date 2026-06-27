@@ -123,6 +123,13 @@ struct XObject final : Element {
   /// Form XObject only: the decoded (filter-applied) content stream, read
   /// eagerly at parse time so text extraction needs no parser handle.
   std::string content;
+
+  /// Image XObject only: the encoded image bytes passed through to the browser
+  /// (stage 4.5: JPEG / `DCTDecode`), with `image_mime` naming the codec. Empty
+  /// for an image whose codec is not yet a pass-through (Flate/LZW raster,
+  /// image masks — later stages) and for non-image XObjects, so `Do` skips it.
+  std::string image_data;
+  std::string image_mime;
 };
 
 /// A non-owning view over a string of PDF character codes, splitting it into

@@ -86,9 +86,22 @@ struct PathElement {
   double dash_phase{0};
 };
 
-/// A single page-content element in paint (z) order: a shown text segment or a
-/// painted path. Images, shadings and patterns join this variant in later
+/// One image XObject painted by `Do`, placed by the CTM in effect when it was
+/// invoked (ISO 32000-1 8.10.5): the image fills the unit square in user space,
+/// which `transform` maps. The encoded bytes pass straight through to the
+/// browser (stage 4.5: JPEG / `DCTDecode`), `mime` naming the codec. The clip
+/// is snapshotted as for a path.
+struct ImageElement {
+  /// CTM at `Do` time: maps the image's unit square to user space.
+  util::math::Transform2D transform;
+  std::vector<ClipPath> clip;
+  std::string data; // encoded image bytes (e.g. a JPEG)
+  std::string mime; // e.g. "image/jpeg"
+};
+
+/// A single page-content element in paint (z) order: a shown text segment, a
+/// painted path or an image. Shadings and patterns join this variant in later
 /// stage-4 PRs.
-using PageElement = std::variant<TextElement, PathElement>;
+using PageElement = std::variant<TextElement, PathElement, ImageElement>;
 
 } // namespace odr::internal::pdf

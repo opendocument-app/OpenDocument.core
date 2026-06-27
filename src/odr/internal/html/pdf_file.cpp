@@ -177,6 +177,33 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   return std::move(f).str();
 }
 
+/// Serialize an image XObject to an SVG `<image>` fragment in the page viewBox,
+/// or "" when it carries no pass-through bytes. The image fills the unit square
+/// in user space (ISO 32000-1 8.10.5); the transform maps that square — through
+/// a vertical flip (the image's first row is its top, SVG draws y-down) and the
+/// CTM — into the page box. `clip_id` installs a clip via `clip-path`.
+std::string svg_image_fragment(const pdf::ImageElement &image,
+                               const util::math::Transform2D &to_box,
+                               const std::string &clip_id) {
+  if (image.data.empty()) {
+    return {};
+  }
+  // image natural box [0,1] (y-down) -> PDF unit square (y-up) -> user -> box.
+  constexpr util::math::Transform2D flip =
+      util::math::Transform2D::scaling_translation(1, -1, 0, 1);
+  const util::math::Transform2D m = flip * image.transform * to_box;
+
+  std::ostringstream f;
+  f << R"(<image width="1" height="1" preserveAspectRatio="none" transform="matrix()"
+    << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ',' << round2(m.e)
+    << ',' << round2(m.f) << ")\"";
+  if (!clip_id.empty()) {
+    f << " clip-path=\"url(#" << clip_id << ")\"";
+  }
+  f << " href=\"" << file_to_url(image.data, image.mime) << "\"/>";
+  return std::move(f).str();
+}
+
 /// Registers a page's clip regions as nested `<clipPath>` defs, deduplicating
 /// shared prefixes. PDF's current clip is the *intersection* of an ordered list
 /// of regions; SVG expresses intersection by chaining `clip-path` from one
@@ -331,9 +358,9 @@ public:
     std::string glyph_classes;
     std::string glyph_text;
   };
-  // One painted path, already serialized to an SVG `<path .../>` fragment in
-  // the page's viewBox (PDF points, y-down). Contiguous paths share one `<svg>`
-  // at write time.
+  // One vector item, already serialized to an SVG fragment in the page's
+  // viewBox (PDF points, y-down): a painted `<path>` or an `<image>`.
+  // Contiguous vector items share one `<svg>` at write time.
   struct PathOut {
     std::string svg;
   };
@@ -556,6 +583,17 @@ public:
         if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
           const std::string clip_id = clips.register_clip(path->clip, to_box);
           std::string fragment = svg_path_fragment(*path, to_box, clip_id);
+          if (!fragment.empty()) {
+            page_out.items.push_back(PathOut{std::move(fragment)});
+          }
+          continue;
+        }
+
+        // An image XObject: an `<image>` placed by the CTM, in the page `<svg>`
+        // alongside the paths (so it layers by paint order).
+        if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
+          const std::string clip_id = clips.register_clip(image->clip, to_box);
+          std::string fragment = svg_image_fragment(*image, to_box, clip_id);
           if (!fragment.empty()) {
             page_out.items.push_back(PathOut{std::move(fragment)});
           }

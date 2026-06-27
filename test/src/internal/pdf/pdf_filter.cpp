@@ -151,6 +151,26 @@ TEST(PdfFilter, decode_stops_at_image_codec) {
       0);
 }
 
+TEST(PdfFilter, terminal_image_codec_identifies_passthrough) {
+  // The codec a chain terminates in, recognised without decoding — its last
+  // entry when that is an image codec (abbreviations canonicalised).
+  EXPECT_EQ(terminal_image_codec(name("DCTDecode")), "DCTDecode");
+  EXPECT_EQ(terminal_image_codec(name("DCT")), "DCTDecode");
+  EXPECT_EQ(terminal_image_codec(array({name("ASCII85Decode"), name("DCT")})),
+            "DCTDecode");
+  EXPECT_EQ(terminal_image_codec(name("JPXDecode")), "JPXDecode");
+}
+
+TEST(PdfFilter, terminal_image_codec_none_for_decodable_chain) {
+  // A chain with no image codec (or none last) decodes fully: no pass-through.
+  EXPECT_FALSE(terminal_image_codec(Object()).has_value());
+  EXPECT_FALSE(terminal_image_codec(name("FlateDecode")).has_value());
+  EXPECT_FALSE(terminal_image_codec(array({})).has_value());
+  EXPECT_FALSE(
+      terminal_image_codec(array({name("DCTDecode"), name("FlateDecode")}))
+          .has_value());
+}
+
 TEST(PdfFilter, decode_crypt_identity_passes_through) {
   const DecodeResult result =
       decode(name("Crypt"), dictionary({{"Name", name("Identity")}}), "data");

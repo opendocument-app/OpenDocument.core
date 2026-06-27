@@ -24,6 +24,12 @@ struct DecodeResult {
 DecodeResult decode(const Object &filter, const Object &decode_parms,
                     std::string data);
 
+/// The image codec a `/Filter` chain terminates in — its last entry, when that
+/// is an image codec such as DCTDecode (the filter `decode` would stop at) —
+/// else nullopt for a chain that decodes fully. Lets a caller recognise a
+/// pass-through image without inflating a raster it only means to skip.
+std::optional<std::string> terminal_image_codec(const Object &filter);
+
 std::string ascii_hex_decode(const std::string &input);
 std::string ascii85_decode(const std::string &input);
 std::string lzw_decode(const std::string &input, Integer early_change = 1);
