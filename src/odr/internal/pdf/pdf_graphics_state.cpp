@@ -1,23 +1,10 @@
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
 
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
-#include <odr/internal/util/map_util.hpp>
-
-#include <unordered_map>
 
 namespace odr::internal::pdf {
 
 namespace {
-
-ColorSpace color_space_name_to_enum(const std::string &name) {
-  static std::unordered_map<std::string, ColorSpace> mapping{
-      {"grey", ColorSpace::device_grey},
-      {"rgb", ColorSpace::device_rgb},
-      {"cmyk", ColorSpace::device_cmyk},
-  };
-
-  return util::map::lookup_default(mapping, name, ColorSpace::unknown);
-}
 
 util::math::Transform2D matrix_from_args(const GraphicsOperator &op) {
   return {op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
@@ -285,10 +272,9 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().text.matrix = matrix_from_args(op);
     current().text.line_matrix = current().text.matrix;
     break;
-  case GraphicsOperatorType::text_next_line: // T*
-    next_line(0, -current().text.leading);
-    break;
-  case GraphicsOperatorType::show_text_next_line: // ' : T* then show
+  case GraphicsOperatorType::text_next_line:      // T*
+  case GraphicsOperatorType::show_text_next_line: // ' : T* then show (in
+                                                  // extractor)
     next_line(0, -current().text.leading);
     break;
   case GraphicsOperatorType::show_text_next_line_set_spacing:
@@ -298,54 +284,49 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     next_line(0, -current().text.leading);
     break;
 
-  case GraphicsOperatorType::set_stroke_color_space:
-    current().stroke_color.space =
-        color_space_name_to_enum(op.arguments.at(0).as_string());
-    break;
-  case GraphicsOperatorType::set_stroke_color:
-  case GraphicsOperatorType::set_stroke_color_name:
-    // SC/SCN over a named/ICC/Separation/Pattern color space: stage 4.4.
-    break;
+  // The color-space (`cs`/`CS`) and general color (`sc`/`scn`/`SC`/`SCN`)
+  // operators need the `/ColorSpace` resources to resolve, so they are handled
+  // in `pdf_page_extractor` (which has the `Resources`), not here. The device
+  // color operators below carry their components inline and clear any active
+  // non-device color space.
   case GraphicsOperatorType::set_stroke_grey_color:
     current().stroke_color.space = ColorSpace::device_grey;
     current().stroke_color.grey = op.arguments.at(0).as_real();
+    current().stroke_color.def = nullptr;
     break;
   case GraphicsOperatorType::set_stroke_rgb_color:
     current().stroke_color.space = ColorSpace::device_rgb;
     for (int i = 0; i < 3; ++i) {
       current().stroke_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
+    current().stroke_color.def = nullptr;
     break;
   case GraphicsOperatorType::set_stroke_cmyk_color:
     current().stroke_color.space = ColorSpace::device_cmyk;
     for (int i = 0; i < 4; ++i) {
       current().stroke_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }
+    current().stroke_color.def = nullptr;
     break;
 
-  case GraphicsOperatorType::set_other_color_space:
-    current().other_color.space =
-        color_space_name_to_enum(op.arguments.at(0).as_string());
-    break;
-  case GraphicsOperatorType::set_other_color:
-  case GraphicsOperatorType::set_other_color_name:
-    // sc/scn over a named/ICC/Separation/Pattern color space: stage 4.4.
-    break;
   case GraphicsOperatorType::set_other_grey_color:
     current().other_color.space = ColorSpace::device_grey;
     current().other_color.grey = op.arguments.at(0).as_real();
+    current().other_color.def = nullptr;
     break;
   case GraphicsOperatorType::set_other_rgb_color:
     current().other_color.space = ColorSpace::device_rgb;
     for (int i = 0; i < 3; ++i) {
       current().other_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
+    current().other_color.def = nullptr;
     break;
   case GraphicsOperatorType::set_other_cmyk_color:
     current().other_color.space = ColorSpace::device_cmyk;
     for (int i = 0; i < 4; ++i) {
       current().other_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }
+    current().other_color.def = nullptr;
     break;
 
   case GraphicsOperatorType::set_glyph_width:

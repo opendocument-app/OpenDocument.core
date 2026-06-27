@@ -41,6 +41,7 @@ add_executable(odr_test
 
         "src/internal/pdf/pdf_cid.cpp"
         "src/internal/pdf/pdf_cmap.cpp"
+        "src/internal/pdf/pdf_color.cpp"
         "src/internal/pdf/pdf_document_parser.cpp"
         "src/internal/pdf/pdf_encoding.cpp"
         "src/internal/pdf/pdf_encryption.cpp"
@@ -48,6 +49,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_file_parser.cpp"
         "src/internal/pdf/pdf_filter.cpp"
         "src/internal/pdf/pdf_font.cpp"
+        "src/internal/pdf/pdf_function.cpp"
         "src/internal/util/math_util_test.cpp"
         "src/internal/pdf/pdf_object.cpp"
         "src/internal/pdf/pdf_object_parser.cpp"

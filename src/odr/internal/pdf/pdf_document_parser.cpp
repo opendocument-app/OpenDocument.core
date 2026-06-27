@@ -8,6 +8,7 @@
 #include <odr/internal/font/type1_font.hpp>
 #include <odr/internal/font/type1_transform.hpp>
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
@@ -605,6 +606,40 @@ Resources *parse_resources(State &state, const Object &object) {
         parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
     for (const auto &[key, value] : x_object_table) {
       resources->x_object[key] = parse_x_object(state, value.as_reference());
+    }
+  }
+
+  if (dictionary.has_value("ColorSpace")) {
+    const Dictionary color_space_table =
+        parser.resolve_object_copy(dictionary["ColorSpace"]).as_dictionary();
+    ColorSpaceContext context;
+    context.resolve = [&parser](const Object &object) {
+      return parser.resolve_object_copy(object);
+    };
+    context.load_stream = [&parser](const Object &object) {
+      return object.is_reference()
+                 ? parser.read_decoded_stream(object.as_reference())
+                 : std::string{};
+    };
+    // A base/alternate space may be named (referencing another `/ColorSpace`
+    // entry); resolve it lazily from the same table, caching the result.
+    context.named =
+        [&](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+      if (const auto it = resources->color_space.find(name);
+          it != resources->color_space.end()) {
+        return it->second;
+      }
+      if (color_space_table.has_value(name)) {
+        auto def = parse_color_space(color_space_table.get(name), context);
+        resources->color_space[name] = def;
+        return def;
+      }
+      return nullptr;
+    };
+    for (const auto &[key, value] : color_space_table) {
+      if (resources->color_space.find(key) == resources->color_space.end()) {
+        resources->color_space[key] = parse_color_space(value, context);
+      }
     }
   }
 
