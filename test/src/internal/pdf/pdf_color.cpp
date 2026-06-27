@@ -129,6 +129,12 @@ TEST(PdfColor, initial_components) {
             (std::vector<double>{0, 0, 0}));
   ColorSpaceDef sep = device(ColorSpaceKind::separation, 1);
   EXPECT_EQ(sep.initial_components(), (std::vector<double>{1.0}));
+  // DeviceCMYK starts at black {0, 0, 0, 1}, not the all-zero (white) default,
+  // so a resource alias to /DeviceCMYK matches a direct /DeviceCMYK selection.
+  const ColorSpaceDef cmyk = device(ColorSpaceKind::device_cmyk, 4);
+  EXPECT_EQ(cmyk.initial_components(), (std::vector<double>{0, 0, 0, 1}));
+  EXPECT_EQ(cmyk.to_rgb(cmyk.initial_components()),
+            (std::array<double, 3>{0, 0, 0}));
 }
 
 // A name resolves to the matching device space.

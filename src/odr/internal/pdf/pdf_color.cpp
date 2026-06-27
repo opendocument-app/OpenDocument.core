@@ -159,6 +159,10 @@ std::vector<double> ColorSpaceDef::initial_components() const {
   case ColorSpaceKind::device_n:
     // Initial tint is full colorant (ISO 32000-1 8.6.3).
     return std::vector<double>(static_cast<std::size_t>(components), 1.0);
+  case ColorSpaceKind::device_cmyk:
+    // Initial DeviceCMYK colour is black, i.e. {0, 0, 0, 1} (ISO
+    // 32000-1 8.6.3).
+    return {0.0, 0.0, 0.0, 1.0};
   default:
     return std::vector<double>(
         static_cast<std::size_t>(std::max(components, 1)), 0.0);
