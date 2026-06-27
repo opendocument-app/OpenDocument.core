@@ -971,6 +971,20 @@ TEST(PdfPageExtractor, inline_image_then_path) {
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[1]));
 }
 
+// An unfiltered image's length is fixed by its geometry, so raw sample bytes
+// that happen to spell `E I <white-space>` (here the first pixel, 0x45 0x49
+// 0x20) are not mistaken for the `EI` terminator: the image survives intact and
+// the following operator is still parsed.
+TEST(PdfPageExtractor, inline_image_data_containing_ei) {
+  const std::string content = "BI /W 2 /H 1 /CS /RGB /BPC 8 ID " +
+                              raw_bytes({0x45, 0x49, 0x20, 10, 20, 30}) +
+                              "\nEI 0 0 10 10 re f";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_TRUE(std::holds_alternative<ImageElement>(page[0]));
+  EXPECT_TRUE(std::holds_alternative<PathElement>(page[1]));
+}
+
 // A Flate (`/F /Fl`) inline image is decoded and re-encoded as PNG.
 TEST(PdfPageExtractor, inline_image_flate) {
   const std::string samples = raw_bytes({10, 20, 30, 40, 50, 60});

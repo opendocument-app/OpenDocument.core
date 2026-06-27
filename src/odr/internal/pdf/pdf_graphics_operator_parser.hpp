@@ -30,8 +30,10 @@ private:
 
   // Read the binary image data of an inline image, from just after the `ID`
   // keyword up to (excluding) its `EI` terminator (8.9.7), leaving the cursor
-  // past `EI`.
-  [[nodiscard]] std::string read_inline_image_data();
+  // past `EI`. The dictionary fixes the byte length for unfiltered
+  // device-colour images; otherwise the data is scanned for the terminator.
+  [[nodiscard]] std::string
+  read_inline_image_data(const Dictionary &dictionary);
 
   ObjectParser m_parser;
 };

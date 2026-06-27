@@ -3,7 +3,9 @@
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/util/map_util.hpp>
 
+#include <cstdint>
 #include <iostream>
+#include <optional>
 #include <unordered_map>
 
 namespace odr::internal::pdf {
@@ -106,6 +108,85 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
                                    GraphicsOperatorType::unknown);
 }
 
+// Fetch an inline image dictionary entry by either its abbreviated or its long
+// key (8.9.7, Table 93), since both spellings are permitted.
+const Object &inline_image_entry(const Dictionary &dictionary,
+                                 const std::string &abbrev,
+                                 const std::string &full) {
+  if (const Object &value = dictionary.get(abbrev); !value.is_null()) {
+    return value;
+  }
+  return dictionary.get(full);
+}
+
+// Sample components of an inline image's colour space, but only for the device
+// spaces that are self-contained in inline content. Named spaces (page
+// `/ColorSpace` resources) and `/Indexed` arrays are not resolved here.
+std::optional<int> inline_color_components(const Object &color_space) {
+  if (!color_space.is_name()) {
+    return std::nullopt;
+  }
+  const std::string &name = color_space.as_name();
+  if (name == "G" || name == "DeviceGray") {
+    return 1;
+  }
+  if (name == "RGB" || name == "DeviceRGB") {
+    return 3;
+  }
+  if (name == "CMYK" || name == "DeviceCMYK") {
+    return 4;
+  }
+  return std::nullopt;
+}
+
+// Byte length of an inline image's raw data, derived from its sample geometry —
+// but only when that length is knowable: the image must be unfiltered (a
+// filtered payload's size is unknown until decoded) and its colour space must
+// be a device space. Returns `nullopt` otherwise, leaving the caller to scan
+// for the `EI` terminator.
+std::optional<std::size_t>
+inline_image_raw_length(const Dictionary &dictionary) {
+  if (!inline_image_entry(dictionary, "F", "Filter").is_null()) {
+    return std::nullopt;
+  }
+
+  int components;
+  int bits_per_component;
+  if (inline_image_entry(dictionary, "IM", "ImageMask")
+          .as_bool_opt()
+          .value_or(false)) {
+    // A stencil mask is one bit per sample (8.9.6.2).
+    components = 1;
+    bits_per_component = 1;
+  } else {
+    const std::optional<int> resolved = inline_color_components(
+        inline_image_entry(dictionary, "CS", "ColorSpace"));
+    if (!resolved.has_value()) {
+      return std::nullopt;
+    }
+    components = *resolved;
+    bits_per_component = static_cast<int>(
+        inline_image_entry(dictionary, "BPC", "BitsPerComponent")
+            .as_integer_opt()
+            .value_or(8));
+  }
+
+  const std::int64_t width =
+      inline_image_entry(dictionary, "W", "Width").as_integer_opt().value_or(0);
+  const std::int64_t height = inline_image_entry(dictionary, "H", "Height")
+                                  .as_integer_opt()
+                                  .value_or(0);
+  if (width <= 0 || height <= 0 || bits_per_component <= 0) {
+    return std::nullopt;
+  }
+
+  // Each sample row is padded to a byte boundary (8.9.5.2).
+  const std::size_t bits_per_row =
+      static_cast<std::size_t>(width) * components * bits_per_component;
+  const std::size_t bytes_per_row = (bits_per_row + 7) / 8;
+  return bytes_per_row * static_cast<std::size_t>(height);
+}
+
 } // namespace
 
 using char_type = std::streambuf::char_type;
@@ -183,7 +264,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
   // mis-tokenized as operators), so the operator carries `[dict, bytes]`.
   if (result.type == GraphicsOperatorType::begin_inline_image_data) {
     Dictionary dictionary = read_inline_image_dictionary(result.arguments);
-    std::string data = read_inline_image_data();
+    std::string data = read_inline_image_data(dictionary);
     result.arguments.clear();
     result.arguments.emplace_back(std::move(dictionary));
     result.arguments.emplace_back(StandardString(std::move(data)));
@@ -207,17 +288,46 @@ Dictionary GraphicsOperatorParser::read_inline_image_dictionary(
   return dictionary;
 }
 
-std::string GraphicsOperatorParser::read_inline_image_data() {
+std::string
+GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
   // Exactly one white-space character separates `ID` from the data (8.9.7).
   if (m_parser.geti() != eof) {
     m_parser.bumpc();
   }
 
-  // The length is not encoded, so scan for the `EI` terminator. `EI` also
-  // occurs inside the raw image bytes, so only accept one that is followed by
-  // white-space or eof; otherwise keep the bytes and keep scanning. The
-  // terminator (and the white-space convention before it) is left out of the
-  // captured data.
+  // When the byte length is knowable (an unfiltered device-colour image), read
+  // exactly that many bytes. This is the only reliable terminator: raw samples
+  // can contain the bytes `E I <white-space>`, which the scan below would
+  // mistake for the real `EI` and so truncate the image (and corrupt the rest
+  // of the page).
+  if (const std::optional<std::size_t> length =
+          inline_image_raw_length(dictionary)) {
+    std::string data;
+    data.reserve(*length);
+    for (std::size_t i = 0; i < *length; ++i) {
+      const int_type c = m_parser.geti();
+      if (c == eof) {
+        return data;
+      }
+      m_parser.bumpc();
+      data += static_cast<char_type>(c);
+    }
+    // Consume the trailing `EI` (and the conventional white-space before it).
+    m_parser.skip_whitespace();
+    if (m_parser.geti() == 'E') {
+      m_parser.bumpc();
+      if (m_parser.geti() == 'I') {
+        m_parser.bumpc();
+      }
+    }
+    return data;
+  }
+
+  // Otherwise the length is not encoded (a filtered payload), so scan for the
+  // `EI` terminator. `EI` also occurs inside the encoded bytes, so accept one
+  // only when it is bracketed by white-space — preceded by it (the writer's
+  // convention) and followed by it or eof — which makes a false match unlikely.
+  // The terminator (and the white-space before it) is left out of the data.
   std::string data;
   while (true) {
     const int_type c = m_parser.geti();
@@ -226,7 +336,9 @@ std::string GraphicsOperatorParser::read_inline_image_data() {
     }
     m_parser.bumpc();
     if (c == 'E') {
-      if (m_parser.geti() == 'I') {
+      const bool preceded_by_whitespace =
+          data.empty() || ObjectParser::is_whitespace(data.back());
+      if (preceded_by_whitespace && m_parser.geti() == 'I') {
         m_parser.bumpc();
         const int_type after = m_parser.geti();
         if (after == eof ||
