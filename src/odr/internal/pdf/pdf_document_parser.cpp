@@ -563,6 +563,14 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
   if (dictionary.has_value("Matrix")) {
     x_object->matrix = parse_matrix(parser, dictionary["Matrix"]);
   }
+  if (dictionary.has_value("BBox")) {
+    const Array box = parser.resolve_object_copy(dictionary["BBox"]).as_array();
+    if (box.size() == 4) {
+      x_object->bbox =
+          std::array<double, 4>{box[0].as_real(), box[1].as_real(),
+                                box[2].as_real(), box[3].as_real()};
+    }
+  }
   // Read the content eagerly so text extraction needs no parser handle.
   x_object->content = parser.read_decoded_stream(object);
 

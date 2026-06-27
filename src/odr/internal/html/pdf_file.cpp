@@ -116,13 +116,19 @@ std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
 /// viewBox, or "" when it paints nothing. Fill honours the even-odd rule;
 /// stroke carries width (CTM-scaled in user space), caps, joins, miter limit
 /// and the dash pattern. A zero stroke width renders as a thin hairline.
+/// `clip_id`, when non-empty, references a `<clipPath>` installed via
+/// `clip-path`.
 std::string svg_path_fragment(const pdf::PathElement &path,
-                              const util::math::Transform2D &to_box) {
+                              const util::math::Transform2D &to_box,
+                              const std::string &clip_id) {
   if ((!path.fill && !path.stroke) || path.subpaths.empty()) {
     return {};
   }
   std::ostringstream f;
   f << "<path d=\"" << svg_path_d(path.subpaths, to_box) << '"';
+  if (!clip_id.empty()) {
+    f << " clip-path=\"url(#" << clip_id << ")\"";
+  }
 
   if (path.fill) {
     f << " fill=\"" << device_color_to_css(path.fill_color) << '"';
@@ -170,6 +176,55 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   f << "/>";
   return std::move(f).str();
 }
+
+/// Registers a page's clip regions as nested `<clipPath>` defs, deduplicating
+/// shared prefixes. PDF's current clip is the *intersection* of an ordered list
+/// of regions; SVG expresses intersection by chaining `clip-path` from one
+/// `<clipPath>` to the next, so region i's clipPath references region i-1's and
+/// the painted element references the last. Ids are namespaced per page
+/// (`c<page>_<n>`); `defs()` is emitted once in a hidden `<svg>` for the page.
+class ClipRegistry {
+public:
+  explicit ClipRegistry(std::uint32_t page) : m_page{page} {}
+
+  /// The clipPath id to reference on a path painted under `clip`, registering
+  /// any not-yet-seen regions. Empty when `clip` is empty (unclipped).
+  std::string register_clip(const std::vector<pdf::ClipPath> &clip,
+                            const util::math::Transform2D &to_box) {
+    std::string signature;
+    std::string parent;
+    for (const pdf::ClipPath &region : clip) {
+      const std::string d = svg_path_d(region.subpaths, to_box);
+      signature += region.even_odd ? 'E' : 'N';
+      signature += d;
+      signature += ';';
+      const auto [it, inserted] = m_id_by_signature.try_emplace(signature);
+      if (inserted) {
+        it->second =
+            "c" + std::to_string(m_page) + "_" + std::to_string(++m_count);
+        m_defs << "<clipPath id=\"" << it->second << '"';
+        if (!parent.empty()) {
+          m_defs << " clip-path=\"url(#" << parent << ")\"";
+        }
+        m_defs << "><path d=\"" << d << '"';
+        if (region.even_odd) {
+          m_defs << " clip-rule=\"evenodd\"";
+        }
+        m_defs << "/></clipPath>";
+      }
+      parent = it->second;
+    }
+    return parent;
+  }
+
+  [[nodiscard]] std::string defs() const { return m_defs.str(); }
+
+private:
+  std::uint32_t m_page;
+  std::uint32_t m_count{0};
+  std::unordered_map<std::string, std::string> m_id_by_signature;
+  std::ostringstream m_defs;
+};
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned span per glyph run, and the same font sizes,
@@ -290,6 +345,10 @@ public:
     double width{0};  // page box width, PDF points (for the SVG viewBox)
     double height{0}; // page box height, PDF points
     std::vector<PageItem> items;
+    // `<clipPath>` defs for this page's clipped paths, emitted once in a hidden
+    // `<svg>`; the path fragments reference them by id. Empty when no path on
+    // the page is clipped.
+    std::string clip_defs;
   };
 
   HtmlResources write_document(HtmlWriter &out) const {
@@ -488,12 +547,15 @@ public:
           util::math::Transform2D::translation(-box_x0, -box_y0) *
           util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
+      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
+
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
         // A painted path: serialize its subpaths to an SVG `<path>` fragment in
-        // the page viewBox (fill and/or stroke).
+        // the page viewBox (fill and/or stroke), under any active clip.
         if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
-          std::string fragment = svg_path_fragment(*path, to_box);
+          const std::string clip_id = clips.register_clip(path->clip, to_box);
+          std::string fragment = svg_path_fragment(*path, to_box, clip_id);
           if (!fragment.empty()) {
             page_out.items.push_back(PathOut{std::move(fragment)});
           }
@@ -501,6 +563,10 @@ public:
         }
 
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
+        // TODO(clip text): the active clip is not applied to text. Paths carry
+        // a clip snapshot realized as an SVG `<clipPath>`, but text is emitted
+        // as HTML spans that the clipPath cannot reach, so clipped text paints
+        // outside its region. See STAGE4_PLAN.md "4.3 — Clipping" follow-up.
         // The font index is non-zero when an embedded font lets us render
         // the actual glyphs; 0 falls through to the legacy path.
         const std::uint32_t font =
@@ -683,6 +749,8 @@ public:
               SpanOut{std::move(classes), escape_text(text.text), {}, {}});
         }
       }
+
+      page_out.clip_defs = clips.defs();
     }
 
     // Post-pass: every page has been scanned, so the per-font used-scalar sets
@@ -788,7 +856,8 @@ public:
     // the page box, matching a PDF viewer: content drawn outside the MediaBox
     // (e.g. a background rectangle that bleeds past the left edge) is never
     // visible, and without this it spills into the centered page's margin.
-    // Arbitrary in-page clip paths still wait for stage 4.3.
+    // In-page clip paths are honoured via per-path `clip-path` (the page's
+    // `<clipPath>` defs are emitted in a hidden `<svg>` above).
     // `preserveAspectRatio:none` keeps the points->box mapping exact.
     // `pointer-events:none` so a full-page overlay painted after text
     // (paint order) does not swallow selection/clicks over its transparent
@@ -827,6 +896,17 @@ public:
     for (const PageOut &page : pages_out) {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
+      // Clip-path defs for this page, in a hidden zero-size `<svg>`. They are
+      // referenced by id from the page's path fragments; `clipPathUnits`
+      // defaults to `userSpaceOnUse`, so the geometry is read in the user space
+      // of the referencing element (the page viewBox), not this `<svg>`.
+      if (!page.clip_defs.empty()) {
+        out.write_raw(
+            "<svg width=\"0\" height=\"0\" style=\"position:absolute\">"
+            "<defs>");
+        out.write_raw(page.clip_defs);
+        out.write_raw("</defs></svg>");
+      }
       // Walk the page's elements in paint order, coalescing contiguous paths
       // into a single `<svg>` so spans and vector graphics layer by DOM order.
       bool svg_open = false;

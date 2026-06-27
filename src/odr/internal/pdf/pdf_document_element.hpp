@@ -5,6 +5,7 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 #include <odr/internal/util/math_util.hpp>
 
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <iterator>
@@ -105,6 +106,10 @@ struct XObject final : Element {
   /// Form XObject only: the `/Matrix` (default identity), concatenated onto the
   /// CTM when the form is invoked (8.10.1).
   util::math::Transform2D matrix;
+  /// Form XObject only: the `/BBox` `[x0 y0 x1 y1]` in form space, clipping the
+  /// form's content (8.10.2). `nullopt` when the form declares none (lenient;
+  /// the spec requires it).
+  std::optional<std::array<double, 4>> bbox;
   /// Form XObject only: the form's own `/Resources`, or `nullptr` to inherit
   /// the invoking scope's resources (7.8.3).
   Resources *resources{nullptr};

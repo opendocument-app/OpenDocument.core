@@ -37,6 +37,15 @@ struct Subpath {
   bool closed{false};
 };
 
+/// One clipping region (ISO 32000-1 8.5.4): the path established by a `W`/`W*`
+/// operator, in user space, plus the winding rule that fills it. The current
+/// clip is the *intersection* of an ordered list of these — a path is visible
+/// only where it lies inside every one.
+struct ClipPath {
+  std::vector<Subpath> subpaths;
+  bool even_odd{false};
+};
+
 struct GraphicsState {
   /// Dash pattern (`d`): the on/off lengths and the starting phase, in user
   /// space. An empty array is a solid line (ISO 32000-1 8.4.3.6).
@@ -89,6 +98,10 @@ struct GraphicsState {
     Text text;
     Color stroke_color;
     Color other_color;
+    /// Current clipping path: the intersection of these regions (empty = the
+    /// whole page). Part of the saved/restored state (ISO 32000-1 8.5.4), so
+    /// `q`/`Q` and form-XObject invocation scope it like the CTM.
+    std::vector<ClipPath> clip;
   };
 
   std::vector<State> stack;
@@ -122,6 +135,18 @@ struct GraphicsState {
   /// the accumulated path, as every path-painting operator does on completion.
   void clear_path();
 
+  /// Clipping (`W`/`W*`, ISO 32000-1 8.5.4). `set_pending_clip` records that
+  /// the current path is to *become* a clip; `commit_clip` then installs it —
+  /// as the intersection with the current clip — when the next painting (or
+  /// `n`) operator completes. The path painted by that operator is still
+  /// clipped by the *old* clip, so the caller snapshots the clip before calling
+  /// `commit_clip`.
+  void set_pending_clip(bool even_odd);
+  void commit_clip();
+  /// Intersect a rectangle (in the current CTM's space, e.g. a form's `/BBox`)
+  /// into the current clip; the corners are mapped through the CTM.
+  void clip_bounding_box(double x0, double y0, double x1, double y1);
+
   /// Push a copy of the current state (`q`).
   void save();
   /// Pop the current state (`Q`).
@@ -154,6 +179,12 @@ private:
 
   std::array<double, 2> m_current_point{0, 0}; // user space
   std::array<double, 2> m_subpath_start{0, 0}; // user space, for `h`/close
+
+  /// A pending `W`/`W*` between path construction and the painting operator
+  /// that installs it. Not part of the saved state: a `W` is always followed by
+  /// a painting/`n` operator before any `q`/`Q` (ISO 32000-1 8.5.4).
+  enum class PendingClip { none, nonzero, even_odd };
+  PendingClip m_pending_clip{PendingClip::none};
 };
 
 } // namespace odr::internal::pdf

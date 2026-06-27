@@ -318,6 +318,9 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
   const GraphicsState::State &s = state.current();
   PathElement element;
   element.subpaths = state.path;
+  // The path is painted under the clip in force *before* a pending `W`/`W*` is
+  // installed (ISO 32000-1 8.5.4): snapshot the current clip, then commit.
+  element.clip = s.clip;
   element.fill = fill;
   element.stroke = stroke;
   element.even_odd = even_odd;
@@ -339,6 +342,9 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
   }
   element.dash_phase = s.general.dash.phase * scale;
   out.push_back(std::move(element));
+  // Install a pending `W`/`W*` now (it uses the just-painted path) so it scopes
+  // the *following* content, then drop the path.
+  state.commit_clip();
   state.clear_path();
 }
 
@@ -405,6 +411,13 @@ void invoke_x_object(const std::string &name, const Resources &resources,
 
   state.save();
   state.concat_matrix(x_object->matrix);
+  // `/BBox` clips the form's content to its bounding box (ISO 32000-1 8.10.2),
+  // mapped through the (now form-matrix-concatenated) CTM. Scoped by the
+  // surrounding save/restore.
+  if (x_object->bbox.has_value()) {
+    const std::array<double, 4> &b = *x_object->bbox;
+    state.clip_bounding_box(b[0], b[1], b[2], b[3]);
+  }
   const Resources &scope =
       x_object->resources != nullptr ? *x_object->resources : resources;
   // A form's marked content must be self-balanced; truncate back to the entry
@@ -487,8 +500,10 @@ void run_content(const std::string &content, const Resources &resources,
       paint_path(out, state, true, true, true, true);
       break;
     case GraphicsOperatorType::end_path: // n
-      // Path painted with no marks (used after a clip operator, stage 4.3);
-      // discard the geometry.
+      // Path painted with no marks — its only role is to install a pending
+      // `W`/`W*` clip (ISO 32000-1 8.5.4); commit it, then discard the
+      // geometry.
+      state.commit_clip();
       state.clear_path();
       break;
     case GraphicsOperatorType::begin_marked_content_seq:       // BMC
