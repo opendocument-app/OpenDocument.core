@@ -170,13 +170,11 @@ std::string pdf::encode_image_png(const std::string &samples,
   return write_png_rgb(rgb, width, height);
 }
 
-std::optional<pdf::EncodedImage>
-pdf::encode_image(std::string raw, const Object &filter,
-                  const Object &decode_parms, const std::int32_t width,
-                  const std::int32_t height,
-                  const std::int32_t bits_per_component,
-                  const ColorSpaceDef *color_space,
-                  const std::vector<double> &decode_array) {
+std::optional<pdf::EncodedImage> pdf::encode_image(
+    std::string raw, const Object &filter, const Object &decode_parms,
+    const std::int32_t width, const std::int32_t height,
+    const std::int32_t bits_per_component, const ColorSpaceDef *color_space,
+    const std::vector<double> &decode_array) {
   const std::optional<std::string> terminal = terminal_image_codec(filter);
 
   if (terminal == "DCTDecode") {
