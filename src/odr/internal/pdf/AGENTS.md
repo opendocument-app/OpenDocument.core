@@ -204,8 +204,44 @@ images yet. Experimental and not production-quality.
   too many glyphs for the BMP PUA falls back to the default font. A run with no
   embedded program keeps the single-span fallback path; one with neither a
   program nor extractable text (a `no_unicode` run or an `/ActualText`-suppressed
-  show) still emits no span. Precise baseline placement (needs font ascent
-  metrics) is deferred; the baseline currently sits at the span's box top.
+  show) still emits no span.
+- **Baseline placement.** PDF's text origin is the glyph *baseline*, but a CSS
+  span anchors its box *top*, which sits one ascent above the baseline — so left
+  uncorrected every run renders ~one ascent too low (highlights/underlines, which
+  are painted correctly from user space, then float a line above their text).
+  Each run is therefore raised by one font ascent so the baseline lands on the
+  origin: in the uniform branch the shift comes off `top`
+  (`top = (m.f - ascent_em·m.a·size)·pt_to_px`), in the general branch it goes
+  *through* the matrix, subtracted along the local y axis `(c, d)` from the
+  translation (it cannot be applied to `m.f` after the fact). The dual layer
+  shares one shift: the nested PUA glyph layer is positioned relative to its
+  parent, so placing the parent moves both.
+  - **Why `line-height:1`.** The browser puts the first baseline at
+    `top + half_leading + ascent`, with `ascent` read from the *rendering* font's
+    `hhea`/`OS/2` and `half_leading` from `line-height`. `line-height:1` (on both
+    `.t` and the nested-glyph `placement` constant) zeroes the half-leading band
+    so the box-top→baseline distance is just the ascent; default `normal` would
+    add an unknown offset. This is exact when ascent + descent ≈ 1 em, near so
+    otherwise. We control the rendering metric: the re-encode synthesizes
+    `OS/2`/`hhea` (`font/cff_transform.cpp` `serialize_os2`/`serialize_hhea`; the
+    SFNT path passes the originals through), so our ascent can match the
+    browser's.
+  - **`ascent_em`** (in `pdf_file.cpp`): FontDescriptor `/Ascent`, else the
+    embedded font's `bounding_box().y_max / units_per_em()`, else `0.8` em (which
+    matches `serialize_os2`'s degenerate 0.8/0.2 fallback, so the fallback font
+    and our math agree); clamped to `[0.5, 1.2]`. It is **font-format agnostic**
+    — only `abstract::Font` virtuals (`bounding_box`, `units_per_em`) plus the
+    PDF descriptor — so SFNT, bare-CFF, and Type1 (→CFF) all work with no
+    per-subclass code.
+  - **Refinements left open.** The bounding-box fallback is coarser than the
+    font's designed ascender; an SFNT-specific `OS/2.sTypoAscender`/`hhea` read
+    would match the browser better, but `/Ascent` is present and preferred in
+    almost all real PDFs so the fallback rarely fires. When `/Ascent` and the
+    embedded `OS/2` disagree, which to prefer (descriptor states intent, embedded
+    matches rendering) is unsettled — currently `/Ascent` wins. The ascent is
+    per-font, not per-CID. No focused unit test yet (verified visually on
+    `style-various-1.pdf`); the stage-4 perceptual-diff oracle is the eventual
+    gate.
 
 ## Module layout
 

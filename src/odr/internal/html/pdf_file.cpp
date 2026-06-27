@@ -488,6 +488,29 @@ public:
       return std::move(s).str();
     };
 
+    // A run's baseline-to-top distance, in em, so it can be placed by its
+    // baseline (PDF's text origin) rather than by its CSS box top — which is
+    // one ascent above the baseline. Prefers the FontDescriptor `/Ascent`, then
+    // the embedded font's bounding box, then a typical 0.8 em. Clamped to a
+    // sane band so a degenerate metric cannot fling a run off the page. Paired
+    // with `line-height:1` on the spans, the box top sits ~one ascent above the
+    // baseline (exact when ascent + descent == 1 em, near so otherwise), so
+    // subtracting the ascent lands the baseline on the PDF origin.
+    const auto ascent_em = [](const pdf::TextElement &text) -> double {
+      double em = 0.8;
+      if (text.font != nullptr && text.font->descriptor_ascent) {
+        em = *text.font->descriptor_ascent;
+      } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
+        const std::uint16_t units = text.font->embedded_font->units_per_em();
+        if (units != 0) {
+          em = static_cast<double>(
+                   text.font->embedded_font->bounding_box().y_max) /
+               units;
+        }
+      }
+      return std::clamp(em, 0.5, 1.2);
+    };
+
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
       const double box_x0 = page_box[0].as_real();
@@ -565,7 +588,12 @@ public:
         // Placement and spacing are shared by both layers of a run; build them
         // once on `base`.
         std::string base = "t";
-        // TODO baseline sits at the box top until font ascent metrics land
+
+        // Place by the baseline: PDF's text origin (`m.e`, `m.f`) is the glyph
+        // baseline, but a CSS span anchors its box top, which sits one ascent
+        // above the baseline. Shift the origin up by the ascent along the run's
+        // local y axis so the baseline lands on the PDF origin.
+        const double asc = ascent_em(text);
 
         // Tc/Tw are absolute text-space lengths (not scaled by the font size).
         // One text-space unit is `scale * pt_to_px` CSS px, where `scale` is
@@ -576,17 +604,24 @@ public:
         if (m.b == 0 && m.c == 0 && m.a == m.d) {
           // Upright uniform scale: fold the scale into the font size and place
           // the origin with left/top, so the (otherwise near-universal) matrix
-          // is dropped.
+          // is dropped. The ascent shift is purely vertical here (local y maps
+          // to box y, scaled by `m.a`).
           add_class(base, "l", px_decl("left", round2(m.e * pt_to_px)));
-          add_class(base, "t", px_decl("top", round2(m.f * pt_to_px)));
+          add_class(
+              base, "t",
+              px_decl("top", round2((m.f - asc * m.a * text.size) * pt_to_px)));
           add_class(base, "f",
                     px_decl("font-size", round2(m.a * text.size * pt_to_px)));
           scale = m.a;
         } else {
+          // The ascent shift is `asc` em down the local y axis, whose direction
+          // in the box is the matrix's (c, d) column; subtract it from the
+          // translation so the baseline, not the box top, lands on the origin.
+          const double ascent_px = asc * text.size * pt_to_px;
           std::ostringstream tm;
           tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
-             << m.d << "," << round2(m.e * pt_to_px) << ","
-             << round2(m.f * pt_to_px) << ")";
+             << m.d << "," << round2(m.e * pt_to_px - m.c * ascent_px) << ","
+             << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
           add_class(base, "m", std::move(tm).str());
           add_class(base, "f",
                     px_decl("font-size", round2(text.size * pt_to_px)));
@@ -750,7 +785,7 @@ public:
       const std::string family = "font-family:'odr-f" + n + "'";
       constexpr const char *placement =
           "position:absolute;left:0;top:0;transform-origin:0 0;"
-          "white-space:pre;user-select:none;";
+          "white-space:pre;line-height:1;user-select:none;";
       const auto rule = [&](const char *cls, const char *head,
                             const char *color) {
         glyph_styles += '.';
@@ -802,8 +837,12 @@ public:
     // already fixed the PDF glyph IDs and advances, shifting pixels and run
     // widths for otherwise 1:1 text. The PUA glyph layer was immune; restore
     // that here.
+    // `line-height:1` fixes the box top one em-ascent above the baseline so the
+    // baseline shift applied to each run's `top`/matrix (see `ascent_em`) lands
+    // the glyphs on the PDF text origin; the browser's default `normal` leading
+    // would add an unknown offset.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre;font-kerning:none;"
+                 "white-space:pre;line-height:1;font-kerning:none;"
                  "font-variant-ligatures:none}";
     // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
     // search (OCR-over-scan), but not painted.
