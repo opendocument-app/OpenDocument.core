@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <stdexcept>
 
 // RC4 and MD5 are retained in Crypto++ only for legacy formats (here: the PDF
@@ -12,6 +13,7 @@
 #include <cryptopp/arc4.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/blowfish.h>
+#include <cryptopp/crc.h>
 #include <cryptopp/des.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/gcm.h>
@@ -67,6 +69,17 @@ std::string util::hex_decode(const std::string &in) {
     throw std::invalid_argument("hex_decode: invalid hex digit");
   }
   return out;
+}
+
+std::uint32_t util::crc32(const std::string_view in) {
+  std::array<byte, CryptoPP::CRC32::DIGESTSIZE> out;
+  CryptoPP::CRC32().CalculateDigest(
+      out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  // Crypto++ emits the checksum in host byte order, so copying the bytes back
+  // into a word reproduces the value portably.
+  std::uint32_t value;
+  std::memcpy(&value, out.data(), out.size());
+  return value;
 }
 
 std::string util::md5(const std::string &in) {

@@ -2,52 +2,27 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string_view>
 
 namespace odr::internal::pdf {
 
 namespace {
 
-void put_be32(std::string &out, const std::uint32_t value) {
-  out.push_back(static_cast<char>((value >> 24) & 0xFF));
-  out.push_back(static_cast<char>((value >> 16) & 0xFF));
-  out.push_back(static_cast<char>((value >> 8) & 0xFF));
-  out.push_back(static_cast<char>(value & 0xFF));
-}
-
-/// CRC-32 (ISO 3309 / PNG Annex D) over a byte range, table built on first use.
-std::uint32_t crc32(const char *data, const std::size_t size) {
-  static const std::array<std::uint32_t, 256> table = [] {
-    std::array<std::uint32_t, 256> t{};
-    for (std::uint32_t n = 0; n < 256; ++n) {
-      std::uint32_t c = n;
-      for (int k = 0; k < 8; ++k) {
-        c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : (c >> 1);
-      }
-      t[n] = c;
-    }
-    return t;
-  }();
-
-  std::uint32_t c = 0xFFFFFFFFu;
-  for (std::size_t i = 0; i < size; ++i) {
-    c = table[(c ^ static_cast<std::uint8_t>(data[i])) & 0xFF] ^ (c >> 8);
-  }
-  return c ^ 0xFFFFFFFFu;
-}
-
 /// Append a PNG chunk: length, four-byte type, data, CRC over type+data.
 void write_chunk(std::string &out, const char (&type)[5],
                  const std::string &data) {
-  put_be32(out, static_cast<std::uint32_t>(data.size()));
+  util::byte_string::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
   const std::size_t crc_start = out.size();
   out.append(type, 4);
   out.append(data);
-  put_be32(out, crc32(out.data() + crc_start, out.size() - crc_start));
+  util::byte_string::put_u32_be(
+      out, crypto::util::crc32(std::string_view(out).substr(crc_start)));
 }
 
 /// Reads fixed-width big-endian sample values out of a byte buffer, MSB first.
@@ -55,7 +30,7 @@ void write_chunk(std::string &out, const char (&type)[5],
 /// end yield zero (lenient for a truncated stream).
 class BitReader {
 public:
-  BitReader(const std::string &data, const std::size_t byte_offset)
+  BitReader(const std::string_view data, const std::size_t byte_offset)
       : m_data{data}, m_byte{byte_offset} {}
 
   std::uint32_t read(const std::int32_t bits) {
@@ -80,7 +55,7 @@ private:
     return bit;
   }
 
-  const std::string &m_data;
+  std::string_view m_data;
   std::size_t m_byte;
   std::int32_t m_bit{0};
 };
@@ -92,8 +67,12 @@ std::uint8_t to_byte(const double v) {
 
 } // namespace
 
-std::string write_png_rgb(const std::string &rgb, const std::int32_t width,
-                          const std::int32_t height) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::string pdf::write_png_rgb(const std::string &rgb, const std::int32_t width,
+                               const std::int32_t height) {
   if (width <= 0 || height <= 0) {
     return {};
   }
@@ -118,8 +97,8 @@ std::string write_png_rgb(const std::string &rgb, const std::int32_t width,
   out.append(signature, sizeof(signature));
 
   std::string ihdr;
-  put_be32(ihdr, static_cast<std::uint32_t>(width));
-  put_be32(ihdr, static_cast<std::uint32_t>(height));
+  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
+  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(height));
   ihdr.push_back(8); // bit depth
   ihdr.push_back(2); // colour type: truecolour (RGB)
   ihdr.push_back(0); // compression: deflate
@@ -131,12 +110,12 @@ std::string write_png_rgb(const std::string &rgb, const std::int32_t width,
   return out;
 }
 
-std::string encode_image_png(const std::string &samples,
-                             const std::int32_t width,
-                             const std::int32_t height,
-                             const std::int32_t bits_per_component,
-                             const ColorSpaceDef &color_space,
-                             const std::vector<double> &decode) {
+std::string pdf::encode_image_png(const std::string &samples,
+                                  const std::int32_t width,
+                                  const std::int32_t height,
+                                  const std::int32_t bits_per_component,
+                                  const ColorSpaceDef &color_space,
+                                  const std::vector<double> &decode) {
   const std::int32_t components = color_space.components;
   if (width <= 0 || height <= 0 || components <= 0 || bits_per_component <= 0 ||
       bits_per_component > 16) {
@@ -188,4 +167,4 @@ std::string encode_image_png(const std::string &samples,
   return write_png_rgb(rgb, width, height);
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal
