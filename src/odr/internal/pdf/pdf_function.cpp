@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <numbers>
 #include <stdexcept>
 #include <variant>
 
@@ -279,7 +280,7 @@ private:
     return b;
   }
 
-  static constexpr double deg = 180.0 / M_PI;
+  static constexpr double deg = 180.0 / std::numbers::pi;
 
   static void run(const std::vector<PostScriptItem> &program,
                   std::vector<Item> &s) {
