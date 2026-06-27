@@ -185,7 +185,7 @@ std::string svg_path_fragment(const pdf::PathElement &path,
 /// (`c<page>_<n>`); `defs()` is emitted once in a hidden `<svg>` for the page.
 class ClipRegistry {
 public:
-  explicit ClipRegistry(int page) : m_page{page} {}
+  explicit ClipRegistry(std::uint32_t page) : m_page{page} {}
 
   /// The clipPath id to reference on a path painted under `clip`, registering
   /// any not-yet-seen regions. Empty when `clip` is empty (unclipped).
@@ -220,8 +220,8 @@ public:
   [[nodiscard]] std::string defs() const { return m_defs.str(); }
 
 private:
-  int m_page;
-  int m_count{0};
+  std::uint32_t m_page;
+  std::uint32_t m_count{0};
   std::unordered_map<std::string, std::string> m_id_by_signature;
   std::ostringstream m_defs;
 };
@@ -524,7 +524,7 @@ public:
           util::math::Transform2D::translation(-box_x0, -box_y0) *
           util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
-      ClipRegistry clips(static_cast<int>(pages_out.size()));
+      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
