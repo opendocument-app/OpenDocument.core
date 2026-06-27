@@ -221,6 +221,14 @@ struct Font final : Element {
   double cid_default_width{1000};
   std::unordered_map<std::uint32_t, double> cid_widths;
 
+  /// FontDescriptor `/Ascent` in em units (the raw `/Ascent`, glyph space,
+  /// divided by 1000), when the descriptor declares it. The baseline-to-top
+  /// distance of the font's glyphs; used to place a run by its baseline (PDF's
+  /// text origin) rather than its CSS box top. Absent for fonts with no
+  /// descriptor `/Ascent` (the HTML layer then falls back to the embedded
+  /// font's bounding box, then a constant).
+  std::optional<double> descriptor_ascent;
+
   /// Bytes per character code: 2 for composite (Type0) fonts (the
   /// `Identity-H/V` and common CID case), 1 for simple fonts.
   [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }

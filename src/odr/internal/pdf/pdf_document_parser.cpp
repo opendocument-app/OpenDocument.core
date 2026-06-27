@@ -284,6 +284,15 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
 /// fonts keep rendering through the fallback path.
 void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
                         Font &font) {
+  // Capture `/Ascent` (glyph space, /1000) for baseline placement. Both the
+  // simple- and composite-font paths route their descriptor through here, so
+  // this is the one place that sees every descriptor.
+  if (descriptor.has_key("Ascent")) {
+    const Object ascent = parser.resolve_object_copy(descriptor["Ascent"]);
+    if (ascent.is_real()) {
+      font.descriptor_ascent = ascent.as_real() / 1000.0;
+    }
+  }
   try {
     if (descriptor.has_key("FontFile2") &&
         descriptor["FontFile2"].is_reference()) {

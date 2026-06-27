@@ -204,8 +204,11 @@ images yet. Experimental and not production-quality.
   too many glyphs for the BMP PUA falls back to the default font. A run with no
   embedded program keeps the single-span fallback path; one with neither a
   program nor extractable text (a `no_unicode` run or an `/ActualText`-suppressed
-  show) still emits no span. Precise baseline placement (needs font ascent
-  metrics) is deferred; the baseline currently sits at the span's box top.
+  show) still emits no span. Each run is placed by its **baseline** (PDF's text
+  origin): the span's `top` is raised by one font ascent (FontDescriptor
+  `/Ascent`, else the embedded font's bounding box, else 0.8 em), with
+  `line-height:1` pinning the leading so the baseline lands on the origin. See
+  `TEXT_BASELINE_PLAN.md` for the design and the residual leading approximation.
 
 ## Module layout
 

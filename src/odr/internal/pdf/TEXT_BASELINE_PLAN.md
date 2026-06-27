@@ -1,13 +1,18 @@
 # PDF→HTML — text baseline placement plan
 
-Standalone follow-up, independent of the stage-4 graphics plan
-(`STAGE4_PLAN.md`). Fixes the text vertical-offset bug noted in two places:
+> **Status: implemented** in this branch. Each run is now placed by its
+> baseline using `ascent_em` (FontDescriptor `/Ascent` → embedded-font bounding
+> box → 0.8 em) with `line-height:1` pinning the leading. The remaining
+> approximation (the leading is exact only when ascent + descent ≈ 1 em, and the
+> ascent source is per-font, not per-CID) and the open questions below are left
+> for follow-up. This file is kept as the design record.
 
-- `src/odr/internal/html/pdf_file.cpp:568` — `TODO baseline sits at the box top
-  until font ascent metrics land`
-- `src/odr/internal/pdf/AGENTS.md` (~line 207) — "Precise baseline placement
-  (needs font ascent metrics) is deferred; the baseline currently sits at the
-  span's box top."
+Standalone follow-up, independent of the stage-4 graphics plan
+(`STAGE4_PLAN.md`). Fixes the text vertical-offset bug formerly noted in two
+places (the `TODO baseline sits at the box top` comment in
+`src/odr/internal/html/pdf_file.cpp` and the deferral note in
+`src/odr/internal/pdf/AGENTS.md`): the text origin sat at the CSS box top, so
+every run rendered ~one ascent below its baseline.
 
 ## The bug
 
