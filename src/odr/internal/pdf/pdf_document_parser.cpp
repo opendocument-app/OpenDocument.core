@@ -541,49 +541,31 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   if (dictionary.has_key("DecodeParms")) {
     decode_parms = parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
   }
-  const std::optional<std::string> terminal = terminal_image_codec(filter);
 
-  if (terminal == "DCTDecode") {
-    DecodeResult result =
-        decode(filter, decode_parms, parser.read_object_stream(object));
-    if (result.stopped_at_filter == "DCTDecode") {
-      x_object.image_data = std::move(result.data);
-      x_object.image_mime = "image/jpeg";
-    }
-    return;
+  // Resolve the raster parameters (a JPEG pass-through ignores them). The
+  // colour space resolves device spaces and inline Indexed/ICCBased arrays; a
+  // bare named resource space is out of scope here (no resource dictionary at
+  // parse time), so the raster path skips such an image.
+  std::shared_ptr<ColorSpaceDef> color_space;
+  if (dictionary.has_value("ColorSpace")) {
+    ColorSpaceContext context;
+    context.resolve = [&parser](const Object &o) {
+      return parser.resolve_object_copy(o);
+    };
+    context.load_stream = [&parser](const Object &o) {
+      return o.is_reference() ? parser.read_decoded_stream(o.as_reference())
+                              : std::string{};
+    };
+    color_space = parse_color_space(dictionary.get("ColorSpace"), context);
   }
-  if (terminal.has_value()) {
-    return; // JPX/CCITT/JBIG2: not yet a pass-through (later stages)
-  }
-
-  // A fully decodable raster: assemble its samples and PNG-encode. Needs a
-  // resolvable colour space (a device space or an inline Indexed/ICCBased
-  // array; a bare named resource space is out of scope here — no resource
-  // dictionary at parse time).
-  if (!dictionary.has_value("ColorSpace")) {
-    return;
-  }
-  ColorSpaceContext context;
-  context.resolve = [&parser](const Object &o) {
-    return parser.resolve_object_copy(o);
-  };
-  context.load_stream = [&parser](const Object &o) {
-    return o.is_reference() ? parser.read_decoded_stream(o.as_reference())
-                            : std::string{};
-  };
-  const std::shared_ptr<ColorSpaceDef> color_space =
-      parse_color_space(dictionary.get("ColorSpace"), context);
-  if (color_space == nullptr) {
-    return;
-  }
-
-  const std::optional<Integer> width =
-      parser.resolve_object_copy(dictionary.get("Width")).as_integer_opt();
-  const std::optional<Integer> height =
-      parser.resolve_object_copy(dictionary.get("Height")).as_integer_opt();
-  if (!width.has_value() || !height.has_value()) {
-    return;
-  }
+  const auto width = static_cast<std::int32_t>(
+      parser.resolve_object_copy(dictionary.get("Width"))
+          .as_integer_opt()
+          .value_or(0));
+  const auto height = static_cast<std::int32_t>(
+      parser.resolve_object_copy(dictionary.get("Height"))
+          .as_integer_opt()
+          .value_or(0));
   const auto bits_per_component = static_cast<std::int32_t>(
       parser.resolve_object_copy(dictionary.get("BitsPerComponent"))
           .as_integer_opt()
@@ -598,18 +580,11 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
     }
   }
 
-  DecodeResult result =
-      decode(filter, decode_parms, parser.read_object_stream(object));
-  if (result.stopped_at_filter.has_value()) {
-    return;
-  }
-  std::string png =
-      encode_image_png(result.data, static_cast<std::int32_t>(*width),
-                       static_cast<std::int32_t>(*height), bits_per_component,
-                       *color_space, decode_array);
-  if (!png.empty()) {
-    x_object.image_data = std::move(png);
-    x_object.image_mime = "image/png";
+  if (std::optional<EncodedImage> encoded = encode_image(
+          parser.read_object_stream(object), filter, decode_parms, width,
+          height, bits_per_component, color_space.get(), decode_array)) {
+    x_object.image_data = std::move(encoded->data);
+    x_object.image_mime = std::move(encoded->mime);
   }
 }
 

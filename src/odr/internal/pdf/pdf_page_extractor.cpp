@@ -7,13 +7,16 @@
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
+#include <odr/internal/pdf/pdf_image.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <array>
 #include <cmath>
+#include <memory>
 #include <optional>
 #include <set>
 #include <sstream>
+#include <unordered_map>
 
 namespace odr::internal::pdf {
 namespace {
@@ -413,6 +416,98 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
   state.clear_path();
 }
 
+/// Map an inline image's abbreviated dictionary key to its long form
+/// (ISO 32000-1 Table 93), so the shared image path sees the same keys as an
+/// image XObject. Unknown keys pass through unchanged.
+const std::string &inline_image_long_key(const std::string &key) {
+  static const std::unordered_map<std::string, std::string> map = {
+      {"BPC", "BitsPerComponent"}, {"CS", "ColorSpace"}, {"D", "Decode"},
+      {"DP", "DecodeParms"},       {"F", "Filter"},      {"H", "Height"},
+      {"IM", "ImageMask"},         {"I", "Interpolate"}, {"W", "Width"}};
+  const auto it = map.find(key);
+  return it != map.end() ? it->second : key;
+}
+
+/// Rewrite an inline image dictionary's abbreviated keys to their long forms.
+/// (Abbreviated *values* — the filter names and the `/CS` device names — are
+/// understood by `pdf_filter` and `pdf_color` directly.)
+Dictionary normalize_inline_image(const Dictionary &raw) {
+  Dictionary result;
+  for (const auto &[key, value] : raw) {
+    result[inline_image_long_key(key)] = value;
+  }
+  return result;
+}
+
+/// Resolve an inline image's colour space. Inline content is self-contained (no
+/// indirect references), so `resolve`/`load_stream` are inert; a bare name that
+/// is not a device space is looked up in the page's `/ColorSpace` resources.
+std::shared_ptr<ColorSpaceDef>
+resolve_inline_color_space(const Object &color_space,
+                           const Resources &resources) {
+  if (color_space.is_null()) {
+    return nullptr;
+  }
+  ColorSpaceContext context;
+  context.resolve = [](const Object &o) { return o; };
+  context.load_stream = [](const Object &) { return std::string{}; };
+  context.named =
+      [&resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+    const auto it = resources.color_space.find(name);
+    return it != resources.color_space.end() ? it->second : nullptr;
+  };
+  return parse_color_space(color_space, context);
+}
+
+/// Emit an `ImageElement` for an inline image (`BI`/`ID`/`EI`). The operator
+/// carries the inline dictionary and the raw bytes; both are routed through the
+/// same image emission as an image XObject (placed by the CTM, under the
+/// current clip). Image masks are deferred (4.8); an unsupported codec or
+/// colour space yields nothing.
+void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
+                       GraphicsState &state, std::vector<PageElement> &out) {
+  if (op.arguments.size() < 2 || !op.arguments[0].is_dictionary() ||
+      !op.arguments[1].is_string()) {
+    return;
+  }
+  const Dictionary dictionary =
+      normalize_inline_image(op.arguments[0].as_dictionary());
+
+  if (dictionary.get("ImageMask").as_bool_opt().value_or(false)) {
+    return;
+  }
+
+  const std::shared_ptr<ColorSpaceDef> color_space =
+      resolve_inline_color_space(dictionary.get("ColorSpace"), resources);
+  const auto width = static_cast<std::int32_t>(
+      dictionary.get("Width").as_integer_opt().value_or(0));
+  const auto height = static_cast<std::int32_t>(
+      dictionary.get("Height").as_integer_opt().value_or(0));
+  const auto bits_per_component = static_cast<std::int32_t>(
+      dictionary.get("BitsPerComponent").as_integer_opt().value_or(8));
+  std::vector<double> decode_array;
+  if (const Object &d = dictionary.get("Decode"); d.is_array()) {
+    for (const Object &item : d.as_array()) {
+      decode_array.push_back(item.as_real());
+    }
+  }
+
+  std::optional<EncodedImage> encoded =
+      encode_image(op.arguments[1].as_string(), dictionary.get("Filter"),
+                   dictionary.get("DecodeParms"), width, height,
+                   bits_per_component, color_space.get(), decode_array);
+  if (!encoded.has_value()) {
+    return;
+  }
+
+  ImageElement image;
+  image.transform = state.current().general.transform_matrix;
+  image.clip = state.current().clip;
+  image.data = std::move(encoded->data);
+  image.mime = std::move(encoded->mime);
+  out.push_back(std::move(image));
+}
+
 /// Form XObjects currently being rendered, by element identity. The parser
 /// represents the file faithfully, so the XObject graph may contain cycles
 /// (the spec forbids them — ISO 32000-1 8.10.1 — but real files err); this set
@@ -553,6 +648,9 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::draw_object: // Do
       invoke_x_object(op.arguments.at(0).as_string(), resources, state, out,
                       logger, warned, active, marked, pen);
+      break;
+    case GraphicsOperatorType::begin_inline_image_data: // BI … ID … EI
+      emit_inline_image(op, resources, state, out);
       break;
 
     case GraphicsOperatorType::stroke: // S

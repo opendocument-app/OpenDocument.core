@@ -2,9 +2,11 @@
 
 #include <odr/logger.hpp>
 
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <variant>
@@ -921,4 +923,86 @@ TEST(PdfPageExtractor, image_in_paint_order) {
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[0]));
   EXPECT_TRUE(std::holds_alternative<ImageElement>(page[1]));
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[2]));
+}
+
+// --- stage 4.7: inline images (BI/ID/EI) ---------------------------------
+
+namespace {
+
+const std::string png_signature = {
+    static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
+    static_cast<char>(0x1A), '\n'};
+
+std::string raw_bytes(std::initializer_list<int> values) {
+  std::string result;
+  for (const int v : values) {
+    result.push_back(static_cast<char>(v));
+  }
+  return result;
+}
+
+} // namespace
+
+// `BI … ID <bytes> EI` tokenizes as one operator and emits an `ImageElement`
+// placed by the CTM, the raster re-encoded as PNG.
+TEST(PdfPageExtractor, inline_image_emitted_at_ctm) {
+  const std::string content = "q 2 0 0 3 10 20 cm "
+                              "BI /W 2 /H 1 /CS /RGB /BPC 8 ID " +
+                              raw_bytes({10, 20, 30, 40, 50, 60}) + "\nEI Q";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const ImageElement &img = std::get<ImageElement>(page[0]);
+  EXPECT_EQ(img.mime, "image/png");
+  EXPECT_EQ(img.data.substr(0, 8), png_signature);
+  EXPECT_DOUBLE_EQ(img.transform.a, 2);
+  EXPECT_DOUBLE_EQ(img.transform.d, 3);
+  EXPECT_DOUBLE_EQ(img.transform.e, 10);
+  EXPECT_DOUBLE_EQ(img.transform.f, 20);
+}
+
+// The binary payload (which may itself contain `EI`) does not corrupt the
+// parse: content after the inline image is still tokenized.
+TEST(PdfPageExtractor, inline_image_then_path) {
+  const std::string content = "BI /W 1 /H 1 /CS /G /BPC 8 ID " +
+                              raw_bytes({128}) + "\nEI 0 0 10 10 re f";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_TRUE(std::holds_alternative<ImageElement>(page[0]));
+  EXPECT_TRUE(std::holds_alternative<PathElement>(page[1]));
+}
+
+// A Flate (`/F /Fl`) inline image is decoded and re-encoded as PNG.
+TEST(PdfPageExtractor, inline_image_flate) {
+  const std::string samples = raw_bytes({10, 20, 30, 40, 50, 60});
+  const std::string content =
+      "BI /W 2 /H 1 /CS /RGB /BPC 8 /F /Fl ID " +
+      odr::internal::crypto::util::zlib_deflate(samples) + "\nEI";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const ImageElement &img = std::get<ImageElement>(page[0]);
+  EXPECT_EQ(img.mime, "image/png");
+  EXPECT_EQ(img.data.substr(0, 8), png_signature);
+}
+
+// `/CS` naming a page `/ColorSpace` resource is resolved through it.
+TEST(PdfPageExtractor, inline_image_named_resource_color_space) {
+  auto color_space = std::make_shared<ColorSpaceDef>();
+  color_space->kind = ColorSpaceKind::device_gray;
+  color_space->components = 1;
+  Resources res;
+  res.color_space["Gray"] = color_space;
+
+  const std::string content =
+      "BI /W 1 /H 1 /CS /Gray /BPC 8 ID " + raw_bytes({200}) + "\nEI";
+  const auto page = extract_page(content, res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(std::get<ImageElement>(page[0]).mime, "image/png");
+}
+
+// An inline image mask (`/IM true`) is a stencil, deferred to a later stage:
+// emitted as nothing for now.
+TEST(PdfPageExtractor, inline_image_mask_skipped) {
+  const std::string content =
+      "BI /W 8 /H 1 /IM true /BPC 1 ID " + raw_bytes({0xAA}) + "\nEI";
+  EXPECT_TRUE(extract_page(content, Resources{}, Logger::null()).empty());
 }

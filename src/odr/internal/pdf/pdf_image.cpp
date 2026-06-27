@@ -2,6 +2,8 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
+#include <odr/internal/pdf/pdf_filter.hpp>
+#include <odr/internal/pdf/pdf_object.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
 #include <algorithm>
@@ -9,6 +11,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string_view>
+#include <utility>
 
 namespace odr::internal::pdf {
 
@@ -165,6 +168,44 @@ std::string pdf::encode_image_png(const std::string &samples,
   }
 
   return write_png_rgb(rgb, width, height);
+}
+
+std::optional<pdf::EncodedImage>
+pdf::encode_image(std::string raw, const Object &filter,
+                  const Object &decode_parms, const std::int32_t width,
+                  const std::int32_t height,
+                  const std::int32_t bits_per_component,
+                  const ColorSpaceDef *color_space,
+                  const std::vector<double> &decode_array) {
+  const std::optional<std::string> terminal = terminal_image_codec(filter);
+
+  if (terminal == "DCTDecode") {
+    // A JPEG the browser decodes itself: hand back its bytes undecoded.
+    DecodeResult result = decode(filter, decode_parms, std::move(raw));
+    if (result.stopped_at_filter == "DCTDecode") {
+      return EncodedImage{std::move(result.data), "image/jpeg"};
+    }
+    return std::nullopt;
+  }
+  if (terminal.has_value()) {
+    return std::nullopt; // JPX/CCITT/JBIG2: not yet a pass-through
+  }
+
+  // A fully decodable raster: decode, assemble samples and PNG-encode.
+  if (color_space == nullptr) {
+    return std::nullopt;
+  }
+  DecodeResult result = decode(filter, decode_parms, std::move(raw));
+  if (result.stopped_at_filter.has_value()) {
+    return std::nullopt;
+  }
+  std::string png =
+      encode_image_png(result.data, width, height, bits_per_component,
+                       *color_space, decode_array);
+  if (png.empty()) {
+    return std::nullopt;
+  }
+  return EncodedImage{std::move(png), "image/png"};
 }
 
 } // namespace odr::internal

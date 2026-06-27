@@ -140,6 +140,7 @@ std::string GraphicsOperatorParser::read_operator_name() {
 GraphicsOperator GraphicsOperatorParser::read_operator() {
   GraphicsOperator result;
 
+  std::string operator_name;
   while (true) {
     if (m_parser.peek_number()) {
       std::visit([&](auto v) { result.arguments.emplace_back(v); },
@@ -154,22 +155,38 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     } else if (m_parser.peek_dictionary()) {
       result.arguments.emplace_back(m_parser.read_dictionary());
     } else {
-      m_parser.skip_whitespace();
-      break;
+      // A bareword here is either a `true`/`false` literal (a value inside an
+      // inline image dictionary, 8.9.7) or the operator name that ends the
+      // arguments. `peek_boolean` cannot disambiguate these because operators
+      // such as `f` (fill) or `Tj` share their leading character with the
+      // boolean keywords, so read the whole word and compare it.
+      operator_name = read_operator_name();
+      if (operator_name == "true") {
+        result.arguments.emplace_back(Boolean(true));
+      } else if (operator_name == "false") {
+        result.arguments.emplace_back(Boolean(false));
+      } else {
+        break;
+      }
     }
     m_parser.skip_whitespace();
   }
 
-  const std::string operator_name = read_operator_name();
   result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
     std::cerr << "unknown operator: " << operator_name << '\n';
   }
 
-  // After `ID` the raw image bytes follow inline; consume them up to `EI` so
-  // they are not mis-tokenized as operators (which corrupts the parse state).
+  // `BI <key val …> ID <bytes> EI` is one inline image (8.9.7). The key/value
+  // pairs were just read as this operator's arguments; fold them into a
+  // dictionary and capture the raw bytes (also stopping them from being
+  // mis-tokenized as operators), so the operator carries `[dict, bytes]`.
   if (result.type == GraphicsOperatorType::begin_inline_image_data) {
-    skip_inline_image_data();
+    Dictionary dictionary = read_inline_image_dictionary(result.arguments);
+    std::string data = read_inline_image_data();
+    result.arguments.clear();
+    result.arguments.emplace_back(std::move(dictionary));
+    result.arguments.emplace_back(StandardString(std::move(data)));
   }
 
   m_parser.skip_whitespace();
@@ -177,7 +194,20 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
   return result;
 }
 
-void GraphicsOperatorParser::skip_inline_image_data() {
+Dictionary GraphicsOperatorParser::read_inline_image_dictionary(
+    const std::vector<Object> &arguments) {
+  // The inline dictionary is a flat run of name/value pairs (8.9.7).
+  // Abbreviated keys are normalized to their long forms downstream.
+  Dictionary dictionary;
+  for (std::size_t i = 0; i + 1 < arguments.size(); i += 2) {
+    if (arguments[i].is_name()) {
+      dictionary[arguments[i].as_name()] = arguments[i + 1];
+    }
+  }
+  return dictionary;
+}
+
+std::string GraphicsOperatorParser::read_inline_image_data() {
   // Exactly one white-space character separates `ID` from the data (8.9.7).
   if (m_parser.geti() != eof) {
     m_parser.bumpc();
@@ -185,13 +215,32 @@ void GraphicsOperatorParser::skip_inline_image_data() {
 
   // The length is not encoded, so scan for the `EI` terminator. `EI` also
   // occurs inside the raw image bytes, so only accept one that is followed by
-  // white-space or eof; otherwise keep scanning past it.
-  while (m_parser.skip_past("EI")) {
-    const int_type after = m_parser.geti();
-    if (after == eof ||
-        ObjectParser::is_whitespace(static_cast<char_type>(after))) {
-      return;
+  // white-space or eof; otherwise keep the bytes and keep scanning. The
+  // terminator (and the white-space convention before it) is left out of the
+  // captured data.
+  std::string data;
+  while (true) {
+    const int_type c = m_parser.geti();
+    if (c == eof) {
+      return data;
     }
+    m_parser.bumpc();
+    if (c == 'E') {
+      if (m_parser.geti() == 'I') {
+        m_parser.bumpc();
+        const int_type after = m_parser.geti();
+        if (after == eof ||
+            ObjectParser::is_whitespace(static_cast<char_type>(after))) {
+          return data;
+        }
+        data += 'E';
+        data += 'I';
+        continue;
+      }
+      data += 'E';
+      continue;
+    }
+    data += static_cast<char_type>(c);
   }
 }
 

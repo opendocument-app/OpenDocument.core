@@ -1,12 +1,35 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace odr::internal::pdf {
 
+class Object;
 struct ColorSpaceDef;
+
+/// Browser-ready image bytes and the format naming them (`image/jpeg` or
+/// `image/png`).
+struct EncodedImage {
+  std::string data;
+  std::string mime;
+};
+
+/// Turn an image's raw (still filter-encoded) stream bytes into browser-ready
+/// bytes: a JPEG (`DCTDecode`) passes through undecoded, a fully decodable
+/// raster (Flate/LZW/RunLength/ASCII/raw) is decoded and re-encoded as PNG
+/// through `color_space`. `filter`/`decode_parms` are the resolved
+/// `/Filter`/`/DecodeParms`; `color_space` may be null (used only by the raster
+/// path — a null there yields nullopt). Returns nullopt for a codec not yet
+/// handled (JPXDecode/CCITTFaxDecode/JBIG2Decode) or an inconsistent raster.
+/// Shared by image XObjects and inline images.
+std::optional<EncodedImage>
+encode_image(std::string raw, const Object &filter, const Object &decode_parms,
+             std::int32_t width, std::int32_t height,
+             std::int32_t bits_per_component, const ColorSpaceDef *color_space,
+             const std::vector<double> &decode);
 
 /// Assemble a raster image's decoded samples into a base-level (8-bit, RGB)
 /// PNG (ISO 32000-1 8.9.5 image samples -> a browser-ready raster). `samples`
