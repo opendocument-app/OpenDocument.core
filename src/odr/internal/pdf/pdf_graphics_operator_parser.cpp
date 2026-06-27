@@ -343,6 +343,13 @@ GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
         const int_type after = m_parser.geti();
         if (after == eof ||
             ObjectParser::is_whitespace(static_cast<char_type>(after))) {
+          // Drop the single white-space separator that precedes `EI`: it is the
+          // writer's delimiter, not part of the encoded payload, and a stray
+          // trailing byte corrupts the filter chain (e.g. extends a Flate
+          // stream's inflated length by one).
+          if (!data.empty()) {
+            data.pop_back();
+          }
           return data;
         }
         data += 'E';

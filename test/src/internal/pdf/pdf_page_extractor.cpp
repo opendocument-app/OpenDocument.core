@@ -998,6 +998,25 @@ TEST(PdfPageExtractor, inline_image_flate) {
   EXPECT_EQ(img.data.substr(0, 8), png_signature);
 }
 
+// A Flate inline image with a PNG predictor: the white-space separating the
+// data from `EI` must not leak into the encoded payload. A stray trailing byte
+// extends the inflated stream by one, so it is no longer a whole number of
+// predictor rows and decoding throws.
+TEST(PdfPageExtractor, inline_image_flate_predictor_drops_separator) {
+  // One PNG predictor row: a leading filter-type tag (0, None) then the
+  // samples.
+  const std::string row = raw_bytes({0, 10, 20, 30, 40, 50, 60});
+  const std::string content =
+      "BI /W 2 /H 1 /CS /RGB /BPC 8 /F /Fl "
+      "/DP <</Predictor 15 /Colors 3 /Columns 2 /BitsPerComponent 8>> ID " +
+      odr::internal::crypto::util::zlib_deflate(row) + "\nEI";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const ImageElement &img = std::get<ImageElement>(page[0]);
+  EXPECT_EQ(img.mime, "image/png");
+  EXPECT_EQ(img.data.substr(0, 8), png_signature);
+}
+
 // `/CS` naming a page `/ColorSpace` resource is resolved through it.
 TEST(PdfPageExtractor, inline_image_named_resource_color_space) {
   auto color_space = std::make_shared<ColorSpaceDef>();
