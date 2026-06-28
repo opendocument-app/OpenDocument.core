@@ -21,12 +21,18 @@ struct TextElement {
   util::math::Transform2D transform;
   /// Resolved font, or `nullptr` when the `/Font` resource name was unknown.
   Font *font{nullptr};
-  double size{0};                 // Tf size
-  double char_spacing{0};         // Tc
-  double word_spacing{0};         // Tw
-  double horizontal_scaling{100}; // Tz, percent
-  double rise{0};                 // Ts
-  int rendering_mode{0};          // Tr
+  double size{0};                                            // Tf size
+  double char_spacing{0};                                    // Tc
+  double word_spacing{0};                                    // Tw
+  double horizontal_scaling{100};                            // Tz, percent
+  double rise{0};                                            // Ts
+  TextRenderingMode rendering_mode{TextRenderingMode::fill}; // Tr
+  /// Non-stroking (fill) and stroking colours in force when the run was shown,
+  /// as device colours. The renderer paints the run in whichever its rendering
+  /// mode selects — the fill colour for the common fill modes, the stroking
+  /// colour for the stroke-only modes (Tr 1/5) — defaulting to black.
+  GraphicsState::Color fill_color;
+  GraphicsState::Color stroke_color;
   /// Raw character codes shown by this segment (one `Tj`, or one string of a
   /// `TJ` array).
   std::string codes;

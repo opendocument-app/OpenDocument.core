@@ -250,7 +250,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     break;
   case GraphicsOperatorType::set_text_rendering_mode:
     current().text.rendering_mode =
-        static_cast<int>(op.arguments.at(0).as_integer());
+        static_cast<TextRenderingMode>(op.arguments.at(0).as_integer());
     break;
   case GraphicsOperatorType::set_text_rise:
     current().text.rise = op.arguments.at(0).as_real();

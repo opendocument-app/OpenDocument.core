@@ -270,6 +270,8 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   element.horizontal_scaling = text.horizontal_scaling;
   element.rise = text.rise;
   element.rendering_mode = text.rendering_mode;
+  element.fill_color = state.current().other_color;
+  element.stroke_color = state.current().stroke_color;
   ResolvedText resolved = resolve_text(marked, font, codes);
   element.text = std::move(resolved.text);
   element.no_unicode = resolved.no_unicode;

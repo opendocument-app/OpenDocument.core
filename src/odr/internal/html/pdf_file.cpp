@@ -181,7 +181,12 @@ std::string svg_path_fragment(const pdf::PathElement &path,
 /// or "" when it carries no pass-through bytes. The image fills the unit square
 /// in user space (ISO 32000-1 8.10.5); the transform maps that square — through
 /// a vertical flip (the image's first row is its top, SVG draws y-down) and the
-/// CTM — into the page box. `clip_id` installs a clip via `clip-path`.
+/// CTM — into the page box. `clip_id`, when non-empty, installs a clip via a
+/// wrapping `<g clip-path>`. The clip geometry is in the page viewBox
+/// (`userSpaceOnUse`), but the `<image>` carries its own `transform`, so a
+/// `clip-path` placed *on the image* would be resolved in the image's
+/// post-transform unit-square space and clip the whole image away. The `<g>`
+/// carries no transform, so the clip is read in the viewBox where it lives.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
                                const std::string &clip_id) {
@@ -194,13 +199,18 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   const util::math::Transform2D m = flip * image.transform * to_box;
 
   std::ostringstream f;
+  // The clip wraps the image in a transform-free `<g>` rather than sitting on
+  // the `<image>`: see the function comment.
+  if (!clip_id.empty()) {
+    f << "<g clip-path=\"url(#" << clip_id << ")\">";
+  }
   f << R"(<image width="1" height="1" preserveAspectRatio="none" transform="matrix()"
     << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ',' << round2(m.e)
     << ',' << round2(m.f) << ")\"";
-  if (!clip_id.empty()) {
-    f << " clip-path=\"url(#" << clip_id << ")\"";
-  }
   f << " href=\"" << file_to_url(image.data, image.mime) << "\"/>";
+  if (!clip_id.empty()) {
+    f << "</g>";
+  }
   return std::move(f).str();
 }
 
@@ -621,7 +631,29 @@ public:
         // Tr 3 (invisible) and Tr 7 (clip-only) paint nothing; keep them
         // selectable via the transparent `.i` class.
         const bool invisible =
-            text.rendering_mode == 3 || text.rendering_mode == 7;
+            text.rendering_mode == pdf::TextRenderingMode::invisible ||
+            text.rendering_mode == pdf::TextRenderingMode::clip;
+
+        // The run's visible paint colour, folded onto the visible span as an
+        // interned colour class — but only when it is not the default black, so
+        // the overwhelmingly common black run adds nothing. The per-font
+        // `.fvN`/`.gvN` classes declare `color:#000`; this class is emitted
+        // after them in <head> (equal specificity), so it overrides. Invisible
+        // runs (Tr 3/7) stay transparent via `.i`, so they take no colour
+        // class. The fill modes paint with the non-stroking colour, the
+        // stroke-only modes (Tr 1/5) with the stroking colour.
+        std::string color_suffix;
+        if (!invisible) {
+          const pdf::GraphicsState::Color &paint =
+              (text.rendering_mode == pdf::TextRenderingMode::stroke ||
+               text.rendering_mode == pdf::TextRenderingMode::stroke_clip)
+                  ? text.stroke_color
+                  : text.fill_color;
+          if (std::string css = device_color_to_css(paint);
+              css != "rgb(0,0,0)") {
+            color_suffix = ' ' + styles.intern("k", "color:" + std::move(css));
+          }
+        }
 
         // Placement and spacing are shared by both layers of a run; build them
         // once on `base`.
@@ -740,17 +772,18 @@ public:
             std::string classes = std::move(base);
             classes += ' ';
             classes += font_class(font, invisible, /*nested=*/false);
+            classes += color_suffix;
             page_out.items.push_back(
                 SpanOut{std::move(classes), escape_text(text.text), {}, {}});
           } else {
             // Dual layer (a glyph lost its scalar to an earlier one): a
             // transparent selectable Unicode span with the PUA glyph layer
             // nested inside, the latter folded into the combined `.gvN` /
-            // `.giN` class.
-            page_out.items.push_back(
-                SpanOut{base + " i", escape_text(text.text),
-                        font_class(font, invisible, /*nested=*/true),
-                        escape_text(glyph_run(*text.font, text.codes))});
+            // `.giN` class. The colour rides the visible (nested) layer.
+            page_out.items.push_back(SpanOut{
+                base + " i", escape_text(text.text),
+                font_class(font, invisible, /*nested=*/true) + color_suffix,
+                escape_text(glyph_run(*text.font, text.codes))});
           }
         } else if (font != 0) {
           // The visible glyph layer: PUA code points in the embedded font,
@@ -763,16 +796,17 @@ public:
             // Unicode (for copy/search) with the glyph layer nested inside.
             // The nested child overlays the run origin and inherits the
             // placement via the combined `.gvN` / `.giN` class.
-            page_out.items.push_back(
-                SpanOut{base + " i", escape_text(text.text),
-                        font_class(font, invisible, /*nested=*/true),
-                        std::move(glyph_text)});
+            page_out.items.push_back(SpanOut{
+                base + " i", escape_text(text.text),
+                font_class(font, invisible, /*nested=*/true) + color_suffix,
+                std::move(glyph_text)});
           } else {
             // Display-only run: nothing is extractable (the `no_unicode` case),
             // so the glyph layer stands alone and carries the placement itself
             // (`base`), `.g` (unselectable) and the combined paint+font class.
             std::string glyph_classes = base + " g ";
             glyph_classes += font_class(font, invisible, /*nested=*/false);
+            glyph_classes += color_suffix;
             page_out.items.push_back(SpanOut{
                 std::move(glyph_classes), std::move(glyph_text), {}, {}});
           }
@@ -783,6 +817,7 @@ public:
           if (invisible) {
             classes += " i";
           }
+          classes += color_suffix;
           page_out.items.push_back(
               SpanOut{std::move(classes), escape_text(text.text), {}, {}});
         }

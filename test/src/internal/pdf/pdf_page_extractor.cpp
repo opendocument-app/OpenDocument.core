@@ -337,7 +337,7 @@ TEST(PdfPageExtractor, form_xobject_self_cycle_terminates) {
 TEST(PdfPageExtractor, rendering_mode_propagates) {
   const auto texts = run("BT /F1 10 Tf 3 Tr 0 0 Td (x) Tj ET");
   ASSERT_EQ(texts.size(), 1);
-  EXPECT_EQ(texts[0].rendering_mode, 3);
+  EXPECT_EQ(texts[0].rendering_mode, TextRenderingMode::invisible);
 }
 
 // A composite font with no `/ToUnicode` and no usable predefined encoding has

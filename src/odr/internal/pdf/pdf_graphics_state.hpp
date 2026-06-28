@@ -18,6 +18,21 @@ enum class ColorSpace {
   device_cmyk,
 };
 
+/// Text rendering mode (`Tr`, ISO 32000-1 Table 106): how shown glyphs are
+/// painted and/or added to the clipping path. The low two bits select the paint
+/// (fill / stroke / both / none); the `_clip` modes additionally add the glyph
+/// outlines to the clip. The integer values are the `Tr` operands.
+enum class TextRenderingMode {
+  fill = 0,
+  stroke = 1,
+  fill_stroke = 2,
+  invisible = 3,
+  fill_clip = 4,
+  stroke_clip = 5,
+  fill_stroke_clip = 6,
+  clip = 7,
+};
+
 /// One segment of a subpath, in user space (the CTM is already applied at
 /// construction time, ISO 32000-1 8.5.2.1). A line carries only `end`; a cubic
 /// Bézier carries its two control points as well.
@@ -72,16 +87,16 @@ struct GraphicsState {
   };
 
   struct Text {
-    double char_spacing{0};              // Tc
-    double word_spacing{0};              // Tw
-    double horizontal_scaling{100};      // Tz, in percent (100 = normal)
-    double leading{0};                   // TL
-    std::string font;                    // Tf resource name
-    double size{};                       // Tf size
-    int rendering_mode{0};               // Tr
-    double rise{0};                      // Ts
-    util::math::Transform2D matrix;      // Tm
-    util::math::Transform2D line_matrix; // Tlm
+    double char_spacing{0};         // Tc
+    double word_spacing{0};         // Tw
+    double horizontal_scaling{100}; // Tz, in percent (100 = normal)
+    double leading{0};              // TL
+    std::string font;               // Tf resource name
+    double size{};                  // Tf size
+    TextRenderingMode rendering_mode{TextRenderingMode::fill}; // Tr
+    double rise{0};                                            // Ts
+    util::math::Transform2D matrix;                            // Tm
+    util::math::Transform2D line_matrix;                       // Tlm
     std::array<double, 2> glyph_width{};
     std::array<double, 4> glyph_bounding_box{};
   };
