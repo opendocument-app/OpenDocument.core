@@ -342,7 +342,9 @@ void set_color_space(GraphicsState::Color &color, const std::string &name,
 /// colour space, interpret the components as a device colour by their count
 /// (ISO 32000-1 8.6.8). A trailing name operand selects a `/Pattern`: its name
 /// is recorded on `color.pattern` and resolved against `Resources::pattern` at
-/// paint time (a shading pattern then fills the path through its gradient).
+/// paint time (a shading pattern fills through its gradient). An uncoloured
+/// tiling pattern carries leading components — the colour in the pattern colour
+/// space's underlying space — which are still resolved into the fill colour.
 void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
   std::vector<double> components;
   std::string pattern_name;
@@ -354,9 +356,10 @@ void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
     }
   }
   color.pattern = pattern_name;
-  if (!pattern_name.empty()) {
-    // A pattern colour carries no device components to convert; the pattern is
-    // resolved at paint time. Leave any underlying colour as-is.
+  if (!pattern_name.empty() && components.empty()) {
+    // A coloured pattern (or shading pattern) carries no components; the
+    // pattern is resolved at paint time and any underlying colour is left
+    // as-is.
     return;
   }
   if (color.def != nullptr) {
@@ -437,6 +440,9 @@ void paint_path(std::vector<PageElement> &out, const Resources &resources,
           pattern->shading != nullptr) {
         element.fill_shading = pattern->shading.get();
         element.shading_transform = pattern->matrix;
+      } else if (pattern->type == Pattern::Type::tiling) {
+        element.fill_pattern = pattern;
+        element.pattern_transform = pattern->matrix;
       }
     }
   }

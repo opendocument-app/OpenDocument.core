@@ -177,6 +177,19 @@ struct Pattern final : Element {
   /// Shading pattern (`/PatternType 2`): the shading painted through the path,
   /// pre-resolved (its tint function sampled into stops). Null otherwise.
   std::shared_ptr<Shading> shading;
+
+  /// Tiling pattern (`/PatternType 1`, ISO 32000-1 8.7.3.1): a content-stream
+  /// cell tiled across the filled region. `/PaintType` 1 (coloured) carries its
+  /// own colours; `/PaintType` 2 (uncoloured) is painted entirely in the
+  /// current fill colour at use time. The cell is `/BBox` in pattern space,
+  /// repeated every `/XStep`/`/YStep`. Fields are zero/empty for a non-tiling
+  /// pattern.
+  std::int32_t paint_type{0};    ///< `/PaintType`: 1 coloured, 2 uncoloured
+  std::array<double, 4> bbox{};  ///< `/BBox` `[x0 y0 x1 y1]`, pattern space
+  double x_step{0};              ///< `/XStep`, pattern space
+  double y_step{0};              ///< `/YStep`, pattern space
+  Resources *resources{nullptr}; ///< the tile's own `/Resources`
+  std::string content;           ///< decoded tile content stream
 };
 
 /// A non-owning view over a string of PDF character codes, splitting it into
