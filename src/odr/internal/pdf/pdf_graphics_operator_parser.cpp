@@ -122,7 +122,7 @@ const Object &inline_image_entry(const Dictionary &dictionary,
 // Sample components of an inline image's colour space, but only for the device
 // spaces that are self-contained in inline content. Named spaces (page
 // `/ColorSpace` resources) and `/Indexed` arrays are not resolved here.
-std::optional<int> inline_color_components(const Object &color_space) {
+std::optional<std::int32_t> inline_color_components(const Object &color_space) {
   if (!color_space.is_name()) {
     return std::nullopt;
   }
@@ -150,8 +150,8 @@ inline_image_raw_length(const Dictionary &dictionary) {
     return std::nullopt;
   }
 
-  int components;
-  int bits_per_component;
+  std::int32_t components;
+  std::int32_t bits_per_component;
   if (inline_image_entry(dictionary, "IM", "ImageMask")
           .as_bool_opt()
           .value_or(false)) {
@@ -159,13 +159,13 @@ inline_image_raw_length(const Dictionary &dictionary) {
     components = 1;
     bits_per_component = 1;
   } else {
-    const std::optional<int> resolved = inline_color_components(
+    const std::optional<std::int32_t> resolved = inline_color_components(
         inline_image_entry(dictionary, "CS", "ColorSpace"));
     if (!resolved.has_value()) {
       return std::nullopt;
     }
     components = *resolved;
-    bits_per_component = static_cast<int>(
+    bits_per_component = static_cast<std::int32_t>(
         inline_image_entry(dictionary, "BPC", "BitsPerComponent")
             .as_integer_opt()
             .value_or(8));

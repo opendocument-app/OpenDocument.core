@@ -855,7 +855,7 @@ TEST(PdfPageExtractor, device_color_clears_color_space) {
   EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
 }
 
-// --- stage 4.5: image XObjects (JPEG pass-through) ------------------------
+// --- image XObjects (JPEG pass-through) ------------------------
 
 namespace {
 
@@ -925,7 +925,7 @@ TEST(PdfPageExtractor, image_in_paint_order) {
   EXPECT_TRUE(std::holds_alternative<PathElement>(page[2]));
 }
 
-// --- stage 4.7: inline images (BI/ID/EI) ---------------------------------
+// --- inline images (BI/ID/EI) ---------------------------------
 
 namespace {
 
