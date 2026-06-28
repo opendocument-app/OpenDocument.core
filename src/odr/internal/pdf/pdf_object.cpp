@@ -11,18 +11,6 @@
 
 namespace odr::internal::pdf {
 
-std::vector<double> as_reals(const Object &object) {
-  std::vector<double> result;
-  if (object.is_array()) {
-    const Array &array = object.as_array();
-    result.reserve(array.size());
-    for (const Object &item : array) {
-      result.push_back(item.as_real());
-    }
-  }
-  return result;
-}
-
 void StandardString::to_stream(std::ostream &out) const {
   // TODO escape
   out << "(" << string << ")";
@@ -121,6 +109,18 @@ std::optional<std::string> Object::as_string_opt() && {
     return std::move(*this).as_name_opt();
   }
   return std::nullopt;
+}
+
+std::vector<double> Object::as_reals() const {
+  std::vector<double> result;
+  if (is_array()) {
+    const Array &array = as_array();
+    result.reserve(array.size());
+    for (const Object &item : array) {
+      result.push_back(item.as_real());
+    }
+  }
+  return result;
 }
 
 void Object::to_stream(std::ostream &out) const {

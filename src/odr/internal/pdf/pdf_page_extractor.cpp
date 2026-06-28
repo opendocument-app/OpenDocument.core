@@ -527,7 +527,7 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
       dictionary.get("Width").as_integer_opt().value_or(0));
   const auto height = static_cast<std::int32_t>(
       dictionary.get("Height").as_integer_opt().value_or(0));
-  const std::vector<double> decode_array = as_reals(dictionary.get("Decode"));
+  const std::vector<double> decode_array = dictionary.get("Decode").as_reals();
 
   // An inline `/ImageMask true` stencil: decode the 1-bpc bitmap and paint it
   // in the current fill colour, as for a stencil image XObject (ISO

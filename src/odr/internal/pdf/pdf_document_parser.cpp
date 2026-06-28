@@ -538,7 +538,7 @@ std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
 /// The `/Decode` array of an image dictionary as doubles ([] when absent).
 std::vector<double> image_decode(DocumentParser &parser,
                                  const Dictionary &dictionary) {
-  return as_reals(parser.resolve_object_copy(dictionary.get("Decode")));
+  return parser.resolve_object_copy(dictionary.get("Decode")).as_reals();
 }
 
 /// Bind the parser-backed `resolve`/`load_stream` hooks shared by every typed
@@ -676,7 +676,7 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   if (alpha.empty() && dictionary.has_value("Mask")) {
     const Object mask = parser.resolve_object_copy(dictionary["Mask"]);
     if (mask.is_array()) {
-      color_key = as_reals(mask);
+      color_key = mask.as_reals();
     } else if (dictionary["Mask"].is_reference()) {
       alpha = resolve_mask_alpha(parser, dictionary["Mask"], width, height,
                                  /*stencil=*/true);

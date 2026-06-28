@@ -12,7 +12,7 @@ namespace {
 /// resolving an indirect reference first.
 std::vector<double> read_numbers(const Dictionary &dict, const std::string &key,
                                  const ShadingContext &context) {
-  return as_reals(context.resolve(dict.get(key)));
+  return context.resolve(dict.get(key)).as_reals();
 }
 
 /// Parse the `/Function` of a shading: either one function or an array of

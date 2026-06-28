@@ -223,6 +223,13 @@ public:
   Array *as_array_ptr() & { return as_ptr<Array>(); }
   Dictionary *as_dictionary_ptr() & { return as_ptr<Dictionary>(); }
 
+  /// The elements of an array `Object` as doubles, in order (each via
+  /// `Object::as_real`). Returns an empty vector when `object` is not an array.
+  /// Convenience for the many PDF arrays that are plain number lists
+  /// (`/Decode`,
+  /// `/Coords`, `/Domain`, `/Background`, a colour-key `/Mask`, ...).
+  std::vector<double> as_reals() const;
+
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
 
@@ -342,12 +349,6 @@ public:
 private:
   Holder m_holder;
 };
-
-/// The elements of an array `Object` as doubles, in order (each via
-/// `Object::as_real`). Returns an empty vector when `object` is not an array.
-/// Convenience for the many PDF arrays that are plain number lists (`/Decode`,
-/// `/Coords`, `/Domain`, `/Background`, a colour-key `/Mask`, ...).
-std::vector<double> as_reals(const Object &object);
 
 std::ostream &operator<<(std::ostream &, const StandardString &);
 std::ostream &operator<<(std::ostream &, const HexString &);
