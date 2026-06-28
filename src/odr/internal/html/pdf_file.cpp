@@ -381,7 +381,7 @@ std::string svg_shading_fragment(const std::string &gradient_id,
 /// are skipped — rare). Returns "" for an unrepresentable pattern.
 class PatternRegistry {
 public:
-  explicit PatternRegistry(std::uint32_t page) : m_page{page} {}
+  explicit PatternRegistry(const std::uint32_t page) : m_page{page} {}
 
   std::string register_pattern(const pdf::Pattern &pattern,
                                const util::math::Transform2D &m,
@@ -437,7 +437,7 @@ public:
   [[nodiscard]] std::string defs() const { return m_defs.str(); }
 
 private:
-  std::uint32_t m_page;
+  std::uint32_t m_page{};
   std::uint32_t m_count{0};
   std::unordered_map<std::string, std::string> m_id_by_signature;
   std::ostringstream m_defs;
@@ -774,7 +774,8 @@ public:
         // the page viewBox (fill and/or stroke), under any active clip. A
         // shading- or tiling-pattern fill is painted through a paint server
         // (gradient/`<pattern>`) instead of a colour.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element); path != nullptr) {
+        if (const auto *path = std::get_if<pdf::PathElement>(&element);
+            path != nullptr) {
           const std::string clip_id = clips.register_clip(path->clip, to_box);
           std::string fill_url_id;
           if (path->fill_shading != nullptr) {
