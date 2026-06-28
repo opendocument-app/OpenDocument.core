@@ -525,12 +525,110 @@ Element *parse_page_or_pages(State &state, const ObjectReference &reference,
 // back the in-progress element, so the in-memory graph mirrors the file.
 Resources *parse_resources(State &state, const Object &object);
 
+/// Read an integer image-dictionary entry (e.g. `/Width`), resolving an
+/// indirect reference, defaulting to `fallback`.
+std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
+                       const std::string &key, const std::int32_t fallback) {
+  return static_cast<std::int32_t>(
+      parser.resolve_object_copy(dictionary.get(key))
+          .as_integer_opt()
+          .value_or(fallback));
+}
+
+/// The `/Decode` array of an image dictionary as doubles ([] when absent).
+std::vector<double> image_decode(DocumentParser &parser,
+                                 const Dictionary &dictionary) {
+  std::vector<double> decode;
+  const Object decode_object =
+      parser.resolve_object_copy(dictionary.get("Decode"));
+  if (decode_object.is_array()) {
+    for (const Object &item : decode_object.as_array()) {
+      decode.push_back(item.as_real());
+    }
+  }
+  return decode;
+}
+
+/// Resolve a `/SMask` (soft mask) or stencil `/Mask` sub-image referenced by
+/// `mask` into a base-sized alpha plane (ISO 32000-1 11.6.5.2 / 8.9.6.3). The
+/// sub-image is a single-component raster: decode its `/Filter` chain, then map
+/// its samples to coverage (`decode_mask_alpha`). Returns empty when `mask` is
+/// not a stream reference or its codec is not decodable (CCITT/JBIG2/JPX), so
+/// the base image stays opaque.
+std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
+                                             const Object &mask,
+                                             const std::int32_t base_width,
+                                             const std::int32_t base_height,
+                                             const bool stencil) {
+  if (!mask.is_reference()) {
+    return {};
+  }
+  const IndirectObject &object = parser.read_object(mask.as_reference());
+  if (!object.object.is_dictionary()) {
+    return {};
+  }
+  const Dictionary &dictionary = object.object.as_dictionary();
+  Object filter;
+  if (dictionary.has_key("Filter")) {
+    filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
+  }
+  Object decode_parms;
+  if (dictionary.has_key("DecodeParms")) {
+    decode_parms = parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
+  }
+  DecodeResult result =
+      decode(filter, decode_parms, parser.read_object_stream(object));
+  if (result.stopped_at_filter.has_value()) {
+    return {}; // an image codec we cannot decode (CCITT/JBIG2/JPX)
+  }
+  return decode_mask_alpha(
+      result.data, image_int(parser, dictionary, "Width", 0),
+      image_int(parser, dictionary, "Height", 0),
+      image_int(parser, dictionary, "BitsPerComponent", stencil ? 1 : 8),
+      image_decode(parser, dictionary), stencil, base_width, base_height);
+}
+
+/// Carry an `/ImageMask true` stencil's decoded bitmap and geometry onto
+/// `x_object` (ISO 32000-1 8.9.6.2). The stencil is painted in the current fill
+/// colour, known only at `Do` time, so the page extractor recolours it; here we
+/// only decode and stash. An undecodable codec leaves `stencil_mask` false so
+/// `Do` skips it.
+void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
+                        const IndirectObject &object, XObject &x_object) {
+  Object filter;
+  if (dictionary.has_key("Filter")) {
+    filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
+  }
+  Object decode_parms;
+  if (dictionary.has_key("DecodeParms")) {
+    decode_parms = parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
+  }
+  DecodeResult result =
+      decode(filter, decode_parms, parser.read_object_stream(object));
+  if (result.stopped_at_filter.has_value()) {
+    return; // CCITT/JBIG2 fax stencils are not yet decodable
+  }
+  const std::int32_t width = image_int(parser, dictionary, "Width", 0);
+  const std::int32_t height = image_int(parser, dictionary, "Height", 0);
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  x_object.stencil_mask = true;
+  x_object.stencil_samples = std::move(result.data);
+  x_object.stencil_width = width;
+  x_object.stencil_height = height;
+  x_object.stencil_decode = image_decode(parser, dictionary);
+}
+
 /// Build the browser-ready bytes of an image XObject (ISO 32000-1 8.9). A JPEG
 /// (`DCTDecode`) passes through undecoded; a fully decodable raster
 /// (Flate/LZW/RunLength/ASCII/raw) is decoded, its samples assembled through
-/// the image's colour space and re-encoded as an 8-bit RGB PNG. Codecs we
+/// the image's colour space and re-encoded as a PNG — RGBA when a `/SMask`,
+/// stencil `/Mask` or colour-key `/Mask` supplies transparency. Codecs we
 /// cannot yet hand off (JPXDecode, CCITTFaxDecode, JBIG2Decode) and unresolved
-/// colour spaces leave the bytes empty, so `Do` skips the image.
+/// colour spaces leave the bytes empty, so `Do` skips the image. A `/SMask` or
+/// `/Mask` on a JPEG base is ignored (decoding the JPEG to composite is out of
+/// scope).
 void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
                       const IndirectObject &object, XObject &x_object) {
   Object filter;
@@ -558,31 +656,38 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
     };
     color_space = parse_color_space(dictionary.get("ColorSpace"), context);
   }
-  const auto width = static_cast<std::int32_t>(
-      parser.resolve_object_copy(dictionary.get("Width"))
-          .as_integer_opt()
-          .value_or(0));
-  const auto height = static_cast<std::int32_t>(
-      parser.resolve_object_copy(dictionary.get("Height"))
-          .as_integer_opt()
-          .value_or(0));
-  const auto bits_per_component = static_cast<std::int32_t>(
-      parser.resolve_object_copy(dictionary.get("BitsPerComponent"))
-          .as_integer_opt()
-          .value_or(8));
+  const std::int32_t width = image_int(parser, dictionary, "Width", 0);
+  const std::int32_t height = image_int(parser, dictionary, "Height", 0);
+  const std::int32_t bits_per_component =
+      image_int(parser, dictionary, "BitsPerComponent", 8);
+  const std::vector<double> decode_array = image_decode(parser, dictionary);
 
-  std::vector<double> decode_array;
-  const Object decode_object =
-      parser.resolve_object_copy(dictionary.get("Decode"));
-  if (decode_object.is_array()) {
-    for (const Object &item : decode_object.as_array()) {
-      decode_array.push_back(item.as_real());
+  // Transparency (8.9.6 / 11.6.5.2): a `/SMask` (alpha) takes precedence over a
+  // `/Mask`, which is either a stencil sub-image (a reference) or a colour-key
+  // array. Each resolves to a base-sized alpha plane or a colour-key range,
+  // which `encode_image` composites into an RGBA PNG on the raster path.
+  std::vector<std::uint8_t> alpha;
+  std::vector<double> color_key;
+  if (dictionary.has_value("SMask")) {
+    alpha = resolve_mask_alpha(parser, dictionary["SMask"], width, height,
+                               /*stencil=*/false);
+  }
+  if (alpha.empty() && dictionary.has_value("Mask")) {
+    const Object mask = parser.resolve_object_copy(dictionary["Mask"]);
+    if (mask.is_array()) {
+      for (const Object &item : mask.as_array()) {
+        color_key.push_back(item.as_real());
+      }
+    } else if (dictionary["Mask"].is_reference()) {
+      alpha = resolve_mask_alpha(parser, dictionary["Mask"], width, height,
+                                 /*stencil=*/true);
     }
   }
 
-  if (std::optional<EncodedImage> encoded = encode_image(
-          parser.read_object_stream(object), filter, decode_parms, width,
-          height, bits_per_component, color_space.get(), decode_array)) {
+  if (std::optional<EncodedImage> encoded =
+          encode_image(parser.read_object_stream(object), filter, decode_parms,
+                       width, height, bits_per_component, color_space.get(),
+                       decode_array, alpha, color_key)) {
     x_object.image_data = std::move(encoded->data);
     x_object.image_mime = std::move(encoded->mime);
   }
@@ -614,12 +719,15 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
                                   : "";
   if (subtype == "Image") {
     x_object->subtype = XObject::Subtype::image;
-    // `/ImageMask` stencils and colour-key masks are a later stage (4.8); leave
-    // their bytes empty so `Do` skips them. Everything else is handed to the
-    // browser as JPEG (pass-through) or PNG (raster), or skipped.
+    // An `/ImageMask true` stencil is painted in the current fill colour (known
+    // only at `Do` time), so its bitmap is stashed for the page extractor to
+    // recolour; everything else is encoded to JPEG/PNG bytes here (with any
+    // `/SMask`/`/Mask` transparency), or skipped.
     const bool image_mask =
         dictionary.get("ImageMask").as_bool_opt().value_or(false);
-    if (!image_mask) {
+    if (image_mask) {
+      parse_stencil_mask(parser, dictionary, object, *x_object);
+    } else {
       parse_image_data(parser, dictionary, object, *x_object);
     }
     return x_object;

@@ -4,6 +4,7 @@
 
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_filter.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
@@ -38,7 +39,7 @@ Font *lookup_font(const Resources &resources, const std::string &name,
 /// diacritic block (0x18–0x1F), the typographic block (0x80–0x9E), and the
 /// euro (0xA0) need overriding; every other byte stands for the code point of
 /// the same value. The few undefined slots (0x7F, 0x9F, 0xAD) pass through.
-char32_t pdf_doc_encoding_to_unicode(std::uint8_t byte) {
+char32_t pdf_doc_encoding_to_unicode(const std::uint8_t byte) {
   switch (byte) {
   case 0x18:
     return U'˘'; // breve
@@ -377,11 +378,35 @@ void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
   }
 }
 
+/// Resolve a graphics-state colour to sRGB in [0, 1]. Non-device spaces have
+/// already been converted to `rgb` by `set_color`/`set_color_space` (they set
+/// `space` to `device_rgb`); CMYK uses the same naive conversion as the HTML
+/// emitter. Used to paint a stencil image mask in the current fill colour.
+std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
+  switch (color.space) {
+  case ColorSpace::device_grey:
+    return {color.grey, color.grey, color.grey};
+  case ColorSpace::device_rgb:
+    return {color.rgb[0], color.rgb[1], color.rgb[2]};
+  case ColorSpace::device_cmyk: {
+    const double c = color.cmyk[0];
+    const double m = color.cmyk[1];
+    const double y = color.cmyk[2];
+    const double k = color.cmyk[3];
+    return {(1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)};
+  }
+  case ColorSpace::unknown:
+    break;
+  }
+  return {0, 0, 0};
+}
+
 /// Emit a path-painting element from the path accumulated in `state` and the
 /// current paint state, then clear the path (as every painting operator does).
 /// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
-void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
-                bool stroke, bool even_odd, bool close) {
+void paint_path(std::vector<PageElement> &out, GraphicsState &state,
+                const bool fill, const bool stroke, const bool even_odd,
+                const bool close) {
   if (close) {
     state.path_close();
   }
@@ -468,8 +493,8 @@ resolve_inline_color_space(const Object &color_space,
 /// Emit an `ImageElement` for an inline image (`BI`/`ID`/`EI`). The operator
 /// carries the inline dictionary and the raw bytes; both are routed through the
 /// same image emission as an image XObject (placed by the CTM, under the
-/// current clip). Image masks are deferred (4.8); an unsupported codec or
-/// colour space yields nothing.
+/// current clip). An `/ImageMask true` stencil is painted in the current fill
+/// colour; an unsupported codec or colour space yields nothing.
 void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
                        GraphicsState &state, std::vector<PageElement> &out) {
   if (op.arguments.size() < 2 || !op.arguments[0].is_dictionary() ||
@@ -479,24 +504,46 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
   const Dictionary dictionary =
       normalize_inline_image(op.arguments[0].as_dictionary());
 
-  if (dictionary.get("ImageMask").as_bool_opt().value_or(false)) {
-    return;
-  }
-
-  const std::shared_ptr<ColorSpaceDef> color_space =
-      resolve_inline_color_space(dictionary.get("ColorSpace"), resources);
   const auto width = static_cast<std::int32_t>(
       dictionary.get("Width").as_integer_opt().value_or(0));
   const auto height = static_cast<std::int32_t>(
       dictionary.get("Height").as_integer_opt().value_or(0));
-  const auto bits_per_component = static_cast<std::int32_t>(
-      dictionary.get("BitsPerComponent").as_integer_opt().value_or(8));
   std::vector<double> decode_array;
   if (const Object &d = dictionary.get("Decode"); d.is_array()) {
     for (const Object &item : d.as_array()) {
       decode_array.push_back(item.as_real());
     }
   }
+
+  // An inline `/ImageMask true` stencil: decode the 1-bpc bitmap and paint it
+  // in the current fill colour, as for a stencil image XObject (ISO
+  // 32000-1 8.9.7).
+  if (dictionary.get("ImageMask").as_bool_opt().value_or(false)) {
+    DecodeResult mask =
+        decode(dictionary.get("Filter"), dictionary.get("DecodeParms"),
+               op.arguments[1].as_string());
+    if (mask.stopped_at_filter.has_value()) {
+      return;
+    }
+    std::string png = encode_stencil_png(
+        mask.data, width, height, color_to_rgb(state.current().other_color),
+        decode_array);
+    if (png.empty()) {
+      return;
+    }
+    ImageElement image;
+    image.transform = state.current().general.transform_matrix;
+    image.clip = state.current().clip;
+    image.data = std::move(png);
+    image.mime = "image/png";
+    out.push_back(std::move(image));
+    return;
+  }
+
+  const std::shared_ptr<ColorSpaceDef> color_space =
+      resolve_inline_color_space(dictionary.get("ColorSpace"), resources);
+  const auto bits_per_component = static_cast<std::int32_t>(
+      dictionary.get("BitsPerComponent").as_integer_opt().value_or(8));
 
   std::optional<EncodedImage> encoded =
       encode_image(op.arguments[1].as_string(), dictionary.get("Filter"),
@@ -570,16 +617,31 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   const XObject *x_object = it->second;
   if (x_object->subtype == XObject::Subtype::image) {
     // An image is placed by the CTM in effect (its unit square maps to user
-    // space), under the current clip. Only codecs with bytes ready for the
-    // browser carry `image_data` (stage 4.5: JPEG); the rest are skipped.
-    if (!x_object->image_data.empty()) {
-      ImageElement image;
-      image.transform = state.current().general.transform_matrix;
-      image.clip = state.current().clip;
+    // space), under the current clip.
+    ImageElement image;
+    image.transform = state.current().general.transform_matrix;
+    image.clip = state.current().clip;
+    if (x_object->stencil_mask) {
+      // A 1-bpc stencil painted in the current fill colour (resolved here, not
+      // at parse time, since the colour lives in the graphics state).
+      std::string png = encode_stencil_png(
+          x_object->stencil_samples, x_object->stencil_width,
+          x_object->stencil_height, color_to_rgb(state.current().other_color),
+          x_object->stencil_decode);
+      if (png.empty()) {
+        return;
+      }
+      image.data = std::move(png);
+      image.mime = "image/png";
+    } else if (!x_object->image_data.empty()) {
+      // A normal image: bytes ready for the browser (JPEG pass-through or a
+      // PNG-encoded raster). Codecs we cannot hand off carry none, so skip.
       image.data = x_object->image_data;
       image.mime = x_object->image_mime;
-      out.push_back(std::move(image));
+    } else {
+      return;
     }
+    out.push_back(std::move(image));
     return;
   }
   if (x_object->subtype != XObject::Subtype::form) {

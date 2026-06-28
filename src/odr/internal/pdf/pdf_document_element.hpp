@@ -126,11 +126,23 @@ struct XObject final : Element {
 
   /// Image XObject only: the encoded image bytes for the browser — a JPEG
   /// passed through (`DCTDecode`) or a raster re-encoded as PNG (Flate/LZW/raw
-  /// samples assembled through the colour space) — with `image_mime` naming the
-  /// format. Empty for a codec not yet handled (JPX/CCITT/JBIG2), an image mask
-  /// (later stages) and non-image XObjects, so `Do` skips it.
+  /// samples assembled through the colour space, with a `/SMask`/`/Mask`
+  /// composited into RGBA) — with `image_mime` naming the format. Empty for a
+  /// codec not yet handled (JPX/CCITT/JBIG2), a stencil mask (see below) and
+  /// non-image XObjects, so `Do` skips it.
   std::string image_data;
   std::string image_mime;
+
+  /// Image XObject `/ImageMask true` (ISO 32000-1 8.9.6.2): a 1-bpc stencil
+  /// painted in the *current fill colour*, which is known only at `Do` time. So
+  /// the decoded bitmap and its geometry are carried here for the page
+  /// extractor to recolour (`encode_stencil_png`); `image_data` stays empty.
+  /// `false` for a normal image.
+  bool stencil_mask{false};
+  std::string stencil_samples;    ///< decoded 1-bpc bitmap, rows byte-aligned
+  std::int32_t stencil_width{0};  ///< `/Width`
+  std::int32_t stencil_height{0}; ///< `/Height`
+  std::vector<double> stencil_decode; ///< `/Decode`, empty = default `[0 1]`
 };
 
 /// A non-owning view over a string of PDF character codes, splitting it into
