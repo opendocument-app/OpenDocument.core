@@ -39,7 +39,7 @@ Font *lookup_font(const Resources &resources, const std::string &name,
 /// diacritic block (0x18–0x1F), the typographic block (0x80–0x9E), and the
 /// euro (0xA0) need overriding; every other byte stands for the code point of
 /// the same value. The few undefined slots (0x7F, 0x9F, 0xAD) pass through.
-char32_t pdf_doc_encoding_to_unicode(std::uint8_t byte) {
+char32_t pdf_doc_encoding_to_unicode(const std::uint8_t byte) {
   switch (byte) {
   case 0x18:
     return U'˘'; // breve
@@ -404,8 +404,9 @@ std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
 /// Emit a path-painting element from the path accumulated in `state` and the
 /// current paint state, then clear the path (as every painting operator does).
 /// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
-void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
-                bool stroke, bool even_odd, bool close) {
+void paint_path(std::vector<PageElement> &out, GraphicsState &state,
+                const bool fill, const bool stroke, const bool even_odd,
+                const bool close) {
   if (close) {
     state.path_close();
   }

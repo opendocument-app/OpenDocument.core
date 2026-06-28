@@ -528,7 +528,7 @@ Resources *parse_resources(State &state, const Object &object);
 /// Read an integer image-dictionary entry (e.g. `/Width`), resolving an
 /// indirect reference, defaulting to `fallback`.
 std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
-                       const std::string &key, std::int32_t fallback) {
+                       const std::string &key, const std::int32_t fallback) {
   return static_cast<std::int32_t>(
       parser.resolve_object_copy(dictionary.get(key))
           .as_integer_opt()
@@ -557,9 +557,9 @@ std::vector<double> image_decode(DocumentParser &parser,
 /// the base image stays opaque.
 std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
                                              const Object &mask,
-                                             std::int32_t base_width,
-                                             std::int32_t base_height,
-                                             bool stencil) {
+                                             const std::int32_t base_width,
+                                             const std::int32_t base_height,
+                                             const bool stencil) {
   if (!mask.is_reference()) {
     return {};
   }
