@@ -217,6 +217,19 @@ TEST(SfntTransform, reencode_with_extra_adds_real_unicode_beside_pua) {
   EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
 }
 
+TEST(SfntTransform, reencode_drops_extra_entries_past_glyph_count) {
+  sfnt::SfntFont font = parse(sample_font()); // 3 glyphs: valid ids 0..2
+  // 'A' -> 1 is in range; 'B' -> 7 is past the glyph count. An out-of-range
+  // glyph reference makes the OTS sanitizer reject the whole cmap (and the
+  // font), so it must be dropped rather than written.
+  reencode_to_pua(font, {{U'A', 1}, {U'B', 7}});
+
+  EXPECT_EQ(font.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(font.glyph_for_code_point('B'), 0); // dropped: not mapped
+  // The in-range PUA range is untouched.
+  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
+}
+
 TEST(SfntTransform, reencode_with_extra_round_trips_through_write) {
   sfnt::SfntFont font = parse(sample_font());
   // 'A' is adjacent to nothing; 'Z' forces a second cmap segment past the PUA.
