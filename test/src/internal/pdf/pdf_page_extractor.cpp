@@ -299,14 +299,35 @@ TEST(PdfPageExtractor, form_xobject_nested) {
   EXPECT_EQ(texts[0].codes, "in");
 }
 
-// Image XObjects are recognized but not rendered: `Do` is a no-op.
+// Image XObjects with no browser-ready bytes (an unhandled codec) are skipped:
+// `Do` is a no-op.
 TEST(PdfPageExtractor, image_xobject_ignored) {
   XObject image;
   image.subtype = XObject::Subtype::image;
   Resources res;
   res.x_object["Im0"] = &image;
 
-  EXPECT_TRUE(run("/Im0 Do", res).empty());
+  EXPECT_TRUE(extract_page("/Im0 Do", res, Logger::null()).empty());
+}
+
+// A stencil image mask (`/ImageMask true`) is painted in the current fill
+// colour at `Do` time, producing a recoloured RGBA PNG `ImageElement`.
+TEST(PdfPageExtractor, stencil_image_xobject_recoloured) {
+  XObject mask;
+  mask.subtype = XObject::Subtype::image;
+  mask.stencil_mask = true;
+  mask.stencil_width = 2;
+  mask.stencil_height = 1;
+  mask.stencil_samples = std::string(1, '\x40'); // 1 bpc, bits 0,1 (padded)
+  Resources res;
+  res.x_object["Im0"] = &mask;
+
+  const auto elements = extract_page("1 0 0 rg /Im0 Do", res, Logger::null());
+  ASSERT_EQ(elements.size(), 1);
+  const auto *image = std::get_if<ImageElement>(&elements[0]);
+  ASSERT_NE(image, nullptr);
+  EXPECT_EQ(image->mime, "image/png");
+  EXPECT_FALSE(image->data.empty());
 }
 
 // An unknown XObject name is skipped without throwing.
@@ -1032,10 +1053,15 @@ TEST(PdfPageExtractor, inline_image_named_resource_color_space) {
   EXPECT_EQ(std::get<ImageElement>(page[0]).mime, "image/png");
 }
 
-// An inline image mask (`/IM true`) is a stencil, deferred to a later stage:
-// emitted as nothing for now.
-TEST(PdfPageExtractor, inline_image_mask_skipped) {
+// An inline image mask (`/IM true`) is a 1-bpc stencil painted in the current
+// fill colour, emitted as a recoloured RGBA PNG `ImageElement`.
+TEST(PdfPageExtractor, inline_image_mask_recoloured) {
   const std::string content =
-      "BI /W 8 /H 1 /IM true /BPC 1 ID " + raw_bytes({0xAA}) + "\nEI";
-  EXPECT_TRUE(extract_page(content, Resources{}, Logger::null()).empty());
+      "0 0 1 rg BI /W 8 /H 1 /IM true /BPC 1 ID " + raw_bytes({0xAA}) + "\nEI";
+  const auto page = extract_page(content, Resources{}, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const auto *image = std::get_if<ImageElement>(&page[0]);
+  ASSERT_NE(image, nullptr);
+  EXPECT_EQ(image->mime, "image/png");
+  EXPECT_FALSE(image->data.empty());
 }

@@ -570,8 +570,10 @@ stage exists to avoid.
   usually ship none — the deferred AFM-widths item) as a generated data table.
   Glyph shapes are the browser's fallback font.
 - **Images**: `DCTDecode` → `<img>` JPEG pass-through; Flate/LZW raster → PNG
-  encode; inline images (`BI`/`ID`/`EI` — currently not even tokenized correctly
-  past `ID`); image masks and SMasks later.
+  encode; inline images (`BI`/`ID`/`EI`); `/ImageMask` stencils painted in the
+  current fill colour; `/SMask` and `/Mask` (stencil + colour-key) composited
+  into RGBA on the raster path (a mask on a JPEG base is ignored — decoding the
+  JPEG to composite is out of scope).
 - **SVG residue** — where no 1:1 primitive exists; all at generation time, never
   rasterization: mesh/function shadings (types 1, 4–7) → tessellate into small
   flat polygons (pdf.js's approach); color spaces

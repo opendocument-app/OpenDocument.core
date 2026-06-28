@@ -113,12 +113,52 @@ std::string pdf::write_png_rgb(const std::string &rgb, const std::int32_t width,
   return out;
 }
 
+std::string pdf::write_png_rgba(const std::string &rgba,
+                                const std::int32_t width,
+                                const std::int32_t height) {
+  if (width <= 0 || height <= 0) {
+    return {};
+  }
+  const auto stride = static_cast<std::size_t>(width) * 4;
+  if (rgba.size() < stride * static_cast<std::size_t>(height)) {
+    return {};
+  }
+
+  std::string raw;
+  raw.reserve((stride + 1) * static_cast<std::size_t>(height));
+  for (std::int32_t y = 0; y < height; ++y) {
+    raw.push_back(0); // filter type 0 (None)
+    raw.append(rgba, static_cast<std::size_t>(y) * stride, stride);
+  }
+
+  std::string out;
+  static const char signature[] = {
+      static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
+      static_cast<char>(0x1A), '\n'};
+  out.append(signature, sizeof(signature));
+
+  std::string ihdr;
+  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
+  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(height));
+  ihdr.push_back(8); // bit depth
+  ihdr.push_back(6); // colour type: truecolour with alpha (RGBA)
+  ihdr.push_back(0); // compression: deflate
+  ihdr.push_back(0); // filter method: adaptive
+  ihdr.push_back(0); // interlace: none
+  write_chunk(out, "IHDR", ihdr);
+  write_chunk(out, "IDAT", crypto::util::zlib_deflate(raw));
+  write_chunk(out, "IEND", "");
+  return out;
+}
+
 std::string pdf::encode_image_png(const std::string &samples,
                                   const std::int32_t width,
                                   const std::int32_t height,
                                   const std::int32_t bits_per_component,
                                   const ColorSpaceDef &color_space,
-                                  const std::vector<double> &decode) {
+                                  const std::vector<double> &decode,
+                                  const std::vector<std::uint8_t> &alpha,
+                                  const std::vector<double> &color_key) {
   const std::int32_t components = color_space.components;
   if (width <= 0 || height <= 0 || components <= 0 || bits_per_component <= 0 ||
       bits_per_component > 16) {
@@ -136,18 +176,29 @@ std::string pdf::encode_image_png(const std::string &samples,
                         static_cast<std::size_t>(bits_per_component);
   const std::size_t row_bytes = (row_bits + 7) / 8;
 
-  std::string rgb;
-  rgb.resize(static_cast<std::size_t>(width) *
-             static_cast<std::size_t>(height) * 3);
+  const auto pixel_count =
+      static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+  // A colour-key array (8.9.6.4) or an alpha plane (an SMask / stencil /Mask)
+  // makes the output RGBA; otherwise it stays the compact 3-byte RGB.
+  const bool has_color_key =
+      color_key.size() >= 2 * static_cast<std::size_t>(components);
+  const bool has_alpha = alpha.size() == pixel_count || has_color_key;
+  const std::size_t channels = has_alpha ? 4 : 3;
+
+  std::string out;
+  out.resize(pixel_count * channels);
 
   std::vector<double> component_values(static_cast<std::size_t>(components));
+  std::vector<std::uint32_t> raw_samples(static_cast<std::size_t>(components));
   std::size_t out_index = 0;
+  std::size_t pixel_index = 0;
   for (std::int32_t y = 0; y < height; ++y) {
     BitReader reader(samples, static_cast<std::size_t>(y) * row_bytes);
     for (std::int32_t x = 0; x < width; ++x) {
       for (std::int32_t j = 0; j < components; ++j) {
         const std::uint32_t sample = reader.read(bits_per_component);
         const auto k = static_cast<std::size_t>(j);
+        raw_samples[k] = sample;
         if (decode.size() >= 2 * (k + 1)) {
           const double d_min = decode[2 * k];
           const double d_max = decode[2 * k + 1];
@@ -161,20 +212,135 @@ std::string pdf::encode_image_png(const std::string &samples,
         }
       }
       const std::array<double, 3> pixel = color_space.to_rgb(component_values);
-      rgb[out_index++] = static_cast<char>(to_byte(pixel[0]));
-      rgb[out_index++] = static_cast<char>(to_byte(pixel[1]));
-      rgb[out_index++] = static_cast<char>(to_byte(pixel[2]));
+      out[out_index++] = static_cast<char>(to_byte(pixel[0]));
+      out[out_index++] = static_cast<char>(to_byte(pixel[1]));
+      out[out_index++] = static_cast<char>(to_byte(pixel[2]));
+      if (has_alpha) {
+        std::uint8_t a =
+            alpha.size() == pixel_count ? alpha[pixel_index] : 0xFF;
+        if (has_color_key) {
+          bool keyed = true;
+          for (std::int32_t j = 0; j < components && keyed; ++j) {
+            const auto k = static_cast<std::size_t>(j);
+            if (raw_samples[k] < color_key[2 * k] ||
+                raw_samples[k] > color_key[2 * k + 1]) {
+              keyed = false;
+            }
+          }
+          if (keyed) {
+            a = 0;
+          }
+        }
+        out[out_index++] = static_cast<char>(a);
+      }
+      ++pixel_index;
     }
   }
 
-  return write_png_rgb(rgb, width, height);
+  return has_alpha ? write_png_rgba(out, width, height)
+                   : write_png_rgb(out, width, height);
+}
+
+std::vector<std::uint8_t> pdf::decode_mask_alpha(
+    const std::string &samples, const std::int32_t width,
+    const std::int32_t height, const std::int32_t bits_per_component,
+    const std::vector<double> &decode, const bool stencil,
+    const std::int32_t base_width, const std::int32_t base_height) {
+  if (width <= 0 || height <= 0 || base_width <= 0 || base_height <= 0 ||
+      bits_per_component <= 0 || bits_per_component > 16) {
+    return {};
+  }
+  const std::uint32_t max_sample =
+      (1u << static_cast<std::uint32_t>(bits_per_component)) - 1u;
+  const std::size_t row_bytes =
+      (static_cast<std::size_t>(width) *
+           static_cast<std::size_t>(bits_per_component) +
+       7) /
+      8;
+  // A /Decode of [1 0] inverts the mask sense (8.9.5.4).
+  const bool invert = decode.size() >= 2 && decode[0] > decode[1];
+
+  // Decode the mask at its native resolution first, then resample.
+  std::vector<std::uint8_t> native(static_cast<std::size_t>(width) *
+                                   static_cast<std::size_t>(height));
+  std::size_t i = 0;
+  for (std::int32_t y = 0; y < height; ++y) {
+    BitReader reader(samples, static_cast<std::size_t>(y) * row_bytes);
+    for (std::int32_t x = 0; x < width; ++x) {
+      const std::uint32_t sample = reader.read(bits_per_component);
+      double value = static_cast<double>(sample) / max_sample;
+      if (invert) {
+        value = 1.0 - value;
+      }
+      if (stencil) {
+        // An explicit stencil /Mask: a decoded 1 masks the base pixel out.
+        native[i++] = value >= 0.5 ? 0x00 : 0xFF;
+      } else {
+        // A soft mask: the grey level is the coverage directly.
+        native[i++] = to_byte(value);
+      }
+    }
+  }
+
+  if (width == base_width && height == base_height) {
+    return native;
+  }
+  std::vector<std::uint8_t> out(static_cast<std::size_t>(base_width) *
+                                static_cast<std::size_t>(base_height));
+  std::size_t o = 0;
+  for (std::int32_t by = 0; by < base_height; ++by) {
+    const std::int32_t my = std::min(height - 1, by * height / base_height);
+    for (std::int32_t bx = 0; bx < base_width; ++bx) {
+      const std::int32_t mx = std::min(width - 1, bx * width / base_width);
+      out[o++] = native[static_cast<std::size_t>(my) * width + mx];
+    }
+  }
+  return out;
+}
+
+std::string pdf::encode_stencil_png(const std::string &samples,
+                                    const std::int32_t width,
+                                    const std::int32_t height,
+                                    const std::array<double, 3> &color,
+                                    const std::vector<double> &decode) {
+  if (width <= 0 || height <= 0) {
+    return {};
+  }
+  // 1 bpc, one component; rows byte-aligned (8.9.5.2).
+  const std::size_t row_bytes = (static_cast<std::size_t>(width) + 7) / 8;
+  // Default /Decode is [0 1]: a sample of 0 paints, 1 is transparent. A /Decode
+  // of [1 0] swaps that — paint when the decoded value rounds to 0.
+  const bool invert = decode.size() >= 2 && decode[0] > decode[1];
+
+  const std::uint8_t r = to_byte(color[0]);
+  const std::uint8_t g = to_byte(color[1]);
+  const std::uint8_t b = to_byte(color[2]);
+
+  std::string rgba;
+  rgba.resize(static_cast<std::size_t>(width) *
+              static_cast<std::size_t>(height) * 4);
+  std::size_t out_index = 0;
+  for (std::int32_t y = 0; y < height; ++y) {
+    BitReader reader(samples, static_cast<std::size_t>(y) * row_bytes);
+    for (std::int32_t x = 0; x < width; ++x) {
+      const bool one = reader.read(1) != 0;
+      const bool paint = invert ? one : !one;
+      rgba[out_index++] = static_cast<char>(r);
+      rgba[out_index++] = static_cast<char>(g);
+      rgba[out_index++] = static_cast<char>(b);
+      rgba[out_index++] = static_cast<char>(paint ? 0xFF : 0x00);
+    }
+  }
+  return write_png_rgba(rgba, width, height);
 }
 
 std::optional<pdf::EncodedImage> pdf::encode_image(
     std::string raw, const Object &filter, const Object &decode_parms,
     const std::int32_t width, const std::int32_t height,
     const std::int32_t bits_per_component, const ColorSpaceDef *color_space,
-    const std::vector<double> &decode_array) {
+    const std::vector<double> &decode_array,
+    const std::vector<std::uint8_t> &alpha,
+    const std::vector<double> &color_key) {
   const std::optional<std::string> terminal = terminal_image_codec(filter);
 
   if (terminal == "DCTDecode") {
@@ -199,7 +365,7 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
   }
   std::string png =
       encode_image_png(result.data, width, height, bits_per_component,
-                       *color_space, decode_array);
+                       *color_space, decode_array, alpha, color_key);
   if (png.empty()) {
     return std::nullopt;
   }
