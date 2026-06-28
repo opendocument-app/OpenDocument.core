@@ -113,6 +113,10 @@ struct GraphicsState {
     /// at the time the operator runs; null for a device colour space. Cleared
     /// by the device colour operators (`g`/`rg`/`k`).
     const ColorSpaceDef *def{nullptr};
+    /// The resource name of the `/Pattern` selected by `scn`/`SCN` (a shading
+    /// or tiling pattern), resolved against `Resources::pattern` at paint time.
+    /// Empty for a plain colour; cleared by the device colour operators.
+    std::string pattern;
   };
 
   struct State {

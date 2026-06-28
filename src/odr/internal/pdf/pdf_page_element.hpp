@@ -10,6 +10,7 @@
 namespace odr::internal::pdf {
 
 struct Font;
+struct Shading;
 
 /// One show-text operation laid out in user space. The transform places the
 /// text origin and orientation; the font size is kept separate so the renderer
@@ -65,8 +66,9 @@ struct TextElement {
 /// space. The geometry is fully resolved (the CTM applied at construction), so
 /// a renderer maps it through the page transform alone. The paint intent and
 /// the paint-relevant graphics state are snapshotted; colors are kept as PDF
-/// device colors and converted to RGB by the renderer. `/Pattern` color is
-/// stage 4.9+ and not yet represented.
+/// device colors and converted to RGB by the renderer. A `/PatternType 2`
+/// shading pattern fill is carried by `fill_shading`; tiling patterns
+/// (`/PatternType 1`) are a later stage.
 struct PathElement {
   /// The subpaths to paint, in user space.
   std::vector<Subpath> subpaths;
@@ -81,6 +83,13 @@ struct PathElement {
   /// Non-stroking (fill) color and stroking color, as device colors.
   GraphicsState::Color fill_color;
   GraphicsState::Color stroke_color;
+  /// When the fill is a shading pattern (`scn` naming a `/PatternType 2`
+  /// pattern), the resolved shading to paint through the path instead of
+  /// `fill_color`, with `shading_transform` mapping shading space to user space
+  /// (the pattern `/Matrix`). Null for a plain colour fill. Owned by
+  /// `Resources`, which outlives the element.
+  const Shading *fill_shading{nullptr};
+  util::math::Transform2D shading_transform;
   /// Stroke parameters. `line_width` and the dash lengths are in the path's
   /// user space (the CTM scale is already folded in, so they live in the same
   /// space as the geometry). A `line_width` of 0 means a device-thin line.
@@ -105,9 +114,24 @@ struct ImageElement {
   std::string mime; // e.g. "image/jpeg"
 };
 
+/// One area painted by the `sh` operator (ISO 32000-1 8.7.4.2): a shading
+/// flooded over the current clip region (no path geometry of its own). The
+/// transform maps shading space to user space (the CTM at `sh` time); the clip
+/// is snapshotted as for a path. The renderer paints the shading's gradient
+/// across the clipped area.
+struct ShadingElement {
+  /// The shading to paint. Owned by `Resources`, which outlives the element.
+  const Shading *shading{nullptr};
+  /// Shading space -> user space (the CTM in force at `sh` time).
+  util::math::Transform2D transform;
+  /// The clip in force, snapshotted so the renderer bounds the flood.
+  std::vector<ClipPath> clip;
+};
+
 /// A single page-content element in paint (z) order: a shown text segment, a
-/// painted path or an image. Shadings and patterns join this variant in later
-/// stage-4 PRs.
-using PageElement = std::variant<TextElement, PathElement, ImageElement>;
+/// painted path, an image, or a shading flood (`sh`). Shading *patterns* ride
+/// on `PathElement::fill_shading`; tiling patterns join in a later stage.
+using PageElement =
+    std::variant<TextElement, PathElement, ImageElement, ShadingElement>;
 
 } // namespace odr::internal::pdf

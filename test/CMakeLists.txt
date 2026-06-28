@@ -55,6 +55,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_object.cpp"
         "src/internal/pdf/pdf_object_parser.cpp"
         "src/internal/pdf/pdf_page_extractor.cpp"
+        "src/internal/pdf/pdf_shading.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
         "src/internal/font/cff_font.cpp"

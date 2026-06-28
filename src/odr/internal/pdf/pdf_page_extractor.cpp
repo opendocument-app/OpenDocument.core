@@ -340,24 +340,28 @@ void set_color_space(GraphicsState::Color &color, const std::string &name,
 /// Resolve a general colour operator (`sc`/`scn`/`SC`/`SCN`): convert the
 /// operand components through the active colour space to RGB. With no resource
 /// colour space, interpret the components as a device colour by their count
-/// (ISO 32000-1 8.6.8). A trailing name operand (a `/Pattern`) carries no
-/// convertible components — left as-is (stage 4.9/4.10).
+/// (ISO 32000-1 8.6.8). A trailing name operand selects a `/Pattern`: its name
+/// is recorded on `color.pattern` and resolved against `Resources::pattern` at
+/// paint time (a shading pattern then fills the path through its gradient).
 void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
   std::vector<double> components;
-  bool has_pattern_name = false;
+  std::string pattern_name;
   for (const Object &argument : op.arguments) {
     if (argument.is_name()) {
-      has_pattern_name = true;
+      pattern_name = argument.as_name();
     } else if (argument.is_real()) {
       components.push_back(argument.as_real());
     }
   }
+  color.pattern = pattern_name;
+  if (!pattern_name.empty()) {
+    // A pattern colour carries no device components to convert; the pattern is
+    // resolved at paint time. Leave any underlying colour as-is.
+    return;
+  }
   if (color.def != nullptr) {
     color.space = ColorSpace::device_rgb;
     color.rgb = color.def->to_rgb(components);
-    return;
-  }
-  if (has_pattern_name) {
     return;
   }
   switch (components.size()) {
@@ -404,9 +408,9 @@ std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
 /// Emit a path-painting element from the path accumulated in `state` and the
 /// current paint state, then clear the path (as every painting operator does).
 /// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
-void paint_path(std::vector<PageElement> &out, GraphicsState &state,
-                const bool fill, const bool stroke, const bool even_odd,
-                const bool close) {
+void paint_path(std::vector<PageElement> &out, const Resources &resources,
+                GraphicsState &state, const bool fill, const bool stroke,
+                const bool even_odd, const bool close) {
   if (close) {
     state.path_close();
   }
@@ -421,6 +425,22 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state,
   element.even_odd = even_odd;
   element.fill_color = s.other_color;
   element.stroke_color = s.stroke_color;
+  // A `/Pattern`-coloured fill: resolve the pattern selected by `scn`. A
+  // shading pattern (`/PatternType 2`) paints its gradient through the path;
+  // its
+  // `/Matrix` maps shading space to the page's default user space (ISO 32000-1
+  // 8.7.3.1). Other pattern types fall through to the plain fill colour.
+  if (fill && !s.other_color.pattern.empty()) {
+    if (const auto it = resources.pattern.find(s.other_color.pattern);
+        it != resources.pattern.end() && it->second != nullptr) {
+      const Pattern *pattern = it->second;
+      if (pattern->type == Pattern::Type::shading &&
+          pattern->shading != nullptr) {
+        element.fill_shading = pattern->shading.get();
+        element.shading_transform = pattern->matrix;
+      }
+    }
+  }
   // The stroke width and dash lengths are given in the CTM's space; fold the
   // CTM scale in so they live in the same user space as the geometry. Use the
   // area-preserving factor sqrt|det| (an anisotropic CTM can't be expressed as
@@ -559,6 +579,26 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
   image.data = std::move(encoded->data);
   image.mime = std::move(encoded->mime);
   out.push_back(std::move(image));
+}
+
+/// Emit a `ShadingElement` for the `sh` operator (ISO 32000-1 8.7.4.2): flood
+/// the named `/Shading` over the current clip region. The shading is mapped to
+/// user space by the CTM in force; unsupported shadings (parsed to nothing)
+/// produce no element.
+void emit_shading(const GraphicsOperator &op, const Resources &resources,
+                  GraphicsState &state, std::vector<PageElement> &out) {
+  if (op.arguments.empty() || !op.arguments.at(0).is_name()) {
+    return;
+  }
+  const auto it = resources.shading.find(op.arguments.at(0).as_name());
+  if (it == resources.shading.end() || it->second == nullptr) {
+    return;
+  }
+  ShadingElement element;
+  element.shading = it->second.get();
+  element.transform = state.current().general.transform_matrix;
+  element.clip = state.current().clip;
+  out.push_back(std::move(element));
 }
 
 /// Form XObjects currently being rendered, by element identity. The parser
@@ -722,28 +762,31 @@ void run_content(const std::string &content, const Resources &resources,
       break;
 
     case GraphicsOperatorType::stroke: // S
-      paint_path(out, state, false, true, false, false);
+      paint_path(out, resources, state, false, true, false, false);
       break;
     case GraphicsOperatorType::close_stroke: // s
-      paint_path(out, state, false, true, false, true);
+      paint_path(out, resources, state, false, true, false, true);
       break;
     case GraphicsOperatorType::fill_nonzero: // f, F
-      paint_path(out, state, true, false, false, false);
+      paint_path(out, resources, state, true, false, false, false);
       break;
     case GraphicsOperatorType::fill_evenodd: // f*
-      paint_path(out, state, true, false, true, false);
+      paint_path(out, resources, state, true, false, true, false);
       break;
     case GraphicsOperatorType::fill_nonzero_stroke: // B
-      paint_path(out, state, true, true, false, false);
+      paint_path(out, resources, state, true, true, false, false);
       break;
     case GraphicsOperatorType::fill_evenodd_stroke: // B*
-      paint_path(out, state, true, true, true, false);
+      paint_path(out, resources, state, true, true, true, false);
       break;
     case GraphicsOperatorType::close_fill_nonzero_stroke: // b
-      paint_path(out, state, true, true, false, true);
+      paint_path(out, resources, state, true, true, false, true);
       break;
     case GraphicsOperatorType::close_fill_evenodd_stroke: // b*
-      paint_path(out, state, true, true, true, true);
+      paint_path(out, resources, state, true, true, true, true);
+      break;
+    case GraphicsOperatorType::set_clipping_path_shading: // sh
+      emit_shading(op, resources, state, out);
       break;
     case GraphicsOperatorType::end_path: // n
       // Path painted with no marks — its only role is to install a pending
