@@ -46,7 +46,7 @@ parse_shading_functions(const Object &function, const ShadingContext &context) {
 /// into the colour-component vector the colour space expects.
 std::vector<double>
 eval_components(const std::vector<std::shared_ptr<Function>> &functions,
-                double t) {
+                const double t) {
   std::vector<double> components;
   for (const auto &function : functions) {
     std::vector<double> out = function->eval({t});

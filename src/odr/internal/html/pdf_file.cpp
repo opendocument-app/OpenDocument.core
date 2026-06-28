@@ -295,7 +295,7 @@ private:
 /// Honouring them needs the fill clipped to the gradient band/annulus.
 class GradientRegistry {
 public:
-  explicit GradientRegistry(std::uint32_t page) : m_page{page} {}
+  explicit GradientRegistry(const std::uint32_t page) : m_page{page} {}
 
   /// The gradient id to reference via `fill="url(#id)"` for `shading` placed by
   /// `m` (shading space -> page box). Empty for an unrepresentable shading.
@@ -344,7 +344,7 @@ public:
   [[nodiscard]] std::string defs() const { return m_defs.str(); }
 
 private:
-  std::uint32_t m_page;
+  std::uint32_t m_page{};
   std::uint32_t m_count{0};
   std::unordered_map<std::string, std::string> m_id_by_signature;
   std::ostringstream m_defs;
@@ -355,8 +355,8 @@ private:
 /// `sh` time). Returns "" when the shading produced no gradient. The rect spans
 /// the whole page; the clip (and the gradient's own extent) bound the paint.
 std::string svg_shading_fragment(const std::string &gradient_id,
-                                 const std::string &clip_id, double width,
-                                 double height) {
+                                 const std::string &clip_id, const double width,
+                                 const double height) {
   if (gradient_id.empty()) {
     return {};
   }
@@ -700,7 +700,8 @@ public:
         // the page viewBox (fill and/or stroke), under any active clip. A
         // shading-pattern fill is painted through a gradient instead of a
         // colour.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+        if (const auto *path = std::get_if<pdf::PathElement>(&element);
+            path != nullptr) {
           const std::string clip_id = clips.register_clip(path->clip, to_box);
           std::string gradient_id;
           if (path->fill_shading != nullptr) {
@@ -717,7 +718,8 @@ public:
 
         // An `sh` shading flood: a `<rect>` over the page box filled with the
         // shading's gradient, bounded by the clip in force at `sh` time.
-        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
+        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element);
+            shading != nullptr) {
           if (shading->shading == nullptr) {
             continue;
           }
