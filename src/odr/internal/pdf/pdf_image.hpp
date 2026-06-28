@@ -73,17 +73,13 @@ decode_mask_alpha(const std::string &samples, std::int32_t width,
                   const std::vector<double> &decode, bool stencil,
                   std::int32_t base_width, std::int32_t base_height);
 
-/// Wrap 8-bit RGB pixels (`3 * width * height` bytes, row-major, no padding)
-/// into a PNG (single `IDAT`, no interlacing). The compression core; exposed
-/// for testing the container independently of sample assembly.
-std::string write_png_rgb(const std::string &rgb, std::int32_t width,
-                          std::int32_t height);
-
-/// Wrap 8-bit RGBA pixels (`4 * width * height` bytes, row-major, no padding)
-/// into a PNG (colour type 6). The transparency-carrying sibling of
-/// `write_png_rgb`.
-std::string write_png_rgba(const std::string &rgba, std::int32_t width,
-                           std::int32_t height);
+/// Wrap 8-bit pixels (`channels * width * height` bytes, row-major, no padding)
+/// into a PNG (single `IDAT`, no interlacing). `channels` is 3 for RGB (colour
+/// type 2) or 4 for RGBA (colour type 6); any other value yields "". The
+/// compression core; exposed for testing the container independently of sample
+/// assembly.
+std::string write_png(const std::string &pixels, std::int32_t width,
+                      std::int32_t height, std::int32_t channels);
 
 /// Paint a 1-bit stencil image mask (ISO 32000-1 8.9.6.2) in `color` (sRGB in
 /// [0, 1]): a sample whose decoded value is 0 paints `color` opaquely, a 1 is

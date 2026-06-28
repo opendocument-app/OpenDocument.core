@@ -74,13 +74,15 @@ std::uint8_t to_byte(const double v) {
 
 namespace odr::internal {
 
-std::string pdf::write_png_rgb(const std::string &rgb, const std::int32_t width,
-                               const std::int32_t height) {
-  if (width <= 0 || height <= 0) {
+std::string pdf::write_png(const std::string &pixels, const std::int32_t width,
+                           const std::int32_t height,
+                           const std::int32_t channels) {
+  if (width <= 0 || height <= 0 || (channels != 3 && channels != 4)) {
     return {};
   }
-  const auto stride = static_cast<std::size_t>(width) * 3;
-  if (rgb.size() < stride * static_cast<std::size_t>(height)) {
+  const auto stride =
+      static_cast<std::size_t>(width) * static_cast<std::size_t>(channels);
+  if (pixels.size() < stride * static_cast<std::size_t>(height)) {
     return {};
   }
 
@@ -90,7 +92,7 @@ std::string pdf::write_png_rgb(const std::string &rgb, const std::int32_t width,
   raw.reserve((stride + 1) * static_cast<std::size_t>(height));
   for (std::int32_t y = 0; y < height; ++y) {
     raw.push_back(0);
-    raw.append(rgb, static_cast<std::size_t>(y) * stride, stride);
+    raw.append(pixels, static_cast<std::size_t>(y) * stride, stride);
   }
 
   std::string out;
@@ -103,45 +105,8 @@ std::string pdf::write_png_rgb(const std::string &rgb, const std::int32_t width,
   util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
   util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(height));
   ihdr.push_back(8); // bit depth
-  ihdr.push_back(2); // colour type: truecolour (RGB)
-  ihdr.push_back(0); // compression: deflate
-  ihdr.push_back(0); // filter method: adaptive
-  ihdr.push_back(0); // interlace: none
-  write_chunk(out, "IHDR", ihdr);
-  write_chunk(out, "IDAT", crypto::util::zlib_deflate(raw));
-  write_chunk(out, "IEND", "");
-  return out;
-}
-
-std::string pdf::write_png_rgba(const std::string &rgba,
-                                const std::int32_t width,
-                                const std::int32_t height) {
-  if (width <= 0 || height <= 0) {
-    return {};
-  }
-  const auto stride = static_cast<std::size_t>(width) * 4;
-  if (rgba.size() < stride * static_cast<std::size_t>(height)) {
-    return {};
-  }
-
-  std::string raw;
-  raw.reserve((stride + 1) * static_cast<std::size_t>(height));
-  for (std::int32_t y = 0; y < height; ++y) {
-    raw.push_back(0); // filter type 0 (None)
-    raw.append(rgba, static_cast<std::size_t>(y) * stride, stride);
-  }
-
-  std::string out;
-  static const char signature[] = {
-      static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
-      static_cast<char>(0x1A), '\n'};
-  out.append(signature, sizeof(signature));
-
-  std::string ihdr;
-  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
-  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(height));
-  ihdr.push_back(8); // bit depth
-  ihdr.push_back(6); // colour type: truecolour with alpha (RGBA)
+  // Colour type: 2 = truecolour (RGB), 6 = truecolour with alpha (RGBA).
+  ihdr.push_back(channels == 4 ? 6 : 2);
   ihdr.push_back(0); // compression: deflate
   ihdr.push_back(0); // filter method: adaptive
   ihdr.push_back(0); // interlace: none
@@ -237,8 +202,7 @@ std::string pdf::encode_image_png(const std::string &samples,
     }
   }
 
-  return has_alpha ? write_png_rgba(out, width, height)
-                   : write_png_rgb(out, width, height);
+  return write_png(out, width, height, has_alpha ? 4 : 3);
 }
 
 std::vector<std::uint8_t> pdf::decode_mask_alpha(
@@ -331,7 +295,7 @@ std::string pdf::encode_stencil_png(const std::string &samples,
       rgba[out_index++] = static_cast<char>(paint ? 0xFF : 0x00);
     }
   }
-  return write_png_rgba(rgba, width, height);
+  return write_png(rgba, width, height, 4);
 }
 
 std::optional<pdf::EncodedImage> pdf::encode_image(

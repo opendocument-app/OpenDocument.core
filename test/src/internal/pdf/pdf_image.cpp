@@ -149,15 +149,15 @@ TEST(PdfImage, write_png_rgb_round_trip) {
   // 2x2: red, green / blue, white.
   const std::string rgb =
       bytes({255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255});
-  const DecodedPng png = decode_png(write_png_rgb(rgb, 2, 2));
+  const DecodedPng png = decode_png(write_png(rgb, 2, 2, 3));
   EXPECT_EQ(png.width, 2);
   EXPECT_EQ(png.height, 2);
   EXPECT_EQ(png.rgb, rgb);
 }
 
 TEST(PdfImage, write_png_rgb_rejects_short_buffer) {
-  EXPECT_TRUE(write_png_rgb(bytes({255, 0, 0}), 2, 2).empty());
-  EXPECT_TRUE(write_png_rgb("", 0, 0).empty());
+  EXPECT_TRUE(write_png(bytes({255, 0, 0}), 2, 2, 3).empty());
+  EXPECT_TRUE(write_png("", 0, 0, 3).empty());
 }
 
 TEST(PdfImage, encode_rgb_8bpc) {
@@ -244,7 +244,7 @@ TEST(PdfImage, encode_rejects_bad_parameters) {
 TEST(PdfImage, write_png_rgba_round_trip) {
   // 2x1: opaque red, half-transparent green.
   const std::string rgba = bytes({255, 0, 0, 255, 0, 255, 0, 128});
-  const DecodedPngRgba png = decode_png_rgba(write_png_rgba(rgba, 2, 1));
+  const DecodedPngRgba png = decode_png_rgba(write_png(rgba, 2, 1, 4));
   EXPECT_EQ(png.width, 2);
   EXPECT_EQ(png.height, 1);
   EXPECT_EQ(png.rgba, rgba);
