@@ -25,6 +25,12 @@ struct GradientStop {
 /// The tint `/Function` is pre-sampled into `stops`, so a renderer maps this to
 /// an SVG `<linearGradient>`/`<radialGradient>` directly. Other shading types
 /// (1, 4–7) are not modelled here (a later stage tessellates them).
+///
+/// NOTE: `extend`, `background` and `bbox` are parsed but not yet honoured by
+/// the renderer — it always emits the gradient with SVG's `pad` spread, which
+/// over-paints a non-extended shading beyond its interval (see
+/// `GradientRegistry` in `html/pdf_file.cpp`). They are carried here so the
+/// deferred bounds and background handling needs no re-parse.
 struct Shading {
   /// `/ShadingType`: 2 (axial) or 3 (radial).
   std::int32_t type{0};
@@ -34,17 +40,19 @@ struct Shading {
   std::array<double, 6> coords{};
   /// `/Domain` `[t0 t1]` of the parametric variable (default `[0 1]`).
   std::array<double, 2> domain{0, 1};
-  /// `/Extend`: whether the shading continues beyond the axis ends.
-  std::array<bool, 2> extend{false, false};
   /// Colour stops sampled across `domain` (offsets in [0, 1], `stops.front()`
   /// at `t0`), in source order — at least two.
   std::vector<GradientStop> stops;
+  /// `/Extend`: whether the shading continues beyond the axis ends. Parsed but
+  /// not yet honoured (see the struct note).
+  std::array<bool, 2> extend{false, false};
   /// `/Background` colour (sRGB), painted outside the shading where `/Extend`
-  /// does not reach; absent when the shading declares none.
+  /// does not reach; absent when the shading declares none. Parsed but not yet
+  /// honoured (see the struct note).
   bool has_background{false};
   std::array<double, 3> background{};
   /// `/BBox` `[x0 y0 x1 y1]` in shading space, clipping the shading; absent
-  /// when none is declared.
+  /// when none is declared. Parsed but not yet honoured (see the struct note).
   bool has_bbox{false};
   std::array<double, 4> bbox{};
 };
@@ -57,9 +65,8 @@ struct ShadingContext {
 };
 
 /// Build a shading from its `/Shading` dictionary, sampling its tint function
-/// into `stops` through the shading's colour space. `color_context` resolves
-/// the
-/// `/ColorSpace`. Returns `nullptr` for a malformed or unsupported shading
+/// into `stops` through the shading's colour space (resolved via
+/// `color_context`). Returns `nullptr` for a malformed or unsupported shading
 /// (types other than 2/3).
 std::shared_ptr<Shading> parse_shading(const Object &object,
                                        const ShadingContext &context,

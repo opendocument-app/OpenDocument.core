@@ -427,8 +427,7 @@ void paint_path(std::vector<PageElement> &out, const Resources &resources,
   element.stroke_color = s.stroke_color;
   // A `/Pattern`-coloured fill: resolve the pattern selected by `scn`. A
   // shading pattern (`/PatternType 2`) paints its gradient through the path;
-  // its
-  // `/Matrix` maps shading space to the page's default user space (ISO 32000-1
+  // its matrix maps shading space to the page's default user space (ISO 32000-1
   // 8.7.3.1). Other pattern types fall through to the plain fill colour.
   if (fill && !s.other_color.pattern.empty()) {
     if (const auto it = resources.pattern.find(s.other_color.pattern);
@@ -528,12 +527,7 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
       dictionary.get("Width").as_integer_opt().value_or(0));
   const auto height = static_cast<std::int32_t>(
       dictionary.get("Height").as_integer_opt().value_or(0));
-  std::vector<double> decode_array;
-  if (const Object &d = dictionary.get("Decode"); d.is_array()) {
-    for (const Object &item : d.as_array()) {
-      decode_array.push_back(item.as_real());
-    }
-  }
+  const std::vector<double> decode_array = as_reals(dictionary.get("Decode"));
 
   // An inline `/ImageMask true` stencil: decode the 1-bpc bitmap and paint it
   // in the current fill colour, as for a stencil image XObject (ISO

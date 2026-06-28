@@ -8,17 +8,11 @@ namespace odr::internal::pdf {
 
 namespace {
 
-/// Read a numeric array entry as doubles ([] when absent or not an array).
+/// Read a numeric array entry as doubles ([] when absent or not an array),
+/// resolving an indirect reference first.
 std::vector<double> read_numbers(const Dictionary &dict, const std::string &key,
                                  const ShadingContext &context) {
-  std::vector<double> result;
-  const Object value = context.resolve(dict.get(key));
-  if (value.is_array()) {
-    for (const Object &item : value.as_array()) {
-      result.push_back(item.as_real());
-    }
-  }
-  return result;
+  return as_reals(context.resolve(dict.get(key)));
 }
 
 /// Parse the `/Function` of a shading: either one function or an array of

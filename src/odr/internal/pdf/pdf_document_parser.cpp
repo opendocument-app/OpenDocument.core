@@ -538,15 +538,22 @@ std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
 /// The `/Decode` array of an image dictionary as doubles ([] when absent).
 std::vector<double> image_decode(DocumentParser &parser,
                                  const Dictionary &dictionary) {
-  std::vector<double> decode;
-  const Object decode_object =
-      parser.resolve_object_copy(dictionary.get("Decode"));
-  if (decode_object.is_array()) {
-    for (const Object &item : decode_object.as_array()) {
-      decode.push_back(item.as_real());
-    }
-  }
-  return decode;
+  return as_reals(parser.resolve_object_copy(dictionary.get("Decode")));
+}
+
+/// Bind the parser-backed `resolve`/`load_stream` hooks shared by every typed
+/// context (`ColorSpaceContext`, `FunctionContext`, `ShadingContext`): each
+/// dereferences an object and decodes a stream's bytes through `parser`.
+template <typename Context>
+void bind_parser_io(Context &context, DocumentParser &parser) {
+  context.resolve = [&parser](const Object &object) {
+    return parser.resolve_object_copy(object);
+  };
+  context.load_stream = [&parser](const Object &object) {
+    return object.is_reference()
+               ? parser.read_decoded_stream(object.as_reference())
+               : std::string{};
+  };
 }
 
 /// Resolve a `/SMask` (soft mask) or stencil `/Mask` sub-image referenced by
@@ -647,13 +654,7 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   std::shared_ptr<ColorSpaceDef> color_space;
   if (dictionary.has_value("ColorSpace")) {
     ColorSpaceContext context;
-    context.resolve = [&parser](const Object &o) {
-      return parser.resolve_object_copy(o);
-    };
-    context.load_stream = [&parser](const Object &o) {
-      return o.is_reference() ? parser.read_decoded_stream(o.as_reference())
-                              : std::string{};
-    };
+    bind_parser_io(context, parser);
     color_space = parse_color_space(dictionary.get("ColorSpace"), context);
   }
   const std::int32_t width = image_int(parser, dictionary, "Width", 0);
@@ -675,9 +676,7 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   if (alpha.empty() && dictionary.has_value("Mask")) {
     const Object mask = parser.resolve_object_copy(dictionary["Mask"]);
     if (mask.is_array()) {
-      for (const Object &item : mask.as_array()) {
-        color_key.push_back(item.as_real());
-      }
+      color_key = as_reals(mask);
     } else if (dictionary["Mask"].is_reference()) {
       alpha = resolve_mask_alpha(parser, dictionary["Mask"], width, height,
                                  /*stencil=*/true);
@@ -764,14 +763,7 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
 ColorSpaceContext make_color_space_context(DocumentParser &parser,
                                            const Resources *resources) {
   ColorSpaceContext context;
-  context.resolve = [&parser](const Object &object) {
-    return parser.resolve_object_copy(object);
-  };
-  context.load_stream = [&parser](const Object &object) {
-    return object.is_reference()
-               ? parser.read_decoded_stream(object.as_reference())
-               : std::string{};
-  };
+  bind_parser_io(context, parser);
   context.named =
       [resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
     const auto it = resources->color_space.find(name);
@@ -787,13 +779,7 @@ std::shared_ptr<Shading> parse_shading_resource(State &state,
                                                 const Resources *resources) {
   DocumentParser &parser = state.parser();
   ShadingContext context;
-  context.resolve = [&parser](const Object &o) {
-    return parser.resolve_object_copy(o);
-  };
-  context.load_stream = [&parser](const Object &o) {
-    return o.is_reference() ? parser.read_decoded_stream(o.as_reference())
-                            : std::string{};
-  };
+  bind_parser_io(context, parser);
   return parse_shading(object, context,
                        make_color_space_context(parser, resources));
 }
@@ -863,14 +849,7 @@ Resources *parse_resources(State &state, const Object &object) {
     const Dictionary color_space_table =
         parser.resolve_object_copy(dictionary["ColorSpace"]).as_dictionary();
     ColorSpaceContext context;
-    context.resolve = [&parser](const Object &object) {
-      return parser.resolve_object_copy(object);
-    };
-    context.load_stream = [&parser](const Object &object) {
-      return object.is_reference()
-                 ? parser.read_decoded_stream(object.as_reference())
-                 : std::string{};
-    };
+    bind_parser_io(context, parser);
     // A base/alternate space may be named (referencing another `/ColorSpace`
     // entry); resolve it lazily from the same table, caching the result.
     context.named =

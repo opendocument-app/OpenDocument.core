@@ -285,9 +285,14 @@ private:
 /// `<radialGradient>` defs, deduplicating by shading and placement. The
 /// shading's pre-sampled colour stops become `<stop>`s; `gradientTransform`
 /// (shading space -> page box) places the gradient in the page's user space, so
-/// referencing elements use `gradientUnits="userSpaceOnUse"`. PDF `/Extend` is
-/// approximated by SVG's default `pad` spread (the end stops extend outward).
-/// Ids are namespaced per page (`g<page>_<n>`).
+/// referencing elements use `gradientUnits="userSpaceOnUse"`. Ids are
+/// namespaced per page (`g<page>_<n>`).
+///
+/// DEFERRED (out of scope for this stage): PDF `/Extend` is approximated by
+/// SVG's default `pad` spread (the end stops extend outward), so a non-extended
+/// shading is over-painted beyond its interval instead of being masked to it;
+/// `Shading::background` and `Shading::bbox` are likewise not yet honoured.
+/// Honouring them needs the fill clipped to the gradient band/annulus.
 class GradientRegistry {
 public:
   explicit GradientRegistry(std::uint32_t page) : m_page{page} {}
@@ -322,6 +327,9 @@ public:
              << "\" cy=\"" << c[4] << "\" r=\"" << c[5] << "\" fx=\"" << c[0]
              << "\" fy=\"" << c[1] << "\" fr=\"" << c[2] << '"';
     }
+    // Only the translation (e, f) is rounded — it lives in page-box units where
+    // 1/100 px is plenty; the linear part (a..d) keeps full precision so small
+    // scale/skew factors aren't quantized to zero.
     m_defs << " gradientUnits=\"userSpaceOnUse\" gradientTransform=\"matrix("
            << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
            << round2(m.e) << ',' << round2(m.f) << ")\">";

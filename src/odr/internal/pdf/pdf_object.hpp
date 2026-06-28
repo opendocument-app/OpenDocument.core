@@ -343,6 +343,12 @@ private:
   Holder m_holder;
 };
 
+/// The elements of an array `Object` as doubles, in order (each via
+/// `Object::as_real`). Returns an empty vector when `object` is not an array.
+/// Convenience for the many PDF arrays that are plain number lists (`/Decode`,
+/// `/Coords`, `/Domain`, `/Background`, a colour-key `/Mask`, ...).
+std::vector<double> as_reals(const Object &object);
+
 std::ostream &operator<<(std::ostream &, const StandardString &);
 std::ostream &operator<<(std::ostream &, const HexString &);
 std::ostream &operator<<(std::ostream &, const Name &);

@@ -99,10 +99,14 @@ struct Resources final : Element {
   std::unordered_map<std::string, Object> properties;
   /// The `/Shading` subdictionary (ISO 32000-1 8.7.4.3): named shadings painted
   /// by the `sh` operator. Resolved eagerly (the tint function sampled into
-  /// colour stops) so extraction needs no parser handle.
+  /// colour stops) so extraction needs no parser handle. Held by `shared_ptr`
+  /// because `Shading` is a plain value type, not a document `Element` (a
+  /// shading pattern shares ownership of the same `Shading`).
   std::unordered_map<std::string, std::shared_ptr<Shading>> shading;
   /// The `/Pattern` subdictionary (ISO 32000-1 8.7.3.3): named tiling/shading
   /// patterns selected as a colour by `scn`/`SCN` in a `/Pattern` colour space.
+  /// A non-owning pointer: `Pattern` is a document `Element`, owned by the
+  /// `Document` graph like the other resource elements (`Font`, `XObject`).
   std::unordered_map<std::string, Pattern *> pattern;
 };
 
