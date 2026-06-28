@@ -961,6 +961,37 @@ TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_carries_colour) {
   EXPECT_EQ(p.fill_pattern->paint_type, 2);
 }
 
+// An uncoloured pattern selected through a *named* Pattern colour space with an
+// underlying base (`[/Pattern /DeviceRGB]`) resolves its leading components
+// through that base — `1 0 0` is red, not black (the base would be ignored if
+// the Pattern space's `to_rgb` dropped it).
+TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_colour_through_base) {
+  Pattern pattern;
+  pattern.type = Pattern::Type::tiling;
+  pattern.paint_type = 2;
+
+  std::vector<Object> array{Object(Name{"Pattern"}), Object(Name{"DeviceRGB"})};
+  ColorSpaceContext ctx;
+  ctx.resolve = [](const Object &o) { return o; };
+  ctx.load_stream = [](const Object &) { return std::string{}; };
+  ctx.named = nullptr;
+
+  Resources res;
+  res.color_space["CS1"] =
+      parse_color_space(Object(Array(std::move(array))), ctx);
+  res.pattern["P2"] = &pattern;
+
+  const auto page =
+      extract_page("/CS1 cs 1 0 0 /P2 scn 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  ASSERT_NE(p.fill_pattern, nullptr);
+  EXPECT_EQ(p.fill_color.space, ColorSpace::device_rgb);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[0], 1.0);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
+  EXPECT_DOUBLE_EQ(p.fill_color.rgb[2], 0.0);
+}
+
 // The `sh` operator floods the current clip with a named `/Shading`, emitting a
 // `ShadingElement` placed by the CTM.
 TEST(PdfPageExtractor, sh_emits_shading_element) {
