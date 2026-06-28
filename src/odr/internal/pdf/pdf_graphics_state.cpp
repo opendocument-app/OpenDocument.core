@@ -293,6 +293,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     current().stroke_color.space = ColorSpace::device_grey;
     current().stroke_color.grey = op.arguments.at(0).as_real();
     current().stroke_color.def = nullptr;
+    current().stroke_color.pattern.clear();
     break;
   case GraphicsOperatorType::set_stroke_rgb_color:
     current().stroke_color.space = ColorSpace::device_rgb;
@@ -300,6 +301,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
       current().stroke_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
     current().stroke_color.def = nullptr;
+    current().stroke_color.pattern.clear();
     break;
   case GraphicsOperatorType::set_stroke_cmyk_color:
     current().stroke_color.space = ColorSpace::device_cmyk;
@@ -307,12 +309,14 @@ void GraphicsState::execute(const GraphicsOperator &op) {
       current().stroke_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }
     current().stroke_color.def = nullptr;
+    current().stroke_color.pattern.clear();
     break;
 
   case GraphicsOperatorType::set_other_grey_color:
     current().other_color.space = ColorSpace::device_grey;
     current().other_color.grey = op.arguments.at(0).as_real();
     current().other_color.def = nullptr;
+    current().other_color.pattern.clear();
     break;
   case GraphicsOperatorType::set_other_rgb_color:
     current().other_color.space = ColorSpace::device_rgb;
@@ -320,6 +324,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
       current().other_color.rgb.at(i) = op.arguments.at(i).as_real();
     }
     current().other_color.def = nullptr;
+    current().other_color.pattern.clear();
     break;
   case GraphicsOperatorType::set_other_cmyk_color:
     current().other_color.space = ColorSpace::device_cmyk;
@@ -327,6 +332,7 @@ void GraphicsState::execute(const GraphicsOperator &op) {
       current().other_color.cmyk.at(i) = op.arguments.at(i).as_real();
     }
     current().other_color.def = nullptr;
+    current().other_color.pattern.clear();
     break;
 
   case GraphicsOperatorType::set_glyph_width:

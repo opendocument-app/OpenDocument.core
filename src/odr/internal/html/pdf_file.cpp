@@ -79,6 +79,18 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
   return std::move(s).str();
 }
 
+/// Convert an sRGB triple in [0, 1] (a shading colour stop) to a CSS
+/// `rgb(...)`.
+std::string rgb_to_css(const std::array<double, 3> &rgb) {
+  const auto to255 = [](const double v) {
+    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+  };
+  std::ostringstream s;
+  s << "rgb(" << to255(rgb[0]) << ',' << to255(rgb[1]) << ',' << to255(rgb[2])
+    << ')';
+  return std::move(s).str();
+}
+
 /// Build an SVG `d` attribute from a path's subpaths, each point mapped through
 /// `to_box` (PDF user space -> the page box, y-down). Lines become `L`, cubic
 /// Béziers `C`, and an explicitly closed subpath ends with `Z`.
@@ -117,10 +129,12 @@ std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
 /// stroke carries width (CTM-scaled in user space), caps, joins, miter limit
 /// and the dash pattern. A zero stroke width renders as a thin hairline.
 /// `clip_id`, when non-empty, references a `<clipPath>` installed via
-/// `clip-path`.
+/// `clip-path`. `gradient_id`, when non-empty, fills the path with that
+/// gradient (a shading pattern) instead of `fill_color`.
 std::string svg_path_fragment(const pdf::PathElement &path,
                               const util::math::Transform2D &to_box,
-                              const std::string &clip_id) {
+                              const std::string &clip_id,
+                              const std::string &gradient_id) {
   if ((!path.fill && !path.stroke) || path.subpaths.empty()) {
     return {};
   }
@@ -131,7 +145,11 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   }
 
   if (path.fill) {
-    f << " fill=\"" << device_color_to_css(path.fill_color) << '"';
+    if (!gradient_id.empty()) {
+      f << " fill=\"url(#" << gradient_id << ")\"";
+    } else {
+      f << " fill=\"" << device_color_to_css(path.fill_color) << '"';
+    }
     if (path.even_odd) {
       f << " fill-rule=\"evenodd\"";
     }
@@ -262,6 +280,95 @@ private:
   std::unordered_map<std::string, std::string> m_id_by_signature;
   std::ostringstream m_defs;
 };
+
+/// Registers a page's shadings (axial/radial) as `<linearGradient>`/
+/// `<radialGradient>` defs, deduplicating by shading and placement. The
+/// shading's pre-sampled colour stops become `<stop>`s; `gradientTransform`
+/// (shading space -> page box) places the gradient in the page's user space, so
+/// referencing elements use `gradientUnits="userSpaceOnUse"`. Ids are
+/// namespaced per page (`g<page>_<n>`).
+///
+/// DEFERRED (out of scope for this stage): PDF `/Extend` is approximated by
+/// SVG's default `pad` spread (the end stops extend outward), so a non-extended
+/// shading is over-painted beyond its interval instead of being masked to it;
+/// `Shading::background` and `Shading::bbox` are likewise not yet honoured.
+/// Honouring them needs the fill clipped to the gradient band/annulus.
+class GradientRegistry {
+public:
+  explicit GradientRegistry(const std::uint32_t page) : m_page{page} {}
+
+  /// The gradient id to reference via `fill="url(#id)"` for `shading` placed by
+  /// `m` (shading space -> page box). Empty for an unrepresentable shading.
+  std::string register_gradient(const pdf::Shading &shading,
+                                const util::math::Transform2D &m) {
+    if ((shading.type != 2 && shading.type != 3) || shading.stops.empty()) {
+      return {};
+    }
+    std::ostringstream sig;
+    sig << shading.type << ':' << static_cast<const void *>(&shading) << ':'
+        << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ',' << m.e << ','
+        << m.f;
+    const auto [it, inserted] = m_id_by_signature.try_emplace(sig.str());
+    if (!inserted) {
+      return it->second;
+    }
+    it->second = "g" + std::to_string(m_page) + "_" + std::to_string(++m_count);
+    const std::string &id = it->second;
+
+    const std::array<double, 6> &c = shading.coords;
+    if (shading.type == 2) {
+      m_defs << "<linearGradient id=\"" << id << "\" x1=\"" << c[0]
+             << "\" y1=\"" << c[1] << "\" x2=\"" << c[2] << "\" y2=\"" << c[3]
+             << '"';
+    } else {
+      // Radial: the outer circle (x1,y1,r1) is SVG's (cx,cy,r); the inner
+      // circle (x0,y0,r0) is the focal point and radius (fr is SVG2).
+      m_defs << "<radialGradient id=\"" << id << "\" cx=\"" << c[3]
+             << "\" cy=\"" << c[4] << "\" r=\"" << c[5] << "\" fx=\"" << c[0]
+             << "\" fy=\"" << c[1] << "\" fr=\"" << c[2] << '"';
+    }
+    // Only the translation (e, f) is rounded — it lives in page-box units where
+    // 1/100 px is plenty; the linear part (a..d) keeps full precision so small
+    // scale/skew factors aren't quantized to zero.
+    m_defs << " gradientUnits=\"userSpaceOnUse\" gradientTransform=\"matrix("
+           << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
+           << round2(m.e) << ',' << round2(m.f) << ")\">";
+    for (const pdf::GradientStop &stop : shading.stops) {
+      m_defs << "<stop offset=\"" << round2(stop.offset) << "\" stop-color=\""
+             << rgb_to_css(stop.rgb) << "\"/>";
+    }
+    m_defs << (shading.type == 2 ? "</linearGradient>" : "</radialGradient>");
+    return id;
+  }
+
+  [[nodiscard]] std::string defs() const { return m_defs.str(); }
+
+private:
+  std::uint32_t m_page{};
+  std::uint32_t m_count{0};
+  std::unordered_map<std::string, std::string> m_id_by_signature;
+  std::ostringstream m_defs;
+};
+
+/// Serialize an `sh` shading flood to an SVG `<rect>` covering the page box,
+/// filled with `gradient_id` and bounded by `clip_id` (the clip in force at
+/// `sh` time). Returns "" when the shading produced no gradient. The rect spans
+/// the whole page; the clip (and the gradient's own extent) bound the paint.
+std::string svg_shading_fragment(const std::string &gradient_id,
+                                 const std::string &clip_id, const double width,
+                                 const double height) {
+  if (gradient_id.empty()) {
+    return {};
+  }
+  std::ostringstream f;
+  f << "<rect x=\"0\" y=\"0\" width=\"" << round2(width) << "\" height=\""
+    << round2(height) << "\" fill=\"url(#" << gradient_id << ")\"";
+  if (!clip_id.empty()) {
+    f << " clip-path=\"url(#" << clip_id << ")\"";
+  }
+  f << "/>";
+  return std::move(f).str();
+}
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned span per glyph run, and the same font sizes,
@@ -585,14 +692,43 @@ public:
           util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
+      GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
         // A painted path: serialize its subpaths to an SVG `<path>` fragment in
-        // the page viewBox (fill and/or stroke), under any active clip.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+        // the page viewBox (fill and/or stroke), under any active clip. A
+        // shading-pattern fill is painted through a gradient instead of a
+        // colour.
+        if (const auto *path = std::get_if<pdf::PathElement>(&element);
+            path != nullptr) {
           const std::string clip_id = clips.register_clip(path->clip, to_box);
-          std::string fragment = svg_path_fragment(*path, to_box, clip_id);
+          std::string gradient_id;
+          if (path->fill_shading != nullptr) {
+            gradient_id = gradients.register_gradient(
+                *path->fill_shading, path->shading_transform * to_box);
+          }
+          std::string fragment =
+              svg_path_fragment(*path, to_box, clip_id, gradient_id);
+          if (!fragment.empty()) {
+            page_out.items.push_back(PathOut{std::move(fragment)});
+          }
+          continue;
+        }
+
+        // An `sh` shading flood: a `<rect>` over the page box filled with the
+        // shading's gradient, bounded by the clip in force at `sh` time.
+        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element);
+            shading != nullptr) {
+          if (shading->shading == nullptr) {
+            continue;
+          }
+          const std::string clip_id =
+              clips.register_clip(shading->clip, to_box);
+          const std::string gradient_id = gradients.register_gradient(
+              *shading->shading, shading->transform * to_box);
+          std::string fragment =
+              svg_shading_fragment(gradient_id, clip_id, width, height);
           if (!fragment.empty()) {
             page_out.items.push_back(PathOut{std::move(fragment)});
           }
@@ -823,7 +959,8 @@ public:
         }
       }
 
-      page_out.clip_defs = clips.defs();
+      // Clip-path and gradient defs share the page's hidden `<svg><defs>`.
+      page_out.clip_defs = clips.defs() + gradients.defs();
     }
 
     // Post-pass: every page has been scanned, so the per-font used-scalar sets
@@ -969,10 +1106,11 @@ public:
     for (const PageOut &page : pages_out) {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
-      // Clip-path defs for this page, in a hidden zero-size `<svg>`. They are
-      // referenced by id from the page's path fragments; `clipPathUnits`
-      // defaults to `userSpaceOnUse`, so the geometry is read in the user space
-      // of the referencing element (the page viewBox), not this `<svg>`.
+      // Clip-path and gradient defs for this page, in a hidden zero-size
+      // `<svg>`. They are referenced by id from the page's fragments;
+      // `clipPathUnits`/`gradientUnits` are `userSpaceOnUse`, so the geometry
+      // is read in the user space of the referencing element (the page
+      // viewBox), not this `<svg>`.
       if (!page.clip_defs.empty()) {
         out.write_raw(
             "<svg width=\"0\" height=\"0\" style=\"position:absolute\">"

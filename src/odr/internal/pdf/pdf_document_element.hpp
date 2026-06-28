@@ -3,6 +3,7 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/pdf/pdf_shading.hpp>
 #include <odr/internal/util/math_util.hpp>
 
 #include <array>
@@ -28,6 +29,7 @@ struct Annotation;
 struct Resources;
 struct Font;
 struct XObject;
+struct Pattern;
 struct ColorSpaceDef;
 
 struct Element {
@@ -95,6 +97,17 @@ struct Resources final : Element {
   /// referenced by `BDC`. Each value is the resolved property-list dictionary
   /// `Object`; used to recover `/ActualText` for a `BDC /Tag /Name` sequence.
   std::unordered_map<std::string, Object> properties;
+  /// The `/Shading` subdictionary (ISO 32000-1 8.7.4.3): named shadings painted
+  /// by the `sh` operator. Resolved eagerly (the tint function sampled into
+  /// colour stops) so extraction needs no parser handle. Held by `shared_ptr`
+  /// because `Shading` is a plain value type, not a document `Element` (a
+  /// shading pattern shares ownership of the same `Shading`).
+  std::unordered_map<std::string, std::shared_ptr<Shading>> shading;
+  /// The `/Pattern` subdictionary (ISO 32000-1 8.7.3.3): named tiling/shading
+  /// patterns selected as a colour by `scn`/`SCN` in a `/Pattern` colour space.
+  /// A non-owning pointer: `Pattern` is a document `Element`, owned by the
+  /// `Document` graph like the other resource elements (`Font`, `XObject`).
+  std::unordered_map<std::string, Pattern *> pattern;
 };
 
 /// An external object referenced by `Do` and listed in a resource dictionary's
@@ -143,6 +156,27 @@ struct XObject final : Element {
   std::int32_t stencil_width{0};  ///< `/Width`
   std::int32_t stencil_height{0}; ///< `/Height`
   std::vector<double> stencil_decode; ///< `/Decode`, empty = default `[0 1]`
+};
+
+/// A pattern listed in a resource dictionary's `/Pattern` subdictionary
+/// (ISO 32000-1 8.7.3), selected as a colour by `scn`/`SCN` in a `/Pattern`
+/// colour space. Shading patterns (`/PatternType 2`) paint a gradient through
+/// the path; tiling patterns (`/PatternType 1`) repeat a content-stream cell.
+struct Pattern final : Element {
+  enum class Type {
+    unknown,
+    tiling,  ///< `/PatternType 1`
+    shading, ///< `/PatternType 2`
+  };
+  Type type{Type::unknown};
+
+  /// `/Matrix` mapping pattern space to the default coordinate system of the
+  /// pattern's parent content stream (8.7.3.1); default identity.
+  util::math::Transform2D matrix;
+
+  /// Shading pattern (`/PatternType 2`): the shading painted through the path,
+  /// pre-resolved (its tint function sampled into stops). Null otherwise.
+  std::shared_ptr<Shading> shading;
 };
 
 /// A non-owning view over a string of PDF character codes, splitting it into

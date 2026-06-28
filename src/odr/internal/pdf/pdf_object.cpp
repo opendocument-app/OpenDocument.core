@@ -111,6 +111,18 @@ std::optional<std::string> Object::as_string_opt() && {
   return std::nullopt;
 }
 
+std::vector<double> Object::as_reals() const {
+  std::vector<double> result;
+  if (is_array()) {
+    const Array &array = as_array();
+    result.reserve(array.size());
+    for (const Object &item : array) {
+      result.push_back(item.as_real());
+    }
+  }
+  return result;
+}
+
 void Object::to_stream(std::ostream &out) const {
   if (is_null()) {
     out << "null";

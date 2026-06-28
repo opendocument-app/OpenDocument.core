@@ -574,6 +574,18 @@ stage exists to avoid.
   current fill colour; `/SMask` and `/Mask` (stencil + colour-key) composited
   into RGBA on the raster path (a mask on a JPEG base is ignored — decoding the
   JPEG to composite is out of scope).
+- **Shadings & shading patterns** (axial type 2, radial type 3): `parse_shading`
+  pre-samples the tint `/Function` across `/Domain` into 32 sRGB colour stops, so
+  the renderer needs no function evaluator. The `sh` operator floods the current
+  clip (a `ShadingElement` → `<rect>` filled with the gradient); a `/PatternType
+  2` shading pattern selected by `scn` fills a path (`PathElement::fill_shading`
+  + the pattern `/Matrix`). Both emit SVG `<linearGradient>`/`<radialGradient>`
+  with `gradientUnits="userSpaceOnUse"`. `/Extend`, `/Background` and `/BBox` are
+  parsed onto `Shading` but **not yet honoured** by the renderer (deferred): it
+  always uses SVG's `pad` spread, so a non-extended shading is over-painted past
+  its interval rather than masked to it (honouring it needs the fill clipped to
+  the gradient band/annulus). Mesh/function shadings (types 1, 4–7) and tiling
+  patterns (`/PatternType 1`) are still future stages.
 - **SVG residue** — where no 1:1 primitive exists; all at generation time, never
   rasterization: mesh/function shadings (types 1, 4–7) → tessellate into small
   flat polygons (pdf.js's approach); color spaces

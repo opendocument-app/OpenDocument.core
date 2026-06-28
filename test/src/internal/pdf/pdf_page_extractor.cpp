@@ -876,6 +876,75 @@ TEST(PdfPageExtractor, device_color_clears_color_space) {
   EXPECT_DOUBLE_EQ(p.fill_color.rgb[1], 0.0);
 }
 
+// --- shadings & shading patterns -------------------------------
+
+namespace {
+
+// A minimal axial shading with two stops (black to white).
+std::shared_ptr<Shading> axial_shading() {
+  auto shading = std::make_shared<Shading>();
+  shading->type = 2;
+  shading->coords = {0, 0, 1, 0, 0, 0};
+  shading->stops = {GradientStop{0.0, {0, 0, 0}}, GradientStop{1.0, {1, 1, 1}}};
+  return shading;
+}
+
+} // namespace
+
+// `scn` naming a `/PatternType 2` pattern fills the path through the pattern's
+// shading; `fill_shading` is resolved and the pattern `/Matrix` carried.
+TEST(PdfPageExtractor, scn_shading_pattern_fills_path) {
+  Pattern pattern;
+  pattern.type = Pattern::Type::shading;
+  pattern.shading = axial_shading();
+  pattern.matrix = Transform2D::translation(5, 7);
+  Resources res;
+  res.pattern["P0"] = &pattern;
+
+  const auto page =
+      extract_page("/Pattern cs /P0 scn 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  ASSERT_NE(p.fill_shading, nullptr);
+  EXPECT_EQ(p.fill_shading->type, 2);
+  EXPECT_TRUE(p.fill);
+  EXPECT_DOUBLE_EQ(p.shading_transform.e, 5);
+  EXPECT_DOUBLE_EQ(p.shading_transform.f, 7);
+}
+
+// `scn` naming an unknown pattern leaves the fill with no shading (a plain
+// colour fill); the path still paints.
+TEST(PdfPageExtractor, scn_unknown_pattern_has_no_shading) {
+  Resources res;
+  const auto page = extract_page("/Pattern cs /Missing scn 0 0 10 10 re f", res,
+                                 Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(std::get<PathElement>(page[0]).fill_shading, nullptr);
+}
+
+// The `sh` operator floods the current clip with a named `/Shading`, emitting a
+// `ShadingElement` placed by the CTM.
+TEST(PdfPageExtractor, sh_emits_shading_element) {
+  Resources res;
+  res.shading["Sh0"] = axial_shading();
+
+  const auto page =
+      extract_page("q 2 0 0 2 10 20 cm /Sh0 sh Q", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const ShadingElement &s = std::get<ShadingElement>(page[0]);
+  ASSERT_NE(s.shading, nullptr);
+  EXPECT_EQ(s.shading->type, 2);
+  EXPECT_DOUBLE_EQ(s.transform.a, 2);
+  EXPECT_DOUBLE_EQ(s.transform.e, 10);
+  EXPECT_DOUBLE_EQ(s.transform.f, 20);
+}
+
+// `sh` naming an unknown shading emits nothing.
+TEST(PdfPageExtractor, sh_unknown_shading_emits_nothing) {
+  Resources res;
+  EXPECT_TRUE(extract_page("/Missing sh", res, Logger::null()).empty());
+}
+
 // --- image XObjects (JPEG pass-through) ------------------------
 
 namespace {
