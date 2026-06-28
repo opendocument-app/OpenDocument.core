@@ -590,9 +590,12 @@ stage exists to avoid.
   every `/XStep`/`/YStep`, with `patternTransform` (the pattern `/Matrix`)
   placing the lattice; a `/PatternType 1` fill references it as `fill="url(#…)"`.
   Coloured (`/PaintType 1`) cells carry their own colours; uncoloured
-  (`/PaintType 2`) cells are painted in the current fill colour. Only paths and
-  images inside a tile are rendered (nested text/shadings/patterns are skipped —
-  rare).
+  (`/PaintType 2`) cells are painted in the current fill colour (resolved
+  through the Pattern colour space's base, so `[/Pattern /DeviceRGB]` keeps its
+  tint). Each cell is clipped to its `/BBox`; an overlapping lattice (a step
+  smaller than the BBox) can't be expressed as one SVG `<pattern>` and is not
+  reproduced. Only paths and images inside a tile are rendered (nested
+  text/shadings/patterns are skipped — rare).
 - **SVG residue** — where no 1:1 primitive exists; all at generation time, never
   rasterization: mesh/function shadings (types 1, 4–7) → tessellate into small
   flat polygons (pdf.js's approach); color spaces

@@ -148,6 +148,13 @@ ColorSpaceDef::to_rgb(const std::vector<double> &c) const {
     return alternate->to_rgb(tint->eval(c));
   }
   case ColorSpaceKind::pattern:
+    // An uncoloured pattern (`/PaintType 2`) carries its colour in the Pattern
+    // space's underlying base (e.g. `[/Pattern /DeviceRGB]`); convert through
+    // it. Without a base there is no device colour to convert.
+    if (base != nullptr) {
+      return base->to_rgb(c);
+    }
+    return {0, 0, 0};
   case ColorSpaceKind::unknown:
     return {0, 0, 0};
   }

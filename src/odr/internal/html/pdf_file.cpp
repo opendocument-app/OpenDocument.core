@@ -41,6 +41,18 @@ namespace {
 /// the extra digits add up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
+/// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
+/// is rounded — it lives in page-box units where 1/100 px is plenty; the linear
+/// part (a..d) keeps full precision so small scale/skew factors aren't
+/// quantized to zero. Used for `transform`, `gradientTransform` and
+/// `patternTransform`.
+std::string svg_matrix(const util::math::Transform2D &m) {
+  std::ostringstream f;
+  f << "matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
+    << round2(m.e) << ',' << round2(m.f) << ')';
+  return std::move(f).str();
+}
+
 /// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
 /// spaces (Separation/ICCBased/… — stage 4.4) and the unknown space fall back
 /// to black, the PDF initial color.
@@ -222,9 +234,8 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   if (!clip_id.empty()) {
     f << "<g clip-path=\"url(#" << clip_id << ")\">";
   }
-  f << R"(<image width="1" height="1" preserveAspectRatio="none" transform="matrix()"
-    << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ',' << round2(m.e)
-    << ',' << round2(m.f) << ")\"";
+  f << R"(<image width="1" height="1" preserveAspectRatio="none" transform=")"
+    << svg_matrix(m) << '"';
   f << " href=\"" << file_to_url(image.data, image.mime) << "\"/>";
   if (!clip_id.empty()) {
     f << "</g>";
@@ -232,15 +243,51 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   return std::move(f).str();
 }
 
+/// Shared bookkeeping for the per-page `<defs>` registries below (clips,
+/// gradients, tiling patterns): a signature->id cache that deduplicates
+/// repeated definitions, a per-page monotonic id counter, and the accumulated
+/// `<defs>` markup (emitted once into the page's hidden `<svg>`). Ids are
+/// namespaced per page as `<prefix><page>_<n>`.
+class DefsRegistry {
+public:
+  explicit DefsRegistry(const std::uint32_t page) : m_page{page} {}
+
+  [[nodiscard]] std::string defs() const { return m_defs.str(); }
+
+protected:
+  /// The id for `signature`, minting `<prefix><page>_<n>` the first time it is
+  /// seen. `inserted` is true only on that first sight — when the caller still
+  /// needs to emit the definition into `m_defs`.
+  struct Entry {
+    std::string id;
+    bool inserted;
+  };
+  Entry intern(const std::string &signature, const char *prefix) {
+    const auto [it, inserted] = m_id_by_signature.try_emplace(signature);
+    if (inserted) {
+      it->second = std::string(prefix) + std::to_string(m_page) + "_" +
+                   std::to_string(++m_count);
+    }
+    return {it->second, inserted};
+  }
+
+  std::ostringstream m_defs;
+
+private:
+  std::uint32_t m_page;
+  std::uint32_t m_count{0};
+  std::unordered_map<std::string, std::string> m_id_by_signature;
+};
+
 /// Registers a page's clip regions as nested `<clipPath>` defs, deduplicating
 /// shared prefixes. PDF's current clip is the *intersection* of an ordered list
 /// of regions; SVG expresses intersection by chaining `clip-path` from one
 /// `<clipPath>` to the next, so region i's clipPath references region i-1's and
 /// the painted element references the last. Ids are namespaced per page
-/// (`c<page>_<n>`); `defs()` is emitted once in a hidden `<svg>` for the page.
-class ClipRegistry {
+/// (`c<page>_<n>`).
+class ClipRegistry : public DefsRegistry {
 public:
-  explicit ClipRegistry(std::uint32_t page) : m_page{page} {}
+  using DefsRegistry::DefsRegistry;
 
   /// The clipPath id to reference on a path painted under `clip`, registering
   /// any not-yet-seen regions. Empty when `clip` is empty (unclipped).
@@ -253,11 +300,9 @@ public:
       signature += region.even_odd ? 'E' : 'N';
       signature += d;
       signature += ';';
-      const auto [it, inserted] = m_id_by_signature.try_emplace(signature);
+      const auto [id, inserted] = intern(signature, "c");
       if (inserted) {
-        it->second =
-            "c" + std::to_string(m_page) + "_" + std::to_string(++m_count);
-        m_defs << "<clipPath id=\"" << it->second << '"';
+        m_defs << "<clipPath id=\"" << id << '"';
         if (!parent.empty()) {
           m_defs << " clip-path=\"url(#" << parent << ")\"";
         }
@@ -267,18 +312,10 @@ public:
         }
         m_defs << "/></clipPath>";
       }
-      parent = it->second;
+      parent = id;
     }
     return parent;
   }
-
-  [[nodiscard]] std::string defs() const { return m_defs.str(); }
-
-private:
-  std::uint32_t m_page;
-  std::uint32_t m_count{0};
-  std::unordered_map<std::string, std::string> m_id_by_signature;
-  std::ostringstream m_defs;
 };
 
 /// Registers a page's shadings (axial/radial) as `<linearGradient>`/
@@ -293,9 +330,9 @@ private:
 /// shading is over-painted beyond its interval instead of being masked to it;
 /// `Shading::background` and `Shading::bbox` are likewise not yet honoured.
 /// Honouring them needs the fill clipped to the gradient band/annulus.
-class GradientRegistry {
+class GradientRegistry : public DefsRegistry {
 public:
-  explicit GradientRegistry(const std::uint32_t page) : m_page{page} {}
+  using DefsRegistry::DefsRegistry;
 
   /// The gradient id to reference via `fill="url(#id)"` for `shading` placed by
   /// `m` (shading space -> page box). Empty for an unrepresentable shading.
@@ -308,12 +345,10 @@ public:
     sig << shading.type << ':' << static_cast<const void *>(&shading) << ':'
         << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ',' << m.e << ','
         << m.f;
-    const auto [it, inserted] = m_id_by_signature.try_emplace(sig.str());
+    const auto [id, inserted] = intern(sig.str(), "g");
     if (!inserted) {
-      return it->second;
+      return id;
     }
-    it->second = "g" + std::to_string(m_page) + "_" + std::to_string(++m_count);
-    const std::string &id = it->second;
 
     const std::array<double, 6> &c = shading.coords;
     if (shading.type == 2) {
@@ -327,12 +362,8 @@ public:
              << "\" cy=\"" << c[4] << "\" r=\"" << c[5] << "\" fx=\"" << c[0]
              << "\" fy=\"" << c[1] << "\" fr=\"" << c[2] << '"';
     }
-    // Only the translation (e, f) is rounded — it lives in page-box units where
-    // 1/100 px is plenty; the linear part (a..d) keeps full precision so small
-    // scale/skew factors aren't quantized to zero.
-    m_defs << " gradientUnits=\"userSpaceOnUse\" gradientTransform=\"matrix("
-           << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
-           << round2(m.e) << ',' << round2(m.f) << ")\">";
+    m_defs << " gradientUnits=\"userSpaceOnUse\" gradientTransform=\""
+           << svg_matrix(m) << "\">";
     for (const pdf::GradientStop &stop : shading.stops) {
       m_defs << "<stop offset=\"" << round2(stop.offset) << "\" stop-color=\""
              << rgb_to_css(stop.rgb) << "\"/>";
@@ -340,14 +371,6 @@ public:
     m_defs << (shading.type == 2 ? "</linearGradient>" : "</radialGradient>");
     return id;
   }
-
-  [[nodiscard]] std::string defs() const { return m_defs.str(); }
-
-private:
-  std::uint32_t m_page{};
-  std::uint32_t m_count{0};
-  std::unordered_map<std::string, std::string> m_id_by_signature;
-  std::ostringstream m_defs;
 };
 
 /// Serialize an `sh` shading flood to an SVG `<rect>` covering the page box,
@@ -376,12 +399,14 @@ std::string svg_shading_fragment(const std::string &gradient_id,
 /// every `/XStep`/`/YStep`, and `patternTransform` (pattern space -> page box)
 /// places the lattice. An uncoloured pattern (`/PaintType 2`) ignores its
 /// content's own colours and paints in the path's fill colour, so the cache key
-/// folds that colour in. Ids are namespaced per page (`pat<page>_<n>`). Only
-/// paths and images inside the tile are rendered (nested text/shadings/patterns
-/// are skipped — rare). Returns "" for an unrepresentable pattern.
-class PatternRegistry {
+/// folds that colour in. Each cell is clipped to its `/BBox` so marks outside
+/// the cell (or in the gap when a step exceeds the BBox) don't leak into the
+/// tile. Ids are namespaced per page (`pat<page>_<n>`). Only paths and images
+/// inside the tile are rendered (nested text/shadings/patterns are skipped —
+/// rare). Returns "" for an unrepresentable pattern.
+class PatternRegistry : public DefsRegistry {
 public:
-  explicit PatternRegistry(const std::uint32_t page) : m_page{page} {}
+  using DefsRegistry::DefsRegistry;
 
   std::string register_pattern(const pdf::Pattern &pattern,
                                const util::math::Transform2D &m,
@@ -398,12 +423,10 @@ public:
     if (uncoloured) {
       sig << ':' << device_color_to_css(fill_color);
     }
-    const auto [it, inserted] = m_id_by_signature.try_emplace(sig.str());
+    const auto [id, inserted] = intern(sig.str(), "pat");
     if (!inserted) {
-      return it->second;
+      return id;
     }
-    it->second =
-        "pat" + std::to_string(m_page) + "_" + std::to_string(++m_count);
 
     // Tile content is laid out in pattern space (identity page transform); the
     // y-flip and placement live in `patternTransform`.
@@ -423,24 +446,29 @@ public:
       }
     }
 
-    m_defs << "<pattern id=\"" << it->second
+    m_defs << "<pattern id=\"" << id
            << "\" patternUnits=\"userSpaceOnUse\" x=\""
            << round2(pattern.bbox[0]) << "\" y=\"" << round2(pattern.bbox[1])
            << "\" width=\"" << round2(std::abs(pattern.x_step))
            << "\" height=\"" << round2(std::abs(pattern.y_step))
-           << "\" patternTransform=\"matrix(" << m.a << ',' << m.b << ',' << m.c
-           << ',' << m.d << ',' << round2(m.e) << ',' << round2(m.f) << ")\">"
-           << std::move(tile).str() << "</pattern>";
-    return it->second;
+           << "\" patternTransform=\"" << svg_matrix(m) << "\">";
+    // Clip each cell to its `/BBox` (ISO 32000-1 8.7.3.1). An overlapping
+    // lattice (a step smaller than the BBox) can't be expressed as a single SVG
+    // `<pattern>` and is not reproduced.
+    const double bbox_w = pattern.bbox[2] - pattern.bbox[0];
+    const double bbox_h = pattern.bbox[3] - pattern.bbox[1];
+    if (bbox_w > 0 && bbox_h > 0) {
+      m_defs << "<clipPath id=\"" << id << "c\"><rect x=\""
+             << round2(pattern.bbox[0]) << "\" y=\"" << round2(pattern.bbox[1])
+             << "\" width=\"" << round2(bbox_w) << "\" height=\""
+             << round2(bbox_h) << "\"/></clipPath><g clip-path=\"url(#" << id
+             << "c)\">" << std::move(tile).str() << "</g>";
+    } else {
+      m_defs << std::move(tile).str();
+    }
+    m_defs << "</pattern>";
+    return id;
   }
-
-  [[nodiscard]] std::string defs() const { return m_defs.str(); }
-
-private:
-  std::uint32_t m_page{};
-  std::uint32_t m_count{0};
-  std::unordered_map<std::string, std::string> m_id_by_signature;
-  std::ostringstream m_defs;
 };
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
