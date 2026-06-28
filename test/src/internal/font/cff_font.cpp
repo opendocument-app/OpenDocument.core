@@ -441,3 +441,18 @@ TEST(CffFontTest, WrapsToLoadableOtf) {
   // The synthesized hmtx carries the CFF advance widths.
   EXPECT_EQ(wrapped.advance_width(1), 250);
 }
+
+TEST(CffFontTest, WrapDropsExtraEntriesPastGlyphCount) {
+  using namespace odr::internal::font;
+  const CffFont cff{build_cff()}; // 2 glyphs: valid ids 0..1
+  // 'A' -> 1 is in range; 'B' -> 5 is past the glyph count. An out-of-range
+  // glyph reference makes the OTS sanitizer reject the whole cmap (and the
+  // font), so it must be dropped rather than written into the cmap.
+  const std::string otf = cff::wrap_to_otf(cff, {{U'A', 1}, {U'B', 5}});
+
+  ASSERT_TRUE(sfnt::SfntFont::is_sfnt(otf));
+  const sfnt::SfntFont wrapped{std::make_unique<std::istringstream>(otf)};
+  EXPECT_EQ(wrapped.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(wrapped.glyph_for_code_point('B'), 0); // dropped: not mapped
+  EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(1)), 1);
+}

@@ -270,6 +270,8 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   element.horizontal_scaling = text.horizontal_scaling;
   element.rise = text.rise;
   element.rendering_mode = text.rendering_mode;
+  element.fill_color = state.current().other_color;
+  element.stroke_color = state.current().stroke_color;
   ResolvedText resolved = resolve_text(marked, font, codes);
   element.text = std::move(resolved.text);
   element.no_unicode = resolved.no_unicode;
@@ -409,7 +411,11 @@ void paint_path(std::vector<PageElement> &out, GraphicsState &state, bool fill,
     element.dash_array.push_back(on_off * scale);
   }
   element.dash_phase = s.general.dash.phase * scale;
-  out.push_back(std::move(element));
+  // Construct the variant alternative in place: building a temporary variant
+  // and move-constructing it (`push_back(std::move(element))`) trips a spurious
+  // GCC 14 `-Wmaybe-uninitialized` on the string-bearing `ImageElement`
+  // alternative while analyzing the union move, which `-Werror` makes fatal.
+  out.emplace_back(std::in_place_type<PathElement>, std::move(element));
   // Install a pending `W`/`W*` now (it uses the just-painted path) so it scopes
   // the *following* content, then drop the path.
   state.commit_clip();

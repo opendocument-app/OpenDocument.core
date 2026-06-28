@@ -282,9 +282,15 @@ void font::reencode_to_pua(sfnt::SfntFont &font,
     map[pua_code_point(glyph)] = glyph;
   }
   // Real-Unicode entries: caller guarantees BMP, non-PUA keys, so these never
-  // collide with the PUA range filled above.
+  // collide with the PUA range filled above. A glyph id the font does not have
+  // is dropped: `glyph_for_code` can fall back to "code as GID" (ISO 32000-1
+  // 9.6.6.4) and yield an out-of-range index, and a single cmap reference past
+  // `numGlyphs` makes the OTS sanitizer reject the *entire* font (so every
+  // glyph would render as a tofu box, not just the unmappable code).
   for (const auto &[code, glyph] : extra) {
-    map[code] = glyph;
+    if (glyph < font.glyph_count()) {
+      map[code] = glyph;
+    }
   }
   font.set_cmap(std::move(map));
 }
