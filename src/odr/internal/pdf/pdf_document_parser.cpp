@@ -860,7 +860,7 @@ Pattern *parse_pattern(State &state, const ObjectReference &reference,
     if (object.has_stream) {
       pattern->content = parser.read_decoded_stream(object);
     }
-    if (dictionary.has_key("Resources")) {
+    if (dictionary.has_value("Resources")) {
       pattern->resources = parse_resources(state, dictionary["Resources"]);
     }
   }
