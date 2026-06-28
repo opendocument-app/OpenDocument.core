@@ -129,12 +129,12 @@ std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
 /// stroke carries width (CTM-scaled in user space), caps, joins, miter limit
 /// and the dash pattern. A zero stroke width renders as a thin hairline.
 /// `clip_id`, when non-empty, references a `<clipPath>` installed via
-/// `clip-path`. `gradient_id`, when non-empty, fills the path with that
-/// gradient (a shading pattern) instead of `fill_color`.
+/// `clip-path`. `fill_url_id`, when non-empty, fills the path with that paint
+/// server (a shading gradient or a tiling `<pattern>`) instead of `fill_color`.
 std::string svg_path_fragment(const pdf::PathElement &path,
                               const util::math::Transform2D &to_box,
                               const std::string &clip_id,
-                              const std::string &gradient_id) {
+                              const std::string &fill_url_id) {
   if ((!path.fill && !path.stroke) || path.subpaths.empty()) {
     return {};
   }
@@ -145,8 +145,8 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   }
 
   if (path.fill) {
-    if (!gradient_id.empty()) {
-      f << " fill=\"url(#" << gradient_id << ")\"";
+    if (!fill_url_id.empty()) {
+      f << " fill=\"url(#" << fill_url_id << ")\"";
     } else {
       f << " fill=\"" << device_color_to_css(path.fill_color) << '"';
     }
@@ -369,6 +369,79 @@ std::string svg_shading_fragment(const std::string &gradient_id,
   f << "/>";
   return std::move(f).str();
 }
+
+/// Registers a page's tiling patterns (`/PatternType 1`) as SVG `<pattern>`
+/// defs. The pattern's content stream is run as a mini page (`extract_page`)
+/// into tile fragments laid out in pattern space; the `<pattern>` repeats them
+/// every `/XStep`/`/YStep`, and `patternTransform` (pattern space -> page box)
+/// places the lattice. An uncoloured pattern (`/PaintType 2`) ignores its
+/// content's own colours and paints in the path's fill colour, so the cache key
+/// folds that colour in. Ids are namespaced per page (`pat<page>_<n>`). Only
+/// paths and images inside the tile are rendered (nested text/shadings/patterns
+/// are skipped — rare). Returns "" for an unrepresentable pattern.
+class PatternRegistry {
+public:
+  explicit PatternRegistry(std::uint32_t page) : m_page{page} {}
+
+  std::string register_pattern(const pdf::Pattern &pattern,
+                               const util::math::Transform2D &m,
+                               const pdf::GraphicsState::Color &fill_color,
+                               const Logger &logger) {
+    if (pattern.resources == nullptr || pattern.content.empty() ||
+        pattern.x_step == 0 || pattern.y_step == 0) {
+      return {};
+    }
+    const bool uncoloured = pattern.paint_type == 2;
+    std::ostringstream sig;
+    sig << static_cast<const void *>(&pattern) << ':' << m.a << ',' << m.b
+        << ',' << m.c << ',' << m.d << ',' << m.e << ',' << m.f;
+    if (uncoloured) {
+      sig << ':' << device_color_to_css(fill_color);
+    }
+    const auto [it, inserted] = m_id_by_signature.try_emplace(sig.str());
+    if (!inserted) {
+      return it->second;
+    }
+    it->second =
+        "pat" + std::to_string(m_page) + "_" + std::to_string(++m_count);
+
+    // Tile content is laid out in pattern space (identity page transform); the
+    // y-flip and placement live in `patternTransform`.
+    const util::math::Transform2D identity;
+    std::ostringstream tile;
+    for (const pdf::PageElement &element :
+         pdf::extract_page(pattern.content, *pattern.resources, logger)) {
+      if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+        pdf::PathElement painted = *path;
+        if (uncoloured) {
+          painted.fill_color = fill_color;
+          painted.stroke_color = fill_color;
+        }
+        tile << svg_path_fragment(painted, identity, "", "");
+      } else if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
+        tile << svg_image_fragment(*image, identity, "");
+      }
+    }
+
+    m_defs << "<pattern id=\"" << it->second
+           << "\" patternUnits=\"userSpaceOnUse\" x=\""
+           << round2(pattern.bbox[0]) << "\" y=\"" << round2(pattern.bbox[1])
+           << "\" width=\"" << round2(std::abs(pattern.x_step))
+           << "\" height=\"" << round2(std::abs(pattern.y_step))
+           << "\" patternTransform=\"matrix(" << m.a << ',' << m.b << ',' << m.c
+           << ',' << m.d << ',' << round2(m.e) << ',' << round2(m.f) << ")\">"
+           << std::move(tile).str() << "</pattern>";
+    return it->second;
+  }
+
+  [[nodiscard]] std::string defs() const { return m_defs.str(); }
+
+private:
+  std::uint32_t m_page;
+  std::uint32_t m_count{0};
+  std::unordered_map<std::string, std::string> m_id_by_signature;
+  std::ostringstream m_defs;
+};
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned span per glyph run, and the same font sizes,
@@ -693,23 +766,27 @@ public:
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
+      PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
         // A painted path: serialize its subpaths to an SVG `<path>` fragment in
         // the page viewBox (fill and/or stroke), under any active clip. A
-        // shading-pattern fill is painted through a gradient instead of a
-        // colour.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element);
-            path != nullptr) {
+        // shading- or tiling-pattern fill is painted through a paint server
+        // (gradient/`<pattern>`) instead of a colour.
+        if (const auto *path = std::get_if<pdf::PathElement>(&element); path != nullptr) {
           const std::string clip_id = clips.register_clip(path->clip, to_box);
-          std::string gradient_id;
+          std::string fill_url_id;
           if (path->fill_shading != nullptr) {
-            gradient_id = gradients.register_gradient(
+            fill_url_id = gradients.register_gradient(
                 *path->fill_shading, path->shading_transform * to_box);
+          } else if (path->fill_pattern != nullptr) {
+            fill_url_id = patterns.register_pattern(
+                *path->fill_pattern, path->pattern_transform * to_box,
+                path->fill_color, *m_logger);
           }
           std::string fragment =
-              svg_path_fragment(*path, to_box, clip_id, gradient_id);
+              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
           if (!fragment.empty()) {
             page_out.items.push_back(PathOut{std::move(fragment)});
           }
@@ -959,8 +1036,9 @@ public:
         }
       }
 
-      // Clip-path and gradient defs share the page's hidden `<svg><defs>`.
-      page_out.clip_defs = clips.defs() + gradients.defs();
+      // Clip-path, gradient and pattern defs share the page's hidden
+      // `<svg><defs>`.
+      page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
 
     // Post-pass: every page has been scanned, so the per-font used-scalar sets

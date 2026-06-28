@@ -54,6 +54,14 @@ struct State {
     m_fonts[reference] = font;
   }
 
+  [[nodiscard]] Pattern *find_pattern(const ObjectReference &reference) const {
+    const auto it = m_patterns.find(reference);
+    return it != m_patterns.end() ? it->second : nullptr;
+  }
+  void cache_pattern(const ObjectReference &reference, Pattern *pattern) {
+    m_patterns[reference] = pattern;
+  }
+
 private:
   DocumentParser *m_parser{};
   Document *m_document{};
@@ -74,6 +82,12 @@ private:
   /// re-inline the (base64) font program once per page — a multi-page document
   /// reusing one font would balloon to gigabytes.
   std::map<ObjectReference, Font *> m_fonts;
+
+  /// Memoized Pattern elements by reference, mirroring `m_x_objects`. A tiling
+  /// pattern's own `/Resources` may name patterns (including, in a malformed
+  /// file, itself); registering the element before its resources are parsed
+  /// breaks the cycle and shares a pattern reused across pages.
+  std::map<ObjectReference, Pattern *> m_patterns;
 };
 
 /// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
@@ -785,14 +799,25 @@ std::shared_ptr<Shading> parse_shading_resource(State &state,
 }
 
 /// Parse a `/Pattern` entry. A shading pattern (`/PatternType 2`) resolves its
-/// `/Shading`; a tiling pattern (`/PatternType 1`) is recognized here and its
-/// content rendered in a later stage. `/Matrix` is taken either way.
+/// `/Shading`; a tiling pattern (`/PatternType 1`) is a stream whose content,
+/// `/Resources`, `/BBox`, `/XStep`/`/YStep` and `/PaintType` describe the tile.
+/// `/Matrix` is taken either way.
 Pattern *parse_pattern(State &state, const ObjectReference &reference,
                        const Resources *resources) {
   DocumentParser &parser = state.parser();
   Document &document = state.document();
 
+  // Shared patterns are parsed once; a cycle through a tiling pattern's own
+  // `/Resources` resolves to the existing element instead of recursing.
+  if (Pattern *cached = state.find_pattern(reference); cached != nullptr) {
+    return cached;
+  }
+
   auto *pattern = document.create_element<Pattern>();
+  // Register before parsing `/Resources` so a cycle back here resolves to this
+  // element rather than recursing forever.
+  state.cache_pattern(reference, pattern);
+
   IndirectObject object = parser.read_object(reference);
   if (!object.object.is_dictionary()) {
     return pattern;
@@ -814,6 +839,30 @@ Pattern *parse_pattern(State &state, const ObjectReference &reference,
         parse_shading_resource(state, dictionary.get("Shading"), resources);
   } else if (pattern_type == 1) {
     pattern->type = Pattern::Type::tiling;
+    pattern->paint_type = static_cast<std::int32_t>(
+        parser.resolve_object_copy(dictionary.get("PaintType"))
+            .as_integer_opt()
+            .value_or(1));
+    pattern->x_step = parser.resolve_object_copy(dictionary.get("XStep"))
+                          .as_real_opt()
+                          .value_or(0);
+    pattern->y_step = parser.resolve_object_copy(dictionary.get("YStep"))
+                          .as_real_opt()
+                          .value_or(0);
+    if (dictionary.has_value("BBox")) {
+      const Array box =
+          parser.resolve_object_copy(dictionary["BBox"]).as_array();
+      if (box.size() == 4) {
+        pattern->bbox = {box[0].as_real(), box[1].as_real(), box[2].as_real(),
+                         box[3].as_real()};
+      }
+    }
+    if (object.has_stream) {
+      pattern->content = parser.read_decoded_stream(object);
+    }
+    if (dictionary.has_key("Resources")) {
+      pattern->resources = parse_resources(state, dictionary["Resources"]);
+    }
   }
   return pattern;
 }

@@ -584,8 +584,15 @@ stage exists to avoid.
   parsed onto `Shading` but **not yet honoured** by the renderer (deferred): it
   always uses SVG's `pad` spread, so a non-extended shading is over-painted past
   its interval rather than masked to it (honouring it needs the fill clipped to
-  the gradient band/annulus). Mesh/function shadings (types 1, 4–7) and tiling
-  patterns (`/PatternType 1`) are still future stages.
+  the gradient band/annulus).
+- **Tiling patterns** (`/PatternType 1`): the pattern's content stream is run as
+  a mini page (`extract_page`) and emitted as an SVG `<pattern>` tile, repeated
+  every `/XStep`/`/YStep`, with `patternTransform` (the pattern `/Matrix`)
+  placing the lattice; a `/PatternType 1` fill references it as `fill="url(#…)"`.
+  Coloured (`/PaintType 1`) cells carry their own colours; uncoloured
+  (`/PaintType 2`) cells are painted in the current fill colour. Only paths and
+  images inside a tile are rendered (nested text/shadings/patterns are skipped —
+  rare).
 - **SVG residue** — where no 1:1 primitive exists; all at generation time, never
   rasterization: mesh/function shadings (types 1, 4–7) → tessellate into small
   flat polygons (pdf.js's approach); color spaces

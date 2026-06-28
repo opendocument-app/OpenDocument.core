@@ -11,6 +11,7 @@ namespace odr::internal::pdf {
 
 struct Font;
 struct Shading;
+struct Pattern;
 
 /// One show-text operation laid out in user space. The transform places the
 /// text origin and orientation; the font size is kept separate so the renderer
@@ -90,6 +91,13 @@ struct PathElement {
   /// `Resources`, which outlives the element.
   const Shading *fill_shading{nullptr};
   util::math::Transform2D shading_transform;
+  /// When the fill is a tiling pattern (`scn` naming a `/PatternType 1`
+  /// pattern), the resolved pattern whose content cell tiles the path, with
+  /// `pattern_transform` mapping pattern space to user space (the pattern
+  /// `/Matrix`). An uncoloured pattern (`/PaintType 2`) is painted in
+  /// `fill_color`. Null for a non-tiling fill. Owned by `Resources`.
+  const Pattern *fill_pattern{nullptr};
+  util::math::Transform2D pattern_transform;
   /// Stroke parameters. `line_width` and the dash lengths are in the path's
   /// user space (the CTM scale is already folded in, so they live in the same
   /// space as the geometry). A `line_width` of 0 means a device-thin line.

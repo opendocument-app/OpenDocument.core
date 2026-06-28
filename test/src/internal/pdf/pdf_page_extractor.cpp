@@ -922,6 +922,45 @@ TEST(PdfPageExtractor, scn_unknown_pattern_has_no_shading) {
   EXPECT_EQ(std::get<PathElement>(page[0]).fill_shading, nullptr);
 }
 
+// `scn` naming a `/PatternType 1` tiling pattern fills the path with the
+// pattern; `fill_pattern` is resolved and the pattern `/Matrix` carried.
+TEST(PdfPageExtractor, scn_tiling_pattern_fills_path) {
+  Pattern pattern;
+  pattern.type = Pattern::Type::tiling;
+  pattern.matrix = Transform2D::translation(3, 4);
+  Resources res;
+  res.pattern["P1"] = &pattern;
+
+  const auto page =
+      extract_page("/Pattern cs /P1 scn 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  ASSERT_NE(p.fill_pattern, nullptr);
+  EXPECT_EQ(p.fill_pattern->type, Pattern::Type::tiling);
+  EXPECT_EQ(p.fill_shading, nullptr);
+  EXPECT_TRUE(p.fill);
+  EXPECT_DOUBLE_EQ(p.pattern_transform.e, 3);
+  EXPECT_DOUBLE_EQ(p.pattern_transform.f, 4);
+}
+
+// An uncoloured tiling pattern (`/PaintType 2`) records the current fill colour
+// alongside the pattern, so the renderer can paint the cell in it.
+TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_carries_colour) {
+  Pattern pattern;
+  pattern.type = Pattern::Type::tiling;
+  pattern.paint_type = 2;
+  Resources res;
+  res.pattern["P2"] = &pattern;
+
+  // The colour precedes the pattern selection in the Pattern colour space.
+  const auto page = extract_page("/Pattern cs 1 0 0 /P2 scn 0 0 10 10 re f",
+                                 res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const PathElement &p = std::get<PathElement>(page[0]);
+  ASSERT_NE(p.fill_pattern, nullptr);
+  EXPECT_EQ(p.fill_pattern->paint_type, 2);
+}
+
 // The `sh` operator floods the current clip with a named `/Shading`, emitting a
 // `ShadingElement` placed by the CTM.
 TEST(PdfPageExtractor, sh_emits_shading_element) {
