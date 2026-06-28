@@ -46,7 +46,8 @@ double interpolate(const double x, const double a0, const double a1,
 class ExponentialFunction final : public Function {
 public:
   ExponentialFunction(std::vector<double> domain, std::vector<double> range,
-                      std::vector<double> c0, std::vector<double> c1, double n)
+                      std::vector<double> c0, std::vector<double> c1,
+                      const double n)
       : Function(std::move(domain), std::move(range)), m_c0{std::move(c0)},
         m_c1{std::move(c1)}, m_n{n} {}
 
@@ -115,7 +116,8 @@ private:
 class SampledFunction final : public Function {
 public:
   SampledFunction(std::vector<double> domain, std::vector<double> range,
-                  std::vector<std::size_t> size, std::int32_t bits_per_sample,
+                  std::vector<std::size_t> size,
+                  const std::int32_t bits_per_sample,
                   std::vector<double> encode, std::vector<double> decode,
                   std::string samples)
       : Function(std::move(domain), std::move(range)), m_size{std::move(size)},

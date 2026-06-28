@@ -209,7 +209,7 @@ public:
     using reference = std::uint32_t;
 
     Iterator() = default;
-    Iterator(const char *position, std::size_t width)
+    Iterator(const char *position, const std::size_t width)
         : m_position{position}, m_width{width} {}
 
     std::uint32_t operator*() const {
@@ -239,7 +239,7 @@ public:
     std::size_t m_width{1};
   };
 
-  CodeRange(std::string_view codes, std::size_t width)
+  CodeRange(const std::string_view codes, const std::size_t width)
       : m_codes{codes}, m_width{width} {}
 
   // `data()` is used as a bounded byte range delimited by `end()`, not as a
