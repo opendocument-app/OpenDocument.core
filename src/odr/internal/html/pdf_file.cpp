@@ -582,6 +582,11 @@ public:
   struct SpanOut {
     std::string classes;
     std::string text;
+    // Selection layer only: the run's true advance in CSS px, emitted as
+    // `data-w` so the on-load fit script can `scaleX` the transparent span to
+    // the real glyph width (the system fallback font it renders in has its own,
+    // different advances). 0 on visual spans — no attribute is written.
+    double width{0};
   };
   // One vector item, already serialized to an SVG fragment in the page's
   // viewBox (PDF points, y-down): a painted `<path>` or an `<image>`.
@@ -1029,11 +1034,15 @@ public:
             }
           }
 
+          const double width_px = extent * pt_to_px;
           if (merge && !page_out.sel_spans.empty()) {
             page_out.sel_spans.back().text += escape_selection_text(text.text);
+            // The merged run flows on from the previous one, so its advance
+            // extends the same box: accumulate the fit target.
+            page_out.sel_spans.back().width += width_px;
           } else {
-            page_out.sel_spans.push_back(
-                SpanOut{base + " i", escape_selection_text(sep + text.text)});
+            page_out.sel_spans.push_back(SpanOut{
+                base + " i", escape_selection_text(sep + text.text), width_px});
           }
 
           prev_baseline = baseline;
@@ -1175,9 +1184,17 @@ public:
       // Inline so the run stays on one line: smaller output and a more legible
       // diff than the open/text/close split, while each run still gets its own
       // line under the page div.
-      out.write_element_begin(
-          "span",
-          HtmlElementOptions().set_inline(true).set_class(span.classes));
+      HtmlElementOptions options;
+      options.set_inline(true).set_class(span.classes);
+      // Selection spans carry their true advance (px) for the fit script.
+      std::string data_w;
+      if (span.width > 0) {
+        std::ostringstream w;
+        w << "data-w=\"" << round2(span.width) << "\"";
+        data_w = std::move(w).str();
+        options.set_extra(data_w);
+      }
+      out.write_element_begin("span", options);
       out.write_raw(span.text);
       out.write_element_end("span");
     };
@@ -1250,6 +1267,40 @@ public:
 
       out.write_element_end("div");
     }
+
+    // Selection-fit script. The transparent selection spans render real Unicode
+    // in the browser's system font, whose advances differ from the embedded
+    // glyphs, so an active highlight is wider or narrower than the visible run.
+    // Each span carries its true advance in `data-w` (CSS px); correct the box
+    // with a horizontal `scaleX` = target / measured about the run's left
+    // origin (`.t` has `transform-origin:0 0`). The page is fully usable
+    // without this — it only tightens the highlight rectangle, so it degrades
+    // gracefully where scripts are blocked.
+    //
+    // Run per page, lazily, via `IntersectionObserver`: a large document only
+    // pays for the pages actually scrolled into view, never a single
+    // whole-document pass on load. Within a page, read every width first and
+    // write every transform second so the measurement loop isn't interleaved
+    // with style writes (which would force a reflow per span). Upright runs
+    // only: a run that already carries a rotation/skew matrix is skipped — its
+    // on-screen box is a rotated bounding box, not the local advance, so a
+    // single `scaleX` can't correct it (these keep today's behaviour).
+    out.write_script_begin();
+    out.write_raw(
+        R"JS((function(){if(!window.IntersectionObserver)return;)JS"
+        R"JS(var io=new IntersectionObserver(function(es){es.forEach(function(e){)JS"
+        R"JS(if(!e.isIntersecting)return;io.unobserve(e.target);)JS"
+        R"JS(var s=e.target.querySelectorAll('.sel span[data-w]'),n=s.length,)JS"
+        R"JS(w=new Array(n),f=new Array(n),i,k;)JS"
+        R"JS(for(i=0;i<n;i++){f[i]=getComputedStyle(s[i]).transform==='none';)JS"
+        R"JS(w[i]=s[i].getBoundingClientRect().width;})JS"
+        R"JS(for(i=0;i<n;i++){if(f[i]&&w[i]>0){)JS"
+        R"JS(k=parseFloat(s[i].getAttribute('data-w'))/w[i];)JS"
+        R"JS(s[i].style.transform='scaleX('+k+')';}}})},{rootMargin:'200px'});)JS"
+        R"JS(document.querySelectorAll('.p').forEach(function(p){io.observe(p);});})();)JS",
+        false);
+    out.write_script_end();
+
     out.write_body_end();
     out.write_end();
 
