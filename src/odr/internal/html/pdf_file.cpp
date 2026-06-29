@@ -957,15 +957,31 @@ public:
         }
 
         // --- Selection layer -------------------------------------------------
-        // Any run with extractable text contributes one transparent, selectable
-        // span (`.i`) carrying the real Unicode, anchored at the run origin via
-        // the shared placement (`base`). The grouping sweep (content order)
-        // prefixes a separator space when this run opens a new line/column or
-        // sits past a wide intra-line gap, so search and copy get whitespace
-        // across run boundaries. The space is suppressed when either side
-        // already carries whitespace — a double space breaks literal
-        // find-in-page, and inter-word gaps are often already an inferred
-        // leading space on `text.text`.
+        // Every run with extractable text feeds the transparent, selectable
+        // layer (`.i`) with its real Unicode, anchored at the run origin via
+        // the shared placement (`base`). A content-order sweep decides, per
+        // run, whether it starts a new span or extends the previous one:
+        //
+        //  * A line/column break or a wide intra-line gap starts a new span,
+        //    prefixed with a separator space so search and copy get whitespace
+        //    across the boundary. The space is suppressed when either side
+        //    already carries whitespace — a double space breaks literal
+        //    find-in-page, and inter-word gaps often already left an inferred
+        //    leading space on `text.text`.
+        //  * A tight same-baseline continuation with no whitespace at the
+        //    boundary merges into the previous span. PDF splits one word into
+        //    several runs at every TJ kerning adjustment, and the browser finds
+        //    word boundaries within a single text node only, so a word spread
+        //    over separate spans can't be grown by a double-click. Folding the
+        //    continuation into the previous text node keeps the whole word
+        //    selectable as a unit. A boundary that already carries a space is a
+        //    word break, not an intra-word split, so it stays a separate span —
+        //    gluing the words into one node (over a non-breaking separator)
+        //    would instead make a double-click grab the whole phrase. The
+        //    merged run's own origin is dropped — its glyphs flow from where
+        //    the previous run ended — but the runs are tightly packed by
+        //    construction and the layer is transparent, so the sub-glyph drift
+        //    is invisible.
         if (!text.text.empty()) {
           // Run origin and horizontal extent in page-box points (y down). The
           // advance (`text.width`) lives in the text matrix's space; its box
@@ -982,19 +998,29 @@ public:
           const double font_pt = text.size * axis;
           const bool starts_space = text.text.front() == ' ';
 
+          bool merge = false;
           std::string sep;
           if (have_prev_run && font_pt > 0) {
             const bool new_line =
                 std::abs(baseline - prev_baseline) > 0.6 * font_pt ||
                 ox < prev_end - 0.5 * font_pt;
             const bool gap = ox - prev_end > 0.25 * font_pt;
-            if ((new_line || gap) && !prev_ends_space && !starts_space) {
-              sep = " ";
+            const bool boundary_space = prev_ends_space || starts_space;
+            if (new_line || gap) {
+              if (!boundary_space) {
+                sep = " ";
+              }
+            } else if (!boundary_space) {
+              merge = true;
             }
           }
 
-          page_out.sel_spans.push_back(
-              SpanOut{base + " i", escape_text(sep + text.text)});
+          if (merge && !page_out.sel_spans.empty()) {
+            page_out.sel_spans.back().text += escape_text(text.text);
+          } else {
+            page_out.sel_spans.push_back(
+                SpanOut{base + " i", escape_text(sep + text.text)});
+          }
 
           prev_baseline = baseline;
           prev_end = ox + extent;
@@ -1146,8 +1172,19 @@ public:
     for (const PageOut &page : pages_out) {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
-      // Clip-path and gradient defs for this page, in a hidden zero-size
-      // `<svg>`. They are referenced by id from the page's fragments;
+
+      // Visual layer: the page's graphics and unselectable glyphs, grouped in
+      // one parent and hidden from the accessibility tree (`aria-hidden`) — the
+      // glyphs are often PUA code points a screen reader would read as
+      // gibberish, and the real text is carried by the selection layer below.
+      // The wrapper is unpositioned and contributes no height (its children are
+      // `position:absolute`), so it stays layout-neutral and the spans still
+      // anchor to the `.p` page box.
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class("vis").set_extra(
+                                  R"(aria-hidden="true")"));
+      // Clip-path, gradient and pattern defs for this page, in a hidden
+      // zero-size `<svg>`. They are referenced by id from the page's fragments;
       // `clipPathUnits`/`gradientUnits` are `userSpaceOnUse`, so the geometry
       // is read in the user space of the referencing element (the page
       // viewBox), not this `<svg>`.
@@ -1184,13 +1221,19 @@ public:
         }
       }
       close_svg();
-      // The selection layer: transparent, selectable Unicode in reading order,
-      // emitted last so the spans are contiguous in the DOM and a drag- or
-      // find-selection flows cleanly across runs and lines without the visual
-      // glyphs (which are `user-select:none`) interrupting it.
+      out.write_element_end("div");
+
+      // Selection layer: transparent, selectable Unicode in reading order,
+      // grouped in its own parent and emitted after the visual layer so the
+      // spans are contiguous in the DOM and a drag- or find-selection flows
+      // cleanly across runs and lines without the visual glyphs (which are
+      // `user-select:none`) interrupting it.
+      out.write_element_begin("div", HtmlElementOptions().set_class("sel"));
       for (const SpanOut &span : page.sel_spans) {
         write_span(span);
       }
+      out.write_element_end("div");
+
       out.write_element_end("div");
     }
     out.write_body_end();
