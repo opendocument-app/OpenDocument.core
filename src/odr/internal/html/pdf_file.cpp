@@ -969,10 +969,15 @@ public:
         if (!text.text.empty()) {
           // Run origin and horizontal extent in page-box points (y down). The
           // advance (`text.width`) lives in the text matrix's space; its box
-          // extent scales by the matrix's x-axis length.
+          // extent scales by the text-matrix -> box x-axis length. The
+          // placement transform's x-axis (`m.a`, `m.b`) additionally folds in
+          // horizontal scaling (Tz), but `text.width` already advanced with Tz
+          // in `segment_advances`; divide it back out so Tz is applied once
+          // (and so `font_pt` tracks the Tz-free em).
           const double ox = m.e;
           const double baseline = m.f;
-          const double axis = std::hypot(m.a, m.b);
+          const double tz = text.horizontal_scaling / 100.0;
+          const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
           const double extent = text.width * axis;
           const double font_pt = text.size * axis;
           const bool starts_space = text.text.front() == ' ';
