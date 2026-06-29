@@ -981,12 +981,20 @@ public:
         // the shared placement (`base`). A content-order sweep decides, per
         // run, whether it starts a new span or extends the previous one:
         //
-        //  * A line/column break or a wide intra-line gap starts a new span,
-        //    prefixed with a separator space so search and copy get whitespace
-        //    across the boundary. The space is suppressed when either side
-        //    already carries whitespace — a double space breaks literal
-        //    find-in-page, and inter-word gaps often already left an inferred
-        //    leading space on `text.text`.
+        //  * A line/column break or a wide intra-line gap starts a new span.
+        //  The
+        //    separating space goes on the *trailing* end of the previous span,
+        //    never the leading end of the new one: an inter-word gap routinely
+        //    leaves an inferred leading space on `text.text`, and a span that
+        //    renders `white-space:pre` would then show that space before its
+        //    first glyph at the run origin — so a double-click, which excludes
+        //    surrounding whitespace, selects the word but leaves the leading
+        //    space cell, making the highlight start a space-width to the left
+        //    of the text. Hanging the space off the previous word instead keeps
+        //    every span starting at its first glyph. The separator is deduped
+        //    against a space already ending the previous span (a doubled space
+        //    breaks literal find-in-page), so search and copy still get exactly
+        //    one space across the boundary.
         //  * A tight same-baseline continuation with no whitespace at the
         //    boundary merges into the previous span. PDF splits one word into
         //    several runs at every TJ kerning adjustment, and the browser finds
@@ -1018,7 +1026,7 @@ public:
           const bool starts_space = text.text.front() == ' ';
 
           bool merge = false;
-          std::string sep;
+          bool word_break = false;
           if (have_prev_run && font_pt > 0) {
             const bool new_line =
                 std::abs(baseline - prev_baseline) > 0.6 * font_pt ||
@@ -1026,9 +1034,7 @@ public:
             const bool gap = ox - prev_end > 0.25 * font_pt;
             const bool boundary_space = prev_ends_space || starts_space;
             if (new_line || gap) {
-              if (!boundary_space) {
-                sep = " ";
-              }
+              word_break = true;
             } else if (!boundary_space) {
               merge = true;
             }
@@ -1041,8 +1047,25 @@ public:
             // extends the same box: accumulate the fit target.
             page_out.sel_spans.back().width += width_px;
           } else {
-            page_out.sel_spans.push_back(SpanOut{
-                base + " i", escape_selection_text(sep + text.text), width_px});
+            // Hang the separator off the previous span. Needed whenever the
+            // boundary should carry whitespace — a detected word break, or a
+            // leading space we just peeled off this run — and deduped so the
+            // previous span ends with exactly one space.
+            if ((word_break || starts_space) && !page_out.sel_spans.empty()) {
+              std::string &prev = page_out.sel_spans.back().text;
+              if (prev.empty() || prev.back() != ' ') {
+                prev += ' ';
+              }
+            }
+            // The selection text with the inter-word space, if any, peeled off
+            // the front (it now trails the previous span). A run that was
+            // nothing but the separator emits no span of its own.
+            std::string core = starts_space ? text.text.substr(1) : text.text;
+            if (!core.empty()) {
+              page_out.sel_spans.push_back(
+                  SpanOut{base + " i", escape_selection_text(std::move(core)),
+                          width_px});
+            }
           }
 
           prev_baseline = baseline;
