@@ -9,7 +9,7 @@ C++ library to visualize files, especially documents, in HTML.
 - [odt](https://github.com/opendocument-app/OpenDocument.core/issues/92), [odp](https://github.com/opendocument-app/OpenDocument.core/issues/93), [ods](https://github.com/opendocument-app/OpenDocument.core/issues/94), [odg](https://github.com/opendocument-app/OpenDocument.core/issues/96) ([OpenOffice / LibreOffice](https://github.com/opendocument-app/OpenDocument.core/issues/111))
 - [docx](https://github.com/opendocument-app/OpenDocument.core/issues/86), [pptx](https://github.com/opendocument-app/OpenDocument.core/issues/85), [xlsx](https://github.com/opendocument-app/OpenDocument.core/issues/87) ([Microsoft Office Open XML](https://github.com/opendocument-app/OpenDocument.core/issues/112))
 - [csv](https://github.com/opendocument-app/OpenDocument.core/issues/107)
-- [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104)
+- [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104), [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
 - txt
 - [zip](https://github.com/opendocument-app/OpenDocument.core/issues/109)
@@ -17,7 +17,6 @@ C++ library to visualize files, especially documents, in HTML.
 
 ## Unsupported files
 
-- [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - rtf
 - pages
 - json
