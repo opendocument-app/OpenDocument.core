@@ -39,6 +39,20 @@ namespace {
 /// the extra digits add up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
+/// Escape only HTML markup (`&`, `<`, `>`) for the selection layer. Unlike
+/// `html::escape_text`, spaces are left as ordinary U+0020 rather than
+/// rewritten to `&nbsp;`: the selection spans carry `white-space:pre`, so every
+/// space already renders, and a non-breaking space would defeat the layer's
+/// purpose — it doesn't match a normal space in find-in-page and it glues
+/// adjacent words together under double-click. Tabs aren't expected in
+/// extracted PDF text.
+std::string escape_selection_text(std::string text) {
+  util::string::replace_all(text, "&", "&amp;");
+  util::string::replace_all(text, "<", "&lt;");
+  util::string::replace_all(text, ">", "&gt;");
+  return text;
+}
+
 /// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
 /// is rounded — it lives in page-box units where 1/100 px is plenty; the linear
 /// part (a..d) keeps full precision so small scale/skew factors aren't
@@ -1016,10 +1030,10 @@ public:
           }
 
           if (merge && !page_out.sel_spans.empty()) {
-            page_out.sel_spans.back().text += escape_text(text.text);
+            page_out.sel_spans.back().text += escape_selection_text(text.text);
           } else {
             page_out.sel_spans.push_back(
-                SpanOut{base + " i", escape_text(sep + text.text)});
+                SpanOut{base + " i", escape_selection_text(sep + text.text)});
           }
 
           prev_baseline = baseline;
