@@ -20,8 +20,6 @@
 #include <odr/internal/pdf/pdf_page_extractor.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <utf8cpp/utf8/unchecked.h>
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -561,20 +559,15 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
-  // One emitted span. The styling is fully resolved into class tokens during
-  // the first pass; only the (already escaped) text and class list survive to
-  // the writing pass. A text run with an embedded font emits the dual layer as
-  // a transparent selectable span carrying the real Unicode with the visible
-  // glyph layer (PUA code points in the `@font-face` font) nested inside it:
-  // the child is absolutely positioned at the run origin and inherits the
-  // font size, spacing, and transform from the parent, so the placement
-  // classes live only on the parent. `glyph_classes` is empty when there is no
-  // nested layer (the legacy fallback path and display-only runs).
+  // One emitted span: the resolved class tokens plus the already-escaped text.
+  // The renderer paints text in two independent layers (see `write_document`):
+  // the **visual** layer (`PageOut::items`, in paint order) carries the
+  // unselectable glyphs; the **selection** layer (`PageOut::sel_spans`, in
+  // content/reading order) carries the transparent, selectable real Unicode.
+  // Both layers are flat — a span is just classes + text.
   struct SpanOut {
     std::string classes;
     std::string text;
-    std::string glyph_classes;
-    std::string glyph_text;
   };
   // One vector item, already serialized to an SVG fragment in the page's
   // viewBox (PDF points, y-down): a painted `<path>` or an `<image>`.
@@ -582,14 +575,18 @@ public:
   struct PathOut {
     std::string svg;
   };
-  // Page content in paint (z) order: text spans and paths interleave, so a
-  // later fill occludes earlier text and vice versa.
+  // Visual page content in paint (z) order: glyph spans and paths interleave,
+  // so a later fill occludes earlier text and vice versa.
   using PageItem = std::variant<SpanOut, PathOut>;
   struct PageOut {
     std::string classes;
     double width{0};  // page box width, PDF points (for the SVG viewBox)
     double height{0}; // page box height, PDF points
     std::vector<PageItem> items;
+    // The selection layer: transparent, selectable Unicode spans in
+    // content-stream (reading) order, emitted after the visual content so they
+    // form one contiguous, cleanly selectable run in the DOM.
+    std::vector<SpanOut> sel_spans;
     // `<clipPath>` defs for this page's clipped paths, emitted once in a hidden
     // `<svg>`; the path fragments reference them by id. Empty when no path on
     // the page is clipped.
@@ -621,22 +618,14 @@ public:
     // whose embedded font is absent, not an SFNT, or not re-encodable keeps
     // index 0 and renders through the fallback path, exactly as before.
     //
-    // The `@font-face` rules are *not* built here: a font also gets
-    // real-Unicode `cmap` entries for the scalars its 1:1 runs use (so those
-    // runs can collapse to a single span), and that used-scalar set is only
-    // complete after the first pass. `font_family` therefore just validates and
-    // indexes the font; `accepted_fonts` / `used_unicode` (indexed by `index -
-    // 1`) carry it to the post-pass that re-encodes with the extra entries and
-    // emits `font_faces`.
+    // The `@font-face` rules are *not* built here: the font subset isn't needed
+    // until the post-pass, which re-encodes each accepted font to the PUA and
+    // emits `font_faces`. `font_family` therefore just validates and indexes
+    // the font; `accepted_fonts` (indexed by `index - 1`) carries it forward.
     std::uint32_t family_count = 0;
     std::string font_faces;
-    std::string glyph_styles; // combined per-font `.fvN`/`.fnN`/`.gvN`/`.giN`
+    std::string glyph_styles; // per-font visible-glyph class `.fvN`
     std::vector<pdf::Font *> accepted_fonts;
-    std::vector<std::map<char32_t, std::uint16_t>> used_unicode;
-    // Which combined per-font classes occur, so only those are emitted in
-    // <head>. Slots: [0]=`.fvN` (plain visible), [1]=`.fnN` (plain invisible),
-    // [2]=`.gvN` (nested-glyph visible), [3]=`.giN` (nested-glyph invisible).
-    std::vector<std::array<bool, 4>> font_class_used;
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
     const auto font_family = [&](pdf::Font *font) -> std::uint32_t {
       const auto [it, inserted] = family_index.try_emplace(font, 0);
@@ -682,31 +671,14 @@ public:
       const std::uint32_t index = ++family_count;
       it->second = index;
       accepted_fonts.push_back(font);
-      used_unicode.emplace_back();
-      font_class_used.push_back({false, false, false, false});
       return index;
     };
 
-    // The combined per-font class carrying `font-family:'odr-fN'` and the paint
-    // colour, so a font-bearing span names one class instead of restating the
-    // font family (interned) plus `.gv`/`.i` on every one of the millions of
-    // spans. A `nested` glyph layer additionally folds in the `.t .g` placement
-    // (absolute at the run origin, unselectable). Records the combo as used so
-    // only the rules that occur are emitted in <head>.
-    const auto font_class = [&](const std::uint32_t font, const bool inv,
-                                const bool nested) {
-      const int slot = nested ? (inv ? 3 : 2) : (inv ? 1 : 0);
-      font_class_used[font - 1][slot] = true;
-      const char *const prefix =
-          nested ? (inv ? "gi" : "gv") : (inv ? "fn" : "fv");
-      return prefix + std::to_string(font);
-    };
-
-    // A real-Unicode scalar may carry a `cmap` entry (letting its run collapse)
-    // only inside the BMP and outside the PUA (`U+E000..U+F8FF`), so a glyph's
-    // own deterministic PUA code point (`pua_code_point`) is never shadowed.
-    const auto collapsible_unicode = [](const char32_t c) {
-      return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
+    // The per-font visible-glyph class `.fvN`, carrying `font-family:'odr-fN'`
+    // and the black paint, so a glyph span names one class instead of restating
+    // the font family on every one of the (potentially millions of) spans.
+    const auto font_class = [](const std::uint32_t font) {
+      return "fv" + std::to_string(font);
     };
 
     // The PUA glyph string for a run: each character code -> glyph id ->
@@ -796,6 +768,15 @@ public:
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
+      // Selection-layer grouping sweep state, in content-stream (reading)
+      // order. Tracks the previous text run's baseline and right edge (page-box
+      // points, y down) so the next run can be prefixed with a separator space
+      // on a line/column break or a wide intra-line gap.
+      bool have_prev_run = false;
+      double prev_baseline = 0;
+      double prev_end = 0;
+      bool prev_ends_space = false;
+
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
         // A painted path: serialize its subpaths to an SVG `<path>` fragment in
@@ -870,20 +851,21 @@ public:
 
         const util::math::Transform2D m = flip_glyph * text.transform * to_box;
 
-        // Tr 3 (invisible) and Tr 7 (clip-only) paint nothing; keep them
-        // selectable via the transparent `.i` class.
+        // Tr 3 (invisible) and Tr 7 (clip-only) paint nothing; they emit no
+        // visual span at all and survive only in the selection layer (so
+        // OCR-over-scan text stays searchable/selectable).
         const bool invisible =
             text.rendering_mode == pdf::TextRenderingMode::invisible ||
             text.rendering_mode == pdf::TextRenderingMode::clip;
 
-        // The run's visible paint colour, folded onto the visible span as an
-        // interned colour class — but only when it is not the default black, so
-        // the overwhelmingly common black run adds nothing. The per-font
-        // `.fvN`/`.gvN` classes declare `color:#000`; this class is emitted
-        // after them in <head> (equal specificity), so it overrides. Invisible
-        // runs (Tr 3/7) stay transparent via `.i`, so they take no colour
-        // class. The fill modes paint with the non-stroking colour, the
-        // stroke-only modes (Tr 1/5) with the stroking colour.
+        // The run's visible paint colour, folded onto the visual glyph span as
+        // an interned colour class — but only when it is not the default black,
+        // so the overwhelmingly common black run adds nothing. The per-font
+        // `.fvN` class declares `color:#000`; this class is emitted after it in
+        // <head> (equal specificity), so it overrides. The selection layer is
+        // transparent and takes no colour. The fill modes paint with the
+        // non-stroking colour, the stroke-only modes (Tr 1/5) with the stroking
+        // colour.
         std::string color_suffix;
         if (!invisible) {
           const pdf::GraphicsState::Color &paint =
@@ -974,94 +956,70 @@ public:
                             round2(text.word_spacing * scale * pt_to_px)));
         }
 
-        // A run collapses to a single span — selectable *and* visible, the real
-        // Unicode rendered directly in the embedded font — when it has an
-        // embedded font, carries text, is 1:1 with its codes (no /ToUnicode
-        // expansion, /ActualText, or inferred space), and every glyph wins a
-        // real-Unicode `cmap` entry. The winner of a scalar is the first
-        // collapse-candidate run (in document order) to use it; processing
-        // order *is* document order, so an earlier run's claim is already
-        // visible and no later run can unseat it — the decision is final here.
-        const bool collapse_candidate =
-            font != 0 && !text.text.empty() && text.font != nullptr &&
-            util::string::utf8_length(text.text) == text.advances.size();
+        // --- Selection layer -------------------------------------------------
+        // Any run with extractable text contributes one transparent, selectable
+        // span (`.i`) carrying the real Unicode, anchored at the run origin via
+        // the shared placement (`base`). The grouping sweep (content order)
+        // prefixes a separator space when this run opens a new line/column or
+        // sits past a wide intra-line gap, so search and copy get whitespace
+        // across run boundaries. The space is suppressed when either side
+        // already carries whitespace — a double space breaks literal
+        // find-in-page, and inter-word gaps are often already an inferred
+        // leading space on `text.text`.
+        if (!text.text.empty()) {
+          // Run origin and horizontal extent in page-box points (y down). The
+          // advance (`text.width`) lives in the text matrix's space; its box
+          // extent scales by the matrix's x-axis length.
+          const double ox = m.e;
+          const double baseline = m.f;
+          const double axis = std::hypot(m.a, m.b);
+          const double extent = text.width * axis;
+          const double font_pt = text.size * axis;
+          const bool starts_space = text.text.front() == ' ';
 
-        if (collapse_candidate) {
-          // Stake first-wins real-Unicode -> glyph claims and decide collapse
-          // in one walk: the run collapses iff each code's glyph wins (or
-          // matches) its scalar. Claims are staked for every collapsible scalar
-          // even when the run ends up dual, so later runs see them. The
-          // post-pass only bakes the won scalars into the shared font's `cmap`.
-          std::map<char32_t, std::uint16_t> &won = used_unicode[font - 1];
-          bool collapse = true;
-          auto cp = text.text.begin();
-          for (const std::uint32_t code : text.font->codes(text.codes)) {
-            const char32_t uchar = utf8::unchecked::next(cp);
-            const std::uint16_t glyph = text.font->glyph_for_code(code);
-            if (!collapsible_unicode(uchar)) {
-              collapse = false;
-              continue;
-            }
-            const auto [it, inserted] = won.emplace(uchar, glyph);
-            if (!inserted && it->second != glyph) {
-              collapse = false;
+          std::string sep;
+          if (have_prev_run && font_pt > 0) {
+            const bool new_line =
+                std::abs(baseline - prev_baseline) > 0.6 * font_pt ||
+                ox < prev_end - 0.5 * font_pt;
+            const bool gap = ox - prev_end > 0.25 * font_pt;
+            if ((new_line || gap) && !prev_ends_space && !starts_space) {
+              sep = " ";
             }
           }
-          if (collapse) {
-            // One span: the real Unicode rendered in the embedded font, named
-            // by the combined per-font class (black visible / transparent
-            // invisible), selectable either way.
-            std::string classes = std::move(base);
-            classes += ' ';
-            classes += font_class(font, invisible, /*nested=*/false);
+
+          page_out.sel_spans.push_back(
+              SpanOut{base + " i", escape_text(sep + text.text)});
+
+          prev_baseline = baseline;
+          prev_end = ox + extent;
+          prev_ends_space = text.text.back() == ' ';
+          have_prev_run = true;
+        }
+
+        // --- Visual layer ----------------------------------------------------
+        // Unselectable glyphs in paint order. Invisible runs (Tr 3/7) paint
+        // nothing, so they emit no visual span — they live only in the
+        // selection layer above.
+        if (!invisible) {
+          if (font != 0) {
+            // PUA code points in the embedded font, carrying the placement
+            // (`base`), `.g` (unselectable) and the per-font paint+family
+            // class.
+            std::string classes = base + " g ";
+            classes += font_class(font);
             classes += color_suffix;
             page_out.items.push_back(
-                SpanOut{std::move(classes), escape_text(text.text), {}, {}});
+                SpanOut{std::move(classes),
+                        escape_text(glyph_run(*text.font, text.codes))});
           } else {
-            // Dual layer (a glyph lost its scalar to an earlier one): a
-            // transparent selectable Unicode span with the PUA glyph layer
-            // nested inside, the latter folded into the combined `.gvN` /
-            // `.giN` class. The colour rides the visible (nested) layer.
-            page_out.items.push_back(SpanOut{
-                base + " i", escape_text(text.text),
-                font_class(font, invisible, /*nested=*/true) + color_suffix,
-                escape_text(glyph_run(*text.font, text.codes))});
+            // No embedded font: render the Unicode in a fallback font,
+            // unselectable (the selection layer owns interaction).
+            std::string classes = base + " g";
+            classes += color_suffix;
+            page_out.items.push_back(
+                SpanOut{std::move(classes), escape_text(text.text)});
           }
-        } else if (font != 0) {
-          // The visible glyph layer: PUA code points in the embedded font,
-          // named by the combined per-font class (paint colour + font family).
-          std::string glyph_text =
-              escape_text(glyph_run(*text.font, text.codes));
-
-          if (!text.text.empty()) {
-            // Dual layer: a transparent selectable span carrying the real
-            // Unicode (for copy/search) with the glyph layer nested inside.
-            // The nested child overlays the run origin and inherits the
-            // placement via the combined `.gvN` / `.giN` class.
-            page_out.items.push_back(SpanOut{
-                base + " i", escape_text(text.text),
-                font_class(font, invisible, /*nested=*/true) + color_suffix,
-                std::move(glyph_text)});
-          } else {
-            // Display-only run: nothing is extractable (the `no_unicode` case),
-            // so the glyph layer stands alone and carries the placement itself
-            // (`base`), `.g` (unselectable) and the combined paint+font class.
-            std::string glyph_classes = base + " g ";
-            glyph_classes += font_class(font, invisible, /*nested=*/false);
-            glyph_classes += color_suffix;
-            page_out.items.push_back(SpanOut{
-                std::move(glyph_classes), std::move(glyph_text), {}, {}});
-          }
-        } else {
-          // Legacy single-layer path: no embedded font, render the Unicode in a
-          // fallback font.
-          std::string classes = base;
-          if (invisible) {
-            classes += " i";
-          }
-          classes += color_suffix;
-          page_out.items.push_back(
-              SpanOut{std::move(classes), escape_text(text.text), {}, {}});
         }
       }
 
@@ -1070,62 +1028,39 @@ public:
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
 
-    // Post-pass: every page has been scanned, so the per-font used-scalar sets
-    // are complete.
-    //
-    // Re-encode each accepted font with its real-Unicode entries baked into the
-    // `cmap` (the PUA range is kept as a fallback) and emit the `@font-face`
-    // rules in index order, so the output stays deterministic.
+    // Post-pass: re-encode each accepted font to the PUA and emit its
+    // `@font-face` rule plus the per-font visible-glyph class in index order,
+    // so the output stays deterministic. The visual glyph layer renders PUA
+    // code points only (selection rides the separate transparent layer), so no
+    // real-Unicode `cmap` entries are baked.
     for (std::uint32_t i = 0; i < family_count; ++i) {
       pdf::Font *font = accepted_fonts[i];
-      const std::map<char32_t, std::uint16_t> &extra = used_unicode[i];
       std::string reencoded;
       if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
               font->embedded_font)) {
-        font::reencode_to_pua(*sfnt, extra);
+        font::reencode_to_pua(*sfnt);
         std::ostringstream sfnt_out;
         sfnt->write(sfnt_out);
         reencoded = std::move(sfnt_out).str();
       } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
                      font->embedded_font)) {
-        reencoded = font::cff::wrap_to_otf(*cff, extra);
+        reencoded = font::cff::wrap_to_otf(*cff);
       }
       const std::string url = file_to_url(reencoded, "font/ttf");
-      font_faces += "@font-face{font-family:'odr-f" + std::to_string(i + 1) +
-                    "';src:url(" + url + ");}";
-
-      // The combined per-font classes for this font, only those used. `.fvN` /
-      // `.fnN` carry just the paint colour and font family (placement stays on
-      // the span's own classes); `.gvN` / `.giN` additionally fold in the
-      // nested glyph layer's `.t` placement and `.g` unselectability.
       const std::string n = std::to_string(i + 1);
-      const std::string family = "font-family:'odr-f" + n + "'";
-      constexpr const char *placement =
-          "position:absolute;left:0;top:0;transform-origin:0 0;"
-          "white-space:pre;line-height:1;user-select:none;";
-      const auto rule = [&](const char *cls, const char *head,
-                            const char *color) {
-        glyph_styles += '.';
-        glyph_styles += cls;
-        glyph_styles += n;
-        glyph_styles += '{';
-        glyph_styles += head;
-        glyph_styles += color;
-        glyph_styles += family;
-        glyph_styles += '}';
-      };
-      if (font_class_used[i][0]) {
-        rule("fv", "", "color:#000;");
-      }
-      if (font_class_used[i][1]) {
-        rule("fn", "", "color:transparent;");
-      }
-      if (font_class_used[i][2]) {
-        rule("gv", placement, "color:#000;");
-      }
-      if (font_class_used[i][3]) {
-        rule("gi", placement, "color:transparent;");
-      }
+      font_faces += "@font-face{font-family:'odr-f";
+      font_faces += n;
+      font_faces += "';src:url(";
+      font_faces += url;
+      font_faces += ");}";
+
+      // `.fvN` carries the font family and the black paint; placement (`.t`),
+      // unselectability (`.g`) and any non-black colour stay on the span.
+      glyph_styles += ".fv";
+      glyph_styles += n;
+      glyph_styles += "{color:#000;font-family:'odr-f";
+      glyph_styles += n;
+      glyph_styles += "'}";
     }
 
     // Pass 2: write the document, now that the catalog is complete.
@@ -1148,12 +1083,11 @@ public:
     out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
                  "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `font-kerning:none` + `font-variant-ligatures:none` keep the browser from
-    // applying the embedded font's GPOS/GSUB tables. A collapsed run now emits
-    // real Unicode in that font, so without this a sequence like `fi`/`AV`
-    // could be re-shaped (ligature substitution, kerning) after this code
-    // already fixed the PDF glyph IDs and advances, shifting pixels and run
-    // widths for otherwise 1:1 text. The PUA glyph layer was immune; restore
-    // that here.
+    // applying the embedded font's GPOS/GSUB tables: the PUA glyph layer
+    // carries exact PDF glyph IDs and advances, and ligature substitution /
+    // kerning would re-shape it, shifting pixels and run widths. Shared by both
+    // layers
+    // (`.t`).
     // `line-height:1` fixes the box top one em-ascent above the baseline so the
     // baseline shift applied to each run's `top`/matrix (see `ascent_em`) lands
     // the glyphs on the PDF text origin; the browser's default `normal` leading
@@ -1161,12 +1095,11 @@ public:
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
                  "white-space:pre;line-height:1;font-kerning:none;"
                  "font-variant-ligatures:none}";
-    // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
-    // search (OCR-over-scan), but not painted.
+    // The selection layer: transparent (painted by the glyph layer underneath)
+    // but selectable and searchable, including OCR-over-scan invisible text.
     out.out() << ".i{color:transparent}";
-    // The display-only glyph layer (`no_unicode` runs) is not selectable, so
-    // the PUA code points stay off the clipboard; `.g` pairs with a combined
-    // `.fvN`/`.fnN` paint+font class on those spans.
+    // The visual glyph layer is not selectable — selection rides the `.i`
+    // layer, so the (often PUA) visible code points stay off the clipboard.
     out.out() << ".g{user-select:none}";
     // Vector graphics: one or more `<svg>` overlays per page, each filling the
     // page box (viewBox in PDF points). `overflow:hidden` clips each overlay to
@@ -1183,29 +1116,24 @@ public:
                  "overflow:hidden;pointer-events:none}";
     // Embedded fonts, re-encoded to the PUA and served inline.
     out.out() << font_faces;
-    // Combined per-font classes (`.fvN`/`.fnN` paint+font, `.gvN`/`.giN` also
-    // placement), so a font-bearing span names one class for its font.
+    // Per-font visible-glyph classes (`.fvN` paint+font family), so a glyph
+    // span names one class for its font.
     out.out() << glyph_styles;
-    // Per-value atomic classes (font sizes, offsets, transforms, ...).
+    // Per-value atomic classes (font sizes, offsets, transforms, ...). Shared
+    // by the visual glyph layer and the selection layer (both anchor at the run
+    // origin via these placement classes).
     styles.write_rules(out.out());
     out.write_header_style_end();
     out.write_header_end();
 
     const auto write_span = [&out](const SpanOut &span) {
-      // Inline so the whole run (and its nested glyph layer) stays on one line:
-      // smaller output and a more legible diff than the open/text/close split,
-      // while each run still gets its own line under the page div.
+      // Inline so the run stays on one line: smaller output and a more legible
+      // diff than the open/text/close split, while each run still gets its own
+      // line under the page div.
       out.write_element_begin(
           "span",
           HtmlElementOptions().set_inline(true).set_class(span.classes));
       out.write_raw(span.text);
-      if (!span.glyph_classes.empty()) {
-        out.write_element_begin("span",
-                                HtmlElementOptions().set_inline(true).set_class(
-                                    span.glyph_classes));
-        out.write_raw(span.glyph_text);
-        out.write_element_end("span");
-      }
       out.write_element_end("span");
     };
 
@@ -1251,6 +1179,13 @@ public:
         }
       }
       close_svg();
+      // The selection layer: transparent, selectable Unicode in reading order,
+      // emitted last so the spans are contiguous in the DOM and a drag- or
+      // find-selection flows cleanly across runs and lines without the visual
+      // glyphs (which are `user-select:none`) interrupting it.
+      for (const SpanOut &span : page.sel_spans) {
+        write_span(span);
+      }
       out.write_element_end("div");
     }
     out.write_body_end();
