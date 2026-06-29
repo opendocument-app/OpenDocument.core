@@ -982,19 +982,25 @@ public:
         // run, whether it starts a new span or extends the previous one:
         //
         //  * A line/column break or a wide intra-line gap starts a new span.
-        //  The
-        //    separating space goes on the *trailing* end of the previous span,
-        //    never the leading end of the new one: an inter-word gap routinely
-        //    leaves an inferred leading space on `text.text`, and a span that
-        //    renders `white-space:pre` would then show that space before its
-        //    first glyph at the run origin — so a double-click, which excludes
-        //    surrounding whitespace, selects the word but leaves the leading
-        //    space cell, making the highlight start a space-width to the left
-        //    of the text. Hanging the space off the previous word instead keeps
-        //    every span starting at its first glyph. The separator is deduped
-        //    against a space already ending the previous span (a doubled space
-        //    breaks literal find-in-page), so search and copy still get exactly
-        //    one space across the boundary.
+        //    The separating space is emitted as its *own* span carrying no fit
+        //    width (`data-w`), never folded into a glyph span's text. Two
+        //    reasons. (1) The on-load `scaleX` fit corrects a glyph span to its
+        //    real advance; a trailing separator space has no visible glyph to
+        //    map onto (a line break advances ~0 horizontally yet the space
+        //    still occupies a fallback-font cell), so a single `scaleX` could
+        //    not both land the word and collapse the space — folding it in
+        //    squeezes the word. A separator span with no `data-w` is skipped by
+        //    the fit script, leaving glyph spans to scale cleanly. (2) An
+        //    inter-word gap routinely leaves an inferred leading space on
+        //    `text.text`; peeling it onto a separate span (rather than the new
+        //    word's leading edge) keeps every glyph span starting at its first
+        //    glyph, so a double-click — which excludes surrounding whitespace —
+        //    highlights the word without a space-width offset. The separator
+        //    reuses the previous run's placement (it sits at that run's origin,
+        //    transparent, adding no visible highlight) and is deduped against a
+        //    space already ending the previous run, so search and copy get
+        //    exactly one space across the boundary (a doubled space breaks
+        //    literal find-in-page).
         //  * A tight same-baseline continuation with no whitespace at the
         //    boundary merges into the previous span. PDF splits one word into
         //    several runs at every TJ kerning adjustment, and the browser finds
@@ -1047,18 +1053,21 @@ public:
             // extends the same box: accumulate the fit target.
             page_out.sel_spans.back().width += width_px;
           } else {
-            // Hang the separator off the previous span. Needed whenever the
-            // boundary should carry whitespace — a detected word break, or a
-            // leading space we just peeled off this run — and deduped so the
-            // previous span ends with exactly one space.
-            if ((word_break || starts_space) && !page_out.sel_spans.empty()) {
-              std::string &prev = page_out.sel_spans.back().text;
-              if (prev.empty() || prev.back() != ' ') {
-                prev += ' ';
-              }
+            // Emit the separator as its own span, reusing the previous run's
+            // placement and carrying no fit width (`width == 0` -> no `data-w`,
+            // so the on-load scaleX skips it and never distorts a glyph span).
+            // Needed whenever the boundary should carry whitespace — a detected
+            // word break, or a leading space we just peeled off this run — and
+            // deduped against a space already ending the previous run so the
+            // boundary holds exactly one space (a doubled space breaks literal
+            // find-in-page).
+            if ((word_break || starts_space) && !prev_ends_space &&
+                !page_out.sel_spans.empty()) {
+              page_out.sel_spans.push_back(
+                  SpanOut{page_out.sel_spans.back().classes, " ", 0});
             }
             // The selection text with the inter-word space, if any, peeled off
-            // the front (it now trails the previous span). A run that was
+            // the front (it became the separator span above). A run that was
             // nothing but the separator emits no span of its own.
             std::string core = starts_space ? text.text.substr(1) : text.text;
             if (!core.empty()) {
