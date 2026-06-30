@@ -393,7 +393,7 @@ phrase — or even one word split across `TJ` kerning runs — crossing a run
 boundary was unfindable and a drag jumped between boxes. Fix: keep the **visual
 glyph layer exactly as is** (absolutely-positioned PUA spans — what makes
 rendering pixel-perfect) and restructure **only** the transparent Unicode into a
-separate **selection layer** (`PageOut::sel_spans`, transparent via `.i`),
+separate **selection layer** (`PageOut::sel_lines`, transparent via `.i`),
 emitted contiguously *after* the visual content in content-stream order so a
 native drag or Ctrl+F flows through it without an unselectable glyph span
 (`.g`, `user-select:none`) interrupting. PDF.js-style layering, done statically
@@ -403,29 +403,47 @@ at generation time. Key points:
   next); a global (baseline, x) sort would interleave columns sharing a y-band
   and scramble multi-column text and tables. An O(n) sweep tracks the previous
   run's baseline and right edge and decides each run's boundary.
-- **Eager to split, conservative to merge.** New span when the baseline jumps
-  (>0.6·font-size) or the run starts left of the previous run's end, or when the
-  same-line gap exceeds 0.25·font-size — either inserts a single space (so
-  `"the quick"` matches across the break), as its **own** separator span at the
-  previous run's origin, deduped against whitespace the run already carries (a
-  doubled space breaks literal find-in-page). Otherwise a tight, whitespace-free
-  same-baseline continuation **merges** into the previous span — PDF splits one
-  word at every `TJ` kern and the browser finds word boundaries only within a
-  single text node, so folding the continuation keeps the whole word selectable.
-  Cells never merge across columns, so tables fall out as separate spans (correct
-  selection) with **no table detection**.
-- **Per-run origin anchoring + an on-load `scaleX` fit (the one non-JS-free
-  bit).** Each selection span is absolutely positioned at its run origin (reused
-  from the glyph layer), so highlight drift can accumulate only *within* one
-  short run, never across a line. The transparent text renders in a system
-  fallback font with its own advances, so a tiny on-load JS script `scaleX`es
-  each glyph span (carrying its true advance as `data-w`) about its left edge to
-  the real glyph width; separator spans carry no `data-w` and are skipped. This
-  reverses two of the plan's original "fixed" decisions — output is **no longer
-  fully JS-free**, and `scaleX` is **kept**, not dropped — because per-run
-  `scaleX` is the only way to hold the highlight on the glyphs statically (PDF.js
-  measures the same factor at runtime). Visual rendering stays byte-for-byte
-  unchanged; only the highlight-rectangle alignment improves.
+- **Eager to split, conservative to merge.** A new *line block* opens when the
+  baseline jumps (>0.6·font-size) or the run starts left of the previous run's
+  end; within a line, a gap exceeding 0.25·font-size (or a whitespace boundary)
+  starts a fresh run, otherwise a tight, whitespace-free same-baseline
+  continuation **merges** into the previous run — PDF splits one word at every
+  `TJ` kern and the browser finds word boundaries only within a single text
+  node, so folding the continuation keeps the whole word selectable. A single
+  space is inserted at every break (so `"the quick"` matches across it): a
+  separator span within the line, or the previous line's trailing space across a
+  line break, deduped against whitespace the run already carries (a doubled
+  space breaks literal find-in-page). Cells never merge across columns, so
+  tables fall out as separate runs (correct selection) with **no table
+  detection**.
+- **Per-line flow blocks + an on-load `letter-spacing` fit (the one non-JS-free
+  bit).** Each PDF line is one absolutely-positioned container (placed at its
+  first run's origin, reusing the glyph-layer placement *minus* the Tc/Tw
+  spacing classes); its run `<span>`s **flow inline** rather than being
+  individually positioned, so a native drag, double-click and find-in-page work
+  within the line and the run boxes are *real*. Horizontal placement within the
+  line is purely cumulative — each separator span's `data-w` is the inter-run
+  gap, so word advances and gaps telescope to each run's true x-offset (wide
+  table-column gaps reproduced, not collapsed). The transparent text renders in
+  a system fallback font with its own advances, so a tiny on-load JS script fits
+  each run (carrying its true advance as `data-w`) with
+  `letter-spacing = (target − measured) / glyph_count` — negative to squeeze a
+  too-wide run. Unlike the old per-run `scaleX`, `letter-spacing` is consumed
+  *during* layout, so the box grows/shrinks and the following run flows from the
+  corrected edge (that is why the flow blocks work). A rotated/skewed (matrix)
+  run cannot flow or be fit (its on-screen box is a rotated bbox), so it keeps
+  its own single-run line block positioned by its matrix and carries no `data-w`
+  (the fit skips it) — reproducing the old per-run absolute placement. Output is
+  **no longer fully JS-free**; visual rendering stays byte-for-byte unchanged,
+  only the selection layer changed.
+  - **Known follow-ups.** Vertical placement within a line still rides each
+    run's shared baseline, but a line block assumes ~uniform leading; mixed font
+    sizes in one line (sub/superscripts) align by their own baseline but the
+    container's box height tracks the first run's size (cosmetic highlight drift
+    only). Cross-line find-in-page depends on the browser treating the trailing
+    space + block boundary as a single space. The next rung — grouping lines
+    into paragraph blocks for native cross-line selection — is deferred (needs
+    layout analysis with a confidence fallback; see the chat that scoped this).
 
 ---
 

@@ -576,17 +576,29 @@ public:
   // One emitted span: the resolved class tokens plus the already-escaped text.
   // The renderer paints text in two independent layers (see `write_document`):
   // the **visual** layer (`PageOut::items`, in paint order) carries the
-  // unselectable glyphs; the **selection** layer (`PageOut::sel_spans`, in
+  // unselectable glyphs; the **selection** layer (`PageOut::sel_lines`, in
   // content/reading order) carries the transparent, selectable real Unicode.
   // Both layers are flat — a span is just classes + text.
   struct SpanOut {
     std::string classes;
     std::string text;
     // Selection layer only: the run's true advance in CSS px, emitted as
-    // `data-w` so the on-load fit script can `scaleX` the transparent span to
-    // the real glyph width (the system fallback font it renders in has its own,
-    // different advances). 0 on visual spans — no attribute is written.
+    // `data-w` so the on-load fit script can stretch/squeeze the transparent
+    // span to the real glyph width with `letter-spacing` (the system fallback
+    // font it renders in has its own, different advances). For an inter-run
+    // separator it is the gap width, so the flowed runs land at their true
+    // x-offsets. 0 on visual spans and on unfitted runs — no attribute written.
     double width{0};
+  };
+  // The selection layer is grouped into per-line flow blocks: one
+  // absolutely-positioned container per PDF line (its `classes` carry the line
+  // origin placement plus `.i`), holding inline run `<span>`s that *flow*. This
+  // is what makes native within-line selection, double-click and find-in-page
+  // work and keeps the run boxes real — see `write_document` and the on-load
+  // fit script.
+  struct LineOut {
+    std::string classes;
+    std::vector<SpanOut> runs;
   };
   // One vector item, already serialized to an SVG fragment in the page's
   // viewBox (PDF points, y-down): a painted `<path>` or an `<image>`.
@@ -602,10 +614,11 @@ public:
     double width{0};  // page box width, PDF points (for the SVG viewBox)
     double height{0}; // page box height, PDF points
     std::vector<PageItem> items;
-    // The selection layer: transparent, selectable Unicode spans in
-    // content-stream (reading) order, emitted after the visual content so they
-    // form one contiguous, cleanly selectable run in the DOM.
-    std::vector<SpanOut> sel_spans;
+    // The selection layer: transparent, selectable Unicode grouped into
+    // per-line flow blocks in content-stream (reading) order, emitted after the
+    // visual content so they form one contiguous, cleanly selectable run in the
+    // DOM.
+    std::vector<LineOut> sel_lines;
     // `<clipPath>` defs for this page's clipped paths, emitted once in a hidden
     // `<svg>`; the path fragments reference them by id. Empty when no path on
     // the page is clipped.
@@ -795,6 +808,11 @@ public:
       double prev_baseline = 0;
       double prev_end = 0;
       bool prev_ends_space = false;
+      bool prev_was_matrix = false;
+      // Index of the line block currently being filled in `sel_lines`, or -1
+      // before the first line opens. Runs append to its `runs`; a line/column
+      // break (or a matrix run) opens the next.
+      int cur_line = -1;
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
@@ -914,7 +932,12 @@ public:
         // the uniform branch, carried by the CSS matrix in the general branch
         // (so spacing there is expressed pre-transform, scale == 1).
         double scale;
-        if (m.b == 0 && m.c == 0 && m.a == m.d) {
+        // A rotated/skewed run takes the general (matrix) branch; an upright
+        // uniform run the left/top/font-size branch. Only the latter can flow
+        // inside a line block and be fit by `letter-spacing` (the fit measures
+        // on-screen width, which for a matrix box is a rotated bbox).
+        const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d);
+        if (!is_matrix) {
           // Upright uniform scale: fold the scale into the font size and place
           // the origin with left/top, so the (otherwise near-universal) matrix
           // is dropped. The ascent shift is purely vertical here (local y maps
@@ -940,6 +963,13 @@ public:
                     px_decl("font-size", round2(text.size * pt_to_px)));
           scale = 1;
         }
+
+        // Placement-only class set (origin + font size), snapshot before the
+        // Tc/Tw spacing classes below. The selection line container uses this:
+        // the spacing is folded into each run's `data-w` advance and applied by
+        // the `letter-spacing` fit, so carrying a separate Tc `letter-spacing`
+        // would collide with it. The visual glyph layer keeps the full `base`.
+        const std::string place = base;
 
         // PDF char/word spacing (Tc/Tw) translate directly to CSS. TJ kerning
         // needs no expression here: `extract_text` emits a separate segment per
@@ -977,55 +1007,46 @@ public:
 
         // --- Selection layer -------------------------------------------------
         // Every run with extractable text feeds the transparent, selectable
-        // layer (`.i`) with its real Unicode, anchored at the run origin via
-        // the shared placement (`base`). A content-order sweep decides, per
-        // run, whether it starts a new span or extends the previous one:
+        // layer (`.i`) with its real Unicode. Runs are grouped into per-line
+        // flow blocks: one absolutely-positioned container per PDF line (placed
+        // at the line's first run origin via `place`), whose inline run spans
+        // *flow*, so a native drag, double-click or find-in-page works within
+        // the line and the run boxes are real. A content-order sweep decides,
+        // per run, whether it opens a new line, extends the line with a fresh
+        // run, or merges into the previous run:
         //
-        //  * A line/column break or a wide intra-line gap starts a new span.
-        //    The separating space is emitted as its *own* span carrying no fit
-        //    width (`data-w`), never folded into a glyph span's text. Two
-        //    reasons. (1) The on-load `scaleX` fit corrects a glyph span to its
-        //    real advance; a trailing separator space has no visible glyph to
-        //    map onto (a line break advances ~0 horizontally yet the space
-        //    still occupies a fallback-font cell), so a single `scaleX` could
-        //    not both land the word and collapse the space — folding it in
-        //    squeezes the word. A separator span with no `data-w` is skipped by
-        //    the fit script, leaving glyph spans to scale cleanly. (2) An
-        //    inter-word gap routinely leaves an inferred leading space on
-        //    `text.text`; peeling it onto a separate span (rather than the new
-        //    word's leading edge) keeps every glyph span starting at its first
-        //    glyph, so a double-click — which excludes surrounding whitespace —
-        //    highlights the word without a space-width offset. The separator
-        //    reuses the previous run's placement (it sits at that run's origin,
-        //    transparent, adding no visible highlight) and is deduped against a
-        //    space already ending the previous run, so search and copy get
-        //    exactly one space across the boundary (a doubled space breaks
-        //    literal find-in-page).
+        //  * A line/column break (baseline jump, or x regressing left of the
+        //    previous run's end) opens a new line block. The previous line is
+        //    closed with a trailing space (deduped) so a phrase split across
+        //    the break is still found/copied as "word1 word2"; that space
+        //    carries no `data-w`, so the fit skips it and it renders past the
+        //    last glyph (transparent, harmless). The inferred leading space a
+        //    run often carries is dropped at a line start — it belongs to the
+        //    break, already covered by the trailing space.
+        //  * A wide intra-line gap, or a whitespace boundary, starts a fresh
+        //    run within the same line. The inter-run gap rides on a separator
+        //    span whose `data-w` *is* the gap width, so the flowed runs land at
+        //    their true x-offsets (telescoping: a separator gap plus a run
+        //    advance equals the next run's offset), and wide gaps — table
+        //    columns on one baseline — are reproduced, not collapsed to a
+        //    single space. The separator holds one U+0020, deduped against a
+        //    space already ending the previous run (a doubled space breaks
+        //    literal find-in-page); the inferred leading space is peeled onto
+        //    it so each word run starts at its first glyph (a double-click,
+        //    which excludes surrounding whitespace, then highlights the word
+        //    without a space-width offset).
         //  * A tight same-baseline continuation with no whitespace at the
-        //    boundary merges into the previous span. PDF splits one word into
+        //    boundary merges into the previous run. PDF splits one word into
         //    several runs at every TJ kerning adjustment, and the browser finds
-        //    word boundaries within a single text node only, so a word spread
-        //    over separate spans can't be grown by a double-click. Folding the
-        //    continuation into the previous text node keeps the whole word
-        //    selectable as a unit. A boundary that already carries a space is a
-        //    word break, not an intra-word split, so it stays a separate span.
-        //    (Double-click word selection is *not* the reason: the separators
-        //    are ordinary U+0020, which the browser breaks on across span
-        //    boundaries anyway, so merging words would not glue them under a
-        //    double-click.) The reason is placement. Each span sits at its own
-        //    run origin and the merge drops the continuation's origin, letting
-        //    its glyphs flow on from where the previous run ended; the on-load
-        //    `scaleX` fit then corrects the whole span to a single `data-w`
-        //    about its left edge. That works for a tight intra-word split —
-        //    the runs are packed with no positional gap, so one uniform scaleX
-        //    lands them and the (transparent) sub-glyph drift is invisible.
-        //    Across a word break it would not: the inter-word gap is a
-        //    *position* (the next word has its own text matrix origin), not a
-        //    stretchable glyph, so a single scaleX over the merged text cannot
-        //    reproduce both word advances and the gap, and the selection box
-        //    would slide off the painted glyphs. So words stay in separate,
-        //    individually-positioned spans with the gap carried by a no-fit
-        //    separator span between them.
+        //    word boundaries within a single text node only, so folding the
+        //    continuation keeps the whole word selectable as a unit; its
+        //    advance extends the same run's fit target.
+        //
+        // A rotated/skewed (matrix) run cannot flow or be `letter-spacing`-fit
+        // (its on-screen box is a rotated bbox), so it gets its own single-run
+        // line block positioned by its own matrix and left unfitted (no
+        // `data-w`) — reproducing the old per-run absolute placement, with no
+        // flow benefit but no regression either.
         if (!text.text.empty()) {
           // Run origin and horizontal extent in page-box points (y down). The
           // advance (`text.width`) lives in the text matrix's space; its box
@@ -1041,56 +1062,58 @@ public:
           const double extent = text.width * axis;
           const double font_pt = text.size * axis;
           const bool starts_space = text.text.front() == ' ';
+          const double width_px = extent * pt_to_px;
+          // The fit target: 0 for a matrix run (skipped by the fit), else the
+          // run's true advance.
+          const double fit_w = is_matrix ? 0.0 : width_px;
+          // Inter-run gap in box px (only meaningful within a line).
+          const double gap_px = std::max(0.0, ox - prev_end) * pt_to_px;
 
-          bool merge = false;
-          bool word_break = false;
-          if (have_prev_run && font_pt > 0) {
-            const bool new_line =
-                std::abs(baseline - prev_baseline) > 0.6 * font_pt ||
-                ox < prev_end - 0.5 * font_pt;
-            const bool gap = ox - prev_end > 0.25 * font_pt;
-            const bool boundary_space = prev_ends_space || starts_space;
-            if (new_line || gap) {
-              word_break = true;
-            } else if (!boundary_space) {
-              merge = true;
-            }
+          // Open a new line block on the first run, a matrix run (or just after
+          // one), or a detected line/column break.
+          bool new_line = !have_prev_run || is_matrix || prev_was_matrix;
+          bool gap = false;
+          if (have_prev_run && font_pt > 0 && !new_line) {
+            new_line = std::abs(baseline - prev_baseline) > 0.6 * font_pt ||
+                       ox < prev_end - 0.5 * font_pt;
+            gap = ox - prev_end > 0.25 * font_pt;
           }
 
-          const double width_px = extent * pt_to_px;
-          if (merge && !page_out.sel_spans.empty()) {
-            page_out.sel_spans.back().text += escape_selection_text(text.text);
-            // The merged run flows on from the previous one, so its advance
-            // extends the same box: accumulate the fit target.
-            page_out.sel_spans.back().width += width_px;
-          } else {
-            // Emit the separator as its own span, reusing the previous run's
-            // placement and carrying no fit width (`width == 0` -> no `data-w`,
-            // so the on-load scaleX skips it and never distorts a glyph span).
-            // Needed whenever the boundary should carry whitespace — a detected
-            // word break, or a leading space we just peeled off this run — and
-            // deduped against a space already ending the previous run so the
-            // boundary holds exactly one space (a doubled space breaks literal
-            // find-in-page).
-            if ((word_break || starts_space) && !prev_ends_space &&
-                !page_out.sel_spans.empty()) {
-              page_out.sel_spans.push_back(
-                  SpanOut{page_out.sel_spans.back().classes, " ", 0});
+          std::string core = starts_space ? text.text.substr(1) : text.text;
+
+          if (new_line) {
+            if (cur_line >= 0 && have_prev_run && !prev_ends_space) {
+              page_out.sel_lines[cur_line].runs.push_back(SpanOut{"", " ", 0});
             }
-            // The selection text with the inter-word space, if any, peeled off
-            // the front (it became the separator span above). A run that was
-            // nothing but the separator emits no span of its own.
-            std::string core = starts_space ? text.text.substr(1) : text.text;
+            page_out.sel_lines.push_back(LineOut{place + " i", {}});
+            cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
             if (!core.empty()) {
-              page_out.sel_spans.push_back(
-                  SpanOut{base + " i", escape_selection_text(std::move(core)),
-                          width_px});
+              page_out.sel_lines[cur_line].runs.push_back(
+                  SpanOut{"", escape_selection_text(std::move(core)), fit_w});
+            }
+          } else if (gap || prev_ends_space || starts_space) {
+            // Fresh run within the line, gap carried by a separator span.
+            std::vector<SpanOut> &runs = page_out.sel_lines[cur_line].runs;
+            if (!prev_ends_space && !runs.empty()) {
+              runs.push_back(SpanOut{"", " ", gap_px});
+            }
+            if (!core.empty()) {
+              runs.push_back(
+                  SpanOut{"", escape_selection_text(std::move(core)), fit_w});
+            }
+          } else {
+            // Tight, whitespace-free continuation: extend the previous run.
+            std::vector<SpanOut> &runs = page_out.sel_lines[cur_line].runs;
+            if (!runs.empty()) {
+              runs.back().text += escape_selection_text(text.text);
+              runs.back().width += width_px;
             }
           }
 
           prev_baseline = baseline;
           prev_end = ox + extent;
           prev_ends_space = text.text.back() == ' ';
+          prev_was_matrix = is_matrix;
           have_prev_run = true;
         }
 
@@ -1228,7 +1251,12 @@ public:
       // diff than the open/text/close split, while each run still gets its own
       // line under the page div.
       HtmlElementOptions options;
-      options.set_inline(true).set_class(span.classes);
+      options.set_inline(true);
+      // Inline selection run spans carry no class (placement and transparency
+      // are inherited from the line container); everything else names classes.
+      if (!span.classes.empty()) {
+        options.set_class(span.classes);
+      }
       // Selection spans carry their true advance (px) for the fit script.
       std::string data_w;
       if (span.width > 0) {
@@ -1303,43 +1331,52 @@ public:
       // cleanly across runs and lines without the visual glyphs (which are
       // `user-select:none`) interrupting it.
       out.write_element_begin("div", HtmlElementOptions().set_class("sel"));
-      for (const SpanOut &span : page.sel_spans) {
-        write_span(span);
+      for (const LineOut &line : page.sel_lines) {
+        // One absolutely-positioned container per PDF line; its run spans flow
+        // inline, so selection/find/double-click work natively across them.
+        out.write_element_begin("div",
+                                HtmlElementOptions().set_class(line.classes));
+        for (const SpanOut &run : line.runs) {
+          write_span(run);
+        }
+        out.write_element_end("div");
       }
       out.write_element_end("div");
 
       out.write_element_end("div");
     }
 
-    // Selection-fit script. The transparent selection spans render real Unicode
-    // in the browser's system font, whose advances differ from the embedded
+    // Selection-fit script. The transparent run spans render real Unicode in
+    // the browser's system font, whose advances differ from the embedded
     // glyphs, so an active highlight is wider or narrower than the visible run.
-    // Each span carries its true advance in `data-w` (CSS px); correct the box
-    // with a horizontal `scaleX` = target / measured about the run's left
-    // origin (`.t` has `transform-origin:0 0`). The page is fully usable
-    // without this — it only tightens the highlight rectangle, so it degrades
+    // Each fitted span carries its true advance in `data-w` (CSS px); correct
+    // its box with `letter-spacing = (target - measured) / glyph_count`. Unlike
+    // the old `scaleX`, `letter-spacing` is consumed *during* layout, so the
+    // box actually grows/shrinks and the following run flows from the corrected
+    // edge — what makes the per-line flow blocks land. Negative values squeeze
+    // a too-wide run. The page is fully usable without this — it only tightens
+    // the highlight rectangle and the within-line x-offsets, so it degrades
     // gracefully where scripts are blocked.
     //
     // Run per page, lazily, via `IntersectionObserver`: a large document only
     // pays for the pages actually scrolled into view, never a single
     // whole-document pass on load. Within a page, read every width first and
-    // write every transform second so the measurement loop isn't interleaved
-    // with style writes (which would force a reflow per span). Upright runs
-    // only: a run that already carries a rotation/skew matrix is skipped — its
-    // on-screen box is a rotated bounding box, not the local advance, so a
-    // single `scaleX` can't correct it (these keep today's behaviour).
+    // write every `letter-spacing` second so the measurement loop isn't
+    // interleaved with style writes (which would force a reflow per span); a
+    // run's own width is independent of its siblings' spacing, so one
+    // measure-then-write pass fits them all and the cumulative offsets resolve.
+    // Matrix (rotated/skewed) runs carry no `data-w` and are skipped.
     out.write_script_begin();
     out.write_raw(
         R"JS((function(){if(!window.IntersectionObserver)return;)JS"
         R"JS(var io=new IntersectionObserver(function(es){es.forEach(function(e){)JS"
         R"JS(if(!e.isIntersecting)return;io.unobserve(e.target);)JS"
         R"JS(var s=e.target.querySelectorAll('.sel span[data-w]'),n=s.length,)JS"
-        R"JS(w=new Array(n),f=new Array(n),i,k;)JS"
-        R"JS(for(i=0;i<n;i++){f[i]=getComputedStyle(s[i]).transform==='none';)JS"
-        R"JS(w[i]=s[i].getBoundingClientRect().width;})JS"
-        R"JS(for(i=0;i<n;i++){if(f[i]&&w[i]>0){)JS"
-        R"JS(k=parseFloat(s[i].getAttribute('data-w'))/w[i];)JS"
-        R"JS(s[i].style.transform='scaleX('+k+')';}}})},{rootMargin:'200px'});)JS"
+        R"JS(w=new Array(n),i,c,d;)JS"
+        R"JS(for(i=0;i<n;i++){w[i]=s[i].getBoundingClientRect().width;})JS"
+        R"JS(for(i=0;i<n;i++){c=s[i].textContent.length;if(c>0&&w[i]>0){)JS"
+        R"JS(d=parseFloat(s[i].getAttribute('data-w'));)JS"
+        R"JS(s[i].style.letterSpacing=((d-w[i])/c)+'px';}}})},{rootMargin:'200px'});)JS"
         R"JS(document.querySelectorAll('.p').forEach(function(p){io.observe(p);});})();)JS",
         false);
     out.write_script_end();
