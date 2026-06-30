@@ -385,6 +385,48 @@ recoverable Unicode are additionally marked non-extractable (`user-select: none`
 a rendering risk — such PDFs look right, their text just isn't selectable until
 the tables land.
 
+**Selection layer separate from the glyph layer (decision 2026-06).** Selection
+and find-in-page used to be poor because every show-text segment became one
+absolutely-positioned transparent span at its run origin: runs sharing a line
+were independent boxes with no whitespace or reading order between them, so a
+phrase — or even one word split across `TJ` kerning runs — crossing a run
+boundary was unfindable and a drag jumped between boxes. Fix: keep the **visual
+glyph layer exactly as is** (absolutely-positioned PUA spans — what makes
+rendering pixel-perfect) and restructure **only** the transparent Unicode into a
+separate **selection layer** (`PageOut::sel_spans`, transparent via `.i`),
+emitted contiguously *after* the visual content in content-stream order so a
+native drag or Ctrl+F flows through it without an unselectable glyph span
+(`.g`, `user-select:none`) interrupting. PDF.js-style layering, done statically
+at generation time. Key points:
+- **Content-stream-order sweep, never a global re-sort.** Content order is
+  almost always reading order (a producer paints a column top-to-bottom, then the
+  next); a global (baseline, x) sort would interleave columns sharing a y-band
+  and scramble multi-column text and tables. An O(n) sweep tracks the previous
+  run's baseline and right edge and decides each run's boundary.
+- **Eager to split, conservative to merge.** New span when the baseline jumps
+  (>0.6·font-size) or the run starts left of the previous run's end, or when the
+  same-line gap exceeds 0.25·font-size — either inserts a single space (so
+  `"the quick"` matches across the break), as its **own** separator span at the
+  previous run's origin, deduped against whitespace the run already carries (a
+  doubled space breaks literal find-in-page). Otherwise a tight, whitespace-free
+  same-baseline continuation **merges** into the previous span — PDF splits one
+  word at every `TJ` kern and the browser finds word boundaries only within a
+  single text node, so folding the continuation keeps the whole word selectable.
+  Cells never merge across columns, so tables fall out as separate spans (correct
+  selection) with **no table detection**.
+- **Per-run origin anchoring + an on-load `scaleX` fit (the one non-JS-free
+  bit).** Each selection span is absolutely positioned at its run origin (reused
+  from the glyph layer), so highlight drift can accumulate only *within* one
+  short run, never across a line. The transparent text renders in a system
+  fallback font with its own advances, so a tiny on-load JS script `scaleX`es
+  each glyph span (carrying its true advance as `data-w`) about its left edge to
+  the real glyph width; separator spans carry no `data-w` and are skipped. This
+  reverses two of the plan's original "fixed" decisions — output is **no longer
+  fully JS-free**, and `scaleX` is **kept**, not dropped — because per-run
+  `scaleX` is the only way to hold the highlight on the glyphs statically (PDF.js
+  measures the same factor at runtime). Visual rendering stays byte-for-byte
+  unchanged; only the highlight-rectangle alignment improves.
+
 ---
 
 ## Tests
@@ -657,6 +699,15 @@ tree, little else.
   CID → Unicode tables (large external data; the generator scaffolding in
   `tools/pdf/generate_cid_data.py` is landed, the storage decision and lookup
   remain).
+- **Selection-layer refinements** (deferred from the selection-layer work): no
+  **de-hyphenation** — a line-final hyphen (`"infor-\nmation"`) stays unfindable
+  as `"information"`, since auto-joining is genuinely ambiguous (soft break
+  hyphen vs. a real `well-known`; PDF almost never marks the difference, only the
+  rare `U+00AD` is unambiguous) and lossy enough to hurt copy fidelity — revisit
+  as an opt-in / `U+00AD`-only heuristic. Also: gap-based word separators within
+  a line beyond the producer's inferred spaces (only if word-merging shows up in
+  practice), and richer static structure recovery (semantic `<table>` /
+  multi-column markup) — a separate, larger layout-analysis effort.
 - **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
