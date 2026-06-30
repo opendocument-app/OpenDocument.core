@@ -576,9 +576,11 @@ public:
   // One emitted span: the resolved class tokens plus the already-escaped text.
   // The renderer paints text in two independent layers (see `write_document`):
   // the **visual** layer (`PageOut::items`, in paint order) carries the
-  // unselectable glyphs; the **selection** layer (`PageOut::sel_lines`, in
-  // content/reading order) carries the transparent, selectable real Unicode.
-  // Both layers are flat — a span is just classes + text.
+  // unselectable glyphs as a flat list of positioned spans; the **selection**
+  // layer (`PageOut::sel_lines`, in content/reading order) carries the
+  // transparent, selectable real Unicode grouped into per-line flow blocks
+  // (`LineOut`), each holding inline run spans. `SpanOut` is the shared leaf of
+  // both — a visual glyph span, or one flowed selection run.
   struct SpanOut {
     std::string classes;
     std::string text;
@@ -1334,8 +1336,14 @@ public:
       for (const LineOut &line : page.sel_lines) {
         // One absolutely-positioned container per PDF line; its run spans flow
         // inline, so selection/find/double-click work natively across them.
-        out.write_element_begin("div",
-                                HtmlElementOptions().set_class(line.classes));
+        // `set_inline` stops the writer from emitting newlines + indent
+        // *between* the run spans: the container carries `white-space:pre`
+        // (from
+        // `.t`), so that formatting whitespace would otherwise render as real
+        // text and shove the runs onto a new line / indent them.
+        out.write_element_begin(
+            "div",
+            HtmlElementOptions().set_inline(true).set_class(line.classes));
         for (const SpanOut &run : line.runs) {
           write_span(run);
         }
