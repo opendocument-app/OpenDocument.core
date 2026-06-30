@@ -1008,13 +1008,24 @@ public:
         //    over separate spans can't be grown by a double-click. Folding the
         //    continuation into the previous text node keeps the whole word
         //    selectable as a unit. A boundary that already carries a space is a
-        //    word break, not an intra-word split, so it stays a separate span —
-        //    gluing the words into one node (over a non-breaking separator)
-        //    would instead make a double-click grab the whole phrase. The
-        //    merged run's own origin is dropped — its glyphs flow from where
-        //    the previous run ended — but the runs are tightly packed by
-        //    construction and the layer is transparent, so the sub-glyph drift
-        //    is invisible.
+        //    word break, not an intra-word split, so it stays a separate span.
+        //    (Double-click word selection is *not* the reason: the separators
+        //    are ordinary U+0020, which the browser breaks on across span
+        //    boundaries anyway, so merging words would not glue them under a
+        //    double-click.) The reason is placement. Each span sits at its own
+        //    run origin and the merge drops the continuation's origin, letting
+        //    its glyphs flow on from where the previous run ended; the on-load
+        //    `scaleX` fit then corrects the whole span to a single `data-w`
+        //    about its left edge. That works for a tight intra-word split —
+        //    the runs are packed with no positional gap, so one uniform scaleX
+        //    lands them and the (transparent) sub-glyph drift is invisible.
+        //    Across a word break it would not: the inter-word gap is a
+        //    *position* (the next word has its own text matrix origin), not a
+        //    stretchable glyph, so a single scaleX over the merged text cannot
+        //    reproduce both word advances and the gap, and the selection box
+        //    would slide off the painted glyphs. So words stay in separate,
+        //    individually-positioned spans with the gap carried by a no-fit
+        //    separator span between them.
         if (!text.text.empty()) {
           // Run origin and horizontal extent in page-box points (y down). The
           // advance (`text.width`) lives in the text matrix's space; its box
