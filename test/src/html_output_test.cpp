@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <sstream>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -257,3 +258,42 @@ INSTANTIATE_TEST_SUITE_P(all_test_files, HtmlOutputTests,
                          [](const ::testing::TestParamInfo<TestParams> &info) {
                            return test_params_to_name(info.param);
                          });
+
+// Verify both PdfTextMode values render the same PDF without crashing and
+// produce HTML containing their respective marker classes.
+TEST(PdfTextModeTest, dual_and_single_layer_both_produce_output) {
+  const std::string input_path = std::string(info::odr_test_data_path()) +
+                                 "/input/odr-public/pdf/style-various-1.pdf";
+  if (!fs::is_regular_file(input_path)) {
+    GTEST_SKIP() << "test data not found";
+  }
+
+  const auto render = [&](PdfTextMode mode) {
+    DecodedFile file{input_path};
+    HtmlConfig cfg;
+    cfg.pdf_text_mode = mode;
+    std::ostringstream out;
+    const std::string tmp =
+        testing::TempDir() + "/pdf_text_mode_" +
+        (mode == PdfTextMode::dual_layer ? "dual" : "single");
+    fs::create_directories(tmp);
+    auto service = html::translate(file, tmp, cfg);
+    auto result = service.bring_offline(tmp);
+    (void)result;
+    std::ifstream f(tmp + "/document.html");
+    return std::string{std::istreambuf_iterator<char>(f),
+                       std::istreambuf_iterator<char>()};
+  };
+
+  const std::string dual = render(PdfTextMode::dual_layer);
+  EXPECT_GT(dual.size(), 0u);
+  EXPECT_NE(dual.find("class=\"vis\""), std::string::npos)
+      << "dual-layer: missing visual layer div";
+  EXPECT_NE(dual.find("class=\"sel\""), std::string::npos)
+      << "dual-layer: missing selection layer div";
+
+  const std::string single = render(PdfTextMode::single_layer);
+  EXPECT_GT(single.size(), 0u);
+  EXPECT_NE(single.find("class=\"t "), std::string::npos)
+      << "single-layer: missing line block div";
+}
