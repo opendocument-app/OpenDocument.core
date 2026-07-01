@@ -694,50 +694,11 @@ public:
       return (inv ? "fn" : "fv") + std::to_string(font);
     };
 
-    const auto glyph_run = [](const pdf::Font &font, const std::string &codes) {
-      std::string s;
-      for (const std::uint32_t code : font.codes(codes)) {
-        util::string::append_c32(
-            font::pua_code_point(font.glyph_for_code(code)), s);
-      }
-      return s;
-    };
-
     const auto add_class = [&styles](std::string &classes,
                                      const std::string &prefix,
                                      std::string declaration) {
       classes += ' ';
       classes += styles.intern(prefix, std::move(declaration));
-    };
-    const auto px_decl = [](const char *property, const double value) {
-      std::ostringstream s;
-      s << property << ':' << value << "px";
-      return std::move(s).str();
-    };
-
-    const auto ascent_em = [](const pdf::TextElement &text) -> double {
-      double em = 0.8;
-      if (text.font != nullptr && text.font->descriptor_ascent) {
-        em = *text.font->descriptor_ascent;
-      } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
-        const std::uint16_t units = text.font->embedded_font->units_per_em();
-        if (units != 0) {
-          em = static_cast<double>(
-                   text.font->embedded_font->bounding_box().y_max) /
-               units;
-        }
-      }
-      return std::clamp(em, 0.5, 1.2);
-    };
-
-    // Markup-only escaping: preserve real U+0020 spaces (not &nbsp;) so the
-    // selection layer's `white-space:pre` and find-in-page both work with
-    // ordinary spaces.
-    const auto escape_markup = [](std::string s) {
-      util::string::replace_all(s, "&", "&amp;");
-      util::string::replace_all(s, "<", "&lt;");
-      util::string::replace_all(s, ">", "&gt;");
-      return s;
     };
 
     for (pdf::Page *page : pages) {
@@ -794,52 +755,12 @@ public:
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
-        // Path elements close the open visual line block and go into the SVG
-        // layer in paint order.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
-          const std::string clip_id = clips.register_clip(path->clip, to_box);
-          std::string fill_url_id;
-          if (path->fill_shading != nullptr) {
-            fill_url_id = gradients.register_gradient(
-                *path->fill_shading, path->shading_transform * to_box);
-          } else if (path->fill_pattern != nullptr) {
-            fill_url_id = patterns.register_pattern(
-                *path->fill_pattern, path->pattern_transform * to_box,
-                path->fill_color, *m_logger);
-          }
-          std::string fragment =
-              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
-          if (!fragment.empty()) {
-            vis_close_line();
-            page_out.vis_items.push_back(PathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
-          if (shading->shading == nullptr) {
-            continue;
-          }
-          const std::string clip_id =
-              clips.register_clip(shading->clip, to_box);
-          const std::string gradient_id = gradients.register_gradient(
-              *shading->shading, shading->transform * to_box);
-          std::string fragment =
-              svg_shading_fragment(gradient_id, clip_id, width, height);
-          if (!fragment.empty()) {
-            vis_close_line();
-            page_out.vis_items.push_back(PathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-          const std::string clip_id = clips.register_clip(image->clip, to_box);
-          std::string fragment = svg_image_fragment(*image, to_box, clip_id);
-          if (!fragment.empty()) {
-            vis_close_line();
-            page_out.vis_items.push_back(PathOut{std::move(fragment)});
-          }
+        if (handle_graphic_element(
+                element, to_box, width, height, clips, gradients, patterns,
+                *m_logger, [&] { vis_close_line(); },
+                [&](std::string frag) {
+                  page_out.vis_items.push_back(PathOut{std::move(frag)});
+                })) {
           continue;
         }
 
@@ -941,20 +862,29 @@ public:
           // fallback.
           std::string run_text;
           if (font != 0) {
-            run_text = escape_text(glyph_run(*text.font, text.codes));
+            run_text = escape_text(glyph_run_str(*text.font, text.codes));
           } else {
             run_text = escape_text(text.text);
+          }
+
+          if (const double cs_px = round2(text.char_spacing * scale * pt_to_px);
+              cs_px != 0) {
+            add_class(run_classes, "s", px_decl("letter-spacing", cs_px));
+          }
+          if (const double ws_px = round2(text.word_spacing * scale * pt_to_px);
+              ws_px != 0) {
+            add_class(run_classes, "ws", px_decl("word-spacing", ws_px));
           }
 
           std::get<VisLineOut>(page_out.vis_items[vis_cur_line])
               .runs.push_back(
                   VisRunOut{std::move(run_classes), std::move(run_text)});
-        }
 
-        vis_prev_end = ox + extent;
-        vis_prev_baseline = baseline;
-        vis_prev_font_pt = font_pt;
-        vis_prev_was_matrix = is_matrix;
+          vis_prev_end = ox + extent;
+          vis_prev_baseline = baseline;
+          vis_prev_font_pt = font_pt;
+          vis_prev_was_matrix = is_matrix;
+        }
 
         // --- Selection layer -----------------------------------------------
         // Transparent, selectable real-unicode text in content-stream
@@ -1358,48 +1288,12 @@ public:
       return (inv ? "fn" : "fv") + std::to_string(font);
     };
 
-    const auto glyph_run_str = [](const pdf::Font &font,
-                                  const std::string &codes) {
-      std::string s;
-      for (const std::uint32_t code : font.codes(codes)) {
-        util::string::append_c32(
-            font::pua_code_point(font.glyph_for_code(code)), s);
-      }
-      return s;
-    };
-
-    const auto add_class = [&](AtomicStyles &styles, std::string &classes,
-                               const std::string &prefix,
-                               std::string declaration) {
+    AtomicStyles styles;
+    const auto add_class = [&styles](std::string &classes,
+                                     const std::string &prefix,
+                                     std::string declaration) {
       classes += ' ';
       classes += styles.intern(prefix, std::move(declaration));
-    };
-    const auto px_decl = [](const char *property, const double value) {
-      std::ostringstream s;
-      s << property << ':' << value << "px";
-      return std::move(s).str();
-    };
-
-    const auto ascent_em = [](const pdf::TextElement &text) -> double {
-      double em = 0.8;
-      if (text.font != nullptr && text.font->descriptor_ascent) {
-        em = *text.font->descriptor_ascent;
-      } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
-        const std::uint16_t units = text.font->embedded_font->units_per_em();
-        if (units != 0) {
-          em = static_cast<double>(
-                   text.font->embedded_font->bounding_box().y_max) /
-               units;
-        }
-      }
-      return std::clamp(em, 0.5, 1.2);
-    };
-
-    const auto escape_markup = [](std::string s) {
-      util::string::replace_all(s, "&", "&amp;");
-      util::string::replace_all(s, "<", "&lt;");
-      util::string::replace_all(s, ">", "&gt;");
-      return s;
     };
 
     // Build the page streams once (reused for both the pre-pass and main pass).
@@ -1464,7 +1358,6 @@ public:
     }
 
     // ---- Main pass (pass 1): build page structures -----------------------
-    AtomicStyles styles;
     std::vector<SinglePageOut> pages_out;
     pages_out.reserve(pages.size());
 
@@ -1483,10 +1376,10 @@ public:
       {
         std::ostringstream w;
         w << "width:" << width * pt_to_in << "in";
-        add_class(styles, page_out.classes, "x", std::move(w).str());
+        add_class(page_out.classes, "x", std::move(w).str());
         std::ostringstream h;
         h << "height:" << height * pt_to_in << "in";
-        add_class(styles, page_out.classes, "y", std::move(h).str());
+        add_class(page_out.classes, "y", std::move(h).str());
       }
 
       constexpr util::math::Transform2D flip_glyph =
@@ -1509,50 +1402,12 @@ public:
 
       for (const pdf::PageElement &element :
            pdf::extract_page(page_streams[pi], *page->resources, *m_logger)) {
-        if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
-          const std::string clip_id = clips.register_clip(path->clip, to_box);
-          std::string fill_url_id;
-          if (path->fill_shading != nullptr) {
-            fill_url_id = gradients.register_gradient(
-                *path->fill_shading, path->shading_transform * to_box);
-          } else if (path->fill_pattern != nullptr) {
-            fill_url_id = patterns.register_pattern(
-                *path->fill_pattern, path->pattern_transform * to_box,
-                path->fill_color, *m_logger);
-          }
-          std::string fragment =
-              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
-          if (!fragment.empty()) {
-            close_line();
-            page_out.items.push_back(SinglePathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
-          if (shading->shading == nullptr) {
-            continue;
-          }
-          const std::string clip_id =
-              clips.register_clip(shading->clip, to_box);
-          const std::string gradient_id = gradients.register_gradient(
-              *shading->shading, shading->transform * to_box);
-          std::string fragment =
-              svg_shading_fragment(gradient_id, clip_id, width, height);
-          if (!fragment.empty()) {
-            close_line();
-            page_out.items.push_back(SinglePathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-          const std::string clip_id = clips.register_clip(image->clip, to_box);
-          std::string fragment = svg_image_fragment(*image, to_box, clip_id);
-          if (!fragment.empty()) {
-            close_line();
-            page_out.items.push_back(SinglePathOut{std::move(fragment)});
-          }
+        if (handle_graphic_element(
+                element, to_box, width, height, clips, gradients, patterns,
+                *m_logger, [&] { close_line(); },
+                [&](std::string frag) {
+                  page_out.items.push_back(SinglePathOut{std::move(frag)});
+                })) {
           continue;
         }
 
@@ -1659,9 +1514,8 @@ public:
         if (new_line) {
           std::string base = "t";
           if (!is_matrix) {
-            add_class(styles, base, "l",
-                      px_decl("left", round2(ox * pt_to_px)));
-            add_class(styles, base, "t",
+            add_class(base, "l", px_decl("left", round2(ox * pt_to_px)));
+            add_class(base, "t",
                       px_decl("top", round2((baseline - asc * m.a * text.size) *
                                             pt_to_px)));
           } else {
@@ -1670,19 +1524,19 @@ public:
             tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
                << m.d << "," << round2(m.e * pt_to_px - m.c * ascent_px) << ","
                << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
-            add_class(styles, base, "m", std::move(tm).str());
+            add_class(base, "m", std::move(tm).str());
           }
-          add_class(styles, base, "f", px_decl("font-size", font_size_px));
+          add_class(base, "f", px_decl("font-size", font_size_px));
           const bool spacing_one_to_one =
               font != 0 ||
               (text.font != nullptr &&
                util::string::utf8_length(text.text) == text.advances.size());
           if (text.char_spacing != 0 && spacing_one_to_one) {
-            add_class(styles, base, "s", px_decl("letter-spacing", cs_px));
+            add_class(base, "s", px_decl("letter-spacing", cs_px));
           }
           if (text.word_spacing != 0 && spacing_one_to_one &&
               !(text.font != nullptr && text.font->composite)) {
-            add_class(styles, base, "w", px_decl("word-spacing", ws_px));
+            add_class(base, "w", px_decl("word-spacing", ws_px));
           }
           if (font == 0 && invisible) {
             base += " i";
@@ -1893,6 +1747,99 @@ public:
     out.write_end();
 
     return resources;
+  }
+
+  static std::string px_decl(const char *property, double value) {
+    std::ostringstream s;
+    s << property << ':' << value << "px";
+    return std::move(s).str();
+  }
+
+  static double ascent_em(const pdf::TextElement &text) {
+    double em = 0.8;
+    if (text.font != nullptr && text.font->descriptor_ascent) {
+      em = *text.font->descriptor_ascent;
+    } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
+      const std::uint16_t units = text.font->embedded_font->units_per_em();
+      if (units != 0) {
+        em = static_cast<double>(
+                 text.font->embedded_font->bounding_box().y_max) /
+             units;
+      }
+    }
+    return std::clamp(em, 0.5, 1.2);
+  }
+
+  static std::string glyph_run_str(const pdf::Font &font,
+                                   const std::string &codes) {
+    std::string s;
+    for (const std::uint32_t code : font.codes(codes)) {
+      util::string::append_c32(font::pua_code_point(font.glyph_for_code(code)),
+                               s);
+    }
+    return s;
+  }
+
+  static std::string escape_markup(std::string s) {
+    util::string::replace_all(s, "&", "&amp;");
+    util::string::replace_all(s, "<", "&lt;");
+    util::string::replace_all(s, ">", "&gt;");
+    return s;
+  }
+
+  // Handles path/shading/image elements common to both rendering modes.
+  // Calls close_line() and push_fragment(svg_string) when a non-empty fragment
+  // is produced. Returns true when the element was a graphic (caller should
+  // `continue`), false when it is a text element.
+  template <typename CloseLine, typename PushSvg>
+  static bool handle_graphic_element(
+      const pdf::PageElement &element, const util::math::Transform2D &to_box,
+      double width, double height, ClipRegistry &clips,
+      GradientRegistry &gradients, PatternRegistry &patterns, Logger &logger,
+      CloseLine &&close_line, PushSvg &&push_svg) {
+    if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+      const std::string clip_id = clips.register_clip(path->clip, to_box);
+      std::string fill_url_id;
+      if (path->fill_shading != nullptr) {
+        fill_url_id = gradients.register_gradient(
+            *path->fill_shading, path->shading_transform * to_box);
+      } else if (path->fill_pattern != nullptr) {
+        fill_url_id = patterns.register_pattern(
+            *path->fill_pattern, path->pattern_transform * to_box,
+            path->fill_color, logger);
+      }
+      if (std::string frag =
+              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
+          !frag.empty()) {
+        close_line();
+        push_svg(std::move(frag));
+      }
+      return true;
+    }
+    if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
+      if (shading->shading != nullptr) {
+        const std::string clip_id = clips.register_clip(shading->clip, to_box);
+        const std::string gradient_id = gradients.register_gradient(
+            *shading->shading, shading->transform * to_box);
+        if (std::string frag =
+                svg_shading_fragment(gradient_id, clip_id, width, height);
+            !frag.empty()) {
+          close_line();
+          push_svg(std::move(frag));
+        }
+      }
+      return true;
+    }
+    if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
+      const std::string clip_id = clips.register_clip(image->clip, to_box);
+      if (std::string frag = svg_image_fragment(*image, to_box, clip_id);
+          !frag.empty()) {
+        close_line();
+        push_svg(std::move(frag));
+      }
+      return true;
+    }
+    return false;
   }
 
 protected:
