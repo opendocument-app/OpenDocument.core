@@ -65,6 +65,21 @@ enum class HtmlTableGridlines {
   hard,
 };
 
+/// @brief PDF text rendering mode.
+///
+/// Selects how text is emitted in PDF→HTML output.
+///
+/// - `dual_layer`: A visual layer (paint order, embedded PUA glyphs) and a
+///   separate transparent selection/search layer (reading order, real Unicode).
+///   Similar to pdf.js. No JavaScript required.
+/// - `single_layer`: A single combined layer where every glyph is mapped to
+///   Unicode via frequency analysis. Similar to pdf2htmlEX. No JavaScript
+///   required.
+enum class PdfTextMode {
+  dual_layer,
+  single_layer,
+};
+
 /// @brief HTML configuration.
 struct HtmlConfig {
   // document output file names
@@ -105,6 +120,9 @@ struct HtmlConfig {
   // background image
   std::string background_image_format{"png"};
   double background_image_dpi{144.0};
+
+  // PDF text mode
+  PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
 
   // drm options
   bool no_drm{false};
