@@ -41,6 +41,9 @@ namespace {
 /// the extra digits add up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
+constexpr double pt_to_px = 96.0 / 72.0;
+constexpr double pt_to_in = 1.0 / 72.0;
+
 /// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
 /// is rounded — it lives in page-box units where 1/100 px is plenty; the linear
 /// part (a..d) keeps full precision so small scale/skew factors aren't
@@ -60,9 +63,9 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
   const auto to255 = [](const double v) {
     return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
   };
-  int r = 0;
-  int g = 0;
-  int b = 0;
+  std::int32_t r = 0;
+  std::int32_t g = 0;
+  std::int32_t b = 0;
   switch (color.space) {
   case pdf::ColorSpace::device_grey:
     r = g = b = to255(color.grey);
@@ -188,9 +191,8 @@ std::string svg_path_fragment(const pdf::PathElement &path,
       // miter join: SVG defaults the limit to 4, PDF to 10 — state it.
       f << " stroke-miterlimit=\"" << round2(path.miter_limit) << '"';
     }
-    const bool dashed =
-        std::any_of(path.dash_array.begin(), path.dash_array.end(),
-                    [](const double v) { return v > 0; });
+    const bool dashed = std::ranges::any_of(
+        path.dash_array, [](const double v) { return v > 0; });
     if (dashed) {
       f << " stroke-dasharray=\"";
       for (std::size_t i = 0; i < path.dash_array.size(); ++i) {
@@ -430,7 +432,6 @@ public:
 
     // Tile content is laid out in pattern space (identity page transform); the
     // y-flip and placement live in `patternTransform`.
-    const util::math::Transform2D identity;
     std::ostringstream tile;
     for (const pdf::PageElement &element :
          pdf::extract_page(pattern.content, *pattern.resources, logger)) {
@@ -440,9 +441,9 @@ public:
           painted.fill_color = fill_color;
           painted.stroke_color = fill_color;
         }
-        tile << svg_path_fragment(painted, identity, "", "");
+        tile << svg_path_fragment(painted, util::math::Transform2D(), "", "");
       } else if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-        tile << svg_image_fragment(*image, identity, "");
+        tile << svg_image_fragment(*image, util::math::Transform2D(), "");
       }
     }
 
@@ -505,7 +506,8 @@ public:
   }
 
 private:
-  // Node-based map: pointers stored in `m_order` stay valid across insertions.
+  /// Node-based map: pointers stored in `m_order` stay valid across
+  /// insertions.
   std::unordered_map<std::string, std::string> m_class_by_declaration;
   std::unordered_map<std::string, int> m_count_by_prefix;
   std::vector<const std::pair<const std::string, std::string> *> m_order;
@@ -587,34 +589,36 @@ public:
   //  For gap spans between runs a zero-content `display:inline-block;
   //  width:Ypx` span is emitted.
 
-  // One run inside a visual line block. `classes` carries margin-left, font
-  // size, font-family+colour — the line block holds placement only.
+  /// One run inside a visual line block. `classes` carries margin-left, font
+  /// size, font-family+colour — the line block holds placement only.
   struct VisRunOut {
     std::string classes;
-    std::string text; // PUA glyph string (or real unicode for fallback path)
+    std::string text; ///< PUA glyph string (or real unicode for fallback path)
   };
-  // One line block in the visual layer: absolutely positioned at the first
-  // run's origin. Runs flow inline, each nudged by margin-left.
+  /// One line block in the visual layer: absolutely positioned at the first
+  /// run's origin. Runs flow inline, each nudged by margin-left.
   struct VisLineOut {
-    std::string classes; // "t lN tN [mN]" (or matrix transform)
+    std::string classes; ///< "t lN tN [mN]" (or matrix transform)
     std::vector<VisRunOut> runs;
   };
   struct PathOut {
     std::string svg;
   };
-  // Visual-layer paint-order item: a line block of glyphs, or an SVG fragment.
+  /// Visual-layer paint-order item: a line block of glyphs, or an SVG
+  /// fragment.
   using VisItem = std::variant<VisLineOut, PathOut>;
 
-  // One run in the selection layer: an inline-block span with a fixed width
-  // (for CSS justify) and optional margin-left (gap from previous run). An
-  // empty `text` with non-zero `width` is a spacer-only span (no text node).
+  /// One run in the selection layer: an inline-block span with a fixed width
+  /// (for CSS justify) and optional margin-left (gap from previous run). An
+  /// empty `text` with non-zero `width` is a spacer-only span (no text node).
   struct SelRunOut {
-    std::string classes; // "sr wN [mlN]"
-    std::string text;    // real unicode (HTML-escaped), may be empty for spacer
+    std::string classes; ///< "sr wN [mlN]"
+    std::string text; ///< real unicode (HTML-escaped), may be empty for spacer
   };
-  // One line block in the selection layer: absolutely positioned, transparent.
+  /// One line block in the selection layer: absolutely positioned,
+  /// transparent.
   struct SelLineOut {
-    std::string classes; // "t lN tN i"
+    std::string classes; ///< "t lN tN i"
     std::vector<SelRunOut> runs;
   };
 
@@ -636,9 +640,6 @@ public:
     const std::unique_ptr<pdf::Document> document = parser.parse_document();
     const std::vector<pdf::Page *> pages = document->collect_pages();
 
-    static constexpr double pt_to_px = 96.0 / 72.0;
-    static constexpr double pt_to_in = 1 / 72.0;
-
     AtomicStyles styles;
     std::vector<DualPageOut> pages_out;
     pages_out.reserve(pages.size());
@@ -657,29 +658,7 @@ public:
       if (!inserted) {
         return it->second;
       }
-      bool usable = false;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
-        try {
-          font::reencode_to_pua(*sfnt);
-          std::ostringstream sfnt_out;
-          sfnt->write(sfnt_out);
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-        sfnt->set_cmap(std::move(original_cmap));
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        try {
-          (void)font::cff::wrap_to_otf(*cff);
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-      }
-      if (!usable) {
+      if (!font_is_usable(*font)) {
         return 0;
       }
       const std::uint32_t index = ++family_count;
@@ -687,11 +666,6 @@ public:
       accepted_fonts.push_back(font);
       font_class_used.push_back({false, false});
       return index;
-    };
-
-    const auto font_class = [&](const std::uint32_t font, const bool inv) {
-      font_class_used[font - 1][inv ? 1 : 0] = true;
-      return (inv ? "fn" : "fv") + std::to_string(font);
     };
 
     const auto add_class = [&styles](std::string &classes,
@@ -738,7 +712,8 @@ public:
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
       // Visual layer state: open line block.
-      int vis_cur_line = -1; // index of open VisLineOut in vis_items, -1 = none
+      std::int32_t vis_cur_line =
+          -1; // index of open VisLineOut in vis_items, -1 = none
       double vis_prev_end = 0;
       double vis_prev_baseline = 0;
       double vis_prev_font_pt = 0;
@@ -751,7 +726,7 @@ public:
       double sel_prev_end = 0;
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
-      int sel_cur_line = -1;
+      std::int32_t sel_cur_line = -1;
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
@@ -823,21 +798,8 @@ public:
           if (new_vis_line) {
             // Build the line block's placement classes.
             std::string line_base = "t";
-            if (!is_matrix) {
-              add_class(line_base, "l", px_decl("left", round2(ox * pt_to_px)));
-              add_class(
-                  line_base, "t",
-                  px_decl("top", round2((baseline - asc * m.a * text.size) *
-                                        pt_to_px)));
-            } else {
-              const double ascent_px = asc * text.size * pt_to_px;
-              std::ostringstream tm;
-              tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c
-                 << "," << m.d << ","
-                 << round2(m.e * pt_to_px - m.c * ascent_px) << ","
-                 << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
-              add_class(line_base, "m", std::move(tm).str());
-            }
+            add_position_classes(line_base, add_class, m, is_matrix, ox,
+                                 baseline, asc * text.size);
             VisLineOut line_out;
             line_out.classes = std::move(line_base);
             page_out.vis_items.push_back(std::move(line_out));
@@ -851,7 +813,7 @@ public:
           add_class(run_classes, "f", px_decl("font-size", font_size_px));
           if (font != 0) {
             run_classes += ' ';
-            run_classes += font_class(font, invisible);
+            run_classes += font_class(font_class_used, font, invisible);
           }
           if (vis_margin_px != 0) {
             add_class(run_classes, "ml", px_decl("margin-left", vis_margin_px));
@@ -920,21 +882,8 @@ public:
             }
             // Build the line block's placement.
             std::string sel_base = "t";
-            if (!is_matrix) {
-              add_class(sel_base, "l", px_decl("left", round2(ox * pt_to_px)));
-              add_class(
-                  sel_base, "t",
-                  px_decl("top", round2((baseline - asc * scale * text.size) *
-                                        pt_to_px)));
-            } else {
-              const double ascent_px = asc * text.size * pt_to_px;
-              std::ostringstream tm;
-              tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c
-                 << "," << m.d << ","
-                 << round2(m.e * pt_to_px - m.c * ascent_px) << ","
-                 << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
-              add_class(sel_base, "m", std::move(tm).str());
-            }
+            add_position_classes(sel_base, add_class, m, is_matrix, ox,
+                                 baseline, asc * text.size);
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
@@ -1003,39 +952,8 @@ public:
 
     // Post-pass: re-encode accepted fonts PUA-only.
     for (std::uint32_t i = 0; i < family_count; ++i) {
-      pdf::Font *font = accepted_fonts[i];
-      std::string reencoded;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        font::reencode_to_pua(*sfnt);
-        std::ostringstream sfnt_out;
-        sfnt->write(sfnt_out);
-        reencoded = std::move(sfnt_out).str();
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        reencoded = font::cff::wrap_to_otf(*cff);
-      }
-      const std::string url = file_to_url(reencoded, "font/ttf");
-      const std::string n = std::to_string(i + 1);
-      font_faces += "@font-face{font-family:'odr-f";
-      font_faces += n;
-      font_faces += "';src:url(";
-      font_faces += url;
-      font_faces += ");}";
-      if (font_class_used[i][0]) {
-        font_styles += ".fv";
-        font_styles += n;
-        font_styles += "{color:#000;font-family:'odr-f";
-        font_styles += n;
-        font_styles += "'}";
-      }
-      if (font_class_used[i][1]) {
-        font_styles += ".fn";
-        font_styles += n;
-        font_styles += "{color:transparent;font-family:'odr-f";
-        font_styles += n;
-        font_styles += "'}";
-      }
+      write_font_face(*accepted_fonts[i], i, {}, font_class_used[i], font_faces,
+                      font_styles);
     }
 
     // Write HTML.
@@ -1187,14 +1105,14 @@ public:
   // fallback (no embedded font) runs render the real Unicode as ordinary text.
 
   struct SingleRunOut {
-    std::string margin; // "" or a `margin-left` class
-    std::string color;  // "" or a colour class suffix (includes leading " ")
-    std::string text;   // real Unicode (HTML-escaped), may be empty
-    std::string glyph_data; // PUA glyph string (non-empty → unclean)
+    std::string margin; ///< "" or a `margin-left` class
+    std::string color;  ///< "" or a colour class suffix (includes leading " ")
+    std::string text;   ///< real Unicode (HTML-escaped), may be empty
+    std::string glyph_data; ///< PUA glyph string (non-empty → unclean)
   };
   struct SingleLineOut {
-    std::string classes;    // "t lN tN [mN] [fvN|fnN] [iN]..."
-    std::string font_class; // per-font family+colour class on the block
+    std::string classes;    ///< "t lN tN [mN] [fvN|fnN] [iN]..."
+    std::string font_class; ///< per-font family+colour class on the block
     std::vector<SingleRunOut> runs;
   };
   struct SinglePathOut {
@@ -1218,9 +1136,6 @@ public:
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
     const std::unique_ptr<pdf::Document> document = parser.parse_document();
     const std::vector<pdf::Page *> pages = document->collect_pages();
-
-    static constexpr double pt_to_px = 96.0 / 72.0;
-    static constexpr double pt_to_in = 1 / 72.0;
 
     // ---- Font registration ------------------------------------------------
     // A real-Unicode scalar gets a cmap entry only inside the BMP and outside
@@ -1249,29 +1164,7 @@ public:
       if (!inserted) {
         return it->second;
       }
-      bool usable = false;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
-        try {
-          font::reencode_to_pua(*sfnt);
-          std::ostringstream sfnt_out;
-          sfnt->write(sfnt_out);
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-        sfnt->set_cmap(std::move(original_cmap));
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        try {
-          (void)font::cff::wrap_to_otf(*cff);
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-      }
-      if (!usable) {
+      if (!font_is_usable(*font)) {
         return 0;
       }
       const std::uint32_t index = ++family_count;
@@ -1281,11 +1174,6 @@ public:
       used_unicode.emplace_back();
       font_class_used.push_back({false, false});
       return index;
-    };
-
-    const auto font_class = [&](const std::uint32_t font, const bool inv) {
-      font_class_used[font - 1][inv ? 1 : 0] = true;
-      return (inv ? "fn" : "fv") + std::to_string(font);
     };
 
     AtomicStyles styles;
@@ -1392,7 +1280,7 @@ public:
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
-      int cur_line = -1;
+      std::int32_t cur_line = -1;
       std::string cur_flow_key;
       bool prev_was_matrix = false;
       double prev_end = 0;
@@ -1513,19 +1401,8 @@ public:
 
         if (new_line) {
           std::string base = "t";
-          if (!is_matrix) {
-            add_class(base, "l", px_decl("left", round2(ox * pt_to_px)));
-            add_class(base, "t",
-                      px_decl("top", round2((baseline - asc * m.a * text.size) *
-                                            pt_to_px)));
-          } else {
-            const double ascent_px = asc * text.size * pt_to_px;
-            std::ostringstream tm;
-            tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
-               << m.d << "," << round2(m.e * pt_to_px - m.c * ascent_px) << ","
-               << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
-            add_class(base, "m", std::move(tm).str());
-          }
+          add_position_classes(base, add_class, m, is_matrix, ox, baseline,
+                               asc * text.size);
           add_class(base, "f", px_decl("font-size", font_size_px));
           const bool spacing_one_to_one =
               font != 0 ||
@@ -1545,7 +1422,7 @@ public:
           SingleLineOut line;
           line.classes = std::move(base);
           if (font != 0) {
-            line.font_class = font_class(font, invisible);
+            line.font_class = font_class(font_class_used, font, invisible);
           }
           line.runs.push_back(std::move(run));
           page_out.items.push_back(std::move(line));
@@ -1570,42 +1447,8 @@ public:
 
     // ---- Post-pass: re-encode fonts with frequency-winner cmap entries ---
     for (std::uint32_t i = 0; i < family_count; ++i) {
-      pdf::Font *font = accepted_fonts[i];
-      const std::map<char32_t, std::uint16_t> &extra = used_unicode[i];
-      std::string reencoded;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        font::reencode_to_pua(*sfnt, extra);
-        std::ostringstream sfnt_out;
-        sfnt->write(sfnt_out);
-        reencoded = std::move(sfnt_out).str();
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        reencoded = font::cff::wrap_to_otf(*cff, extra);
-      }
-      const std::string url = file_to_url(reencoded, "font/ttf");
-      const std::string n = std::to_string(i + 1);
-      font_faces += "@font-face{font-family:'odr-f";
-      font_faces += n;
-      font_faces += "';src:url(";
-      font_faces += url;
-      font_faces += ");}";
-      const auto rule = [&](const char *cls, const char *color) {
-        font_styles += '.';
-        font_styles += cls;
-        font_styles += n;
-        font_styles += '{';
-        font_styles += color;
-        font_styles += "font-family:'odr-f";
-        font_styles += n;
-        font_styles += "'}";
-      };
-      if (font_class_used[i][0]) {
-        rule("fv", "color:#000;");
-      }
-      if (font_class_used[i][1]) {
-        rule("fn", "color:transparent;");
-      }
+      write_font_face(*accepted_fonts[i], i, used_unicode[i],
+                      font_class_used[i], font_faces, font_styles);
     }
 
     // ---- Pass 2: write HTML ---------------------------------------------
@@ -1755,6 +1598,120 @@ public:
     return std::move(s).str();
   }
 
+  /// Appends a text run's line-block placement classes via `add_class(classes,
+  /// prefix, declaration)`: `l`/`t` (left/top, in px) for an axis-aligned run,
+  /// or `m` (a CSS `matrix(...)` transform, re-anchored to the run's baseline
+  /// by `ascent_pt`) for a rotated/skewed one. Shared by the visual, selection
+  /// and single-layer line blocks, which all position runs the same way.
+  template <typename AddClass>
+  static void add_position_classes(std::string &classes, AddClass &&add_class,
+                                   const util::math::Transform2D &m,
+                                   const bool is_matrix, const double ox,
+                                   const double baseline,
+                                   const double ascent_pt) {
+    if (!is_matrix) {
+      add_class(classes, "l", px_decl("left", round2(ox * pt_to_px)));
+      add_class(
+          classes, "t",
+          px_decl("top", round2((baseline - ascent_pt * m.a) * pt_to_px)));
+      return;
+    }
+    const double ascent_px = ascent_pt * pt_to_px;
+    const util::math::Transform2D px_m{m.a,
+                                       m.b,
+                                       m.c,
+                                       m.d,
+                                       m.e * pt_to_px - m.c * ascent_px,
+                                       m.f * pt_to_px - m.d * ascent_px};
+    add_class(classes, "m", "transform:" + svg_matrix(px_m));
+  }
+
+  /// Whether `font`'s embedded program can be re-encoded (SFNT PUA re-cmap or
+  /// CFF->OTF wrap) without throwing; probes the real encode path so failures
+  /// surface here rather than in the post-pass. Restores the SFNT's original
+  /// cmap after probing (the CFF probe is stateless).
+  static bool font_is_usable(pdf::Font &font) {
+    if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+            font.embedded_font)) {
+      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
+      bool usable = false;
+      try {
+        font::reencode_to_pua(*sfnt);
+        std::ostringstream sfnt_out;
+        sfnt->write(sfnt_out);
+        usable = true;
+      } catch (...) {
+        usable = false;
+      }
+      sfnt->set_cmap(std::move(original_cmap));
+      return usable;
+    }
+    if (const auto cff =
+            std::dynamic_pointer_cast<font::cff::CffFont>(font.embedded_font)) {
+      try {
+        (void)font::cff::wrap_to_otf(*cff);
+        return true;
+      } catch (...) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /// The `fvN`/`fnN` class for `font` (visible/invisible), marking it used in
+  /// `font_class_used` so the post-pass emits the corresponding rule.
+  static std::string
+  font_class(std::vector<std::array<bool, 2>> &font_class_used,
+             const std::uint32_t font, const bool inv) {
+    font_class_used[font - 1][inv ? 1 : 0] = true;
+    return (inv ? "fn" : "fv") + std::to_string(font);
+  }
+
+  /// Re-encodes `font`'s embedded program (SFNT PUA re-cmap or CFF->OTF wrap,
+  /// folding in `extra_unicode`'s real-Unicode cmap entries alongside the PUA
+  /// range) and appends its `@font-face` and `.fvN`/`.fnN` rules.
+  /// `class_used[0]`/`[1]` gate whether the visible/invisible rule is needed.
+  static void
+  write_font_face(pdf::Font &font, const std::uint32_t index,
+                  const std::map<char32_t, std::uint16_t> &extra_unicode,
+                  const std::array<bool, 2> &class_used,
+                  std::string &font_faces, std::string &font_styles) {
+    std::string reencoded;
+    if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+            font.embedded_font)) {
+      font::reencode_to_pua(*sfnt, extra_unicode);
+      std::ostringstream sfnt_out;
+      sfnt->write(sfnt_out);
+      reencoded = std::move(sfnt_out).str();
+    } else if (const auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
+                   font.embedded_font)) {
+      reencoded = font::cff::wrap_to_otf(*cff, extra_unicode);
+    }
+    const std::string url = file_to_url(reencoded, "font/ttf");
+    const std::string n = std::to_string(index + 1);
+    font_faces += "@font-face{font-family:'odr-f";
+    font_faces += n;
+    font_faces += "';src:url(";
+    font_faces += url;
+    font_faces += ");}";
+    const auto rule = [&](const char *cls, const char *color) {
+      font_styles += '.';
+      font_styles += cls;
+      font_styles += n;
+      font_styles += '{';
+      font_styles += color;
+      font_styles += "font-family:'odr-f";
+      font_styles += n;
+      font_styles += "'}";
+    };
+    if (class_used[0]) {
+      rule("fv", "color:#000;");
+    }
+    if (class_used[1]) {
+      rule("fn", "color:transparent;");
+    }
+  }
+
   static double ascent_em(const pdf::TextElement &text) {
     double em = 0.8;
     if (text.font != nullptr && text.font->descriptor_ascent) {
@@ -1787,10 +1744,10 @@ public:
     return s;
   }
 
-  // Handles path/shading/image elements common to both rendering modes.
-  // Calls close_line() and push_fragment(svg_string) when a non-empty fragment
-  // is produced. Returns true when the element was a graphic (caller should
-  // `continue`), false when it is a text element.
+  /// Handles path/shading/image elements common to both rendering modes.
+  /// Calls close_line() and push_fragment(svg_string) when a non-empty
+  /// fragment is produced. Returns true when the element was a graphic
+  /// (caller should `continue`), false when it is a text element.
   template <typename CloseLine, typename PushSvg>
   static bool handle_graphic_element(
       const pdf::PageElement &element, const util::math::Transform2D &to_box,
