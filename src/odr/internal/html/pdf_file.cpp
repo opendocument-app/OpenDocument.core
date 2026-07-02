@@ -24,11 +24,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -675,6 +677,23 @@ public:
       classes += styles.intern(prefix, std::move(declaration));
     };
 
+    // Strips a trailing `wN` (width) class token, if present, so a merged
+    // selection run's width can be re-declared. Assumes at most one `w`
+    // class is ever attached to a selection run.
+    const auto strip_width_class = [](std::string &classes) {
+      const std::size_t pos = classes.rfind(' ');
+      if (pos == std::string::npos) {
+        return;
+      }
+      const std::string_view tail(classes.data() + pos + 1,
+                                  classes.size() - pos - 1);
+      if (tail.size() > 1 && tail.front() == 'w' &&
+          std::all_of(tail.begin() + 1, tail.end(),
+                      [](unsigned char c) { return std::isdigit(c) != 0; })) {
+        classes.resize(pos);
+      }
+    };
+
     for (pdf::Page *page : pages) {
       const pdf::Array &page_box = page->media_box.as_array();
       const double box_x0 = page_box[0].as_real();
@@ -727,6 +746,11 @@ public:
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
+      double sel_cur_run_start_ox = 0;  ///< `ox` of the open `.sr` run's start,
+                                        ///< for recomputing its width on merge.
+      double sel_prev_font_size_px = 0; ///< font-size of the previous
+                                        ///< element, for the trailing space
+                                        ///< that closes its line.
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
@@ -877,8 +901,11 @@ public:
           if (new_sel_line) {
             // Close previous line with a trailing space if needed.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
+              std::string space_cls = "sr";
+              add_class(space_cls, "f",
+                        px_decl("font-size", sel_prev_font_size_px));
               page_out.sel_lines[sel_cur_line].runs.push_back(
-                  SelRunOut{"sr", " "});
+                  SelRunOut{std::move(space_cls), " "});
             }
             // Build the line block's placement.
             std::string sel_base = "t";
@@ -890,11 +917,13 @@ public:
             // Emit the run span.
             if (!core.empty()) {
               std::string cls = "sr";
+              add_class(cls, "f", px_decl("font-size", font_size_px));
               if (width_px > 0 && !is_matrix) {
                 add_class(cls, "w", px_decl("width", width_px));
               }
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
+              sel_cur_run_start_ox = ox;
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             // Emit a spacer span for the gap, then the run span.
@@ -903,6 +932,7 @@ public:
             if (!sel_prev_ends_space && !runs.empty()) {
               // Spacer: display:inline-block with the gap width.
               std::string gap_cls = "sg";
+              add_class(gap_cls, "f", px_decl("font-size", font_size_px));
               const double rounded_gap = round2(gap_px);
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", px_decl("width", rounded_gap));
@@ -911,31 +941,35 @@ public:
             }
             if (!core.empty()) {
               std::string cls = "sr";
+              add_class(cls, "f", px_decl("font-size", font_size_px));
               if (width_px > 0 && !is_matrix) {
                 add_class(cls, "w", px_decl("width", width_px));
               }
               runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
+              sel_cur_run_start_ox = ox;
             }
           } else {
             // Tight continuation on the same baseline — merge into the
             // previous selection run's text so the browser treats the whole
-            // sequence as one word for double-click and find-in-page.
+            // sequence as one word for double-click and find-in-page. Widen
+            // the run's declared width to the full merged extent (measured
+            // from where that run started) so CSS justify keeps spreading
+            // characters across the true PDF advance instead of the first
+            // sub-run's narrower one.
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
               runs.back().text += escape_markup(text.text);
-              // Extend the width class by rebuilding it: remove the old `w`
-              // class from the list and re-intern with the combined width.
-              // Simpler: just add the combined width as a new class; the last
-              // `w` class wins in the cascade (since they appear in the same
-              // order as the atomic-class `<style>` rules).
-              // Actually easier: accumulate a separate width value per run.
-              // For now, approximate: update the last run's width class.
-              // We skip per-run-width update here — the CSS justify will
-              // adapt to the merged text's natural width vs. the declared
-              // width (the old run's width) may be slightly off but the
-              // merged text reads correctly.
+              if (!is_matrix) {
+                strip_width_class(runs.back().classes);
+                const double merged_width_px =
+                    round2((ox + extent - sel_cur_run_start_ox) * pt_to_px);
+                if (merged_width_px > 0) {
+                  add_class(runs.back().classes, "w",
+                            px_decl("width", merged_width_px));
+                }
+              }
             }
           }
 
@@ -943,6 +977,7 @@ public:
           sel_prev_end = ox + extent;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
+          sel_prev_font_size_px = font_size_px;
           sel_have_prev = true;
         }
       }
@@ -1630,7 +1665,7 @@ public:
   /// CFF->OTF wrap) without throwing; probes the real encode path so failures
   /// surface here rather than in the post-pass. Restores the SFNT's original
   /// cmap after probing (the CFF probe is stateless).
-  static bool font_is_usable(pdf::Font &font) {
+  static bool font_is_usable(const pdf::Font &font) {
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
       std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
