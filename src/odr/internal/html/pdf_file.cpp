@@ -622,6 +622,10 @@ public:
   struct SelLineOut {
     std::string classes; ///< "t lN tN i"
     std::vector<SelRunOut> runs;
+    double y{0}; ///< baseline y in the page's pixel space (top-down), used to
+                 ///< sort lines into visual reading order after all of a
+                 ///< page's lines are collected — content-stream order does
+                 ///< not always run top-to-bottom (e.g. margins, columns).
   };
 
   struct DualPageOut {
@@ -912,7 +916,8 @@ public:
             add_position_classes(sel_base, add_class, m, is_matrix, ox,
                                  baseline, asc * text.size);
             sel_base += " i"; // transparent
-            page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
+            page_out.sel_lines.push_back(
+                SelLineOut{std::move(sel_base), {}, baseline});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
             // Emit the run span.
             if (!core.empty()) {
@@ -982,6 +987,15 @@ public:
         }
       }
 
+      // Content-stream order doesn't always run top-to-bottom (e.g. margins
+      // and columns are frequently painted out of visual row order), which
+      // would make drag-selection highlight rows inconsistently. Re-sort
+      // into visual reading order; stable so lines already on the same row
+      // (equal baseline) keep their content-stream (x) order.
+      std::stable_sort(
+          page_out.sel_lines.begin(), page_out.sel_lines.end(),
+          [](const SelLineOut &a, const SelLineOut &b) { return a.y < b.y; });
+
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
 
@@ -1020,7 +1034,11 @@ public:
                  "text-align-last:justify;text-justify:inter-character;"
                  "overflow:hidden;white-space:nowrap}";
     // Selection-layer gap spacer: inline-block, no text, just width.
-    out.out() << ".sg{display:inline-block}";
+    // `overflow:hidden` matches `.sr` — per CSS an inline-block's baseline is
+    // its content's text baseline when overflow is visible, but the bottom
+    // margin edge when overflow isn't; without this, `.sg` and `.sr` boxes
+    // baseline-align differently and the spacer visibly shifts in y.
+    out.out() << ".sg{display:inline-block;overflow:hidden}";
     // SVG overlay covering the page box (visual graphics layer).
     out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
                  "overflow:hidden;pointer-events:none}";
