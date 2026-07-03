@@ -197,9 +197,9 @@ std::string engine_suffix(const DecoderEngine engine) {
                                       : "-" + decoder_engine_to_string(engine);
 }
 
-// The default `dual_layer` mode carries no suffix so existing (non-PDF and
-// dual-layer) reference outputs keep their paths; single-layer variants are
-// disambiguated with `-single`, mirroring the `-poppler` engine suffix.
+/// The default `dual_layer` mode carries no suffix so existing (non-PDF and
+/// dual-layer) reference outputs keep their paths; single-layer variants are
+/// disambiguated with `-single`, mirroring the `-poppler` engine suffix.
 std::string text_mode_suffix(const PdfTextMode pdf_text_mode) {
   return pdf_text_mode == PdfTextMode::dual_layer ? "" : "-single";
 }
