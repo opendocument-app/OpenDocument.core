@@ -59,8 +59,9 @@ std::string svg_matrix(const util::math::Transform2D &m) {
 }
 
 /// Clamp a colour component in [0, 1] to an 8-bit channel value.
-int to255(const double v) {
-  return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+std::int32_t to255(const double v) {
+  return static_cast<std::int32_t>(
+      std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
 }
 
 /// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
