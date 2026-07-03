@@ -58,13 +58,15 @@ std::string svg_matrix(const util::math::Transform2D &m) {
   return std::move(f).str();
 }
 
+/// Clamp a colour component in [0, 1] to an 8-bit channel value.
+int to255(const double v) {
+  return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+}
+
 /// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
 /// spaces (Separation/ICCBased/… — stage 4.4) and the unknown space fall back
 /// to black, the PDF initial color.
 std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
-  const auto to255 = [](const double v) {
-    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
-  };
   std::int32_t r = 0;
   std::int32_t g = 0;
   std::int32_t b = 0;
@@ -99,9 +101,6 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
 /// Convert an sRGB triple in [0, 1] (a shading colour stop) to a CSS
 /// `rgb(...)`.
 std::string rgb_to_css(const std::array<double, 3> &rgb) {
-  const auto to255 = [](const double v) {
-    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
-  };
   std::ostringstream s;
   s << "rgb(" << to255(rgb[0]) << ',' << to255(rgb[1]) << ',' << to255(rgb[2])
     << ')';
@@ -227,14 +226,11 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   if (image.data.empty()) {
     return {};
   }
-  // image natural box [0,1] (y-down) -> PDF unit square (y-up) -> user -> box.
   constexpr util::math::Transform2D flip =
       util::math::Transform2D::scaling_translation(1, -1, 0, 1);
   const util::math::Transform2D m = flip * image.transform * to_box;
 
   std::ostringstream f;
-  // The clip wraps the image in a transform-free `<g>` rather than sitting on
-  // the `<image>`: see the function comment.
   if (!clip_id.empty()) {
     f << "<g clip-path=\"url(#" << clip_id << ")\">";
   }
@@ -976,27 +972,19 @@ public:
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
-      // Fallback font for the selection layer: `size-adjust` rescales a local
-      // system font's metrics (advance widths *and* vertical ascent/descent)
-      // so its natural width lands near the PDF-derived `.sr`/`.sg` widths,
-      // leaving only a small gap for `text-justify:inter-character` below to
-      // fill — CSS justify only ever *adds* spacing, never compresses, and an
-      // unadjusted generic font typically renders 20-80% wider than the
-      // embedded PDF font at the same size, so it overflows and is clipped by
-      // `overflow:hidden` instead of stretching to fit.
+      // Fallback font for the selection layer: `size-adjust` shrinks a local
+      // system font so its natural width lands near the PDF-derived `.sr`/`.sg`
+      // widths, leaving a small gap for `text-justify:inter-character` to fill.
+      // CSS justify only ever *adds* spacing, so undershooting is free (the
+      // text just spreads further; the layer is invisible) while overshooting
+      // overflows and is clipped by `overflow:hidden` — hence
       // `pdf_dual_layer_fallback_font_size_adjust` (config, 0-1) is
-      // deliberately low (i.e. safely undersized) by default, not tuned per
-      // document — it costs nothing to undershoot (`text-justify` just spreads
-      // the now-narrower text further; the layer is invisible and box width is
-      // unaffected), but overshooting still clips. The vertical rescale is
-      // harmless here: `.sr`/`.sg` fix their own box height via the inherited
-      // `line-height:1` and force baseline-alignment to their own bottom
-      // margin edge via `overflow:hidden` (see below), so they never consult
-      // the font's scaled ascent/descent for layout. If none of
-      // `pdf_dual_layer_fallback_fonts` resolve locally (font not installed,
-      // or a browser restricts `local()` for fingerprinting reasons), the
-      // whole rule is skipped and `.i` falls through to plain `sans-serif` —
-      // today's unadjusted behaviour.
+      // deliberately low. The vertical rescale is harmless: `.sr`/`.sg` fix
+      // their box height via `line-height:1` and baseline-align via
+      // `overflow:hidden` (below), never consulting the font's ascent/descent.
+      // If no `pdf_dual_layer_fallback_fonts` resolve locally the rule is
+      // skipped and
+      // `.i` falls through to plain `sans-serif`.
       if (const std::vector<std::string> &fonts =
               config().pdf_dual_layer_fallback_fonts;
           !fonts.empty()) {
@@ -1025,22 +1013,17 @@ public:
       // Transparent text for the selection layer line blocks.
       out.out() << ".i{color:transparent;font-family:sf,sans-serif}";
       // Selection-layer run span: inline-block with CSS justify so the browser
-      // spreads characters to fill the declared width (matching the PDF
-      // advance) without JS. `overflow:hidden` clips if the system font is
-      // wider. No `white-space` override — `.t`'s inherited `pre` already
-      // blocks wrapping (an unbreakable inline-block never needs `nowrap` for
-      // that), and unlike `nowrap`, `pre` doesn't collapse a run's own
-      // leading/trailing space to zero width (that space is real PDF content,
-      // e.g. a run that ends mid-word-gap and is never followed by a spacer
-      // span).
+      // spreads characters to fill the declared width (the PDF advance) without
+      // JS; `overflow:hidden` clips a wider system font. `.t`'s inherited `pre`
+      // (not `nowrap`) blocks wrapping while preserving a run's own
+      // leading/trailing space, which is real PDF content.
       out.out() << ".sr{display:inline-block;text-align:justify;"
                    "text-align-last:justify;text-justify:inter-character;"
                    "overflow:hidden}";
       // Selection-layer gap spacer: inline-block, no text, just width.
-      // `overflow:hidden` matches `.sr` — per CSS an inline-block's baseline is
-      // its content's text baseline when overflow is visible, but the bottom
-      // margin edge when overflow isn't; without this, `.sg` and `.sr` boxes
-      // baseline-align differently and the spacer visibly shifts in y.
+      // `overflow:hidden` matches `.sr`: an inline-block baseline-aligns to its
+      // bottom margin edge only when overflow isn't visible, so without it the
+      // spacer and run boxes align differently and the spacer shifts in y.
       out.out() << ".sg{display:inline-block;overflow:hidden}";
     });
 
