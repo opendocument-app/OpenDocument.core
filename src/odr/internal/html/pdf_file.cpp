@@ -1100,6 +1100,8 @@ public:
     std::string color;      ///< "" or a colour class name (no leading space)
     std::string text;       ///< real Unicode (HTML-escaped), may be empty
     std::string glyph_data; ///< PUA glyph string (non-empty → unclean)
+    bool lead_space{false}; ///< clean run: emit a zero-width selectable space
+                            ///< before `text` (a recovered inferred word break)
   };
   struct SingleLineOut {
     std::string classes;    ///< "t lN tN [mN] [fvN|fnN] [iN]..."
@@ -1134,6 +1136,23 @@ public:
     // never shadowed.
     const auto collapsible_unicode = [](const char32_t c) {
       return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
+    };
+
+    // A leading inferred space (space inference) carries no character code or
+    // advance, so the "collapsible" 1:1 alignment is between the codes and the
+    // run text *after* that space. These helpers view the run text past it: the
+    // core character count (to test 1:1 against `advances`) and the byte offset
+    // where the codes begin (to walk `text` alongside `font->codes`).
+    const auto core_char_count = [](const pdf::TextElement &t) {
+      return util::string::utf8_length(t.text) -
+             (t.leading_space_inferred ? 1u : 0u);
+    };
+    const auto core_text_begin = [](const pdf::TextElement &t) {
+      auto cp = t.text.begin();
+      if (t.leading_space_inferred) {
+        utf8::unchecked::next(cp); // skip the one-byte U+0020
+      }
+      return cp;
     };
 
     std::uint32_t family_count = 0;
@@ -1198,11 +1217,12 @@ public:
         if (font == 0) {
           continue;
         }
-        // Only collapsible-candidate runs contribute to frequency counts.
-        if (util::string::utf8_length(text->text) != text->advances.size()) {
+        // Only collapsible-candidate runs contribute to frequency counts. A
+        // leading inferred space is skipped so a run carrying one still votes.
+        if (core_char_count(*text) != text->advances.size()) {
           continue;
         }
-        auto cp = text->text.begin();
+        auto cp = core_text_begin(*text);
         for (const std::uint32_t code : text->font->codes(text->codes)) {
           const char32_t uchar = utf8::unchecked::next(cp);
           if (!collapsible_unicode(uchar)) {
@@ -1299,16 +1319,17 @@ public:
           // Fallback / invisible: render real unicode directly.
           run.text = escape_markup(text.text);
         } else {
-          // Check collapse: 1:1 text↔codes and every (uchar, glyph) matches
-          // the frequency winner.
+          // Check collapse: 1:1 codes↔core-text and every (uchar, glyph)
+          // matches the frequency winner. A leading inferred space is metadata,
+          // not a coded char, so it is excluded from the alignment (otherwise a
+          // recovered word break would force the whole run onto the PUA path).
           // `font != 0` here already implies `text.font != nullptr`.
-          bool collapse =
-              !text.text.empty() &&
-              util::string::utf8_length(text.text) == text.advances.size();
+          bool collapse = core_char_count(text) > 0 &&
+                          core_char_count(text) == text.advances.size();
           if (collapse) {
             const std::map<char32_t, std::uint16_t> &won =
                 used_unicode[font - 1];
-            auto cp = text.text.begin();
+            auto cp = core_text_begin(text);
             for (const std::uint32_t code : text.font->codes(text.codes)) {
               const char32_t uchar = utf8::unchecked::next(cp);
               const std::uint16_t glyph = text.font->glyph_for_code(code);
@@ -1321,7 +1342,14 @@ public:
             }
           }
           if (collapse) {
-            run.text = escape_markup(text.text);
+            // Real Unicode renders directly via the cmap. Any leading inferred
+            // space is emitted as a zero-width selectable overlay
+            // (`lead_space`) instead of visible text, so `white-space:pre`
+            // cannot shift the glyphs right of their placement origin while
+            // copy/search still read the recovered space.
+            run.lead_space = text.leading_space_inferred;
+            run.text = escape_markup(
+                std::string(core_text_begin(text), text.text.end()));
           } else {
             run.glyph_data = glyph_run_str(*text.font, text.codes);
             run.text = escape_markup(text.text); // overlay (empty=no_unicode)
@@ -1445,6 +1473,14 @@ public:
       for (const SingleRunOut &run : line.runs) {
         if (run.glyph_data.empty()) {
           // Clean / invisible / fallback: real Unicode renders directly.
+          if (run.lead_space) {
+            // Recovered word-break space: selectable/copyable but zero-width,
+            // so it never shifts the glyphs under `white-space:pre`.
+            out.write_element_begin(
+                "span", HtmlElementOptions().set_inline(true).set_class("ov"));
+            out.write_raw(" ");
+            out.write_element_end("span");
+          }
           const std::string cls = run_class(run, "");
           if (cls.empty()) {
             out.write_raw(run.text);

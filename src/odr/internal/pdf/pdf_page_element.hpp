@@ -45,6 +45,14 @@ struct TextElement {
   /// yielded nothing (see `no_unicode`) or an enclosing `/ActualText` already
   /// emitted the run's text.
   std::string text;
+  /// True when the leading character of `text` is an inferred inter-word/-line
+  /// space (space inference), i.e. one prepended `U+0020` with no backing
+  /// character code or advance. Lets a consumer treat that space as metadata
+  /// (selectable but not part of the 1:1 code<->char run) rather than content:
+  /// the single-layer HTML collapse test skips it, so a run that would map
+  /// cleanly to real Unicode is not forced onto the PUA glyph path merely
+  /// because a word-break space was recovered in front of it.
+  bool leading_space_inferred{false};
   /// True when the font's code -> Unicode chain yielded nothing for this
   /// segment (a composite font with no `/ToUnicode` or usable predefined
   /// encoding is the common case), so `text` is empty. When the font has an
