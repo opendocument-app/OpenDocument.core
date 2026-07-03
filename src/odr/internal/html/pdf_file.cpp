@@ -747,6 +747,8 @@ public:
       bool sel_have_prev = false;
       double sel_prev_baseline = 0;
       double sel_prev_end = 0;
+      double sel_prev_font_pt = 0; ///< previous run's advance height, for the
+                                   ///< line-break test (see starts_new_line)
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
@@ -779,7 +781,10 @@ public:
         const bool invisible =
             text.rendering_mode == pdf::TextRenderingMode::invisible ||
             text.rendering_mode == pdf::TextRenderingMode::clip;
-        const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d);
+        // `m.a > 0` keeps the axis-aligned fast path from swallowing a pure
+        // 180° rotation (a = d = -1, b = c = 0), which would otherwise feed a
+        // negative `m.a` into `font_size_px` and the left/top math.
+        const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
         const double asc = ascent_em(text);
         const double scale = is_matrix ? 1.0 : m.a;
         const double ox = m.e;
@@ -814,9 +819,8 @@ public:
               is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
           double vis_margin_px = 0;
           if (!new_vis_line && vis_prev_font_pt > 0) {
-            if (std::abs(baseline - vis_prev_baseline) >
-                    0.6 * vis_prev_font_pt ||
-                ox < vis_prev_end - 0.5 * vis_prev_font_pt) {
+            if (starts_new_line(baseline, vis_prev_baseline, ox, vis_prev_end,
+                                vis_prev_font_pt)) {
               new_vis_line = true;
             } else {
               vis_margin_px = round2((ox - vis_prev_end) * pt_to_px);
@@ -861,9 +865,17 @@ public:
               cs_px != 0) {
             add_class(run_classes, "s", px_decl("letter-spacing", cs_px));
           }
-          if (const double ws_px = round2(text.word_spacing * scale * pt_to_px);
-              ws_px != 0) {
-            add_class(run_classes, "ws", px_decl("word-spacing", ws_px));
+          // CSS `word-spacing` only affects real U+0020 separators, so it is
+          // inert on the PUA glyph runs (font != 0, which never emit a literal
+          // space) — apply it solely on the real-unicode fallback path. Skip
+          // composite fonts: PDF Tw applies only to single-byte code 32, as in
+          // the single-layer path.
+          if (font == 0 && !(text.font != nullptr && text.font->composite)) {
+            if (const double ws_px =
+                    round2(text.word_spacing * scale * pt_to_px);
+                ws_px != 0) {
+              add_class(run_classes, "ws", px_decl("word-spacing", ws_px));
+            }
           }
 
           std::get<VisLineOut>(page_out.vis_items[vis_cur_line])
@@ -895,11 +907,10 @@ public:
           bool new_sel_line =
               !sel_have_prev || is_matrix || sel_prev_was_matrix;
           bool sel_gap = false;
-          if (sel_have_prev && font_pt > 0 && !new_sel_line) {
-            new_sel_line =
-                std::abs(baseline - sel_prev_baseline) > 0.6 * font_pt ||
-                ox < sel_prev_end - 0.5 * font_pt;
-            sel_gap = ox - sel_prev_end > 0.25 * font_pt;
+          if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
+            new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
+                                           sel_prev_end, sel_prev_font_pt);
+            sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
           }
 
           if (new_sel_line) {
@@ -982,6 +993,7 @@ public:
 
           sel_prev_baseline = baseline;
           sel_prev_end = ox + extent;
+          sel_prev_font_pt = font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
           sel_prev_font_size_px = font_size_px;
@@ -994,9 +1006,13 @@ public:
       // would make drag-selection highlight rows inconsistently. Re-sort
       // into visual reading order; stable so lines already on the same row
       // (equal baseline) keep their content-stream (x) order.
-      std::stable_sort(
-          page_out.sel_lines.begin(), page_out.sel_lines.end(),
-          [](const SelLineOut &a, const SelLineOut &b) { return a.y < b.y; });
+      // Quantize the baseline to 0.1px before comparing: same-row lines whose
+      // baselines differ only by float noise must compare equal so the stable
+      // sort keeps their content-stream (x) order instead of swapping them.
+      std::stable_sort(page_out.sel_lines.begin(), page_out.sel_lines.end(),
+                       [](const SelLineOut &a, const SelLineOut &b) {
+                         return std::round(a.y * 10.0) < std::round(b.y * 10.0);
+                       });
 
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
@@ -1211,9 +1227,9 @@ public:
   // fallback (no embedded font) runs render the real Unicode as ordinary text.
 
   struct SingleRunOut {
-    std::string margin; ///< "" or a `margin-left` class
-    std::string color;  ///< "" or a colour class suffix (includes leading " ")
-    std::string text;   ///< real Unicode (HTML-escaped), may be empty
+    std::string margin;     ///< "" or a `margin-left` class
+    std::string color;      ///< "" or a colour class name (no leading space)
+    std::string text;       ///< real Unicode (HTML-escaped), may be empty
     std::string glyph_data; ///< PUA glyph string (non-empty → unclean)
   };
   struct SingleLineOut {
@@ -1306,6 +1322,9 @@ public:
     // Count (uchar, glyph) co-occurrences per font over all pages. The main
     // pass then uses the frequency winner for each uchar instead of first-come-
     // first-serve, so the most common glyph shape wins its cmap entry.
+    // This re-runs `extract_page` on every page (the main pass parses each a
+    // second time) — a deliberate tradeoff: re-parsing the already-decoded
+    // stream is cheap next to buffering every page's element list in memory.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       pdf::Page *page = pages[pi];
       for (const pdf::PageElement &element :
@@ -1417,7 +1436,10 @@ public:
         const bool invisible =
             text.rendering_mode == pdf::TextRenderingMode::invisible ||
             text.rendering_mode == pdf::TextRenderingMode::clip;
-        const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d);
+        // `m.a > 0` keeps the axis-aligned fast path from swallowing a pure
+        // 180° rotation (a = d = -1, b = c = 0), which would otherwise feed a
+        // negative `m.a` into `font_size_px` and the left/top math.
+        const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
         const double asc = ascent_em(text);
         const double scale = is_matrix ? 1.0 : m.a;
         const double ox = m.e;
@@ -1449,7 +1471,11 @@ public:
         // directly via the frequency-winner cmap entries) or unclean (glyph
         // painted via generated content, unicode as overlay).
         SingleRunOut run;
-        run.color = color_suffix;
+        // `color_suffix` carries a leading space for the dual-layer paths that
+        // concatenate it onto a class string; the single-layer run stores just
+        // the class name.
+        run.color =
+            color_suffix.empty() ? std::string() : color_suffix.substr(1);
 
         if (font == 0 || invisible) {
           // Fallback / invisible: render real unicode directly.
@@ -1457,8 +1483,9 @@ public:
         } else {
           // Check collapse: 1:1 text↔codes and every (uchar, glyph) matches
           // the frequency winner.
+          // `font != 0` here already implies `text.font != nullptr`.
           bool collapse =
-              !text.text.empty() && text.font != nullptr &&
+              !text.text.empty() &&
               util::string::utf8_length(text.text) == text.advances.size();
           if (collapse) {
             const std::map<char32_t, std::uint16_t> &won =
@@ -1467,13 +1494,11 @@ public:
             for (const std::uint32_t code : text.font->codes(text.codes)) {
               const char32_t uchar = utf8::unchecked::next(cp);
               const std::uint16_t glyph = text.font->glyph_for_code(code);
-              if (!collapsible_unicode(uchar)) {
-                collapse = false;
-                continue;
-              }
               const auto it = won.find(uchar);
-              if (it == won.end() || it->second != glyph) {
+              if (!collapsible_unicode(uchar) || it == won.end() ||
+                  it->second != glyph) {
                 collapse = false;
+                break;
               }
             }
           }
@@ -1497,8 +1522,8 @@ public:
                         flow_key != cur_flow_key;
         double margin_px = 0;
         if (!new_line && prev_font_pt > 0) {
-          if (std::abs(baseline - prev_baseline) > 0.6 * prev_font_pt ||
-              ox < prev_end - 0.5 * prev_font_pt) {
+          if (starts_new_line(baseline, prev_baseline, ox, prev_end,
+                              prev_font_pt)) {
             new_line = true;
           } else {
             margin_px = round2((ox - prev_end) * pt_to_px);
@@ -1519,7 +1544,8 @@ public:
           }
           if (text.word_spacing != 0 && spacing_one_to_one &&
               !(text.font != nullptr && text.font->composite)) {
-            add_class(base, "w", px_decl("word-spacing", ws_px));
+            // `ws` = word-spacing everywhere (`w` is width in the dual layer).
+            add_class(base, "ws", px_decl("word-spacing", ws_px));
           }
           if (font == 0 && invisible) {
             base += " i";
@@ -1609,9 +1635,7 @@ public:
         cls += t;
       };
       add(run.margin);
-      if (!run.color.empty()) {
-        add(run.color.substr(1)); // strip leading space
-      }
+      add(run.color);
       return cls;
     };
 
@@ -1702,6 +1726,20 @@ public:
     std::ostringstream s;
     s << property << ':' << value << "px";
     return std::move(s).str();
+  }
+
+  /// Whether a run at (`ox`, `baseline`) starts a new visual line rather than
+  /// continuing the previous run: its baseline jumped by more than 0.6× the
+  /// previous run's advance height, or its origin sits left of the previous
+  /// run's right edge (minus half that height) — a carriage return. Shared by
+  /// all three layers (visual, selection, single) so the heuristic, which is
+  /// always measured against the *previous* run's `prev_font_pt`, cannot drift
+  /// between them. Callers gate on `prev_font_pt > 0`.
+  static bool starts_new_line(const double baseline, const double prev_baseline,
+                              const double ox, const double prev_end,
+                              const double prev_font_pt) {
+    return std::abs(baseline - prev_baseline) > 0.6 * prev_font_pt ||
+           ox < prev_end - 0.5 * prev_font_pt;
   }
 
   /// Appends a text run's line-block placement classes via `add_class(classes,
@@ -1843,6 +1881,11 @@ public:
     return s;
   }
 
+  /// Escapes only the three markup-significant characters for the selection /
+  /// unicode text. Deliberately *not* `html::escape_text`: that substitutes
+  /// spaces with `&nbsp;`, which browsers treat as a distinct character from
+  /// U+0020 and so breaks find-in-page word matching and double-click word
+  /// selection across the very text these layers exist to make selectable.
   static std::string escape_markup(std::string s) {
     util::string::replace_all(s, "&", "&amp;");
     util::string::replace_all(s, "<", "&lt;");

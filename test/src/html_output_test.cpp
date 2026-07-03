@@ -164,26 +164,44 @@ TEST_P(HtmlOutputTests, html_meta) {
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
 
-  HtmlConfig config(output_path);
-  config.embed_images = true;
-  config.embed_shipped_resources = false;
-  config.resource_path = resource_path;
-  config.relative_resource_paths = true;
-  config.editable = true;
-  config.spreadsheet_limit = TableDimensions(4000, 500);
-  config.format_html = true;
-  config.html_indent = 1;
-  config.html_indent_string = "\t";
+  const auto write_offline = [&](const std::string &out_path,
+                                 const bool single_layer) {
+    HtmlConfig config(out_path);
+    config.embed_images = true;
+    config.embed_shipped_resources = false;
+    config.resource_path = resource_path;
+    config.relative_resource_paths = true;
+    config.editable = true;
+    config.spreadsheet_limit = TableDimensions(4000, 500);
+    config.format_html = true;
+    config.html_indent = 1;
+    config.html_indent_string = "\t";
+    if (single_layer) {
+      config.pdf_text_mode = PdfTextMode::single_layer;
+    }
 
-  std::string output_path_tmp = output_path + "/tmp";
-  std::filesystem::create_directories(output_path_tmp);
-  HtmlService service = html::translate(file, output_path_tmp, config);
-  Html html = service.bring_offline(output_path);
-  std::filesystem::remove_all(output_path_tmp);
+    const std::string output_path_tmp = out_path + "/tmp";
+    fs::create_directories(out_path);
+    std::filesystem::create_directories(output_path_tmp);
+    HtmlService service = html::translate(file, output_path_tmp, config);
+    Html html = service.bring_offline(out_path);
+    std::filesystem::remove_all(output_path_tmp);
 
-  for (const HtmlPage &html_page : html.pages()) {
-    EXPECT_TRUE(fs::is_regular_file(html_page.path));
-    EXPECT_LT(0, fs::file_size(html_page.path));
+    for (const HtmlPage &html_page : html.pages()) {
+      EXPECT_TRUE(fs::is_regular_file(html_page.path));
+      EXPECT_LT(0, fs::file_size(html_page.path));
+    }
+  };
+
+  write_offline(output_path, /*single_layer=*/false);
+
+  // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
+  // under reference-output coverage too, emit it alongside the dual-layer
+  // output for one representative PDF under a `-single` suffix (mirroring the
+  // `-poppler` engine-suffix convention).
+  if (test_file.short_path == "odr-private/pdf/978-3-030-65771-0.pdf" &&
+      engine == DecoderEngine::odr) {
+    write_offline(output_path + "-single", /*single_layer=*/true);
   }
 }
 
