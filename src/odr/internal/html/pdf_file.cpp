@@ -903,9 +903,11 @@ public:
           }
 
           if (new_sel_line) {
-            // Close previous line with a trailing space if needed.
+            // Close previous line with a trailing space if needed. `sg`
+            // (spacer), not `sr` (text run) — it carries no PDF-derived
+            // width, just a lone space.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
-              std::string space_cls = "sr";
+              std::string space_cls = "sg";
               add_class(space_cls, "f",
                         px_decl("font-size", sel_prev_font_size_px));
               page_out.sel_lines[sel_cur_line].runs.push_back(
@@ -1025,14 +1027,65 @@ public:
     // Visual layer glyph spans: not selectable (selection rides the `.sel`
     // layer).
     out.out() << ".g{user-select:none}";
+    // Fallback font for the selection layer: `size-adjust` rescales a local
+    // system font's metrics (advance widths *and* vertical ascent/descent)
+    // so its natural width lands near the PDF-derived `.sr`/`.sg` widths,
+    // leaving only a small gap for `text-justify:inter-character` below to
+    // fill — CSS justify only ever *adds* spacing, never compresses, and an
+    // unadjusted generic font typically renders 20-80% wider than the
+    // embedded PDF font at the same size, so it overflows and is clipped by
+    // `overflow:hidden` instead of stretching to fit.
+    // `pdf_dual_layer_fallback_font_size_adjust` (config, 0-1) is
+    // deliberately low (i.e. safely undersized) by default, not tuned per
+    // document — it costs nothing to undershoot (`text-justify` just spreads
+    // the now-narrower text further; the layer is invisible and box width is
+    // unaffected), but overshooting still clips. The vertical rescale is
+    // harmless here: `.sr`/`.sg` fix their own box height via the inherited
+    // `line-height:1` and force baseline-alignment to their own bottom
+    // margin edge via `overflow:hidden` (see below), so they never consult
+    // the font's scaled ascent/descent for layout. If none of
+    // `pdf_dual_layer_fallback_fonts` resolve locally (font not installed,
+    // or a browser restricts `local()` for fingerprinting reasons), the
+    // whole rule is skipped and `.i` falls through to plain `sans-serif` —
+    // today's unadjusted behaviour.
+    if (const std::vector<std::string> &fonts =
+            config().pdf_dual_layer_fallback_fonts;
+        !fonts.empty()) {
+      std::ostringstream ff;
+      ff << "@font-face{font-family:sf;src:";
+      for (std::size_t i = 0; i < fonts.size(); ++i) {
+        if (i != 0) {
+          ff << ',';
+        }
+        ff << "local(\"";
+        for (const char c : fonts[i]) {
+          if (c == '"' || c == '\\') {
+            ff << '\\';
+          }
+          ff << c;
+        }
+        ff << "\")";
+      }
+      const double adjust_pct =
+          round2(std::clamp(config().pdf_dual_layer_fallback_font_size_adjust,
+                            0.0, 1.0) *
+                 100.0);
+      ff << ";size-adjust:" << adjust_pct << "%}";
+      out.out() << std::move(ff).str();
+    }
     // Transparent text for the selection layer line blocks.
-    out.out() << ".i{color:transparent}";
+    out.out() << ".i{color:transparent;font-family:sf,sans-serif}";
     // Selection-layer run span: inline-block with CSS justify so the browser
     // spreads characters to fill the declared width (matching the PDF advance)
-    // without JS. `overflow:hidden` clips if the system font is wider.
+    // without JS. `overflow:hidden` clips if the system font is wider. No
+    // `white-space` override — `.t`'s inherited `pre` already blocks wrapping
+    // (an unbreakable inline-block never needs `nowrap` for that), and unlike
+    // `nowrap`, `pre` doesn't collapse a run's own leading/trailing space to
+    // zero width (that space is real PDF content, e.g. a run that ends
+    // mid-word-gap and is never followed by a spacer span).
     out.out() << ".sr{display:inline-block;text-align:justify;"
                  "text-align-last:justify;text-justify:inter-character;"
-                 "overflow:hidden;white-space:nowrap}";
+                 "overflow:hidden}";
     // Selection-layer gap spacer: inline-block, no text, just width.
     // `overflow:hidden` matches `.sr` — per CSS an inline-block's baseline is
     // its content's text baseline when overflow is visible, but the bottom

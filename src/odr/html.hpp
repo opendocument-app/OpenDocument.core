@@ -123,6 +123,20 @@ struct HtmlConfig {
 
   // PDF text mode
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
+  // `dual_layer`'s invisible selection-layer text is rendered in a local
+  // system font (tried in order; the first that resolves wins) rather than
+  // the embedded PDF font, so its natural width rarely matches the
+  // PDF-derived box width CSS `text-justify` is asked to fill (justify can
+  // only add spacing, never compress).
+  // `pdf_dual_layer_fallback_font_size_adjust` is applied as that @font-face's
+  // `size-adjust` (0-1, written out as a percent) to shrink the fallback font's
+  // metrics toward the PDF's, leaving less — ideally no — gap for justify to
+  // compress instead of stretch into. Safe to underestimate (justify then just
+  // spreads characters further; harmless on an invisible layer) but not to
+  // overestimate (the excess is clipped, not shrunk).
+  std::vector<std::string> pdf_dual_layer_fallback_fonts{
+      "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Nimbus Sans"};
+  double pdf_dual_layer_fallback_font_size_adjust{0.5};
 
   // drm options
   bool no_drm{false};

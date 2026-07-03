@@ -6,10 +6,10 @@
 #include <algorithm>
 #include <bit>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <ostream>
 #include <ranges>
-#include <stdexcept>
 #include <utility>
 
 namespace odr::internal::font {
@@ -18,8 +18,15 @@ namespace {
 
 namespace bs = util::byte_string;
 
-constexpr char32_t pua_base = 0xe000;
-constexpr std::uint16_t pua_capacity = 0xf8ff - 0xe000 + 1; // 6400
+// Glyphs are re-encoded to Private Use Area code points, filling the BMP PUA
+// first and overflowing into Supplementary PUA-A (Plane 15). A uint16 glyph id
+// (max 65535) offset past the 6400-slot BMP PUA tops out at U+FE6FF, well
+// inside PUA-A's 65534 slots, so Supplementary PUA-B is never needed.
+constexpr char32_t pua_base = 0xe000;                           // BMP PUA start
+constexpr std::uint16_t pua_bmp_capacity = 0xf8ff - 0xe000 + 1; // 6400
+constexpr char32_t pua_supp_a_base = 0xf0000; // PUA-A (Plane 15)
+constexpr std::uint32_t pua_capacity =
+    pua_bmp_capacity + (0xffffd - 0xf0000 + 1); // 6400 + 65534 = 71934
 
 void pad4(std::string &s) {
   while (s.size() % 4 != 0) {
@@ -67,8 +74,14 @@ SearchHints search_hints(const std::uint16_t count, const std::uint16_t unit) {
 
 namespace odr::internal {
 
+namespace bs = util::byte_string;
+
 char32_t font::pua_code_point(const std::uint16_t glyph) noexcept {
-  return pua_base + glyph;
+  if (glyph < pua_bmp_capacity) {
+    return pua_base + glyph;
+  }
+  // Overflow past the BMP PUA into Supplementary PUA-A (U+F0000..U+FFFFD).
+  return pua_supp_a_base + (glyph - pua_bmp_capacity);
 }
 
 void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
@@ -134,7 +147,59 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
   }
 }
 
+/// Format-12 `cmap` subtable (segmented coverage): sequential map groups over
+/// the full Unicode range, each `[startCharCode, endCharCode]` mapping to
+/// `startGlyphID + (code - startCharCode)`. Used when the map reaches beyond
+/// the BMP (glyphs overflowing into Supplementary PUA-A), which format 4 cannot
+/// express. Wrapped in a (Windows, Unicode full repertoire) encoding record.
+static std::string
+serialize_cmap_format12(const std::map<char32_t, std::uint16_t> &map) {
+  struct Group {
+    std::uint32_t start_code;
+    std::uint32_t end_code;
+    std::uint32_t start_glyph;
+  };
+  std::vector<Group> groups;
+  for (const auto &[code, glyph] : map) {
+    if (!groups.empty() && code == groups.back().end_code + 1 &&
+        glyph == groups.back().start_glyph +
+                     (groups.back().end_code - groups.back().start_code) + 1) {
+      groups.back().end_code = code; // extend the current lockstep run
+    } else {
+      groups.push_back({code, code, glyph});
+    }
+  }
+
+  std::string sub;
+  bs::put_u16_be(sub, 12); // format
+  bs::put_u16_be(sub, 0);  // reserved
+  bs::put_u32_be(sub,
+                 static_cast<std::uint32_t>(16 + 12 * groups.size())); // len
+  bs::put_u32_be(sub, 0); // language
+  bs::put_u32_be(sub, static_cast<std::uint32_t>(groups.size()));
+  for (const auto &g : groups) {
+    bs::put_u32_be(sub, g.start_code);
+    bs::put_u32_be(sub, g.end_code);
+    bs::put_u32_be(sub, g.start_glyph);
+  }
+
+  std::string cmap;
+  bs::put_u16_be(cmap, 0);  // version
+  bs::put_u16_be(cmap, 1);  // numTables
+  bs::put_u16_be(cmap, 3);  // platformID (Windows)
+  bs::put_u16_be(cmap, 10); // encodingID (Unicode full repertoire)
+  bs::put_u32_be(cmap, 12); // offset to the subtable
+  cmap += sub;
+  return cmap;
+}
+
 std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
+  // Format 4 tops out at the BMP; a map that overflows into the Supplementary
+  // PUA needs format 12's 32-bit code ranges instead.
+  if (!map.empty() && map.rbegin()->first > 0xffff) {
+    return serialize_cmap_format12(map);
+  }
+
   // A format-4 segment: a contiguous code range [start, end] whose glyph is
   // `code + delta` (mod 2^16), i.e. idRangeOffset = 0.
   struct Segment {
@@ -144,11 +209,6 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   };
   std::vector<Segment> segments;
   for (const auto &[code, glyph] : map) {
-    if (code > 0xffff) {
-      throw std::runtime_error(
-          "sfnt: serialize_cmap supports only BMP code points (format 4); "
-          "beyond-BMP coverage (format 12) is a follow-up");
-    }
     const auto c = static_cast<std::uint16_t>(code);
     const auto delta = static_cast<std::uint16_t>(glyph - c);
     if (!segments.empty() && c == segments.back().end + 1 &&
@@ -272,10 +332,10 @@ std::string font::serialize_os2(const std::uint16_t units_per_em,
 
 void font::reencode_to_pua(sfnt::SfntFont &font,
                            const std::map<char32_t, std::uint16_t> &extra) {
-  if (font.glyph_count() > pua_capacity) {
-    throw std::runtime_error(
-        "sfnt_transform: glyph count exceeds BMP PUA capacity");
-  }
+  // A uint16 glyph id always fits: `pua_code_point` maps the BMP PUA first
+  // (6400 slots) then overflows into Supplementary PUA-A, whose combined
+  // `pua_capacity` (71934) exceeds any 16-bit glyph count.
+  static_assert(std::numeric_limits<std::uint16_t>::max() < pua_capacity);
 
   std::map<char32_t, std::uint16_t> map;
   for (std::uint16_t glyph = 0; glyph < font.glyph_count(); ++glyph) {

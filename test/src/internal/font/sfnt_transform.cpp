@@ -178,9 +178,24 @@ TEST(SfntTransform, serialize_cmap_round_trips_multiple_segments) {
   EXPECT_EQ(parsed.glyph_for_code_point('C'), 0); // gap between the segments
 }
 
-TEST(SfntTransform, serialize_cmap_rejects_beyond_bmp) {
-  const std::map<char32_t, std::uint16_t> map{{0x1f600, 1}};
-  EXPECT_THROW((void)serialize_cmap(map), std::runtime_error);
+TEST(SfntTransform, serialize_cmap_format12_round_trips_beyond_bmp) {
+  // A beyond-BMP code point forces a format-12 subtable. Mixes a BMP entry
+  // ('A'), a Supplementary PUA-A run (two consecutive codes/glyphs), and a
+  // lone high code point — exercising the group builder across all three.
+  const std::map<char32_t, std::uint16_t> map{
+      {'A', 1}, {0xf0000, 2}, {0xf0001, 3}, {0x10fffd, 9}};
+  const std::string font =
+      build_font(0x00010000, {{"head", head_table()},
+                              {"maxp", maxp_table(10)},
+                              {"hhea", hhea_table(0)},
+                              {"cmap", serialize_cmap(map)}});
+
+  const sfnt::SfntFont parsed = parse(font);
+  EXPECT_EQ(parsed.glyph_for_code_point('A'), 1);
+  EXPECT_EQ(parsed.glyph_for_code_point(0xf0000), 2);
+  EXPECT_EQ(parsed.glyph_for_code_point(0xf0001), 3);
+  EXPECT_EQ(parsed.glyph_for_code_point(0x10fffd), 9);
+  EXPECT_EQ(parsed.glyph_for_code_point(0xf0002), 0); // gap after the run
 }
 
 TEST(SfntTransform, reencode_mutates_the_font_in_place) {
@@ -257,9 +272,24 @@ TEST(SfntTransform, write_preserves_passthrough_tables_and_checksum) {
   EXPECT_EQ(parsed.name(), "TestFont");
 }
 
-TEST(SfntTransform, reencode_rejects_too_many_glyphs) {
+TEST(SfntTransform, reencode_overflows_into_supplementary_pua) {
+  // A font with more glyphs than the 6400-slot BMP PUA re-encodes by spilling
+  // the overflow into Supplementary PUA-A; the writer emits a format-12 cmap so
+  // the beyond-BMP code points round-trip.
   sfnt::SfntFont font = parse(sample_font(7000));
-  EXPECT_THROW(reencode_to_pua(font), std::runtime_error);
+  reencode_to_pua(font);
+
+  // Glyph 0 stays in the BMP PUA; glyph 6400 is the first overflow into PUA-A.
+  EXPECT_EQ(pua_code_point(0), 0xe000u);
+  EXPECT_EQ(pua_code_point(6400), 0xf0000u);
+
+  std::ostringstream out;
+  font.write(out);
+  const sfnt::SfntFont parsed = parse(std::move(out).str());
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(0)), 0);
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(6399)), 6399);
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(6400)), 6400);
+  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(6999)), 6999);
 }
 
 TEST(SfntTransform, write_synthesizes_post_when_absent) {
