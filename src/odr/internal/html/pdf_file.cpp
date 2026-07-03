@@ -619,10 +619,8 @@ public:
   struct SelLineOut {
     std::string classes; ///< "t lN tN i"
     std::vector<SelRunOut> runs;
-    double y{0}; ///< baseline y in the page's pixel space (top-down), used to
-                 ///< sort lines into visual reading order after all of a
-                 ///< page's lines are collected — content-stream order does
-                 ///< not always run top-to-bottom (e.g. margins, columns).
+    /// baseline y in the page's pixel space (top-down), used to sort lines into visual reading order after all of a page's lines are collected — content-stream order does not always run top-to-bottom (e.g. margins, columns).
+    double y{0};
   };
 
   struct DualPageOut {
@@ -710,7 +708,7 @@ public:
 
       // Visual layer state: open line block.
       std::int32_t vis_cur_line =
-          -1; // index of open VisLineOut in vis_items, -1 = none
+          -1; ///< index of open VisLineOut in vis_items, -1 = none
       double vis_prev_end = 0;
       double vis_prev_baseline = 0;
       double vis_prev_font_pt = 0;
