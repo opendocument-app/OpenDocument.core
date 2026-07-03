@@ -1,8 +1,11 @@
 #include <odr/internal/font/font_file.hpp>
 
+#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
+#include <istream>
 #include <utility>
 
 namespace odr::internal::font {
@@ -12,7 +15,8 @@ FontFile::FontFile(std::shared_ptr<abstract::File> file,
     : m_file{std::move(file)}, m_file_type{file_type} {
   // Parse eagerly: a parse failure is how detection rejects a non-font, so the
   // open-strategy try/catch can fall through.
-  m_font = std::make_shared<sfnt::SfntFont>(m_file->stream());
+  m_font =
+      std::make_shared<sfnt::SfntFont>(util::stream::read(*m_file->stream()));
 }
 
 std::shared_ptr<abstract::File> FontFile::file() const noexcept {
