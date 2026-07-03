@@ -1187,9 +1187,9 @@ public:
     // second time) — a deliberate tradeoff: re-parsing the already-decoded
     // stream is cheap next to buffering every page's element list in memory.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
-      pdf::Page *page = pages[pi];
+      const pdf::Page &page = *pages[pi];
       for (const pdf::PageElement &element :
-           pdf::extract_page(page_streams[pi], *page->resources, *m_logger)) {
+           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
         const auto *text = std::get_if<pdf::TextElement>(&element);
         if (text == nullptr || text->text.empty() || text->font == nullptr) {
           continue;
@@ -1236,8 +1236,8 @@ public:
     pages_out.reserve(pages.size());
 
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
-      pdf::Page *page = pages[pi];
-      const PageBox pb = begin_page(*page, add_class);
+      const pdf::Page &page = *pages[pi];
+      const PageBox pb = begin_page(page, add_class);
       const double width = pb.width;
       const double height = pb.height;
       const util::math::Transform2D &to_box = pb.to_box;
