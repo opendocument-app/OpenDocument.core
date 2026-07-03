@@ -41,6 +41,7 @@ struct TestParams {
   TestFile test_file;
   std::string path;
   DecoderEngine engine{DecoderEngine::odr};
+  PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
   std::string test_repo;
   std::string output_path;
   std::string output_path_prefix;
@@ -164,44 +165,28 @@ TEST_P(HtmlOutputTests, html_meta) {
                         fs::copy_options::recursive |
                             fs::copy_options::overwrite_existing);
 
-  const auto write_offline = [&](const std::string &out_path,
-                                 const bool single_layer) {
-    HtmlConfig config(out_path);
-    config.embed_images = true;
-    config.embed_shipped_resources = false;
-    config.resource_path = resource_path;
-    config.relative_resource_paths = true;
-    config.editable = true;
-    config.spreadsheet_limit = TableDimensions(4000, 500);
-    config.format_html = true;
-    config.html_indent = 1;
-    config.html_indent_string = "\t";
-    if (single_layer) {
-      config.pdf_text_mode = PdfTextMode::single_layer;
-    }
+  HtmlConfig config(output_path);
+  config.embed_images = true;
+  config.embed_shipped_resources = false;
+  config.resource_path = resource_path;
+  config.relative_resource_paths = true;
+  config.editable = true;
+  config.spreadsheet_limit = TableDimensions(4000, 500);
+  config.format_html = true;
+  config.html_indent = 1;
+  config.html_indent_string = "\t";
+  config.pdf_text_mode = params.pdf_text_mode;
 
-    const std::string output_path_tmp = out_path + "/tmp";
-    fs::create_directories(out_path);
-    std::filesystem::create_directories(output_path_tmp);
-    HtmlService service = html::translate(file, output_path_tmp, config);
-    Html html = service.bring_offline(out_path);
-    std::filesystem::remove_all(output_path_tmp);
+  const std::string output_path_tmp = output_path + "/tmp";
+  fs::create_directories(output_path);
+  std::filesystem::create_directories(output_path_tmp);
+  HtmlService service = html::translate(file, output_path_tmp, config);
+  Html html = service.bring_offline(output_path);
+  std::filesystem::remove_all(output_path_tmp);
 
-    for (const HtmlPage &html_page : html.pages()) {
-      EXPECT_TRUE(fs::is_regular_file(html_page.path));
-      EXPECT_LT(0, fs::file_size(html_page.path));
-    }
-  };
-
-  write_offline(output_path, /*single_layer=*/false);
-
-  // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
-  // under reference-output coverage too, emit it alongside the dual-layer
-  // output for one representative PDF under a `-single` suffix (mirroring the
-  // `-poppler` engine-suffix convention).
-  if (test_file.short_path == "odr-private/pdf/978-3-030-65771-0.pdf" &&
-      engine == DecoderEngine::odr) {
-    write_offline(output_path + "-single", /*single_layer=*/true);
+  for (const HtmlPage &html_page : html.pages()) {
+    EXPECT_TRUE(fs::is_regular_file(html_page.path));
+    EXPECT_LT(0, fs::file_size(html_page.path));
   }
 }
 
@@ -212,8 +197,16 @@ std::string engine_suffix(const DecoderEngine engine) {
                                       : "-" + decoder_engine_to_string(engine);
 }
 
+// The default `dual_layer` mode carries no suffix so existing (non-PDF and
+// dual-layer) reference outputs keep their paths; single-layer variants are
+// disambiguated with `-single`, mirroring the `-poppler` engine suffix.
+std::string text_mode_suffix(const PdfTextMode pdf_text_mode) {
+  return pdf_text_mode == PdfTextMode::dual_layer ? "" : "-single";
+}
+
 std::string test_params_to_name(const TestParams &params) {
-  std::string path = params.path + engine_suffix(params.engine);
+  std::string path = params.path + engine_suffix(params.engine) +
+                     text_mode_suffix(params.pdf_text_mode);
   util::string::replace_all(path, "/", "_");
   util::string::replace_all(path, "-", "_");
   util::string::replace_all(path, "+", "_");
@@ -224,7 +217,8 @@ std::string test_params_to_name(const TestParams &params) {
 }
 
 TestParams create_test_params(const TestFile &test_file,
-                              const DecoderEngine engine) {
+                              const DecoderEngine engine,
+                              const PdfTextMode pdf_text_mode) {
   const std::string test_file_path = test_file.short_path;
 
   const std::string test_repo = *RelPath(test_file_path).begin();
@@ -233,7 +227,8 @@ TestParams create_test_params(const TestFile &test_file,
                                              .join(RelPath(test_repo))
                                              .join(RelPath("output"))
                                              .string();
-  const std::string output_path_suffix = engine_suffix(engine);
+  const std::string output_path_suffix =
+      engine_suffix(engine) + text_mode_suffix(pdf_text_mode);
   const std::string output_path =
       AbsPath(output_path_prefix)
           .join(RelPath(test_file_path).rebase(RelPath(test_repo)))
@@ -244,6 +239,7 @@ TestParams create_test_params(const TestFile &test_file,
       .test_file = test_file,
       .path = test_file_path,
       .engine = engine,
+      .pdf_text_mode = pdf_text_mode,
       .test_repo = test_repo,
       .output_path = output_path,
       .output_path_prefix = output_path_prefix,
@@ -262,7 +258,17 @@ std::vector<TestParams> list_test_params() {
     }
 
     for (const DecoderEngine engine : engines) {
-      params.push_back(create_test_params(test_file, engine));
+      params.push_back(
+          create_test_params(test_file, engine, PdfTextMode::dual_layer));
+    }
+
+    // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
+    // under reference-output coverage too, eject an extra `-single` test case
+    // for one representative PDF (odr engine only, since the text mode only
+    // affects odr's PDF rendering).
+    if (test_file.short_path == "odr-private/pdf/978-3-030-65771-0.pdf") {
+      params.push_back(create_test_params(test_file, DecoderEngine::odr,
+                                          PdfTextMode::single_layer));
     }
   }
   return params;
