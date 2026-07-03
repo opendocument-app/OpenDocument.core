@@ -619,7 +619,10 @@ public:
   struct SelLineOut {
     std::string classes; ///< "t lN tN i"
     std::vector<SelRunOut> runs;
-    /// baseline y in the page's pixel space (top-down), used to sort lines into visual reading order after all of a page's lines are collected — content-stream order does not always run top-to-bottom (e.g. margins, columns).
+    /// baseline y in the page's pixel space (top-down), used to sort lines into
+    /// visual reading order after all of a page's lines are collected —
+    /// content-stream order does not always run top-to-bottom (e.g. margins,
+    /// columns).
     double y{0};
   };
 
