@@ -43,7 +43,6 @@ namespace {
 /// the extra digits add up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
-constexpr double pt_to_px = 96.0 / 72.0;
 constexpr double pt_to_in = 1.0 / 72.0;
 
 /// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
@@ -482,7 +481,7 @@ public:
 class AtomicStyles {
 public:
   /// `prefix` selects the property family; `declaration` is a full CSS
-  /// declaration without trailing ';' (e.g. "font-size:13.28px"). Returns the
+  /// declaration without trailing ';' (e.g. "font-size:9.96pt"). Returns the
   /// class name to add to the element.
   const std::string &intern(const std::string &prefix,
                             std::string declaration) {
@@ -495,7 +494,7 @@ public:
     return it->second;
   }
 
-  /// Writes one rule per line (`.f1{font-size:13.28px}`) so regeneration diffs
+  /// Writes one rule per line (`.f1{font-size:9.96pt}`) so regeneration diffs
   /// stay legible. Each rule is preceded by a newline; the caller has already
   /// written the constant rules on the opening `<style>` line.
   void write_rules(std::ostream &o) const {
@@ -582,11 +581,11 @@ public:
   //  Unicode. Text runs are grouped into per-line divs (`<div class="t ...
   //  i">`) in content-stream order; space detection inserts separator spans
   //  on line/column breaks or wide gaps. Each run span is
-  //  `display:inline-block; width:Xpx` with CSS `text-align:justify;
+  //  `display:inline-block; width:Xpt` with CSS `text-align:justify;
   //  text-align-last:justify; text-justify:inter-character` so the browser
   //  spreads the characters to fill the PDF advance without JavaScript.
   //  For gap spans between runs a zero-content `display:inline-block;
-  //  width:Ypx` span is emitted.
+  //  width:Ypt` span is emitted.
 
   /// One run inside a visual line block. `classes` carries margin-left, font
   /// size, font-family+colour — the line block holds placement only.
@@ -652,12 +651,12 @@ public:
     std::uint32_t family_count = 0;
     std::string font_faces;
     std::string font_styles; // per-font `.fvN` (visible) / `.fnN` (invisible)
-    std::vector<pdf::Font *> accepted_fonts;
+    std::vector<const pdf::Font *> accepted_fonts;
     // Which classes are used: [0]=fv (visible), [1]=fn (invisible).
     std::vector<std::array<bool, 2>> font_class_used;
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
-    const auto font_family = [&](pdf::Font *font) {
+    const auto font_family = [&](const pdf::Font *font) {
       return intern_font(family_index, family_count, font, [&](std::uint32_t) {
         accepted_fonts.push_back(font);
         font_class_used.push_back({false, false});
@@ -710,8 +709,8 @@ public:
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
       // Visual layer state: open line block.
-      std::int32_t vis_cur_line =
-          -1; ///< index of open VisLineOut in vis_items, -1 = none
+      /// index of open VisLineOut in vis_items, -1 = none
+      std::int32_t vis_cur_line = -1;
       double vis_prev_end = 0;
       double vis_prev_baseline = 0;
       double vis_prev_font_pt = 0;
@@ -722,16 +721,18 @@ public:
       bool sel_have_prev = false;
       double sel_prev_baseline = 0;
       double sel_prev_end = 0;
-      double sel_prev_font_pt = 0; ///< previous run's advance height, for the
-                                   ///< line-break test (see starts_new_line)
+      /// previous run's advance height, for the line-break test (see
+      /// starts_new_line)
+      double sel_prev_font_pt = 0;
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
-      double sel_cur_run_start_ox = 0;  ///< `ox` of the open `.sr` run's start,
-                                        ///< for recomputing its width on merge.
-      double sel_prev_font_size_px = 0; ///< font-size of the previous
-                                        ///< element, for the trailing space
-                                        ///< that closes its line.
+      /// `ox` of the open `.sr` run's start, for recomputing its width on
+      /// merge.
+      double sel_cur_run_start_ox = 0;
+      /// font-size of the previous element, for the trailing space that closes
+      /// its line.
+      double sel_prev_font_size_pt = 0;
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
@@ -753,7 +754,7 @@ public:
         }
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
-                    font_pt, font_size_px] = run_geometry(text, to_box);
+                    font_pt, font_size_pt] = run_geometry(text, to_box);
         const std::string color_suffix = color_class(text, invisible, styles);
 
         // --- Visual layer ---------------------------------------------------
@@ -763,13 +764,13 @@ public:
           // Determine if this run continues the current visual line block.
           bool new_vis_line =
               is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
-          double vis_margin_px = 0;
+          double vis_margin_pt = 0;
           if (!new_vis_line && vis_prev_font_pt > 0) {
             if (starts_new_line(baseline, vis_prev_baseline, ox, vis_prev_end,
                                 vis_prev_font_pt)) {
               new_vis_line = true;
             } else {
-              vis_margin_px = round2((ox - vis_prev_end) * pt_to_px);
+              vis_margin_pt = round2(ox - vis_prev_end);
             }
           }
 
@@ -788,13 +789,13 @@ public:
           // margin-left (gap from previous run's right edge, or the line
           // block's new-run offset from its own origin for new-line runs).
           std::string run_classes = "g"; // user-select:none
-          add_class(run_classes, "f", px_decl("font-size", font_size_px));
+          add_class(run_classes, "f", pt_decl("font-size", font_size_pt));
           if (font != 0) {
             run_classes += ' ';
             run_classes += font_class(font_class_used, font, invisible);
           }
-          if (vis_margin_px != 0) {
-            add_class(run_classes, "ml", px_decl("margin-left", vis_margin_px));
+          if (vis_margin_pt != 0) {
+            add_class(run_classes, "ml", pt_decl("margin-left", vis_margin_pt));
           }
           run_classes += color_suffix;
 
@@ -807,9 +808,9 @@ public:
             run_text = escape_text(text.text);
           }
 
-          if (const double cs_px = round2(text.char_spacing * scale * pt_to_px);
-              cs_px != 0) {
-            add_class(run_classes, "s", px_decl("letter-spacing", cs_px));
+          if (const double cs_pt = round2(text.char_spacing * scale);
+              cs_pt != 0) {
+            add_class(run_classes, "s", pt_decl("letter-spacing", cs_pt));
           }
           // CSS `word-spacing` only affects real U+0020 separators, so it is
           // inert on the PUA glyph runs (font != 0, which never emit a literal
@@ -817,10 +818,9 @@ public:
           // composite fonts: PDF Tw applies only to single-byte code 32, as in
           // the single-layer path.
           if (font == 0 && !(text.font != nullptr && text.font->composite)) {
-            if (const double ws_px =
-                    round2(text.word_spacing * scale * pt_to_px);
-                ws_px != 0) {
-              add_class(run_classes, "ws", px_decl("word-spacing", ws_px));
+            if (const double ws_pt = round2(text.word_spacing * scale);
+                ws_pt != 0) {
+              add_class(run_classes, "ws", pt_decl("word-spacing", ws_pt));
             }
           }
 
@@ -842,8 +842,8 @@ public:
         // between runs on the same baseline are zero-content spacer spans.
         // Matrix runs get their own single-run line block.
         if (!text.text.empty()) {
-          const double width_px = round2(extent * pt_to_px);
-          const double gap_px = std::max(0.0, ox - sel_prev_end) * pt_to_px;
+          const double width_pt = round2(extent);
+          const double gap_pt = std::max(0.0, ox - sel_prev_end);
           const bool starts_space = text.text.front() == ' ';
           // `core` is the run text with a leading inferred space stripped
           // (the gap between runs is covered by the spacer span, not the
@@ -866,7 +866,7 @@ public:
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
               std::string space_cls = "sg";
               add_class(space_cls, "f",
-                        px_decl("font-size", sel_prev_font_size_px));
+                        pt_decl("font-size", sel_prev_font_size_pt));
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(space_cls), " "});
             }
@@ -881,9 +881,9 @@ public:
             // Emit the run span.
             if (!core.empty()) {
               std::string cls = "sr";
-              add_class(cls, "f", px_decl("font-size", font_size_px));
-              if (width_px > 0 && !is_matrix) {
-                add_class(cls, "w", px_decl("width", width_px));
+              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              if (width_pt > 0 && !is_matrix) {
+                add_class(cls, "w", pt_decl("width", width_pt));
               }
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
@@ -896,18 +896,18 @@ public:
             if (!sel_prev_ends_space && !runs.empty()) {
               // Spacer: display:inline-block with the gap width.
               std::string gap_cls = "sg";
-              add_class(gap_cls, "f", px_decl("font-size", font_size_px));
-              const double rounded_gap = round2(gap_px);
+              add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
+              const double rounded_gap = round2(gap_pt);
               if (rounded_gap > 0) {
-                add_class(gap_cls, "w", px_decl("width", rounded_gap));
+                add_class(gap_cls, "w", pt_decl("width", rounded_gap));
               }
               runs.push_back(SelRunOut{std::move(gap_cls), " "});
             }
             if (!core.empty()) {
               std::string cls = "sr";
-              add_class(cls, "f", px_decl("font-size", font_size_px));
-              if (width_px > 0 && !is_matrix) {
-                add_class(cls, "w", px_decl("width", width_px));
+              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              if (width_pt > 0 && !is_matrix) {
+                add_class(cls, "w", pt_decl("width", width_pt));
               }
               runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
@@ -927,11 +927,11 @@ public:
               runs.back().text += escape_markup(text.text);
               if (!is_matrix) {
                 strip_width_class(runs.back().classes);
-                const double merged_width_px =
-                    round2((ox + extent - sel_cur_run_start_ox) * pt_to_px);
-                if (merged_width_px > 0) {
+                const double merged_width_pt =
+                    round2(ox + extent - sel_cur_run_start_ox);
+                if (merged_width_pt > 0) {
                   add_class(runs.back().classes, "w",
-                            px_decl("width", merged_width_px));
+                            pt_decl("width", merged_width_pt));
                 }
               }
             }
@@ -942,7 +942,7 @@ public:
           sel_prev_font_pt = font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
-          sel_prev_font_size_px = font_size_px;
+          sel_prev_font_size_pt = font_size_pt;
           sel_have_prev = true;
         }
       }
@@ -955,10 +955,9 @@ public:
       // Quantize the baseline to 0.1px before comparing: same-row lines whose
       // baselines differ only by float noise must compare equal so the stable
       // sort keeps their content-stream (x) order instead of swapping them.
-      std::stable_sort(page_out.sel_lines.begin(), page_out.sel_lines.end(),
-                       [](const SelLineOut &a, const SelLineOut &b) {
-                         return std::round(a.y * 10.0) < std::round(b.y * 10.0);
-                       });
+      std::ranges::stable_sort(page_out.sel_lines, {}, [](const SelLineOut &s) {
+        return std::round(s.y * 10.0);
+      });
 
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
@@ -1293,9 +1292,9 @@ public:
         }
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
-                    font_pt, font_size_px] = run_geometry(text, to_box);
-        const double cs_px = round2(text.char_spacing * scale * pt_to_px);
-        const double ws_px = round2(text.word_spacing * scale * pt_to_px);
+                    font_pt, font_size_pt] = run_geometry(text, to_box);
+        const double cs_pt = round2(text.char_spacing * scale);
+        const double ws_pt = round2(text.word_spacing * scale);
         const std::string color_suffix = color_class(text, invisible, styles);
 
         // ---- Run payload ------------------------------------------------
@@ -1347,18 +1346,18 @@ public:
 
         // ---- Flow grouping -----------------------------------------------
         std::ostringstream fk;
-        fk << font << '|' << invisible << '|' << font_size_px << '|' << cs_px
-           << '|' << ws_px;
+        fk << font << '|' << invisible << '|' << font_size_pt << '|' << cs_pt
+           << '|' << ws_pt;
         const std::string flow_key = std::move(fk).str();
         bool new_line = is_matrix || prev_was_matrix || cur_line < 0 ||
                         flow_key != cur_flow_key;
-        double margin_px = 0;
+        double margin_pt = 0;
         if (!new_line && prev_font_pt > 0) {
           if (starts_new_line(baseline, prev_baseline, ox, prev_end,
                               prev_font_pt)) {
             new_line = true;
           } else {
-            margin_px = round2((ox - prev_end) * pt_to_px);
+            margin_pt = round2(ox - prev_end);
           }
         }
 
@@ -1366,18 +1365,18 @@ public:
           std::string base = "t";
           add_position_classes(base, add_class, m, is_matrix, ox, baseline,
                                asc * text.size);
-          add_class(base, "f", px_decl("font-size", font_size_px));
+          add_class(base, "f", pt_decl("font-size", font_size_pt));
           const bool spacing_one_to_one =
               font != 0 ||
               (text.font != nullptr &&
                util::string::utf8_length(text.text) == text.advances.size());
           if (text.char_spacing != 0 && spacing_one_to_one) {
-            add_class(base, "s", px_decl("letter-spacing", cs_px));
+            add_class(base, "s", pt_decl("letter-spacing", cs_pt));
           }
           if (text.word_spacing != 0 && spacing_one_to_one &&
               !(text.font != nullptr && text.font->composite)) {
             // `ws` = word-spacing everywhere (`w` is width in the dual layer).
-            add_class(base, "ws", px_decl("word-spacing", ws_px));
+            add_class(base, "ws", pt_decl("word-spacing", ws_pt));
           }
           if (font == 0 && invisible) {
             base += " i";
@@ -1393,8 +1392,8 @@ public:
           cur_line = static_cast<int>(page_out.items.size()) - 1;
           cur_flow_key = flow_key;
         } else {
-          if (margin_px != 0) {
-            run.margin = styles.intern("ml", px_decl("margin-left", margin_px));
+          if (margin_pt != 0) {
+            run.margin = styles.intern("ml", pt_decl("margin-left", margin_pt));
           }
           std::get<SingleLineOut>(page_out.items[cur_line])
               .runs.push_back(std::move(run));
@@ -1502,9 +1501,9 @@ public:
     return resources;
   }
 
-  static std::string px_decl(const char *property, double value) {
+  static std::string pt_decl(const char *property, double value) {
     std::ostringstream s;
-    s << property << ':' << value << "px";
+    s << property << ':' << value << "pt";
     return std::move(s).str();
   }
 
@@ -1527,7 +1526,7 @@ public:
   /// call site can compute it differently (that is how findings like the 180°
   /// rotation and the drifting line-break threshold crept in).
   struct RunGeometry {
-    util::math::Transform2D m; ///< glyph space -> page box (y-down, px later)
+    util::math::Transform2D m; ///< glyph space -> page box (y-down, pt later)
     bool invisible;            ///< Tr 3/7 — paints nothing, selectable only
     bool is_matrix;            ///< rotated/skewed/flipped -> CSS matrix path
     double asc;                ///< ascent in em (clamped)
@@ -1536,7 +1535,7 @@ public:
     double baseline;           ///< origin y (baseline) in pt
     double extent;             ///< advance width in pt
     double font_pt;            ///< font size along the advance axis in pt
-    double font_size_px;       ///< CSS font-size in px
+    double font_size_pt;       ///< CSS font-size in px
   };
 
   static RunGeometry run_geometry(const pdf::TextElement &text,
@@ -1549,7 +1548,7 @@ public:
         text.rendering_mode == pdf::TextRenderingMode::clip;
     // `m.a > 0` keeps the axis-aligned fast path from swallowing a pure 180°
     // rotation (a = d = -1, b = c = 0), which would otherwise feed a negative
-    // `m.a` into `font_size_px` and the left/top math.
+    // `m.a` into `font_size_pt` and the left/top math.
     const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
     const double tz = text.horizontal_scaling / 100.0;
     const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
@@ -1563,8 +1562,7 @@ public:
         .baseline = m.f,
         .extent = text.width * axis,
         .font_pt = text.size * axis,
-        .font_size_px =
-            round2((is_matrix ? text.size : m.a * text.size) * pt_to_px),
+        .font_size_pt = round2(is_matrix ? text.size : m.a * text.size),
     };
   }
 
@@ -1630,7 +1628,8 @@ public:
   template <typename OnAccept>
   static std::uint32_t intern_font(
       std::unordered_map<const pdf::Font *, std::uint32_t> &family_index,
-      std::uint32_t &family_count, pdf::Font *font, OnAccept &&on_accept) {
+      std::uint32_t &family_count, const pdf::Font *font,
+      OnAccept &&on_accept) {
     const auto [it, inserted] = family_index.try_emplace(font, 0);
     if (!inserted) {
       return it->second;
@@ -1722,10 +1721,13 @@ public:
   }
 
   /// Appends a text run's line-block placement classes via `add_class(classes,
-  /// prefix, declaration)`: `l`/`t` (left/top, in px) for an axis-aligned run,
-  /// or `m` (a CSS `matrix(...)` transform, re-anchored to the run's baseline
-  /// by `ascent_pt`) for a rotated/skewed one. Shared by the visual, selection
-  /// and single-layer line blocks, which all position runs the same way.
+  /// prefix, declaration)`: `l`/`t` (left/top, in pt) for an axis-aligned run,
+  /// or `m` (a CSS `translate(...)` + `matrix(...)` transform, re-anchored to
+  /// the run's baseline by `ascent_pt`) for a rotated/skewed one. A CSS
+  /// `matrix()` translation is intrinsically px, so the (pt) translation is
+  /// carried by a leading `translate(...pt)` — keeping the whole text layer in
+  /// pt. Shared by the visual, selection and single-layer line blocks, which
+  /// all position runs the same way.
   template <typename AddClass>
   static void add_position_classes(std::string &classes, AddClass &&add_class,
                                    const util::math::Transform2D &m,
@@ -1733,20 +1735,21 @@ public:
                                    const double baseline,
                                    const double ascent_pt) {
     if (!is_matrix) {
-      add_class(classes, "l", px_decl("left", round2(ox * pt_to_px)));
-      add_class(
-          classes, "t",
-          px_decl("top", round2((baseline - ascent_pt * m.a) * pt_to_px)));
+      add_class(classes, "l", pt_decl("left", round2(ox)));
+      add_class(classes, "t",
+                pt_decl("top", round2(baseline - ascent_pt * m.a)));
       return;
     }
-    const double ascent_px = ascent_pt * pt_to_px;
-    const util::math::Transform2D px_m{m.a,
-                                       m.b,
-                                       m.c,
-                                       m.d,
-                                       m.e * pt_to_px - m.c * ascent_px,
-                                       m.f * pt_to_px - m.d * ascent_px};
-    add_class(classes, "m", "transform:" + svg_matrix(px_m));
+    // `translate()` accepts pt and is applied after (outside) the `matrix()`,
+    // so `translate(tx,ty) matrix(a,b,c,d,0,0)` reproduces the full affine with
+    // the translation authored in pt instead of matrix()'s implicit px.
+    const double tx = m.e - m.c * ascent_pt;
+    const double ty = m.f - m.d * ascent_pt;
+    std::ostringstream t;
+    t << "transform:translate(" << round2(tx) << "pt," << round2(ty)
+      << "pt) matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d
+      << ",0,0)";
+    add_class(classes, "m", std::move(t).str());
   }
 
   /// Whether `font`'s embedded program can be re-encoded (SFNT PUA re-cmap or
@@ -1795,7 +1798,7 @@ public:
   /// range) and appends its `@font-face` and `.fvN`/`.fnN` rules.
   /// `class_used[0]`/`[1]` gate whether the visible/invisible rule is needed.
   static void
-  write_font_face(pdf::Font &font, const std::uint32_t index,
+  write_font_face(const pdf::Font &font, const std::uint32_t index,
                   const std::map<char32_t, std::uint16_t> &extra_unicode,
                   const std::array<bool, 2> &class_used,
                   std::string &font_faces, std::string &font_styles) {
