@@ -703,26 +703,37 @@ public:
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
-      // Visual layer state: the open line block plus previous-run bookkeeping.
-      // A path/image `close`s the open block (see handle_graphic_element).
-      LineFlow vis_flow;
+      // Visual layer state: open line block.
+      /// index of open VisLineOut in vis_items, -1 = none
+      std::int32_t vis_cur_line = -1;
+      double vis_prev_end = 0;
+      double vis_prev_baseline = 0;
+      double vis_prev_font_pt = 0;
+      bool vis_prev_was_matrix = false;
+      const auto vis_close_line = [&] { vis_cur_line = -1; };
 
-      // Selection layer state: in-content-stream reading-order grouping. Shares
-      // the same line-grouping bookkeeping (`sel_flow`), never `close`d — the
-      // selection layer keeps runs contiguous across interposed drawing ops.
-      // The extra locals track the open run's start (`ox`, for recomputing its
-      // width on merge), whether the previous run ended in a space, and its
-      // font-size (for the trailing space that closes a line).
-      LineFlow sel_flow;
+      // Selection layer state: in-content-stream reading-order grouping.
+      bool sel_have_prev = false;
+      double sel_prev_baseline = 0;
+      double sel_prev_end = 0;
+      /// previous run's advance height, for the line-break test (see
+      /// starts_new_line)
+      double sel_prev_font_pt = 0;
       bool sel_prev_ends_space = false;
+      bool sel_prev_was_matrix = false;
+      std::int32_t sel_cur_line = -1;
+      /// `ox` of the open `.sr` run's start, for recomputing its width on
+      /// merge.
       double sel_cur_run_start_ox = 0;
+      /// font-size of the previous element, for the trailing space that closes
+      /// its line.
       double sel_prev_font_size_pt = 0;
 
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                *m_logger, [&] { vis_flow.close(); },
+                *m_logger, [&] { vis_close_line(); },
                 [&](std::string frag) {
                   page_out.vis_items.push_back(PathOut{std::move(frag)});
                 })) {
@@ -746,8 +757,17 @@ public:
         // layer. They contribute only to the selection layer.
         if (!invisible) {
           // Determine if this run continues the current visual line block.
-          const auto [new_vis_line, vis_margin_pt] =
-              vis_flow.decide(is_matrix, ox, baseline);
+          bool new_vis_line =
+              is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
+          double vis_margin_pt = 0;
+          if (!new_vis_line && vis_prev_font_pt > 0) {
+            if (starts_new_line(baseline, vis_prev_baseline, ox, vis_prev_end,
+                                vis_prev_font_pt)) {
+              new_vis_line = true;
+            } else {
+              vis_margin_pt = round2(ox - vis_prev_end);
+            }
+          }
 
           if (new_vis_line) {
             // Build the line block's placement classes.
@@ -757,7 +777,7 @@ public:
             VisLineOut line_out;
             line_out.classes = std::move(line_base);
             page_out.vis_items.push_back(std::move(line_out));
-            vis_flow.cur_line = static_cast<int>(page_out.vis_items.size()) - 1;
+            vis_cur_line = static_cast<int>(page_out.vis_items.size()) - 1;
           }
 
           // Build the run's span classes: font-size, font-family+colour,
@@ -799,11 +819,14 @@ public:
             }
           }
 
-          std::get<VisLineOut>(page_out.vis_items[vis_flow.cur_line])
+          std::get<VisLineOut>(page_out.vis_items[vis_cur_line])
               .runs.push_back(
                   VisRunOut{std::move(run_classes), std::move(run_text)});
 
-          vis_flow.advance(ox, extent, baseline, font_pt, is_matrix);
+          vis_prev_end = ox + extent;
+          vis_prev_baseline = baseline;
+          vis_prev_font_pt = font_pt;
+          vis_prev_was_matrix = is_matrix;
         }
 
         // --- Selection layer -----------------------------------------------
@@ -815,32 +838,31 @@ public:
         // Matrix runs get their own single-run line block.
         if (!text.text.empty()) {
           const double width_pt = round2(extent);
-          const double gap_pt = std::max(0.0, ox - sel_flow.prev_end);
+          const double gap_pt = std::max(0.0, ox - sel_prev_end);
           const bool starts_space = text.text.front() == ' ';
           // `core` is the run text with a leading inferred space stripped
           // (the gap between runs is covered by the spacer span, not the
           // run text).
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
-          const auto [new_sel_line, sel_margin_unused] =
-              sel_flow.decide(is_matrix, ox, baseline);
-          // A wide gap (>0.25 em) on a continuing line becomes a spacer span
-          // instead of a merge. Only meaningful when the run continues the line
-          // (`!new_sel_line` already implies a previous run with known
-          // metrics).
-          const bool sel_gap =
-              !new_sel_line && sel_flow.prev_font_pt > 0 &&
-              ox - sel_flow.prev_end > 0.25 * sel_flow.prev_font_pt;
+          bool new_sel_line =
+              !sel_have_prev || is_matrix || sel_prev_was_matrix;
+          bool sel_gap = false;
+          if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
+            new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
+                                           sel_prev_end, sel_prev_font_pt);
+            sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          }
 
           if (new_sel_line) {
             // Close previous line with a trailing space if needed. `sg`
             // (spacer), not `sr` (text run) — it carries no PDF-derived
             // width, just a lone space.
-            if (sel_flow.cur_line >= 0 && !sel_prev_ends_space) {
+            if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
               std::string space_cls = "sg";
               add_class(space_cls, "f",
                         pt_decl("font-size", sel_prev_font_size_pt));
-              page_out.sel_lines[sel_flow.cur_line].runs.push_back(
+              page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(space_cls), " "});
             }
             // Build the line block's placement.
@@ -849,7 +871,7 @@ public:
                                  baseline, asc * text.size);
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
-            sel_flow.cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
+            sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
             // Emit the run span.
             if (!core.empty()) {
               std::string cls = "sr";
@@ -857,14 +879,14 @@ public:
               if (width_pt > 0 && !is_matrix) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
-              page_out.sel_lines[sel_flow.cur_line].runs.push_back(
+              page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
               sel_cur_run_start_ox = ox;
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             // Emit a spacer span for the gap, then the run span.
             std::vector<SelRunOut> &runs =
-                page_out.sel_lines[sel_flow.cur_line].runs;
+                page_out.sel_lines[sel_cur_line].runs;
             if (!sel_prev_ends_space && !runs.empty()) {
               // Spacer: display:inline-block with the gap width.
               std::string gap_cls = "sg";
@@ -894,7 +916,7 @@ public:
             // characters across the true PDF advance instead of the first
             // sub-run's narrower one.
             std::vector<SelRunOut> &runs =
-                page_out.sel_lines[sel_flow.cur_line].runs;
+                page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
               runs.back().text += escape_markup(text.text);
               if (!is_matrix) {
@@ -909,9 +931,13 @@ public:
             }
           }
 
-          sel_flow.advance(ox, extent, baseline, font_pt, is_matrix);
+          sel_prev_baseline = baseline;
+          sel_prev_end = ox + extent;
+          sel_prev_font_pt = font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
+          sel_prev_was_matrix = is_matrix;
           sel_prev_font_size_pt = font_size_pt;
+          sel_have_prev = true;
         }
       }
 
@@ -1225,16 +1251,19 @@ public:
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
-      LineFlow flow;
-      // The single layer additionally groups by a "flow key" (font, spacing,
-      // …): a run with a different key opens a new block even on the same line.
+      std::int32_t cur_line = -1;
       std::string cur_flow_key;
+      bool prev_was_matrix = false;
+      double prev_end = 0;
+      double prev_baseline = 0;
+      double prev_font_pt = 0;
+      const auto close_line = [&] { cur_line = -1; };
 
       for (const pdf::PageElement &element :
            pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                *m_logger, [&] { flow.close(); },
+                *m_logger, [&] { close_line(); },
                 [&](std::string frag) {
                   page_out.items.push_back(SinglePathOut{std::move(frag)});
                 })) {
@@ -1307,12 +1336,16 @@ public:
         fk << font << '|' << invisible << '|' << font_size_pt << '|' << cs_pt
            << '|' << ws_pt;
         const std::string flow_key = std::move(fk).str();
-        auto [new_line, margin_pt] = flow.decide(is_matrix, ox, baseline);
-        // A flow-key change opens a new block even mid-line (and drops the
-        // margin — the block restarts at its own origin).
-        if (flow_key != cur_flow_key) {
-          new_line = true;
-          margin_pt = 0;
+        bool new_line = is_matrix || prev_was_matrix || cur_line < 0 ||
+                        flow_key != cur_flow_key;
+        double margin_pt = 0;
+        if (!new_line && prev_font_pt > 0) {
+          if (starts_new_line(baseline, prev_baseline, ox, prev_end,
+                              prev_font_pt)) {
+            new_line = true;
+          } else {
+            margin_pt = round2(ox - prev_end);
+          }
         }
 
         if (new_line) {
@@ -1343,17 +1376,20 @@ public:
           }
           line.runs.push_back(std::move(run));
           page_out.items.push_back(std::move(line));
-          flow.cur_line = static_cast<int>(page_out.items.size()) - 1;
+          cur_line = static_cast<int>(page_out.items.size()) - 1;
           cur_flow_key = flow_key;
         } else {
           if (margin_pt != 0) {
             run.margin = styles.intern("ml", pt_decl("margin-left", margin_pt));
           }
-          std::get<SingleLineOut>(page_out.items[flow.cur_line])
+          std::get<SingleLineOut>(page_out.items[cur_line])
               .runs.push_back(std::move(run));
         }
 
-        flow.advance(ox, extent, baseline, font_pt, is_matrix);
+        prev_end = ox + extent;
+        prev_baseline = baseline;
+        prev_font_pt = font_pt;
+        prev_was_matrix = is_matrix;
       }
 
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
@@ -1452,7 +1488,7 @@ public:
     return resources;
   }
 
-  static std::string pt_decl(const char *property, const double value) {
+  static std::string pt_decl(const char *property, double value) {
     std::ostringstream s;
     s << property << ':' << value << "pt";
     return std::move(s).str();
@@ -1471,56 +1507,6 @@ public:
     return std::abs(baseline - prev_baseline) > 0.6 * prev_font_pt ||
            ox < prev_end - 0.5 * prev_font_pt;
   }
-
-  /// Per-layer line-grouping state: the index of the open line block plus the
-  /// previous run's geometry, from which `decide` derives whether the next run
-  /// opens a new line and, if not, its `margin-left` gap. Each layer (visual,
-  /// selection, single) owns its own instance — the state footprint and the
-  /// downstream emission differ — but the new-line gate and the previous-run
-  /// bookkeeping are shared here so they cannot drift between layers (the same
-  /// reasoning that pulled out `starts_new_line`). `close` resets the open line
-  /// when an interposed path/image breaks the run (visual/single only; the
-  /// selection layer keeps runs contiguous across drawing ops).
-  struct LineFlow {
-    std::int32_t cur_line = -1;
-    double prev_end = 0;
-    double prev_baseline = 0;
-    double prev_font_pt = 0;
-    bool prev_was_matrix = false;
-
-    struct Decision {
-      bool new_line;
-      double margin_pt;
-    };
-    /// Whether a run at (`ox`, `baseline`) opens a new line block, and (when it
-    /// continues) its `margin-left` from the previous run's right edge. A
-    /// matrix run, a matrix predecessor and a closed line each force a new
-    /// line; callers may OR further conditions (e.g. the single layer's flow
-    /// key).
-    [[nodiscard]] Decision decide(const bool is_matrix, const double ox,
-                                  const double baseline) const {
-      bool new_line = is_matrix || prev_was_matrix || cur_line < 0;
-      double margin_pt = 0;
-      if (!new_line && prev_font_pt > 0) {
-        if (starts_new_line(baseline, prev_baseline, ox, prev_end,
-                            prev_font_pt)) {
-          new_line = true;
-        } else {
-          margin_pt = round2(ox - prev_end);
-        }
-      }
-      return {new_line, margin_pt};
-    }
-    /// Record the run just emitted as the predecessor of the next one.
-    void advance(const double ox, const double extent, const double baseline,
-                 const double font_pt, const bool is_matrix) {
-      prev_end = ox + extent;
-      prev_baseline = baseline;
-      prev_font_pt = font_pt;
-      prev_was_matrix = is_matrix;
-    }
-    void close() { cur_line = -1; }
-  };
 
   /// The per-run geometry derived from a `TextElement` and the page's `to_box`
   /// transform. Identical in every text mode, so it lives in one place — no
