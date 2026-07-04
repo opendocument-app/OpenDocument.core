@@ -12,14 +12,16 @@ production-quality alternative engine.
 tables, cross-reference streams, object streams, hybrid files, with a
 forward-scan recovery path for broken cross-references), build the page
 tree with fonts and annotations, tokenize page content streams into graphics
-operators, and emit a **proof-of-concept HTML rendering**: absolutely positioned
+operators, and emit an **HTML rendering**: absolutely positioned
 text spans, one per shown segment, placed by the full text transform (CTM × text
 matrix) and advanced by the parsed glyph widths, recursing into form XObjects,
 with text render modes and `/ActualText` honoured and omitted spaces inferred
 from glyph gaps, pages sized from `MediaBox`. Encrypted files are decrypted (RC4,
 AES-128, AES-256). Embedded font programs (TrueType, CFF, Type1) render through
-`@font-face`; non-embedded fonts fall back to a system font; no graphics, no
-images yet. Experimental and not production-quality.
+`@font-face`; non-embedded fonts are substituted to CSS `font-family` stacks
+(with standard-14 AFM widths); and vector graphics, images, shadings, tiling
+patterns, Type3 glyphs and transparency (constant alpha + blend modes) render as
+inline SVG per page. Experimental and not production-quality.
 
 ---
 
@@ -71,7 +73,7 @@ images yet. Experimental and not production-quality.
   LZWDecode (both with TIFF and PNG predictors), ASCIIHexDecode, ASCII85Decode,
   RunLengthDecode. Image codecs (DCTDecode, JPXDecode, CCITTFaxDecode,
   JBIG2Decode) are deliberately not decoded: `decode()` stops and hands back the
-  still-encoded payload for stage 4; `read_decoded_stream` treats them as an
+  still-encoded payload for the image path; `read_decoded_stream` treats them as an
   error. The `Crypt` filter passes through only as `Identity`.
 - **Encryption** (`pdf_encryption`): the standard security handler. An
   `Authenticator` parses `/Encrypt` and authenticates the password (user then
@@ -114,8 +116,9 @@ images yet. Experimental and not production-quality.
   `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
   forms) for composite fonts. `Font::advance_width(code)` returns the advance in
   text-space units (glyph-space / 1000), falling back to `/MissingWidth` or `/DW`.
-  Codes outside the corpus are interpreted as CIDs for composite fonts (identity);
-  AFM widths for the non-embedded standard-14 fonts are stage 4.
+  Codes outside the corpus are interpreted as CIDs for composite fonts (identity).
+  A non-embedded standard-14 font (which ships no `/Widths`) falls back to a
+  **generated AFM width table** (see *Graphics, images & transparency*).
 - **Embedded font programs**: every embedded flavor is decoded into an
   `abstract::Font` held on `Font::embedded_font` — `/FontFile2` (TrueType, simple
   or composite `CIDFontType2`) → `SfntFont`; `/FontFile3` (CFF / `Type1C` /
@@ -178,8 +181,9 @@ images yet. Experimental and not production-quality.
   scope). `Do` in `extract_text` saves the state, concatenates the form `/Matrix`
   onto the CTM, runs the form content against the form's resources (falling back
   to the enclosing scope), then restores — so text inside forms is placed
-  correctly. Image XObjects (`/Subtype /Image`) are recognized but not rendered
-  (stage 4); unknown subtypes are inexecutable. The parser memoizes XObjects by
+  correctly. Image XObjects (`/Subtype /Image`) are decoded and emitted (see
+  *Graphics, images & transparency*); unknown subtypes are inexecutable. The
+  parser memoizes XObjects by
   reference (`ObjectReference -> XObject*`), so a form shared across pages is
   parsed once and a cyclic form reference resolves to the existing element — the
   in-memory graph mirrors the file, cycles included. A render-time active-set
@@ -240,8 +244,74 @@ images yet. Experimental and not production-quality.
     embedded `OS/2` disagree, which to prefer (descriptor states intent, embedded
     matches rendering) is unsettled — currently `/Ascent` wins. The ascent is
     per-font, not per-CID. No focused unit test yet (verified visually on
-    `style-various-1.pdf`); the stage-4 perceptual-diff oracle is the eventual
-    gate.
+    `style-various-1.pdf`); the reference-output snapshot test is the gate.
+
+## Graphics, images & transparency
+
+Vector and raster content renders as **inline SVG per page**, layered under the
+text spans — serialization, not rasterization (**decision, 2026-06**: no native
+renderer; pdf.js proves the full PDF graphics model needs none, and the PDF and
+SVG imaging models are close cousins, so the mapping is mostly mechanical). The
+rasterized-background fallback is rejected: it reintroduces the exact renderer
+dependency the `odr` engine exists to avoid. Fidelity is bounded by operator
+coverage rather than by a renderer's long tail; the reference-output test guards
+it.
+
+- **Paths**: `extract_page` produces a page-element IR (`PathElement`,
+  `ImageElement`, `ShadingElement`, `TextElement`) in paint order; the executor
+  resolves geometry through the CTM at construction, so the renderer maps it
+  through the page transform alone. Fills (nonzero / even-odd) and strokes (width,
+  caps, joins, miter limit, dash) → `<path>` with the matching SVG attributes; a
+  zero-width stroke floors to a hairline.
+- **Clipping** (`W`/`W*`): the current clip (an intersection of path regions) is
+  snapshotted onto each painted element and installed as a per-page `<clipPath>`
+  referenced by `clip-path` (deduplicated by geometry). Text is not yet clipped
+  (see *Other known gaps*).
+- **Colour spaces & functions**: DeviceGray/RGB/CMYK directly; CIE-based,
+  ICCBased, Indexed, Separation/DeviceN and Lab resolve to RGB at emission time by
+  sampling the tint `/Function` (types 0/2/3/4, evaluated by `pdf_function`). CMYK
+  uses a naive (no-ICC) conversion; overprint is ignored.
+- **Images**: `DCTDecode` JPEG pass-through → `<image>`; Flate/LZW rasters
+  re-encoded as PNG; inline images (`BI`/`ID`/`EI`); `/ImageMask` stencils painted
+  in the current fill colour; `/SMask` and `/Mask` (stencil + colour-key)
+  composited into RGBA on the raster path (a mask on a JPEG base is left alone —
+  decoding the JPEG to composite is out of scope).
+- **Shadings** (axial type 2, radial type 3): `parse_shading` pre-samples the
+  tint function into sRGB stops, so the renderer needs no evaluator. `sh` floods
+  the clip (a `<rect>` filled with the gradient); a `/PatternType 2` shading
+  pattern named by `scn` fills a path. Both emit
+  `<linearGradient>`/`<radialGradient>` with `gradientUnits="userSpaceOnUse"`.
+  `/Extend`/`/Background`/`/BBox` are parsed but not yet honoured (SVG's `pad`
+  spread over-paints a non-extended shading; see gaps).
+- **Tiling patterns** (`/PatternType 1`): the cell content stream runs as a mini
+  page and becomes an SVG `<pattern>` tile repeated every `/XStep`/`/YStep`, with
+  `patternTransform` placing the lattice; coloured (`/PaintType 1`) cells carry
+  their own colours, uncoloured (`/PaintType 2`) cells paint in the current fill
+  colour. Each cell is clipped to its `/BBox`; an overlapping lattice (a step
+  smaller than the BBox) can't be expressed as one `<pattern>` and is not
+  reproduced.
+- **Non-embedded fonts**: a font with no `/FontFile*` is *substituted*, not
+  rendered — `/BaseFont` + `/FontDescriptor` flags map to a CSS `font-family`
+  fallback stack (serif/sans/mono, bold/italic), and the standard-14 metrics
+  (which ship no `/Widths`) come from a **generated AFM width table**
+  (`tools/pdf/generate_afm_data.py`, pinned to PDFBox). Glyph shapes are the
+  browser's fallback font.
+- **Type3 fonts**: the glyphs are `/CharProcs` content streams drawn in glyph
+  space and mapped by `/FontMatrix`. Each glyph runs through the same graphics
+  executor at `/FontMatrix × size × Tm × CTM`, so it paints as ordinary
+  path/image elements; the shown run stays selectable (Unicode from the
+  code → Unicode chain) but paints no visible text of its own (`render_as_graphics`,
+  like an invisible `Tr 3` run). Recursion is depth-guarded.
+- **Transparency**: `/ExtGState` constant alpha (`ca`/`CA`) →
+  `fill-opacity`/`stroke-opacity`/`opacity`, and blend modes (`/BM`) →
+  `mix-blend-mode` (the 16 separable/non-separable modes map 1:1; unmappable names
+  render normal). Both are part of the saved graphics state, so `q`/`Q` scope them
+  like the CTM. Soft masks and isolated/knockout groups are deferred (see gaps).
+
+The **reference-output snapshot test** (`test/data/reference-output/`) is the
+graphics oracle: each change regenerates it and the diff is reviewed. A
+perceptual-diff gate (render corpus fixtures with poppler/pdf.js, screenshot our
+output, diff) is the eventual automated form (deferred).
 
 ## Module layout
 
@@ -316,8 +386,9 @@ emission, using the `font/` module — `sfnt_*`, `cff_*`, `type1_*`).
    invocation. The HTML layer maps each element to a positioned `span`
    with a CSS `transform` (PDF user space → the page box in CSS pixels) and
    `font-size` from the text state. An embedded font program renders the real
-   glyphs via `@font-face` (dual layer); a non-embedded font falls back to a
-   browser font until substitution lands (stage 4).
+   glyphs via `@font-face` (dual layer); a non-embedded font is substituted to a
+   CSS `font-family` stack, and non-text content (paths, images, shadings,
+   patterns, transparency) emits inline SVG.
 
 ---
 
@@ -373,7 +444,7 @@ and `pdf_page_text.cpp` route through `Logger`. `DocumentParser` and
 
 **Rendering is deferred to the browser; display and text are decoupled.** We emit
 no rasterized output: glyphs render via the embedded font (`@font-face`) and
-vector content via SVG (stage 4) — the browser draws everything. Because display
+vector content via SVG — the browser draws everything. Because display
 is driven by the *glyph*, not the extracted Unicode, **text-extraction gaps
 degrade only selectability and search — never display.** Every deferred
 code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
@@ -494,12 +565,12 @@ dual-layer glyph/Unicode emission).
 
 Goal: faithful read-only HTML for common real-world PDFs through the odr engine,
 so the poppler/pdf2htmlEX engine becomes optional rather than required. Stages
-are ordered by what they unlock; 0–3 are **done** (summarized below — the
-mechanics live in *What works*), 4 is independent, 5 builds on whatever pages
-already render. Each remaining stage gets its own detailed design before
-implementation.
+are ordered by what they unlock; 0–4 are **done** (summarized below — the
+mechanics live in *What works* and *Graphics, images & transparency*), 5 builds
+on whatever pages already render. Each remaining stage gets its own detailed
+design before implementation.
 
-## Stages 0–3 — done
+## Stages 0–4 — done
 
 - **Stage 0 — file-format compatibility.** Reads the structures modern producers
   write that the original parser rejected: the stream-filter framework (incl. PNG
@@ -535,77 +606,23 @@ implementation.
   TrueType into PDF (3.3), bare CFF / `FontFile3` / Type1C (3.4), and Type1 /
   `FontFile` via `type1::to_cff` reusing the CFF path (3.5). Type3 and
   non-embedded fonts were deferred to **stage 4** (they need the path → SVG
-  machinery). Test oracle (never shipped): OTS over every produced font in CI.
+  machinery), where they landed. Test oracle (never shipped): OTS over every
+  produced font in CI.
   Two known limits: `cmap` serialization is BMP-only (a single Windows (3,1)
   format-4 subtable; format-12 / >6400-glyph spill-over is a follow-up), and
   simple-TrueType glyph selection is best-effort (ISO 32000-1 9.6.6.4).
 
-## Stage 4 — graphics
-
-**Decision (2026-06): SVG generation, no rasterizer.** pdf2htmlEX uses poppler
-to render non-text into a per-page background image; we generate SVG instead —
-serialization, not rendering. pdf.js proves the full PDF graphics model needs no
-native renderer. The PDF and SVG imaging models are close cousins (PostScript
-heritage), so the mapping is mostly mechanical. Trade-off: pdf2htmlEX gets the
-long tail right for free via poppler, while our fidelity is bounded by operator
-coverage — countered by the test oracle below. The rasterized-background
-fallback is **rejected**: it reintroduces exactly the renderer dependency this
-stage exists to avoid.
-
-- Vector content → inline SVG per page, layered under the text spans: paths,
-  fill rules, stroke parameters, transforms; clipping → nested `<clipPath>`;
-  tiling patterns → `<pattern>` (form-XObject machinery from stage 2);
-  axial/radial shadings (types 2/3) → `linearGradient`/`radialGradient`.
-- **Type3 fonts** (deferred from stage 3): glyph char procs are mini content
-  streams (already tokenized by the operator parser) → SVG glyphs via the same
-  path → SVG machinery; each glyph placed at the text transform (CTM × `Tm` ×
-  `/FontMatrix`, font size folded in), Unicode for selection from the
-  code → Unicode chain. No glyph program → no PUA re-encode and no reverse map, so the
-  dual-layer model holds (SVG glyph layer + transparent Unicode layer).
-- **Non-embedded fonts** (deferred from stage 3): a font with no `/FontFile*` is
-  substituted, not rendered — map the standard 14 (Helvetica/Times/Courier +
-  Symbol/ZapfDingbats) and common names to CSS `font-family` fallback stacks
-  (serif/sans/mono by flags + name, bold/italic from `/Flags` and the name);
-  drive placement from `/Widths`, with **AFM widths** for the standard 14 (which
-  usually ship none — the deferred AFM-widths item) as a generated data table.
-  Glyph shapes are the browser's fallback font.
-- **Images**: `DCTDecode` → `<img>` JPEG pass-through; Flate/LZW raster → PNG
-  encode; inline images (`BI`/`ID`/`EI`); `/ImageMask` stencils painted in the
-  current fill colour; `/SMask` and `/Mask` (stencil + colour-key) composited
-  into RGBA on the raster path (a mask on a JPEG base is ignored — decoding the
-  JPEG to composite is out of scope).
-- **Shadings & shading patterns** (axial type 2, radial type 3): `parse_shading`
-  pre-samples the tint `/Function` across `/Domain` into 32 sRGB colour stops, so
-  the renderer needs no function evaluator. The `sh` operator floods the current
-  clip (a `ShadingElement` → `<rect>` filled with the gradient); a `/PatternType
-  2` shading pattern selected by `scn` fills a path (`PathElement::fill_shading`
-  + the pattern `/Matrix`). Both emit SVG `<linearGradient>`/`<radialGradient>`
-  with `gradientUnits="userSpaceOnUse"`. `/Extend`, `/Background` and `/BBox` are
-  parsed onto `Shading` but **not yet honoured** by the renderer (deferred): it
-  always uses SVG's `pad` spread, so a non-extended shading is over-painted past
-  its interval rather than masked to it (honouring it needs the fill clipped to
-  the gradient band/annulus).
-- **Tiling patterns** (`/PatternType 1`): the pattern's content stream is run as
-  a mini page (`extract_page`) and emitted as an SVG `<pattern>` tile, repeated
-  every `/XStep`/`/YStep`, with `patternTransform` (the pattern `/Matrix`)
-  placing the lattice; a `/PatternType 1` fill references it as `fill="url(#…)"`.
-  Coloured (`/PaintType 1`) cells carry their own colours; uncoloured
-  (`/PaintType 2`) cells are painted in the current fill colour (resolved
-  through the Pattern colour space's base, so `[/Pattern /DeviceRGB]` keeps its
-  tint). Each cell is clipped to its `/BBox`; an overlapping lattice (a step
-  smaller than the BBox) can't be expressed as one SVG `<pattern>` and is not
-  reproduced. Only paths and images inside a tile are rendered (nested
-  text/shadings/patterns are skipped — rare).
-- **SVG residue** — where no 1:1 primitive exists; all at generation time, never
-  rasterization: mesh/function shadings (types 1, 4–7) → tessellate into small
-  flat polygons (pdf.js's approach); color spaces
-  (Separation/DeviceN/Indexed/Lab/ICC) → convert to RGB when emitting (sample
-  tint transforms, approximate ICC as sRGB, ignore overprint); transparency:
-  `CA`/`ca` → `opacity`, soft masks → `<mask>`, blend modes → `mix-blend-mode`;
-  isolated/knockout groups don't map cleanly — punt (rare).
-- **Renderer as test oracle, not dependency** (parallels stage 3's OTS gate):
-  render corpus fixtures with poppler or pdf.js in CI, screenshot our output,
-  perceptual-diff.
+- **Stage 4 — graphics.** Vector and raster content → inline SVG per page
+  (paths, clipping, colour spaces + `/Function` evaluation, JPEG / raster /
+  inline images and masks, axial/radial shadings, tiling patterns),
+  non-embedded font substitution (+ standard-14 AFM widths), Type3 fonts, and
+  transparency (constant alpha + blend modes). Decision: **SVG serialization,
+  no rasterizer** — pdf.js proves the full graphics model needs no native
+  renderer, and the rasterized-background fallback is rejected as it
+  reintroduces the very dependency the `odr` engine avoids. The mechanics live
+  in *Graphics, images & transparency* above. Deferred: soft masks,
+  mesh/function shadings, and the perceptual-diff oracle (see *Other known
+  gaps*).
 
 ## Stage 5 — interaction & navigation
 
@@ -635,6 +652,27 @@ tree, little else.
 
 ## Other known gaps
 
+- **Graphics deferrals** (from stage 4, the *Graphics, images & transparency*
+  tail):
+  - **Soft masks** (`/SMask` in `/ExtGState` → SVG `<mask>`): luminosity/alpha
+    soft masks are not applied — rendering a transparency-group XObject into a
+    mask and scoping it across following content is a large change in the
+    per-fragment SVG pipeline. Isolated/knockout groups don't map cleanly and are
+    punted (rare). Constant alpha (`ca`/`CA`) and blend modes (`/BM`) *are* done.
+  - **Mesh & function-based shadings** (types 1, 4–7): only axial (2) and radial
+    (3) are emitted; the rest would tessellate into flat polygons (pdf.js's
+    approach) — not done.
+  - **Non-extended shadings**: `/Extend`/`/Background`/`/BBox` are parsed onto
+    `Shading` but not honoured — the renderer always uses SVG's `pad` spread, so a
+    non-extended shading over-paints past its interval (needs the fill clipped to
+    the gradient band/annulus).
+  - **Overlapping tiling lattices** (a `/PatternType 1` step smaller than the
+    `/BBox`) can't be expressed as one SVG `<pattern>` and are not reproduced;
+    nested text/shadings/patterns inside a tile are skipped (rare).
+  - **Text clipping**: the clip is not applied to text runs (paths and images are
+    clipped); text clip render modes (`Tr` 4–7) add nothing to the clip.
+  - **Perceptual-diff oracle**: the reference-output snapshot test is the current
+    graphics gate; the automated poppler/pdf.js screenshot-diff is not built.
 - **Encryption edge cases** (deferred from stage 0 until a real file needs
   them): per-stream `/Crypt` filter `Name` overrides, the `EncryptMetadata
   false` metadata-stream `Identity` special case, and `Perms` (Algorithm 13)
