@@ -295,6 +295,7 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   if (!element.text.empty() && element.text.front() != ' ' && pen.has_value() &&
       infer_space(*pen, start)) {
     element.text.insert(element.text.begin(), ' ');
+    element.leading_space_inferred = true;
   }
   // A segment with no extractable text (suppressed glyphs, `no_unicode`, or a
   // subsequent show inside an already-emitted `/ActualText` span) must not

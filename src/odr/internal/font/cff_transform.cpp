@@ -144,9 +144,9 @@ std::string cff::wrap_to_otf(const CffFont &font,
                              const std::map<char32_t, std::uint16_t> &extra) {
   const std::uint16_t glyphs = font.glyph_count();
 
-  // The uniform PUA re-encode: pua_code_point(glyph) -> glyph over
-  // every glyph. serialize_cmap throws if a code point is beyond the BMP, which
-  // also bounds the glyph count to the PUA capacity.
+  // The uniform PUA re-encode: pua_code_point(glyph) -> glyph over every glyph.
+  // Glyphs past the 6400-slot BMP PUA overflow into Supplementary PUA-A, and
+  // serialize_cmap emits a format-12 subtable to cover them.
   std::map<char32_t, std::uint16_t> pua;
   for (std::uint16_t glyph = 0; glyph < glyphs; ++glyph) {
     pua[pua_code_point(glyph)] = glyph;
@@ -183,10 +183,14 @@ std::string cff::wrap_to_otf(const CffFont &font,
   tables.emplace_back("cmap", serialize_cmap(pua));
   tables.emplace_back("name", serialize_name(font.name()));
   tables.emplace_back("post", serialize_post());
-  tables.emplace_back("OS/2",
-                      serialize_os2(font.units_per_em(), bbox.y_min, bbox.y_max,
-                                    static_cast<std::uint16_t>(first),
-                                    static_cast<std::uint16_t>(last)));
+  // OS/2 usFirst/usLastCharIndex are u16; a beyond-BMP PUA code point (large
+  // glyph counts overflow into Supplementary PUA-A) is clamped to 0xFFFF.
+  tables.emplace_back(
+      "OS/2",
+      serialize_os2(
+          font.units_per_em(), bbox.y_min, bbox.y_max,
+          static_cast<std::uint16_t>(std::min<char32_t>(first, 0xffff)),
+          static_cast<std::uint16_t>(std::min<char32_t>(last, 0xffff))));
 
   return build_sfnt(0x4f54544f /* 'OTTO' */, std::move(tables));
 }

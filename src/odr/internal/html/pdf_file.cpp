@@ -24,11 +24,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -40,6 +42,8 @@ namespace {
 /// Round to 0.01 user-space units; sub-precision beyond that is invisible and
 /// the extra digits add up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
+
+constexpr double pt_to_in = 1.0 / 72.0;
 
 /// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
 /// is rounded — it lives in page-box units where 1/100 px is plenty; the linear
@@ -53,16 +57,19 @@ std::string svg_matrix(const util::math::Transform2D &m) {
   return std::move(f).str();
 }
 
+/// Clamp a colour component in [0, 1] to an 8-bit channel value.
+std::int32_t to255(const double v) {
+  return static_cast<std::int32_t>(
+      std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+}
+
 /// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
 /// spaces (Separation/ICCBased/… — stage 4.4) and the unknown space fall back
 /// to black, the PDF initial color.
 std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
-  const auto to255 = [](const double v) {
-    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
-  };
-  int r = 0;
-  int g = 0;
-  int b = 0;
+  std::int32_t r = 0;
+  std::int32_t g = 0;
+  std::int32_t b = 0;
   switch (color.space) {
   case pdf::ColorSpace::device_grey:
     r = g = b = to255(color.grey);
@@ -94,9 +101,6 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
 /// Convert an sRGB triple in [0, 1] (a shading colour stop) to a CSS
 /// `rgb(...)`.
 std::string rgb_to_css(const std::array<double, 3> &rgb) {
-  const auto to255 = [](const double v) {
-    return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
-  };
   std::ostringstream s;
   s << "rgb(" << to255(rgb[0]) << ',' << to255(rgb[1]) << ',' << to255(rgb[2])
     << ')';
@@ -188,9 +192,8 @@ std::string svg_path_fragment(const pdf::PathElement &path,
       // miter join: SVG defaults the limit to 4, PDF to 10 — state it.
       f << " stroke-miterlimit=\"" << round2(path.miter_limit) << '"';
     }
-    const bool dashed =
-        std::any_of(path.dash_array.begin(), path.dash_array.end(),
-                    [](const double v) { return v > 0; });
+    const bool dashed = std::ranges::any_of(
+        path.dash_array, [](const double v) { return v > 0; });
     if (dashed) {
       f << " stroke-dasharray=\"";
       for (std::size_t i = 0; i < path.dash_array.size(); ++i) {
@@ -223,14 +226,11 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   if (image.data.empty()) {
     return {};
   }
-  // image natural box [0,1] (y-down) -> PDF unit square (y-up) -> user -> box.
   constexpr util::math::Transform2D flip =
       util::math::Transform2D::scaling_translation(1, -1, 0, 1);
   const util::math::Transform2D m = flip * image.transform * to_box;
 
   std::ostringstream f;
-  // The clip wraps the image in a transform-free `<g>` rather than sitting on
-  // the `<image>`: see the function comment.
   if (!clip_id.empty()) {
     f << "<g clip-path=\"url(#" << clip_id << ")\">";
   }
@@ -430,7 +430,6 @@ public:
 
     // Tile content is laid out in pattern space (identity page transform); the
     // y-flip and placement live in `patternTransform`.
-    const util::math::Transform2D identity;
     std::ostringstream tile;
     for (const pdf::PageElement &element :
          pdf::extract_page(pattern.content, *pattern.resources, logger)) {
@@ -440,9 +439,9 @@ public:
           painted.fill_color = fill_color;
           painted.stroke_color = fill_color;
         }
-        tile << svg_path_fragment(painted, identity, "", "");
+        tile << svg_path_fragment(painted, util::math::Transform2D(), "", "");
       } else if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-        tile << svg_image_fragment(*image, identity, "");
+        tile << svg_image_fragment(*image, util::math::Transform2D(), "");
       }
     }
 
@@ -472,18 +471,17 @@ public:
 };
 
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
-/// emits one absolutely-positioned span per glyph run, and the same font sizes,
-/// offsets and spacings recur across the (potentially millions of) spans.
-/// Writing each declaration inline bloats the document — the Bluetooth Core
-/// spec reference output crossed GitHub's 100 MB file limit. Instead, every
-/// distinct declaration is registered once here, named `<prefix><n>` in
+/// emits one absolutely-positioned line block per detected line, and the same
+/// font sizes, offsets and spacings recur across the (potentially millions of)
+/// elements. Writing each declaration inline bloats the document. Instead,
+/// every distinct declaration is registered once here, named `<prefix><n>` in
 /// first-seen order (e.g. `f1`, `f2` for font sizes, `t1` for a top offset),
-/// emitted once in <head>, and referenced by class on each span. This is
+/// emitted once in <head>, and referenced by class on each element. This is
 /// representation-only: the computed style of every element is unchanged.
 class AtomicStyles {
 public:
   /// `prefix` selects the property family; `declaration` is a full CSS
-  /// declaration without trailing ';' (e.g. "font-size:13.28px"). Returns the
+  /// declaration without trailing ';' (e.g. "font-size:9.96pt"). Returns the
   /// class name to add to the element.
   const std::string &intern(const std::string &prefix,
                             std::string declaration) {
@@ -496,7 +494,7 @@ public:
     return it->second;
   }
 
-  /// Writes one rule per line (`.f1{font-size:13.28px}`) so regeneration diffs
+  /// Writes one rule per line (`.f1{font-size:9.96pt}`) so regeneration diffs
   /// stay legible. Each rule is preceded by a newline; the caller has already
   /// written the constant rules on the opening `<style>` line.
   void write_rules(std::ostream &o) const {
@@ -506,7 +504,8 @@ public:
   }
 
 private:
-  // Node-based map: pointers stored in `m_order` stay valid across insertions.
+  /// Node-based map: pointers stored in `m_order` stay valid across
+  /// insertions.
   std::unordered_map<std::string, std::string> m_class_by_declaration;
   std::unordered_map<std::string, int> m_count_by_prefix;
   std::vector<const std::pair<const std::string, std::string> *> m_order;
@@ -530,7 +529,6 @@ public:
     if (path == "document.html") {
       return true;
     }
-
     return false;
   }
 
@@ -538,7 +536,6 @@ public:
     if (path == "document.html") {
       return "text/html";
     }
-
     throw FileNotFound("Unknown path: " + path);
   }
 
@@ -548,7 +545,6 @@ public:
       write_document(writer);
       return;
     }
-
     throw FileNotFound("Unknown path: " + path);
   }
 
@@ -557,697 +553,1000 @@ public:
     if (path == "document.html") {
       return write_document(out);
     }
-
     throw FileNotFound("Unknown path: " + path);
   }
 
-  // One emitted span. The styling is fully resolved into class tokens during
-  // the first pass; only the (already escaped) text and class list survive to
-  // the writing pass. A text run with an embedded font emits the dual layer as
-  // a transparent selectable span carrying the real Unicode with the visible
-  // glyph layer (PUA code points in the `@font-face` font) nested inside it:
-  // the child is absolutely positioned at the run origin and inherits the
-  // font size, spacing, and transform from the parent, so the placement
-  // classes live only on the parent. `glyph_classes` is empty when there is no
-  // nested layer (the legacy fallback path and display-only runs).
-  struct SpanOut {
+  HtmlResources write_document(HtmlWriter &out) const {
+    if (config().pdf_text_mode == PdfTextMode::single_layer) {
+      return write_document_single_layer(out);
+    }
+    return write_document_dual_layer(out);
+  }
+
+  // =========================================================================
+  // DUAL-LAYER MODE
+  // =========================================================================
+  //
+  // Two separate layers per page:
+  //
+  //  Visual layer (`<div class="vis" aria-hidden="true">`): paint-order glyph
+  //  rendering. Text runs are grouped into line blocks (`<div class="t ...">`)
+  //  by baseline; runs within a block flow inline, each nudged by a
+  //  `margin-left`. A path or image in paint order closes the open block and
+  //  is emitted into an SVG; the next text opens a fresh block. Fonts are
+  //  re-encoded to the PUA (no real-Unicode cmap entries needed — the visual
+  //  layer is `user-select:none`). Invisible text (Tr 3/7) is omitted here.
+  //
+  //  Selection layer (`<div class="sel">`): transparent, selectable real
+  //  Unicode. Text runs are grouped into per-line divs (`<div class="t ...
+  //  i">`) in content-stream order; space detection inserts separator spans
+  //  on line/column breaks or wide gaps. Each run span is
+  //  `display:inline-block; width:Xpt` with CSS `text-align:justify;
+  //  text-align-last:justify; text-justify:inter-character` so the browser
+  //  spreads the characters to fill the PDF advance without JavaScript.
+  //  For gap spans between runs a zero-content `display:inline-block;
+  //  width:Ypt` span is emitted.
+
+  /// One run inside a visual line block. `classes` carries margin-left, font
+  /// size, font-family+colour — the line block holds placement only.
+  struct VisRunOut {
     std::string classes;
-    std::string text;
-    std::string glyph_classes;
-    std::string glyph_text;
+    std::string text; ///< PUA glyph string (or real unicode for fallback path)
   };
-  // One vector item, already serialized to an SVG fragment in the page's
-  // viewBox (PDF points, y-down): a painted `<path>` or an `<image>`.
-  // Contiguous vector items share one `<svg>` at write time.
+  /// One line block in the visual layer: absolutely positioned at the first
+  /// run's origin. Runs flow inline, each nudged by margin-left.
+  struct VisLineOut {
+    std::string classes; ///< "t lN tN [mN]" (or matrix transform)
+    std::vector<VisRunOut> runs;
+  };
   struct PathOut {
     std::string svg;
   };
-  // Page content in paint (z) order: text spans and paths interleave, so a
-  // later fill occludes earlier text and vice versa.
-  using PageItem = std::variant<SpanOut, PathOut>;
-  struct PageOut {
+  /// Visual-layer paint-order item: a line block of glyphs, or an SVG
+  /// fragment.
+  using VisItem = std::variant<VisLineOut, PathOut>;
+
+  /// One run in the selection layer: an inline-block span with a fixed width
+  /// (for CSS justify) and optional margin-left (gap from previous run). An
+  /// empty `text` with non-zero `width` is a spacer-only span (no text node).
+  struct SelRunOut {
+    std::string classes; ///< "sr wN [mlN]"
+    std::string text; ///< real unicode (HTML-escaped), may be empty for spacer
+  };
+  /// One line block in the selection layer: absolutely positioned,
+  /// transparent.
+  struct SelLineOut {
+    std::string classes; ///< "t lN tN i"
+    std::vector<SelRunOut> runs;
+  };
+
+  struct DualPageOut {
     std::string classes;
-    double width{0};  // page box width, PDF points (for the SVG viewBox)
-    double height{0}; // page box height, PDF points
-    std::vector<PageItem> items;
-    // `<clipPath>` defs for this page's clipped paths, emitted once in a hidden
-    // `<svg>`; the path fragments reference them by id. Empty when no path on
-    // the page is clipped.
+    double width{0};
+    double height{0};
+    std::vector<VisItem> vis_items;
+    std::vector<SelLineOut> sel_lines;
     std::string clip_defs;
   };
 
-  HtmlResources write_document(HtmlWriter &out) const {
+  HtmlResources write_document_dual_layer(HtmlWriter &out) const {
     HtmlResources resources;
 
     const auto &pdf_file =
         dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
     const std::unique_ptr<pdf::Document> document = parser.parse_document();
-
     const std::vector<pdf::Page *> pages = document->collect_pages();
 
-    // CSS uses 96px to the inch, PDF user space 72 units to the inch.
-    static constexpr double pt_to_px = 96.0 / 72.0;
-    static constexpr double pt_to_in = 1 / 72.0;
-
-    // Pass 1: resolve every page and span into class tokens, building the
-    // atomic-style catalog so it can be emitted in <head> ahead of the body.
     AtomicStyles styles;
-    std::vector<PageOut> pages_out;
+    std::vector<DualPageOut> pages_out;
     pages_out.reserve(pages.size());
 
-    // Embedded fonts get a PUA re-encode, an `@font-face`, and a `font-family`
-    // class `odr-fN`, assigned on first encounter in `font_family`. A font
-    // whose embedded font is absent, not an SFNT, or not re-encodable keeps
-    // index 0 and renders through the fallback path, exactly as before.
-    //
-    // The `@font-face` rules are *not* built here: a font also gets
-    // real-Unicode `cmap` entries for the scalars its 1:1 runs use (so those
-    // runs can collapse to a single span), and that used-scalar set is only
-    // complete after the first pass. `font_family` therefore just validates and
-    // indexes the font; `accepted_fonts` / `used_unicode` (indexed by `index -
-    // 1`) carry it to the post-pass that re-encodes with the extra entries and
-    // emits `font_faces`.
+    // Font management — visual layer only needs PUA glyphs.
     std::uint32_t family_count = 0;
     std::string font_faces;
-    std::string glyph_styles; // combined per-font `.fvN`/`.fnN`/`.gvN`/`.giN`
-    std::vector<pdf::Font *> accepted_fonts;
-    std::vector<std::map<char32_t, std::uint16_t>> used_unicode;
-    // Which combined per-font classes occur, so only those are emitted in
-    // <head>. Slots: [0]=`.fvN` (plain visible), [1]=`.fnN` (plain invisible),
-    // [2]=`.gvN` (nested-glyph visible), [3]=`.giN` (nested-glyph invisible).
-    std::vector<std::array<bool, 4>> font_class_used;
+    std::string font_styles; // per-font `.fvN` (visible) / `.fnN` (invisible)
+    std::vector<const pdf::Font *> accepted_fonts;
+    // Which classes are used: [0]=fv (visible), [1]=fn (invisible).
+    std::vector<std::array<bool, 2>> font_class_used;
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
-    const auto font_family = [&](pdf::Font *font) -> std::uint32_t {
-      const auto [it, inserted] = family_index.try_emplace(font, 0);
-      if (!inserted) {
-        return it->second; // already classified
-      }
-      // Gate the embedded-font path on a trial PUA re-encode + serialize: a
-      // font we cannot re-encode (more glyphs than the BMP PUA holds, or a
-      // serialization failure) keeps index 0 and renders through the legible
-      // fallback path, never emitting orphaned PUA glyph spans. The trial
-      // output is discarded; the post-pass re-encodes for real (with the
-      // real-Unicode entries) once the used-scalar set is known.
-      bool usable = false;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        // SFNT (TrueType / OpenType): the re-encode mutates the cmap in place,
-        // but `glyph_for_code` reads it during extraction below, so snapshot
-        // the original cmap and restore it after.
-        std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
-        try {
-          font::reencode_to_pua(*sfnt);
-          (void)sfnt->write();
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-        sfnt->set_cmap(std::move(original_cmap));
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        // Bare CFF (`/FontFile3`): wrap into an OTTO with the PUA cmap baked in
-        // (no in-place mutation, so nothing to restore).
-        try {
-          (void)font::cff::wrap_to_otf(*cff);
-          usable = true;
-        } catch (...) {
-          usable = false;
-        }
-      }
-      if (!usable) {
-        return 0; // no usable embedded font: fallback path
-      }
-      const std::uint32_t index = ++family_count;
-      it->second = index;
-      accepted_fonts.push_back(font);
-      used_unicode.emplace_back();
-      font_class_used.push_back({false, false, false, false});
-      return index;
+
+    const auto font_family = [&](const pdf::Font *font) {
+      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
+        accepted_fonts.push_back(font);
+        font_class_used.push_back({false, false});
+      });
     };
 
-    // The combined per-font class carrying `font-family:'odr-fN'` and the paint
-    // colour, so a font-bearing span names one class instead of restating the
-    // font family (interned) plus `.gv`/`.i` on every one of the millions of
-    // spans. A `nested` glyph layer additionally folds in the `.t .g` placement
-    // (absolute at the run origin, unselectable). Records the combo as used so
-    // only the rules that occur are emitted in <head>.
-    const auto font_class = [&](const std::uint32_t font, const bool inv,
-                                const bool nested) {
-      const int slot = nested ? (inv ? 3 : 2) : (inv ? 1 : 0);
-      font_class_used[font - 1][slot] = true;
-      const char *const prefix =
-          nested ? (inv ? "gi" : "gv") : (inv ? "fn" : "fv");
-      return prefix + std::to_string(font);
-    };
-
-    // A real-Unicode scalar may carry a `cmap` entry (letting its run collapse)
-    // only inside the BMP and outside the PUA (`U+E000..U+F8FF`), so a glyph's
-    // own deterministic PUA code point (`pua_code_point`) is never shadowed.
-    const auto collapsible_unicode = [](const char32_t c) {
-      return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
-    };
-
-    // The PUA glyph string for a run: each character code -> glyph id ->
-    // deterministic PUA code point (`U+E000 + glyph`), matching the re-encode.
-    const auto glyph_run = [](const pdf::Font &font, const std::string &codes) {
-      std::string new_codes;
-      for (const std::uint32_t code : font.codes(codes)) {
-        util::string::append_c32(
-            font::pua_code_point(font.glyph_for_code(code)), new_codes);
-      }
-      return new_codes;
-    };
-
-    // Appends `prefix:value` (interned) as a class token on `classes`.
     const auto add_class = [&styles](std::string &classes,
                                      const std::string &prefix,
                                      std::string declaration) {
       classes += ' ';
       classes += styles.intern(prefix, std::move(declaration));
     };
-    const auto px_decl = [](const char *property, const double value) {
-      std::ostringstream s;
-      s << property << ':' << value << "px";
-      return std::move(s).str();
-    };
 
-    // A run's baseline-to-top distance, in em, so it can be placed by its
-    // baseline (PDF's text origin) rather than by its CSS box top — which is
-    // one ascent above the baseline. Prefers the FontDescriptor `/Ascent`, then
-    // the embedded font's bounding box, then a typical 0.8 em. Clamped to a
-    // sane band so a degenerate metric cannot fling a run off the page. Paired
-    // with `line-height:1` on the spans, the box top sits ~one ascent above the
-    // baseline (exact when ascent + descent == 1 em, near so otherwise), so
-    // subtracting the ascent lands the baseline on the PDF origin.
-    const auto ascent_em = [](const pdf::TextElement &text) -> double {
-      double em = 0.8;
-      if (text.font != nullptr && text.font->descriptor_ascent) {
-        em = *text.font->descriptor_ascent;
-      } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
-        const std::uint16_t units = text.font->embedded_font->units_per_em();
-        if (units != 0) {
-          em = static_cast<double>(
-                   text.font->embedded_font->bounding_box().y_max) /
-               units;
-        }
+    // Strips a trailing `wN` (width) class token, if present, so a merged
+    // selection run's width can be re-declared. Assumes at most one `w`
+    // class is ever attached to a selection run.
+    const auto strip_width_class = [](std::string &classes) {
+      const std::size_t pos = classes.rfind(' ');
+      if (pos == std::string::npos) {
+        return;
       }
-      return std::clamp(em, 0.5, 1.2);
+      const std::string_view tail(classes.data() + pos + 1,
+                                  classes.size() - pos - 1);
+      if (tail.size() > 1 && tail.front() == 'w' &&
+          std::all_of(tail.begin() + 1, tail.end(),
+                      [](unsigned char c) { return std::isdigit(c) != 0; })) {
+        classes.resize(pos);
+      }
     };
 
     for (pdf::Page *page : pages) {
-      const pdf::Array &page_box = page->media_box.as_array();
-      const double box_x0 = page_box[0].as_real();
-      const double box_y0 = page_box[1].as_real();
-      const double width = page_box[2].as_real() - box_x0;
-      const double height = page_box[3].as_real() - box_y0;
+      const PageBox pb = begin_page(*page, add_class);
+      const double width = pb.width;
+      const double height = pb.height;
+      const util::math::Transform2D &to_box = pb.to_box;
 
-      PageOut &page_out = pages_out.emplace_back();
-      page_out.classes = "p";
+      DualPageOut &page_out = pages_out.emplace_back();
+      page_out.classes = pb.classes;
       page_out.width = width;
       page_out.height = height;
-      {
-        std::ostringstream w;
-        w << "width:" << width * pt_to_in << "in";
-        add_class(page_out.classes, "x", std::move(w).str());
-        std::ostringstream h;
-        h << "height:" << height * pt_to_in << "in";
-        add_class(page_out.classes, "y", std::move(h).str());
-      }
 
       std::string stream;
-      for (const auto &content_reference : page->contents_reference) {
-        // streams of one page join at token boundaries (ISO 32000-1 7.7.3.3)
-        stream += parser.read_decoded_stream(content_reference);
+      for (const auto &ref : page->contents_reference) {
+        stream += parser.read_decoded_stream(ref);
         stream += '\n';
       }
-
-      // Map PDF user space (origin at the MediaBox corner, y up) to the page
-      // box in CSS pixels (origin top-left, y down). `flip_glyph` un-mirrors
-      // the glyphs so text stays upright after the page flip.
-      constexpr util::math::Transform2D flip_glyph =
-          util::math::Transform2D::scaling(1, -1);
-      const util::math::Transform2D to_box =
-          util::math::Transform2D::translation(-box_x0, -box_y0) *
-          util::math::Transform2D::scaling_translation(1, -1, 0, height);
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
 
+      // Visual layer state: open line block.
+      /// index of open VisLineOut in vis_items, -1 = none
+      std::int32_t vis_cur_line = -1;
+      double vis_prev_end = 0;
+      double vis_prev_baseline = 0;
+      double vis_prev_font_pt = 0;
+      bool vis_prev_was_matrix = false;
+      const auto vis_close_line = [&] { vis_cur_line = -1; };
+
+      // Selection layer state: in-content-stream reading-order grouping.
+      bool sel_have_prev = false;
+      double sel_prev_baseline = 0;
+      double sel_prev_end = 0;
+      /// previous run's advance height, for the line-break test (see
+      /// starts_new_line)
+      double sel_prev_font_pt = 0;
+      bool sel_prev_ends_space = false;
+      bool sel_prev_was_matrix = false;
+      std::int32_t sel_cur_line = -1;
+      /// `ox` of the open `.sr` run's start, for recomputing its width on
+      /// merge.
+      double sel_cur_run_start_ox = 0;
+      /// font-size of the previous element, for the trailing space that closes
+      /// its line.
+      double sel_prev_font_size_pt = 0;
+
       for (const pdf::PageElement &element :
            pdf::extract_page(stream, *page->resources, *m_logger)) {
-        // A painted path: serialize its subpaths to an SVG `<path>` fragment in
-        // the page viewBox (fill and/or stroke), under any active clip. A
-        // shading- or tiling-pattern fill is painted through a paint server
-        // (gradient/`<pattern>`) instead of a colour.
-        if (const auto *path = std::get_if<pdf::PathElement>(&element);
-            path != nullptr) {
-          const std::string clip_id = clips.register_clip(path->clip, to_box);
-          std::string fill_url_id;
-          if (path->fill_shading != nullptr) {
-            fill_url_id = gradients.register_gradient(
-                *path->fill_shading, path->shading_transform * to_box);
-          } else if (path->fill_pattern != nullptr) {
-            fill_url_id = patterns.register_pattern(
-                *path->fill_pattern, path->pattern_transform * to_box,
-                path->fill_color, *m_logger);
-          }
-          std::string fragment =
-              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
-          if (!fragment.empty()) {
-            page_out.items.push_back(PathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        // An `sh` shading flood: a `<rect>` over the page box filled with the
-        // shading's gradient, bounded by the clip in force at `sh` time.
-        if (const auto *shading = std::get_if<pdf::ShadingElement>(&element);
-            shading != nullptr) {
-          if (shading->shading == nullptr) {
-            continue;
-          }
-          const std::string clip_id =
-              clips.register_clip(shading->clip, to_box);
-          const std::string gradient_id = gradients.register_gradient(
-              *shading->shading, shading->transform * to_box);
-          std::string fragment =
-              svg_shading_fragment(gradient_id, clip_id, width, height);
-          if (!fragment.empty()) {
-            page_out.items.push_back(PathOut{std::move(fragment)});
-          }
-          continue;
-        }
-
-        // An image XObject: an `<image>` placed by the CTM, in the page `<svg>`
-        // alongside the paths (so it layers by paint order).
-        if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-          const std::string clip_id = clips.register_clip(image->clip, to_box);
-          std::string fragment = svg_image_fragment(*image, to_box, clip_id);
-          if (!fragment.empty()) {
-            page_out.items.push_back(PathOut{std::move(fragment)});
-          }
+        if (handle_graphic_element(
+                element, to_box, width, height, clips, gradients, patterns,
+                *m_logger, [&] { vis_close_line(); },
+                [&](std::string frag) {
+                  page_out.vis_items.push_back(PathOut{std::move(frag)});
+                })) {
           continue;
         }
 
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
-        // TODO(clip text): the active clip is not applied to text. Paths carry
-        // a clip snapshot realized as an SVG `<clipPath>`, but text is emitted
-        // as HTML spans that the clipPath cannot reach, so clipped text paints
-        // outside its region. See STAGE4_PLAN.md "4.3 — Clipping" follow-up.
-        // The font index is non-zero when an embedded font lets us render
-        // the actual glyphs; 0 falls through to the legacy path.
+        // TODO(clip text): clip not applied to text; see STAGE4_PLAN.md.
         const std::uint32_t font =
             text.font != nullptr ? font_family(text.font) : 0;
-        // Without an embedded font, an empty `text` has nothing to show: a code
-        // with no recoverable Unicode (`no_unicode`) or an `/ActualText`-
-        // suppressed segment. With one, the glyphs still render (PUA layer).
         if (text.text.empty() && font == 0) {
           continue;
         }
 
-        const util::math::Transform2D m = flip_glyph * text.transform * to_box;
+        const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
+                    font_pt, font_size_pt] = run_geometry(text, to_box);
+        const std::string color_suffix = color_class(text, invisible, styles);
 
-        // Tr 3 (invisible) and Tr 7 (clip-only) paint nothing; keep them
-        // selectable via the transparent `.i` class.
-        const bool invisible =
-            text.rendering_mode == pdf::TextRenderingMode::invisible ||
-            text.rendering_mode == pdf::TextRenderingMode::clip;
-
-        // The run's visible paint colour, folded onto the visible span as an
-        // interned colour class — but only when it is not the default black, so
-        // the overwhelmingly common black run adds nothing. The per-font
-        // `.fvN`/`.gvN` classes declare `color:#000`; this class is emitted
-        // after them in <head> (equal specificity), so it overrides. Invisible
-        // runs (Tr 3/7) stay transparent via `.i`, so they take no colour
-        // class. The fill modes paint with the non-stroking colour, the
-        // stroke-only modes (Tr 1/5) with the stroking colour.
-        std::string color_suffix;
+        // --- Visual layer ---------------------------------------------------
+        // Invisible runs (Tr 3/7) paint nothing; omit them from the visual
+        // layer. They contribute only to the selection layer.
         if (!invisible) {
-          const pdf::GraphicsState::Color &paint =
-              (text.rendering_mode == pdf::TextRenderingMode::stroke ||
-               text.rendering_mode == pdf::TextRenderingMode::stroke_clip)
-                  ? text.stroke_color
-                  : text.fill_color;
-          if (std::string css = device_color_to_css(paint);
-              css != "rgb(0,0,0)") {
-            color_suffix = ' ' + styles.intern("k", "color:" + std::move(css));
-          }
-        }
-
-        // Placement and spacing are shared by both layers of a run; build them
-        // once on `base`.
-        std::string base = "t";
-
-        // Place by the baseline: PDF's text origin (`m.e`, `m.f`) is the glyph
-        // baseline, but a CSS span anchors its box top, which sits one ascent
-        // above the baseline. Shift the origin up by the ascent along the run's
-        // local y axis so the baseline lands on the PDF origin.
-        const double asc = ascent_em(text);
-
-        // Tc/Tw are absolute text-space lengths (not scaled by the font size).
-        // One text-space unit is `scale * pt_to_px` CSS px, where `scale` is
-        // the linear factor we apply to the glyphs: folded into `font-size` in
-        // the uniform branch, carried by the CSS matrix in the general branch
-        // (so spacing there is expressed pre-transform, scale == 1).
-        double scale;
-        if (m.b == 0 && m.c == 0 && m.a == m.d) {
-          // Upright uniform scale: fold the scale into the font size and place
-          // the origin with left/top, so the (otherwise near-universal) matrix
-          // is dropped. The ascent shift is purely vertical here (local y maps
-          // to box y, scaled by `m.a`).
-          add_class(base, "l", px_decl("left", round2(m.e * pt_to_px)));
-          add_class(
-              base, "t",
-              px_decl("top", round2((m.f - asc * m.a * text.size) * pt_to_px)));
-          add_class(base, "f",
-                    px_decl("font-size", round2(m.a * text.size * pt_to_px)));
-          scale = m.a;
-        } else {
-          // The ascent shift is `asc` em down the local y axis, whose direction
-          // in the box is the matrix's (c, d) column; subtract it from the
-          // translation so the baseline, not the box top, lands on the origin.
-          const double ascent_px = asc * text.size * pt_to_px;
-          std::ostringstream tm;
-          tm << "transform:matrix(" << m.a << "," << m.b << "," << m.c << ","
-             << m.d << "," << round2(m.e * pt_to_px - m.c * ascent_px) << ","
-             << round2(m.f * pt_to_px - m.d * ascent_px) << ")";
-          add_class(base, "m", std::move(tm).str());
-          add_class(base, "f",
-                    px_decl("font-size", round2(text.size * pt_to_px)));
-          scale = 1;
-        }
-
-        // PDF char/word spacing (Tc/Tw) translate directly to CSS. TJ kerning
-        // needs no expression here: `extract_text` emits a separate segment per
-        // TJ string and folds the adjustment into the following segment's
-        // `transform`, so a segment only carries its constant spacing. Emitted
-        // only when non-zero to keep the (overwhelmingly common) unspaced span
-        // small.
-        //
-        // CSS letter-/word-spacing key on the *rendered* string's character and
-        // space boundaries, but PDF Tc/Tw advance the text matrix per raw code
-        // (Tw only on a simple font's single-byte 0x20; ISO 32000-1 9.3.3). The
-        // two coincide only when the rendered run is 1:1 with the codes. The
-        // glyph layer always is (one PUA code point per code, `font != 0`); the
-        // Unicode text layer is not when a /ToUnicode CMap expands a code into
-        // several characters (ligatures), /ActualText substitutes text, or a
-        // space was inferred — there CSS would insert gaps the segment advances
-        // never accounted for, splitting glyphs and drifting the next
-        // absolutely-positioned segment. Gate emission on that correspondence;
-        // word spacing additionally never applies to a composite font.
-        const bool spacing_one_to_one =
-            font != 0 ||
-            (text.font != nullptr &&
-             util::string::utf8_length(text.text) == text.advances.size());
-        if (text.char_spacing != 0 && spacing_one_to_one) {
-          add_class(base, "s",
-                    px_decl("letter-spacing",
-                            round2(text.char_spacing * scale * pt_to_px)));
-        }
-        if (text.word_spacing != 0 && spacing_one_to_one &&
-            !(text.font != nullptr && text.font->composite)) {
-          add_class(base, "w",
-                    px_decl("word-spacing",
-                            round2(text.word_spacing * scale * pt_to_px)));
-        }
-
-        // A run collapses to a single span — selectable *and* visible, the real
-        // Unicode rendered directly in the embedded font — when it has an
-        // embedded font, carries text, is 1:1 with its codes (no /ToUnicode
-        // expansion, /ActualText, or inferred space), and every glyph wins a
-        // real-Unicode `cmap` entry. The winner of a scalar is the first
-        // collapse-candidate run (in document order) to use it; processing
-        // order *is* document order, so an earlier run's claim is already
-        // visible and no later run can unseat it — the decision is final here.
-        const bool collapse_candidate =
-            font != 0 && !text.text.empty() && text.font != nullptr &&
-            util::string::utf8_length(text.text) == text.advances.size();
-
-        if (collapse_candidate) {
-          // Stake first-wins real-Unicode -> glyph claims and decide collapse
-          // in one walk: the run collapses iff each code's glyph wins (or
-          // matches) its scalar. Claims are staked for every collapsible scalar
-          // even when the run ends up dual, so later runs see them. The
-          // post-pass only bakes the won scalars into the shared font's `cmap`.
-          std::map<char32_t, std::uint16_t> &won = used_unicode[font - 1];
-          bool collapse = true;
-          auto cp = text.text.begin();
-          for (const std::uint32_t code : text.font->codes(text.codes)) {
-            const char32_t uchar = utf8::unchecked::next(cp);
-            const std::uint16_t glyph = text.font->glyph_for_code(code);
-            if (!collapsible_unicode(uchar)) {
-              collapse = false;
-              continue;
-            }
-            const auto [it, inserted] = won.emplace(uchar, glyph);
-            if (!inserted && it->second != glyph) {
-              collapse = false;
+          // Determine if this run continues the current visual line block.
+          bool new_vis_line =
+              is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
+          double vis_margin_pt = 0;
+          if (!new_vis_line && vis_prev_font_pt > 0) {
+            if (starts_new_line(baseline, vis_prev_baseline, ox, vis_prev_end,
+                                vis_prev_font_pt)) {
+              new_vis_line = true;
+            } else {
+              vis_margin_pt = round2(ox - vis_prev_end);
             }
           }
-          if (collapse) {
-            // One span: the real Unicode rendered in the embedded font, named
-            // by the combined per-font class (black visible / transparent
-            // invisible), selectable either way.
-            std::string classes = std::move(base);
-            classes += ' ';
-            classes += font_class(font, invisible, /*nested=*/false);
-            classes += color_suffix;
-            page_out.items.push_back(
-                SpanOut{std::move(classes), escape_text(text.text), {}, {}});
-          } else {
-            // Dual layer (a glyph lost its scalar to an earlier one): a
-            // transparent selectable Unicode span with the PUA glyph layer
-            // nested inside, the latter folded into the combined `.gvN` /
-            // `.giN` class. The colour rides the visible (nested) layer.
-            page_out.items.push_back(SpanOut{
-                base + " i", escape_text(text.text),
-                font_class(font, invisible, /*nested=*/true) + color_suffix,
-                escape_text(glyph_run(*text.font, text.codes))});
-          }
-        } else if (font != 0) {
-          // The visible glyph layer: PUA code points in the embedded font,
-          // named by the combined per-font class (paint colour + font family).
-          std::string glyph_text =
-              escape_text(glyph_run(*text.font, text.codes));
 
-          if (!text.text.empty()) {
-            // Dual layer: a transparent selectable span carrying the real
-            // Unicode (for copy/search) with the glyph layer nested inside.
-            // The nested child overlays the run origin and inherits the
-            // placement via the combined `.gvN` / `.giN` class.
-            page_out.items.push_back(SpanOut{
-                base + " i", escape_text(text.text),
-                font_class(font, invisible, /*nested=*/true) + color_suffix,
-                std::move(glyph_text)});
+          if (new_vis_line) {
+            // Build the line block's placement classes.
+            std::string line_base = "t";
+            add_position_classes(line_base, add_class, m, is_matrix, ox,
+                                 baseline, asc * text.size);
+            VisLineOut line_out;
+            line_out.classes = std::move(line_base);
+            page_out.vis_items.push_back(std::move(line_out));
+            vis_cur_line = static_cast<int>(page_out.vis_items.size()) - 1;
+          }
+
+          // Build the run's span classes: font-size, font-family+colour,
+          // margin-left (gap from previous run's right edge, or the line
+          // block's new-run offset from its own origin for new-line runs).
+          std::string run_classes = "g"; // user-select:none
+          add_class(run_classes, "f", pt_decl("font-size", font_size_pt));
+          if (font != 0) {
+            run_classes += ' ';
+            run_classes += font_class(font_class_used, font, invisible);
+          }
+          if (vis_margin_pt != 0) {
+            add_class(run_classes, "ml", pt_decl("margin-left", vis_margin_pt));
+          }
+          run_classes += color_suffix;
+
+          // Run text: PUA glyphs for embedded font, or real unicode for
+          // fallback.
+          std::string run_text;
+          if (font != 0) {
+            run_text = escape_text(glyph_run_str(*text.font, text.codes));
           } else {
-            // Display-only run: nothing is extractable (the `no_unicode` case),
-            // so the glyph layer stands alone and carries the placement itself
-            // (`base`), `.g` (unselectable) and the combined paint+font class.
-            std::string glyph_classes = base + " g ";
-            glyph_classes += font_class(font, invisible, /*nested=*/false);
-            glyph_classes += color_suffix;
-            page_out.items.push_back(SpanOut{
-                std::move(glyph_classes), std::move(glyph_text), {}, {}});
+            run_text = escape_text(text.text);
           }
-        } else {
-          // Legacy single-layer path: no embedded font, render the Unicode in a
-          // fallback font.
-          std::string classes = base;
-          if (invisible) {
-            classes += " i";
+
+          if (const double cs_pt = round2(text.char_spacing * scale);
+              cs_pt != 0) {
+            add_class(run_classes, "s", pt_decl("letter-spacing", cs_pt));
           }
-          classes += color_suffix;
-          page_out.items.push_back(
-              SpanOut{std::move(classes), escape_text(text.text), {}, {}});
+          // CSS `word-spacing` only affects real U+0020 separators, so it is
+          // inert on the PUA glyph runs (font != 0, which never emit a literal
+          // space) — apply it solely on the real-unicode fallback path. Skip
+          // composite fonts: PDF Tw applies only to single-byte code 32, as in
+          // the single-layer path.
+          if (font == 0 && !(text.font != nullptr && text.font->composite)) {
+            if (const double ws_pt = round2(text.word_spacing * scale);
+                ws_pt != 0) {
+              add_class(run_classes, "ws", pt_decl("word-spacing", ws_pt));
+            }
+          }
+
+          std::get<VisLineOut>(page_out.vis_items[vis_cur_line])
+              .runs.push_back(
+                  VisRunOut{std::move(run_classes), std::move(run_text)});
+
+          vis_prev_end = ox + extent;
+          vis_prev_baseline = baseline;
+          vis_prev_font_pt = font_pt;
+          vis_prev_was_matrix = is_matrix;
+        }
+
+        // --- Selection layer -----------------------------------------------
+        // Transparent, selectable real-unicode text in content-stream
+        // (reading) order. Each run is an inline-block span with a fixed width
+        // (the PDF advance) and CSS `text-justify:inter-character` so the
+        // browser distributes characters to fill that width without JS. Gaps
+        // between runs on the same baseline are zero-content spacer spans.
+        // Matrix runs get their own single-run line block.
+        if (!text.text.empty()) {
+          const double width_pt = round2(extent);
+          const double gap_pt = std::max(0.0, ox - sel_prev_end);
+          const bool starts_space = text.text.front() == ' ';
+          // `core` is the run text with a leading inferred space stripped
+          // (the gap between runs is covered by the spacer span, not the
+          // run text).
+          std::string core = starts_space ? text.text.substr(1) : text.text;
+
+          bool new_sel_line =
+              !sel_have_prev || is_matrix || sel_prev_was_matrix;
+          bool sel_gap = false;
+          if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
+            new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
+                                           sel_prev_end, sel_prev_font_pt);
+            sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          }
+
+          if (new_sel_line) {
+            // Close previous line with a trailing space if needed. `sg`
+            // (spacer), not `sr` (text run) — it carries no PDF-derived
+            // width, just a lone space.
+            if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
+              std::string space_cls = "sg";
+              add_class(space_cls, "f",
+                        pt_decl("font-size", sel_prev_font_size_pt));
+              page_out.sel_lines[sel_cur_line].runs.push_back(
+                  SelRunOut{std::move(space_cls), " "});
+            }
+            // Build the line block's placement.
+            std::string sel_base = "t";
+            add_position_classes(sel_base, add_class, m, is_matrix, ox,
+                                 baseline, asc * text.size);
+            sel_base += " i"; // transparent
+            page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
+            sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
+            // Emit the run span.
+            if (!core.empty()) {
+              std::string cls = "sr";
+              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              if (width_pt > 0 && !is_matrix) {
+                add_class(cls, "w", pt_decl("width", width_pt));
+              }
+              page_out.sel_lines[sel_cur_line].runs.push_back(
+                  SelRunOut{std::move(cls), escape_markup(std::move(core))});
+              sel_cur_run_start_ox = ox;
+            }
+          } else if (sel_gap || sel_prev_ends_space || starts_space) {
+            // Emit a spacer span for the gap, then the run span.
+            std::vector<SelRunOut> &runs =
+                page_out.sel_lines[sel_cur_line].runs;
+            if (!sel_prev_ends_space && !runs.empty()) {
+              // Spacer: display:inline-block with the gap width.
+              std::string gap_cls = "sg";
+              add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
+              const double rounded_gap = round2(gap_pt);
+              if (rounded_gap > 0) {
+                add_class(gap_cls, "w", pt_decl("width", rounded_gap));
+              }
+              runs.push_back(SelRunOut{std::move(gap_cls), " "});
+            }
+            if (!core.empty()) {
+              std::string cls = "sr";
+              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              if (width_pt > 0 && !is_matrix) {
+                add_class(cls, "w", pt_decl("width", width_pt));
+              }
+              runs.push_back(
+                  SelRunOut{std::move(cls), escape_markup(std::move(core))});
+              sel_cur_run_start_ox = ox;
+            }
+          } else {
+            // Tight continuation on the same baseline — merge into the
+            // previous selection run's text so the browser treats the whole
+            // sequence as one word for double-click and find-in-page. Widen
+            // the run's declared width to the full merged extent (measured
+            // from where that run started) so CSS justify keeps spreading
+            // characters across the true PDF advance instead of the first
+            // sub-run's narrower one.
+            std::vector<SelRunOut> &runs =
+                page_out.sel_lines[sel_cur_line].runs;
+            if (!runs.empty()) {
+              runs.back().text += escape_markup(text.text);
+              if (!is_matrix) {
+                strip_width_class(runs.back().classes);
+                const double merged_width_pt =
+                    round2(ox + extent - sel_cur_run_start_ox);
+                if (merged_width_pt > 0) {
+                  add_class(runs.back().classes, "w",
+                            pt_decl("width", merged_width_pt));
+                }
+              }
+            }
+          }
+
+          sel_prev_baseline = baseline;
+          sel_prev_end = ox + extent;
+          sel_prev_font_pt = font_pt;
+          sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
+          sel_prev_was_matrix = is_matrix;
+          sel_prev_font_size_pt = font_size_pt;
+          sel_have_prev = true;
         }
       }
 
-      // Clip-path, gradient and pattern defs share the page's hidden
-      // `<svg><defs>`.
+      // Selection lines are kept in content-stream order. Re-sorting by
+      // baseline y would order out-of-order single-column content correctly but
+      // interleave multi-column layouts (the stream keeps columns contiguous);
+      // reading order can't be recovered by a scalar sort. Proper page
+      // segmentation (column detection / XY-cut) is the eventual fix.
       page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
     }
 
-    // Post-pass: every page has been scanned, so the per-font used-scalar sets
-    // are complete.
-    //
-    // Re-encode each accepted font with its real-Unicode entries baked into the
-    // `cmap` (the PUA range is kept as a fallback) and emit the `@font-face`
-    // rules in index order, so the output stays deterministic.
+    // Post-pass: re-encode accepted fonts PUA-only.
     for (std::uint32_t i = 0; i < family_count; ++i) {
-      pdf::Font *font = accepted_fonts[i];
-      const std::map<char32_t, std::uint16_t> &extra = used_unicode[i];
-      std::string reencoded;
-      if (auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
-              font->embedded_font)) {
-        font::reencode_to_pua(*sfnt, extra);
-        reencoded = sfnt->write();
-      } else if (auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                     font->embedded_font)) {
-        reencoded = font::cff::wrap_to_otf(*cff, extra);
-      }
-      const std::string url = file_to_url(reencoded, "font/ttf");
-      font_faces += "@font-face{font-family:'odr-f" + std::to_string(i + 1) +
-                    "';src:url(" + url + ");}";
-
-      // The combined per-font classes for this font, only those used. `.fvN` /
-      // `.fnN` carry just the paint colour and font family (placement stays on
-      // the span's own classes); `.gvN` / `.giN` additionally fold in the
-      // nested glyph layer's `.t` placement and `.g` unselectability.
-      const std::string n = std::to_string(i + 1);
-      const std::string family = "font-family:'odr-f" + n + "'";
-      constexpr const char *placement =
-          "position:absolute;left:0;top:0;transform-origin:0 0;"
-          "white-space:pre;line-height:1;user-select:none;";
-      const auto rule = [&](const char *cls, const char *head,
-                            const char *color) {
-        glyph_styles += '.';
-        glyph_styles += cls;
-        glyph_styles += n;
-        glyph_styles += '{';
-        glyph_styles += head;
-        glyph_styles += color;
-        glyph_styles += family;
-        glyph_styles += '}';
-      };
-      if (font_class_used[i][0]) {
-        rule("fv", "", "color:#000;");
-      }
-      if (font_class_used[i][1]) {
-        rule("fn", "", "color:transparent;");
-      }
-      if (font_class_used[i][2]) {
-        rule("gv", placement, "color:#000;");
-      }
-      if (font_class_used[i][3]) {
-        rule("gi", placement, "color:transparent;");
-      }
+      write_font_face(*accepted_fonts[i], i, {}, font_class_used[i], font_faces,
+                      font_styles);
     }
 
-    // Pass 2: write the document, now that the catalog is complete.
-    out.write_begin();
-    out.write_header_begin();
-    out.write_header_charset("UTF-8");
-    out.write_header_target("_blank");
-    out.write_header_title("odr");
-    out.write_header_viewport(
-        "width=device-width,initial-scale=1.0,user-scalable=yes");
-    // Constant per-page and per-glyph styling lives in classes so it is not
-    // repeated inline on every one of the (potentially millions of) spans.
-    out.write_header_style_begin();
-    // Page presentation: a neutral backdrop with each page as a centered white
-    // sheet and a soft drop shadow, mirroring the familiar PDF-viewer look.
-    // This is purely cosmetic chrome around the page box; the
-    // absolutely-positioned spans inside are unaffected (they anchor to the
-    // `.p` box, which keeps `position:relative`).
-    out.out() << "body{margin:0;background:#525659}";
-    out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
-                 "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
-    // `font-kerning:none` + `font-variant-ligatures:none` keep the browser from
-    // applying the embedded font's GPOS/GSUB tables. A collapsed run now emits
-    // real Unicode in that font, so without this a sequence like `fi`/`AV`
-    // could be re-shaped (ligature substitution, kerning) after this code
-    // already fixed the PDF glyph IDs and advances, shifting pixels and run
-    // widths for otherwise 1:1 text. The PUA glyph layer was immune; restore
-    // that here.
-    // `line-height:1` fixes the box top one em-ascent above the baseline so the
-    // baseline shift applied to each run's `top`/matrix (see `ascent_em`) lands
-    // the glyphs on the PDF text origin; the browser's default `normal` leading
-    // would add an unknown offset.
-    out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre;line-height:1;font-kerning:none;"
-                 "font-variant-ligatures:none}";
-    // Invisible text render modes (Tr 3/7): kept in the DOM for selection and
-    // search (OCR-over-scan), but not painted.
-    out.out() << ".i{color:transparent}";
-    // The display-only glyph layer (`no_unicode` runs) is not selectable, so
-    // the PUA code points stay off the clipboard; `.g` pairs with a combined
-    // `.fvN`/`.fnN` paint+font class on those spans.
-    out.out() << ".g{user-select:none}";
-    // Vector graphics: one or more `<svg>` overlays per page, each filling the
-    // page box (viewBox in PDF points). `overflow:hidden` clips each overlay to
-    // the page box, matching a PDF viewer: content drawn outside the MediaBox
-    // (e.g. a background rectangle that bleeds past the left edge) is never
-    // visible, and without this it spills into the centered page's margin.
-    // In-page clip paths are honoured via per-path `clip-path` (the page's
-    // `<clipPath>` defs are emitted in a hidden `<svg>` above).
-    // `preserveAspectRatio:none` keeps the points->box mapping exact.
-    // `pointer-events:none` so a full-page overlay painted after text
-    // (paint order) does not swallow selection/clicks over its transparent
-    // areas — the graphics are decorative, the text layer owns interaction.
-    out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
-                 "overflow:hidden;pointer-events:none}";
-    // Embedded fonts, re-encoded to the PUA and served inline.
-    out.out() << font_faces;
-    // Combined per-font classes (`.fvN`/`.fnN` paint+font, `.gvN`/`.giN` also
-    // placement), so a font-bearing span names one class for its font.
-    out.out() << glyph_styles;
-    // Per-value atomic classes (font sizes, offsets, transforms, ...).
-    styles.write_rules(out.out());
-    out.write_header_style_end();
-    out.write_header_end();
+    // Write HTML.
+    write_header_common(out, font_faces, font_styles, styles, [&] {
+      // Visual layer glyph spans: not selectable (selection rides the `.sel`
+      // layer).
+      out.out() << ".g{user-select:none}";
+      // Fallback font for the selection layer: `size-adjust` shrinks a local
+      // system font so its natural width lands near the PDF-derived `.sr`/`.sg`
+      // widths, leaving a small gap for `text-justify:inter-character` to fill.
+      // CSS justify only ever *adds* spacing, so undershooting is free (the
+      // text just spreads further; the layer is invisible) while overshooting
+      // overflows and is clipped by `overflow:hidden` — hence
+      // `pdf_dual_layer_fallback_font_size_adjust` (config, 0-1) is
+      // deliberately low. The vertical rescale is harmless: `.sr`/`.sg` fix
+      // their box height via `line-height:1` and baseline-align via
+      // `overflow:hidden` (below), never consulting the font's ascent/descent.
+      // If no `pdf_dual_layer_fallback_fonts` resolve locally the rule is
+      // skipped and
+      // `.i` falls through to plain `sans-serif`.
+      if (const std::vector<std::string> &fonts =
+              config().pdf_dual_layer_fallback_fonts;
+          !fonts.empty()) {
+        std::ostringstream ff;
+        ff << "@font-face{font-family:sf;src:";
+        for (std::size_t i = 0; i < fonts.size(); ++i) {
+          if (i != 0) {
+            ff << ',';
+          }
+          ff << "local(\"";
+          for (const char c : fonts[i]) {
+            if (c == '"' || c == '\\') {
+              ff << '\\';
+            }
+            ff << c;
+          }
+          ff << "\")";
+        }
+        const double adjust_pct =
+            round2(std::clamp(config().pdf_dual_layer_fallback_font_size_adjust,
+                              0.0, 1.0) *
+                   100.0);
+        ff << ";size-adjust:" << adjust_pct << "%}";
+        out.out() << std::move(ff).str();
+      }
+      // Transparent text for the selection layer line blocks.
+      out.out() << ".i{color:transparent;font-family:sf,sans-serif}";
+      // Selection-layer run span: inline-block with CSS justify so the browser
+      // spreads characters to fill the declared width (the PDF advance) without
+      // JS; `overflow:hidden` clips a wider system font. `.t`'s inherited `pre`
+      // (not `nowrap`) blocks wrapping while preserving a run's own
+      // leading/trailing space, which is real PDF content.
+      out.out() << ".sr{display:inline-block;text-align:justify;"
+                   "text-align-last:justify;text-justify:inter-character;"
+                   "overflow:hidden}";
+      // Selection-layer gap spacer: inline-block, no text, just width.
+      // `overflow:hidden` matches `.sr`: an inline-block baseline-aligns to its
+      // bottom margin edge only when overflow isn't visible, so without it the
+      // spacer and run boxes align differently and the spacer shifts in y.
+      out.out() << ".sg{display:inline-block;overflow:hidden}";
+    });
 
-    const auto write_span = [&out](const SpanOut &span) {
-      // Inline so the whole run (and its nested glyph layer) stays on one line:
-      // smaller output and a more legible diff than the open/text/close split,
-      // while each run still gets its own line under the page div.
+    const auto write_vis_line = [&](const VisLineOut &line) {
       out.write_element_begin(
-          "span",
-          HtmlElementOptions().set_inline(true).set_class(span.classes));
-      out.write_raw(span.text);
-      if (!span.glyph_classes.empty()) {
-        out.write_element_begin("span",
-                                HtmlElementOptions().set_inline(true).set_class(
-                                    span.glyph_classes));
-        out.write_raw(span.glyph_text);
+          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
+      for (const VisRunOut &run : line.runs) {
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(run.classes));
+        out.write_raw(run.text);
         out.write_element_end("span");
       }
-      out.write_element_end("span");
+      out.write_element_end("div");
+    };
+
+    const auto write_sel_line = [&](const SelLineOut &line) {
+      out.write_element_begin(
+          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
+      for (const SelRunOut &run : line.runs) {
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(run.classes));
+        if (!run.text.empty()) {
+          out.write_raw(run.text);
+        }
+        out.write_element_end("span");
+      }
+      out.write_element_end("div");
     };
 
     out.write_body_begin();
-    for (const PageOut &page : pages_out) {
+    for (const DualPageOut &page : pages_out) {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class(page.classes));
-      // Clip-path and gradient defs for this page, in a hidden zero-size
-      // `<svg>`. They are referenced by id from the page's fragments;
-      // `clipPathUnits`/`gradientUnits` are `userSpaceOnUse`, so the geometry
-      // is read in the user space of the referencing element (the page
-      // viewBox), not this `<svg>`.
-      if (!page.clip_defs.empty()) {
-        out.write_raw(
-            "<svg width=\"0\" height=\"0\" style=\"position:absolute\">"
-            "<defs>");
-        out.write_raw(page.clip_defs);
-        out.write_raw("</defs></svg>");
+
+      // Visual layer: paint-order graphics and unselectable glyphs.
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class("vis").set_extra(
+                                  R"(aria-hidden="true")"));
+      write_page_items(out, page.clip_defs, page.vis_items, page.width,
+                       page.height, write_vis_line);
+      out.write_element_end("div"); // .vis
+
+      // Selection layer: transparent, selectable Unicode in reading order.
+      out.write_element_begin("div", HtmlElementOptions().set_class("sel"));
+      for (const SelLineOut &line : page.sel_lines) {
+        write_sel_line(line);
       }
-      // Walk the page's elements in paint order, coalescing contiguous paths
-      // into a single `<svg>` so spans and vector graphics layer by DOM order.
-      bool svg_open = false;
-      const auto close_svg = [&] {
-        if (svg_open) {
-          out.write_raw("</svg>");
-          svg_open = false;
+      out.write_element_end("div"); // .sel
+
+      out.write_element_end("div"); // .p
+    }
+    out.write_body_end();
+    out.write_end();
+
+    return resources;
+  }
+
+  // =========================================================================
+  // SINGLE-LAYER MODE
+  // =========================================================================
+  //
+  // One combined text layer per page (paint order). Text runs are grouped into
+  // line blocks (`<div class="t ...">`) in paint order; individual runs flow
+  // inline within the block, each nudged by a `margin-left` (the gen-time gap
+  // from the previous run's right edge, matching the embedded font's advance
+  // exactly when the font's `hmtx` matches the PDF `/Widths`).
+  //
+  // Unicode mapping uses frequency analysis: a pre-pass over all pages counts
+  // (uchar, glyph) co-occurrences per font, then the post-pass picks the
+  // most-frequent glyph for each uchar as the cmap entry. This ensures the
+  // common case wins instead of an arbitrary first-come-first-serve order.
+  //
+  // Clean runs (all (uchar, glyph) pairs match the frequency winner) render
+  // the real Unicode directly in the embedded font — natively findable and
+  // selectable. Unclean visible runs paint their glyphs via
+  // `::before{content:attr(data-g)}` CSS generated content (kept out of the
+  // DOM text stream so they never break find mid-word), with a zero-width
+  // `display:inline-block; overflow:hidden` overlay carrying the real Unicode
+  // alongside. No-unicode runs show only the glyph. Invisible (Tr 3/7) and
+  // fallback (no embedded font) runs render the real Unicode as ordinary text.
+
+  struct SingleRunOut {
+    std::string margin;     ///< "" or a `margin-left` class
+    std::string color;      ///< "" or a colour class name (no leading space)
+    std::string text;       ///< real Unicode (HTML-escaped), may be empty
+    std::string glyph_data; ///< PUA glyph string (non-empty → unclean)
+    bool lead_space{false}; ///< clean run: emit a selectable space before
+                            ///< `text` (a recovered inferred word break)
+    std::string lead_space_width; ///< "" (zero-width `.ov`) or a width class:
+                                  ///< the pdf2htmlEX-style width-bearing space
+                                  ///< that also carries the gap (no run margin)
+  };
+  struct SingleLineOut {
+    std::string classes;    ///< "t lN tN [mN] [fvN|fnN] [iN]..."
+    std::string font_class; ///< per-font family+colour class on the block
+    std::vector<SingleRunOut> runs;
+  };
+  struct SinglePathOut {
+    std::string svg;
+  };
+  using SingleItem = std::variant<SingleLineOut, SinglePathOut>;
+
+  struct SinglePageOut {
+    std::string classes;
+    double width{0};
+    double height{0};
+    std::vector<SingleItem> items;
+    std::string clip_defs;
+  };
+
+  HtmlResources write_document_single_layer(HtmlWriter &out) const {
+    HtmlResources resources;
+
+    const auto &pdf_file =
+        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
+    pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
+    const std::unique_ptr<pdf::Document> document = parser.parse_document();
+    const std::vector<pdf::Page *> pages = document->collect_pages();
+
+    // ---- Font registration ------------------------------------------------
+    // A real-Unicode scalar gets a cmap entry only inside the BMP and outside
+    // the PUA (`U+E000..U+F8FF`), so glyph-deterministic PUA code points are
+    // never shadowed.
+    const auto collapsible_unicode = [](const char32_t c) {
+      return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
+    };
+
+    // A leading inferred space (space inference) carries no character code or
+    // advance, so the "collapsible" 1:1 alignment is between the codes and the
+    // run text *after* that space. These helpers view the run text past it: the
+    // core character count (to test 1:1 against `advances`) and the byte offset
+    // where the codes begin (to walk `text` alongside `font->codes`).
+    const auto core_char_count = [](const pdf::TextElement &t) {
+      return util::string::utf8_length(t.text) -
+             (t.leading_space_inferred ? 1u : 0u);
+    };
+    const auto core_text_begin = [](const pdf::TextElement &t) {
+      auto cp = t.text.begin();
+      if (t.leading_space_inferred) {
+        utf8::unchecked::next(cp); // skip the one-byte U+0020
+      }
+      return cp;
+    };
+
+    std::uint32_t family_count = 0;
+    std::string font_faces;
+    std::string font_styles; // ".fvN{...}" / ".fnN{...}"
+    std::vector<pdf::Font *> accepted_fonts;
+    // Per-font, per-uchar, per-glyph occurrence count (pre-pass).
+    // Indexed by font_index - 1.
+    std::vector<std::map<char32_t, std::map<std::uint16_t, std::uint32_t>>>
+        glyph_freq;
+    // Per-font winning uchar→glyph mapping (derived from glyph_freq).
+    std::vector<std::map<char32_t, std::uint16_t>> used_unicode;
+    // Which per-font classes are used: [0]=fv (visible), [1]=fn (invisible).
+    std::vector<std::array<bool, 2>> font_class_used;
+    std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
+
+    const auto font_family = [&](pdf::Font *font) {
+      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
+        accepted_fonts.push_back(font);
+        glyph_freq.emplace_back();
+        used_unicode.emplace_back();
+        font_class_used.push_back({false, false});
+      });
+    };
+
+    AtomicStyles styles;
+    const auto add_class = [&styles](std::string &classes,
+                                     const std::string &prefix,
+                                     std::string declaration) {
+      classes += ' ';
+      classes += styles.intern(prefix, std::move(declaration));
+    };
+
+    // Build the page streams once (reused for both the pre-pass and main pass).
+    std::vector<std::string> page_streams;
+    page_streams.reserve(pages.size());
+    for (pdf::Page *page : pages) {
+      std::string stream;
+      for (const auto &ref : page->contents_reference) {
+        stream += parser.read_decoded_stream(ref);
+        stream += '\n';
+      }
+      page_streams.push_back(std::move(stream));
+    }
+
+    // ---- Pre-pass: frequency analysis ------------------------------------
+    // Count (uchar, glyph) co-occurrences per font over all pages. The main
+    // pass then uses the frequency winner for each uchar instead of first-come-
+    // first-serve, so the most common glyph shape wins its cmap entry.
+    // This re-runs `extract_page` on every page (the main pass parses each a
+    // second time) — a deliberate tradeoff: re-parsing the already-decoded
+    // stream is cheap next to buffering every page's element list in memory.
+    for (std::size_t pi = 0; pi < pages.size(); ++pi) {
+      const pdf::Page &page = *pages[pi];
+      for (const pdf::PageElement &element :
+           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+        const auto *text = std::get_if<pdf::TextElement>(&element);
+        if (text == nullptr || text->text.empty() || text->font == nullptr) {
+          continue;
         }
-      };
-      for (const PageItem &item : page.items) {
-        if (const auto *path = std::get_if<PathOut>(&item)) {
-          if (!svg_open) {
-            std::ostringstream open;
-            open << "<svg class=\"s\" viewBox=\"0 0 " << round2(page.width)
-                 << ' ' << round2(page.height)
-                 << "\" preserveAspectRatio=\"none\">";
-            out.write_raw(std::move(open).str());
-            svg_open = true;
+        const std::uint32_t font = font_family(text->font);
+        if (font == 0) {
+          continue;
+        }
+        // Only collapsible-candidate runs contribute to frequency counts. A
+        // leading inferred space is skipped so a run carrying one still votes.
+        if (core_char_count(*text) != text->advances.size()) {
+          continue;
+        }
+        auto cp = core_text_begin(*text);
+        for (const std::uint32_t code : text->font->codes(text->codes)) {
+          const char32_t uchar = utf8::unchecked::next(cp);
+          if (!collapsible_unicode(uchar)) {
+            continue;
           }
-          out.write_raw(path->svg);
-        } else {
-          close_svg();
-          write_span(std::get<SpanOut>(item));
+          const std::uint16_t glyph = text->font->glyph_for_code(code);
+          ++glyph_freq[font - 1][uchar][glyph];
         }
       }
-      close_svg();
+    }
+
+    // Compute the frequency winner for each (font, uchar): the glyph with the
+    // highest count becomes the cmap entry. Ties broken by lower glyph id.
+    for (std::uint32_t fi = 0; fi < family_count; ++fi) {
+      for (const auto &[uchar, counts] : glyph_freq[fi]) {
+        std::uint16_t best_glyph = 0;
+        std::uint32_t best_count = 0;
+        for (const auto &[glyph, count] : counts) {
+          if (count > best_count ||
+              (count == best_count && glyph < best_glyph)) {
+            best_glyph = glyph;
+            best_count = count;
+          }
+        }
+        used_unicode[fi][uchar] = best_glyph;
+      }
+    }
+
+    // ---- Main pass (pass 1): build page structures -----------------------
+    std::vector<SinglePageOut> pages_out;
+    pages_out.reserve(pages.size());
+
+    for (std::size_t pi = 0; pi < pages.size(); ++pi) {
+      const pdf::Page &page = *pages[pi];
+      const PageBox pb = begin_page(page, add_class);
+      const double width = pb.width;
+      const double height = pb.height;
+      const util::math::Transform2D &to_box = pb.to_box;
+
+      SinglePageOut &page_out = pages_out.emplace_back();
+      page_out.classes = pb.classes;
+      page_out.width = width;
+      page_out.height = height;
+
+      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
+      GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
+      PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
+
+      std::int32_t cur_line = -1;
+      std::string cur_flow_key;
+      bool prev_was_matrix = false;
+      double prev_end = 0;
+      double prev_baseline = 0;
+      double prev_font_pt = 0;
+      const auto close_line = [&] { cur_line = -1; };
+
+      for (const pdf::PageElement &element :
+           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+        if (handle_graphic_element(
+                element, to_box, width, height, clips, gradients, patterns,
+                *m_logger, [&] { close_line(); },
+                [&](std::string frag) {
+                  page_out.items.push_back(SinglePathOut{std::move(frag)});
+                })) {
+          continue;
+        }
+
+        const pdf::TextElement &text = std::get<pdf::TextElement>(element);
+        // TODO(clip text): clip not applied to text; see STAGE4_PLAN.md.
+        const std::uint32_t font =
+            text.font != nullptr ? font_family(text.font) : 0;
+        if (text.text.empty() && font == 0) {
+          continue;
+        }
+
+        const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
+                    font_pt, font_size_pt] = run_geometry(text, to_box);
+        const double cs_pt = round2(text.char_spacing * scale);
+        const double ws_pt = round2(text.word_spacing * scale);
+        const std::string color_suffix = color_class(text, invisible, styles);
+
+        // ---- Run payload ------------------------------------------------
+        // Decide whether this is a clean collapse (real unicode renders
+        // directly via the frequency-winner cmap entries) or unclean (glyph
+        // painted via generated content, unicode as overlay).
+        SingleRunOut run;
+        // `color_suffix` carries a leading space for the dual-layer paths that
+        // concatenate it onto a class string; the single-layer run stores just
+        // the class name.
+        run.color =
+            color_suffix.empty() ? std::string() : color_suffix.substr(1);
+
+        if (font == 0 || invisible) {
+          // Fallback / invisible: render real unicode directly.
+          run.text = escape_markup(text.text);
+        } else {
+          // Check collapse: 1:1 codes↔core-text and every (uchar, glyph)
+          // matches the frequency winner. A leading inferred space is metadata,
+          // not a coded char, so it is excluded from the alignment (otherwise a
+          // recovered word break would force the whole run onto the PUA path).
+          // `font != 0` here already implies `text.font != nullptr`.
+          bool collapse = core_char_count(text) > 0 &&
+                          core_char_count(text) == text.advances.size();
+          if (collapse) {
+            const std::map<char32_t, std::uint16_t> &won =
+                used_unicode[font - 1];
+            auto cp = core_text_begin(text);
+            for (const std::uint32_t code : text.font->codes(text.codes)) {
+              const char32_t uchar = utf8::unchecked::next(cp);
+              const std::uint16_t glyph = text.font->glyph_for_code(code);
+              const auto it = won.find(uchar);
+              if (!collapsible_unicode(uchar) || it == won.end() ||
+                  it->second != glyph) {
+                collapse = false;
+                break;
+              }
+            }
+          }
+          if (collapse) {
+            // Real Unicode renders directly via the cmap. Any leading inferred
+            // space becomes a dedicated selectable space span (`lead_space`),
+            // never a literal space in `text`, so `white-space:pre` cannot
+            // shift the glyphs right of their placement origin. When the run
+            // continues its line over a positive gap the span carries that gap
+            // as its width (pdf2htmlEX's model: one real space that is both the
+            // copyable character and the visible advance); otherwise it stays
+            // zero-width. See the `.sp`/`.ov` split in the main pass.
+            run.lead_space = text.leading_space_inferred;
+            run.text = escape_markup(
+                std::string(core_text_begin(text), text.text.end()));
+          } else {
+            run.glyph_data = glyph_run_str(*text.font, text.codes);
+            run.text = escape_markup(text.text); // overlay (empty=no_unicode)
+          }
+        }
+        if (run.text.empty() && run.glyph_data.empty()) {
+          continue; // invisible no_unicode
+        }
+
+        // ---- Flow grouping -----------------------------------------------
+        std::ostringstream fk;
+        fk << font << '|' << invisible << '|' << font_size_pt << '|' << cs_pt
+           << '|' << ws_pt;
+        const std::string flow_key = std::move(fk).str();
+        bool new_line = is_matrix || prev_was_matrix || cur_line < 0 ||
+                        flow_key != cur_flow_key;
+        double margin_pt = 0;
+        if (!new_line && prev_font_pt > 0) {
+          if (starts_new_line(baseline, prev_baseline, ox, prev_end,
+                              prev_font_pt)) {
+            new_line = true;
+          } else {
+            margin_pt = round2(ox - prev_end);
+          }
+        }
+
+        if (new_line) {
+          std::string base = "t";
+          add_position_classes(base, add_class, m, is_matrix, ox, baseline,
+                               asc * text.size);
+          add_class(base, "f", pt_decl("font-size", font_size_pt));
+          const bool spacing_one_to_one =
+              font != 0 ||
+              (text.font != nullptr &&
+               util::string::utf8_length(text.text) == text.advances.size());
+          if (text.char_spacing != 0 && spacing_one_to_one) {
+            add_class(base, "s", pt_decl("letter-spacing", cs_pt));
+          }
+          if (text.word_spacing != 0 && spacing_one_to_one &&
+              !(text.font != nullptr && text.font->composite)) {
+            // `ws` = word-spacing everywhere (`w` is width in the dual layer).
+            add_class(base, "ws", pt_decl("word-spacing", ws_pt));
+          }
+          if (font == 0 && invisible) {
+            base += " i";
+          }
+
+          SingleLineOut line;
+          line.classes = std::move(base);
+          if (font != 0) {
+            line.font_class = font_class(font_class_used, font, invisible);
+          }
+          line.runs.push_back(std::move(run));
+          page_out.items.push_back(std::move(line));
+          cur_line = static_cast<int>(page_out.items.size()) - 1;
+          cur_flow_key = flow_key;
+        } else {
+          if (run.lead_space && margin_pt > 0) {
+            // Recovered word break over a positive gap: fold the advance into
+            // the selectable space span (pdf2htmlEX-style width-bearing space)
+            // rather than a zero-width `.ov` plus a `margin-left` on the run.
+            run.lead_space_width =
+                styles.intern("w", pt_decl("width", margin_pt));
+          } else if (margin_pt != 0) {
+            run.margin = styles.intern("ml", pt_decl("margin-left", margin_pt));
+          }
+          std::get<SingleLineOut>(page_out.items[cur_line])
+              .runs.push_back(std::move(run));
+        }
+
+        prev_end = ox + extent;
+        prev_baseline = baseline;
+        prev_font_pt = font_pt;
+        prev_was_matrix = is_matrix;
+      }
+
+      page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
+    }
+
+    // ---- Post-pass: re-encode fonts with frequency-winner cmap entries ---
+    for (std::uint32_t i = 0; i < family_count; ++i) {
+      write_font_face(*accepted_fonts[i], i, used_unicode[i],
+                      font_class_used[i], font_faces, font_styles);
+    }
+
+    // ---- Pass 2: write HTML ---------------------------------------------
+    write_header_common(out, font_faces, font_styles, styles, [&] {
+      // Invisible text render modes (Tr 3/7).
+      out.out() << ".i{color:transparent}";
+      // Unclean glyphs painted via CSS generated content (`data-g` attr), kept
+      // out of the DOM text stream so they never break find/double-click.
+      out.out() << ".gl::before{content:attr(data-g)}";
+      // Zero-width inline-block overlay carrying the real Unicode of an unclean
+      // run: invisible, zero-width, but still found/selected in reading order.
+      // `inline-block` lets `width:0` apply (a regular inline box ignores it);
+      // `overflow:hidden` clips the invisible text to zero width.
+      out.out() << ".ov{display:inline-block;width:0;overflow:hidden;"
+                   "color:transparent;vertical-align:baseline}";
+      // Width-bearing selectable space for a recovered word break (pdf2htmlEX's
+      // model): a real `" "` inside an inline-block sized to the gap by a `wN`
+      // class, so the space is markable/copyable *and* carries the advance
+      // (no `margin-left` on the following run). No `overflow:hidden`: it would
+      // not clip the space glyph (transparent, and the declared width already
+      // fixes the advance) but *would* move the inline-block's baseline to its
+      // bottom margin edge (CSS quirk when overflow != visible), lifting the
+      // space's selection box off the text baseline so it highlights at the
+      // wrong height. `vertical-align:baseline` on a `visible` box keeps the
+      // space aligned with the neighbouring glyphs.
+      out.out() << ".sp{display:inline-block;"
+                   "color:transparent;vertical-align:baseline}";
+    });
+
+    // Helper: derive a run's leading-span class from `head` prefix plus its
+    // optional margin-left and colour override.
+    const auto run_class = [](const SingleRunOut &run, const char *head) {
+      std::string cls = head;
+      const auto add = [&](const std::string &t) {
+        if (t.empty()) {
+          return;
+        }
+        if (!cls.empty()) {
+          cls += ' ';
+        }
+        cls += t;
+      };
+      add(run.margin);
+      add(run.color);
+      return cls;
+    };
+
+    const auto write_line = [&](const SingleLineOut &line) {
+      std::string classes = line.classes;
+      if (!line.font_class.empty()) {
+        classes += ' ';
+        classes += line.font_class;
+      }
+      out.write_element_begin(
+          "div", HtmlElementOptions().set_inline(true).set_class(classes));
+      for (const SingleRunOut &run : line.runs) {
+        if (run.glyph_data.empty()) {
+          // Clean / invisible / fallback: real Unicode renders directly.
+          if (run.lead_space) {
+            // Recovered word-break space: a real, selectable/copyable `" "`.
+            // With a `wN` width it carries the gap (pdf2htmlEX-style,
+            // markable); without one it is zero-width `.ov` (line-leading or
+            // negative gap) and never shifts the glyphs under
+            // `white-space:pre`.
+            const std::string space_cls = run.lead_space_width.empty()
+                                              ? std::string("ov")
+                                              : "sp " + run.lead_space_width;
+            out.write_element_begin(
+                "span",
+                HtmlElementOptions().set_inline(true).set_class(space_cls));
+            out.write_raw(" ");
+            out.write_element_end("span");
+          }
+          const std::string cls = run_class(run, "");
+          if (cls.empty()) {
+            out.write_raw(run.text);
+          } else {
+            out.write_element_begin(
+                "span", HtmlElementOptions().set_inline(true).set_class(cls));
+            out.write_raw(run.text);
+            out.write_element_end("span");
+          }
+        } else {
+          // Unclean: glyph via generated content, real-unicode overlay.
+          out.write_element_begin(
+              "span", HtmlElementOptions()
+                          .set_inline(true)
+                          .set_class(run_class(run, "gl"))
+                          .set_attributes(HtmlAttributesVector{
+                              {std::string("data-g"), run.glyph_data}}));
+          out.write_element_end("span");
+          if (!run.text.empty()) {
+            out.write_element_begin(
+                "span", HtmlElementOptions().set_inline(true).set_class("ov"));
+            out.write_raw(run.text);
+            out.write_element_end("span");
+          }
+        }
+      }
+      out.write_element_end("div");
+    };
+
+    out.write_body_begin();
+    for (const SinglePageOut &page : pages_out) {
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class(page.classes));
+      write_page_items(out, page.clip_defs, page.items, page.width, page.height,
+                       write_line);
       out.write_element_end("div");
     }
     out.write_body_end();
@@ -1256,9 +1555,434 @@ public:
     return resources;
   }
 
+  static std::string pt_decl(const char *property, double value) {
+    std::ostringstream s;
+    s << property << ':' << value << "pt";
+    return std::move(s).str();
+  }
+
+  /// Whether a run at (`ox`, `baseline`) starts a new visual line rather than
+  /// continuing the previous run: its baseline jumped by more than 0.6× the
+  /// previous run's advance height, or its origin sits left of the previous
+  /// run's right edge (minus half that height) — a carriage return. Shared by
+  /// all three layers (visual, selection, single) so the heuristic, which is
+  /// always measured against the *previous* run's `prev_font_pt`, cannot drift
+  /// between them. Callers gate on `prev_font_pt > 0`.
+  static bool starts_new_line(const double baseline, const double prev_baseline,
+                              const double ox, const double prev_end,
+                              const double prev_font_pt) {
+    return std::abs(baseline - prev_baseline) > 0.6 * prev_font_pt ||
+           ox < prev_end - 0.5 * prev_font_pt;
+  }
+
+  /// The per-run geometry derived from a `TextElement` and the page's `to_box`
+  /// transform. Identical in every text mode, so it lives in one place — no
+  /// call site can compute it differently (that is how findings like the 180°
+  /// rotation and the drifting line-break threshold crept in).
+  struct RunGeometry {
+    util::math::Transform2D m; ///< glyph space -> page box (y-down, pt later)
+    bool invisible;            ///< Tr 3/7 — paints nothing, selectable only
+    bool is_matrix;            ///< rotated/skewed/flipped -> CSS matrix path
+    double asc;                ///< ascent in em (clamped)
+    double scale;              ///< uniform axis scale (1 on the matrix path)
+    double ox;                 ///< origin x (baseline left) in pt
+    double baseline;           ///< origin y (baseline) in pt
+    double extent;             ///< advance width in pt
+    double font_pt;            ///< font size along the advance axis in pt
+    double font_size_pt;       ///< CSS font-size in px
+  };
+
+  static RunGeometry run_geometry(const pdf::TextElement &text,
+                                  const util::math::Transform2D &to_box) {
+    constexpr util::math::Transform2D flip_glyph =
+        util::math::Transform2D::scaling(1, -1);
+    const util::math::Transform2D m = flip_glyph * text.transform * to_box;
+    const bool invisible =
+        text.rendering_mode == pdf::TextRenderingMode::invisible ||
+        text.rendering_mode == pdf::TextRenderingMode::clip;
+    // `m.a > 0` keeps the axis-aligned fast path from swallowing a pure 180°
+    // rotation (a = d = -1, b = c = 0), which would otherwise feed a negative
+    // `m.a` into `font_size_pt` and the left/top math.
+    const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
+    const double tz = text.horizontal_scaling / 100.0;
+    const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
+    return RunGeometry{
+        .m = m,
+        .invisible = invisible,
+        .is_matrix = is_matrix,
+        .asc = ascent_em(text),
+        .scale = is_matrix ? 1.0 : m.a,
+        .ox = m.e,
+        .baseline = m.f,
+        .extent = text.width * axis,
+        .font_pt = text.size * axis,
+        .font_size_pt = round2(is_matrix ? text.size : m.a * text.size),
+    };
+  }
+
+  /// The colour class suffix (with a leading space) for a run's paint colour,
+  /// or "" for black / invisible. Interns the declaration in `styles`. Shared
+  /// by both modes' run emission.
+  static std::string color_class(const pdf::TextElement &text,
+                                 const bool invisible, AtomicStyles &styles) {
+    if (invisible) {
+      return {};
+    }
+    const pdf::GraphicsState::Color &paint =
+        (text.rendering_mode == pdf::TextRenderingMode::stroke ||
+         text.rendering_mode == pdf::TextRenderingMode::stroke_clip)
+            ? text.stroke_color
+            : text.fill_color;
+    std::string css = device_color_to_css(paint);
+    if (css == "rgb(0,0,0)") {
+      return {};
+    }
+    return ' ' + styles.intern("k", "color:" + std::move(css));
+  }
+
+  /// The page-box geometry (dimensions, the page `to_box` transform and the
+  /// `.p x# y#` class string) shared by both modes' page setup. `add_class`
+  /// interns the width/height declarations.
+  struct PageBox {
+    double width;
+    double height;
+    util::math::Transform2D to_box;
+    std::string classes;
+  };
+
+  template <typename AddClass>
+  static PageBox begin_page(const pdf::Page &page, AddClass &&add_class) {
+    const pdf::Array &page_box = page.media_box.as_array();
+    const double box_x0 = page_box[0].as_real();
+    const double box_y0 = page_box[1].as_real();
+    const double width = page_box[2].as_real() - box_x0;
+    const double height = page_box[3].as_real() - box_y0;
+
+    std::string classes = "p";
+    {
+      std::ostringstream w;
+      w << "width:" << width * pt_to_in << "in";
+      add_class(classes, "x", std::move(w).str());
+      std::ostringstream h;
+      h << "height:" << height * pt_to_in << "in";
+      add_class(classes, "y", std::move(h).str());
+    }
+
+    const util::math::Transform2D to_box =
+        util::math::Transform2D::translation(-box_x0, -box_y0) *
+        util::math::Transform2D::scaling_translation(1, -1, 0, height);
+
+    return {width, height, to_box, std::move(classes)};
+  }
+
+  /// Returns the 1-based font family index for `font`, or 0 when it is unusable
+  /// (or already rejected). On the first acceptance of a usable font runs
+  /// `on_accept(index)` so the caller can grow its parallel per-font arrays.
+  /// Shared accept/reject bookkeeping for both modes' `font_family` lambdas.
+  template <typename OnAccept>
+  static std::uint32_t intern_font(
+      std::unordered_map<const pdf::Font *, std::uint32_t> &family_index,
+      std::uint32_t &family_count, const pdf::Font *font,
+      OnAccept &&on_accept) {
+    const auto [it, inserted] = family_index.try_emplace(font, 0);
+    if (!inserted) {
+      return it->second;
+    }
+    if (!font_is_usable(*font)) {
+      return 0;
+    }
+    const std::uint32_t index = ++family_count;
+    it->second = index;
+    on_accept(index);
+    return index;
+  }
+
+  /// Writes a page's `<defs>` clips and its paint-order body — an SVG
+  /// open/close dance around a `variant<LineT, PathT>` item list — via
+  /// `write_line`. The structure is identical in both modes; only the line and
+  /// path types and the line writer differ.
+  template <typename LineT, typename PathT, typename WriteLine>
+  static void
+  write_page_items(HtmlWriter &out, const std::string &clip_defs,
+                   const std::vector<std::variant<LineT, PathT>> &items,
+                   const double width, const double height,
+                   WriteLine &&write_line) {
+    if (!clip_defs.empty()) {
+      out.write_raw("<svg width=\"0\" height=\"0\" style=\"position:absolute\">"
+                    "<defs>");
+      out.write_raw(clip_defs);
+      out.write_raw("</defs></svg>");
+    }
+    bool svg_open = false;
+    const auto close_svg = [&] {
+      if (svg_open) {
+        out.write_raw("</svg>");
+        svg_open = false;
+      }
+    };
+    for (const std::variant<LineT, PathT> &item : items) {
+      if (const auto *path = std::get_if<PathT>(&item)) {
+        if (!svg_open) {
+          std::ostringstream open;
+          open << "<svg class=\"s\" viewBox=\"0 0 " << round2(width) << ' '
+               << round2(height) << "\" preserveAspectRatio=\"none\">";
+          out.write_raw(std::move(open).str());
+          svg_open = true;
+        }
+        out.write_raw(path->svg);
+      } else {
+        close_svg();
+        write_line(std::get<LineT>(item));
+      }
+    }
+    close_svg();
+  }
+
+  /// Writes the document/head prologue shared by both modes: the constant
+  /// `body`/`.p`/`.t` rules, then `write_mode_css()` for the mode-specific
+  /// rules, then the constant `.s` rule, the font faces/styles and the interned
+  /// atomic rules. Leaves the writer positioned after `</head>`.
+  template <typename WriteModeCss>
+  static void write_header_common(HtmlWriter &out,
+                                  const std::string &font_faces,
+                                  const std::string &font_styles,
+                                  const AtomicStyles &styles,
+                                  WriteModeCss &&write_mode_css) {
+    out.write_begin();
+    out.write_header_begin();
+    out.write_header_charset("UTF-8");
+    out.write_header_target("_blank");
+    out.write_header_title("odr");
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
+    out.write_header_style_begin();
+    out.out() << "body{margin:0;background:#525659}";
+    out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
+                 "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+    // `.t`: shared base for all absolutely-positioned line blocks.
+    out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
+                 "white-space:pre;line-height:1;font-kerning:none;"
+                 "font-variant-ligatures:none}";
+    write_mode_css();
+    // SVG overlay covering the page box (visual graphics layer).
+    out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
+                 "overflow:hidden;pointer-events:none}";
+    out.out() << font_faces;
+    out.out() << font_styles;
+    styles.write_rules(out.out());
+    out.write_header_style_end();
+    out.write_header_end();
+  }
+
+  /// Appends a text run's line-block placement classes via `add_class(classes,
+  /// prefix, declaration)`: `l`/`t` (left/top, in pt) for an axis-aligned run,
+  /// or `m` (a CSS `translate(...)` + `matrix(...)` transform, re-anchored to
+  /// the run's baseline by `ascent_pt`) for a rotated/skewed one. A CSS
+  /// `matrix()` translation is intrinsically px, so the (pt) translation is
+  /// carried by a leading `translate(...pt)` — keeping the whole text layer in
+  /// pt. Shared by the visual, selection and single-layer line blocks, which
+  /// all position runs the same way.
+  template <typename AddClass>
+  static void add_position_classes(std::string &classes, AddClass &&add_class,
+                                   const util::math::Transform2D &m,
+                                   const bool is_matrix, const double ox,
+                                   const double baseline,
+                                   const double ascent_pt) {
+    if (!is_matrix) {
+      add_class(classes, "l", pt_decl("left", round2(ox)));
+      add_class(classes, "t",
+                pt_decl("top", round2(baseline - ascent_pt * m.a)));
+      return;
+    }
+    // `translate()` accepts pt and is applied after (outside) the `matrix()`,
+    // so `translate(tx,ty) matrix(a,b,c,d,0,0)` reproduces the full affine with
+    // the translation authored in pt instead of matrix()'s implicit px.
+    const double tx = m.e - m.c * ascent_pt;
+    const double ty = m.f - m.d * ascent_pt;
+    std::ostringstream t;
+    t << "transform:translate(" << round2(tx) << "pt," << round2(ty)
+      << "pt) matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d
+      << ",0,0)";
+    add_class(classes, "m", std::move(t).str());
+  }
+
+  /// Whether `font`'s embedded program can be re-encoded (SFNT PUA re-cmap or
+  /// CFF->OTF wrap) without throwing; probes the real encode path so failures
+  /// surface here rather than in the post-pass. Restores the SFNT's original
+  /// cmap after probing (the CFF probe is stateless).
+  static bool font_is_usable(const pdf::Font &font) {
+    if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+            font.embedded_font)) {
+      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
+      bool usable = false;
+      try {
+        font::reencode_to_pua(*sfnt);
+        (void)sfnt->write();
+        usable = true;
+      } catch (...) {
+        usable = false;
+      }
+      sfnt->set_cmap(std::move(original_cmap));
+      return usable;
+    }
+    if (const auto cff =
+            std::dynamic_pointer_cast<font::cff::CffFont>(font.embedded_font)) {
+      try {
+        (void)font::cff::wrap_to_otf(*cff);
+        return true;
+      } catch (...) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /// The `fvN`/`fnN` class for `font` (visible/invisible), marking it used in
+  /// `font_class_used` so the post-pass emits the corresponding rule.
+  static std::string
+  font_class(std::vector<std::array<bool, 2>> &font_class_used,
+             const std::uint32_t font, const bool inv) {
+    font_class_used[font - 1][inv ? 1 : 0] = true;
+    return (inv ? "fn" : "fv") + std::to_string(font);
+  }
+
+  /// Re-encodes `font`'s embedded program (SFNT PUA re-cmap or CFF->OTF wrap,
+  /// folding in `extra_unicode`'s real-Unicode cmap entries alongside the PUA
+  /// range) and appends its `@font-face` and `.fvN`/`.fnN` rules.
+  /// `class_used[0]`/`[1]` gate whether the visible/invisible rule is needed.
+  static void
+  write_font_face(const pdf::Font &font, const std::uint32_t index,
+                  const std::map<char32_t, std::uint16_t> &extra_unicode,
+                  const std::array<bool, 2> &class_used,
+                  std::string &font_faces, std::string &font_styles) {
+    std::string reencoded;
+    if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
+            font.embedded_font)) {
+      font::reencode_to_pua(*sfnt, extra_unicode);
+      reencoded = sfnt->write();
+    } else if (const auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
+                   font.embedded_font)) {
+      reencoded = font::cff::wrap_to_otf(*cff, extra_unicode);
+    }
+    const std::string url = file_to_url(reencoded, "font/ttf");
+    const std::string n = std::to_string(index + 1);
+    font_faces += "@font-face{font-family:'odr-f";
+    font_faces += n;
+    font_faces += "';src:url(";
+    font_faces += url;
+    font_faces += ");}";
+    const auto rule = [&](const char *cls, const char *color) {
+      font_styles += '.';
+      font_styles += cls;
+      font_styles += n;
+      font_styles += '{';
+      font_styles += color;
+      font_styles += "font-family:'odr-f";
+      font_styles += n;
+      font_styles += "'}";
+    };
+    if (class_used[0]) {
+      rule("fv", "color:#000;");
+    }
+    if (class_used[1]) {
+      rule("fn", "color:transparent;");
+    }
+  }
+
+  static double ascent_em(const pdf::TextElement &text) {
+    double em = 0.8;
+    if (text.font != nullptr && text.font->descriptor_ascent) {
+      em = *text.font->descriptor_ascent;
+    } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
+      const std::uint16_t units = text.font->embedded_font->units_per_em();
+      if (units != 0) {
+        em = static_cast<double>(
+                 text.font->embedded_font->bounding_box().y_max) /
+             units;
+      }
+    }
+    return std::clamp(em, 0.5, 1.2);
+  }
+
+  static std::string glyph_run_str(const pdf::Font &font,
+                                   const std::string &codes) {
+    std::string s;
+    for (const std::uint32_t code : font.codes(codes)) {
+      util::string::append_c32(font::pua_code_point(font.glyph_for_code(code)),
+                               s);
+    }
+    return s;
+  }
+
+  /// Escapes only the three markup-significant characters for the selection /
+  /// unicode text. Deliberately *not* `html::escape_text`: that substitutes
+  /// spaces with `&nbsp;`, which browsers treat as a distinct character from
+  /// U+0020 and so breaks find-in-page word matching and double-click word
+  /// selection across the very text these layers exist to make selectable.
+  static std::string escape_markup(std::string s) {
+    util::string::replace_all(s, "&", "&amp;");
+    util::string::replace_all(s, "<", "&lt;");
+    util::string::replace_all(s, ">", "&gt;");
+    return s;
+  }
+
+  /// Handles path/shading/image elements common to both rendering modes.
+  /// Calls close_line() and push_fragment(svg_string) when a non-empty
+  /// fragment is produced. Returns true when the element was a graphic
+  /// (caller should `continue`), false when it is a text element.
+  template <typename CloseLine, typename PushSvg>
+  static bool handle_graphic_element(
+      const pdf::PageElement &element, const util::math::Transform2D &to_box,
+      double width, double height, ClipRegistry &clips,
+      GradientRegistry &gradients, PatternRegistry &patterns, Logger &logger,
+      CloseLine &&close_line, PushSvg &&push_svg) {
+    if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+      const std::string clip_id = clips.register_clip(path->clip, to_box);
+      std::string fill_url_id;
+      if (path->fill_shading != nullptr) {
+        fill_url_id = gradients.register_gradient(
+            *path->fill_shading, path->shading_transform * to_box);
+      } else if (path->fill_pattern != nullptr) {
+        fill_url_id = patterns.register_pattern(
+            *path->fill_pattern, path->pattern_transform * to_box,
+            path->fill_color, logger);
+      }
+      if (std::string frag =
+              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
+          !frag.empty()) {
+        close_line();
+        push_svg(std::move(frag));
+      }
+      return true;
+    }
+    if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
+      if (shading->shading != nullptr) {
+        const std::string clip_id = clips.register_clip(shading->clip, to_box);
+        const std::string gradient_id = gradients.register_gradient(
+            *shading->shading, shading->transform * to_box);
+        if (std::string frag =
+                svg_shading_fragment(gradient_id, clip_id, width, height);
+            !frag.empty()) {
+          close_line();
+          push_svg(std::move(frag));
+        }
+      }
+      return true;
+    }
+    if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
+      const std::string clip_id = clips.register_clip(image->clip, to_box);
+      if (std::string frag = svg_image_fragment(*image, to_box, clip_id);
+          !frag.empty()) {
+        close_line();
+        push_svg(std::move(frag));
+      }
+      return true;
+    }
+    return false;
+  }
+
 protected:
   PdfFile m_pdf_file;
-
   HtmlViews m_views;
 };
 
