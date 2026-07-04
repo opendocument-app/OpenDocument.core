@@ -46,12 +46,14 @@ double Font::advance_width(const std::uint32_t code) const {
   }
   // Non-embedded standard-14 fonts usually ship no `/Widths`: fall back to the
   // substitute's AFM metrics (ISO 32000-1 9.6.2.2) so placement stays correct.
-  // The `/Encoding` (a `/Differences` override or a base encoding) names the
-  // glyph; without one, the font's built-in encoding (the AFM's own codes) is
-  // the fallback — the Symbol/ZapfDingbats case.
   if (substitute && substitute->metrics && code <= 0xFF) {
     const StandardFont metrics = *substitute->metrics;
     if (encoding) {
+      // An explicit `/Encoding` (a `/Differences` override or a base encoding)
+      // names the glyph; look that name up only. The built-in code table
+      // assumes the font's own code->glyph mapping, which the encoding
+      // overrides, so consulting it on a miss would return an unrelated glyph's
+      // width — fall through to `/MissingWidth` instead.
       if (const std::string_view name =
               encoding->glyph_name(static_cast<std::uint8_t>(code));
           !name.empty()) {
@@ -59,9 +61,11 @@ double Font::advance_width(const std::uint32_t code) const {
           return *width / 1000.0;
         }
       }
-    }
-    if (const std::optional<double> width =
-            afm_code_width(metrics, static_cast<std::uint8_t>(code))) {
+    } else if (const std::optional<double> width =
+                   afm_code_width(metrics, static_cast<std::uint8_t>(code))) {
+      // No `/Encoding`: the font's built-in encoding (the AFM's own codes) maps
+      // code->glyph — the Symbol/ZapfDingbats case (text fonts default to
+      // StandardEncoding).
       return *width / 1000.0;
     }
   }

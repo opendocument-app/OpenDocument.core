@@ -297,3 +297,17 @@ TEST(PdfFont, advance_width_explicit_widths_win_over_afm) {
   EXPECT_NEAR(font.advance_width('A'), 1.0, 1e-9);   // from /Widths
   EXPECT_NEAR(font.advance_width('B'), 0.667, 1e-9); // out of range -> AFM
 }
+
+TEST(PdfFont, advance_width_explicit_encoding_miss_uses_missing_width) {
+  // An explicit /Encoding names a glyph absent from the AFM table. The built-in
+  // code->width table assumes the font's own encoding, which the /Differences
+  // override replaces, so it must not be consulted — the advance is
+  // /MissingWidth, not the width of whatever glyph sits at the same code.
+  Font font;
+  font.substitute = pdf::resolve_font_substitute("Helvetica", 0, 0, 0);
+  font.encoding.emplace(pdf::BaseEncoding::standard);
+  font.encoding->set_difference('C', "customglyph"); // code 67, AFM 'C' = 722
+  font.missing_width = 250.0;
+
+  EXPECT_NEAR(font.advance_width('C'), 0.25, 1e-9);
+}

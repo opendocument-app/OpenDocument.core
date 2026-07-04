@@ -263,8 +263,12 @@ std::string simple_font_mini_pdf() {
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
               "/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>")
       .stream_object("", "BT ET")
+      // `/Encoding` remaps code 67 to a glyph absent from the AFM table, so its
+      // advance can only come from `/MissingWidth` — not the substitute's
+      // built-in code->width table, which the explicit encoding overrides.
       .object("<< /Type /Font /Subtype /TrueType /BaseFont /Helvetica "
               "/FirstChar 65 /LastChar 66 /Widths [500 600] "
+              "/Encoding << /Differences [67 /customglyph] >> "
               "/FontDescriptor 6 0 R >>")
       .object("<< /Type /FontDescriptor /FontName /Helvetica "
               "/MissingWidth 250 >>");
@@ -420,6 +424,8 @@ TEST(DocumentParser, shared_form_xobject_is_parsed_once) {
 }
 
 // A simple font's `/FirstChar`, `/Widths` and `/MissingWidth` drive advances.
+// Code 67 is outside `/Widths` and its `/Encoding` glyph is absent from the
+// substitute's AFM table, so it falls back to `/MissingWidth`.
 TEST(DocumentParser, simple_font_widths) {
   const std::string pdf = simple_font_mini_pdf();
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -429,9 +435,10 @@ TEST(DocumentParser, simple_font_widths) {
   ASSERT_NE(font, nullptr);
   EXPECT_FALSE(font->composite);
   EXPECT_EQ(font->first_char, 65);
-  EXPECT_DOUBLE_EQ(font->advance_width(65), 0.5);  // 'A'
-  EXPECT_DOUBLE_EQ(font->advance_width(66), 0.6);  // 'B'
-  EXPECT_DOUBLE_EQ(font->advance_width(67), 0.25); // 'C' -> /MissingWidth
+  EXPECT_DOUBLE_EQ(font->advance_width(65), 0.5); // 'A'
+  EXPECT_DOUBLE_EQ(font->advance_width(66), 0.6); // 'B'
+  EXPECT_DOUBLE_EQ(font->advance_width(67),
+                   0.25); // /customglyph -> /MissingWidth
 }
 
 // Recovery: a valid file with garbage prepended (the real fixture
