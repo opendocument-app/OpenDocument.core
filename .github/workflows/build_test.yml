@@ -250,7 +250,7 @@ jobs:
         run: |
           compare-html \
             --driver firefox \
-            --max-workers 1 \
+            --max-workers 2 \
             test/data/reference-output/odr-public/output \
             build/test/output/odr-public/output
 
@@ -261,7 +261,7 @@ jobs:
         run: |
           compare-html \
             --driver firefox \
-            --max-workers 1 \
+            --max-workers 2 \
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
 
