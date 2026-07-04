@@ -426,15 +426,37 @@ bool is_supported_blend_mode(const std::string &name) {
   return supported.count(name) != 0;
 }
 
+/// Form XObjects currently being rendered, by element identity. The parser
+/// represents the file faithfully, so the XObject graph may contain cycles
+/// (the spec forbids them — ISO 32000-1 8.10.1 — but real files err); this set
+/// breaks them at render time.
+using ActiveForms = std::set<const XObject *>;
+
+void run_content(const std::string &content, const Resources &resources,
+                 GraphicsState &state, std::vector<PageElement> &out,
+                 const Logger &logger, std::set<std::string> &warned,
+                 ActiveForms &active, MarkedContentStack &marked,
+                 std::optional<Pen> &pen);
+
+/// Render a soft-mask definition (`SoftMaskDef`) into a `SoftMask`: run its
+/// `/G` transparency group through the page machinery at the establishment CTM,
+/// so the mask carries its content in user space. See the definition below.
+std::shared_ptr<const SoftMask>
+build_soft_mask(const SoftMaskDef &def, const Resources &resources,
+                GraphicsState &state, const Logger &logger,
+                std::set<std::string> &warned, ActiveForms &active);
+
 /// Apply a `gs` operator: resolve the named `/ExtGState` dictionary and fold
-/// its constant alpha (`ca`/`CA`) and blend mode (`/BM`) into the general
-/// graphics state (ISO 32000-1 8.4.5). Other entries (line params, `/Font`,
-/// `/SMask`) are out of scope here — soft masks are a later item. `/BM` may be
-/// a single name or an array of names, an ordered fallback list from which the
-/// reader picks the first mode it supports; `Compatible` is a legacy alias for
-/// `Normal`.
+/// its constant alpha (`ca`/`CA`), blend mode (`/BM`) and soft mask (`/SMask`)
+/// into the general graphics state (ISO 32000-1 8.4.5). Other entries (line
+/// params,
+/// `/Font`) are out of scope. `/BM` may be a single name or an array of names,
+/// an ordered fallback list from which the reader picks the first mode it
+/// supports; `Compatible` is a legacy alias for `Normal`. `/SMask` is a mask
+/// dictionary (set) or `/None` (clear); absent leaves the mask unchanged.
 void apply_ext_g_state(const std::string &name, const Resources &resources,
-                       GraphicsState &state) {
+                       GraphicsState &state, const Logger &logger,
+                       std::set<std::string> &warned, ActiveForms &active) {
   const auto it = resources.ext_g_state.find(name);
   if (it == resources.ext_g_state.end() || !it->second.is_dictionary()) {
     return;
@@ -468,6 +490,20 @@ void apply_ext_g_state(const std::string &name, const Resources &resources,
     }
     general.blend_mode = mode == "Normal" ? std::string{} : mode;
   }
+  if (dictionary.has_value("SMask")) {
+    const Object &smask = dictionary.at("SMask");
+    if (smask.is_name() && smask.as_name() == "None") {
+      general.soft_mask = nullptr; // explicit clear
+    } else {
+      // A mask dictionary: use the group resolved at parse time. A def we could
+      // not resolve (missing/non-form `/G`) leaves the content unmasked.
+      const auto mask_it = resources.ext_g_state_soft_mask.find(name);
+      general.soft_mask = mask_it != resources.ext_g_state_soft_mask.end()
+                              ? build_soft_mask(*mask_it->second, resources,
+                                                state, logger, warned, active)
+                              : nullptr;
+    }
+  }
 }
 
 /// Emit a path-painting element from the path accumulated in `state` and the
@@ -493,6 +529,7 @@ void paint_path(std::vector<PageElement> &out, const Resources &resources,
   element.fill_alpha = s.general.fill_alpha;
   element.stroke_alpha = s.general.stroke_alpha;
   element.blend_mode = s.general.blend_mode;
+  element.soft_mask = s.general.soft_mask;
   // A `/Pattern`-coloured fill: resolve the pattern selected by `scn`. A
   // shading pattern (`/PatternType 2`) paints its gradient through the path;
   // its matrix maps shading space to the page's default user space (ISO 32000-1
@@ -623,6 +660,7 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
     image.mime = "image/png";
     image.alpha = state.current().general.fill_alpha;
     image.blend_mode = state.current().general.blend_mode;
+    image.soft_mask = state.current().general.soft_mask;
     out.push_back(std::move(image));
     return;
   }
@@ -669,20 +707,9 @@ void emit_shading(const GraphicsOperator &op, const Resources &resources,
   element.clip = state.current().clip;
   element.alpha = state.current().general.fill_alpha;
   element.blend_mode = state.current().general.blend_mode;
+  element.soft_mask = state.current().general.soft_mask;
   out.push_back(std::move(element));
 }
-
-/// Form XObjects currently being rendered, by element identity. The parser
-/// represents the file faithfully, so the XObject graph may contain cycles
-/// (the spec forbids them — ISO 32000-1 8.10.1 — but real files err); this set
-/// breaks them at render time.
-using ActiveForms = std::set<const XObject *>;
-
-void run_content(const std::string &content, const Resources &resources,
-                 GraphicsState &state, std::vector<PageElement> &out,
-                 const Logger &logger, std::set<std::string> &warned,
-                 ActiveForms &active, MarkedContentStack &marked,
-                 std::optional<Pen> &pen);
 
 /// Open a marked-content sequence (`BMC`/`BDC`), recording its `/ActualText`
 /// when one is present. `BDC`'s property list is either an inline dictionary or
@@ -754,6 +781,7 @@ void invoke_x_object(const std::string &name, const Resources &resources,
     }
     image.alpha = state.current().general.fill_alpha;
     image.blend_mode = state.current().general.blend_mode;
+    image.soft_mask = state.current().general.soft_mask;
     out.push_back(std::move(image));
     return;
   }
@@ -765,8 +793,36 @@ void invoke_x_object(const std::string &name, const Resources &resources,
     return; // already on the render stack
   }
 
+  // A transparency group is composited as a unit, then that result is painted
+  // with the constant alpha, blend mode and soft mask in force when the group
+  // was invoked (ISO 32000-1 11.6.6) — not each interior painting, which the
+  // group's own content may reset. Snapshot those, isolate them inside the
+  // group, and fold them into the produced elements below. (Per-element folding
+  // is exact for non-overlapping group content, as here; it approximates true
+  // group compositing where interior paints overlap.)
+  const GraphicsState::General &invoke_general = state.current().general;
+  const bool group = x_object->transparency_group;
+  const double group_alpha = group ? invoke_general.fill_alpha : 1.0;
+  const std::string group_blend = group ? invoke_general.blend_mode : "";
+  const std::shared_ptr<const SoftMask> group_mask =
+      group ? invoke_general.soft_mask : nullptr;
+  // Only a group carrying a non-trivial parameter needs to be painted as a unit
+  // (a `GroupElement`); otherwise its content inlines like any other form's.
+  const bool group_unit =
+      group && (group_alpha < 1.0 || !group_blend.empty() || group_mask);
+
   state.save();
   state.concat_matrix(x_object->matrix);
+  if (group_unit) {
+    // Isolate the group-level parameters so interior paintings are relative to
+    // the group; they are applied once to the composited group (below), not
+    // inherited by each interior element as well.
+    GraphicsState::General &inner = state.current().general;
+    inner.fill_alpha = 1.0;
+    inner.stroke_alpha = 1.0;
+    inner.blend_mode.clear();
+    inner.soft_mask = nullptr;
+  }
   // `/BBox` clips the form's content to its bounding box (ISO 32000-1 8.10.2),
   // mapped through the (now form-matrix-concatenated) CTM. Scoped by the
   // surrounding save/restore.
@@ -779,11 +835,91 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   // A form's marked content must be self-balanced; truncate back to the entry
   // depth afterwards so an unbalanced form cannot corrupt the enclosing scope.
   const std::size_t depth = marked.size();
-  run_content(x_object->content, scope, state, out, logger, warned, active,
+  // A group painted as a unit collects its content into its own child list; a
+  // plain form appends straight to the page stream.
+  std::vector<PageElement> group_out;
+  std::vector<PageElement> &sink = group_unit ? group_out : out;
+  run_content(x_object->content, scope, state, sink, logger, warned, active,
               marked, pen);
   marked.resize(depth);
   state.restore();
+
+  if (group_unit) {
+    auto children = std::make_shared<GroupChildren>();
+    children->elements = std::move(group_out);
+    GroupElement element;
+    element.children = std::move(children);
+    element.alpha = group_alpha;
+    element.blend_mode = group_blend;
+    element.soft_mask = group_mask;
+    out.push_back(std::move(element));
+  }
   active.erase(x_object);
+}
+
+std::shared_ptr<const SoftMask>
+build_soft_mask(const SoftMaskDef &def, const Resources &resources,
+                GraphicsState &state, const Logger &logger,
+                std::set<std::string> &warned, ActiveForms &active) {
+  if (def.group == nullptr) {
+    return nullptr;
+  }
+  // Bound nesting: a mask group may itself set soft masks (ISO 32000-1
+  // 11.6.5.2).
+  if (state.soft_mask_depth >= 4) {
+    return nullptr;
+  }
+  // Cycle guard shared with form invocation: a group referencing itself (or a
+  // form already on the render stack) renders nothing rather than recursing.
+  if (!active.insert(def.group).second) {
+    return nullptr;
+  }
+
+  auto mask = std::make_shared<SoftMask>();
+  mask->type = def.type == SoftMaskDef::Type::alpha
+                   ? SoftMask::Type::alpha
+                   : SoftMask::Type::luminosity;
+  // The `/BC` backdrop, in the group's colour space; convert the common
+  // 1/3/4-component device forms to RGB (the renderer floods it behind the
+  // group, so a luminosity mask is masked-out where the group paints nothing).
+  GraphicsState::Color backdrop;
+  if (def.backdrop.size() == 1) {
+    backdrop.space = ColorSpace::device_grey;
+    backdrop.grey = def.backdrop[0];
+    mask->backdrop = color_to_rgb(backdrop);
+  } else if (def.backdrop.size() == 3) {
+    backdrop.space = ColorSpace::device_rgb;
+    backdrop.rgb = {def.backdrop[0], def.backdrop[1], def.backdrop[2]};
+    mask->backdrop = color_to_rgb(backdrop);
+  } else if (def.backdrop.size() == 4) {
+    backdrop.space = ColorSpace::device_cmyk;
+    backdrop.cmyk = {def.backdrop[0], def.backdrop[1], def.backdrop[2],
+                     def.backdrop[3]};
+    mask->backdrop = color_to_rgb(backdrop);
+  }
+
+  // Render the group at the establishment CTM (the CTM in force when `gs` set
+  // the mask), with the group `/Matrix` concatenated and `/BBox` clipped — as a
+  // form invocation does, but into a fresh sub-state so the mask content does
+  // not inherit the caller's colours/alpha/mask (11.6.5.2).
+  GraphicsState sub;
+  sub.soft_mask_depth = state.soft_mask_depth + 1;
+  sub.current().general.transform_matrix =
+      state.current().general.transform_matrix;
+  sub.concat_matrix(def.group->matrix);
+  if (def.group->bbox.has_value()) {
+    const std::array<double, 4> &b = *def.group->bbox;
+    sub.clip_bounding_box(b[0], b[1], b[2], b[3]);
+  }
+  const Resources &scope =
+      def.group->resources != nullptr ? *def.group->resources : resources;
+  MarkedContentStack marked;
+  std::optional<Pen> pen;
+  run_content(def.group->content, scope, sub, mask->group, logger, warned,
+              active, marked, pen);
+
+  active.erase(def.group);
+  return mask;
 }
 
 /// Render a Type3 text-showing operation (ISO 32000-1 9.6.5). The selectable
@@ -986,7 +1122,8 @@ void run_content(const std::string &content, const Resources &resources,
     // `execute` has already recorded the name.
     case GraphicsOperatorType::set_graphics_state_parameters: // gs
       if (!op.arguments.empty() && op.arguments.at(0).is_name()) {
-        apply_ext_g_state(op.arguments.at(0).as_name(), resources, state);
+        apply_ext_g_state(op.arguments.at(0).as_name(), resources, state,
+                          logger, warned, active);
       }
       break;
 

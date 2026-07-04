@@ -725,6 +725,154 @@ TEST(PdfPageExtractor, gs_alpha_scoped_by_q_Q) {
   EXPECT_DOUBLE_EQ(path_at(page, 1).fill_alpha, 1); // restored after Q
 }
 
+namespace {
+
+// An `/ExtGState` whose `/SMask` is a (luminosity) mask dictionary — the "set a
+// soft mask" case, as opposed to `/SMask /None`. Paired in the tests with the
+// `SoftMaskDef` the parser would have resolved from it.
+Object soft_mask_ext_g_state() {
+  Dictionary smask;
+  smask["S"] = Object(Name{"Luminosity"});
+  Dictionary dictionary;
+  dictionary["SMask"] = Object(std::move(smask));
+  return Object(std::move(dictionary));
+}
+
+// Register `GS1` as a soft-mask state on `res`: the `/ExtGState` dict plus the
+// resolved `SoftMaskDef` whose transparency group is `group`.
+void register_soft_mask(Resources &res, XObject &group) {
+  res.ext_g_state["GS1"] = soft_mask_ext_g_state();
+  auto def = std::make_shared<SoftMaskDef>();
+  def->group = &group;
+  def->type = SoftMaskDef::Type::luminosity;
+  res.ext_g_state_soft_mask["GS1"] = std::move(def);
+}
+
+} // namespace
+
+// `gs` folds an `/ExtGState` `/SMask` into the graphics state; a following path
+// carries the rendered soft mask, whose group content is extracted (ISO 32000-1
+// 11.6.5.2).
+TEST(PdfPageExtractor, gs_soft_mask_snapshotted_on_path) {
+  XObject group = form_x_object("0 0 10 10 re f");
+  Resources res;
+  register_soft_mask(res, group);
+  const auto page = extract_page("/GS1 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  ASSERT_NE(path_at(page, 0).soft_mask, nullptr);
+  EXPECT_EQ(path_at(page, 0).soft_mask->type, SoftMask::Type::luminosity);
+  EXPECT_EQ(path_at(page, 0).soft_mask->group.size(), 1); // the group's fill
+}
+
+// `/SMask /None` clears a previously set soft mask.
+TEST(PdfPageExtractor, gs_soft_mask_none_clears) {
+  XObject group = form_x_object("0 0 10 10 re f");
+  Resources res;
+  register_soft_mask(res, group);
+  Dictionary none;
+  none["SMask"] = Object(Name{"None"});
+  res.ext_g_state["GS2"] = Object(std::move(none));
+  const auto page =
+      extract_page("/GS1 gs /GS2 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(path_at(page, 0).soft_mask, nullptr);
+}
+
+// The soft mask is part of the saved graphics state, so `q`/`Q` scope it.
+TEST(PdfPageExtractor, gs_soft_mask_scoped_by_q_Q) {
+  XObject group = form_x_object("0 0 10 10 re f");
+  Resources res;
+  register_soft_mask(res, group);
+  const auto page = extract_page("q /GS1 gs 0 0 10 10 re f Q 0 0 10 10 re f",
+                                 res, Logger::null());
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_NE(path_at(page, 0).soft_mask, nullptr);
+  EXPECT_EQ(path_at(page, 1).soft_mask, nullptr); // restored after Q
+}
+
+// A transparency group with a group-level parameter (soft mask here) is emitted
+// as a single `GroupElement` carrying that parameter, with the interior content
+// as its children — so the renderer composites the group first, then applies
+// the mask (ISO 32000-1 11.6.6). The mask survives even though the group's own
+// content resets it to none: the common drop-shadow/reflection idiom (a `gs`
+// sets the mask, then a group form paints the shape).
+TEST(PdfPageExtractor, soft_mask_wraps_transparency_group) {
+  XObject mask_group = form_x_object("0 0 10 10 re f");
+  Resources form_res;
+  Dictionary none;
+  none["SMask"] = Object(Name{"None"});
+  form_res.ext_g_state["GS0"] = Object(std::move(none));
+  XObject content =
+      form_x_object("/GS0 gs 0 0 10 10 re f"); // clears internally
+  content.transparency_group = true;
+  content.resources = &form_res;
+  Resources res;
+  res.x_object["Fm0"] = &content;
+  register_soft_mask(res, mask_group);
+  const auto page = extract_page("/GS1 gs /Fm0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const auto &group = std::get<GroupElement>(page.at(0));
+  EXPECT_NE(group.soft_mask, nullptr); // outer mask on the group
+  ASSERT_NE(group.children, nullptr);
+  ASSERT_EQ(group.children->elements.size(), 1); // the interior fill
+  // The interior path itself carries no mask — it is masked via the group.
+  EXPECT_EQ(std::get<PathElement>(group.children->elements.at(0)).soft_mask,
+            nullptr);
+}
+
+// A transparency group's constant alpha rides on the `GroupElement`, not each
+// interior element, so the group composites first and then fades — the correct
+// model for content whose interior paints overlap (ISO 32000-1 11.6.6). The
+// group resets alpha internally (as real group content does), yet the group's
+// own alpha is the outer `ca`.
+TEST(PdfPageExtractor, transparency_group_carries_constant_alpha) {
+  Resources form_res;
+  form_res.ext_g_state["GS0"] = ext_g_state(1.0, std::nullopt, ""); // reset
+  XObject content = form_x_object("/GS0 gs 0 0 10 10 re f");
+  content.transparency_group = true;
+  content.resources = &form_res;
+  Resources res;
+  res.x_object["Fm0"] = &content;
+  res.ext_g_state["GS1"] = ext_g_state(0.25, std::nullopt, "");
+  const auto page = extract_page("/GS1 gs /Fm0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  const auto &group = std::get<GroupElement>(page.at(0));
+  EXPECT_DOUBLE_EQ(group.alpha, 0.25); // group-level, not per element
+  ASSERT_NE(group.children, nullptr);
+  ASSERT_EQ(group.children->elements.size(), 1);
+  EXPECT_DOUBLE_EQ(
+      std::get<PathElement>(group.children->elements.at(0)).fill_alpha, 1.0);
+}
+
+// A transparency group with only trivial parameters (alpha 1, no blend, no
+// mask) is *not* wrapped: its content inlines like any other form's, so no
+// needless `GroupElement` (or `<g>`) is produced.
+TEST(PdfPageExtractor, trivial_transparency_group_not_wrapped) {
+  XObject content = form_x_object("0 0 10 10 re f");
+  content.transparency_group = true;
+  Resources res;
+  res.x_object["Fm0"] = &content;
+  const auto page = extract_page("/Fm0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<PathElement>(page.at(0)));
+}
+
+// A plain (non-group) form has no isolation: its interior `gs` directly
+// overrides the graphics state, so an outer `ca` does not fold into content
+// that resets the alpha. (Contrast the transparency-group case above.)
+TEST(PdfPageExtractor, non_group_form_does_not_fold_alpha) {
+  Resources form_res;
+  form_res.ext_g_state["GS0"] = ext_g_state(1.0, std::nullopt, "");
+  XObject form = form_x_object("/GS0 gs 0 0 10 10 re f"); // not a group
+  form.resources = &form_res;
+  Resources res;
+  res.x_object["Fm0"] = &form;
+  res.ext_g_state["GS1"] = ext_g_state(0.25, std::nullopt, "");
+  const auto page = extract_page("/GS1 gs /Fm0 Do", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).fill_alpha, 1.0); // inner reset wins
+}
+
 // A move/line/stroke builds one open subpath; the points are in user space and
 // the paint intent is stroke-only.
 TEST(PdfPageExtractor, path_move_line_stroke) {

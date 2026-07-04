@@ -32,6 +32,7 @@ struct Font;
 struct XObject;
 struct Pattern;
 struct ColorSpaceDef;
+struct SoftMaskDef;
 
 struct Element {
   virtual ~Element() = default;
@@ -114,6 +115,30 @@ struct Resources final : Element {
   /// stored verbatim (like `/Properties`) and interpreted at `gs` time — the
   /// extractor reads `ca`/`CA` (constant alpha) and `/BM` (blend mode).
   std::unordered_map<std::string, Object> ext_g_state;
+  /// The soft mask (`/SMask`) of each `/ExtGState` that carries one, resolved
+  /// at parse time (its `/G` transparency group parsed as a form `XObject`),
+  /// keyed by the same name as `ext_g_state`. Absent when the state has no
+  /// `/SMask` or sets `/SMask /None`; the `gs` handler reads the dict's
+  /// `/SMask` to tell the two apart. Held by `shared_ptr` so a mask shared
+  /// across states is parsed once and outlives the `Resources` if a `SoftMask`
+  /// still references it.
+  std::unordered_map<std::string, std::shared_ptr<SoftMaskDef>>
+      ext_g_state_soft_mask;
+};
+
+/// A soft mask (`/SMask` in an `/ExtGState`, ISO 32000-1 11.6.5.2), resolved at
+/// parse time. The mask is derived from a transparency group XObject `/G`: for
+/// `/S /Luminosity` the group's luminosity is the alpha; for `/S /Alpha` its
+/// alpha is. `/BC` is the group's backdrop colour, in the group's own colour
+/// space (raw components; empty = the default, black). Consumed by the page
+/// extractor, which renders `/G` into a `SoftMask` (`pdf_page_element.hpp`).
+struct SoftMaskDef {
+  enum class Type { luminosity, alpha };
+  Type type{Type::luminosity};
+  /// The `/G` transparency-group form XObject; never null for a stored def.
+  XObject *group{nullptr};
+  /// `/BC` backdrop components in the group's colour space; empty = default.
+  std::vector<double> backdrop;
 };
 
 /// Type3 font glyph data (ISO 32000-1 9.6.5). A Type3 glyph is a small content
@@ -152,6 +177,12 @@ struct XObject final : Element {
   /// Form XObject only: the form's own `/Resources`, or `nullptr` to inherit
   /// the invoking scope's resources (7.8.3).
   Resources *resources{nullptr};
+  /// Form XObject only: true when the form is a transparency group
+  /// (`/Group` with `/S /Transparency`, ISO 32000-1 11.6.6). Such a group is
+  /// composited in isolation, so a soft mask / constant alpha active when it is
+  /// invoked applies to the group's result as a whole rather than to each
+  /// interior painting — even when the group's own content resets the mask.
+  bool transparency_group{false};
   /// Form XObject only: the decoded (filter-applied) content stream, read
   /// eagerly at parse time so text extraction needs no parser handle.
   std::string content;
