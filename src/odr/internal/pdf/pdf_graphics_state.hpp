@@ -3,6 +3,7 @@
 #include <odr/internal/util/math_util.hpp>
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
