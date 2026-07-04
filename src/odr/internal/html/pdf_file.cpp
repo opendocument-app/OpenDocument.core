@@ -107,6 +107,25 @@ std::string rgb_to_css(const std::array<double, 3> &rgb) {
   return std::move(s).str();
 }
 
+/// Map a PDF blend-mode name (`/ExtGState` `/BM`, ISO 32000-1 11.3.5) to its
+/// CSS `mix-blend-mode` keyword. CSS derives its blend modes from PDF, so the
+/// separable and non-separable modes map 1:1 (camelCase -> kebab-case). Returns
+/// "" for `Normal` and for any unrecognized name (rendered normal), so a caller
+/// can skip the property entirely.
+std::string blend_mode_to_css(const std::string &blend_mode) {
+  static const std::unordered_map<std::string, std::string> map = {
+      {"Multiply", "multiply"},     {"Screen", "screen"},
+      {"Overlay", "overlay"},       {"Darken", "darken"},
+      {"Lighten", "lighten"},       {"ColorDodge", "color-dodge"},
+      {"ColorBurn", "color-burn"},  {"HardLight", "hard-light"},
+      {"SoftLight", "soft-light"},  {"Difference", "difference"},
+      {"Exclusion", "exclusion"},   {"Hue", "hue"},
+      {"Saturation", "saturation"}, {"Color", "color"},
+      {"Luminosity", "luminosity"}};
+  const auto it = map.find(blend_mode);
+  return it != map.end() ? it->second : std::string{};
+}
+
 /// The CSS declaration a non-embedded font renders through: its substitute
 /// `font-family` stack plus the weight/style implied by the `/BaseFont` name
 /// and `/FontDescriptor` flags. Interned as an `ff` atomic class on the
@@ -184,12 +203,18 @@ std::string svg_path_fragment(const pdf::PathElement &path,
     if (path.even_odd) {
       f << " fill-rule=\"evenodd\"";
     }
+    if (path.fill_alpha < 1) {
+      f << " fill-opacity=\"" << round2(path.fill_alpha) << '"';
+    }
   } else {
     f << " fill=\"none\"";
   }
 
   if (path.stroke) {
     f << " stroke=\"" << device_color_to_css(path.stroke_color) << '"';
+    if (path.stroke_alpha < 1) {
+      f << " stroke-opacity=\"" << round2(path.stroke_alpha) << '"';
+    }
     // A 0 width is "device-thinnest" in PDF; SVG would draw nothing, so floor
     // it to a sub-point hairline.
     const double width = path.line_width > 0 ? path.line_width : 0.5;
@@ -219,6 +244,11 @@ std::string svg_path_fragment(const pdf::PathElement &path,
         f << " stroke-dashoffset=\"" << round2(path.dash_phase) << '"';
       }
     }
+  }
+
+  if (const std::string blend = blend_mode_to_css(path.blend_mode);
+      !blend.empty()) {
+    f << " style=\"mix-blend-mode:" << blend << '"';
   }
 
   f << "/>";
@@ -251,6 +281,13 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   }
   f << R"(<image width="1" height="1" preserveAspectRatio="none" transform=")"
     << svg_matrix(m) << '"';
+  if (image.alpha < 1) {
+    f << " opacity=\"" << round2(image.alpha) << '"';
+  }
+  if (const std::string blend = blend_mode_to_css(image.blend_mode);
+      !blend.empty()) {
+    f << " style=\"mix-blend-mode:" << blend << '"';
+  }
   f << " href=\"" << file_to_url(image.data, image.mime) << "\"/>";
   if (!clip_id.empty()) {
     f << "</g>";
@@ -394,7 +431,8 @@ public:
 /// the whole page; the clip (and the gradient's own extent) bound the paint.
 std::string svg_shading_fragment(const std::string &gradient_id,
                                  const std::string &clip_id, const double width,
-                                 const double height) {
+                                 const double height, const double alpha,
+                                 const std::string &blend_mode) {
   if (gradient_id.empty()) {
     return {};
   }
@@ -403,6 +441,12 @@ std::string svg_shading_fragment(const std::string &gradient_id,
     << round2(height) << "\" fill=\"url(#" << gradient_id << ")\"";
   if (!clip_id.empty()) {
     f << " clip-path=\"url(#" << clip_id << ")\"";
+  }
+  if (alpha < 1) {
+    f << " opacity=\"" << round2(alpha) << '"';
+  }
+  if (const std::string blend = blend_mode_to_css(blend_mode); !blend.empty()) {
+    f << " style=\"mix-blend-mode:" << blend << '"';
   }
   f << "/>";
   return std::move(f).str();
@@ -1661,16 +1705,27 @@ public:
     if (invisible) {
       return {};
     }
+    const bool stroked =
+        text.rendering_mode == pdf::TextRenderingMode::stroke ||
+        text.rendering_mode == pdf::TextRenderingMode::stroke_clip;
     const pdf::GraphicsState::Color &paint =
-        (text.rendering_mode == pdf::TextRenderingMode::stroke ||
-         text.rendering_mode == pdf::TextRenderingMode::stroke_clip)
-            ? text.stroke_color
-            : text.fill_color;
+        stroked ? text.stroke_color : text.fill_color;
+    const double alpha = stroked ? text.stroke_alpha : text.fill_alpha;
+    const std::string blend = blend_mode_to_css(text.blend_mode);
     std::string css = device_color_to_css(paint);
-    if (css == "rgb(0,0,0)") {
+    // Fast path: default black, fully opaque, no blend — no class needed.
+    if (css == "rgb(0,0,0)" && alpha >= 1 && blend.empty()) {
       return {};
     }
-    return ' ' + styles.intern("k", "color:" + std::move(css));
+    std::ostringstream declaration;
+    declaration << "color:" << css;
+    if (alpha < 1) {
+      declaration << ";opacity:" << round2(alpha);
+    }
+    if (!blend.empty()) {
+      declaration << ";mix-blend-mode:" << blend;
+    }
+    return ' ' + styles.intern("k", std::move(declaration).str());
   }
 
   /// The page-box geometry (dimensions, the page `to_box` transform and the
@@ -1994,7 +2049,8 @@ public:
         const std::string gradient_id = gradients.register_gradient(
             *shading->shading, shading->transform * to_box);
         if (std::string frag =
-                svg_shading_fragment(gradient_id, clip_id, width, height);
+                svg_shading_fragment(gradient_id, clip_id, width, height,
+                                     shading->alpha, shading->blend_mode);
             !frag.empty()) {
           close_line();
           push_svg(std::move(frag));

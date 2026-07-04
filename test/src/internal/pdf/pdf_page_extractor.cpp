@@ -9,6 +9,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -630,6 +631,84 @@ TEST(PdfPageExtractor, type3_invisible_skips_char_proc) {
     EXPECT_TRUE(text.render_as_graphics);
     EXPECT_EQ(text.codes, "A");
   }
+}
+
+namespace {
+
+// An `/ExtGState` parameter dictionary carrying optional constant alpha
+// (`ca`/`CA`) and blend mode (`/BM`), as the `gs` operator resolves it from the
+// page resources.
+Object ext_g_state(std::optional<double> fill_alpha,
+                   std::optional<double> stroke_alpha,
+                   const std::string &blend_mode) {
+  Dictionary dictionary;
+  if (fill_alpha.has_value()) {
+    dictionary["ca"] = Object(Real{*fill_alpha});
+  }
+  if (stroke_alpha.has_value()) {
+    dictionary["CA"] = Object(Real{*stroke_alpha});
+  }
+  if (!blend_mode.empty()) {
+    dictionary["BM"] = Object(Name{blend_mode});
+  }
+  return Object(std::move(dictionary));
+}
+
+} // namespace
+
+// `gs` folds an `/ExtGState` `ca` (the nonstroking constant alpha) into the
+// fill opacity snapshotted on painted elements (ISO 32000-1 11.6.4.4).
+TEST(PdfPageExtractor, gs_fill_alpha) {
+  Resources res;
+  res.ext_g_state["GS1"] = ext_g_state(0.5, std::nullopt, "");
+  const auto page = extract_page("/GS1 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).fill_alpha, 0.5);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).stroke_alpha, 1);
+}
+
+// `CA` sets the stroking constant alpha, independent of the fill alpha.
+TEST(PdfPageExtractor, gs_stroke_alpha) {
+  Resources res;
+  res.ext_g_state["GS1"] = ext_g_state(std::nullopt, 0.25, "");
+  const auto page =
+      extract_page("/GS1 gs 0 0 m 10 10 l S", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).stroke_alpha, 0.25);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).fill_alpha, 1);
+}
+
+// `/BM` sets the blend mode; a mappable name is carried through verbatim.
+TEST(PdfPageExtractor, gs_blend_mode) {
+  Resources res;
+  res.ext_g_state["GS1"] = ext_g_state(std::nullopt, std::nullopt, "Multiply");
+  const auto page = extract_page("/GS1 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(path_at(page, 0).blend_mode, "Multiply");
+}
+
+// `/BM /Normal` — and its `Compatible` legacy alias — clear the blend mode.
+TEST(PdfPageExtractor, gs_blend_mode_normal_clears) {
+  Resources res;
+  res.ext_g_state["GS1"] = ext_g_state(std::nullopt, std::nullopt, "Multiply");
+  res.ext_g_state["GS2"] =
+      ext_g_state(std::nullopt, std::nullopt, "Compatible");
+  const auto page = extract_page(
+      "/GS1 gs 0 0 10 10 re f /GS2 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_EQ(path_at(page, 0).blend_mode, "Multiply");
+  EXPECT_EQ(path_at(page, 1).blend_mode, ""); // Compatible -> Normal -> cleared
+}
+
+// The constant alpha is part of the saved graphics state, so `q`/`Q` scope it.
+TEST(PdfPageExtractor, gs_alpha_scoped_by_q_Q) {
+  Resources res;
+  res.ext_g_state["GS1"] = ext_g_state(0.5, std::nullopt, "");
+  const auto page = extract_page("q /GS1 gs 0 0 10 10 re f Q 0 0 10 10 re f",
+                                 res, Logger::null());
+  ASSERT_EQ(page.size(), 2);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).fill_alpha, 0.5);
+  EXPECT_DOUBLE_EQ(path_at(page, 1).fill_alpha, 1); // restored after Q
 }
 
 // A move/line/stroke builds one open subpath; the points are in user space and

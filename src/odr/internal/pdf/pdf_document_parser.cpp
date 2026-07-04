@@ -1048,6 +1048,17 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
+  if (dictionary.has_value("ExtGState")) {
+    // Named graphics-state parameter dictionaries for `gs`; resolved eagerly
+    // (like `/Properties`) so extraction reads `ca`/`CA`/`/BM` without a parser
+    // handle.
+    const Dictionary ext_g_state_table =
+        parser.resolve_object_copy(dictionary["ExtGState"]).as_dictionary();
+    for (const auto &[key, value] : ext_g_state_table) {
+      resources->ext_g_state[key] = parser.resolve_object_copy(value);
+    }
+  }
+
   if (dictionary.has_key("Properties") && !dictionary["Properties"].is_null()) {
     // Named property lists for `BDC`; resolved eagerly so text extraction can
     // recover `/ActualText` without a parser handle (cf. form XObjects).
