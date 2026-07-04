@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <iosfwd>
 #include <map>
 #include <string>
 #include <utility>
@@ -20,16 +19,18 @@ class SfntFont;
 /// per-font table needed.
 [[nodiscard]] char32_t pua_code_point(std::uint16_t glyph) noexcept;
 
-/// Serialize an SFNT from its tables to @p out, computing the table directory,
-/// per-table checksums and `head.checkSumAdjustment`. @p tables need not be
-/// sorted; a `head` table is patched in place with the final adjustment.
+/// Serialize an SFNT from its tables, computing the table directory, per-table
+/// checksums and `head.checkSumAdjustment`, and return the assembled bytes.
+/// @p tables need not be sorted; a `head` table is patched in place with the
+/// final adjustment.
 ///
 /// The whole-file checksum is additive over the 4-byte-aligned table layout, so
 /// it equals `checksum(header+directory) + Σ checksum(table)` — computed
-/// analytically and the adjustment patched into `head` before the single
-/// forward write, so @p out need only be a forward sink (no seek, no tee).
-void build_sfnt(std::ostream &out, std::uint32_t sfnt_version,
-                std::vector<std::pair<std::string, std::string>> tables);
+/// analytically and the adjustment patched into `head` before the bytes are
+/// concatenated.
+[[nodiscard]] std::string
+build_sfnt(std::uint32_t sfnt_version,
+           std::vector<std::pair<std::string, std::string>> tables);
 
 /// Serialize a code point -> glyph map into a `cmap` table.
 ///

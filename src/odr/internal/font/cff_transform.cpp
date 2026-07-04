@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -193,9 +192,7 @@ std::string cff::wrap_to_otf(const CffFont &font,
           static_cast<std::uint16_t>(std::min<char32_t>(first, 0xffff)),
           static_cast<std::uint16_t>(std::min<char32_t>(last, 0xffff))));
 
-  std::ostringstream out;
-  build_sfnt(out, 0x4f54544f /* 'OTTO' */, std::move(tables));
-  return std::move(out).str();
+  return build_sfnt(0x4f54544f /* 'OTTO' */, std::move(tables));
 }
 
 } // namespace odr::internal::font

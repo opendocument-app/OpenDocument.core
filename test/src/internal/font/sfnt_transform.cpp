@@ -7,9 +7,7 @@
 
 #include <cstdint>
 #include <map>
-#include <memory>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,28 +18,23 @@ namespace {
 
 namespace bs = odr::internal::util::byte_string;
 
-/// Parse a font from its in-memory bytes (the reader consumes an
-/// `std::istream`).
+/// Parse a font from its in-memory bytes.
 sfnt::SfntFont parse(std::string bytes) {
-  return sfnt::SfntFont(std::make_unique<std::istringstream>(std::move(bytes)));
+  return sfnt::SfntFont(std::move(bytes));
 }
 
-/// Serialize an SFNT to bytes (the writer emits to an `std::ostream`).
+/// Serialize an SFNT to bytes.
 std::string
 build_font(std::uint32_t version,
            std::vector<std::pair<std::string, std::string>> tables) {
-  std::ostringstream out;
-  build_sfnt(out, version, std::move(tables));
-  return out.str();
+  return build_sfnt(version, std::move(tables));
 }
 
 /// Parse @p bytes, re-encode it to the PUA in place, and write it back out.
 std::string reencoded(std::string bytes) {
   sfnt::SfntFont font = parse(std::move(bytes));
   reencode_to_pua(font);
-  std::ostringstream out;
-  font.write(out);
-  return out.str();
+  return font.write();
 }
 
 std::string head_table() {
@@ -249,10 +242,8 @@ TEST(SfntTransform, reencode_with_extra_round_trips_through_write) {
   sfnt::SfntFont font = parse(sample_font());
   // 'A' is adjacent to nothing; 'Z' forces a second cmap segment past the PUA.
   reencode_to_pua(font, {{U'A', 1}, {U'Z', 2}});
-  std::ostringstream out;
-  font.write(out);
 
-  const sfnt::SfntFont parsed = parse(std::move(out).str());
+  const sfnt::SfntFont parsed = parse(font.write());
   EXPECT_EQ(parsed.glyph_for_code_point('A'), 1);
   EXPECT_EQ(parsed.glyph_for_code_point('Z'), 2);
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(1)), 1);
@@ -283,9 +274,7 @@ TEST(SfntTransform, reencode_overflows_into_supplementary_pua) {
   EXPECT_EQ(pua_code_point(0), 0xe000u);
   EXPECT_EQ(pua_code_point(6400), 0xf0000u);
 
-  std::ostringstream out;
-  font.write(out);
-  const sfnt::SfntFont parsed = parse(std::move(out).str());
+  const sfnt::SfntFont parsed = parse(font.write());
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(0)), 0);
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(6399)), 6399);
   EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(6400)), 6400);
@@ -316,11 +305,10 @@ TEST(SfntTransform, write_keeps_existing_post) {
 
   sfnt::SfntFont parsed = parse(font);
   reencode_to_pua(parsed);
-  std::ostringstream out;
-  parsed.write(out);
+  const std::string out = parsed.write();
 
   // The source `post` is copied through verbatim, not replaced.
-  EXPECT_EQ(table(out.str(), "post"), original_post);
+  EXPECT_EQ(table(out, "post"), original_post);
 }
 
 TEST(SfntTransform, write_synthesizes_os2_when_absent) {
@@ -356,9 +344,8 @@ TEST(SfntTransform, write_keeps_existing_os2) {
 
   sfnt::SfntFont parsed = parse(font);
   reencode_to_pua(parsed);
-  std::ostringstream out;
-  parsed.write(out);
+  const std::string out = parsed.write();
 
   // The source `OS/2` is copied through verbatim, not replaced.
-  EXPECT_EQ(table(out.str(), "OS/2"), original_os2);
+  EXPECT_EQ(table(out, "OS/2"), original_os2);
 }

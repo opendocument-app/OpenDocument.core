@@ -10,8 +10,6 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -432,7 +430,7 @@ TEST(CffFontTest, WrapsToLoadableOtf) {
   // The wrap is a valid OTTO that parses back as an SFNT carrying the CFF as a
   // pass-through table and a uniform PUA cmap over every glyph.
   ASSERT_TRUE(sfnt::SfntFont::is_sfnt(otf));
-  const sfnt::SfntFont wrapped{std::make_unique<std::istringstream>(otf)};
+  const sfnt::SfntFont wrapped{otf};
   EXPECT_EQ(wrapped.format(), FontFormat::opentype_cff);
   EXPECT_EQ(wrapped.glyph_count(), cff.glyph_count());
   // PUA code point U+E000+glyph maps back to that glyph.
@@ -451,7 +449,7 @@ TEST(CffFontTest, WrapDropsExtraEntriesPastGlyphCount) {
   const std::string otf = cff::wrap_to_otf(cff, {{U'A', 1}, {U'B', 5}});
 
   ASSERT_TRUE(sfnt::SfntFont::is_sfnt(otf));
-  const sfnt::SfntFont wrapped{std::make_unique<std::istringstream>(otf)};
+  const sfnt::SfntFont wrapped{otf};
   EXPECT_EQ(wrapped.glyph_for_code_point('A'), 1);
   EXPECT_EQ(wrapped.glyph_for_code_point('B'), 0); // dropped: not mapped
   EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(1)), 1);

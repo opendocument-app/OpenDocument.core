@@ -3,8 +3,6 @@
 #include <odr/internal/abstract/font.hpp>
 
 #include <cstdint>
-#include <iosfwd>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -29,8 +27,6 @@ public:
   /// Cheap magic test: a CFF header (major version 1, sane `hdrSize`).
   [[nodiscard]] static bool is_cff(std::string_view data);
 
-  /// Parse the facts from @p stream; the raw bytes are retained for `data()`.
-  explicit CffFont(std::unique_ptr<std::istream> stream);
   /// Parse the facts from an in-memory CFF blob (retained for `data()`).
   explicit CffFont(std::string data);
 

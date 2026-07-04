@@ -4,9 +4,7 @@
 
 #include <cstdint>
 #include <functional>
-#include <iosfwd>
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,9 +24,6 @@ public:
   /// Cheap magic test: a recognised SFNT version tag at the head of @p data.
   [[nodiscard]] static bool is_sfnt(std::string_view data);
 
-  /// Reads @p stream fully into an in-memory buffer and parses the facts from
-  /// it; the bytes are retained for pass-through (see `write()`).
-  explicit SfntFont(std::unique_ptr<std::istream> stream);
   /// Parses the facts from an in-memory SFNT blob (retained for `write()`).
   explicit SfntFont(std::string data);
 
@@ -55,11 +50,10 @@ public:
   /// font (see `sfnt_transform.hpp`'s `reencode_to_pua`), then `write()`.
   void set_cmap(std::map<char32_t, std::uint16_t> cmap);
 
-  /// Serialize the current state to @p out: the (possibly mutated) `cmap`
-  /// rebuilt from `cmap()`, every other table copied verbatim from the source
-  /// stream, with a freshly computed table directory and checksums. @p out need
-  /// only be a forward sink (see `build_sfnt`).
-  void write(std::ostream &out) const;
+  /// Serialize the current state and return the bytes: the (possibly mutated)
+  /// `cmap` rebuilt from `cmap()`, every other table copied verbatim from the
+  /// source stream, with a freshly computed table directory and checksums.
+  [[nodiscard]] std::string write() const;
 
 private:
   /// Parse the facts from `m_data` (called by both constructors).

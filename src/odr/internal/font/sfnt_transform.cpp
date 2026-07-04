@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <limits>
 #include <map>
-#include <ostream>
 #include <ranges>
 #include <utility>
 
@@ -84,8 +83,9 @@ char32_t font::pua_code_point(const std::uint16_t glyph) noexcept {
   return pua_supp_a_base + (glyph - pua_bmp_capacity);
 }
 
-void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
-                      std::vector<std::pair<std::string, std::string>> tables) {
+std::string
+font::build_sfnt(const std::uint32_t sfnt_version,
+                 std::vector<std::pair<std::string, std::string>> tables) {
   std::ranges::sort(
       tables, {}, [](const auto &e) -> const std::string & { return e.first; });
 
@@ -140,11 +140,14 @@ void font::build_sfnt(std::ostream &out, const std::uint32_t sfnt_version,
     bs::write_u32_be(tables[head_index].second, 8, 0xb1b0afbaU - file_checksum);
   }
 
-  out.write(header.data(), static_cast<std::streamsize>(header.size()));
-  out.write(directory.data(), static_cast<std::streamsize>(directory.size()));
+  std::string out;
+  out.reserve(offset); // `offset` has accumulated to the whole-file size
+  out.append(header);
+  out.append(directory);
   for (const auto &data : tables | std::views::values) {
-    out.write(data.data(), static_cast<std::streamsize>(data.size()));
+    out.append(data);
   }
+  return out;
 }
 
 /// Format-12 `cmap` subtable (segmented coverage): sequential map groups over

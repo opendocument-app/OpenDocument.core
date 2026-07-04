@@ -1817,8 +1817,7 @@ public:
       bool usable = false;
       try {
         font::reencode_to_pua(*sfnt);
-        std::ostringstream sfnt_out;
-        sfnt->write(sfnt_out);
+        (void)sfnt->write();
         usable = true;
       } catch (...) {
         usable = false;
@@ -1860,9 +1859,7 @@ public:
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
       font::reencode_to_pua(*sfnt, extra_unicode);
-      std::ostringstream sfnt_out;
-      sfnt->write(sfnt_out);
-      reencoded = std::move(sfnt_out).str();
+      reencoded = sfnt->write();
     } else if (const auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
                    font.embedded_font)) {
       reencoded = font::cff::wrap_to_otf(*cff, extra_unicode);
