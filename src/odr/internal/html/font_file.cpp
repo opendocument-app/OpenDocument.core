@@ -11,10 +11,11 @@
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
+#include <istream>
 #include <memory>
-#include <sstream>
 #include <string>
 
 namespace odr::internal::html {
@@ -95,11 +96,10 @@ public:
       // Re-encode a fresh parse: reencode_to_pua mutates the cmap in place, and
       // the grid below still reads each glyph's original Unicode from
       // `font`.
-      font::sfnt::SfntFont embed(m_font_file.impl()->file()->stream());
+      font::sfnt::SfntFont embed(
+          util::stream::read(*m_font_file.impl()->file()->stream()));
       font::reencode_to_pua(embed);
-      std::ostringstream sfnt_out;
-      embed.write(sfnt_out);
-      reencoded = sfnt_out.str();
+      reencoded = embed.write();
     } catch (...) {
       out.out() << "<p>font has too many glyphs to display</p>";
       out.write_body_end();

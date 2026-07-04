@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -120,8 +119,7 @@ std::shared_ptr<abstract::Font> sample_font() {
                                  {"hhea", hhea_table(5)},
                                  {"hmtx", hmtx_table(5)},
                                  {"maxp", maxp_table(5)}});
-  return std::make_shared<font::sfnt::SfntFont>(
-      std::make_unique<std::istringstream>(std::move(sfnt)));
+  return std::make_shared<font::sfnt::SfntFont>(std::move(sfnt));
 }
 
 /// Big-endian 2-byte codes, as a composite font's character codes appear.

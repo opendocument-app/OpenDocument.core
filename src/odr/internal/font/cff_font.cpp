@@ -3,14 +3,11 @@
 #include <odr/internal/font/cff_standard_strings.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/byte_string.hpp>
-#include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
 #include <cstdint>
-#include <istream>
 #include <iterator>
 #include <map>
-#include <memory>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -215,14 +212,6 @@ bool CffFont::is_cff(const std::string_view data) {
          static_cast<std::uint8_t>(data[2]) >= 4 &&
          static_cast<std::uint8_t>(data[3]) >= 1 &&
          static_cast<std::uint8_t>(data[3]) <= 4;
-}
-
-CffFont::CffFont(std::unique_ptr<std::istream> stream) {
-  if (stream == nullptr) {
-    throw std::invalid_argument("cff: null input stream");
-  }
-  m_data = util::stream::read(*stream);
-  parse();
 }
 
 CffFont::CffFont(std::string data) : m_data{std::move(data)} { parse(); }

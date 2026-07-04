@@ -110,9 +110,7 @@ std::string name_table(const std::string &ascii) {
 std::string
 build_sfnt_bytes(std::uint32_t version,
                  std::vector<std::pair<std::string, std::string>> tables) {
-  std::ostringstream out;
-  build_sfnt(out, version, std::move(tables));
-  return out.str();
+  return build_sfnt(version, std::move(tables));
 }
 
 std::string sample_ttf() {

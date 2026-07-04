@@ -2,14 +2,10 @@
 
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/util/byte_string.hpp>
-#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstdint>
-#include <istream>
-#include <memory>
-#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -177,14 +173,6 @@ bool SfntFont::is_sfnt(const std::string_view data) {
   const std::string_view tag = data.substr(0, 4);
   return tag == std::string_view("\x00\x01\x00\x00", 4) || tag == "OTTO" ||
          tag == "true" || tag == "ttcf" || tag == "typ1";
-}
-
-SfntFont::SfntFont(std::unique_ptr<std::istream> stream) {
-  if (stream == nullptr) {
-    throw std::invalid_argument("sfnt: null input stream");
-  }
-  m_data = util::stream::read(*stream);
-  parse();
 }
 
 SfntFont::SfntFont(std::string data) : m_data{std::move(data)} { parse(); }
@@ -506,7 +494,7 @@ void SfntFont::set_cmap(std::map<char32_t, std::uint16_t> cmap) {
   update_reverse();
 }
 
-void SfntFont::write(std::ostream &out) const {
+std::string SfntFont::write() const {
   std::vector<std::pair<std::string, std::string>> tables;
   tables.reserve(m_tables.size() + 1);
   for (const auto &[tag, location] : m_tables) {
@@ -543,7 +531,7 @@ void SfntFont::write(std::ostream &out) const {
   const std::uint32_t version = m_format == FontFormat::opentype_cff
                                     ? 0x4f54544fU /* 'OTTO' */
                                     : 0x00010000U;
-  build_sfnt(out, version, std::move(tables));
+  return build_sfnt(version, std::move(tables));
 }
 
 std::optional<SfntFont::Table>
