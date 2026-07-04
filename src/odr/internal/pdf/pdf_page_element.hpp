@@ -124,8 +124,8 @@ struct PathElement {
   /// user space (the CTM scale is already folded in, so they live in the same
   /// space as the geometry). A `line_width` of 0 means a device-thin line.
   double line_width{1};
-  int line_cap{0};
-  int line_join{0};
+  std::int32_t line_cap{0};
+  std::int32_t line_join{0};
   double miter_limit{10};
   std::vector<double> dash_array; // empty = solid
   double dash_phase{0};
