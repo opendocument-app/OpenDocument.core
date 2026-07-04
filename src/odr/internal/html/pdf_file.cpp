@@ -701,6 +701,55 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
   return {};
 }
 
+/// Lifts text out of transparency groups so this HTML backend can still render
+/// and select it. A `GroupElement`'s opacity/blend/mask is carried by an SVG
+/// `<g>`, but text is painted as positioned markup, not SVG, so it cannot ride
+/// inside that `<g>`. The extractor faithfully nests such text in the group; to
+/// avoid dropping it from both the visual and selection layers, each interior
+/// `TextElement` is hoisted to the top level — where the ordinary text pipeline
+/// renders it and `extract_text`-style top-level scans pick it up. The only
+/// thing forgone is the group effect on the text itself (see pdf/AGENTS.md
+/// gaps); the group's graphics are untouched and still composited as a unit.
+/// Nesting is flattened recursively; hoisted text is emitted at the group's
+/// position (ahead of the composited graphics), and a group left with no
+/// graphics is dropped.
+std::vector<pdf::PageElement>
+lift_group_text(std::vector<pdf::PageElement> elements) {
+  std::vector<pdf::PageElement> result;
+  result.reserve(elements.size());
+  for (pdf::PageElement &element : elements) {
+    auto *group = std::get_if<pdf::GroupElement>(&element);
+    if (group == nullptr || group->children == nullptr) {
+      result.push_back(std::move(element));
+      continue;
+    }
+    // Flatten nested groups first, so all interior text sits at this level.
+    std::vector<pdf::PageElement> inner =
+        lift_group_text(group->children->elements);
+    std::vector<pdf::PageElement> graphics;
+    graphics.reserve(inner.size());
+    for (pdf::PageElement &child : inner) {
+      if (std::holds_alternative<pdf::TextElement>(child)) {
+        result.push_back(std::move(child)); // hoisted ahead of the group
+      } else {
+        graphics.push_back(std::move(child));
+      }
+    }
+    if (graphics.empty()) {
+      continue; // the group carried only text; nothing left to composite
+    }
+    auto children = std::make_shared<pdf::GroupChildren>();
+    children->elements = std::move(graphics);
+    pdf::GroupElement lifted;
+    lifted.children = std::move(children);
+    lifted.alpha = group->alpha;
+    lifted.blend_mode = group->blend_mode;
+    lifted.soft_mask = group->soft_mask;
+    result.push_back(std::move(lifted));
+  }
+  return result;
+}
+
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned line block per detected line, and the same
 /// font sizes, offsets and spacings recur across the (potentially millions of)
@@ -961,8 +1010,8 @@ public:
       /// its line.
       double sel_prev_font_size_pt = 0;
 
-      for (const pdf::PageElement &element :
-           pdf::extract_page(stream, *page->resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(
+               pdf::extract_page(stream, *page->resources, *m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
                 masks, *m_logger, [&] { vis_close_line(); },
@@ -1449,8 +1498,8 @@ public:
     // stream is cheap next to buffering every page's element list in memory.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       const pdf::Page &page = *pages[pi];
-      for (const pdf::PageElement &element :
-           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
+               page_streams[pi], *page.resources, *m_logger))) {
         const auto *text = std::get_if<pdf::TextElement>(&element);
         if (text == nullptr || text->text.empty() || text->font == nullptr) {
           continue;
@@ -1522,8 +1571,8 @@ public:
       double prev_font_pt = 0;
       const auto close_line = [&] { cur_line = -1; };
 
-      for (const pdf::PageElement &element :
-           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
+               page_streams[pi], *page.resources, *m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
                 masks, *m_logger, [&] { close_line(); },
