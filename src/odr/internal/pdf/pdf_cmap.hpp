@@ -91,10 +91,10 @@ private:
   };
 
   struct CidRange {
-    std::uint32_t low;      // numeric value of the low code
-    std::uint32_t high;     // numeric value of the high code
-    std::uint32_t base_cid; // CID of the low code
-    std::size_t width;      // byte width of the codes (to disambiguate widths)
+    std::uint32_t low;      ///< numeric value of the low code
+    std::uint32_t high;     ///< numeric value of the high code
+    std::uint32_t base_cid; ///< CID of the low code
+    std::size_t width; ///< byte width of the codes (to disambiguate widths)
   };
 
   bool m_inherits_external_cmap{false};
