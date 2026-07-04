@@ -303,10 +303,20 @@ it.
   code → Unicode chain) but paints no visible text of its own (`render_as_graphics`,
   like an invisible `Tr 3` run). Recursion is depth-guarded.
 - **Transparency**: `/ExtGState` constant alpha (`ca`/`CA`) →
-  `fill-opacity`/`stroke-opacity`/`opacity`, and blend modes (`/BM`) →
+  `fill-opacity`/`stroke-opacity`/`opacity`, blend modes (`/BM`) →
   `mix-blend-mode` (the 16 separable/non-separable modes map 1:1; unmappable names
-  render normal). Both are part of the saved graphics state, so `q`/`Q` scope them
-  like the CTM. Soft masks and isolated/knockout groups are deferred (see gaps).
+  render normal), and soft masks (`/SMask`) → an SVG `<mask>`. All are part of the
+  saved graphics state, so `q`/`Q` scope them like the CTM. A soft mask's
+  transparency group `/G` is rendered by the extractor into a `SoftMask` (its
+  content in user space); the HTML `MaskRegistry` serializes that into a
+  `<mask>` (luminosity → the SVG luminance default, `/Alpha` → `mask-type`,
+  `/BC` → a backdrop rect), and the painted element is wrapped in a masked `<g>`.
+  A transparency group (`/Group` with `/S /Transparency`) is treated as a unit:
+  the constant alpha, blend mode and soft mask in force when it is invoked fold
+  into the group's output even when the group's own content resets them — the
+  drop-shadow / faded-reflection idiom. Text under a soft mask is not yet masked
+  (see gaps), and per-element folding approximates true group compositing where
+  interior paints overlap.
 
 The **reference-output snapshot test** (`test/data/reference-output/`) is the
 graphics oracle: each change regenerates it and the diff is reviewed. A
@@ -616,13 +626,12 @@ design before implementation.
   (paths, clipping, colour spaces + `/Function` evaluation, JPEG / raster /
   inline images and masks, axial/radial shadings, tiling patterns),
   non-embedded font substitution (+ standard-14 AFM widths), Type3 fonts, and
-  transparency (constant alpha + blend modes). Decision: **SVG serialization,
-  no rasterizer** — pdf.js proves the full graphics model needs no native
-  renderer, and the rasterized-background fallback is rejected as it
+  transparency (constant alpha, blend modes, soft masks). Decision: **SVG
+  serialization, no rasterizer** — pdf.js proves the full graphics model needs no
+  native renderer, and the rasterized-background fallback is rejected as it
   reintroduces the very dependency the `odr` engine avoids. The mechanics live
-  in *Graphics, images & transparency* above. Deferred: soft masks,
-  mesh/function shadings, and the perceptual-diff oracle (see *Other known
-  gaps*).
+  in *Graphics, images & transparency* above. Deferred: mesh/function shadings
+  and the perceptual-diff oracle (see *Other known gaps*).
 
 ## Stage 5 — interaction & navigation
 
@@ -654,11 +663,15 @@ tree, little else.
 
 - **Graphics deferrals** (from stage 4, the *Graphics, images & transparency*
   tail):
-  - **Soft masks** (`/SMask` in `/ExtGState` → SVG `<mask>`): luminosity/alpha
-    soft masks are not applied — rendering a transparency-group XObject into a
-    mask and scoping it across following content is a large change in the
-    per-fragment SVG pipeline. Isolated/knockout groups don't map cleanly and are
-    punted (rare). Constant alpha (`ca`/`CA`) and blend modes (`/BM`) *are* done.
+  - **Soft masks** (`/SMask` in `/ExtGState` → SVG `<mask>`): done for
+    luminosity and alpha masks on graphic content (see *Transparency* above).
+    Remaining gaps: a soft mask (or group opacity/blend) on *text* is not applied
+    — the visible glyphs live in the HTML text layer, not the SVG, so the mask
+    would need a CSS `mask` on the line block or the run promoted into SVG (the
+    masked content in practice is paths/images, not text). Isolated vs.
+    non-isolated and knockout group semantics (`/I`, `/K`) are not distinguished;
+    a soft mask's own group is rendered with its default (black) backdrop unless
+    `/BC` is a plain device colour.
   - **Mesh & function-based shadings** (types 1, 4–7): only axial (2) and radial
     (3) are emitted; the rest would tessellate into flat polygons (pdf.js's
     approach) — not done.

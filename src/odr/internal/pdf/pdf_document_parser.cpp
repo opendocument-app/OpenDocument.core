@@ -866,6 +866,17 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
                                 box[2].as_real(), box[3].as_real()};
     }
   }
+  // A transparency group (`/Group` with `/S /Transparency`): the extractor
+  // applies an active soft mask / constant alpha to the group as a unit.
+  if (dictionary.has_value("Group")) {
+    const Object group = parser.resolve_object_copy(dictionary["Group"]);
+    if (group.is_dictionary()) {
+      const Object subtype =
+          parser.resolve_object_copy(group.as_dictionary().get("S"));
+      x_object->transparency_group =
+          subtype.is_name() && subtype.as_name() == "Transparency";
+    }
+  }
   // Read the content eagerly so text extraction needs no parser handle.
   x_object->content = parser.read_decoded_stream(object);
 
@@ -971,6 +982,34 @@ Pattern *parse_pattern(State &state, const ObjectReference &reference,
   return pattern;
 }
 
+/// Resolve a `/SMask` soft-mask dictionary from an `/ExtGState` (ISO 32000-1
+/// 11.6.5.2) into a `SoftMaskDef`: parse its `/G` transparency group as a form
+/// XObject, read `/S` (`/Luminosity` default, `/Alpha`) and the `/BC` backdrop.
+/// Returns null when `/G` is missing or not a form (then `gs` treats the state
+/// as having no mask). `/SMask /None` never reaches here — the caller filters
+/// non-dictionaries out first.
+std::shared_ptr<SoftMaskDef> parse_soft_mask(State &state,
+                                             const Dictionary &dictionary) {
+  DocumentParser &parser = state.parser();
+  if (!dictionary.has_value("G") || !dictionary["G"].is_reference()) {
+    return nullptr;
+  }
+  XObject *group = parse_x_object(state, dictionary["G"].as_reference());
+  if (group == nullptr || group->subtype != XObject::Subtype::form) {
+    return nullptr;
+  }
+  auto def = std::make_shared<SoftMaskDef>();
+  def->group = group;
+  const Object s = parser.resolve_object_copy(dictionary.get("S"));
+  def->type = s.is_name() && s.as_name() == "Alpha"
+                  ? SoftMaskDef::Type::alpha
+                  : SoftMaskDef::Type::luminosity;
+  if (dictionary.has_value("BC")) {
+    def->backdrop = parser.resolve_object_copy(dictionary["BC"]).as_reals();
+  }
+  return def;
+}
+
 Resources *parse_resources(State &state, const Object &object) {
   DocumentParser &parser = state.parser();
   Document &document = state.document();
@@ -1055,7 +1094,21 @@ Resources *parse_resources(State &state, const Object &object) {
     const Dictionary ext_g_state_table =
         parser.resolve_object_copy(dictionary["ExtGState"]).as_dictionary();
     for (const auto &[key, value] : ext_g_state_table) {
-      resources->ext_g_state[key] = parser.resolve_object_copy(value);
+      Object resolved = parser.resolve_object_copy(value);
+      // Resolve a `/SMask` transparency group eagerly (its `/G` form XObject),
+      // so the extractor renders the mask without a parser handle. `/None` (a
+      // name) and other non-dictionaries carry no mask.
+      if (resolved.is_dictionary() &&
+          resolved.as_dictionary().has_value("SMask")) {
+        const Object smask =
+            parser.resolve_object_copy(resolved.as_dictionary()["SMask"]);
+        if (smask.is_dictionary()) {
+          if (auto def = parse_soft_mask(state, smask.as_dictionary())) {
+            resources->ext_g_state_soft_mask[key] = std::move(def);
+          }
+        }
+      }
+      resources->ext_g_state[key] = std::move(resolved);
     }
   }
 

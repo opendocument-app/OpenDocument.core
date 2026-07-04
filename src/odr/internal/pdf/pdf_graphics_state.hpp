@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,7 @@ namespace odr::internal::pdf {
 
 struct GraphicsOperator;
 struct ColorSpaceDef;
+struct SoftMask;
 
 enum class ColorSpace {
   unknown,
@@ -92,6 +94,12 @@ struct GraphicsState {
     // Blend mode (ISO 32000-1 11.3.5) set via an `/ExtGState` `/BM`: the PDF
     // separable/non-separable blend name (e.g. `Multiply`). Empty = `Normal`.
     std::string blend_mode;
+    // Soft mask (ISO 32000-1 11.6.5.2) set via an `/ExtGState` `/SMask`: the
+    // rendered luminosity/alpha mask applied to painted content, or null for
+    // `/SMask /None`. Part of the general graphics state, so `q`/`Q` scope it
+    // like the CTM. Built by the extractor (it renders the mask's transparency
+    // group), which is why it is an opaque handle here.
+    std::shared_ptr<const SoftMask> soft_mask;
     util::math::Transform2D transform_matrix; // CTM
   };
 
@@ -152,6 +160,12 @@ struct GraphicsState {
   /// pathological self-referential recursion. Deliberately *not* part of the
   /// `q`/`Q`-saved `State`: it tracks call-chain depth, not graphics state.
   std::int32_t type3_depth{0};
+
+  /// Nesting depth of soft-mask rendering. A soft mask's transparency group may
+  /// itself set a soft mask, so this bounds pathological recursion. Like
+  /// `type3_depth`, it tracks call-chain depth, not graphics state, so it is
+  /// deliberately *not* part of the `q`/`Q`-saved `State`.
+  std::int32_t soft_mask_depth{0};
 
   GraphicsState();
 

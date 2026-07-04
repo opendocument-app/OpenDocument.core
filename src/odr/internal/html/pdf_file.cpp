@@ -530,6 +530,226 @@ public:
   }
 };
 
+class MaskRegistry;
+
+/// Serialize one graphic page element (a painted path, a shading flood, an
+/// image, or a nested transparency group) to an SVG fragment in the page
+/// viewBox, registering any clip, gradient, pattern or soft mask it needs.
+/// Returns "" for a text element or one that paints nothing. A soft mask on the
+/// element wraps its fragment in a masked `<g>`; a `GroupElement` renders its
+/// children then wraps them in one `<g>` carrying the group's opacity, blend
+/// and mask (so the group composites as a unit before those apply).
+std::string render_graphic_fragment(const pdf::PageElement &element,
+                                    const util::math::Transform2D &to_box,
+                                    double width, double height,
+                                    ClipRegistry &clips,
+                                    GradientRegistry &gradients,
+                                    PatternRegistry &patterns,
+                                    MaskRegistry &masks, const Logger &logger);
+
+/// Registers a page's soft masks (`/SMask`, ISO 32000-1 11.6.5.2) as `<mask>`
+/// defs. The extractor has rendered each mask's transparency group into a list
+/// of graphic elements (in user space); those are serialized into the mask body
+/// with the page's own clip/gradient/pattern registries, so their ids stay
+/// unique within the page. Coverage comes from luminance by default
+/// (`/Luminosity` -> the SVG mask default) or from alpha (`/Alpha` ->
+/// `mask-type="alpha"`); a non-black `/BC` backdrop floods behind the group.
+/// Ids are namespaced per page (`m<page>_<n>`).
+class MaskRegistry : public DefsRegistry {
+public:
+  using DefsRegistry::DefsRegistry;
+
+  std::string register_mask(const pdf::SoftMask &mask,
+                            const util::math::Transform2D &to_box,
+                            const double width, const double height,
+                            ClipRegistry &clips, GradientRegistry &gradients,
+                            PatternRegistry &patterns, const Logger &logger) {
+    // A fresh `SoftMask` is built for every `gs`, but many are identical (the
+    // same drop-shadow reused across a run of glyphs, say). Dedupe on the
+    // rendered body + type + backdrop so those collapse to a single def.
+    std::ostringstream body;
+    for (const pdf::PageElement &element : mask.group) {
+      body << render_graphic_fragment(element, to_box, width, height, clips,
+                                      gradients, patterns, *this, logger);
+    }
+    std::string signature = mask.type == pdf::SoftMask::Type::alpha ? "A" : "L";
+    if (mask.backdrop.has_value()) {
+      signature += rgb_to_css(*mask.backdrop);
+    }
+    signature += ';';
+    signature += body.str();
+    const auto [id, inserted] = intern(signature, "m");
+    if (!inserted) {
+      return id;
+    }
+    m_defs << "<mask id=\"" << id
+           << "\" maskUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\""
+           << round2(width) << "\" height=\"" << round2(height) << '"';
+    if (mask.type == pdf::SoftMask::Type::alpha) {
+      m_defs << " mask-type=\"alpha\"";
+    }
+    m_defs << '>';
+    // A non-black `/BC` backdrop floods the mask region behind the group; the
+    // default (black) needs none — SVG's mask background is already luminance
+    // 0.
+    if (mask.backdrop.has_value() &&
+        ((*mask.backdrop)[0] + (*mask.backdrop)[1] + (*mask.backdrop)[2] > 0)) {
+      m_defs << "<rect x=\"0\" y=\"0\" width=\"" << round2(width)
+             << "\" height=\"" << round2(height) << "\" fill=\""
+             << rgb_to_css(*mask.backdrop) << "\"/>";
+    }
+    m_defs << std::move(body).str() << "</mask>";
+    return id;
+  }
+};
+
+/// Wrap an SVG fragment in a `<g>` carrying an opacity, a soft mask and/or a
+/// blend mode, registering the mask. Returns `fragment` unchanged when none
+/// apply (and "" for an empty fragment).
+std::string wrap_effects(std::string fragment, const double alpha,
+                         const std::shared_ptr<const pdf::SoftMask> &soft_mask,
+                         const std::string &blend_mode,
+                         const util::math::Transform2D &to_box,
+                         const double width, const double height,
+                         ClipRegistry &clips, GradientRegistry &gradients,
+                         PatternRegistry &patterns, MaskRegistry &masks,
+                         const Logger &logger) {
+  if (fragment.empty()) {
+    return fragment;
+  }
+  std::string mask_id;
+  if (soft_mask != nullptr) {
+    mask_id = masks.register_mask(*soft_mask, to_box, width, height, clips,
+                                  gradients, patterns, logger);
+  }
+  const std::string blend = blend_mode_to_css(blend_mode);
+  if (alpha >= 1 && mask_id.empty() && blend.empty()) {
+    return fragment;
+  }
+  std::ostringstream g;
+  g << "<g";
+  if (alpha < 1) {
+    g << " opacity=\"" << round2(alpha) << '"';
+  }
+  if (!mask_id.empty()) {
+    g << " mask=\"url(#" << mask_id << ")\"";
+  }
+  if (!blend.empty()) {
+    g << " style=\"mix-blend-mode:" << blend << '"';
+  }
+  g << '>' << fragment << "</g>";
+  return std::move(g).str();
+}
+
+std::string render_graphic_fragment(const pdf::PageElement &element,
+                                    const util::math::Transform2D &to_box,
+                                    const double width, const double height,
+                                    ClipRegistry &clips,
+                                    GradientRegistry &gradients,
+                                    PatternRegistry &patterns,
+                                    MaskRegistry &masks, const Logger &logger) {
+  const auto wrap_mask =
+      [&](std::string fragment,
+          const std::shared_ptr<const pdf::SoftMask> &soft_mask) {
+        return wrap_effects(std::move(fragment), 1.0, soft_mask, "", to_box,
+                            width, height, clips, gradients, patterns, masks,
+                            logger);
+      };
+  if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
+    const std::string clip_id = clips.register_clip(path->clip, to_box);
+    std::string fill_url_id;
+    if (path->fill_shading != nullptr) {
+      fill_url_id = gradients.register_gradient(
+          *path->fill_shading, path->shading_transform * to_box);
+    } else if (path->fill_pattern != nullptr) {
+      fill_url_id = patterns.register_pattern(*path->fill_pattern,
+                                              path->pattern_transform * to_box,
+                                              path->fill_color, logger);
+    }
+    return wrap_mask(svg_path_fragment(*path, to_box, clip_id, fill_url_id),
+                     path->soft_mask);
+  }
+  if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
+    if (shading->shading == nullptr) {
+      return {};
+    }
+    const std::string clip_id = clips.register_clip(shading->clip, to_box);
+    const std::string gradient_id = gradients.register_gradient(
+        *shading->shading, shading->transform * to_box);
+    return wrap_mask(svg_shading_fragment(gradient_id, clip_id, width, height,
+                                          shading->alpha, shading->blend_mode),
+                     shading->soft_mask);
+  }
+  if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
+    const std::string clip_id = clips.register_clip(image->clip, to_box);
+    return wrap_mask(svg_image_fragment(*image, to_box, clip_id),
+                     image->soft_mask);
+  }
+  if (const auto *group = std::get_if<pdf::GroupElement>(&element)) {
+    if (group->children == nullptr) {
+      return {};
+    }
+    std::string inner;
+    for (const pdf::PageElement &child : group->children->elements) {
+      inner += render_graphic_fragment(child, to_box, width, height, clips,
+                                       gradients, patterns, masks, logger);
+    }
+    return wrap_effects(std::move(inner), group->alpha, group->soft_mask,
+                        group->blend_mode, to_box, width, height, clips,
+                        gradients, patterns, masks, logger);
+  }
+  return {};
+}
+
+/// Lifts text out of transparency groups so this HTML backend can still render
+/// and select it. A `GroupElement`'s opacity/blend/mask is carried by an SVG
+/// `<g>`, but text is painted as positioned markup, not SVG, so it cannot ride
+/// inside that `<g>`. The extractor faithfully nests such text in the group; to
+/// avoid dropping it from both the visual and selection layers, each interior
+/// `TextElement` is hoisted to the top level — where the ordinary text pipeline
+/// renders it and `extract_text`-style top-level scans pick it up. The only
+/// thing forgone is the group effect on the text itself (see pdf/AGENTS.md
+/// gaps); the group's graphics are untouched and still composited as a unit.
+/// Nesting is flattened recursively; hoisted text is emitted at the group's
+/// position (ahead of the composited graphics), and a group left with no
+/// graphics is dropped.
+std::vector<pdf::PageElement>
+lift_group_text(std::vector<pdf::PageElement> elements) {
+  std::vector<pdf::PageElement> result;
+  result.reserve(elements.size());
+  for (pdf::PageElement &element : elements) {
+    auto *group = std::get_if<pdf::GroupElement>(&element);
+    if (group == nullptr || group->children == nullptr) {
+      result.push_back(std::move(element));
+      continue;
+    }
+    // Flatten nested groups first, so all interior text sits at this level.
+    std::vector<pdf::PageElement> inner =
+        lift_group_text(group->children->elements);
+    std::vector<pdf::PageElement> graphics;
+    graphics.reserve(inner.size());
+    for (pdf::PageElement &child : inner) {
+      if (std::holds_alternative<pdf::TextElement>(child)) {
+        result.push_back(std::move(child)); // hoisted ahead of the group
+      } else {
+        graphics.push_back(std::move(child));
+      }
+    }
+    if (graphics.empty()) {
+      continue; // the group carried only text; nothing left to composite
+    }
+    auto children = std::make_shared<pdf::GroupChildren>();
+    children->elements = std::move(graphics);
+    pdf::GroupElement lifted;
+    lifted.children = std::move(children);
+    lifted.alpha = group->alpha;
+    lifted.blend_mode = group->blend_mode;
+    lifted.soft_mask = group->soft_mask;
+    result.push_back(std::move(lifted));
+  }
+  return result;
+}
+
 /// Deduplicates CSS declarations into atomic, single-property classes. PDF text
 /// emits one absolutely-positioned line block per detected line, and the same
 /// font sizes, offsets and spacings recur across the (potentially millions of)
@@ -762,6 +982,7 @@ public:
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
+      MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
 
       // Visual layer state: open line block.
       /// index of open VisLineOut in vis_items, -1 = none
@@ -789,11 +1010,11 @@ public:
       /// its line.
       double sel_prev_font_size_pt = 0;
 
-      for (const pdf::PageElement &element :
-           pdf::extract_page(stream, *page->resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(
+               pdf::extract_page(stream, *page->resources, *m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                *m_logger, [&] { vis_close_line(); },
+                masks, *m_logger, [&] { vis_close_line(); },
                 [&](std::string frag) {
                   page_out.vis_items.push_back(PathOut{std::move(frag)});
                 })) {
@@ -1012,7 +1233,8 @@ public:
       // interleave multi-column layouts (the stream keeps columns contiguous);
       // reading order can't be recovered by a scalar sort. Proper page
       // segmentation (column detection / XY-cut) is the eventual fix.
-      page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
+      page_out.clip_defs =
+          clips.defs() + gradients.defs() + patterns.defs() + masks.defs();
     }
 
     // Post-pass: re-encode accepted fonts PUA-only.
@@ -1276,8 +1498,8 @@ public:
     // stream is cheap next to buffering every page's element list in memory.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       const pdf::Page &page = *pages[pi];
-      for (const pdf::PageElement &element :
-           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
+               page_streams[pi], *page.resources, *m_logger))) {
         const auto *text = std::get_if<pdf::TextElement>(&element);
         if (text == nullptr || text->text.empty() || text->font == nullptr) {
           continue;
@@ -1339,6 +1561,7 @@ public:
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
+      MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
 
       std::int32_t cur_line = -1;
       std::string cur_flow_key;
@@ -1348,11 +1571,11 @@ public:
       double prev_font_pt = 0;
       const auto close_line = [&] { cur_line = -1; };
 
-      for (const pdf::PageElement &element :
-           pdf::extract_page(page_streams[pi], *page.resources, *m_logger)) {
+      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
+               page_streams[pi], *page.resources, *m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                *m_logger, [&] { close_line(); },
+                masks, *m_logger, [&] { close_line(); },
                 [&](std::string frag) {
                   page_out.items.push_back(SinglePathOut{std::move(frag)});
                 })) {
@@ -1510,7 +1733,8 @@ public:
         prev_was_matrix = is_matrix;
       }
 
-      page_out.clip_defs = clips.defs() + gradients.defs() + patterns.defs();
+      page_out.clip_defs =
+          clips.defs() + gradients.defs() + patterns.defs() + masks.defs();
     }
 
     // ---- Post-pass: re-encode fonts with frequency-winner cmap entries ---
@@ -2029,55 +2253,25 @@ public:
   /// fragment is produced. Returns true when the element was a graphic
   /// (caller should `continue`), false when it is a text element.
   template <typename CloseLine, typename PushSvg>
-  static bool handle_graphic_element(
-      const pdf::PageElement &element, const util::math::Transform2D &to_box,
-      double width, double height, ClipRegistry &clips,
-      GradientRegistry &gradients, PatternRegistry &patterns, Logger &logger,
-      CloseLine &&close_line, PushSvg &&push_svg) {
-    if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
-      const std::string clip_id = clips.register_clip(path->clip, to_box);
-      std::string fill_url_id;
-      if (path->fill_shading != nullptr) {
-        fill_url_id = gradients.register_gradient(
-            *path->fill_shading, path->shading_transform * to_box);
-      } else if (path->fill_pattern != nullptr) {
-        fill_url_id = patterns.register_pattern(
-            *path->fill_pattern, path->pattern_transform * to_box,
-            path->fill_color, logger);
-      }
-      if (std::string frag =
-              svg_path_fragment(*path, to_box, clip_id, fill_url_id);
-          !frag.empty()) {
-        close_line();
-        push_svg(std::move(frag));
-      }
-      return true;
+  static bool
+  handle_graphic_element(const pdf::PageElement &element,
+                         const util::math::Transform2D &to_box, double width,
+                         double height, ClipRegistry &clips,
+                         GradientRegistry &gradients, PatternRegistry &patterns,
+                         MaskRegistry &masks, Logger &logger,
+                         CloseLine &&close_line, PushSvg &&push_svg) {
+    // Text is handled by the caller; every other element kind is a graphic.
+    if (std::holds_alternative<pdf::TextElement>(element)) {
+      return false;
     }
-    if (const auto *shading = std::get_if<pdf::ShadingElement>(&element)) {
-      if (shading->shading != nullptr) {
-        const std::string clip_id = clips.register_clip(shading->clip, to_box);
-        const std::string gradient_id = gradients.register_gradient(
-            *shading->shading, shading->transform * to_box);
-        if (std::string frag =
-                svg_shading_fragment(gradient_id, clip_id, width, height,
-                                     shading->alpha, shading->blend_mode);
-            !frag.empty()) {
-          close_line();
-          push_svg(std::move(frag));
-        }
-      }
-      return true;
+    std::string frag =
+        render_graphic_fragment(element, to_box, width, height, clips,
+                                gradients, patterns, masks, logger);
+    if (!frag.empty()) {
+      close_line();
+      push_svg(std::move(frag));
     }
-    if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-      const std::string clip_id = clips.register_clip(image->clip, to_box);
-      if (std::string frag = svg_image_fragment(*image, to_box, clip_id);
-          !frag.empty()) {
-        close_line();
-        push_svg(std::move(frag));
-      }
-      return true;
-    }
-    return false;
+    return true;
   }
 
 protected:

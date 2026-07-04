@@ -3,6 +3,9 @@
 #include <odr/internal/pdf/pdf_graphics_state.hpp>
 #include <odr/internal/util/math_util.hpp>
 
+#include <array>
+#include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -12,6 +15,7 @@ namespace odr::internal::pdf {
 struct Font;
 struct Shading;
 struct Pattern;
+struct SoftMask;
 
 /// One show-text operation laid out in user space. The transform places the
 /// text origin and orientation; the font size is kept separate so the renderer
@@ -120,8 +124,8 @@ struct PathElement {
   /// user space (the CTM scale is already folded in, so they live in the same
   /// space as the geometry). A `line_width` of 0 means a device-thin line.
   double line_width{1};
-  int line_cap{0};
-  int line_join{0};
+  std::int32_t line_cap{0};
+  std::int32_t line_join{0};
   double miter_limit{10};
   std::vector<double> dash_array; // empty = solid
   double dash_phase{0};
@@ -130,6 +134,10 @@ struct PathElement {
   double fill_alpha{1};
   double stroke_alpha{1};
   std::string blend_mode;
+  /// Soft mask (`/ExtGState` `/SMask`) in force when the path was painted, or
+  /// null when none. Snapshotted like the clip so the renderer can install it
+  /// without replaying the graphics state.
+  std::shared_ptr<const SoftMask> soft_mask;
 };
 
 /// One image XObject painted by `Do`, placed by the CTM in effect when it was
@@ -148,6 +156,8 @@ struct ImageElement {
   /// Normal.
   double alpha{1};
   std::string blend_mode;
+  /// Soft mask (`/ExtGState` `/SMask`) in force at `Do`, or null when none.
+  std::shared_ptr<const SoftMask> soft_mask;
 };
 
 /// One area painted by the `sh` operator (ISO 32000-1 8.7.4.2): a shading
@@ -166,12 +176,59 @@ struct ShadingElement {
   /// `sh`; 1 = opaque, empty blend = Normal.
   double alpha{1};
   std::string blend_mode;
+  /// Soft mask (`/ExtGState` `/SMask`) in force at `sh`, or null when none.
+  std::shared_ptr<const SoftMask> soft_mask;
+};
+
+struct GroupChildren;
+
+/// A transparency group painted as a unit (ISO 32000-1 11.6.6): its content is
+/// composited first, then the whole result is painted with the group-level
+/// constant alpha, blend mode and soft mask in force when the group was
+/// invoked. This is *not* the same as folding those onto each interior element
+/// — for content whose paints overlap (a figure's hair over its face, say) the
+/// group must composite opaquely first, then fade, or the overlaps show
+/// through. The renderer emits the children into one container (`<g>`) carrying
+/// the group parameters. `children` is held indirectly so `PageElement` can
+/// hold a `GroupElement` (a recursive variant).
+struct GroupElement {
+  std::shared_ptr<const GroupChildren> children;
+  /// Group-level nonstroking constant alpha (`ca`), 1 = opaque.
+  double alpha{1};
+  /// Group-level blend mode (`/BM`); empty = Normal.
+  std::string blend_mode;
+  /// Group-level soft mask (`/SMask`), or null when none.
+  std::shared_ptr<const SoftMask> soft_mask;
 };
 
 /// A single page-content element in paint (z) order: a shown text segment, a
-/// painted path, an image, or a shading flood (`sh`). Shading *patterns* ride
-/// on `PathElement::fill_shading`; tiling patterns join in a later stage.
-using PageElement =
-    std::variant<TextElement, PathElement, ImageElement, ShadingElement>;
+/// painted path, an image, a shading flood (`sh`), or a transparency group.
+/// Shading *patterns* ride on `PathElement::fill_shading`; tiling patterns join
+/// in a later stage.
+using PageElement = std::variant<TextElement, PathElement, ImageElement,
+                                 ShadingElement, GroupElement>;
+
+/// The content of a `GroupElement`, in paint order. A distinct type (rather
+/// than a bare `std::vector<PageElement>` member) breaks the `PageElement` ->
+/// `GroupElement` -> `PageElement` type cycle.
+struct GroupChildren {
+  std::vector<PageElement> elements;
+};
+
+/// A rendered soft mask (`/SMask` in an `/ExtGState`, ISO 32000-1 11.6.5.2),
+/// ready for a renderer to apply to the elements that reference it. The mask's
+/// transparency group `/G` has been run through the page machinery into `group`
+/// (its content in user space, the establishment CTM and the group `/Matrix`
+/// already folded in and clipped to the group `/BBox`). The alpha is derived
+/// from that content per `type`: `luminosity` (the content's luminosity is the
+/// alpha — an SVG luminance `<mask>`) or `alpha` (its coverage is). `backdrop`
+/// is the `/BC` colour as RGB behind the group (default black, i.e. fully
+/// masked out where the group paints nothing); empty when the default applies.
+struct SoftMask {
+  enum class Type { luminosity, alpha };
+  Type type{Type::luminosity};
+  std::vector<PageElement> group;
+  std::optional<std::array<double, 3>> backdrop; // /BC as RGB; empty = black
+};
 
 } // namespace odr::internal::pdf
