@@ -60,6 +60,11 @@ struct TextElement {
   /// Area) with the run marked non-extractable; otherwise the run is simply not
   /// selectable. An `/ActualText` override clears this.
   bool no_unicode{false};
+  /// True for a Type3 font: the glyphs are drawn as ordinary path/image
+  /// elements (the char procs, emitted alongside this element in paint order),
+  /// so the renderer keeps this element for selection/search but paints no
+  /// visible text of its own — as it does for an invisible (Tr 3) run.
+  bool render_as_graphics{false};
   /// Total advance of this segment, in text-space units (the displacement
   /// applied to the text matrix after it — already scaled by the font size and
   /// including char/word spacing and horizontal scaling). 0 when the font is

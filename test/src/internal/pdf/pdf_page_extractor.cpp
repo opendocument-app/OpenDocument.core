@@ -5,6 +5,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 
 #include <initializer_list>
 #include <memory>
@@ -537,7 +538,79 @@ const PathElement &path_at(const std::vector<PageElement> &page,
   return std::get<PathElement>(page.at(index));
 }
 
+// A Type3 font: code `first_char` maps (via `/Differences`) to glyph `name`,
+// drawn by `char_proc` in glyph space, with `font_matrix` (glyph -> text space)
+// and a single glyph-space `width`.
+Font type3_font(int first_char, const std::string &name, double width,
+                std::string char_proc, const Transform2D &font_matrix) {
+  Font font;
+  font.first_char = first_char;
+  font.widths = {width};
+  Encoding encoding(BaseEncoding::standard);
+  encoding.set_difference(static_cast<std::uint8_t>(first_char), name);
+  font.encoding = encoding;
+  Type3Data type3;
+  type3.font_matrix = font_matrix;
+  type3.char_procs[name] = std::move(char_proc);
+  font.type3 = std::move(type3);
+  return font;
+}
+
 } // namespace
+
+// A Type3 glyph runs its char proc through the page machinery at the glyph
+// transform (`/FontMatrix` x size x `Tm` x CTM): the glyph paints as ordinary
+// path elements, and the shown run stays selectable but paints no visible text
+// of its own (`render_as_graphics`).
+TEST(PdfPageExtractor, type3_glyph_paints_char_proc) {
+  // The char proc fills a 1000x1000 glyph-space box; FontMatrix 0.001 maps it
+  // to a 1x1 em box, so at size 10 placed at (100, 700) it spans +10 user
+  // units.
+  Font font = type3_font('A', "a", 1000, "0 0 1000 1000 re f",
+                         Transform2D::scaling(0.001, 0.001));
+  Resources res;
+  res.font["F1"] = &font;
+
+  const auto page =
+      extract_page("BT /F1 10 Tf 100 700 Td (A) Tj ET", res, Logger::null());
+
+  // The selectable text element (emitted first), then the char-proc fill.
+  ASSERT_EQ(page.size(), 2);
+  const auto &text = std::get<TextElement>(page.at(0));
+  EXPECT_TRUE(text.render_as_graphics);
+  EXPECT_EQ(text.codes, "A");
+  EXPECT_EQ(text.text, "a"); // 'A' -> glyph "a" -> U+0061 via the AGL
+
+  const PathElement &glyph = std::get<PathElement>(page.at(1));
+  EXPECT_TRUE(glyph.fill);
+  ASSERT_EQ(glyph.subpaths.size(), 1);
+  const Subpath &s = glyph.subpaths[0];
+  EXPECT_NEAR(s.start[0], 100, 1e-9); // glyph origin at the text origin
+  EXPECT_NEAR(s.start[1], 700, 1e-9);
+  ASSERT_FALSE(s.segments.empty());
+  EXPECT_NEAR(s.segments[0].end[0], 110, 1e-9); // 100 + 1000 * 0.001 * 10
+  EXPECT_NEAR(s.segments[0].end[1], 700, 1e-9);
+}
+
+// A Type3 glyph advance comes from `/Widths` scaled by `/FontMatrix` (glyph
+// space), not the fixed 1/1000 em of other fonts.
+TEST(PdfPageExtractor, type3_advance_uses_font_matrix) {
+  Font font = type3_font('A', "a", 500, "0 0 1000 1000 re f",
+                         Transform2D::scaling(0.001, 0.001));
+  Resources res;
+  res.font["F1"] = &font;
+
+  // Two glyphs; the second is placed by the first's advance (500 * 0.001 = 0.5
+  // em, * size 10 = 5 user units).
+  const auto page =
+      extract_page("BT /F1 10 Tf 0 0 Td (AA) Tj ET", res, Logger::null());
+
+  // text, glyph, glyph (the two char procs).
+  ASSERT_EQ(page.size(), 3);
+  const PathElement &second = std::get<PathElement>(page.at(2));
+  ASSERT_EQ(second.subpaths.size(), 1);
+  EXPECT_NEAR(second.subpaths[0].start[0], 5, 1e-9); // advanced by 0.5 em
+}
 
 // A move/line/stroke builds one open subpath; the points are in user space and
 // the paint intent is stroke-only.

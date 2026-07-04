@@ -769,8 +769,9 @@ public:
 
         // --- Visual layer ---------------------------------------------------
         // Invisible runs (Tr 3/7) paint nothing; omit them from the visual
-        // layer. They contribute only to the selection layer.
-        if (!invisible) {
+        // layer. Type3 runs are painted by their char procs (separate path/
+        // image elements), so they too contribute only to the selection layer.
+        if (!invisible && !text.render_as_graphics) {
           // Determine if this run continues the current visual line block.
           bool new_vis_line =
               is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
@@ -1427,7 +1428,9 @@ public:
             // `ws` = word-spacing everywhere (`w` is width in the dual layer).
             add_class(base, "ws", pt_decl("word-spacing", ws_pt));
           }
-          if (font == 0 && invisible) {
+          // Invisible (Tr 3/7) and Type3 (painted by char procs) runs stay in
+          // the DOM for selection but render transparent.
+          if (font == 0 && (invisible || text.render_as_graphics)) {
             base += " i";
           }
 

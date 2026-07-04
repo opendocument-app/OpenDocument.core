@@ -111,6 +111,20 @@ struct Resources final : Element {
   std::unordered_map<std::string, Pattern *> pattern;
 };
 
+/// Type3 font glyph data (ISO 32000-1 9.6.5). A Type3 glyph is a small content
+/// stream (`/CharProcs`, keyed by glyph name) drawn in glyph space, mapped to
+/// text space by `/FontMatrix` (unlike other fonts, glyph space is not fixed at
+/// 1/1000 em). The char procs draw against their own `/Resources`.
+struct Type3Data {
+  /// `/FontMatrix`: glyph space -> text space (e.g. `[0.001 0 0 0.001 0 0]`).
+  util::math::Transform2D font_matrix;
+  /// `/CharProcs`: glyph name -> the decoded char-proc content stream.
+  std::unordered_map<std::string, std::string> char_procs;
+  /// `/Resources` the char procs draw against, or `nullptr` (then the enclosing
+  /// page's resources apply). Owned by the `Document` graph.
+  Resources *resources{nullptr};
+};
+
 /// An external object referenced by `Do` and listed in a resource dictionary's
 /// `/XObject` subdictionary (ISO 32000-1 7.8.3, 8.8). Form XObjects carry a
 /// reusable content stream; image XObjects are recognized but not rendered
@@ -331,8 +345,16 @@ struct Font final : Element {
   /// `font-family` the HTML layer renders it in, plus the standard-14 AFM font
   /// whose advance widths back `advance_width` when the font carries no
   /// `/Widths`. Resolved once at parse time; `nullopt` for embedded fonts (they
-  /// render their real glyphs) and composite fonts.
+  /// render their real glyphs), Type3 fonts (their glyphs are drawn), and
+  /// composite fonts.
   std::optional<FontSubstitute> substitute;
+
+  /// Type3 font data (ISO 32000-1 9.6.5): set only for `/Subtype /Type3`, whose
+  /// glyphs are content streams rather than a font program. The executor runs
+  /// each shown code's char proc through the page machinery at the glyph
+  /// transform, so the glyphs paint as ordinary path/image elements; the text
+  /// stays selectable through the usual code -> Unicode chain (`/Encoding`).
+  std::optional<Type3Data> type3;
 
   /// Composite-font `/CIDToGIDMap` (ISO 32000-1 9.7.4.3) when given as an
   /// explicit stream: `GID = cid_to_gid[CID]`. Empty means `Identity`

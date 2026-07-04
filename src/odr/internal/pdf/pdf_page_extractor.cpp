@@ -259,12 +259,14 @@ bool infer_space(const Pen &pen, const std::array<double, 2> &start) {
 /// Emit one placed segment and advance the text matrix by its width.
 void show(std::vector<PageElement> &out, GraphicsState &state,
           MarkedContentStack &marked, std::optional<Pen> &pen,
-          std::string codes, Font *font) {
+          std::string codes, Font *font,
+          const bool render_as_graphics = false) {
   const GraphicsState::Text &text = state.current().text;
 
   TextElement element;
   element.transform = state.text_placement_transform();
   element.font = font;
+  element.render_as_graphics = render_as_graphics;
   element.size = text.size;
   element.char_spacing = text.char_spacing;
   element.word_spacing = text.word_spacing;
@@ -714,6 +716,74 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   active.erase(x_object);
 }
 
+/// Render a Type3 text-showing operation (ISO 32000-1 9.6.5). The selectable
+/// text element goes through the normal `show` — flagged so the renderer paints
+/// no visible text of its own — then each shown code's char proc is run through
+/// the page machinery at that glyph's transform
+/// (`/FontMatrix` x size x `Tm` x CTM), advancing the text matrix per glyph so
+/// the procs land where the glyphs belong. A `d1` (shape-only) glyph inherits
+/// the current fill colour from the graphics state; a `d0` glyph's own colour
+/// operators take effect as they run. Recursion (a char proc that shows text in
+/// the same Type3 font) is bounded by a depth guard.
+void show_type3(std::vector<PageElement> &out, const Resources &resources,
+                GraphicsState &state, const Logger &logger,
+                std::set<std::string> &warned, ActiveForms &active,
+                MarkedContentStack &marked, std::optional<Pen> &pen,
+                const std::string &codes, Font *font) {
+  // `show` advances the text matrix by the whole segment; snapshot `Tm` so the
+  // per-glyph loop below can replay the advance to place each char proc.
+  const util::math::Transform2D saved_matrix = state.current().text.matrix;
+  show(out, state, marked, pen, codes, font, /*render_as_graphics=*/true);
+
+  static thread_local int depth = 0;
+  if (font->type3->char_procs.empty() || depth > 8) {
+    return; // nothing to draw, or pathological Type3 recursion
+  }
+  ++depth;
+  state.current().text.matrix = saved_matrix;
+
+  auto [advances, total] = segment_advances(state.current().text, *font, codes);
+  std::size_t i = 0;
+  for (const std::uint32_t code : font->codes(codes)) {
+    const double advance = i < advances.size() ? advances[i] : 0.0;
+    ++i;
+
+    const std::string_view name =
+        font->encoding
+            ? font->encoding->glyph_name(static_cast<std::uint8_t>(code))
+            : std::string_view{};
+    const auto it = name.empty()
+                        ? font->type3->char_procs.end()
+                        : font->type3->char_procs.find(std::string(name));
+    if (it != font->type3->char_procs.end()) {
+      const auto &current = state.current();
+      const GraphicsState::Text &text = current.text;
+      // glyph space -> user space = /FontMatrix x [size params] x Tm x CTM.
+      const util::math::Transform2D size_params =
+          util::math::Transform2D::scaling_translation(
+              text.size * text.horizontal_scaling / 100.0, text.size, 0,
+              text.rise);
+      const util::math::Transform2D glyph_to_user =
+          font->type3->font_matrix * size_params * text.matrix *
+          current.general.transform_matrix;
+      const Resources &scope = font->type3->resources != nullptr
+                                   ? *font->type3->resources
+                                   : resources;
+
+      state.save();
+      state.current().general.transform_matrix = glyph_to_user;
+      const std::size_t marked_depth = marked.size();
+      std::optional<Pen> inner_pen;
+      run_content(it->second, scope, state, out, logger, warned, active, marked,
+                  inner_pen);
+      marked.resize(marked_depth);
+      state.restore();
+    }
+    state.advance_text(advance, 0);
+  }
+  --depth;
+}
+
 void run_content(const std::string &content, const Resources &resources,
                  GraphicsState &state, std::vector<PageElement> &out,
                  const Logger &logger, std::set<std::string> &warned,
@@ -721,6 +791,17 @@ void run_content(const std::string &content, const Resources &resources,
                  std::optional<Pen> &pen) {
   std::istringstream ss(content);
   GraphicsOperatorParser parser(ss);
+
+  // Route a shown string through the Type3 char-proc renderer or the normal
+  // text path, by the font kind.
+  const auto show_run = [&](const std::string &codes, Font *font) {
+    if (font != nullptr && font->type3) {
+      show_type3(out, resources, state, logger, warned, active, marked, pen,
+                 codes, font);
+    } else {
+      show(out, state, marked, pen, codes, font);
+    }
+  };
 
   while (!ss.eof()) {
     const GraphicsOperator op = parser.read_operator();
@@ -731,7 +812,7 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::show_text_next_line: { // Tj, '
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(out, state, marked, pen, op.arguments.at(0).as_string(), font);
+      show_run(op.arguments.at(0).as_string(), font);
     } break;
     case GraphicsOperatorType::show_text_manual_spacing: { // TJ
       Font *font =
@@ -739,7 +820,7 @@ void run_content(const std::string &content, const Resources &resources,
       const GraphicsState::Text &text = state.current().text;
       for (const Object &item : op.arguments.at(0).as_array()) {
         if (item.is_string()) {
-          show(out, state, marked, pen, item.as_string(), font);
+          show_run(item.as_string(), font);
         } else if (item.is_real()) {
           // a number translates the next glyph left by adj/1000 text-space
           // units, scaled by the font size and horizontal scaling (9.4.3).
@@ -752,7 +833,7 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::show_text_next_line_set_spacing: { // "
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      show(out, state, marked, pen, op.arguments.at(2).as_string(), font);
+      show_run(op.arguments.at(2).as_string(), font);
     } break;
     case GraphicsOperatorType::draw_object: // Do
       invoke_x_object(op.arguments.at(0).as_string(), resources, state, out,

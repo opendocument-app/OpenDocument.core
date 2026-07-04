@@ -529,6 +529,51 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   }
 }
 
+Resources *parse_resources(State &state, const Object &object);
+
+/// Parse a Type3 font (ISO 32000-1 9.6.5): `/FontMatrix` (glyph -> text space),
+/// the `/CharProcs` glyph content streams (decoded and kept by glyph name), and
+/// the `/Resources` those procs draw against. `/FirstChar`/`/Widths` (glyph
+/// space) and `/Encoding` (code -> glyph name) are parsed by the caller, as for
+/// any simple font.
+void parse_type3_font(State &state, const Dictionary &dictionary, Font &font) {
+  DocumentParser &parser = state.parser();
+  Type3Data type3;
+
+  if (dictionary.has_key("FontMatrix")) {
+    type3.font_matrix = parse_matrix(parser, dictionary["FontMatrix"]);
+  }
+
+  if (dictionary.has_key("CharProcs")) {
+    const Object char_procs =
+        parser.resolve_object_copy(dictionary["CharProcs"]);
+    if (char_procs.is_dictionary()) {
+      for (const auto &[name, proc] : char_procs.as_dictionary()) {
+        if (!proc.is_reference()) {
+          continue;
+        }
+        try {
+          type3.char_procs.emplace(
+              name, parser.read_decoded_stream(proc.as_reference()));
+        } catch (const std::exception &e) {
+          ODR_WARNING(parser.logger(), "pdf: failed to read Type3 char proc '"
+                                           << name << "': " << e.what());
+        }
+      }
+    }
+  }
+
+  if (dictionary.has_key("Resources")) {
+    const Object resources =
+        parser.resolve_object_copy(dictionary["Resources"]);
+    if (resources.is_dictionary()) {
+      type3.resources = parse_resources(state, resources);
+    }
+  }
+
+  font.type3 = std::move(type3);
+}
+
 Font *parse_font(State &state, const ObjectReference &reference) {
   // Shared fonts are parsed once; every page referencing the same font object
   // resolves to the one element so the HTML writer inlines it a single time.
@@ -550,6 +595,8 @@ Font *parse_font(State &state, const ObjectReference &reference) {
 
   const bool is_type0 = dictionary.get("Subtype").is_name() &&
                         dictionary["Subtype"].as_name() == "Type0";
+  const bool is_type3 = dictionary.get("Subtype").is_name() &&
+                        dictionary["Subtype"].as_name() == "Type3";
 
   if (dictionary.has_key("ToUnicode")) {
     const std::string stream =
@@ -569,11 +616,19 @@ Font *parse_font(State &state, const ObjectReference &reference) {
     if (dictionary.has_key("Encoding")) {
       // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
       // `/BaseEncoding` + `/Differences`. The text-extraction fallback for
-      // fonts without a `ToUnicode` CMap.
+      // fonts without a `ToUnicode` CMap. Type3 fonts map codes to their
+      // `/CharProcs` glyph names through the same `/Differences` mechanism.
       font->encoding = parse_encoding(parser, dictionary["Encoding"]);
     }
-    // Non-embedded simple fonts render in a substitute family with AFM widths.
-    resolve_font_substitute(parser, dictionary, *font);
+    if (is_type3) {
+      // Type3 glyphs are drawn by their char procs, not substituted; the
+      // widths parsed above are in glyph space (scaled by `/FontMatrix`).
+      parse_type3_font(state, dictionary, *font);
+    } else {
+      // Non-embedded simple fonts render in a substitute family with AFM
+      // widths.
+      resolve_font_substitute(parser, dictionary, *font);
+    }
   }
 
   return font;
