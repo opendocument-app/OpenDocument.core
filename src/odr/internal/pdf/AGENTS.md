@@ -31,8 +31,10 @@ inline SVG per page. Experimental and not production-quality.
   (`DecoderEngine::odr`); `is_decodable()` returns `false` and `file_meta()`
   carries only the file type. All parsing is lazy, on HTML request.
 - **Object syntax**: null, booleans, integers/reals, names (incl. `#xx`
-  escapes), literal strings (`\` and `\ooo` escapes), hex strings, arrays,
-  dictionaries, indirect references (`n g R`) — standalone and nested.
+  escapes), literal strings (the `\n \r \t \b \f` control escapes, `\ddd`
+  octal, escaped delimiters, and `\`-before-EOL line continuation — Table 3),
+  hex strings, arrays, dictionaries, indirect references (`n g R`) —
+  standalone and nested.
 - **File structure**: header, `n g obj … endobj`, `stream` payloads (via
   `/Length`, with a scan-to-`endstream` fallback), classic `xref` tables,
   `trailer`, `startxref`, `%%EOF`; both sequential reading (`read_entry`) and
@@ -565,9 +567,10 @@ the tables land.
   there is no `/ToUnicode` (with an unreachable glyph staying unmapped) and a
   `/ToUnicode` CMap taking precedence over the reverse map.
 
-No assertion-based coverage of the tokenizer (escapes, references, hex strings)
-or the HTML output itself (the span emission / CSS transform mapping, incl. the
-dual-layer glyph/Unicode emission).
+The tokenizer's string parsing is covered (`PdfObjectParser`: literal-string
+control/octal/delimiter/line-continuation escapes and hex strings); references
+and the HTML output itself (the span emission / CSS transform mapping, incl. the
+dual-layer glyph/Unicode emission) are not yet asserted.
 
 ---
 
