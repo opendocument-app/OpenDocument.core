@@ -1457,9 +1457,14 @@ public:
       // Width-bearing selectable space for a recovered word break (pdf2htmlEX's
       // model): a real `" "` inside an inline-block sized to the gap by a `wN`
       // class, so the space is markable/copyable *and* carries the advance
-      // (no `margin-left` on the following run). `overflow:hidden` keeps the
-      // space glyph from overflowing the declared width.
-      out.out() << ".sp{display:inline-block;overflow:hidden;"
+      // (no `margin-left` on the following run). No `overflow:hidden`: it would
+      // not clip the space glyph (transparent, and the declared width already
+      // fixes the advance) but *would* move the inline-block's baseline to its
+      // bottom margin edge (CSS quirk when overflow != visible), lifting the
+      // space's selection box off the text baseline so it highlights at the
+      // wrong height. `vertical-align:baseline` on a `visible` box keeps the
+      // space aligned with the neighbouring glyphs.
+      out.out() << ".sp{display:inline-block;"
                    "color:transparent;vertical-align:baseline}";
     });
 
