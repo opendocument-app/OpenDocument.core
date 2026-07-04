@@ -309,6 +309,17 @@ CMap CMapParser::parse_cmap() {
         read_cidchar(last_int, cmap);
       } else if (command == "begincidrange") {
         read_cidrange(last_int, cmap);
+      } else if (command == "usecmap") {
+        // `/BaseCMap usecmap`: this stream inherits another CMap's codespace
+        // and mappings (ISO 32000-1 9.7.5.3). We do not resolve the base, so
+        // any codespace declared locally is (potentially) an override-only
+        // subset; flag it so it is no longer treated as authoritative and
+        // callers fall back to the ToUnicode codespace / fixed width instead of
+        // mis-splitting the inherited (e.g. 2-byte) codes.
+        cmap.mark_inherits_external_cmap();
+        ODR_WARNING(*m_logger,
+                    "pdf: unresolved 'usecmap'; local codespace not treated as "
+                    "authoritative");
       }
     }
   }

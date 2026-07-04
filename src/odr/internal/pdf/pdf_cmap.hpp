@@ -34,11 +34,27 @@ public:
   /// `ToUnicode` CMap); the caller then falls back to the `/Encoding`.
   [[nodiscard]] bool empty() const { return m_map.empty(); }
 
-  /// True when at least one codespace range was declared. When true, the code
-  /// widths this CMap implies are authoritative for splitting a code string
-  /// (see `code_width`); when false, callers fall back to a fixed width.
+  /// Records that the CMap stream referenced another CMap via `usecmap` (ISO
+  /// 32000-1 9.7.5.3). We do not resolve the inherited base, so whatever
+  /// codespace this stream declares locally is (potentially) incomplete and is
+  /// no longer treated as authoritative (see `has_codespace`).
+  void mark_inherits_external_cmap() { m_inherits_external_cmap = true; }
+
+  /// True when this stream referenced an unresolved base CMap via `usecmap`.
+  [[nodiscard]] bool inherits_external_cmap() const {
+    return m_inherits_external_cmap;
+  }
+
+  /// True when this CMap declares an authoritative codespace: at least one
+  /// range, and it does not inherit an unresolved base CMap via `usecmap`. When
+  /// true, the code widths this CMap implies are authoritative for splitting a
+  /// code string (see `code_width`); when false, callers fall back to another
+  /// CMap's codespace or a fixed width. An inherited (`usecmap`) codespace is
+  /// deliberately excluded — its local ranges may cover only an override
+  /// subset, so trusting them would mis-split the inherited (e.g. 2-byte)
+  /// codes.
   [[nodiscard]] bool has_codespace() const {
-    return !m_codespace_ranges.empty();
+    return !m_codespace_ranges.empty() && !m_inherits_external_cmap;
   }
 
   /// Byte width of a code whose first byte is `first`, decided by the codespace
@@ -81,6 +97,7 @@ private:
     std::size_t width;      // byte width of the codes (to disambiguate widths)
   };
 
+  bool m_inherits_external_cmap{false};
   std::vector<CodespaceRange> m_codespace_ranges;
   std::unordered_map<std::string, std::u16string> m_map;
   std::unordered_map<std::string, std::uint32_t> m_cid_chars;
