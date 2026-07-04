@@ -265,10 +265,10 @@ public:
     using reference = std::uint32_t;
 
     Iterator() = default;
-    Iterator(const char *position, const char *end, const std::size_t width,
+    Iterator(const std::string_view range, const std::size_t width,
              const CMap *codespace, const CMap *cid_map)
-        : m_position{position}, m_end{end}, m_fixed_width{width},
-          m_codespace{codespace}, m_cid_map{cid_map} {
+        : m_range{range}, m_fixed_width{width}, m_codespace{codespace},
+          m_cid_map{cid_map} {
       settle();
     }
 
@@ -278,20 +278,20 @@ public:
       // is the code itself (`Identity-H/V`), as it is for simple fonts.
       if (m_cid_map != nullptr) {
         if (const std::optional<std::uint32_t> cid =
-                m_cid_map->cid_for_code(std::string_view(m_position, m_width));
+                m_cid_map->cid_for_code(m_range.substr(0, m_width));
             cid.has_value()) {
           return *cid;
         }
       }
       std::uint32_t code = 0;
       for (std::size_t k = 0; k < m_width; ++k) {
-        code = (code << 8) | static_cast<unsigned char>(m_position[k]);
+        code = (code << 8) | static_cast<unsigned char>(m_range[k]);
       }
       return code;
     }
 
     Iterator &operator++() {
-      m_position += m_width;
+      m_range.remove_prefix(m_width);
       settle();
       return *this;
     }
@@ -302,34 +302,32 @@ public:
     }
 
     bool operator==(const Iterator &other) const {
-      return m_position == other.m_position;
+      return m_range.data() == other.m_range.data();
     }
 
   private:
-    // Fix the width of the code at `m_position`, dropping a trailing partial
-    // code (fewer bytes than its declared width) by clamping to `m_end` so the
-    // iterator lands exactly on the end sentinel.
+    /// Fix the width of the code at the front of `m_range`, dropping a trailing
+    /// partial code (fewer bytes than its declared width) by consuming the rest
+    /// of the range so the iterator lands exactly on the end sentinel.
     void settle() {
-      if (m_position >= m_end) {
-        m_position = m_end;
+      if (m_range.empty()) {
         m_width = 0;
         return;
       }
-      const auto remaining = static_cast<std::size_t>(m_end - m_position);
       std::size_t width = m_fixed_width;
       if (m_codespace != nullptr && m_codespace->has_codespace()) {
-        width = m_codespace->code_width(static_cast<std::uint8_t>(*m_position));
+        width =
+            m_codespace->code_width(static_cast<std::uint8_t>(m_range.front()));
       }
-      if (width == 0 || width > remaining) {
-        m_position = m_end; // drop the trailing partial code
+      if (width == 0 || width > m_range.size()) {
+        m_range.remove_prefix(m_range.size()); // drop the trailing partial code
         m_width = 0;
         return;
       }
       m_width = width;
     }
 
-    const char *m_position{nullptr};
-    const char *m_end{nullptr};
+    std::string_view m_range;
     std::size_t m_fixed_width{1};
     const CMap *m_codespace{nullptr};
     const CMap *m_cid_map{nullptr};
@@ -341,17 +339,14 @@ public:
       : m_codes{codes}, m_width{width}, m_codespace{codespace},
         m_cid_map{cid_map} {}
 
-  // `data()` is used as a bounded byte range delimited by `end()`, not as a
-  // null-terminated string; the suspicious-data-usage check does not apply.
   [[nodiscard]] Iterator begin() const {
-    return {m_codes.data(), // NOLINT(bugprone-suspicious-stringview-data-usage)
-            m_codes.data() + m_codes.size(), m_width, m_codespace, m_cid_map};
+    return {m_codes, m_width, m_codespace, m_cid_map};
   }
   [[nodiscard]] Iterator end() const {
-    const char *stop =
-        m_codes.data() + // NOLINT(bugprone-suspicious-stringview-data-usage)
-        m_codes.size();
-    return {stop, stop, m_width, m_codespace, m_cid_map};
+    // An empty view positioned at the end of the codes: the exhausted `begin()`
+    // iterator consumes down to this same one-past-the-end pointer, so the two
+    // compare equal (`operator==` matches on `data()`).
+    return {m_codes.substr(m_codes.size()), m_width, m_codespace, m_cid_map};
   }
 
 private:
