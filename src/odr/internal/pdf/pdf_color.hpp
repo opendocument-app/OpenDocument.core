@@ -34,7 +34,7 @@ enum class ColorSpaceKind {
 /// A resolved colour space: enough to convert a tuple of component values to
 /// sRGB at emit time (ISO 32000-1 8.6.4 / 8.6.5 / 8.6.6). Non-device spaces are
 /// approximated — ICC profiles by their alternate or component count, Cal* as
-/// device, overprint ignored — per the stage-4 plan.
+/// device, overprint ignored.
 struct ColorSpaceDef {
   ColorSpaceKind kind{ColorSpaceKind::unknown};
   /// Number of input components a colour in this space carries.

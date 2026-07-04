@@ -11,7 +11,7 @@ namespace {
 
 double clamp01(const double v) { return std::clamp(v, 0.0, 1.0); }
 
-/// Naive DeviceCMYK -> RGB (no ICC), matching the stage-4.1 HTML path.
+/// Naive DeviceCMYK -> RGB (no ICC), matching the HTML emitter's conversion.
 std::array<double, 3> cmyk_to_rgb(const double c, const double m,
                                   const double y, const double k) {
   return {(1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)};

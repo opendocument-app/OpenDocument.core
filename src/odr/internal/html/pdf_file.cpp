@@ -64,8 +64,9 @@ std::int32_t to255(const double v) {
 }
 
 /// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
-/// spaces (Separation/ICCBased/… — stage 4.4) and the unknown space fall back
-/// to black, the PDF initial color.
+/// spaces (Separation/ICCBased/…) are already converted to RGB at extract time;
+/// only the unknown space reaches here, falling back to black (the PDF initial
+/// color).
 std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
   std::int32_t r = 0;
   std::int32_t g = 0;
@@ -80,7 +81,7 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
     b = to255(color.rgb[2]);
     break;
   case pdf::ColorSpace::device_cmyk: {
-    // Naive CMYK -> RGB (no ICC); refined in stage 4.4.
+    // Naive CMYK -> RGB (no ICC).
     const double c = color.cmyk[0];
     const double m = color.cmyk[1];
     const double y = color.cmyk[2];
@@ -800,7 +801,7 @@ public:
         }
 
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
-        // TODO(clip text): clip not applied to text; see STAGE4_PLAN.md.
+        // TODO(clip text): clip not applied to text (see pdf/AGENTS.md gaps).
         const std::uint32_t font =
             text.font != nullptr ? font_family(text.font) : 0;
         if (text.text.empty() && font == 0) {
@@ -1359,7 +1360,7 @@ public:
         }
 
         const pdf::TextElement &text = std::get<pdf::TextElement>(element);
-        // TODO(clip text): clip not applied to text; see STAGE4_PLAN.md.
+        // TODO(clip text): clip not applied to text (see pdf/AGENTS.md gaps).
         const std::uint32_t font =
             text.font != nullptr ? font_family(text.font) : 0;
         if (text.text.empty() && font == 0) {

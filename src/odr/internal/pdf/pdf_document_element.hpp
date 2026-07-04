@@ -132,13 +132,12 @@ struct Type3Data {
 
 /// An external object referenced by `Do` and listed in a resource dictionary's
 /// `/XObject` subdictionary (ISO 32000-1 7.8.3, 8.8). Form XObjects carry a
-/// reusable content stream; image XObjects are recognized but not rendered
-/// until stage 4.
+/// reusable content stream; image XObjects carry decoded raster/JPEG data.
 struct XObject final : Element {
   enum class Subtype {
     unknown, ///< neither `/Form` nor `/Image`
     form,    ///< `/Form`: an executable content stream
-    image,   ///< `/Image`: raster data (stage 4)
+    image,   ///< `/Image`: raster data
   };
 
   Subtype subtype{Subtype::unknown};
