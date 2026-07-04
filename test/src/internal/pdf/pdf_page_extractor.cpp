@@ -700,6 +700,20 @@ TEST(PdfPageExtractor, gs_blend_mode_normal_clears) {
   EXPECT_EQ(path_at(page, 1).blend_mode, ""); // Compatible -> Normal -> cleared
 }
 
+// A `/BM` array is an ordered fallback list: the reader uses the first mode it
+// supports, skipping an unrecognized vendor mode ahead of a standard one
+// (ISO 32000-1 8.4.5).
+TEST(PdfPageExtractor, gs_blend_mode_array_picks_first_supported) {
+  Resources res;
+  Dictionary gs;
+  gs["BM"] = Object(Array(std::vector<Object>{Object(Name{"VendorMode"}),
+                                              Object(Name{"Multiply"})}));
+  res.ext_g_state["GS1"] = Object(std::move(gs));
+  const auto page = extract_page("/GS1 gs 0 0 10 10 re f", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(path_at(page, 0).blend_mode, "Multiply");
+}
+
 // The constant alpha is part of the saved graphics state, so `q`/`Q` scope it.
 TEST(PdfPageExtractor, gs_alpha_scoped_by_q_Q) {
   Resources res;

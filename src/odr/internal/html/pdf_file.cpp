@@ -1708,9 +1708,18 @@ public:
     const bool stroked =
         text.rendering_mode == pdf::TextRenderingMode::stroke ||
         text.rendering_mode == pdf::TextRenderingMode::stroke_clip;
+    const bool fill_and_stroke =
+        text.rendering_mode == pdf::TextRenderingMode::fill_stroke ||
+        text.rendering_mode == pdf::TextRenderingMode::fill_stroke_clip;
     const pdf::GraphicsState::Color &paint =
         stroked ? text.stroke_color : text.fill_color;
-    const double alpha = stroked ? text.stroke_alpha : text.fill_alpha;
+    // The single span carries one opacity. A fill-and-stroke glyph paints both,
+    // so take the more opaque of the two: a transparent fill (`ca 0`) must not
+    // hide an opaque stroke (`CA 1`) and drop the outlined glyph entirely.
+    const double alpha = stroked ? text.stroke_alpha
+                         : fill_and_stroke
+                             ? std::max(text.fill_alpha, text.stroke_alpha)
+                             : text.fill_alpha;
     const std::string blend = blend_mode_to_css(text.blend_mode);
     std::string css = device_color_to_css(paint);
     // Fast path: default black, fully opaque, no blend — no class needed.

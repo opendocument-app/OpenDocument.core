@@ -414,12 +414,25 @@ std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
   return {0, 0, 0};
 }
 
+/// The blend-mode names a reader honours (ISO 32000-1 Table 136: the 12
+/// separable and 4 non-separable modes, plus `Normal` and its legacy alias
+/// `Compatible`). Used to pick a supported entry out of a `/BM` fallback array.
+bool is_supported_blend_mode(const std::string &name) {
+  static const std::set<std::string> supported = {
+      "Normal",    "Compatible", "Multiply",   "Screen",    "Overlay",
+      "Darken",    "Lighten",    "ColorDodge", "ColorBurn", "HardLight",
+      "SoftLight", "Difference", "Exclusion",  "Hue",       "Saturation",
+      "Color",     "Luminosity"};
+  return supported.count(name) != 0;
+}
+
 /// Apply a `gs` operator: resolve the named `/ExtGState` dictionary and fold
 /// its constant alpha (`ca`/`CA`) and blend mode (`/BM`) into the general
 /// graphics state (ISO 32000-1 8.4.5). Other entries (line params, `/Font`,
 /// `/SMask`) are out of scope here — soft masks are a later item. `/BM` may be
-/// a single name or an array of names (the reader picks the first it supports);
-/// `Compatible` is a legacy alias for `Normal`.
+/// a single name or an array of names, an ordered fallback list from which the
+/// reader picks the first mode it supports; `Compatible` is a legacy alias for
+/// `Normal`.
 void apply_ext_g_state(const std::string &name, const Resources &resources,
                        GraphicsState &state) {
   const auto it = resources.ext_g_state.find(name);
@@ -439,9 +452,16 @@ void apply_ext_g_state(const std::string &name, const Resources &resources,
     std::string mode;
     if (bm.is_name()) {
       mode = bm.as_name();
-    } else if (bm.is_array() && !bm.as_array().empty() &&
-               bm.as_array().front().is_name()) {
-      mode = bm.as_array().front().as_name();
+    } else if (bm.is_array()) {
+      // An ordered fallback list: use the first name we support, so an
+      // unrecognized vendor mode ahead of a standard one (e.g.
+      // `[/VendorMode /Multiply]`) does not shadow the supported fallback.
+      for (const Object &entry : bm.as_array()) {
+        if (entry.is_name() && is_supported_blend_mode(entry.as_name())) {
+          mode = entry.as_name();
+          break;
+        }
+      }
     }
     if (mode == "Compatible") {
       mode = "Normal";
