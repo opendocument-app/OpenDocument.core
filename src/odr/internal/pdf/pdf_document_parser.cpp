@@ -380,6 +380,53 @@ void parse_simple_font_widths(DocumentParser &parser,
   }
 }
 
+/// Resolve a substitute for a non-embedded simple font (`/FontFile*` absent or
+/// unreadable) from its `/BaseFont` name and `/FontDescriptor` hints. Leaves
+/// `font.substitute` unset when a font program is embedded (it renders its own
+/// glyphs) — so a font whose descriptor failed to load still gets a substitute.
+void resolve_font_substitute(DocumentParser &parser,
+                             const Dictionary &dictionary, Font &font) {
+  if (font.embedded_font != nullptr) {
+    return;
+  }
+
+  std::string base_font;
+  if (dictionary.get("BaseFont").is_name()) {
+    base_font = dictionary["BaseFont"].as_name();
+  }
+
+  std::uint32_t flags = 0;
+  std::int32_t font_weight = 0;
+  double italic_angle = 0;
+  if (dictionary.has_key("FontDescriptor")) {
+    const Object descriptor =
+        parser.resolve_object_copy(dictionary["FontDescriptor"]);
+    if (descriptor.is_dictionary()) {
+      const Dictionary &d = descriptor.as_dictionary();
+      if (const auto v =
+              parser.resolve_object_copy(d.get("Flags")).as_integer_opt()) {
+        flags = static_cast<std::uint32_t>(*v);
+      }
+      if (const auto v = parser.resolve_object_copy(d.get("FontWeight"))
+                             .as_integer_opt()) {
+        font_weight = static_cast<int>(*v);
+      }
+      const Object angle = parser.resolve_object_copy(d.get("ItalicAngle"));
+      if (angle.is_real()) {
+        italic_angle = angle.as_real();
+      }
+    }
+  }
+
+  font.substitute =
+      pdf::resolve_font_substitute(base_font, flags, font_weight, italic_angle);
+  // A substitute with standard-14 metrics can supply the baseline shift the
+  // HTML layer needs when the descriptor declared no `/Ascent`.
+  if (!font.descriptor_ascent && font.substitute->metrics) {
+    font.descriptor_ascent = afm_ascender(*font.substitute->metrics);
+  }
+}
+
 /// Parse a composite CIDFont's `/CIDToGIDMap` (ISO 32000-1 9.7.4.3): a stream
 /// of big-endian `uint16` GIDs indexed by CID, or the name `Identity`. Leaves
 /// `font.cid_to_gid` empty for `Identity` (so `glyph_for_code` uses `GID =
@@ -525,6 +572,8 @@ Font *parse_font(State &state, const ObjectReference &reference) {
       // fonts without a `ToUnicode` CMap.
       font->encoding = parse_encoding(parser, dictionary["Encoding"]);
     }
+    // Non-embedded simple fonts render in a substitute family with AFM widths.
+    resolve_font_substitute(parser, dictionary, *font);
   }
 
   return font;
