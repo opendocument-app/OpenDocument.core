@@ -41,6 +41,15 @@ double Font::advance_width(const std::uint32_t code) const {
     return cid_default_width / 1000.0;
   }
   const long index = static_cast<long>(code) - first_char;
+  if (type3) {
+    // Type3 widths are in glyph space, mapped to text space by `/FontMatrix`
+    // (ISO 32000-1 9.6.5) — not the fixed 1/1000 em of other fonts. The
+    // horizontal advance is the x-component of `(w, 0)` through the matrix.
+    if (index >= 0 && index < static_cast<long>(widths.size())) {
+      return widths[static_cast<std::size_t>(index)] * type3->font_matrix.a;
+    }
+    return 0;
+  }
   if (index >= 0 && index < static_cast<long>(widths.size())) {
     return widths[static_cast<std::size_t>(index)] / 1000.0;
   }
