@@ -1100,8 +1100,11 @@ public:
     std::string color;      ///< "" or a colour class name (no leading space)
     std::string text;       ///< real Unicode (HTML-escaped), may be empty
     std::string glyph_data; ///< PUA glyph string (non-empty → unclean)
-    bool lead_space{false}; ///< clean run: emit a zero-width selectable space
-                            ///< before `text` (a recovered inferred word break)
+    bool lead_space{false}; ///< clean run: emit a selectable space before
+                            ///< `text` (a recovered inferred word break)
+    std::string lead_space_width; ///< "" (zero-width `.ov`) or a width class:
+                                  ///< the pdf2htmlEX-style width-bearing space
+                                  ///< that also carries the gap (no run margin)
   };
   struct SingleLineOut {
     std::string classes;    ///< "t lN tN [mN] [fvN|fnN] [iN]..."
@@ -1343,10 +1346,13 @@ public:
           }
           if (collapse) {
             // Real Unicode renders directly via the cmap. Any leading inferred
-            // space is emitted as a zero-width selectable overlay
-            // (`lead_space`) instead of visible text, so `white-space:pre`
-            // cannot shift the glyphs right of their placement origin while
-            // copy/search still read the recovered space.
+            // space becomes a dedicated selectable space span (`lead_space`),
+            // never a literal space in `text`, so `white-space:pre` cannot
+            // shift the glyphs right of their placement origin. When the run
+            // continues its line over a positive gap the span carries that gap
+            // as its width (pdf2htmlEX's model: one real space that is both the
+            // copyable character and the visible advance); otherwise it stays
+            // zero-width. See the `.sp`/`.ov` split in the main pass.
             run.lead_space = text.leading_space_inferred;
             run.text = escape_markup(
                 std::string(core_text_begin(text), text.text.end()));
@@ -1407,7 +1413,13 @@ public:
           cur_line = static_cast<int>(page_out.items.size()) - 1;
           cur_flow_key = flow_key;
         } else {
-          if (margin_pt != 0) {
+          if (run.lead_space && margin_pt > 0) {
+            // Recovered word break over a positive gap: fold the advance into
+            // the selectable space span (pdf2htmlEX-style width-bearing space)
+            // rather than a zero-width `.ov` plus a `margin-left` on the run.
+            run.lead_space_width =
+                styles.intern("w", pt_decl("width", margin_pt));
+          } else if (margin_pt != 0) {
             run.margin = styles.intern("ml", pt_decl("margin-left", margin_pt));
           }
           std::get<SingleLineOut>(page_out.items[cur_line])
@@ -1442,6 +1454,13 @@ public:
       // `overflow:hidden` clips the invisible text to zero width.
       out.out() << ".ov{display:inline-block;width:0;overflow:hidden;"
                    "color:transparent;vertical-align:baseline}";
+      // Width-bearing selectable space for a recovered word break (pdf2htmlEX's
+      // model): a real `" "` inside an inline-block sized to the gap by a `wN`
+      // class, so the space is markable/copyable *and* carries the advance
+      // (no `margin-left` on the following run). `overflow:hidden` keeps the
+      // space glyph from overflowing the declared width.
+      out.out() << ".sp{display:inline-block;overflow:hidden;"
+                   "color:transparent;vertical-align:baseline}";
     });
 
     // Helper: derive a run's leading-span class from `head` prefix plus its
@@ -1474,10 +1493,17 @@ public:
         if (run.glyph_data.empty()) {
           // Clean / invisible / fallback: real Unicode renders directly.
           if (run.lead_space) {
-            // Recovered word-break space: selectable/copyable but zero-width,
-            // so it never shifts the glyphs under `white-space:pre`.
+            // Recovered word-break space: a real, selectable/copyable `" "`.
+            // With a `wN` width it carries the gap (pdf2htmlEX-style,
+            // markable); without one it is zero-width `.ov` (line-leading or
+            // negative gap) and never shifts the glyphs under
+            // `white-space:pre`.
+            const std::string space_cls = run.lead_space_width.empty()
+                                              ? std::string("ov")
+                                              : "sp " + run.lead_space_width;
             out.write_element_begin(
-                "span", HtmlElementOptions().set_inline(true).set_class("ov"));
+                "span",
+                HtmlElementOptions().set_inline(true).set_class(space_cls));
             out.write_raw(" ");
             out.write_element_end("span");
           }
