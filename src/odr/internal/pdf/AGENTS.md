@@ -105,7 +105,11 @@ inline SVG per page. Experimental and not production-quality.
   (Type0) fonts** are recognized: the descendant CIDFont's
   `/CIDSystemInfo` `/Registry`/`/Ordering` is recorded on the `Font`, and the
   Type0 `/Encoding` (a code → CID CMap such as `Identity-H`) is kept out of the
-  simple-font encoding path. Extraction is driven by the `/ToUnicode` CMap (the
+  simple-font encoding path. An *embedded* `/Encoding` CMap stream is parsed
+  (`cidchar`/`cidrange` → `Font::cid_encoding`) so `Font::codes()` yields CIDs
+  through it — this also carries the authoritative codespace, so a producer that
+  mixes a 1-byte code (e.g. a space) among 2-byte CIDs stays aligned and selects
+  the right glyph/advance. Extraction is driven by the `/ToUnicode` CMap (the
   common case — every Type0 font in the corpus carries one). When a composite
   font has no `/ToUnicode`, a **predefined Unicode `/Encoding`** — the
   `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`), since those

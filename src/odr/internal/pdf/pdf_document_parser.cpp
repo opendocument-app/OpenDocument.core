@@ -460,13 +460,26 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   font.composite = true;
 
   // The Type0 `/Encoding`: a predefined CMap name (`Identity-H`,
-  // `UniGB-UCS2-H`, …) or an embedded CMap stream. Record the name; the stream
-  // case is left empty (deferred). Drives the predefined Unicode-CMap path in
-  // `Font::to_unicode`.
+  // `UniGB-UCS2-H`, …) or an embedded CMap stream. A name drives the predefined
+  // Unicode-CMap path in `Font::to_unicode`; a stream is parsed into a
+  // code -> CID CMap (`Font::cid_encoding`) so `codes()` yields the right CIDs
+  // for a mixed-width encoding (ISO 32000-1 9.7.5.3).
   if (dictionary.has_key("Encoding")) {
     const Object encoding = parser.resolve_object_copy(dictionary["Encoding"]);
     if (encoding.is_name()) {
       font.cid_encoding_name = encoding.as_name();
+    } else if (dictionary["Encoding"].is_reference()) {
+      try {
+        const std::string stream =
+            parser.read_decoded_stream(dictionary["Encoding"].as_reference());
+        util::stream::ViewStream ss(stream);
+        CMapParser cmap_parser(ss, parser.logger());
+        font.cid_encoding = cmap_parser.parse_cmap();
+      } catch (const std::exception &e) {
+        ODR_WARNING(
+            parser.logger(),
+            "pdf: failed to read composite /Encoding CMap: " << e.what());
+      }
     }
   }
 
