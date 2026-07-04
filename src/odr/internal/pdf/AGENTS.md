@@ -236,6 +236,16 @@ inline SVG per page. Experimental and not production-quality.
     `OS/2`/`hhea` (`font/cff_transform.cpp` `serialize_os2`/`serialize_hhea`; the
     SFNT path passes the originals through), so our ascent can match the
     browser's.
+  - **Non-embedded substitutes** render in a *local* system font whose
+    `hhea`/`OS/2` we do **not** control, so the box-top→baseline distance would
+    be that font's ascent, not our `ascent_em` — dropping e.g. a 120pt Times
+    title well below its intended baseline. `SubstituteFontFaces` (in
+    `pdf_file.cpp`) closes this by routing each substitute through a generated
+    `@font-face` (`'odr-sN'`, `src: local(...)` of the family stack) carrying
+    `ascent-override:ascent_em`, `descent-override:1−ascent_em`,
+    `line-gap-override:0` — so the browser positions the baseline from *our*
+    metric. Faces are deduped by (family, style, ascent); the family stack is
+    kept after `'odr-sN'` as a fallback for the rare unresolved local.
   - **`ascent_em`** (in `pdf_file.cpp`): FontDescriptor `/Ascent`, else the
     embedded font's `bounding_box().y_max / units_per_em()`, else `0.8` em (which
     matches `serialize_os2`'s degenerate 0.8/0.2 fallback, so the fallback font
