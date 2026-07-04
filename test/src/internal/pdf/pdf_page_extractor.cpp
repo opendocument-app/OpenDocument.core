@@ -612,6 +612,26 @@ TEST(PdfPageExtractor, type3_advance_uses_font_matrix) {
   EXPECT_NEAR(second.subpaths[0].start[0], 5, 1e-9); // advanced by 0.5 em
 }
 
+// Invisible (`3 Tr`) and clip-only (`7 Tr`) Type3 text paints nothing: the run
+// stays selectable (transparent text element) but the char procs must not run,
+// so no glyph graphics appear (ISO 32000-1 Table 106).
+TEST(PdfPageExtractor, type3_invisible_skips_char_proc) {
+  Font font = type3_font('A', "a", 1000, "0 0 1000 1000 re f",
+                         Transform2D::scaling(0.001, 0.001));
+  Resources res;
+  res.font["F1"] = &font;
+
+  for (const char *mode : {"3", "7"}) {
+    const auto page = extract_page("BT /F1 10 Tf " + std::string(mode) +
+                                       " Tr 100 700 Td (A) Tj ET",
+                                   res, Logger::null());
+    ASSERT_EQ(page.size(), 1); // only the selectable text, no glyph fill
+    const auto &text = std::get<TextElement>(page.at(0));
+    EXPECT_TRUE(text.render_as_graphics);
+    EXPECT_EQ(text.codes, "A");
+  }
+}
+
 // A move/line/stroke builds one open subpath; the points are in user space and
 // the paint intent is stroke-only.
 TEST(PdfPageExtractor, path_move_line_stroke) {

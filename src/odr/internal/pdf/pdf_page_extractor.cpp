@@ -735,6 +735,15 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
   const util::math::Transform2D saved_matrix = state.current().text.matrix;
   show(out, state, marked, pen, codes, font, /*render_as_graphics=*/true);
 
+  // Rendering modes that paint nothing — invisible (`3 Tr`) and clip-only
+  // (`7 Tr`) — must not paint the glyph graphics either (ISO 32000-1
+  // Table 106). The selectable text element is already emitted by `show`
+  // above; running the char procs would draw the glyphs visibly.
+  const TextRenderingMode mode = state.current().text.rendering_mode;
+  if (mode == TextRenderingMode::invisible || mode == TextRenderingMode::clip) {
+    return;
+  }
+
   static thread_local int depth = 0;
   if (font->type3->char_procs.empty() || depth > 8) {
     return; // nothing to draw, or pathological Type3 recursion
