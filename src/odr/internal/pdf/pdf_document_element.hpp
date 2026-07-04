@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/internal/pdf/pdf_afm.hpp>
 #include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
@@ -325,6 +326,13 @@ struct Font final : Element {
   /// and renders the actual glyphs via `@font-face`, and `to_unicode` reads the
   /// embedded reverse map.
   std::shared_ptr<abstract::Font> embedded_font;
+
+  /// Substitution for a non-embedded font (`embedded_font == nullptr`): the CSS
+  /// `font-family` the HTML layer renders it in, plus the standard-14 AFM font
+  /// whose advance widths back `advance_width` when the font carries no
+  /// `/Widths`. Resolved once at parse time; `nullopt` for embedded fonts (they
+  /// render their real glyphs) and composite fonts.
+  std::optional<FontSubstitute> substitute;
 
   /// Composite-font `/CIDToGIDMap` (ISO 32000-1 9.7.4.3) when given as an
   /// explicit stream: `GID = cid_to_gid[CID]`. Empty means `Identity`

@@ -1,6 +1,8 @@
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/pdf/pdf_afm.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
@@ -193,4 +195,105 @@ TEST(PdfFont, no_font_yields_no_glyph) {
   Font font;
   font.composite = true;
   EXPECT_EQ(font.glyph_for_code(1), 0);
+}
+
+TEST(PdfAfm, resolve_substitute_by_name) {
+  using pdf::resolve_font_substitute;
+  using pdf::StandardFont;
+
+  const pdf::FontSubstitute helv =
+      resolve_font_substitute("Helvetica", 0, 0, 0);
+  EXPECT_EQ(helv.metrics, StandardFont::helvetica);
+  EXPECT_FALSE(helv.bold);
+  EXPECT_FALSE(helv.italic);
+  EXPECT_NE(helv.css_family.find("sans-serif"), std::string::npos);
+
+  const pdf::FontSubstitute tbi =
+      resolve_font_substitute("Times-BoldItalic", 0, 0, 0);
+  EXPECT_EQ(tbi.metrics, StandardFont::times_bold_italic);
+  EXPECT_TRUE(tbi.bold);
+  EXPECT_TRUE(tbi.italic);
+  EXPECT_NE(tbi.css_family.find("serif"), std::string::npos);
+
+  // A subset prefix (`ABCDEF+`) is stripped before matching.
+  const pdf::FontSubstitute sub =
+      resolve_font_substitute("ABCDEF+Courier-Bold", 0, 0, 0);
+  EXPECT_EQ(sub.metrics, StandardFont::courier_bold);
+  EXPECT_TRUE(sub.bold);
+  EXPECT_NE(sub.css_family.find("monospace"), std::string::npos);
+}
+
+TEST(PdfAfm, resolve_substitute_by_flags) {
+  using pdf::resolve_font_substitute;
+  using pdf::StandardFont;
+
+  // No recognizable name: the descriptor flags pick the family (serif bit 2,
+  // fixed-pitch bit 1).
+  EXPECT_EQ(resolve_font_substitute("CustomFont", 1U << 1, 0, 0).metrics,
+            StandardFont::times_roman);
+  EXPECT_EQ(resolve_font_substitute("CustomFont", 1U << 0, 0, 0).metrics,
+            StandardFont::courier);
+
+  // Italic flag (bit 7) + force-bold flag (bit 19).
+  const pdf::FontSubstitute flagged =
+      resolve_font_substitute("CustomFont", (1U << 6) | (1U << 18), 0, 0);
+  EXPECT_TRUE(flagged.bold);
+  EXPECT_TRUE(flagged.italic);
+  EXPECT_EQ(flagged.metrics, StandardFont::helvetica_bold_oblique);
+
+  // FontWeight >= 600 and a non-zero ItalicAngle also imply bold/italic.
+  const pdf::FontSubstitute weighted =
+      resolve_font_substitute("CustomFont", 0, 700, -12.0);
+  EXPECT_TRUE(weighted.bold);
+  EXPECT_TRUE(weighted.italic);
+}
+
+TEST(PdfAfm, glyph_and_code_widths) {
+  using pdf::afm_code_width;
+  using pdf::afm_width;
+  using pdf::StandardFont;
+
+  EXPECT_EQ(afm_width(StandardFont::helvetica, "A"), 667.0);
+  EXPECT_EQ(afm_width(StandardFont::helvetica, "space"), 278.0);
+  EXPECT_EQ(afm_width(StandardFont::times_roman, "A"), 722.0);
+  EXPECT_EQ(afm_width(StandardFont::courier, "A"), 600.0);
+  EXPECT_FALSE(afm_width(StandardFont::helvetica, "nonexistent"));
+
+  // Built-in-encoding fallback: Symbol code 32 is space = 250; an empty slot
+  // (code 0) has no width.
+  EXPECT_EQ(afm_code_width(StandardFont::symbol, 32), 250.0);
+  EXPECT_FALSE(afm_code_width(StandardFont::symbol, 0));
+}
+
+TEST(PdfFont, advance_width_afm_fallback_via_encoding) {
+  // A non-embedded Helvetica with no /Widths: the advance comes from the AFM
+  // table via the /Encoding glyph name.
+  Font font;
+  font.substitute = pdf::resolve_font_substitute("Helvetica", 0, 0, 0);
+  font.encoding.emplace(pdf::BaseEncoding::standard);
+
+  EXPECT_NEAR(font.advance_width('A'), 0.667, 1e-9);
+  EXPECT_NEAR(font.advance_width(' '), 0.278, 1e-9);
+}
+
+TEST(PdfFont, advance_width_afm_fallback_builtin_encoding) {
+  // No /Encoding: fall back to the substitute font's built-in code->width
+  // table (the Symbol / ZapfDingbats case).
+  Font font;
+  font.substitute = pdf::resolve_font_substitute("Symbol", 1U << 2, 0, 0);
+
+  EXPECT_NEAR(font.advance_width(32), 0.25, 1e-9);
+}
+
+TEST(PdfFont, advance_width_explicit_widths_win_over_afm) {
+  // An explicit /Widths entry takes precedence; a code outside its range still
+  // falls back to the AFM table.
+  Font font;
+  font.substitute = pdf::resolve_font_substitute("Helvetica", 0, 0, 0);
+  font.encoding.emplace(pdf::BaseEncoding::standard);
+  font.first_char = 'A';
+  font.widths = {1000.0};
+
+  EXPECT_NEAR(font.advance_width('A'), 1.0, 1e-9);   // from /Widths
+  EXPECT_NEAR(font.advance_width('B'), 0.667, 1e-9); // out of range -> AFM
 }

@@ -107,6 +107,21 @@ std::string rgb_to_css(const std::array<double, 3> &rgb) {
   return std::move(s).str();
 }
 
+/// The CSS declaration a non-embedded font renders through: its substitute
+/// `font-family` stack plus the weight/style implied by the `/BaseFont` name
+/// and `/FontDescriptor` flags. Interned as an `ff` atomic class on the
+/// fallback (`font == 0`) runs of either text mode.
+std::string font_substitute_declaration(const pdf::FontSubstitute &substitute) {
+  std::string declaration = "font-family:" + substitute.css_family;
+  if (substitute.bold) {
+    declaration += ";font-weight:bold";
+  }
+  if (substitute.italic) {
+    declaration += ";font-style:italic";
+  }
+  return declaration;
+}
+
 /// Build an SVG `d` attribute from a path's subpaths, each point mapped through
 /// `to_box` (PDF user space -> the page box, y-down). Lines become `L`, cubic
 /// Béziers `C`, and an explicitly closed subpath ends with `Z`.
@@ -788,6 +803,11 @@ public:
           if (font != 0) {
             run_classes += ' ';
             run_classes += font_class(font_class_used, font, invisible);
+          } else if (text.font != nullptr && text.font->substitute) {
+            // Non-embedded font: render the real Unicode in the substitute
+            // family (embedded fonts carry the family in `font_class`).
+            add_class(run_classes, "ff",
+                      font_substitute_declaration(*text.font->substitute));
           }
           if (vis_margin_pt != 0) {
             add_class(run_classes, "ml", pt_decl("margin-left", vis_margin_pt));
@@ -1366,9 +1386,17 @@ public:
         }
 
         // ---- Flow grouping -----------------------------------------------
+        // The visible substitute family of a non-embedded font (`font == 0`);
+        // part of the flow key so two different substitutes (e.g. a Helvetica
+        // run then a Times run) never share one line block's `font_class`.
+        const std::string substitute_declaration =
+            (font == 0 && !invisible && text.font != nullptr &&
+             text.font->substitute)
+                ? font_substitute_declaration(*text.font->substitute)
+                : std::string();
         std::ostringstream fk;
         fk << font << '|' << invisible << '|' << font_size_pt << '|' << cs_pt
-           << '|' << ws_pt;
+           << '|' << ws_pt << '|' << substitute_declaration;
         const std::string flow_key = std::move(fk).str();
         bool new_line = is_matrix || prev_was_matrix || cur_line < 0 ||
                         flow_key != cur_flow_key;
@@ -1407,6 +1435,8 @@ public:
           line.classes = std::move(base);
           if (font != 0) {
             line.font_class = font_class(font_class_used, font, invisible);
+          } else if (!substitute_declaration.empty()) {
+            line.font_class = styles.intern("ff", substitute_declaration);
           }
           line.runs.push_back(std::move(run));
           page_out.items.push_back(std::move(line));

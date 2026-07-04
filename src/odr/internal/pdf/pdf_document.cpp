@@ -44,6 +44,27 @@ double Font::advance_width(const std::uint32_t code) const {
   if (index >= 0 && index < static_cast<long>(widths.size())) {
     return widths[static_cast<std::size_t>(index)] / 1000.0;
   }
+  // Non-embedded standard-14 fonts usually ship no `/Widths`: fall back to the
+  // substitute's AFM metrics (ISO 32000-1 9.6.2.2) so placement stays correct.
+  // The `/Encoding` (a `/Differences` override or a base encoding) names the
+  // glyph; without one, the font's built-in encoding (the AFM's own codes) is
+  // the fallback — the Symbol/ZapfDingbats case.
+  if (substitute && substitute->metrics && code <= 0xFF) {
+    const StandardFont metrics = *substitute->metrics;
+    if (encoding) {
+      if (const std::string_view name =
+              encoding->glyph_name(static_cast<std::uint8_t>(code));
+          !name.empty()) {
+        if (const std::optional<double> width = afm_width(metrics, name)) {
+          return *width / 1000.0;
+        }
+      }
+    }
+    if (const std::optional<double> width =
+            afm_code_width(metrics, static_cast<std::uint8_t>(code))) {
+      return *width / 1000.0;
+    }
+  }
   return missing_width / 1000.0;
 }
 
