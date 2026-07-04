@@ -76,8 +76,8 @@ struct GraphicsState {
     // zero-width/invalid-miter path elements for streams that stroke without an
     // explicit `w`/`M`.
     double line_width{1};
-    int cap_style{};
-    int join_style{};
+    std::int32_t cap_style{};
+    std::int32_t join_style{};
     double miter_limit{10};
     Dash dash;
     std::string color_rendering_intent;
@@ -137,6 +137,12 @@ struct GraphicsState {
   /// `m`/`l`/`c`/ `re`/… and is consumed (and cleared) by a path-painting
   /// operator.
   std::vector<Subpath> path;
+
+  /// Nesting depth of Type3 char-proc rendering. A Type3 glyph is drawn by
+  /// running a content stream that may itself show Type3 text, so this bounds
+  /// pathological self-referential recursion. Deliberately *not* part of the
+  /// `q`/`Q`-saved `State`: it tracks call-chain depth, not graphics state.
+  std::int32_t type3_depth{0};
 
   GraphicsState();
 

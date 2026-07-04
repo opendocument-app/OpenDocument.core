@@ -744,14 +744,14 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
     return;
   }
 
-  static thread_local int depth = 0;
-  if (font->type3->char_procs.empty() || depth > 8) {
+  if (font->type3->char_procs.empty() || state.type3_depth > 8) {
     return; // nothing to draw, or pathological Type3 recursion
   }
-  ++depth;
+  ++state.type3_depth;
   state.current().text.matrix = saved_matrix;
 
-  auto [advances, total] = segment_advances(state.current().text, *font, codes);
+  const auto [advances, total] =
+      segment_advances(state.current().text, *font, codes);
   std::size_t i = 0;
   for (const std::uint32_t code : font->codes(codes)) {
     const double advance = i < advances.size() ? advances[i] : 0.0;
@@ -790,7 +790,7 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
     }
     state.advance_text(advance, 0);
   }
-  --depth;
+  --state.type3_depth;
 }
 
 void run_content(const std::string &content, const Resources &resources,
