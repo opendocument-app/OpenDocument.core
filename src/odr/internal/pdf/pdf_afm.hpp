@@ -50,7 +50,7 @@ struct FontSubstitute {
 /// back to a sans-serif stack with Helvetica metrics.
 [[nodiscard]] FontSubstitute resolve_font_substitute(std::string_view base_font,
                                                      std::uint32_t flags,
-                                                     int font_weight,
+                                                     std::int32_t font_weight,
                                                      double italic_angle);
 
 /// The advance width of a glyph (by name) in `font`, glyph space (1/1000 em),

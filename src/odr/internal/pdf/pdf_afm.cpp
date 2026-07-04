@@ -42,7 +42,7 @@ std::string normalize_name(std::string_view base_font) {
   return result;
 }
 
-bool contains(const std::string &haystack, std::string_view needle) {
+bool contains(const std::string &haystack, const std::string_view needle) {
   return haystack.find(needle) != std::string::npos;
 }
 
@@ -141,10 +141,13 @@ std::string_view family_stack(const Family family) {
 
 } // namespace
 
-FontSubstitute resolve_font_substitute(const std::string_view base_font,
-                                       const std::uint32_t flags,
-                                       const int font_weight,
-                                       const double italic_angle) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+pdf::FontSubstitute pdf::resolve_font_substitute(
+    const std::string_view base_font, const std::uint32_t flags,
+    const std::int32_t font_weight, const double italic_angle) {
   const std::string name = normalize_name(base_font);
   const Family family = classify_family(name, flags);
 
@@ -164,8 +167,8 @@ FontSubstitute resolve_font_substitute(const std::string_view base_font,
   return substitute;
 }
 
-std::optional<double> afm_width(const StandardFont font,
-                                const std::string_view glyph_name) {
+std::optional<double> pdf::afm_width(const StandardFont font,
+                                     const std::string_view glyph_name) {
   const afm_data::FontMetrics &m = metrics_of(font);
   const afm_data::GlyphWidth *const begin = m.glyphs;
   const afm_data::GlyphWidth *const end = m.glyphs + m.glyph_count;
@@ -180,8 +183,8 @@ std::optional<double> afm_width(const StandardFont font,
   return std::nullopt;
 }
 
-std::optional<double> afm_code_width(const StandardFont font,
-                                     const std::uint8_t code) {
+std::optional<double> pdf::afm_code_width(const StandardFont font,
+                                          const std::uint8_t code) {
   const std::int16_t width = metrics_of(font).code_widths[code];
   if (width < 0) {
     return std::nullopt;
@@ -189,8 +192,8 @@ std::optional<double> afm_code_width(const StandardFont font,
   return width;
 }
 
-double afm_ascender(const StandardFont font) {
+double pdf::afm_ascender(const StandardFont font) {
   return metrics_of(font).ascender / 1000.0;
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

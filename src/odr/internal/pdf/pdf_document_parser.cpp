@@ -396,7 +396,7 @@ void resolve_font_substitute(DocumentParser &parser,
   }
 
   std::uint32_t flags = 0;
-  int font_weight = 0;
+  std::int32_t font_weight = 0;
   double italic_angle = 0;
   if (dictionary.has_key("FontDescriptor")) {
     const Object descriptor =
