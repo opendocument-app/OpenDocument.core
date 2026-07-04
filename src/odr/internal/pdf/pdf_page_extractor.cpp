@@ -275,6 +275,9 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   element.rendering_mode = text.rendering_mode;
   element.fill_color = state.current().other_color;
   element.stroke_color = state.current().stroke_color;
+  element.fill_alpha = state.current().general.fill_alpha;
+  element.stroke_alpha = state.current().general.stroke_alpha;
+  element.blend_mode = state.current().general.blend_mode;
   ResolvedText resolved = resolve_text(marked, font, codes);
   element.text = std::move(resolved.text);
   element.no_unicode = resolved.no_unicode;
@@ -411,6 +414,62 @@ std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
   return {0, 0, 0};
 }
 
+/// The blend-mode names a reader honours (ISO 32000-1 Table 136: the 12
+/// separable and 4 non-separable modes, plus `Normal` and its legacy alias
+/// `Compatible`). Used to pick a supported entry out of a `/BM` fallback array.
+bool is_supported_blend_mode(const std::string &name) {
+  static const std::set<std::string> supported = {
+      "Normal",    "Compatible", "Multiply",   "Screen",    "Overlay",
+      "Darken",    "Lighten",    "ColorDodge", "ColorBurn", "HardLight",
+      "SoftLight", "Difference", "Exclusion",  "Hue",       "Saturation",
+      "Color",     "Luminosity"};
+  return supported.count(name) != 0;
+}
+
+/// Apply a `gs` operator: resolve the named `/ExtGState` dictionary and fold
+/// its constant alpha (`ca`/`CA`) and blend mode (`/BM`) into the general
+/// graphics state (ISO 32000-1 8.4.5). Other entries (line params, `/Font`,
+/// `/SMask`) are out of scope here — soft masks are a later item. `/BM` may be
+/// a single name or an array of names, an ordered fallback list from which the
+/// reader picks the first mode it supports; `Compatible` is a legacy alias for
+/// `Normal`.
+void apply_ext_g_state(const std::string &name, const Resources &resources,
+                       GraphicsState &state) {
+  const auto it = resources.ext_g_state.find(name);
+  if (it == resources.ext_g_state.end() || !it->second.is_dictionary()) {
+    return;
+  }
+  const Dictionary &dictionary = it->second.as_dictionary();
+  GraphicsState::General &general = state.current().general;
+  if (dictionary.has_value("ca") && dictionary.at("ca").is_real()) {
+    general.fill_alpha = dictionary.at("ca").as_real();
+  }
+  if (dictionary.has_value("CA") && dictionary.at("CA").is_real()) {
+    general.stroke_alpha = dictionary.at("CA").as_real();
+  }
+  if (dictionary.has_value("BM")) {
+    const Object &bm = dictionary.at("BM");
+    std::string mode;
+    if (bm.is_name()) {
+      mode = bm.as_name();
+    } else if (bm.is_array()) {
+      // An ordered fallback list: use the first name we support, so an
+      // unrecognized vendor mode ahead of a standard one (e.g.
+      // `[/VendorMode /Multiply]`) does not shadow the supported fallback.
+      for (const Object &entry : bm.as_array()) {
+        if (entry.is_name() && is_supported_blend_mode(entry.as_name())) {
+          mode = entry.as_name();
+          break;
+        }
+      }
+    }
+    if (mode == "Compatible") {
+      mode = "Normal";
+    }
+    general.blend_mode = mode == "Normal" ? std::string{} : mode;
+  }
+}
+
 /// Emit a path-painting element from the path accumulated in `state` and the
 /// current paint state, then clear the path (as every painting operator does).
 /// `close` first closes the current subpath (the `s`/`b`/`b*` variants).
@@ -431,6 +490,9 @@ void paint_path(std::vector<PageElement> &out, const Resources &resources,
   element.even_odd = even_odd;
   element.fill_color = s.other_color;
   element.stroke_color = s.stroke_color;
+  element.fill_alpha = s.general.fill_alpha;
+  element.stroke_alpha = s.general.stroke_alpha;
+  element.blend_mode = s.general.blend_mode;
   // A `/Pattern`-coloured fill: resolve the pattern selected by `scn`. A
   // shading pattern (`/PatternType 2`) paints its gradient through the path;
   // its matrix maps shading space to the page's default user space (ISO 32000-1
@@ -559,6 +621,8 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
     image.clip = state.current().clip;
     image.data = std::move(png);
     image.mime = "image/png";
+    image.alpha = state.current().general.fill_alpha;
+    image.blend_mode = state.current().general.blend_mode;
     out.push_back(std::move(image));
     return;
   }
@@ -581,6 +645,8 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
   image.clip = state.current().clip;
   image.data = std::move(encoded->data);
   image.mime = std::move(encoded->mime);
+  image.alpha = state.current().general.fill_alpha;
+  image.blend_mode = state.current().general.blend_mode;
   out.push_back(std::move(image));
 }
 
@@ -601,6 +667,8 @@ void emit_shading(const GraphicsOperator &op, const Resources &resources,
   element.shading = it->second.get();
   element.transform = state.current().general.transform_matrix;
   element.clip = state.current().clip;
+  element.alpha = state.current().general.fill_alpha;
+  element.blend_mode = state.current().general.blend_mode;
   out.push_back(std::move(element));
 }
 
@@ -684,6 +752,8 @@ void invoke_x_object(const std::string &name, const Resources &resources,
     } else {
       return;
     }
+    image.alpha = state.current().general.fill_alpha;
+    image.blend_mode = state.current().general.blend_mode;
     out.push_back(std::move(image));
     return;
   }
@@ -909,6 +979,15 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::set_stroke_color:      // SC
     case GraphicsOperatorType::set_stroke_color_name: // SCN
       set_color(state.current().stroke_color, op);
+      break;
+
+    // `gs` names an `/ExtGState` dict; resolve it here (not in
+    // `GraphicsState::execute`) because it consults the `/ExtGState` resources.
+    // `execute` has already recorded the name.
+    case GraphicsOperatorType::set_graphics_state_parameters: // gs
+      if (!op.arguments.empty() && op.arguments.at(0).is_name()) {
+        apply_ext_g_state(op.arguments.at(0).as_name(), resources, state);
+      }
       break;
 
     case GraphicsOperatorType::begin_marked_content_seq:       // BMC

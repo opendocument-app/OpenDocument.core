@@ -35,6 +35,11 @@ struct TextElement {
   /// colour for the stroke-only modes (Tr 1/5) — defaulting to black.
   GraphicsState::Color fill_color;
   GraphicsState::Color stroke_color;
+  /// Constant fill/stroke alpha (`/ExtGState` `ca`/`CA`) and blend mode
+  /// (`/BM`) in force when the run was shown; 1 = opaque, empty blend = Normal.
+  double fill_alpha{1};
+  double stroke_alpha{1};
+  std::string blend_mode;
   /// Raw character codes shown by this segment (one `Tj`, or one string of a
   /// `TJ` array).
   std::string codes;
@@ -120,6 +125,11 @@ struct PathElement {
   double miter_limit{10};
   std::vector<double> dash_array; // empty = solid
   double dash_phase{0};
+  /// Constant fill/stroke alpha (`/ExtGState` `ca`/`CA`) and blend mode (`/BM`)
+  /// in force when the path was painted; 1 = opaque, empty blend = Normal.
+  double fill_alpha{1};
+  double stroke_alpha{1};
+  std::string blend_mode;
 };
 
 /// One image XObject painted by `Do`, placed by the CTM in effect when it was
@@ -133,6 +143,11 @@ struct ImageElement {
   std::vector<ClipPath> clip;
   std::string data; // encoded image bytes (e.g. a JPEG)
   std::string mime; // e.g. "image/jpeg"
+  /// Constant alpha (`/ExtGState` `ca`, the nonstroking alpha applies to
+  /// images) and blend mode (`/BM`) in force at `Do`; 1 = opaque, empty blend =
+  /// Normal.
+  double alpha{1};
+  std::string blend_mode;
 };
 
 /// One area painted by the `sh` operator (ISO 32000-1 8.7.4.2): a shading
@@ -147,6 +162,10 @@ struct ShadingElement {
   util::math::Transform2D transform;
   /// The clip in force, snapshotted so the renderer bounds the flood.
   std::vector<ClipPath> clip;
+  /// Constant fill alpha (`/ExtGState` `ca`) and blend mode (`/BM`) in force at
+  /// `sh`; 1 = opaque, empty blend = Normal.
+  double alpha{1};
+  std::string blend_mode;
 };
 
 /// A single page-content element in paint (z) order: a shown text segment, a

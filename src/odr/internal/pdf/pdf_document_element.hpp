@@ -109,6 +109,11 @@ struct Resources final : Element {
   /// A non-owning pointer: `Pattern` is a document `Element`, owned by the
   /// `Document` graph like the other resource elements (`Font`, `XObject`).
   std::unordered_map<std::string, Pattern *> pattern;
+  /// The `/ExtGState` subdictionary (ISO 32000-1 8.4.5): named graphics-state
+  /// parameter dictionaries selected by the `gs` operator. Resolved dicts are
+  /// stored verbatim (like `/Properties`) and interpreted at `gs` time — the
+  /// extractor reads `ca`/`CA` (constant alpha) and `/BM` (blend mode).
+  std::unordered_map<std::string, Object> ext_g_state;
 };
 
 /// Type3 font glyph data (ISO 32000-1 9.6.5). A Type3 glyph is a small content

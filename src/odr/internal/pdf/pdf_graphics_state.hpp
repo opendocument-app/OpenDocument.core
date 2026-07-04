@@ -84,6 +84,14 @@ struct GraphicsState {
     std::string color_rendering_intent;
     double flatness_tolerance{};
     std::string graphics_state_parameters;
+    // Constant alpha (ISO 32000-1 11.6.4.4) set via an `/ExtGState` `ca`/`CA`:
+    // the nonstroking (fill) and stroking opacity in [0,1]. Part of the general
+    // graphics state, so `q`/`Q` scope them like the CTM. 1 = fully opaque.
+    double fill_alpha{1};   // ca
+    double stroke_alpha{1}; // CA
+    // Blend mode (ISO 32000-1 11.3.5) set via an `/ExtGState` `/BM`: the PDF
+    // separable/non-separable blend name (e.g. `Multiply`). Empty = `Normal`.
+    std::string blend_mode;
     util::math::Transform2D transform_matrix; // CTM
   };
 

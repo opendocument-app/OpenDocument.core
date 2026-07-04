@@ -26,7 +26,7 @@ GraphicsOperatorType operator_name_to_type(const std::string &name) {
       {"d", GraphicsOperatorType::set_dash_pattern},
       {"ri", GraphicsOperatorType::set_color_rendering_intent},
       {"i", GraphicsOperatorType::set_flatness_tolerance},
-      {"gm", GraphicsOperatorType::set_graphics_state_parameters},
+      {"gs", GraphicsOperatorType::set_graphics_state_parameters},
 
       {"Do", GraphicsOperatorType::draw_object},
       {"BI", GraphicsOperatorType::begin_inline_image},
