@@ -18,8 +18,9 @@ What the chain needs (a composite font's character code -> Unicode):
 
   * ``code -> CID``: the predefined CMap the PDF names (e.g. ``90ms-RKSJ-H``).
   * ``CID -> Unicode``: per character collection (Adobe-Japan1, -GB1, -CNS1,
-    -Korea1, -KR), obtained by inverting that collection's ``Uni*-UTF32-H``
-    (or ``-UTF16-H`` / ``-UCS2-H``) CMap.
+    -Korea1, -KR, -Manga1, and the deprecated -Japan2/Hojo), obtained by
+    inverting that collection's ``Uni*-UTF32-H`` (or ``-UTF16-H`` / ``-UCS2-H``)
+    CMap.
 
 The ``Uni*`` CMaps themselves are **not** emitted: their character codes already
 *are* Unicode (UTF-16BE / UTF-32BE), so the C++ runtime decodes them directly
@@ -51,13 +52,18 @@ _DATA_DIR = os.path.join(_HERE, "cmap-resources")
 
 # Character collections to cover, in output order. Each is the directory name in
 # the archive; the registry/ordering pair identifies it from a PDF's
-# /CIDSystemInfo, and the legacy CMaps live under "<dir>/CMap/".
+# /CIDSystemInfo, and the legacy CMaps live under "<dir>/CMap/". Adobe-Identity-0
+# is intentionally absent: it ships only Identity-H/V (no cidranges, no Uni*
+# CMap), so there is no CID -> Unicode data to invert -- such fonts fall through
+# to the runtime's Identity handling.
 _COLLECTIONS = (
     ("Adobe-Japan1-7", "Adobe", "Japan1"),
     ("Adobe-GB1-6", "Adobe", "GB1"),
     ("Adobe-CNS1-7", "Adobe", "CNS1"),
     ("Adobe-Korea1-2", "Adobe", "Korea1"),
     ("Adobe-KR-9", "Adobe", "KR"),
+    ("Adobe-Manga1-0", "Adobe", "Manga1"),
+    ("deprecated/Adobe-Japan2-0", "Adobe", "Japan2"),
 )
 
 
@@ -504,7 +510,6 @@ def _emit_array(
     name: str,
     pool: list,
     fmt,
-    std_array: bool = False,
     size_expr: str | None = None,
 ) -> None:
     """Emit a ``const std::array<T, N> name = {{...}};`` definition.
@@ -514,11 +519,8 @@ def _emit_array(
     namespace-qualified so the definition binds to the header declaration.
     """
     extent = size_expr if size_expr is not None else str(len(pool))
-    if std_array:
-        # std::array needs the double brace (aggregate wrapping a C array).
-        out.write(f"const std::array<{ctype}, {extent}>\n    {name} = {{{{\n")
-    else:
-        out.write(f"const {ctype} {name}[] = {{\n")
+    # std::array needs the double brace (aggregate wrapping a C array).
+    out.write(f"const std::array<{ctype}, {extent}>\n    {name} = {{{{\n")
     line = "    "
     for item in pool:
         chunk = fmt(item) + ","
@@ -528,7 +530,7 @@ def _emit_array(
         line += chunk
     if line.strip():
         out.write(line + "\n")
-    out.write("}};\n\n" if std_array else "};\n\n")
+    out.write("}};\n\n")
 
 
 def _write_cpp(
@@ -557,17 +559,14 @@ def _write_cpp(
         "codespace_pool",
         codespace_pool,
         lambda r: f"{{0x{r[0]:x},0x{r[1]:x},{r[2]}}}",
-        std_array=True,
     )
-    _emit_array(out, "std::uint16_t", "range_ref_pool", ref_pool, str, std_array=True)
+    _emit_array(out, "std::uint16_t", "range_ref_pool", ref_pool, str)
     _emit_array(
         out, "std::uint64_t", "bitmap_pool", bitmap_pool, lambda w: f"0x{w:x}",
-        std_array=True,
     )
-    _emit_array(out, "std::uint32_t", "rank_pool", rank_pool, str, std_array=True)
+    _emit_array(out, "std::uint32_t", "rank_pool", rank_pool, str)
     _emit_array(
         out, "std::uint16_t", "values_pool", values_pool, lambda v: f"0x{v:x}",
-        std_array=True,
     )
     _emit_array(
         out,
@@ -575,7 +574,6 @@ def _write_cpp(
         "astral_pool",
         astral_pool,
         lambda a: f"{{{a[0]},0x{a[1]:x}}}",
-        std_array=True,
     )
     out.write("} // namespace\n\n} // namespace odr::internal::pdf::cid_data\n\n")
 
@@ -590,7 +588,6 @@ def _write_cpp(
         "cid_data::cid_range_pool",
         cid_range_pool,
         lambda r: f"{{0x{r[0]:x},{r[1]},{r[2]},{r[3]}}}",
-        std_array=True,
         size_expr="cid_data::cid_range_pool_size",
     )
 

@@ -178,15 +178,13 @@ std::string Font::to_unicode(const std::string &codes) const {
                                cid_encoding_name == "Identity-V";
     if (identity_cids && !cid_registry.empty() && !cid_ordering.empty()) {
       std::string result;
-      bool mapped = false;
       for (const std::uint32_t cid : this->codes(codes)) {
         if (const std::optional<char32_t> unicode =
                 cid_to_unicode(cid_registry, cid_ordering, cid)) {
           util::string::append_c32(*unicode, result);
-          mapped = true;
         }
       }
-      if (mapped) {
+      if (!result.empty()) {
         return result;
       }
     }

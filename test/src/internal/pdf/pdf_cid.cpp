@@ -72,6 +72,13 @@ TEST(PdfCid, legacy_cmap_gb18030_four_byte) {
   EXPECT_EQ(translate_predefined_cmap("GBK2K-H", codes), "\xc2\xa5");
 }
 
+// A legacy CMap over the deprecated Adobe-Japan2 (Hojo) collection.
+TEST(PdfCid, legacy_cmap_hojo_japan2) {
+  // \x30\x21 -> CID 267 -> U+4E02 '丂' (UTF-8 e4 b8 82).
+  const std::string codes("\x30\x21", 2);
+  EXPECT_EQ(translate_predefined_cmap("Hojo-H", codes), "\xe4\xb8\x82");
+}
+
 // `Identity-H/V` is not a predefined table CMap (code == CID; the collection,
 // hence CID -> Unicode, comes from `/CIDSystemInfo` via `cid_to_unicode`), and
 // an unshipped CMap name is unknown.
@@ -86,6 +93,11 @@ TEST(PdfCid, unresolved_cmaps_return_nullopt) {
 TEST(PdfCid, cid_to_unicode_by_collection) {
   EXPECT_EQ(cid_to_unicode("Adobe", "Japan1", 2980), U'\x4E2D'); // 中
   EXPECT_EQ(cid_to_unicode("Adobe", "GB1", 4559), U'\x4E2D');    // 中
+  // The Manga1 and deprecated Japan2 (Hojo) collections resolve too, purely by
+  // /CIDSystemInfo (neither is reachable via a non-Identity predefined CMap;
+  // Manga1 ships no legacy CMap at all).
+  EXPECT_EQ(cid_to_unicode("Adobe", "Manga1", 2447), U'\x3402'); // 㐂
+  EXPECT_EQ(cid_to_unicode("Adobe", "Japan2", 267), U'\x4E02');  // 丂
   // Astral CID -> Unicode escapes through the side table.
   EXPECT_EQ(cid_to_unicode("Adobe", "Japan1", 7641), U'\U00028CDD');
   // Unknown collection (the Identity ordering carries no Unicode) and an
