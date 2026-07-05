@@ -1,7 +1,7 @@
 # In-house PDF support (`pdf/`) — status, design & roadmap
 
 What the `pdf/` module does **today**, the **design decisions** behind it, and
-the **staged roadmap** for turning it into a faithful renderer. Reference links
+the **roadmap** for turning it into a faithful renderer. Reference links
 (web resources; offline spec docs are planned) live in [`README.md`](README.md).
 
 This is the `DecoderEngine::odr` path for PDF; the sibling `../pdf_poppler/`
@@ -297,15 +297,13 @@ it.
   the clip (a `<rect>` filled with the gradient); a `/PatternType 2` shading
   pattern named by `scn` fills a path. Both emit
   `<linearGradient>`/`<radialGradient>` with `gradientUnits="userSpaceOnUse"`.
-  `/Extend`/`/Background`/`/BBox` are parsed but not yet honoured (SVG's `pad`
-  spread over-paints a non-extended shading; see gaps).
+  `/Extend`/`/Background`/`/BBox` are parsed but not yet honoured (see gaps).
 - **Tiling patterns** (`/PatternType 1`): the cell content stream runs as a mini
   page and becomes an SVG `<pattern>` tile repeated every `/XStep`/`/YStep`, with
   `patternTransform` placing the lattice; coloured (`/PaintType 1`) cells carry
   their own colours, uncoloured (`/PaintType 2`) cells paint in the current fill
-  colour. Each cell is clipped to its `/BBox`; an overlapping lattice (a step
-  smaller than the BBox) can't be expressed as one `<pattern>` and is not
-  reproduced.
+  colour. Each cell is clipped to its `/BBox` (overlapping lattices and nested
+  tile content are gaps; see gaps).
 - **Non-embedded fonts**: a font with no `/FontFile*` is *substituted*, not
   rendered — `/BaseFont` + `/FontDescriptor` flags map to a CSS `font-family`
   fallback stack (serif/sans/mono, bold/italic), and the standard-14 metrics
@@ -335,9 +333,8 @@ it.
   interior paints overlap.
 
 The **reference-output snapshot test** (`test/data/reference-output/`) is the
-graphics oracle: each change regenerates it and the diff is reviewed. A
-perceptual-diff gate (render corpus fixtures with poppler/pdf.js, screenshot our
-output, diff) is the eventual automated form (deferred).
+graphics oracle: each change regenerates it and the diff is reviewed. (An
+automated perceptual-diff gate is deferred; see gaps.)
 
 ## Module layout
 
@@ -461,12 +458,9 @@ as absent (7.5.8.3). A structural throw in the cross-reference layer is not
 fatal, though: it is caught once and the file is forward-scanned to rebuild the
 table (*Cross-reference recovery* above) before giving up.
 
-**Debug output still in place.** `pdf_graphics_state.cpp` (dash pattern, stroke/
-other color) and `pdf_graphics_operator_parser.cpp` still print diagnostics to
-stdout/stderr instead of `Logger`. The text path is clean: `html/pdf_file.cpp`
-and `pdf_page_text.cpp` route through `Logger`. `DocumentParser` and
-`extract_text` take a `Logger &` (default
-`Logger::null()`) — new diagnostics should do the same.
+**Diagnostics route through `Logger`.** `DocumentParser` and `extract_text` take
+a `Logger &` (default `Logger::null()`); no stray `stdout`/`stderr` prints remain
+in the module — new diagnostics should follow the same pattern.
 
 **Rendering is deferred to the browser; display and text are decoupled.** We emit
 no rasterized output: glyphs render via the embedded font (`@font-face`) and
@@ -481,6 +475,17 @@ recoverable Unicode are additionally marked non-extractable (`user-select: none`
 `aria-hidden`). So the deferred CJK/legacy-CMap work is a *selectability* gap, not
 a rendering risk — such PDFs look right, their text just isn't selectable until
 the tables land.
+
+**Font handling is in-house, facts-vs-glyphs split.** No FontForge (pdf.js proves
+it unnecessary; it is a heavy build and no read-only library can inject the PUA
+mappings we need). A thin `abstract::Font` interface exposes the *facts* every
+consumer needs (glyph count, glyph → Unicode, advance widths, units-per-em, name,
+bbox, symbolic flag) while glyph outlines pass through **byte-for-byte** (no
+decompile/recompile); every embedded flavor — SFNT (`/FontFile2`), bare CFF
+(`/FontFile3`), Type1 (`/FontFile` → CFF via `type1::to_cff`) — feeds the one
+path. Display uses a **uniform PUA re-encode** (`U+E000 + glyph index`) over every
+glyph, with the extracted Unicode carried separately for selection/search (see
+*Rendering is deferred* above).
 
 ---
 
@@ -591,69 +596,15 @@ dual-layer glyph/Unicode emission) are not yet asserted.
 # Roadmap
 
 Goal: faithful read-only HTML for common real-world PDFs through the odr engine,
-so the poppler/pdf2htmlEX engine becomes optional rather than required. Stages
-are ordered by what they unlock; 0–4 are **done** (summarized below — the
-mechanics live in *What works* and *Graphics, images & transparency*), 5 builds
-on whatever pages already render. Each remaining stage gets its own detailed
+so the poppler/pdf2htmlEX engine becomes optional rather than required. The
+file-format, text-extraction, font and graphics foundations are in place (see
+*What works* and *Graphics, images & transparency*); what remains is interaction
+& navigation plus a tail of known gaps. Each remaining item gets its own detailed
 design before implementation.
 
-## Stages 0–4 — done
+## Interaction & navigation
 
-- **Stage 0 — file-format compatibility.** Reads the structures modern producers
-  write that the original parser rejected: the stream-filter framework (incl. PNG
-  predictors), PDF 1.5+ cross-reference/object streams and hybrid files, inherited
-  page attributes, encryption (RC4 / AES-128 / AES-256), and last-resort
-  cross-reference recovery for broken files.
-- **Stage 1 — text extraction (code → Unicode).** Per font, code → Unicode: the
-  `ToUnicode` CMap (multi-byte codes, both `bfrange` forms, ligature targets), the
-  simple-font `/Encoding` (base + `/Differences` → AGL), composite (Type0/CID)
-  fonts via `/ToUnicode` or the predefined Unicode CMaps, and the embedded-font
-  reverse map for fonts with neither. A run with no recoverable Unicode is marked
-  `no_unicode`; `/ActualText` overrides the per-glyph Unicode of its shows.
-- **Stage 2 — text positioning & metrics.** A renderer-agnostic placed-text
-  emission: the executor produces one placed `TextElement` per shown segment
-  (text-space → user-space transform, font/size/spacing, codes, Unicode, per-code
-  advances), and the HTML layer maps it to a CSS-`transform` span — **the core
-  never commits to run-vs-glyph placement**. Glyph advances/metrics
-  (`/Widths`+`/MissingWidth`, `/W`+`/DW`), form XObjects (scoped `/Resources`,
-  `/Matrix`, memoized + cycle-guarded), text render modes, and space inference all
-  land here.
-- **Stage 3 — fonts in HTML.** Display fidelity: embedded programs render as real
-  glyphs via `@font-face` (the dual-layer glyph/Unicode emission). **Key
-  decisions:** in-house font handling, no FontForge (pdf.js proves it; FontForge
-  is a heavy build, and no read-only library can inject the PUA mappings we need);
-  **IR for facts, pass-through for glyphs** — a thin `abstract::Font` interface
-  exposes the facts every consumer needs (glyph count, glyph → Unicode, advance
-  widths, units-per-em, name, bbox, symbolic flag) while glyph data passes through
-  byte-for-byte (no outline decompile/recompile); a **uniform PUA re-encode**
-  (`U+E000 + glyph index`) for display over *every* glyph, with the extracted
-  Unicode carried separately for selection/search. Landed flavor by flavor:
-  `abstract::Font` + SFNT reader (3.0), OTF wrap + PUA re-encode + checksum rebuild
-  (3.1), `FontFile` as a `DecodedFile` + specimen-page HTML (3.2), embedded
-  TrueType into PDF (3.3), bare CFF / `FontFile3` / Type1C (3.4), and Type1 /
-  `FontFile` via `type1::to_cff` reusing the CFF path (3.5). Type3 and
-  non-embedded fonts were deferred to **stage 4** (they need the path → SVG
-  machinery), where they landed. Test oracle (never shipped): OTS over every
-  produced font in CI.
-  Two known limits: `cmap` serialization is BMP-only (a single Windows (3,1)
-  format-4 subtable; format-12 / >6400-glyph spill-over is a follow-up), and
-  simple-TrueType glyph selection is best-effort (ISO 32000-1 9.6.6.4).
-
-- **Stage 4 — graphics.** Vector and raster content → inline SVG per page
-  (paths, clipping, colour spaces + `/Function` evaluation, JPEG / raster /
-  inline images and masks, axial/radial shadings, tiling patterns),
-  non-embedded font substitution (+ standard-14 AFM widths), Type3 fonts, and
-  transparency (constant alpha, blend modes, soft masks). Decision: **SVG
-  serialization, no rasterizer** — pdf.js proves the full graphics model needs no
-  native renderer, and the rasterized-background fallback is rejected as it
-  reintroduces the very dependency the `odr` engine avoids. The mechanics live
-  in *Graphics, images & transparency* above. Deferred: mesh/function shadings
-  and the perceptual-diff oracle (see *Other known gaps*).
-
-## Stage 5 — interaction & navigation
-
-Builds on whatever pages render; needs stage 0 plus destinations from the page
-tree, little else.
+The next feature cluster — needs destinations from the page tree, little else.
 
 - **Links**: URI actions and internal `GoTo` destinations (incl. named) as `<a>`
   overlays.
@@ -668,10 +619,8 @@ tree, little else.
 
 ## Cross-cutting (any time)
 
-- Route diagnostics through `Logger` instead of stdout/stderr; drop the leftover
-  debug code (incl. the `"hi"` marker) in `html/pdf_file.cpp`.
 - Grow a corpus: `odr-public` fixtures, the PDF101 "nasty files" collection
-  linked in `README.md`; assertion-based tests per stage.
+  linked in `README.md`; assertion-based tests per feature.
 - Spec docs offline under `offline/documentation/PDF/` (ISO 32000-1:2008, ISO
   32000-2:2020, Adobe PDF Reference 1.7, with markdown conversions); still to
   do: fold them into `README.md` in place of the web links.
@@ -714,17 +663,12 @@ tree, little else.
   unindexed. Both are edge cases beyond the corpus seen so far.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
-- **CMap coverage**: the `ToUnicode` CMap is fully handled (multi-byte codes,
-  `bfchar`, both `bfrange` forms, multi-char targets), and a simple font's
-  `/Encoding` (base + `/Differences` → AGL) is the fallback when no `ToUnicode`
-  stream is present. Composite (Type0) fonts are recognized and extract through
-  their `/ToUnicode` or, when absent, a predefined Unicode `/Encoding`
-  (`Uni*-UCS2/UTF16/UTF32`), and the embedded-font reverse map (TrueType `cmap`,
-  CFF/Type1 charstring glyph names) recovers Unicode for a font with neither.
-  Still open: the legacy CJK code→CID CMaps (RKSJ/EUC/Big5/GBK/KSC) and their
-  CID → Unicode tables (large external data; the generator scaffolding in
-  `tools/pdf/generate_cid_data.py` is landed, the storage decision and lookup
-  remain).
+- **CMap coverage** — still open: the legacy CJK code→CID CMaps
+  (RKSJ/EUC/Big5/GBK/KSC) and their CID → Unicode tables (large external data;
+  the generator scaffolding in `tools/pdf/generate_cid_data.py` is landed, the
+  storage decision and lookup remain). Everything else is handled (`ToUnicode`,
+  simple `/Encoding` → AGL, composite via `/ToUnicode` / predefined Unicode CMaps
+  / embedded reverse map — see *What works*).
 - **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
