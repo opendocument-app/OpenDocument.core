@@ -64,7 +64,12 @@ Scripts and Docker images can be found here https://github.com/opendocument-app/
 OpenDocument.core is licensed under the [Mozilla Public License 2.0](LICENSE)
 (`MPL-2.0`).
 
-Note that this project can be built against and distributed with third-party
-components under their own terms (e.g. pdf2htmlEX under GPL). Distributing a
-combined binary may subject the whole to those components' license terms. See
-[`tools/pdf/THIRD_PARTY_LICENSES.md`](tools/pdf/THIRD_PARTY_LICENSES.md).
+Optional build features link the library against third-party components under
+their own terms — notably `pdf2htmlEX` (`ODR_WITH_PDF2HTMLEX`) and `wvWare`
+(`ODR_WITH_WVWARE`), both GPL-licensed. Enabling them and distributing the
+combined binary may subject the whole to those components' license terms; consult
+each project's own license before redistributing.
+
+Separately, the committed PDF font/encoding tables in `src/odr/internal/pdf/` are
+generated from third-party source data whose provenance and terms are documented
+in [`tools/pdf/THIRD_PARTY_LICENSES.md`](tools/pdf/THIRD_PARTY_LICENSES.md).

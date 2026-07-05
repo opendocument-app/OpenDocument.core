@@ -14,9 +14,9 @@ git-ignored — see the per-entry notes below.
 
 Unlike the base encodings below this file is **not vendored**: the script
 downloads it into `tools/pdf/glyphlist.txt` (git-ignored) on first run.
-BSD-3-Clause is GPL-compatible, so redistributing this data inside this GPLv3
-project is permitted; the obligation to retain the copyright notice and license
-text is carried into the generated source's banner.
+BSD-3-Clause is a permissive license compatible with this project's MPL-2.0
+terms, so redistributing this data is permitted; the obligation to retain the
+copyright notice and license text is carried into the generated source's banner.
 
 ## Base encodings — `standard_encoding.txt`, `win_ansi_encoding.txt`, `mac_roman_encoding.txt`
 
@@ -37,8 +37,8 @@ specification, transcribed here in the same on-disk format as `glyphlist.txt`.
 
 Like the AGL and CMap resources these files are **not vendored**: the script
 downloads them into `tools/pdf/afm/` (git-ignored) on first run. Apache-2.0 is
-GPL-compatible; the committed C++ generated from them carries the attribution in
-its banner.
+a permissive license compatible with MPL-2.0; the committed C++ generated from
+them carries the attribution in its banner.
 
 ## Adobe CMap resources — fetched by `generate_cid_data.py`
 
@@ -50,5 +50,6 @@ its banner.
 The predefined CMaps for composite (Type0/CID) fonts. Unlike the files above
 this archive is **not vendored** in the repository: it is large (~14 MB
 unpacked), so the script downloads it into `tools/pdf/cmap-resources/` (which is
-git-ignored) on first run. BSD-3-Clause is GPL-compatible; any committed C++
-generated from it carries the attribution in its banner.
+git-ignored) on first run. BSD-3-Clause is a permissive license compatible with
+MPL-2.0; any committed C++ generated from it carries the attribution in its
+banner.
