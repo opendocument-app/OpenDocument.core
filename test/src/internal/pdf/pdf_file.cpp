@@ -40,9 +40,10 @@ bool contains(const std::string &haystack, const std::string &needle) {
   return haystack.find(needle) != std::string::npos;
 }
 
-/// A three-page mini-PDF whose first page carries three `/Link` annotations: a
-/// `/URI` action, a direct `/Dest` array to page 2, and a `/GoTo` action to a
-/// named destination (`chap3` → page 3, via the catalog `/Dests`).
+/// A three-page mini-PDF whose first page carries four `/Link` annotations: a
+/// `/URI` action, a direct `/Dest` array to page 2, a `/GoTo` action to a named
+/// destination (`chap3` → page 3, via the catalog `/Dests`), and a `/URI`
+/// action with a `javascript:` scheme (which must not become a live link).
 std::string link_annotations_mini_pdf() {
   PdfFileBuilder builder;
   builder
@@ -50,7 +51,7 @@ std::string link_annotations_mini_pdf() {
               "/Dests << /chap3 [5 0 R /Fit] >> >>")
       .object("<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-              "/Annots [6 0 R 7 0 R 8 0 R] >>")
+              "/Annots [6 0 R 7 0 R 8 0 R 9 0 R] >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
       .object("<< /Type /Annot /Subtype /Link /Rect [100 700 200 720] "
@@ -58,7 +59,9 @@ std::string link_annotations_mini_pdf() {
       .object("<< /Type /Annot /Subtype /Link /Rect [100 600 200 620] "
               "/Dest [4 0 R /Fit] >>")
       .object("<< /Type /Annot /Subtype /Link /Rect [100 500 200 520] "
-              "/A << /S /GoTo /D (chap3) >> >>");
+              "/A << /S /GoTo /D (chap3) >> >>")
+      .object("<< /Type /Annot /Subtype /Link /Rect [100 400 200 420] "
+              "/A << /S /URI /URI (javascript:alert\\(1\\)) >> >>");
   return builder.trailer("/Root 1 0 R").build_classic();
 }
 
@@ -123,7 +126,9 @@ TEST(PdfFile, file_meta_without_info) {
 
 // `/Link` annotations render as `<a>` overlays: a `/URI` action → external href
 // (with `&` attr-escaped), a direct `/Dest` and a named `/GoTo` → internal
-// `#pN` anchors; each page div carries a matching `id`.
+// `#pN` anchors that carry `target="_self"` (overriding `<base
+// target="_blank">`); each page div carries a matching `id`. An active-scheme
+// `/URI` is dropped.
 TEST(PdfFile, link_annotations_render_as_anchors) {
   const std::string pdf = link_annotations_mini_pdf();
   for (const PdfTextMode mode :
@@ -135,9 +140,12 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
         << "mode " << static_cast<int>(mode);
     EXPECT_TRUE(contains(html, R"(href="http://example.com/?a=1&amp;b=2")"))
         << "mode " << static_cast<int>(mode);
-    EXPECT_TRUE(contains(html, R"(href="#p2")"))
+    EXPECT_TRUE(contains(html, R"(href="#p2" target="_self")"))
         << "mode " << static_cast<int>(mode);
-    EXPECT_TRUE(contains(html, R"(href="#p3")"))
+    EXPECT_TRUE(contains(html, R"(href="#p3" target="_self")"))
+        << "mode " << static_cast<int>(mode);
+    // The `javascript:` action is not emitted as a link.
+    EXPECT_FALSE(contains(html, "javascript:alert"))
         << "mode " << static_cast<int>(mode);
   }
 }

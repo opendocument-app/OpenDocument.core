@@ -64,6 +64,7 @@ struct LinkOut {
   double width{0};
   double height{0};
   std::string href; ///< external URI or internal "#pN"; already attr-escaped
+  bool internal{false}; ///< true for a `#pN` target (needs `target="_self"`)
 };
 
 /// Resolves a link annotation's destination to a page: a `page-object ->
@@ -168,6 +169,41 @@ LinkResolver build_link_resolver(pdf::DocumentParser &parser,
   return resolver;
 }
 
+/// Whether a `/URI` action target is safe to emit as an `href`. A PDF is
+/// untrusted input, so active schemes (`javascript:`, `data:`, `vbscript:`, …)
+/// must not become a clickable link that executes in the generated document.
+/// We allow only the common navigable schemes plus scheme-less (relative)
+/// references. Embedded ASCII whitespace/control bytes are ignored when reading
+/// the scheme, matching browsers that strip them before dispatch (so
+/// `java\tscript:` cannot slip through).
+bool is_safe_uri(std::string_view uri) {
+  std::string scheme;
+  for (const char ch : uri) {
+    const auto c = static_cast<unsigned char>(ch);
+    if (ch == ':') {
+      for (char &s : scheme) {
+        s = static_cast<char>(std::tolower(static_cast<unsigned char>(s)));
+      }
+      static constexpr std::string_view allowed[] = {"http", "https", "mailto",
+                                                     "ftp",  "ftps",  "tel"};
+      return std::find(std::begin(allowed), std::end(allowed), scheme) !=
+             std::end(allowed);
+    }
+    if (ch == '/' || ch == '?' || ch == '#') {
+      return true; // path/query/fragment reached first -> relative reference
+    }
+    if (c <= 0x20) {
+      continue; // browsers strip embedded whitespace/control bytes
+    }
+    if (std::isalnum(c) != 0 || ch == '+' || ch == '-' || ch == '.') {
+      scheme.push_back(ch);
+      continue;
+    }
+    return true; // not a valid scheme character -> relative reference
+  }
+  return true; // no ':' -> relative reference
+}
+
 /// Resolve a page's `/Link` annotations (ISO 32000-1 12.5.6.5) to positioned
 /// overlays: a `/URI` action becomes an external link, a `/GoTo` action or a
 /// direct `/Dest` an internal `#pN` link. `to_box` maps PDF user space to the
@@ -194,6 +230,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     const std::vector<double> r = rect.as_reals();
 
     std::string href;
+    bool internal = false;
     if (dictionary.has_value("A")) {
       const pdf::Object action =
           parser.resolve_object_copy(dictionary.get("A"));
@@ -203,12 +240,13 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
         const std::string kind = s.is_name() ? s.as_name() : "";
         if (kind == "URI" && a.has_value("URI")) {
           const pdf::Object uri = parser.resolve_object_copy(a.get("URI"));
-          if (uri.is_string()) {
+          if (uri.is_string() && is_safe_uri(uri.as_string())) {
             href = uri.as_string();
           }
         } else if (kind == "GoTo" && a.has_value("D")) {
           if (const auto index = resolver.resolve_dest_page(a.get("D"))) {
             href = "#p" + std::to_string(*index + 1);
+            internal = true;
           }
         }
       }
@@ -217,6 +255,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
       if (const auto index =
               resolver.resolve_dest_page(dictionary.get("Dest"))) {
         href = "#p" + std::to_string(*index + 1);
+        internal = true;
       }
     }
     if (href.empty()) {
@@ -231,6 +270,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     link.width = std::abs(p1[0] - p0[0]);
     link.height = std::abs(p1[1] - p0[1]);
     link.href = escape_attribute(std::move(href));
+    link.internal = internal;
     links.push_back(std::move(link));
   }
   return links;
@@ -241,9 +281,13 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
 void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
   for (const LinkOut &link : links) {
     std::ostringstream a;
-    a << "<a class=\"lk\" href=\"" << link.href
-      << "\" style=\"left:" << round2(link.left)
-      << "pt;top:" << round2(link.top) << "pt;width:" << round2(link.width)
+    // Internal `#pN` links must override the document's `<base
+    // target="_blank">` so they scroll within the rendered PDF instead of
+    // opening a new copy.
+    a << "<a class=\"lk\" href=\"" << link.href << '"'
+      << (link.internal ? " target=\"_self\"" : "")
+      << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
+      << "pt;width:" << round2(link.width)
       << "pt;height:" << round2(link.height) << "pt\"></a>";
     out.write_raw(std::move(a).str());
   }
