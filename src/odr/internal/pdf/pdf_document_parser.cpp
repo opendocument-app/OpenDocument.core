@@ -1476,10 +1476,10 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   in().seekg(object.stream_position.value());
   // A missing or unresolvable `/Length` is not fatal: the no-argument overload
   // recovers the extent by scanning to the `endstream`/`endobj` terminator.
-  std::string raw =
-      length.is_integer()
-          ? m_parser.read_stream(static_cast<std::uint32_t>(length.as_integer()))
-          : m_parser.read_stream();
+  std::string raw = length.is_integer()
+                        ? m_parser.read_stream(
+                              static_cast<std::uint32_t>(length.as_integer()))
+                        : m_parser.read_stream();
 
   // Decrypt before filter decoding (7.6.2). Cross-reference streams are read
   // during the trailer-chain walk, before the decryptor exists, so they are

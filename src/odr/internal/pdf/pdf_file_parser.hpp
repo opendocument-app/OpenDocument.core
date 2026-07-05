@@ -24,9 +24,10 @@ public:
 
   /// Read the raw bytes of a stream object, the cursor positioned at the start
   /// of the data (just past the `stream` keyword's EOL), leaving the cursor
-  /// past the trailing `endobj`. Use the `size` overload with a known `/Length`;
-  /// use the no-argument overload when the length is missing or unresolvable to
-  /// recover the extent by scanning to the `endstream`/`endobj` terminator.
+  /// past the trailing `endobj`. Use the `size` overload with a known
+  /// `/Length`; use the no-argument overload when the length is missing or
+  /// unresolvable to recover the extent by scanning to the `endstream`/`endobj`
+  /// terminator.
   [[nodiscard]] std::string read_stream(std::uint32_t size);
   [[nodiscard]] std::string read_stream();
 
