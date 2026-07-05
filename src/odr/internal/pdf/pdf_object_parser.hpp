@@ -80,6 +80,17 @@ public:
   [[nodiscard]] bool peek_dictionary();
   [[nodiscard]] Dictionary read_dictionary();
 
+  /// Read one *self-delimiting* object: null, boolean, number, name, string,
+  /// array, or dictionary. Arrays and dictionaries may contain indirect
+  /// references (assembled while parsing them), but a bare top-level reference
+  /// is **not** returned as such — `n g R` is not recognizable from its first
+  /// token (it looks like the integer `n` until the `R` two tokens later, and
+  /// in an array `[1 2 3]` a leading integer is ambiguous with a reference
+  /// start). So a leading object number comes back as a plain integer; the
+  /// enclosing context folds it into a reference — `read_array` on seeing the
+  /// `R` token, dictionary values and indirect-object bodies via
+  /// `promote_indirect_reference` — or use `read_object_reference` where a
+  /// reference is required outright.
   [[nodiscard]] Object read_object();
 
   /// With the cursor just past a freshly-read `value` (trailing whitespace
