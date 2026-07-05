@@ -1,5 +1,11 @@
 # Design
 
+## Documents
+
+- [Editing design](editing.md) — architecture for in-browser editing of ODF/OOXML:
+  fat-browser op log replayed on save, stable element ids, and a preliminary
+  implementation plan.
+
 ## Diagrams
 
 - [PDF CJK text: the `code → CID → Unicode` path](pdf-cjk-code-cid-unicode.html)
@@ -56,6 +62,32 @@
 - json
 - csv
 - plain text with optional line numbers
+- RTF
+- Apple Pages
+- Google Docs (gdocs)
+
+### Visualization
+
+- xml / json visualization
+- markdown visualization
+- open question: is markdown editing just plain-text editing, or does it warrant
+  a structured editor?
+
+### Editing
+
+- advanced editing for at least ODF and OOXML:
+  - text changes
+  - removal of content
+  - adding paragraphs
+  - changing formatting: bold, italic, underline, highlight, font size
+- plain text (txt) editing
+- spreadsheets: recompute cell values whose content has functions attached
+  - open question: do this only offline (in `odr.core`), or also online (in JS)?
+
+### Annotation
+
+- general highlighting for documents, including PDF
+- general handwriting note-taking for documents, including PDF
 
 ### Language bindings
 
