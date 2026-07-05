@@ -57,7 +57,7 @@
     {
       "label": "test: run odr_test (filtered)",
       "type": "shell",
-      "command": "scripts/run-with-env.sh ./test/odr_test --gtest_filter='${input:gtestFilter}'",
+      "command": "${workspaceFolder}/scripts/run-with-env.sh ./test/odr_test --gtest_filter='${input:gtestFilter}'",
       "options": {
         "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
       },
@@ -86,7 +86,7 @@
       "label": "profile: Instruments Time Profiler (odr_test, filtered)",
       "detail": "Records a .trace with Instruments; opens in Instruments.app when done.",
       "type": "shell",
-      "command": "rm -rf profile.trace && scripts/run-with-env.sh xctrace record --template 'Time Profiler' --output profile.trace --launch -- ./test/odr_test --gtest_filter='${input:gtestFilter}' && open profile.trace",
+      "command": "rm -rf profile.trace && ${workspaceFolder}/scripts/run-with-env.sh xctrace record --template 'Time Profiler' --output profile.trace --launch -- ./test/odr_test --gtest_filter='${input:gtestFilter}' && open profile.trace",
       "options": {
         "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
       },
