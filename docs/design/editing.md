@@ -1,9 +1,10 @@
 # Editing design
 
-Status: **draft / accepted direction**. This records the architecture we chose
-for in-browser editing of ODF and OOXML documents, the alternatives we weighed,
-and *why* we took each decision. A preliminary implementation plan follows at the
-end.
+Status: **accepted direction; implementation deferred.** This records the
+architecture we chose for in-browser editing of ODF and OOXML documents, the
+alternatives we weighed, and *why* we took each decision. The implementation plan
+and sketch at the end are **not scheduled yet** — they are captured here so the
+decisions and the grounding survive until we pick the work up later.
 
 This builds on the existing principle in [`README.md`](README.md):
 
