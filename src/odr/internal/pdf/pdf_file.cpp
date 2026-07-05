@@ -80,6 +80,16 @@ DocumentMeta parse_document_meta(DocumentParser &parser) {
   return meta;
 }
 
+/// Fill `meta.document_meta` best-effort (page count + `/Info`) from a readable
+/// parser. Never fatal: a malformed structure simply leaves it unset.
+void populate_document_meta(DocumentParser &parser, FileMeta &meta) {
+  try {
+    meta.document_meta = parse_document_meta(parser);
+  } catch (...) { // NOLINT(bugprone-empty-catch): metadata is best-effort, a
+                  // malformed file simply carries no `document_meta`.
+  }
+}
+
 } // namespace
 
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
@@ -98,7 +108,10 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     // password first; if it opens the file, no password is required. Install
     // the resulting decryptor on `parser` so the metadata read below decrypts,
     // and keep a copy so rendering needs neither the password nor decrypt().
-    const bool unlocked = parser.authenticate("");
+    // A file with an unsupported `/Encrypt` handler has no authenticator: it
+    // stays encrypted (and not decodable), rather than throwing here.
+    const bool unlocked =
+        m_authenticator.has_value() && parser.authenticate("");
     if (unlocked) {
       m_decryptor = parser.decryptor();
     }
@@ -108,13 +121,9 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
   }
 
   // Best-effort document metadata (page count + `/Info`), only when the file is
-  // readable. Never fatal: a malformed structure leaves the metadata minimal.
+  // readable.
   if (m_encryption_state != EncryptionState::encrypted) {
-    try {
-      m_file_meta.document_meta = parse_document_meta(parser);
-    } catch (...) { // NOLINT(bugprone-empty-catch): metadata is best-effort, a
-                    // malformed file simply carries no `document_meta`.
-    }
+    populate_document_meta(parser, m_file_meta);
   }
 }
 
@@ -153,6 +162,12 @@ PdfFile::decrypt(const std::string &password) const {
   decrypted->m_decryptor = std::move(decryptor);
   decrypted->m_encryption_state = EncryptionState::decrypted;
   decrypted->m_file_meta.password_encrypted = false;
+
+  // The file is readable now, so fill in the best-effort document metadata that
+  // construction had to skip while it was locked.
+  DocumentParser parser(m_file->stream(), decrypted->m_decryptor);
+  populate_document_meta(parser, decrypted->m_file_meta);
+
   return decrypted;
 }
 
