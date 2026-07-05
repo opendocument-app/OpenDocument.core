@@ -102,6 +102,10 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   `std::uint8_t`, …) over `int` / `unsigned` / `long` / `unsigned char`. Reserve
   the built-in types for genuinely index/size-like values (`std::size_t`) or where
   an API forces them.
+- **`std::array` over C arrays — always**: never declare a C-style `T[N]`; use
+  `std::array<T, N>`.
+- **`const` where possible**: mark locals, parameters, and members `const` whenever
+  they don't need to mutate.
 - **Prefer ranges**: use `std::ranges` algorithms and range-based overloads over
   iterator pairs (`std::ranges::find_if(v, …)` not `std::find_if(v.begin(), …)`),
   and prefer range views/`for (auto &x : range)` over manual iterator loops. Fall

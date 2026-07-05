@@ -34,6 +34,8 @@
   Eases lifetime management; consistent with value semantics for the user-facing API.
 - Collapse `FileMeta` into a single type. The nested `DocumentMeta`
   does not earn the extra indirection.
+- drop `wvWare` (the alternative `.doc` decoder, `oldms_wvware/`)
+- drop `pdf2htmlEX` (the poppler/pdf2htmlEX PDF path)
 
 ### Document index
 
