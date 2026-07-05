@@ -219,7 +219,7 @@ jobs:
         with:
           python-version: 3.14
       - name: install python dependencies
-        run: pip install htmlcmp==1.2.4
+        run: pip install htmlcmp==2.0.0
 
       - name: download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -250,7 +250,7 @@ jobs:
         run: |
           compare-html \
             --driver firefox \
-            --max-workers 1 \
+            --max-workers 2 \
             test/data/reference-output/odr-public/output \
             build/test/output/odr-public/output
 
@@ -261,7 +261,7 @@ jobs:
         run: |
           compare-html \
             --driver firefox \
-            --max-workers 1 \
+            --max-workers 2 \
             test/data/reference-output/odr-private/output \
             build/test/output/odr-private/output
 
