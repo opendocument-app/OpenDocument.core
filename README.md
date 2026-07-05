@@ -58,3 +58,13 @@ Scripts and Docker images can be found here https://github.com/opendocument-app/
 ```bash
 ./test/scripts/compare_output_server.sh
 ```
+
+## License
+
+OpenDocument.core is licensed under the [Mozilla Public License 2.0](LICENSE)
+(`MPL-2.0`).
+
+Note that this project can be built against and distributed with third-party
+components under their own terms (e.g. pdf2htmlEX under GPL). Distributing a
+combined binary may subject the whole to those components' license terms. See
+[`tools/pdf/THIRD_PARTY_LICENSES.md`](tools/pdf/THIRD_PARTY_LICENSES.md).
