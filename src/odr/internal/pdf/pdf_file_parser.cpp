@@ -117,12 +117,8 @@ StartXref FileParser::read_start_xref() {
   return result;
 }
 
-std::string FileParser::read_stream(const std::optional<std::uint32_t> size) {
-  if (!size.has_value()) {
-    return read_stream_scanning();
-  }
-
-  std::string result = util::stream::read(in(), *size);
+std::string FileParser::read_stream(const std::uint32_t size) {
+  std::string result = util::stream::read(in(), size);
 
   // The EOL before `endstream` is recommended but not counted in the stream
   // length, and some producers omit it entirely (7.3.8.1) — so skip optional
@@ -136,7 +132,7 @@ std::string FileParser::read_stream(const std::optional<std::uint32_t> size) {
   return result;
 }
 
-std::string FileParser::read_stream_scanning() {
+std::string FileParser::read_stream() {
   // Length unknown (recovery path): the stream terminator is the `endstream`
   // keyword followed by the object's `endobj` (7.3.8.1). `endstream` can occur
   // inside binary/compressed payload, so scan for the whole `endstream <ws>

@@ -6,7 +6,6 @@
 #include <test_util.hpp>
 
 #include <memory>
-#include <optional>
 #include <ranges>
 #include <sstream>
 #include <string>

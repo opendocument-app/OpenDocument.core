@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <iosfwd>
-#include <optional>
 #include <string>
 
 namespace odr::internal::pdf {
@@ -24,12 +23,12 @@ public:
   [[nodiscard]] StartXref read_start_xref();
 
   /// Read the raw bytes of a stream object, the cursor positioned at the start
-  /// of the data (just past the `stream` keyword's EOL). With a known `/Length`
-  /// pass it as `size`; pass `std::nullopt` when the length is missing or
-  /// unresolvable to instead scan forward to the `endstream` keyword. Either
-  /// way the cursor is left past the trailing `endobj`.
-  [[nodiscard]] std::string
-  read_stream(std::optional<std::uint32_t> size = std::nullopt);
+  /// of the data (just past the `stream` keyword's EOL), leaving the cursor
+  /// past the trailing `endobj`. Use the `size` overload with a known `/Length`;
+  /// use the no-argument overload when the length is missing or unresolvable to
+  /// recover the extent by scanning to the `endstream`/`endobj` terminator.
+  [[nodiscard]] std::string read_stream(std::uint32_t size);
+  [[nodiscard]] std::string read_stream();
 
   /// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
   /// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`
@@ -63,10 +62,6 @@ public:
   std::pair<Xref, Dictionary> recover_xref();
 
 private:
-  /// The length-less branch of `read_stream`: scan for the `endstream <ws>
-  /// endobj` terminator, leaving the cursor past `endobj`.
-  [[nodiscard]] std::string read_stream_scanning();
-
   ObjectParser m_parser;
 };
 
