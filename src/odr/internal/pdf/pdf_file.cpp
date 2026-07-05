@@ -1,15 +1,86 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_encryption.hpp>
+#include <odr/internal/pdf/pdf_object.hpp>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace odr::internal::pdf {
+
+namespace {
+
+/// One `/Info` string entry, resolved and decoded to UTF-8 (`nullopt` when
+/// absent, not a string, or empty).
+std::optional<std::string> info_string(DocumentParser &parser,
+                                       const Dictionary &info,
+                                       const std::string &key) {
+  if (!info.has_value(key)) {
+    return std::nullopt;
+  }
+  const Object value = parser.resolve_object_copy(info.get(key));
+  if (!value.is_string()) {
+    return std::nullopt;
+  }
+  std::string decoded = decode_text_string(value.as_string());
+  if (decoded.empty()) {
+    return std::nullopt;
+  }
+  return decoded;
+}
+
+/// Document metadata from the trailer: the page count (the root `/Pages
+/// /Count`, a single lookup — no tree walk) and the `/Info` document
+/// information dictionary (ISO 32000-1 14.3.3). Reads may throw on a malformed
+/// file; the caller treats that as "no metadata".
+DocumentMeta parse_document_meta(DocumentParser &parser) {
+  DocumentMeta meta;
+  meta.document_type = DocumentType::text;
+
+  const Dictionary &trailer = parser.trailer();
+
+  if (trailer.has_value("Root")) {
+    const Object root = parser.resolve_object_copy(trailer.get("Root"));
+    if (root.is_dictionary() && root.as_dictionary().has_value("Pages")) {
+      const Object pages =
+          parser.resolve_object_copy(root.as_dictionary().get("Pages"));
+      if (pages.is_dictionary() && pages.as_dictionary().has_value("Count")) {
+        const Object count =
+            parser.resolve_object_copy(pages.as_dictionary().get("Count"));
+        if (count.is_integer() && count.as_integer() >= 0) {
+          meta.entry_count = static_cast<std::uint32_t>(count.as_integer());
+        }
+      }
+    }
+  }
+
+  if (trailer.has_value("Info")) {
+    const Object info = parser.resolve_object_copy(trailer.get("Info"));
+    if (info.is_dictionary()) {
+      const Dictionary &d = info.as_dictionary();
+      meta.title = info_string(parser, d, "Title");
+      meta.author = info_string(parser, d, "Author");
+      meta.subject = info_string(parser, d, "Subject");
+      meta.keywords = info_string(parser, d, "Keywords");
+      meta.creator = info_string(parser, d, "Creator");
+      meta.producer = info_string(parser, d, "Producer");
+      meta.creation_date = info_string(parser, d, "CreationDate");
+      meta.modification_date = info_string(parser, d, "ModDate");
+    }
+  }
+
+  return meta;
+}
+
+} // namespace
 
 PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
@@ -17,24 +88,33 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
     throw std::invalid_argument("pdf: file is null");
   }
 
-  const DocumentParser parser(m_file->stream());
+  DocumentParser parser(m_file->stream());
 
   m_file_meta.type = FileType::portable_document_format;
 
-  // Most "protected" PDFs are owner-locked only, so try the empty user
-  // password first; if it opens the file, no password is required.
   m_authenticator = parser.authenticator();
-  if (m_authenticator.has_value()) {
-    m_decryptor = m_authenticator->authenticate("");
+  if (parser.is_encrypted()) {
+    // Most "protected" PDFs are owner-locked only, so try the empty user
+    // password first; if it opens the file, no password is required. Install
+    // the resulting decryptor on `parser` so the metadata read below decrypts,
+    // and keep a copy so rendering needs neither the password nor decrypt().
+    const bool unlocked = parser.authenticate("");
+    if (unlocked) {
+      m_decryptor = parser.decryptor();
+    }
+    m_file_meta.password_encrypted = !unlocked;
+    m_encryption_state =
+        unlocked ? EncryptionState::not_encrypted : EncryptionState::encrypted;
   }
 
-  if (parser.is_encrypted()) {
-    // Owner-locked only: opens with the empty user password. Keep the
-    // decryptor so rendering needs neither the password nor a decrypt() call.
-    m_file_meta.password_encrypted = !m_decryptor.has_value();
-    m_encryption_state = m_decryptor.has_value()
-                             ? EncryptionState::not_encrypted
-                             : EncryptionState::encrypted;
+  // Best-effort document metadata (page count + `/Info`), only when the file is
+  // readable. Never fatal: a malformed structure leaves the metadata minimal.
+  if (m_encryption_state != EncryptionState::encrypted) {
+    try {
+      m_file_meta.document_meta = parse_document_meta(parser);
+    } catch (...) { // NOLINT(bugprone-empty-catch): metadata is best-effort, a
+                    // malformed file simply carries no `document_meta`.
+    }
   }
 }
 

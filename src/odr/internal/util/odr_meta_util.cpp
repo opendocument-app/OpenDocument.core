@@ -24,6 +24,21 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
     if (document_meta.entry_count) {
       result["entryCount"] = *document_meta.entry_count;
     }
+
+    const auto put = [&](const char *key,
+                         const std::optional<std::string> &value) {
+      if (value) {
+        result[key] = *value;
+      }
+    };
+    put("title", document_meta.title);
+    put("author", document_meta.author);
+    put("subject", document_meta.subject);
+    put("keywords", document_meta.keywords);
+    put("creator", document_meta.creator);
+    put("producer", document_meta.producer);
+    put("creationDate", document_meta.creation_date);
+    put("modificationDate", document_meta.modification_date);
   }
 
   return result;

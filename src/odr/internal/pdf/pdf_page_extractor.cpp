@@ -4,6 +4,7 @@
 
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
@@ -32,120 +33,6 @@ Font *lookup_font(const Resources &resources, const std::string &name,
                             "', emitting raw codes");
   }
   return nullptr;
-}
-
-/// Map a single PDFDocEncoding byte to its Unicode code point (ISO 32000-1
-/// Annex D.2). It agrees with Latin-1 over ASCII and 0xA1–0xFF, so only the
-/// diacritic block (0x18–0x1F), the typographic block (0x80–0x9E), and the
-/// euro (0xA0) need overriding; every other byte stands for the code point of
-/// the same value. The few undefined slots (0x7F, 0x9F, 0xAD) pass through.
-char32_t pdf_doc_encoding_to_unicode(const std::uint8_t byte) {
-  switch (byte) {
-  case 0x18:
-    return U'˘'; // breve
-  case 0x19:
-    return U'ˇ'; // caron
-  case 0x1A:
-    return U'ˆ'; // circumflex
-  case 0x1B:
-    return U'˙'; // dot above
-  case 0x1C:
-    return U'˝'; // double acute
-  case 0x1D:
-    return U'˛'; // ogonek
-  case 0x1E:
-    return U'˚'; // ring above
-  case 0x1F:
-    return U'˜'; // small tilde
-  case 0x80:
-    return U'•'; // bullet
-  case 0x81:
-    return U'†'; // dagger
-  case 0x82:
-    return U'‡'; // double dagger
-  case 0x83:
-    return U'…'; // ellipsis
-  case 0x84:
-    return U'—'; // em dash
-  case 0x85:
-    return U'–'; // en dash
-  case 0x86:
-    return U'ƒ'; // florin
-  case 0x87:
-    return U'⁄'; // fraction slash
-  case 0x88:
-    return U'‹'; // single left angle quote
-  case 0x89:
-    return U'›'; // single right angle quote
-  case 0x8A:
-    return U'−'; // minus
-  case 0x8B:
-    return U'‰'; // per mille
-  case 0x8C:
-    return U'„'; // double low-9 quote
-  case 0x8D:
-    return U'“'; // left double quote
-  case 0x8E:
-    return U'”'; // right double quote
-  case 0x8F:
-    return U'‘'; // left single quote
-  case 0x90:
-    return U'’'; // right single quote
-  case 0x91:
-    return U'‚'; // single low-9 quote
-  case 0x92:
-    return U'™'; // trademark
-  case 0x93:
-    return U'ﬁ'; // fi ligature
-  case 0x94:
-    return U'ﬂ'; // fl ligature
-  case 0x95:
-    return U'Ł'; // L with stroke
-  case 0x96:
-    return U'Œ'; // OE
-  case 0x97:
-    return U'Š'; // S with caron
-  case 0x98:
-    return U'Ÿ'; // Y with diaeresis
-  case 0x99:
-    return U'Ž'; // Z with caron
-  case 0x9A:
-    return U'ı'; // dotless i
-  case 0x9B:
-    return U'ł'; // l with stroke
-  case 0x9C:
-    return U'œ'; // oe
-  case 0x9D:
-    return U'š'; // s with caron
-  case 0x9E:
-    return U'ž'; // z with caron
-  case 0xA0:
-    return U'€'; // euro
-  default:
-    return byte;
-  }
-}
-
-/// Decode a PDF text string (ISO 32000-1 7.9.2.2) to UTF-8: UTF-16BE when it
-/// opens with the `FE FF` byte-order mark, otherwise PDFDocEncoding.
-std::string decode_text_string(const std::string &string) {
-  if (string.size() >= 2 && static_cast<std::uint8_t>(string[0]) == 0xFE &&
-      static_cast<std::uint8_t>(string[1]) == 0xFF) {
-    std::u16string units;
-    units.reserve((string.size() - 2) / 2);
-    for (std::size_t i = 2; i + 1 < string.size(); i += 2) {
-      units.push_back(
-          static_cast<char16_t>((static_cast<std::uint8_t>(string[i]) << 8) |
-                                static_cast<std::uint8_t>(string[i + 1])));
-    }
-    return util::string::u16string_to_string(units);
-  }
-  std::string result;
-  for (const char c : string) {
-    util::string::append_c32(
-        pdf_doc_encoding_to_unicode(static_cast<std::uint8_t>(c)), result);
-  }
-  return result;
 }
 
 /// `/ActualText` of a `BDC` property-list dictionary, decoded to UTF-8, or

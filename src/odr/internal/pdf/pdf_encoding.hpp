@@ -27,6 +27,17 @@ base_encoding_table(BaseEncoding encoding);
 [[nodiscard]] std::optional<BaseEncoding>
 base_encoding_from_name(std::string_view name);
 
+/// Map a single PDFDocEncoding byte to its Unicode code point (ISO 32000-1
+/// Annex D.2). Agrees with Latin-1 over ASCII and 0xA1–0xFF; only the diacritic
+/// block (0x18–0x1F), the typographic block (0x80–0x9E) and the euro (0xA0)
+/// differ. The few undefined slots (0x7F, 0x9F, 0xAD) pass through.
+[[nodiscard]] char32_t pdf_doc_encoding_to_unicode(std::uint8_t byte);
+
+/// Decode a PDF text string (ISO 32000-1 7.9.2.2) to UTF-8: UTF-16BE when it
+/// opens with the `FE FF` byte-order mark, otherwise PDFDocEncoding. Used for
+/// `/ActualText` and `/Info` document-information strings.
+[[nodiscard]] std::string decode_text_string(const std::string &string);
+
 /// Glyph name -> Unicode (UTF-16) via the Adobe Glyph List, plus the
 /// algorithmic `uniXXXX` / `uXXXXXX` forms (ISO 32000-1 9.10.2 / the AGL
 /// specification). Returns an empty string for a name with no mapping — the

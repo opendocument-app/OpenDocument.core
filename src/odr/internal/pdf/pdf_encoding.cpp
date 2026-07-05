@@ -9,6 +9,113 @@
 
 namespace odr::internal {
 
+char32_t pdf::pdf_doc_encoding_to_unicode(const std::uint8_t byte) {
+  switch (byte) {
+  case 0x18:
+    return U'˘'; // breve
+  case 0x19:
+    return U'ˇ'; // caron
+  case 0x1A:
+    return U'ˆ'; // circumflex
+  case 0x1B:
+    return U'˙'; // dot above
+  case 0x1C:
+    return U'˝'; // double acute
+  case 0x1D:
+    return U'˛'; // ogonek
+  case 0x1E:
+    return U'˚'; // ring above
+  case 0x1F:
+    return U'˜'; // small tilde
+  case 0x80:
+    return U'•'; // bullet
+  case 0x81:
+    return U'†'; // dagger
+  case 0x82:
+    return U'‡'; // double dagger
+  case 0x83:
+    return U'…'; // ellipsis
+  case 0x84:
+    return U'—'; // em dash
+  case 0x85:
+    return U'–'; // en dash
+  case 0x86:
+    return U'ƒ'; // florin
+  case 0x87:
+    return U'⁄'; // fraction slash
+  case 0x88:
+    return U'‹'; // single left angle quote
+  case 0x89:
+    return U'›'; // single right angle quote
+  case 0x8A:
+    return U'−'; // minus
+  case 0x8B:
+    return U'‰'; // per mille
+  case 0x8C:
+    return U'„'; // double low-9 quote
+  case 0x8D:
+    return U'“'; // left double quote
+  case 0x8E:
+    return U'”'; // right double quote
+  case 0x8F:
+    return U'‘'; // left single quote
+  case 0x90:
+    return U'’'; // right single quote
+  case 0x91:
+    return U'‚'; // single low-9 quote
+  case 0x92:
+    return U'™'; // trademark
+  case 0x93:
+    return U'ﬁ'; // fi ligature
+  case 0x94:
+    return U'ﬂ'; // fl ligature
+  case 0x95:
+    return U'Ł'; // L with stroke
+  case 0x96:
+    return U'Œ'; // OE
+  case 0x97:
+    return U'Š'; // S with caron
+  case 0x98:
+    return U'Ÿ'; // Y with diaeresis
+  case 0x99:
+    return U'Ž'; // Z with caron
+  case 0x9A:
+    return U'ı'; // dotless i
+  case 0x9B:
+    return U'ł'; // l with stroke
+  case 0x9C:
+    return U'œ'; // oe
+  case 0x9D:
+    return U'š'; // s with caron
+  case 0x9E:
+    return U'ž'; // z with caron
+  case 0xA0:
+    return U'€'; // euro
+  default:
+    return byte;
+  }
+}
+
+std::string pdf::decode_text_string(const std::string &string) {
+  if (string.size() >= 2 && static_cast<std::uint8_t>(string[0]) == 0xFE &&
+      static_cast<std::uint8_t>(string[1]) == 0xFF) {
+    std::u16string units;
+    units.reserve((string.size() - 2) / 2);
+    for (std::size_t i = 2; i + 1 < string.size(); i += 2) {
+      units.push_back(
+          static_cast<char16_t>((static_cast<std::uint8_t>(string[i]) << 8) |
+                                static_cast<std::uint8_t>(string[i + 1])));
+    }
+    return util::string::u16string_to_string(units);
+  }
+  std::string result;
+  for (const char c : string) {
+    util::string::append_c32(
+        pdf::pdf_doc_encoding_to_unicode(static_cast<std::uint8_t>(c)), result);
+  }
+  return result;
+}
+
 const std::array<std::string_view, 256> &
 pdf::base_encoding_table(const BaseEncoding encoding) {
   switch (encoding) {
