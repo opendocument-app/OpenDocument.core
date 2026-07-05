@@ -30,6 +30,10 @@ IndirectObject FileParser::read_indirect_object() {
 
   result.object = m_parser.read_object();
   m_parser.skip_whitespace();
+  // an indirect object whose body is itself a reference (`5 0 obj 12 0 R
+  // endobj`): the body is followed by `endobj`/`stream`, so a digit here can
+  // only be the generation of an `n g R`
+  m_parser.promote_indirect_reference(result.object);
 
   // the keyword may carry trailing whitespace (`endobj \n`) or a CR from a
   // CRLF line ending (`stream\r\n`), so compare against the trimmed token
@@ -113,34 +117,69 @@ StartXref FileParser::read_start_xref() {
   return result;
 }
 
-std::string FileParser::read_stream(const std::int32_t size) {
-  std::string result;
+std::string FileParser::read_stream(const std::uint32_t size) {
+  std::string result = util::stream::read(in(), size);
 
-  if (size >= 0) {
-    result = util::stream::read(in(), size);
-
-    // The EOL before `endstream` is recommended but not counted in the stream
-    // length, and some producers omit it entirely (7.3.8.1) — so skip optional
-    // whitespace rather than assuming a whole line precedes the keyword.
-    m_parser.skip_whitespace();
-    m_parser.expect_characters("endstream");
-  } else {
-    // TODO improve poor solution
-    while (true) {
-      std::string line = m_parser.read_line(true);
-      if (util::string::trim(line) == "endstream") {
-        result.pop_back();
-        break;
-      }
-      result += line;
-    }
-  }
-
+  // The EOL before `endstream` is recommended but not counted in the stream
+  // length, and some producers omit it entirely (7.3.8.1) — so skip optional
+  // whitespace rather than assuming a whole line precedes the keyword.
+  m_parser.skip_whitespace();
+  m_parser.expect_characters("endstream");
   m_parser.skip_whitespace();
   m_parser.expect_characters("endobj");
   m_parser.skip_whitespace();
 
   return result;
+}
+
+std::string FileParser::read_stream() {
+  // Length unknown (recovery path): the stream terminator is the `endstream`
+  // keyword followed by the object's `endobj` (7.3.8.1). `endstream` can occur
+  // inside binary/compressed payload, so scan for the whole `endstream <ws>
+  // endobj` sequence rather than stopping at the first `endstream` — which
+  // would truncate such streams. Bytes consumed while probing a false match are
+  // folded back into the data, so no rewind is needed.
+  static const std::string end_stream = "endstream";
+  static const std::string end_obj = "endobj";
+
+  std::string result;
+  while (true) {
+    result.push_back(m_parser.bumpc());
+    if (!util::string::ends_with(result, end_stream)) {
+      continue;
+    }
+
+    // Probe for `<ws>* endobj`. `probe` collects everything consumed so it can
+    // be returned to the data if this `endstream` turns out to be payload.
+    std::string probe;
+    while (m_parser.peek_whitespace()) {
+      probe.push_back(m_parser.bumpc());
+    }
+    bool is_terminator = true;
+    for (const char expected : end_obj) {
+      if (m_parser.geti() != expected) {
+        is_terminator = false;
+        break;
+      }
+      probe.push_back(m_parser.bumpc());
+    }
+    if (!is_terminator) {
+      result += probe;
+      continue;
+    }
+    m_parser.skip_whitespace();
+
+    // Drop the `endstream` keyword and the single EOL that delimits it from the
+    // data (7.3.8.1) — one CRLF / LF / CR.
+    result.erase(result.size() - end_stream.size());
+    if (!result.empty() && result.back() == '\n') {
+      result.pop_back();
+    }
+    if (!result.empty() && result.back() == '\r') {
+      result.pop_back();
+    }
+    return result;
+  }
 }
 
 ObjectStream FileParser::read_object_stream(const std::uint32_t n,

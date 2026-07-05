@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <ranges>
+#include <sstream>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -57,7 +59,7 @@ TEST(FileParser, foo) {
 
       if (object.has_stream) {
         const Dictionary &dictionary = object.object.as_dictionary();
-        std::string stream = parser.read_stream(-1);
+        std::string stream = parser.read_stream();
         std::cout << stream.size() << '\n';
 
         if (dictionary.has_key("Filter")) {
@@ -125,6 +127,62 @@ TEST(FileParser, bar) {
   const ObjectReference root_pages_ref =
       root.object.as_dictionary()["Pages"].as_reference();
   EXPECT_TRUE(xref.table.contains(root_pages_ref));
+}
+
+// An indirect object whose body is itself an indirect reference (`5 0 obj
+// 12 0 R endobj`). The body's `12` is the object number and `0 R` completes
+// the reference rather than terminating the object.
+TEST(IndirectObject, reference_body) {
+  std::istringstream in("5 0 obj 12 0 R endobj");
+  FileParser parser(in);
+
+  const IndirectObject object = parser.read_indirect_object();
+  EXPECT_EQ(object.reference.id, 5u);
+  EXPECT_EQ(object.reference.gen, 0u);
+  ASSERT_TRUE(object.object.is_reference());
+  EXPECT_EQ(object.object.as_reference().id, 12u);
+  EXPECT_EQ(object.object.as_reference().gen, 0u);
+}
+
+// read_stream with a known /Length reads exactly that many bytes, then the
+// `endstream` and `endobj` keywords.
+TEST(ReadStream, known_length) {
+  std::istringstream in("hello worldendstream endobj");
+  FileParser parser(in);
+  EXPECT_EQ(parser.read_stream(11), "hello world");
+}
+
+// read_stream without a length scans forward to `endstream`, keeping the raw
+// bytes before it (binary data and all) and dropping only the single EOL that
+// delimits the keyword (7.3.8.1).
+TEST(ReadStream, scans_to_endstream) {
+  {
+    std::istringstream in("hello world\nendstream\nendobj");
+    FileParser parser(in);
+    EXPECT_EQ(parser.read_stream(), "hello world");
+  }
+  {
+    // a CRLF delimiter is stripped whole, not left as a stray CR
+    std::istringstream in("data\r\nendstream\r\nendobj");
+    FileParser parser(in);
+    EXPECT_EQ(parser.read_stream(), "data");
+  }
+  {
+    // binary content, including NUL bytes, is preserved verbatim (a line-based
+    // scan would mangle it)
+    const std::string data("a\000b c\nendstream\nendobj", 22);
+    std::istringstream in(data);
+    FileParser parser(in);
+    EXPECT_EQ(parser.read_stream(), std::string("a\000b c", 5));
+  }
+  {
+    // an `endstream` occurring inside the payload (not followed by `endobj`) is
+    // not a false terminator — the scan continues to the real `endstream
+    // endobj`
+    std::istringstream in("a endstream b\nendstream\nendobj");
+    FileParser parser(in);
+    EXPECT_EQ(parser.read_stream(), "a endstream b");
+  }
 }
 
 TEST(XrefStreamTable, used_and_compressed_entries) {

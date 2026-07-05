@@ -459,12 +459,13 @@ Array ObjectParser::read_array() {
       bumpc();
       return Array(std::move(result));
     }
-    Object value = read_object();
+    result.emplace_back(read_object());
     skip_whitespace();
 
-    result.emplace_back(std::move(value));
-
-    if (const char_type c = getc(); c == 'R') {
+    // Array elements may be bare adjacent integers, so a reference can only be
+    // recognised once the `R` token actually appears: it retroactively folds
+    // the two preceding integers (`n g`) into an `n g R` reference.
+    if (const char_type c = getc(); c == 'R' && result.size() >= 2) {
       bumpc();
       skip_whitespace();
 
@@ -513,20 +514,7 @@ Dictionary ObjectParser::read_dictionary() {
     skip_whitespace();
     Object value = read_object();
     skip_whitespace();
-
-    // Handle indirect objects
-    // TODO this seems hacky
-    if (const char_type c = getc(); c != '>' && !peek_name()) {
-      const UnsignedInteger gen = read_unsigned_integer();
-      skip_whitespace();
-      if (const char_type c2 = bumpc(); c2 != 'R') {
-        throw std::runtime_error("unexpected character");
-      }
-      skip_whitespace();
-
-      const UnsignedInteger id = value.as_integer();
-      value = Object(ObjectReference{id, gen});
-    }
+    promote_indirect_reference(value);
 
     result.emplace(std::move(name.string), std::move(value));
   }
@@ -561,6 +549,25 @@ Object ObjectParser::read_object() {
   }
 
   throw std::runtime_error("unknown object");
+}
+
+void ObjectParser::promote_indirect_reference(Object &value) {
+  // The cursor sits just past `value` (trailing whitespace already skipped).
+  // This is called only where a value cannot legitimately be followed by
+  // another number — a dictionary value or an indirect-object body, which are
+  // followed by the next key, `>>`, or `endobj`. A digit there can only be the
+  // generation of an `n g R` indirect reference whose object number is `value`.
+  if (!value.is_integer() || !peek_unsigned_integer()) {
+    return;
+  }
+  const auto id = static_cast<UnsignedInteger>(value.as_integer());
+  const UnsignedInteger gen = read_unsigned_integer();
+  skip_whitespace();
+  if (bumpc() != 'R') {
+    throw std::runtime_error("expected 'R' to complete indirect reference");
+  }
+  skip_whitespace();
+  value = Object(ObjectReference{id, gen});
 }
 
 ObjectReference ObjectParser::read_object_reference() {

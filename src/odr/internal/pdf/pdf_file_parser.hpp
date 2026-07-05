@@ -3,7 +3,9 @@
 #include <odr/internal/pdf/pdf_file_object.hpp>
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
+#include <cstdint>
 #include <iosfwd>
+#include <string>
 
 namespace odr::internal::pdf {
 
@@ -20,7 +22,14 @@ public:
   [[nodiscard]] Xref read_xref();
   [[nodiscard]] StartXref read_start_xref();
 
-  [[nodiscard]] std::string read_stream(std::int32_t size);
+  /// Read the raw bytes of a stream object, the cursor positioned at the start
+  /// of the data (just past the `stream` keyword's EOL), leaving the cursor
+  /// past the trailing `endobj`. Use the `size` overload with a known
+  /// `/Length`; use the no-argument overload when the length is missing or
+  /// unresolvable to recover the extent by scanning to the `endstream`/`endobj`
+  /// terminator.
+  [[nodiscard]] std::string read_stream(std::uint32_t size);
+  [[nodiscard]] std::string read_stream();
 
   /// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
   /// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`

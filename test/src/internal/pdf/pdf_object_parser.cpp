@@ -46,6 +46,19 @@ Integer read_integer(const std::string &input) {
   return parser.read_integer();
 }
 
+// Reads one object and reports the bytes left after the cursor, so a test can
+// pin both the parsed value and how much of a lookahead was consumed.
+std::pair<Object, std::string> read_object(const std::string &input) {
+  std::istringstream in(input);
+  ObjectParser parser(in);
+  Object object = parser.read_object();
+  std::string rest;
+  while (parser.geti() != ObjectParser::eof) {
+    rest.push_back(parser.bumpc());
+  }
+  return {std::move(object), std::move(rest)};
+}
+
 // Runs skip_past(marker) on `input` and reports whether the marker was found
 // together with the bytes left after the cursor, so a test can pin both the
 // result and the resulting position.
@@ -132,6 +145,51 @@ TEST(PdfObjectParser, skip_past) {
   EXPECT_EQ(skip_past("eendstream!", "endstream"), Result(true, "!"));
   EXPECT_EQ(skip_past("<<...>>stream\nbytes\nendstreamX", "endstream"),
             Result(true, "X"));
+}
+
+// 7.3.10: an indirect reference `n g R` is three tokens. A bare read_object
+// reads only the object number as a plain integer — the `g R` tail is left for
+// the enclosing context (array/dictionary) to fold in, so nothing is consumed
+// speculatively.
+TEST(PdfObjectParser, read_object_leaves_reference_tail) {
+  {
+    const auto [object, rest] = read_object("12 0 R");
+    ASSERT_TRUE(object.is_integer());
+    EXPECT_EQ(object.as_integer(), 12);
+    EXPECT_EQ(rest, " 0 R");
+  }
+  {
+    // a real is never the start of a reference
+    const auto [object, rest] = read_object("1.5 0 R");
+    ASSERT_TRUE(object.is_real());
+    EXPECT_DOUBLE_EQ(object.as_real(), 1.5);
+    EXPECT_EQ(rest, " 0 R");
+  }
+}
+
+// References are folded in by the enclosing array and dictionary values.
+TEST(PdfObjectParser, read_object_reference_in_containers) {
+  {
+    // an `R` retroactively folds the two preceding integers; bare integers
+    // (the `2`) are left untouched
+    const auto [object, rest] = read_object("[1 0 R 2 3 0 R]");
+    ASSERT_TRUE(object.is_array());
+    const Array &array = object.as_array();
+    ASSERT_EQ(array.size(), 3);
+    EXPECT_EQ(array[0].as_reference().id, 1u);
+    EXPECT_TRUE(array[1].is_integer());
+    EXPECT_EQ(array[1].as_integer(), 2);
+    EXPECT_EQ(array[2].as_reference().id, 3u);
+  }
+  {
+    // a digit after a dictionary value can only be the generation of a
+    // reference; a plain integer value is followed by the next key
+    const auto [object, rest] = read_object("<< /A 5 0 R /B 6 >>");
+    ASSERT_TRUE(object.is_dictionary());
+    const Dictionary &dictionary = object.as_dictionary();
+    EXPECT_EQ(dictionary["A"].as_reference().id, 5u);
+    EXPECT_EQ(dictionary["B"].as_integer(), 6);
+  }
 }
 
 // 7.3.4.2: a literal string is the bytes between balanced parentheses.

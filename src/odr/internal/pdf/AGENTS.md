@@ -442,12 +442,13 @@ matching, RTTI lookups, and accidental copies are easy — `resolve_object_copy`
 exists because rvalue access proved fiddly (see the `TODO why rvalue not
 working?` in `pdf_document_parser.cpp`).
 
-**References are recognized by lookahead.** `n g R` is plain integers until the
-`R` appears, so `read_array`/`read_dictionary` patch references after the fact.
-A standalone `read_object` therefore returns the *id* integer of a reference —
-only array/dictionary contexts and `read_object_reference` assemble real
-references. Works for well-formed files; a known sharp edge (`TODO this seems
-hacky`).
+**References are recognized by lookahead.** `n g R` reads as plain integers
+until the `R` appears, so a standalone `read_object` returns the *id* integer of
+a reference; the enclosing context folds it in. `read_array` reacts when the `R`
+token itself shows up (array elements may be bare adjacent integers, so it
+cannot promote earlier); `read_dictionary` values and indirect-object bodies use
+`promote_indirect_reference`, where a digit after the value can only be a `gen`
+(the next token is otherwise a key, `>>`, or `endobj`). All rewind-free.
 
 **Element tree as an arena.** `Document` owns all elements
 (`vector<unique_ptr<Element>>`); `Catalog`/`Pages`/`Page`/… hold raw non-owning
@@ -458,8 +459,9 @@ surface (the former `Type` tag enum was dropped in favour of RTTI).
 
 **Fail early on malformed structure, tolerate unknown content.** Structural
 surprises **throw** `std::runtime_error` (missing `obj`/`endobj`/`stream`/
-`endstream`/`xref`/`startxref`, unexpected characters, an unresolvable
-`/Length`, an unknown page-tree element type, stream exhaustion). Unknown
+`endstream`/`xref`/`startxref`, unexpected characters, an unknown page-tree
+element type, stream exhaustion). A missing or unresolvable `/Length` is
+tolerated — the stream extent is recovered by scanning to `endstream`. Unknown
 **content** is tolerated: unrecognized operators logged and skipped, unmodelled
 operators ignored by `execute`, annotations keep their raw dictionary, CMap
 `codespacerange`/`bfrange` parsed past without effect. References to free/absent
@@ -688,4 +690,3 @@ The next feature cluster — needs destinations from the page tree, little else.
 - **XMP metadata** (`/Metadata` XML packet) is not parsed; `file_meta()`'s
   `document_meta` comes from the `/Info` dictionary only. XMP would supplement
   or override `/Info` for producers that write it.
-- Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.
