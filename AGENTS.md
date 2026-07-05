@@ -144,17 +144,13 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 ## Legacy Microsoft binary formats (`oldms`)
 
 CFB container handling exists; each format is a small module under `oldms/`
-mirroring `oldms/text` (`.doc`). Spec refs in `src/odr/internal/oldms/README.md`.
-
-- **`.doc`** (`oldms/text`): visible-text extraction.
-- **`.ppt`** (`oldms/presentation`): slides resolved via the persist directory
-  (the only spec-defined read path); text boxes as positioned `frame`s.
-  **Read [`oldms/presentation/AGENTS.md`](src/odr/internal/oldms/presentation/AGENTS.md)
-  before touching it** — what's implemented and *why* (persist-directory
-  resolution, no scan fallback, sequential reads, fail-fast, endianness), open
-  work, and the `[MS-PPT]`/`[MS-ODRAW]` drawing-tree map.
-- **`.xls`** (`oldms/spreadsheet`): visible cell-text extraction (BIFF8). See
-  [`oldms/spreadsheet/AGENTS.md`](src/odr/internal/oldms/spreadsheet/AGENTS.md).
+mirroring `oldms/text` (`.doc`), all doing visible-text extraction only. Shared
+conventions + the endianness analysis are in
+[`oldms/AGENTS.md`](src/odr/internal/oldms/AGENTS.md); spec refs in
+`src/odr/internal/oldms/README.md`. **Read the module's own `AGENTS.md` before
+touching it** — each carries the design rationale, spec-record maps, and open work:
+`text/` (`.doc`), `presentation/` (`.ppt`, BIFF-style drawing tree),
+`spreadsheet/` (`.xls`, BIFF8).
 
 ## Specs
 
