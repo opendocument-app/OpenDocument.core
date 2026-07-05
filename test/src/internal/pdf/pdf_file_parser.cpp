@@ -176,6 +176,13 @@ TEST(ReadStream, scans_to_endstream) {
     FileParser parser(in);
     EXPECT_EQ(parser.read_stream(), std::string("a\000b c", 5));
   }
+  {
+    // an `endstream` occurring inside the payload (not followed by `endobj`) is
+    // not a false terminator — the scan continues to the real `endstream endobj`
+    std::istringstream in("a endstream b\nendstream\nendobj");
+    FileParser parser(in);
+    EXPECT_EQ(parser.read_stream(), "a endstream b");
+  }
 }
 
 TEST(XrefStreamTable, used_and_compressed_entries) {

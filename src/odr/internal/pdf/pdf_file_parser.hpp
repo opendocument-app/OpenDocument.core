@@ -63,6 +63,10 @@ public:
   std::pair<Xref, Dictionary> recover_xref();
 
 private:
+  /// The length-less branch of `read_stream`: scan for the `endstream <ws>
+  /// endobj` terminator, leaving the cursor past `endobj`.
+  [[nodiscard]] std::string read_stream_scanning();
+
   ObjectParser m_parser;
 };
 
