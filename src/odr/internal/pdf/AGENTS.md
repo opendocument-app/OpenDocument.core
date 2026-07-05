@@ -661,9 +661,6 @@ The next feature cluster — needs destinations from the page tree, little else.
   newest; the constructor-triggered recovery path cannot decode object streams
   in an *encrypted* broken file (no decryptor yet), so such members go
   unindexed. Both are edge cases beyond the corpus seen so far.
-- **`cmap` serialization is BMP-only**: the PUA re-encode writes a single Windows
-  (3,1) format-4 subtable, so a font needing >6400 PUA glyphs (format-12
-  spill-over) falls back to the default font rather than rendering its own glyphs.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
 - **CMap coverage** — still open: the legacy CJK code→CID CMaps
