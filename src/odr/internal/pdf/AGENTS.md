@@ -28,8 +28,15 @@ inline SVG per page. Experimental and not production-quality.
 ## What works
 
 - `.pdf` is detected by file magic and opened as `PdfFile`
-  (`DecoderEngine::odr`); `is_decodable()` returns `false` and `file_meta()`
-  carries only the file type. All parsing is lazy, on HTML request.
+  (`DecoderEngine::odr`); `is_decodable()` returns `false`. Page-tree/content
+  parsing is lazy (on HTML request), but `file_meta()` carries a best-effort
+  `document_meta`: the page count (root `/Pages /Count`, a single lookup) and
+  the `/Info` document-information strings (Title/Author/Subject/Keywords/
+  Creator/Producer/CreationDate/ModDate, decoded from UTF-16BE-BOM or
+  PDFDocEncoding via `decode_text_string`), read once at construction (an
+  owner-locked file is unlocked with the empty password first so its `/Info`
+  decrypts). A malformed structure simply leaves `document_meta` minimal. XMP
+  metadata is not yet parsed (see *Other known gaps*).
 - **Object syntax**: null, booleans, integers/reals, names (incl. `#xx`
   escapes), literal strings (the `\n \r \t \b \f` control escapes, `\ddd`
   octal, escaped delimiters, and `\`-before-EOL line continuation — Table 3),
@@ -616,7 +623,6 @@ The next feature cluster — needs destinations from the page tree, little else.
   *interactivity* stays out of scope (read-only).
 - **Document outline** (`/Outlines`) → navigation anchors/sidebar.
 - **Optional content groups** (layers): honor default visibility; no toggle UI.
-- **Metadata** (`/Info`, XMP) into `file_meta()`.
 - **Output scaling**: monolithic HTML vs. per-page lazy loading for large
   documents (check what odr's HTML service model already provides first).
 
@@ -679,4 +685,7 @@ The next feature cluster — needs destinations from the page tree, little else.
   fixture needs either yet; revisit when one does.
 - **Annotations** are collected but their content is not interpreted
   (*Interaction & navigation*).
+- **XMP metadata** (`/Metadata` XML packet) is not parsed; `file_meta()`'s
+  `document_meta` comes from the `/Info` dictionary only. XMP would supplement
+  or override `/Info` for producers that write it.
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.

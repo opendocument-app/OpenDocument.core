@@ -144,6 +144,17 @@ struct DocumentMeta final {
 
   DocumentType document_type{DocumentType::unknown};
   std::optional<std::uint32_t> entry_count;
+
+  // Document information properties (e.g. a PDF `/Info` dictionary). All
+  // optional; a backend leaves unset what it does not carry.
+  std::optional<std::string> title;
+  std::optional<std::string> author;
+  std::optional<std::string> subject;
+  std::optional<std::string> keywords;
+  std::optional<std::string> creator;
+  std::optional<std::string> producer;
+  std::optional<std::string> creation_date;
+  std::optional<std::string> modification_date;
 };
 
 /// @brief Meta information about a file.
