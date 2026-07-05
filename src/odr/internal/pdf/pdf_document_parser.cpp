@@ -1470,15 +1470,17 @@ DocumentParser::read_object_stream(const ObjectReference &reference) {
 std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   Object length = object.object.as_dictionary()["Length"];
   resolve_object(length);
-  if (!length.is_integer()) {
-    throw std::runtime_error("unknown length property");
+  // A missing or unresolvable `/Length` is not fatal: leave the size empty so
+  // `read_stream` recovers the extent by scanning to `endstream`.
+  std::optional<std::uint32_t> size;
+  if (length.is_integer()) {
+    size = static_cast<std::uint32_t>(length.as_integer());
   }
-  const std::uint32_t size = length.as_integer();
 
   // a stream object always carries a stream position
   // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   in().seekg(object.stream_position.value());
-  std::string raw = m_parser.read_stream(static_cast<std::int32_t>(size));
+  std::string raw = m_parser.read_stream(size);
 
   // Decrypt before filter decoding (7.6.2). Cross-reference streams are read
   // during the trailer-chain walk, before the decryptor exists, so they are

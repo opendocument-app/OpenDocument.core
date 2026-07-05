@@ -30,6 +30,10 @@ IndirectObject FileParser::read_indirect_object() {
 
   result.object = m_parser.read_object();
   m_parser.skip_whitespace();
+  // an indirect object whose body is itself a reference (`5 0 obj 12 0 R
+  // endobj`): the body is followed by `endobj`/`stream`, so a digit here can
+  // only be the generation of an `n g R`
+  result.object = m_parser.promote_indirect_reference(std::move(result.object));
 
   // the keyword may carry trailing whitespace (`endobj \n`) or a CR from a
   // CRLF line ending (`stream\r\n`), so compare against the trimmed token
@@ -113,11 +117,11 @@ StartXref FileParser::read_start_xref() {
   return result;
 }
 
-std::string FileParser::read_stream(const std::int32_t size) {
+std::string FileParser::read_stream(const std::optional<std::uint32_t> size) {
   std::string result;
 
-  if (size >= 0) {
-    result = util::stream::read(in(), size);
+  if (size.has_value()) {
+    result = util::stream::read(in(), *size);
 
     // The EOL before `endstream` is recommended but not counted in the stream
     // length, and some producers omit it entirely (7.3.8.1) — so skip optional
@@ -125,14 +129,23 @@ std::string FileParser::read_stream(const std::int32_t size) {
     m_parser.skip_whitespace();
     m_parser.expect_characters("endstream");
   } else {
-    // TODO improve poor solution
-    while (true) {
-      std::string line = m_parser.read_line(true);
-      if (util::string::trim(line) == "endstream") {
-        result.pop_back();
-        break;
-      }
-      result += line;
+    // Length unknown (recovery path): scan raw bytes until the `endstream`
+    // keyword, keeping everything before it. Byte-exact rather than line-based
+    // so binary data survives, and the keyword is matched anywhere rather than
+    // only on its own line.
+    static const std::string keyword = "endstream";
+    while (!util::string::ends_with(result, keyword)) {
+      result.push_back(m_parser.bumpc());
+    }
+    result.erase(result.size() - keyword.size());
+
+    // The EOL immediately before the keyword delimits it from the data and is
+    // not part of the stream (7.3.8.1); strip one CRLF / LF / CR if present.
+    if (!result.empty() && result.back() == '\n') {
+      result.pop_back();
+    }
+    if (!result.empty() && result.back() == '\r') {
+      result.pop_back();
     }
   }
 

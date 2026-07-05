@@ -82,6 +82,13 @@ public:
 
   [[nodiscard]] Object read_object();
 
+  /// With the cursor just past a freshly-read `value` (trailing whitespace
+  /// skipped), fold `value` into an `n g R` indirect reference if a `g R` tail
+  /// follows; otherwise return `value` unchanged. Only valid where a value
+  /// cannot be followed by another bare number — dictionary values and
+  /// indirect-object bodies — not array elements.
+  [[nodiscard]] Object promote_indirect_reference(Object value);
+
   [[nodiscard]] ObjectReference read_object_reference();
 
 private:
