@@ -142,6 +142,105 @@ std::string font_substitute_declaration(const pdf::FontSubstitute &substitute) {
   return declaration;
 }
 
+/// The `local(...)` sources of a CSS `font-family` stack, dropping the generic
+/// keywords an `@font-face src` cannot name. Returns e.g.
+/// "local('Times New Roman'),local(Times)" for "'Times New Roman',Times,serif",
+/// or "" when the stack names no concrete font (generic-only).
+std::string local_font_sources(const std::string_view css_family) {
+  static constexpr std::array<std::string_view, 6> generics = {
+      "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"};
+  std::string src;
+  std::size_t start = 0;
+  while (start <= css_family.size()) {
+    const std::size_t comma = css_family.find(',', start);
+    std::string_view name = css_family.substr(
+        start, comma == std::string_view::npos ? css_family.size() - start
+                                               : comma - start);
+    while (!name.empty() && name.front() == ' ') {
+      name.remove_prefix(1);
+    }
+    while (!name.empty() && name.back() == ' ') {
+      name.remove_suffix(1);
+    }
+    const bool generic =
+        std::find(generics.begin(), generics.end(), name) != generics.end();
+    if (!name.empty() && !generic) {
+      if (!src.empty()) {
+        src += ',';
+      }
+      src += "local(";
+      src += name;
+      src += ')';
+    }
+    if (comma == std::string_view::npos) {
+      break;
+    }
+    start = comma + 1;
+  }
+  return src;
+}
+
+/// Registers one `@font-face` per (substitute family, style, ascent) that
+/// overrides the face's ascent/descent so a glyph's baseline lands exactly at
+/// the `top` `add_position_classes` derives from `ascent_em` — independent of
+/// the metrics of whichever local font actually resolves. Without the override
+/// the browser positions the baseline using the resolved font's own ascent,
+/// which for a large non-embedded run (e.g. a 120pt Times title) drops it well
+/// below the intended baseline.
+class SubstituteFontFaces {
+public:
+  /// The `font-family:...` (plus weight/style) declaration for `substitute`,
+  /// routed through a generated metric-overriding face `'odr-sN'`. Falls back
+  /// to the plain family stack when the stack names no concrete font.
+  std::string declaration(const pdf::FontSubstitute &substitute,
+                          const double ascent_em) {
+    const std::string src = local_font_sources(substitute.css_family);
+    if (src.empty()) {
+      return font_substitute_declaration(substitute);
+    }
+    // ascent-override + descent-override sum to one em, so `line-height:1`
+    // leaves no leading and the baseline sits at exactly `ascent_em` of the em
+    // box. `ascent_em` is clamped to [0.5, 1.2]; the `max` keeps descent
+    // non-negative for the rare ascent > 1 (a slight baseline approximation).
+    const double ascent = ascent_em;
+    const double descent = std::max(0.0, 1.0 - ascent_em);
+    std::ostringstream key;
+    key << src << '|' << substitute.bold << '|' << substitute.italic << '|'
+        << std::llround(ascent * 1000.0);
+    const auto [it, inserted] = m_index_by_key.try_emplace(
+        std::move(key).str(), static_cast<int>(m_faces.size()) + 1);
+    if (inserted) {
+      std::ostringstream face;
+      face << "@font-face{font-family:'odr-s" << it->second << "';src:" << src
+           << ";ascent-override:" << round2(ascent * 100.0)
+           << "%;descent-override:" << round2(descent * 100.0)
+           << "%;line-gap-override:0%}";
+      m_faces.push_back(std::move(face).str());
+    }
+    std::string declaration = "font-family:'odr-s" +
+                              std::to_string(it->second) + "'," +
+                              substitute.css_family;
+    if (substitute.bold) {
+      declaration += ";font-weight:bold";
+    }
+    if (substitute.italic) {
+      declaration += ";font-style:italic";
+    }
+    return declaration;
+  }
+
+  /// Appends the collected `@font-face` rules to `out`.
+  void append_faces(std::string &out) const {
+    for (const std::string &face : m_faces) {
+      out += face;
+    }
+  }
+
+private:
+  std::map<std::string, int> m_index_by_key;
+  std::vector<std::string> m_faces;
+};
+
 /// Build an SVG `d` attribute from a path's subpaths, each point mapped through
 /// `to_box` (PDF user space -> the page box, y-down). Lines become `L`, cubic
 /// Béziers `C`, and an explicitly closed subpath ends with `Z`.
@@ -926,6 +1025,7 @@ public:
     std::uint32_t family_count = 0;
     std::string font_faces;
     std::string font_styles; // per-font `.fvN` (visible) / `.fnN` (invisible)
+    SubstituteFontFaces substitute_faces; // metric-overriding `.odr-sN` faces
     std::vector<const pdf::Font *> accepted_fonts;
     // Which classes are used: [0]=fv (visible), [1]=fn (invisible).
     std::vector<std::array<bool, 2>> font_class_used;
@@ -1072,9 +1172,12 @@ public:
             run_classes += font_class(font_class_used, font, invisible);
           } else if (text.font != nullptr && text.font->substitute) {
             // Non-embedded font: render the real Unicode in the substitute
-            // family (embedded fonts carry the family in `font_class`).
-            add_class(run_classes, "ff",
-                      font_substitute_declaration(*text.font->substitute));
+            // family (embedded fonts carry the family in `font_class`). The
+            // metric-overriding face pins the baseline to `asc` (see
+            // `SubstituteFontFaces`).
+            add_class(
+                run_classes, "ff",
+                substitute_faces.declaration(*text.font->substitute, asc));
           }
           if (vis_margin_pt != 0) {
             add_class(run_classes, "ml", pt_decl("margin-left", vis_margin_pt));
@@ -1242,6 +1345,7 @@ public:
       write_font_face(*accepted_fonts[i], i, {}, font_class_used[i], font_faces,
                       font_styles);
     }
+    substitute_faces.append_faces(font_faces);
 
     // Write HTML.
     write_header_common(out, font_faces, font_styles, styles, [&] {
@@ -1448,7 +1552,8 @@ public:
 
     std::uint32_t family_count = 0;
     std::string font_faces;
-    std::string font_styles; // ".fvN{...}" / ".fnN{...}"
+    std::string font_styles;              // ".fvN{...}" / ".fnN{...}"
+    SubstituteFontFaces substitute_faces; // metric-overriding `.odr-sN` faces
     std::vector<pdf::Font *> accepted_fonts;
     // Per-font, per-uchar, per-glyph occurrence count (pre-pass).
     // Indexed by font_index - 1.
@@ -1661,7 +1766,7 @@ public:
         const std::string substitute_declaration =
             (font == 0 && !invisible && text.font != nullptr &&
              text.font->substitute)
-                ? font_substitute_declaration(*text.font->substitute)
+                ? substitute_faces.declaration(*text.font->substitute, asc)
                 : std::string();
         std::ostringstream fk;
         fk << font << '|' << invisible << '|' << font_size_pt << '|' << cs_pt
@@ -1742,6 +1847,7 @@ public:
       write_font_face(*accepted_fonts[i], i, used_unicode[i],
                       font_class_used[i], font_faces, font_styles);
     }
+    substitute_faces.append_faces(font_faces);
 
     // ---- Pass 2: write HTML ---------------------------------------------
     write_header_common(out, font_faces, font_styles, styles, [&] {

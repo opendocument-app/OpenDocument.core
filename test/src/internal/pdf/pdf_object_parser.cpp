@@ -16,6 +16,12 @@ std::string read_hex_string(const std::string &input) {
   return std::get<HexString>(parser.read_string()).string;
 }
 
+std::string read_standard_string(const std::string &input) {
+  std::istringstream in(input);
+  ObjectParser parser(in);
+  return std::get<StandardString>(parser.read_string()).string;
+}
+
 Real read_number(const std::string &input) {
   std::istringstream in(input);
   ObjectParser parser(in);
@@ -126,6 +132,48 @@ TEST(PdfObjectParser, skip_past) {
   EXPECT_EQ(skip_past("eendstream!", "endstream"), Result(true, "!"));
   EXPECT_EQ(skip_past("<<...>>stream\nbytes\nendstreamX", "endstream"),
             Result(true, "X"));
+}
+
+// 7.3.4.2: a literal string is the bytes between balanced parentheses.
+TEST(PdfObjectParser, standard_string_basic) {
+  EXPECT_EQ(read_standard_string("(Hello)"), "Hello");
+  EXPECT_EQ(read_standard_string("()"), "");
+  EXPECT_EQ(read_standard_string("(a b\tc)"), "a b\tc");
+}
+
+// 7.3.4.2, Table 3: the control escapes translate to their byte value. A CFF
+// CID font's code string carries e.g. `\b` for the byte 0x08, so failing to
+// translate it corrupts the code (the encrypted_fontfile3_opentype regression).
+TEST(PdfObjectParser, standard_string_control_escapes) {
+  EXPECT_EQ(read_standard_string("(a\\nb)"), "a\nb");
+  EXPECT_EQ(read_standard_string("(a\\rb)"), "a\rb");
+  EXPECT_EQ(read_standard_string("(a\\tb)"), "a\tb");
+  EXPECT_EQ(read_standard_string("(a\\bb)"), "a\bb");
+  EXPECT_EQ(read_standard_string("(a\\fb)"), "a\fb");
+  // a two-byte code <00 08> written with the byte 0x08 escaped as `\b`
+  EXPECT_EQ(read_standard_string(std::string("(\000\\b)", 5)),
+            std::string("\000\b", 2));
+}
+
+// 7.3.4.2: an escaped `(`, `)` or `\` stands for itself, and any other escaped
+// character keeps the character while dropping the backslash.
+TEST(PdfObjectParser, standard_string_literal_escapes) {
+  EXPECT_EQ(read_standard_string("(a\\(b\\)c)"), "a(b)c");
+  EXPECT_EQ(read_standard_string("(a\\\\b)"), "a\\b");
+  EXPECT_EQ(read_standard_string("(a\\qb)"), "aqb");
+}
+
+// 7.3.4.2: a `\ddd` octal escape (1-3 digits) is the byte of that value.
+TEST(PdfObjectParser, standard_string_octal_escape) {
+  EXPECT_EQ(read_standard_string("(\\101)"), "A");
+  EXPECT_EQ(read_standard_string("(\\000)"), std::string("\000", 1));
+}
+
+// 7.3.4.2: a backslash before an end-of-line marker is a line continuation;
+// both the backslash and the marker are dropped.
+TEST(PdfObjectParser, standard_string_line_continuation) {
+  EXPECT_EQ(read_standard_string("(a\\\nb)"), "ab");
+  EXPECT_EQ(read_standard_string("(a\\\r\nb)"), "ab");
 }
 
 // 7.3.4.3: a hex string is the bytes of its hex digits, with whitespace ignored

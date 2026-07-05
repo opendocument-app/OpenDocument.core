@@ -31,8 +31,10 @@ inline SVG per page. Experimental and not production-quality.
   (`DecoderEngine::odr`); `is_decodable()` returns `false` and `file_meta()`
   carries only the file type. All parsing is lazy, on HTML request.
 - **Object syntax**: null, booleans, integers/reals, names (incl. `#xx`
-  escapes), literal strings (`\` and `\ooo` escapes), hex strings, arrays,
-  dictionaries, indirect references (`n g R`) — standalone and nested.
+  escapes), literal strings (the `\n \r \t \b \f` control escapes, `\ddd`
+  octal, escaped delimiters, and `\`-before-EOL line continuation — Table 3),
+  hex strings, arrays, dictionaries, indirect references (`n g R`) —
+  standalone and nested.
 - **File structure**: header, `n g obj … endobj`, `stream` payloads (via
   `/Length`, with a scan-to-`endstream` fallback), classic `xref` tables,
   `trailer`, `startxref`, `%%EOF`; both sequential reading (`read_entry`) and
@@ -103,7 +105,11 @@ inline SVG per page. Experimental and not production-quality.
   (Type0) fonts** are recognized: the descendant CIDFont's
   `/CIDSystemInfo` `/Registry`/`/Ordering` is recorded on the `Font`, and the
   Type0 `/Encoding` (a code → CID CMap such as `Identity-H`) is kept out of the
-  simple-font encoding path. Extraction is driven by the `/ToUnicode` CMap (the
+  simple-font encoding path. An *embedded* `/Encoding` CMap stream is parsed
+  (`cidchar`/`cidrange` → `Font::cid_encoding`) so `Font::codes()` yields CIDs
+  through it — this also carries the authoritative codespace, so a producer that
+  mixes a 1-byte code (e.g. a space) among 2-byte CIDs stays aligned and selects
+  the right glyph/advance. Extraction is driven by the `/ToUnicode` CMap (the
   common case — every Type0 font in the corpus carries one). When a composite
   font has no `/ToUnicode`, a **predefined Unicode `/Encoding`** — the
   `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`), since those
@@ -230,6 +236,16 @@ inline SVG per page. Experimental and not production-quality.
     `OS/2`/`hhea` (`font/cff_transform.cpp` `serialize_os2`/`serialize_hhea`; the
     SFNT path passes the originals through), so our ascent can match the
     browser's.
+  - **Non-embedded substitutes** render in a *local* system font whose
+    `hhea`/`OS/2` we do **not** control, so the box-top→baseline distance would
+    be that font's ascent, not our `ascent_em` — dropping e.g. a 120pt Times
+    title well below its intended baseline. `SubstituteFontFaces` (in
+    `pdf_file.cpp`) closes this by routing each substitute through a generated
+    `@font-face` (`'odr-sN'`, `src: local(...)` of the family stack) carrying
+    `ascent-override:ascent_em`, `descent-override:1−ascent_em`,
+    `line-gap-override:0` — so the browser positions the baseline from *our*
+    metric. Faces are deduped by (family, style, ascent); the family stack is
+    kept after `'odr-sN'` as a fallback for the rare unresolved local.
   - **`ascent_em`** (in `pdf_file.cpp`): FontDescriptor `/Ascent`, else the
     embedded font's `bounding_box().y_max / units_per_em()`, else `0.8` em (which
     matches `serialize_os2`'s degenerate 0.8/0.2 fallback, so the fallback font
@@ -565,9 +581,10 @@ the tables land.
   there is no `/ToUnicode` (with an unreachable glyph staying unmapped) and a
   `/ToUnicode` CMap taking precedence over the reverse map.
 
-No assertion-based coverage of the tokenizer (escapes, references, hex strings)
-or the HTML output itself (the span emission / CSS transform mapping, incl. the
-dual-layer glyph/Unicode emission).
+The tokenizer's string parsing is covered (`PdfObjectParser`: literal-string
+control/octal/delimiter/line-continuation escapes and hex strings); references
+and the HTML output itself (the span emission / CSS transform mapping, incl. the
+dual-layer glyph/Unicode emission) are not yet asserted.
 
 ---
 

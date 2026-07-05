@@ -243,11 +243,17 @@ struct Pattern final : Element {
 };
 
 /// A non-owning view over a string of PDF character codes, splitting it into
-/// fixed-width (`Font::code_byte_width()`) big-endian codes on iteration. Holds
-/// only a `string_view`, so it must not outlive the underlying bytes; iterate
-/// it directly (`for (std::uint32_t code : font.codes(...))`). Trailing bytes
-/// shorter than a full code are dropped, matching the PDF text-showing
-/// operators.
+/// big-endian codes on iteration. Holds only a `string_view`, so it must not
+/// outlive the underlying bytes; iterate it directly
+/// (`for (std::uint32_t code : font.codes(...))`). Trailing bytes shorter than
+/// a full code are dropped, matching the PDF text-showing operators.
+///
+/// Code width is variable when a `codespace` CMap is supplied (its codespace
+/// ranges pick each code's width from its first byte, ISO 32000-1 9.7.6.2) — so
+/// a mixed 1-/2-byte encoding (a 1-byte space among 2-byte CIDs, as PDFClown
+/// and other producers emit) stays aligned. Without a codespace (or when the
+/// CMap declares none) it falls back to a fixed `Font::code_byte_width()`,
+/// splitting the same way the fixed-width iterator historically did.
 class CodeRange {
 public:
   class Iterator {
@@ -259,19 +265,34 @@ public:
     using reference = std::uint32_t;
 
     Iterator() = default;
-    Iterator(const char *position, const std::size_t width)
-        : m_position{position}, m_width{width} {}
+    Iterator(const std::string_view range, const std::size_t width,
+             const CMap *codespace, const CMap *cid_map)
+        : m_range{range}, m_fixed_width{width}, m_codespace{codespace},
+          m_cid_map{cid_map} {
+      settle();
+    }
 
     std::uint32_t operator*() const {
+      // A composite font's embedded CID `/Encoding` CMap maps the code to its
+      // CID (which is what the glyph/advance paths expect); without one the CID
+      // is the code itself (`Identity-H/V`), as it is for simple fonts.
+      if (m_cid_map != nullptr) {
+        if (const std::optional<std::uint32_t> cid =
+                m_cid_map->cid_for_code(m_range.substr(0, m_width));
+            cid.has_value()) {
+          return *cid;
+        }
+      }
       std::uint32_t code = 0;
       for (std::size_t k = 0; k < m_width; ++k) {
-        code = (code << 8) | static_cast<unsigned char>(m_position[k]);
+        code = (code << 8) | static_cast<unsigned char>(m_range[k]);
       }
       return code;
     }
 
     Iterator &operator++() {
-      m_position += m_width;
+      m_range.remove_prefix(m_width);
+      settle();
       return *this;
     }
     Iterator operator++(int) {
@@ -281,36 +302,58 @@ public:
     }
 
     bool operator==(const Iterator &other) const {
-      return m_position == other.m_position;
+      return m_range.data() == other.m_range.data();
     }
 
   private:
-    const char *m_position{nullptr};
-    std::size_t m_width{1};
+    /// Fix the width of the code at the front of `m_range`, dropping a trailing
+    /// partial code (fewer bytes than its declared width) by consuming the rest
+    /// of the range so the iterator lands exactly on the end sentinel.
+    void settle() {
+      if (m_range.empty()) {
+        m_width = 0;
+        return;
+      }
+      std::size_t width = m_fixed_width;
+      if (m_codespace != nullptr && m_codespace->has_codespace()) {
+        width =
+            m_codespace->code_width(static_cast<std::uint8_t>(m_range.front()));
+      }
+      if (width == 0 || width > m_range.size()) {
+        m_range.remove_prefix(m_range.size()); // drop the trailing partial code
+        m_width = 0;
+        return;
+      }
+      m_width = width;
+    }
+
+    std::string_view m_range;
+    std::size_t m_fixed_width{1};
+    const CMap *m_codespace{nullptr};
+    const CMap *m_cid_map{nullptr};
+    std::size_t m_width{0};
   };
 
-  CodeRange(const std::string_view codes, const std::size_t width)
-      : m_codes{codes}, m_width{width} {}
+  CodeRange(const std::string_view codes, const std::size_t width,
+            const CMap *codespace, const CMap *cid_map)
+      : m_codes{codes}, m_width{width}, m_codespace{codespace},
+        m_cid_map{cid_map} {}
 
-  // `data()` is used as a bounded byte range delimited by `end()`, not as a
-  // null-terminated string; the suspicious-data-usage check does not apply.
   [[nodiscard]] Iterator begin() const {
-    return {m_codes.data(),
-            m_width}; // NOLINT(bugprone-suspicious-stringview-data-usage)
+    return {m_codes, m_width, m_codespace, m_cid_map};
   }
   [[nodiscard]] Iterator end() const {
-    // round down to a whole number of codes
-    return {
-        m_codes.data() +
-            (m_codes.size() -
-             m_codes.size() %
-                 m_width), // NOLINT(bugprone-suspicious-stringview-data-usage)
-        m_width};
+    // An empty view positioned at the end of the codes: the exhausted `begin()`
+    // iterator consumes down to this same one-past-the-end pointer, so the two
+    // compare equal (`operator==` matches on `data()`).
+    return {m_codes.substr(m_codes.size()), m_width, m_codespace, m_cid_map};
   }
 
 private:
   std::string_view m_codes;
   std::size_t m_width{};
+  const CMap *m_codespace{nullptr};
+  const CMap *m_cid_map{nullptr};
 };
 
 struct Font final : Element {
@@ -336,6 +379,14 @@ struct Font final : Element {
   /// `Identity-H`, `UniGB-UCS2-H`); empty for an embedded CMap stream. Drives
   /// the predefined Unicode-CMap extraction path.
   std::string cid_encoding_name;
+  /// The composite font's `/Encoding` when it is an *embedded* CMap stream
+  /// (code -> CID plus codespace, ISO 32000-1 9.7.5.3); empty for a predefined
+  /// name (above) or a simple font. When it declares a CID map, `codes()`
+  /// yields CIDs through it — so a producer that mixes a 1-byte code (e.g. a
+  /// space) among 2-byte CIDs selects the right glyph and advance; when it
+  /// declares a codespace, that codespace (authoritative over `/ToUnicode`'s)
+  /// splits the code string.
+  CMap cid_encoding;
 
   /// Simple-font glyph metrics (ISO 32000-1 9.2.4): `/Widths`, in glyph space
   /// (1/1000 text-space units), indexed by `code - first_char`; codes outside
@@ -362,10 +413,29 @@ struct Font final : Element {
   /// `Identity-H/V` and common CID case), 1 for simple fonts.
   [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
 
-  /// View `codes` as a sequence of character codes split per
-  /// `code_byte_width()`. The result borrows `codes`; do not outlive it.
+  /// View `codes` as a sequence of character codes, each yielded as the *CID*
+  /// it selects (identity when there is no CID map — the common case, and what
+  /// the glyph/advance paths expect). The result borrows `codes`; do not
+  /// outlive it.
+  ///
+  /// A composite font splits (and maps) by its embedded CID `/Encoding` CMap
+  /// when present — that CMap declares both the codespace and the code -> CID
+  /// map, so a producer mixing a 1-byte code among 2-byte CIDs (PDFClown et
+  /// al.) stays aligned and selects the right glyph. Failing that it splits by
+  /// the `ToUnicode` codespace (CIDs identity — the same split `to_unicode`
+  /// uses, keeping glyph/advance/Unicode consistent), and failing that by a
+  /// fixed 2 bytes (the common `Identity-H` case). Simple fonts split by a
+  /// fixed 1 byte with identity CIDs.
   [[nodiscard]] CodeRange codes(std::string_view codes) const {
-    return {codes, static_cast<std::size_t>(code_byte_width())};
+    const auto width = static_cast<std::size_t>(code_byte_width());
+    if (!composite) {
+      return {codes, width, nullptr, nullptr};
+    }
+    const CMap *cid_map = cid_encoding.has_cid_map() ? &cid_encoding : nullptr;
+    const CMap *codespace = cid_encoding.has_codespace() ? &cid_encoding
+                            : cmap.has_codespace()       ? &cmap
+                                                         : nullptr;
+    return {codes, width, codespace, cid_map};
   }
 
   /// Embedded font: the SFNT parsed from `/FontFile2` (a simple TrueType font,

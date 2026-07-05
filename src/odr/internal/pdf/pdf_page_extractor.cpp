@@ -1005,7 +1005,7 @@ void run_content(const std::string &content, const Resources &resources,
                  ActiveForms &active, MarkedContentStack &marked,
                  std::optional<Pen> &pen) {
   std::istringstream ss(content);
-  GraphicsOperatorParser parser(ss);
+  GraphicsOperatorParser parser(ss, logger);
 
   // Route a shown string through the Type3 char-proc renderer or the normal
   // text path, by the font kind.

@@ -4,6 +4,7 @@
 
 #include <sstream>
 #include <string>
+#include <string_view>
 
 #include <gtest/gtest.h>
 
@@ -167,4 +168,34 @@ TEST(PdfCMap, mixed_code_widths) {
                     "endbfchar\n");
 
   EXPECT_EQ(cmap.translate_string(std::string("\x01\x81\x41", 3)), "AB");
+}
+
+TEST(PdfCMap, codespace_is_authoritative_without_usecmap) {
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n");
+
+  EXPECT_FALSE(cmap.inherits_external_cmap());
+  EXPECT_TRUE(cmap.has_codespace());
+  EXPECT_EQ(cmap.code_width(0x00), 2);
+}
+
+TEST(PdfCMap, usecmap_disables_local_codespace_authority) {
+  // A stream that inherits `Identity-H` (2-byte codespace) via `usecmap` and
+  // only declares a 1-byte override codespace must not be trusted to split
+  // codes, or the inherited 2-byte codes would be mis-split as single bytes.
+  CMap cmap = parse("/Identity-H usecmap\n"
+                    "1 begincodespacerange\n"
+                    "<20> <20>\n"
+                    "endcodespacerange\n"
+                    "1 begincidchar\n"
+                    "<20> 1\n"
+                    "endcidchar\n");
+
+  EXPECT_TRUE(cmap.inherits_external_cmap());
+  // The partial local codespace is no longer authoritative.
+  EXPECT_FALSE(cmap.has_codespace());
+  // The local CID override is still applied.
+  EXPECT_TRUE(cmap.has_cid_map());
+  EXPECT_EQ(cmap.cid_for_code(std::string_view("\x20", 1)), 1u);
 }

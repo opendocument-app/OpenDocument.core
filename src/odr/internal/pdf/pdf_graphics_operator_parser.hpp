@@ -2,6 +2,8 @@
 
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
+#include <odr/logger.hpp>
+
 #include <string>
 #include <vector>
 
@@ -13,7 +15,8 @@ struct GraphicsOperator;
 
 class GraphicsOperatorParser {
 public:
-  explicit GraphicsOperatorParser(std::istream &);
+  explicit GraphicsOperatorParser(std::istream &,
+                                  const Logger &logger = Logger::null());
 
   [[nodiscard]] std::istream &in();
   [[nodiscard]] std::streambuf &sb();
@@ -36,6 +39,7 @@ private:
   read_inline_image_data(const Dictionary &dictionary);
 
   ObjectParser m_parser;
+  const Logger *m_logger{nullptr};
 };
 
 } // namespace odr::internal::pdf
