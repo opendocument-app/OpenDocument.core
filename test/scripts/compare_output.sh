@@ -16,6 +16,5 @@ fi
 docker run -ti \
   -v $(pwd):/repo \
   -p 8000:8000 \
-  --platform linux/amd64 \
-  ghcr.io/opendocument-app/odr_core_test:2.1.0 \
+  ghcr.io/opendocument-app/odr_core_test:2.2.0 \
   compare-html /repo/$REF /repo/$OBS --driver $DRIVER --max-workers 4 -vv
