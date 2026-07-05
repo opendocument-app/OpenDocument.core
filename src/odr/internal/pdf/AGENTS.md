@@ -363,7 +363,10 @@ it.
 
 The **reference-output snapshot test** (`test/data/reference-output/`) is the
 graphics oracle: each change regenerates it and the diff is reviewed. (An
-automated perceptual-diff gate is deferred; see gaps.)
+automated perceptual-diff gate is deferred; see gaps.) The snapshot is now the
+**odr engine's own output only** — the `pdf2htmlEX`/poppler (`*.pdf-poppler`) and
+wvWare (`*.doc-wvware`) cross-engine reference snapshots were removed once the odr
+engine was ready to replace them, so the test no longer runs those engines.
 
 ## Module layout
 
@@ -701,8 +704,9 @@ Link annotations (`/URI` + internal `/GoTo`) already land — see *What works*.
     nested text/shadings/patterns inside a tile are skipped (rare).
   - **Text clipping**: the clip is not applied to text runs (paths and images are
     clipped); text clip render modes (`Tr` 4–7) add nothing to the clip.
-  - **Perceptual-diff oracle**: the reference-output snapshot test is the current
-    graphics gate; the automated poppler/pdf.js screenshot-diff is not built.
+  - **Perceptual-diff oracle**: the reference-output snapshot test (odr output
+    only) is the current graphics gate; an automated pdf.js screenshot-diff is
+    not built.
 - **Encryption edge cases** (deferred from stage 0 until a real file needs
   them): per-stream `/Crypt` filter `Name` overrides, the `EncryptMetadata
   false` metadata-stream `Identity` special case, and `Perms` (Algorithm 13)

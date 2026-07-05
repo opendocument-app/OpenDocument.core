@@ -249,18 +249,8 @@ TestParams create_test_params(const TestFile &test_file,
 std::vector<TestParams> list_test_params() {
   std::vector<TestParams> params;
   for (const TestFile &test_file : TestData::test_files()) {
-    std::vector engines = {DecoderEngine::odr};
-    if (test_file.type == FileType::portable_document_format) {
-      engines.push_back(DecoderEngine::poppler);
-    }
-    if (test_file.type == FileType::legacy_word_document) {
-      engines.push_back(DecoderEngine::wvware);
-    }
-
-    for (const DecoderEngine engine : engines) {
-      params.push_back(
-          create_test_params(test_file, engine, PdfTextMode::dual_layer));
-    }
+    params.push_back(create_test_params(test_file, DecoderEngine::odr,
+                                        PdfTextMode::dual_layer));
 
     // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
     // under reference-output coverage too, eject an extra `-single` test case
