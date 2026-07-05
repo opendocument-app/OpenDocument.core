@@ -1,0 +1,32 @@
+{
+  // ---- Build: CMake Tools drives the Conan-generated presets ----
+  // Presets come from CMakeUserPresets.json -> cmake-build-*/CMakePresets.json,
+  // written by `conan install`. Pick the active one from the status bar.
+  "cmake.useCMakePresets": "always",
+  "cmake.options.statusBarVisibility": "visible",
+
+  // ---- IntelliSense: clangd (matches the repo's .clangd / .clang-tidy) ----
+  // Disable the built-in cpptools engine so it doesn't fight clangd.
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/cmake-build-relwithdebinfo",
+    "--background-index",
+    "--clang-tidy",
+    "--header-insertion=never",
+    "--pretty"
+  ],
+
+  // ---- Formatting: clang-format (.clang-format at repo root) ----
+  "editor.formatOnSave": false,
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+
+  "files.associations": {
+    "*.hpp": "cpp",
+    "*.ipp": "cpp"
+  }
+}
