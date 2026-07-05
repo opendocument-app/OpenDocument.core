@@ -155,19 +155,37 @@ std::string Font::to_unicode(const std::string &codes) const {
     return cmap.translate_string(codes);
   }
   if (composite) {
-    // A composite (Type0) font with no `ToUnicode` CMap. A predefined Unicode
-    // `/Encoding` (the `Uni*-UCS2/UTF16/UTF32` CMaps) carries Unicode directly
-    // in its codes, so decode it. Otherwise code -> CID is
-    // known (identity for `Identity-H/V`) but CID -> Unicode needs a predefined
-    // CID -> Unicode table (the legacy CMaps, deferred) or the embedded font's
-    // reverse map (below): emit "no Unicode" rather than
-    // mis-splitting the multi-byte codes into byte-sized garbage through the
-    // identity fallback below. `extract_text` marks such runs `no_unicode`;
-    // their glyphs are still re-encoded to the PUA for display.
+    // A composite (Type0) font with no `ToUnicode` CMap. A predefined
+    // `/Encoding` resolves the text on its own: a Unicode CMap
+    // (`Uni*-UCS2/UTF16/UTF32`) carries Unicode directly in its codes, and a
+    // legacy CJK CMap
+    // (`90ms-RKSJ-H`, …) maps code -> CID -> Unicode through its own collection
+    // tables. Both are authoritative, so a match — even a partial one — wins.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
               translate_predefined_cmap(cid_encoding_name, codes)) {
         return *unicode;
+      }
+    }
+    // No predefined-CMap answer: code -> CID is still known — `Identity-H/V`
+    // means code == CID, and an embedded `/Encoding` CMap stream is applied by
+    // `codes()` — but the collection, hence CID -> Unicode, comes from the
+    // descendant CIDFont's `/CIDSystemInfo`. Only take this when the codes
+    // really are CIDs (identity or an embedded stream); a named CMap we lack
+    // tables for must not be misread as identity CIDs.
+    const bool identity_cids = cid_encoding_name.empty() ||
+                               cid_encoding_name == "Identity-H" ||
+                               cid_encoding_name == "Identity-V";
+    if (identity_cids && !cid_registry.empty() && !cid_ordering.empty()) {
+      std::string result;
+      for (const std::uint32_t cid : this->codes(codes)) {
+        if (const std::optional<char32_t> unicode =
+                cid_to_unicode(cid_registry, cid_ordering, cid)) {
+          util::string::append_c32(*unicode, result);
+        }
+      }
+      if (!result.empty()) {
+        return result;
       }
     }
     // The embedded font's reverse map before giving up.

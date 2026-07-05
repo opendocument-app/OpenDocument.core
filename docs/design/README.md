@@ -1,5 +1,11 @@
 # Design
 
+## Diagrams
+
+- [PDF CJK text: the `code → CID → Unicode` path](pdf-cjk-code-cid-unicode.html)
+  — why composite (Type0) fonts need the legacy-CMap tables and how the
+  `pdf_cid_data` lookup works (open in a browser).
+
 ## Motivation
 
 - non-intrusive read/write access to documents

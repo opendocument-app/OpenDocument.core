@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF CJK text — the code → CID → Unicode path</title>
+<style>
+  :root {
+    --ground: #eef0f3;
+    --surface: #ffffff;
+    --surface-2: #f5f6f9;
+    --ink: #1a1e26;
+    --muted: #5c6472;
+    --faint: #8b93a2;
+    --hairline: #dce0e7;
+    --shadow: 0 1px 2px rgba(20,26,38,.05), 0 8px 24px rgba(20,26,38,.06);
+
+    /* pipeline stage hues — bytes, code, CID (the pivot), Unicode */
+    --byte: #64707f;   --byte-bg: #eceef1;
+    --code: #3f56b0;   --code-bg: #e8ecfb;
+    --cid:  #b0662a;   --cid-bg:  #fbeede;   /* the amber pivot */
+    --uni:  #1f8a72;   --uni-bg:  #dcf1ea;
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #101318;  --surface: #191d24;  --surface-2: #14171d;
+      --ink: #e6e9ef;     --muted: #9aa3b2;    --faint: #6b7482;
+      --hairline: #2a2f39;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+      --byte: #97a2b1; --byte-bg: #23272f;
+      --code: #8fa3f2; --code-bg: #1c2236;
+      --cid:  #e2a061; --cid-bg:  #2e2417;
+      --uni:  #55c3a6; --uni-bg:  #16281f;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:#eef0f3; --surface:#fff; --surface-2:#f5f6f9; --ink:#1a1e26; --muted:#5c6472; --faint:#8b93a2; --hairline:#dce0e7;
+    --shadow:0 1px 2px rgba(20,26,38,.05),0 8px 24px rgba(20,26,38,.06);
+    --byte:#64707f;--byte-bg:#eceef1;--code:#3f56b0;--code-bg:#e8ecfb;--cid:#b0662a;--cid-bg:#fbeede;--uni:#1f8a72;--uni-bg:#dcf1ea;
+  }
+  :root[data-theme="dark"] {
+    --ground:#101318; --surface:#191d24; --surface-2:#14171d; --ink:#e6e9ef; --muted:#9aa3b2; --faint:#6b7482; --hairline:#2a2f39;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    --byte:#97a2b1;--byte-bg:#23272f;--code:#8fa3f2;--code-bg:#1c2236;--cid:#e2a061;--cid-bg:#2e2417;--uni:#55c3a6;--uni-bg:#16281f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  header { margin-bottom: 40px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--cid); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.12; margin: 0 0 16px;
+    letter-spacing: -.02em; text-wrap: balance; font-weight: 680;
+  }
+  h1 .path { font-family: var(--mono); font-weight: 600; letter-spacing: -.01em; }
+  .lede { font-size: 1.06rem; color: var(--muted); max-width: 64ch; margin: 0; }
+
+  h2 {
+    font-size: 1.15rem; letter-spacing: -.01em; margin: 0 0 4px; font-weight: 660;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  h2 .n {
+    font-family: var(--mono); font-size: .78rem; color: var(--faint);
+    font-weight: 600; letter-spacing: .04em;
+  }
+  section { margin-top: 52px; }
+  .sub { color: var(--muted); margin: 0 0 22px; max-width: 66ch; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+
+  /* ---- Why callout ---- */
+  .why {
+    padding: 22px 24px; border-left: 3px solid var(--cid);
+    background: var(--surface); border-radius: 12px; box-shadow: var(--shadow);
+    display: grid; gap: 10px;
+  }
+  .why p { margin: 0; }
+  .why .pivot { color: var(--cid); font-weight: 640; }
+
+  /* ---- Pipeline ---- */
+  .pipe { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .flow {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px; align-items: stretch;
+  }
+  @media (max-width: 720px) { .flow { grid-template-columns: 1fr 1fr; } }
+  .stage {
+    position: relative; border-radius: 13px; padding: 16px 15px 18px;
+    border: 1px solid var(--hairline); background: var(--surface);
+    display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow);
+  }
+  .stage .tag {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .13em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .stage .val {
+    font-family: var(--mono); font-size: 1.02rem; font-weight: 600;
+    word-break: break-all;
+  }
+  .stage .val .glyph { font-size: 1.7rem; line-height: 1; }
+  .stage .note { font-size: .8rem; color: var(--muted); margin-top: auto; }
+  .stage[data-s="byte"] { background: var(--byte-bg); border-color: color-mix(in srgb, var(--byte) 32%, transparent); }
+  .stage[data-s="byte"] .tag, .stage[data-s="byte"] .val { color: var(--byte); }
+  .stage[data-s="code"] { background: var(--code-bg); border-color: color-mix(in srgb, var(--code) 32%, transparent); }
+  .stage[data-s="code"] .tag, .stage[data-s="code"] .val { color: var(--code); }
+  .stage[data-s="cid"]  { background: var(--cid-bg);  border-color: color-mix(in srgb, var(--cid) 40%, transparent); }
+  .stage[data-s="cid"]  .tag, .stage[data-s="cid"] .val { color: var(--cid); }
+  .stage[data-s="uni"]  { background: var(--uni-bg);  border-color: color-mix(in srgb, var(--uni) 34%, transparent); }
+  .stage[data-s="uni"]  .tag, .stage[data-s="uni"] .val { color: var(--uni); }
+
+  .arrows {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin: 8px 0 2px;
+  }
+  .arrows .step { text-align: center; padding: 0 4px; }
+  .arrows .step:first-child { visibility: hidden; }
+  .arrows .op {
+    font-family: var(--mono); font-size: .74rem; color: var(--ink);
+    font-weight: 600;
+  }
+  .arrows .op::before { content: "↓ "; color: var(--faint); }
+  .arrows .via { display: block; font-size: .72rem; color: var(--muted); margin-top: 2px; }
+  @media (max-width: 720px) { .arrows { display: none; } }
+
+  .pivot-note {
+    margin-top: 20px; font-size: .9rem; color: var(--muted);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .pivot-note b { color: var(--cid); }
+
+  /* ---- table cards ---- */
+  .halves { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .halves { grid-template-columns: 1fr; } }
+  .half-title {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+    text-transform: uppercase; font-weight: 700; margin: 0 0 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .half-title.code-half { color: var(--cid); }
+  .half-title.uni-half  { color: var(--uni); }
+
+  .tbl { display: grid; gap: 12px; }
+  .rec { padding: 14px 15px; }
+  .rec h3 {
+    margin: 0 0 3px; font-family: var(--mono); font-size: .88rem; font-weight: 640;
+  }
+  .rec .role { margin: 0; font-size: .84rem; color: var(--muted); }
+  .rec .struct {
+    margin: 10px 0 0; font-family: var(--mono); font-size: .76rem;
+    background: var(--surface-2); border: 1px solid var(--hairline);
+    border-radius: 8px; padding: 9px 11px; overflow-x: auto; white-space: pre;
+    color: var(--ink); line-height: 1.5;
+  }
+  .rec .struct .k { color: var(--code); }
+  .rec .struct .c { color: var(--faint); }
+  .badge {
+    display: inline-block; font-family: var(--mono); font-size: .68rem;
+    padding: 1px 7px; border-radius: 999px; font-weight: 600; letter-spacing: .02em;
+    border: 1px solid var(--hairline); color: var(--muted); background: var(--surface-2);
+    margin-left: 6px; vertical-align: 1px;
+  }
+
+  /* ---- rank micro-diagram ---- */
+  .rank-demo {
+    margin-top: 16px; padding: 16px 18px; display: grid; gap: 12px;
+  }
+  .rank-demo .cap { font-size: .84rem; color: var(--muted); margin: 0; }
+  .bits { display: flex; flex-wrap: wrap; gap: 4px; font-family: var(--mono); font-size: .74rem; }
+  .bit {
+    width: 26px; height: 30px; border-radius: 6px; display: grid; place-items: center;
+    border: 1px solid var(--hairline); background: var(--surface-2); color: var(--faint);
+    position: relative;
+  }
+  .bit.set { background: var(--uni-bg); color: var(--uni); border-color: color-mix(in srgb, var(--uni) 34%, transparent); font-weight: 700; }
+  .bit.hit { outline: 2px solid var(--cid); outline-offset: 1px; }
+  .bit small { position: absolute; bottom: -16px; font-size: .58rem; color: var(--faint); font-weight: 500; }
+  .rank-line { font-family: var(--mono); font-size: .82rem; color: var(--ink); }
+  .rank-line b { color: var(--cid); }
+
+  /* ---- two ways ---- */
+  .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .ways { grid-template-columns: 1fr; } }
+  .way { padding: 18px 19px; display: grid; gap: 8px; }
+  .way h3 { margin: 0; font-size: .98rem; font-weight: 640; }
+  .way .trigger { font-family: var(--mono); font-size: .78rem; color: var(--cid); }
+  .way p { margin: 0; font-size: .88rem; color: var(--muted); }
+  .way .fn { font-family: var(--mono); font-size: .76rem; color: var(--code); font-weight: 600; }
+
+  footer {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--hairline);
+    font-size: .82rem; color: var(--faint); display: grid; gap: 6px;
+  }
+  footer .row { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+  footer b { color: var(--muted); font-weight: 600; }
+  footer .mono { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">In-house PDF engine · composite fonts</p>
+    <h1>Recovering CJK text: the <span class="path">code&nbsp;→&nbsp;CID&nbsp;→&nbsp;Unicode</span> path</h1>
+    <p class="lede">A Type0 font paints Japanese/Chinese/Korean text as a raw byte string with no Unicode in sight. When there's no <code>/ToUnicode</code>, these tables turn those bytes back into selectable text.</p>
+  </header>
+
+  <div class="why">
+    <p><b>Why it's needed.</b> CJK is a pre-Unicode mess: each locale had several competing byte encodings (Shift-JIS, EUC, GBK, Big5, EUC-KR…). A PDF font names one of them in its <code>/Encoding</code> and paints bytes in it. Those bytes aren't text and aren't Unicode — they index Adobe's unified glyph numbering.</p>
+    <p>The <span class="pivot">CID (Character ID)</span> is the pivot. The <b>font</b> uses it to pick the glyph outline to draw; <b>we</b> map it onward to Unicode to recover the text. Getting there is a chain of three lookups.</p>
+  </div>
+
+  <section class="pipe">
+    <h2><span class="n">the path</span> Four stages, one worked example</h2>
+    <p class="sub">Font <code>/Encoding = 90ms-RKSJ-H</code> (Shift-JIS, collection Adobe-Japan1), painting the two bytes <code>92&nbsp;86</code>.</p>
+
+    <div class="flow">
+      <div class="stage" data-s="byte">
+        <span class="tag">bytes</span>
+        <span class="val">92 86</span>
+        <span class="note">A raw string from a <code>Tj</code>/<code>TJ</code> show.</span>
+      </div>
+      <div class="stage" data-s="code">
+        <span class="tag">code</span>
+        <span class="val">0x9286</span>
+        <span class="note">First byte <code>0x92</code> is a 2-byte lead → one 2-byte code.</span>
+      </div>
+      <div class="stage" data-s="cid">
+        <span class="tag">CID</span>
+        <span class="val">2980</span>
+        <span class="note">An index into the Adobe-Japan1 glyph collection.</span>
+      </div>
+      <div class="stage" data-s="uni">
+        <span class="tag">unicode</span>
+        <span class="val"><span class="glyph">中</span> U+4E2D</span>
+        <span class="note">The text we emit into the selectable layer.</span>
+      </div>
+    </div>
+
+    <div class="arrows">
+      <div class="step"></div>
+      <div class="step"><span class="op">split</span><span class="via">by <code>codespace</code></span></div>
+      <div class="step"><span class="op">code → CID</span><span class="via">interned ranges</span></div>
+      <div class="step"><span class="op">CID → Unicode</span><span class="via">collection bitmap</span></div>
+    </div>
+
+    <p class="pivot-note"><span>◆</span><span>The same CID <b>2980</b> also drives rendering — it selects the glyph outline in the embedded font program. That's why display was never broken even before this landed: only <em>selectability</em> was missing.</span></p>
+  </section>
+
+  <section>
+    <h2><span class="n">the tables</span> What's stored, and how each step reads it</h2>
+    <p class="sub">Generated into <code>pdf_cid_data.{hpp,cpp}</code> by <code>generate_cid_data.py</code> — ~0.58 MB, no compression, directly indexable. The path splits cleanly into two halves.</p>
+
+    <div class="halves">
+      <!-- CODE -> CID HALF -->
+      <div>
+        <p class="half-title code-half"><span class="dot" style="background:var(--cid)"></span>code → CID &nbsp;<span style="color:var(--faint);font-weight:500;text-transform:none;letter-spacing:0">— many CMaps, one per encoding</span></p>
+        <div class="tbl">
+          <div class="card rec">
+            <h3>predefined_cmaps[130] <span class="badge">by name</span></h3>
+            <p class="role">One record per legacy encoding (<code>90ms-RKSJ-H</code>…). Binary-searched by name; points at its codespace, its range-index slice, and its owning collection.</p>
+            <pre class="struct"><span class="k">struct</span> PredefinedCMap {
+  string_view name;        <span class="c">// "90ms-RKSJ-H"</span>
+  CodespaceRange* codespace;
+  uint16_t* ranges;        <span class="c">// → range_ref_pool</span>
+  uint32_t  collection;    <span class="c">// → collections[]</span>
+}</pre>
+          </div>
+          <div class="card rec">
+            <h3>codespace_pool</h3>
+            <p class="role"><b>Step 1 — split.</b> Declares code widths. Matched on the first byte: <code>0x92</code> lands in a 2-byte lead range, so the code is <code>0x9286</code>. (A byte like <code>0xA1</code> would be a 1-byte code — mixed widths stay aligned.)</p>
+            <pre class="struct"><span class="k">struct</span> CodespaceRange {
+  uint32_t low, high;  <span class="c">// leading-byte range</span>
+  uint8_t  width;      <span class="c">// 1..4 bytes</span>
+}</pre>
+          </div>
+          <div class="card rec">
+            <h3>range_ref_pool → cid_range_pool <span class="badge">interned</span></h3>
+            <p class="role"><b>Step 2 — code → CID.</b> Each CMap owns a slice of <code>uint16</code> indices (sorted by width, code_low) into a shared pool of ranges. Binary-search finds the range containing <code>0x9286</code> → CID <code>2980</code>. Interning dedups 73% of ranges (<code>-H</code>/<code>-V</code> pairs, shared families).</p>
+            <pre class="struct"><span class="k">struct</span> CidRange {   <span class="c">// 8 bytes</span>
+  uint32_t code_low;
+  uint16_t cid_low;
+  uint8_t  run_len;  <span class="c">// cid = cid_low + (code−code_low)</span>
+  uint8_t  width;
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- CID -> UNICODE HALF -->
+      <div>
+        <p class="half-title uni-half"><span class="dot" style="background:var(--uni)"></span>CID → Unicode &nbsp;<span style="color:var(--faint);font-weight:500;text-transform:none;letter-spacing:0">— one table per collection</span></p>
+        <div class="tbl">
+          <div class="card rec">
+            <h3>collections[5]</h3>
+            <p class="role">Adobe-Japan1 / -GB1 / -CNS1 / -Korea1 / -KR. Every legacy CMap in a family targets the <em>same</em> CID space, so all share one dense CID → Unicode table. Chosen by the CMap's <code>collection</code>, or (for <code>Identity-H</code>) by <code>/CIDSystemInfo</code>.</p>
+            <pre class="struct"><span class="k">struct</span> Collection {
+  string_view registry, ordering;
+  uint64_t* bitmap;   <span class="c">// CID present?</span>
+  uint32_t* rank;     <span class="c">// popcount index</span>
+  uint16_t* values;   <span class="c">// Unicode, dense</span>
+  AstralEntry* astral;
+}</pre>
+          </div>
+          <div class="card rec">
+            <h3>bitmap_pool + rank_pool + values_pool</h3>
+            <p class="role"><b>Step 3 — CID → Unicode.</b> The bitmap says whether the CID maps at all; <code>rank(cid)</code> — words-before + popcount-within — gives its slot in the dense <code>values</code> array. The CID space is 90%+ full, so a bitmap beats storing keys.</p>
+            <pre class="struct">present? bitmap[cid&gt;&gt;6] &amp; (1&lt;&lt;(cid&amp;63))
+i = rank[word] + popcount(word &amp; (bit−1))
+u = values[i]   <span class="c">// 0xFFFF → astral</span></pre>
+          </div>
+          <div class="card rec">
+            <h3>astral_pool</h3>
+            <p class="role">Values are <code>uint16</code> to stay small, but ~0.86% of code points are &gt; U+FFFF. Those store a <code>0xFFFF</code> sentinel in <code>values</code> and their real code point here, found by binary search on the value slot.</p>
+            <pre class="struct"><span class="k">struct</span> AstralEntry {
+  uint32_t value_index;
+  char32_t codepoint;  <span class="c">// e.g. U+28CDD</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rank-demo">
+      <p class="cap"><b>The rank trick, concretely.</b> To read <code>values</code> for CID 2980 without storing 30 000 keys, count how many CIDs before it are present — that count <em>is</em> the array index.</p>
+      <div class="bits" style="margin-bottom:18px">
+        <span class="bit set">1<small>2976</small></span>
+        <span class="bit">0<small>2977</small></span>
+        <span class="bit set">1<small>2978</small></span>
+        <span class="bit set">1<small>2979</small></span>
+        <span class="bit set hit">1<small>2980</small></span>
+        <span class="bit">0<small>2981</small></span>
+        <span class="bit set">1<small>2982</small></span>
+      </div>
+      <p class="rank-line">index = <b>rank(2980)</b> = (present CIDs below 2980) &nbsp;→&nbsp; <code>values[index]</code> = <b>0x4E2D</b> = 中</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">two ways in</span> Where the CID actually comes from</h2>
+    <p class="sub">The <code>CID → Unicode</code> half is always the same; what differs is who supplies the CID and the collection.</p>
+    <div class="ways">
+      <div class="card way">
+        <h3>Named legacy CMap</h3>
+        <span class="trigger">/Encoding = 90ms-RKSJ-H</span>
+        <p>The CMap is self-contained: it splits the bytes, maps <code>code → CID</code> through its own ranges, and names its collection. This is the full 4-stage path above.</p>
+        <span class="fn">translate_predefined_cmap(name, codes)</span>
+      </div>
+      <div class="card way">
+        <h3>Identity-H / embedded stream</h3>
+        <span class="trigger">/Encoding = Identity-H</span>
+        <p>Here <code>code == CID</code> already (or an embedded CMap stream yields it). Only <code>CID → Unicode</code> remains — and the collection comes from the descendant CIDFont's <code>/CIDSystemInfo</code>.</p>
+        <span class="fn">cid_to_unicode(registry, ordering, cid)</span>
+      </div>
+    </div>
+    <p class="pivot-note" style="margin-top:22px"><span>◆</span><span>Both are tried inside <code>Font::to_unicode</code>, after <code>/ToUnicode</code> (still the common case) and before the embedded-font reverse map. A named CMap we ship no tables for is <em>not</em> misread as identity CIDs — it just falls through.</span></p>
+  </section>
+
+  <footer>
+    <div class="row"><b>Coverage</b> <span class="mono">~130 legacy CMaps · 5 collections · Adobe cmap-resources (BSD-3-Clause)</span></div>
+    <div class="row"><b>Size</b> <span class="mono">code→CID ≈ 0.35 MB · CID→Unicode ≈ 0.23 MB · total ≈ 0.58 MB, no new dependency</span></div>
+    <div class="row"><b>Effect</b> <span class="mono">selectability + search only — glyphs already rendered via the PUA re-encode</span></div>
+  </footer>
+</div>
+
+</body>
+</html>
