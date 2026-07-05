@@ -1476,7 +1476,7 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   in().seekg(object.stream_position.value());
   // A missing or unresolvable `/Length` is not fatal: the no-argument overload
   // recovers the extent by scanning to the `endstream`/`endobj` terminator.
-  std::string raw = length.is_integer()
+  std::string raw = length.is_integer() && length.as_integer() >= 0
                         ? m_parser.read_stream(
                               static_cast<std::uint32_t>(length.as_integer()))
                         : m_parser.read_stream();
