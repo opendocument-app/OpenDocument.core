@@ -221,6 +221,85 @@ Sequence within Phase 2: (a) delete element, (b) toggle mark on a range,
 Selection toolbar for bold/italic/underline/highlight; validation feedback driven
 by `is_editable`; extend from `odt`/`docx` to the remaining ODF/OOXML documents.
 
+## Implementation sketch (grounded in the current code)
+
+### What the code already gives us
+
+The mutation surface exists in embryo. `abstract::Document` declares
+`text_set_content(ElementIdentifier, string)`
+([`abstract/document.hpp`](../../src/odr/internal/abstract/document.hpp)), and both
+engines implement it identically
+([`odf_document.cpp`](../../src/odr/internal/odf/odf_document.cpp),
+[`ooxml_text_document.cpp`](../../src/odr/internal/ooxml/text/ooxml_text_document.cpp)):
+
+1. Resolve `ElementIdentifier` → registry `Element` + `Text` entry.
+2. The `Text` entry holds two pugixml handles, `first`/`last`, spanning the run's
+   nodes.
+3. Rebuild the pcdata / `w:t` / `text:s` nodes between them, then update the
+   registry's `node`/`last` pointers.
+
+Every new op follows the same shape: **resolve id → registry entry (pugixml node)
+→ mutate the pugixml subtree → fix up registry pointers (append / tombstone for
+structural ops).** Identical in ODF and OOXML — only the tag names and the style
+mechanism differ.
+
+### Abstract API additions (`abstract/document.hpp`)
+
+New hooks alongside `text_set_content`, all gated by `element_is_editable(id)` and
+throwing on unsupported input (fail fast):
+
+```cpp
+virtual void text_replace_range(ElementIdentifier id, uint32_t start,
+                                uint32_t length, const std::string &text) = 0;
+virtual ElementIdentifier
+    element_insert(ElementIdentifier parent, ElementIdentifier anchor,
+                   Anchor where /*before|after|end*/, ElementType type) = 0;
+virtual void element_delete(ElementIdentifier id) = 0;          // tombstone
+virtual ElementIdentifier element_split(ElementIdentifier id, uint32_t off) = 0;
+virtual void mark_apply(ElementIdentifier id, uint32_t start, uint32_t length,
+                        Mark mark, bool on) = 0;                // bold/italic/…
+```
+
+`html::edit` stops being `modifiedText`-only and becomes a dispatcher: parse the
+op list → resolve ids via a new `Document::element_by_id` → call the matching hook,
+all against an in-memory copy, writing only on full success (decision 7).
+
+### Op → replay, per engine
+
+| Op | ODF replay | OOXML replay |
+|----|-----------|-------------|
+| `deleteElement` | `remove_child` across `first..last`; **tombstone** the registry slot | same, over `w:r`/`w:p` |
+| `toggleMark(range, bold)` | split run; assign an **automatic style** (`text:style-name`) — find or create a `<style:style>` with `fo:font-weight="bold"` | split `w:r`; set `<w:rPr><w:b/>` on the middle run |
+| `splitParagraph` | clone `<text:p>` (copy style-name), move trailing nodes into the clone | clone `<w:p>` incl. `w:pPr`, move trailing `w:r` |
+| `insertParagraph` | `insert_child_after` a fresh `<text:p>` at anchor; **append** registry entry | fresh `<w:p>`; append |
+| `insertText(range)` | reuse the `text_set_content` tokenizer (`util::xml::tokenize_text`) on a sub-range | same, `w:t` tokenizer |
+
+Two genuinely format-specific complications, both already visible in the code:
+
+- **Marks are styles, not attributes.** ODF references *named automatic styles*
+  ([`odf_style.cpp`](../../src/odr/internal/odf/odf_style.cpp)); a bold toggle is
+  "split run + find-or-create style + reassign `text:style-name`," not "set an
+  attribute." OOXML is friendlier — inline `w:rPr`. The op is trivial; the replay
+  is not (decision 5).
+- **Registry fix-up is mandatory.** Because ids *are* registry indices and
+  `first`/`last` are cached pugixml handles, every structural op must append new
+  entries (never renumber) and tombstone deletes — decision 4's append-only rule
+  made concrete.
+
+### Ids for created elements (`element_split` / `insert`)
+
+Split and insert **create** elements, so C++ mints ids the browser doesn't know.
+Decide before Phase 1:
+
+1. **Browser pre-allocates ids** from a reserved high range and passes the id to
+   use — replay is then a pure function, no id echo. Cleaner for A.
+2. **C++ returns minted ids**, browser reconciles on save-response —
+   reintroduces the round-trip A exists to avoid.
+
+Recommended: (1). The browser allocates provisional ids for created elements; on
+re-`translate` after save they are renumbered naturally anyway (ids are
+session-scoped, decision 4).
+
 ## Open questions
 
 - Can `ElementIdentifier` inserts stay append-only in *every* engine's registry,
