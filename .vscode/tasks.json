@@ -76,6 +76,21 @@
       "problemMatcher": []
     },
     {
+      "label": "compare: reference output (headless)",
+      "detail": "Runs compare-html in Docker (Firefox headless) against test/data/reference-output. Build + run odr_test first to populate output.",
+      "type": "shell",
+      "command": "test/scripts/compare_output.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "compare: reference output (server on :8000)",
+      "detail": "Runs compare-html-server in Docker; open http://localhost:8000 to inspect diffs interactively. Ctrl-C in the terminal to stop.",
+      "type": "shell",
+      "command": "test/scripts/compare_output_server.sh",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
       "label": "env: regenerate .vscode/.env",
       "detail": "Re-run after every `conan install` to refresh Conan cache paths.",
       "type": "shell",
