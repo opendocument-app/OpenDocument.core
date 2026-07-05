@@ -291,7 +291,10 @@ it.
   re-encoded as PNG; inline images (`BI`/`ID`/`EI`); `/ImageMask` stencils painted
   in the current fill colour; `/SMask` and `/Mask` (stencil + colour-key)
   composited into RGBA on the raster path (a mask on a JPEG base is left alone —
-  decoding the JPEG to composite is out of scope).
+  decoding the JPEG to composite is out of scope). An image's `/ColorSpace` may
+  be a device space, an inline array (Indexed/ICCBased/…), or a *name* resolved
+  against the enclosing `/Resources /ColorSpace` table (the table is parsed
+  before the `/XObject` table and threaded into image parsing).
 - **Shadings** (axial type 2, radial type 3): `parse_shading` pre-samples the
   tint function into sRGB stops, so the renderer needs no evaluator. `sh` floods
   the clip (a `<rect>` filled with the gradient); a `/PatternType 2` shading
@@ -674,16 +677,6 @@ The next feature cluster — needs destinations from the page tree, little else.
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
   horizontal-only `extract_text` and space inference assume away). No corpus
   fixture needs either yet; revisit when one does.
-- **Annotations** are collected but their content is not interpreted (stage 5).
-- **Image colour space from a named resource** (deferred from stage 4.6): a
-  decodable raster image whose `/ColorSpace` is a *name* (e.g. `/CS0`, defined in
-  the enclosing `/Resources /ColorSpace`) is dropped instead of PNG-encoded.
-  `parse_image_data` builds a `ColorSpaceContext` with no `named` resolver
-  (device spaces and inline Indexed/ICCBased arrays resolve fine), because the
-  XObject is parsed before — and without access to — the resource ColorSpace
-  table (`parse_resources` parses the `/XObject` table at the top, the
-  `/ColorSpace` table further down). A proper fix reorders `parse_resources` to
-  build the ColorSpace table first and threads it into `parse_x_object`, or
-  defers image colour-space resolution to `Do`-invocation time where the
-  resource chain is known. Inline images and JPEG pass-through are unaffected.
+- **Annotations** are collected but their content is not interpreted
+  (*Interaction & navigation*).
 - Revisit the reference-by-lookahead parsing and `read_stream(-1)` fallback.
