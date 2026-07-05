@@ -1,0 +1,69 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "gtestFilter",
+      "type": "promptString",
+      "description": "GoogleTest --gtest_filter",
+      "default": "*"
+    },
+    {
+      "id": "translateInput",
+      "type": "promptString",
+      "description": "Input document to translate (absolute path)"
+    },
+    {
+      "id": "translateOutput",
+      "type": "promptString",
+      "description": "Output directory for HTML",
+      "default": "${workspaceFolder}/cmake-build-relwithdebinfo/output"
+    },
+    {
+      "id": "metaInput",
+      "type": "promptString",
+      "description": "Input document for meta"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Debug odr_test (filtered)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-relwithdebinfo/test/odr_test",
+      "args": ["--gtest_filter=${input:gtestFilter}"],
+      "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo",
+      "envFile": "${workspaceFolder}/.vscode/.env",
+      "preLaunchTask": "build: odr_test"
+    },
+    {
+      "name": "Debug translate <input> <output>",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-relwithdebinfo/cli/translate",
+      "args": ["${input:translateInput}", "${input:translateOutput}"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.vscode/.env",
+      "preLaunchTask": "build: translate"
+    },
+    {
+      "name": "Debug meta <input>",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-relwithdebinfo/cli/meta",
+      "args": ["${input:metaInput}"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.vscode/.env",
+      "preLaunchTask": "build: all CLI tools"
+    },
+    {
+      "name": "Debug server",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-relwithdebinfo/cli/server",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.vscode/.env",
+      "preLaunchTask": "build: all CLI tools"
+    }
+  ]
+}

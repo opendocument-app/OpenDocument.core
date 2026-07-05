@@ -1,0 +1,105 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "inputs": [
+    {
+      "id": "gtestFilter",
+      "type": "promptString",
+      "description": "GoogleTest --gtest_filter",
+      "default": "*"
+    },
+    {
+      "id": "translateInput",
+      "type": "promptString",
+      "description": "Input document to translate (absolute path)"
+    },
+    {
+      "id": "translateOutput",
+      "type": "promptString",
+      "description": "Output directory for HTML (absolute path)",
+      "default": "${workspaceFolder}/cmake-build-relwithdebinfo/output"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "build: odr (library)",
+      "type": "shell",
+      "command": "cmake --build cmake-build-relwithdebinfo --target odr",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "build: odr_test",
+      "type": "shell",
+      "command": "cmake --build cmake-build-relwithdebinfo --target odr_test",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "build: translate",
+      "type": "shell",
+      "command": "cmake --build cmake-build-relwithdebinfo --target translate",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "build: all CLI tools",
+      "type": "shell",
+      "command": "cmake --build cmake-build-relwithdebinfo --target translate back_translate meta server",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "test: run odr_test (filtered)",
+      "type": "shell",
+      "command": "scripts/run-with-env.sh ./test/odr_test --gtest_filter='${input:gtestFilter}'",
+      "options": {
+        "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
+      },
+      "dependsOn": ["build: odr_test"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "cli: translate <input> <output>",
+      "type": "shell",
+      "command": "scripts/run-with-env.sh ./cmake-build-relwithdebinfo/cli/translate '${input:translateInput}' '${input:translateOutput}'",
+      "dependsOn": ["build: translate"],
+      "problemMatcher": []
+    },
+    {
+      "label": "env: regenerate .vscode/.env",
+      "detail": "Re-run after every `conan install` to refresh Conan cache paths.",
+      "type": "shell",
+      "command": "python3 scripts/gen-vscode-env.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "profile: Instruments Time Profiler (odr_test, filtered)",
+      "detail": "Records a .trace with Instruments; opens in Instruments.app when done.",
+      "type": "shell",
+      "command": "rm -rf profile.trace && scripts/run-with-env.sh xctrace record --template 'Time Profiler' --output profile.trace --launch -- ./test/odr_test --gtest_filter='${input:gtestFilter}' && open profile.trace",
+      "options": {
+        "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
+      },
+      "dependsOn": ["build: odr_test"],
+      "problemMatcher": []
+    },
+    {
+      "label": "profile: Instruments Time Profiler (translate)",
+      "detail": "Records a .trace of the translate CLI on one file.",
+      "type": "shell",
+      "command": "rm -rf profile.trace && scripts/run-with-env.sh xctrace record --template 'Time Profiler' --output profile.trace --launch -- ./cmake-build-relwithdebinfo/cli/translate '${input:translateInput}' '${input:translateOutput}' && open profile.trace",
+      "dependsOn": ["build: translate"],
+      "problemMatcher": []
+    }
+  ]
+}
