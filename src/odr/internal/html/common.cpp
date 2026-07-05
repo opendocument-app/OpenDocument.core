@@ -37,6 +37,14 @@ std::string html::escape_text(std::string text) {
   return text;
 }
 
+std::string html::escape_attribute(std::string value) {
+  util::string::replace_all(value, "&", "&amp;");
+  util::string::replace_all(value, "\"", "&quot;");
+  util::string::replace_all(value, "<", "&lt;");
+  util::string::replace_all(value, ">", "&gt;");
+  return value;
+}
+
 std::string html::color(const Color &color) {
   std::stringstream ss;
   ss << "#";

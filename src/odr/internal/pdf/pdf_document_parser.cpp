@@ -1192,17 +1192,20 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
   page->resources = parse_resources(state, resources);
 
   // /Contents is a content stream or an array of them, supplied directly or
-  // through an indirect reference (7.7.3.3). Resolve a reference first so that
-  // a reference to an array is expanded into its stream references rather than
-  // mistaken for a single stream.
-  const Object &contents = dictionary["Contents"];
-  const Object resolved_contents = parser.resolve_object_copy(contents);
-  if (resolved_contents.is_array()) {
-    for (const Object &e : resolved_contents.as_array()) {
-      page->contents_reference.push_back(e.as_reference());
+  // through an indirect reference (7.7.3.3). It is optional — a page may have
+  // none (e.g. a blank page carrying only annotations). Resolve a reference
+  // first so that a reference to an array is expanded into its stream
+  // references rather than mistaken for a single stream.
+  if (dictionary.has_key("Contents")) {
+    const Object &contents = dictionary["Contents"];
+    const Object resolved_contents = parser.resolve_object_copy(contents);
+    if (resolved_contents.is_array()) {
+      for (const Object &e : resolved_contents.as_array()) {
+        page->contents_reference.push_back(e.as_reference());
+      }
+    } else if (contents.is_reference()) {
+      page->contents_reference = {contents.as_reference()};
     }
-  } else if (contents.is_reference()) {
-    page->contents_reference = {contents.as_reference()};
   }
 
   if (dictionary.has_key("Annots")) {

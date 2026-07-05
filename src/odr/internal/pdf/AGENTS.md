@@ -274,6 +274,19 @@ inline SVG per page. Experimental and not production-quality.
     matches rendering) is unsettled — currently `/Ascent` wins. The ascent is
     per-font, not per-CID. No focused unit test yet (verified visually on
     `style-various-1.pdf`); the reference-output snapshot test is the gate.
+- **Link annotations** (`html/pdf_file.cpp`): a page's `/Link` annotations
+  (ISO 32000-1 12.5.6.5) become absolutely-positioned `<a>` overlays. A `/URI`
+  action is an external link (attribute-escaped `href`, opened in `_blank` via
+  the document target); a `/GoTo` action or a direct `/Dest` is an internal
+  `#pN` link — each page `div` carries a matching `id="pN"`. Destinations
+  resolve a page *reference* (the first element of a `[page …]` array) to its
+  index, including named destinations via the catalog `/Dests` dictionary and
+  the `/Names /Dests` name tree (depth-guarded). The `/Rect` is mapped through
+  the page transform to page-box points. Resolved entirely in the HTML layer
+  from the parser's raw annotation dictionaries — no parser/IR change. Both
+  render modes emit them. Deferred: remote/launch actions (`/GoToR`, `/Launch`),
+  the destination's scroll position/zoom (only the target page is used), and
+  non-`/Link` annotation appearances (see *Interaction & navigation*).
 
 ## Graphics, images & transparency
 
@@ -632,12 +645,13 @@ design before implementation.
 ## Interaction & navigation
 
 The next feature cluster — needs destinations from the page tree, little else.
+Link annotations (`/URI` + internal `/GoTo`) already land — see *What works*.
 
-- **Links**: URI actions and internal `GoTo` destinations (incl. named) as `<a>`
-  overlays.
 - **Annotation appearances**: render `/AP` appearance streams (form XObjects
   again) for highlights, stamps, form-field appearances; AcroForm
   *interactivity* stays out of scope (read-only).
+- **Remote/launch link actions** (`/GoToR`, `/Launch`) and destination scroll
+  position/zoom (the internal-link handler uses only the target page).
 - **Document outline** (`/Outlines`) → navigation anchors/sidebar.
 - **Optional content groups** (layers): honor default visibility; no toggle UI.
 - **Output scaling**: monolithic HTML vs. per-page lazy loading for large
@@ -694,8 +708,9 @@ The next feature cluster — needs destinations from the page tree, little else.
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
   horizontal-only `extract_text` and space inference assume away). No corpus
   fixture needs either yet; revisit when one does.
-- **Annotations** are collected but their content is not interpreted
-  (*Interaction & navigation*).
+- **Annotations**: `/Link` annotations render as `<a>` overlays (see *What
+  works*); other annotation types are collected but their appearance streams are
+  not interpreted (*Interaction & navigation*).
 - **XMP metadata** (`/Metadata` XML packet) is not parsed; `file_meta()`'s
   `document_meta` comes from the `/Info` dictionary only. XMP would supplement
   or override `/Info` for producers that write it.
