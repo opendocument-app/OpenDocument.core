@@ -365,9 +365,10 @@ struct Font final : Element {
 
   /// True for composite (Type0) fonts. Their character codes are
   /// multi-byte and select CIDs via the Type0 `/Encoding` CMap; `/ToUnicode` is
-  /// the code -> Unicode path. Code -> CID via predefined CJK CMaps and the
-  /// CID -> Unicode tables are deferred; an embedded TrueType font also
-  /// supplies a reverse map (see `glyph_for_code` / `to_unicode`).
+  /// the primary code -> Unicode path. Failing that, the predefined CJK CMaps
+  /// map code -> CID -> Unicode (via `pdf_cid`), or the `/CIDSystemInfo`
+  /// collection maps identity CIDs -> Unicode, or an embedded TrueType font's
+  /// reverse map recovers it (see `glyph_for_code` / `to_unicode`).
   bool composite{false};
   /// The descendant CIDFont's `/CIDSystemInfo` `/Registry` and `/Ordering`
   /// (e.g. `Adobe` / `Identity` or `Adobe` / `Japan1`). Recorded for the
@@ -376,8 +377,9 @@ struct Font final : Element {
   std::string cid_registry;
   std::string cid_ordering;
   /// The composite font's `/Encoding` when it is a *predefined* CMap name (e.g.
-  /// `Identity-H`, `UniGB-UCS2-H`); empty for an embedded CMap stream. Drives
-  /// the predefined Unicode-CMap extraction path.
+  /// `Identity-H`, `UniGB-UCS2-H`, `90ms-RKSJ-H`); empty for an embedded CMap
+  /// stream. Drives the predefined-CMap extraction path (Unicode CMaps decoded
+  /// directly, legacy CJK CMaps mapped code -> CID -> Unicode).
   std::string cid_encoding_name;
   /// The composite font's `/Encoding` when it is an *embedded* CMap stream
   /// (code -> CID plus codespace, ISO 32000-1 9.7.5.3); empty for a predefined
@@ -480,8 +482,10 @@ struct Font final : Element {
   [[nodiscard]] double advance_width(std::uint32_t code) const;
 
   /// Translate a string of character codes to Unicode: the `ToUnicode` CMap
-  /// when present (authoritative), else, for a composite font, "no Unicode",
-  /// else the simple-font `/Encoding`, else identity bytes.
+  /// when present (authoritative); else, for a composite font, the predefined
+  /// `/Encoding` CMap (Unicode or legacy CJK), the `/CIDSystemInfo`
+  /// collection's CID -> Unicode, or the embedded reverse map — "no Unicode" if
+  /// all fail; else the simple-font `/Encoding`, else identity bytes.
   [[nodiscard]] std::string to_unicode(const std::string &codes) const;
 };
 

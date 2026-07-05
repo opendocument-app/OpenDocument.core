@@ -218,18 +218,25 @@ def _decode_unicode_code(code: int, is_utf16: bool) -> int | None:
 # --- Range compression ------------------------------------------------------
 
 
-def compress_unicode(mapping: dict[int, int]) -> list[tuple[int, int, int]]:
-    """{cid: unicode} -> [(cid_low, cid_high, unicode_low)] contiguous runs."""
-    ranges: list[tuple[int, int, int]] = []
-    for cid in sorted(mapping):
-        unicode = mapping[cid]
-        if ranges:
-            low, high, base = ranges[-1]
-            if cid == high + 1 and unicode == base + (high - low) + 1:
-                ranges[-1] = (low, cid, base)
-                continue
-        ranges.append((cid, cid, unicode))
-    return ranges
+def split_runs(
+    ranges: list[tuple[int, int, int, int]],
+) -> list[tuple[int, int, int, int]]:
+    """(code_low, code_high, cid_low, width) -> (code_low, cid_low, run_len, width).
+
+    ``run_len = code_high - code_low`` is capped at 255 (a byte) by splitting an
+    over-long run into consecutive chunks; 36 of ~86k ranges need it. The split
+    happens before interning, so the chunks of identical over-long runs still
+    de-duplicate.
+    """
+    out: list[tuple[int, int, int, int]] = []
+    for code_low, code_high, cid_low, width in ranges:
+        total = code_high - code_low
+        offset = 0
+        while offset <= total:
+            run = min(255, total - offset)
+            out.append((code_low + offset, cid_low + offset, run, width))
+            offset += run + 1
+    return out
 
 
 def merge_cid_ranges(
@@ -254,6 +261,43 @@ def merge_cid_ranges(
 # --- Emission ---------------------------------------------------------------
 
 
+def build_collection(cmap_dir: str) -> dict:
+    """Pack a collection's CID -> Unicode map into the S3 representation.
+
+    A presence bitmap over ``[0, max_cid]`` (one bit per CID) plus a rank index
+    (cumulative popcount before each 64-bit word) turns ``CID -> Unicode`` into
+    ``values[rank(cid)]``. Values are ``uint16``; the ~1% astral (> U+FFFF) ones
+    store the ``0xffff`` sentinel and their real code point in ``astral``
+    (sorted by value index for binary search).
+    """
+    c2u = cid_to_unicode(cmap_dir)
+    max_cid = max(c2u)
+    word_count = max_cid // 64 + 1
+    bitmap = [0] * word_count
+    values: list[int] = []
+    astral: list[tuple[int, int]] = []
+    for cid in sorted(c2u):
+        bitmap[cid // 64] |= 1 << (cid % 64)
+        codepoint = c2u[cid]
+        if codepoint > 0xFFFF:
+            astral.append((len(values), codepoint))
+            values.append(0xFFFF)
+        else:
+            values.append(codepoint)
+    rank = []
+    accumulated = 0
+    for word in bitmap:
+        rank.append(accumulated)
+        accumulated += word.bit_count()
+    return {
+        "max_cid": max_cid,
+        "bitmap": bitmap,
+        "rank": rank,
+        "values": values,
+        "astral": astral,
+    }
+
+
 def main() -> None:
     ensure_data()
 
@@ -262,10 +306,10 @@ def main() -> None:
 
     for index, (directory, registry, ordering) in enumerate(_COLLECTIONS):
         cmap_dir = os.path.join(_DATA_DIR, directory, "CMap")
-        unicode_ranges = compress_unicode(cid_to_unicode(cmap_dir))
-        collections.append(
-            {"registry": registry, "ordering": ordering, "unicode": unicode_ranges}
-        )
+        collection = build_collection(cmap_dir)
+        collection["registry"] = registry
+        collection["ordering"] = ordering
+        collections.append(collection)
 
         for name in sorted(os.listdir(cmap_dir)):
             if name.startswith("Uni") or "." in name:
@@ -278,7 +322,8 @@ def main() -> None:
                     "name": name,
                     "collection": index,
                     "codespace": sorted(set(cmap.codespace), key=lambda r: r[2]),
-                    "cid_ranges": merge_cid_ranges(cmap.cid_ranges),
+                    # (code_low, cid_low, run_len, width), run_len <= 255.
+                    "ranges": split_runs(merge_cid_ranges(cmap.cid_ranges)),
                 }
             )
 
@@ -296,30 +341,71 @@ def _dedupe(items: list[tuple], pool: list[tuple], offsets: dict) -> tuple[int, 
     return offset, len(items)
 
 
+def _intern_ranges(cmaps: list[dict]) -> tuple[list[tuple], list[int]]:
+    """Intern each CMap's code -> CID ranges into a shared pool.
+
+    ~73% of the ~86k ranges repeat across CMaps (``-H``/``-V`` pairs, shared
+    encoding families), so each CMap stores only ``uint16`` indices into a pool
+    of unique records. Each CMap's index slice is sorted by ``(width, code_low)``
+    for the runtime binary search; identical slices (fully shared range sets) are
+    de-duplicated too.
+    """
+    pool: list[tuple] = []
+    pool_index: dict[tuple, int] = {}
+    refs: list[int] = []
+    ref_offsets: dict = {}
+    for cmap in cmaps:
+        indices = []
+        for record in cmap["ranges"]:
+            index = pool_index.get(record)
+            if index is None:
+                index = len(pool)
+                pool_index[record] = index
+                pool.append(record)
+            indices.append(index)
+        indices.sort(key=lambda i: (pool[i][3], pool[i][0]))  # (width, code_low)
+        cmap["ref_off"], cmap["ref_cnt"] = _dedupe(indices, refs, ref_offsets)
+    return pool, refs
+
+
 def _write(collections: list[dict], cmaps: list[dict]) -> None:
     cmaps.sort(key=lambda c: c["name"])  # binary search at runtime
 
-    codespace_pool: list[tuple] = []
-    cid_pool: list[tuple] = []
-    unicode_pool: list[tuple] = []
-    codespace_offsets: dict = {}
-    cid_offsets: dict = {}
-    unicode_offsets: dict = {}
+    cid_range_pool, ref_pool = _intern_ranges(cmaps)
 
-    for collection in collections:
-        collection["uni_off"], collection["uni_cnt"] = _dedupe(
-            collection["unicode"], unicode_pool, unicode_offsets
-        )
+    codespace_pool: list[tuple] = []
+    codespace_offsets: dict = {}
     for cmap in cmaps:
         cmap["cs_off"], cmap["cs_cnt"] = _dedupe(
             cmap["codespace"], codespace_pool, codespace_offsets
         )
-        cmap["cid_off"], cmap["cid_cnt"] = _dedupe(
-            cmap["cid_ranges"], cid_pool, cid_offsets
-        )
 
-    _write_hpp(len(collections), len(cmaps))
-    _write_cpp(collections, cmaps, codespace_pool, cid_pool, unicode_pool)
+    # Concatenate the per-collection unicode pools, tracking each one's offset.
+    bitmap_pool: list[int] = []
+    rank_pool: list[int] = []
+    values_pool: list[int] = []
+    astral_pool: list[tuple] = []
+    for collection in collections:
+        collection["bitmap_off"] = len(bitmap_pool)
+        bitmap_pool.extend(collection["bitmap"])
+        rank_pool.extend(collection["rank"])
+        collection["values_off"] = len(values_pool)
+        values_pool.extend(collection["values"])
+        collection["astral_off"] = len(astral_pool)
+        astral_pool.extend(collection["astral"])
+
+    _write_hpp(len(collections), len(cmaps), len(cid_range_pool))
+    _write_cpp(
+        collections,
+        cmaps,
+        cid_range_pool,
+        ref_pool,
+        codespace_pool,
+        bitmap_pool,
+        rank_pool,
+        values_pool,
+        astral_pool,
+    )
 
 
 _BANNER = (
@@ -330,66 +416,80 @@ _BANNER = (
 )
 
 
-def _write_hpp(collection_count: int, cmap_count: int) -> None:
+def _write_hpp(collection_count: int, cmap_count: int, pool_size: int) -> None:
     text = (
         _BANNER
         + f"""#pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
 
 namespace odr::internal::pdf::cid_data {{
 
-// A codespace range: codes whose first byte falls in [low, high]'s leading byte
-// are `width` bytes wide (big-endian) -- used to split a string into codes.
+// A codespace range: a code whose first byte lands in the leading byte of
+// [low, high] is `width` bytes wide (big-endian) -- used to split a string into
+// codes. Matched on the first byte, as the runtime CMap does (9.7.6.2).
 struct CodespaceRange {{
   std::uint32_t low;
   std::uint32_t high;
   std::uint8_t width;
 }};
 
-// A contiguous code -> CID run: code in [code_low, code_high] maps to
-// cid_low + (code - code_low). `width` is the code's byte count.
+// A contiguous code -> CID run: code in [code_low, code_low + run_len] maps to
+// cid_low + (code - code_low). `width` is the code's byte count. Runs are split
+// so run_len fits a byte, and records are interned (many CMaps share them) --
+// each PredefinedCMap indexes this pool through `cid_range_pool`.
 struct CidRange {{
   std::uint32_t code_low;
-  std::uint32_t code_high;
-  std::uint32_t cid_low;
+  std::uint16_t cid_low;
+  std::uint8_t run_len;
   std::uint8_t width;
 }};
 
-// A contiguous CID -> Unicode run: cid in [cid_low, cid_high] maps to
-// unicode_low + (cid - cid_low).
-struct UnicodeRange {{
-  std::uint32_t cid_low;
-  std::uint32_t cid_high;
-  char32_t unicode_low;
+// One astral (> U+FFFF) CID -> Unicode value: the dense-value slot carrying the
+// 0xffff sentinel, plus its real code point. Sorted by `value_index`.
+struct AstralEntry {{
+  std::uint32_t value_index;
+  char32_t codepoint;
 }};
 
-// A character collection (e.g. Adobe-Japan1): its CID -> Unicode table.
+// A character collection (e.g. Adobe-Japan1): its dense CID -> Unicode map as a
+// presence bitmap over [0, max_cid] (LSB-first within each 64-bit word), a rank
+// index (popcount of all words before word i), and a value array indexed by
+// rank(cid). A value of 0xffff escapes to `astral`.
 struct Collection {{
   std::string_view registry;
   std::string_view ordering;
-  const UnicodeRange *unicode_ranges;
-  std::uint32_t unicode_range_count;
+  const std::uint64_t *bitmap;
+  const std::uint32_t *rank;
+  std::uint32_t word_count;
+  std::uint32_t max_cid;
+  const std::uint16_t *values;
+  const AstralEntry *astral;
+  std::uint32_t astral_count;
 }};
 
-// A predefined CMap (code -> CID), pointing at its owning collection.
+// A predefined CMap (code -> CID). `ranges` indexes `cid_range_pool`, sorted by
+// (width, code_low) for binary search; `collection` indexes `collections`.
 struct PredefinedCMap {{
   std::string_view name;
   const CodespaceRange *codespace;
   std::uint32_t codespace_count;
-  const CidRange *cid_ranges;
-  std::uint32_t cid_range_count;
+  const std::uint16_t *ranges;
+  std::uint32_t range_count;
   std::uint32_t collection;
 }};
 
 inline constexpr std::size_t collection_count = {collection_count};
 inline constexpr std::size_t predefined_cmap_count = {cmap_count};
+inline constexpr std::size_t cid_range_pool_size = {pool_size};
 
-extern const Collection collections[collection_count];
+extern const std::array<CidRange, cid_range_pool_size> cid_range_pool;
+extern const std::array<Collection, collection_count> collections;
 // Sorted by `name` for binary search.
-extern const PredefinedCMap predefined_cmaps[predefined_cmap_count];
+extern const std::array<PredefinedCMap, predefined_cmap_count> predefined_cmaps;
 
 }} // namespace odr::internal::pdf::cid_data
 """
@@ -398,8 +498,27 @@ extern const PredefinedCMap predefined_cmaps[predefined_cmap_count];
         f.write(text)
 
 
-def _emit_pool(out: io.StringIO, ctype: str, name: str, pool: list, fmt) -> None:
-    out.write(f"const {ctype} {name}[] = {{\n")
+def _emit_array(
+    out: io.StringIO,
+    ctype: str,
+    name: str,
+    pool: list,
+    fmt,
+    std_array: bool = False,
+    size_expr: str | None = None,
+) -> None:
+    """Emit a ``const std::array<T, N> name = {{...}};`` definition.
+
+    ``size_expr`` names the extent (e.g. the header's ``cid_data::foo_size``
+    constant); it defaults to the literal element count. ``name``/``ctype`` may be
+    namespace-qualified so the definition binds to the header declaration.
+    """
+    extent = size_expr if size_expr is not None else str(len(pool))
+    if std_array:
+        # std::array needs the double brace (aggregate wrapping a C array).
+        out.write(f"const std::array<{ctype}, {extent}>\n    {name} = {{{{\n")
+    else:
+        out.write(f"const {ctype} {name}[] = {{\n")
     line = "    "
     for item in pool:
         chunk = fmt(item) + ","
@@ -409,62 +528,101 @@ def _emit_pool(out: io.StringIO, ctype: str, name: str, pool: list, fmt) -> None
         line += chunk
     if line.strip():
         out.write(line + "\n")
-    out.write("};\n\n")
+    out.write("}};\n\n" if std_array else "};\n\n")
 
 
 def _write_cpp(
     collections: list[dict],
     cmaps: list[dict],
+    cid_range_pool: list,
+    ref_pool: list,
     codespace_pool: list,
-    cid_pool: list,
-    unicode_pool: list,
+    bitmap_pool: list,
+    rank_pool: list,
+    values_pool: list,
+    astral_pool: list,
 ) -> None:
     out = io.StringIO()
     out.write(_BANNER)
     out.write("#include <odr/internal/pdf/pdf_cid_data.hpp>\n\n")
-    out.write("namespace odr::internal::pdf::cid_data {\n\nnamespace {\n\n")
 
-    _emit_pool(
+    # The intern/lookup pools are implementation detail: anonymous (internal
+    # linkage) inside the data namespace. Every one is a std::array; the exported
+    # structs hold raw pointers into them (`pool.data() + offset`), since a
+    # per-CMap / per-collection span has no compile-time size of its own.
+    out.write("namespace odr::internal::pdf::cid_data {\n\nnamespace {\n\n")
+    _emit_array(
         out,
         "CodespaceRange",
         "codespace_pool",
         codespace_pool,
         lambda r: f"{{0x{r[0]:x},0x{r[1]:x},{r[2]}}}",
+        std_array=True,
     )
-    _emit_pool(
-        out,
-        "CidRange",
-        "cid_pool",
-        cid_pool,
-        lambda r: f"{{0x{r[0]:x},0x{r[1]:x},{r[2]},{r[3]}}}",
+    _emit_array(out, "std::uint16_t", "range_ref_pool", ref_pool, str, std_array=True)
+    _emit_array(
+        out, "std::uint64_t", "bitmap_pool", bitmap_pool, lambda w: f"0x{w:x}",
+        std_array=True,
     )
-    _emit_pool(
+    _emit_array(out, "std::uint32_t", "rank_pool", rank_pool, str, std_array=True)
+    _emit_array(
+        out, "std::uint16_t", "values_pool", values_pool, lambda v: f"0x{v:x}",
+        std_array=True,
+    )
+    _emit_array(
         out,
-        "UnicodeRange",
-        "unicode_pool",
-        unicode_pool,
-        lambda r: f"{{{r[0]},{r[1]},0x{r[2]:x}}}",
+        "AstralEntry",
+        "astral_pool",
+        astral_pool,
+        lambda a: f"{{{a[0]},0x{a[1]:x}}}",
+        std_array=True,
+    )
+    out.write("} // namespace\n\n} // namespace odr::internal::pdf::cid_data\n\n")
+
+    # The exported (header-declared) arrays are defined in the parent namespace
+    # and qualified with `cid_data::`, so a rename in the header fails to compile
+    # here rather than silently defining a new symbol.
+    out.write("namespace odr::internal::pdf {\n\n")
+
+    _emit_array(
+        out,
+        "cid_data::CidRange",
+        "cid_data::cid_range_pool",
+        cid_range_pool,
+        lambda r: f"{{0x{r[0]:x},{r[1]},{r[2]},{r[3]}}}",
+        std_array=True,
+        size_expr="cid_data::cid_range_pool_size",
     )
 
-    out.write("} // namespace\n\n")
-
-    out.write(f"const Collection collections[collection_count] = {{\n")
+    out.write(
+        "const std::array<cid_data::Collection, cid_data::collection_count>\n"
+        "    cid_data::collections = {{\n"
+    )
     for c in collections:
         out.write(
             f'    {{"{c["registry"]}", "{c["ordering"]}", '
-            f"unicode_pool + {c['uni_off']}, {c['uni_cnt']}}},\n"
+            f"cid_data::bitmap_pool.data() + {c['bitmap_off']}, "
+            f"cid_data::rank_pool.data() + {c['bitmap_off']}, "
+            f"{len(c['bitmap'])}, {c['max_cid']}, "
+            f"cid_data::values_pool.data() + {c['values_off']}, "
+            f"cid_data::astral_pool.data() + {c['astral_off']}, "
+            f"{len(c['astral'])}}},\n"
         )
-    out.write("};\n\n")
+    out.write("}};\n\n")
 
-    out.write(f"const PredefinedCMap predefined_cmaps[predefined_cmap_count] = {{\n")
+    out.write(
+        "const std::array<cid_data::PredefinedCMap, "
+        "cid_data::predefined_cmap_count>\n    cid_data::predefined_cmaps = {{\n"
+    )
     for c in cmaps:
         out.write(
-            f'    {{"{c["name"]}", codespace_pool + {c["cs_off"]}, {c["cs_cnt"]}, '
-            f"cid_pool + {c['cid_off']}, {c['cid_cnt']}, {c['collection']}}},\n"
+            f'    {{"{c["name"]}", cid_data::codespace_pool.data() + '
+            f"{c['cs_off']}, {c['cs_cnt']}, cid_data::range_ref_pool.data() + "
+            f"{c['ref_off']}, {c['ref_cnt']}, {c['collection']}}},\n"
         )
-    out.write("};\n\n")
+    out.write("}};\n\n")
 
-    out.write("} // namespace odr::internal::pdf::cid_data\n")
+    out.write("} // namespace odr::internal::pdf\n")
 
     with open(os.path.join(_OUT_DIR, "pdf_cid_data.cpp"), "w", encoding="ascii") as f:
         f.write(out.getvalue())

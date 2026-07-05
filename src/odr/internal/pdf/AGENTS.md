@@ -118,12 +118,18 @@ inline SVG per page. Experimental and not production-quality.
   mixes a 1-byte code (e.g. a space) among 2-byte CIDs stays aligned and selects
   the right glyph/advance. Extraction is driven by the `/ToUnicode` CMap (the
   common case — every Type0 font in the corpus carries one). When a composite
-  font has no `/ToUnicode`, a **predefined Unicode `/Encoding`** — the
-  `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly (`pdf_cid`), since those
-  character codes already are Unicode (big-endian); any
-  other case (`Identity-H/V`, or the legacy CJK code→CID CMaps) yields "no
-  Unicode" (not byte-garbage) until the legacy CID → Unicode tables land or —
-  for an embedded font program — the reverse map below recovers it.
+  font has no `/ToUnicode`, the named `/Encoding` still resolves the text
+  (`pdf_cid`, backed by the generated `pdf_cid_data` tables): a **predefined
+  Unicode `/Encoding`** — the `Uni*-UCS2/UTF16/UTF32` CMaps — is decoded directly
+  (those codes already are Unicode, big-endian), and a **legacy CJK CMap**
+  (`90ms-RKSJ-H`, `GBK-EUC-H`, `B5pc-H`, `KSC-EUC-H`, …) maps code → CID through
+  its own codespace + range tables and then CID → Unicode through its character
+  collection's table. When `/Encoding` is `Identity-H/V` (code == CID) or an
+  embedded CMap stream (`Font::codes()` already yields the CIDs), the collection
+  named by the descendant CIDFont's `/CIDSystemInfo` supplies the CID → Unicode
+  step directly. Only a genuinely unmapped code (a CMap we ship no tables for, an
+  `Identity` ordering, an unlisted CID) falls through to the embedded font's
+  reverse map below, and failing that yields "no Unicode" (not byte-garbage).
 - **Glyph metrics**: a font's advance widths are parsed —
   `/FirstChar` + `/Widths` + `/FontDescriptor` `/MissingWidth` for simple fonts,
   `/W` + `/DW` (the descendant CIDFont, both `c [w…]` and `c_first c_last w`
@@ -362,7 +368,8 @@ automated perceptual-diff gate is deferred; see gaps.)
 | `pdf_cmap.{hpp,cpp}`                   | `CMap`: 1-byte glyph → UTF-16 `bfchar` map + string translation |
 | `pdf_cmap_parser.{hpp,cpp}`            | `ToUnicode` CMap stream parser (`begincodespacerange`/`beginbfchar`/`beginbfrange`; only `bfchar` applied) |
 | `pdf_encoding.{hpp,cpp}`               | Simple-font `/Encoding` → Unicode: `BaseEncoding` tables, `/Differences` overlay (`Encoding`), glyph-name → Unicode via AGL + `uniXXXX`/`uXXXXXX` |
-| `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: the `Uni*-UCS2/UTF16/UTF32` CMaps decoded directly (no data tables); legacy CJK CMaps deferred (see `tools/pdf/generate_cid_data.py`) |
+| `pdf_cid.{hpp,cpp}`                    | Composite-font predefined `/Encoding` → Unicode: `Uni*-UCS2/UTF16/UTF32` decoded directly; legacy CJK CMaps mapped code → CID (interned-range binary search) → Unicode (collection bitmap rank); plus `cid_to_unicode(registry, ordering, cid)` for the `Identity-H/V` + embedded-stream path |
+| `pdf_cid_data.{hpp,cpp}`              | **Generated** (`tools/pdf/generate_cid_data.py`): the S3-packed legacy-CMap tables — interned code → CID ranges + per-CMap `uint16` index lists, and a per-collection CID → Unicode presence bitmap + rank index + `uint16` value array (astral escape). ~0.58 MB compiled |
 | `pdf_encoding_data.{hpp,cpp}`          | **Generated** (`tools/pdf/generate_encoding_data.py`): base-encoding tables + the Adobe Glyph List as a name-sorted array |
 | `util/math_util.hpp`                   | `util::math::Transform2D`: 2-D affine transform (PDF row-vector convention) — compose, point-apply, translation/scaling factories |
 | `pdf_graphics_operator.hpp`            | `GraphicsOperatorType` enum (full operator set) + `GraphicsOperator` (type + `Object` arguments) |
@@ -478,15 +485,16 @@ in the module — new diagnostics should follow the same pattern.
 no rasterized output: glyphs render via the embedded font (`@font-face`) and
 vector content via SVG — the browser draws everything. Because display
 is driven by the *glyph*, not the extracted Unicode, **text-extraction gaps
-degrade only selectability and search — never display.** Every deferred
-code → Unicode case (legacy CJK CID → Unicode tables, `Identity-H` without
-`/ToUnicode`) still renders correctly: all glyphs are re-encoded to the Private
-Use Area for display (the uniform re-encode, decision 2026-06-19), with the
-extracted Unicode carried separately to drive selection/search; runs with no
-recoverable Unicode are additionally marked non-extractable (`user-select: none`,
-`aria-hidden`). So the deferred CJK/legacy-CMap work is a *selectability* gap, not
-a rendering risk — such PDFs look right, their text just isn't selectable until
-the tables land.
+degrade only selectability and search — never display.** A residual
+code → Unicode case (a CMap we ship no tables for, an unlisted CID) still renders
+correctly: all glyphs are re-encoded to the Private Use Area for display (the
+uniform re-encode, decision 2026-06-19), with the extracted Unicode carried
+separately to drive selection/search; runs with no recoverable Unicode are
+additionally marked non-extractable (`user-select: none`, `aria-hidden`). So even
+an unshipped-CMap CJK PDF looks right — only its text selectability is affected.
+The common legacy-CJK selectability gap is now closed: the `pdf_cid_data` tables
+resolve the predefined legacy CMaps and the `/CIDSystemInfo` collections (see
+*Fonts / text mapping*).
 
 **Font handling is in-house, facts-vs-glyphs split.** No FontForge (pdf.js proves
 it unnecessary; it is a heavy build and no read-only library can inject the PUA
@@ -562,10 +570,15 @@ glyph, with the extracted Unicode carried separately for selection/search (see
   algorithmic `uniXXXX`/`uXXXXXX` forms, `Encoding::translate_string` with a base
   encoding, the Latin-1 upper half (WinAnsi/MacRoman), a `/Differences` override,
   and the WinAnsi-vs-Standard `0x27` divergence.
-- `test/src/internal/pdf/pdf_cid.cpp` — **assertion-based**, no fixtures:
+- `test/src/internal/pdf/pdf_cid.cpp` — **assertion-based**, no fixtures (the
+  vectors are derived from the Adobe CMap data by `tools/pdf` and frozen inline):
   `translate_predefined_cmap` over the predefined Unicode CMaps — `UCS2`/`UTF16`
-  (incl. a surrogate pair) and `UTF32` decoding, a `-V` writing-mode variant, and
-  the `nullopt` for `Identity-H` and the legacy CJK CMaps.
+  (incl. a surrogate pair) and `UTF32` decoding, a `-V` writing-mode variant — and
+  over the legacy CJK CMaps — a Shift-JIS (`90ms-RKSJ-H`, Adobe-Japan1) and an EUC
+  (`GBK-EUC-H`, Adobe-GB1) `code → CID → Unicode`, plus a mixed 1-/2-byte
+  codespace staying aligned; `cid_to_unicode` by `/CIDSystemInfo` collection
+  (`Adobe`/`Japan1`, incl. an astral escape and the unknown-collection/CID
+  `nullopt`); and the `nullopt` for `Identity-H` and an unshipped name.
 - `test/src/internal/util/math_util_test.cpp` — **assertion-based**, no fixtures:
   `Transform2D` point-apply (identity/translation/scaling), the ordered
   (row-vector) composition, and compose-then-apply ≡ sequential apply.
@@ -674,12 +687,18 @@ The next feature cluster — needs destinations from the page tree, little else.
   unindexed. Both are edge cases beyond the corpus seen so far.
 - **Linearized files** are not handled specially (the tail-first read usually
   still works, but hint streams are ignored).
-- **CMap coverage** — still open: the legacy CJK code→CID CMaps
-  (RKSJ/EUC/Big5/GBK/KSC) and their CID → Unicode tables (large external data;
-  the generator scaffolding in `tools/pdf/generate_cid_data.py` is landed, the
-  storage decision and lookup remain). Everything else is handled (`ToUnicode`,
-  simple `/Encoding` → AGL, composite via `/ToUnicode` / predefined Unicode CMaps
-  / embedded reverse map — see *What works*).
+- **CMap coverage** — the legacy CJK CMaps (RKSJ/EUC/Big5/GBK/KSC and friends,
+  ~130 across Adobe-Japan1/-GB1/-CNS1/-Korea1/-KR) now resolve: `pdf_cid_data`
+  (generated by `tools/pdf/generate_cid_data.py`, ~0.58 MB, the S3 packing —
+  interned code → CID ranges + per-collection CID → Unicode bitmaps) drives the
+  `code → CID → Unicode` lookup, and `/CIDSystemInfo` drives the CID → Unicode
+  half for `Identity-H/V`. (A visual walkthrough of the path and the tables lives
+  at [`docs/design/pdf-cjk-code-cid-unicode.html`](../../../../docs/design/pdf-cjk-code-cid-unicode.html).) Residual gaps: a *coverage-trimmed* shipset was
+  considered but not taken (all ~130 ship); the collections the archive excludes
+  (Adobe-Identity-0, -Manga1, deprecated Japan2) carry no legacy tables by design
+  (see the `generate_cid_data.py` header). Everything else is handled
+  (`ToUnicode`, simple `/Encoding` → AGL, composite via `/ToUnicode` / predefined
+  Unicode CMaps / embedded reverse map — see *What works*).
 - **Bidi & vertical writing** (deferred): RTL run reordering for the
   layout/selection order, and vertical writing mode (`Identity-V`/CJK — the
   `/W2`/`/DW2` vertical metrics and a perpendicular pen advance, which the
