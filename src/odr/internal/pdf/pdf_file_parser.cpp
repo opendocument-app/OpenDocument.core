@@ -33,7 +33,7 @@ IndirectObject FileParser::read_indirect_object() {
   // an indirect object whose body is itself a reference (`5 0 obj 12 0 R
   // endobj`): the body is followed by `endobj`/`stream`, so a digit here can
   // only be the generation of an `n g R`
-  result.object = m_parser.promote_indirect_reference(std::move(result.object));
+  m_parser.promote_indirect_reference(result.object);
 
   // the keyword may carry trailing whitespace (`endobj \n`) or a CR from a
   // CRLF line ending (`stream\r\n`), so compare against the trimmed token

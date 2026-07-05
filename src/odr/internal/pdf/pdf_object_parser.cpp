@@ -514,7 +514,7 @@ Dictionary ObjectParser::read_dictionary() {
     skip_whitespace();
     Object value = read_object();
     skip_whitespace();
-    value = promote_indirect_reference(std::move(value));
+    promote_indirect_reference(value);
 
     result.emplace(std::move(name.string), std::move(value));
   }
@@ -551,23 +551,23 @@ Object ObjectParser::read_object() {
   throw std::runtime_error("unknown object");
 }
 
-Object ObjectParser::promote_indirect_reference(Object value) {
+void ObjectParser::promote_indirect_reference(Object &value) {
   // The cursor sits just past `value` (trailing whitespace already skipped).
   // This is called only where a value cannot legitimately be followed by
   // another number — a dictionary value or an indirect-object body, which are
   // followed by the next key, `>>`, or `endobj`. A digit there can only be the
   // generation of an `n g R` indirect reference whose object number is `value`.
   if (!value.is_integer() || !peek_unsigned_integer()) {
-    return value;
+    return;
   }
+  const auto id = static_cast<UnsignedInteger>(value.as_integer());
   const UnsignedInteger gen = read_unsigned_integer();
   skip_whitespace();
   if (bumpc() != 'R') {
     throw std::runtime_error("expected 'R' to complete indirect reference");
   }
   skip_whitespace();
-  return Object(ObjectReference{static_cast<UnsignedInteger>(value.as_integer()),
-                                gen});
+  value = Object(ObjectReference{id, gen});
 }
 
 ObjectReference ObjectParser::read_object_reference() {
