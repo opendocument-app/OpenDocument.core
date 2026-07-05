@@ -310,6 +310,25 @@ std::string shared_form_xobject_mini_pdf() {
   return builder.trailer("/Root 1 0 R").build_classic();
 }
 
+/// A mini-PDF whose page defines a named colour space `/CS0` in its
+/// `/Resources /ColorSpace` and an image XObject `Im0` referencing it by name.
+/// The image is a 2x2 RGB raster carried as ASCIIHex so the source stays text.
+std::string named_colorspace_image_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /XObject << /Im0 5 0 R >> "
+              "/ColorSpace << /CS0 [/CalRGB << /WhitePoint [1 1 1] >>] >> >> "
+              "/Contents 4 0 R >>")
+      .stream_object("", "/Im0 Do")
+      .stream_object("/Type /XObject /Subtype /Image /Width 2 /Height 2 "
+                     "/BitsPerComponent 8 /ColorSpace /CS0 "
+                     "/Filter /ASCIIHexDecode",
+                     "FF000000FF000000FFFFFFFF>");
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
 } // namespace
 
 // A composite (Type0) font is recognized, its descendant CIDFont's
@@ -403,6 +422,24 @@ TEST(DocumentParser, form_xobject_cycle_is_represented_via_cache) {
   // Fm1 -> Fm0 closes the cycle: it resolves to the same cached element.
   ASSERT_NE(fm1->resources, nullptr);
   EXPECT_EQ(fm1->resources->x_object.at("Fm0"), fm0);
+}
+
+// An image XObject whose `/ColorSpace` is a name defined in the enclosing
+// `/Resources /ColorSpace` table resolves — the table is parsed before the
+// `/XObject` table and threaded into image parsing — and the raster is encoded
+// to PNG, rather than being dropped for an unresolved colour space.
+TEST(DocumentParser, image_named_colorspace_resolves_and_encodes) {
+  const std::string pdf = named_colorspace_image_mini_pdf();
+  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+  const std::unique_ptr<Document> document = parser.parse_document();
+
+  const Page *page = first_page(*document);
+  ASSERT_NE(page->resources, nullptr);
+  const XObject *image = page->resources->x_object.at("Im0");
+  ASSERT_NE(image, nullptr);
+  EXPECT_EQ(image->subtype, XObject::Subtype::image);
+  EXPECT_FALSE(image->image_data.empty());
+  EXPECT_EQ(image->image_mime, "image/png");
 }
 
 // A form XObject shared by two pages is parsed once: both pages' resources

@@ -656,6 +656,12 @@ Element *parse_page_or_pages(State &state, const ObjectReference &reference,
 // back the in-progress element, so the in-memory graph mirrors the file.
 Resources *parse_resources(State &state, const Object &object);
 
+/// A `ColorSpaceContext` whose `named` resolver looks a base/alternate space up
+/// in `resources`' (being-built) `/ColorSpace` table; a bare parser context
+/// (no `named` resolver) when `resources` is null.
+ColorSpaceContext make_color_space_context(DocumentParser &parser,
+                                           const Resources *resources);
+
 /// Read an integer image-dictionary entry (e.g. `/Width`), resolving an
 /// indirect reference, defaulting to `fallback`.
 std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
@@ -766,9 +772,11 @@ void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
 /// cannot yet hand off (JPXDecode, CCITTFaxDecode, JBIG2Decode) and unresolved
 /// colour spaces leave the bytes empty, so `Do` skips the image. A `/SMask` or
 /// `/Mask` on a JPEG base is ignored (decoding the JPEG to composite is out of
-/// scope).
+/// scope). `resources` supplies the enclosing `/ColorSpace` table so a `/CS…`
+/// named colour space resolves.
 void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
-                      const IndirectObject &object, XObject &x_object) {
+                      const IndirectObject &object, XObject &x_object,
+                      const Resources *resources) {
   Object filter;
   if (dictionary.has_key("Filter")) {
     filter = parser.deep_resolve_object_copy(dictionary["Filter"]);
@@ -779,13 +787,12 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   }
 
   // Resolve the raster parameters (a JPEG pass-through ignores them). The
-  // colour space resolves device spaces and inline Indexed/ICCBased arrays; a
-  // bare named resource space is out of scope here (no resource dictionary at
-  // parse time), so the raster path skips such an image.
+  // colour space resolves device spaces, inline Indexed/ICCBased arrays, and —
+  // via `resources` — a bare `/CS…` name into the enclosing `/ColorSpace`
+  // table.
   std::shared_ptr<ColorSpaceDef> color_space;
   if (dictionary.has_value("ColorSpace")) {
-    ColorSpaceContext context;
-    bind_parser_io(context, parser);
+    ColorSpaceContext context = make_color_space_context(parser, resources);
     color_space = parse_color_space(dictionary.get("ColorSpace"), context);
   }
   const std::int32_t width = image_int(parser, dictionary, "Width", 0);
@@ -823,7 +830,8 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   }
 }
 
-XObject *parse_x_object(State &state, const ObjectReference &reference) {
+XObject *parse_x_object(State &state, const ObjectReference &reference,
+                        const Resources *resources) {
   DocumentParser &parser = state.parser();
   Document &document = state.document();
 
@@ -858,7 +866,7 @@ XObject *parse_x_object(State &state, const ObjectReference &reference) {
     if (image_mask) {
       parse_stencil_mask(parser, dictionary, object, *x_object);
     } else {
-      parse_image_data(parser, dictionary, object, *x_object);
+      parse_image_data(parser, dictionary, object, *x_object, resources);
     }
     return x_object;
   }
@@ -906,11 +914,13 @@ ColorSpaceContext make_color_space_context(DocumentParser &parser,
                                            const Resources *resources) {
   ColorSpaceContext context;
   bind_parser_io(context, parser);
-  context.named =
-      [resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
-    const auto it = resources->color_space.find(name);
-    return it != resources->color_space.end() ? it->second : nullptr;
-  };
+  if (resources != nullptr) {
+    context.named =
+        [resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+      const auto it = resources->color_space.find(name);
+      return it != resources->color_space.end() ? it->second : nullptr;
+    };
+  }
   return context;
 }
 
@@ -1007,7 +1017,10 @@ std::shared_ptr<SoftMaskDef> parse_soft_mask(State &state,
   if (!dictionary.has_value("G") || !dictionary["G"].is_reference()) {
     return nullptr;
   }
-  XObject *group = parse_x_object(state, dictionary["G"].as_reference());
+  // The `/G` group is a form XObject carrying its own `/Resources`; any image
+  // inside it resolves its colour space against that, so no enclosing table.
+  XObject *group =
+      parse_x_object(state, dictionary["G"].as_reference(), nullptr);
   if (group == nullptr || group->subtype != XObject::Subtype::form) {
     return nullptr;
   }
@@ -1042,14 +1055,9 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
-  if (dictionary.has_value("XObject")) {
-    const Dictionary x_object_table =
-        parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
-    for (const auto &[key, value] : x_object_table) {
-      resources->x_object[key] = parse_x_object(state, value.as_reference());
-    }
-  }
-
+  // `/ColorSpace` is parsed before `/XObject`, `/Shading` and `/Pattern` so a
+  // named colour space any of them reference (an image's `/ColorSpace /CS…`, a
+  // shading's base space) is already in `resources->color_space`.
   if (dictionary.has_value("ColorSpace")) {
     const Dictionary color_space_table =
         parser.resolve_object_copy(dictionary["ColorSpace"]).as_dictionary();
@@ -1077,8 +1085,15 @@ Resources *parse_resources(State &state, const Object &object) {
     }
   }
 
-  // Shadings and patterns are parsed after `/ColorSpace` so a named colour
-  // space they reference is already in `resources->color_space`.
+  if (dictionary.has_value("XObject")) {
+    const Dictionary x_object_table =
+        parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
+    for (const auto &[key, value] : x_object_table) {
+      resources->x_object[key] =
+          parse_x_object(state, value.as_reference(), resources);
+    }
+  }
+
   if (dictionary.has_value("Shading")) {
     const Dictionary shading_table =
         parser.resolve_object_copy(dictionary["Shading"]).as_dictionary();
