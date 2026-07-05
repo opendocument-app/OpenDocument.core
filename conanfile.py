@@ -11,7 +11,7 @@ class OpenDocumentCoreConan(ConanFile):
     homepage = "https://opendocument.app/"
     description = "C++ library that translates office documents to HTML"
     topics = "open document", "openoffice xml", "open document reader"
-    license = "GPL 3.0"
+    license = "MPL-2.0"
 
     settings = "os", "arch", "compiler", "build_type"
     options = {
