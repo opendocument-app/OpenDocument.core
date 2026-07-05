@@ -3,8 +3,9 @@
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 #include <odr/internal/util/map_util.hpp>
 
+#include <odr/logger.hpp>
+
 #include <cstdint>
-#include <iostream>
 #include <optional>
 #include <unordered_map>
 
@@ -193,8 +194,9 @@ using char_type = std::streambuf::char_type;
 using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
 
-GraphicsOperatorParser::GraphicsOperatorParser(std::istream &in)
-    : m_parser(in) {}
+GraphicsOperatorParser::GraphicsOperatorParser(std::istream &in,
+                                               const Logger &logger)
+    : m_parser(in), m_logger{&logger} {}
 
 std::istream &GraphicsOperatorParser::in() { return m_parser.in(); }
 
@@ -255,7 +257,8 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
 
   result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
-    std::cerr << "unknown operator: " << operator_name << '\n';
+    ODR_DEBUG(*m_logger,
+              "pdf: unknown graphics operator '" + operator_name + "'");
   }
 
   // `BI <key val …> ID <bytes> EI` is one inline image (8.9.7). The key/value

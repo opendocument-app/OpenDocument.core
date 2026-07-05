@@ -15,9 +15,36 @@ void CMap::map_single(std::string code, std::u16string unicode) {
   m_map[std::move(code)] = std::move(unicode);
 }
 
-std::size_t CMap::code_length(const std::string &codes,
-                              const std::size_t pos) const {
-  const auto first = static_cast<std::uint8_t>(codes[pos]);
+void CMap::map_cid_char(std::string code, const std::uint32_t cid) {
+  m_cid_chars[std::move(code)] = cid;
+}
+
+void CMap::add_cid_range(const std::uint32_t low, const std::uint32_t high,
+                         const std::uint32_t base_cid,
+                         const std::size_t width) {
+  m_cid_ranges.push_back({low, high, base_cid, width});
+}
+
+std::optional<std::uint32_t>
+CMap::cid_for_code(const std::string_view code) const {
+  if (const auto it = m_cid_chars.find(std::string(code));
+      it != m_cid_chars.end()) {
+    return it->second;
+  }
+  std::uint32_t value = 0;
+  for (const char c : code) {
+    value = (value << 8) | static_cast<std::uint8_t>(c);
+  }
+  for (const CidRange &range : m_cid_ranges) {
+    if (range.width == code.size() && value >= range.low &&
+        value <= range.high) {
+      return range.base_cid + (value - range.low);
+    }
+  }
+  return std::nullopt;
+}
+
+std::size_t CMap::code_width(const std::uint8_t first) const {
   for (const CodespaceRange &range : m_codespace_ranges) {
     if (first >= static_cast<std::uint8_t>(range.low.front()) &&
         first <= static_cast<std::uint8_t>(range.high.front())) {
@@ -28,6 +55,11 @@ std::size_t CMap::code_length(const std::string &codes,
   // behaviour, which is also correct for the simple-font ToUnicode CMaps that
   // omit the codespace declaration).
   return 1;
+}
+
+std::size_t CMap::code_length(const std::string &codes,
+                              const std::size_t pos) const {
+  return code_width(static_cast<std::uint8_t>(codes[pos]));
 }
 
 std::string CMap::translate_string(const std::string &codes) const {

@@ -32,6 +32,8 @@ private:
   void read_codespacerange(std::uint32_t n, CMap &cmap);
   void read_bfchar(std::uint32_t n, CMap &cmap);
   void read_bfrange(std::uint32_t n, CMap &cmap);
+  void read_cidchar(std::uint32_t n, CMap &cmap);
+  void read_cidrange(std::uint32_t n, CMap &cmap);
 };
 
 } // namespace odr::internal::pdf

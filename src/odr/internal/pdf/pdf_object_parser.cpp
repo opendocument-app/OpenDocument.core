@@ -368,7 +368,38 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
           string += three_octet_to_char(octet[0], octet[1], octet[2]);
         } else {
           bumpc();
-          string += c;
+          // Reverse-solidus escapes (ISO 32000-1 7.3.4.2, Table 3): the control
+          // escapes translate to their byte value, a backslash before an
+          // end-of-line marker is a line continuation (both elided), and any
+          // other escaped character (including `(`, `)`, `\`) stands for
+          // itself.
+          switch (c) {
+          case 'n':
+            string += '\n';
+            break;
+          case 'r':
+            string += '\r';
+            break;
+          case 't':
+            string += '\t';
+            break;
+          case 'b':
+            string += '\b';
+            break;
+          case 'f':
+            string += '\f';
+            break;
+          case '\n':
+            break;
+          case '\r':
+            if (geti() == '\n') {
+              bumpc();
+            }
+            break;
+          default:
+            string += c;
+            break;
+          }
         }
         continue;
       }

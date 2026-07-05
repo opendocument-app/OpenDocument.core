@@ -228,6 +228,58 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
   }
 }
 
+void CMapParser::read_cidchar(const std::uint32_t n, CMap &cmap) {
+  m_parser.skip_whitespace();
+  for (std::uint32_t i = 0; i < n; ++i) {
+    std::string code = m_parser.read_object().as_string();
+    m_parser.skip_whitespace();
+    const Object cid = m_parser.read_object();
+    m_parser.skip_whitespace();
+
+    if (!valid_code_width(code.size()) || !cid.is_integer()) {
+      ODR_WARNING(*m_logger, "pdf: skipping malformed cidchar entry (code "
+                                 << code.size() << " bytes)");
+      continue; // skip a malformed mapping, keep the rest of the CMap
+    }
+    cmap.map_cid_char(std::move(code),
+                      static_cast<std::uint32_t>(cid.as_integer()));
+  }
+}
+
+void CMapParser::read_cidrange(const std::uint32_t n, CMap &cmap) {
+  m_parser.skip_whitespace();
+  for (std::uint32_t i = 0; i < n; ++i) {
+    std::string low = m_parser.read_object().as_string();
+    m_parser.skip_whitespace();
+    std::string high = m_parser.read_object().as_string();
+    m_parser.skip_whitespace();
+    const Object cid = m_parser.read_object();
+    m_parser.skip_whitespace();
+
+    if (low.size() != high.size() || !valid_code_width(low.size()) ||
+        !cid.is_integer()) {
+      ODR_WARNING(*m_logger, "pdf: skipping out-of-spec cidrange (low "
+                                 << low.size() << " bytes, high " << high.size()
+                                 << " bytes)");
+      continue; // skip an out-of-spec range, keep parsing the rest
+    }
+    const std::uint32_t low_code = code_to_uint(low);
+    const std::uint32_t high_code = code_to_uint(high);
+    if (high_code < low_code) {
+      ODR_WARNING(*m_logger, "pdf: skipping reversed cidrange (low 0x"
+                                 << std::hex << low_code << ", high 0x"
+                                 << high_code << ")");
+      continue; // a reversed range would map codes to nonsense CIDs
+    }
+    // Unlike a `bfrange`, a `cidrange` commonly spans the whole 2-byte code
+    // space (the identity block), so it is stored as a range rather than
+    // materialized code-by-code; no per-range span cap is needed.
+    cmap.add_cid_range(low_code, high_code,
+                       static_cast<std::uint32_t>(cid.as_integer()),
+                       low.size());
+  }
+}
+
 CMap CMapParser::parse_cmap() {
   CMap cmap;
 
@@ -253,6 +305,21 @@ CMap CMapParser::parse_cmap() {
         read_bfchar(last_int, cmap);
       } else if (command == "beginbfrange") {
         read_bfrange(last_int, cmap);
+      } else if (command == "begincidchar") {
+        read_cidchar(last_int, cmap);
+      } else if (command == "begincidrange") {
+        read_cidrange(last_int, cmap);
+      } else if (command == "usecmap") {
+        // `/BaseCMap usecmap`: this stream inherits another CMap's codespace
+        // and mappings (ISO 32000-1 9.7.5.3). We do not resolve the base, so
+        // any codespace declared locally is (potentially) an override-only
+        // subset; flag it so it is no longer treated as authoritative and
+        // callers fall back to the ToUnicode codespace / fixed width instead of
+        // mis-splitting the inherited (e.g. 2-byte) codes.
+        cmap.mark_inherits_external_cmap();
+        ODR_WARNING(*m_logger,
+                    "pdf: unresolved 'usecmap'; local codespace not treated as "
+                    "authoritative");
       }
     }
   }
