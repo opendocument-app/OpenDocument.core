@@ -652,6 +652,17 @@ Link annotations (`/URI` + internal `/GoTo`) already land — see *What works*.
   *interactivity* stays out of scope (read-only).
 - **Remote/launch link actions** (`/GoToR`, `/Launch`) and destination scroll
   position/zoom (the internal-link handler uses only the target page).
+- **Link overlays vs. text selection**: the `<a>` overlays sit above the `.sel`
+  text, so a mousedown over a link starts navigation instead of a selection —
+  links are clickable but text under them cannot be selected, and there is no
+  hover cursor issue since native `:hover` applies. A JS workaround existed
+  (overlays `pointer-events:none` so mousedown falls through to `.sel`; a
+  once-per-document click handler re-enabled hit-testing via an `.lkhit` class,
+  `elementFromPoint`, and forwarded the click; a rAF-throttled `mousemove`
+  restored the pointer cursor via an `.lkc` class) but was rolled back as too
+  involved (reverted commit `5cfa8a09`, reachable for later). Options to
+  revisit: (a) reinstate that JS approach; (b) a CSS-only route if one exists;
+  (c) leave overlays clickable-only and accept no under-link selection.
 - **Document outline** (`/Outlines`) → navigation anchors/sidebar.
 - **Optional content groups** (layers): honor default visibility; no toggle UI.
 - **Output scaling**: monolithic HTML vs. per-page lazy loading for large
