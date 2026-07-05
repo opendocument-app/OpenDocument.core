@@ -57,6 +57,242 @@ std::string svg_matrix(const util::math::Transform2D &m) {
   return std::move(f).str();
 }
 
+/// One resolved link annotation, positioned in page-box points (y-down).
+struct LinkOut {
+  double left{0};
+  double top{0};
+  double width{0};
+  double height{0};
+  std::string href; ///< external URI or internal "#pN"; already attr-escaped
+  bool internal{false}; ///< true for a `#pN` target (needs `target="_self"`)
+};
+
+/// Resolves a link annotation's destination to a page: a `page-object ->
+/// 0-based index` map plus the catalog's named-destination table (`/Dests`
+/// dictionary and the `/Names /Dests` name tree, ISO 32000-1 12.3.2.3).
+struct LinkResolver {
+  pdf::DocumentParser &parser;
+  std::map<pdf::ObjectReference, std::size_t> page_index;
+  std::map<std::string, pdf::Object> named_dests; ///< name -> raw dest value
+
+  /// A destination (a name/string, a `[page …]` array, or a dict with `/D`)
+  /// to its target page index, if it resolves to a known page.
+  [[nodiscard]] std::optional<std::size_t> resolve_dest_page(pdf::Object dest) {
+    dest = parser.resolve_object_copy(std::move(dest));
+    if (dest.is_string() || dest.is_name()) {
+      const std::string name =
+          dest.is_string() ? dest.as_string() : dest.as_name();
+      const auto it = named_dests.find(name);
+      if (it == named_dests.end()) {
+        return std::nullopt;
+      }
+      dest = parser.resolve_object_copy(it->second);
+    }
+    if (dest.is_dictionary() && dest.as_dictionary().has_value("D")) {
+      dest = parser.resolve_object_copy(dest.as_dictionary().get("D"));
+    }
+    if (!dest.is_array() || dest.as_array().empty()) {
+      return std::nullopt;
+    }
+    const pdf::Object &target = dest.as_array()[0];
+    if (!target.is_reference()) {
+      return std::nullopt;
+    }
+    const auto it = page_index.find(target.as_reference());
+    return it != page_index.end() ? std::optional<std::size_t>(it->second)
+                                  : std::nullopt;
+  }
+};
+
+/// Walk a destination name tree (`Names` leaf pairs, `Kids` intermediates),
+/// depth-guarded, collecting `name -> dest` into `out`.
+void collect_dest_name_tree(pdf::DocumentParser &parser,
+                            const pdf::Object &node_ref,
+                            std::map<std::string, pdf::Object> &out,
+                            const int depth) {
+  if (depth > 50) {
+    return;
+  }
+  const pdf::Object node = parser.resolve_object_copy(node_ref);
+  if (!node.is_dictionary()) {
+    return;
+  }
+  const pdf::Dictionary &dictionary = node.as_dictionary();
+  if (dictionary.has_value("Names")) {
+    const pdf::Array names =
+        parser.resolve_object_copy(dictionary.get("Names")).as_array();
+    for (std::size_t i = 0; i + 1 < names.size(); i += 2) {
+      const pdf::Object key = parser.resolve_object_copy(names[i]);
+      if (key.is_string()) {
+        out.emplace(key.as_string(), names[i + 1]);
+      }
+    }
+  }
+  if (dictionary.has_value("Kids")) {
+    const pdf::Array kids =
+        parser.resolve_object_copy(dictionary.get("Kids")).as_array();
+    for (const pdf::Object &kid : kids) {
+      collect_dest_name_tree(parser, kid, out, depth + 1);
+    }
+  }
+}
+
+/// Build the link resolver once per document: the page-index map and the
+/// catalog's named destinations.
+LinkResolver build_link_resolver(pdf::DocumentParser &parser,
+                                 const pdf::Document &document,
+                                 const std::vector<pdf::Page *> &pages) {
+  LinkResolver resolver{parser, {}, {}};
+  for (std::size_t i = 0; i < pages.size(); ++i) {
+    resolver.page_index.emplace(pages[i]->object_reference, i);
+  }
+  if (document.catalog != nullptr && document.catalog->object.is_dictionary()) {
+    const pdf::Dictionary &catalog = document.catalog->object.as_dictionary();
+    if (catalog.has_value("Dests")) {
+      const pdf::Object dests =
+          parser.resolve_object_copy(catalog.get("Dests"));
+      if (dests.is_dictionary()) {
+        for (const auto &[key, value] : dests.as_dictionary()) {
+          resolver.named_dests.emplace(key, value);
+        }
+      }
+    }
+    if (catalog.has_value("Names")) {
+      const pdf::Object names =
+          parser.resolve_object_copy(catalog.get("Names"));
+      if (names.is_dictionary() && names.as_dictionary().has_value("Dests")) {
+        collect_dest_name_tree(parser, names.as_dictionary().get("Dests"),
+                               resolver.named_dests, 0);
+      }
+    }
+  }
+  return resolver;
+}
+
+/// Whether a `/URI` action target is safe to emit as an `href`. A PDF is
+/// untrusted input, so active schemes (`javascript:`, `data:`, `vbscript:`, …)
+/// must not become a clickable link that executes in the generated document.
+/// We allow only the common navigable schemes plus scheme-less (relative)
+/// references. Embedded ASCII whitespace/control bytes are ignored when reading
+/// the scheme, matching browsers that strip them before dispatch (so
+/// `java\tscript:` cannot slip through).
+bool is_safe_uri(std::string_view uri) {
+  std::string scheme;
+  for (const char ch : uri) {
+    const auto c = static_cast<unsigned char>(ch);
+    if (ch == ':') {
+      for (char &s : scheme) {
+        s = static_cast<char>(std::tolower(static_cast<unsigned char>(s)));
+      }
+      static constexpr std::string_view allowed[] = {"http", "https", "mailto",
+                                                     "ftp",  "ftps",  "tel"};
+      return std::find(std::begin(allowed), std::end(allowed), scheme) !=
+             std::end(allowed);
+    }
+    if (ch == '/' || ch == '?' || ch == '#') {
+      return true; // path/query/fragment reached first -> relative reference
+    }
+    if (c <= 0x20) {
+      continue; // browsers strip embedded whitespace/control bytes
+    }
+    if (std::isalnum(c) != 0 || ch == '+' || ch == '-' || ch == '.') {
+      scheme.push_back(ch);
+      continue;
+    }
+    return true; // not a valid scheme character -> relative reference
+  }
+  return true; // no ':' -> relative reference
+}
+
+/// Resolve a page's `/Link` annotations (ISO 32000-1 12.5.6.5) to positioned
+/// overlays: a `/URI` action becomes an external link, a `/GoTo` action or a
+/// direct `/Dest` an internal `#pN` link. `to_box` maps PDF user space to the
+/// page box (points, y-down).
+std::vector<LinkOut> collect_page_links(const pdf::Page &page,
+                                        const util::math::Transform2D &to_box,
+                                        LinkResolver &resolver) {
+  std::vector<LinkOut> links;
+  pdf::DocumentParser &parser = resolver.parser;
+  for (const pdf::Annotation *annotation : page.annotations) {
+    if (annotation == nullptr || !annotation->object.is_dictionary()) {
+      continue;
+    }
+    const pdf::Dictionary &dictionary = annotation->object.as_dictionary();
+    const pdf::Object subtype =
+        parser.resolve_object_copy(dictionary.get("Subtype"));
+    if (!subtype.is_name() || subtype.as_name() != "Link") {
+      continue;
+    }
+    const pdf::Object rect = parser.resolve_object_copy(dictionary.get("Rect"));
+    if (!rect.is_array() || rect.as_array().size() < 4) {
+      continue;
+    }
+    const std::vector<double> r = rect.as_reals();
+
+    std::string href;
+    bool internal = false;
+    if (dictionary.has_value("A")) {
+      const pdf::Object action =
+          parser.resolve_object_copy(dictionary.get("A"));
+      if (action.is_dictionary()) {
+        const pdf::Dictionary &a = action.as_dictionary();
+        const pdf::Object s = parser.resolve_object_copy(a.get("S"));
+        const std::string kind = s.is_name() ? s.as_name() : "";
+        if (kind == "URI" && a.has_value("URI")) {
+          const pdf::Object uri = parser.resolve_object_copy(a.get("URI"));
+          if (uri.is_string() && is_safe_uri(uri.as_string())) {
+            href = uri.as_string();
+          }
+        } else if (kind == "GoTo" && a.has_value("D")) {
+          if (const auto index = resolver.resolve_dest_page(a.get("D"))) {
+            href = "#p" + std::to_string(*index + 1);
+            internal = true;
+          }
+        }
+      }
+    }
+    if (href.empty() && dictionary.has_value("Dest")) {
+      if (const auto index =
+              resolver.resolve_dest_page(dictionary.get("Dest"))) {
+        href = "#p" + std::to_string(*index + 1);
+        internal = true;
+      }
+    }
+    if (href.empty()) {
+      continue;
+    }
+
+    const std::array<double, 2> p0 = to_box.apply(r[0], r[1]);
+    const std::array<double, 2> p1 = to_box.apply(r[2], r[3]);
+    LinkOut link;
+    link.left = std::min(p0[0], p1[0]);
+    link.top = std::min(p0[1], p1[1]);
+    link.width = std::abs(p1[0] - p0[0]);
+    link.height = std::abs(p1[1] - p0[1]);
+    link.href = escape_attribute(std::move(href));
+    link.internal = internal;
+    links.push_back(std::move(link));
+  }
+  return links;
+}
+
+/// Write a page's link overlays as absolutely-positioned `<a>` elements (in
+/// page-box points, matching the text layer's unit).
+void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
+  for (const LinkOut &link : links) {
+    std::ostringstream a;
+    // Internal `#pN` links must override the document's `<base
+    // target="_blank">` so they scroll within the rendered PDF instead of
+    // opening a new copy.
+    a << "<a class=\"lk\" href=\"" << link.href << '"'
+      << (link.internal ? " target=\"_self\"" : "")
+      << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
+      << "pt;width:" << round2(link.width)
+      << "pt;height:" << round2(link.height) << "pt\"></a>";
+    out.write_raw(std::move(a).str());
+  }
+}
+
 /// Clamp a colour component in [0, 1] to an 8-bit channel value.
 std::int32_t to255(const double v) {
   return static_cast<std::int32_t>(
@@ -1006,6 +1242,7 @@ public:
     std::vector<VisItem> vis_items;
     std::vector<SelLineOut> sel_lines;
     std::string clip_defs;
+    std::vector<LinkOut> links;
   };
 
   HtmlResources write_document_dual_layer(HtmlWriter &out) const {
@@ -1016,6 +1253,7 @@ public:
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
     const std::unique_ptr<pdf::Document> document = parser.parse_document();
     const std::vector<pdf::Page *> pages = document->collect_pages();
+    LinkResolver link_resolver = build_link_resolver(parser, *document, pages);
 
     AtomicStyles styles;
     std::vector<DualPageOut> pages_out;
@@ -1072,6 +1310,7 @@ public:
       page_out.classes = pb.classes;
       page_out.width = width;
       page_out.height = height;
+      page_out.links = collect_page_links(*page, to_box, link_resolver);
 
       std::string stream;
       for (const auto &ref : page->contents_reference) {
@@ -1436,9 +1675,13 @@ public:
     };
 
     out.write_body_begin();
+    std::size_t page_number = 0;
     for (const DualPageOut &page : pages_out) {
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_class(page.classes));
+      out.write_element_begin(
+          "div",
+          HtmlElementOptions()
+              .set_class(page.classes)
+              .set_extra(R"(id="p)" + std::to_string(++page_number) + R"(")"));
 
       // Visual layer: paint-order graphics and unselectable glyphs.
       out.write_element_begin("div",
@@ -1454,6 +1697,9 @@ public:
         write_sel_line(line);
       }
       out.write_element_end("div"); // .sel
+
+      // Link overlays on top so they stay clickable.
+      write_page_links(out, page.links);
 
       out.write_element_end("div"); // .p
     }
@@ -1514,6 +1760,7 @@ public:
     double height{0};
     std::vector<SingleItem> items;
     std::string clip_defs;
+    std::vector<LinkOut> links;
   };
 
   HtmlResources write_document_single_layer(HtmlWriter &out) const {
@@ -1524,6 +1771,7 @@ public:
     pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
     const std::unique_ptr<pdf::Document> document = parser.parse_document();
     const std::vector<pdf::Page *> pages = document->collect_pages();
+    LinkResolver link_resolver = build_link_resolver(parser, *document, pages);
 
     // ---- Font registration ------------------------------------------------
     // A real-Unicode scalar gets a cmap entry only inside the BMP and outside
@@ -1662,6 +1910,7 @@ public:
       page_out.classes = pb.classes;
       page_out.width = width;
       page_out.height = height;
+      page_out.links = collect_page_links(page, to_box, link_resolver);
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
@@ -1950,11 +2199,16 @@ public:
     };
 
     out.write_body_begin();
+    std::size_t page_number = 0;
     for (const SinglePageOut &page : pages_out) {
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_class(page.classes));
+      out.write_element_begin(
+          "div",
+          HtmlElementOptions()
+              .set_class(page.classes)
+              .set_extra(R"(id="p)" + std::to_string(++page_number) + R"(")"));
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
                        write_line);
+      write_page_links(out, page.links);
       out.write_element_end("div");
     }
     out.write_body_end();
@@ -2195,6 +2449,8 @@ public:
     // SVG overlay covering the page box (visual graphics layer).
     out.out() << ".s{position:absolute;left:0;top:0;width:100%;height:100%;"
                  "overflow:hidden;pointer-events:none}";
+    // Link annotation overlays (absolutely positioned in page-box points).
+    out.out() << ".lk{position:absolute;transform-origin:0 0}";
     out.out() << font_faces;
     out.out() << font_styles;
     styles.write_rules(out.out());

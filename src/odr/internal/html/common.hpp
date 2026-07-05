@@ -35,6 +35,10 @@ private:
 
 std::string escape_text(std::string text);
 
+/// Escape a string for use as an HTML double-quoted attribute value (`&`, `"`,
+/// `<`, `>`). Unlike `escape_text`, it leaves leading/trailing spaces intact.
+std::string escape_attribute(std::string value);
+
 std::string color(const Color &color);
 
 std::string file_to_url(const std::string &file, const std::string &mime_type);
