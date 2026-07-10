@@ -265,6 +265,47 @@ set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
 file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
 set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
 
+# Resolve the on-disk location of a dependency's bundled data files.
+#
+# Historically these paths (FONTCONFIG_DATA_PATH, POPPLER_DATA_PATH, ...) had to
+# be injected from outside via `-D...=` — our conanfile.py bridges them from the
+# dependency runenv. Any consumer that builds odrcore without that bridge left
+# the variable empty, and `file(COPY "${empty}/" ...)` degraded to `file(COPY
+# "/" ...)`, i.e. an attempt to recursively copy the whole root filesystem (see
+# issue #599). This resolver keeps the injected value as the primary source but
+# otherwise derives the path from the conan `<pkg>_PACKAGE_FOLDER_<CONFIG>`
+# variable exposed by find_package(), so find_package() alone is sufficient. It
+# fails fast with an actionable message instead of copying "/".
+#
+#   out_var  variable to populate with the resolved absolute path
+#   injected value of the externally-injected path variable (may be empty)
+#   pkg      conan package/prefix (e.g. fontconfig, poppler-data, libmagic)
+#   subpath  location of the data relative to the package folder
+function(odr_resolve_data_path out_var injected pkg subpath)
+    if (injected)
+        if (NOT EXISTS "${injected}")
+            message(FATAL_ERROR
+                    "ODR_BUNDLE_ASSETS is ON but the injected data path for '${pkg}' "
+                    "does not exist: '${injected}'.")
+        endif ()
+        set(${out_var} "${injected}" PARENT_SCOPE)
+        return()
+    endif ()
+
+    string(TOUPPER "${CMAKE_BUILD_TYPE}" _config)
+    set(_folder "${${pkg}_PACKAGE_FOLDER_${_config}}")
+    if (_folder AND EXISTS "${_folder}/${subpath}")
+        set(${out_var} "${_folder}/${subpath}" PARENT_SCOPE)
+        return()
+    endif ()
+
+    message(FATAL_ERROR
+            "ODR_BUNDLE_ASSETS is ON but the data path for '${pkg}' could not be "
+            "resolved. Provide it explicitly (e.g. via the matching -D...=<path> "
+            "variable) or build through the conan recipe. Tried the injected value "
+            "and '${_folder}/${subpath}'.")
+endfunction()
+
 if (ODR_WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     find_package(poppler REQUIRED)
@@ -284,6 +325,10 @@ if (ODR_WITH_PDF2HTMLEX)
     )
 
     if (ODR_BUNDLE_ASSETS)
+        odr_resolve_data_path(FONTCONFIG_DATA_PATH "${FONTCONFIG_DATA_PATH}" fontconfig "res/etc/fonts")
+        odr_resolve_data_path(POPPLER_DATA_PATH "${POPPLER_DATA_PATH}" poppler-data "share/poppler")
+        odr_resolve_data_path(PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}" pdf2htmlex "share/pdf2htmlEX")
+
         set(ODR_BUILD_FONTCONFIG_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/fontconfig")
         set(ODR_BUILD_POPPLER_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/poppler")
         set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/pdf2htmlex")
@@ -337,6 +382,8 @@ if (ODR_WITH_LIBMAGIC)
     )
 
     if (ODR_BUNDLE_ASSETS)
+        odr_resolve_data_path(LIBMAGIC_DATABASE_PATH "${LIBMAGIC_DATABASE_PATH}" libmagic "res/magic.mgc")
+
         set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${ODR_BUILD_ODR_DATA_PATH}/magic.mgc")
 
         file(COPY_FILE "${LIBMAGIC_DATABASE_PATH}" "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}")
