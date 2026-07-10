@@ -292,18 +292,25 @@ function(odr_resolve_data_path out_var injected pkg subpath)
         return()
     endif ()
 
-    string(TOUPPER "${CMAKE_BUILD_TYPE}" _config)
-    set(_folder "${${pkg}_PACKAGE_FOLDER_${_config}}")
-    if (_folder AND EXISTS "${_folder}/${subpath}")
-        set(${out_var} "${_folder}/${subpath}" PARENT_SCOPE)
-        return()
-    endif ()
+    # `CMAKE_BUILD_TYPE` is empty for multi-config generators (Ninja Multi-Config,
+    # Xcode, ...), so try every candidate configuration for which CMakeDeps may
+    # have emitted a `<pkg>_PACKAGE_FOLDER_<CONFIG>` variable.
+    set(_configs ${CMAKE_BUILD_TYPE} ${CMAKE_CONFIGURATION_TYPES}
+            Release RelWithDebInfo Debug MinSizeRel)
+    foreach (_config IN LISTS _configs)
+        string(TOUPPER "${_config}" _config)
+        set(_folder "${${pkg}_PACKAGE_FOLDER_${_config}}")
+        if (_folder AND EXISTS "${_folder}/${subpath}")
+            set(${out_var} "${_folder}/${subpath}" PARENT_SCOPE)
+            return()
+        endif ()
+    endforeach ()
 
     message(FATAL_ERROR
             "ODR_BUNDLE_ASSETS is ON but the data path for '${pkg}' could not be "
             "resolved. Provide it explicitly (e.g. via the matching -D...=<path> "
             "variable) or build through the conan recipe. Tried the injected value "
-            "and '${_folder}/${subpath}'.")
+            "and '<${pkg}_PACKAGE_FOLDER_<CONFIG>>/${subpath}'.")
 endfunction()
 
 if (ODR_WITH_PDF2HTMLEX)
