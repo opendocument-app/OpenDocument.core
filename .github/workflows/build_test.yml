@@ -95,6 +95,7 @@ jobs:
           -DODR_WITH_PDF2HTMLEX=ON
           -DODR_WITH_WVWARE=ON
           -DODR_WITH_LIBMAGIC=ON
+          -DODR_BUNDLE_ASSETS=ON
 
       - name: cmake
         if: runner.os == 'Windows'
