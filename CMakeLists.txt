@@ -20,7 +20,7 @@ option(WITH_LIBMAGIC "Deprecated: `ODR_WITH_WVWARE` instead! Build with libmagic
 option(ODR_WITH_PDF2HTMLEX "Build with pdf2htmlEX" "${WITH_PDF2HTMLEX}")
 option(ODR_WITH_WVWARE "Build with wvWare" "${WITH_WVWARE}")
 option(ODR_WITH_LIBMAGIC "Build with libmagic" "${WITH_LIBMAGIC}")
-option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" ON)
+option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 
 include(GNUInstallDirs)
 
@@ -265,6 +265,30 @@ set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
 file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
 set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
 
+# Validate an injected data-file path before it is used to bundle assets.
+#
+# These paths (FONTCONFIG_DATA_PATH, POPPLER_DATA_PATH, ...) are consumed but
+# never discovered by CMake — they must be injected from outside via `-D...=`;
+# our conanfile.py bridges them from the dependency runenv. A consumer that
+# builds odrcore without that bridge left the variable empty, and
+# `file(COPY "${empty}/" ...)` degraded to `file(COPY "/" ...)`, i.e. an attempt
+# to recursively copy the whole root filesystem (see issue #599). This guard
+# fails fast with an actionable message instead of copying "/".
+#
+#   path  value of the externally-injected path variable (may be empty)
+#   name  name of that variable, for the diagnostic
+function(odr_require_data_path path name)
+    if (NOT path)
+        message(FATAL_ERROR
+                "ODR_BUNDLE_ASSETS is ON but ${name} is not set. Provide it "
+                "explicitly (e.g. -D${name}=<path>) or build through the conan "
+                "recipe, or disable bundling with -DODR_BUNDLE_ASSETS=OFF.")
+    endif ()
+    if (NOT EXISTS "${path}")
+        message(FATAL_ERROR "${name} points to a path that does not exist: '${path}'.")
+    endif ()
+endfunction()
+
 if (ODR_WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     find_package(poppler REQUIRED)
@@ -284,6 +308,10 @@ if (ODR_WITH_PDF2HTMLEX)
     )
 
     if (ODR_BUNDLE_ASSETS)
+        odr_require_data_path("${FONTCONFIG_DATA_PATH}" FONTCONFIG_DATA_PATH)
+        odr_require_data_path("${POPPLER_DATA_PATH}" POPPLER_DATA_PATH)
+        odr_require_data_path("${PDF2HTMLEX_DATA_PATH}" PDF2HTMLEX_DATA_PATH)
+
         set(ODR_BUILD_FONTCONFIG_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/fontconfig")
         set(ODR_BUILD_POPPLER_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/poppler")
         set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/pdf2htmlex")
@@ -337,6 +365,8 @@ if (ODR_WITH_LIBMAGIC)
     )
 
     if (ODR_BUNDLE_ASSETS)
+        odr_require_data_path("${LIBMAGIC_DATABASE_PATH}" LIBMAGIC_DATABASE_PATH)
+
         set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${ODR_BUILD_ODR_DATA_PATH}/magic.mgc")
 
         file(COPY_FILE "${LIBMAGIC_DATABASE_PATH}" "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}")
