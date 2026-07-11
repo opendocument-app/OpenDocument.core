@@ -25,13 +25,15 @@ target_include_directories(back_translate
         ../src
 )
 
-add_executable(server src/server.cpp)
-target_link_libraries(server
-        PRIVATE
-        odr
-        httplib::httplib
-)
-target_include_directories(server
-        PRIVATE
-        ../src
-)
+if (ODR_WITH_HTTP_SERVER)
+    add_executable(server src/server.cpp)
+    target_link_libraries(server
+            PRIVATE
+            odr
+            httplib::httplib
+    )
+    target_include_directories(server
+            PRIVATE
+            ../src
+    )
+endif ()
