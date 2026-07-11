@@ -20,6 +20,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_pdf2htmlEX": [True, False],
         "with_wvWare": [True, False],
         "with_libmagic": [True, False],
+        "with_http_server": [True, False],
         "bundle_assets": [True, False],
     }
     default_options = {
@@ -28,6 +29,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_pdf2htmlEX": True,
         "with_wvWare": True,
         "with_libmagic": True,
+        "with_http_server": True,
         "bundle_assets": False,
     }
 
@@ -52,7 +54,8 @@ class OpenDocumentCoreConan(ConanFile):
             self.requires("pdf2htmlex/0.18.8.rc1-odr-git-732fd68")
         if self.options.get_safe("with_wvWare", False):
             self.requires("wvware/1.2.9-odr")
-        self.requires("cpp-httplib/0.16.3")
+        if self.options.get_safe("with_http_server", False):
+            self.requires("cpp-httplib/0.16.3")
         self.requires("argon2/20190702-odr")
         if self.options.get_safe("with_libmagic", False):
             self.requires("libmagic/5.45")
@@ -75,6 +78,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
         tc.variables["ODR_WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
         tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
+        tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
 
         # Get runenv info, exported by package_info() of dependencies

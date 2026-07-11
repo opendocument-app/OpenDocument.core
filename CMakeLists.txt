@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(ODR_TEST "enable tests" OFF)
 option(ODR_CLI "enable command line interface" ON)
+option(ODR_WITH_HTTP_SERVER "Build the HTTP server (requires cpp-httplib)" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 option(WITH_PDF2HTMLEX "Deprecated: `ODR_WITH_PDF2HTMLEX` instead! Build with pdf2htmlEX" ON)
 option(WITH_WVWARE "Deprecated: `ODR_WITH_WVWARE` instead! Build with wvWare" ON)
@@ -55,7 +56,6 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
-find_package(httplib REQUIRED)
 find_package(argon2 REQUIRED)
 
 include(FetchContent)
@@ -89,7 +89,6 @@ set(ODR_SOURCE_FILES
         "src/odr/filesystem.cpp"
         "src/odr/global_params.cpp"
         "src/odr/html.cpp"
-        "src/odr/http_server.cpp"
         "src/odr/logger.cpp"
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
@@ -257,7 +256,6 @@ target_link_libraries(odr
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         utf8::cpp
-        httplib::httplib
         argon2::argon2
 )
 
@@ -289,6 +287,21 @@ function(odr_require_data_path path name)
     endif ()
 endfunction()
 
+if (ODR_WITH_HTTP_SERVER)
+    find_package(httplib REQUIRED)
+    target_sources(odr
+            PRIVATE
+            "src/odr/http_server.cpp"
+    )
+    target_link_libraries(odr
+            PRIVATE
+            httplib::httplib
+    )
+    target_compile_definitions(odr
+            PRIVATE
+            ODR_WITH_HTTP_SERVER
+    )
+endif ()
 if (ODR_WITH_PDF2HTMLEX)
     find_package(pdf2htmlEX REQUIRED)
     find_package(poppler REQUIRED)
@@ -397,10 +410,15 @@ if (ODR_CLANG_TIDY)
     add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
+if (NOT ODR_WITH_HTTP_SERVER)
+    # Don't ship the public header for an API that wasn't built.
+    set(ODR_HEADER_EXCLUDE PATTERN "http_server.hpp" EXCLUDE)
+endif ()
 install(
         DIRECTORY src/ "${CMAKE_CURRENT_BINARY_DIR}/src/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.hpp"
+        ${ODR_HEADER_EXCLUDE}
 )
 install(
         TARGETS odr meta translate back_translate
