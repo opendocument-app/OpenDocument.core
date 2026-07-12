@@ -56,8 +56,8 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
 | `src/odr/internal/html/` | Generic HTML renderer. |
 | `src/odr/internal/cfb/`, `zip/` | Container formats (CFB, ZIP). |
-| `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg). |
-| `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx). |
+| `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
+| `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx); see [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) + per-format docs. |
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/oldms_wvware/` | Alternative .doc decoder via wvWare. |
 | `src/odr/internal/pdf/`, `pdf_poppler/` | PDF (own parser + poppler/pdf2htmlEX path). |
