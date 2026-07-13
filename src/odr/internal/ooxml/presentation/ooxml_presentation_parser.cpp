@@ -59,10 +59,10 @@ bool is_text_node(const pugi::xml_node node) {
 
   const std::string name = node.name();
 
-  if (name == "w:t") {
+  if (name == "a:t") {
     return true;
   }
-  if (name == "w:tab") {
+  if (name == "a:tab") {
     return true;
   }
 
