@@ -181,7 +181,10 @@ public:
   }
   [[nodiscard]] bool element_is_editable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
+    // The presentation document is read-only (is_editable/is_savable are
+    // false), so no element is editable. The text_set_content machinery
+    // exists but stays dormant until pptx editing + save are wired up.
+    return false;
   }
   [[nodiscard]]
   DocumentPath
