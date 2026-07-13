@@ -26,8 +26,10 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -63,9 +65,16 @@ struct LinkOut {
   double top{0};
   double width{0};
   double height{0};
-  std::string href; ///< external URI or internal "#pN"; already attr-escaped
-  bool internal{false}; ///< true for a `#pN` target (needs `target="_self"`)
+  std::string href;     ///< external URI or an internal target (a "#pN" anchor
+                        ///< or a "pageN.html" page view); already attr-escaped
+  bool internal{false}; ///< true for an internal target (needs
+                        ///< `target="_self"`)
 };
+
+/// Maps a link's 0-based target page index to the href navigating to it: a
+/// "#pN" anchor in the combined document, a page-view file name in a
+/// standalone page. Returns "" to drop the link (target page not rendered).
+using PageHref = std::function<std::string(std::size_t)>;
 
 /// Resolves a link annotation's destination to a page: a `page-object ->
 /// 0-based index` map plus the catalog's named-destination table (`/Dests`
@@ -206,11 +215,12 @@ bool is_safe_uri(std::string_view uri) {
 
 /// Resolve a page's `/Link` annotations (ISO 32000-1 12.5.6.5) to positioned
 /// overlays: a `/URI` action becomes an external link, a `/GoTo` action or a
-/// direct `/Dest` an internal `#pN` link. `to_box` maps PDF user space to the
-/// page box (points, y-down).
+/// direct `/Dest` an internal link via `page_href`. `to_box` maps PDF user
+/// space to the page box (points, y-down).
 std::vector<LinkOut> collect_page_links(const pdf::Page &page,
                                         const util::math::Transform2D &to_box,
-                                        LinkResolver &resolver) {
+                                        LinkResolver &resolver,
+                                        const PageHref &page_href) {
   std::vector<LinkOut> links;
   pdf::DocumentParser &parser = resolver.parser;
   for (const pdf::Annotation *annotation : page.annotations) {
@@ -245,7 +255,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
           }
         } else if (kind == "GoTo" && a.has_value("D")) {
           if (const auto index = resolver.resolve_dest_page(a.get("D"))) {
-            href = "#p" + std::to_string(*index + 1);
+            href = page_href(*index);
             internal = true;
           }
         }
@@ -254,7 +264,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     if (href.empty() && dictionary.has_value("Dest")) {
       if (const auto index =
               resolver.resolve_dest_page(dictionary.get("Dest"))) {
-        href = "#p" + std::to_string(*index + 1);
+        href = page_href(*index);
         internal = true;
       }
     }
@@ -1131,51 +1141,125 @@ public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config,
                   std::shared_ptr<Logger> logger)
       : HtmlService(std::move(config), std::move(logger)),
-        m_pdf_file{std::move(pdf_file)} {
-    m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
+        m_pdf_file{std::move(pdf_file)} {}
+
+  /// Parses the document once, applies the `[page_range_begin,
+  /// page_range_end)` page range and builds the view list: the combined
+  /// document plus one standalone view per rendered page. The parser and its
+  /// object cache are kept for the service's lifetime so the page views
+  /// render off one shared parse.
+  void warmup() const override {
+    std::lock_guard lock(m_mutex);
+
+    if (m_document != nullptr) {
+      return;
+    }
+
+    const auto &pdf_file =
+        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
+    m_parser = pdf_file.create_parser(*m_logger);
+    m_document = m_parser->parse_document();
+
+    const std::vector<pdf::Page *> pages = m_document->collect_pages();
+    m_link_resolver = std::make_unique<LinkResolver>(
+        build_link_resolver(*m_parser, *m_document, pages));
+    const std::size_t begin =
+        std::min<std::size_t>(config().page_range_begin, pages.size());
+    const std::size_t end =
+        config().page_range_end
+            ? std::clamp<std::size_t>(*config().page_range_end, begin,
+                                      pages.size())
+            : pages.size();
+    m_first_page = begin;
+    m_pages.assign(pages.begin() + static_cast<std::ptrdiff_t>(begin),
+                   pages.begin() + static_cast<std::ptrdiff_t>(end));
+
+    m_views.emplace_back(std::make_shared<HtmlView>(
+        *this, "document", 0, config().document_output_file_name));
+    for (std::size_t i = 0; i < m_pages.size(); ++i) {
+      const std::size_t page = m_first_page + i;
+      m_views.emplace_back(std::make_shared<HtmlView>(
+          *this, "page" + std::to_string(page + 1), page + 1,
+          fill_path_variables(config().page_output_file_name, page)));
+    }
   }
 
-  void warmup() const override {}
-
-  [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
+  [[nodiscard]] const HtmlViews &list_views() const override {
+    warmup();
+    return m_views;
+  }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    if (path == "document.html") {
-      return true;
-    }
-    return false;
+    warmup();
+    return std::ranges::any_of(
+        m_views, [&path](const auto &view) { return view.path() == path; });
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
-    if (path == "document.html") {
+    if (exists(path)) {
       return "text/html";
     }
     throw FileNotFound("Unknown path: " + path);
   }
 
   void write(const std::string &path, std::ostream &out) const override {
-    if (path == "document.html") {
-      HtmlWriter writer(out, config());
-      write_document(writer);
-      return;
-    }
-    throw FileNotFound("Unknown path: " + path);
+    HtmlWriter writer(out, config());
+    write_html(path, writer);
   }
 
   HtmlResources write_html(const std::string &path,
                            HtmlWriter &out) const override {
-    if (path == "document.html") {
+    warmup();
+    // The parser's object cache is shared mutable state; renders are
+    // serialized.
+    std::lock_guard lock(m_mutex);
+    if (path == config().document_output_file_name) {
       return write_document(out);
+    }
+    for (std::size_t i = 0; i < m_pages.size(); ++i) {
+      if (path == m_views[i + 1].path()) {
+        return write_page(i, out);
+      }
     }
     throw FileNotFound("Unknown path: " + path);
   }
 
+  /// Whether the 0-based page index falls inside the rendered page range.
+  [[nodiscard]] bool page_rendered(const std::size_t index) const {
+    return index >= m_first_page && index < m_first_page + m_pages.size();
+  }
+
+  /// The combined document: every rendered page, internal links as `#pN`
+  /// anchors (dropped when the target page is outside the page range).
   HtmlResources write_document(HtmlWriter &out) const {
+    const PageHref page_href = [this](const std::size_t index) {
+      return page_rendered(index) ? "#p" + std::to_string(index + 1)
+                                  : std::string();
+    };
+    return write_pages(out, m_pages, m_first_page + 1, page_href);
+  }
+
+  /// One standalone page (the `page{index}.html` view); internal links
+  /// navigate between the page files.
+  HtmlResources write_page(const std::size_t page_index,
+                           HtmlWriter &out) const {
+    const PageHref page_href = [this](const std::size_t index) {
+      return page_rendered(index)
+                 ? fill_path_variables(config().page_output_file_name, index)
+                 : std::string();
+    };
+    const std::vector<pdf::Page *> pages{m_pages[page_index]};
+    return write_pages(out, pages, m_first_page + page_index + 1, page_href);
+  }
+
+  HtmlResources write_pages(HtmlWriter &out,
+                            const std::vector<pdf::Page *> &pages,
+                            const std::size_t first_page_number,
+                            const PageHref &page_href) const {
     if (config().pdf_text_mode == PdfTextMode::single_layer) {
-      return write_document_single_layer(out);
+      return write_pages_single_layer(out, pages, first_page_number, page_href);
     }
-    return write_document_dual_layer(out);
+    return write_pages_dual_layer(out, pages, first_page_number, page_href);
   }
 
   // =========================================================================
@@ -1245,15 +1329,14 @@ public:
     std::vector<LinkOut> links;
   };
 
-  HtmlResources write_document_dual_layer(HtmlWriter &out) const {
+  HtmlResources write_pages_dual_layer(HtmlWriter &out,
+                                       const std::vector<pdf::Page *> &pages,
+                                       const std::size_t first_page_number,
+                                       const PageHref &page_href) const {
     HtmlResources resources;
 
-    const auto &pdf_file =
-        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
-    pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
-    const std::unique_ptr<pdf::Document> document = parser.parse_document();
-    const std::vector<pdf::Page *> pages = document->collect_pages();
-    LinkResolver link_resolver = build_link_resolver(parser, *document, pages);
+    pdf::DocumentParser &parser = *m_parser;
+    LinkResolver &link_resolver = *m_link_resolver;
 
     AtomicStyles styles;
     std::vector<DualPageOut> pages_out;
@@ -1310,7 +1393,8 @@ public:
       page_out.classes = pb.classes;
       page_out.width = width;
       page_out.height = height;
-      page_out.links = collect_page_links(*page, to_box, link_resolver);
+      page_out.links =
+          collect_page_links(*page, to_box, link_resolver, page_href);
 
       std::string stream;
       for (const auto &ref : page->contents_reference) {
@@ -1675,13 +1759,13 @@ public:
     };
 
     out.write_body_begin();
-    std::size_t page_number = 0;
+    std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
       out.write_element_begin(
           "div",
           HtmlElementOptions()
               .set_class(page.classes)
-              .set_extra(R"(id="p)" + std::to_string(++page_number) + R"(")"));
+              .set_extra(R"(id="p)" + std::to_string(page_number++) + R"(")"));
 
       // Visual layer: paint-order graphics and unselectable glyphs.
       out.write_element_begin("div",
@@ -1763,15 +1847,14 @@ public:
     std::vector<LinkOut> links;
   };
 
-  HtmlResources write_document_single_layer(HtmlWriter &out) const {
+  HtmlResources write_pages_single_layer(HtmlWriter &out,
+                                         const std::vector<pdf::Page *> &pages,
+                                         const std::size_t first_page_number,
+                                         const PageHref &page_href) const {
     HtmlResources resources;
 
-    const auto &pdf_file =
-        dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
-    pdf::DocumentParser parser = pdf_file.create_parser(*m_logger);
-    const std::unique_ptr<pdf::Document> document = parser.parse_document();
-    const std::vector<pdf::Page *> pages = document->collect_pages();
-    LinkResolver link_resolver = build_link_resolver(parser, *document, pages);
+    pdf::DocumentParser &parser = *m_parser;
+    LinkResolver &link_resolver = *m_link_resolver;
 
     // ---- Font registration ------------------------------------------------
     // A real-Unicode scalar gets a cmap entry only inside the BMP and outside
@@ -1910,7 +1993,8 @@ public:
       page_out.classes = pb.classes;
       page_out.width = width;
       page_out.height = height;
-      page_out.links = collect_page_links(page, to_box, link_resolver);
+      page_out.links =
+          collect_page_links(page, to_box, link_resolver, page_href);
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
@@ -2199,13 +2283,13 @@ public:
     };
 
     out.write_body_begin();
-    std::size_t page_number = 0;
+    std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {
       out.write_element_begin(
           "div",
           HtmlElementOptions()
               .set_class(page.classes)
-              .set_extra(R"(id="p)" + std::to_string(++page_number) + R"(")"));
+              .set_extra(R"(id="p)" + std::to_string(page_number++) + R"(")"));
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
                        write_line);
       write_page_links(out, page.links);
@@ -2638,7 +2722,18 @@ public:
 
 protected:
   PdfFile m_pdf_file;
-  HtmlViews m_views;
+
+  // Lazily initialized by `warmup()` (all guarded by `m_mutex`): one parse
+  // shared by the combined-document and per-page renders.
+  mutable std::mutex m_mutex;
+  mutable std::unique_ptr<pdf::DocumentParser> m_parser;
+  mutable std::unique_ptr<pdf::Document> m_document;
+  mutable std::unique_ptr<LinkResolver> m_link_resolver;
+  /// The rendered pages (`[page_range_begin, page_range_end)`) and the 0-based
+  /// document-global index of the first one.
+  mutable std::vector<pdf::Page *> m_pages;
+  mutable std::size_t m_first_page{0};
+  mutable HtmlViews m_views;
 };
 
 } // namespace

@@ -45,6 +45,15 @@ std::string html::escape_attribute(std::string value) {
   return value;
 }
 
+std::string
+html::fill_path_variables(const std::string &path,
+                          const std::optional<std::uint32_t> index) {
+  std::string result = path;
+  util::string::replace_all(result, "{index}",
+                            index ? std::to_string(*index) : "");
+  return result;
+}
+
 std::string html::color(const Color &color) {
   std::stringstream ss;
   ss << "#";

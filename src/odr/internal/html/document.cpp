@@ -147,14 +147,6 @@ void back(const Document &document, const WritingState &state) {
   out.write_end();
 }
 
-std::string fill_path_variables(const std::string &path,
-                                const std::optional<std::uint32_t> index = {}) {
-  std::string result = path;
-  util::string::replace_all(result, "{index}",
-                            index ? std::to_string(*index) : "");
-  return result;
-}
-
 class HtmlFragmentBase {
 public:
   HtmlFragmentBase(std::string name, const std::size_t index, std::string path,

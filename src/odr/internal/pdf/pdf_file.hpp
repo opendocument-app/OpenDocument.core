@@ -29,7 +29,7 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  [[nodiscard]] DocumentParser
+  [[nodiscard]] std::unique_ptr<DocumentParser>
   create_parser(const Logger &logger = Logger::null()) const;
 
 private:

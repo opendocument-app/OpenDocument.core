@@ -1,3 +1,4 @@
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
@@ -24,16 +25,23 @@ std::shared_ptr<pdf::PdfFile> open_pdf(const std::string &bytes) {
   return std::make_shared<pdf::PdfFile>(std::make_shared<MemoryFile>(bytes));
 }
 
-std::string render_html(const std::string &bytes, const PdfTextMode mode) {
+HtmlService make_service(const std::string &bytes, const HtmlConfig &config) {
   const odr::PdfFile file(open_pdf(bytes));
+  const std::shared_ptr<Logger> logger = Logger::create_null();
+  return internal::html::create_pdf_service(file, "", config, logger);
+}
+
+std::string render_path(const HtmlService &service, const std::string &path) {
+  std::ostringstream out;
+  service.write(path, out);
+  return std::move(out).str();
+}
+
+std::string render_html(const std::string &bytes, const PdfTextMode mode,
+                        const std::string &path = "document.html") {
   HtmlConfig config;
   config.pdf_text_mode = mode;
-  const std::shared_ptr<Logger> logger = Logger::create_null();
-  const HtmlService service =
-      internal::html::create_pdf_service(file, "", config, logger);
-  std::ostringstream out;
-  service.write("document.html", out);
-  return std::move(out).str();
+  return render_path(make_service(bytes, config), path);
 }
 
 bool contains(const std::string &haystack, const std::string &needle) {
@@ -148,4 +156,79 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
     EXPECT_FALSE(contains(html, "javascript:alert"))
         << "mode " << static_cast<int>(mode);
   }
+}
+
+// A standalone page view (`page{index}.html`) resolves internal links to the
+// target's page view file instead of a `#pN` anchor; the page div keeps its
+// document-global `id`.
+TEST(PdfFile, page_views_link_between_page_files) {
+  const std::string pdf = link_annotations_mini_pdf();
+  const std::string html = render_html(pdf, PdfTextMode::dual_layer,
+                                       /*path=*/"page0.html");
+  EXPECT_TRUE(contains(html, R"(id="p1")"));
+  EXPECT_FALSE(contains(html, R"(id="p2")"));
+  EXPECT_TRUE(contains(html, R"(href="page1.html" target="_self")"));
+  EXPECT_TRUE(contains(html, R"(href="page2.html" target="_self")"));
+
+  const std::string page3 = render_html(pdf, PdfTextMode::dual_layer,
+                                        /*path=*/"page2.html");
+  EXPECT_TRUE(contains(page3, R"(id="p3")"));
+}
+
+// The service exposes the combined document plus one view per page; the views
+// carry the page file names.
+TEST(PdfFile, page_views_are_listed) {
+  const HtmlService service =
+      make_service(link_annotations_mini_pdf(), HtmlConfig());
+  const HtmlViews &views = service.list_views();
+  ASSERT_EQ(views.size(), 4);
+  EXPECT_EQ(views.at(0).name(), "document");
+  EXPECT_EQ(views.at(0).path(), "document.html");
+  EXPECT_EQ(views.at(1).name(), "page1");
+  EXPECT_EQ(views.at(1).path(), "page0.html");
+  EXPECT_EQ(views.at(3).name(), "page3");
+  EXPECT_EQ(views.at(3).path(), "page2.html");
+}
+
+// `page_range_end` caps the rendered pages and views; internal links to pages
+// beyond the range are dropped rather than left dangling.
+TEST(PdfFile, page_range_end_caps_pages_views_and_links) {
+  HtmlConfig config;
+  config.page_range_end = 2;
+  const HtmlService service = make_service(link_annotations_mini_pdf(), config);
+
+  const HtmlViews &views = service.list_views();
+  ASSERT_EQ(views.size(), 3);
+  EXPECT_EQ(views.at(2).path(), "page1.html");
+
+  const std::string html = render_path(service, "document.html");
+  EXPECT_TRUE(contains(html, R"(id="p2")"));
+  EXPECT_FALSE(contains(html, R"(id="p3")"));
+  // The direct `/Dest` to page 2 stays; the `/GoTo` to page 3 is dropped.
+  EXPECT_TRUE(contains(html, R"(href="#p2")"));
+  EXPECT_FALSE(contains(html, R"(href="#p3")"));
+
+  EXPECT_THROW(render_path(service, "page2.html"), FileNotFound);
+}
+
+// `page_range_begin` skips leading pages while page views, ids and anchors
+// keep their document-global numbering.
+TEST(PdfFile, page_range_begin_keeps_global_numbering) {
+  HtmlConfig config;
+  config.page_range_begin = 1;
+  const HtmlService service = make_service(link_annotations_mini_pdf(), config);
+
+  const HtmlViews &views = service.list_views();
+  ASSERT_EQ(views.size(), 3);
+  EXPECT_EQ(views.at(1).name(), "page2");
+  EXPECT_EQ(views.at(1).path(), "page1.html");
+  EXPECT_EQ(views.at(2).name(), "page3");
+  EXPECT_EQ(views.at(2).path(), "page2.html");
+
+  const std::string html = render_path(service, "document.html");
+  EXPECT_FALSE(contains(html, R"(id="p1")"));
+  EXPECT_TRUE(contains(html, R"(id="p2")"));
+  EXPECT_TRUE(contains(html, R"(id="p3")"));
+
+  EXPECT_THROW(render_path(service, "page0.html"), FileNotFound);
 }
