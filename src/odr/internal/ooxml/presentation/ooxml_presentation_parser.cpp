@@ -59,10 +59,10 @@ bool is_text_node(const pugi::xml_node node) {
 
   const std::string name = node.name();
 
-  if (name == "w:t") {
+  if (name == "a:t") {
     return true;
   }
-  if (name == "w:tab") {
+  if (name == "a:tab") {
     return true;
   }
 
@@ -132,6 +132,7 @@ parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
       {"p:sp", create_default_tree_parser(ElementType::frame)},
       {"p:txBody", create_default_tree_parser(ElementType::group)},
       {"a:t", parse_text_element},
+      {"a:tab", parse_text_element},
       {"a:p", create_default_tree_parser(ElementType::paragraph)},
       {"a:r", create_default_tree_parser(ElementType::span)},
       {"a:tbl", create_default_tree_parser(ElementType::table)},
