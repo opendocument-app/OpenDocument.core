@@ -121,6 +121,12 @@ struct HtmlConfig {
   std::string background_image_format{"png"};
   double background_image_dpi{144.0};
 
+  // Paged-document page range (currently honored by the PDF pipeline): render
+  // only pages with 0-based index in `[page_range_begin, page_range_end)`.
+  // Page views and `#pN` anchors keep their document-global page numbers.
+  std::uint32_t page_range_begin{0};
+  std::optional<std::uint32_t> page_range_end;
+
   // PDF text mode
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
   // `dual_layer`'s invisible selection-layer text is rendered in a local

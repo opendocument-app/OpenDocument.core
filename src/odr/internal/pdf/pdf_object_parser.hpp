@@ -104,7 +104,6 @@ public:
 
 private:
   std::istream *m_in{nullptr};
-  std::istream::sentry m_se;
   std::streambuf *m_sb{nullptr};
 };
 
