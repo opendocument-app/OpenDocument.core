@@ -190,6 +190,34 @@ TEST(PdfFile, page_views_are_listed) {
   EXPECT_EQ(views.at(3).path(), "page2.html");
 }
 
+// With a nested `page_output_file_name`, cross-page hrefs are emitted
+// relative to the current page's own directory (the browser resolves them
+// against the current document, not the output root).
+TEST(PdfFile, page_views_nested_output_pattern_links_relatively) {
+  const std::string pdf = link_annotations_mini_pdf();
+
+  {
+    // Constant directory: siblings link by bare file name.
+    HtmlConfig config;
+    config.page_output_file_name = "pages/page{index}.html";
+    const HtmlService service = make_service(pdf, config);
+    EXPECT_EQ(service.list_views().at(1).path(), "pages/page0.html");
+    const std::string html = render_path(service, "pages/page0.html");
+    EXPECT_TRUE(contains(html, R"(href="page1.html" target="_self")"));
+    EXPECT_FALSE(contains(html, R"(href="pages/page1.html")"));
+  }
+
+  {
+    // Per-page directory: siblings climb out of their own directory.
+    HtmlConfig config;
+    config.page_output_file_name = "p{index}/index.html";
+    const HtmlService service = make_service(pdf, config);
+    const std::string html = render_path(service, "p0/index.html");
+    EXPECT_TRUE(contains(html, R"(href="../p1/index.html" target="_self")"));
+    EXPECT_TRUE(contains(html, R"(href="../p2/index.html" target="_self")"));
+  }
+}
+
 // `page_range_end` caps the rendered pages and views; internal links to pages
 // beyond the range are dropped rather than left dangling.
 TEST(PdfFile, page_range_end_caps_pages_views_and_links) {

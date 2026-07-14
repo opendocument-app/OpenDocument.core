@@ -76,6 +76,43 @@ struct LinkOut {
 /// standalone page. Returns "" to drop the link (target page not rendered).
 using PageHref = std::function<std::string(std::size_t)>;
 
+/// The href navigating from the document at `from` to `to` (both output-root
+/// relative, '/'-separated): drops their shared directory prefix and climbs
+/// out of `from`'s remaining directories. The browser resolves an href
+/// against the current document's directory, so an output-root-relative path
+/// must not be emitted as-is.
+std::string relative_href(const std::string &from, const std::string &to) {
+  const auto split = [](const std::string &path) {
+    std::vector<std::string> segments;
+    for (std::size_t begin = 0; begin <= path.size();) {
+      const std::size_t end = std::min(path.find('/', begin), path.size());
+      segments.push_back(path.substr(begin, end - begin));
+      begin = end + 1;
+    }
+    return segments;
+  };
+  const std::vector<std::string> from_segments = split(from);
+  const std::vector<std::string> to_segments = split(to);
+  const std::size_t from_dirs = from_segments.size() - 1;
+  const std::size_t to_dirs = to_segments.size() - 1;
+  std::size_t common = 0;
+  while (common < from_dirs && common < to_dirs &&
+         from_segments[common] == to_segments[common]) {
+    ++common;
+  }
+  std::string href;
+  for (std::size_t i = common; i < from_dirs; ++i) {
+    href += "../";
+  }
+  for (std::size_t i = common; i < to_segments.size(); ++i) {
+    if (i != common) {
+      href += '/';
+    }
+    href += to_segments[i];
+  }
+  return href;
+}
+
 /// Resolves a link annotation's destination to a page: a `page-object ->
 /// 0-based index` map plus the catalog's named-destination table (`/Dests`
 /// dictionary and the `/Names /Dests` name tree, ISO 32000-1 12.3.2.3).
@@ -1240,12 +1277,17 @@ public:
   }
 
   /// One standalone page (the `page{index}.html` view); internal links
-  /// navigate between the page files.
+  /// navigate between the page files, relative to this page's own path (the
+  /// browser resolves an href against the current document, so a nested
+  /// `page_output_file_name` must not be emitted output-root-relative).
   HtmlResources write_page(const std::size_t page_index,
                            HtmlWriter &out) const {
-    const PageHref page_href = [this](const std::size_t index) {
+    const std::string &from = m_views[page_index + 1].path();
+    const PageHref page_href = [this, &from](const std::size_t index) {
       return page_rendered(index)
-                 ? fill_path_variables(config().page_output_file_name, index)
+                 ? relative_href(
+                       from, fill_path_variables(config().page_output_file_name,
+                                                 index))
                  : std::string();
     };
     const std::vector<pdf::Page *> pages{m_pages[page_index]};
