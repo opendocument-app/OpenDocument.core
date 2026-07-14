@@ -11,8 +11,13 @@
 
 namespace odr::internal::pdf {
 
-ObjectParser::ObjectParser(std::istream &in)
-    : m_in{&in}, m_se(in, true), m_sb{in.rdbuf()} {}
+ObjectParser::ObjectParser(std::istream &in) : m_in{&in}, m_sb{in.rdbuf()} {
+  // One-time stream preparation (flush tied streams, state check) for the
+  // raw-streambuf reads below; a sentry's effects live entirely in its
+  // constructor, so it is not kept as state (it would also make the parser
+  // immovable).
+  const std::istream::sentry se(in, true);
+}
 
 std::istream &ObjectParser::in() { return *m_in; }
 

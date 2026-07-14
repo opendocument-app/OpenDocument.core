@@ -172,6 +172,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
+  config.page_range_end = 100;
   config.format_html = true;
   config.html_indent = 1;
   config.html_indent_string = "\t";

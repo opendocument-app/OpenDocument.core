@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
+#include <optional>
 #include <string>
 
 #include <odr/html.hpp>
@@ -40,6 +42,11 @@ std::string escape_text(std::string text);
 std::string escape_attribute(std::string value);
 
 std::string color(const Color &color);
+
+/// Substitute `{index}` in an output file name pattern (e.g.
+/// `page{index}.html`) with `index`, or with "" when absent.
+std::string fill_path_variables(const std::string &path,
+                                std::optional<std::uint32_t> index = {});
 
 std::string file_to_url(const std::string &file, const std::string &mime_type);
 std::string file_to_url(std::istream &file, const std::string &mime_type);

@@ -206,7 +206,6 @@ jobs:
         with:
           token: ${{ secrets.PAT_ANDIWAND }}
           submodules: true
-          lfs: true
 
       - name: ubuntu install tidy
         if: runner.os == 'Linux'
