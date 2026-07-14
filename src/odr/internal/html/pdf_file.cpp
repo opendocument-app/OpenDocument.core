@@ -31,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -151,7 +152,7 @@ void collect_dest_name_tree(pdf::DocumentParser &parser,
 /// catalog's named destinations.
 LinkResolver build_link_resolver(pdf::DocumentParser &parser,
                                  const pdf::Document &document,
-                                 const std::vector<pdf::Page *> &pages) {
+                                 const std::span<pdf::Page *const> pages) {
   LinkResolver resolver{parser, {}, {}};
   for (std::size_t i = 0; i < pages.size(); ++i) {
     resolver.page_index.emplace(pages[i]->object_reference, i);
@@ -1255,12 +1256,12 @@ public:
                        .string()
                  : std::string();
     };
-    const std::vector<pdf::Page *> pages{m_pages[page_index]};
+    const std::array<pdf::Page *, 1> pages{m_pages[page_index]};
     return write_pages(out, pages, m_first_page + page_index + 1, page_href);
   }
 
   HtmlResources write_pages(HtmlWriter &out,
-                            const std::vector<pdf::Page *> &pages,
+                            const std::span<pdf::Page *const> pages,
                             const std::size_t first_page_number,
                             const PageHref &page_href) const {
     if (config().pdf_text_mode == PdfTextMode::single_layer) {
@@ -1337,7 +1338,7 @@ public:
   };
 
   HtmlResources write_pages_dual_layer(HtmlWriter &out,
-                                       const std::vector<pdf::Page *> &pages,
+                                       const std::span<pdf::Page *const> pages,
                                        const std::size_t first_page_number,
                                        const PageHref &page_href) const {
     HtmlResources resources;
@@ -1854,10 +1855,9 @@ public:
     std::vector<LinkOut> links;
   };
 
-  HtmlResources write_pages_single_layer(HtmlWriter &out,
-                                         const std::vector<pdf::Page *> &pages,
-                                         const std::size_t first_page_number,
-                                         const PageHref &page_href) const {
+  HtmlResources write_pages_single_layer(
+      HtmlWriter &out, const std::span<pdf::Page *const> pages,
+      const std::size_t first_page_number, const PageHref &page_href) const {
     HtmlResources resources;
 
     pdf::DocumentParser &parser = *m_parser;
