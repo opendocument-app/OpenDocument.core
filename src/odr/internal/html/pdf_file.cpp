@@ -1159,7 +1159,8 @@ public:
 
     const auto &pdf_file =
         dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
-    m_parser = pdf_file.create_parser(*m_logger);
+    m_parser = std::make_unique<pdf::DocumentParser>(
+        pdf_file.create_parser(*m_logger));
     m_document = m_parser->parse_document();
 
     const std::vector<pdf::Page *> pages = m_document->collect_pages();

@@ -175,10 +175,8 @@ bool PdfFile::is_decodable() const noexcept {
   return m_encryption_state != EncryptionState::encrypted;
 }
 
-std::unique_ptr<DocumentParser>
-PdfFile::create_parser(const Logger &logger) const {
-  return std::make_unique<DocumentParser>(m_file->stream(), m_decryptor,
-                                          logger);
+DocumentParser PdfFile::create_parser(const Logger &logger) const {
+  return DocumentParser(m_file->stream(), m_decryptor, logger);
 }
 
 } // namespace odr::internal::pdf
