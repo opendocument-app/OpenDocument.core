@@ -71,6 +71,19 @@ const char *html::translate_font_style(const FontStyle font_style) {
   }
 }
 
+const char *html::translate_font_position(const FontPosition font_position) {
+  switch (font_position) {
+  case FontPosition::normal:
+    return "baseline";
+  case FontPosition::super:
+    return "super";
+  case FontPosition::sub:
+    return "sub";
+  default:
+    return ""; // TODO log
+  }
+}
+
 std::string html::translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
   if (const std::optional<Measure> width = page_layout.width;
@@ -153,6 +166,13 @@ std::string html::translate_text_style(const TextStyle &text_style) {
         .append(color(*background_color))
         .append(";");
   }
+  if (const std::optional<FontPosition> font_position =
+          text_style.font_position;
+      font_position.has_value()) {
+    result.append("vertical-align:")
+        .append(translate_font_position(*font_position))
+        .append(";");
+  }
   return result;
 }
 
@@ -192,6 +212,10 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
   if (const std::optional<Measure> line_height = paragraph_style.line_height;
       line_height.has_value()) {
     result.append("line-height:").append(line_height->to_string()).append(";");
+  }
+  if (const std::optional<Measure> text_indent = paragraph_style.text_indent;
+      text_indent.has_value()) {
+    result.append("text-indent:").append(text_indent->to_string()).append(";");
   }
   return result;
 }

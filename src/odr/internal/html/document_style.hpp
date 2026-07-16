@@ -8,6 +8,7 @@ enum class HorizontalAlign;
 enum class VerticalAlign;
 enum class FontWeight;
 enum class FontStyle;
+enum class FontPosition;
 
 class Frame;
 class Rect;
@@ -31,6 +32,7 @@ const char *translate_horizontal_align(HorizontalAlign horizontal_align);
 const char *translate_vertical_align(VerticalAlign vertical_align);
 const char *translate_font_weight(FontWeight font_weight);
 const char *translate_font_style(FontStyle font_style);
+const char *translate_font_position(FontPosition font_position);
 
 std::string translate_outer_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);

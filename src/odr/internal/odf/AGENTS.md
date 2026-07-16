@@ -63,8 +63,10 @@ flatten-at-build, not a runtime walk. Parent beats family as the copy source. A
 Font names are indirected through `style:font-face` → `svg:font-family`.
 Master pages are parsed into the element tree *and* the style index.
 
-**Percent units are special-cased**: percent font-size multiplies the inherited
-size; percent margins/line-height are currently **dropped** (open work).
+**Percent units are special-cased**: percent font-size (and the relative size
+of `style:text-position`) multiplies the inherited size; percent line-height
+passes through (CSS semantics match); percent margins are currently
+**dropped** (open work).
 
 **Decryption is manifest-driven, two layouts.** `odf_crypto.cpp` supports either
 a single `encrypted-package` blob (decrypt → inflate → new ZIP filesystem) or
@@ -112,7 +114,7 @@ The structural/foundational gaps, roughly by value:
 5. **Repeated / covered spreadsheet cells are heuristic.** Several
    `// TODO covered cells` / `// TODO mark as repeated` in `odf_parser.cpp`;
    empty-row/cell detection is approximate.
-6. **Style gaps beyond missing properties**: percent margins/line-height dropped;
+6. **Style gaps beyond missing properties**: percent margins dropped;
    `transparent`/alpha colours → `nullopt`; the Style-vs-element cascade layering
    is provisional (`// TODO use override?`). List/outline numbering is indexed but
    not rendered as numbers.

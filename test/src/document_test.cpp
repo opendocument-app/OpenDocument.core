@@ -13,6 +13,27 @@
 using namespace odr;
 using namespace odr::test;
 
+namespace {
+
+Element find_paragraph_with_text_prefix(const Element root,
+                                        const std::string &prefix) {
+  for (const Element child : root.children()) {
+    if (child.type() == ElementType::paragraph) {
+      if (const Element first_child = child.first_child();
+          first_child && first_child.type() == ElementType::text &&
+          first_child.as_text().content().starts_with(prefix)) {
+        return child;
+      }
+    }
+    if (const Element match = find_paragraph_with_text_prefix(child, prefix)) {
+      return match;
+    }
+  }
+  return {};
+}
+
+} // namespace
+
 TEST(Document, odt) {
   const std::unique_ptr logger =
       Logger::create_stdio("odr-test", LogLevel::verbose);
@@ -79,6 +100,54 @@ TEST(Document, odt_element_path2) {
       DocumentPath("/child:41/child:0/child:1/child:0/child:0"));
   EXPECT_EQ(cell_via_path.type(), ElementType::text);
   EXPECT_EQ(cell_via_path.as_text().content(), "B1");
+}
+
+TEST(Document, odt_text_position) {
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
+  const Document document = document_file.document();
+  const Element root = document.root_element();
+
+  const Element superscript =
+      find_paragraph_with_text_prefix(root, "Superscript");
+  ASSERT_TRUE(superscript);
+  const TextStyle superscript_style = superscript.as_paragraph().text_style();
+  EXPECT_EQ(FontPosition::super, superscript_style.font_position);
+  // `style:text-position="super 58%"` scales the inherited 12pt font
+  ASSERT_TRUE(superscript_style.font_size.has_value());
+  EXPECT_NEAR(6.96, superscript_style.font_size->magnitude(), 1e-9);
+
+  const Element subscript = find_paragraph_with_text_prefix(root, "Subscript");
+  ASSERT_TRUE(subscript);
+  const TextStyle subscript_style = subscript.as_paragraph().text_style();
+  EXPECT_EQ(FontPosition::sub, subscript_style.font_position);
+
+  const Element normal = find_paragraph_with_text_prefix(root, "Default");
+  ASSERT_TRUE(normal);
+  EXPECT_FALSE(normal.as_paragraph().text_style().font_position.has_value());
+}
+
+TEST(Document, odt_line_height_and_text_indent) {
+  const std::unique_ptr logger =
+      Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/odt/file-sample_100kB.odt"),
+      *logger);
+  const Document document = document_file.document();
+  const Element root = document.root_element();
+
+  const Element heading =
+      find_paragraph_with_text_prefix(root, "Lorem ipsum dolor");
+  ASSERT_TRUE(heading);
+  EXPECT_EQ(Measure("0.25in"), heading.as_paragraph().style().text_indent);
+
+  const Element body = find_paragraph_with_text_prefix(root, "Morbi viverra");
+  ASSERT_TRUE(body);
+  EXPECT_EQ(Measure("120%"), body.as_paragraph().style().line_height);
 }
 
 TEST(Document, odg) {
