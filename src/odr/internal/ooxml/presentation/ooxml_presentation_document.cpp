@@ -8,11 +8,12 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/style.hpp>
-#include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
+
+#include <iterator>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -32,12 +33,29 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
         util::xml::parse(*m_files, AbsPath("/ppt").join(RelPath(target)));
   }
 
+  // ECMA-376 default slide size when p:sldSz is absent.
+  m_slide_layout.width = Measure("10 in");
+  m_slide_layout.height = Measure("7.5 in");
+  if (const pugi::xml_node slide_size =
+          m_document_xml.document_element().child("p:sldSz")) {
+    if (const std::optional<Measure> width =
+            read_emus_attribute(slide_size.attribute("cx"))) {
+      m_slide_layout.width = width;
+    }
+    if (const std::optional<Measure> height =
+            read_emus_attribute(slide_size.attribute("cy"))) {
+      m_slide_layout.height = height;
+    }
+  }
+
   const ParseContext parse_context(m_slides_xml);
   m_root_element = parse_tree(m_element_registry, parse_context,
                               m_document_xml.document_element());
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
+
+const PageLayout &Document::slide_layout() const { return m_slide_layout; }
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
@@ -257,21 +275,15 @@ public:
 
   [[nodiscard]] PageLayout slide_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // TODO
-    return {
-        .width = Measure("11.02 in"),
-        .height = Measure("8.27 in"),
-        .print_orientation = {},
-        .margin = {},
-    };
+    return m_document->slide_layout();
   }
   [[nodiscard]] ElementIdentifier slide_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
-  [[nodiscard]] std::string slide_name(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+  [[nodiscard]] std::string
+  slide_name(const ElementIdentifier element_id) const override {
+    return get_node(element_id).child("p:cSld").attribute("name").value();
   }
 
   [[nodiscard]] TextStyle
@@ -392,25 +404,10 @@ public:
     const pugi::xml_node node = get_node(element_id);
 
     TableDimensions result;
-    TableCursor cursor;
-
-    for (auto column : node.children("table:table-column")) {
-      const auto columns_repeated =
-          column.attribute("table:number-columns-repeated").as_uint(1);
-      cursor.add_column(columns_repeated);
-    }
-
-    result.columns = cursor.column();
-    cursor = {};
-
-    for (auto row : node.children("table:table-row")) {
-      const auto rows_repeated =
-          row.attribute("table:number-rows-repeated").as_uint(1);
-      cursor.add_row(rows_repeated);
-    }
-
-    result.rows = cursor.row();
-
+    result.columns = static_cast<std::uint32_t>(
+        std::ranges::distance(node.child("a:tblGrid").children("a:gridCol")));
+    result.rows = static_cast<std::uint32_t>(
+        std::ranges::distance(node.children("a:tr")));
     return result;
   }
   [[nodiscard]] ElementIdentifier
@@ -428,21 +425,35 @@ public:
 
   [[nodiscard]] TableColumnStyle
   table_column_style(const ElementIdentifier element_id) const override {
-    return get_partial_style(element_id).table_column_style;
+    TableColumnStyle result;
+    if (const std::optional<Measure> width =
+            read_emus_attribute(get_node(element_id).attribute("w"))) {
+      result.width = width;
+    }
+    return result;
   }
 
   [[nodiscard]] TableRowStyle
   table_row_style(const ElementIdentifier element_id) const override {
-    return get_partial_style(element_id).table_row_style;
+    TableRowStyle result;
+    if (const std::optional<Measure> height =
+            read_emus_attribute(get_node(element_id).attribute("h"))) {
+      result.height = height;
+    }
+    return result;
   }
 
-  [[nodiscard]] bool table_cell_is_covered(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return false;
+  [[nodiscard]] bool
+  table_cell_is_covered(const ElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return node.attribute("hMerge").as_bool() ||
+           node.attribute("vMerge").as_bool();
   }
-  [[nodiscard]] TableDimensions table_cell_span(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {1, 1}; // TODO
+  [[nodiscard]] TableDimensions
+  table_cell_span(const ElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    return {node.attribute("rowSpan").as_uint(1),
+            node.attribute("gridSpan").as_uint(1)};
   }
   [[nodiscard]] ValueType table_cell_value_type(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -459,48 +470,32 @@ public:
   }
   [[nodiscard]] std::optional<std::string>
   frame_x(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> x =
-            read_emus_attribute(get_node(element_id)
-                                    .child("p:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:off")
-                                    .attribute("x"))) {
+    if (const std::optional<Measure> x = read_emus_attribute(
+            get_frame_xfrm(element_id).child("a:off").attribute("x"))) {
       return x->to_string();
     }
     return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_y(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> y =
-            read_emus_attribute(get_node(element_id)
-                                    .child("p:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:off")
-                                    .attribute("y"))) {
+    if (const std::optional<Measure> y = read_emus_attribute(
+            get_frame_xfrm(element_id).child("a:off").attribute("y"))) {
       return y->to_string();
     }
     return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_width(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> cx =
-            read_emus_attribute(get_node(element_id)
-                                    .child("p:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:ext")
-                                    .attribute("cx"))) {
+    if (const std::optional<Measure> cx = read_emus_attribute(
+            get_frame_xfrm(element_id).child("a:ext").attribute("cx"))) {
       return cx->to_string();
     }
     return {};
   }
   [[nodiscard]] std::optional<std::string>
   frame_height(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> cy =
-            read_emus_attribute(get_node(element_id)
-                                    .child("p:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:ext")
-                                    .attribute("cy"))) {
+    if (const std::optional<Measure> cy = read_emus_attribute(
+            get_frame_xfrm(element_id).child("a:ext").attribute("cy"))) {
       return cy->to_string();
     }
     return {};
@@ -540,6 +535,17 @@ private:
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
     return m_registry->element_at(element_id).node;
+  }
+
+  /// `p:sp` carries its transform in `p:spPr/a:xfrm`, `p:graphicFrame` in
+  /// `p:xfrm`.
+  [[nodiscard]] pugi::xml_node
+  get_frame_xfrm(const ElementIdentifier element_id) const {
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_node xfrm = node.child("p:spPr").child("a:xfrm")) {
+      return xfrm;
+    }
+    return node.child("p:xfrm");
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {

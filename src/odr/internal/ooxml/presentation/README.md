@@ -19,7 +19,8 @@ Roughly ordered by importance.
 - [x] open
 - [x] slides
   - [x] shapes (`p:sp`), text bodies
-  - [x] slide master page / page layout
+  - [x] slide size (`p:sldSz`) and slide names
+  - [ ] slide master / layout inheritance
 - [x] text extraction
 - [ ] edit
 - [ ] save
@@ -28,7 +29,8 @@ Roughly ordered by importance.
 
 - [x] paragraphs, runs / spans
 - [x] line breaks
-- [x] tables (grid columns, rows, cells)
+- [x] tables (`p:graphicFrame` / `a:tbl`: grid columns incl. widths, rows,
+      cells, merged cells)
 - [ ] images
 - [ ] listings
 - [ ] annotations / comments
@@ -46,8 +48,8 @@ Roughly ordered by importance.
 - [x] paragraph
   - [x] alignment
   - [x] indentation / left & right margins
-- [x] tables
-- [x] page layout (via master page)
+- [x] tables (column widths, row heights; no `a:tcPr` cell styles)
+- [x] page layout (slide size)
 - [ ] graphic / drawing styles
 
 ## References

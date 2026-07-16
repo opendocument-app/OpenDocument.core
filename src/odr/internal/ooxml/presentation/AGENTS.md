@@ -6,7 +6,7 @@ OOXML mechanics (registry/adapter pattern, OPC relationships, encryption) in
 
 **Scope.** Read `ppt/presentation.xml` and each slide's shape tree into the
 abstract model so the generic renderer lays out positioned frames. Paragraphs,
-runs, tables (see caveat below), inline text styling.
+runs, tables, inline text styling.
 
 ## Design decisions
 
@@ -15,8 +15,11 @@ relationship target of `presentation.xml` into an `rId → xml` map (masters,
 layouts, theme included — only slides are actually walked). Slide **order = the
 document order of `p:sldId` in `p:sldIdLst`** (not filename/rId order); each
 slide's `r:id` looks up its part, and parsing descends `p:cSld/p:spTree`.
-Dispatch table: `p:sp`→**frame** (shapes are frames), `p:txBody`→group,
-`a:p`→paragraph, `a:r`→span, `a:t`→text, `a:tbl`→table.
+Dispatch table: `p:sp`→**frame** (shapes are frames), `p:graphicFrame`→frame
+(descends `a:graphic/a:graphicData`), `p:txBody`→group, `a:p`→paragraph,
+`a:r`→span, `a:t`→text, `a:tbl`→table (columns from `a:tblGrid/a:gridCol` via
+`append_column`, rows/cells from `a:tr`/`a:tc`; spans from
+`gridSpan`/`rowSpan`, covered cells from `hMerge`/`vMerge`).
 
 **Styles are resolved inline — there is no `StyleRegistry`.** Free functions in
 the document read `a:rPr` / `a:pPr` attributes directly (font, size in
@@ -26,8 +29,10 @@ hundredth-points, bold/italic/underline/strike/shadow/colour/highlight; align,
 computed on-demand from the XML with no cached or master/default-style
 contribution.
 
-**Frame positioning is EMU-based.** `p:spPr/a:xfrm/a:off` + `a:ext` give
-`x/y/width/height` in EMUs; anchor type is always `at_page`.
+**Frame positioning is EMU-based.** `p:spPr/a:xfrm/a:off` + `a:ext` (`p:xfrm`
+for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
+`at_page`. Slide size comes from `p:presentation/p:sldSz` (ECMA-376 default
+10in × 7.5in when absent).
 
 ## Module layout
 
@@ -43,23 +48,15 @@ contribution.
 
 Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 
-1. **Slide geometry is hardcoded.** `slide_page_layout` returns a fixed
-   11.02in × 8.27in; `slide_master_page` and `slide_name` return empty. Real
-   slide size (`p:presentation/p:sldSz`), master/layout inheritance, and slide
-   names are all TODO.
-2. **Tables are broken.** `a:tbl` is created with the plain builder, not
-   `create_table_element`, so no `m_tables` entry exists and `table_first_column`
-   throws; `table_dimensions` iterates ODF names (`table:table-column/-row`,
-   copy-paste from ODF) → 0×0. Despite the README checkbox, tables need real
-   wiring (`create_table_element`/`append_column` + `a:gridCol`/`a:tr`/`a:tc`
-   parsers).
-3. **Images not modelled** — no `p:pic`/`a:blip` parser entry; `image_href`
+1. **No master/layout inheritance.** `slide_master_page` returns empty; master
+   and layout parts are loaded into the relationship map but never consulted
+   (no inherited placeholders, backgrounds, or styles).
+2. **Images not modelled** — no `p:pic`/`a:blip` parser entry; `image_href`
    reads ODF-style `xlink:href` (wrong for pptx `r:embed`).
-4. **`is_text_node` copy-paste bug.** It matches `w:t`/`w:tab` (wordprocessing)
-   instead of `a:t`/`a:tab`, so consecutive `a:t` runs are never coalesced —
-   each becomes its own text Element (harmless, but an artifact to fix).
-5. **Read-only, inconsistently.** `Document::is_editable`/`save` say no, yet the
-   adapter's `element_is_editable` returns true and `text_set_content` is fully
-   implemented — the machinery for text editing exists but is not exposed. Wiring
-   edit + save (mirroring docx) is a natural next step.
-6. **Listings, comments/annotations** not modelled.
+3. **Table cell styles unresolved.** Tables are wired (grid, spans, covered
+   cells, column widths/row heights), but `a:tcPr` (fills, borders, margins)
+   is not translated.
+4. **Read-only.** `text_set_content` machinery exists but is dormant
+   (`element_is_editable` → false); wiring edit + save (mirroring docx) is a
+   natural next step.
+5. **Listings, comments/annotations** not modelled.

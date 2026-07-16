@@ -6,7 +6,6 @@
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
@@ -16,6 +15,7 @@
 
 #include <cstring>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 
 namespace odr::internal::ooxml::text {
@@ -352,7 +352,7 @@ public:
 
   [[nodiscard]] std::string
   bookmark_name(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("text:name").value();
+    return get_node(element_id).attribute("w:name").value();
   }
 
   [[nodiscard]] TextStyle
@@ -365,25 +365,10 @@ public:
     const pugi::xml_node node = get_node(element_id);
 
     TableDimensions result;
-    TableCursor cursor;
-
-    for (auto column : node.children("table:table-column")) {
-      const auto columns_repeated =
-          column.attribute("table:number-columns-repeated").as_uint(1);
-      cursor.add_column(columns_repeated);
-    }
-
-    result.columns = cursor.column();
-    cursor = {};
-
-    for (auto row : node.children("table:table-row")) {
-      const auto rows_repeated =
-          row.attribute("table:number-rows-repeated").as_uint(1);
-      cursor.add_row(rows_repeated);
-    }
-
-    result.rows = cursor.row();
-
+    result.columns = static_cast<std::uint32_t>(
+        std::ranges::distance(node.child("w:tblGrid").children("w:gridCol")));
+    result.rows = static_cast<std::uint32_t>(
+        std::ranges::distance(node.children("w:tr")));
     return result;
   }
   [[nodiscard]] ElementIdentifier
@@ -421,22 +406,39 @@ public:
 
   [[nodiscard]] bool
   table_cell_is_covered(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return std::strcmp(node.name(), "table:covered-table-cell") == 0;
+    // A cell continues a vertical merge when `w:vMerge` is present without
+    // `w:val` or with `w:val="continue"`.
+    return is_merge_continuation(
+        get_node(element_id).child("w:tcPr").child("w:vMerge"));
   }
   [[nodiscard]] TableDimensions
   table_cell_span(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    return {node.attribute("table:number-rows-spanned").as_uint(1),
-            node.attribute("table:number-columns-spanned").as_uint(1)};
-  }
-  [[nodiscard]] ValueType
-  table_cell_value_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const char *value_type = node.attribute("office:value-type").value();
-        std::strcmp("float", value_type) == 0) {
-      return ValueType::float_number;
+    const pugi::xml_node properties = node.child("w:tcPr");
+
+    TableDimensions result{1, 1};
+    result.columns =
+        properties.child("w:gridSpan").attribute("w:val").as_uint(1);
+
+    if (const pugi::xml_node merge = properties.child("w:vMerge");
+        merge && !is_merge_continuation(merge)) {
+      const std::uint32_t grid_column = get_grid_column(node);
+      for (pugi::xml_node row_node = node.parent().next_sibling("w:tr");
+           row_node; row_node = row_node.next_sibling("w:tr")) {
+        const pugi::xml_node cell_node =
+            get_cell_at_grid_column(row_node, grid_column);
+        if (!is_merge_continuation(
+                cell_node.child("w:tcPr").child("w:vMerge"))) {
+          break;
+        }
+        ++result.rows;
+      }
     }
+
+    return result;
+  }
+  [[nodiscard]] ValueType table_cell_value_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return ValueType::string;
   }
   [[nodiscard]] TableCellStyle
@@ -537,6 +539,47 @@ private:
     }
     if (const pugi::xml_node inline_node = node.child("wp:inline")) {
       return inline_node;
+    }
+    return {};
+  }
+
+  [[nodiscard]] static bool is_merge_continuation(const pugi::xml_node merge) {
+    if (!merge) {
+      return false;
+    }
+    const pugi::xml_attribute val = merge.attribute("w:val");
+    return !val || std::strcmp(val.value(), "continue") == 0;
+  }
+
+  /// Grid column a `w:tc` starts at, i.e. the preceding cells' `w:gridSpan`s.
+  [[nodiscard]] static std::uint32_t
+  get_grid_column(const pugi::xml_node cell_node) {
+    std::uint32_t grid_column = 0;
+    for (pugi::xml_node sibling = cell_node.previous_sibling("w:tc"); sibling;
+         sibling = sibling.previous_sibling("w:tc")) {
+      grid_column += sibling.child("w:tcPr")
+                         .child("w:gridSpan")
+                         .attribute("w:val")
+                         .as_uint(1);
+    }
+    return grid_column;
+  }
+
+  [[nodiscard]] static pugi::xml_node
+  get_cell_at_grid_column(const pugi::xml_node row_node,
+                          const std::uint32_t grid_column) {
+    std::uint32_t column = 0;
+    for (const pugi::xml_node cell_node : row_node.children("w:tc")) {
+      if (column == grid_column) {
+        return cell_node;
+      }
+      if (column > grid_column) {
+        break;
+      }
+      column += cell_node.child("w:tcPr")
+                    .child("w:gridSpan")
+                    .attribute("w:val")
+                    .as_uint(1);
     }
     return {};
   }

@@ -145,6 +145,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const SheetCell cell = sheet.cell(column_index, row_index);
 
       if (cell.is_covered()) {
+        // normally unreachable: the cursor skips positions covered by an
+        // anchor's span; advance one column so inconsistent spans cannot
+        // starve the loop
+        cursor.add_cell();
         continue;
       }
 

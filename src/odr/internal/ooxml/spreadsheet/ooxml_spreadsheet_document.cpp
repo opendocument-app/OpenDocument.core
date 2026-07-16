@@ -281,17 +281,28 @@ public:
   sheet_cell_position(const ElementIdentifier element_id) const override {
     return m_registry->sheet_cell_element_at(element_id).position;
   }
-  [[nodiscard]] bool sheet_cell_is_covered(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return false; // TODO
+  [[nodiscard]] bool
+  sheet_cell_is_covered(const ElementIdentifier element_id) const override {
+    return m_registry->sheet_cell_element_at(element_id).is_covered;
   }
-  [[nodiscard]] TableDimensions sheet_cell_span(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {1, 1}; // TODO
+  [[nodiscard]] TableDimensions
+  sheet_cell_span(const ElementIdentifier element_id) const override {
+    return m_registry->sheet_cell_element_at(element_id).span;
   }
-  [[nodiscard]] ValueType sheet_cell_value_type(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return ValueType::string; // TODO
+  [[nodiscard]] ValueType
+  sheet_cell_value_type(const ElementIdentifier element_id) const override {
+    // ECMA-376 `c/@t` defaults to "n" (number); strings come as shared ("s"),
+    // inline ("inlineStr"), or formula ("str") cells.
+    const pugi::xml_node node = get_node(element_id);
+    const std::string type = node.attribute("t").value();
+    if (type == "s" || type == "str" || type == "inlineStr" || type == "b" ||
+        type == "e" || type == "d") {
+      return ValueType::string;
+    }
+    if (node.child("v")) {
+      return ValueType::float_number;
+    }
+    return ValueType::string;
   }
 
   [[nodiscard]] TextStyle
