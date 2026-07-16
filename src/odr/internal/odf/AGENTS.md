@@ -65,8 +65,8 @@ Master pages are parsed into the element tree *and* the style index.
 
 **Percent units are special-cased**: percent font-size (and the relative size
 of `style:text-position`) multiplies the inherited size; percent line-height
-passes through (CSS semantics match); percent margins are currently
-**dropped** (open work).
+passes through (the HTML renderer emits it as a unitless CSS ratio); percent
+margins are currently **dropped** (open work).
 
 **Decryption is manifest-driven, two layouts.** `odf_crypto.cpp` supports either
 a single `encrypted-package` blob (decrypt → inflate → new ZIP filesystem) or

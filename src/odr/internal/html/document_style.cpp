@@ -211,7 +211,17 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
   }
   if (const std::optional<Measure> line_height = paragraph_style.line_height;
       line_height.has_value()) {
-    result.append("line-height:").append(line_height->to_string()).append(";");
+    // a percent line height is relative to the text font size, which is
+    // emitted on nested text spans; a CSS percentage would resolve against
+    // this block's font size, while a unitless ratio inherits per element
+    if (line_height->unit().name() == "%") {
+      const Measure ratio(line_height->magnitude() * 1e-2, DynamicUnit(""));
+      result.append("line-height:").append(ratio.to_string()).append(";");
+    } else {
+      result.append("line-height:")
+          .append(line_height->to_string())
+          .append(";");
+    }
   }
   if (const std::optional<Measure> text_indent = paragraph_style.text_indent;
       text_indent.has_value()) {

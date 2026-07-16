@@ -389,7 +389,8 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   }
   if (const std::optional<Measure> line_height =
           read_measure(paragraph_properties.attribute("fo:line-height"))) {
-    // percent line height is relative to the font size, as in CSS
+    // percent line height is relative to the text font size; the HTML
+    // translation emits it as a unitless ratio
     result.line_height = line_height;
   }
   if (const std::optional<Measure> text_indent =
