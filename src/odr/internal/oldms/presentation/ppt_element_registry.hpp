@@ -39,6 +39,7 @@ public:
 
   struct Image final {
     std::string data; //< the raw image file bytes (JPEG/PNG)
+    std::string href; //< pseudo-path naming the BLIP (no real container path)
   };
 
   void clear() noexcept;

@@ -404,6 +404,9 @@ TEST(OldMs, ppt_style_various) {
   std::array<char, 4> magic{};
   image.file()->stream()->read(magic.data(), magic.size());
   EXPECT_EQ(std::string(magic.data() + 1, 3), "PNG");
+  // A non-empty pseudo-path names the BLIP so the HTML renderer can emit a
+  // distinct resource per picture when images are not embedded.
+  EXPECT_EQ(image.href(), "Pictures/1.png");
   EXPECT_EQ(background.as_frame().x(), "0in");
   EXPECT_EQ(background.as_frame().y(), "0in");
 

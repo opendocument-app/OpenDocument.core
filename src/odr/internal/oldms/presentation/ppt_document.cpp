@@ -254,9 +254,9 @@ public:
     return odr::File(std::make_shared<MemoryFile>(
         m_registry->image_element_at(element_id).data));
   }
-  [[nodiscard]] std::string image_href(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {};
+  [[nodiscard]] std::string
+  image_href(const ElementIdentifier element_id) const override {
+    return m_registry->image_element_at(element_id).href;
   }
 
 private:

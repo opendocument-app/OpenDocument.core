@@ -275,6 +275,9 @@ struct TextBox final {
   std::optional<std::uint32_t> blip_ref;
   /// The picture's file bytes (JPEG/PNG), resolved from the BLIP store.
   std::string image;
+  /// Distinct pseudo-path naming the picture (the file has no container
+  /// paths); derived from the BLIP store index.
+  std::string image_href;
   /// The shape is the slide background (OfficeArtFSP.fBackground).
   bool is_background{false};
 };
@@ -892,6 +895,12 @@ collect_slides(std::istream &current_user, std::istream &document,
         slot.fo_delay = 0xFFFFFFFF; // resolved (possibly to unsupported/empty)
       }
       box.image = slot.data;
+      if (!box.image.empty()) {
+        // Only JPEG and PNG BLIPs are modelled; tell them apart by magic.
+        const bool is_png = box.image.starts_with("\x89PNG");
+        box.image_href = "Pictures/" + std::to_string(*box.blip_ref) +
+                         (is_png ? ".png" : ".jpg");
+      }
     }
 
     // Background shapes cover the whole slide (they carry no anchor of their
@@ -947,6 +956,7 @@ presentation::parse_tree(ElementRegistry &registry,
       if (!box.image.empty()) {
         auto [image_id, image_element, image] = registry.create_image_element();
         image.data = std::move(box.image);
+        image.href = std::move(box.image_href);
         registry.append_child(frame_id, image_id);
       }
       build_paragraphs(registry, frame_id, box.text);
