@@ -68,6 +68,9 @@ void TextStyle::override(const TextStyle &other) {
   if (other.background_color.has_value()) {
     background_color = other.background_color;
   }
+  if (other.font_position.has_value()) {
+    font_position = other.font_position;
+  }
 }
 
 void ParagraphStyle::override(const ParagraphStyle &other) {
@@ -77,6 +80,9 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
   margin.override(other.margin);
   if (other.line_height.has_value()) {
     line_height = other.line_height;
+  }
+  if (other.text_indent.has_value()) {
+    text_indent = other.text_indent;
   }
 }
 
