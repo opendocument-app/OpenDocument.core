@@ -168,6 +168,7 @@ parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
       {"p:graphicFrame", create_default_tree_parser(
                              ElementType::frame, parse_graphic_frame_children)},
       {"p:txBody", create_default_tree_parser(ElementType::group)},
+      {"a:txBody", create_default_tree_parser(ElementType::group)},
       {"a:t", parse_text_element},
       {"a:tab", parse_text_element},
       {"a:p", create_default_tree_parser(ElementType::paragraph)},
