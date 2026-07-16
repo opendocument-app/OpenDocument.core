@@ -6,16 +6,64 @@
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
+#include <odr/style.hpp>
+
+#include <odr/internal/oldms/presentation/ppt_io.hpp>
 
 #include <internal/oldms/oldms_test_util.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 using namespace odr;
 using namespace odr::test;
+using odr::test::oldms::append_u16;
+using odr::test::oldms::append_u32;
 using odr::test::oldms::collect_text;
+
+// A StyleTextPropAtom body ([MS-PPT] 2.9.44): the paragraph-level runs are
+// skipped (including their mask-dependent fields), the character-level runs
+// map masks/CFStyle/fontRef/size/color onto TextCFRun.
+TEST(OldMs, ppt_parse_style_text_prop_atom) {
+  using internal::oldms::presentation::parse_style_text_prop_atom;
+  using internal::oldms::presentation::TextCFRun;
+
+  std::string body;
+  // One paragraph run covering all 12 characters: count, indentLevel, then a
+  // TextPFException with a bullet flag so a mask-dependent field is skipped.
+  append_u32(body, 12);
+  append_u16(body, 0);          // indentLevel
+  append_u32(body, 0x00000001); // PFMasks: hasBullet
+  append_u16(body, 0);          // bulletFlags
+  // Character run 1: 6 characters, bold on + italic off.
+  append_u32(body, 6);
+  append_u32(body, 0x00000003); // CFMasks: bold | italic
+  append_u16(body, 0x0001);     // CFStyle: bold set, italic clear
+  // Character run 2: 6 characters, font 1, 32pt, explicit red.
+  append_u32(body, 6);
+  append_u32(body, 0x00070000); // CFMasks: typeface | size | color
+  append_u16(body, 1);          // fontRef
+  append_u16(body, 32);         // fontSize
+  body += std::string("\xFF\x00\x00\xFE", 4); // ColorIndexStruct: sRGB red
+
+  const std::vector<TextCFRun> runs = parse_style_text_prop_atom(body, 12);
+  ASSERT_EQ(runs.size(), 2);
+
+  EXPECT_EQ(runs[0].count, 6);
+  EXPECT_EQ(runs[0].bold, true);
+  EXPECT_EQ(runs[0].italic, false);
+  EXPECT_FALSE(runs[0].underline.has_value());
+  EXPECT_FALSE(runs[0].font_size.has_value());
+
+  EXPECT_EQ(runs[1].count, 6);
+  EXPECT_FALSE(runs[1].bold.has_value());
+  EXPECT_EQ(runs[1].font_ref, 1);
+  EXPECT_EQ(runs[1].font_size, 32);
+  ASSERT_TRUE(runs[1].color.has_value());
+  EXPECT_EQ(runs[1].color->rgb(), 0xFF0000u);
+}
 
 TEST(OldMs, ppt_empty) {
   const std::unique_ptr logger =
@@ -93,4 +141,28 @@ TEST(OldMs, ppt_style_various) {
   EXPECT_EQ(collect_text(slides[0][0]), "title1");
   EXPECT_EQ(collect_text(slides[0][1]), "subtitle");
   EXPECT_NE(slides[0][0].as_frame().y(), slides[0][1].as_frame().y());
+
+  // Character formatting from the StyleTextPropAtoms: each text run is a
+  // styled span under its paragraph.
+  const auto first_span = [](const Element frame) {
+    const Element span = frame.first_child().first_child();
+    EXPECT_EQ(span.type(), ElementType::span);
+    return span.as_span();
+  };
+
+  // The title is 44pt Arial with an explicit black color.
+  const TextStyle title = first_span(slides[0][0]).style();
+  EXPECT_STREQ(title.font_name, "Arial");
+  EXPECT_EQ(title.font_size, Measure("44pt"));
+  ASSERT_TRUE(title.font_color.has_value());
+  EXPECT_EQ(title.font_color->rgb(), 0x000000u);
+
+  // Slide 6 ("title7 - link") carries an underlined blue 32pt hyperlink text.
+  ASSERT_EQ(slides[6].size(), 2);
+  EXPECT_EQ(collect_text(slides[6][1]), "https://www.google.at/");
+  const TextStyle link = first_span(slides[6][1]).style();
+  EXPECT_EQ(link.font_size, Measure("32pt"));
+  EXPECT_EQ(link.font_underline, true);
+  ASSERT_TRUE(link.font_color.has_value());
+  EXPECT_EQ(link.font_color->rgb(), 0x0000FFu);
 }
