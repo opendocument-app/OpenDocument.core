@@ -3,6 +3,7 @@
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 
+#include <cstdlib>
 #include <cstring>
 #include <unordered_map>
 #include <utility>
@@ -57,6 +58,34 @@ std::optional<FontStyle> read_font_style(const pugi::xml_attribute attribute) {
     return FontStyle::italic;
   }
   return {};
+}
+
+/// first component of `style:text-position`: "super", "sub" or a signed
+/// percent offset from the baseline
+std::optional<FontPosition>
+read_font_position(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  const char *value = attribute.value();
+  if (std::strncmp("super", value, 5) == 0) {
+    return FontPosition::super;
+  }
+  if (std::strncmp("sub", value, 3) == 0) {
+    return FontPosition::sub;
+  }
+  char *end{nullptr};
+  const double offset = std::strtod(value, &end);
+  if (end == value) {
+    return {};
+  }
+  if (offset > 0) {
+    return FontPosition::super;
+  }
+  if (offset < 0) {
+    return FontPosition::sub;
+  }
+  return FontPosition::normal;
 }
 
 std::optional<TextAlign> read_text_align(const pugi::xml_attribute attribute) {
@@ -294,6 +323,24 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
           read_color(text_properties.attribute("fo:background-color"))) {
     result.background_color = background_color;
   }
+  if (const pugi::xml_attribute text_position =
+          text_properties.attribute("style:text-position")) {
+    if (const std::optional<FontPosition> font_position =
+            read_font_position(text_position)) {
+      result.font_position = font_position;
+    }
+    // optional second component: relative font size in percent
+    if (const char *scale = std::strchr(text_position.value(), ' ');
+        scale != nullptr && result.font_size.has_value()) {
+      char *end{nullptr};
+      if (const double magnitude = std::strtod(scale + 1, &end);
+          end != scale + 1 && magnitude > 0) {
+        result.font_size =
+            Measure(result.font_size->magnitude() * magnitude * 1e-2,
+                    result.font_size->unit());
+      }
+    }
+  }
 }
 
 void Style::resolve_paragraph_style_(const pugi::xml_node node,
@@ -342,10 +389,13 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   }
   if (const std::optional<Measure> line_height =
           read_measure(paragraph_properties.attribute("fo:line-height"))) {
-    // TODO
-    if (line_height->unit().name() != "%") {
-      result.line_height = line_height;
-    }
+    // percent line height is relative to the text font size; the HTML
+    // translation emits it as a unitless ratio
+    result.line_height = line_height;
+  }
+  if (const std::optional<Measure> text_indent =
+          read_measure(paragraph_properties.attribute("fo:text-indent"))) {
+    result.text_indent = text_indent;
   }
 }
 

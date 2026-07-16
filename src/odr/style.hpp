@@ -24,6 +24,13 @@ enum class FontStyle {
   italic,
 };
 
+/// @brief Collection of vertical font positions (sub/superscript).
+enum class FontPosition {
+  normal,
+  super,
+  sub,
+};
+
 /// @brief Collection of text alignments.
 enum class TextAlign {
   left,
@@ -133,6 +140,7 @@ struct TextStyle final {
   std::optional<std::string> font_shadow;
   std::optional<Color> font_color;
   std::optional<Color> background_color;
+  std::optional<FontPosition> font_position;
 
   void override(const TextStyle &other);
 };
@@ -142,6 +150,7 @@ struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
   DirectionalStyle<Measure> margin;
   std::optional<Measure> line_height;
+  std::optional<Measure> text_indent;
 
   void override(const ParagraphStyle &other);
 };

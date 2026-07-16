@@ -44,11 +44,13 @@ Roughly ordered by importance.
   - [x] underline, strike through
   - [x] color, background color
   - [x] shadow
-  - [ ] superscript, subscript (`style:text-position`)
+  - [x] superscript, subscript (`style:text-position`, incl. relative font
+    size)
 - [x] paragraph
   - [x] alignment
-  - [x] margins
-  - [x] line height
+  - [x] margins (percentages are dropped)
+  - [x] line height (absolute and percentage)
+  - [x] first line indent (`fo:text-indent`)
 - [x] links
 - [x] images
   - [x] internal and external references
