@@ -16,10 +16,13 @@ namespace odr::internal::oldms::spreadsheet {
 enum BiffRecordType : std::uint16_t {
   biff_formula = 0x0006,    //< [MS-XLS] 2.4.127
   biff_eof = 0x000A,        //< [MS-XLS] 2.4.103
+  biff_font = 0x0031,       //< [MS-XLS] 2.4.122
   biff_continue = 0x003C,   //< [MS-XLS] 2.4.58
   biff_boundsheet = 0x0085, //< [MS-XLS] 2.4.28 BoundSheet8
+  biff_palette = 0x0092,    //< [MS-XLS] 2.4.188
   biff_mulrk = 0x00BD,      //< [MS-XLS] 2.4.175
   biff_mulblank = 0x00BE,   //< [MS-XLS] 2.4.174
+  biff_xf = 0x00E0,         //< [MS-XLS] 2.4.353
   biff_sst = 0x00FC,        //< [MS-XLS] 2.4.265
   biff_labelsst = 0x00FD,   //< [MS-XLS] 2.4.149
   biff_dimensions = 0x0200, //< [MS-XLS] 2.4.90
@@ -72,6 +75,89 @@ static_assert(sizeof(BoundSheet8Fixed) == 6);
 /// BoundSheet8.dt: only worksheets are parsed (0x01 macro, 0x02 chart,
 /// 0x06 VBA module are skipped).
 constexpr std::uint8_t boundsheet_dt_worksheet = 0x00;
+
+/// Fixed head of the Font record body ([MS-XLS] 2.4.122); the font name
+/// (a ShortXLUnicodeString) follows.
+struct FontFixed {
+  std::uint16_t dyHeight; //< font height in twips; 0 or 20-8191
+  std::uint16_t unused1 : 1;
+  std::uint16_t fItalic : 1;
+  std::uint16_t unused2 : 1;
+  std::uint16_t fStrikeOut : 1;
+  std::uint16_t fOutline : 1;
+  std::uint16_t fShadow : 1;
+  std::uint16_t fCondense : 1;
+  std::uint16_t fExtend : 1;
+  std::uint16_t reserved : 8;
+  std::uint16_t icv; //< font color (Icv, [MS-XLS] 2.5.161)
+  std::uint16_t bls; //< weight: 400 normal, 700 bold
+  std::uint16_t sss; //< 0 normal, 1 superscript, 2 subscript
+  std::uint8_t uls;  //< underline: 0x00 none; single/double/accounting else
+  std::uint8_t bFamily;
+  std::uint8_t bCharSet;
+  std::uint8_t unused3;
+};
+static_assert(sizeof(FontFixed) == 14);
+
+/// XF record body ([MS-XLS] 2.4.353) including its CellXF payload ([MS-XLS]
+/// 2.5.20). A style XF (fStyle == 1) carries a StyleXF instead, which lays
+/// out the fields read here identically.
+struct XfBody {
+  std::uint16_t ifnt; //< FontIndex ([MS-XLS] 2.5.129); 4 never occurs
+  std::uint16_t ifmt; //< number format; kept for later use
+  std::uint16_t fLocked : 1;
+  std::uint16_t fHidden : 1;
+  std::uint16_t fStyle : 1; //< 1 = cell style XF, 0 = cell XF
+  std::uint16_t f123Prefix : 1;
+  std::uint16_t ixfParent : 12;
+  std::uint16_t alc : 3;
+  std::uint16_t fWrap : 1;
+  std::uint16_t alcV : 3;
+  std::uint16_t fJustLast : 1;
+  std::uint16_t trot : 8;
+  std::uint16_t cIndent : 4;
+  std::uint16_t fShrinkToFit : 1;
+  std::uint16_t reserved1 : 1;
+  std::uint16_t iReadOrder : 2;
+  std::uint16_t reserved2 : 2;
+  std::uint16_t fAtrNum : 1;
+  std::uint16_t fAtrFnt : 1;
+  std::uint16_t fAtrAlc : 1;
+  std::uint16_t fAtrBdr : 1;
+  std::uint16_t fAtrPat : 1;
+  std::uint16_t fAtrProt : 1;
+  std::uint16_t dgLeft : 4;
+  std::uint16_t dgRight : 4;
+  std::uint16_t dgTop : 4;
+  std::uint16_t dgBottom : 4;
+  std::uint16_t icvLeft : 7;
+  std::uint16_t icvRight : 7;
+  std::uint16_t grbitDiag : 2;
+  std::uint32_t icvTop : 7;
+  std::uint32_t icvBottom : 7;
+  std::uint32_t icvDiag : 7;
+  std::uint32_t dgDiag : 4;
+  std::uint32_t fHasXFExt : 1;
+  std::uint32_t fls : 6; //< FillPattern: 0 none, 1 solid (icvFore only)
+  std::uint16_t icvFore : 7;
+  std::uint16_t icvBack : 7;
+  std::uint16_t fsxButton : 1;
+  std::uint16_t reserved3 : 1;
+};
+static_assert(sizeof(XfBody) == 20);
+
+/// LongRGB ([MS-XLS] 2.5.178): a Palette record color entry.
+struct LongRgb {
+  std::uint8_t red;
+  std::uint8_t green;
+  std::uint8_t blue;
+  std::uint8_t reserved;
+};
+static_assert(sizeof(LongRgb) == 4);
+
+/// The Palette record's rgColor array holds exactly 56 colors, mapped to the
+/// icv values 0x08-0x3F ([MS-XLS] 2.4.188, 2.5.161).
+constexpr std::size_t palette_color_count = 56;
 
 /// Cell structure: the head of every cell record body ([MS-XLS] 2.5.13).
 struct CellRef {

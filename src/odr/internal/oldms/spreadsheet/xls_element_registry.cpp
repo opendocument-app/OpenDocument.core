@@ -19,6 +19,8 @@ void ElementRegistry::clear() noexcept {
   m_texts.clear();
   m_sheets.clear();
   m_sheet_cells.clear();
+  m_cell_styles.clear();
+  m_font_names.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -138,6 +140,27 @@ void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
   sheet.content.rows = std::max(sheet.content.rows, cell.position.row + 1);
   sheet.content.columns =
       std::max(sheet.content.columns, cell.position.column + 1);
+}
+
+const char *ElementRegistry::intern_font_name(const std::string &name) {
+  if (const auto it = std::ranges::find(m_font_names, name);
+      it != m_font_names.end()) {
+    return it->c_str();
+  }
+  return m_font_names.emplace_back(name).c_str();
+}
+
+void ElementRegistry::set_cell_styles(std::vector<CellStyle> styles) noexcept {
+  m_cell_styles = std::move(styles);
+}
+
+const ElementRegistry::CellStyle &
+ElementRegistry::cell_style_at(const std::uint16_t ixfe) const {
+  if (ixfe >= m_cell_styles.size()) {
+    throw std::out_of_range(
+        "ElementRegistry::cell_style_at: XF index out of range");
+  }
+  return m_cell_styles[ixfe];
 }
 
 void ElementRegistry::check_element_id(const ElementIdentifier id) const {

@@ -2,9 +2,11 @@
 
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
+#include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <deque>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -43,6 +45,15 @@ public:
 
   struct SheetCell final {
     TablePosition position;
+    /// Index into the workbook's cell styles (the cell record's ixfe).
+    std::uint16_t ixfe{0};
+  };
+
+  /// Display properties resolved from an XF record and its Font: the text
+  /// (font) side and the cell (fill) side.
+  struct CellStyle final {
+    TextStyle text_style;
+    TableCellStyle cell_style;
   };
 
   void clear() noexcept;
@@ -72,11 +83,23 @@ public:
   /// they are addressed via `Sheet::cell` (like the ooxml/spreadsheet module).
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
+  /// Stores a font name and returns a pointer that stays valid for the
+  /// registry's lifetime (`TextStyle::font_name` is a `const char *`).
+  const char *intern_font_name(const std::string &name);
+
+  void set_cell_styles(std::vector<CellStyle> styles) noexcept;
+  /// The resolved style of an XF record, by XF index (a cell's ixfe).
+  /// Throws if the index has no XF record.
+  [[nodiscard]] const CellStyle &cell_style_at(std::uint16_t ixfe) const;
+
 private:
   std::vector<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
   std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
+  std::vector<CellStyle> m_cell_styles;
+  /// Deque: elements never move, so interned `c_str()`s stay valid.
+  std::deque<std::string> m_font_names;
 
   void check_element_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;

@@ -3,13 +3,14 @@
 The **why** and the roadmap; what is concretely done lives in the code. Shared
 `oldms/` conventions are in [`../AGENTS.md`](../AGENTS.md).
 
-**Scope.** Extract the **visible cell text** of every worksheet through the
-abstract model so the generic HTML renderer produces a plain table per sheet.
-Every cell value is rendered as a *string* — no styles, number/date formats,
-merged cells, drawings, or charts.
+**Scope.** Extract the **visible cell text** of every worksheet, plus each
+cell's **font formatting and fill color**, through the abstract model so the
+generic HTML renderer produces a styled table per sheet. Every cell value is
+rendered as a *string* — no number/date formats, merged cells, borders,
+drawings, or charts.
 
-**Specs.** `[MS-XLS]` (record stream, SST, cell records) + `[MS-CFB]` container.
-Section numbers cited inline in code.
+**Specs.** `[MS-XLS]` (record stream, SST, cell records, Font/XF/Palette) +
+`[MS-CFB]` container. Section numbers cited inline in code.
 
 ## Module layout (sibling of `../text`, `../presentation`)
 
@@ -17,8 +18,8 @@ Section numbers cited inline in code.
 |---|---|
 | `xls_structs.hpp` | `#pragma pack(1)` PODs for record bodies + `static_assert` sizes + record-type enum |
 | `xls_io.{hpp,cpp}` | `BiffReader` (record walker with transparent `CONTINUE` hopping; the `[MS-XLS]` string readers + `expect_bof`), RK decoding, number formatting |
-| `xls_parser.{hpp,cpp}` | `parse_tree` → globals (BoundSheet8 + SST) then one pass per sheet substream |
-| `xls_element_registry.{hpp,cpp}` | Flat element store + `Sheet` (name, dimensions, cell-position map) and `SheetCell` payloads |
+| `xls_parser.{hpp,cpp}` | `parse_tree` → globals (BoundSheet8 + SST + Font/XF/Palette) then one pass per sheet substream |
+| `xls_element_registry.{hpp,cpp}` | Flat element store + `Sheet` (name, dimensions, cell-position map), `SheetCell` payloads, and the resolved per-XF `CellStyle` table |
 | `xls_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
 Tree shape: `sheet → sheet_cell → paragraph → text`, one `sheet_cell` per
@@ -58,9 +59,27 @@ bit-field structs (`RkNumber`, `UnicodeStringFlags`, flags of
 `BoundSheet8Fixed`/`FormulaFixed`) — little-endian, LSB-first hosts only; shared
 `oldms/` assumption, see [`../AGENTS.md`](../AGENTS.md).
 
-**Adapters** expose `ValueType::string` for every cell, `sheet_cell_span` →
-`{1,1}`, all `*_style` → `{}`, and the `font_size = 11pt` placeholder hack (same as
-`.doc`/`.ppt`). `Document::is_editable()` → `false`; `save` throws.
+**Cell formatting is resolved at parse time, per XF.** Each cell record's
+`ixfe` is kept on the `SheetCell`; the globals pass collects `Font` (0x0031),
+`XF` (0x00E0) and `Palette` (0x0092) and resolves every XF into a `CellStyle`
+(a `TextStyle` from the font + a `TableCellStyle` fill), stored once in the
+registry and indexed by `ixfe`. The adapters only look up: `text_style`/
+`paragraph_text_style` walk up to the `sheet_cell` ancestor and return its
+XF's `TextStyle`; `sheet_cell_style` returns the fill. The non-obvious bits:
+- **`FontIndex` 4 does not exist** (§2.5.129): `ifnt` < 4 is zero-based,
+  \> 4 is one-based into the Font records in file order.
+- **Colors are `Icv` indexes** (§2.5.161): 0x00–0x07 built-in constants,
+  0x08–0x3F the `Palette` record (or the spec's default palette when absent),
+  0x40/0x41/0x7FFF system/automatic → left unset.
+- **Fills** (§2.5.20): `fls` 0 = none; solid (1) renders `icvFore`; the other
+  patterns are *approximated* by their foreground color.
+- A `dyHeight` of 0 (allowed by §2.4.122) leaves `font_size` unset instead of
+  emitting invisible 0pt text. Font names are interned in a `std::deque` so
+  `TextStyle::font_name` (`const char *`) stays valid.
+
+**Adapters** expose `ValueType::string` for every cell and `sheet_cell_span` →
+`{1,1}`; sheet/column/row styles are still `{}`.
+`Document::is_editable()` → `false`; `save` throws.
 
 ### Value formatting (the non-obvious bits)
 
@@ -79,6 +98,10 @@ bit-field structs (`RkNumber`, `UnicodeStringFlags`, flags of
   (no flags byte there) + correct next-string position.
 - `xls_decode_rk` — all four RK flag combinations + number formatting (raw on-disk
   encodings, so it also pins the `RkNumber` bit-field layout).
+- `xls_cell_styles` — synthetic one-sheet workbook (inline bytes): XF → Font
+  resolution incl. the skipped index 4, weight/italic/underline/strike, the
+  default palette, automatic colors, solid fill, unstyled empty positions.
+- `xls_palette_record` — a `Palette` record overriding the default palette.
 - `xls_empty` / `xls_file_example_10` / `xls_file_example_5000` — real fixtures
   (names, dimensions, extents, string/number cells; the 5000-row file exercises
   SST `CONTINUE` on real data).
@@ -108,8 +131,11 @@ ignore their format codes. Fix by following the format chain:
 
 - **Merged cells**: `MergeCells` (0x00E5) → `sheet_cell_span`/
   `sheet_cell_is_covered` (adapter stubs in place).
-- **Styles**: fonts (`Font` 0x0031), fills/borders from `XF`; column widths
-  (`ColInfo` 0x007D) and row heights (`Row` 0x0208).
+- **Remaining styles**: borders and alignment from `XF` (fields already
+  parsed, unused); column widths (`ColInfo` 0x007D) and row heights (`Row`
+  0x0208). `Blank`/`MulBlank` cells are skipped entirely, so a fill on an
+  empty cell is lost. Non-solid fill patterns render as their foreground
+  color instead of a pattern.
 - **Hidden rows/columns** (`Row.fDyZero`, `ColInfo.fHidden`).
 - **Typed cell values**: expose numeric/bool/date `ValueType`s instead of
   pre-rendered strings.
