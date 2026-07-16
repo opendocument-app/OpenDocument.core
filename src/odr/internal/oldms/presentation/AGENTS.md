@@ -5,9 +5,10 @@ The **why** and the roadmap; what is concretely done lives in the code. Shared
 
 **Scope.** Extract the **visible text of each slide, positioned in its text
 boxes**, plus **direct character formatting** (font, size, bold, italic,
-underline, color) as styled spans, through the abstract model so the generic
-HTML renderer lays each slide out as positioned frames. No paragraph styles or
-master-inherited formatting, master/notes pages, images, charts, tables, or
+underline, color) as styled spans, plus **pictures** (JPEG/PNG BLIPs
+referenced by slide shapes), through the abstract model so the generic HTML
+renderer lays each slide out as positioned frames. No paragraph styles or
+master-inherited formatting/pictures, master/notes pages, charts, tables, or
 animations.
 
 **Specs.** `[MS-PPT]` (the PowerPoint stream) + `[MS-ODRAW]` (the Office Art /
@@ -87,12 +88,13 @@ unmodelled/optional: an absent slide list (0 slides), a shape with no anchor
 (unpositioned frame), nested groups and non-`Sp` records in a group, any
 unrecognised child.
 
-**First cut: top-level shapes only.** Only direct children of the root
-`OfficeArtSpgrContainer`, whose anchors are already in the slide's master-unit
-system (master units = 1/576 inch → inches via `/576`). Nested-group transforms,
-non-grouped shapes, and master-placeholder geometry inheritance are deferred
-(open work §1). Shapes with no text are dropped, so the group shape and pictures
-disappear.
+**First cut: top-level shapes only.** Direct children of the root
+`OfficeArtSpgrContainer` plus the drawing's optional non-grouped shape
+([MS-ODRAW] 2.2.13), whose anchors are already in the slide's master-unit
+system (master units = 1/576 inch → inches via `/576`). Nested-group
+transforms and master-placeholder geometry inheritance are deferred (open
+work §1). Shapes with neither text nor a picture are dropped, so the group
+shape disappears.
 
 **Direct character formatting only, resolved to styled spans.** Each text atom
 is kept raw (undecoded) until the **`StyleTextPropAtom`** (0x0FA1, §2.9.44)
@@ -115,7 +117,19 @@ empty-paragraph height). The non-obvious bits:
   styles (`TxMasterStyleAtom`, open work). This replaces the old flat `11pt`
   placeholder.
 
-**Slide size hardcoded 10"×7.5"** (`slide_page_layout`) — open work.
+**Pictures resolve through the BLIP store.** A shape references its picture
+via the `OfficeArtFOPT` `pib` property (real picture shapes) or `fillBlip`
+(picture fills — how LibreOffice-exported `.ppt` places pictures), a one-based
+index into the `OfficeArtBStoreContainer` of the document's drawing group.
+Each `OfficeArtFBSE` locates the BLIP in the `/Pictures` (delay) stream at
+`foDelay` (or embeds it); **JPEG and PNG** BLIPs become an `image` element
+under the shape's frame, served to the renderer as an in-memory `odr::File`.
+WMF/EMF/PICT/DIB/TIFF BLIPs are skipped (open work). A shape flagged
+`fBackground` (`OfficeArtFSP`) gets a full-slide anchor when it has none and
+is moved before the slide's other shapes so it renders underneath.
+
+**Slide size** comes from the `DocumentAtom` (master units), with 10"×7.5" as
+fallback; `slide_name` returns "Slide N" in presentation order.
 `Document::is_editable()` → `false`; `save` throws.
 
 **Endianness.** Host byte order / LSB-first bit-fields assumed; shared `oldms/`
@@ -135,8 +149,9 @@ break (split like `doc_parser`); `0x09` tab kept; other controls dropped
   color.
 - `ppt_empty` (`empty.ppt`): 1 slide.
 - `ppt_style_various` (`style-various-1.ppt`): 8 slides, positioned frames,
-  per-box text, plus style assertions (44pt Arial black title; underlined blue
-  32pt link text).
+  per-box text, style assertions (44pt Arial black title; underlined blue
+  32pt link text), and the slide-6 background picture (leading full-slide
+  frame with the PNG bytes from `/Pictures`).
 
 Fixture-commit / reference-HTML wiring / `OutlineTextRefAtom` fixture are open
 (§2 below).
@@ -201,9 +216,6 @@ and is independent:
   and map each descendant's anchor from `[xLeft..xRight]×[yTop..yBottom]` onto the
   group shape's own anchor rect in the parent, composing transforms down the
   nesting, before the `/576` conversion.
-- **1.2 Non-grouped shapes.** `OfficeArtDgContainer` (0xF002) also has an optional
-  direct `shape` (§2.2.13) for a shape not in a group — the current walk only
-  iterates the `OfficeArtSpgrContainer`. Rare; read that child too.
 - **1.3 Optional / inherited anchor.** A shape without an `OfficeArtClientAnchor`
   currently yields a frame with no position. PowerPoint placeholders often omit
   it and inherit geometry from the matching placeholder on the **master slide**
@@ -214,9 +226,10 @@ and is independent:
 
 ## 2. Smaller shortcomings
 
-- **2.1 Slide size hardcoded.** Real size is `DocumentAtom.slideSize`
-  (`RT_DocumentAtom` 0x03E9, first child of `DocumentContainer`) — a `PointStruct`
-  in master units. Read it; fall back to 10"×7.5" only if absent.
+- **2.0 Picture formats and locations.** WMF/EMF/PICT/DIB/TIFF BLIPs are
+  skipped (no converter; DIB would need a synthesized BMP header). Pictures on
+  **master slides** are not rendered (masters are skipped entirely) — e.g.
+  LibreOffice photo decks put each photo on a per-slide master.
 - **2.2 Reference-output HTML not wired.** `html_output_test` has no `ppt` case;
   add reference HTML under `test/data/reference-output/…/output/ppt/` (needs the
   `OpenDocument.test.output` submodule).
@@ -234,5 +247,4 @@ and is independent:
   styles + color scheme to resolve both.
 - **2.5 Auto-field metacharacters dropped.** Slide-number/date/header/footer
   placeholders (`RT_*MetaCharAtom`) are ignored. Low priority.
-- **2.6 `slide_name` is empty.** Could return `"Slide N"` for the HTML page label.
 - **2.7 Endianness** — shared `oldms/` shortcoming; see [`../AGENTS.md`](../AGENTS.md).

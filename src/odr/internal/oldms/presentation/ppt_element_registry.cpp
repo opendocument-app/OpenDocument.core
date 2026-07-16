@@ -9,8 +9,10 @@ void ElementRegistry::clear() noexcept {
   m_elements.clear();
   m_texts.clear();
   m_frames.clear();
+  m_images.clear();
   m_styles.clear();
   m_font_names.clear();
+  m_slide_size.reset();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -38,6 +40,14 @@ std::tuple<ElementIdentifier, ElementRegistry::Element &,
 ElementRegistry::create_frame_element() {
   const auto &[element_id, element] = create_element(ElementType::frame);
   auto [it, success] = m_frames.emplace(element_id, Frame{});
+  return {element_id, element, it->second};
+}
+
+std::tuple<ElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Image &>
+ElementRegistry::create_image_element() {
+  const auto &[element_id, element] = create_element(ElementType::image);
+  auto [it, success] = m_images.emplace(element_id, Image{});
   return {element_id, element, it->second};
 }
 
@@ -77,6 +87,18 @@ ElementRegistry::frame_element_at(const ElementIdentifier id) const {
   return m_frames.at(id);
 }
 
+ElementRegistry::Image &
+ElementRegistry::image_element_at(const ElementIdentifier id) {
+  check_image_id(id);
+  return m_images.at(id);
+}
+
+const ElementRegistry::Image &
+ElementRegistry::image_element_at(const ElementIdentifier id) const {
+  check_image_id(id);
+  return m_images.at(id);
+}
+
 void ElementRegistry::append_child(const ElementIdentifier parent_id,
                                    const ElementIdentifier child_id) {
   check_element_id(parent_id);
@@ -98,6 +120,16 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
     element_at(previous_sibling_id).next_sibling_id = child_id;
   }
   element_at(parent_id).last_child_id = child_id;
+}
+
+void ElementRegistry::set_slide_size(const std::int32_t width,
+                                     const std::int32_t height) {
+  m_slide_size = {width, height};
+}
+
+std::optional<std::pair<std::int32_t, std::int32_t>>
+ElementRegistry::slide_size() const {
+  return m_slide_size;
 }
 
 const char *ElementRegistry::intern_font_name(const std::string &name) {
@@ -141,6 +173,14 @@ void ElementRegistry::check_frame_id(const ElementIdentifier id) const {
   check_element_id(id);
   if (!m_frames.contains(id)) {
     throw std::out_of_range("ElementRegistry::check_id: identifier not found");
+  }
+}
+
+void ElementRegistry::check_image_id(const ElementIdentifier id) const {
+  check_element_id(id);
+  if (!m_images.contains(id)) {
+    throw std::out_of_range(
+        "ElementRegistry::check_id: image identifier not found");
   }
 }
 

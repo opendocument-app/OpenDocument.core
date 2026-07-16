@@ -2,6 +2,7 @@
 
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
@@ -9,6 +10,7 @@
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -59,7 +61,8 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
                              public abstract::SpanAdapter,
-                             public abstract::TextAdapter {
+                             public abstract::TextAdapter,
+                             public abstract::ImageAdapter {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
       : m_document(&document), m_registry(&registry) {}
@@ -136,10 +139,23 @@ public:
   text_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::text ? this : nullptr;
   }
+  [[nodiscard]] const ImageAdapter *
+  image_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::image ? this : nullptr;
+  }
 
   [[nodiscard]] PageLayout slide_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // Default 4:3 slide so the renderer has non-empty page dimensions.
+    // The DocumentAtom's slide size (master units = 1/576 inch), with the
+    // default 4:3 slide as fallback so the renderer has page dimensions.
+    if (const auto size = m_registry->slide_size(); size.has_value()) {
+      return {
+          .width = Measure(size->first / 576.0, DynamicUnit("in")),
+          .height = Measure(size->second / 576.0, DynamicUnit("in")),
+          .print_orientation = {},
+          .margin = {},
+      };
+    }
     return {
         .width = Measure("10in"),
         .height = Measure("7.5in"),
@@ -151,9 +167,17 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return null_element_id;
   }
-  [[nodiscard]] std::string slide_name(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {};
+  [[nodiscard]] std::string
+  slide_name(const ElementIdentifier element_id) const override {
+    // Slides carry no names in the file; number them in presentation order.
+    std::size_t index = 1;
+    for (ElementIdentifier id =
+             m_registry->element_at(element_id).previous_sibling_id;
+         id != null_element_id;
+         id = m_registry->element_at(id).previous_sibling_id) {
+      ++index;
+    }
+    return "Slide " + std::to_string(index);
   }
 
   [[nodiscard]] AnchorType frame_anchor_type(
@@ -218,6 +242,20 @@ public:
   [[nodiscard]] TextStyle text_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     // The enclosing span carries the character style.
+    return {};
+  }
+
+  [[nodiscard]] bool image_is_internal(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return true;
+  }
+  [[nodiscard]] std::optional<odr::File>
+  image_file(const ElementIdentifier element_id) const override {
+    return odr::File(std::make_shared<MemoryFile>(
+        m_registry->image_element_at(element_id).data));
+  }
+  [[nodiscard]] std::string image_href(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
