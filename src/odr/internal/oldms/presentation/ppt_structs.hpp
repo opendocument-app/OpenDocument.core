@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 namespace odr::internal::oldms::presentation {
@@ -12,6 +13,7 @@ namespace odr::internal::oldms::presentation {
 /// Record types relevant to text extraction. See [MS-PPT] 2.13.24 RecordType.
 enum RecordType : std::uint16_t {
   RT_DocumentContainer = 0x03E8,  //< top-level document
+  RT_DocumentAtom = 0x03E9,       //< slide size etc. [MS-PPT] 2.4.2
   RT_SlideContainer = 0x03EE,     //< a slide (drawing + placeholders)
   RT_Notes = 0x03F0,              //< notes page (skipped)
   RT_Environment = 0x03F2,        //< DocumentTextInfoContainer [MS-PPT] 2.4.5
@@ -31,13 +33,31 @@ enum RecordType : std::uint16_t {
 
   // Office Art (Escher) drawing records holding the slide's text boxes:
   // OfficeArt* are [MS-ODRAW], client records (textbox/anchor) are [MS-PPT].
-  RT_Drawing = 0x040C,              //< DrawingContainer        [MS-PPT] 2.5.13
-  RT_OfficeArtDgContainer = 0xF002, //< [MS-ODRAW] 2.2.13
-  RT_OfficeArtSpgrContainer = 0xF003, //< shape group [MS-ODRAW] 2.2.16
+  RT_Drawing = 0x040C,               //< DrawingContainer        [MS-PPT] 2.5.13
+  RT_DrawingGroup = 0x040B,          //< DrawingGroupContainer   [MS-PPT] 2.4.3
+  RT_OfficeArtDggContainer = 0xF000, //< drawing group data [MS-ODRAW] 2.2.12
+  RT_OfficeArtBStoreContainer = 0xF001, //< the BLIP store [MS-ODRAW] 2.2.20
+  RT_OfficeArtDgContainer = 0xF002,     //< [MS-ODRAW] 2.2.13
+  RT_OfficeArtSpgrContainer = 0xF003,   //< shape group [MS-ODRAW] 2.2.16
   RT_OfficeArtSpContainer = 0xF004, //< one shape (a text box) [MS-ODRAW] 2.2.14
+  RT_OfficeArtFBSE = 0xF007,        //< BLIP store entry [MS-ODRAW] 2.2.32
+  RT_OfficeArtFSP = 0xF00A,         //< shape id + flags [MS-ODRAW] 2.2.40
+  RT_OfficeArtFOPT = 0xF00B,        //< shape properties [MS-ODRAW] 2.2.9
   RT_OfficeArtClientTextbox = 0xF00D, //< a shape's text        [MS-PPT] 2.9.76
   RT_OfficeArtClientAnchor = 0xF010,  //< a shape's position    [MS-PPT] 2.7.1
+  RT_OfficeArtBlipJPEG = 0xF01D,      //< JPEG BLIP [MS-ODRAW] 2.2.27
+  RT_OfficeArtBlipPNG = 0xF01E,       //< PNG BLIP  [MS-ODRAW] 2.2.28
 };
+
+/// The pib property of an OfficeArtFOPT: the shape's picture as a one-based
+/// index into the BLIP store ([MS-ODRAW] 2.3.23.2).
+constexpr std::uint16_t office_art_property_pib = 0x0104;
+/// The fillBlip property: a picture fill's BLIP, same index semantics
+/// ([MS-ODRAW] 2.3.7.2). LibreOffice-exported .ppt places pictures this way.
+constexpr std::uint16_t office_art_property_fill_blip = 0x0186;
+/// OfficeArtFSP.fBackground: the shape is the slide background
+/// ([MS-ODRAW] 2.2.40).
+constexpr std::uint32_t office_art_fsp_background = 0x400;
 
 /// recInstance of a RT_SlideListWithText container: which list it is (slides /
 /// master / notes) inside the DocumentContainer ([MS-PPT] 2.4.14.1/3/6).
@@ -89,6 +109,34 @@ struct UserEditAtomBody {
 };
 static_assert(sizeof(UserEditAtomBody) == 28,
               "UserEditAtomBody should be 28 bytes");
+
+/// Fixed part of an OfficeArtFBSE ([MS-ODRAW] 2.2.32); an optional name and
+/// an optional embedded BLIP follow.
+struct OfficeArtFbseFixed {
+  std::uint8_t btWin32; //< MSOBLIPTYPE
+  std::uint8_t btMacOS;
+  std::array<std::uint8_t, 16> rgbUid;
+  std::uint16_t tag;
+  std::uint32_t size;    //< BLIP size in the stream
+  std::uint32_t cRef;    //< 0 = empty slot
+  std::uint32_t foDelay; //< offset in the delay ("Pictures") stream, or -1
+  std::uint8_t unused1;
+  std::uint8_t cbName;
+  std::uint8_t unused2;
+  std::uint8_t unused3;
+};
+static_assert(sizeof(OfficeArtFbseFixed) == 36,
+              "OfficeArtFbseFixed should be 36 bytes");
+
+/// One property of an OfficeArtFOPT ([MS-ODRAW] 2.2.7/2.2.8); complex data
+/// follows the property array.
+struct OfficeArtFopte {
+  std::uint16_t opid : 14;
+  std::uint16_t fBid : 1;
+  std::uint16_t fComplex : 1;
+  std::uint32_t op;
+};
+static_assert(sizeof(OfficeArtFopte) == 6, "OfficeArtFopte should be 6 bytes");
 
 #pragma pack(pop)
 

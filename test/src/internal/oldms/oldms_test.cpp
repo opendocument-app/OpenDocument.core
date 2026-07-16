@@ -14,6 +14,7 @@
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <sstream>
@@ -375,14 +376,39 @@ TEST(OldMs, ppt_style_various) {
       EXPECT_TRUE(frame.height().has_value());
     }
   }
-  EXPECT_EQ(total_frames, 12);
+  EXPECT_EQ(total_frames, 13); // 12 text boxes + 1 background picture
 
-  // The first frame of each slide is its title "titleN…", in order.
+  // The first text frame of each slide is its title "titleN…", in order.
   for (std::size_t i = 0; i < slides.size(); ++i) {
-    const std::string title = collect_text(slides[i].front());
+    std::string title;
+    for (const Element &frame : slides[i]) {
+      title = collect_text(frame);
+      if (!title.empty()) {
+        break;
+      }
+    }
     EXPECT_EQ(title.rfind("title" + std::to_string(i + 1), 0), 0u)
         << "slide " << i << " title: " << title;
   }
+
+  // Slide 5 ("title6 - background image") carries a full-slide background
+  // picture: a leading frame holding an image element with the PNG bytes from
+  // the "Pictures" stream.
+  ASSERT_EQ(slides[5].size(), 2);
+  const Element background = slides[5][0];
+  EXPECT_EQ(collect_text(background), "");
+  ASSERT_EQ(background.first_child().type(), ElementType::image);
+  const Image image = background.first_child().as_image();
+  EXPECT_TRUE(image.is_internal());
+  ASSERT_TRUE(image.file().has_value());
+  std::array<char, 4> magic{};
+  image.file()->stream()->read(magic.data(), magic.size());
+  EXPECT_EQ(std::string(magic.data() + 1, 3), "PNG");
+  // A non-empty pseudo-path names the BLIP so the HTML renderer can emit a
+  // distinct resource per picture when images are not embedded.
+  EXPECT_EQ(image.href(), "Pictures/1.png");
+  EXPECT_EQ(background.as_frame().x(), "0in");
+  EXPECT_EQ(background.as_frame().y(), "0in");
 
   // Slide 0 is a title + subtitle box, at different vertical positions.
   ASSERT_EQ(slides[0].size(), 2);

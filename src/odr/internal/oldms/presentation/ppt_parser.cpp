@@ -8,6 +8,7 @@
 #include <odr/internal/oldms/presentation/ppt_element_registry.hpp>
 #include <odr/internal/oldms/presentation/ppt_io.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -263,11 +264,22 @@ StyledText style_pending(const PendingText &pending,
   return result;
 }
 
-/// A single text box on a slide: its styled text and, optionally, the
-/// position and size from its OfficeArtClientAnchor.
+/// A single text box or picture shape on a slide: its styled text, its
+/// picture reference/bytes, and optionally the position and size from its
+/// OfficeArtClientAnchor.
 struct TextBox final {
   std::optional<Anchor> anchor;
   StyledText text;
+  /// The shape's picture (pib) or picture fill (fillBlip): a one-based index
+  /// into the BLIP store.
+  std::optional<std::uint32_t> blip_ref;
+  /// The picture's file bytes (JPEG/PNG), resolved from the BLIP store.
+  std::string image;
+  /// Distinct pseudo-path naming the picture (the file has no container
+  /// paths); derived from the BLIP store index.
+  std::string image_href;
+  /// The shape is the slide background (OfficeArtFSP.fBackground).
+  bool is_background{false};
 };
 
 /// Builds the paragraph/span/text subtree of one text box under `parent_id`.
@@ -421,11 +433,37 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape,
     if (child->recType == RT_OfficeArtClientAnchor) {
       box.anchor = read_client_anchor(in, child->recLen);
       children.consume(child->recLen);
+    } else if (child->recType == RT_OfficeArtFSP &&
+               child->recLen >= 2 * sizeof(std::uint32_t)) {
+      read_u32(in); // spid
+      const std::uint32_t flags = read_u32(in);
+      children.consume(2 * sizeof(std::uint32_t));
+      box.is_background = (flags & office_art_fsp_background) != 0;
     } else if (child->recType == RT_OfficeArtClientTextbox) {
       gather_text(in, *child, box.text, outline_texts, context);
       children.consume(child->recLen);
+    } else if (child->recType == RT_OfficeArtFOPT) {
+      // rh.recInstance is the property count; complex data (skipped by the
+      // cursor) follows the array ([MS-ODRAW] 2.2.9).
+      const std::uint16_t count = child->recInstance;
+      for (std::uint16_t i = 0;
+           i < count && (i + 1) * sizeof(OfficeArtFopte) <= child->recLen;
+           ++i) {
+        const auto property = util::byte_stream::read<OfficeArtFopte>(in);
+        children.consume(sizeof(OfficeArtFopte));
+        if (property.fComplex != 0) {
+          continue;
+        }
+        // A real picture shape (pib) wins over a picture fill (fillBlip).
+        if (property.opid == office_art_property_pib) {
+          box.blip_ref = property.op;
+        } else if (property.opid == office_art_property_fill_blip &&
+                   !box.blip_ref.has_value()) {
+          box.blip_ref = property.op;
+        }
+      }
     }
-    // Other children (shapeProp, FOPT, clientData, …): skipped by the cursor.
+    // Other children (shapeProp, clientData, …): skipped by the cursor.
   }
   return box;
 }
@@ -437,23 +475,43 @@ std::vector<TextBox>
 read_slide_text_boxes(std::istream &in, const RecordHeader &slide,
                       const std::vector<StyledText> &outline_texts,
                       const StyleContext &context) {
-  // SlideContainer → DrawingContainer → OfficeArtDgContainer →
-  // OfficeArtSpgrContainer (all mandatory), then iterate the shapes.
+  // SlideContainer → DrawingContainer → OfficeArtDgContainer (mandatory).
+  // The drawing holds a mandatory OfficeArtSpgrContainer plus optionally a
+  // direct shape not in any group ([MS-ODRAW] 2.2.13); both are read in
+  // stream (z) order.
   const RecordHeader drawing = require_child(in, slide, RT_Drawing);
   const RecordHeader dg = require_child(in, drawing, RT_OfficeArtDgContainer);
-  const RecordHeader spgr = require_child(in, dg, RT_OfficeArtSpgrContainer);
 
   std::vector<TextBox> boxes;
-  ChildCursor shapes(in, spgr);
-  while (const std::optional<RecordHeader> shape = shapes.next()) {
-    if (shape->recType != RT_OfficeArtSpContainer) {
-      continue; // not a shape; the cursor skips it
-    }
-    TextBox box = read_shape(in, *shape, outline_texts, context);
-    shapes.consume(shape->recLen);
-    if (!box.text.empty()) {
+  const auto keep = [&boxes](TextBox box) {
+    if (!box.text.empty() || box.blip_ref.has_value()) {
       boxes.push_back(std::move(box));
     }
+  };
+
+  bool seen_group = false;
+  ChildCursor children(in, dg);
+  while (const std::optional<RecordHeader> child = children.next()) {
+    if (child->recType == RT_OfficeArtSpgrContainer) {
+      seen_group = true;
+      ChildCursor shapes(in, *child);
+      while (const std::optional<RecordHeader> shape = shapes.next()) {
+        if (shape->recType != RT_OfficeArtSpContainer) {
+          continue; // not a shape; the cursor skips it
+        }
+        keep(read_shape(in, *shape, outline_texts, context));
+        shapes.consume(shape->recLen);
+      }
+      children.consume(child->recLen);
+    } else if (child->recType == RT_OfficeArtSpContainer) {
+      keep(read_shape(in, *child, outline_texts, context));
+      children.consume(child->recLen);
+    }
+    // Other children: skipped by the cursor.
+  }
+  if (!seen_group) {
+    throw std::runtime_error("ppt: missing required record type " +
+                             std::to_string(RT_OfficeArtSpgrContainer));
   }
   return boxes;
 }
@@ -548,6 +606,103 @@ SlideListText read_slide_list_text(std::istream &in,
   return result;
 }
 
+/// Reads an OfficeArt BLIP record ([MS-ODRAW] 2.2.23) at the stream position
+/// and returns its image file bytes; empty for BLIP types not modelled
+/// (WMF/EMF/PICT/DIB/TIFF).
+std::string read_blip_record(std::istream &in) {
+  const RecordHeader header = read_record_header(in);
+
+  // JPEG/PNG: rgbUid1, optional rgbUid2 (odd data recInstance), tag, data
+  // ([MS-ODRAW] 2.2.27/2.2.28).
+  std::uint32_t prefix;
+  if (header.recType == RT_OfficeArtBlipJPEG) {
+    const bool two_uids =
+        header.recInstance == 0x46B || header.recInstance == 0x6E3;
+    prefix = 16 + (two_uids ? 16 : 0) + 1;
+  } else if (header.recType == RT_OfficeArtBlipPNG) {
+    prefix = 16 + (header.recInstance == 0x6E1 ? 16 : 0) + 1;
+  } else {
+    in.ignore(header.recLen);
+    return {};
+  }
+  if (header.recLen < prefix) {
+    throw std::runtime_error("ppt: truncated BLIP record");
+  }
+  in.ignore(prefix);
+  return util::stream::read(in, header.recLen - prefix);
+}
+
+/// One slot of the BLIP store: the offset of the BLIP in the "Pictures"
+/// stream (0xFFFFFFFF = none), or its already-extracted bytes when the BLIP
+/// is embedded in the store itself.
+struct BlipSlot final {
+  std::uint32_t fo_delay{0xFFFFFFFF};
+  std::string data;
+};
+
+/// Reads the BLIP store ([MS-ODRAW] 2.2.20) of the DocumentContainer's
+/// drawing group; one slot per store entry, in order (pib is a one-based
+/// index into these). Stream at the DocumentContainer body.
+std::vector<BlipSlot> read_blip_store(std::istream &in,
+                                      const RecordHeader &document) {
+  std::vector<BlipSlot> slots;
+  const std::optional<RecordHeader> drawing_group =
+      find_child(in, document, RT_DrawingGroup);
+  if (!drawing_group.has_value()) {
+    return slots;
+  }
+  const std::optional<RecordHeader> dgg =
+      find_child(in, *drawing_group, RT_OfficeArtDggContainer);
+  if (!dgg.has_value()) {
+    return slots;
+  }
+  const std::optional<RecordHeader> store =
+      find_child(in, *dgg, RT_OfficeArtBStoreContainer);
+  if (!store.has_value()) {
+    return slots;
+  }
+
+  ChildCursor entries(in, *store);
+  while (const std::optional<RecordHeader> child = entries.next()) {
+    BlipSlot &slot = slots.emplace_back();
+    if (child->recType == RT_OfficeArtFBSE) {
+      const auto fbse = util::byte_stream::read<OfficeArtFbseFixed>(in);
+      entries.consume(sizeof(OfficeArtFbseFixed));
+      in.ignore(fbse.cbName);
+      entries.consume(fbse.cbName);
+      // An embedded BLIP follows the name ([MS-ODRAW] 2.2.32); otherwise the
+      // BLIP lives in the delay ("Pictures") stream at foDelay.
+      if (child->recLen >
+          sizeof(OfficeArtFbseFixed) + std::uint32_t{fbse.cbName}) {
+        const std::uint32_t remaining =
+            child->recLen - sizeof(OfficeArtFbseFixed) - fbse.cbName;
+        slot.data = read_blip_record(in);
+        entries.consume(remaining);
+      } else {
+        slot.fo_delay = fbse.foDelay;
+      }
+    } else if (child->recType == RT_OfficeArtBlipJPEG ||
+               child->recType == RT_OfficeArtBlipPNG) {
+      // A BLIP directly in the store occupies a slot of its own; rewind is
+      // impossible on this stream, so re-parse from the header we just read.
+      // The header was already consumed by the cursor; read body inline.
+      const bool two_uids =
+          child->recType == RT_OfficeArtBlipJPEG
+              ? (child->recInstance == 0x46B || child->recInstance == 0x6E3)
+              : (child->recInstance == 0x6E1);
+      const std::uint32_t prefix = 16 + (two_uids ? 16 : 0) + 1;
+      if (child->recLen < prefix) {
+        throw std::runtime_error("ppt: truncated BLIP record");
+      }
+      in.ignore(prefix);
+      slot.data = util::stream::read(in, child->recLen - prefix);
+      entries.consume(child->recLen);
+    }
+    // Other record types leave an empty slot; the cursor skips them.
+  }
+  return slots;
+}
+
 /// Reads the document's font names from the FontCollection
 /// ([MS-PPT] 2.9.8/2.9.10), indexed by each FontEntityAtom's recInstance and
 /// interned in the registry. Stream at the DocumentContainer body.
@@ -597,9 +752,10 @@ std::vector<const char *> read_font_collection(std::istream &in,
 /// live DocumentContainer and each SlideContainer — so slides come out in order
 /// from the live records, ignoring stale copies left by incremental saves.
 /// Malformed records throw. Returns each slide's text boxes in shape order.
-std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
-                                                 std::istream &document,
-                                                 ElementRegistry &registry) {
+std::vector<std::vector<TextBox>>
+collect_slides(std::istream &current_user, std::istream &document,
+               const abstract::ReadableFilesystem &files,
+               ElementRegistry &registry) {
   // Newest user edit offset, from the Current User stream.
   const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
   if (head.rh.recType != RT_CurrentUserAtom) {
@@ -658,6 +814,31 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
     context.fonts = read_font_collection(document, doc_header, registry);
   }
 
+  // Slide size from the DocumentAtom ([MS-PPT] 2.4.2): a PointStruct in
+  // master units.
+  {
+    document.clear();
+    document.seekg(doc_offset);
+    const RecordHeader doc_header = read_header(document, RT_DocumentContainer);
+    if (const std::optional<RecordHeader> document_atom =
+            find_child(document, doc_header, RT_DocumentAtom);
+        document_atom.has_value() &&
+        document_atom->recLen >= 2 * sizeof(std::int32_t)) {
+      const auto width = static_cast<std::int32_t>(read_u32(document));
+      const auto height = static_cast<std::int32_t>(read_u32(document));
+      registry.set_slide_size(width, height);
+    }
+  }
+
+  // The BLIP store, for picture shapes.
+  std::vector<BlipSlot> blip_store;
+  {
+    document.clear();
+    document.seekg(doc_offset);
+    const RecordHeader doc_header = read_header(document, RT_DocumentContainer);
+    blip_store = read_blip_store(document, doc_header);
+  }
+
   document.clear();
   document.seekg(doc_offset);
   const RecordHeader doc_header = read_header(document, RT_DocumentContainer);
@@ -693,6 +874,47 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
     slides.push_back(
         read_slide_text_boxes(document, slide_header, outline_texts, context));
   }
+
+  // Resolve picture references against the BLIP store and the "Pictures"
+  // (delay) stream; unsupported/unresolvable pictures leave `image` empty.
+  const auto pictures_file = files.open(AbsPath("/Pictures"));
+  const auto pictures_stream =
+      pictures_file != nullptr ? pictures_file->stream() : nullptr;
+  for (std::vector<TextBox> &boxes : slides) {
+    for (TextBox &box : boxes) {
+      if (!box.blip_ref.has_value() || *box.blip_ref == 0 ||
+          *box.blip_ref > blip_store.size()) {
+        continue;
+      }
+      BlipSlot &slot = blip_store[*box.blip_ref - 1];
+      if (slot.data.empty() && slot.fo_delay != 0xFFFFFFFF &&
+          pictures_stream != nullptr) {
+        pictures_stream->clear();
+        pictures_stream->seekg(slot.fo_delay);
+        slot.data = read_blip_record(*pictures_stream);
+        slot.fo_delay = 0xFFFFFFFF; // resolved (possibly to unsupported/empty)
+      }
+      box.image = slot.data;
+      if (!box.image.empty()) {
+        // Only JPEG and PNG BLIPs are modelled; tell them apart by magic.
+        const bool is_png = box.image.starts_with("\x89PNG");
+        box.image_href = "Pictures/" + std::to_string(*box.blip_ref) +
+                         (is_png ? ".png" : ".jpg");
+      }
+    }
+
+    // Background shapes cover the whole slide (they carry no anchor of their
+    // own) and must render below the other shapes.
+    for (TextBox &box : boxes) {
+      if (box.is_background && !box.anchor.has_value()) {
+        const auto size = registry.slide_size().value_or(
+            std::pair<std::int32_t, std::int32_t>{5760, 4320});
+        box.anchor = Anchor{0, 0, size.first, size.second};
+      }
+    }
+    std::ranges::stable_partition(
+        boxes, [](const TextBox &box) { return box.is_background; });
+  }
   return slides;
 }
 
@@ -720,16 +942,23 @@ presentation::parse_tree(ElementRegistry &registry,
   const auto document_stream = document_file->stream();
   const auto current_user_stream = current_user_file->stream();
 
-  for (const std::vector<TextBox> &boxes :
-       collect_slides(*current_user_stream, *document_stream, registry)) {
+  for (std::vector<TextBox> &boxes : collect_slides(
+           *current_user_stream, *document_stream, files, registry)) {
     auto [slide_id, _] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
 
-    // One frame per text box; the box's paragraphs hang off the frame.
-    for (const TextBox &box : boxes) {
+    // One frame per shape; a picture and/or the box's paragraphs hang off
+    // the frame.
+    for (TextBox &box : boxes) {
       auto [frame_id, frame_element, frame] = registry.create_frame_element();
       frame.anchor = box.anchor;
       registry.append_child(slide_id, frame_id);
+      if (!box.image.empty()) {
+        auto [image_id, image_element, image] = registry.create_image_element();
+        image.data = std::move(box.image);
+        image.href = std::move(box.image_href);
+        registry.append_child(frame_id, image_id);
+      }
       build_paragraphs(registry, frame_id, box.text);
     }
   }
