@@ -4,9 +4,11 @@ The **why** and the roadmap; what is concretely done lives in the code. Shared
 `oldms/` conventions are in [`../AGENTS.md`](../AGENTS.md).
 
 **Scope.** Extract the **visible text of each slide, positioned in its text
-boxes**, through the abstract model so the generic HTML renderer lays each slide
-out as positioned frames. No character/paragraph styles, master/notes pages,
-images, charts, tables, or animations.
+boxes**, plus **direct character formatting** (font, size, bold, italic,
+underline, color) as styled spans, through the abstract model so the generic
+HTML renderer lays each slide out as positioned frames. No paragraph styles or
+master-inherited formatting, master/notes pages, images, charts, tables, or
+animations.
 
 **Specs.** `[MS-PPT]` (the PowerPoint stream) + `[MS-ODRAW]` (the Office Art /
 Escher drawing records) + `[MS-CFB]` container. Section numbers cited inline in
@@ -17,13 +19,14 @@ code and in the drawing-tree map below.
 | File (`oldms/presentation/`) | Role |
 |---|---|
 | `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`) + `static_assert` sizes + `RecordType` / `SlideListInstance` enums |
-| `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` |
+| `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` + `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s) |
 | `ppt_parser.{hpp,cpp}` | `parse_tree(registry, files)` → walks the stream, builds the element tree |
-| `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads |
+| `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads + per-element `TextStyle` map + font-name intern store |
 | `ppt_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
-Element tree shape: `root → slide → frame (one per text box) → paragraph (split on
-0x0D) → text / line_break (0x0B)`.
+Element tree shape: `root → slide → frame (one per text box) → paragraph (split
+on 0x0D) → span (one per formatting run) → text`, with `line_break` (0x0B)
+elements between spans.
 
 ## Design decisions
 
@@ -91,8 +94,28 @@ non-grouped shapes, and master-placeholder geometry inheritance are deferred
 (open work §1). Shapes with no text are dropped, so the group shape and pictures
 disappear.
 
-**Slide size hardcoded 10"×7.5"** (`slide_page_layout`) and the `font_size = 11pt`
-in the adapters is a placeholder hack (same as `.doc`/`.xls`) — both open work.
+**Direct character formatting only, resolved to styled spans.** Each text atom
+is kept raw (undecoded) until the **`StyleTextPropAtom`** (0x0FA1, §2.9.44)
+that most closely follows it; its character runs (`TextCFRun`, counts in
+UTF-16 units covering the text plus one implicit final paragraph mark) split
+the text into spans. Each span and paragraph stores a resolved `TextStyle` in
+a registry side-map (paragraphs keep their first run's style for
+empty-paragraph height). The non-obvious bits:
+- The **paragraph-level runs precede the character runs** in the atom and are
+  mask-skipped field by field (`TextPFException`, incl. the variable
+  `tabStops`).
+- **Font names** come from the `FontCollection` (0x07D5, inside
+  `RT_Environment` 0x03F2), indexed by each `FontEntityAtom`'s `recInstance`,
+  interned in the registry (`TextStyle::font_name` is a `const char *`).
+- **Colors** are `ColorIndexStruct`s: only explicit sRGB values (index `0xFE`)
+  are used; **scheme indexes are left unset** (they need the slide's color
+  scheme — open work).
+- Text without a `StyleTextPropAtom`, or characters past the last run, get a
+  **default style of 18pt** — an approximation of the unread master text
+  styles (`TxMasterStyleAtom`, open work). This replaces the old flat `11pt`
+  placeholder.
+
+**Slide size hardcoded 10"×7.5"** (`slide_page_layout`) — open work.
 `Document::is_editable()` → `false`; `save` throws.
 
 **Endianness.** Host byte order / LSB-first bit-fields assumed; shared `oldms/`
@@ -107,9 +130,13 @@ break (split like `doc_parser`); `0x09` tab kept; other controls dropped
 
 ## Tests
 
+- `ppt_parse_style_text_prop_atom` — inline bytes: PF-run skipping (incl.
+  mask-dependent fields), CFStyle bold/italic, fontRef/size, explicit sRGB
+  color.
 - `ppt_empty` (`empty.ppt`): 1 slide.
-- `ppt_slides` (`slides.ppt`): 2 slides, 2 positioned frames each (all `at_page`
-  with `x/y/width/height`), distinct positions, exact per-box text.
+- `ppt_style_various` (`style-various-1.ppt`): 8 slides, positioned frames,
+  per-box text, plus style assertions (44pt Arial black title; underlined blue
+  32pt link text).
 
 Fixture-commit / reference-HTML wiring / `OutlineTextRefAtom` fixture are open
 (§2 below).
@@ -200,6 +227,11 @@ and is independent:
   unexercised — all current `.ppt` files are LibreOffice-authored (empty outline).
   A PowerPoint-authored file using the outline indirection is needed. Pairs with
   §2.3.
+- **2.5a Master-inherited formatting.** Placeholder text without direct
+  formatting falls back to the 18pt default instead of the master's
+  `TxMasterStyleAtom` styles; scheme-indexed colors (`ColorIndexStruct`
+  index < 0xFE) are dropped for the same reason. Read the main master's text
+  styles + color scheme to resolve both.
 - **2.5 Auto-field metacharacters dropped.** Slide-number/date/header/footer
   placeholders (`RT_*MetaCharAtom`) are ignored. Low priority.
 - **2.6 `slide_name` is empty.** Could return `"Slide N"` for the HTML page label.
