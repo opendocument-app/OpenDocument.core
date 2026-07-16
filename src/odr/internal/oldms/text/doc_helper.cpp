@@ -198,11 +198,17 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
       style.font_size = Measure(half_points / 2.0, DynamicUnit("pt"));
     } break;
     case sprmCRgFtc0: {
+      // SttbfFfn index ([MS-DOC] 2.6.1); with 0 entries the value MUST be 0
+      // and the (unmodelled) style-sheet default font applies — leave unset.
       const auto ftc = static_cast<std::int16_t>(read_u16(operand, 0));
-      if (ftc < 0 || static_cast<std::size_t>(ftc) >= font_names.size()) {
+      if (ftc < 0 || (font_names.empty() ? ftc != 0
+                                         : static_cast<std::size_t>(ftc) >=
+                                               font_names.size())) {
         throw std::runtime_error("doc: sprmCRgFtc0 font index out of range");
       }
-      style.font_name = font_names[static_cast<std::size_t>(ftc)];
+      if (!font_names.empty()) {
+        style.font_name = font_names[static_cast<std::size_t>(ftc)];
+      }
     } break;
     case sprmCCv: {
       // COLORREF ([MS-DOC] 2.9.43): red, green, blue, fAuto.

@@ -199,6 +199,27 @@ TEST(OldMs, doc_apply_character_sprms) {
     EXPECT_FALSE(style.font_color.has_value());
   }
 
+  {
+    // sprmCRgFtc0 with an empty SttbfFfn: 0 is valid ([MS-DOC] 2.6.1) and
+    // leaves the font unset; anything else is out of range.
+    const std::vector<const char *> no_fonts;
+    const TextStyle style = apply_character_sprms(
+        base, doc_prl(0x4A4F, std::string("\x00\x00", 2)), no_fonts);
+    EXPECT_EQ(style.font_name, nullptr);
+    EXPECT_THROW(
+        apply_character_sprms(base, doc_prl(0x4A4F, std::string("\x01\x00", 2)),
+                              no_fonts),
+        std::runtime_error);
+  }
+
+  // Out-of-range and negative sprmCRgFtc0 indexes throw.
+  EXPECT_THROW(apply_character_sprms(
+                   base, doc_prl(0x4A4F, std::string("\x02\x00", 2)), fonts),
+               std::runtime_error);
+  EXPECT_THROW(apply_character_sprms(
+                   base, doc_prl(0x4A4F, std::string("\xFF\xFF", 2)), fonts),
+               std::runtime_error);
+
   // Truncated operand, half a Sprm, and an out-of-range sprmCHps all throw.
   EXPECT_THROW(apply_character_sprms(base, doc_prl(0x4A43, "\x01"), fonts),
                std::runtime_error);
