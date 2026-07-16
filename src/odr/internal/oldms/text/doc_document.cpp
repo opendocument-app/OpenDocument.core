@@ -157,19 +157,12 @@ public:
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    // TODO
-    style.font_size = Measure("11pt");
-    return style;
+    return stored_style(element_id);
   }
 
   [[nodiscard]] TextStyle
   span_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    return stored_style(element_id);
   }
 
   [[nodiscard]] std::string
@@ -184,13 +177,9 @@ public:
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
+    // The enclosing span carries the character style.
     (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    // TODO
-    style.font_size = Measure("11pt");
-    return style;
+    return {};
   }
 
 private:
@@ -198,6 +187,13 @@ private:
   [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+
+  /// The character style stored for a paragraph or span element.
+  [[nodiscard]] TextStyle
+  stored_style(const ElementIdentifier element_id) const {
+    const TextStyle *style = m_registry->element_style(element_id);
+    return style != nullptr ? *style : TextStyle{};
+  }
 };
 
 std::unique_ptr<abstract::ElementAdapter>

@@ -8,10 +8,13 @@
 #include <odr/internal/oldms/text/doc_helper.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
-#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
+#include <istream>
+#include <limits>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::oldms {
@@ -29,63 +32,125 @@ constexpr char page_break_mark = '\x0C';
 // visible text. A field is 0x13 begin ... [0x14 separator] ... 0x15 end
 // ([MS-DOC] 2.8.25): the instruction (begin..separator) is hidden, the result
 // (separator..end) shown. A separator-less field is hidden entirely.
-std::string clean_text(const std::string &in) {
-  std::string out;
-  out.reserve(in.size());
+// Stateful: a field can span style runs and paragraphs, so one cleaner
+// processes the whole body in order.
+class TextCleaner {
+public:
+  std::string clean(const std::string_view in) {
+    std::string out;
+    out.reserve(in.size());
 
-  // Open fields; entry is true while still in that field's instruction part.
-  // instruction_depth counts those; text is hidden whenever it is > 0.
-  std::vector<bool> field_in_instruction;
-  int instruction_depth = 0;
-
-  for (const char c : in) {
-    switch (c) {
-    case '\x13': // field begin: a new field opens in its instruction part
-      field_in_instruction.push_back(true);
-      ++instruction_depth;
-      continue;
-    case '\x14': // field separator: the innermost field's instruction ends
-      if (!field_in_instruction.empty() && field_in_instruction.back()) {
-        field_in_instruction.back() = false;
-        --instruction_depth;
-      }
-      continue;
-    case '\x15': // field end: close the innermost field
-      if (!field_in_instruction.empty()) {
-        if (field_in_instruction.back()) {
-          // separator-less field: its instruction part ends here, not earlier
-          --instruction_depth;
+    for (const char c : in) {
+      switch (c) {
+      case '\x13': // field begin: a new field opens in its instruction part
+        m_field_in_instruction.push_back(true);
+        ++m_instruction_depth;
+        continue;
+      case '\x14': // field separator: the innermost field's instruction ends
+        if (!m_field_in_instruction.empty() && m_field_in_instruction.back()) {
+          m_field_in_instruction.back() = false;
+          --m_instruction_depth;
         }
-        field_in_instruction.pop_back();
+        continue;
+      case '\x15': // field end: close the innermost field
+        if (!m_field_in_instruction.empty()) {
+          if (m_field_in_instruction.back()) {
+            // separator-less field: its instruction part ends here, not
+            // earlier
+            --m_instruction_depth;
+          }
+          m_field_in_instruction.pop_back();
+        }
+        continue;
+      default:
+        break;
       }
-      continue;
-    default:
-      break;
-    }
 
-    if (instruction_depth > 0) {
-      continue; // drop the hidden field instruction
-    }
+      if (m_instruction_depth > 0) {
+        continue; // drop the hidden field instruction
+      }
 
-    switch (c) {
-    case '\x09': // tab: keep as real text
-      out.push_back(c);
-      break;
-    case '\x1E': // non-breaking hyphen
-      out.push_back('-');
-      break;
-    case '\x1F': // optional hyphen: drop
-      break;
-    default:
-      // Drop remaining control/anchor characters (< 0x20); keep the rest.
-      if (static_cast<std::uint8_t>(c) >= 0x20) {
+      switch (c) {
+      case '\x09': // tab: keep as real text
         out.push_back(c);
+        break;
+      case '\x1E': // non-breaking hyphen
+        out.push_back('-');
+        break;
+      case '\x1F': // optional hyphen: drop
+        break;
+      default:
+        // Drop remaining control/anchor characters (< 0x20); keep the rest.
+        if (static_cast<std::uint8_t>(c) >= 0x20) {
+          out.push_back(c);
+        }
+        break;
       }
-      break;
     }
+
+    return out;
   }
 
-  return out;
+private:
+  // Open fields; entry is true while still in that field's instruction part.
+  // m_instruction_depth counts those; text is hidden whenever it is > 0.
+  std::vector<bool> m_field_in_instruction;
+  int m_instruction_depth{0};
+};
+
+/// A maximal piece of body text with uniform character formatting.
+struct StyledRun {
+  std::string text;
+  std::uint32_t style_index{0};
+};
+
+/// Decodes the main-body pieces (the first `ccp_text` CPs), split further at
+/// every character-formatting boundary.
+std::vector<StyledRun> decode_styled_runs(
+    std::istream &document_stream, const text::CharacterIndex &character_index,
+    const text::CharacterStyles &styles, const std::size_t ccp_text) {
+  std::vector<StyledRun> runs;
+  std::size_t consumed_cp = 0;
+
+  for (const auto &entry : character_index) {
+    if (consumed_cp >= ccp_text) {
+      break;
+    }
+    const std::size_t take = std::min(entry.length_cp, ccp_text - consumed_cp);
+    const std::size_t bytes_per_cp = entry.is_compressed ? 1 : 2;
+
+    std::size_t cp = 0;
+    while (cp < take) {
+      const auto fc =
+          static_cast<std::uint32_t>(entry.data_offset + cp * bytes_per_cp);
+      const std::uint32_t style_index = styles.index_at(fc);
+
+      // CPs of this piece still in the same style run; a boundary that falls
+      // inside a 2-byte CP is pushed past it.
+      const std::uint32_t chunk_end_fc = styles.chunk_end(fc);
+      std::size_t chunk_cp = take - cp;
+      if (chunk_end_fc != std::numeric_limits<std::uint32_t>::max()) {
+        chunk_cp = std::min<std::size_t>(
+            chunk_cp,
+            std::max<std::size_t>(1, (chunk_end_fc - fc + bytes_per_cp - 1) /
+                                         bytes_per_cp));
+      }
+
+      document_stream.seekg(fc);
+      std::string chunk_text =
+          text::read_string(document_stream, chunk_cp, entry.is_compressed);
+      if (!runs.empty() && runs.back().style_index == style_index) {
+        runs.back().text += chunk_text;
+      } else {
+        runs.push_back({std::move(chunk_text), style_index});
+      }
+      cp += chunk_cp;
+    }
+
+    consumed_cp += take;
+  }
+
+  return runs;
 }
 
 } // namespace
@@ -100,63 +165,91 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
 
   const std::string tableStreamPath =
       fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
-
   const auto table_stream = files.open(AbsPath(tableStreamPath))->stream();
-  table_stream->ignore(fib.fibRgFcLcb->clx.fc);
 
+  // Font table, interned so TextStyle::font_name pointers stay valid.
+  std::vector<const char *> font_names;
+  for (const std::string &name :
+       read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn)) {
+    font_names.push_back(registry.intern_font_name(name));
+  }
+
+  // Direct character formatting ([MS-DOC] 2.4.6.2); Pcd.Prm modifications are
+  // not modelled. Without sprmCHps the size defaults to 20 half-points.
+  TextStyle default_style;
+  default_style.font_size = Measure(10.0, DynamicUnit("pt"));
+  const CharacterStyles styles = read_character_styles(
+      *document_stream, *table_stream, fib.fibRgFcLcb->plcfBteChpx,
+      default_style, font_names);
+
+  table_stream->seekg(fib.fibRgFcLcb->clx.fc);
   const CharacterIndex character_index = read_character_index(*table_stream);
 
-  // Concatenate the decoded pieces of the main document body only (the first
-  // ccpText CPs). Pieces are in ascending CP order, so clamp each piece to the
-  // remaining budget and stop once it is exhausted.
-  const std::size_t ccp_text = fib.ccpText();
-  std::size_t consumed_cp = 0;
-  std::string body_text;
-  for (const auto &entry : character_index) {
-    if (consumed_cp >= ccp_text) {
-      break;
+  const auto ccp_text = static_cast<std::size_t>(fib.ccpText());
+  const std::vector<StyledRun> runs =
+      decode_styled_runs(*document_stream, character_index, styles, ccp_text);
+
+  // Build the tree: paragraphs are opened lazily so the trailing guard
+  // paragraph mark does not produce an extra empty paragraph. Each paragraph
+  // and span stores its style; empty paragraphs keep their height through the
+  // paragraph style.
+  TextCleaner cleaner;
+  ElementIdentifier paragraph_id = null_element_id;
+
+  const auto ensure_paragraph = [&](const std::uint32_t style_index) {
+    if (paragraph_id == null_element_id) {
+      auto [id, paragraph] = registry.create_element(ElementType::paragraph);
+      registry.append_child(root_id, id);
+      registry.set_element_style(id, styles.style(style_index));
+      paragraph_id = id;
     }
-    const std::size_t take = std::min(entry.length_cp, ccp_text - consumed_cp);
-    document_stream->seekg(entry.data_offset);
-    body_text += read_string(*document_stream, take, entry.is_compressed);
-    consumed_cp += take;
-  }
+  };
 
-  // Split into paragraphs. The main body always ends with a guard paragraph
-  // mark, so drop the resulting trailing empty paragraph.
-  auto paragraphs =
-      util::string::split(body_text, std::string(1, paragraph_mark));
-  if (!paragraphs.empty() && paragraphs.back().empty()) {
-    paragraphs.pop_back();
-  }
+  for (const StyledRun &run : runs) {
+    std::size_t at = 0;
+    while (at <= run.text.size()) {
+      const std::size_t control = run.text.find_first_of("\r\x0B\x0C", at);
+      const std::size_t segment_end =
+          control == std::string::npos ? run.text.size() : control;
 
-  for (const auto &paragraph : paragraphs) {
-    // A paragraph may contain end-of-section / manual page-break characters
-    // (0x0C): split on them and mark each boundary with a page_break element.
-    const auto pages =
-        util::string::split(paragraph, std::string(1, page_break_mark));
-    for (std::size_t page_i = 0; page_i < pages.size(); ++page_i) {
-      if (page_i > 0) {
-        auto [page_break_id, _] =
+      if (std::string cleaned = cleaner.clean(
+              std::string_view(run.text).substr(at, segment_end - at));
+          !cleaned.empty()) {
+        ensure_paragraph(run.style_index);
+        auto [span_id, span] = registry.create_element(ElementType::span);
+        registry.set_element_style(span_id, styles.style(run.style_index));
+        registry.append_child(paragraph_id, span_id);
+
+        auto [text_id, text_element, text_entry] =
+            registry.create_text_element();
+        text_entry.text = std::move(cleaned);
+        registry.append_child(span_id, text_id);
+      }
+
+      if (control == std::string::npos) {
+        break;
+      }
+      switch (run.text[control]) {
+      case paragraph_mark:
+        ensure_paragraph(run.style_index);
+        paragraph_id = null_element_id;
+        break;
+      case page_break_mark: {
+        ensure_paragraph(run.style_index);
+        paragraph_id = null_element_id;
+        auto [page_break_id, page_break] =
             registry.create_element(ElementType::page_break);
         registry.append_child(root_id, page_break_id);
+      } break;
+      case line_break_mark: {
+        ensure_paragraph(run.style_index);
+        auto [line_id, line] = registry.create_element(ElementType::line_break);
+        registry.append_child(paragraph_id, line_id);
+      } break;
+      default:
+        break;
       }
-
-      auto [paragraph_id, _] = registry.create_element(ElementType::paragraph);
-      registry.append_child(root_id, paragraph_id);
-
-      const auto lines =
-          util::string::split(pages[page_i], std::string(1, line_break_mark));
-      for (std::uint32_t line_i = 0; line_i < lines.size(); ++line_i) {
-        if (line_i > 0) {
-          auto [line_id, _] = registry.create_element(ElementType::line_break);
-          registry.append_child(paragraph_id, line_id);
-        }
-
-        auto [text_id, _, text_element] = registry.create_text_element();
-        text_element.text = clean_text(lines[line_i]);
-        registry.append_child(paragraph_id, text_id);
-      }
+      at = control + 1;
     }
   }
 

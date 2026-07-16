@@ -1,9 +1,15 @@
 #pragma once
 
+#include <odr/style.hpp>
+
+#include <odr/internal/oldms/text/doc_structs.hpp>
+
 #include <algorithm>
 #include <cstdint>
 #include <iosfwd>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::oldms::text {
@@ -105,5 +111,55 @@ private:
 };
 
 CharacterIndex read_character_index(std::istream &in);
+
+/// The document's character-formatting runs, keyed by WordDocument-stream
+/// offset (fc). Style index 0 is the default style; offsets outside any run
+/// resolve to it.
+class CharacterStyles final {
+public:
+  explicit CharacterStyles(TextStyle default_style);
+
+  std::uint32_t add_style(TextStyle style);
+  /// Appends a run; runs must be ascending and non-overlapping. Adjacent runs
+  /// with the same style index are merged.
+  void append_run(std::uint32_t begin_fc, std::uint32_t end_fc,
+                  std::uint32_t style_index);
+
+  /// The style index of the run containing `fc` (0 if none).
+  [[nodiscard]] std::uint32_t index_at(std::uint32_t fc) const;
+  /// End offset of the run containing `fc`, or the next run's begin, so text
+  /// can be walked in style-uniform chunks; UINT32_MAX past the last run.
+  [[nodiscard]] std::uint32_t chunk_end(std::uint32_t fc) const;
+  [[nodiscard]] const TextStyle &style(std::uint32_t index) const;
+
+private:
+  struct Run {
+    std::uint32_t begin_fc;
+    std::uint32_t end_fc;
+    std::uint32_t style_index;
+  };
+
+  std::vector<TextStyle> m_styles;
+  std::vector<Run> m_runs;
+};
+
+/// Applies the character SPRMs of a Chpx grpprl ([MS-DOC] 2.6.1) on top of
+/// `style`; non-character SPRMs are skipped via their operand size.
+/// `font_names` resolves sprmCRgFtc0 (pointers must outlive the style).
+TextStyle apply_character_sprms(TextStyle style, std::string_view grpprl,
+                                const std::vector<const char *> &font_names);
+
+/// Reads the font names (FFN.xszFfn) of the SttbfFfn ([MS-DOC] 2.9.286) at
+/// `fc` in the table stream; empty for lcb == 0.
+std::vector<std::string> read_font_names(std::istream &table_stream,
+                                         FcLcb sttbf_ffn);
+
+/// Reads the PlcBteChpx at `fc` in the table stream and every referenced
+/// ChpxFkp page ([MS-DOC] 2.9.33) from the WordDocument stream, resolving
+/// each run's Chpx against `default_style`. Equal Chpx bytes share one style.
+CharacterStyles
+read_character_styles(std::istream &document_stream, std::istream &table_stream,
+                      FcLcb plcf_bte_chpx, const TextStyle &default_style,
+                      const std::vector<const char *> &font_names);
 
 } // namespace odr::internal::oldms::text

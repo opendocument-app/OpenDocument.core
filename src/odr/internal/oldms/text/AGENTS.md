@@ -4,24 +4,26 @@ The **why** and the roadmap; what is concretely done lives in the code. Shared
 `oldms/` conventions are in [`../AGENTS.md`](../AGENTS.md).
 
 **Scope.** Extract the **visible text of the main document body**, split into
-paragraphs and manual line breaks, through the abstract model so the generic HTML
-renderer lays it out as a flat run of paragraphs. No character/paragraph styles,
-headers/footers/notes/annotations, tables, frames, images, or fields beyond their
-result text.
+paragraphs and manual line breaks, plus **direct character formatting** (font,
+size, bold, italic, underline, strike, color, highlight) as styled spans,
+through the abstract model. No paragraph styles or style-sheet (STSH)
+inheritance, headers/footers/notes/annotations, tables, frames, images, or
+fields beyond their result text.
 
-**Specs.** `[MS-DOC]` (FIB, Clx / piece table, text decoding) + `[MS-CFB]`
-container. The implemented read path matches *Retrieving Text* (§2.4.1 steps 1–6);
-section numbers are cited inline in code and in the read-path map below.
+**Specs.** `[MS-DOC]` (FIB, Clx / piece table, text decoding, CHPX) +
+`[MS-CFB]` container. The implemented read path matches *Retrieving Text*
+(§2.4.1 steps 1–6) and *Direct Character Formatting* (§2.4.6.2); section
+numbers are cited inline in code and in the read-path maps below.
 
 ## Module layout (sibling of `../presentation`)
 
 | File (`oldms/text/`) | Role |
 |---|---|
-| `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, the `FibRgFcLcb97/2000/…/2007` chain, `Sprm`, `FcCompressed`, `Pcd`) + `static_assert` sizes + `PlcPcdMap` + `ParsedFib` |
+| `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, the `FibRgFcLcb97/2000/…/2007` chain, `Sprm`, `FcCompressed`, `Pcd`, `PnFkpChpx`, `FfnFixed`) + `static_assert` sizes + `PlcPcdMap`/`PlcBteChpxMap` + `ParsedFib` + the character SPRM opcodes |
 | `doc_io.{hpp,cpp}` | `read(...)` over `std::istream`: variable-length FIB, Clx walk, string decoding |
-| `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) + `read_character_index` |
-| `doc_parser.{hpp,cpp}` | `parse_tree` → body text + tree; `clean_text` (field & control-char handling) |
-| `doc_element_registry.{hpp,cpp}` | Flat element store (id = vector index) + text side-payload |
+| `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) + `read_character_index`; `CharacterStyles` (fc-keyed style runs) + `read_character_styles` (PlcBteChpx/ChpxFkp walk), `apply_character_sprms`, `read_font_names` (SttbfFfn) |
+| `doc_parser.{hpp,cpp}` | `parse_tree` → styled runs + tree; `TextCleaner` (field & control-char handling) |
+| `doc_element_registry.{hpp,cpp}` | Flat element store (id = vector index) + text side-payload + per-element `TextStyle` map + font-name intern store |
 | `doc_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
 ## Design decisions
@@ -59,23 +61,47 @@ main body, `Prc` formatting runs, and every control/field char `clean_text` drop
 **Endianness.** Host byte order / LSB-first bit-fields assumed; shared `oldms/`
 assumption + fix plan in [`../AGENTS.md`](../AGENTS.md).
 
-**The `font_size = 11pt` in the adapters is a placeholder hack** so empty
-paragraphs still have height (same as the `.ppt`/`.xls` modules); removed when
-character formatting lands (open work §1). `Document::is_editable()` → `true` and
-`is_savable(!encrypted)`, but `save`/`text_set_content` throw — read-only in
-practice.
+**Direct character formatting only, resolved to styled spans.** The tree is
+`root → paragraph → span → text`; each span (and each paragraph, for
+empty-paragraph height) stores a resolved `TextStyle` in a registry side-map.
+The §2.4.6.2 walk: `PlcBteChpx` (table stream) → 512-byte `ChpxFkp` pages
+(WordDocument stream) → per-run `Chpx.grpprl`, applied over a default of 10pt
+(the `sprmCHps` default of 20 half-points; the old flat `11pt` placeholder is
+gone). The non-obvious bits:
+- **Runs are keyed by stream offset (fc), not CP**, so the piece decode walks
+  each piece in style-uniform chunks (`CharacterStyles::chunk_end`); a
+  boundary inside a 2-byte CP is pushed past it.
+- **Equal `Chpx` bytes share one resolved style**, and adjacent equal-style
+  runs merge, so span count stays low. `rgb[j] == 0` means default properties.
+- **`ToggleOperand`** (§2.9.327) values `0x80`/`0x81` refer to the (unmodelled)
+  style value, which defaults to off → `0x80` = off, `0x81` = on.
+- **Colors**: `sprmCCv` is a `COLORREF` (`fAuto` → unset); the legacy
+  `sprmCIco`/`sprmCHighlight` use the `Ico` palette (§2.9.119) — the spec's
+  extracted table repeats `0x0C` for `0x0D`, which is dark red (`0x800000`).
+- **`Pcd.Prm` modifications and STSH styles are not applied** (open work §1).
+- Font names from `SttbfFfn` are interned in a registry `std::deque` so
+  `TextStyle::font_name` (`const char *`) stays valid.
 
-**`clean_text` control-character handling** (the non-obvious cases): `0x0D`/`0x0C`/
-`0x0B` are consumed by the caller's paragraph/page/line splits and never reach
-`clean_text`; `0x13`/`0x14`/`0x15` delimit a **field** — instruction hidden,
-result shown, the `0x14` separator optional (§2.8.25), nesting tracked with a
-per-field stack; `0x09` tab kept; `0x1E` non-breaking hyphen → `-`; `0x1F`
-optional hyphen dropped; every other control char < `0x20` dropped.
+`Document::is_editable()` → `false`; `save`/`text_set_content` throw.
+
+**`TextCleaner` control-character handling** (the non-obvious cases): `0x0D`/
+`0x0C`/`0x0B` are consumed by the caller's paragraph/page/line splits and never
+reach the cleaner; `0x13`/`0x14`/`0x15` delimit a **field** — instruction
+hidden, result shown, the `0x14` separator optional (§2.8.25), nesting tracked
+with a per-field stack that now **persists across style runs and paragraphs**
+(a field can span both); `0x09` tab kept; `0x1E` non-breaking hyphen → `-`;
+`0x1F` optional hyphen dropped; every other control char < `0x20` dropped.
 
 ## Tests
 
 - `OldMs.doc_read_string_compressed` — the compressed decoder against the §2.9.73
   byte map (ASCII passthrough, `0x82–0x9F` remap, `0xA0–0xFF` round-trip).
+- `OldMs.doc_apply_character_sprms` — every modelled SPRM, toggle semantics,
+  cvAuto reset, unknown fixed/variable SPRM skipping, malformed-grpprl throws.
+- `OldMs.doc_read_font_names` — synthetic SttbfFfn.
+- `OldMs.doc_character_formatting` — end-to-end over a synthetic `.doc`
+  (inline bytes: FIB + ChpxFkp + piece table): span splitting at run
+  boundaries, default 10pt, bold + font-name run, paragraph style.
 
 **Not yet tested:** FIB robustness (negative `ccpText`, newer-than-2007 fallback),
 `0x0C` page-break emission, and there is **no assertion-based render test** over a
@@ -122,67 +148,21 @@ Retrieving Text: §2.4.1 (steps 1–6)   Field chars 0x13/0x14/0x15: §2.8.25
 
 # Open work
 
-## 1. Character (font) formatting → the IR (the next feature)
+## 1. Character formatting fidelity
 
-**Goal.** Extract per-run character properties (font name, size, bold, italic,
-underline, strike, colour, highlight) and surface them through `TextStyle`, so the
-renderer styles text instead of emitting one flat 11pt run. Replaces the
-`font_size = 11pt` placeholder.
+Direct formatting (§2.4.6.2) is implemented — see the design notes above and
+the read-path map below. Remaining layers of *Determining Formatting
+Properties* (§2.4.6.6):
 
-`TextStyle` (`src/odr/style.hpp`) maps almost 1:1 onto the `.doc` character SPRMs:
-
-| `TextStyle` field | SPRM (opcode) | operand → value |
-|---|---|---|
-| `font_size` | `sprmCHps` (0x4A43) | u16 **half-points** → `Measure(hps/2, pt)` (default 20 = 10pt) |
-| `font_weight` | `sprmCFBold` (0x0835) | `ToggleOperand` → `bold` |
-| `font_style` | `sprmCFItalic` (0x0836) | `ToggleOperand` → `italic` |
-| `font_underline` | `sprmCKul` (0x2A3E) | `Kul`, `0x00` = none → `bool` |
-| `font_line_through` | `sprmCFStrike` (0x0837) | `ToggleOperand` → `bool` |
-| `font_color` | `sprmCCv` (0x6870) | `COLORREF` → `Color` (legacy `sprmCIco` 0x2A42 is a palette index) |
-| `background_color` | `sprmCHighlight` (0x2A0C) | `Ico` highlight index → `Color` |
-| `font_name` | `sprmCRgFtc0` (0x4A4F) | s16 index into `SttbfFfn` → font name |
-
-`font_name` is a `const char *`, so the resolved name needs stable storage — intern
-it in the `ElementRegistry` (e.g. a `std::deque<std::string>` whose elements never
-move) and hand out the pointer.
-
-**How `[MS-DOC]` retrieves character properties** — Direct Character Formatting
-(§2.4.6.2) reuses the *Retrieving Text* walk we already have:
-1. For `cp`, run §2.4.1 to get its byte offset `fc` and owning `Pcd` (already
-   computed).
-2. Read **`PlcBteChpx`** (§2.8.5) at `fcPlcfBteChpx` in the table stream — a PLC
-   keyed by stream offset: `aFC[n+1]` + `aPnBteChpx[n]` (`PnFkpChpx`, 4 B).
-3. Largest `i` with `aFC[i] ≤ fc` → read a **`ChpxFkp`** (§2.9.33) at
-   `aPnBteChpx[i].pn * 512` (fixed 512-byte page: `rgfc` boundaries, parallel
-   `rgb`, `crun` in the last byte).
-4. Largest `j` with `rgfc[j] ≤ fc` → the `Chpx` (§2.9.32) at `rgb[j] * 2` within
-   the page. `Chpx.grpprl` is an array of `Prl` = `Sprm` (2 B) + operand.
-5. Append `Pcd.Prm` mods (§2.9.214–216): `Prm0` (inline) or `Prm1` (index).
-
-`Prl`/`Sprm` is already modelled (`Sprm` with `ispmd/fSpec/sgc/spra` +
-`operand_size()`); a **character** property is a SPRM with `sgc == 2` (note
-`spra == 6` is length-prefixed/variable).
-
-**First cut — direct formatting only.** Implement §2.4.6.2 (`Chpx.grpprl` +
-`Pcd.Prm`) and map the SPRMs above (bold/italic/size/font/colour applied directly
-to runs). Resolve `sprmCRgFtc0` by reading **`SttbfFfn`** (§2.9.286) once and
-indexing it. Drop the 11pt; use 10pt (the `sprmCHps` default).
-
-**Full fidelity — styles (later).** *Determining Formatting Properties* (§2.4.6.6)
-layers: document defaults → `STSH` (§2.4.6.5) para/char-style `grpprl`s via the
-paragraph's `istd` → table-style → direct paragraph → direct character. The first
-cut skips STSH (style-dependent props fall back to defaults).
-
-**Wiring to the abstract model.** Per-run styling needs run boundaries in
-`/WordDocument` byte offsets, so:
-1. **Keep the FC↔text mapping** while concatenating (thread the `CharacterIndex`
-   through instead of discarding it after `body_text`).
-2. **Split paragraphs into runs** at every `ChpxFkp` boundary, resolve each run's
-   `TextStyle`, emit a **`span`** (already wired via `SpanAdapter`) per run.
-3. **Store the style** in a `TextStyle` side-map keyed by span id (mirror the text
-   side-payload + the `presentation` frame-payload) plus the font-name intern
-   store. `SpanAdapter::span_style` returns it; `text_style`/
-   `paragraph_text_style` then return `{}` instead of the 11pt hack.
+- **`Pcd.Prm` modifications** (§2.9.214–216): per-piece property diffs —
+  `Prm0` (one inline SPRM) or `Prm1` (index into the Clx's `Prc` array, which
+  `read_character_index` currently skips). Rare for character properties, but
+  incremental saves can carry them.
+- **STSH style layering** (§2.4.6.5): document defaults → paragraph/character
+  style `grpprl`s via the paragraph's `istd` → direct formatting. Without it,
+  style-derived properties (e.g. heading fonts defined only in the style
+  sheet, the usual Times New Roman default font) fall back to defaults;
+  `ToggleOperand` `0x80`/`0x81` resolve against "off".
 
 Character-formatting read path, keyed by `/WordDocument` byte offset `fc`:
 
@@ -190,12 +170,12 @@ Character-formatting read path, keyed by `/WordDocument` byte offset `fc`:
 Table stream
 ├─ PlcBteChpx @ fcPlcfBteChpx                  §2.8.5   aFC[n+1] + aPnBteChpx[n] (PnFkpChpx, 4 B)
 ├─ SttbfFfn   @ fcSttbfFfn  (font names, FFN.xszFfn)   §2.9.286
-└─ STSH       @ fcStshf     (styles — full fidelity only)   §2.4.6.5
+└─ STSH       @ fcStshf     (styles — not read)   §2.4.6.5
 
 WordDocument stream
 └─ ChpxFkp @ aPnBteChpx[i].pn * 512  (512-byte page)  §2.9.33
    ├─ rgfc[crun+1] boundaries (stream offsets), rgb[crun] → Chpx @ rgb[j]*2, crun (last byte)
-   └─ Chpx = cb + grpprl(Prl[])  §2.9.32   Prl = Sprm(2 B) + operand; char SPRMs sgc==2; + Pcd.Prm §2.9.214–216
+   └─ Chpx = cb + grpprl(Prl[])  §2.9.32   Prl = Sprm(2 B) + operand; char SPRMs sgc==2; + Pcd.Prm §2.9.214–216 (not read)
 ```
 
 ## 2. Coverage gaps
