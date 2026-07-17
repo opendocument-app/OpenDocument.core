@@ -1,5 +1,6 @@
 #include <odr/internal/common/table_cursor.hpp>
 
+#include <algorithm>
 #include <list>
 
 namespace odr::internal {
@@ -30,14 +31,17 @@ void TableCursor::add_cell(const std::uint32_t colspan,
                            const std::uint32_t repeat) {
   const std::uint32_t next_column = m_column + colspan * repeat;
 
-  // handle rowspan
+  // handle rowspan; keep each row's ranges sorted by start so
+  // `handle_rowspan_` can skip them front-to-back
   auto it = std::begin(m_sparse);
   for (std::uint32_t i = 1; i < rowspan; ++i) {
     if (std::next(it) == std::end(m_sparse)) {
       m_sparse.emplace_back();
     }
     ++it;
-    it->emplace_back(Range{m_column, next_column});
+    const auto pos = std::ranges::find_if(
+        *it, [&](const Range &range) { return range.start > m_column; });
+    it->insert(pos, Range{m_column, next_column});
   }
 
   m_column = next_column;
@@ -55,8 +59,8 @@ std::uint32_t TableCursor::row() const noexcept { return m_row; }
 void TableCursor::handle_rowspan_() noexcept {
   auto &s = m_sparse.front();
   auto it = std::begin(s);
-  while (it != std::end(s) && m_column == it->start) {
-    m_column = it->end;
+  while (it != std::end(s) && it->start <= m_column) {
+    m_column = std::max(m_column, it->end);
     ++it;
   }
   s.erase(std::begin(s), it);

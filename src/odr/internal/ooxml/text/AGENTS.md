@@ -18,6 +18,12 @@ README.
 Element; `get_text` maps `w:tab`→`\t`. Unknown tags are skipped (children still
 visited).
 
+**Table merges are resolved in the adapter.** Colspan is `w:tcPr/w:gridSpan`;
+a `w:vMerge` continuation (`w:val` absent or "continue") reports the cell as
+covered, and the restart cell computes its rowspan by walking following `w:tr`
+siblings for a continuation at the same grid column (grid column = sum of
+preceding cells' `gridSpan`s).
+
 **Lists are detected structurally**, before the tag table: a paragraph with
 `w:pPr/w:numPr` is a list item, nesting synthesised from the `w:ilvl` level.
 
@@ -61,12 +67,7 @@ Style/element coverage is in [`README.md`](README.md). Foundational gaps:
 3. **Theme fonts unhandled.** `w:rFonts w:asciiTheme="minorHAnsi"` (etc.) is
    ignored — only literal `w:ascii` names are read (README example
    `Sample large docx.docx`).
-4. **Latent copy-paste from the ODF adapter.** The table/cell adapter methods
-   query ODF node names (`table:covered-table-cell`, `office:value-type`,
-   `table:number-columns-repeated`) that never match docx `w:` nodes, so
-   dimension/span/covered-cell logic is effectively dead for docx. Verify and
-   rewrite against `w:` names when tables get proper attention.
-5. **Style stubs**: `resolve_table_row_style_` and `resolve_graphic_style_` are
+4. **Style stubs**: `resolve_table_row_style_` and `resolve_graphic_style_` are
    empty; table cell width is parsed but not applied; the `w:default="1"` style
    flag is ignored.
-6. **Comments / annotations** not modelled.
+5. **Comments / annotations** not modelled.

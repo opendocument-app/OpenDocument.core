@@ -80,6 +80,8 @@ public:
 
   struct SheetCell final {
     TablePosition position;
+    TableDimensions span{1, 1};
+    bool is_covered{false};
   };
 
   void clear() noexcept;
@@ -101,6 +103,7 @@ public:
 
   [[nodiscard]] Element &element_at(ElementIdentifier id);
   [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
+  [[nodiscard]] SheetCell &sheet_cell_element_at(ElementIdentifier id);
 
   [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
   [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;

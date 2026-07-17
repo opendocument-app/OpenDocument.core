@@ -26,11 +26,14 @@ via `Sheet.cells` (`(col,row) → {node, element_id}`). Columns are a
 with `lookup_greater_or_equals`. Shapes hang off the sheet in a separate chain
 (`first_shape_id`). Dimensions come from `<dimension ref>`.
 
-**Values are always strings.** A cell with `t="s"` reads `<v>` as an index into
-the shared-string table and parses the referenced `<si>`; otherwise its own
-`<v>`/`<is>` children. `get_text` concatenates `t` and `v` nodes verbatim, so a
-**formula's cached `<v>` result is shown and `<f>` is never evaluated**. No
-numeric/date/bool typing — `sheet_cell_value_type` is hardcoded to `string`.
+**Values are strings; types are advisory.** A cell with `t="s"` reads `<v>` as
+an index into the shared-string table and parses the referenced `<si>`;
+otherwise its own `<v>`/`<is>` children. `get_text` concatenates `t` and `v`
+nodes verbatim, so a **formula's cached `<v>` result is shown and `<f>` is
+never evaluated**. `sheet_cell_value_type` derives number-vs-string from
+`c/@t` (default "n" → `float_number` when a `<v>` exists; dates/booleans/errors
+report `string`). Merged ranges from `mergeCells` land in the `SheetCell` side
+map as anchor `span` + `is_covered` flags at parse time.
 
 **Style resolution: styles.xml index vectors.** `StyleRegistry` loads positional
 `fonts`/`fills`/`borders`/`cellStyleXfs`/`cellXfs`. A cell's `s` attribute
@@ -54,14 +57,12 @@ inheritance).
 
 Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 
-1. **Cell value types & formulas.** Everything is a string; numeric/date/bool
-   typing and formula evaluation are absent (`sheet_cell_value_type` → `string`).
+1. **Formulas & rich value types.** `<f>` is never evaluated (the cached `<v>`
+   shows); dates, booleans, and errors are typed as plain strings.
 2. **Content-range detection.** `sheet_content` ignores the requested range and
    returns the full `<dimension>` — no trim to the populated range.
-3. **Merged cells.** `sheet_cell_span` → `{1,1}`, `sheet_cell_is_covered` →
-   false; `mergeCells` not read.
-4. **No named/master cell-style inheritance** (`cellStyleXfs` loaded but unused);
+3. **No named/master cell-style inheritance** (`cellStyleXfs` loaded but unused);
    borders rendered as `0.75pt solid` regardless of actual style (`// TODO thin
    only`); cell protection unhandled.
-5. **Read-only.** `text_set_content` is a no-op stub; `save` throws. Links and
+4. **Read-only.** `text_set_content` is a no-op stub; `save` throws. Links and
    comments/annotations not modelled.

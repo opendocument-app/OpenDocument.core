@@ -82,6 +82,12 @@ ElementRegistry::sheet_element_at(const ElementIdentifier id) {
   return m_sheets.at(id);
 }
 
+ElementRegistry::SheetCell &
+ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) {
+  check_sheet_cell_id(id);
+  return m_sheet_cells.at(id);
+}
+
 const ElementRegistry::Element &
 ElementRegistry::element_at(const ElementIdentifier id) const {
   check_element_id(id);

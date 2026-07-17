@@ -123,6 +123,40 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     }
   }
 
+  for (const pugi::xml_node merge_node :
+       node.child("mergeCells").children("mergeCell")) {
+    const std::string ref = merge_node.attribute("ref").value();
+    if (ref.find(':') == std::string::npos) {
+      continue;
+    }
+    const TableRange range(ref);
+
+    // The renderer's cursor learns covered positions only from the anchor's
+    // span, so a range whose anchor cell is absent from sheetData must be
+    // dropped entirely — stray covered flags would starve the cursor.
+    const ElementRegistry::Sheet::Cell *anchor =
+        sheet.cell(range.from().column, range.from().row);
+    if (anchor == nullptr) {
+      continue;
+    }
+    registry.sheet_cell_element_at(anchor->element_id).span =
+        TableDimensions(range.to().row - range.from().row + 1,
+                        range.to().column - range.from().column + 1);
+
+    for (std::uint32_t row = range.from().row; row <= range.to().row; ++row) {
+      for (std::uint32_t column = range.from().column;
+           column <= range.to().column; ++column) {
+        if (row == range.from().row && column == range.from().column) {
+          continue;
+        }
+        if (const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+            cell != nullptr) {
+          registry.sheet_cell_element_at(cell->element_id).is_covered = true;
+        }
+      }
+    }
+  }
+
   {
     const std::string dimension_ref =
         node.child("dimension").attribute("ref").value();

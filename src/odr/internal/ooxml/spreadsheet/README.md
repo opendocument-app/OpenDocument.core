@@ -21,9 +21,12 @@ Roughly ordered by importance.
   - [x] columns, rows, cells
   - [x] dimensions
   - [x] shared strings
+  - [x] merged cells (`mergeCells`)
   - [x] shapes / images anchored to a sheet (`xdr:twoCellAnchor`)
-  - [ ] cell value types (everything is reported as string)
-  - [ ] computed values (formulas are not evaluated)
+  - [x] cell value types (number vs. string; dates/booleans/errors reported as
+        string)
+  - [ ] computed values (formulas are not evaluated; the cached `<v>` result is
+        shown)
 - [ ] edit
 - [ ] save
 

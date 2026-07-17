@@ -29,7 +29,8 @@ Roughly ordered by importance.
 - [x] line breaks
 - [x] hyperlinks
 - [x] bookmarks
-- [x] tables (grid columns, rows, cells)
+- [x] tables (grid columns, rows, cells, merged cells via
+      `w:gridSpan`/`w:vMerge`)
 - [x] images (`w:drawing`)
 - [x] structured document tags (rendered as generic groups)
 - [x] listings

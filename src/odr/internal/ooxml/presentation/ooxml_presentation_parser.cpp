@@ -96,6 +96,41 @@ void parse_slide_children(ElementRegistry &registry,
                              node.child("p:cSld").child("p:spTree"));
 }
 
+void parse_graphic_frame_children(ElementRegistry &registry,
+                                  const ParseContext &context,
+                                  const ElementIdentifier parent_id,
+                                  const pugi::xml_node node) {
+  parse_any_element_children(registry, context, parent_id,
+                             node.child("a:graphic").child("a:graphicData"));
+}
+
+std::tuple<ElementIdentifier, pugi::xml_node>
+parse_table_element(ElementRegistry &registry, const ParseContext &context,
+                    const pugi::xml_node node) {
+  if (!node) {
+    return {null_element_id, pugi::xml_node()};
+  }
+
+  const auto &[element_id, unused1, unused2] =
+      registry.create_table_element(node);
+
+  for (const pugi::xml_node column_node :
+       node.child("a:tblGrid").children("a:gridCol")) {
+    const auto &[column_id, _] =
+        registry.create_element(ElementType::table_column, column_node);
+    registry.append_column(element_id, column_id);
+  }
+
+  for (const pugi::xml_node row_node : node.children("a:tr")) {
+    const auto [row_id, _] =
+        parse_element_tree(registry, context, ElementType::table_row, row_node,
+                           parse_any_element_children);
+    registry.append_child(element_id, row_id);
+  }
+
+  return {element_id, node.next_sibling()};
+}
+
 void parse_presentation_children(ElementRegistry &registry,
                                  const ParseContext &context,
                                  const ElementIdentifier root_id,
@@ -130,14 +165,15 @@ parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
                              ElementType::root, parse_presentation_children)},
       {"p:sld", create_default_tree_parser(ElementType::slide)},
       {"p:sp", create_default_tree_parser(ElementType::frame)},
+      {"p:graphicFrame", create_default_tree_parser(
+                             ElementType::frame, parse_graphic_frame_children)},
       {"p:txBody", create_default_tree_parser(ElementType::group)},
+      {"a:txBody", create_default_tree_parser(ElementType::group)},
       {"a:t", parse_text_element},
       {"a:tab", parse_text_element},
       {"a:p", create_default_tree_parser(ElementType::paragraph)},
       {"a:r", create_default_tree_parser(ElementType::span)},
-      {"a:tbl", create_default_tree_parser(ElementType::table)},
-      {"a:gridCol", create_default_tree_parser(ElementType::table_column)},
-      {"a:tr", create_default_tree_parser(ElementType::table_row)},
+      {"a:tbl", parse_table_element},
       {"a:tc", create_default_tree_parser(ElementType::table_cell)},
   };
 
