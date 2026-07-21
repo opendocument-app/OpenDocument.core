@@ -4,12 +4,12 @@
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstring>
 #include <istream>
 #include <stdexcept>
+#include <utility>
 
 namespace odr::internal::oldms::text {
 
@@ -54,12 +54,12 @@ std::uint16_t read_u16(const std::string_view bytes, const std::size_t at) {
 
 } // namespace
 
-const char *StyleRegistry::intern_font_name(const std::string &name) {
-  if (const auto it = std::ranges::find(m_font_names, name);
-      it != m_font_names.end()) {
-    return it->c_str();
-  }
-  return m_font_names.emplace_back(name).c_str();
+void StyleRegistry::set_font_names(std::vector<std::string> names) {
+  m_font_names = std::move(names);
+}
+
+std::span<const std::string> StyleRegistry::font_names() const {
+  return m_font_names;
 }
 
 std::uint32_t StyleRegistry::add_style(TextStyle style) {
@@ -77,7 +77,7 @@ namespace odr::internal::oldms {
 
 TextStyle
 text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
-                            const std::span<const char *const> font_names) {
+                            const std::span<const std::string> font_names) {
   std::size_t at = 0;
   while (at + sizeof(Sprm) <= grpprl.size()) {
     Sprm sprm;
@@ -148,7 +148,7 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
         throw std::runtime_error("doc: sprmCRgFtc0 font index out of range");
       }
       if (!font_names.empty()) {
-        style.font_name = font_names[static_cast<std::size_t>(ftc)];
+        style.font_name = font_names[static_cast<std::size_t>(ftc)].c_str();
       }
     } break;
     case sprmCCv: {

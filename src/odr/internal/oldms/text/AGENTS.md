@@ -82,8 +82,9 @@ style. The non-obvious bits:
   `sprmCIco`/`sprmCHighlight` use the `Ico` palette (§2.9.119) — the spec's
   extracted table repeats `0x0C` for `0x0D`, which is dark red (`0x800000`).
 - **`Pcd.Prm` modifications and STSH styles are not applied** (open work §1).
-- Font names from `SttbfFfn` are interned in a `StyleRegistry` `std::deque` so
-  `TextStyle::font_name` (`const char *`) stays valid.
+- Font names from `SttbfFfn` are stored once in the `StyleRegistry` (never
+  modified afterwards, like the xls module) so `TextStyle::font_name`
+  (`const char *`) stays valid.
 
 `Document::is_editable()` → `false`; `save`/`text_set_content` throw.
 

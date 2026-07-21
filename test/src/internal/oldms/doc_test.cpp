@@ -151,7 +151,7 @@ TEST(OldMs, doc_apply_character_sprms) {
 
   TextStyle base;
   base.font_size = Measure("10pt");
-  const std::vector<const char *> fonts = {"Arial", "Courier New"};
+  const std::vector<std::string> fonts = {"Arial", "Courier New"};
 
   {
     std::string grpprl;
@@ -202,7 +202,7 @@ TEST(OldMs, doc_apply_character_sprms) {
   {
     // sprmCRgFtc0 with an empty SttbfFfn: 0 is valid ([MS-DOC] 2.6.1) and
     // leaves the font unset; anything else is out of range.
-    const std::vector<const char *> no_fonts;
+    const std::vector<std::string> no_fonts;
     const TextStyle style = apply_character_sprms(
         base, doc_prl(0x4A4F, std::string("\x00\x00", 2)), no_fonts);
     EXPECT_EQ(style.font_name, nullptr);

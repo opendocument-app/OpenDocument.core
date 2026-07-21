@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <iosfwd>
-#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -140,11 +139,11 @@ private:
 /// Reads the PlcBteChpx at `fc` in the table stream and every referenced
 /// ChpxFkp page ([MS-DOC] 2.9.33) from the WordDocument stream, resolving
 /// each run's Chpx on top of the default style (index 0) into
-/// `style_registry`. Equal Chpx bytes share one style.
+/// `style_registry` (fonts via its font names). Equal Chpx bytes share one
+/// style.
 CharacterRuns read_character_runs(std::istream &document_stream,
                                   std::istream &table_stream,
                                   FcLcb plcf_bte_chpx,
-                                  StyleRegistry &style_registry,
-                                  std::span<const char *const> font_names);
+                                  StyleRegistry &style_registry);
 
 } // namespace odr::internal::oldms::text

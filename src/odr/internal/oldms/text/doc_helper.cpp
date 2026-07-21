@@ -74,11 +74,10 @@ std::uint32_t text::CharacterRuns::chunk_end(const std::uint32_t fc) const {
   return std::numeric_limits<std::uint32_t>::max();
 }
 
-text::CharacterRuns
-text::read_character_runs(std::istream &document_stream,
-                          std::istream &table_stream, const FcLcb plcf_bte_chpx,
-                          StyleRegistry &style_registry,
-                          const std::span<const char *const> font_names) {
+text::CharacterRuns text::read_character_runs(std::istream &document_stream,
+                                              std::istream &table_stream,
+                                              const FcLcb plcf_bte_chpx,
+                                              StyleRegistry &style_registry) {
   CharacterRuns result;
   if (plcf_bte_chpx.lcb == 0) {
     return result;
@@ -101,8 +100,8 @@ text::read_character_runs(std::istream &document_stream,
     if (it != style_cache.end()) {
       return it->second;
     }
-    const std::uint32_t index = style_registry.add_style(
-        apply_character_sprms(default_style, grpprl, font_names));
+    const std::uint32_t index = style_registry.add_style(apply_character_sprms(
+        default_style, grpprl, style_registry.font_names()));
     style_cache.emplace(std::string(grpprl), index);
     return index;
   };

@@ -169,21 +169,18 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
       fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
   const auto table_stream = files.open(AbsPath(tableStreamPath))->stream();
 
-  // Font table, interned so TextStyle::font_name pointers stay valid.
-  std::vector<const char *> font_names;
-  for (const std::string &name :
-       read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn)) {
-    font_names.push_back(style_registry.intern_font_name(name));
-  }
+  // Font table; TextStyle::font_name points into the registry's copy.
+  style_registry.set_font_names(
+      read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn));
 
   // Direct character formatting ([MS-DOC] 2.4.6.2); Pcd.Prm modifications are
   // not modelled. Without sprmCHps the size defaults to 20 half-points.
   TextStyle default_style;
   default_style.font_size = Measure(10.0, DynamicUnit("pt"));
   style_registry.add_style(std::move(default_style)); // index 0
-  const CharacterRuns character_runs = read_character_runs(
-      *document_stream, *table_stream, fib.fibRgFcLcb->plcfBteChpx,
-      style_registry, font_names);
+  const CharacterRuns character_runs =
+      read_character_runs(*document_stream, *table_stream,
+                          fib.fibRgFcLcb->plcfBteChpx, style_registry);
 
   table_stream->seekg(fib.fibRgFcLcb->clx.fc);
   const CharacterIndex character_index = read_character_index(*table_stream);
