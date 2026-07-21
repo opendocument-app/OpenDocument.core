@@ -78,7 +78,7 @@ text::CharacterRuns
 text::read_character_runs(std::istream &document_stream,
                           std::istream &table_stream, const FcLcb plcf_bte_chpx,
                           StyleRegistry &style_registry,
-                          const std::vector<const char *> &font_names) {
+                          const std::span<const char *const> font_names) {
   CharacterRuns result;
   if (plcf_bte_chpx.lcb == 0) {
     return result;

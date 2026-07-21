@@ -54,11 +54,7 @@ std::uint16_t read_u16(const std::string_view bytes, const std::size_t at) {
 
 } // namespace
 
-} // namespace odr::internal::oldms::text
-
-namespace odr::internal::oldms {
-
-const char *text::StyleRegistry::intern_font_name(const std::string &name) {
+const char *StyleRegistry::intern_font_name(const std::string &name) {
   if (const auto it = std::ranges::find(m_font_names, name);
       it != m_font_names.end()) {
     return it->c_str();
@@ -66,19 +62,22 @@ const char *text::StyleRegistry::intern_font_name(const std::string &name) {
   return m_font_names.emplace_back(name).c_str();
 }
 
-std::uint32_t text::StyleRegistry::add_style(TextStyle style) {
+std::uint32_t StyleRegistry::add_style(TextStyle style) {
   m_styles.push_back(std::move(style));
   return static_cast<std::uint32_t>(m_styles.size() - 1);
 }
 
-const TextStyle &
-text::StyleRegistry::text_style(const std::uint32_t index) const {
+const TextStyle &StyleRegistry::text_style(const std::uint32_t index) const {
   return m_styles.at(index);
 }
 
+} // namespace odr::internal::oldms::text
+
+namespace odr::internal::oldms {
+
 TextStyle
 text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
-                            const std::vector<const char *> &font_names) {
+                            const std::span<const char *const> font_names) {
   std::size_t at = 0;
   while (at + sizeof(Sprm) <= grpprl.size()) {
     Sprm sprm;

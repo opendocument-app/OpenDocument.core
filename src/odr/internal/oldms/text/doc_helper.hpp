@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iosfwd>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -144,6 +145,6 @@ CharacterRuns read_character_runs(std::istream &document_stream,
                                   std::istream &table_stream,
                                   FcLcb plcf_bte_chpx,
                                   StyleRegistry &style_registry,
-                                  const std::vector<const char *> &font_names);
+                                  std::span<const char *const> font_names);
 
 } // namespace odr::internal::oldms::text

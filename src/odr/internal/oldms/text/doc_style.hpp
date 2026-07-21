@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <deque>
 #include <iosfwd>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,7 +37,7 @@ private:
 /// `style`; non-character SPRMs are skipped via their operand size.
 /// `font_names` resolves sprmCRgFtc0 (pointers must outlive the style).
 TextStyle apply_character_sprms(TextStyle style, std::string_view grpprl,
-                                const std::vector<const char *> &font_names);
+                                std::span<const char *const> font_names);
 
 /// Reads the font names (FFN.xszFfn) of the SttbfFfn ([MS-DOC] 2.9.286) at
 /// `fc` in the table stream; empty for lcb == 0.
