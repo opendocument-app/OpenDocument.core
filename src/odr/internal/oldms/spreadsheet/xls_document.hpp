@@ -2,6 +2,7 @@
 
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_element_registry.hpp>
+#include <odr/internal/oldms/spreadsheet/xls_style.hpp>
 
 #include <memory>
 
@@ -15,6 +16,8 @@ public:
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
+  [[nodiscard]] const StyleRegistry &style_registry() const;
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
@@ -23,6 +26,7 @@ public:
 
 private:
   ElementRegistry m_element_registry;
+  StyleRegistry m_style_registry;
 };
 
 } // namespace odr::internal::oldms::spreadsheet

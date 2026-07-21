@@ -157,6 +157,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/oldms/spreadsheet/xls_element_registry.cpp"
         "src/odr/internal/oldms/spreadsheet/xls_io.cpp"
         "src/odr/internal/oldms/spreadsheet/xls_parser.cpp"
+        "src/odr/internal/oldms/spreadsheet/xls_style.cpp"
         "src/odr/internal/oldms/presentation/ppt_document.cpp"
         "src/odr/internal/oldms/presentation/ppt_element_registry.cpp"
         "src/odr/internal/oldms/presentation/ppt_io.cpp"

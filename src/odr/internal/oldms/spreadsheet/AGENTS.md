@@ -19,7 +19,8 @@ drawings, or charts.
 | `xls_structs.hpp` | `#pragma pack(1)` PODs for record bodies + `static_assert` sizes + record-type enum |
 | `xls_io.{hpp,cpp}` | `BiffReader` (record walker with transparent `CONTINUE` hopping; the `[MS-XLS]` string readers + `expect_bof`), RK decoding, number formatting |
 | `xls_parser.{hpp,cpp}` | `parse_tree` → globals (BoundSheet8 + SST + Font/XF/Palette) then one pass per sheet substream |
-| `xls_element_registry.{hpp,cpp}` | Flat element store + `Sheet` (name, dimensions, cell-position map), `SheetCell` payloads, and the resolved per-XF `CellStyle` table |
+| `xls_element_registry.{hpp,cpp}` | Flat element store + `Sheet` (name, dimensions, cell-position map) and `SheetCell` payloads |
+| `xls_style.{hpp,cpp}` | `StyleRegistry`: resolves Font/XF/Palette into one `ResolvedStyle` per XF, indexed by a cell's `ixfe` (sibling of the odf/ooxml style registries) |
 | `xls_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
 Tree shape: `sheet → sheet_cell → paragraph → text`, one `sheet_cell` per
@@ -59,11 +60,14 @@ bit-field structs (`RkNumber`, `UnicodeStringFlags`, flags of
 `BoundSheet8Fixed`/`FormulaFixed`) — little-endian, LSB-first hosts only; shared
 `oldms/` assumption, see [`../AGENTS.md`](../AGENTS.md).
 
-**Cell formatting is resolved at parse time, per XF.** Each cell record's
-`ixfe` is kept on the `SheetCell`; the globals pass collects `Font` (0x0031),
-`XF` (0x00E0) and `Palette` (0x0092) and resolves every XF into a `CellStyle`
-(a `TextStyle` from the font + a `TableCellStyle` fill), stored once in the
-registry and indexed by `ixfe`. The adapters only look up: `text_style`/
+**Cell formatting is resolved at parse time, per XF, in a separate
+`StyleRegistry`** (mirroring the odf/ooxml split between element and style
+registries; here the parser fills both, since BIFF keeps styles and content in
+the same `/Workbook` stream). Each cell record's `ixfe` is kept on the
+`SheetCell`; the globals pass collects `Font` (0x0031), `XF` (0x00E0) and
+`Palette` (0x0092), and the `StyleRegistry` constructor resolves every XF into
+a `ResolvedStyle` (a `TextStyle` from the font + a `TableCellStyle` fill),
+indexed by `ixfe`. The adapters only look up: `text_style`/
 `paragraph_text_style` walk up to the `sheet_cell` ancestor and return its
 XF's `TextStyle`; `sheet_cell_style` returns the fill. The non-obvious bits:
 - **`FontIndex` 4 does not exist** (§2.5.129): `ifnt` < 4 is zero-based,
@@ -74,8 +78,9 @@ XF's `TextStyle`; `sheet_cell_style` returns the fill. The non-obvious bits:
 - **Fills** (§2.5.20): `fls` 0 = none; solid (1) renders `icvFore`; the other
   patterns are *approximated* by their foreground color.
 - A `dyHeight` of 0 (allowed by §2.4.122) leaves `font_size` unset instead of
-  emitting invisible 0pt text. Font names are interned in a `std::deque` so
-  `TextStyle::font_name` (`const char *`) stays valid.
+  emitting invisible 0pt text. The `StyleRegistry` owns the parsed `Font`
+  records, so `TextStyle::font_name` (`const char *`) points into them and
+  stays valid.
 
 **Adapters** expose `ValueType::string` for every cell and `sheet_cell_span` →
 `{1,1}`; sheet/column/row styles are still `{}`.
