@@ -8,8 +8,8 @@
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/text/doc_document.hpp>
-#include <odr/internal/oldms/text/doc_helper.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
+#include <odr/internal/oldms/text/doc_style.hpp>
 
 #include <internal/oldms/oldms_test_util.hpp>
 

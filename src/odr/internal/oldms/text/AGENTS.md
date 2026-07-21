@@ -21,9 +21,10 @@ numbers are cited inline in code and in the read-path maps below.
 |---|---|
 | `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, the `FibRgFcLcb97/2000/…/2007` chain, `Sprm`, `FcCompressed`, `Pcd`, `PnFkpChpx`, `FfnFixed`) + `static_assert` sizes + `PlcPcdMap`/`PlcBteChpxMap` + `ParsedFib` + the character SPRM opcodes |
 | `doc_io.{hpp,cpp}` | `read(...)` over `std::istream`: variable-length FIB, Clx walk, string decoding |
-| `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) + `read_character_index`; `CharacterStyles` (fc-keyed style runs) + `read_character_styles` (PlcBteChpx/ChpxFkp walk), `apply_character_sprms`, `read_font_names` (SttbfFfn) |
+| `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) + `read_character_index`; `CharacterRuns` (fc-keyed style-index runs) + `read_character_runs` (PlcBteChpx/ChpxFkp walk) |
+| `doc_style.{hpp,cpp}` | `StyleRegistry` (resolved `TextStyle`s by index + font-name intern store), `apply_character_sprms`, `read_font_names` (SttbfFfn) |
 | `doc_parser.{hpp,cpp}` | `parse_tree` → styled runs + tree; `TextCleaner` (field & control-char handling) |
-| `doc_element_registry.{hpp,cpp}` | Flat element store (id = vector index) + text side-payload + per-element `TextStyle` map + font-name intern store |
+| `doc_element_registry.{hpp,cpp}` | Flat element store (id = vector index) + text side-payload + per-element style-index map |
 | `doc_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
 ## Design decisions
@@ -63,13 +64,15 @@ assumption + fix plan in [`../AGENTS.md`](../AGENTS.md).
 
 **Direct character formatting only, resolved to styled spans.** The tree is
 `root → paragraph → span → text`; each span (and each paragraph, for
-empty-paragraph height) stores a resolved `TextStyle` in a registry side-map.
-The §2.4.6.2 walk: `PlcBteChpx` (table stream) → 512-byte `ChpxFkp` pages
-(WordDocument stream) → per-run `Chpx.grpprl`, applied over a default of 10pt
-(the `sprmCHps` default of 20 half-points; the old flat `11pt` placeholder is
-gone). The non-obvious bits:
+empty-paragraph height) stores a **style index** in an element-registry
+side-map, resolved through the document's `StyleRegistry` (element/style
+registry split, mirroring `../spreadsheet`; index 0 is the 10pt default —
+the `sprmCHps` default of 20 half-points; the old flat `11pt` placeholder is
+gone). The §2.4.6.2 walk: `PlcBteChpx` (table stream) → 512-byte `ChpxFkp`
+pages (WordDocument stream) → per-run `Chpx.grpprl`, applied over the default
+style. The non-obvious bits:
 - **Runs are keyed by stream offset (fc), not CP**, so the piece decode walks
-  each piece in style-uniform chunks (`CharacterStyles::chunk_end`); a
+  each piece in style-uniform chunks (`CharacterRuns::chunk_end`); a
   boundary inside a 2-byte CP is pushed past it.
 - **Equal `Chpx` bytes share one resolved style**, and adjacent equal-style
   runs merge, so span count stays low. `rgb[j] == 0` means default properties.
@@ -79,7 +82,7 @@ gone). The non-obvious bits:
   `sprmCIco`/`sprmCHighlight` use the `Ico` palette (§2.9.119) — the spec's
   extracted table repeats `0x0C` for `0x0D`, which is dark red (`0x800000`).
 - **`Pcd.Prm` modifications and STSH styles are not applied** (open work §1).
-- Font names from `SttbfFfn` are interned in a registry `std::deque` so
+- Font names from `SttbfFfn` are interned in a `StyleRegistry` `std::deque` so
   `TextStyle::font_name` (`const char *`) stays valid.
 
 `Document::is_editable()` → `false`; `save`/`text_set_content` throw.

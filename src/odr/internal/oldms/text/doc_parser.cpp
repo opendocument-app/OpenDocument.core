@@ -8,6 +8,7 @@
 #include <odr/internal/oldms/text/doc_helper.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
+#include <odr/internal/oldms/text/doc_style.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -108,7 +109,7 @@ struct StyledRun {
 /// every character-formatting boundary.
 std::vector<StyledRun> decode_styled_runs(
     std::istream &document_stream, const text::CharacterIndex &character_index,
-    const text::CharacterStyles &styles, const std::size_t ccp_text) {
+    const text::CharacterRuns &character_runs, const std::size_t ccp_text) {
   std::vector<StyledRun> runs;
   std::size_t consumed_cp = 0;
 
@@ -123,11 +124,11 @@ std::vector<StyledRun> decode_styled_runs(
     while (cp < take) {
       const auto fc =
           static_cast<std::uint32_t>(entry.data_offset + cp * bytes_per_cp);
-      const std::uint32_t style_index = styles.index_at(fc);
+      const std::uint32_t style_index = character_runs.index_at(fc);
 
       // CPs of this piece still in the same style run; a boundary that falls
       // inside a 2-byte CP is pushed past it.
-      const std::uint32_t chunk_end_fc = styles.chunk_end(fc);
+      const std::uint32_t chunk_end_fc = character_runs.chunk_end(fc);
       std::size_t chunk_cp = take - cp;
       if (chunk_end_fc != std::numeric_limits<std::uint32_t>::max()) {
         chunk_cp = std::min<std::size_t>(
@@ -156,6 +157,7 @@ std::vector<StyledRun> decode_styled_runs(
 } // namespace
 
 ElementIdentifier text::parse_tree(ElementRegistry &registry,
+                                   StyleRegistry &style_registry,
                                    const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
@@ -171,28 +173,29 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   std::vector<const char *> font_names;
   for (const std::string &name :
        read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn)) {
-    font_names.push_back(registry.intern_font_name(name));
+    font_names.push_back(style_registry.intern_font_name(name));
   }
 
   // Direct character formatting ([MS-DOC] 2.4.6.2); Pcd.Prm modifications are
   // not modelled. Without sprmCHps the size defaults to 20 half-points.
   TextStyle default_style;
   default_style.font_size = Measure(10.0, DynamicUnit("pt"));
-  const CharacterStyles styles = read_character_styles(
+  style_registry.add_style(std::move(default_style)); // index 0
+  const CharacterRuns character_runs = read_character_runs(
       *document_stream, *table_stream, fib.fibRgFcLcb->plcfBteChpx,
-      default_style, font_names);
+      style_registry, font_names);
 
   table_stream->seekg(fib.fibRgFcLcb->clx.fc);
   const CharacterIndex character_index = read_character_index(*table_stream);
 
   const auto ccp_text = static_cast<std::size_t>(fib.ccpText());
-  const std::vector<StyledRun> runs =
-      decode_styled_runs(*document_stream, character_index, styles, ccp_text);
+  const std::vector<StyledRun> runs = decode_styled_runs(
+      *document_stream, character_index, character_runs, ccp_text);
 
   // Build the tree: paragraphs are opened lazily so the trailing guard
   // paragraph mark does not produce an extra empty paragraph. Each paragraph
-  // and span stores its style; empty paragraphs keep their height through the
-  // paragraph style.
+  // and span stores its style index; empty paragraphs keep their height
+  // through the paragraph style.
   TextCleaner cleaner;
   ElementIdentifier paragraph_id = null_element_id;
 
@@ -200,7 +203,7 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
     if (paragraph_id == null_element_id) {
       auto [id, paragraph] = registry.create_element(ElementType::paragraph);
       registry.append_child(root_id, id);
-      registry.set_element_style(id, styles.style(style_index));
+      registry.set_element_style_index(id, style_index);
       paragraph_id = id;
     }
   };
@@ -217,7 +220,7 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
           !cleaned.empty()) {
         ensure_paragraph(run.style_index);
         auto [span_id, span] = registry.create_element(ElementType::span);
-        registry.set_element_style(span_id, styles.style(run.style_index));
+        registry.set_element_style_index(span_id, run.style_index);
         registry.append_child(paragraph_id, span_id);
 
         auto [text_id, text_element, text_entry] =

@@ -1,6 +1,5 @@
 #include <odr/internal/oldms/text/doc_element_registry.hpp>
 
-#include <algorithm>
 #include <stdexcept>
 
 namespace odr::internal::oldms::text {
@@ -8,8 +7,7 @@ namespace odr::internal::oldms::text {
 void ElementRegistry::clear() noexcept {
   m_elements.clear();
   m_texts.clear();
-  m_styles.clear();
-  m_font_names.clear();
+  m_style_indices.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -79,24 +77,16 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
   element_at(parent_id).last_child_id = child_id;
 }
 
-const char *ElementRegistry::intern_font_name(const std::string &name) {
-  if (const auto it = std::ranges::find(m_font_names, name);
-      it != m_font_names.end()) {
-    return it->c_str();
-  }
-  return m_font_names.emplace_back(name).c_str();
-}
-
-void ElementRegistry::set_element_style(const ElementIdentifier id,
-                                        TextStyle style) {
+void ElementRegistry::set_element_style_index(const ElementIdentifier id,
+                                              const std::uint32_t index) {
   check_element_id(id);
-  m_styles[id] = std::move(style);
+  m_style_indices[id] = index;
 }
 
-const TextStyle *
-ElementRegistry::element_style(const ElementIdentifier id) const {
-  const auto it = m_styles.find(id);
-  return it != m_styles.end() ? &it->second : nullptr;
+std::uint32_t
+ElementRegistry::element_style_index(const ElementIdentifier id) const {
+  const auto it = m_style_indices.find(id);
+  return it != m_style_indices.end() ? it->second : 0;
 }
 
 void ElementRegistry::check_element_id(const ElementIdentifier id) const {
