@@ -6,10 +6,12 @@
 #include <odr/internal/oldms/spreadsheet/xls_element_registry.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
+#include <odr/internal/oldms/spreadsheet/xls_style.hpp>
 
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace odr::internal::oldms::spreadsheet {
@@ -20,12 +22,21 @@ struct BoundSheet {
   std::string name;
 };
 
+/// The workbook-global style records collected from the globals substream.
+struct GlobalStyles {
+  std::vector<StyleRegistry::Font> fonts;
+  std::vector<XfBody> xfs;
+  /// The Palette record's colors; empty when the record is absent.
+  std::vector<LongRgb> palette;
+};
+
 /// Creates a non-empty cell: sheet_cell → paragraph → text.
 void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
               const std::uint32_t column, const std::uint32_t row,
-              std::string text) {
+              const std::uint16_t ixfe, std::string text) {
   auto [cell_id, cell_element, cell] =
       registry.create_sheet_cell_element(TablePosition(column, row));
+  cell.ixfe = ixfe;
   registry.append_sheet_cell(sheet_id, cell_id);
 
   auto [paragraph_id, paragraph_element] =
@@ -37,10 +48,11 @@ void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
   registry.append_child(paragraph_id, text_id);
 }
 
-/// Globals substream: collects the worksheet BoundSheet8 entries and the
-/// shared string table.
+/// Globals substream: collects the worksheet BoundSheet8 entries, the shared
+/// string table, and the style records (Font/XF/Palette).
 void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
-                   std::vector<std::string> &shared_strings) {
+                   std::vector<std::string> &shared_strings,
+                   GlobalStyles &styles) {
   reader.expect_bof();
 
   while (reader.next_record() && reader.record_type() != biff_eof) {
@@ -50,6 +62,25 @@ void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
       std::string name = reader.read_short_xl_unicode_string();
       if (boundsheet.dt == boundsheet_dt_worksheet) {
         sheets.push_back({boundsheet.lbPlyPos, std::move(name)});
+      }
+    } break;
+    case biff_font: {
+      const auto font = reader.read<FontFixed>();
+      std::string name = reader.read_short_xl_unicode_string();
+      styles.fonts.push_back({font, std::move(name)});
+    } break;
+    case biff_xf: {
+      styles.xfs.push_back(reader.read<XfBody>());
+    } break;
+    case biff_palette: {
+      // ccv MUST be 56 ([MS-XLS] 2.4.188).
+      const auto ccv = static_cast<std::int16_t>(reader.read_u16());
+      if (ccv != palette_color_count) {
+        throw std::runtime_error("xls: unexpected Palette color count");
+      }
+      styles.palette.resize(palette_color_count);
+      for (LongRgb &color : styles.palette) {
+        reader.read(color);
       }
     } break;
     case biff_sst: {
@@ -80,7 +111,11 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
 
   // Set when a Formula record announces a string result; the value follows in
   // a String record ([MS-XLS] 2.5.133).
-  std::optional<TablePosition> pending_string_cell;
+  struct PendingCell {
+    TablePosition position;
+    std::uint16_t ixfe;
+  };
+  std::optional<PendingCell> pending_string_cell;
 
   while (reader.next_record() && reader.record_type() != biff_eof) {
     switch (reader.record_type()) {
@@ -94,11 +129,11 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
         throw std::runtime_error("xls: SST index out of range");
       }
       add_cell(registry, sheet_id, label.cell.col, label.cell.rw,
-               shared_strings[label.isst]);
+               label.cell.ixfe, shared_strings[label.isst]);
     } break;
     case biff_rk: {
       const auto rk = reader.read<RkBody>();
-      add_cell(registry, sheet_id, rk.col, rk.rw,
+      add_cell(registry, sheet_id, rk.col, rk.rw, rk.ixfe,
                format_number(rk.rk.decode()));
     } break;
     case biff_mulrk: {
@@ -111,25 +146,26 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
       }
       const std::size_t count = (reader.remaining() - 2) / 6;
       for (std::size_t i = 0; i < count; ++i) {
-        reader.read_u16(); // ixfe
+        const std::uint16_t ixfe = reader.read_u16();
         const auto rk = reader.read<RkNumber>();
-        add_cell(registry, sheet_id, column_first + i, row,
+        add_cell(registry, sheet_id, column_first + i, row, ixfe,
                  format_number(rk.decode()));
       }
     } break;
     case biff_number: {
       const auto number = reader.read<NumberBody>();
       add_cell(registry, sheet_id, number.cell.col, number.cell.rw,
-               format_number(number.num));
+               number.cell.ixfe, format_number(number.num));
     } break;
     case biff_label: {
       const auto cell = reader.read<CellRef>();
-      add_cell(registry, sheet_id, cell.col, cell.rw,
+      add_cell(registry, sheet_id, cell.col, cell.rw, cell.ixfe,
                reader.read_xl_unicode_string());
     } break;
     case biff_boolerr: {
       const auto boolerr = reader.read<BoolErrBody>();
       add_cell(registry, sheet_id, boolerr.cell.col, boolerr.cell.rw,
+               boolerr.cell.ixfe,
                boolerr.fError != 0
                    ? error_code_string(boolerr.bBoolErr)
                    : (boolerr.bBoolErr != 0 ? "TRUE" : "FALSE"));
@@ -140,18 +176,20 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
       if (formula.val.is_xnum()) {
         const double value = formula.val.as_xnum();
         add_cell(registry, sheet_id, position.column, position.row,
-                 format_number(value));
+                 formula.cell.ixfe, format_number(value));
       } else {
         switch (formula.val.type()) {
         case formula_value_string:
-          pending_string_cell = position;
+          pending_string_cell = {position, formula.cell.ixfe};
           break;
         case formula_value_boolean:
           add_cell(registry, sheet_id, position.column, position.row,
+                   formula.cell.ixfe,
                    formula.val.bool_err_value() != 0 ? "TRUE" : "FALSE");
           break;
         case formula_value_error:
           add_cell(registry, sheet_id, position.column, position.row,
+                   formula.cell.ixfe,
                    error_code_string(formula.val.bool_err_value()));
           break;
         case formula_value_blank:
@@ -163,8 +201,9 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     } break;
     case biff_string: {
       if (pending_string_cell.has_value()) {
-        add_cell(registry, sheet_id, pending_string_cell->column,
-                 pending_string_cell->row, reader.read_xl_unicode_string());
+        add_cell(registry, sheet_id, pending_string_cell->position.column,
+                 pending_string_cell->position.row, pending_string_cell->ixfe,
+                 reader.read_xl_unicode_string());
         pending_string_cell.reset();
       }
     } break;
@@ -181,13 +220,17 @@ namespace odr::internal::oldms {
 
 ElementIdentifier
 spreadsheet::parse_tree(ElementRegistry &registry,
+                        StyleRegistry &style_registry,
                         const abstract::ReadableFilesystem &files) {
   const auto workbook_stream = files.open(AbsPath("/Workbook"))->stream();
   BiffReader reader(*workbook_stream);
 
   std::vector<BoundSheet> bound_sheets;
   std::vector<std::string> shared_strings;
-  parse_globals(reader, bound_sheets, shared_strings);
+  GlobalStyles styles;
+  parse_globals(reader, bound_sheets, shared_strings, styles);
+  style_registry =
+      StyleRegistry(std::move(styles.fonts), styles.xfs, styles.palette);
 
   auto [root_id, root] = registry.create_element(ElementType::root);
 

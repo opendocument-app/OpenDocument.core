@@ -8,11 +8,18 @@
 #include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
+#include <odr/style.hpp>
+
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/spreadsheet/xls_document.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_io.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 
 #include <bit>
 #include <cstdint>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -167,6 +174,190 @@ TEST(OldMs, xls_decode_rk) {
 
   EXPECT_EQ(format_number(32.0), "32");
   EXPECT_EQ(format_number(123.45), "123.45");
+}
+
+namespace {
+
+void append_u32(std::string &out, const std::uint32_t value) {
+  append_u16(out, static_cast<std::uint16_t>(value & 0xFFFF));
+  append_u16(out, static_cast<std::uint16_t>(value >> 16));
+}
+
+/// A Font record body ([MS-XLS] 2.4.122).
+std::string make_font(const std::uint16_t dy_height, const std::uint16_t grbit,
+                      const std::uint16_t icv, const std::uint16_t bls,
+                      const std::uint8_t uls, const std::string &name) {
+  std::string body;
+  append_u16(body, dy_height);
+  append_u16(body, grbit);
+  append_u16(body, icv);
+  append_u16(body, bls);
+  append_u16(body, 0); // sss
+  body.push_back(static_cast<char>(uls));
+  body += std::string("\0\0\0", 3); // bFamily, bCharSet, unused3
+  body.push_back(static_cast<char>(name.size()));
+  body.push_back('\x00'); // flags: compressed
+  body += name;
+  return body;
+}
+
+/// An XF record body ([MS-XLS] 2.4.353): font index plus the fill pattern and
+/// foreground fill color of its CellXF.
+std::string make_xf(const std::uint16_t ifnt, const std::uint32_t fls,
+                    const std::uint16_t icv_fore) {
+  std::string body;
+  append_u16(body, ifnt);
+  append_u16(body, 0);                       // ifmt
+  append_u16(body, 0);                       // fLocked..ixfParent
+  append_u16(body, 0);                       // alc..trot
+  append_u16(body, 0);                       // cIndent..fAtr*
+  append_u16(body, 0);                       // border styles
+  append_u16(body, 0);                       // icvLeft, icvRight, grbitDiag
+  append_u32(body, fls << 26);               // icvTop..dgDiag, fls
+  append_u16(body, icv_fore | (0x41u << 7)); // icvFore, icvBack = default
+  return body;
+}
+
+/// A Label record body ([MS-XLS] 2.4.148): an inline-string cell.
+std::string make_label(const std::uint16_t row, const std::uint16_t column,
+                       const std::uint16_t ixfe, const std::string &text) {
+  std::string body;
+  append_u16(body, row);
+  append_u16(body, column);
+  append_u16(body, ixfe);
+  append_u16(body, static_cast<std::uint16_t>(text.size()));
+  body.push_back('\x00'); // flags: compressed
+  body += text;
+  return body;
+}
+
+std::string make_bof(const std::uint16_t dt) {
+  std::string body;
+  append_u16(body, 0x0600); // vers: BIFF8
+  append_u16(body, dt);
+  return body;
+}
+
+/// One-sheet workbook stream: `globals` records are wrapped with BOF/
+/// BoundSheet8/EOF, the sheet substream holds the given `cells`.
+std::string make_workbook(const std::string &globals,
+                          const std::vector<std::string> &cells) {
+  const auto build_globals = [&](const std::uint32_t sheet_offset) {
+    std::string result;
+    append_record(result, 0x0809 /* BOF */, make_bof(0x0005));
+    result += globals;
+    std::string boundsheet;
+    append_u32(boundsheet, sheet_offset);
+    boundsheet.push_back('\x00'); // visible
+    boundsheet.push_back('\x00'); // worksheet
+    boundsheet.push_back('\x06');
+    boundsheet.push_back('\x00'); // name: compressed
+    boundsheet += "Sheet1";
+    append_record(result, 0x0085 /* BoundSheet8 */, boundsheet);
+    append_record(result, 0x000A /* EOF */, "");
+    return result;
+  };
+
+  std::string sheet;
+  append_record(sheet, 0x0809 /* BOF */, make_bof(0x0010));
+  for (const std::string &cell : cells) {
+    append_record(sheet, 0x0204 /* Label */, cell);
+  }
+  append_record(sheet, 0x000A /* EOF */, "");
+
+  return build_globals(static_cast<std::uint32_t>(build_globals(0).size())) +
+         sheet;
+}
+
+Document open_workbook(const std::string &workbook) {
+  auto files = std::make_shared<internal::VirtualFilesystem>();
+  files->copy(std::make_shared<internal::MemoryFile>(workbook),
+              internal::AbsPath("/Workbook"));
+  return Document(
+      std::make_shared<internal::oldms::spreadsheet::Document>(files));
+}
+
+Text first_text(const Element cell) {
+  return cell.first_child().first_child().as_text();
+}
+
+} // namespace
+
+// Fonts and fills resolve through XF -> Font/palette ([MS-XLS] 2.4.353,
+// 2.4.122): the cell's ixfe picks the XF, whose ifnt picks the Font (index 4
+// is skipped and values above 4 are one-based, [MS-XLS] 2.5.129); colors use
+// the default palette when no Palette record is present ([MS-XLS] 2.5.161).
+TEST(OldMs, xls_cell_styles) {
+  const std::string plain_font =
+      make_font(200, 0, 0x7FFF /* automatic */, 400, 0, "Arial");
+  // grbit: fItalic (bit 1) + fStrikeOut (bit 3); icv 0x11 = default palette
+  // index 9 = 0x008000; single underline.
+  const std::string fancy_font =
+      make_font(320, 0x000A, 0x0011, 700, 1, "Comic Sans MS");
+
+  std::string globals;
+  for (int i = 0; i < 4; ++i) {
+    append_record(globals, 0x0031 /* Font */, plain_font);
+  }
+  append_record(globals, 0x0031 /* Font */, fancy_font); // ifnt 5
+  append_record(globals, 0x00E0 /* XF */, make_xf(0, 0, 0));
+  // Solid fill; icvFore 0x0C = default palette index 4 = 0x0000FF.
+  append_record(globals, 0x00E0 /* XF */, make_xf(5, 1, 0x0C));
+
+  const Document document = open_workbook(make_workbook(
+      globals, {make_label(0, 0, 0, "plain"), make_label(0, 1, 1, "fancy")}));
+
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+
+  const TextStyle plain = first_text(sheet.cell(0, 0)).style();
+  EXPECT_STREQ(plain.font_name, "Arial");
+  EXPECT_EQ(plain.font_size, Measure("10pt"));
+  EXPECT_EQ(plain.font_weight, FontWeight::normal);
+  EXPECT_EQ(plain.font_style, FontStyle::normal);
+  EXPECT_EQ(plain.font_underline, false);
+  EXPECT_EQ(plain.font_line_through, false);
+  EXPECT_FALSE(plain.font_color.has_value()); // automatic
+  EXPECT_FALSE(sheet.cell_style(0, 0).background_color.has_value());
+
+  const TextStyle fancy = first_text(sheet.cell(1, 0)).style();
+  EXPECT_STREQ(fancy.font_name, "Comic Sans MS");
+  EXPECT_EQ(fancy.font_size, Measure("16pt"));
+  EXPECT_EQ(fancy.font_weight, FontWeight::bold);
+  EXPECT_EQ(fancy.font_style, FontStyle::italic);
+  EXPECT_EQ(fancy.font_underline, true);
+  EXPECT_EQ(fancy.font_line_through, true);
+  ASSERT_TRUE(fancy.font_color.has_value());
+  EXPECT_EQ(fancy.font_color->rgb(), 0x008000);
+
+  const auto fill = sheet.cell_style(1, 0).background_color;
+  ASSERT_TRUE(fill.has_value());
+  EXPECT_EQ(fill->rgb(), 0x0000FF);
+
+  // Positions without a cell record stay unstyled.
+  EXPECT_FALSE(sheet.cell_style(5, 5).background_color.has_value());
+}
+
+// A Palette record ([MS-XLS] 2.4.188) replaces the default palette for the
+// icv values 0x08-0x3F.
+TEST(OldMs, xls_palette_record) {
+  std::string globals;
+  append_record(globals, 0x0031 /* Font */,
+                make_font(200, 0, 0x0008, 400, 0, "Arial"));
+  append_record(globals, 0x00E0 /* XF */, make_xf(0, 0, 0));
+
+  std::string palette;
+  append_u16(palette, 56);                       // ccv
+  palette += std::string("\x12\x34\x56\x00", 4); // rgColor[0] -> icv 0x08
+  palette += std::string(std::size_t{55} * 4, '\x00');
+  append_record(globals, 0x0092 /* Palette */, palette);
+
+  const Document document =
+      open_workbook(make_workbook(globals, {make_label(0, 0, 0, "x")}));
+
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+  const TextStyle style = first_text(sheet.cell(0, 0)).style();
+  ASSERT_TRUE(style.font_color.has_value());
+  EXPECT_EQ(style.font_color->rgb(), 0x123456);
 }
 
 TEST(OldMs, xls_empty) {

@@ -14,21 +14,27 @@ namespace odr::internal::oldms::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::legacy_excel_worksheets,
                          DocumentType::spreadsheet, std::move(files)) {
-  m_root_element = parse_tree(m_element_registry, *m_files);
+  m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  m_element_adapter =
+      create_element_adapter(*this, m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
+}
+
+const StyleRegistry &Document::style_registry() const {
+  return m_style_registry;
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -57,8 +63,10 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::ParagraphAdapter,
                              public abstract::TextAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
-      : m_document(&document), m_registry(&registry) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry,
+                 const StyleRegistry &style_registry)
+      : m_document(&document), m_registry(&registry),
+        m_style_registry(&style_registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -177,13 +185,17 @@ public:
     return {};
   }
   [[nodiscard]] TableCellStyle
-  sheet_cell_style([[maybe_unused]] const ElementIdentifier element_id,
-                   [[maybe_unused]] const std::uint32_t column,
-                   [[maybe_unused]] const std::uint32_t row) const override {
-    (void)element_id;
-    (void)column;
-    (void)row;
-    return {};
+  sheet_cell_style(const ElementIdentifier element_id,
+                   const std::uint32_t column,
+                   const std::uint32_t row) const override {
+    const ElementIdentifier cell_id =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+    if (cell_id == null_element_id) {
+      return {};
+    }
+    const ElementRegistry::SheetCell &cell =
+        m_registry->sheet_cell_element_at(cell_id);
+    return m_style_registry->cell_style(cell.ixfe).table_cell_style;
   }
 
   [[nodiscard]] TablePosition
@@ -213,12 +225,7 @@ public:
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+    return cell_text_style(element_id);
   }
 
   [[nodiscard]] std::string
@@ -233,12 +240,7 @@ public:
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+    return cell_text_style(element_id);
   }
 
 private:
@@ -246,11 +248,30 @@ private:
   [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+  const StyleRegistry *m_style_registry{nullptr};
+
+  /// The font style of the sheet_cell ancestor (paragraph and text elements
+  /// only exist inside cells).
+  [[nodiscard]] TextStyle
+  cell_text_style(const ElementIdentifier element_id) const {
+    ElementIdentifier id = element_id;
+    while (id != null_element_id &&
+           element_type(id) != ElementType::sheet_cell) {
+      id = m_registry->element_at(id).parent_id;
+    }
+    if (id == null_element_id) {
+      return {};
+    }
+    const ElementRegistry::SheetCell &cell =
+        m_registry->sheet_cell_element_at(id);
+    return m_style_registry->cell_style(cell.ixfe).text_style;
+  }
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry) {
+  return std::make_unique<ElementAdapter>(document, registry, style_registry);
 }
 
 } // namespace

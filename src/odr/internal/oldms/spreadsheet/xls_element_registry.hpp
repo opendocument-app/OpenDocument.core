@@ -43,6 +43,9 @@ public:
 
   struct SheetCell final {
     TablePosition position;
+    /// Index into the workbook's XF records (the cell record's ixfe); resolved
+    /// through the `StyleRegistry`.
+    std::uint16_t ixfe{0};
   };
 
   void clear() noexcept;
