@@ -26,14 +26,10 @@
 
 using namespace odr;
 using namespace odr::test;
+using odr::test::oldms::append_u16;
 using odr::test::oldms::collect_text;
 
 namespace {
-
-void append_u16(std::string &out, const std::uint16_t value) {
-  out.push_back(static_cast<char>(value & 0xFF));
-  out.push_back(static_cast<char>(value >> 8));
-}
 
 void append_record(std::string &out, const std::uint16_t type,
                    const std::string &body) {
@@ -240,7 +236,7 @@ TEST(OldMs, xls_cell_styles) {
       make_font(320, 0x000A, 0x0011, 700, 1, "Comic Sans MS");
 
   std::string globals;
-  for (int i = 0; i < 4; ++i) {
+  for (std::uint32_t i = 0; i < 4; ++i) {
     append_record(globals, 0x0031 /* Font */, plain_font);
   }
   append_record(globals, 0x0031 /* Font */, fancy_font); // ifnt 5

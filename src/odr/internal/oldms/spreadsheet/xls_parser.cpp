@@ -67,7 +67,7 @@ void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
     case biff_font: {
       const auto font = reader.read<FontFixed>();
       std::string name = reader.read_short_xl_unicode_string();
-      styles.fonts.push_back({font, std::move(name)});
+      styles.fonts.emplace_back(font, std::move(name));
     } break;
     case biff_xf: {
       styles.xfs.push_back(reader.read<XfBody>());

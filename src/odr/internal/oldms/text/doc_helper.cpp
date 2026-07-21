@@ -13,6 +13,45 @@
 #include <string_view>
 #include <unordered_map>
 
+namespace odr::internal::oldms::text {
+
+void CharacterRuns::append_run(const std::uint32_t begin_fc,
+                               const std::uint32_t end_fc,
+                               const std::uint32_t style_index) {
+  if (begin_fc >= end_fc ||
+      (!m_runs.empty() && begin_fc < m_runs.back().end_fc)) {
+    throw std::runtime_error("doc: character runs must be ascending");
+  }
+  if (!m_runs.empty() && m_runs.back().end_fc == begin_fc &&
+      m_runs.back().style_index == style_index) {
+    m_runs.back().end_fc = end_fc;
+    return;
+  }
+  m_runs.emplace_back(begin_fc, end_fc, style_index);
+}
+
+std::uint32_t CharacterRuns::index_at(const std::uint32_t fc) const {
+  const auto it = std::ranges::upper_bound(m_runs, fc, {}, &Run::begin_fc);
+  if (it == m_runs.begin()) {
+    return 0;
+  }
+  const Run &run = *std::prev(it);
+  return fc < run.end_fc ? run.style_index : 0;
+}
+
+std::uint32_t CharacterRuns::chunk_end(const std::uint32_t fc) const {
+  const auto it = std::ranges::upper_bound(m_runs, fc, {}, &Run::begin_fc);
+  if (it != m_runs.begin() && fc < std::prev(it)->end_fc) {
+    return std::prev(it)->end_fc;
+  }
+  if (it != m_runs.end()) {
+    return it->begin_fc;
+  }
+  return std::numeric_limits<std::uint32_t>::max();
+}
+
+} // namespace odr::internal::oldms::text
+
 namespace odr::internal::oldms {
 
 text::CharacterIndex text::read_character_index(std::istream &in) {
@@ -39,52 +78,18 @@ text::CharacterIndex text::read_character_index(std::istream &in) {
   return result;
 }
 
-void text::CharacterRuns::append_run(const std::uint32_t begin_fc,
-                                     const std::uint32_t end_fc,
-                                     const std::uint32_t style_index) {
-  if (begin_fc >= end_fc ||
-      (!m_runs.empty() && begin_fc < m_runs.back().end_fc)) {
-    throw std::runtime_error("doc: character runs must be ascending");
-  }
-  if (!m_runs.empty() && m_runs.back().end_fc == begin_fc &&
-      m_runs.back().style_index == style_index) {
-    m_runs.back().end_fc = end_fc;
-    return;
-  }
-  m_runs.push_back({begin_fc, end_fc, style_index});
-}
-
-std::uint32_t text::CharacterRuns::index_at(const std::uint32_t fc) const {
-  const auto it = std::ranges::upper_bound(m_runs, fc, {}, &Run::begin_fc);
-  if (it == m_runs.begin()) {
-    return 0;
-  }
-  const Run &run = *std::prev(it);
-  return fc < run.end_fc ? run.style_index : 0;
-}
-
-std::uint32_t text::CharacterRuns::chunk_end(const std::uint32_t fc) const {
-  const auto it = std::ranges::upper_bound(m_runs, fc, {}, &Run::begin_fc);
-  if (it != m_runs.begin() && fc < std::prev(it)->end_fc) {
-    return std::prev(it)->end_fc;
-  }
-  if (it != m_runs.end()) {
-    return it->begin_fc;
-  }
-  return std::numeric_limits<std::uint32_t>::max();
-}
-
-text::CharacterRuns text::read_character_runs(std::istream &document_stream,
-                                              std::istream &table_stream,
-                                              const FcLcb plcf_bte_chpx,
-                                              StyleRegistry &style_registry) {
+text::CharacterRuns
+text::read_character_runs(std::istream &document_stream,
+                          std::istream &table_stream, const FcLcb plcf_bte_chpx,
+                          std::vector<TextStyle> &styles,
+                          const std::span<const std::string> font_names) {
   CharacterRuns result;
   if (plcf_bte_chpx.lcb == 0) {
     return result;
   }
 
-  // Copy: `add_style` may reallocate the registry's style storage.
-  const TextStyle default_style = style_registry.text_style(0);
+  // Copy: appending to `styles` may reallocate.
+  const TextStyle default_style = styles.at(0);
 
   table_stream.seekg(plcf_bte_chpx.fc);
   std::string plc_bytes = util::stream::read(table_stream, plcf_bte_chpx.lcb);
@@ -96,14 +101,13 @@ text::CharacterRuns text::read_character_runs(std::istream &document_stream,
     if (grpprl.empty()) {
       return 0;
     }
-    const auto it = style_cache.find(std::string(grpprl));
-    if (it != style_cache.end()) {
-      return it->second;
+    const auto [it, inserted] = style_cache.try_emplace(std::string(grpprl));
+    if (inserted) {
+      styles.push_back(
+          apply_character_sprms(default_style, grpprl, font_names));
+      it->second = static_cast<std::uint32_t>(styles.size() - 1);
     }
-    const std::uint32_t index = style_registry.add_style(apply_character_sprms(
-        default_style, grpprl, style_registry.font_names()));
-    style_cache.emplace(std::string(grpprl), index);
-    return index;
+    return it->second;
   };
 
   for (std::uint32_t i = 0; i < plc.n(); ++i) {

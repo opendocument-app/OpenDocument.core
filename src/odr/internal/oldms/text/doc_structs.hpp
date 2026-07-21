@@ -308,7 +308,7 @@ struct Sprm {
   std::uint16_t sgc : 3;
   std::uint16_t spra : 3;
 
-  [[nodiscard]] int operand_size() const {
+  [[nodiscard]] std::int32_t operand_size() const {
     switch (spra) {
     case 0:
     case 1:

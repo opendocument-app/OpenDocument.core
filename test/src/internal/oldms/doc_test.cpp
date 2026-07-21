@@ -20,6 +20,8 @@
 #include <vector>
 
 using namespace odr;
+using odr::test::oldms::append_u16;
+using odr::test::oldms::append_u32;
 using odr::test::oldms::collect_text;
 
 // A compressed (1-byte-per-CP) piece is "an array of 8-bit Unicode characters"
@@ -59,19 +61,9 @@ TEST(OldMs, doc_read_string_compressed) {
 
 namespace {
 
-void append_doc_u16(std::string &out, const std::uint16_t value) {
-  out.push_back(static_cast<char>(value & 0xFF));
-  out.push_back(static_cast<char>(value >> 8));
-}
-
-void append_doc_u32(std::string &out, const std::uint32_t value) {
-  append_doc_u16(out, static_cast<std::uint16_t>(value & 0xFFFF));
-  append_doc_u16(out, static_cast<std::uint16_t>(value >> 16));
-}
-
 std::string doc_prl(const std::uint16_t opcode, const std::string &operand) {
   std::string prl;
-  append_doc_u16(prl, opcode);
+  append_u16(prl, opcode);
   prl += operand;
   return prl;
 }
@@ -84,35 +76,35 @@ std::string make_fib(const std::uint32_t ccp_text,
                      const internal::oldms::text::FcLcb sttbf_ffn) {
   std::string fib;
   // FibBase (32 bytes)
-  append_doc_u16(fib, 0xA5EC);  // wIdent
-  append_doc_u16(fib, 0x00C1);  // nFib97
-  append_doc_u16(fib, 0);       // unused
-  append_doc_u16(fib, 0x0409);  // lid
-  append_doc_u16(fib, 0);       // pnNext
-  append_doc_u16(fib, 0x0200);  // flags: fWhichTblStm = 1
-  append_doc_u16(fib, 0x00C1);  // nFibBack
-  append_doc_u32(fib, 0);       // lKey
+  append_u16(fib, 0xA5EC);      // wIdent
+  append_u16(fib, 0x00C1);      // nFib97
+  append_u16(fib, 0);           // unused
+  append_u16(fib, 0x0409);      // lid
+  append_u16(fib, 0);           // pnNext
+  append_u16(fib, 0x0200);      // flags: fWhichTblStm = 1
+  append_u16(fib, 0x00C1);      // nFibBack
+  append_u32(fib, 0);           // lKey
   fib += std::string(2, '\0');  // envr, flags
   fib += std::string(12, '\0'); // reserved3-6
   // csw + fibRgW
-  append_doc_u16(fib, 14);
+  append_u16(fib, 14);
   fib += std::string(28, '\0');
   // cslw + fibRgLw; ccpText is the 4th 32-bit field
-  append_doc_u16(fib, 22);
+  append_u16(fib, 22);
   std::string rg_lw(88, '\0');
   std::string ccp;
-  append_doc_u32(ccp, ccp_text);
+  append_u32(ccp, ccp_text);
   rg_lw.replace(12, 4, ccp);
   fib += rg_lw;
   // cbRgFcLcb + FibRgFcLcb97: plcfBteChpx is FcLcb index 12, sttbfFfn 15,
   // clx 33
-  append_doc_u16(fib, 93);
+  append_u16(fib, 93);
   std::string rg(744, '\0');
   const auto put_fclcb = [&rg](const std::size_t index,
                                const internal::oldms::text::FcLcb value) {
     std::string bytes;
-    append_doc_u32(bytes, value.fc);
-    append_doc_u32(bytes, value.lcb);
+    append_u32(bytes, value.fc);
+    append_u32(bytes, value.lcb);
     rg.replace(index * 8, 8, bytes);
   };
   put_fclcb(12, plcf_bte_chpx);
@@ -120,15 +112,15 @@ std::string make_fib(const std::uint32_t ccp_text,
   put_fclcb(33, clx);
   fib += rg;
   // cswNew
-  append_doc_u16(fib, 0);
+  append_u16(fib, 0);
   return fib;
 }
 
 /// An SttbfFfn ([MS-DOC] 2.9.286) with the given font names.
 std::string make_sttbf_ffn(const std::vector<std::string> &names) {
   std::string sttb;
-  append_doc_u16(sttb, static_cast<std::uint16_t>(names.size())); // cData
-  append_doc_u16(sttb, 0);                                        // cbExtra
+  append_u16(sttb, static_cast<std::uint16_t>(names.size())); // cData
+  append_u16(sttb, 0);                                        // cbExtra
   for (const std::string &name : names) {
     std::string ffn(39, '\0'); // FfnFixed
     for (const char c : name) {
@@ -252,9 +244,9 @@ TEST(OldMs, doc_character_formatting) {
   std::string fkp(512, '\0');
   {
     std::string head;
-    append_doc_u32(head, text_fc);
-    append_doc_u32(head, text_fc + 6);
-    append_doc_u32(head, text_fc + 11);
+    append_u32(head, text_fc);
+    append_u32(head, text_fc + 6);
+    append_u32(head, text_fc + 11);
     head.push_back('\0');                   // rgb[0]: default properties
     head.push_back(static_cast<char>(240)); // rgb[1]: Chpx at byte 480
     fkp.replace(0, head.size(), head);
@@ -270,22 +262,22 @@ TEST(OldMs, doc_character_formatting) {
   // Table stream: Clx at 0 (one compressed piece), SttbfFfn at 64,
   // PlcBteChpx at 128.
   std::string plc_pcd;
-  append_doc_u32(plc_pcd, 0);
-  append_doc_u32(plc_pcd, 11);
-  append_doc_u16(plc_pcd, 0);                           // Pcd flags
-  append_doc_u32(plc_pcd, (1u << 30) | (text_fc * 2u)); // fCompressed | fc
-  append_doc_u16(plc_pcd, 0);                           // prm
+  append_u32(plc_pcd, 0);
+  append_u32(plc_pcd, 11);
+  append_u16(plc_pcd, 0);                           // Pcd flags
+  append_u32(plc_pcd, (1u << 30) | (text_fc * 2u)); // fCompressed | fc
+  append_u16(plc_pcd, 0);                           // prm
   std::string clx;
   clx.push_back('\x02');
-  append_doc_u32(clx, static_cast<std::uint32_t>(plc_pcd.size()));
+  append_u32(clx, static_cast<std::uint32_t>(plc_pcd.size()));
   clx += plc_pcd;
 
   const std::string sttbf_ffn = make_sttbf_ffn({"Arial"});
 
   std::string plc_bte;
-  append_doc_u32(plc_bte, text_fc);
-  append_doc_u32(plc_bte, text_fc + 11);
-  append_doc_u32(plc_bte, 2); // PnFkpChpx: page at 2 * 512
+  append_u32(plc_bte, text_fc);
+  append_u32(plc_bte, text_fc + 11);
+  append_u32(plc_bte, 2); // PnFkpChpx: page at 2 * 512
 
   std::string table(256, '\0');
   table.replace(0, clx.size(), clx);

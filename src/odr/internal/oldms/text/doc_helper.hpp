@@ -1,16 +1,18 @@
 #pragma once
 
+#include <odr/style.hpp>
+
 #include <odr/internal/oldms/text/doc_structs.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <iosfwd>
+#include <span>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace odr::internal::oldms::text {
-
-class StyleRegistry;
 
 class CharacterIndex {
 public:
@@ -111,8 +113,8 @@ private:
 CharacterIndex read_character_index(std::istream &in);
 
 /// The document's character-formatting runs, keyed by WordDocument-stream
-/// offset (fc), each referencing a `StyleRegistry` style index. Index 0 is
-/// the default style; offsets outside any run resolve to it.
+/// offset (fc), each referencing a style index. Index 0 is the default style;
+/// offsets outside any run resolve to it.
 class CharacterRuns final {
 public:
   /// Appends a run; runs must be ascending and non-overlapping. Adjacent runs
@@ -138,12 +140,13 @@ private:
 
 /// Reads the PlcBteChpx at `fc` in the table stream and every referenced
 /// ChpxFkp page ([MS-DOC] 2.9.33) from the WordDocument stream, resolving
-/// each run's Chpx on top of the default style (index 0) into
-/// `style_registry` (fonts via its font names). Equal Chpx bytes share one
-/// style.
+/// each run's Chpx on top of `styles[0]` (the default style) and appending
+/// each distinct resolved style to `styles` (fonts via `font_names`). Equal
+/// Chpx bytes share one style.
 CharacterRuns read_character_runs(std::istream &document_stream,
                                   std::istream &table_stream,
                                   FcLcb plcf_bte_chpx,
-                                  StyleRegistry &style_registry);
+                                  std::vector<TextStyle> &styles,
+                                  std::span<const std::string> font_names);
 
 } // namespace odr::internal::oldms::text

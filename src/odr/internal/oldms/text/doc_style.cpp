@@ -2,10 +2,12 @@
 
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <array>
 #include <bit>
+#include <cstdint>
 #include <cstring>
 #include <istream>
 #include <stdexcept>
@@ -46,29 +48,20 @@ bool toggle_on(const std::uint8_t value) {
   }
 }
 
-std::uint16_t read_u16(const std::string_view bytes, const std::size_t at) {
-  std::uint16_t value;
-  std::memcpy(&value, bytes.data() + at, sizeof(value));
-  return value;
-}
-
 } // namespace
 
-void StyleRegistry::set_font_names(std::vector<std::string> names) {
-  m_font_names = std::move(names);
-}
-
-std::span<const std::string> StyleRegistry::font_names() const {
-  return m_font_names;
-}
-
-std::uint32_t StyleRegistry::add_style(TextStyle style) {
-  m_styles.push_back(std::move(style));
-  return static_cast<std::uint32_t>(m_styles.size() - 1);
-}
+StyleRegistry::StyleRegistry(std::vector<std::string> font_names,
+                             std::vector<TextStyle> styles)
+    : m_font_names(std::move(font_names)), m_styles(std::move(styles)) {}
 
 const TextStyle &StyleRegistry::text_style(const std::uint32_t index) const {
   return m_styles.at(index);
+}
+
+TextStyle default_character_style() {
+  TextStyle style;
+  style.font_size = Measure(10.0, DynamicUnit("pt"));
+  return style;
 }
 
 } // namespace odr::internal::oldms::text
@@ -86,7 +79,7 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
     at += sizeof(sprm);
 
     std::size_t operand_size;
-    if (const int fixed_size = sprm.operand_size(); fixed_size >= 0) {
+    if (const std::int32_t fixed_size = sprm.operand_size(); fixed_size >= 0) {
       operand_size = static_cast<std::size_t>(fixed_size);
     } else {
       // spra == 6: the first operand byte is the size of the remainder. The
@@ -132,7 +125,8 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
       style.font_color = ico_color(static_cast<std::uint8_t>(operand[0]));
       break;
     case sprmCHps: {
-      const std::uint16_t half_points = read_u16(operand, 0);
+      const auto half_points =
+          util::byte::from_little_endian<std::uint16_t>(operand);
       if (half_points < 2 || half_points > 3276) {
         throw std::runtime_error("doc: sprmCHps value out of range");
       }
@@ -141,7 +135,8 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
     case sprmCRgFtc0: {
       // SttbfFfn index ([MS-DOC] 2.6.1); with 0 entries the value MUST be 0
       // and the (unmodelled) style-sheet default font applies — leave unset.
-      const auto ftc = static_cast<std::int16_t>(read_u16(operand, 0));
+      const auto ftc = static_cast<std::int16_t>(
+          util::byte::from_little_endian<std::uint16_t>(operand));
       if (ftc < 0 || (font_names.empty() ? ftc != 0
                                          : static_cast<std::size_t>(ftc) >=
                                                font_names.size())) {

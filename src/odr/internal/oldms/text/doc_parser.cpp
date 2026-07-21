@@ -96,7 +96,7 @@ private:
   // Open fields; entry is true while still in that field's instruction part.
   // m_instruction_depth counts those; text is hidden whenever it is > 0.
   std::vector<bool> m_field_in_instruction;
-  int m_instruction_depth{0};
+  std::int32_t m_instruction_depth{0};
 };
 
 /// A maximal piece of body text with uniform character formatting.
@@ -143,7 +143,7 @@ std::vector<StyledRun> decode_styled_runs(
       if (!runs.empty() && runs.back().style_index == style_index) {
         runs.back().text += chunk_text;
       } else {
-        runs.push_back({std::move(chunk_text), style_index});
+        runs.emplace_back(std::move(chunk_text), style_index);
       }
       cp += chunk_cp;
     }
@@ -169,18 +169,18 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
       fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
   const auto table_stream = files.open(AbsPath(tableStreamPath))->stream();
 
-  // Font table; TextStyle::font_name points into the registry's copy.
-  style_registry.set_font_names(
-      read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn));
+  // Font table; TextStyle::font_name points into the strings, which keep
+  // their buffers when the vector is moved into the registry below.
+  std::vector<std::string> font_names =
+      read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn);
 
   // Direct character formatting ([MS-DOC] 2.4.6.2); Pcd.Prm modifications are
-  // not modelled. Without sprmCHps the size defaults to 20 half-points.
-  TextStyle default_style;
-  default_style.font_size = Measure(10.0, DynamicUnit("pt"));
-  style_registry.add_style(std::move(default_style)); // index 0
+  // not modelled.
+  std::vector<TextStyle> styles{default_character_style()}; // index 0
   const CharacterRuns character_runs =
       read_character_runs(*document_stream, *table_stream,
-                          fib.fibRgFcLcb->plcfBteChpx, style_registry);
+                          fib.fibRgFcLcb->plcfBteChpx, styles, font_names);
+  style_registry = StyleRegistry(std::move(font_names), std::move(styles));
 
   table_stream->seekg(fib.fibRgFcLcb->clx.fc);
   const CharacterIndex character_index = read_character_index(*table_stream);
