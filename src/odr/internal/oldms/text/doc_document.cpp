@@ -13,21 +13,27 @@ namespace odr::internal::oldms::text {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::legacy_word_document, DocumentType::text,
                          std::move(files)) {
-  m_root_element = parse_tree(m_element_registry, *m_files);
+  m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  m_element_adapter =
+      create_element_adapter(*this, m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
+}
+
+const StyleRegistry &Document::style_registry() const {
+  return m_style_registry;
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -57,8 +63,10 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::SpanAdapter,
                              public abstract::TextAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
-      : m_document(&document), m_registry(&registry) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry,
+                 const StyleRegistry &style_registry)
+      : m_document(&document), m_registry(&registry),
+        m_style_registry(&style_registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -157,19 +165,12 @@ public:
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    // TODO
-    style.font_size = Measure("11pt");
-    return style;
+    return stored_style(element_id);
   }
 
   [[nodiscard]] TextStyle
   span_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {}; // TODO
+    return stored_style(element_id);
   }
 
   [[nodiscard]] std::string
@@ -184,13 +185,9 @@ public:
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
+    // The enclosing span carries the character style.
     (void)element_id;
-    // TODO setting font size otherwise the text will be invisible. upstream
-    // this is used to make empty paragraphs works correctly
-    TextStyle style{};
-    // TODO
-    style.font_size = Measure("11pt");
-    return style;
+    return {};
   }
 
 private:
@@ -198,11 +195,20 @@ private:
   [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+  const StyleRegistry *m_style_registry{nullptr};
+
+  /// The character style stored for a paragraph or span element.
+  [[nodiscard]] TextStyle
+  stored_style(const ElementIdentifier element_id) const {
+    return m_style_registry->text_style(
+        m_registry->element_style_index(element_id));
+  }
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry) {
+  return std::make_unique<ElementAdapter>(document, registry, style_registry);
 }
 
 } // namespace

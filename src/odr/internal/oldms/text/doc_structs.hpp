@@ -288,13 +288,27 @@ struct FibRgCswNewData2007 : FibRgCswNewData2000 {
 static_assert(sizeof(FibRgCswNewData2007) == 8,
               "FibRgCswNewData2007 should be 8 bytes");
 
+/// The character SPRMs mapped to TextStyle ([MS-DOC] 2.6.1); everything else
+/// in a Chpx is skipped via Sprm::operand_size.
+enum CharacterSprms : std::uint16_t {
+  sprmCFBold = 0x0835,     //< ToggleOperand
+  sprmCFItalic = 0x0836,   //< ToggleOperand
+  sprmCFStrike = 0x0837,   //< ToggleOperand
+  sprmCHighlight = 0x2A0C, //< Ico
+  sprmCKul = 0x2A3E,       //< Kul; 0x00 = none
+  sprmCIco = 0x2A42,       //< Ico (legacy palette color)
+  sprmCHps = 0x4A43,       //< u16 half-points (default 20)
+  sprmCRgFtc0 = 0x4A4F,    //< s16 index into SttbfFfn
+  sprmCCv = 0x6870,        //< COLORREF
+};
+
 struct Sprm {
   std::uint16_t ispmd : 9;
   std::uint16_t fSpec : 1;
   std::uint16_t sgc : 3;
   std::uint16_t spra : 3;
 
-  [[nodiscard]] int operand_size() const {
+  [[nodiscard]] std::int32_t operand_size() const {
     switch (spra) {
     case 0:
     case 1:
@@ -332,6 +346,26 @@ struct Pcd {
   std::uint16_t prm;
 };
 static_assert(sizeof(Pcd) == 8, "Pcd should be 8 bytes");
+
+/// Location of a ChpxFkp in the WordDocument stream, at pn * 512
+/// ([MS-DOC] 2.9.206).
+struct PnFkpChpx {
+  std::uint32_t pn : 22;
+  std::uint32_t unused : 10;
+};
+static_assert(sizeof(PnFkpChpx) == 4, "PnFkpChpx should be 4 bytes");
+
+/// Fixed head of an FFN ([MS-DOC] 2.9.82); the null-terminated UTF-16 font
+/// name (xszFfn) follows.
+struct FfnFixed {
+  std::uint8_t ffid;
+  std::int16_t wWeight;
+  std::uint8_t chs;
+  std::uint8_t ixchSzAlt;
+  std::array<std::uint8_t, 10> panose;
+  std::array<std::uint8_t, 24> fs;
+};
+static_assert(sizeof(FfnFixed) == 39, "FfnFixed should be 39 bytes");
 
 #pragma pack(pop)
 
@@ -399,6 +433,21 @@ template <typename Derived> class PlcPcdBase : public PlcBase<Derived, Pcd> {};
 class PlcPcdMap : public PlcPcdBase<PlcPcdMap> {
 public:
   PlcPcdMap(char *data, const std::size_t cbPlc)
+      : m_data(data), m_cbPlc(cbPlc) {}
+
+  [[nodiscard]] char *data() const { return m_data; }
+  [[nodiscard]] std::size_t cbPlc() const { return m_cbPlc; }
+
+private:
+  char *m_data{nullptr};
+  std::size_t m_cbPlc{0};
+};
+
+/// PlcBteChpx ([MS-DOC] 2.8.5): a PLC keyed by WordDocument-stream offsets
+/// (fc, not CP) whose data elements locate the ChpxFkp pages.
+class PlcBteChpxMap : public PlcBase<PlcBteChpxMap, PnFkpChpx> {
+public:
+  PlcBteChpxMap(char *data, const std::size_t cbPlc)
       : m_data(data), m_cbPlc(cbPlc) {}
 
   [[nodiscard]] char *data() const { return m_data; }

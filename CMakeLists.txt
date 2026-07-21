@@ -153,6 +153,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/oldms/text/doc_helper.cpp"
         "src/odr/internal/oldms/text/doc_io.cpp"
         "src/odr/internal/oldms/text/doc_parser.cpp"
+        "src/odr/internal/oldms/text/doc_style.cpp"
         "src/odr/internal/oldms/spreadsheet/xls_document.cpp"
         "src/odr/internal/oldms/spreadsheet/xls_element_registry.cpp"
         "src/odr/internal/oldms/spreadsheet/xls_io.cpp"

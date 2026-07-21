@@ -3,7 +3,8 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
-#include <map>
+#include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -39,9 +40,15 @@ public:
 
   void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
 
+  /// Character style of a span or paragraph element, as an index into the
+  /// document's `StyleRegistry` (0 is the default style).
+  void set_element_style_index(ElementIdentifier id, std::uint32_t index);
+  [[nodiscard]] std::uint32_t element_style_index(ElementIdentifier id) const;
+
 private:
   std::vector<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
+  std::unordered_map<ElementIdentifier, std::uint32_t> m_style_indices;
 
   void check_element_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;

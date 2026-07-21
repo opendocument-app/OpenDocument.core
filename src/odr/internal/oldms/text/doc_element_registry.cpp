@@ -7,6 +7,7 @@ namespace odr::internal::oldms::text {
 void ElementRegistry::clear() noexcept {
   m_elements.clear();
   m_texts.clear();
+  m_style_indices.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -74,6 +75,18 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
     element_at(previous_sibling_id).next_sibling_id = child_id;
   }
   element_at(parent_id).last_child_id = child_id;
+}
+
+void ElementRegistry::set_element_style_index(const ElementIdentifier id,
+                                              const std::uint32_t index) {
+  check_element_id(id);
+  m_style_indices[id] = index;
+}
+
+std::uint32_t
+ElementRegistry::element_style_index(const ElementIdentifier id) const {
+  const auto it = m_style_indices.find(id);
+  return it != m_style_indices.end() ? it->second : 0;
 }
 
 void ElementRegistry::check_element_id(const ElementIdentifier id) const {
