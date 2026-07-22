@@ -58,6 +58,7 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::FrameAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
+                             public abstract::SpanAdapter,
                              public abstract::TextAdapter {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
@@ -127,6 +128,10 @@ public:
   paragraph_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::paragraph ? this : nullptr;
   }
+  [[nodiscard]] const SpanAdapter *
+  span_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::span ? this : nullptr;
+  }
   [[nodiscard]] const TextAdapter *
   text_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::text ? this : nullptr;
@@ -191,12 +196,14 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
-  [[nodiscard]] TextStyle paragraph_text_style(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // Set a font size so empty paragraphs still have height.
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+  [[nodiscard]] TextStyle
+  paragraph_text_style(const ElementIdentifier element_id) const override {
+    return stored_style(element_id);
+  }
+
+  [[nodiscard]] TextStyle
+  span_style(const ElementIdentifier element_id) const override {
+    return stored_style(element_id);
   }
 
   [[nodiscard]] std::string
@@ -210,13 +217,18 @@ public:
   }
   [[nodiscard]] TextStyle text_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // Set a font size so the text is not invisible.
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+    // The enclosing span carries the character style.
+    return {};
   }
 
 private:
+  /// The character style stored for a paragraph or span element.
+  [[nodiscard]] TextStyle
+  stored_style(const ElementIdentifier element_id) const {
+    const TextStyle *style = m_registry->element_style(element_id);
+    return style != nullptr ? *style : TextStyle{};
+  }
+
   // Converts one field of a frame's anchor (master units = 1/576 inch) to a
   // Measure string, or nullopt when the frame has no anchor.
   template <typename Selector>

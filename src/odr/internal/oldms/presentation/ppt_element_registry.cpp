@@ -1,5 +1,6 @@
 #include <odr/internal/oldms/presentation/ppt_element_registry.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace odr::internal::oldms::presentation {
@@ -8,6 +9,8 @@ void ElementRegistry::clear() noexcept {
   m_elements.clear();
   m_texts.clear();
   m_frames.clear();
+  m_styles.clear();
+  m_font_names.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -95,6 +98,26 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
     element_at(previous_sibling_id).next_sibling_id = child_id;
   }
   element_at(parent_id).last_child_id = child_id;
+}
+
+const char *ElementRegistry::intern_font_name(const std::string &name) {
+  if (const auto it = std::ranges::find(m_font_names, name);
+      it != m_font_names.end()) {
+    return it->c_str();
+  }
+  return m_font_names.emplace_back(name).c_str();
+}
+
+void ElementRegistry::set_element_style(const ElementIdentifier id,
+                                        TextStyle style) {
+  check_element_id(id);
+  m_styles[id] = std::move(style);
+}
+
+const TextStyle *
+ElementRegistry::element_style(const ElementIdentifier id) const {
+  const auto it = m_styles.find(id);
+  return it != m_styles.end() ? &it->second : nullptr;
 }
 
 void ElementRegistry::check_element_id(const ElementIdentifier id) const {
