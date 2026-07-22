@@ -8,11 +8,10 @@
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
-#include <odr/internal/oldms/presentation/ppt_io.hpp>
+#include <odr/internal/oldms/presentation/ppt_style.hpp>
 
 #include <internal/oldms/oldms_test_util.hpp>
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>

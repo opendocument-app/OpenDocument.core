@@ -8,6 +8,7 @@
 #include <odr/internal/oldms/presentation/ppt_element_registry.hpp>
 #include <odr/internal/oldms/presentation/ppt_io.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
+#include <odr/internal/oldms/presentation/ppt_style.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -151,13 +152,6 @@ struct StyledRun final {
 };
 using StyledText = std::vector<StyledRun>;
 
-/// What character-formatting resolution needs: the document's font names
-/// (interned) and the style of unformatted text.
-struct StyleContext final {
-  std::vector<const char *> fonts;
-  TextStyle default_style;
-};
-
 /// The most recent text atom's raw (undecoded) content, kept until the
 /// StyleTextPropAtom that most closely follows it ([MS-PPT] 2.9.44) — or
 /// until the next text block shows there is none.
@@ -206,35 +200,6 @@ private:
   std::optional<std::string> m_bytes;
   bool m_set{false};
 };
-
-/// A character run's formatting on top of the default style.
-TextStyle resolve_style(const TextCFRun &run, const StyleContext &context) {
-  TextStyle style = context.default_style;
-  if (run.bold.has_value()) {
-    style.font_weight = *run.bold ? FontWeight::bold : FontWeight::normal;
-  }
-  if (run.italic.has_value()) {
-    style.font_style = *run.italic ? FontStyle::italic : FontStyle::normal;
-  }
-  if (run.underline.has_value()) {
-    style.font_underline = *run.underline;
-  }
-  if (run.font_size.has_value()) {
-    style.font_size =
-        Measure(static_cast<double>(*run.font_size), DynamicUnit("pt"));
-  }
-  if (run.color.has_value()) {
-    style.font_color = *run.color;
-  }
-  if (run.font_ref.has_value()) {
-    if (*run.font_ref >= context.fonts.size() ||
-        context.fonts[*run.font_ref] == nullptr) {
-      throw std::runtime_error("ppt: font reference out of range");
-    }
-    style.font_name = context.fonts[*run.font_ref];
-  }
-  return style;
-}
 
 /// Splits a pending text at its character-run boundaries; characters past the
 /// last run (or all of them, without a StyleTextPropAtom) get the default
@@ -647,10 +612,9 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
   }
   const std::uint32_t doc_offset = doc_it->second;
 
-  // Fonts and unformatted-text default. The default font size approximates
-  // the (unread) master text styles ([MS-PPT] 2.9.36 TextMasterStyleAtom).
+  // Fonts and unformatted-text default.
   StyleContext context;
-  context.default_style.font_size = Measure(18.0, DynamicUnit("pt"));
+  context.default_style = default_character_style();
   {
     document.clear();
     document.seekg(doc_offset);

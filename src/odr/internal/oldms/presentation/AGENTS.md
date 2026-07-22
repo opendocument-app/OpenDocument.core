@@ -19,7 +19,8 @@ code and in the drawing-tree map below.
 | File (`oldms/presentation/`) | Role |
 |---|---|
 | `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`) + `static_assert` sizes + `RecordType` / `SlideListInstance` enums |
-| `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` + `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s) |
+| `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` (record headers, text atoms, anchors) |
+| `ppt_style.{hpp,cpp}` | Character formatting: `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s), `resolve_style` (`TextCFRun` + `StyleContext` → `TextStyle`), the 18pt default (mirrors `doc_style`/`xls_style`) |
 | `ppt_parser.{hpp,cpp}` | `parse_tree(registry, files)` → walks the stream, builds the element tree |
 | `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads + per-element `TextStyle` map + font-name intern store |
 | `ppt_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
