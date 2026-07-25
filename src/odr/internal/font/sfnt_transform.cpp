@@ -261,6 +261,48 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   return cmap;
 }
 
+std::string font::serialize_name(const std::string &font_name) {
+  const std::string family = font_name.empty() ? "ODR Font" : font_name;
+  const auto utf16be = [](const std::string &ascii) {
+    std::string out;
+    for (const char c : ascii) {
+      bs::put_u16_be(out, static_cast<std::uint8_t>(c));
+    }
+    return out;
+  };
+  struct Record {
+    std::uint16_t name_id;
+    std::string value;
+  };
+  const std::vector<Record> records = {
+      {1, utf16be(family)},
+      {2, utf16be("Regular")},
+      {4, utf16be(family)},
+      {6, utf16be(family)},
+  };
+
+  const auto count = static_cast<std::uint16_t>(records.size());
+  const std::uint16_t storage_offset = 6 + count * 12;
+
+  std::string table;
+  bs::put_u16_be(table, 0);     // format 0
+  bs::put_u16_be(table, count); // count
+  bs::put_u16_be(table, storage_offset);
+
+  std::string storage;
+  for (const Record &record : records) {
+    bs::put_u16_be(table, 3);     // platformID: Windows
+    bs::put_u16_be(table, 1);     // encodingID: Unicode BMP
+    bs::put_u16_be(table, 0x409); // languageID: en-US
+    bs::put_u16_be(table, record.name_id);
+    bs::put_u16_be(table, static_cast<std::uint16_t>(record.value.size()));
+    bs::put_u16_be(table, static_cast<std::uint16_t>(storage.size()));
+    storage += record.value;
+  }
+  table += storage;
+  return table;
+}
+
 std::string font::serialize_post() {
   std::string post;
   bs::put_u32_be(post, 0x00030000); // version 3.0: no glyph names

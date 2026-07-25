@@ -311,6 +311,27 @@ TEST(SfntTransform, write_keeps_existing_post) {
   EXPECT_EQ(table(out, "post"), original_post);
 }
 
+TEST(SfntTransform, write_synthesizes_name_when_absent) {
+  // OTS requires `name` and TrueType subsets often drop it; the writer must
+  // synthesize a minimal one (empty source name falls back to "ODR Font").
+  const std::string font = build_font(0x00010000, {{"head", head_table()},
+                                                   {"maxp", maxp_table(3)},
+                                                   {"hhea", hhea_table(0)}});
+  ASSERT_FALSE(table(font, "name").has_value());
+
+  const std::string out = reencoded(font);
+  const std::optional<std::string> name = table(out, "name");
+  ASSERT_TRUE(name.has_value());
+  EXPECT_EQ(parse(out).name(), "ODR Font");
+  EXPECT_EQ(file_checksum(out), 0xb1b0afbaU);
+}
+
+TEST(SfntTransform, write_keeps_existing_name) {
+  // `sample_font()` carries a `name` table; it is copied through verbatim.
+  const std::string out = reencoded(sample_font());
+  EXPECT_EQ(table(out, "name"), name_table("TestFont"));
+}
+
 TEST(SfntTransform, write_synthesizes_os2_when_absent) {
   // `sample_font()` carries no `OS/2` table; OTS requires one, so the writer
   // must synthesize a version-4 table for the `@font-face` to be accepted.
