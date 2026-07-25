@@ -511,6 +511,13 @@ std::string SfntFont::write() const {
     tables.emplace_back("post", serialize_post());
   }
 
+  // `name` is likewise required by OTS and likewise often omitted from
+  // TrueType subsets. Synthesize a minimal one (falls back to "ODR Font" when
+  // the font carries no name at all).
+  if (!m_tables.contains("name")) {
+    tables.emplace_back("name", serialize_name(m_name));
+  }
+
   // `OS/2` is likewise required by OTS and likewise often omitted. Synthesize
   // it from the cmap bounds and bounding box (build_sfnt sorts the directory,
   // so the insertion order here does not matter).

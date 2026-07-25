@@ -46,6 +46,15 @@ build_sfnt(std::uint32_t sfnt_version,
 [[nodiscard]] std::string
 serialize_cmap(const std::map<char32_t, std::uint16_t> &map);
 
+/// Serialize a minimal `name` table: nameIDs 1/2/4/6 (family / subfamily /
+/// full / PostScript), Windows platform (3,1), UTF-16BE.
+///
+/// OTS (the font sanitizer in Chrome/Firefox) requires `name` and rejects the
+/// whole font when it is absent — like `post` and `OS/2`, PDF-embedded fonts
+/// routinely omit it (a bare CFF has none; TrueType subsets often drop it).
+/// An empty @p font_name falls back to "ODR Font".
+[[nodiscard]] std::string serialize_name(const std::string &font_name);
+
 /// Serialize a minimal version-3.0 `post` table (header only, no glyph names).
 ///
 /// OTS (the font sanitizer in Chrome/Firefox) lists `post` among the tables an

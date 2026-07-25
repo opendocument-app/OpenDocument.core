@@ -211,7 +211,10 @@ std::string GraphicsOperatorParser::read_operator_name() {
     if (c == eof) {
       return result;
     }
-    if (c == ' ' || c == '\n' || c == '/' || c == '<' || c == '[') {
+    // Any white-space (7.2.2, incl. `\r` in CRLF streams) or the start of a
+    // following token ends the bareword.
+    if (ObjectParser::is_whitespace(static_cast<char_type>(c)) || c == '/' ||
+        c == '<' || c == '[') {
       return result;
     }
 
