@@ -237,7 +237,8 @@ std::unique_ptr<std::istream> TextFile::stream() const {
 }
 
 std::string TextFile::text() const {
-  return ""; // TODO
+  const auto stream = m_impl->file()->stream();
+  return internal::util::stream::read(*stream);
 }
 
 ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)

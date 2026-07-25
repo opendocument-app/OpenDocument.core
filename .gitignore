@@ -67,3 +67,9 @@ tools/pdf/afm/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Packaging / testing
+dist/
+wheelhouse/
+*.egg-info/
+.pytest_cache/

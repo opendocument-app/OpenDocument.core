@@ -22,6 +22,7 @@ option(ODR_WITH_PDF2HTMLEX "Build with pdf2htmlEX" "${WITH_PDF2HTMLEX}")
 option(ODR_WITH_WVWARE "Build with wvWare" "${WITH_WVWARE}")
 option(ODR_WITH_LIBMAGIC "Build with libmagic" "${WITH_LIBMAGIC}")
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
+option(ODR_PYTHON "Build Python bindings" OFF)
 
 include(GNUInstallDirs)
 
@@ -405,6 +406,10 @@ if (ODR_CLI)
     add_subdirectory("cli")
 endif ()
 
+if (ODR_PYTHON)
+    add_subdirectory("python")
+endif ()
+
 if (ODR_TEST)
     add_subdirectory("test")
 endif ()
@@ -423,8 +428,12 @@ install(
         FILES_MATCHING PATTERN "*.hpp"
         ${ODR_HEADER_EXCLUDE}
 )
+set(ODR_INSTALL_TARGETS odr)
+if (ODR_CLI)
+    list(APPEND ODR_INSTALL_TARGETS meta translate back_translate)
+endif ()
 install(
-        TARGETS odr meta translate back_translate
+        TARGETS ${ODR_INSTALL_TARGETS}
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"

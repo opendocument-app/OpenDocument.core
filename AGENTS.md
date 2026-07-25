@@ -63,6 +63,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/pdf/`, `pdf_poppler/` | PDF (own parser + poppler/pdf2htmlEX path). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
+| `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |
 | `tools/pdf/` | Dev tooling (not built): PDF encoding-data generators, see `tools/pdf/README.md`. |
 | `test/src/` | GoogleTest suites; data in `test/data` (git submodules). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (see [Specs](#specs)). |
@@ -85,8 +86,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 - **Run the test binary from the build dir** so output stays out of the repo tree.
 - **For debugging, prefer the `translate` CLI** on a single file over the suite.
 - CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_PDF2HTMLEX`,
-  `ODR_WITH_WVWARE`, `ODR_WITH_LIBMAGIC`, `ODR_CLANG_TIDY`. A new `.cpp` must be
-  added to `ODR_SOURCE_FILES`.
+  `ODR_WITH_WVWARE`, `ODR_WITH_LIBMAGIC`, `ODR_PYTHON`, `ODR_CLANG_TIDY`. A new
+  `.cpp` must be added to `ODR_SOURCE_FILES`.
 - **Test data lives in git submodules** under `test/data/`.
 
 ## Conventions
