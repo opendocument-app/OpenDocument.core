@@ -154,12 +154,14 @@ public:
 
   [[nodiscard]] PageLayout slide_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // The DocumentAtom's slide size (master units = 1/576 inch), with the
-    // default 4:3 slide as fallback so the renderer has page dimensions.
+    // The DocumentAtom's slide size, with the default 4:3 slide as fallback
+    // so the renderer has page dimensions.
     if (const auto size = m_registry->slide_size(); size.has_value()) {
       return {
-          .width = Measure(size->first / 576.0, DynamicUnit("in")),
-          .height = Measure(size->second / 576.0, DynamicUnit("in")),
+          .width =
+              Measure(size->first / master_units_per_inch, DynamicUnit("in")),
+          .height =
+              Measure(size->second / master_units_per_inch, DynamicUnit("in")),
           .print_orientation = {},
           .margin = {},
       };
@@ -275,8 +277,8 @@ private:
         m_registry->element_style_index(element_id));
   }
 
-  // Converts one field of a frame's anchor (master units = 1/576 inch) to a
-  // Measure string, or nullopt when the frame has no anchor.
+  // Converts one field of a frame's anchor to a Measure string, or nullopt
+  // when the frame has no anchor.
   template <typename Selector>
   [[nodiscard]] std::optional<std::string>
   anchor_measure(const ElementIdentifier element_id,
@@ -286,7 +288,8 @@ private:
     if (!anchor.has_value()) {
       return std::nullopt;
     }
-    return Measure(select(*anchor) / 576.0, DynamicUnit("in")).to_string();
+    return Measure(select(*anchor) / master_units_per_inch, DynamicUnit("in"))
+        .to_string();
   }
 
   [[maybe_unused]]

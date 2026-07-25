@@ -59,6 +59,17 @@ constexpr std::uint16_t office_art_property_fill_blip = 0x0186;
 /// ([MS-ODRAW] 2.2.40).
 constexpr std::uint32_t office_art_fsp_background = 0x400;
 
+/// recInstance of a JPEG/PNG BLIP record: the color space and whether one or
+/// two 16-byte rgbUids precede the picture data ([MS-ODRAW] 2.2.27/2.2.28).
+enum BlipInstance : std::uint16_t {
+  BlipInstance_JpegRgbOneUid = 0x46A,
+  BlipInstance_JpegRgbTwoUids = 0x46B,
+  BlipInstance_PngOneUid = 0x6E0,
+  BlipInstance_PngTwoUids = 0x6E1,
+  BlipInstance_JpegCmykOneUid = 0x6E2,
+  BlipInstance_JpegCmykTwoUids = 0x6E3,
+};
+
 /// recInstance of a RT_SlideListWithText container: which list it is (slides /
 /// master / notes) inside the DocumentContainer ([MS-PPT] 2.4.14.1/3/6).
 enum SlideListInstance : std::uint16_t {
@@ -139,6 +150,10 @@ struct OfficeArtFopte {
 static_assert(sizeof(OfficeArtFopte) == 6, "OfficeArtFopte should be 6 bytes");
 
 #pragma pack(pop)
+
+/// Slide coordinates — anchors and the DocumentAtom's slide size — are in
+/// master units of 1/576 inch ([MS-PPT] 2.12.7).
+constexpr double master_units_per_inch = 576.0;
 
 /// A shape's position/size from an OfficeArtClientAnchor ([MS-PPT] 2.12.7/8),
 /// in master units (1/576 inch) of the slide's coordinate system.
