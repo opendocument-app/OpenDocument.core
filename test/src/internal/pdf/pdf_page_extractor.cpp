@@ -59,6 +59,18 @@ TEST(PdfPageExtractor, td_translation) {
   EXPECT_EQ(texts[0].text, "Hi"); // no font -> raw codes pass through
 }
 
+// Operators are delimited by any white-space (7.2.2), not just space/LF: a
+// CRLF stream (as Word emits) must tokenize `re\r\n` as `re`, not an unknown
+// `re\r` that drops the whole page.
+TEST(PdfPageExtractor, crlf_delimited_operators) {
+  const auto texts = run("q\r\n0 0 595.3 841.9 re\r\nW* n\r\nBT\r\n/F1 12 "
+                         "Tf\r\n1 0 0 1 100 700 Tm\r\n(Hi) Tj\r\nET\r\nQ\r\n");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100);
+  EXPECT_DOUBLE_EQ(texts[0].transform.f, 700);
+  EXPECT_EQ(texts[0].codes, "Hi");
+}
+
 // `Tm` sets the text matrix outright, scaling and all.
 TEST(PdfPageExtractor, tm_scaling) {
   const auto texts = run("BT /F1 10 Tf 2 0 0 2 50 60 Tm (X) Tj ET");
