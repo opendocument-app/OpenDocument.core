@@ -81,4 +81,31 @@ presentation::read_client_anchor(std::istream &in,
                            std::to_string(rec_len));
 }
 
+std::u16string presentation::read_raw_text_chars(std::istream &in,
+                                                 const std::uint32_t rec_len) {
+  std::u16string buffer;
+  buffer.resize(rec_len / 2);
+  in.read(reinterpret_cast<char *>(buffer.data()),
+          static_cast<std::streamsize>(buffer.size() * sizeof(char16_t)));
+  return buffer;
+}
+
+std::string presentation::read_raw_text_bytes(std::istream &in,
+                                              const std::uint32_t rec_len) {
+  std::string buffer;
+  buffer.resize(rec_len);
+  in.read(buffer.data(), static_cast<std::streamsize>(rec_len));
+  buffer.resize(static_cast<std::size_t>(in.gcount()));
+  return buffer;
+}
+
+std::string presentation::decode_text_bytes(const std::string_view bytes) {
+  std::u16string buffer;
+  buffer.reserve(bytes.size());
+  for (const char c : bytes) {
+    buffer.push_back(static_cast<std::uint8_t>(c));
+  }
+  return util::string::u16string_to_string(buffer);
+}
+
 } // namespace odr::internal::oldms

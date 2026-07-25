@@ -14,12 +14,16 @@ enum RecordType : std::uint16_t {
   RT_DocumentContainer = 0x03E8,  //< top-level document
   RT_SlideContainer = 0x03EE,     //< a slide (drawing + placeholders)
   RT_Notes = 0x03F0,              //< notes page (skipped)
+  RT_Environment = 0x03F2,        //< DocumentTextInfoContainer [MS-PPT] 2.4.5
   RT_SlidePersistAtom = 0x03F3,   //< delimits each slide's text in the list
   RT_MainMaster = 0x03F8,         //< master slide (skipped)
+  RT_FontCollection = 0x07D5,     //< document fonts [MS-PPT] 2.9.8
   RT_OutlineTextRefAtom = 0x0F9E, //< box text lives in the slide list, by index
   RT_TextHeaderAtom = 0x0F9F,     //< type of the text block that follows
   RT_TextCharsAtom = 0x0FA0,      //< UTF-16 text (two bytes per code unit)
+  RT_StyleTextPropAtom = 0x0FA1,  //< text formatting runs [MS-PPT] 2.9.44
   RT_TextBytesAtom = 0x0FA8,      //< "compressed" text: one byte per character
+  RT_FontEntityAtom = 0x0FB7,     //< one font; recInstance = index
   RT_SlideListWithText = 0x0FF0,  //< outline text for all slides
   RT_UserEditAtom = 0x0FF5,    //< a user edit (offsets to dir + previous edit)
   RT_CurrentUserAtom = 0x0FF6, //< in the "Current User" stream

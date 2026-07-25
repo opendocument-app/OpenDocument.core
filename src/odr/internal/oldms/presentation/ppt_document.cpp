@@ -16,21 +16,27 @@ namespace odr::internal::oldms::presentation {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::legacy_powerpoint_presentation,
                          DocumentType::presentation, std::move(files)) {
-  m_root_element = parse_tree(m_element_registry, *m_files);
+  m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  m_element_adapter =
+      create_element_adapter(*this, m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
+}
+
+const StyleRegistry &Document::style_registry() const {
+  return m_style_registry;
 }
 
 bool Document::is_editable() const noexcept { return false; }
@@ -58,10 +64,13 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::FrameAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
+                             public abstract::SpanAdapter,
                              public abstract::TextAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
-      : m_document(&document), m_registry(&registry) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry,
+                 const StyleRegistry &style_registry)
+      : m_document(&document), m_registry(&registry),
+        m_style_registry(&style_registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -127,6 +136,10 @@ public:
   paragraph_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::paragraph ? this : nullptr;
   }
+  [[nodiscard]] const SpanAdapter *
+  span_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::span ? this : nullptr;
+  }
   [[nodiscard]] const TextAdapter *
   text_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::text ? this : nullptr;
@@ -191,12 +204,14 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
   }
-  [[nodiscard]] TextStyle paragraph_text_style(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // Set a font size so empty paragraphs still have height.
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+  [[nodiscard]] TextStyle
+  paragraph_text_style(const ElementIdentifier element_id) const override {
+    return stored_style(element_id);
+  }
+
+  [[nodiscard]] TextStyle
+  span_style(const ElementIdentifier element_id) const override {
+    return stored_style(element_id);
   }
 
   [[nodiscard]] std::string
@@ -210,13 +225,18 @@ public:
   }
   [[nodiscard]] TextStyle text_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // Set a font size so the text is not invisible.
-    TextStyle style{};
-    style.font_size = Measure("11pt");
-    return style;
+    // The enclosing span carries the character style.
+    return {};
   }
 
 private:
+  /// The character style stored for a paragraph or span element.
+  [[nodiscard]] TextStyle
+  stored_style(const ElementIdentifier element_id) const {
+    return m_style_registry->text_style(
+        m_registry->element_style_index(element_id));
+  }
+
   // Converts one field of a frame's anchor (master units = 1/576 inch) to a
   // Measure string, or nullopt when the frame has no anchor.
   template <typename Selector>
@@ -234,11 +254,13 @@ private:
   [[maybe_unused]]
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+  const StyleRegistry *m_style_registry{nullptr};
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+create_element_adapter(const Document &document, ElementRegistry &registry,
+                       const StyleRegistry &style_registry) {
+  return std::make_unique<ElementAdapter>(document, registry, style_registry);
 }
 
 } // namespace
