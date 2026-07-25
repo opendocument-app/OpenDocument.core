@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <utility>
 
 namespace odr::internal::oldms::presentation {
 
@@ -153,6 +154,14 @@ void read_text_cf_exception(BodyCursor &cursor, TextCFRun &run) {
 
 } // namespace
 
+StyleRegistry::StyleRegistry(std::vector<std::string> font_names,
+                             std::vector<TextStyle> styles)
+    : m_font_names(std::move(font_names)), m_styles(std::move(styles)) {}
+
+const TextStyle &StyleRegistry::text_style(const std::uint32_t index) const {
+  return m_styles.at(index);
+}
+
 } // namespace odr::internal::oldms::presentation
 
 namespace odr::internal::oldms {
@@ -189,9 +198,9 @@ TextStyle presentation::default_character_style() {
   return style;
 }
 
-TextStyle presentation::resolve_style(const TextCFRun &run,
-                                      const StyleContext &context) {
-  TextStyle style = context.default_style;
+std::uint32_t presentation::resolve_style(const TextCFRun &run,
+                                          StyleContext &context) {
+  TextStyle style = context.styles.at(default_style_index);
   if (run.bold.has_value()) {
     style.font_weight = *run.bold ? FontWeight::bold : FontWeight::normal;
   }
@@ -210,12 +219,13 @@ TextStyle presentation::resolve_style(const TextCFRun &run,
   }
   if (run.font_ref.has_value()) {
     if (*run.font_ref >= context.fonts.size() ||
-        context.fonts[*run.font_ref] == nullptr) {
+        context.fonts[*run.font_ref].empty()) {
       throw std::runtime_error("ppt: font reference out of range");
     }
-    style.font_name = context.fonts[*run.font_ref];
+    style.font_name = context.fonts[*run.font_ref].c_str();
   }
-  return style;
+  context.styles.push_back(style);
+  return static_cast<std::uint32_t>(context.styles.size() - 1);
 }
 
 } // namespace odr::internal::oldms

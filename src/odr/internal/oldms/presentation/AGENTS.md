@@ -20,9 +20,9 @@ code and in the drawing-tree map below.
 |---|---|
 | `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`) + `static_assert` sizes + `RecordType` / `SlideListInstance` enums |
 | `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` (record headers, text atoms, anchors) |
-| `ppt_style.{hpp,cpp}` | Character formatting: `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s), `resolve_style` (`TextCFRun` + `StyleContext` → `TextStyle`), the 18pt default (mirrors `doc_style`/`xls_style`) |
-| `ppt_parser.{hpp,cpp}` | `parse_tree(registry, files)` → walks the stream, builds the element tree |
-| `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads + per-element `TextStyle` map + font-name intern store |
+| `ppt_style.{hpp,cpp}` | Character formatting: `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s), `resolve_style` (`TextCFRun` + `StyleContext` → style index), the 18pt default, and the `StyleRegistry` owning the resolved `TextStyle`s + font names (mirrors `doc_style`/`xls_style`) |
+| `ppt_parser.{hpp,cpp}` | `parse_tree(registry, style_registry, files)` → walks the stream, builds the element tree, fills the `StyleRegistry` |
+| `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads + per-element style-index map |
 | `ppt_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
 
 Element tree shape: `root → slide → frame (one per text box) → paragraph (split
@@ -99,15 +99,18 @@ disappear.
 is kept raw (undecoded) until the **`StyleTextPropAtom`** (0x0FA1, §2.9.44)
 that most closely follows it; its character runs (`TextCFRun`, counts in
 UTF-16 units covering the text plus one implicit final paragraph mark) split
-the text into spans. Each span and paragraph stores a resolved `TextStyle` in
-a registry side-map (paragraphs keep their first run's style for
-empty-paragraph height). The non-obvious bits:
+the text into spans. Each span and paragraph stores an index into the
+document's `StyleRegistry`, which owns the resolved `TextStyle`s and the font
+names — index 0 is the default style (paragraphs keep their first run's style
+for empty-paragraph height). The non-obvious bits:
 - The **paragraph-level runs precede the character runs** in the atom and are
   mask-skipped field by field (`TextPFException`, incl. the variable
   `tabStops`).
 - **Font names** come from the `FontCollection` (0x07D5, inside
-  `RT_Environment` 0x03F2), indexed by each `FontEntityAtom`'s `recInstance`,
-  interned in the registry (`TextStyle::font_name` is a `const char *`).
+  `RT_Environment` 0x03F2), indexed by each `FontEntityAtom`'s `recInstance`;
+  the `StyleRegistry` owns the strings (`TextStyle::font_name` is a
+  `const char *` pointing into them), so they are read before any style is
+  resolved.
 - **Colors** are `ColorIndexStruct`s: only explicit sRGB values (index `0xFE`)
   are used; **scheme indexes are left unset** (they need the slide's color
   scheme — open work).

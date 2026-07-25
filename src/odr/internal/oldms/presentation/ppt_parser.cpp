@@ -1,7 +1,5 @@
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 
-#include <odr/style.hpp>
-
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
@@ -13,6 +11,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <istream>
 #include <optional>
@@ -30,6 +29,8 @@ namespace {
 constexpr char paragraph_mark = '\x0D';
 /// Manual line break (vertical tab) inside a PPT text atom.
 constexpr char line_break_mark = '\x0B';
+/// The control characters `build_paragraphs` splits on.
+constexpr std::array<char, 2> control_marks = {paragraph_mark, line_break_mark};
 
 /// Sequentially walks a container's child records — no tellg/absolute offsets.
 /// Construct with the stream at the container body. next() returns the next
@@ -145,10 +146,11 @@ std::string clean_text(const std::string &in) {
   return out;
 }
 
-/// One run of uniformly formatted text within a text box.
+/// One run of uniformly formatted text within a text box; the style index
+/// refers to the document's `StyleRegistry`.
 struct StyledRun final {
   std::string text; //< UTF-8
-  TextStyle style;
+  std::uint32_t style_index{default_style_index};
 };
 using StyledText = std::vector<StyledRun>;
 
@@ -206,7 +208,7 @@ private:
 /// style. Empty runs are dropped.
 StyledText style_pending(const PendingText &pending,
                          const std::vector<TextCFRun> &runs,
-                         const StyleContext &context) {
+                         StyleContext &context) {
   StyledText result;
   const std::size_t count = pending.char_count();
   std::size_t at = 0;
@@ -222,7 +224,7 @@ StyledText style_pending(const PendingText &pending,
   }
   if (at < count) {
     if (std::string text = pending.decode(at, count); !text.empty()) {
-      result.push_back({std::move(text), context.default_style});
+      result.push_back({std::move(text), default_style_index});
     }
   }
   return result;
@@ -244,11 +246,11 @@ void build_paragraphs(ElementRegistry &registry,
                       const StyledText &box_text) {
   ElementIdentifier paragraph_id = null_element_id;
 
-  const auto ensure_paragraph = [&](const TextStyle &style) {
+  const auto ensure_paragraph = [&](const std::uint32_t style_index) {
     if (paragraph_id == null_element_id) {
       auto [id, paragraph] = registry.create_element(ElementType::paragraph);
       registry.append_child(parent_id, id);
-      registry.set_element_style(id, style);
+      registry.set_element_style_index(id, style_index);
       paragraph_id = id;
     }
   };
@@ -256,16 +258,17 @@ void build_paragraphs(ElementRegistry &registry,
   for (const StyledRun &run : box_text) {
     std::size_t at = 0;
     while (at <= run.text.size()) {
-      const std::size_t control = run.text.find_first_of("\x0D\x0B", at);
+      const std::size_t control = run.text.find_first_of(
+          control_marks.data(), at, control_marks.size());
       const std::size_t segment_end =
           control == std::string::npos ? run.text.size() : control;
 
       if (std::string cleaned =
               clean_text(run.text.substr(at, segment_end - at));
           !cleaned.empty()) {
-        ensure_paragraph(run.style);
+        ensure_paragraph(run.style_index);
         auto [span_id, span] = registry.create_element(ElementType::span);
-        registry.set_element_style(span_id, run.style);
+        registry.set_element_style_index(span_id, run.style_index);
         registry.append_child(paragraph_id, span_id);
 
         auto [text_id, text_element, text_entry] =
@@ -278,12 +281,14 @@ void build_paragraphs(ElementRegistry &registry,
         break;
       }
       if (run.text[control] == paragraph_mark) {
-        ensure_paragraph(run.style);
+        ensure_paragraph(run.style_index);
         paragraph_id = null_element_id;
-      } else { // line_break_mark
-        ensure_paragraph(run.style);
+      } else if (run.text[control] == line_break_mark) {
+        ensure_paragraph(run.style_index);
         auto [line_id, line] = registry.create_element(ElementType::line_break);
         registry.append_child(paragraph_id, line_id);
+      } else {
+        throw std::runtime_error("ppt: unexpected control character");
       }
       at = control + 1;
     }
@@ -292,14 +297,12 @@ void build_paragraphs(ElementRegistry &registry,
 
 /// Appends a text block to a text box's running text, separating consecutive
 /// blocks (e.g. title vs. body) with a paragraph break.
-void append_block(StyledText &slide_text, StyledText block,
-                  const StyleContext &context) {
+void append_block(StyledText &slide_text, StyledText block) {
   if (block.empty()) {
     return;
   }
   if (!slide_text.empty()) {
-    slide_text.push_back(
-        {std::string(1, paragraph_mark), context.default_style});
+    slide_text.push_back({std::string(1, paragraph_mark), default_style_index});
   }
   slide_text.insert(slide_text.end(), std::make_move_iterator(block.begin()),
                     std::make_move_iterator(block.end()));
@@ -333,11 +336,11 @@ std::vector<TextCFRun> read_style_atom(std::istream &in,
 void gather_text(std::istream &in, const RecordHeader &container,
                  StyledText &slide_text,
                  const std::vector<StyledText> &outline_texts,
-                 const StyleContext &context) {
+                 StyleContext &context) {
   PendingText pending;
   const auto flush = [&](const std::vector<TextCFRun> &runs) {
     if (pending.has_value()) {
-      append_block(slide_text, style_pending(pending, runs, context), context);
+      append_block(slide_text, style_pending(pending, runs, context));
       pending.reset();
     }
   };
@@ -362,7 +365,7 @@ void gather_text(std::istream &in, const RecordHeader &container,
       flush({});
       if (index >= 0 &&
           static_cast<std::size_t>(index) < outline_texts.size()) {
-        append_block(slide_text, outline_texts[index], context);
+        append_block(slide_text, outline_texts[index]);
       }
     } else if (child->is_container()) {
       flush({});
@@ -379,7 +382,7 @@ void gather_text(std::istream &in, const RecordHeader &container,
 /// resolves an OutlineTextRefAtom. Stream at the shape body.
 TextBox read_shape(std::istream &in, const RecordHeader &shape,
                    const std::vector<StyledText> &outline_texts,
-                   const StyleContext &context) {
+                   StyleContext &context) {
   TextBox box;
   ChildCursor children(in, shape);
   while (const std::optional<RecordHeader> child = children.next()) {
@@ -401,7 +404,7 @@ TextBox read_shape(std::istream &in, const RecordHeader &shape,
 std::vector<TextBox>
 read_slide_text_boxes(std::istream &in, const RecordHeader &slide,
                       const std::vector<StyledText> &outline_texts,
-                      const StyleContext &context) {
+                      StyleContext &context) {
   // SlideContainer → DrawingContainer → OfficeArtDgContainer →
   // OfficeArtSpgrContainer (all mandatory), then iterate the shapes.
   const RecordHeader drawing = require_child(in, slide, RT_Drawing);
@@ -463,7 +466,7 @@ struct SlideListText {
 /// StyleTextPropAtom after it. Stream at the container body.
 SlideListText read_slide_list_text(std::istream &in,
                                    const RecordHeader &slide_list,
-                                   const StyleContext &context) {
+                                   StyleContext &context) {
   constexpr std::uint32_t persist_ref_size = sizeof(std::uint32_t);
 
   SlideListText result;
@@ -514,12 +517,11 @@ SlideListText read_slide_list_text(std::istream &in,
 }
 
 /// Reads the document's font names from the FontCollection
-/// ([MS-PPT] 2.9.8/2.9.10), indexed by each FontEntityAtom's recInstance and
-/// interned in the registry. Stream at the DocumentContainer body.
-std::vector<const char *> read_font_collection(std::istream &in,
-                                               const RecordHeader &document,
-                                               ElementRegistry &registry) {
-  std::vector<const char *> fonts;
+/// ([MS-PPT] 2.9.8/2.9.10), indexed by each FontEntityAtom's recInstance
+/// (empty strings mark the gaps). Stream at the DocumentContainer body.
+std::vector<std::string> read_font_collection(std::istream &in,
+                                              const RecordHeader &document) {
+  std::vector<std::string> fonts;
   const std::optional<RecordHeader> environment =
       find_child(in, document, RT_Environment);
   if (!environment.has_value()) {
@@ -548,10 +550,9 @@ std::vector<const char *> read_font_collection(std::istream &in,
 
     const std::size_t index = child->recInstance;
     if (fonts.size() <= index) {
-      fonts.resize(index + 1, nullptr);
+      fonts.resize(index + 1);
     }
-    fonts[index] =
-        registry.intern_font_name(util::string::u16string_to_string(name));
+    fonts[index] = util::string::u16string_to_string(name);
   }
   return fonts;
 }
@@ -561,10 +562,11 @@ std::vector<const char *> read_font_collection(std::istream &in,
 /// UserEditAtom, whose chain builds the persist directory, which resolves the
 /// live DocumentContainer and each SlideContainer — so slides come out in order
 /// from the live records, ignoring stale copies left by incremental saves.
-/// Malformed records throw. Returns each slide's text boxes in shape order.
+/// Malformed records throw. Returns each slide's text boxes in shape order;
+/// the boxes' styles accumulate in `context`.
 std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
                                                  std::istream &document,
-                                                 ElementRegistry &registry) {
+                                                 StyleContext &context) {
   // Newest user edit offset, from the Current User stream.
   const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
   if (head.rh.recType != RT_CurrentUserAtom) {
@@ -612,14 +614,13 @@ std::vector<std::vector<TextBox>> collect_slides(std::istream &current_user,
   }
   const std::uint32_t doc_offset = doc_it->second;
 
-  // Fonts and unformatted-text default.
-  StyleContext context;
-  context.default_style = default_character_style();
+  // The font names must be complete before the first style is resolved — the
+  // styles' `font_name` point into them.
   {
     document.clear();
     document.seekg(doc_offset);
     const RecordHeader doc_header = read_header(document, RT_DocumentContainer);
-    context.fonts = read_font_collection(document, doc_header, registry);
+    context.fonts = read_font_collection(document, doc_header);
   }
 
   document.clear();
@@ -667,6 +668,7 @@ namespace odr::internal::oldms {
 
 ElementIdentifier
 presentation::parse_tree(ElementRegistry &registry,
+                         StyleRegistry &style_registry,
                          const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
@@ -684,8 +686,9 @@ presentation::parse_tree(ElementRegistry &registry,
   const auto document_stream = document_file->stream();
   const auto current_user_stream = current_user_file->stream();
 
+  StyleContext context;
   for (const std::vector<TextBox> &boxes :
-       collect_slides(*current_user_stream, *document_stream, registry)) {
+       collect_slides(*current_user_stream, *document_stream, context)) {
     auto [slide_id, _] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
 
@@ -697,6 +700,11 @@ presentation::parse_tree(ElementRegistry &registry,
       build_paragraphs(registry, frame_id, box.text);
     }
   }
+
+  // The styles' `font_name` point into the font-name strings, which keep
+  // their buffers when the vectors are moved into the registry.
+  style_registry =
+      StyleRegistry(std::move(context.fonts), std::move(context.styles));
 
   return root_id;
 }
