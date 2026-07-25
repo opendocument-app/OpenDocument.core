@@ -38,12 +38,10 @@ void front(const Document &document, const WritingState &state) {
   out.write_header_charset("UTF-8");
   out.write_header_target("_blank");
   out.write_header_title("odr");
-  if (paged_content) {
-    out.write_header_viewport("width=device-width,user-scalable=yes");
-  } else {
-    out.write_header_viewport(
-        "width=device-width,initial-scale=1.0,user-scalable=yes");
-  }
+  write_viewport_meta(out, state.config(), paged_content,
+                      document.document_type() == DocumentType::spreadsheet
+                          ? state.config().spreadsheet_viewport_mode
+                          : std::nullopt);
 
   auto document_css_file = File(AbsPath(state.config().resource_path)
                                     .join(RelPath("document.css"))

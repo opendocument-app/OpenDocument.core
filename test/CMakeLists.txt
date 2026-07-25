@@ -22,6 +22,8 @@ add_executable(odr_test
         "src/quantity_test.cpp"
         "src/table_position_test.cpp"
 
+        "src/internal/html/common_test.cpp"
+
         "src/internal/magic_test.cpp"
 
         "src/internal/cfb/cfb_archive_test.cpp"

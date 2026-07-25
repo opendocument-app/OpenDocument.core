@@ -65,6 +65,25 @@ enum class HtmlTableGridlines {
   hard,
 };
 
+/// @brief Initial zoom of the emitted HTML on mobile (viewport meta tag).
+///
+/// Desktop browsers ignore the viewport meta tag entirely.
+///
+/// - `automatic`: per-content default — fixed-size paged content (PDF pages,
+///   slides, drawings, images, text documents with page margins) uses
+///   `fit_width`; reflowing content (spreadsheets, plain text) uses
+///   `actual_size`.
+/// - `fit_width`: the browser picks the initial zoom so the content's full
+///   width fits the screen.
+/// - `actual_size`: initial zoom locked to 100% (`initial-scale=1.0`).
+/// - `none`: no viewport meta tag is written.
+enum class HtmlViewportMode {
+  automatic,
+  fit_width,
+  actual_size,
+  none,
+};
+
 /// @brief PDF text rendering mode.
 ///
 /// Selects how text is emitted in PDF→HTML output.
@@ -109,6 +128,13 @@ struct HtmlConfig {
   bool spreadsheet_limit_by_content{true};
   // spreadsheet gridlines
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
+
+  // initial zoom on mobile
+  HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};
+  // overrides `viewport_mode` for spreadsheet content when set
+  std::optional<HtmlViewportMode> spreadsheet_viewport_mode;
+  // raw `content` for the viewport meta tag; overrides the modes above
+  std::optional<std::string> viewport_content;
 
   // formatting
   bool format_html{false};

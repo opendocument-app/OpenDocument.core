@@ -35,6 +35,16 @@ private:
   HtmlResources *m_resources;
 };
 
+/// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,
+/// attribute-escaped), then `mode_override` (e.g.
+/// `config.spreadsheet_viewport_mode` for spreadsheet content), then
+/// `config.viewport_mode`. `fit_width_by_default` resolves
+/// `HtmlViewportMode::automatic`: true for fixed-size paged content, false for
+/// content that reflows to the screen width.
+void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
+                         bool fit_width_by_default,
+                         std::optional<HtmlViewportMode> mode_override = {});
+
 std::string escape_text(std::string text);
 
 /// Escape a string for use as an HTML double-quoted attribute value (`&`, `"`,

@@ -2517,17 +2517,16 @@ public:
   /// rules, then the constant `.s` rule, the font faces/styles and the interned
   /// atomic rules. Leaves the writer positioned after `</head>`.
   template <typename WriteModeCss>
-  static void write_header_common(HtmlWriter &out,
-                                  const std::string &font_faces,
-                                  const std::string &font_styles,
-                                  const AtomicStyles &styles,
-                                  WriteModeCss &&write_mode_css) {
+  void write_header_common(HtmlWriter &out, const std::string &font_faces,
+                           const std::string &font_styles,
+                           const AtomicStyles &styles,
+                           WriteModeCss &&write_mode_css) const {
     out.write_begin();
     out.write_header_begin();
     out.write_header_charset("UTF-8");
     out.write_header_target("_blank");
     out.write_header_title("odr");
-    out.write_header_viewport("width=device-width,user-scalable=yes");
+    write_viewport_meta(out, config(), true);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
