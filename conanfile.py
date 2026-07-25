@@ -21,6 +21,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_wvWare": [True, False],
         "with_libmagic": [True, False],
         "with_http_server": [True, False],
+        "with_python": [True, False],
         "bundle_assets": [True, False],
     }
     default_options = {
@@ -30,10 +31,11 @@ class OpenDocumentCoreConan(ConanFile):
         "with_wvWare": True,
         "with_libmagic": True,
         "with_http_server": True,
+        "with_python": False,
         "bundle_assets": False,
     }
 
-    exports_sources = ["cli/*", "cmake/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["cli/*", "cmake/*", "python/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -59,6 +61,8 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("argon2/20190702-odr")
         if self.options.get_safe("with_libmagic", False):
             self.requires("libmagic/5.45")
+        if self.options.get_safe("with_python", False):
+            self.requires("pybind11/2.13.6")
 
     def build_requirements(self):
         self.test_requires("gtest/1.14.0")
@@ -79,6 +83,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
         tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
+        tc.variables["ODR_PYTHON"] = self.options.get_safe("with_python", False)
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
 
         # Get runenv info, exported by package_info() of dependencies

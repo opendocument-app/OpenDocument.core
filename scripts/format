@@ -20,3 +20,4 @@ function format_folder() {
 format_folder src
 format_folder cli
 format_folder test/src
+format_folder python/src

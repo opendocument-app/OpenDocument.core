@@ -1,0 +1,222 @@
+#include "bindings.hpp"
+
+#include <odr/archive.hpp>
+#include <odr/document.hpp>
+#include <odr/file.hpp>
+#include <odr/filesystem.hpp>
+
+#include <pybind11/stl.h>
+
+#include <sstream>
+#include <string>
+
+namespace py = pybind11;
+
+void odr_python::bind_file(py::module_ &m) {
+  py::enum_<odr::FileType>(m, "FileType")
+      .value("unknown", odr::FileType::unknown)
+      .value("opendocument_text", odr::FileType::opendocument_text)
+      .value("opendocument_presentation",
+             odr::FileType::opendocument_presentation)
+      .value("opendocument_spreadsheet",
+             odr::FileType::opendocument_spreadsheet)
+      .value("opendocument_graphics", odr::FileType::opendocument_graphics)
+      .value("office_open_xml_document",
+             odr::FileType::office_open_xml_document)
+      .value("office_open_xml_presentation",
+             odr::FileType::office_open_xml_presentation)
+      .value("office_open_xml_workbook",
+             odr::FileType::office_open_xml_workbook)
+      .value("office_open_xml_encrypted",
+             odr::FileType::office_open_xml_encrypted)
+      .value("legacy_word_document", odr::FileType::legacy_word_document)
+      .value("legacy_powerpoint_presentation",
+             odr::FileType::legacy_powerpoint_presentation)
+      .value("legacy_excel_worksheets", odr::FileType::legacy_excel_worksheets)
+      .value("word_perfect", odr::FileType::word_perfect)
+      .value("rich_text_format", odr::FileType::rich_text_format)
+      .value("portable_document_format",
+             odr::FileType::portable_document_format)
+      .value("text_file", odr::FileType::text_file)
+      .value("comma_separated_values", odr::FileType::comma_separated_values)
+      .value("javascript_object_notation",
+             odr::FileType::javascript_object_notation)
+      .value("markdown", odr::FileType::markdown)
+      .value("zip", odr::FileType::zip)
+      .value("compound_file_binary_format",
+             odr::FileType::compound_file_binary_format)
+      .value("portable_network_graphics",
+             odr::FileType::portable_network_graphics)
+      .value("graphics_interchange_format",
+             odr::FileType::graphics_interchange_format)
+      .value("jpeg", odr::FileType::jpeg)
+      .value("bitmap_image_file", odr::FileType::bitmap_image_file)
+      .value("starview_metafile", odr::FileType::starview_metafile)
+      .value("truetype_font", odr::FileType::truetype_font)
+      .value("opentype_font", odr::FileType::opentype_font);
+
+  py::enum_<odr::FileCategory>(m, "FileCategory")
+      .value("unknown", odr::FileCategory::unknown)
+      .value("text", odr::FileCategory::text)
+      .value("image", odr::FileCategory::image)
+      .value("archive", odr::FileCategory::archive)
+      .value("document", odr::FileCategory::document)
+      .value("font", odr::FileCategory::font);
+
+  py::enum_<odr::FileLocation>(m, "FileLocation")
+      .value("memory", odr::FileLocation::memory)
+      .value("disk", odr::FileLocation::disk);
+
+  py::enum_<odr::DecoderEngine>(m, "DecoderEngine")
+      .value("odr", odr::DecoderEngine::odr)
+      .value("poppler", odr::DecoderEngine::poppler)
+      .value("wvware", odr::DecoderEngine::wvware);
+
+  py::enum_<odr::EncryptionState>(m, "EncryptionState")
+      .value("unknown", odr::EncryptionState::unknown)
+      .value("not_encrypted", odr::EncryptionState::not_encrypted)
+      .value("encrypted", odr::EncryptionState::encrypted)
+      .value("decrypted", odr::EncryptionState::decrypted);
+
+  py::enum_<odr::DocumentType>(m, "DocumentType")
+      .value("unknown", odr::DocumentType::unknown)
+      .value("text", odr::DocumentType::text)
+      .value("presentation", odr::DocumentType::presentation)
+      .value("spreadsheet", odr::DocumentType::spreadsheet)
+      .value("drawing", odr::DocumentType::drawing);
+
+  py::class_<odr::DecodePreference>(m, "DecodePreference")
+      .def(py::init<>())
+      .def_readwrite("as_file_type", &odr::DecodePreference::as_file_type)
+      .def_readwrite("with_engine", &odr::DecodePreference::with_engine)
+      .def_readwrite("file_type_priority",
+                     &odr::DecodePreference::file_type_priority)
+      .def_readwrite("engine_priority",
+                     &odr::DecodePreference::engine_priority);
+
+  py::class_<odr::DocumentMeta>(m, "DocumentMeta")
+      .def(py::init<>())
+      .def_readwrite("document_type", &odr::DocumentMeta::document_type)
+      .def_readwrite("entry_count", &odr::DocumentMeta::entry_count)
+      .def_readwrite("title", &odr::DocumentMeta::title)
+      .def_readwrite("author", &odr::DocumentMeta::author)
+      .def_readwrite("subject", &odr::DocumentMeta::subject)
+      .def_readwrite("keywords", &odr::DocumentMeta::keywords)
+      .def_readwrite("creator", &odr::DocumentMeta::creator)
+      .def_readwrite("producer", &odr::DocumentMeta::producer)
+      .def_readwrite("creation_date", &odr::DocumentMeta::creation_date)
+      .def_readwrite("modification_date",
+                     &odr::DocumentMeta::modification_date);
+
+  py::class_<odr::FileMeta>(m, "FileMeta")
+      .def(py::init<>())
+      .def_readwrite("type", &odr::FileMeta::type)
+      .def_property_readonly(
+          "mimetype",
+          [](const odr::FileMeta &meta) { return std::string(meta.mimetype); })
+      .def_readwrite("password_encrypted", &odr::FileMeta::password_encrypted)
+      .def_readwrite("document_meta", &odr::FileMeta::document_meta);
+
+  py::class_<odr::File>(m, "File")
+      .def(py::init<>())
+      .def(py::init<const std::string &>(), py::arg("path"))
+      .def("__bool__",
+           [](const odr::File &file) { return file.impl() != nullptr; })
+      .def("location", &odr::File::location)
+      .def("size", &odr::File::size)
+      .def("disk_path", &odr::File::disk_path)
+      .def(
+          "read",
+          [](const odr::File &file) {
+            std::ostringstream out;
+            file.pipe(out);
+            return py::bytes(out.str());
+          },
+          "Read the whole file into bytes.")
+      .def("copy", &odr::File::copy, py::arg("path"));
+
+  py::class_<odr::DecodedFile>(m, "DecodedFile")
+      .def(py::init<const odr::File &>(), py::arg("file"))
+      .def(py::init<const std::string &>(), py::arg("path"))
+      .def(py::init<const std::string &, odr::FileType>(), py::arg("path"),
+           py::arg("as_type"))
+      .def("file", &odr::DecodedFile::file)
+      .def("file_type", &odr::DecodedFile::file_type)
+      .def("file_category", &odr::DecodedFile::file_category)
+      .def("file_meta", &odr::DecodedFile::file_meta)
+      .def("decoder_engine", &odr::DecodedFile::decoder_engine)
+      .def("password_encrypted", &odr::DecodedFile::password_encrypted)
+      .def("encryption_state", &odr::DecodedFile::encryption_state)
+      .def("decrypt", &odr::DecodedFile::decrypt, py::arg("password"))
+      .def("is_decodable", &odr::DecodedFile::is_decodable)
+      .def("is_text_file", &odr::DecodedFile::is_text_file)
+      .def("is_image_file", &odr::DecodedFile::is_image_file)
+      .def("is_archive_file", &odr::DecodedFile::is_archive_file)
+      .def("is_document_file", &odr::DecodedFile::is_document_file)
+      .def("is_pdf_file", &odr::DecodedFile::is_pdf_file)
+      .def("is_font_file", &odr::DecodedFile::is_font_file)
+      .def("as_text_file", &odr::DecodedFile::as_text_file)
+      .def("as_image_file", &odr::DecodedFile::as_image_file)
+      .def("as_archive_file", &odr::DecodedFile::as_archive_file)
+      .def("as_document_file", &odr::DecodedFile::as_document_file)
+      .def("as_pdf_file", &odr::DecodedFile::as_pdf_file)
+      .def("as_font_file", &odr::DecodedFile::as_font_file);
+
+  py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
+      .def("charset", &odr::TextFile::charset)
+      .def("text", &odr::TextFile::text);
+
+  py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")
+      .def("read", [](const odr::ImageFile &file) {
+        std::ostringstream out;
+        out << file.stream()->rdbuf();
+        return py::bytes(out.str());
+      });
+
+  py::class_<odr::ArchiveFile, odr::DecodedFile>(m, "ArchiveFile")
+      .def("archive", &odr::ArchiveFile::archive);
+
+  py::class_<odr::DocumentFile, odr::DecodedFile>(m, "DocumentFile")
+      .def(py::init<const std::string &>(), py::arg("path"))
+      .def_static("type_by_path", &odr::DocumentFile::type, py::arg("path"))
+      .def_static("meta_by_path", &odr::DocumentFile::meta, py::arg("path"))
+      .def("document_type", &odr::DocumentFile::document_type)
+      .def("document_meta", &odr::DocumentFile::document_meta)
+      .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"))
+      .def("document", &odr::DocumentFile::document);
+
+  py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")
+      .def("decrypt", &odr::PdfFile::decrypt, py::arg("password"));
+
+  py::class_<odr::FontFile, odr::DecodedFile>(m, "FontFile")
+      .def("read", [](const odr::FontFile &file) {
+        std::ostringstream out;
+        out << file.stream()->rdbuf();
+        return py::bytes(out.str());
+      });
+
+  py::class_<odr::FileWalker>(m, "FileWalker")
+      .def("end", &odr::FileWalker::end)
+      .def("depth", &odr::FileWalker::depth)
+      .def("path", &odr::FileWalker::path)
+      .def("is_file", &odr::FileWalker::is_file)
+      .def("is_directory", &odr::FileWalker::is_directory)
+      .def("pop", &odr::FileWalker::pop)
+      .def("next", &odr::FileWalker::next)
+      .def("flat_next", &odr::FileWalker::flat_next);
+
+  py::class_<odr::Filesystem>(m, "Filesystem")
+      .def("exists", &odr::Filesystem::exists, py::arg("path"))
+      .def("is_file", &odr::Filesystem::is_file, py::arg("path"))
+      .def("is_directory", &odr::Filesystem::is_directory, py::arg("path"))
+      .def("file_walker", &odr::Filesystem::file_walker, py::arg("path"))
+      .def("open", &odr::Filesystem::open, py::arg("path"));
+
+  py::class_<odr::Archive>(m, "Archive")
+      .def("as_filesystem", &odr::Archive::as_filesystem)
+      .def("save", [](const odr::Archive &archive) {
+        std::ostringstream out;
+        archive.save(out);
+        return py::bytes(out.str());
+      });
+}

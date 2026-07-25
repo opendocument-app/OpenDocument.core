@@ -1,0 +1,77 @@
+# Python package build (pyodr). The C++ dependencies are resolved with conan;
+# run `conan install . -o '&:with_python=True'` first and point CMAKE_ARGS at
+# the generated conan_toolchain.cmake — see python/README.md.
+
+[build-system]
+requires = ["scikit-build-core>=1.0", "setuptools-scm>=8"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyodr"
+# Derived from the git tag (v5.5.0 -> 5.5.0), like the conan package version.
+dynamic = ["version"]
+description = "Python bindings for OpenDocument.core: render office documents to HTML"
+readme = "python/README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Andreas Stefl", email = "stefl.andreas@gmail.com" },
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Office Suites",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+
+[project.scripts]
+pyodr = "pyodr.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+homepage = "https://opendocument.app/"
+source = "https://github.com/opendocument-app/OpenDocument.core"
+tracker = "https://github.com/opendocument-app/OpenDocument.core/issues"
+
+[[tool.dynamic-metadata]]
+provider = "scikit_build_core.metadata.setuptools_scm"
+
+[tool.scikit-build]
+cmake.version = ">=3.18"
+# Everything that goes into the wheel is installed by CMake (component
+# `python`, see python/CMakeLists.txt).
+wheel.packages = []
+install.components = ["python"]
+sdist.exclude = [
+    "cmake-build-*",
+    "conan-odr-index",
+    "docs",
+    "experiments",
+    "offline",
+    "test",
+    "tools",
+]
+
+[tool.scikit-build.cmake.define]
+ODR_PYTHON = "ON"
+ODR_CLI = "OFF"
+ODR_TEST = "OFF"
+BUILD_SHARED_LIBS = "OFF"
+# Keep wheels self-contained: skip the components whose runtime data cannot be
+# bundled into the package (PDF rendering falls back to the built-in parser).
+ODR_WITH_PDF2HTMLEX = "OFF"
+ODR_WITH_WVWARE = "OFF"
+ODR_WITH_LIBMAGIC = "OFF"
+
+# Section must exist for setuptools-scm to pick up its pyproject config.
+[tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
+
+[tool.black]
+target-version = ["py39"]
