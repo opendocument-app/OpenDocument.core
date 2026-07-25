@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maven distribution of the Java API (`app.opendocument.core`), classes only.
+     The native library (`libodr_jni`) is not part of this artifact; consumers
+     build it themselves against their target platform (see README.md).
+     The version is injected by CI via `-Drevision=<version>` on release. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>app.opendocument</groupId>
+  <artifactId>odr-core-java</artifactId>
+  <version>${revision}</version>
+  <packaging>jar</packaging>
+
+  <name>odr-core-java</name>
+  <description>Java bindings for OpenDocument.core — decode office documents (ODF, OOXML, legacy MS binary, PDF, CSV, ...) and render them to HTML</description>
+  <url>https://github.com/opendocument-app/OpenDocument.core</url>
+
+  <licenses>
+    <license>
+      <name>MPL-2.0</name>
+      <url>https://www.mozilla.org/en-US/MPL/2.0/</url>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/opendocument-app/OpenDocument.core.git</connection>
+    <developerConnection>scm:git:git@github.com:opendocument-app/OpenDocument.core.git</developerConnection>
+    <url>https://github.com/opendocument-app/OpenDocument.core</url>
+  </scm>
+
+  <properties>
+    <revision>0.0.0-SNAPSHOT</revision>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Keep in sync with CMAKE_JAVA_COMPILE_FLAGS in CMakeLists.txt. -->
+    <maven.compiler.release>17</maven.compiler.release>
+  </properties>
+
+  <build>
+    <sourceDirectory>java</sourceDirectory>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <compilerArgs>
+            <arg>-Xlint:all</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.11.2</version>
+        <configuration>
+          <doclint>all,-missing</doclint>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Resolves ${revision} in the deployed pom (CI-friendly versions). -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <flattenMode>ossrh</flattenMode>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/opendocument-app/OpenDocument.core</url>
+    </repository>
+  </distributionManagement>
+</project>
