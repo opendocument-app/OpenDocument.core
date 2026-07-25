@@ -1,14 +1,12 @@
 #include "bindings.hpp"
 
-namespace py = pybind11;
-
-#ifdef ODR_WITH_HTTP_SERVER
-
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/http_server.hpp>
 
 #include <pybind11/stl.h>
+
+namespace py = pybind11;
 
 void odr_python::bind_http_server(py::module_ &m) {
   m.attr("has_http_server") = true;
@@ -40,11 +38,3 @@ void odr_python::bind_http_server(py::module_ &m) {
       .def("stop", &odr::HttpServer::stop,
            py::call_guard<py::gil_scoped_release>());
 }
-
-#else
-
-void odr_python::bind_http_server(py::module_ &m) {
-  m.attr("has_http_server") = false;
-}
-
-#endif

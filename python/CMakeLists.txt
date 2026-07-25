@@ -23,20 +23,22 @@ endif ()
 find_package(Python 3.9 REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
+if (ODR_WITH_HTTP_SERVER)
+    set(ODR_PYTHON_HTTP_SERVER_SOURCE "src/bind_http_server.cpp")
+else ()
+    set(ODR_PYTHON_HTTP_SERVER_SOURCE "src/bind_http_server_stub.cpp")
+endif ()
+
 pybind11_add_module(pyodr_core
         "src/module.cpp"
         "src/bind_core.cpp"
         "src/bind_document.cpp"
         "src/bind_file.cpp"
         "src/bind_html.cpp"
-        "src/bind_http_server.cpp"
+        "${ODR_PYTHON_HTTP_SERVER_SOURCE}"
         "src/bind_style.cpp"
 )
 target_link_libraries(pyodr_core PRIVATE ${ODR_PYTHON_ODR_TARGET})
-
-if (ODR_WITH_HTTP_SERVER)
-    target_compile_definitions(pyodr_core PRIVATE ODR_WITH_HTTP_SERVER)
-endif ()
 # The `$<1:...>` genex keeps multi-config generators from appending a
 # per-config subdirectory; the module must sit inside the `pyodr` package.
 set_target_properties(pyodr_core PROPERTIES
