@@ -23,6 +23,7 @@ option(ODR_WITH_WVWARE "Build with wvWare" "${WITH_WVWARE}")
 option(ODR_WITH_LIBMAGIC "Build with libmagic" "${WITH_LIBMAGIC}")
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
+option(ODR_JNI "Build JNI bindings" OFF)
 
 include(GNUInstallDirs)
 
@@ -408,6 +409,10 @@ endif ()
 
 if (ODR_PYTHON)
     add_subdirectory("python")
+endif ()
+
+if (ODR_JNI)
+    add_subdirectory("jni")
 endif ()
 
 if (ODR_TEST)

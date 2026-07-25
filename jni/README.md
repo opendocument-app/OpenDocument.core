@@ -1,0 +1,57 @@
+# odr-core-java — JNI bindings for OpenDocument.core
+
+Decode office documents (ODF, OOXML, legacy MS binary, PDF, CSV, ...) and
+render them to HTML from Java (package `app.opendocument.core`).
+
+```java
+import app.opendocument.core.DecodedFile;
+import app.opendocument.core.Html;
+import app.opendocument.core.HtmlConfig;
+import app.opendocument.core.HtmlService;
+import app.opendocument.core.Odr;
+
+DecodedFile file = Odr.open("document.odt");
+HtmlService service = Html.translate(file, "cache-dir", new HtmlConfig());
+app.opendocument.core.Html html = service.bringOffline("output-dir");
+for (var page : html.pages()) {
+    System.out.println(page.name + " " + page.path);
+}
+```
+
+The native library is loaded from `java.library.path` as `odr_jni`
+(`libodr_jni.so`/`libodr_jni.dylib`); the system property
+`app.opendocument.core.library` overrides it with an absolute path.
+
+## Building
+
+The bindings are part of the main CMake build, toggled by `ODR_JNI` (requires
+a JDK, 11+):
+
+```bash
+conan install . -o '&:with_jni=True' --build missing
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DODR_JNI=ON -DODR_TEST=ON
+cmake --build build --target odr_jni odr_java odr_java_tests
+(cd build/jni && ctest)
+```
+
+This produces `build/jni/libodr_jni.dylib` (or `.so`) and
+`build/jni/odr-core-java.jar`. `jni/CMakeLists.txt` can also be configured
+standalone against an installed `odrcore` package.
+
+## Runtime data
+
+Rendering uses shipped assets (CSS/JS). Point the library at them via
+`GlobalParams.setOdrCoreDataPath(...)` or the `ODR_CORE_DATA_PATH` environment
+variable (the tests read it; for in-tree builds it is `build/data`). The
+optional pdf2htmlEX/wvWare/libmagic backends have their own paths on
+`GlobalParams`.
+
+## Notes
+
+- Handle-backed objects (`DecodedFile`, `Document`, `Element`,
+  `HtmlService`, ...) own native memory. They free it on garbage collection;
+  use `close()` (or try-with-resources) to release large objects eagerly.
+- The C++ `HtmlConfig::resource_locator` callback is not exposed; the standard
+  resource locator is always used.
+- `HttpServer` is available when the native library was built with the HTTP
+  server (`Odr.hasHttpServer()`).
