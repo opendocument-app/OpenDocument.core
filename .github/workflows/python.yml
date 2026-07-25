@@ -125,8 +125,24 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # setuptools-scm derives the package version from git tags.
+          fetch-depth: 0
       - name: checkout conan-odr-index
         run: git submodule update --init --depth 1 conan-odr-index
+
+      # The conan profiles use ccache as compiler launcher, so it must exist
+      # even for `--build missing` source builds.
+      - name: ubuntu install ccache
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ccache
+          ccache -V
+      - name: macos install ccache
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          ccache -V
 
       - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -148,6 +164,15 @@ jobs:
       - name: conan config
         run: conan config install .github/config/conan
 
+      - name: cache ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-wheel-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          restore-keys: |
+            ccache-wheel-${{ matrix.host_profile }}-
+            ccache-${{ matrix.host_profile }}-
+
       # Match the dependency set that pyproject.toml enables (no pdf2htmlEX,
       # wvWare, libmagic — their runtime data cannot ship inside the wheel).
       - name: conan install
@@ -166,6 +191,17 @@ jobs:
         env:
           CMAKE_ARGS: -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/conan_toolchain.cmake
 
+      # PyPI rejects plain `linux_*` platform tags; auditwheel grafts the wheel
+      # onto the matching manylinux tag (the conan deps are linked statically,
+      # so there should be no external libraries to vendor).
+      - name: audit wheel
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install patchelf
+          pipx run auditwheel repair --wheel-dir dist-audited dist/*.whl
+          rm dist/*.whl
+          mv dist-audited/*.whl dist/
+
       - name: test wheel
         run: |
           pip install dist/*.whl
@@ -183,6 +219,9 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # setuptools-scm derives the package version from git tags.
+          fetch-depth: 0
 
       - name: build sdist
         run: pipx run build --sdist
@@ -196,11 +235,6 @@ jobs:
           path: dist/*.tar.gz
           if-no-files-found: error
 
-  # Nothing goes to PyPI yet: pip cannot build the sdist (the build needs a
-  # conan-generated toolchain plus the conan-odr-index recipes, see
-  # python/README.md) and the Linux wheels are not manylinux-audited. Releases
-  # get the wheels and sdist as assets; PyPI publishing via cibuildwheel+conan
-  # is a follow-up.
   publish:
     needs: [build-test, wheels, sdist]
     runs-on: ubuntu-24.04
@@ -218,3 +252,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload '${{ github.event.release.tag_name }}' dist/* --repo '${{ github.repository }}'
+
+  # Uses PyPI trusted publishing (OIDC, no token): the `pyodr` project on PyPI
+  # must list this repo + workflow + the `pypi` environment as a publisher.
+  # Note pip cannot build the published sdist on its own (the build needs a
+  # conan-generated toolchain plus the conan-odr-index recipes, see
+  # python/README.md); it is published for completeness.
+  pypi:
+    needs: [build-test, wheels, sdist]
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: publish to PyPI
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
