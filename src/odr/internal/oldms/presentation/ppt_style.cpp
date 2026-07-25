@@ -37,117 +37,171 @@ private:
   std::size_t m_at{0};
 };
 
-/// Skips a TextPFException ([MS-PPT] 2.9.19): every optional field's size is
-/// determined by its PFMasks bit; only tabStops is itself variable.
-void skip_text_pf_exception(BodyCursor &cursor) {
-  const auto masks = cursor.read<std::uint32_t>();
-  const auto has = [masks](const int bit) {
-    return (masks & (1u << bit)) != 0;
-  };
+/// PFMasks bits ([MS-PPT] 2.9.21).
+enum PFMask : std::uint32_t {
+  PF_HasBullet = 1u << 0,
+  PF_BulletHasFont = 1u << 1,
+  PF_BulletHasColor = 1u << 2,
+  PF_BulletHasSize = 1u << 3,
+  PF_BulletFont = 1u << 4,
+  PF_BulletColor = 1u << 5,
+  PF_BulletSize = 1u << 6,
+  PF_BulletChar = 1u << 7,
+  PF_LeftMargin = 1u << 8,
+  PF_Indent = 1u << 10,
+  PF_Align = 1u << 11,
+  PF_LineSpacing = 1u << 12,
+  PF_SpaceBefore = 1u << 13,
+  PF_SpaceAfter = 1u << 14,
+  PF_DefaultTabSize = 1u << 15,
+  PF_FontAlign = 1u << 16,
+  PF_CharWrap = 1u << 17,
+  PF_WordWrap = 1u << 18,
+  PF_Overflow = 1u << 19,
+  PF_TabStops = 1u << 20,
+  PF_TextDirection = 1u << 21,
+};
 
-  // Field order per the spec: bulletFlags, bulletChar, bulletFontRef,
-  // bulletSize, bulletColor, textAlignment, lineSpacing, spaceBefore,
-  // spaceAfter, leftMargin, indent, defaultTabSize, tabStops, fontAlign,
-  // wrapFlags, textDirection.
-  if ((masks & 0xF) != 0) { // hasBullet, bulletHasFont/Color/Size
-    cursor.skip(2);         // bulletFlags
+/// CFMasks bits ([MS-PPT] 2.9.15).
+enum CFMask : std::uint32_t {
+  CF_Bold = 1u << 0,
+  CF_Italic = 1u << 1,
+  CF_Underline = 1u << 2,
+  CF_Shadow = 1u << 4,
+  CF_Fehint = 1u << 5,
+  CF_Kumi = 1u << 7,
+  CF_Emboss = 1u << 9,
+  CF_HasStyle = 0xFu << 10,
+  CF_Typeface = 1u << 16,
+  CF_Size = 1u << 17,
+  CF_Color = 1u << 18,
+  CF_Position = 1u << 19,
+  CF_OldEATypeface = 1u << 21,
+  CF_AnsiTypeface = 1u << 22,
+  CF_SymbolTypeface = 1u << 23,
+};
+
+/// CFStyle bits ([MS-PPT] 2.9.16), in a TextCFException's fontStyle field.
+enum CFStyleBit : std::uint16_t {
+  CFStyle_Bold = 1u << 0,
+  CFStyle_Italic = 1u << 1,
+  CFStyle_Underline = 1u << 2,
+};
+
+/// ColorIndexStruct index marking an explicit sRGB color ([MS-PPT] 2.12.2).
+constexpr std::uint8_t srgb_color_index = 0xFE;
+
+/// A read PFMasks/CFMasks value.
+struct Masks final {
+  std::uint32_t value;
+
+  /// Whether any of `mask`'s bits is set.
+  [[nodiscard]] bool has(const std::uint32_t mask) const {
+    return (value & mask) != 0;
   }
-  if (has(7)) {
-    cursor.skip(2); // bulletChar
+};
+
+/// Skips a TextPFException ([MS-PPT] 2.9.19): fields in spec order, each
+/// present iff its PFMasks bit is set; only tabStops is variable-size.
+void skip_text_pf_exception(BodyCursor &cursor) {
+  const Masks masks{cursor.read<std::uint32_t>()};
+
+  if (masks.has(PF_HasBullet | PF_BulletHasFont | PF_BulletHasColor |
+                PF_BulletHasSize)) {
+    cursor.skip(2); // bulletFlags
   }
-  if (has(4)) {
+  if (masks.has(PF_BulletChar)) {
+    cursor.skip(2);
+  }
+  if (masks.has(PF_BulletFont)) {
     cursor.skip(2); // bulletFontRef
   }
-  if (has(6)) {
-    cursor.skip(2); // bulletSize
+  if (masks.has(PF_BulletSize)) {
+    cursor.skip(2);
   }
-  if (has(5)) {
-    cursor.skip(4); // bulletColor
+  if (masks.has(PF_BulletColor)) {
+    cursor.skip(4);
   }
-  if (has(11)) {
+  if (masks.has(PF_Align)) {
     cursor.skip(2); // textAlignment
   }
-  if (has(12)) {
-    cursor.skip(2); // lineSpacing
+  if (masks.has(PF_LineSpacing)) {
+    cursor.skip(2);
   }
-  if (has(13)) {
-    cursor.skip(2); // spaceBefore
+  if (masks.has(PF_SpaceBefore)) {
+    cursor.skip(2);
   }
-  if (has(14)) {
-    cursor.skip(2); // spaceAfter
+  if (masks.has(PF_SpaceAfter)) {
+    cursor.skip(2);
   }
-  if (has(8)) {
-    cursor.skip(2); // leftMargin
+  if (masks.has(PF_LeftMargin)) {
+    cursor.skip(2);
   }
-  if (has(10)) {
-    cursor.skip(2); // indent
+  if (masks.has(PF_Indent)) {
+    cursor.skip(2);
   }
-  if (has(15)) {
-    cursor.skip(2); // defaultTabSize
+  if (masks.has(PF_DefaultTabSize)) {
+    cursor.skip(2);
   }
-  if (has(20)) { // tabStops: count + count * TabStop ([MS-PPT] 2.9.23)
+  if (masks.has(PF_TabStops)) { // count + count * TabStop ([MS-PPT] 2.9.23)
     const auto count = cursor.read<std::uint16_t>();
     cursor.skip(std::size_t{count} * 4);
   }
-  if (has(16)) {
-    cursor.skip(2); // fontAlign
+  if (masks.has(PF_FontAlign)) {
+    cursor.skip(2);
   }
-  if ((masks & 0xE0000) != 0) { // charWrap, wordWrap, overflow (bits 17-19)
-    cursor.skip(2);             // wrapFlags
+  if (masks.has(PF_CharWrap | PF_WordWrap | PF_Overflow)) {
+    cursor.skip(2); // wrapFlags
   }
-  if (has(21)) {
-    cursor.skip(2); // textDirection
+  if (masks.has(PF_TextDirection)) {
+    cursor.skip(2);
   }
 }
 
 /// Parses a TextCFException ([MS-PPT] 2.9.14) into a TextCFRun's style fields.
 void read_text_cf_exception(BodyCursor &cursor, TextCFRun &run) {
-  const auto masks = cursor.read<std::uint32_t>();
-  const auto has = [masks](const int bit) {
-    return (masks & (1u << bit)) != 0;
-  };
+  const Masks masks{cursor.read<std::uint32_t>()};
 
-  // fontStyle exists if any style bit (bold 0, italic 1, underline 2,
-  // shadow 4, fehint 5, kumi 7, emboss 9) or fHasStyle (bits 10-13) is set.
-  if ((masks & 0x2B7) != 0 || (masks & 0x3C00) != 0) {
-    const auto font_style = cursor.read<std::uint16_t>(); // CFStyle, 2.9.16
-    if (has(0)) {
-      run.bold = (font_style & 0x1) != 0;
+  if (masks.has(CF_Bold | CF_Italic | CF_Underline | CF_Shadow | CF_Fehint |
+                CF_Kumi | CF_Emboss | CF_HasStyle)) {
+    const auto font_style = cursor.read<std::uint16_t>();
+    if (masks.has(CF_Bold)) {
+      run.bold = (font_style & CFStyle_Bold) != 0;
     }
-    if (has(1)) {
-      run.italic = (font_style & 0x2) != 0;
+    if (masks.has(CF_Italic)) {
+      run.italic = (font_style & CFStyle_Italic) != 0;
     }
-    if (has(2)) {
-      run.underline = (font_style & 0x4) != 0;
+    if (masks.has(CF_Underline)) {
+      run.underline = (font_style & CFStyle_Underline) != 0;
     }
   }
-  if (has(16)) {
+  if (masks.has(CF_Typeface)) {
     run.font_ref = cursor.read<std::uint16_t>();
   }
-  if (has(21)) {
+  if (masks.has(CF_OldEATypeface)) {
     cursor.skip(2); // oldEAFontRef
   }
-  if (has(22)) {
+  if (masks.has(CF_AnsiTypeface)) {
     cursor.skip(2); // ansiFontRef
   }
-  if (has(23)) {
+  if (masks.has(CF_SymbolTypeface)) {
     cursor.skip(2); // symbolFontRef
   }
-  if (has(17)) {
+  if (masks.has(CF_Size)) {
     run.font_size = cursor.read<std::int16_t>();
   }
-  if (has(18)) {
-    // ColorIndexStruct ([MS-PPT] 2.12.2): index 0xFE marks an explicit sRGB
-    // color; scheme indexes would need the slide's color scheme.
+  if (masks.has(CF_Color)) {
+    // ColorIndexStruct ([MS-PPT] 2.12.2); scheme indexes would need the
+    // slide's color scheme.
     const auto red = cursor.read<std::uint8_t>();
     const auto green = cursor.read<std::uint8_t>();
     const auto blue = cursor.read<std::uint8_t>();
     const auto index = cursor.read<std::uint8_t>();
-    if (index == 0xFE) {
+    if (index == srgb_color_index) {
       run.color = Color(red, green, blue);
     }
   }
-  if (has(19)) {
+  if (masks.has(CF_Position)) {
     cursor.skip(2); // position
   }
 }

@@ -297,15 +297,14 @@ void build_paragraphs(ElementRegistry &registry,
 
 /// Appends a text block to a text box's running text, separating consecutive
 /// blocks (e.g. title vs. body) with a paragraph break.
-void append_block(StyledText &slide_text, StyledText block) {
+void append_block(StyledText &slide_text, const StyledText &block) {
   if (block.empty()) {
     return;
   }
   if (!slide_text.empty()) {
     slide_text.push_back({std::string(1, paragraph_mark), default_style_index});
   }
-  slide_text.insert(slide_text.end(), std::make_move_iterator(block.begin()),
-                    std::make_move_iterator(block.end()));
+  slide_text.insert(slide_text.end(), block.begin(), block.end());
 }
 
 /// Reads a text atom's body without decoding into `pending`. The stream must
