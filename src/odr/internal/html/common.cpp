@@ -15,14 +15,16 @@
 
 namespace odr::internal {
 
-void html::write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
-                               const bool fit_width_by_default) {
+void html::write_viewport_meta(
+    HtmlWriter &out, const HtmlConfig &config, const bool fit_width_by_default,
+    const std::optional<HtmlViewportMode> mode_override) {
   if (config.viewport_content.has_value()) {
-    out.write_header_viewport(config.viewport_content.value());
+    out.write_header_viewport(
+        escape_attribute(config.viewport_content.value()));
     return;
   }
 
-  HtmlViewportMode mode = config.viewport_mode;
+  HtmlViewportMode mode = mode_override.value_or(config.viewport_mode);
   if (mode == HtmlViewportMode::automatic) {
     mode = fit_width_by_default ? HtmlViewportMode::fit_width
                                 : HtmlViewportMode::actual_size;

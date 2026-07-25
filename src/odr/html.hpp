@@ -131,7 +131,9 @@ struct HtmlConfig {
 
   // initial zoom on mobile
   HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};
-  // raw `content` for the viewport meta tag; overrides `viewport_mode`
+  // overrides `viewport_mode` for spreadsheet content when set
+  std::optional<HtmlViewportMode> spreadsheet_viewport_mode;
+  // raw `content` for the viewport meta tag; overrides the modes above
   std::optional<std::string> viewport_content;
 
   // formatting
