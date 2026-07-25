@@ -2,6 +2,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -13,6 +14,33 @@
 #include <sstream>
 
 namespace odr::internal {
+
+void html::write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
+                               const bool fit_width_by_default) {
+  if (config.viewport_content.has_value()) {
+    out.write_header_viewport(config.viewport_content.value());
+    return;
+  }
+
+  HtmlViewportMode mode = config.viewport_mode;
+  if (mode == HtmlViewportMode::automatic) {
+    mode = fit_width_by_default ? HtmlViewportMode::fit_width
+                                : HtmlViewportMode::actual_size;
+  }
+
+  switch (mode) {
+  case HtmlViewportMode::fit_width:
+    out.write_header_viewport("width=device-width,user-scalable=yes");
+    break;
+  case HtmlViewportMode::actual_size:
+    out.write_header_viewport(
+        "width=device-width,initial-scale=1.0,user-scalable=yes");
+    break;
+  case HtmlViewportMode::none:
+  default:
+    break;
+  }
+}
 
 std::string html::escape_text(std::string text) {
   if (text.empty()) {
