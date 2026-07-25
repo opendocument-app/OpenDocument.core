@@ -908,9 +908,8 @@ presentation::parse_tree(ElementRegistry &registry,
   const auto current_user_stream = current_user_file->stream();
 
   StyleContext context;
-  for (std::vector<TextBox> &boxes :
-       collect_slides(*current_user_stream, *document_stream, files, registry,
-                      context)) {
+  for (std::vector<TextBox> &boxes : collect_slides(
+           *current_user_stream, *document_stream, files, registry, context)) {
     auto [slide_id, _] = registry.create_element(ElementType::slide);
     registry.append_child(root_id, slide_id);
 
