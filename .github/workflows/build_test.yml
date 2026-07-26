@@ -348,10 +348,6 @@ jobs:
       - name: install python dependencies
         run: pip install conan
 
-      - name: install NDK
-        if: startsWith(matrix.host_profile, 'android')
-        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
-
       - name: conan cache key
         shell: bash
         run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', 'conan.lock', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
