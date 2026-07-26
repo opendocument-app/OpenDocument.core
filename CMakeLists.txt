@@ -436,6 +436,9 @@ install(
 set(ODR_INSTALL_TARGETS odr)
 if (ODR_CLI)
     list(APPEND ODR_INSTALL_TARGETS meta translate back_translate)
+    if (ODR_WITH_HTTP_SERVER)
+        list(APPEND ODR_INSTALL_TARGETS server)
+    endif ()
 endif ()
 install(
         TARGETS ${ODR_INSTALL_TARGETS}
