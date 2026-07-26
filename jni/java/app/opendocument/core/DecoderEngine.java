@@ -1,0 +1,14 @@
+package app.opendocument.core;
+
+/** Mirrors {@code odr::DecoderEngine}; constant order must match the C++ declaration. */
+public enum DecoderEngine {
+  ODR, POPPLER, WVWARE;
+
+  static DecoderEngine fromNative(int code) {
+    return code < 0 ? null : values()[code];
+  }
+
+  int toNative() {
+    return ordinal();
+  }
+}
