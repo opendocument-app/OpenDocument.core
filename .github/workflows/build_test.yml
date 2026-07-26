@@ -26,18 +26,22 @@ env:
   CONAN_KEY_SUFFIX: r1
 
 jobs:
+  # Builds the core once per profile and, where `bindings` is set, the JNI and
+  # Python bindings out of the same configure. They used to live in their own
+  # workflows, which meant compiling the core and resolving its dependencies
+  # three times over for the same two profiles.
   build:
     runs-on: ${{ matrix.os }}
     env:
-      CACHE_FLAVOR: main
+      CACHE_FLAVOR: main${{ matrix.bindings && '-bindings' || '' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18, bindings: true }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
           - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
-          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
+          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14, bindings: true }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
     steps:
@@ -57,12 +61,19 @@ jobs:
           brew install ccache
           ccache -V
 
+      - name: setup java
+        if: matrix.bindings
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: 3.14
       - name: install python dependencies
-        run: pip install conan
+        run: pip install conan ${{ matrix.bindings && 'pytest' || '' }}
 
       - name: install NDK
         if: startsWith(matrix.host_profile, 'android')
@@ -96,6 +107,7 @@ jobs:
       - name: conan install
         run: >
           conan install .
+          ${{ matrix.bindings && '-o "&:with_jni=True" -o "&:with_python=True"' || '' }}
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --build missing
@@ -114,6 +126,7 @@ jobs:
           -DODR_WITH_WVWARE=ON
           -DODR_WITH_LIBMAGIC=ON
           -DODR_BUNDLE_ASSETS=ON
+          ${{ matrix.bindings && '-DODR_JNI=ON -DODR_PYTHON=ON' || '' }}
 
       - name: cmake
         if: runner.os == 'Windows'
@@ -137,6 +150,16 @@ jobs:
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+
+      # Both suites run in seconds, so they stay in this job rather than paying
+      # an artifact round-trip. The heavy `odr_test` still runs in `test`, which
+      # needs firefox and the reference-output submodule.
+      - name: junit
+        if: matrix.bindings
+        run: ctest --test-dir build/jni --output-on-failure
+      - name: pytest
+        if: matrix.bindings
+        run: ctest --test-dir build/python --output-on-failure
 
       - name: install
         run: cmake --build build --target install --config Release

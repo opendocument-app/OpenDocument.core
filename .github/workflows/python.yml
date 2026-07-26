@@ -35,86 +35,9 @@ jobs:
       - name: check python formatting
         run: black --check --diff python
 
-  build-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
-          - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
-    steps:
-      - name: checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: checkout conan-odr-index
-        run: git submodule update --init --depth 1 conan-odr-index
-
-      - name: ubuntu install ccache
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt install ccache
-          ccache -V
-      - name: macos install ccache
-        if: runner.os == 'macOS'
-        run: |
-          brew install ccache
-          ccache -V
-
-      - name: setup python 3.14
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-        with:
-          python-version: 3.14
-      - name: install python dependencies
-        run: pip install conan pytest
-
-      - name: cache conan
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: ${{ env.CONAN_HOME }}
-          key: conan-python-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
-          restore-keys: |
-            conan-python-${{ matrix.host_profile }}-
-            conan-${{ matrix.host_profile }}-
-
-      - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
-      - name: conan config
-        run: conan config install .github/config/conan
-
-      - name: cache ccache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-python-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
-          restore-keys: |
-            ccache-python-${{ matrix.host_profile }}-
-            ccache-${{ matrix.host_profile }}-
-
-      - name: conan install
-        run: >
-          conan install .
-          -o '&:with_python=True'
-          --profile:host '${{ matrix.host_profile }}'
-          --profile:build '${{ matrix.build_profile }}'
-          --build missing
-
-      - name: cmake
-        run: >
-          cmake -B build -S .
-          -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_FLAGS="-Werror"
-          -DODR_PYTHON=ON
-          -DODR_CLI=OFF
-          -DODR_TEST=OFF
-
-      - name: build
-        run: cmake --build build --target pyodr_core --config Release
-
-      - name: pytest
-        run: PYTHONPATH=build/python python -m pytest python/tests -v
-
+  # The bindings themselves are built and tested by the `build` job in
+  # `build_test.yml`, out of the same configure as the core. What stays here is
+  # everything that needs the wheel's own, reduced dependency set.
   wheels:
     runs-on: ${{ matrix.os }}
     # Builds the reduced dependency set that `pyproject.toml` pins (no
@@ -251,7 +174,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [build-test, wheels, sdist]
+    needs: [wheels, sdist]
     runs-on: ubuntu-24.04
     if: github.event_name == 'release' && github.event.action == 'published'
     permissions:
@@ -274,7 +197,7 @@ jobs:
   # conan-generated toolchain plus the conan-odr-index recipes, see
   # python/README.md); it is published for completeness.
   pypi:
-    needs: [build-test, wheels, sdist]
+    needs: [wheels, sdist]
     runs-on: ubuntu-24.04
     if: github.event_name == 'release' && github.event.action == 'published'
     environment: pypi
