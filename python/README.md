@@ -33,13 +33,10 @@ PYTHONPATH=build/python ODR_CORE_DATA_PATH=build/data python -m pytest python/te
 `pip install .` from the repository root builds a wheel via scikit-build-core
 (see the root `pyproject.toml`); run `conan install` first and point
 `CMAKE_ARGS` at the generated `conan_toolchain.cmake` so the C++ dependencies
-resolve. Wheels build without pdf2htmlEX/wvWare (their runtime data cannot ship
-inside the wheel) but with libmagic, whose database is bundled — so match those
-options:
+resolve. Wheels bundle libmagic's database, so match that option:
 
 ```bash
-conan install . -o '&:with_python=True' -o '&:with_pdf2htmlEX=False' \
-    -o '&:with_wvWare=False' -o '&:bundle_assets=True' --build missing
+conan install . -o '&:with_python=True' -o '&:bundle_assets=True' --build missing
 CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$PWD/conan_toolchain.cmake" pip install .
 ```
 

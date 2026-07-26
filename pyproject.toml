@@ -61,10 +61,6 @@ ODR_PYTHON = "ON"
 ODR_CLI = "OFF"
 ODR_TEST = "OFF"
 BUILD_SHARED_LIBS = "OFF"
-# Keep wheels self-contained: skip the components whose runtime data cannot be
-# bundled into the package (PDF rendering falls back to the built-in parser).
-ODR_WITH_PDF2HTMLEX = "OFF"
-ODR_WITH_WVWARE = "OFF"
 # libmagic's database is just a data file, so it can ship: `ODR_BUNDLE_ASSETS`
 # copies `magic.mgc` next to the odr.js assets, `python/CMakeLists.txt` installs
 # that directory as `pyodr/data`, and `pyodr/__init__.py` points `GlobalParams`

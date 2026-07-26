@@ -23,11 +23,6 @@ DocumentMeta::DocumentMeta(const DocumentType document_type,
 
 FileMeta::FileMeta() = default;
 
-FileMeta::FileMeta(const FileType type, const bool password_encrypted,
-                   const std::optional<DocumentMeta> document_meta)
-    : type{type}, password_encrypted{password_encrypted},
-      document_meta{document_meta} {}
-
 FileMeta::FileMeta(const FileType type, const std::string_view mimetype,
                    const bool password_encrypted,
                    const std::optional<DocumentMeta> document_meta)

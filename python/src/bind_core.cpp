@@ -23,21 +23,10 @@ void odr_python::bind_core(py::module_ &m) {
   py::class_<odr::GlobalParams>(m, "GlobalParams",
                                 "Global resource paths of the library.")
       .def_static("odr_core_data_path", &odr::GlobalParams::odr_core_data_path)
-      .def_static("fontconfig_data_path",
-                  &odr::GlobalParams::fontconfig_data_path)
-      .def_static("poppler_data_path", &odr::GlobalParams::poppler_data_path)
-      .def_static("pdf2htmlex_data_path",
-                  &odr::GlobalParams::pdf2htmlex_data_path)
       .def_static("libmagic_database_path",
                   &odr::GlobalParams::libmagic_database_path)
       .def_static("set_odr_core_data_path",
                   &odr::GlobalParams::set_odr_core_data_path, py::arg("path"))
-      .def_static("set_fontconfig_data_path",
-                  &odr::GlobalParams::set_fontconfig_data_path, py::arg("path"))
-      .def_static("set_poppler_data_path",
-                  &odr::GlobalParams::set_poppler_data_path, py::arg("path"))
-      .def_static("set_pdf2htmlex_data_path",
-                  &odr::GlobalParams::set_pdf2htmlex_data_path, py::arg("path"))
       .def_static("set_libmagic_database_path",
                   &odr::GlobalParams::set_libmagic_database_path,
                   py::arg("path"));

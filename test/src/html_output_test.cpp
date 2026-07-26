@@ -111,13 +111,6 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO wvware decryption
-  if (test_file.password.has_value() &&
-      test_file.type == FileType::legacy_word_document &&
-      engine == DecoderEngine::wvware) {
-    GTEST_SKIP();
-  }
-
   // TODO oldms decryption
   if (test_file.password.has_value() &&
       test_file.type == FileType::legacy_word_document &&
@@ -200,7 +193,7 @@ std::string engine_suffix(const DecoderEngine engine) {
 
 /// The default `dual_layer` mode carries no suffix so existing (non-PDF and
 /// dual-layer) reference outputs keep their paths; single-layer variants are
-/// disambiguated with `-single`, mirroring the `-poppler` engine suffix.
+/// disambiguated with `-single`.
 std::string text_mode_suffix(const PdfTextMode pdf_text_mode) {
   return pdf_text_mode == PdfTextMode::dual_layer ? "" : "-single";
 }

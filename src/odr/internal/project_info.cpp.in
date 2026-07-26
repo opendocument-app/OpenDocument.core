@@ -14,22 +14,6 @@ bool project_info::is_debug() noexcept {
 #endif
 }
 
-bool project_info::has_wvware() noexcept {
-#ifdef ODR_WITH_WVWARE
-  return true;
-#else
-  return false;
-#endif
-}
-
-bool project_info::has_pdf2htmlex() noexcept {
-#ifdef ODR_WITH_PDF2HTMLEX
-  return true;
-#else
-  return false;
-#endif
-}
-
 bool project_info::has_libmagic() noexcept {
 #ifdef ODR_WITH_LIBMAGIC
   return true;
@@ -40,18 +24,6 @@ bool project_info::has_libmagic() noexcept {
 
 const char *project_info::odr_data_path() noexcept {
   return "${ODR_INSTALL_ODR_DATA_PATH}";
-}
-
-const char *project_info::fontconfig_data_path() noexcept {
-  return "${ODR_INSTALL_FONTCONFIG_DATA_PATH}";
-}
-
-const char *project_info::poppler_data_path() noexcept {
-  return "${ODR_INSTALL_POPPLER_DATA_PATH}";
-}
-
-const char *project_info::pdf2htmlex_data_path() noexcept {
-  return "${ODR_INSTALL_PDF2HTMLEX_DATA_PATH}";
 }
 
 const char *project_info::libmagic_database_path() noexcept {

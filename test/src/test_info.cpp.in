@@ -6,18 +6,6 @@ const char *info::odr_data_path() noexcept {
   return "${ODR_BUILD_ODR_DATA_PATH}";
 }
 
-const char *info::fontconfig_data_path() noexcept {
-  return "${ODR_BUILD_FONTCONFIG_DATA_PATH}";
-}
-
-const char *info::poppler_data_path() noexcept {
-  return "${ODR_BUILD_POPPLER_DATA_PATH}";
-}
-
-const char *info::pdf2htmlex_data_path() noexcept {
-  return "${ODR_BUILD_PDF2HTMLEX_DATA_PATH}";
-}
-
 const char *info::libmagic_database_path() noexcept {
   return "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}";
 }

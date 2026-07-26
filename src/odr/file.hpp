@@ -106,8 +106,6 @@ enum class FileLocation {
 /// @brief Collection of decoder engines.
 enum class DecoderEngine {
   odr,
-  poppler,
-  wvware,
 };
 
 /// @brief Preference for decoding files.
@@ -160,9 +158,6 @@ struct DocumentMeta final {
 /// @brief Meta information about a file.
 struct FileMeta final {
   FileMeta();
-  [[deprecated]]
-  FileMeta(FileType type, bool password_encrypted,
-           std::optional<DocumentMeta> document_meta);
   FileMeta(FileType type, std::string_view mimetype, bool password_encrypted,
            std::optional<DocumentMeta> document_meta);
 

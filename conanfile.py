@@ -17,8 +17,6 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_pdf2htmlEX": [True, False],
-        "with_wvWare": [True, False],
         "with_libmagic": [True, False],
         "with_http_server": [True, False],
         "with_cli": [True, False],
@@ -29,8 +27,6 @@ class OpenDocumentCoreConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_pdf2htmlEX": True,
-        "with_wvWare": True,
         "with_libmagic": True,
         "with_http_server": True,
         "with_cli": True,
@@ -44,8 +40,6 @@ class OpenDocumentCoreConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-            del self.options.with_pdf2htmlEX
-            del self.options.with_wvWare
             del self.options.with_libmagic
 
     def requirements(self):
@@ -56,10 +50,6 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("vincentlaucsb-csv-parser/2.3.0")
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.9")
-        if self.options.get_safe("with_pdf2htmlEX", False):
-            self.requires("pdf2htmlex/0.18.8.rc1-odr-git-732fd68")
-        if self.options.get_safe("with_wvWare", False):
-            self.requires("wvware/1.2.9-odr")
         if self.options.get_safe("with_http_server", False):
             self.requires("cpp-httplib/0.16.3")
         self.requires("argon2/20190702-odr")
@@ -83,8 +73,6 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
-        tc.variables["ODR_WITH_PDF2HTMLEX"] = self.options.get_safe("with_pdf2htmlEX", False)
-        tc.variables["ODR_WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
         tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
         tc.variables["ODR_CLI"] = self.options.get_safe("with_cli", True)
@@ -93,14 +81,11 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
 
         # Get runenv info, exported by package_info() of dependencies
-        # We need to obtain PDF2HTMLEX_DATA_DIR, POPPLER_DATA_DIR, FONTCONFIG_PATH and WVDATADIR
+        # We need to obtain MAGIC
         runenv_info = Environment()
         for dep in self.dependencies.host.topological_sort.values():
             runenv_info.compose_env(dep.runenv_info)
         envvars = runenv_info.vars(self)
-        tc.variables["FONTCONFIG_DATA_PATH"] = envvars.get("FONTCONFIG_PATH")
-        tc.variables["POPPLER_DATA_PATH"] = envvars.get("POPPLER_DATA_DIR")
-        tc.variables["PDF2HTMLEX_DATA_PATH"] = envvars.get("PDF2HTMLEX_DATA_DIR")
         tc.variables["LIBMAGIC_DATABASE_PATH"] = envvars.get("MAGIC")
 
         tc.generate()
