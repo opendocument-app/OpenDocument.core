@@ -33,18 +33,26 @@ PYTHONPATH=build/python ODR_CORE_DATA_PATH=build/data python -m pytest python/te
 `pip install .` from the repository root builds a wheel via scikit-build-core
 (see the root `pyproject.toml`); run `conan install` first and point
 `CMAKE_ARGS` at the generated `conan_toolchain.cmake` so the C++ dependencies
-resolve. Wheels build without pdf2htmlEX/wvWare/libmagic (their runtime data
-cannot ship inside the wheel), so match those options:
+resolve. Wheels build without pdf2htmlEX/wvWare (their runtime data cannot ship
+inside the wheel) but with libmagic, whose database is bundled — so match those
+options:
 
 ```bash
 conan install . -o '&:with_python=True' -o '&:with_pdf2htmlEX=False' \
-    -o '&:with_wvWare=False' -o '&:with_libmagic=False' --build missing
+    -o '&:with_wvWare=False' -o '&:bundle_assets=True' --build missing
 CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$PWD/conan_toolchain.cmake" pip install .
 ```
 
 ## Runtime data
 
-Rendering uses shipped assets (CSS/JS). Wheels bundle them under `pyodr/data`
-and pick them up automatically; for in-tree builds set the environment variable
-`ODR_CORE_DATA_PATH` (the tests read it) or call
-`pyodr.GlobalParams.set_odr_core_data_path(...)`.
+Rendering uses shipped assets (CSS/JS), and MIME detection uses libmagic's
+compiled database (`magic.mgc`). Wheels bundle both under `pyodr/data` and pick
+them up automatically. For in-tree builds set `ODR_CORE_DATA_PATH` (the tests
+read it) and, if needed, `ODR_LIBMAGIC_DATABASE_PATH`, or call
+`pyodr.GlobalParams.set_odr_core_data_path(...)` /
+`set_libmagic_database_path(...)`.
+
+Neither is fatal when missing: without the assets, rendering fails on the
+individual resource; without the database, odrcore tries the system database and
+then falls back to its own magic sniffing (which sees an `.odt` as
+`application/zip` rather than the ODF type).

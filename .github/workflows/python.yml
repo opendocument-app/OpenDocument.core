@@ -41,7 +41,7 @@ jobs:
   wheels:
     runs-on: ${{ matrix.os }}
     # Builds the reduced dependency set that `pyproject.toml` pins (no
-    # pdf2htmlEX/wvWare/libmagic), so it cannot share a cache with `build_test`.
+    # pdf2htmlEX/wvWare), so it cannot share a cache with `build_test`.
     env:
       CACHE_FLAVOR: wheel
     strategy:
@@ -104,15 +104,17 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
-      # Match the dependency set that pyproject.toml enables (no pdf2htmlEX,
-      # wvWare, libmagic — their runtime data cannot ship inside the wheel).
+      # Match the dependency set that pyproject.toml enables. pdf2htmlEX and
+      # wvWare stay off (their runtime data cannot ship inside the wheel);
+      # libmagic stays on and `bundle_assets` bridges its database path into the
+      # build so `magic.mgc` lands in `pyodr/data`.
       - name: conan install
         run: >
           conan install .
           -o '&:with_python=True'
           -o '&:with_pdf2htmlEX=False'
           -o '&:with_wvWare=False'
-          -o '&:with_libmagic=False'
+          -o '&:bundle_assets=True'
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --build missing
