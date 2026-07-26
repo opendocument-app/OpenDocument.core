@@ -65,7 +65,13 @@ BUILD_SHARED_LIBS = "OFF"
 # bundled into the package (PDF rendering falls back to the built-in parser).
 ODR_WITH_PDF2HTMLEX = "OFF"
 ODR_WITH_WVWARE = "OFF"
-ODR_WITH_LIBMAGIC = "OFF"
+# libmagic's database is just a data file, so it can ship: `ODR_BUNDLE_ASSETS`
+# copies `magic.mgc` next to the odr.js assets, `python/CMakeLists.txt` installs
+# that directory as `pyodr/data`, and `pyodr/__init__.py` points `GlobalParams`
+# at the installed copy. Costs ~0.4 MB of wheel (the database deflates to that
+# from 8.5 MB) and buys real MIME detection instead of odr's 12-byte sniffing.
+ODR_WITH_LIBMAGIC = "ON"
+ODR_BUNDLE_ASSETS = "ON"
 
 # Section must exist for setuptools-scm to pick up its pyproject config.
 [tool.setuptools_scm]

@@ -1,4 +1,14 @@
+import os
+
+import pytest
+
 import pyodr
+
+
+def _libmagic_database() -> str:
+    """The resolved libmagic database, or "" when this build has none."""
+    path = pyodr.GlobalParams.libmagic_database_path()
+    return path if path and os.path.isfile(path) else ""
 
 
 def test_version():
@@ -67,3 +77,14 @@ def test_decoder_engine():
 
 def test_global_params():
     assert isinstance(pyodr.GlobalParams.odr_core_data_path(), str)
+    assert isinstance(pyodr.GlobalParams.libmagic_database_path(), str)
+
+
+@pytest.mark.skipif(
+    not _libmagic_database(),
+    reason="built without libmagic, or its database was not bundled",
+)
+def test_mimetype_uses_libmagic(odt_path):
+    # odr's own sniffing only reaches the ZIP container ("application/zip");
+    # recognising the ODF mimetype entry stored inside it is what libmagic adds.
+    assert pyodr.mimetype(str(odt_path)) == "application/vnd.oasis.opendocument.text"
