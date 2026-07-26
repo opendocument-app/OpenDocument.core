@@ -73,8 +73,7 @@ standalone against an installed `odrcore` package.
 Rendering uses shipped assets (CSS/JS). Point the library at them via
 `GlobalParams.setOdrCoreDataPath(...)` or the `ODR_CORE_DATA_PATH` environment
 variable (the tests read it; for in-tree builds it is `build/data`). The
-optional pdf2htmlEX/wvWare/libmagic backends have their own paths on
-`GlobalParams`.
+optional libmagic backend has its own path on `GlobalParams`.
 
 ## Notes
 

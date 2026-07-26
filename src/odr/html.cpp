@@ -14,12 +14,8 @@
 #include <odr/internal/html/font_file.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
-#include <odr/internal/html/pdf2htmlex_wrapper.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
-#include <odr/internal/html/wvware_wrapper.hpp>
-#include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
-#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <algorithm>
@@ -295,20 +291,6 @@ HtmlService html::translate(const DocumentFile &document_file,
                             const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  const std::shared_ptr<abstract::DocumentFile> document_file_impl =
-      document_file.impl();
-
-#ifdef ODR_WITH_WVWARE
-  if (const std::shared_ptr wv_document_file =
-          std::dynamic_pointer_cast<WvWareLegacyMicrosoftFile>(
-              document_file_impl);
-      wv_document_file != nullptr) {
-    std::filesystem::create_directories(cache_path);
-    return internal::html::create_wvware_oldms_service(
-        *wv_document_file, cache_path, config, std::move(logger));
-  }
-#endif
-
   return translate(document_file.document(), cache_path, config,
                    std::move(logger));
 }
@@ -317,18 +299,6 @@ HtmlService html::translate(const PdfFile &pdf_file,
                             const std::string &cache_path,
                             const HtmlConfig &config,
                             std::shared_ptr<Logger> logger) {
-  const std::shared_ptr<abstract::PdfFile> pdf_file_impl = pdf_file.impl();
-
-#ifdef ODR_WITH_PDF2HTMLEX
-  if (const std::shared_ptr poppler_pdf_file =
-          std::dynamic_pointer_cast<PopplerPdfFile>(pdf_file_impl);
-      poppler_pdf_file != nullptr) {
-    std::filesystem::create_directories(cache_path);
-    return internal::html::create_poppler_pdf_service(
-        *poppler_pdf_file, cache_path, config, std::move(logger));
-  }
-#endif
-
   return internal::html::create_pdf_service(pdf_file, cache_path, config,
                                             std::move(logger));
 }

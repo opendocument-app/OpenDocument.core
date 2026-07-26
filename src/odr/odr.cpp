@@ -419,24 +419,12 @@ std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
   if (engine == DecoderEngine::odr) {
     return "odr";
   }
-  if (engine == DecoderEngine::poppler) {
-    return "poppler";
-  }
-  if (engine == DecoderEngine::wvware) {
-    return "wvware";
-  }
   throw UnknownDecoderEngine();
 }
 
 odr::DecoderEngine odr::decoder_engine_by_name(const std::string &engine) {
   if (engine == "odr") {
     return DecoderEngine::odr;
-  }
-  if (engine == "poppler") {
-    return DecoderEngine::poppler;
-  }
-  if (engine == "wvware") {
-    return DecoderEngine::wvware;
   }
   throw UnknownDecoderEngine();
 }

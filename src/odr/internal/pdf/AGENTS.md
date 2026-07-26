@@ -4,15 +4,12 @@ The **why** behind the `pdf/` module and the roadmap. What is concretely
 implemented is in the code; this file keeps the rationale, the non-obvious
 invariants, and where things live. Reference links live in [`README.md`](README.md).
 
-This is the `DecoderEngine::odr` path for PDF. The sibling `../pdf_poppler/`
-module (poppler / pdf2htmlEX, behind `ODR_WITH_PDF2HTMLEX`) is the
-production-quality alternative engine; this one is experimental.
+This is the only PDF path; `DecoderEngine::odr` is the only engine.
 
 **Goal.** Faithful read-only HTML for common real-world PDFs through a
-pure-serialization pipeline (no native renderer), so the poppler engine becomes
-optional rather than required. The file-format, text-extraction, font and
-graphics foundations are in place; what remains is interaction & navigation plus
-a tail of known gaps (see *Roadmap*).
+pure-serialization pipeline (no native renderer). The file-format,
+text-extraction, font and graphics foundations are in place; what remains is
+interaction & navigation plus a tail of known gaps (see *Roadmap*).
 
 **Scope in one line.** Parse the PDF object/file structure (xref tables, xref
 streams, object streams, hybrid files, forward-scan recovery), decrypt (RC4,
@@ -216,9 +213,7 @@ Consumers outside the module: `open_strategy.cpp` (detection/engine selection) a
 `sfnt_*`, `cff_*`, `type1_*`).
 
 The **reference-output snapshot test** (`test/data/reference-output/`) is the
-graphics oracle: each change regenerates it and the diff is reviewed. It is now
-the **odr engine's own output only** — the `*.pdf-poppler` / `*.doc-wvware`
-cross-engine snapshots were removed once the odr engine could replace them.
+graphics oracle: each change regenerates it and the diff is reviewed.
 
 ---
 

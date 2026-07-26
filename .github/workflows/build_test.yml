@@ -122,8 +122,6 @@ jobs:
           -DCMAKE_CXX_FLAGS="-Werror"
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
-          -DODR_WITH_PDF2HTMLEX=ON
-          -DODR_WITH_WVWARE=ON
           -DODR_WITH_LIBMAGIC=ON
           -DODR_BUNDLE_ASSETS=ON
           ${{ matrix.bindings && '-DODR_JNI=ON -DODR_PYTHON=ON' || '' }}
@@ -137,8 +135,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
-          -DODR_WITH_PDF2HTMLEX=OFF
-          -DODR_WITH_WVWARE=OFF
           -DODR_WITH_LIBMAGIC=OFF
 
       - name: build
@@ -240,7 +236,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # fails at the moment because of pdf2htmlex
+          # Disabled while pdf2htmlEX was still built; that blocker is gone, but
+          # the reference output is generated on macOS, so re-enabling needs a
+          # cross-platform comparison run first.
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-gcc-14 }
           - { os: macos-26, host_profile: macos-26-armv8-clang-14 }

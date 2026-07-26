@@ -231,29 +231,6 @@ Java_app_opendocument_core_GlobalParams_odrCoreDataPath(JNIEnv *env, jclass) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_GlobalParams_fontconfigDataPath(JNIEnv *env,
-                                                           jclass) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::GlobalParams::fontconfig_data_path());
-  });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_GlobalParams_popplerDataPath(JNIEnv *env, jclass) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::GlobalParams::poppler_data_path());
-  });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_GlobalParams_pdf2htmlexDataPath(JNIEnv *env,
-                                                           jclass) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::GlobalParams::pdf2htmlex_data_path());
-  });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
 Java_app_opendocument_core_GlobalParams_libmagicDatabasePath(JNIEnv *env,
                                                              jclass) {
   return guarded(env, [&] {
@@ -266,32 +243,6 @@ Java_app_opendocument_core_GlobalParams_setOdrCoreDataPath(JNIEnv *env, jclass,
                                                            jstring path) {
   guarded(env, [&] {
     odr::GlobalParams::set_odr_core_data_path(to_string(env, path));
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_GlobalParams_setFontconfigDataPath(JNIEnv *env,
-                                                              jclass,
-                                                              jstring path) {
-  guarded(env, [&] {
-    odr::GlobalParams::set_fontconfig_data_path(to_string(env, path));
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_GlobalParams_setPopplerDataPath(JNIEnv *env, jclass,
-                                                           jstring path) {
-  guarded(env, [&] {
-    odr::GlobalParams::set_poppler_data_path(to_string(env, path));
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_GlobalParams_setPdf2htmlexDataPath(JNIEnv *env,
-                                                              jclass,
-                                                              jstring path) {
-  guarded(env, [&] {
-    odr::GlobalParams::set_pdf2htmlex_data_path(to_string(env, path));
   });
 }
 

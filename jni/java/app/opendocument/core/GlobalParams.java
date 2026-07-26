@@ -8,21 +8,9 @@ public final class GlobalParams {
 
   public static native String odrCoreDataPath();
 
-  public static native String fontconfigDataPath();
-
-  public static native String popplerDataPath();
-
-  public static native String pdf2htmlexDataPath();
-
   public static native String libmagicDatabasePath();
 
   public static native void setOdrCoreDataPath(String path);
-
-  public static native void setFontconfigDataPath(String path);
-
-  public static native void setPopplerDataPath(String path);
-
-  public static native void setPdf2htmlexDataPath(String path);
 
   public static native void setLibmagicDatabasePath(String path);
 

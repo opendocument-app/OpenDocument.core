@@ -68,9 +68,7 @@ void odr_python::bind_file(py::module_ &m) {
       .value("disk", odr::FileLocation::disk);
 
   py::enum_<odr::DecoderEngine>(m, "DecoderEngine")
-      .value("odr", odr::DecoderEngine::odr)
-      .value("poppler", odr::DecoderEngine::poppler)
-      .value("wvware", odr::DecoderEngine::wvware);
+      .value("odr", odr::DecoderEngine::odr);
 
   py::enum_<odr::EncryptionState>(m, "EncryptionState")
       .value("unknown", odr::EncryptionState::unknown)

@@ -59,8 +59,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
 | `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx); see [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) + per-format docs. |
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
-| `src/odr/internal/oldms_wvware/` | Alternative .doc decoder via wvWare. |
-| `src/odr/internal/pdf/`, `pdf_poppler/` | PDF (own parser + poppler/pdf2htmlEX path). |
+| `src/odr/internal/pdf/` | PDF (own parser). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
 | `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |
@@ -86,9 +85,9 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   when really necessary.
 - **Run the test binary from the build dir** so output stays out of the repo tree.
 - **For debugging, prefer the `translate` CLI** on a single file over the suite.
-- CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_PDF2HTMLEX`,
-  `ODR_WITH_WVWARE`, `ODR_WITH_LIBMAGIC`, `ODR_PYTHON`, `ODR_CLANG_TIDY`. A new
-  `.cpp` must be added to `ODR_SOURCE_FILES`.
+- CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_LIBMAGIC`,
+  `ODR_PYTHON`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
+  `ODR_SOURCE_FILES`.
 - **Test data lives in git submodules** under `test/data/`.
 
 ## Conventions

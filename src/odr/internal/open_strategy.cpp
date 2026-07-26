@@ -15,10 +15,8 @@
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
-#include <odr/internal/oldms_wvware/wvware_oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
-#include <odr/internal/pdf_poppler/poppler_pdf_file.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
@@ -131,26 +129,6 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as text");
     }
-
-    // some pdf files are weird
-#ifdef ODR_WITH_PDF2HTMLEX
-    try {
-      ODR_VERBOSE(logger, "try open as pdf with poppler");
-      result.push_back(PopplerPdfFile(file).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as pdf with poppler");
-    }
-#endif
-
-    // just to be sure we don't miss any legacy ms files
-#ifdef ODR_WITH_WVWARE
-    try {
-      ODR_VERBOSE(logger, "try open as legacy ms with wvware");
-      result.push_back(WvWareLegacyMicrosoftFile(file).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as legacy ms with wvware");
-    }
-#endif
   } else {
     ODR_VERBOSE(logger, "anything else");
     result.push_back(file_type);
@@ -159,19 +137,10 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   return result;
 }
 
-std::vector<DecoderEngine>
-open_strategy::list_decoder_engines(const FileType as) {
+std::vector<DecoderEngine> open_strategy::list_decoder_engines(const FileType) {
   std::vector<DecoderEngine> result;
 
   result.push_back(DecoderEngine::odr);
-
-  if (as == FileType::legacy_word_document) {
-    result.push_back(DecoderEngine::wvware);
-  }
-
-  if (as == FileType::portable_document_format) {
-    result.push_back(DecoderEngine::poppler);
-  }
 
   return result;
 }
@@ -277,16 +246,6 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       ODR_VERBOSE(logger, "failed to open as text");
     }
 
-    // some pdf files are weird
-#ifdef ODR_WITH_PDF2HTMLEX
-    try {
-      ODR_VERBOSE(logger, "try open as pdf with poppler");
-      return std::make_unique<PopplerPdfFile>(file);
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as pdf with poppler");
-    }
-#endif
-
     ODR_ERROR(logger, "unknown file type");
     throw UnknownFileType();
   }
@@ -370,17 +329,6 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       }
       throw NoLegacyMicrosoftFile();
     }
-#ifdef ODR_WITH_WVWARE
-    if (with == DecoderEngine::wvware) {
-      ODR_VERBOSE(logger, "using wvware engine");
-      try {
-        return std::make_unique<WvWareLegacyMicrosoftFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as legacy ms with wvware engine");
-      }
-      throw NoLegacyMicrosoftFile();
-    }
-#endif
     ODR_ERROR(logger, "unsupported decoder engine for legacy ms "
                           << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);
@@ -397,17 +345,6 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       }
       throw NoPdfFile();
     }
-#ifdef ODR_WITH_PDF2HTMLEX
-    if (with == DecoderEngine::poppler) {
-      ODR_VERBOSE(logger, "using poppler engine");
-      try {
-        return std::make_unique<PopplerPdfFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as pdf with poppler engine");
-      }
-      throw NoPdfFile();
-    }
-#endif
     ODR_ERROR(logger, "unsupported decoder engine for pdf "
                           << decoder_engine_to_string(with));
     throw UnsupportedDecoderEngine(with);

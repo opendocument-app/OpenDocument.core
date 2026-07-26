@@ -15,12 +15,7 @@ option(ODR_TEST "enable tests" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_WITH_HTTP_SERVER "Build the HTTP server (requires cpp-httplib)" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
-option(WITH_PDF2HTMLEX "Deprecated: `ODR_WITH_PDF2HTMLEX` instead! Build with pdf2htmlEX" ON)
-option(WITH_WVWARE "Deprecated: `ODR_WITH_WVWARE` instead! Build with wvWare" ON)
-option(WITH_LIBMAGIC "Deprecated: `ODR_WITH_WVWARE` instead! Build with libmagic" ON)
-option(ODR_WITH_PDF2HTMLEX "Build with pdf2htmlEX" "${WITH_PDF2HTMLEX}")
-option(ODR_WITH_WVWARE "Build with wvWare" "${WITH_WVWARE}")
-option(ODR_WITH_LIBMAGIC "Build with libmagic" "${WITH_LIBMAGIC}")
+option(ODR_WITH_LIBMAGIC "Build with libmagic" ON)
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
@@ -135,7 +130,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
-        "src/odr/internal/html/pdf2htmlex_wrapper.hpp"
         "src/odr/internal/html/text_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
@@ -270,7 +264,7 @@ set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
 
 # Validate an injected data-file path before it is used to bundle assets.
 #
-# These paths (FONTCONFIG_DATA_PATH, POPPLER_DATA_PATH, ...) are consumed but
+# These paths (LIBMAGIC_DATABASE_PATH, ...) are consumed but
 # never discovered by CMake — they must be injected from outside via `-D...=`;
 # our conanfile.py bridges them from the dependency runenv. A consumer that
 # builds odrcore without that bridge left the variable empty, and
@@ -305,66 +299,6 @@ if (ODR_WITH_HTTP_SERVER)
     target_compile_definitions(odr
             PRIVATE
             ODR_WITH_HTTP_SERVER
-    )
-endif ()
-if (ODR_WITH_PDF2HTMLEX)
-    find_package(pdf2htmlEX REQUIRED)
-    find_package(poppler REQUIRED)
-    target_sources(odr
-            PRIVATE
-            "src/odr/internal/html/pdf2htmlex_wrapper.cpp"
-            "src/odr/internal/pdf_poppler/poppler_pdf_file.cpp"
-    )
-    target_link_libraries(odr
-            PRIVATE
-            pdf2htmlex::pdf2htmlex
-            poppler::poppler
-    )
-    target_compile_definitions(odr
-            PRIVATE
-            ODR_WITH_PDF2HTMLEX
-    )
-
-    if (ODR_BUNDLE_ASSETS)
-        odr_require_data_path("${FONTCONFIG_DATA_PATH}" FONTCONFIG_DATA_PATH)
-        odr_require_data_path("${POPPLER_DATA_PATH}" POPPLER_DATA_PATH)
-        odr_require_data_path("${PDF2HTMLEX_DATA_PATH}" PDF2HTMLEX_DATA_PATH)
-
-        set(ODR_BUILD_FONTCONFIG_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/fontconfig")
-        set(ODR_BUILD_POPPLER_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/poppler")
-        set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${ODR_BUILD_ODR_DATA_PATH}/pdf2htmlex")
-
-        file(COPY "${FONTCONFIG_DATA_PATH}/" DESTINATION "${ODR_BUILD_FONTCONFIG_DATA_PATH}")
-        file(COPY "${POPPLER_DATA_PATH}/" DESTINATION "${ODR_BUILD_POPPLER_DATA_PATH}")
-        file(COPY "${PDF2HTMLEX_DATA_PATH}/" DESTINATION "${ODR_BUILD_PDF2HTMLEX_DATA_PATH}")
-
-        set(ODR_INSTALL_FONTCONFIG_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/fontconfig")
-        set(ODR_INSTALL_POPPLER_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/poppler")
-        set(ODR_INSTALL_PDF2HTMLEX_DATA_PATH "${ODR_INSTALL_ODR_DATA_PATH}/pdf2htmlex")
-    else ()
-        set(ODR_BUILD_FONTCONFIG_DATA_PATH "${FONTCONFIG_DATA_PATH}")
-        set(ODR_BUILD_POPPLER_DATA_PATH "${POPPLER_DATA_PATH}")
-        set(ODR_BUILD_PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}")
-
-        set(ODR_INSTALL_FONTCONFIG_DATA_PATH "${FONTCONFIG_DATA_PATH}")
-        set(ODR_INSTALL_POPPLER_DATA_PATH "${POPPLER_DATA_PATH}")
-        set(ODR_INSTALL_PDF2HTMLEX_DATA_PATH "${PDF2HTMLEX_DATA_PATH}")
-    endif ()
-endif ()
-if (ODR_WITH_WVWARE)
-    find_package(wvware REQUIRED)
-    target_sources(odr
-            PRIVATE
-            "src/odr/internal/html/wvware_wrapper.cpp"
-            "src/odr/internal/oldms_wvware/wvware_oldms_file.cpp"
-    )
-    target_link_libraries(odr
-            PRIVATE
-            wvware::wvware
-    )
-    target_compile_definitions(odr
-            PRIVATE
-            ODR_WITH_WVWARE
     )
 endif ()
 if (ODR_WITH_LIBMAGIC)
