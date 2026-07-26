@@ -22,6 +22,36 @@ The native library is loaded from `java.library.path` as `odr_jni`
 (`libodr_jni.so`/`libodr_jni.dylib`); the system property
 `app.opendocument.core.library` overrides it with an absolute path.
 
+## Maven distribution
+
+The Java classes are published as `app.opendocument:odr-core-java` to
+[GitHub Packages](https://github.com/orgs/opendocument-app/packages?repo_name=OpenDocument.core)
+on release (`.github/workflows/maven.yml`, built from `pom.xml`). The artifact
+contains **only the Java API** — consumers build the native `odr_jni` library
+themselves for their target platform (see below) and provide it at runtime.
+
+```gradle
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/opendocument-app/OpenDocument.core")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+            password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+dependencies {
+    implementation "app.opendocument:odr-core-java:<version>"
+}
+```
+
+Note: GitHub Packages requires authentication (a token with `read:packages`)
+even for public packages.
+
+Local build: `mvn --file jni/pom.xml verify` (produces the jar plus sources
+and javadoc jars in `jni/target/`).
+
 ## Building
 
 The bindings are part of the main CMake build, toggled by `ODR_JNI` (requires

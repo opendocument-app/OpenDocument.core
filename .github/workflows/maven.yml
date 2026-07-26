@@ -1,0 +1,55 @@
+name: maven
+
+on:
+  push:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version to publish (e.g. 5.5.0-test1)
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: github
+
+      - name: get version
+        if: github.event_name != 'push'
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.event_name }}" = release ]; then
+            echo "REVISION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+          else
+            echo "REVISION=${INPUT_VERSION}" >> $GITHUB_ENV
+          fi
+
+      - name: build
+        if: github.event_name == 'push'
+        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml verify
+
+      - name: publish
+        if: github.event_name != 'push'
+        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Drevision="${REVISION}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
