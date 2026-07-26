@@ -18,8 +18,9 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
 
 - **Handle model**: a Java wrapper owns a heap-allocated copy of the C++ value
   handle (`odr::DecodedFile`, `odr::Element`, ...) referenced by a `long`.
-  `NativeResource` frees it via `Cleaner`/`AutoCloseable`; each class has a
-  static `destroy(long)` native deleting the concrete C++ type.
+  `NativeResource` frees it via a `PhantomReference` reaper thread and
+  `AutoCloseable`; each class has a static `destroy(long)` native deleting the
+  concrete C++ type.
 - **Typed views are re-derived per call**: element/file handles always point to
   the *base* type (`odr::Element`, `odr::DecodedFile`); natives of typed Java
   classes call `as_paragraph()`/`as_text_file()` etc. on each call. Never store
@@ -46,6 +47,15 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   don't marshal it unconditionally.
 - New public C++ API? Extend the matching `jni_*.cpp` + Java class and add a
   JUnit test.
+- **Android API level 26 is the java floor**: OpenDocument.droid consumes this
+  artifact with `minSdk = 26`, and android ships a much older `java.*` than the
+  `--release 17` compiler accepts. Anything newer fails at runtime, on device
+  only, with `NoClassDefFoundError`/`NoSuchMethodError`. Known traps, all of
+  which android added far later than the JDK: `java.lang.ref.Cleaner` (API 33,
+  hence the `PhantomReference` reaper), `List.of`/`Set.of`/`Map.of` (API 34),
+  `Optional.isEmpty` (API 33), `java.time` (API 26 only in part). Core library
+  desugaring does not cover `java.lang.ref`, and an app cannot shim a `java.*`
+  class, so the fix always has to happen here.
 - C++ sources follow the repo clang-format; Java follows the
   google-java-format style (2-space indent), no enforced formatter yet.
 - Tests must stay hermetic: build inputs inline in `tests/.../TestFiles.java`;

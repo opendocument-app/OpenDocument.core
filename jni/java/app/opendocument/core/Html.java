@@ -1,5 +1,7 @@
 package app.opendocument.core;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -16,7 +18,7 @@ public final class Html {
 
   Html(HtmlConfig config, HtmlPage[] pages) {
     this.config = config;
-    this.pages = List.of(pages);
+    this.pages = Collections.unmodifiableList(Arrays.asList(pages));
   }
 
   public HtmlConfig config() {
@@ -34,7 +36,7 @@ public final class Html {
 
     Content(String html, LocatedResource[] resources) {
       this.html = html;
-      this.resources = List.of(resources);
+      this.resources = Collections.unmodifiableList(Arrays.asList(resources));
     }
   }
 
