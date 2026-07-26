@@ -21,6 +21,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_wvWare": [True, False],
         "with_libmagic": [True, False],
         "with_http_server": [True, False],
+        "with_cli": [True, False],
         "with_python": [True, False],
         "with_jni": [True, False],
         "bundle_assets": [True, False],
@@ -32,6 +33,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_wvWare": True,
         "with_libmagic": True,
         "with_http_server": True,
+        "with_cli": True,
         "with_python": False,
         "with_jni": False,
         "bundle_assets": False,
@@ -85,6 +87,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_WITH_WVWARE"] = self.options.get_safe("with_wvWare", False)
         tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
+        tc.variables["ODR_CLI"] = self.options.get_safe("with_cli", True)
         tc.variables["ODR_PYTHON"] = self.options.get_safe("with_python", False)
         tc.variables["ODR_JNI"] = self.options.get_safe("with_jni", False)
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
