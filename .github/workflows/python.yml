@@ -10,6 +10,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+# See the cache-key comment in `build_test.yml` for why the keys look like this.
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 1G
@@ -116,6 +117,10 @@ jobs:
 
   wheels:
     runs-on: ${{ matrix.os }}
+    # Builds the reduced dependency set that `pyproject.toml` pins (no
+    # pdf2htmlEX/wvWare/libmagic), so it cannot share a cache with `build_test`.
+    env:
+      CACHE_FLAVOR: wheel
     strategy:
       fail-fast: false
       matrix:
@@ -151,27 +156,30 @@ jobs:
       - name: install python dependencies
         run: pip install conan build pytest
 
+      - name: conan cache key
+        shell: bash
+        run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', 'pyproject.toml', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+
       - name: cache conan
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
-          key: conan-wheel-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
           restore-keys: |
-            conan-wheel-${{ matrix.host_profile }}-
+            conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-
 
       - name: export conan-odr-index
         run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 
-      - name: cache ccache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      - name: restore ccache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-wheel-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
           restore-keys: |
-            ccache-wheel-${{ matrix.host_profile }}-
-            ccache-${{ matrix.host_profile }}-
+            ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
       # Match the dependency set that pyproject.toml enables (no pdf2htmlEX,
       # wvWare, libmagic — their runtime data cannot ship inside the wheel).
@@ -190,6 +198,13 @@ jobs:
         run: python -m build --wheel
         env:
           CMAKE_ARGS: -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/conan_toolchain.cmake
+
+      - name: save ccache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
 
       # PyPI rejects plain `linux_*` platform tags; auditwheel grafts the wheel
       # onto the matching manylinux tag (the conan deps are linked statically,
