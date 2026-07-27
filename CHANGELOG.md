@@ -10,6 +10,7 @@ described at the bottom of this file.
 
 A breaking release that cleans up the public API. Everything below is a
 source-incompatible change to `odr::`; see the migration notes per entry.
+Entries without a PR reference come from #627.
 
 ### Removed
 
