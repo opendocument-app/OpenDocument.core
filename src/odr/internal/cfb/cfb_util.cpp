@@ -116,7 +116,9 @@ public:
   [[nodiscard]] std::optional<AbsPath> disk_path() const override {
     return std::nullopt;
   }
-  [[nodiscard]] const char *memory_data() const override { return nullptr; }
+  [[nodiscard]] std::optional<std::string_view> memory_data() const override {
+    return std::nullopt;
+  }
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const override {
     return std::make_unique<FileInCfbIstream>(m_archive, m_archive->cfb(),

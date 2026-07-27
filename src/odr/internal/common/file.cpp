@@ -28,7 +28,9 @@ std::size_t DiskFile::size() const {
 
 std::optional<AbsPath> DiskFile::disk_path() const { return m_path; }
 
-const char *DiskFile::memory_data() const { return nullptr; }
+std::optional<std::string_view> DiskFile::memory_data() const {
+  return std::nullopt;
+}
 
 std::unique_ptr<std::istream> DiskFile::stream() const {
   return std::make_unique<std::ifstream>(util::file::open(m_path.string()));
@@ -46,14 +48,16 @@ MemoryFile::MemoryFile(const File &file) : m_data(file.size(), ' ') {
 }
 
 FileLocation MemoryFile::location() const noexcept {
-  return FileLocation::disk;
+  return FileLocation::memory;
 }
 
 std::size_t MemoryFile::size() const { return m_data.size(); }
 
 std::optional<AbsPath> MemoryFile::disk_path() const { return std::nullopt; }
 
-const char *MemoryFile::memory_data() const { return m_data.data(); }
+std::optional<std::string_view> MemoryFile::memory_data() const {
+  return m_data;
+}
 
 std::unique_ptr<std::istream> MemoryFile::stream() const {
   return std::make_unique<std::istringstream>(m_data);

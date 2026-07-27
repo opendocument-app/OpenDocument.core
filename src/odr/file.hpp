@@ -163,7 +163,7 @@ public:
   [[nodiscard]] std::size_t size() const;
 
   [[nodiscard]] std::optional<std::string> disk_path() const;
-  [[nodiscard]] const char *memory_data() const;
+  [[nodiscard]] std::optional<std::string_view> memory_data() const;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
   void pipe(std::ostream &out) const;

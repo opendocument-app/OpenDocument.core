@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr::internal {
 class AbsPath;
@@ -25,7 +26,8 @@ public:
   [[nodiscard]] virtual std::size_t size() const = 0;
 
   [[nodiscard]] virtual std::optional<AbsPath> disk_path() const = 0;
-  [[nodiscard]] virtual const char *memory_data() const = 0;
+  /// The file's bytes if it is held in memory, else nullopt.
+  [[nodiscard]] virtual std::optional<std::string_view> memory_data() const = 0;
 
   [[nodiscard]] virtual std::unique_ptr<std::istream> stream() const = 0;
 };

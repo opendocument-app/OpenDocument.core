@@ -34,7 +34,9 @@ std::optional<std::string> File::disk_path() const {
   return {};
 }
 
-const char *File::memory_data() const { return m_impl->memory_data(); }
+std::optional<std::string_view> File::memory_data() const {
+  return m_impl->memory_data();
+}
 
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 

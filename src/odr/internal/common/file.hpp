@@ -23,7 +23,7 @@ public:
   [[nodiscard]] std::size_t size() const final;
 
   [[nodiscard]] std::optional<AbsPath> disk_path() const final;
-  [[nodiscard]] const char *memory_data() const final;
+  [[nodiscard]] std::optional<std::string_view> memory_data() const final;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
@@ -40,7 +40,7 @@ public:
   [[nodiscard]] std::size_t size() const override;
 
   [[nodiscard]] std::optional<AbsPath> disk_path() const override;
-  [[nodiscard]] const char *memory_data() const override;
+  [[nodiscard]] std::optional<std::string_view> memory_data() const override;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const override;
 
