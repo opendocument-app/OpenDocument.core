@@ -19,23 +19,25 @@ class DocumentFile;
 namespace odr::internal::open_strategy {
 
 std::vector<FileType>
-list_file_types(const std::shared_ptr<abstract::File> &file, Logger &logger);
+list_file_types(const std::shared_ptr<abstract::File> &file,
+                const Logger &logger);
 std::vector<DecoderEngine> list_decoder_engines(FileType as);
 
 std::unique_ptr<abstract::DecodedFile>
-open_file(const std::shared_ptr<abstract::File> &file, Logger &logger);
+open_file(const std::shared_ptr<abstract::File> &file, const Logger &logger);
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file, FileType as,
-          Logger &logger);
+          const Logger &logger);
 
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file, FileType as,
-          DecoderEngine with, Logger &logger);
+          DecoderEngine with, const Logger &logger);
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file,
-          const DecodePreference &preference, Logger &logger);
+          const DecodePreference &preference, const Logger &logger);
 
 std::unique_ptr<abstract::DocumentFile>
-open_document_file(const std::shared_ptr<abstract::File> &file, Logger &logger);
+open_document_file(const std::shared_ptr<abstract::File> &file,
+                   const Logger &logger);
 
 } // namespace odr::internal::open_strategy

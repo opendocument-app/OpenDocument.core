@@ -2,6 +2,7 @@
 
 #include <odr/file.hpp>
 #include <odr/global_params.hpp>
+#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 #include <odr/table_position.hpp>
 
@@ -181,6 +182,16 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Odr_openNative(JNIEnv *env, jclass, jstring path) {
   return guarded(env,
                  [&] { return make_handle(odr::open(to_string(env, path))); });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Odr_openWithLoggerNative(JNIEnv *env, jclass,
+                                                    jstring path,
+                                                    jlong logger) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::open(to_string(env, path), *from_handle<odr::Logger>(logger)));
+  });
 }
 
 extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_Odr_openAsNative(

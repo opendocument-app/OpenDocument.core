@@ -78,7 +78,7 @@ file_type_by_mimetype(std::string_view mimetype) noexcept;
 /// @param logger The logger to use.
 /// @return The file types.
 [[nodiscard]] std::vector<FileType>
-list_file_types(const std::string &path, Logger &logger = Logger::null());
+list_file_types(const std::string &path, const Logger &logger = Logger::null());
 /// @brief Determine the decoder engines for a file path and file type.
 /// @param as The file type.
 /// @return The decoder engines.
@@ -88,21 +88,21 @@ list_file_types(const std::string &path, Logger &logger = Logger::null());
 /// @param logger The logger to use.
 /// @return The MIME types.
 [[nodiscard]] std::string_view mimetype(const std::string &path,
-                                        Logger &logger = Logger::null());
+                                        const Logger &logger = Logger::null());
 
 /// @brief Open a file.
 /// @param path The file path.
 /// @param logger The logger to use.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path,
-                               Logger &logger = Logger::null());
+                               const Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param as The file type.
 /// @param logger The logger to use.
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path, FileType as,
-                               Logger &logger = Logger::null());
+                               const Logger &logger = Logger::null());
 /// @brief Open a file.
 /// @param path The file path.
 /// @param preference The decode preference.
@@ -110,6 +110,6 @@ list_file_types(const std::string &path, Logger &logger = Logger::null());
 /// @return The decoded file.
 [[nodiscard]] DecodedFile open(const std::string &path,
                                const DecodePreference &preference,
-                               Logger &logger = Logger::null());
+                               const Logger &logger = Logger::null());
 
 } // namespace odr

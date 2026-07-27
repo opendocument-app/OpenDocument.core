@@ -15,8 +15,19 @@ pybind11 bindings for the public C++ API (`src/odr/*.hpp`), packaged as
 ## Rules
 
 - **Bind the public API only** — never include `odr/internal/...` headers.
-- Mirror the C++ names; drop the `Logger` parameters (bindings use the default
-  null logger).
+- Mirror the C++ names. `Logger` parameters are bound as an optional trailing
+  `logger` argument defaulting to `Logger.null()`, so callers may ignore them.
+- `ILogger` is bound with a trampoline (`PyLogger` in `bind_logger.cpp`) so a
+  Python class can implement a sink. Two traps it works around, both of which
+  bite only at teardown, so a passing happy-path test proves nothing:
+  - The sink is handed to C++ as a `shared_ptr` that owns a reference to the
+    Python object (`adopt_sink`), because `Logger(MySink())` otherwise leaves
+    C++ holding a dead object.
+  - `flush()` dispatches via `py::get_override` rather than
+    `PYBIND11_OVERRIDE_PURE`: sinks are flushed from destructors, and throwing
+    "pure virtual not implemented" there aborts the process.
+- `LogLevel` is bound with `py::arithmetic()` so `level >= LogLevel.warning`
+  works inside a `will_log` implementation.
 - Anything returning an `Element` (or subtype/iterator) must carry
   `py::keep_alive<0, 1>()` so handles keep the originating `Document` alive
   (see `keep_self_alive` in `bind_document.cpp`).

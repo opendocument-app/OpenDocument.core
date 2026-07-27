@@ -76,7 +76,7 @@ std::u16string utf16be_to_u16string(const std::string &bytes) {
 } // namespace
 
 CMapParser::CMapParser(std::istream &in, const Logger &logger)
-    : m_parser(in), m_logger{&logger} {}
+    : m_parser(in), m_logger{logger} {}
 
 std::istream &CMapParser::in() { return m_parser.in(); }
 
@@ -124,9 +124,9 @@ void CMapParser::read_codespacerange(const std::uint32_t n, CMap &cmap) {
     m_parser.skip_whitespace();
 
     if (low.size() != high.size() || !valid_code_width(low.size())) {
-      ODR_WARNING(*m_logger, "pdf: skipping out-of-spec codespace range (low "
-                                 << low.size() << " bytes, high " << high.size()
-                                 << " bytes)");
+      ODR_WARNING(m_logger, "pdf: skipping out-of-spec codespace range (low "
+                                << low.size() << " bytes, high " << high.size()
+                                << " bytes)");
       continue; // skip an out-of-spec range, keep parsing the rest
     }
     cmap.add_codespace_range(std::move(low), std::move(high));
@@ -142,9 +142,9 @@ void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) {
     m_parser.skip_whitespace();
 
     if (!valid_code_width(code.size()) || destination.size() % 2 != 0) {
-      ODR_WARNING(*m_logger, "pdf: skipping malformed bfchar entry (code "
-                                 << code.size() << " bytes, destination "
-                                 << destination.size() << " bytes)");
+      ODR_WARNING(m_logger, "pdf: skipping malformed bfchar entry (code "
+                                << code.size() << " bytes, destination "
+                                << destination.size() << " bytes)");
       continue; // skip a malformed mapping, keep the rest of the CMap
     }
     cmap.map_single(std::move(code), utf16be_to_u16string(destination));
@@ -162,25 +162,25 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
     m_parser.skip_whitespace();
 
     if (low.size() != high.size() || !valid_code_width(low.size())) {
-      ODR_WARNING(*m_logger, "pdf: skipping out-of-spec bfrange (low "
-                                 << low.size() << " bytes, high " << high.size()
-                                 << " bytes)");
+      ODR_WARNING(m_logger, "pdf: skipping out-of-spec bfrange (low "
+                                << low.size() << " bytes, high " << high.size()
+                                << " bytes)");
       continue; // skip an out-of-spec range, keep parsing the rest
     }
     const std::size_t width = low.size();
     const std::uint32_t low_code = code_to_uint(low);
     const std::uint32_t high_code = code_to_uint(high);
     if (high_code < low_code) {
-      ODR_WARNING(*m_logger, "pdf: skipping reversed bfrange (low 0x"
-                                 << std::hex << low_code << ", high 0x"
-                                 << high_code << ")");
+      ODR_WARNING(m_logger, "pdf: skipping reversed bfrange (low 0x"
+                                << std::hex << low_code << ", high 0x"
+                                << high_code << ")");
       continue; // a reversed range would otherwise wrap `code` below
     }
     if (high_code - low_code > max_bfrange_span) {
-      ODR_WARNING(*m_logger, "pdf: skipping oversized bfrange (0x"
-                                 << std::hex << low_code << "-0x" << high_code
-                                 << " spans more than " << std::dec
-                                 << (max_bfrange_span + 1) << " codes)");
+      ODR_WARNING(m_logger, "pdf: skipping oversized bfrange (0x"
+                                << std::hex << low_code << "-0x" << high_code
+                                << " spans more than " << std::dec
+                                << (max_bfrange_span + 1) << " codes)");
       continue;
     }
     // The span fits in 32 bits without wrapping, so the loops below can count.
@@ -193,13 +193,13 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
            offset <= span && offset < destinations.size(); ++offset) {
         const Object &element = destinations[offset];
         if (!element.is_string()) {
-          ODR_WARNING(*m_logger,
+          ODR_WARNING(m_logger,
                       "pdf: skipping non-string bfrange array destination");
           continue;
         }
         const std::string &dst = element.as_string();
         if (dst.size() % 2 != 0) {
-          ODR_WARNING(*m_logger,
+          ODR_WARNING(m_logger,
                       "pdf: skipping odd-length bfrange array destination ("
                           << dst.size() << " bytes)");
           continue;
@@ -212,7 +212,7 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
       // the code range (7.9.3).
       const std::string &dst = destination.as_string();
       if (dst.size() % 2 != 0) {
-        ODR_WARNING(*m_logger,
+        ODR_WARNING(m_logger,
                     "pdf: skipping bfrange with odd-length destination ("
                         << dst.size() << " bytes)");
         continue;
@@ -237,8 +237,8 @@ void CMapParser::read_cidchar(const std::uint32_t n, CMap &cmap) {
     m_parser.skip_whitespace();
 
     if (!valid_code_width(code.size()) || !cid.is_integer()) {
-      ODR_WARNING(*m_logger, "pdf: skipping malformed cidchar entry (code "
-                                 << code.size() << " bytes)");
+      ODR_WARNING(m_logger, "pdf: skipping malformed cidchar entry (code "
+                                << code.size() << " bytes)");
       continue; // skip a malformed mapping, keep the rest of the CMap
     }
     cmap.map_cid_char(std::move(code),
@@ -258,17 +258,17 @@ void CMapParser::read_cidrange(const std::uint32_t n, CMap &cmap) {
 
     if (low.size() != high.size() || !valid_code_width(low.size()) ||
         !cid.is_integer()) {
-      ODR_WARNING(*m_logger, "pdf: skipping out-of-spec cidrange (low "
-                                 << low.size() << " bytes, high " << high.size()
-                                 << " bytes)");
+      ODR_WARNING(m_logger, "pdf: skipping out-of-spec cidrange (low "
+                                << low.size() << " bytes, high " << high.size()
+                                << " bytes)");
       continue; // skip an out-of-spec range, keep parsing the rest
     }
     const std::uint32_t low_code = code_to_uint(low);
     const std::uint32_t high_code = code_to_uint(high);
     if (high_code < low_code) {
-      ODR_WARNING(*m_logger, "pdf: skipping reversed cidrange (low 0x"
-                                 << std::hex << low_code << ", high 0x"
-                                 << high_code << ")");
+      ODR_WARNING(m_logger, "pdf: skipping reversed cidrange (low 0x"
+                                << std::hex << low_code << ", high 0x"
+                                << high_code << ")");
       continue; // a reversed range would map codes to nonsense CIDs
     }
     // Unlike a `bfrange`, a `cidrange` commonly spans the whole 2-byte code
@@ -317,7 +317,7 @@ CMap CMapParser::parse_cmap() {
         // callers fall back to the ToUnicode codespace / fixed width instead of
         // mis-splitting the inherited (e.g. 2-byte) codes.
         cmap.mark_inherits_external_cmap();
-        ODR_WARNING(*m_logger,
+        ODR_WARNING(m_logger,
                     "pdf: unresolved 'usecmap'; local codespace not treated as "
                     "authoritative");
       }

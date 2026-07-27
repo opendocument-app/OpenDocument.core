@@ -27,7 +27,7 @@ std::shared_ptr<pdf::PdfFile> open_pdf(const std::string &bytes) {
 
 HtmlService make_service(const std::string &bytes, const HtmlConfig &config) {
   const odr::PdfFile file(open_pdf(bytes));
-  const std::shared_ptr<Logger> logger = Logger::create_null();
+  const Logger logger = Logger::null();
   return internal::html::create_pdf_service(file, "", config, logger);
 }
 

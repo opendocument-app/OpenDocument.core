@@ -13,9 +13,8 @@ namespace odr {
 
 class HttpServer::Impl {
 public:
-  explicit Impl(std::shared_ptr<Logger> logger)
-      : m_logger{std::move(logger)},
-        m_server{std::make_unique<httplib::Server>()} {
+  explicit Impl(const Logger &logger)
+      : m_logger{logger}, m_server{std::make_unique<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
@@ -26,9 +25,9 @@ public:
           std::rethrow_exception(ep);
         }
       } catch (const std::exception &e) {
-        ODR_ERROR(*m_logger, "Exception in HTTP handler: " << e.what());
+        ODR_ERROR(m_logger, "Exception in HTTP handler: " << e.what());
       } catch (...) {
-        ODR_ERROR(*m_logger, "Unknown exception in HTTP handler");
+        ODR_ERROR(m_logger, "Unknown exception in HTTP handler");
       }
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
@@ -89,7 +88,7 @@ public:
       std::unique_lock lock{m_mutex};
       auto it = m_content.find(id);
       if (it == m_content.end()) {
-        ODR_ERROR(*m_logger, "Content not found for ID: " << id);
+        ODR_ERROR(m_logger, "Content not found for ID: " << id);
         res.status = 404;
         return;
       }
@@ -98,11 +97,11 @@ public:
 
       serve_file(res, service, path);
     } catch (const std::exception &e) {
-      ODR_ERROR(*m_logger, "Error handling request: " << e.what());
+      ODR_ERROR(m_logger, "Error handling request: " << e.what());
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     } catch (...) {
-      ODR_ERROR(*m_logger, "Unknown error handling request");
+      ODR_ERROR(m_logger, "Unknown error handling request");
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     }
@@ -111,12 +110,12 @@ public:
   void serve_file(httplib::Response &res, const HtmlService &service,
                   const std::string &path) const {
     if (!service.exists(path)) {
-      ODR_ERROR(*m_logger, "File not found: " << path);
+      ODR_ERROR(m_logger, "File not found: " << path);
       res.status = 404;
       return;
     }
 
-    ODR_VERBOSE(*m_logger, "Serving file: " << path);
+    ODR_VERBOSE(m_logger, "Serving file: " << path);
 
     // Buffer content to avoid streaming issues on Android.
     // Using ContentProviderWithoutLength (chunked transfer encoding) can cause
@@ -131,18 +130,18 @@ public:
       service.write(path, buffer);
       res.set_content(buffer.str(), service.mimetype(path));
     } catch (const std::exception &e) {
-      ODR_ERROR(*m_logger, "Error serving file " << path << ": " << e.what());
+      ODR_ERROR(m_logger, "Error serving file " << path << ": " << e.what());
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     } catch (...) {
-      ODR_ERROR(*m_logger, "Unknown error serving file: " << path);
+      ODR_ERROR(m_logger, "Unknown error serving file: " << path);
       res.status = 500;
       res.set_content("Internal Server Error", "text/plain");
     }
   }
 
   void connect_service(HtmlService service, const std::string &prefix) {
-    ODR_VERBOSE(*m_logger, "Connecting service with prefix: " << prefix);
+    ODR_VERBOSE(m_logger, "Connecting service with prefix: " << prefix);
 
     std::unique_lock lock{m_mutex};
 
@@ -204,7 +203,7 @@ public:
 
     m_bound.store(true, std::memory_order_release);
 
-    ODR_VERBOSE(*m_logger, "Bound to " << host << ":" << bound);
+    ODR_VERBOSE(m_logger, "Bound to " << host << ":" << bound);
 
     return static_cast<std::uint32_t>(bound);
   }
@@ -216,13 +215,13 @@ public:
       throw ServerNotBound();
     }
 
-    ODR_VERBOSE(*m_logger, "Serving...");
+    ODR_VERBOSE(m_logger, "Serving...");
 
     m_server->listen_after_bind();
   }
 
   void clear() {
-    ODR_VERBOSE(*m_logger, "Dropping connected services...");
+    ODR_VERBOSE(m_logger, "Dropping connected services...");
 
     std::unique_lock lock{m_mutex};
 
@@ -230,7 +229,7 @@ public:
   }
 
   void stop() {
-    ODR_VERBOSE(*m_logger, "Stopping HTTP server...");
+    ODR_VERBOSE(m_logger, "Stopping HTTP server...");
 
     // Set stopping flag first to reject new requests immediately.
     // This prevents new requests from starting while we're shutting down.
@@ -253,7 +252,7 @@ public:
   }
 
 private:
-  std::shared_ptr<Logger> m_logger;
+  Logger m_logger;
 
   // Flag to indicate server is shutting down - checked by handlers
   // to reject new requests during shutdown.
@@ -280,9 +279,8 @@ private:
   std::unique_ptr<httplib::Server> m_server;
 };
 
-HttpServer::HttpServer(const Config & /*config*/,
-                       std::shared_ptr<Logger> logger)
-    : m_impl{std::make_unique<Impl>(std::move(logger))} {}
+HttpServer::HttpServer(const Config & /*config*/, const Logger &logger)
+    : m_impl{std::make_unique<Impl>(logger)} {}
 
 void HttpServer::connect_service(HtmlService service,
                                  const std::string &prefix) const {

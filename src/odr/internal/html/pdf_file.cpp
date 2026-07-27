@@ -1140,9 +1140,8 @@ private:
 
 class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config,
-                  std::shared_ptr<Logger> logger)
-      : HtmlService(std::move(config), std::move(logger)),
+  HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
+      : HtmlService(std::move(config), logger),
         m_pdf_file{std::move(pdf_file)} {}
 
   /// Parses the document once, applies the `[page_range_begin,
@@ -1159,8 +1158,8 @@ public:
 
     const auto &pdf_file =
         dynamic_cast<const pdf::PdfFile &>(*m_pdf_file.impl());
-    m_parser = std::make_unique<pdf::DocumentParser>(
-        pdf_file.create_parser(*m_logger));
+    m_parser =
+        std::make_unique<pdf::DocumentParser>(pdf_file.create_parser(m_logger));
     m_document = m_parser->parse_document();
 
     const std::vector<pdf::Page *> pages = m_document->collect_pages();
@@ -1443,10 +1442,10 @@ public:
       double sel_prev_font_size_pt = 0;
 
       for (const pdf::PageElement &element : lift_group_text(
-               pdf::extract_page(stream, *page->resources, *m_logger))) {
+               pdf::extract_page(stream, *page->resources, m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                masks, *m_logger, [&] { vis_close_line(); },
+                masks, m_logger, [&] { vis_close_line(); },
                 [&](std::string frag) {
                   page_out.vis_items.push_back(PathOut{std::move(frag)});
                 })) {
@@ -1943,7 +1942,7 @@ public:
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       const pdf::Page &page = *pages[pi];
       for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
-               page_streams[pi], *page.resources, *m_logger))) {
+               page_streams[pi], *page.resources, m_logger))) {
         const auto *text = std::get_if<pdf::TextElement>(&element);
         if (text == nullptr || text->text.empty() || text->font == nullptr) {
           continue;
@@ -2018,10 +2017,10 @@ public:
       const auto close_line = [&] { cur_line = -1; };
 
       for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
-               page_streams[pi], *page.resources, *m_logger))) {
+               page_streams[pi], *page.resources, m_logger))) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                masks, *m_logger, [&] { close_line(); },
+                masks, m_logger, [&] { close_line(); },
                 [&](std::string frag) {
                   page_out.items.push_back(SinglePathOut{std::move(frag)});
                 })) {
@@ -2710,7 +2709,7 @@ public:
                          const util::math::Transform2D &to_box, double width,
                          double height, ClipRegistry &clips,
                          GradientRegistry &gradients, PatternRegistry &patterns,
-                         MaskRegistry &masks, Logger &logger,
+                         MaskRegistry &masks, const Logger &logger,
                          CloseLine &&close_line, PushSvg &&push_svg) {
     // Text is handled by the caller; every other element kind is a graphic.
     if (std::holds_alternative<pdf::TextElement>(element)) {
@@ -2750,10 +2749,9 @@ namespace odr::internal {
 
 HtmlService html::create_pdf_service(const PdfFile &pdf_file,
                                      const std::string & /*cache_path*/,
-                                     HtmlConfig config,
-                                     std::shared_ptr<Logger> logger) {
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      pdf_file, std::move(config), std::move(logger)));
+                                     HtmlConfig config, const Logger &logger) {
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(pdf_file, std::move(config), logger));
 }
 
 } // namespace odr::internal

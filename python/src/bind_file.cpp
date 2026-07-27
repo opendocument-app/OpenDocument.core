@@ -4,6 +4,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/logger.hpp>
 
 #include <pybind11/stl.h>
 
@@ -134,10 +135,13 @@ void odr_python::bind_file(py::module_ &m) {
       .def("copy", &odr::File::copy, py::arg("path"));
 
   py::class_<odr::DecodedFile>(m, "DecodedFile")
-      .def(py::init<const odr::File &>(), py::arg("file"))
-      .def(py::init<const std::string &>(), py::arg("path"))
-      .def(py::init<const std::string &, odr::FileType>(), py::arg("path"),
-           py::arg("as_type"))
+      .def(py::init<const odr::File &, const odr::Logger &>(), py::arg("file"),
+           py::arg("logger") = odr::Logger::null())
+      .def(py::init<const std::string &, const odr::Logger &>(),
+           py::arg("path"), py::arg("logger") = odr::Logger::null())
+      .def(py::init<const std::string &, odr::FileType, const odr::Logger &>(),
+           py::arg("path"), py::arg("as_type"),
+           py::arg("logger") = odr::Logger::null())
       .def("file", &odr::DecodedFile::file)
       .def("file_type", &odr::DecodedFile::file_type)
       .def("file_category", &odr::DecodedFile::file_category)

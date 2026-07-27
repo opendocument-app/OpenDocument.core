@@ -35,6 +35,7 @@ pybind11_add_module(pyodr_core
         "src/bind_document.cpp"
         "src/bind_file.cpp"
         "src/bind_html.cpp"
+        "src/bind_logger.cpp"
         "${ODR_PYTHON_HTTP_SERVER_SOURCE}"
         "src/bind_style.cpp"
 )

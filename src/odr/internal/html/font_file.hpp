@@ -18,7 +18,6 @@ namespace odr::internal::html {
 /// the uniform PUA re-encode.
 HtmlService create_font_service(const FontFile &font_file,
                                 const std::string &cache_path,
-                                HtmlConfig config,
-                                std::shared_ptr<Logger> logger);
+                                HtmlConfig config, const Logger &logger);
 
 } // namespace odr::internal::html

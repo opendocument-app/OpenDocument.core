@@ -25,7 +25,7 @@ public:
 
 private:
   ObjectParser m_parser;
-  const Logger *m_logger{nullptr};
+  Logger m_logger;
 
   [[nodiscard]] Token read_token();
 

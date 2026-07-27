@@ -15,7 +15,7 @@ TEST(html, views) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/ods/Senza nome 1.ods"), *logger);
+      TestData::test_file_path("odr-public/ods/Senza nome 1.ods"), logger);
 
   const Document document = document_file.document();
 

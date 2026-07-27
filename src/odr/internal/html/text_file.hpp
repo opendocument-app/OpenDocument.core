@@ -14,7 +14,6 @@ namespace odr::internal::html {
 
 HtmlService create_text_service(const TextFile &text_file,
                                 const std::string &cache_path,
-                                HtmlConfig config,
-                                std::shared_ptr<Logger> logger);
+                                HtmlConfig config, const Logger &logger);
 
 }

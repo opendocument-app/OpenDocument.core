@@ -11,7 +11,7 @@ using namespace odr;
 
 int main(int, char **argv) {
   try {
-    const std::shared_ptr logger =
+    const Logger logger =
         Logger::create_stdio("odr-back-translate", LogLevel::verbose);
 
     const std::string input{argv[1]};
@@ -21,7 +21,7 @@ int main(int, char **argv) {
     const DocumentFile document_file{input};
 
     if (document_file.password_encrypted()) {
-      ODR_FATAL(*logger, "encrypted documents are not supported");
+      ODR_FATAL(logger, "encrypted documents are not supported");
       return 1;
     }
 

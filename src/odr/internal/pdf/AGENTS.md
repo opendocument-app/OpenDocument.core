@@ -97,8 +97,9 @@ is caught once and the file is forward-scanned to rebuild a synthetic xref
 header) before giving up.
 
 **Diagnostics route through `Logger`.** `DocumentParser` and `extract_text` take a
-`Logger &` (default `Logger::null()`); no stray `stdout`/`stderr` remains — new
-diagnostics follow the same pattern.
+`const Logger &` (default `Logger::null()`); no stray `stdout`/`stderr` remains —
+new diagnostics follow the same pattern. `Logger` is a value handle, so parsers
+store it by value and never dangle.
 
 **Encryption: the derived key is never retained.** The empty password is tried
 first (user then owner), so owner-locked files open transparently. Once

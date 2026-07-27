@@ -196,7 +196,7 @@ static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 GraphicsOperatorParser::GraphicsOperatorParser(std::istream &in,
                                                const Logger &logger)
-    : m_parser(in), m_logger{&logger} {}
+    : m_parser(in), m_logger{logger} {}
 
 std::istream &GraphicsOperatorParser::in() { return m_parser.in(); }
 
@@ -260,7 +260,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
 
   result.type = operator_name_to_type(operator_name);
   if (result.type == GraphicsOperatorType::unknown) {
-    ODR_DEBUG(*m_logger,
+    ODR_DEBUG(m_logger,
               "pdf: unknown graphics operator '" + operator_name + "'");
   }
 

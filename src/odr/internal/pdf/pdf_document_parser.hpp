@@ -123,7 +123,7 @@ private:
 
   std::unique_ptr<std::istream> m_stream;
   FileParser m_parser;
-  const Logger *m_logger{nullptr};
+  Logger m_logger;
 
   Xref m_xref;
   Dictionary m_trailer;
