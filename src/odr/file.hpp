@@ -195,21 +195,23 @@ protected:
 class DecodedFile {
 public:
   [[nodiscard]] static std::vector<FileType>
-  list_file_types(const std::string &path, Logger &logger = Logger::null());
+  list_file_types(const std::string &path,
+                  const Logger &logger = Logger::null());
   [[nodiscard]] static std::vector<DecoderEngine>
   list_decoder_engines(FileType as);
   [[nodiscard]] static std::string_view
-  mimetype(const std::string &path, Logger &logger = Logger::null());
+  mimetype(const std::string &path, const Logger &logger = Logger::null());
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
-  explicit DecodedFile(const File &file, Logger &logger = Logger::null());
-  DecodedFile(const File &file, FileType as, Logger &logger = Logger::null());
+  explicit DecodedFile(const File &file, const Logger &logger = Logger::null());
+  DecodedFile(const File &file, FileType as,
+              const Logger &logger = Logger::null());
   explicit DecodedFile(const std::string &path,
-                       Logger &logger = Logger::null());
+                       const Logger &logger = Logger::null());
   DecodedFile(const std::string &path, FileType as,
-              Logger &logger = Logger::null());
+              const Logger &logger = Logger::null());
   DecodedFile(const std::string &path, const DecodePreference &preference,
-              Logger &logger = Logger::null());
+              const Logger &logger = Logger::null());
 
   [[nodiscard]] File file() const;
 
@@ -286,7 +288,7 @@ public:
 
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
   explicit DocumentFile(const std::string &path,
-                        Logger &logger = Logger::null());
+                        const Logger &logger = Logger::null());
 
   [[nodiscard]] DocumentType document_type() const;
   [[nodiscard]] DocumentMeta document_meta() const;

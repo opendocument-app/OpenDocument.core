@@ -35,11 +35,10 @@ Element find_paragraph_with_text_prefix(const Element root,
 } // namespace
 
 TEST(Document, odt) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/about.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/about.odt"), logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
 
@@ -58,11 +57,10 @@ TEST(Document, odt) {
 }
 
 TEST(Document, odt_element_path) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/about.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/about.odt"), logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
 
@@ -82,11 +80,10 @@ TEST(Document, odt_element_path) {
 }
 
 TEST(Document, odt_element_path2) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"), logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
 
@@ -103,11 +100,10 @@ TEST(Document, odt_element_path2) {
 }
 
 TEST(Document, odt_text_position) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"), logger);
   const Document document = document_file.document();
   const Element root = document.root_element();
 
@@ -131,12 +127,10 @@ TEST(Document, odt_text_position) {
 }
 
 TEST(Document, odt_line_height_and_text_indent) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/file-sample_100kB.odt"),
-      *logger);
+      TestData::test_file_path("odr-public/odt/file-sample_100kB.odt"), logger);
   const Document document = document_file.document();
   const Element root = document.root_element();
 
@@ -151,11 +145,10 @@ TEST(Document, odt_line_height_and_text_indent) {
 }
 
 TEST(Document, odg) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odg/sample.odg"), *logger);
+      TestData::test_file_path("odr-public/odg/sample.odg"), logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_graphics);
 
@@ -175,11 +168,10 @@ TEST(Document, odg) {
 }
 
 TEST(Document, edit_odt) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/about.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/about.odt"), logger);
   const Document document = document_file.document();
 
   std::function<void(Element)> edit = [&](const Element &element) {
@@ -212,12 +204,10 @@ TEST(Document, edit_odt) {
 }
 
 TEST(Document, edit_docx) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/docx/style-various-1.docx"),
-      *logger);
+      TestData::test_file_path("odr-public/docx/style-various-1.docx"), logger);
   const Document document = document_file.document();
 
   std::function<void(Element)> edit = [&](const Element &element) {
@@ -250,13 +240,12 @@ TEST(Document, edit_docx) {
 }
 
 TEST(Document, edit_odt_diff) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const char *diff =
       R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/odt/style-various-1.odt"), *logger);
+      TestData::test_file_path("odr-public/odt/style-various-1.odt"), logger);
   const Document document = document_file.document();
 
   html::edit(document, diff);
@@ -286,13 +275,12 @@ TEST(Document, edit_odt_diff) {
 }
 
 TEST(Document, edit_ods_diff) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const char *diff =
       R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
   DocumentFile document_file(
-      TestData::test_file_path("odr-public/ods/pages.ods"), *logger);
+      TestData::test_file_path("odr-public/ods/pages.ods"), logger);
   document_file = document_file.decrypt(
       TestData::test_file("odr-public/ods/pages.ods").password.value());
   const Document document = document_file.document();
@@ -333,14 +321,12 @@ TEST(Document, edit_ods_diff) {
 }
 
 TEST(Document, edit_docx_diff) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const auto *diff =
       R"({"modifiedText":{"/child:16/child:0/child:0":"Outasdfsdafdline","/child:24/child:0/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0/child:0":"Text hello world!"}})";
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/docx/style-various-1.docx"),
-      *logger);
+      TestData::test_file_path("odr-public/docx/style-various-1.docx"), logger);
   const Document document = document_file.document();
 
   html::edit(document, diff);

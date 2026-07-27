@@ -14,8 +14,7 @@ using namespace odr;
 
 int main(const int argc, char **argv) {
   try {
-    const std::shared_ptr logger =
-        Logger::create_stdio("odr-server", LogLevel::verbose);
+    const Logger logger = Logger::create_stdio("odr-server", LogLevel::verbose);
 
     std::string input{argv[1]};
 
@@ -27,17 +26,17 @@ int main(const int argc, char **argv) {
     DecodePreference decode_preference;
     decode_preference.as_file_type = FileType::zip;
 
-    DecodedFile decoded_file{input, decode_preference, *logger};
+    DecodedFile decoded_file{input, decode_preference, logger};
 
     if (decoded_file.password_encrypted()) {
       if (!password) {
-        ODR_FATAL(*logger, "document encrypted but no password given");
+        ODR_FATAL(logger, "document encrypted but no password given");
         return 2;
       }
       try {
         decoded_file = decoded_file.decrypt(*password);
       } catch (const WrongPasswordError &) {
-        ODR_FATAL(*logger, "wrong password");
+        ODR_FATAL(logger, "wrong password");
         return 1;
       }
     }
@@ -71,9 +70,9 @@ int main(const int argc, char **argv) {
           html::translate(decoded_file, prefix_cache_path, html_config, logger);
       server.connect_service(service, prefix);
       const HtmlViews views = service.list_views();
-      ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
+      ODR_INFO(logger, "hosted decoded file with id: " << prefix);
       for (const auto &view : views) {
-        ODR_INFO(*logger, base_url << "/file/" << prefix << "/" << view.path());
+        ODR_INFO(logger, base_url << "/file/" << prefix << "/" << view.path());
       }
     }
 
@@ -90,9 +89,9 @@ int main(const int argc, char **argv) {
       const HtmlService filesystem_service =
           html::translate(filesystem, prefix_cache_path, html_config, logger);
       server.connect_service(filesystem_service, prefix);
-      ODR_INFO(*logger, "hosted filesystem with id: " << prefix);
+      ODR_INFO(logger, "hosted filesystem with id: " << prefix);
       for (const auto &view : filesystem_service.list_views()) {
-        ODR_INFO(*logger, base_url << "/file/" << prefix << "/" << view.path());
+        ODR_INFO(logger, base_url << "/file/" << prefix << "/" << view.path());
       }
     }
 

@@ -60,9 +60,9 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   const FileCategory file_category = file_category_by_file_type(test_file.type);
 
-  ODR_INFO(*logger, "Testing file: " << test_file.short_path << " with engine: "
-                                     << odr::decoder_engine_to_string(engine)
-                                     << " output to: " << output_path);
+  ODR_INFO(logger, "Testing file: " << test_file.short_path << " with engine: "
+                                    << odr::decoder_engine_to_string(engine)
+                                    << " output to: " << output_path);
 
   // these files cannot be opened
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
@@ -74,7 +74,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
   decode_preference.with_engine = engine;
-  DecodedFile file = open(test_file.absolute_path, decode_preference, *logger);
+  DecodedFile file = open(test_file.absolute_path, decode_preference, logger);
 
   FileMeta file_meta = file.file_meta();
 

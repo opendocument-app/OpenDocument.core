@@ -1305,15 +1305,14 @@ std::unique_ptr<Document> parse_document_impl(DocumentParser &parser,
 DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
                                std::optional<Decryptor> decryptor,
                                const Logger &logger)
-    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{&logger} {
+    : m_stream(std::move(in)), m_parser(*m_stream), m_logger{logger} {
   try {
     auto [xref, trailer] = read_trailer_chain();
     m_xref = std::move(xref);
     m_trailer = std::move(trailer);
   } catch (const std::exception &e) {
-    ODR_WARNING(*m_logger, "pdf: cross-reference parsing failed ("
-                               << e.what()
-                               << "), scanning the file to recover");
+    ODR_WARNING(m_logger, "pdf: cross-reference parsing failed ("
+                              << e.what() << "), scanning the file to recover");
     recover_xref();
   }
 
@@ -1359,7 +1358,7 @@ std::istream &DocumentParser::in() { return m_parser.in(); }
 
 FileParser &DocumentParser::parser() { return m_parser; }
 
-const Logger &DocumentParser::logger() const { return *m_logger; }
+const Logger &DocumentParser::logger() const { return m_logger; }
 
 const Xref &DocumentParser::xref() const { return m_xref; }
 
@@ -1401,9 +1400,9 @@ DocumentParser::read_object(const ObjectReference &reference) {
 
   const auto entry_it = m_xref.table.find(reference);
   if (entry_it == std::end(m_xref.table)) {
-    ODR_WARNING(*m_logger, "pdf: object " << reference
-                                          << " not in cross-reference table, "
-                                             "treating as null");
+    ODR_WARNING(m_logger, "pdf: object " << reference
+                                         << " not in cross-reference table, "
+                                            "treating as null");
   } else if (const Xref::Entry &entry = entry_it->second; entry.is_used()) {
     in().seekg(entry.as_used().position);
     object = parser().read_indirect_object();
@@ -1425,16 +1424,16 @@ DocumentParser::read_object(const ObjectReference &reference) {
       throw std::runtime_error("object stream member index out of range");
     }
     if (members[index].id != reference.id) {
-      ODR_WARNING(*m_logger, "pdf: object stream "
-                                 << stream_id << " member " << index
-                                 << " has id " << members[index].id
-                                 << ", expected " << reference.id);
+      ODR_WARNING(m_logger, "pdf: object stream "
+                                << stream_id << " member " << index
+                                << " has id " << members[index].id
+                                << ", expected " << reference.id);
     }
     object.object = members[index].object;
   } else {
-    ODR_WARNING(*m_logger, "pdf: reference " << reference
-                                             << " to freed object, treating "
-                                                "as null");
+    ODR_WARNING(m_logger, "pdf: reference " << reference
+                                            << " to freed object, treating "
+                                               "as null");
   }
 
   return m_objects.emplace(reference, std::move(object)).first->second;
@@ -1577,8 +1576,8 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
   }
   if (!dictionary.get("Type").is_name() ||
       dictionary["Type"].as_name() != "XRef") {
-    ODR_WARNING(*m_logger, "pdf: cross-reference stream at "
-                               << position << " is not marked /Type /XRef");
+    ODR_WARNING(m_logger, "pdf: cross-reference stream at "
+                              << position << " is not marked /Type /XRef");
   }
 
   // `/Filter`, `/DecodeParms` and `/Length` are required to be direct in
@@ -1722,7 +1721,7 @@ void DocumentParser::recover_root() {
       const Dictionary &dictionary = object.object.as_dictionary();
       if (dictionary.get("Type").is_name() &&
           dictionary["Type"].as_name() == "Catalog") {
-        ODR_WARNING(*m_logger, "pdf: recovered document catalog " << reference);
+        ODR_WARNING(m_logger, "pdf: recovered document catalog " << reference);
         m_trailer["Root"] = Object(reference);
         return;
       }
@@ -1730,7 +1729,7 @@ void DocumentParser::recover_root() {
       // skip objects that fail to read during the catalog search
     }
   }
-  ODR_WARNING(*m_logger, "pdf: recovery found no document catalog");
+  ODR_WARNING(m_logger, "pdf: recovery found no document catalog");
 }
 
 std::unique_ptr<Document> DocumentParser::parse_document() {
@@ -1743,9 +1742,8 @@ std::unique_ptr<Document> DocumentParser::parse_document() {
     if (m_recovered) {
       throw;
     }
-    ODR_WARNING(*m_logger, "pdf: building the document failed ("
-                               << e.what()
-                               << "), scanning the file to recover");
+    ODR_WARNING(m_logger, "pdf: building the document failed ("
+                              << e.what() << "), scanning the file to recover");
     recover_xref();
     return parse_document_impl(*this, m_trailer);
   }

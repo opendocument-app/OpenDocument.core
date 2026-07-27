@@ -91,6 +91,11 @@ public final class Odr {
     return new DecodedFile(openNative(path));
   }
 
+  /** Opens and decodes a file, reporting diagnostics to {@code logger}. */
+  public static DecodedFile open(String path, Logger logger) {
+    return new DecodedFile(openWithLoggerNative(path, logger.handle()));
+  }
+
   /** Opens and decodes a file as the given file type. */
   public static DecodedFile open(String path, FileType as) {
     return new DecodedFile(openAsNative(path, as.toNative()));
@@ -132,6 +137,8 @@ public final class Odr {
   private static native int[] listDecoderEnginesNative(int as);
 
   private static native long openNative(String path);
+
+  private static native long openWithLoggerNative(String path, long logger);
 
   private static native long openAsNative(String path, int as);
 

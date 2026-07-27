@@ -66,11 +66,10 @@ TEST(OldMs, ppt_parse_style_text_prop_atom) {
 }
 
 TEST(OldMs, ppt_empty) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/ppt/empty.ppt"), *logger);
+      TestData::test_file_path("odr-public/ppt/empty.ppt"), logger);
 
   EXPECT_EQ(document_file.file_type(),
             FileType::legacy_powerpoint_presentation);
@@ -87,11 +86,10 @@ TEST(OldMs, ppt_empty) {
 }
 
 TEST(OldMs, ppt_style_various) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/ppt/style-various-1.ppt"), *logger);
+      TestData::test_file_path("odr-public/ppt/style-various-1.ppt"), logger);
 
   EXPECT_EQ(document_file.file_type(),
             FileType::legacy_powerpoint_presentation);

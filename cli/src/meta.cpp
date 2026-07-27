@@ -11,8 +11,7 @@ using namespace odr;
 
 int main(const int argc, char **argv) {
   try {
-    const std::shared_ptr logger =
-        Logger::create_stdio("odr-meta", LogLevel::verbose);
+    const Logger logger = Logger::create_stdio("odr-meta", LogLevel::verbose);
 
     const std::string input{argv[1]};
 
@@ -25,13 +24,13 @@ int main(const int argc, char **argv) {
 
     if (document_file.password_encrypted()) {
       if (!password) {
-        ODR_FATAL(*logger, "document encrypted but no password given");
+        ODR_FATAL(logger, "document encrypted but no password given");
         return 2;
       }
       try {
         document_file = document_file.decrypt(*password);
       } catch (const WrongPasswordError &) {
-        ODR_FATAL(*logger, "wrong password");
+        ODR_FATAL(logger, "wrong password");
         return 1;
       }
     }

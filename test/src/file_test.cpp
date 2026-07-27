@@ -17,7 +17,7 @@ TEST(DecodedFile, wpd) {
   const auto path =
       TestData::test_file_path("odr-public/wpd/Sync3 Sample Page.wpd");
   try {
-    DecodedFile file(path, *logger);
+    DecodedFile file(path, logger);
     FAIL();
   } catch (const UnsupportedFileType &e) {
     EXPECT_EQ(e.file_type, FileType::word_perfect);

@@ -301,11 +301,10 @@ TEST(OldMs, xls_palette_record) {
 }
 
 TEST(OldMs, xls_empty) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
-      TestData::test_file_path("odr-public/xls/empty.xls"), *logger);
+      TestData::test_file_path("odr-public/xls/empty.xls"), logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::legacy_excel_worksheets);
 
@@ -326,12 +325,11 @@ TEST(OldMs, xls_empty) {
 }
 
 TEST(OldMs, xls_file_example_10) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/xls/file_example_XLS_10.xls"),
-      *logger);
+      logger);
 
   EXPECT_EQ(document_file.file_type(), FileType::legacy_excel_worksheets);
 
@@ -371,12 +369,11 @@ TEST(OldMs, xls_file_example_10) {
 // The 5000-row variant has a shared string table well beyond the 8224-byte
 // record limit, so it exercises the SST CONTINUE handling on a real file.
 TEST(OldMs, xls_file_example_5000) {
-  const std::unique_ptr logger =
-      Logger::create_stdio("odr-test", LogLevel::verbose);
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file(
       TestData::test_file_path("odr-public/xls/file_example_XLS_5000.xls"),
-      *logger);
+      logger);
 
   const Document document = document_file.document();
 

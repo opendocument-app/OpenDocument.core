@@ -16,8 +16,8 @@ namespace {
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(Filesystem filesystem, HtmlConfig config,
-                  std::shared_ptr<Logger> logger)
-      : HtmlService(std::move(config), std::move(logger)),
+                  const Logger &logger)
+      : HtmlService(std::move(config), logger),
         m_filesystem{std::move(filesystem)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "files", 0, "files.html"));
@@ -150,9 +150,9 @@ namespace odr::internal {
 HtmlService html::create_filesystem_service(const Filesystem &filesystem,
                                             const std::string & /*cache_path*/,
                                             HtmlConfig config,
-                                            std::shared_ptr<Logger> logger) {
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      filesystem, std::move(config), std::move(logger)));
+                                            const Logger &logger) {
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(filesystem, std::move(config), logger));
 }
 
 } // namespace odr::internal

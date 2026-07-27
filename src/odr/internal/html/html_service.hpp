@@ -9,7 +9,7 @@ namespace odr::internal::html {
 
 class HtmlService : public abstract::HtmlService {
 public:
-  HtmlService(HtmlConfig config, std::shared_ptr<Logger> logger);
+  HtmlService(HtmlConfig config, const Logger &logger);
 
   [[nodiscard]] const HtmlConfig &config() const override;
 
@@ -17,7 +17,7 @@ private:
   HtmlConfig m_config;
 
 protected:
-  std::shared_ptr<Logger> m_logger;
+  Logger m_logger;
 };
 
 class HtmlView : public abstract::HtmlView {

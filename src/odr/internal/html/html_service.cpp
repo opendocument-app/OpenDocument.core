@@ -6,8 +6,8 @@
 
 namespace odr::internal::html {
 
-HtmlService::HtmlService(HtmlConfig config, std::shared_ptr<Logger> logger)
-    : m_config{std::move(config)}, m_logger{std::move(logger)} {}
+HtmlService::HtmlService(HtmlConfig config, const Logger &logger)
+    : m_config{std::move(config)}, m_logger{logger} {}
 
 const HtmlConfig &HtmlService::config() const { return m_config; }
 

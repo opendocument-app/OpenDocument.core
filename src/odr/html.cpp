@@ -207,30 +207,24 @@ void HtmlResource::write_resource(std::ostream &os) const {
 
 HtmlService html::translate(const DecodedFile &file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   if (file.is_text_file()) {
-    return translate(file.as_text_file(), cache_path, config,
-                     std::move(logger));
+    return translate(file.as_text_file(), cache_path, config, logger);
   }
   if (file.is_image_file()) {
-    return translate(file.as_image_file(), cache_path, config,
-                     std::move(logger));
+    return translate(file.as_image_file(), cache_path, config, logger);
   }
   if (file.is_archive_file()) {
-    return translate(file.as_archive_file(), cache_path, config,
-                     std::move(logger));
+    return translate(file.as_archive_file(), cache_path, config, logger);
   }
   if (file.is_document_file()) {
-    return translate(file.as_document_file(), cache_path, config,
-                     std::move(logger));
+    return translate(file.as_document_file(), cache_path, config, logger);
   }
   if (file.is_pdf_file()) {
-    return translate(file.as_pdf_file(), cache_path, config, std::move(logger));
+    return translate(file.as_pdf_file(), cache_path, config, logger);
   }
   if (file.is_font_file()) {
-    return translate(file.as_font_file(), cache_path, config,
-                     std::move(logger));
+    return translate(file.as_font_file(), cache_path, config, logger);
   }
 
   throw UnsupportedFileType(file.file_type());
@@ -263,83 +257,71 @@ HtmlResourceLocator html::standard_resource_locator() {
 
 HtmlService html::translate(const TextFile &text_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   std::filesystem::create_directories(cache_path);
   return internal::html::create_text_service(text_file, cache_path, config,
-                                             std::move(logger));
+                                             logger);
 }
 
 HtmlService html::translate(const ImageFile &image_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   std::filesystem::create_directories(cache_path);
   return internal::html::create_image_service(image_file, cache_path, config,
-                                              std::move(logger));
+                                              logger);
 }
 
 HtmlService html::translate(const ArchiveFile &archive_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
-  return translate(archive_file.archive(), cache_path, config,
-                   std::move(logger));
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(archive_file.archive(), cache_path, config, logger);
 }
 
 HtmlService html::translate(const DocumentFile &document_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
-  return translate(document_file.document(), cache_path, config,
-                   std::move(logger));
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(document_file.document(), cache_path, config, logger);
 }
 
 HtmlService html::translate(const PdfFile &pdf_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   return internal::html::create_pdf_service(pdf_file, cache_path, config,
-                                            std::move(logger));
+                                            logger);
 }
 
 HtmlService html::translate(const FontFile &font_file,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   std::filesystem::create_directories(cache_path);
   return internal::html::create_font_service(font_file, cache_path, config,
-                                             std::move(logger));
+                                             logger);
 }
 
 HtmlService html::translate(const Filesystem &filesystem,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   std::filesystem::create_directories(cache_path);
   return internal::html::create_filesystem_service(filesystem, cache_path,
-                                                   config, std::move(logger));
+                                                   config, logger);
 }
 
 HtmlService html::translate(const Archive &archive,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
-  return translate(archive.as_filesystem(), cache_path, config,
-                   std::move(logger));
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(archive.as_filesystem(), cache_path, config, logger);
 }
 
 HtmlService html::translate(const Document &document,
                             const std::string &cache_path,
-                            const HtmlConfig &config,
-                            std::shared_ptr<Logger> logger) {
+                            const HtmlConfig &config, const Logger &logger) {
   std::filesystem::create_directories(cache_path);
   return internal::html::create_document_service(document, cache_path, config,
-                                                 std::move(logger));
+                                                 logger);
 }
 
 void html::edit(const Document &document, const char *diff,
-                Logger & /*logger*/) {
+                const Logger & /*logger*/) {
   const nlohmann::json json = nlohmann::json::parse(diff);
   for (const auto &[key, value] : json["modifiedText"].items()) {
     const Element element =

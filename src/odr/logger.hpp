@@ -25,43 +25,63 @@ struct LogFormat {
   std::size_t location_width{20};
 };
 
-class Logger {
+/// @brief Interface for a log sink. Implement to route logging elsewhere and
+/// hand it to `Logger`.
+///
+/// `Logger` gates on `will_log` before calling `log`, so implementations may
+/// assume the level reaching `log` is enabled.
+class ILogger {
 public:
   using Clock = std::chrono::system_clock;
   using Time = Clock::time_point;
 
-  static Logger &null();
-  static std::unique_ptr<Logger> create_null();
-  static std::unique_ptr<Logger>
-  create_stdio(const std::string &name, LogLevel level,
-               const LogFormat &format = LogFormat(),
-               std::unique_ptr<std::ostream> output = nullptr);
-  static std::unique_ptr<Logger>
-  create_tee(const std::vector<std::shared_ptr<Logger>> &loggers);
+  virtual ~ILogger() = default;
+
+  [[nodiscard]] virtual bool will_log(LogLevel level) const = 0;
+
+  virtual void log(Time time, LogLevel level, const std::string &message,
+                   const std::source_location &location) = 0;
+
+  virtual void flush() = 0;
+};
+
+/// @brief Handle to a log sink.
+///
+/// Copies share the sink. Implement @ref ILogger for a custom one.
+class Logger final {
+public:
+  using Clock = ILogger::Clock;
+  using Time = ILogger::Time;
+
+  /// @brief A logger discarding everything. All instances share one sink.
+  static Logger null();
+  static Logger create_stdio(const std::string &name, LogLevel level,
+                             const LogFormat &format = LogFormat(),
+                             std::unique_ptr<std::ostream> output = nullptr);
+  /// @throws std::invalid_argument if @p loggers is empty.
+  static Logger create_tee(const std::vector<Logger> &loggers);
 
   static void print_head(std::ostream &out, Time time, LogLevel level,
                          const std::string &name,
                          const std::source_location &location,
                          const LogFormat &format);
 
-  virtual ~Logger() = default;
+  /// @brief Constructs the null logger.
+  Logger();
+  explicit Logger(std::shared_ptr<ILogger> impl);
 
-  [[nodiscard]] virtual bool will_log(LogLevel level) const = 0;
+  [[nodiscard]] bool will_log(LogLevel level) const;
 
-  void log(const LogLevel level, const std::string &message,
-           const Time time = Clock::now(),
+  void log(LogLevel level, const std::string &message, Time time = Clock::now(),
            const std::source_location &location =
-               std::source_location::current()) const {
-    if (will_log(level)) {
-      log_impl(time, level, message, location);
-    }
-  }
+               std::source_location::current()) const;
 
-  virtual void flush() = 0;
+  void flush() const;
 
-protected:
-  virtual void log_impl(Time time, LogLevel level, const std::string &message,
-                        const std::source_location &location) const = 0;
+  [[nodiscard]] std::shared_ptr<ILogger> impl() const;
+
+private:
+  std::shared_ptr<ILogger> m_impl;
 };
 
 } // namespace odr

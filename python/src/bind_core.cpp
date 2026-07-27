@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/global_params.hpp>
+#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
 #include <pybind11/stl.h>
@@ -93,29 +94,41 @@ void odr_python::bind_functions(py::module_ &m) {
 
   m.def(
       "list_file_types",
-      [](const std::string &path) { return odr::list_file_types(path); },
-      py::arg("path"), "Determine the possible file types of a file.");
+      [](const std::string &path, const odr::Logger &logger) {
+        return odr::list_file_types(path, logger);
+      },
+      py::arg("path"), py::arg("logger") = odr::Logger::null(),
+      "Determine the possible file types of a file.");
   m.def("list_decoder_engines", &odr::list_decoder_engines, py::arg("as_type"));
   m.def(
       "mimetype",
-      [](const std::string &path) { return std::string(odr::mimetype(path)); },
-      py::arg("path"), "Determine the MIME type of a file.");
+      [](const std::string &path, const odr::Logger &logger) {
+        return std::string(odr::mimetype(path, logger));
+      },
+      py::arg("path"), py::arg("logger") = odr::Logger::null(),
+      "Determine the MIME type of a file.");
 
   m.def(
-      "open", [](const std::string &path) { return odr::open(path); },
-      py::arg("path"), "Open and decode a file.");
+      "open",
+      [](const std::string &path, const odr::Logger &logger) {
+        return odr::open(path, logger);
+      },
+      py::arg("path"), py::arg("logger") = odr::Logger::null(),
+      "Open and decode a file.");
   m.def(
       "open",
-      [](const std::string &path, const odr::FileType as) {
-        return odr::open(path, as);
-      },
+      [](const std::string &path, const odr::FileType as,
+         const odr::Logger &logger) { return odr::open(path, as, logger); },
       py::arg("path"), py::arg("as_type"),
+      py::arg("logger") = odr::Logger::null(),
       "Open and decode a file as a specific file type.");
   m.def(
       "open",
-      [](const std::string &path, const odr::DecodePreference &preference) {
-        return odr::open(path, preference);
+      [](const std::string &path, const odr::DecodePreference &preference,
+         const odr::Logger &logger) {
+        return odr::open(path, preference, logger);
       },
       py::arg("path"), py::arg("preference"),
+      py::arg("logger") = odr::Logger::null(),
       "Open and decode a file with a decode preference.");
 }

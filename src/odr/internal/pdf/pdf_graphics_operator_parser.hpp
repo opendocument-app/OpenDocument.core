@@ -39,7 +39,7 @@ private:
   read_inline_image_data(const Dictionary &dictionary);
 
   ObjectParser m_parser;
-  const Logger *m_logger{nullptr};
+  Logger m_logger;
 };
 
 } // namespace odr::internal::pdf

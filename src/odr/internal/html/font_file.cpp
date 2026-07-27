@@ -25,9 +25,8 @@ constexpr std::uint16_t max_grid_glyphs = 4096;
 
 class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlServiceImpl(FontFile font_file, HtmlConfig config,
-                  std::shared_ptr<Logger> logger)
-      : HtmlService(std::move(config), std::move(logger)),
+  HtmlServiceImpl(FontFile font_file, HtmlConfig config, const Logger &logger)
+      : HtmlService(std::move(config), logger),
         m_font_file{std::move(font_file)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "font", 0, "font.html"));
@@ -164,10 +163,9 @@ private:
 
 odr::HtmlService create_font_service(const FontFile &font_file,
                                      const std::string & /*cache_path*/,
-                                     HtmlConfig config,
-                                     std::shared_ptr<Logger> logger) {
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      font_file, std::move(config), std::move(logger)));
+                                     HtmlConfig config, const Logger &logger) {
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(font_file, std::move(config), logger));
 }
 
 } // namespace odr::internal::html

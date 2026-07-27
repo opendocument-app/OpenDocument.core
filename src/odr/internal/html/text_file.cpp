@@ -18,9 +18,8 @@ namespace {
 
 class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlServiceImpl(TextFile text_file, HtmlConfig config,
-                  std::shared_ptr<Logger> logger)
-      : HtmlService(std::move(config), std::move(logger)),
+  HtmlServiceImpl(TextFile text_file, HtmlConfig config, const Logger &logger)
+      : HtmlService(std::move(config), logger),
         m_text_file{std::move(text_file)} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "text", 0, "text.html"));
@@ -179,9 +178,9 @@ namespace odr::internal {
 HtmlService
 html::create_text_service(const TextFile &text_file,
                           [[maybe_unused]] const std::string &cache_path,
-                          HtmlConfig config, std::shared_ptr<Logger> logger) {
-  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
-      text_file, std::move(config), std::move(logger)));
+                          HtmlConfig config, const Logger &logger) {
+  return odr::HtmlService(
+      std::make_unique<HtmlServiceImpl>(text_file, std::move(config), logger));
 }
 
 } // namespace odr::internal

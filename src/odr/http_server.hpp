@@ -40,7 +40,7 @@ public:
   using Options = HttpServerOptions;
 
   explicit HttpServer(const Config &config = {},
-                      std::shared_ptr<Logger> logger = Logger::create_null());
+                      const Logger &logger = Logger::null());
 
   void connect_service(HtmlService service, const std::string &prefix) const;
 

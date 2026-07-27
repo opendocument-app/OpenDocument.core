@@ -20,7 +20,6 @@ void translate_image_src(const ImageFile &image_file, std::ostream &out,
 
 HtmlService create_image_service(const ImageFile &image_file,
                                  const std::string &cache_path,
-                                 HtmlConfig config,
-                                 std::shared_ptr<Logger> logger);
+                                 HtmlConfig config, const Logger &logger);
 
 } // namespace odr::internal::html

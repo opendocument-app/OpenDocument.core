@@ -50,7 +50,7 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
 
 std::vector<FileType>
 open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
-                               Logger &logger) {
+                               const Logger &logger) {
   std::vector<FileType> result;
 
   auto file_type = magic::file_type(*file);
@@ -147,7 +147,7 @@ std::vector<DecoderEngine> open_strategy::list_decoder_engines(const FileType) {
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         Logger &logger) {
+                         const Logger &logger) {
   auto file_type = magic::file_type(*file);
   ODR_VERBOSE(logger,
               "magic determined file type " << file_type_to_string(file_type));
@@ -256,7 +256,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         FileType as, Logger &logger) {
+                         FileType as, const Logger &logger) {
   DecodePreference preference;
   preference.as_file_type = as;
   return open_file(file, preference, logger);
@@ -264,7 +264,8 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         FileType as, DecoderEngine with, Logger &logger) {
+                         FileType as, DecoderEngine with,
+                         const Logger &logger) {
   if (as == FileType::opendocument_text ||
       as == FileType::opendocument_presentation ||
       as == FileType::opendocument_spreadsheet ||
@@ -490,7 +491,8 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         const DecodePreference &preference, Logger &logger) {
+                         const DecodePreference &preference,
+                         const Logger &logger) {
   std::vector<FileType> probe_types;
   if (preference.as_file_type.has_value()) {
     ODR_VERBOSE(logger, "using preferred file type "
@@ -551,7 +553,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
 std::unique_ptr<abstract::DocumentFile>
 open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
-                                  Logger &logger) {
+                                  const Logger &logger) {
   auto file_type = magic::file_type(*file);
   ODR_VERBOSE(logger,
               "magic determined file type " << file_type_to_string(file_type));

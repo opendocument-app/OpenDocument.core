@@ -37,8 +37,15 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   never JNI's modified-UTF-8 `GetStringUTFChars`.
 - **Exceptions**: every native body runs inside `odr_jni::guarded`; C++
   exceptions map to `OdrException` subclasses (`odr_jni.cpp::throw_java`).
-- Mirror the C++ names; drop the `Logger` parameters (bindings use the default
-  null logger).
+- Mirror the C++ names. `Logger` is bound as a `NativeResource`; entry points
+  that take one get an overload (e.g. `Odr.open(path, logger)`).
+- `ILogger` is implementable in Java. `jni_logger.cpp`'s `JavaLogger` holds a
+  global ref to the sink and routes calls through the package-private
+  `LoggerBridge` statics, so only three method handles need caching. Log calls
+  arrive on whatever thread the library works on, so it attaches via `ScopedEnv`
+  and detaches again; an exception thrown by the sink is described and cleared
+  rather than left pending, since a logger must not derail the operation it
+  reports on.
 - Stream-based C++ APIs (`write`, `save`, `pipe`) are bound as natives
   returning `byte[]`/`String` via `std::ostringstream`.
 - **Not bound**: `HtmlConfig::resource_locator` (function pointer across JNI);

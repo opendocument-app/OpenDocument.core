@@ -4,6 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
@@ -170,26 +171,28 @@ void odr_python::bind_html(py::module_ &m) {
   html.def(
       "translate",
       [](const odr::DecodedFile &file, const std::string &cache_path,
-         const odr::HtmlConfig &config) {
-        return odr::html::translate(file, cache_path, config);
+         const odr::HtmlConfig &config, const odr::Logger &logger) {
+        return odr::html::translate(file, cache_path, config, logger);
       },
       py::arg("file"), py::arg("cache_path"), py::arg("config"),
+      py::arg("logger") = odr::Logger::null(),
       "Translate a decoded file to HTML.");
   html.def(
       "translate",
       [](const odr::Document &document, const std::string &cache_path,
-         const odr::HtmlConfig &config) {
-        return odr::html::translate(document, cache_path, config);
+         const odr::HtmlConfig &config, const odr::Logger &logger) {
+        return odr::html::translate(document, cache_path, config, logger);
       },
       py::arg("document"), py::arg("cache_path"), py::arg("config"),
-      "Translate a document to HTML.");
+      py::arg("logger") = odr::Logger::null(), "Translate a document to HTML.");
   html.def(
       "translate",
       [](const odr::Filesystem &filesystem, const std::string &cache_path,
-         const odr::HtmlConfig &config) {
-        return odr::html::translate(filesystem, cache_path, config);
+         const odr::HtmlConfig &config, const odr::Logger &logger) {
+        return odr::html::translate(filesystem, cache_path, config, logger);
       },
       py::arg("filesystem"), py::arg("cache_path"), py::arg("config"),
+      py::arg("logger") = odr::Logger::null(),
       "Translate a filesystem to HTML.");
 
   html.def(
