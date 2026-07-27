@@ -6,6 +6,7 @@
 #include <odr/http_server.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -41,8 +42,13 @@ int main(const int argc, char **argv) {
       }
     }
 
-    HttpServer::Config server_config;
-    HttpServer server(server_config);
+    const HttpServer server{HttpServer::Config{}, logger};
+
+    // the server does not own a cache any more, so the translation goes
+    // somewhere of our choosing
+    const std::filesystem::path cache_path =
+        std::filesystem::temp_directory_path() / "odr-server";
+    std::filesystem::remove_all(cache_path);
 
     // bind before anything is printed: the port is only known once the socket
     // is, and it is not necessarily the one that was asked for
@@ -58,8 +64,13 @@ int main(const int argc, char **argv) {
 
     {
       const std::string prefix = "file";
-      const HtmlViews views =
-          server.serve_file(decoded_file, prefix, html_config);
+      const std::string prefix_cache_path = (cache_path / prefix).string();
+      std::filesystem::create_directories(prefix_cache_path);
+
+      const HtmlService service =
+          html::translate(decoded_file, prefix_cache_path, html_config, logger);
+      server.connect_service(service, prefix);
+      const HtmlViews views = service.list_views();
       ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
       for (const auto &view : views) {
         ODR_INFO(*logger, base_url << "/file/" << prefix << "/" << view.path());
@@ -73,9 +84,11 @@ int main(const int argc, char **argv) {
               : decoded_file.as_archive_file().archive().as_filesystem();
 
       const std::string prefix = "filesystem";
+      const std::string prefix_cache_path = (cache_path / prefix).string();
+      std::filesystem::create_directories(prefix_cache_path);
+
       const HtmlService filesystem_service =
-          html::translate(filesystem, server_config.cache_path + "/" + prefix,
-                          html_config, logger);
+          html::translate(filesystem, prefix_cache_path, html_config, logger);
       server.connect_service(filesystem_service, prefix);
       ODR_INFO(*logger, "hosted filesystem with id: " << prefix);
       for (const auto &view : filesystem_service.list_views()) {

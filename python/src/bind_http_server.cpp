@@ -14,9 +14,12 @@ void odr_python::bind_http_server(py::module_ &m) {
   py::class_<odr::HttpServer> server(m, "HttpServer",
                                      "Serves translated files over HTTP.");
 
-  py::class_<odr::HttpServer::Config>(server, "Config")
-      .def(py::init<>())
-      .def_readwrite("cache_path", &odr::HttpServer::Config::cache_path);
+  py::class_<odr::HttpServer::Config>(
+      server, "Config",
+      "Server-wide settings. Empty since the cache path went with "
+      "`serve_file`: "
+      "what a service was translated into belongs to whoever translated it.")
+      .def(py::init<>());
 
   py::class_<odr::HttpServer::Options>(server, "Options",
                                        "Socket options for `bind`.")
@@ -29,13 +32,8 @@ void odr_python::bind_http_server(py::module_ &m) {
              return odr::HttpServer(config);
            }),
            py::arg("config"))
-      .def("config", &odr::HttpServer::config)
       .def("connect_service", &odr::HttpServer::connect_service,
            py::arg("service"), py::arg("prefix"))
-      .def("serve_file", &odr::HttpServer::serve_file, py::arg("file"),
-           py::arg("prefix"), py::arg("config"),
-           "Translate a decoded file and host it under "
-           "`/file/<prefix>/<view path>`; returns the views.")
       .def(
           "bind",
           [](const odr::HttpServer &self, const std::string &host,

@@ -59,15 +59,17 @@ class HttpServerTest {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
     assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
 
-    HttpServer.Config config = new HttpServer.Config();
-    config.cachePath = tempDir.resolve("server-cache").toString();
-    HttpServer server = new HttpServer(config);
+    HttpServer server = new HttpServer(new HttpServer.Config());
 
+    // the server hosts what it is given; translating is the caller's business
+    String cachePath = Files.createDirectories(tempDir.resolve("doc-cache")).toString();
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlConfig htmlConfig = new HtmlConfig();
     htmlConfig.embedImages = false;
     htmlConfig.relativeResourcePaths = false;
-    List<HtmlView> views = server.serveFile(file, "doc", htmlConfig);
+    HtmlService service = Html.translate(file, cachePath, htmlConfig);
+    server.connectService(service, "doc");
+    List<HtmlView> views = service.listViews();
     assertEquals(1, views.size());
 
     int port = server.bind("127.0.0.1", 0);
@@ -101,12 +103,10 @@ class HttpServerTest {
   }
 
   @Test
-  void bindReportsWhatItGot() throws IOException {
+  void bindReportsWhatItGot() {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
 
-    HttpServer.Config config = new HttpServer.Config();
-    config.cachePath = Files.createDirectories(tempDir.resolve("server-cache")).toString();
-    HttpServer server = new HttpServer(config);
+    HttpServer server = new HttpServer(new HttpServer.Config());
 
     // a literal address on purpose: "localhost" resolves to both ::1 and 127.0.0.1,
     // so a second bind would land on the other one instead of colliding
@@ -120,12 +120,10 @@ class HttpServerTest {
   }
 
   @Test
-  void listenWithoutBindThrows() throws IOException {
+  void listenWithoutBindThrows() {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
 
-    HttpServer.Config config = new HttpServer.Config();
-    config.cachePath = Files.createDirectories(tempDir.resolve("server-cache")).toString();
-    HttpServer server = new HttpServer(config);
+    HttpServer server = new HttpServer(new HttpServer.Config());
 
     // cpp-httplib reports success for this, hence the guard being tested
     assertThrows(RuntimeException.class, server::listen);

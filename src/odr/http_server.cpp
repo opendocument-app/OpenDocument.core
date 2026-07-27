@@ -7,15 +7,14 @@
 #include <httplib/httplib.h>
 
 #include <atomic>
-#include <filesystem>
 #include <sstream>
 
 namespace odr {
 
 class HttpServer::Impl {
 public:
-  Impl(Config config, std::shared_ptr<Logger> logger)
-      : m_config{std::move(config)}, m_logger{std::move(logger)},
+  explicit Impl(std::shared_ptr<Logger> logger)
+      : m_logger{std::move(logger)},
         m_server{std::make_unique<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
@@ -81,10 +80,6 @@ public:
   // Prevent copying - the lambdas capture 'this' so copying would be unsafe
   Impl(const Impl &) = delete;
   Impl &operator=(const Impl &) = delete;
-
-  const Config &config() const { return m_config; }
-
-  const std::shared_ptr<Logger> &logger() const { return m_logger; }
 
   void serve_file(const httplib::Request &req, httplib::Response &res) {
     try {
@@ -169,6 +164,14 @@ public:
       throw ServerAlreadyBound();
     }
 
+#ifdef _WIN32
+    // Windows keeps cpp-httplib's defaults, which set SO_EXCLUSIVEADDRUSE
+    // alongside SO_REUSEADDR. The two flags mean the opposite of what they do
+    // below: there SO_REUSEADDR lets a second live socket take the endpoint
+    // over, and SO_EXCLUSIVEADDRUSE is what keeps it ours. Replacing that with
+    // the posix mapping would hand the port away, so Options does not apply.
+    static_cast<void>(options);
+#else
     // cpp-httplib's default sets SO_REUSEPORT where it exists and SO_REUSEADDR
     // only otherwise, which is the wrong way round for a server that gets
     // restarted: only SO_REUSEADDR lets a port held by TIME_WAIT sockets be
@@ -188,6 +191,7 @@ public:
       }
 #endif
     });
+#endif
 
     const int bound =
         port == 0 ? m_server->bind_to_any_port(host)
@@ -218,16 +222,11 @@ public:
   }
 
   void clear() {
-    ODR_VERBOSE(*m_logger, "Clearing HTTP server cache...");
+    ODR_VERBOSE(*m_logger, "Dropping connected services...");
 
     std::unique_lock lock{m_mutex};
 
     m_content.clear();
-
-    for (const auto &entry :
-         std::filesystem::directory_iterator(m_config.cache_path)) {
-      std::filesystem::remove_all(entry.path());
-    }
   }
 
   void stop() {
@@ -254,8 +253,6 @@ public:
   }
 
 private:
-  Config m_config;
-
   std::shared_ptr<Logger> m_logger;
 
   // Flag to indicate server is shutting down - checked by handlers
@@ -283,12 +280,9 @@ private:
   std::unique_ptr<httplib::Server> m_server;
 };
 
-HttpServer::HttpServer(const Config &config, std::shared_ptr<Logger> logger)
-    : m_impl{std::make_unique<Impl>(config, std::move(logger))} {}
-
-const HttpServer::Config &HttpServer::config() const {
-  return m_impl->config();
-}
+HttpServer::HttpServer(const Config & /*config*/,
+                       std::shared_ptr<Logger> logger)
+    : m_impl{std::make_unique<Impl>(std::move(logger))} {}
 
 void HttpServer::connect_service(HtmlService service,
                                  const std::string &prefix) const {
@@ -307,20 +301,6 @@ void HttpServer::connect_service(HtmlService service,
   }
 
   m_impl->connect_service(std::move(service), prefix);
-}
-
-HtmlViews HttpServer::serve_file(const DecodedFile &file,
-                                 const std::string &prefix,
-                                 const HtmlConfig &config) const {
-  const std::string cache_path = m_impl->config().cache_path + "/" + prefix;
-  std::filesystem::create_directories(cache_path);
-
-  const HtmlService service =
-      html::translate(file, cache_path, config, m_impl->logger());
-
-  connect_service(service, prefix);
-
-  return service.list_views();
 }
 
 std::uint32_t HttpServer::bind(const std::string &host,

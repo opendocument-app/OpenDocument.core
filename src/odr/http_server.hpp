@@ -17,13 +17,12 @@ class HttpServer {
 public:
   constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";
 
-  // TODO remove together with serve_file, which is all cache_path is for
-  struct Config {
-    // TODO remove
-    std::string cache_path{"/tmp/odr"};
-  };
+  /// Server-wide settings. Empty since cache_path went with serve_file: what a
+  /// service was translated into belongs to whoever translated it.
+  struct Config {};
 
-  /// Socket options for bind().
+  /// Socket options for bind(). POSIX only: Windows keeps cpp-httplib's
+  /// exclusive-address defaults, where these flags mean the opposite.
   struct Options {
     bool reuse_address{true}; ///< SO_REUSEADDR, so a port held only by sockets
                               ///< in TIME_WAIT can be bound again
@@ -35,14 +34,7 @@ public:
   explicit HttpServer(const Config &config,
                       std::shared_ptr<Logger> logger = Logger::create_null());
 
-  [[nodiscard]] const Config &config() const;
-
   void connect_service(HtmlService service, const std::string &prefix) const;
-
-  // TODO remove
-  [[nodiscard]] HtmlViews serve_file(const DecodedFile &file,
-                                     const std::string &prefix,
-                                     const HtmlConfig &config) const;
 
   /// Binds the socket and returns the port it got - pass port 0 for any free
   /// one. Connections are accepted into the backlog from here on, before
@@ -54,6 +46,8 @@ public:
   /// Serves what bind() opened until stop(). Throws ServerNotBound.
   void listen() const;
 
+  /// Drops the connected services. Files they were translated into are the
+  /// caller's, and are left alone.
   void clear() const;
 
   /// Stops listen() and releases the socket. A server that was bound but never
