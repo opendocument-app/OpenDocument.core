@@ -68,9 +68,6 @@ void odr_python::bind_file(py::module_ &m) {
       .value("memory", odr::FileLocation::memory)
       .value("disk", odr::FileLocation::disk);
 
-  py::enum_<odr::DecoderEngine>(m, "DecoderEngine")
-      .value("odr", odr::DecoderEngine::odr);
-
   py::enum_<odr::EncryptionState>(m, "EncryptionState")
       .value("unknown", odr::EncryptionState::unknown)
       .value("not_encrypted", odr::EncryptionState::not_encrypted)
@@ -87,11 +84,8 @@ void odr_python::bind_file(py::module_ &m) {
   py::class_<odr::DecodePreference>(m, "DecodePreference")
       .def(py::init<>())
       .def_readwrite("as_file_type", &odr::DecodePreference::as_file_type)
-      .def_readwrite("with_engine", &odr::DecodePreference::with_engine)
       .def_readwrite("file_type_priority",
-                     &odr::DecodePreference::file_type_priority)
-      .def_readwrite("engine_priority",
-                     &odr::DecodePreference::engine_priority);
+                     &odr::DecodePreference::file_type_priority);
 
   py::class_<odr::FileMeta>(m, "FileMeta")
       .def(py::init<>())
@@ -141,7 +135,6 @@ void odr_python::bind_file(py::module_ &m) {
       .def("file_type", &odr::DecodedFile::file_type)
       .def("file_category", &odr::DecodedFile::file_category)
       .def("file_meta", &odr::DecodedFile::file_meta)
-      .def("decoder_engine", &odr::DecodedFile::decoder_engine)
       .def("password_encrypted", &odr::DecodedFile::password_encrypted)
       .def("encryption_state", &odr::DecodedFile::encryption_state)
       .def("decrypt", &odr::DecodedFile::decrypt, py::arg("password"))

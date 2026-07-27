@@ -32,9 +32,9 @@ public:
   [[nodiscard]] const ResolvedStyle &cell_style(std::uint16_t ixfe) const;
 
 private:
-  /// Owns the font names: `TextStyle::font_name` (`const char *`) points into
-  /// them. Never modified after construction (moving the registry is fine —
-  /// the strings themselves do not move).
+  /// Owns the font names: `TextStyle::font_name` (a `std::string_view`) points
+  /// into them. Never modified after construction (moving the registry is fine
+  /// — the strings themselves do not move).
   std::vector<Font> m_fonts;
   std::vector<ResolvedStyle> m_cell_styles;
 };

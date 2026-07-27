@@ -23,10 +23,6 @@ std::shared_ptr<abstract::File> SvmFile::file() const noexcept {
   return m_file;
 }
 
-DecoderEngine SvmFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType SvmFile::file_type() const noexcept {
   return FileType::starview_metafile;
 }

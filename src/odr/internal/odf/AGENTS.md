@@ -5,7 +5,7 @@ per-feature checklist in [`README.md`](README.md). Shared architecture (the
 element-adapter pattern, build/test loop, conventions) is in the top-level
 [`AGENTS.md`](../../../../AGENTS.md); read it first.
 
-**Scope.** One engine (`DecoderEngine::odr`) reading **all four ODF document
+**Scope.** Reading **all four ODF document
 types** — text (`.odt`), presentation (`.odp`), spreadsheet (`.ods`), graphics
 (`.odg`) — plus their template and legacy StarOffice variants, through the
 abstract model. Reader + style resolver + a **partial editor** (text-content

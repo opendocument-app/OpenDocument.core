@@ -198,7 +198,7 @@ void odr_python::bind_html(py::module_ &m) {
   html.def(
       "edit",
       [](const odr::Document &document, const std::string &diff) {
-        odr::html::edit(document, diff.c_str());
+        odr::html::edit(document, diff);
       },
       py::arg("document"), py::arg("diff"),
       "Apply a diff (produced by the browser-side editor) to a document.");

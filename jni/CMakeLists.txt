@@ -53,7 +53,6 @@ add_jar(odr_java
         "java/app/opendocument/core/CustomShape.java"
         "java/app/opendocument/core/DecodePreference.java"
         "java/app/opendocument/core/DecodedFile.java"
-        "java/app/opendocument/core/DecoderEngine.java"
         "java/app/opendocument/core/DirectionalMeasure.java"
         "java/app/opendocument/core/DirectionalString.java"
         "java/app/opendocument/core/Document.java"

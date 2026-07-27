@@ -457,33 +457,25 @@ public:
     }
     return AnchorType::as_char; // TODO default?
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_x([[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_y([[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> width = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cx"))) {
-      return width->to_string();
-    }
-    return {};
+    return read_emus_attribute(inner_node.child("wp:extent").attribute("cx"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
-    if (const std::optional<Measure> height = read_emus_attribute(
-            inner_node.child("wp:extent").attribute("cy"))) {
-      return height->to_string();
-    }
-    return {};
+    return read_emus_attribute(inner_node.child("wp:extent").attribute("cy"));
   }
-  [[nodiscard]] std::optional<std::string> frame_z_index(
+  [[nodiscard]] std::optional<std::int32_t> frame_z_index(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }

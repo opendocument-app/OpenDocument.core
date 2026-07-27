@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -193,7 +194,7 @@ class Html final {
 public:
   Html(HtmlConfig config, std::vector<HtmlPage> pages);
 
-  [[nodiscard]] const HtmlConfig &config();
+  [[nodiscard]] const HtmlConfig &config() const;
   [[nodiscard]] const std::vector<HtmlPage> &pages() const;
 
 private:
@@ -376,7 +377,7 @@ HtmlService translate(const Document &document, const std::string &cache_path,
 /// @param document Document to edit.
 /// @param diff Diff to apply.
 /// @param logger Logger to use for logging.
-void edit(const Document &document, const char *diff,
+void edit(const Document &document, std::string_view diff,
           const Logger &logger = Logger::null());
 
 } // namespace html

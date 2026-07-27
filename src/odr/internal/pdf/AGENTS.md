@@ -4,8 +4,6 @@ The **why** behind the `pdf/` module and the roadmap. What is concretely
 implemented is in the code; this file keeps the rationale, the non-obvious
 invariants, and where things live. Reference links live in [`README.md`](README.md).
 
-This is the only PDF path; `DecoderEngine::odr` is the only engine.
-
 **Goal.** Faithful read-only HTML for common real-world PDFs through a
 pure-serialization pipeline (no native renderer). The file-format,
 text-extraction, font and graphics foundations are in place; what remains is

@@ -8,7 +8,6 @@
 namespace odr {
 enum class FileType;
 enum class FileCategory;
-enum class DecoderEngine;
 struct DecodePreference;
 class DecodedFile;
 enum class DocumentType;
@@ -64,25 +63,12 @@ file_type_by_mimetype(std::string_view mimetype) noexcept;
 /// @return The MIME type.
 [[nodiscard]] std::string_view mimetype_by_file_type(FileType type);
 
-/// @brief Get the decoder engine as a string.
-/// @param engine The decoder engine.
-/// @return The decoder engine as a string.
-[[nodiscard]] std::string decoder_engine_to_string(DecoderEngine engine);
-/// @brief Get the decoder engine by the name.
-/// @param engine The name of the decoder engine.
-/// @return The decoder engine.
-[[nodiscard]] DecoderEngine decoder_engine_by_name(const std::string &engine);
-
 /// @brief Determine the file types by the file path.
 /// @param path The file path.
 /// @param logger The logger to use.
 /// @return The file types.
 [[nodiscard]] std::vector<FileType>
 list_file_types(const std::string &path, const Logger &logger = Logger::null());
-/// @brief Determine the decoder engines for a file path and file type.
-/// @param as The file type.
-/// @return The decoder engines.
-[[nodiscard]] std::vector<DecoderEngine> list_decoder_engines(FileType as);
 /// @brief Determine MIME types by the file path.
 /// @param path The file path.
 /// @param logger The logger to use.

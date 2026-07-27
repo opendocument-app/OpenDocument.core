@@ -46,6 +46,160 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
   };
 }
 
+/// Decodes @p file as exactly @p as, or throws the format's "not a ..."
+/// exception (@ref UnsupportedFileType for a type we cannot decode at all).
+std::unique_ptr<abstract::DecodedFile>
+open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
+             const Logger &logger) {
+  if (as == FileType::opendocument_text ||
+      as == FileType::opendocument_presentation ||
+      as == FileType::opendocument_spreadsheet ||
+      as == FileType::opendocument_graphics) {
+    ODR_VERBOSE(logger, "open as odf");
+    try {
+      auto zip_file = std::make_unique<zip::ZipFile>(file);
+      auto filesystem = zip_file->archive()->as_filesystem();
+      return std::make_unique<odf::OpenDocumentFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as odf");
+    }
+    throw NoOpenDocumentFile();
+  }
+
+  if (as == FileType::office_open_xml_document ||
+      as == FileType::office_open_xml_presentation ||
+      as == FileType::office_open_xml_workbook ||
+      as == FileType::office_open_xml_encrypted) {
+    ODR_VERBOSE(logger, "open as ooxml");
+    try {
+      auto zip_file = std::make_unique<zip::ZipFile>(file);
+      auto filesystem = zip_file->archive()->as_filesystem();
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as ooxml zip");
+    }
+    try {
+      auto cfb_file = std::make_unique<cfb::CfbFile>(file);
+      auto filesystem = cfb_file->archive()->as_filesystem();
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as ooxml cfb");
+    }
+    throw NoOfficeOpenXmlFile();
+  }
+
+  if (as == FileType::legacy_word_document ||
+      as == FileType::legacy_powerpoint_presentation ||
+      as == FileType::legacy_excel_worksheets) {
+    ODR_VERBOSE(logger, "open as legacy ms");
+    try {
+      auto cfb_file = std::make_unique<cfb::CfbFile>(file);
+      auto filesystem = cfb_file->archive()->as_filesystem();
+      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as legacy ms");
+    }
+    throw NoLegacyMicrosoftFile();
+  }
+
+  if (as == FileType::portable_document_format) {
+    ODR_VERBOSE(logger, "open as pdf");
+    try {
+      return std::make_unique<pdf::PdfFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as pdf");
+    }
+    throw NoPdfFile();
+  }
+
+  if (as == FileType::portable_network_graphics ||
+      as == FileType::graphics_interchange_format || as == FileType::jpeg ||
+      as == FileType::bitmap_image_file) {
+    ODR_VERBOSE(logger, "open as image");
+    try {
+      return std::make_unique<ImageFile>(file, as);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as image");
+    }
+    throw NoImageFile();
+  }
+
+  if (as == FileType::starview_metafile) {
+    ODR_VERBOSE(logger, "open as svm");
+    try {
+      return std::make_unique<svm::SvmFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as svm");
+    }
+    throw NoSvmFile();
+  }
+
+  if (as == FileType::truetype_font || as == FileType::opentype_font) {
+    ODR_VERBOSE(logger, "open as font");
+    try {
+      return std::make_unique<font::FontFile>(file, as);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as font");
+    }
+    throw NoFontFile();
+  }
+
+  if (as == FileType::text_file) {
+    ODR_VERBOSE(logger, "open as text file");
+    try {
+      return std::make_unique<text::TextFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as text file");
+    }
+    throw NoTextFile();
+  }
+
+  if (as == FileType::comma_separated_values) {
+    ODR_VERBOSE(logger, "open as csv");
+    try {
+      auto text = std::make_shared<text::TextFile>(file);
+      return std::make_unique<csv::CsvFile>(text);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as csv");
+    }
+    throw NoCsvFile();
+  }
+
+  if (as == FileType::javascript_object_notation) {
+    ODR_VERBOSE(logger, "open as json");
+    try {
+      auto text = std::make_shared<text::TextFile>(file);
+      return std::make_unique<json::JsonFile>(text);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as json");
+    }
+    throw NoJsonFile();
+  }
+
+  if (as == FileType::zip) {
+    ODR_VERBOSE(logger, "open as zip");
+    try {
+      return std::make_unique<zip::ZipFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as zip");
+    }
+    throw NoZipFile();
+  }
+
+  if (as == FileType::compound_file_binary_format) {
+    ODR_VERBOSE(logger, "open as cfb");
+    try {
+      return std::make_unique<cfb::CfbFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as cfb");
+    }
+    throw NoCfbFile();
+  }
+
+  ODR_ERROR(logger, "unsupported file type " << file_type_to_string(as));
+  throw UnsupportedFileType(as);
+}
+
 } // namespace
 
 std::vector<FileType>
@@ -133,14 +287,6 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "anything else");
     result.push_back(file_type);
   }
-
-  return result;
-}
-
-std::vector<DecoderEngine> open_strategy::list_decoder_engines(const FileType) {
-  std::vector<DecoderEngine> result;
-
-  result.push_back(DecoderEngine::odr);
 
   return result;
 }
@@ -264,233 +410,6 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         FileType as, DecoderEngine with,
-                         const Logger &logger) {
-  if (as == FileType::opendocument_text ||
-      as == FileType::opendocument_presentation ||
-      as == FileType::opendocument_spreadsheet ||
-      as == FileType::opendocument_graphics) {
-    ODR_VERBOSE(logger, "open as odf");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        auto zip_file = std::make_unique<zip::ZipFile>(file);
-        auto filesystem = zip_file->archive()->as_filesystem();
-        return std::make_unique<odf::OpenDocumentFile>(filesystem);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as odf with odr engine");
-      }
-      throw NoOpenDocumentFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for odf "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::office_open_xml_document ||
-      as == FileType::office_open_xml_presentation ||
-      as == FileType::office_open_xml_workbook ||
-      as == FileType::office_open_xml_encrypted) {
-    ODR_VERBOSE(logger, "open as ooxml");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        auto zip_file = std::make_unique<zip::ZipFile>(file);
-        auto filesystem = zip_file->archive()->as_filesystem();
-        return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as ooxml zip with odr engine");
-      }
-      try {
-        auto cfb_file = std::make_unique<cfb::CfbFile>(file);
-        auto filesystem = cfb_file->archive()->as_filesystem();
-        return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as ooxml cfb with odr engine");
-      }
-      throw NoOfficeOpenXmlFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for ooxml "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::legacy_word_document ||
-      as == FileType::legacy_powerpoint_presentation ||
-      as == FileType::legacy_excel_worksheets) {
-    ODR_VERBOSE(logger, "open as legacy ms");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        auto cfb_file = std::make_unique<cfb::CfbFile>(file);
-        auto filesystem = cfb_file->archive()->as_filesystem();
-        return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as legacy ms with odr engine");
-      }
-      throw NoLegacyMicrosoftFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for legacy ms "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::portable_document_format) {
-    ODR_VERBOSE(logger, "open as pdf");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<pdf::PdfFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as pdf with odr engine");
-      }
-      throw NoPdfFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for pdf "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::portable_network_graphics ||
-      as == FileType::graphics_interchange_format || as == FileType::jpeg ||
-      as == FileType::bitmap_image_file) {
-    ODR_VERBOSE(logger, "open as image");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<ImageFile>(file, as);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as image with odr engine");
-      }
-      throw NoImageFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for image "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::starview_metafile) {
-    ODR_VERBOSE(logger, "open as svm");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<svm::SvmFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as svm with odr engine");
-      }
-      throw NoSvmFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for svm "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::truetype_font || as == FileType::opentype_font) {
-    ODR_VERBOSE(logger, "open as font");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<font::FontFile>(file, as);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as font with odr engine");
-      }
-      throw NoFontFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for font "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::text_file) {
-    ODR_VERBOSE(logger, "open as text file");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<text::TextFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as text file with odr engine");
-      }
-      throw NoTextFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for text file "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::comma_separated_values) {
-    ODR_VERBOSE(logger, "open as csv");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        auto text = std::make_shared<text::TextFile>(file);
-        return std::make_unique<csv::CsvFile>(text);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as csv with odr engine");
-      }
-      throw NoCsvFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for csv "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::javascript_object_notation) {
-    ODR_VERBOSE(logger, "open as json");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        auto text = std::make_shared<text::TextFile>(file);
-        return std::make_unique<json::JsonFile>(text);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as json with odr engine");
-      }
-      throw NoJsonFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for json "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::zip) {
-    ODR_VERBOSE(logger, "open as zip");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<zip::ZipFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as zip with odr engine");
-      }
-      throw NoZipFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for zip "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  if (as == FileType::compound_file_binary_format) {
-    ODR_VERBOSE(logger, "open as cfb");
-    if (with == DecoderEngine::odr) {
-      ODR_VERBOSE(logger, "using odr engine");
-      try {
-        return std::make_unique<cfb::CfbFile>(file);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as cfb with odr engine");
-      }
-      throw NoCfbFile();
-    }
-    ODR_ERROR(logger, "unsupported decoder engine for cfb "
-                          << decoder_engine_to_string(with));
-    throw UnsupportedDecoderEngine(with);
-  }
-
-  ODR_ERROR(logger, "unsupported file type " << file_type_to_string(as)
-                                             << " with decoder engine "
-                                             << decoder_engine_to_string(with));
-  throw UnsupportedFileType(as);
-}
-
-std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
                          const DecodePreference &preference,
                          const Logger &logger) {
   std::vector<FileType> probe_types;
@@ -514,36 +433,11 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
   for (FileType as : probe_types) {
     ODR_VERBOSE(logger, "try opening as file type " << file_type_to_string(as));
-    std::vector<DecoderEngine> probe_engines;
-    if (preference.with_engine.has_value()) {
+    try {
+      return open_file_as(file, as, logger);
+    } catch (...) {
       ODR_VERBOSE(logger,
-                  "using preferred decoder engine "
-                      << decoder_engine_to_string(*preference.with_engine));
-      probe_engines.push_back(*preference.with_engine);
-    } else {
-      ODR_VERBOSE(logger, "probe decoder engines");
-      std::vector<DecoderEngine> detected_engines =
-          open_strategy::list_decoder_engines(as);
-      probe_engines.insert(probe_engines.end(), detected_engines.begin(),
-                           detected_engines.end());
-      auto probe_engines_end = std::ranges::unique(probe_engines).begin();
-      probe_engines.erase(probe_engines_end, probe_engines.end());
-    }
-
-    std::ranges::stable_sort(probe_engines,
-                             priority_comparator(preference.engine_priority));
-
-    for (DecoderEngine with : probe_engines) {
-      ODR_VERBOSE(logger,
-                  "with decoder engine " << decoder_engine_to_string(with));
-      try {
-        return open_file(file, as, with, logger);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as file type "
-                                << file_type_to_string(as)
-                                << " with decoder engine "
-                                << decoder_engine_to_string(with));
-      }
+                  "failed to open as file type " << file_type_to_string(as));
     }
   }
 

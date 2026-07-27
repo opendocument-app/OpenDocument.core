@@ -127,6 +127,25 @@ void Document::save(const Path & /*path*/, const char * /*password*/) const {
 
 namespace {
 
+/// Parses a `svg:*` length attribute. An absent or unparsable value yields
+/// nullopt rather than throwing — geometry is presentational.
+std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return std::nullopt;
+  }
+  try {
+    return Measure(attribute.value());
+  } catch (...) { // NOLINT(bugprone-empty-catch)
+    return std::nullopt;
+  }
+}
+
+/// Same, for the attributes the API reports unconditionally; a missing value
+/// degrades to a bare zero.
+Measure read_measure_or_zero(const pugi::xml_attribute attribute) {
+  return read_measure(attribute).value_or(Measure(0, DynamicUnit()));
+}
+
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextRootAdapter,
                              public abstract::SlideAdapter,
@@ -722,146 +741,114 @@ public:
     }
     return AnchorType::at_page;
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_x(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:x");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:x"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_y(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:y");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:y"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:width");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:width"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:height");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:height"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<std::int32_t>
   frame_z_index(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("draw:z-index");
-        attribute) {
-      return attribute.value();
+    const pugi::xml_attribute attribute =
+        get_node(element_id).attribute("draw:z-index");
+    if (!attribute) {
+      return std::nullopt;
     }
-    return std::nullopt;
+    return static_cast<std::int32_t>(attribute.as_int());
   }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
   }
 
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   rect_x(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:x").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:x"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   rect_y(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:y").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:y"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   rect_width(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:width").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   rect_height(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:height").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
   }
   [[nodiscard]] GraphicStyle
   rect_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
   }
 
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   line_x1(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:x1").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:x1"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   line_y1(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:y1").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:y1"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   line_x2(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:x2").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:x2"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   line_y2(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:y2").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:y2"));
   }
   [[nodiscard]] GraphicStyle
   line_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
   }
 
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   circle_x(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:x").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:x"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   circle_y(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:y").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:y"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   circle_width(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:width").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   circle_height(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("svg:height").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
   }
   [[nodiscard]] GraphicStyle
   circle_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
   }
 
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   custom_shape_x(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:x");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:x"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   custom_shape_y(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:y");
-        attribute) {
-      return attribute.value();
-    }
-    return std::nullopt;
+    return read_measure(get_node(element_id).attribute("svg:y"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   custom_shape_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:width").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
   }
-  [[nodiscard]] std::string
+  [[nodiscard]] Measure
   custom_shape_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    return node.attribute("svg:height").value();
+    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
   }
   [[nodiscard]] GraphicStyle
   custom_shape_style(const ElementIdentifier element_id) const override {

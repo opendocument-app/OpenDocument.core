@@ -415,27 +415,9 @@ std::string_view odr::mimetype_by_file_type(const FileType type) {
   throw UnsupportedFileType(type);
 }
 
-std::string odr::decoder_engine_to_string(const DecoderEngine engine) {
-  if (engine == DecoderEngine::odr) {
-    return "odr";
-  }
-  throw UnknownDecoderEngine();
-}
-
-odr::DecoderEngine odr::decoder_engine_by_name(const std::string &engine) {
-  if (engine == "odr") {
-    return DecoderEngine::odr;
-  }
-  throw UnknownDecoderEngine();
-}
-
 std::vector<odr::FileType> odr::list_file_types(const std::string &path,
                                                 const Logger &logger) {
   return DecodedFile::list_file_types(path, logger);
-}
-
-std::vector<odr::DecoderEngine> odr::list_decoder_engines(const FileType as) {
-  return DecodedFile::list_decoder_engines(as);
 }
 
 std::string_view odr::mimetype(const std::string &path, const Logger &logger) {

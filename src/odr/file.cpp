@@ -59,11 +59,6 @@ std::string_view DecodedFile::mimetype(const std::string &path,
   return internal::magic::mimetype(path);
 }
 
-std::vector<DecoderEngine>
-DecodedFile::list_decoder_engines(const FileType as) {
-  return internal::open_strategy::list_decoder_engines(as);
-}
-
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
   if (m_impl == nullptr) {
@@ -103,10 +98,6 @@ FileCategory DecodedFile::file_category() const noexcept {
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
-
-DecoderEngine DecodedFile::decoder_engine() const noexcept {
-  return m_impl->decoder_engine();
-}
 
 bool DecodedFile::password_encrypted() const {
   return m_impl->password_encrypted();

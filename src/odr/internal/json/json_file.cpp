@@ -14,10 +14,6 @@ std::shared_ptr<abstract::File> JsonFile::file() const noexcept {
   return m_file->file();
 }
 
-DecoderEngine JsonFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType JsonFile::file_type() const noexcept {
   return FileType::javascript_object_notation;
 }

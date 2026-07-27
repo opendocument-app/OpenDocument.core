@@ -12,14 +12,22 @@ C++ library to visualize files, especially documents, in HTML.
 - [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104), [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
 - txt
+- json
 - [zip](https://github.com/opendocument-app/OpenDocument.core/issues/109)
 - [cfb](https://github.com/opendocument-app/OpenDocument.core/issues/110) (Microsoft Compound File Binary File Format)
+- ttf / otf (font specimen pages)
+
+## Detected but not decoded
+
+These are recognised by `list_file_types` / `mimetype` so a caller can report
+them, but there is no decoder — opening one throws:
+
+- rtf
+- wpd (WordPerfect)
 
 ## Unsupported files
 
-- rtf
 - pages
-- json
 - xml
 - yaml
 
@@ -47,7 +55,9 @@ As an alternative to the Conan remote you can also export the package locally vi
 
 ## Version
 
-Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
+Notable changes are in [`CHANGELOG.md`](CHANGELOG.md), which also states what
+counts as public API and what stability to expect. Release history is on
+[GitHub](https://github.com/opendocument-app/OpenDocument.core/releases).
 
 ## Testing
 

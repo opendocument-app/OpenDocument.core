@@ -32,29 +32,35 @@ void odr_python::bind_core(py::module_ &m) {
                   &odr::GlobalParams::set_libmagic_database_path,
                   py::arg("path"));
 
-  py::register_exception<odr::UnsupportedOperation>(m, "UnsupportedOperation");
+  // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
+  const py::exception<odr::Exception> error(m, "Error");
+
+  py::register_exception<odr::UnsupportedOperation>(m, "UnsupportedOperation",
+                                                    error);
+  // The one deliberate exception: mapping onto Python's own FileNotFoundError
+  // is worth more here than sitting under `Error`.
   py::register_exception<odr::FileNotFound>(m, "FileNotFound",
                                             PyExc_FileNotFoundError);
-  py::register_exception<odr::UnknownFileType>(m, "UnknownFileTypeError");
-  py::register_exception<odr::UnsupportedFileType>(m,
-                                                   "UnsupportedFileTypeError");
-  py::register_exception<odr::UnknownDecoderEngine>(
-      m, "UnknownDecoderEngineError");
-  py::register_exception<odr::UnsupportedDecoderEngine>(
-      m, "UnsupportedDecoderEngineError");
-  py::register_exception<odr::FileReadError>(m, "FileReadError");
-  py::register_exception<odr::FileWriteError>(m, "FileWriteError");
-  py::register_exception<odr::NoDocumentFile>(m, "NoDocumentFileError");
-  py::register_exception<odr::UnknownDocumentType>(m,
-                                                   "UnknownDocumentTypeError");
+  py::register_exception<odr::UnknownFileType>(m, "UnknownFileTypeError",
+                                               error);
+  py::register_exception<odr::UnsupportedFileType>(
+      m, "UnsupportedFileTypeError", error);
+  py::register_exception<odr::FileReadError>(m, "FileReadError", error);
+  py::register_exception<odr::FileWriteError>(m, "FileWriteError", error);
+  py::register_exception<odr::NoDocumentFile>(m, "NoDocumentFileError", error);
+  py::register_exception<odr::UnknownDocumentType>(
+      m, "UnknownDocumentTypeError", error);
   py::register_exception<odr::UnsupportedCryptoAlgorithm>(
-      m, "UnsupportedCryptoAlgorithmError");
-  py::register_exception<odr::WrongPasswordError>(m, "WrongPasswordError");
-  py::register_exception<odr::DecryptionFailed>(m, "DecryptionFailedError");
-  py::register_exception<odr::NotEncryptedError>(m, "NotEncryptedError");
-  py::register_exception<odr::FileEncryptedError>(m, "FileEncryptedError");
+      m, "UnsupportedCryptoAlgorithmError", error);
+  py::register_exception<odr::WrongPasswordError>(m, "WrongPasswordError",
+                                                  error);
+  py::register_exception<odr::DecryptionFailed>(m, "DecryptionFailedError",
+                                                error);
+  py::register_exception<odr::NotEncryptedError>(m, "NotEncryptedError", error);
+  py::register_exception<odr::FileEncryptedError>(m, "FileEncryptedError",
+                                                  error);
   py::register_exception<odr::DocumentCopyProtectedException>(
-      m, "DocumentCopyProtectedError");
+      m, "DocumentCopyProtectedError", error);
 }
 
 void odr_python::bind_functions(py::module_ &m) {
@@ -85,12 +91,6 @@ void odr_python::bind_functions(py::module_ &m) {
         return std::string(odr::mimetype_by_file_type(type));
       },
       py::arg("type"));
-  m.def("decoder_engine_to_string", &odr::decoder_engine_to_string,
-        py::arg("engine"));
-  m.def(
-      "decoder_engine_by_name",
-      [](const std::string &name) { return odr::decoder_engine_by_name(name); },
-      py::arg("name"));
 
   m.def(
       "list_file_types",
@@ -99,7 +99,6 @@ void odr_python::bind_functions(py::module_ &m) {
       },
       py::arg("path"), py::arg("logger") = odr::Logger::null(),
       "Determine the possible file types of a file.");
-  m.def("list_decoder_engines", &odr::list_decoder_engines, py::arg("as_type"));
   m.def(
       "mimetype",
       [](const std::string &path, const odr::Logger &logger) {

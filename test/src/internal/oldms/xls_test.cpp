@@ -250,7 +250,7 @@ TEST(OldMs, xls_cell_styles) {
   const Sheet sheet = document.root_element().first_child().as_sheet();
 
   const TextStyle plain = first_text(sheet.cell(0, 0)).style();
-  EXPECT_STREQ(plain.font_name, "Arial");
+  EXPECT_EQ(plain.font_name, "Arial");
   EXPECT_EQ(plain.font_size, Measure("10pt"));
   EXPECT_EQ(plain.font_weight, FontWeight::normal);
   EXPECT_EQ(plain.font_style, FontStyle::normal);
@@ -260,7 +260,7 @@ TEST(OldMs, xls_cell_styles) {
   EXPECT_FALSE(sheet.cell_style(0, 0).background_color.has_value());
 
   const TextStyle fancy = first_text(sheet.cell(1, 0)).style();
-  EXPECT_STREQ(fancy.font_name, "Comic Sans MS");
+  EXPECT_EQ(fancy.font_name, "Comic Sans MS");
   EXPECT_EQ(fancy.font_size, Measure("16pt"));
   EXPECT_EQ(fancy.font_weight, FontWeight::bold);
   EXPECT_EQ(fancy.font_style, FontStyle::italic);

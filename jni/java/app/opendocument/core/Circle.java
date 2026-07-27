@@ -6,19 +6,19 @@ public final class Circle extends Element {
     super(handle, owner);
   }
 
-  public String x() {
+  public Measure x() {
     return xNative(handle());
   }
 
-  public String y() {
+  public Measure y() {
     return yNative(handle());
   }
 
-  public String width() {
+  public Measure width() {
     return widthNative(handle());
   }
 
-  public String height() {
+  public Measure height() {
     return heightNative(handle());
   }
 
@@ -26,13 +26,13 @@ public final class Circle extends Element {
     return styleNative(handle());
   }
 
-  private native String xNative(long handle);
+  private native Measure xNative(long handle);
 
-  private native String yNative(long handle);
+  private native Measure yNative(long handle);
 
-  private native String widthNative(long handle);
+  private native Measure widthNative(long handle);
 
-  private native String heightNative(long handle);
+  private native Measure heightNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

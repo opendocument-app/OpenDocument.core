@@ -358,59 +358,43 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return AnchorType::at_page;
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_x(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> x =
-            read_emus_attribute(get_node(element_id)
-                                    .child("xdr:pic")
-                                    .child("xdr:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:off")
-                                    .attribute("x"))) {
-      return x->to_string();
-    }
-    return {};
+    return read_emus_attribute(get_node(element_id)
+                                   .child("xdr:pic")
+                                   .child("xdr:spPr")
+                                   .child("a:xfrm")
+                                   .child("a:off")
+                                   .attribute("x"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_y(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> y =
-            read_emus_attribute(get_node(element_id)
-                                    .child("xdr:pic")
-                                    .child("xdr:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:off")
-                                    .attribute("y"))) {
-      return y->to_string();
-    }
-    return {};
+    return read_emus_attribute(get_node(element_id)
+                                   .child("xdr:pic")
+                                   .child("xdr:spPr")
+                                   .child("a:xfrm")
+                                   .child("a:off")
+                                   .attribute("y"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> width =
-            read_emus_attribute(get_node(element_id)
-                                    .child("xdr:pic")
-                                    .child("xdr:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:ext")
-                                    .attribute("cx"))) {
-      return width->to_string();
-    }
-    return {};
+    return read_emus_attribute(get_node(element_id)
+                                   .child("xdr:pic")
+                                   .child("xdr:spPr")
+                                   .child("a:xfrm")
+                                   .child("a:ext")
+                                   .attribute("cx"));
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
-    if (const std::optional<Measure> height =
-            read_emus_attribute(get_node(element_id)
-                                    .child("xdr:pic")
-                                    .child("xdr:spPr")
-                                    .child("a:xfrm")
-                                    .child("a:ext")
-                                    .attribute("cy"))) {
-      return height->to_string();
-    }
-    return {};
+    return read_emus_attribute(get_node(element_id)
+                                   .child("xdr:pic")
+                                   .child("xdr:spPr")
+                                   .child("a:xfrm")
+                                   .child("a:ext")
+                                   .attribute("cy"));
   }
-  [[nodiscard]] std::optional<std::string> frame_z_index(
+  [[nodiscard]] std::optional<std::int32_t> frame_z_index(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }

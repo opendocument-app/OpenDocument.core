@@ -191,11 +191,10 @@ ElementIterator &ElementIterator::operator++() {
   return *this;
 }
 
-ElementIterator ElementIterator::operator++(int) const {
-  if (!exists_()) {
-    return {};
-  }
-  return {m_adapter, m_adapter->element_next_sibling(m_identifier)};
+ElementIterator ElementIterator::operator++(int) {
+  ElementIterator result = *this;
+  ++*this;
+  return result;
 }
 
 bool ElementIterator::exists_() const {
@@ -464,109 +463,113 @@ AnchorType Frame::anchor_type() const {
                    : AnchorType::as_char; // TODO default?
 }
 
-std::optional<std::string> Frame::x() const {
+std::optional<Measure> Frame::x() const {
   return exists_() ? m_adapter2->frame_x(m_identifier)
-                   : std::optional<std::string>();
+                   : std::optional<Measure>();
 }
 
-std::optional<std::string> Frame::y() const {
+std::optional<Measure> Frame::y() const {
   return exists_() ? m_adapter2->frame_y(m_identifier)
-                   : std::optional<std::string>();
+                   : std::optional<Measure>();
 }
 
-std::optional<std::string> Frame::width() const {
+std::optional<Measure> Frame::width() const {
   return exists_() ? m_adapter2->frame_width(m_identifier)
-                   : std::optional<std::string>();
+                   : std::optional<Measure>();
 }
 
-std::optional<std::string> Frame::height() const {
+std::optional<Measure> Frame::height() const {
   return exists_() ? m_adapter2->frame_height(m_identifier)
-                   : std::optional<std::string>();
+                   : std::optional<Measure>();
 }
 
-std::optional<std::string> Frame::z_index() const {
+std::optional<std::int32_t> Frame::z_index() const {
   return exists_() ? m_adapter2->frame_z_index(m_identifier)
-                   : std::optional<std::string>();
+                   : std::optional<std::int32_t>();
 }
 
 GraphicStyle Frame::style() const {
   return exists_() ? m_adapter2->frame_style(m_identifier) : GraphicStyle();
 }
 
-std::string Rect::x() const {
-  return exists_() ? m_adapter2->rect_x(m_identifier) : "";
+Measure Rect::x() const {
+  return exists_() ? m_adapter2->rect_x(m_identifier) : Measure(0, {});
 }
 
-std::string Rect::y() const {
-  return exists_() ? m_adapter2->rect_y(m_identifier) : "";
+Measure Rect::y() const {
+  return exists_() ? m_adapter2->rect_y(m_identifier) : Measure(0, {});
 }
 
-std::string Rect::width() const {
-  return exists_() ? m_adapter2->rect_width(m_identifier) : "";
+Measure Rect::width() const {
+  return exists_() ? m_adapter2->rect_width(m_identifier) : Measure(0, {});
 }
 
-std::string Rect::height() const {
-  return exists_() ? m_adapter2->rect_height(m_identifier) : "";
+Measure Rect::height() const {
+  return exists_() ? m_adapter2->rect_height(m_identifier) : Measure(0, {});
 }
 
 GraphicStyle Rect::style() const {
   return exists_() ? m_adapter2->rect_style(m_identifier) : GraphicStyle();
 }
 
-std::string Line::x1() const {
-  return exists_() ? m_adapter2->line_x1(m_identifier) : "";
+Measure Line::x1() const {
+  return exists_() ? m_adapter2->line_x1(m_identifier) : Measure(0, {});
 }
 
-std::string Line::y1() const {
-  return exists_() ? m_adapter2->line_y1(m_identifier) : "";
+Measure Line::y1() const {
+  return exists_() ? m_adapter2->line_y1(m_identifier) : Measure(0, {});
 }
 
-std::string Line::x2() const {
-  return exists_() ? m_adapter2->line_x2(m_identifier) : "";
+Measure Line::x2() const {
+  return exists_() ? m_adapter2->line_x2(m_identifier) : Measure(0, {});
 }
 
-std::string Line::y2() const {
-  return exists_() ? m_adapter2->line_y2(m_identifier) : "";
+Measure Line::y2() const {
+  return exists_() ? m_adapter2->line_y2(m_identifier) : Measure(0, {});
 }
 
 GraphicStyle Line::style() const {
   return exists_() ? m_adapter2->line_style(m_identifier) : GraphicStyle();
 }
 
-std::string Circle::x() const {
-  return exists_() ? m_adapter2->circle_x(m_identifier) : "";
+Measure Circle::x() const {
+  return exists_() ? m_adapter2->circle_x(m_identifier) : Measure(0, {});
 }
 
-std::string Circle::y() const {
-  return exists_() ? m_adapter2->circle_y(m_identifier) : "";
+Measure Circle::y() const {
+  return exists_() ? m_adapter2->circle_y(m_identifier) : Measure(0, {});
 }
 
-std::string Circle::width() const {
-  return exists_() ? m_adapter2->circle_width(m_identifier) : "";
+Measure Circle::width() const {
+  return exists_() ? m_adapter2->circle_width(m_identifier) : Measure(0, {});
 }
 
-std::string Circle::height() const {
-  return exists_() ? m_adapter2->circle_height(m_identifier) : "";
+Measure Circle::height() const {
+  return exists_() ? m_adapter2->circle_height(m_identifier) : Measure(0, {});
 }
 
 GraphicStyle Circle::style() const {
   return exists_() ? m_adapter2->circle_style(m_identifier) : GraphicStyle();
 }
 
-std::optional<std::string> CustomShape::x() const {
-  return exists_() ? m_adapter2->custom_shape_x(m_identifier) : "";
+std::optional<Measure> CustomShape::x() const {
+  return exists_() ? m_adapter2->custom_shape_x(m_identifier)
+                   : std::optional<Measure>();
 }
 
-std::optional<std::string> CustomShape::y() const {
-  return exists_() ? m_adapter2->custom_shape_y(m_identifier) : "";
+std::optional<Measure> CustomShape::y() const {
+  return exists_() ? m_adapter2->custom_shape_y(m_identifier)
+                   : std::optional<Measure>();
 }
 
-std::string CustomShape::width() const {
-  return exists_() ? m_adapter2->custom_shape_width(m_identifier) : "";
+Measure CustomShape::width() const {
+  return exists_() ? m_adapter2->custom_shape_width(m_identifier)
+                   : Measure(0, {});
 }
 
-std::string CustomShape::height() const {
-  return exists_() ? m_adapter2->custom_shape_height(m_identifier) : "";
+Measure CustomShape::height() const {
+  return exists_() ? m_adapter2->custom_shape_height(m_identifier)
+                   : Measure(0, {});
 }
 
 GraphicStyle CustomShape::style() const {

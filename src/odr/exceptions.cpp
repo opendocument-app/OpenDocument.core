@@ -6,149 +6,131 @@
 namespace odr {
 
 UnsupportedOperation::UnsupportedOperation()
-    : std::runtime_error("unsupported operation") {}
+    : Exception("unsupported operation") {}
 
 UnsupportedOperation::UnsupportedOperation(const std::string &message)
-    : std::runtime_error("unsupported operation: " + message) {}
+    : Exception("unsupported operation: " + message) {}
 
-FileNotFound::FileNotFound() : std::runtime_error("file not found") {}
+FileNotFound::FileNotFound() : Exception("file not found") {}
 
 FileNotFound::FileNotFound(const std::string &path)
-    : std::runtime_error("file not found: " + path) {}
+    : Exception("file not found: " + path) {}
 
-UnknownFileType::UnknownFileType() : std::runtime_error("unknown file type") {}
+UnknownFileType::UnknownFileType() : Exception("unknown file type") {}
 
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
-    : std::runtime_error("unknown file type: " +
-                         file_type_to_string(file_type)),
+    : Exception("unknown file type: " + file_type_to_string(file_type)),
       file_type{file_type} {}
 
-UnknownDecoderEngine::UnknownDecoderEngine()
-    : std::runtime_error("unknown decoder engine") {}
-
-UnsupportedDecoderEngine::UnsupportedDecoderEngine(
-    const DecoderEngine decoder_engine)
-    : std::runtime_error("unsupported decoder engine: " +
-                         decoder_engine_to_string(decoder_engine)),
-      decoder_engine{decoder_engine} {}
-
-FileReadError::FileReadError() : std::runtime_error("file read error") {}
+FileReadError::FileReadError() : Exception("file read error") {}
 
 FileWriteError::FileWriteError(const std::string &path)
-    : std::runtime_error("file write error: " + path) {}
+    : Exception("file write error: " + path) {}
 
-NoZipFile::NoZipFile() : std::runtime_error("not a zip file") {}
+NoZipFile::NoZipFile() : Exception("not a zip file") {}
 
-ZipSaveError::ZipSaveError() : std::runtime_error("zip save error") {}
+ZipSaveError::ZipSaveError() : Exception("zip save error") {}
 
-CfbError::CfbError(const char *desc) : std::runtime_error(desc) {}
+CfbError::CfbError(const char *desc) : Exception(desc) {}
 
 NoCfbFile::NoCfbFile() : CfbError("no cfb file") {}
 
 CfbFileCorrupted::CfbFileCorrupted() : CfbError("cfb file corrupted") {}
 
-NoTextFile::NoTextFile() : std::runtime_error("not a text file") {}
+NoTextFile::NoTextFile() : Exception("not a text file") {}
 
-NoCsvFile::NoCsvFile() : std::runtime_error("not a csv file") {}
+NoCsvFile::NoCsvFile() : Exception("not a csv file") {}
 
-NoJsonFile::NoJsonFile() : std::runtime_error("not a json file") {}
+NoJsonFile::NoJsonFile() : Exception("not a json file") {}
 
-UnknownCharset::UnknownCharset() : std::runtime_error("unknown charset") {}
+UnknownCharset::UnknownCharset() : Exception("unknown charset") {}
 
-NoImageFile::NoImageFile() : std::runtime_error("not an image file") {}
+NoImageFile::NoImageFile() : Exception("not an image file") {}
 
-NoArchiveFile::NoArchiveFile() : std::runtime_error("not an archive file") {}
+NoArchiveFile::NoArchiveFile() : Exception("not an archive file") {}
 
-NoDocumentFile::NoDocumentFile() : std::runtime_error("not a document file") {}
+NoDocumentFile::NoDocumentFile() : Exception("not a document file") {}
 
 NoOpenDocumentFile::NoOpenDocumentFile()
-    : std::runtime_error("not an open document file") {}
+    : Exception("not an open document file") {}
 
 NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
-    : std::runtime_error("not an office open xml file") {}
+    : Exception("not an office open xml file") {}
 
-NoPdfFile::NoPdfFile() : std::runtime_error("not a pdf file") {}
+NoPdfFile::NoPdfFile() : Exception("not a pdf file") {}
 
-NoFontFile::NoFontFile() : std::runtime_error("not a font file") {}
+NoFontFile::NoFontFile() : Exception("not a font file") {}
 
 NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
-    : std::runtime_error("not a legacy microsoft office file") {}
+    : Exception("not a legacy microsoft office file") {}
 
-NoXmlFile::NoXmlFile() : std::runtime_error("not an xml file") {}
+NoXmlFile::NoXmlFile() : Exception("not an xml file") {}
 
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
-    : std::runtime_error("unsupported crypto algorithm") {}
+    : Exception("unsupported crypto algorithm") {}
 
-NoSvmFile::NoSvmFile() : std::runtime_error("not a svm file") {}
+NoSvmFile::NoSvmFile() : Exception("not a svm file") {}
 
-MalformedSvmFile::MalformedSvmFile()
-    : std::runtime_error("malformed svm file") {}
+MalformedSvmFile::MalformedSvmFile() : Exception("malformed svm file") {}
 
-UnsupportedEndian::UnsupportedEndian()
-    : std::runtime_error("unsupported endian") {}
+UnsupportedEndian::UnsupportedEndian() : Exception("unsupported endian") {}
 
 MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
-    : std::runtime_error("unsupported crypto algorithm") {}
+    : Exception("unsupported crypto algorithm") {}
 
 UnknownDocumentType::UnknownDocumentType()
-    : std::runtime_error("unknown document type") {}
+    : Exception("unknown document type") {}
 
-InvalidPrefix::InvalidPrefix() : std::runtime_error("invalid prefix string") {}
+InvalidPrefix::InvalidPrefix() : Exception("invalid prefix string") {}
 
 InvalidPrefix::InvalidPrefix(const std::string &prefix)
-    : std::runtime_error("invalid prefix string: " + prefix) {}
+    : Exception("invalid prefix string: " + prefix) {}
 
 DocumentCopyProtectedException::DocumentCopyProtectedException()
-    : std::runtime_error("document copy protection") {}
+    : Exception("document copy protection") {}
 
 ResourceNotAccessible::ResourceNotAccessible()
-    : std::runtime_error("resource not accessible") {}
+    : Exception("resource not accessible") {}
 
 ResourceNotAccessible::ResourceNotAccessible(const std::string &name,
                                              const std::string &path)
-    : std::runtime_error("resource not accessible: " + name + " at " + path) {}
+    : Exception("resource not accessible: " + name + " at " + path) {}
 
-PrefixInUse::PrefixInUse() : std::runtime_error("prefix in use") {}
+PrefixInUse::PrefixInUse() : Exception("prefix in use") {}
 
 PrefixInUse::PrefixInUse(const std::string &prefix)
-    : std::runtime_error("prefix in use: " + prefix) {}
+    : Exception("prefix in use: " + prefix) {}
 
 ServerBindFailed::ServerBindFailed(const std::string &host,
                                    const std::uint32_t port)
-    : std::runtime_error("server bind failed: " + host + ":" +
-                         std::to_string(port)) {}
+    : Exception("server bind failed: " + host + ":" + std::to_string(port)) {}
 
 ServerAlreadyBound::ServerAlreadyBound()
-    : std::runtime_error("server is bound already") {}
+    : Exception("server is bound already") {}
 
-ServerNotBound::ServerNotBound() : std::runtime_error("server is not bound") {}
+ServerNotBound::ServerNotBound() : Exception("server is not bound") {}
 
 UnsupportedOption::UnsupportedOption(const std::string &message)
-    : std::runtime_error("unsupported option: " + message) {}
+    : Exception("unsupported option: " + message) {}
 
 NullPointerError::NullPointerError(const std::string &variable)
-    : std::runtime_error("null pointer error: " + variable) {}
+    : Exception("null pointer error: " + variable) {}
 
-WrongPasswordError::WrongPasswordError()
-    : std::runtime_error("wrong password error") {}
+WrongPasswordError::WrongPasswordError() : Exception("wrong password error") {}
 
-DecryptionFailed::DecryptionFailed()
-    : std::runtime_error("decryption failed") {}
+DecryptionFailed::DecryptionFailed() : Exception("decryption failed") {}
 
-NotEncryptedError::NotEncryptedError()
-    : std::runtime_error("not encrypted error") {}
+NotEncryptedError::NotEncryptedError() : Exception("not encrypted error") {}
 
 InvalidPath::InvalidPath(const std::string &message)
-    : std::runtime_error("invalid path: " + message) {}
+    : Exception("invalid path: " + message) {}
 
 UnsupportedFileEncoding::UnsupportedFileEncoding(const std::string &message)
-    : std::runtime_error("unsupported file encoding: " + message) {}
+    : Exception("unsupported file encoding: " + message) {}
 
-FileEncryptedError::FileEncryptedError()
-    : std::runtime_error("file encrypted error") {}
+FileEncryptedError::FileEncryptedError() : Exception("file encrypted error") {}
 
 UnauthenticatedReadError::UnauthenticatedReadError()
-    : std::runtime_error(
-          "cannot read encrypted object without authentication") {}
+    : Exception("cannot read encrypted object without authentication") {}
 
 } // namespace odr

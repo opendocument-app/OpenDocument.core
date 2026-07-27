@@ -1,9 +1,20 @@
 #include <odr/quantity.hpp>
 
+#include <odr/internal/util/number_util.hpp>
+
 #include <memory>
 #include <unordered_map>
 
 namespace odr {
+
+/// 7 significant digits: enough that document geometry survives a
+/// parse/format round trip (drawing coordinates reach the thousands of mm,
+/// which the stream default of 6 would round), and no more than a `float`
+/// carries, so an xlsx column width stored as float `68.55` does not come back
+/// as `68.550003`.
+std::string QuantityBase::format_magnitude(const double magnitude) {
+  return internal::util::number::to_string_significant(magnitude, 7);
+}
 
 struct DynamicUnit::Unit final {
   std::string name;

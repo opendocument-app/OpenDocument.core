@@ -1,8 +1,8 @@
 #pragma once
 
-#include <iomanip>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 namespace odr {
 
@@ -27,8 +27,17 @@ private:
   const Unit *m_unit{nullptr};
 };
 
+/// @brief The magnitude-type-independent part of @ref Quantity, so it can be
+/// compiled once in a source file instead of inline in every instantiation.
+class QuantityBase {
+protected:
+  /// Renders @p magnitude with 7 significant digits, always positional.
+  static std::string format_magnitude(double magnitude);
+};
+
 /// @brief Represents a quantity with a magnitude and a unit of measure.
-template <typename Magnitude, typename Unit = DynamicUnit> class Quantity {
+template <typename Magnitude, typename Unit = DynamicUnit>
+class Quantity : private QuantityBase {
 public:
   Quantity(Magnitude magnitude, Unit unit)
       : m_magnitude{std::move(magnitude)}, m_unit{std::move(unit)} {}
@@ -54,20 +63,26 @@ public:
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
 
-  void to_stream(std::ostream &out) const {
-    out << m_magnitude << m_unit.to_string();
-  }
+  void to_stream(std::ostream &out) const { out << to_string(); }
 
   [[nodiscard]] std::string to_string() const {
-    std::ostringstream ss;
-    ss << std::setprecision(4) << m_magnitude << m_unit.to_string();
-    return ss.str();
+    if constexpr (std::is_floating_point_v<Magnitude>) {
+      return format_magnitude(static_cast<double>(m_magnitude)) +
+             m_unit.to_string();
+    } else {
+      std::ostringstream ss;
+      ss << m_magnitude << m_unit.to_string();
+      return ss.str();
+    }
   }
 
 private:
   Magnitude m_magnitude{0};
   Unit m_unit;
 };
+
+/// @brief Represents a quantity: a magnitude and a unit of measure.
+using Measure = Quantity<double>;
 
 } // namespace odr
 

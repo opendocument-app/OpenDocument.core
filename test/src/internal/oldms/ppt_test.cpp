@@ -156,8 +156,8 @@ TEST(OldMs, ppt_style_various) {
   // A non-empty pseudo-path names the BLIP so the HTML renderer can emit a
   // distinct resource per picture when images are not embedded.
   EXPECT_EQ(image.href(), "Pictures/1.png");
-  EXPECT_EQ(background.as_frame().x(), "0in");
-  EXPECT_EQ(background.as_frame().y(), "0in");
+  EXPECT_EQ(background.as_frame().x(), Measure("0in"));
+  EXPECT_EQ(background.as_frame().y(), Measure("0in"));
 
   // Slide 0 is a title + subtitle box, at different vertical positions.
   ASSERT_EQ(slides[0].size(), 2);
@@ -175,7 +175,7 @@ TEST(OldMs, ppt_style_various) {
 
   // The title is 44pt Arial with an explicit black color.
   const TextStyle title = first_span(slides[0][0]).style();
-  EXPECT_STREQ(title.font_name, "Arial");
+  EXPECT_EQ(title.font_name, "Arial");
   EXPECT_EQ(title.font_size, Measure("44pt"));
   ASSERT_TRUE(title.font_color.has_value());
   EXPECT_EQ(title.font_color->rgb(), 0x000000u);

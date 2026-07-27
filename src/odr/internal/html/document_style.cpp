@@ -127,8 +127,9 @@ std::string html::translate_inner_page_style(const PageLayout &page_layout) {
 
 std::string html::translate_text_style(const TextStyle &text_style) {
   std::string result;
-  if (const char *font_name = text_style.font_name; font_name != nullptr) {
-    result.append("font-family:").append(font_name).append(";");
+  if (const std::optional<std::string_view> font_name = text_style.font_name;
+      font_name.has_value()) {
+    result.append("font-family:").append(*font_name).append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
       font_size.has_value()) {
@@ -381,56 +382,55 @@ std::string html::translate_frame_properties(const Frame &frame) {
     result += "display:block;";
     result += "float:right;clear:both;";
     result += "shape-outside:content-box;";
-    if (const std::optional<std::string> x = frame.x(); x.has_value()) {
-      result += "margin-left:" + *x + ";";
+    if (const std::optional<Measure> x = frame.x(); x.has_value()) {
+      result += "margin-left:" + x->to_string() + ";";
     }
-    if (const std::optional<std::string> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + *y + ";";
+    if (const std::optional<Measure> y = frame.y(); y.has_value()) {
+      result += "margin-top:" + y->to_string() + ";";
     }
     result += "margin-right:calc(100% - ";
-    result += frame.x().value_or("0in");
+    result += frame.x().value_or(Measure(0, DynamicUnit("in"))).to_string();
     result += " - ";
-    result += *frame.width();
+    result += frame.width()->to_string();
     result += ");";
   } else if (text_wrap == TextWrap::after) {
     result += "display:block;";
     result += "float:left;clear:both;";
     result += "shape-outside:content-box;";
-    if (const std::optional<std::string> x = frame.x(); x.has_value()) {
-      result += "margin-left:" + *x + ";";
+    if (const std::optional<Measure> x = frame.x(); x.has_value()) {
+      result += "margin-left:" + x->to_string() + ";";
     }
-    if (const std::optional<std::string> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + *y + ";";
+    if (const std::optional<Measure> y = frame.y(); y.has_value()) {
+      result += "margin-top:" + y->to_string() + ";";
     }
   } else if (text_wrap == TextWrap::none) {
     result += "display:block;";
-    if (const std::optional<std::string> x = frame.x(); x.has_value()) {
-      result += "margin-left:" + *x + ";";
+    if (const std::optional<Measure> x = frame.x(); x.has_value()) {
+      result += "margin-left:" + x->to_string() + ";";
     }
-    if (const std::optional<std::string> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + *y + ";";
+    if (const std::optional<Measure> y = frame.y(); y.has_value()) {
+      result += "margin-top:" + y->to_string() + ";";
     }
   } else {
     result += "display:block;";
     result += "position:absolute;";
-    if (const std::optional<std::string> x = frame.x(); x.has_value()) {
-      result += "left:" + *x + ";";
+    if (const std::optional<Measure> x = frame.x(); x.has_value()) {
+      result += "left:" + x->to_string() + ";";
     }
-    if (const std::optional<std::string> y = frame.y(); y.has_value()) {
-      result += "top:" + *y + ";";
+    if (const std::optional<Measure> y = frame.y(); y.has_value()) {
+      result += "top:" + y->to_string() + ";";
     }
   }
-  if (const std::optional<std::string> width = frame.width();
-      width.has_value()) {
-    result += "width:" + *width + ";";
+  if (const std::optional<Measure> width = frame.width(); width.has_value()) {
+    result += "width:" + width->to_string() + ";";
   }
-  if (const std::optional<std::string> height = frame.height();
+  if (const std::optional<Measure> height = frame.height();
       height.has_value()) {
-    result += "height:" + *height + ";";
+    result += "height:" + height->to_string() + ";";
   }
-  if (const std::optional<std::string> z_index = frame.z_index();
+  if (const std::optional<std::int32_t> z_index = frame.z_index();
       z_index.has_value()) {
-    result += "z-index:" + *z_index + ";";
+    result += "z-index:" + std::to_string(*z_index) + ";";
   }
   return result;
 }
@@ -438,20 +438,20 @@ std::string html::translate_frame_properties(const Frame &frame) {
 std::string html::translate_rect_properties(const Rect &rect) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + rect.x() + ";";
-  result += "top:" + rect.y() + ";";
-  result += "width:" + rect.width() + ";";
-  result += "height:" + rect.height() + ";";
+  result += "left:" + rect.x().to_string() + ";";
+  result += "top:" + rect.y().to_string() + ";";
+  result += "width:" + rect.width().to_string() + ";";
+  result += "height:" + rect.height().to_string() + ";";
   return result;
 }
 
 std::string html::translate_circle_properties(const Circle &circle) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + circle.x() + ";";
-  result += "top:" + circle.y() + ";";
-  result += "width:" + circle.width() + ";";
-  result += "height:" + circle.height() + ";";
+  result += "left:" + circle.x().to_string() + ";";
+  result += "top:" + circle.y().to_string() + ";";
+  result += "width:" + circle.width().to_string() + ";";
+  result += "height:" + circle.height().to_string() + ";";
   return result;
 }
 
@@ -459,18 +459,18 @@ std::string
 html::translate_custom_shape_properties(const CustomShape &custom_shape) {
   std::string result;
   result += "position:absolute;";
-  if (const std::optional<std::string> x = custom_shape.x(); x.has_value()) {
-    result += "left:" + *x + ";";
+  if (const std::optional<Measure> x = custom_shape.x(); x.has_value()) {
+    result += "left:" + x->to_string() + ";";
   } else {
     result += "left:0;";
   }
-  if (const std::optional<std::string> y = custom_shape.y(); y.has_value()) {
-    result += "top:" + *y + ";";
+  if (const std::optional<Measure> y = custom_shape.y(); y.has_value()) {
+    result += "top:" + y->to_string() + ";";
   } else {
     result += "top:0;";
   }
-  result += "width:" + custom_shape.width() + ";";
-  result += "height:" + custom_shape.height() + ";";
+  result += "width:" + custom_shape.width().to_string() + ";";
+  result += "height:" + custom_shape.height().to_string() + ";";
   return result;
 }
 

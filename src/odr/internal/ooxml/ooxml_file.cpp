@@ -29,10 +29,6 @@ std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
   return {};
 }
 
-DecoderEngine OfficeOpenXmlFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType OfficeOpenXmlFile::file_type() const noexcept {
   return m_file_meta.type;
 }

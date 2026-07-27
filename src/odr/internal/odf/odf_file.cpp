@@ -36,10 +36,6 @@ std::shared_ptr<abstract::File> OpenDocumentFile::file() const noexcept {
   return {};
 }
 
-DecoderEngine OpenDocumentFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType OpenDocumentFile::file_type() const noexcept {
   return m_file_meta.type;
 }

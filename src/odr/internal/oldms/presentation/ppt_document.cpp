@@ -194,25 +194,25 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return AnchorType::at_page;
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_x(const ElementIdentifier element_id) const override {
     return anchor_measure(element_id, [](const Anchor &a) { return a.left; });
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_y(const ElementIdentifier element_id) const override {
     return anchor_measure(element_id, [](const Anchor &a) { return a.top; });
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
     return anchor_measure(element_id,
                           [](const Anchor &a) { return a.right - a.left; });
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
     return anchor_measure(element_id,
                           [](const Anchor &a) { return a.bottom - a.top; });
   }
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<std::int32_t>
   frame_z_index(const ElementIdentifier /*element_id*/) const override {
     return std::nullopt;
   }
@@ -277,10 +277,10 @@ private:
         m_registry->element_style_index(element_id));
   }
 
-  // Converts one field of a frame's anchor to a Measure string, or nullopt
-  // when the frame has no anchor.
+  // Converts one field of a frame's anchor to a Measure, or nullopt when the
+  // frame has no anchor.
   template <typename Selector>
-  [[nodiscard]] std::optional<std::string>
+  [[nodiscard]] std::optional<Measure>
   anchor_measure(const ElementIdentifier element_id,
                  const Selector &select) const {
     const std::optional<Anchor> &anchor =
@@ -288,8 +288,7 @@ private:
     if (!anchor.has_value()) {
       return std::nullopt;
     }
-    return Measure(select(*anchor) / master_units_per_inch, DynamicUnit("in"))
-        .to_string();
+    return Measure(select(*anchor) / master_units_per_inch, DynamicUnit("in"));
   }
 
   [[maybe_unused]]

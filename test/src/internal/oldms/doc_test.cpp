@@ -161,7 +161,7 @@ TEST(OldMs, doc_apply_character_sprms) {
     EXPECT_EQ(style.font_line_through, false);
     EXPECT_EQ(style.font_underline, true);
     EXPECT_EQ(style.font_size, Measure("16pt"));
-    EXPECT_STREQ(style.font_name, "Courier New");
+    EXPECT_EQ(style.font_name, "Courier New");
     ASSERT_TRUE(style.font_color.has_value());
     EXPECT_EQ(style.font_color->rgb(), 0x112233u);
     ASSERT_TRUE(style.background_color.has_value());
@@ -185,7 +185,7 @@ TEST(OldMs, doc_apply_character_sprms) {
   {
     // cvAuto ([MS-DOC] 2.9.43) resets an earlier explicit color.
     TextStyle colored = base;
-    colored.font_color = Color(std::uint32_t{0x123456});
+    colored.font_color = Color::from_rgb(0x123456);
     const TextStyle style = apply_character_sprms(
         colored, doc_prl(0x6870, std::string("\x00\x00\x00\xFF", 4)), fonts);
     EXPECT_FALSE(style.font_color.has_value());
@@ -197,7 +197,7 @@ TEST(OldMs, doc_apply_character_sprms) {
     const std::vector<std::string> no_fonts;
     const TextStyle style = apply_character_sprms(
         base, doc_prl(0x4A4F, std::string("\x00\x00", 2)), no_fonts);
-    EXPECT_EQ(style.font_name, nullptr);
+    EXPECT_FALSE(style.font_name.has_value());
     EXPECT_THROW(
         apply_character_sprms(base, doc_prl(0x4A4F, std::string("\x01\x00", 2)),
                               no_fonts),
@@ -318,12 +318,12 @@ TEST(OldMs, doc_character_formatting) {
   const TextStyle plain = spans[0].as_span().style();
   EXPECT_EQ(plain.font_size, Measure("10pt"));
   EXPECT_FALSE(plain.font_weight.has_value());
-  EXPECT_EQ(plain.font_name, nullptr);
+  EXPECT_FALSE(plain.font_name.has_value());
 
   EXPECT_EQ(collect_text(spans[1]), "bold");
   const TextStyle bold = spans[1].as_span().style();
   EXPECT_EQ(bold.font_weight, FontWeight::bold);
-  EXPECT_STREQ(bold.font_name, "Arial");
+  EXPECT_EQ(bold.font_name, "Arial");
   EXPECT_EQ(bold.font_size, Measure("10pt"));
 
   EXPECT_EQ(paragraphs[0].as_paragraph().text_style().font_size,

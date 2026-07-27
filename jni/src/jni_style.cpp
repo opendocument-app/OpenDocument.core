@@ -120,6 +120,27 @@ jstring make_string_opt(JNIEnv *env, const std::optional<std::string> &value) {
   return value.has_value() ? to_jstring(env, *value) : nullptr;
 }
 
+jstring make_string_opt(JNIEnv *env,
+                        const std::optional<std::string_view> &value) {
+  return value.has_value() ? to_jstring(env, *value) : nullptr;
+}
+
+jobject make_integer_opt(JNIEnv *env,
+                         const std::optional<std::int32_t> &value) {
+  if (!value.has_value()) {
+    return nullptr;
+  }
+  return call_static_object(env, "java/lang/Integer", "valueOf",
+                            "(I)Ljava/lang/Integer;",
+                            static_cast<jint>(*value));
+}
+
+jobject make_measure(JNIEnv *env, const odr::Measure &value) {
+  return new_object(env, "app/opendocument/core/Measure",
+                    "(DLjava/lang/String;)V", value.magnitude(),
+                    to_jstring(env, value.unit().to_string()));
+}
+
 jobject make_measure(JNIEnv *env, const std::optional<odr::Measure> &value) {
   if (!value.has_value()) {
     return nullptr;
@@ -167,9 +188,9 @@ jobject make_text_style(JNIEnv *env, const odr::TextStyle &style) {
       "(Ljava/lang/String;Lapp/opendocument/core/Measure;II"
       "Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/String;"
       "Lapp/opendocument/core/Color;Lapp/opendocument/core/Color;I)V",
-      style.font_name == nullptr ? nullptr : to_jstring(env, style.font_name),
-      make_measure(env, style.font_size), enum_code(style.font_weight),
-      enum_code(style.font_style), box_boolean(env, style.font_underline),
+      make_string_opt(env, style.font_name), make_measure(env, style.font_size),
+      enum_code(style.font_weight), enum_code(style.font_style),
+      box_boolean(env, style.font_underline),
       box_boolean(env, style.font_line_through),
       make_string_opt(env, style.font_shadow),
       make_color(env, style.font_color),

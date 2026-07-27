@@ -175,7 +175,7 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Html_editDocument(
     JNIEnv *env, jclass, jlong document_handle, jstring diff) {
   guarded(env, [&] {
     odr::html::edit(*from_handle<odr::Document>(document_handle),
-                    to_string(env, diff).c_str());
+                    to_string(env, diff));
   });
 }
 

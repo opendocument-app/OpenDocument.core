@@ -105,7 +105,8 @@ void odr_python::bind_style(py::module_ &m) {
 
   py::class_<odr::Color>(m, "Color")
       .def(py::init<>())
-      .def(py::init<std::uint32_t>(), py::arg("rgb"))
+      .def_static("from_rgb", &odr::Color::from_rgb, py::arg("rgb"))
+      .def_static("from_argb", &odr::Color::from_argb, py::arg("argb"))
       .def(py::init<std::uint8_t, std::uint8_t, std::uint8_t>(), py::arg("red"),
            py::arg("green"), py::arg("blue"))
       .def(py::init<std::uint8_t, std::uint8_t, std::uint8_t, std::uint8_t>(),
@@ -125,10 +126,10 @@ void odr_python::bind_style(py::module_ &m) {
       .def_property_readonly(
           "font_name",
           [](const odr::TextStyle &style) -> std::optional<std::string> {
-            if (style.font_name == nullptr) {
+            if (!style.font_name.has_value()) {
               return std::nullopt;
             }
-            return std::string(style.font_name);
+            return std::string(*style.font_name);
           })
       .def_readwrite("font_size", &odr::TextStyle::font_size)
       .def_readwrite("font_weight", &odr::TextStyle::font_weight)

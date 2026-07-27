@@ -44,22 +44,6 @@ public class OdrException extends RuntimeException {
     }
   }
 
-  public static final class UnknownDecoderEngine extends OdrException {
-    private static final long serialVersionUID = 1L;
-
-    public UnknownDecoderEngine(String message) {
-      super(message);
-    }
-  }
-
-  public static final class UnsupportedDecoderEngine extends OdrException {
-    private static final long serialVersionUID = 1L;
-
-    public UnsupportedDecoderEngine(String message) {
-      super(message);
-    }
-  }
-
   public static final class FileReadError extends OdrException {
     private static final long serialVersionUID = 1L;
 

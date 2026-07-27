@@ -14,10 +14,6 @@ std::shared_ptr<abstract::File> TextFile::file() const noexcept {
   return m_file;
 }
 
-DecoderEngine TextFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType TextFile::file_type() const noexcept { return FileType::text_file; }
 
 std::string_view TextFile::mimetype() const noexcept { return "text/plain"; }
