@@ -25,6 +25,10 @@ public final class HttpServer extends NativeResource {
     public boolean reusePort = false;
   }
 
+  public HttpServer() {
+    this(new Config());
+  }
+
   public HttpServer(Config config) {
     super(create(), null, HttpServer::destroy);
   }

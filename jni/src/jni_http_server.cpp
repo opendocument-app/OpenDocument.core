@@ -29,9 +29,7 @@ Java_app_opendocument_core_Odr_hasHttpServer(JNIEnv *, jclass) {
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_HttpServer_create(JNIEnv *env, jclass) {
-  return guarded(env, [&] {
-    return make_handle(odr::HttpServer(odr::HttpServer::Config{}));
-  });
+  return guarded(env, [&] { return make_handle(odr::HttpServer()); });
 }
 
 extern "C" JNIEXPORT void JNICALL

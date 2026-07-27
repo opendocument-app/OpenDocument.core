@@ -42,7 +42,7 @@ int main(const int argc, char **argv) {
       }
     }
 
-    const HttpServer server{HttpServer::Config{}, logger};
+    const HttpServer server{{}, logger};
 
     // the server does not own a cache any more, so the translation goes
     // somewhere of our choosing

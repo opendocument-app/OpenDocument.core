@@ -304,11 +304,6 @@ void HttpServer::connect_service(HtmlService service,
 }
 
 std::uint32_t HttpServer::bind(const std::string &host,
-                               const std::uint32_t port) const {
-  return bind(host, port, Options{});
-}
-
-std::uint32_t HttpServer::bind(const std::string &host,
                                const std::uint32_t port,
                                const Options &options) const {
   return m_impl->bind(host, port, options);

@@ -21,7 +21,7 @@ def fetch(url, timeout=5.0):
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
 def test_serve_file(core_data_path, odt_path, tmp_path):
-    server = pyodr.HttpServer(pyodr.HttpServer.Config())
+    server = pyodr.HttpServer()
 
     # the server hosts what it is given; translating is the caller's business
     cache_path = tmp_path / "doc-cache"
@@ -50,7 +50,7 @@ def test_serve_file(core_data_path, odt_path, tmp_path):
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
 def test_bind_reports_what_it_got():
-    server = pyodr.HttpServer(pyodr.HttpServer.Config())
+    server = pyodr.HttpServer()
 
     port = server.bind("127.0.0.1", 0)
     assert port != 0
@@ -64,23 +64,22 @@ def test_bind_reports_what_it_got():
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
 def test_bind_reports_a_port_in_use():
-    taken = pyodr.HttpServer(pyodr.HttpServer.Config())
+    taken = pyodr.HttpServer()
     # a literal address on purpose: "localhost" resolves to both ::1 and
     # 127.0.0.1, so a second bind lands on the other one instead of colliding
     port = taken.bind("127.0.0.1", 0)
 
-    other = pyodr.HttpServer(pyodr.HttpServer.Config())
-    options = pyodr.HttpServer.Options()
-    options.reuse_port = False  # or the two would share the port
+    other = pyodr.HttpServer()
+    # reuse_port defaults off, or the two would share the port
     with pytest.raises(RuntimeError):
-        other.bind("127.0.0.1", port, options)
+        other.bind("127.0.0.1", port)
 
     taken.stop()
 
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
 def test_listen_without_bind_raises():
-    server = pyodr.HttpServer(pyodr.HttpServer.Config())
+    server = pyodr.HttpServer()
 
     # cpp-httplib reports success for this, hence the guard being tested
     with pytest.raises(RuntimeError):

@@ -59,7 +59,7 @@ class HttpServerTest {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
     assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
 
-    HttpServer server = new HttpServer(new HttpServer.Config());
+    HttpServer server = new HttpServer();
 
     // the server hosts what it is given; translating is the caller's business
     String cachePath = Files.createDirectories(tempDir.resolve("doc-cache")).toString();
@@ -106,7 +106,7 @@ class HttpServerTest {
   void bindReportsWhatItGot() {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
 
-    HttpServer server = new HttpServer(new HttpServer.Config());
+    HttpServer server = new HttpServer();
 
     // a literal address on purpose: "localhost" resolves to both ::1 and 127.0.0.1,
     // so a second bind would land on the other one instead of colliding
@@ -123,7 +123,7 @@ class HttpServerTest {
   void listenWithoutBindThrows() {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
 
-    HttpServer server = new HttpServer(new HttpServer.Config());
+    HttpServer server = new HttpServer();
 
     // cpp-httplib reports success for this, hence the guard being tested
     assertThrows(RuntimeException.class, server::listen);

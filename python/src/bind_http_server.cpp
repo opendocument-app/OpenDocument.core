@@ -31,7 +31,7 @@ void odr_python::bind_http_server(py::module_ &m) {
       .def(py::init([](const odr::HttpServer::Config &config) {
              return odr::HttpServer(config);
            }),
-           py::arg("config"))
+           py::arg("config") = odr::HttpServer::Config{})
       .def("connect_service", &odr::HttpServer::connect_service,
            py::arg("service"), py::arg("prefix"))
       .def(
