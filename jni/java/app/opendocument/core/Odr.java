@@ -57,28 +57,11 @@ public final class Odr {
     return mimetypeByFileTypeNative(type.toNative());
   }
 
-  public static String decoderEngineToString(DecoderEngine engine) {
-    return decoderEngineToStringNative(engine.toNative());
-  }
-
-  public static DecoderEngine decoderEngineByName(String name) {
-    return DecoderEngine.fromNative(decoderEngineByNameNative(name));
-  }
-
   /** Determines the possible file types of a file. */
   public static List<FileType> listFileTypes(String path) {
     List<FileType> result = new ArrayList<>();
     for (int code : listFileTypesNative(path)) {
       result.add(FileType.fromNative(code));
-    }
-    return result;
-  }
-
-  /** Determines the decoder engines for a file type. */
-  public static List<DecoderEngine> listDecoderEngines(FileType as) {
-    List<DecoderEngine> result = new ArrayList<>();
-    for (int code : listDecoderEnginesNative(as.toNative())) {
-      result.add(DecoderEngine.fromNative(code));
     }
     return result;
   }
@@ -107,9 +90,7 @@ public final class Odr {
         openWithPreferenceNative(
             path,
             preference.asFileTypeNative(),
-            preference.withEngineNative(),
-            preference.fileTypePriorityNative(),
-            preference.enginePriorityNative()));
+            preference.fileTypePriorityNative()));
   }
 
   private static native int fileTypeByFileExtensionNative(String extension);
@@ -128,13 +109,7 @@ public final class Odr {
 
   private static native String mimetypeByFileTypeNative(int type);
 
-  private static native String decoderEngineToStringNative(int engine);
-
-  private static native int decoderEngineByNameNative(String name);
-
   private static native int[] listFileTypesNative(String path);
-
-  private static native int[] listDecoderEnginesNative(int as);
 
   private static native long openNative(String path);
 
@@ -143,7 +118,7 @@ public final class Odr {
   private static native long openAsNative(String path, int as);
 
   private static native long openWithPreferenceNative(
-      String path, int asFileType, int withEngine, int[] fileTypePriority, int[] enginePriority);
+      String path, int asFileType, int[] fileTypePriority);
 
   private Odr() {}
 }

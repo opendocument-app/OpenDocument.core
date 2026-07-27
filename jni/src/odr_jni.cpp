@@ -134,13 +134,6 @@ void throw_java(JNIEnv *env) {
   } catch (const odr::UnsupportedFileType &e) {
     throw_new(env, "app/opendocument/core/OdrException$UnsupportedFileType",
               e.what());
-  } catch (const odr::UnknownDecoderEngine &e) {
-    throw_new(env, "app/opendocument/core/OdrException$UnknownDecoderEngine",
-              e.what());
-  } catch (const odr::UnsupportedDecoderEngine &e) {
-    throw_new(env,
-              "app/opendocument/core/OdrException$UnsupportedDecoderEngine",
-              e.what());
   } catch (const odr::FileReadError &e) {
     throw_new(env, "app/opendocument/core/OdrException$FileReadError",
               e.what());

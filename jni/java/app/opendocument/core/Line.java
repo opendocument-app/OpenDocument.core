@@ -6,19 +6,19 @@ public final class Line extends Element {
     super(handle, owner);
   }
 
-  public String x1() {
+  public Measure x1() {
     return x1Native(handle());
   }
 
-  public String y1() {
+  public Measure y1() {
     return y1Native(handle());
   }
 
-  public String x2() {
+  public Measure x2() {
     return x2Native(handle());
   }
 
-  public String y2() {
+  public Measure y2() {
     return y2Native(handle());
   }
 
@@ -26,13 +26,13 @@ public final class Line extends Element {
     return styleNative(handle());
   }
 
-  private native String x1Native(long handle);
+  private native Measure x1Native(long handle);
 
-  private native String y1Native(long handle);
+  private native Measure y1Native(long handle);
 
-  private native String x2Native(long handle);
+  private native Measure x2Native(long handle);
 
-  private native String y2Native(long handle);
+  private native Measure y2Native(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

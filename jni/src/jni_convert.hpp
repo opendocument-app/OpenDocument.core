@@ -10,11 +10,16 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr_jni {
 
 // C++ to Java; optionals map to null.
 jstring make_string_opt(JNIEnv *env, const std::optional<std::string> &value);
+jstring make_string_opt(JNIEnv *env,
+                        const std::optional<std::string_view> &value);
+jobject make_integer_opt(JNIEnv *env, const std::optional<std::int32_t> &value);
+jobject make_measure(JNIEnv *env, const odr::Measure &value);
 jobject make_measure(JNIEnv *env, const std::optional<odr::Measure> &value);
 jobject make_color(JNIEnv *env, const std::optional<odr::Color> &value);
 jobject make_directional_measure(JNIEnv *env,

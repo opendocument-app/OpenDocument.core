@@ -46,7 +46,7 @@ ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   }
   if (std::strlen(value) == 6) {
     const std::uint32_t color = std::strtoull(value, nullptr, 16);
-    return Color(color);
+    return Color::from_rgb(color);
   }
   return {};
 }

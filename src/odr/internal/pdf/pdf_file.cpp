@@ -131,10 +131,6 @@ std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
   return m_file;
 }
 
-DecoderEngine PdfFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
 
 bool PdfFile::password_encrypted() const noexcept {

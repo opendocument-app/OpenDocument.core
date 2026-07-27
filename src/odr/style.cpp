@@ -2,18 +2,20 @@
 
 namespace odr {
 
+Color Color::from_rgb(const std::uint32_t rgb) {
+  return {static_cast<std::uint8_t>(rgb >> 16),
+          static_cast<std::uint8_t>(rgb >> 8),
+          static_cast<std::uint8_t>(rgb >> 0)};
+}
+
+Color Color::from_argb(const std::uint32_t argb) {
+  return {static_cast<std::uint8_t>(argb >> 16),
+          static_cast<std::uint8_t>(argb >> 8),
+          static_cast<std::uint8_t>(argb >> 0),
+          static_cast<std::uint8_t>(argb >> 24)};
+}
+
 Color::Color() = default;
-
-Color::Color(const std::uint32_t rgb)
-    : red{static_cast<std::uint8_t>(rgb >> 16)},
-      green{static_cast<std::uint8_t>(rgb >> 8)},
-      blue{static_cast<std::uint8_t>(rgb >> 0)} {}
-
-Color::Color(const std::uint32_t argb, bool)
-    : red{static_cast<std::uint8_t>(argb >> 16)},
-      green{static_cast<std::uint8_t>(argb >> 8)},
-      blue{static_cast<std::uint8_t>(argb >> 0)},
-      alpha{static_cast<std::uint8_t>(argb >> 24)} {}
 
 Color::Color(const std::uint8_t red, const std::uint8_t green,
              const std::uint8_t blue)
@@ -41,7 +43,7 @@ std::uint32_t Color::argb() const {
 }
 
 void TextStyle::override(const TextStyle &other) {
-  if (other.font_name != nullptr) {
+  if (other.font_name.has_value()) {
     font_name = other.font_name;
   }
   if (other.font_size.has_value()) {

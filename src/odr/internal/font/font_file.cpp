@@ -23,10 +23,6 @@ std::shared_ptr<abstract::File> FontFile::file() const noexcept {
   return m_file;
 }
 
-DecoderEngine FontFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType FontFile::file_type() const noexcept { return m_file_type; }
 
 std::string_view FontFile::mimetype() const noexcept {

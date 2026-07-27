@@ -42,10 +42,6 @@ public class DecodedFile extends NativeResource {
     return fileMetaNative(handle());
   }
 
-  public DecoderEngine decoderEngine() {
-    return DecoderEngine.fromNative(decoderEngineNative(handle()));
-  }
-
   public boolean passwordEncrypted() {
     return passwordEncryptedNative(handle());
   }
@@ -126,8 +122,6 @@ public class DecodedFile extends NativeResource {
   private native int fileCategoryNative(long handle);
 
   private native FileMeta fileMetaNative(long handle);
-
-  private native int decoderEngineNative(long handle);
 
   private native boolean passwordEncryptedNative(long handle);
 

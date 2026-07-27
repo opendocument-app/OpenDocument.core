@@ -12,10 +12,6 @@ std::shared_ptr<abstract::File> CfbFile::file() const noexcept {
   return m_cfb->file();
 }
 
-DecoderEngine CfbFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType CfbFile::file_type() const noexcept {
   return FileType::compound_file_binary_format;
 }

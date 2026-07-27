@@ -5,7 +5,7 @@ The **why** for the OOXML engine; per-feature checklists live in the
 build/test, conventions) is in the top-level [`AGENTS.md`](../../../../AGENTS.md);
 read it first.
 
-**Scope.** One engine (`DecoderEngine::odr`) reading the three OOXML document
+**Scope.** Reading the three OOXML document
 types — word (`.docx`), presentation (`.pptx`), spreadsheet (`.xlsx`). The three
 formats **share almost nothing beyond packaging, encryption, and type
 detection**; each is a self-contained module with its own `AGENTS.md`:

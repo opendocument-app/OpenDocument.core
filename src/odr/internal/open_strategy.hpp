@@ -5,7 +5,6 @@
 
 namespace odr {
 enum class FileType;
-enum class DecoderEngine;
 struct DecodePreference;
 class Logger;
 } // namespace odr
@@ -21,17 +20,12 @@ namespace odr::internal::open_strategy {
 std::vector<FileType>
 list_file_types(const std::shared_ptr<abstract::File> &file,
                 const Logger &logger);
-std::vector<DecoderEngine> list_decoder_engines(FileType as);
 
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file, const Logger &logger);
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file, FileType as,
           const Logger &logger);
-
-std::unique_ptr<abstract::DecodedFile>
-open_file(const std::shared_ptr<abstract::File> &file, FileType as,
-          DecoderEngine with, const Logger &logger);
 std::unique_ptr<abstract::DecodedFile>
 open_file(const std::shared_ptr<abstract::File> &file,
           const DecodePreference &preference, const Logger &logger);

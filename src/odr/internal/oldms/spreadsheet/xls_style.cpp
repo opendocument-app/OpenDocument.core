@@ -33,7 +33,7 @@ constexpr std::array<std::uint32_t, palette_color_count> default_palette = {
 std::optional<Color> icv_color(const std::uint16_t icv,
                                const std::span<const LongRgb> palette) {
   if (icv < built_in_colors.size()) {
-    return Color(built_in_colors[icv]);
+    return Color::from_rgb(built_in_colors[icv]);
   }
   if (const std::size_t index = icv - built_in_colors.size();
       index < palette_color_count) {
@@ -41,7 +41,7 @@ std::optional<Color> icv_color(const std::uint16_t icv,
       const LongRgb &color = palette[index];
       return Color(color.red, color.green, color.blue);
     }
-    return Color(default_palette[index]);
+    return Color::from_rgb(default_palette[index]);
   }
   return std::nullopt;
 }
@@ -75,7 +75,7 @@ StyleRegistry::StyleRegistry(std::vector<Font> fonts,
 
     const Font &font = font_at(m_fonts, xf.ifnt);
     TextStyle &text = style.text_style;
-    text.font_name = font.name.c_str();
+    text.font_name = font.name;
     if (font.fixed.dyHeight != 0) {
       text.font_size = Measure(font.fixed.dyHeight / 20.0, DynamicUnit("pt"));
     }

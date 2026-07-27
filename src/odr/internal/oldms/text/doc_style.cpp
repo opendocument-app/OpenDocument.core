@@ -30,7 +30,7 @@ std::optional<Color> ico_color(const std::uint8_t ico) {
   if (ico == 0) {
     return std::nullopt; // cvAuto
   }
-  return Color(ico_colors[ico]);
+  return Color::from_rgb(ico_colors[ico]);
 }
 
 /// ToggleOperand ([MS-DOC] 2.9.327) against the (unmodelled) style value:
@@ -143,7 +143,7 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
         throw std::runtime_error("doc: sprmCRgFtc0 font index out of range");
       }
       if (!font_names.empty()) {
-        style.font_name = font_names[static_cast<std::size_t>(ftc)].c_str();
+        style.font_name = font_names[static_cast<std::size_t>(ftc)];
       }
     } break;
     case sprmCCv: {

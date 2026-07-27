@@ -44,10 +44,4 @@ class MetaTest {
     assertEquals("A", TablePosition.toColumnString(0));
     assertEquals("A1", new TablePosition(0, 0).toString());
   }
-
-  @Test
-  void listDecoderEngines() {
-    assertTrue(
-        Odr.listDecoderEngines(FileType.OPENDOCUMENT_TEXT).contains(DecoderEngine.ODR));
-  }
 }

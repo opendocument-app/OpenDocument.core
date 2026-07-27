@@ -40,7 +40,6 @@ FileType expected_file_type_post_decryption(const TestFile &test_file) {
 struct TestParams {
   TestFile test_file;
   std::string path;
-  DecoderEngine engine{DecoderEngine::odr};
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
   std::string test_repo;
   std::string output_path;
@@ -54,14 +53,12 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
-  const DecoderEngine engine = params.engine;
   const std::string &output_path = params.output_path;
   const std::string &output_path_prefix = params.output_path_prefix;
 
   const FileCategory file_category = file_category_by_file_type(test_file.type);
 
-  ODR_INFO(logger, "Testing file: " << test_file.short_path << " with engine: "
-                                    << odr::decoder_engine_to_string(engine)
+  ODR_INFO(logger, "Testing file: " << test_file.short_path
                                     << " output to: " << output_path);
 
   // these files cannot be opened
@@ -73,7 +70,6 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   DecodePreference decode_preference;
   decode_preference.as_file_type = test_file.type;
-  decode_preference.with_engine = engine;
   DecodedFile file = open(test_file.absolute_path, decode_preference, logger);
 
   FileMeta file_meta = file.file_meta();
@@ -112,8 +108,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   // TODO oldms decryption
   if (test_file.password.has_value() &&
-      test_file.type == FileType::legacy_word_document &&
-      engine == DecoderEngine::odr) {
+      test_file.type == FileType::legacy_word_document) {
     GTEST_SKIP();
   }
 
@@ -184,11 +179,6 @@ TEST_P(HtmlOutputTests, html_meta) {
 
 namespace {
 
-std::string engine_suffix(const DecoderEngine engine) {
-  return engine == DecoderEngine::odr ? ""
-                                      : "-" + decoder_engine_to_string(engine);
-}
-
 /// The default `dual_layer` mode carries no suffix so existing (non-PDF and
 /// dual-layer) reference outputs keep their paths; single-layer variants are
 /// disambiguated with `-single`.
@@ -197,8 +187,7 @@ std::string text_mode_suffix(const PdfTextMode pdf_text_mode) {
 }
 
 std::string test_params_to_name(const TestParams &params) {
-  std::string path = params.path + engine_suffix(params.engine) +
-                     text_mode_suffix(params.pdf_text_mode);
+  std::string path = params.path + text_mode_suffix(params.pdf_text_mode);
   util::string::replace_all(path, "/", "_");
   util::string::replace_all(path, "-", "_");
   util::string::replace_all(path, "+", "_");
@@ -209,7 +198,6 @@ std::string test_params_to_name(const TestParams &params) {
 }
 
 TestParams create_test_params(const TestFile &test_file,
-                              const DecoderEngine engine,
                               const PdfTextMode pdf_text_mode) {
   const std::string test_file_path = test_file.short_path;
 
@@ -219,8 +207,7 @@ TestParams create_test_params(const TestFile &test_file,
                                              .join(RelPath(test_repo))
                                              .join(RelPath("output"))
                                              .string();
-  const std::string output_path_suffix =
-      engine_suffix(engine) + text_mode_suffix(pdf_text_mode);
+  const std::string output_path_suffix = text_mode_suffix(pdf_text_mode);
   const std::string output_path =
       AbsPath(output_path_prefix)
           .join(RelPath(test_file_path).rebase(RelPath(test_repo)))
@@ -230,7 +217,6 @@ TestParams create_test_params(const TestFile &test_file,
   return {
       .test_file = test_file,
       .path = test_file_path,
-      .engine = engine,
       .pdf_text_mode = pdf_text_mode,
       .test_repo = test_repo,
       .output_path = output_path,
@@ -241,16 +227,15 @@ TestParams create_test_params(const TestFile &test_file,
 std::vector<TestParams> list_test_params() {
   std::vector<TestParams> params;
   for (const TestFile &test_file : TestData::test_files()) {
-    params.push_back(create_test_params(test_file, DecoderEngine::odr,
-                                        PdfTextMode::dual_layer));
+    params.push_back(create_test_params(test_file, PdfTextMode::dual_layer));
 
     // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
     // under reference-output coverage too, eject an extra `-single` test case
     // for one representative PDF (odr engine only, since the text mode only
     // affects odr's PDF rendering).
     if (test_file.short_path == "odr-private/pdf/978-3-030-65771-0.pdf") {
-      params.push_back(create_test_params(test_file, DecoderEngine::odr,
-                                          PdfTextMode::single_layer));
+      params.push_back(
+          create_test_params(test_file, PdfTextMode::single_layer));
     }
   }
   return params;

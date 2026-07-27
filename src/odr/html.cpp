@@ -62,7 +62,7 @@ void HtmlConfig::init() {
 Html::Html(HtmlConfig config, std::vector<HtmlPage> pages)
     : m_config{std::move(config)}, m_pages{std::move(pages)} {}
 
-const HtmlConfig &Html::config() { return m_config; }
+const HtmlConfig &Html::config() const { return m_config; }
 
 const std::vector<HtmlPage> &Html::pages() const { return m_pages; }
 
@@ -320,7 +320,7 @@ HtmlService html::translate(const Document &document,
                                                  logger);
 }
 
-void html::edit(const Document &document, const char *diff,
+void html::edit(const Document &document, const std::string_view diff,
                 const Logger & /*logger*/) {
   const nlohmann::json json = nlohmann::json::parse(diff);
   for (const auto &[key, value] : json["modifiedText"].items()) {

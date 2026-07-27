@@ -5,67 +5,63 @@
 
 namespace odr {
 enum class FileType;
-enum class DecoderEngine;
+
+/// @brief Base of every exception type this library declares.
+///
+/// Catching this catches every typed error below. Note that the decoders also
+/// throw plain `std::runtime_error` for malformed input that has no dedicated
+/// type, so `std::runtime_error` remains the widest net.
+struct Exception : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 /// @brief Unsupported operation exception
-struct UnsupportedOperation final : std::runtime_error {
+struct UnsupportedOperation final : Exception {
   UnsupportedOperation();
   explicit UnsupportedOperation(const std::string &message);
 };
 
 /// @brief File not found exception
-struct FileNotFound final : std::runtime_error {
+struct FileNotFound final : Exception {
   FileNotFound();
   explicit FileNotFound(const std::string &path);
 };
 
 /// @brief Unknown file type exception
-struct UnknownFileType final : std::runtime_error {
+struct UnknownFileType final : Exception {
   UnknownFileType();
 };
 
 /// @brief Unsupported file type exception
-struct UnsupportedFileType final : std::runtime_error {
+struct UnsupportedFileType final : Exception {
   FileType file_type;
 
   explicit UnsupportedFileType(FileType file_type);
 };
 
-/// @brief Unknown decoder engine exception
-struct UnknownDecoderEngine final : std::runtime_error {
-  UnknownDecoderEngine();
-};
-
-/// @brief Unsupported decoder engine exception
-struct UnsupportedDecoderEngine final : std::runtime_error {
-  DecoderEngine decoder_engine;
-
-  explicit UnsupportedDecoderEngine(DecoderEngine decoder_engine);
-};
-
 /// @brief File read error
-struct FileReadError final : std::runtime_error {
+struct FileReadError final : Exception {
   FileReadError();
 };
 
 /// @brief File write error
-struct FileWriteError final : std::runtime_error {
+struct FileWriteError final : Exception {
   explicit FileWriteError(const std::string &path);
 };
 
 /// @brief No ZIP file exception base
-struct NoZipFile final : std::runtime_error {
+struct NoZipFile final : Exception {
   NoZipFile();
 };
 
-/// @brief ZIP save error base
-struct ZipSaveError : std::runtime_error {
+/// @brief ZIP save error base; `internal::zip::MinizSaveError` refines it.
+struct ZipSaveError : Exception {
   ZipSaveError();
 };
 
-/// @brief CFB error base
-struct CfbError : std::runtime_error {
-  explicit CfbError(const char *desc);
+/// @brief CFB error base; NoCfbFile and CfbFileCorrupted refine it.
+struct CfbError : Exception {
+  explicit CfbError(const std::string &desc);
 };
 
 /// @brief No CFB file exception base
@@ -79,180 +75,180 @@ struct CfbFileCorrupted final : CfbError {
 };
 
 /// @brief No text file exception
-struct NoTextFile final : std::runtime_error {
+struct NoTextFile final : Exception {
   NoTextFile();
 };
 
 /// @brief No csv file exception
-struct NoCsvFile final : std::runtime_error {
+struct NoCsvFile final : Exception {
   NoCsvFile();
 };
 
 /// @brief No json file exception
-struct NoJsonFile final : std::runtime_error {
+struct NoJsonFile final : Exception {
   NoJsonFile();
 };
 
 /// @brief Unknown charset exception
-struct UnknownCharset final : std::runtime_error {
+struct UnknownCharset final : Exception {
   UnknownCharset();
 };
 
 /// @brief No image file exception
-struct NoImageFile final : std::runtime_error {
+struct NoImageFile final : Exception {
   NoImageFile();
 };
 
 /// @brief No archive file exception
-struct NoArchiveFile final : std::runtime_error {
+struct NoArchiveFile final : Exception {
   NoArchiveFile();
 };
 
 /// @brief No document file exception
-struct NoDocumentFile final : std::runtime_error {
+struct NoDocumentFile final : Exception {
   NoDocumentFile();
 };
 
 /// @brief No open document file exception
-struct NoOpenDocumentFile final : std::runtime_error {
+struct NoOpenDocumentFile final : Exception {
   NoOpenDocumentFile();
 };
 
 /// @brief No office open document file exception
-struct NoOfficeOpenXmlFile final : std::runtime_error {
+struct NoOfficeOpenXmlFile final : Exception {
   NoOfficeOpenXmlFile();
 };
 
 /// @brief No PDF file exception
-struct NoPdfFile final : std::runtime_error {
+struct NoPdfFile final : Exception {
   NoPdfFile();
 };
 
 /// @brief No font file exception
-struct NoFontFile final : std::runtime_error {
+struct NoFontFile final : Exception {
   NoFontFile();
 };
 
 /// @brief No legacy Microsoft Office file
-struct NoLegacyMicrosoftFile final : std::runtime_error {
+struct NoLegacyMicrosoftFile final : Exception {
   NoLegacyMicrosoftFile();
 };
 
 /// @brief No XML file exception
-struct NoXmlFile final : std::runtime_error {
+struct NoXmlFile final : Exception {
   NoXmlFile();
 };
 
 /// @brief Unsupported crypto algorithm exception
-struct UnsupportedCryptoAlgorithm final : std::runtime_error {
+struct UnsupportedCryptoAlgorithm final : Exception {
   UnsupportedCryptoAlgorithm();
 };
 
 /// @brief No SVM file exception base
-struct NoSvmFile final : std::runtime_error {
+struct NoSvmFile final : Exception {
   NoSvmFile();
 };
 
 /// @brief Malformed SVM file exception base
-struct MalformedSvmFile final : std::runtime_error {
+struct MalformedSvmFile final : Exception {
   MalformedSvmFile();
 };
 
 /// @brief Unsupported endian exception
-struct UnsupportedEndian final : std::runtime_error {
+struct UnsupportedEndian final : Exception {
   UnsupportedEndian();
 };
 
 /// @brief Unsupported MS crypto algorithm exception
-struct MsUnsupportedCryptoAlgorithm final : std::runtime_error {
+struct MsUnsupportedCryptoAlgorithm final : Exception {
   MsUnsupportedCryptoAlgorithm();
 };
 
 /// @brief Unknown document type exception
-struct UnknownDocumentType final : std::runtime_error {
+struct UnknownDocumentType final : Exception {
   UnknownDocumentType();
 };
 
 /// @brief Invalid prefix string
-struct InvalidPrefix final : std::runtime_error {
+struct InvalidPrefix final : Exception {
   InvalidPrefix();
   explicit InvalidPrefix(const std::string &prefix);
 };
 
 /// @brief Document copy protected exception
-struct DocumentCopyProtectedException final : std::runtime_error {
+struct DocumentCopyProtectedException final : Exception {
   DocumentCopyProtectedException();
 };
 
 /// @brief Resource is not accessible
-struct ResourceNotAccessible final : std::runtime_error {
+struct ResourceNotAccessible final : Exception {
   ResourceNotAccessible();
   ResourceNotAccessible(const std::string &name, const std::string &path);
 };
 
 /// @brief Prefix already in use
-struct PrefixInUse final : std::runtime_error {
+struct PrefixInUse final : Exception {
   PrefixInUse();
   explicit PrefixInUse(const std::string &prefix);
 };
 
 /// @brief HTTP server socket could not be bound
-struct ServerBindFailed final : std::runtime_error {
+struct ServerBindFailed final : Exception {
   ServerBindFailed(const std::string &host, std::uint32_t port);
 };
 
 /// @brief HTTP server is bound already
-struct ServerAlreadyBound final : std::runtime_error {
+struct ServerAlreadyBound final : Exception {
   ServerAlreadyBound();
 };
 
 /// @brief HTTP server has not been bound
-struct ServerNotBound final : std::runtime_error {
+struct ServerNotBound final : Exception {
   ServerNotBound();
 };
 
 /// @brief Unsupported option
-struct UnsupportedOption final : std::runtime_error {
+struct UnsupportedOption final : Exception {
   explicit UnsupportedOption(const std::string &message);
 };
 
 /// @brief Null pointer error
-struct NullPointerError final : std::runtime_error {
+struct NullPointerError final : Exception {
   explicit NullPointerError(const std::string &variable);
 };
 
 /// @brief Wrong password error
-struct WrongPasswordError final : std::runtime_error {
+struct WrongPasswordError final : Exception {
   explicit WrongPasswordError();
 };
 
 /// @brief Decryption failed
-struct DecryptionFailed final : std::runtime_error {
+struct DecryptionFailed final : Exception {
   explicit DecryptionFailed();
 };
 
 /// @brief Not encrypted error
-struct NotEncryptedError final : std::runtime_error {
+struct NotEncryptedError final : Exception {
   explicit NotEncryptedError();
 };
 
 /// @brief Invalid path
-struct InvalidPath final : std::runtime_error {
+struct InvalidPath final : Exception {
   explicit InvalidPath(const std::string &message);
 };
 
 /// @brief Unsupported file encoding
-struct UnsupportedFileEncoding final : std::runtime_error {
+struct UnsupportedFileEncoding final : Exception {
   explicit UnsupportedFileEncoding(const std::string &message);
 };
 
 /// @brief File is encrypted
-struct FileEncryptedError final : std::runtime_error {
+struct FileEncryptedError final : Exception {
   explicit FileEncryptedError();
 };
 
 /// @brief Read attempted on an encrypted file that has not been authenticated
-struct UnauthenticatedReadError final : std::runtime_error {
+struct UnauthenticatedReadError final : Exception {
   explicit UnauthenticatedReadError();
 };
 

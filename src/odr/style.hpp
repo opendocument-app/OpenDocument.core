@@ -5,12 +5,10 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace odr {
-
-/// @brief Represents a quantity: a magnitude and a unit of measure.
-using Measure = Quantity<double>;
 
 /// @brief Collection of font weights.
 enum class FontWeight {
@@ -74,9 +72,12 @@ struct Color final {
   std::uint8_t blue{0};
   std::uint8_t alpha{255};
 
+  /// @brief Builds an opaque color from a packed `0xRRGGBB` value.
+  static Color from_rgb(std::uint32_t rgb);
+  /// @brief Builds a color from a packed `0xAARRGGBB` value.
+  static Color from_argb(std::uint32_t argb);
+
   Color();
-  explicit Color(std::uint32_t rgb);
-  Color(std::uint32_t argb, bool dummy);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
   Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
         std::uint8_t alpha);
@@ -85,7 +86,9 @@ struct Color final {
   [[nodiscard]] std::uint32_t argb() const;
 };
 
-inline Color operator""_rgb(const unsigned long long rgb) { return Color(rgb); }
+inline Color operator""_rgb(const unsigned long long rgb) {
+  return Color::from_rgb(static_cast<std::uint32_t>(rgb));
+}
 
 /// @brief Represents a directional style.
 template <typename T> struct DirectionalStyle final {
@@ -130,8 +133,11 @@ template <typename T> struct DirectionalStyle final {
 };
 
 /// @brief Represents a style for text.
+///
+/// @note `font_name` borrows from the document that produced the style and is
+/// only valid for as long as that document is alive.
 struct TextStyle final {
-  const char *font_name{nullptr};
+  std::optional<std::string_view> font_name;
   std::optional<Measure> font_size;
   std::optional<FontWeight> font_weight;
   std::optional<FontStyle> font_style;

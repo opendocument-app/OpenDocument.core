@@ -29,9 +29,9 @@ public:
   [[nodiscard]] const TextStyle &text_style(std::uint32_t index) const;
 
 private:
-  /// Owns the font names: `TextStyle::font_name` (`const char *`) points into
-  /// them. Never modified after construction (moving the registry is fine —
-  /// the strings themselves do not move).
+  /// Owns the font names: `TextStyle::font_name` (a `std::string_view`) points
+  /// into them. Never modified after construction (moving the registry is fine
+  /// — the strings themselves do not move).
   std::vector<std::string> m_font_names;
   std::vector<TextStyle> m_styles;
 };

@@ -12,10 +12,6 @@ std::shared_ptr<abstract::File> ZipFile::file() const noexcept {
   return m_zip->file();
 }
 
-DecoderEngine ZipFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType ZipFile::file_type() const noexcept { return FileType::zip; }
 
 std::string_view ZipFile::mimetype() const noexcept {

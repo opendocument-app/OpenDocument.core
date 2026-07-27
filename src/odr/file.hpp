@@ -51,9 +51,10 @@ enum class FileType {
   legacy_powerpoint_presentation,
   legacy_excel_worksheets,
 
+  // Detection only — magic recognises these so a caller can report the type,
+  // but there is no decoder behind them and opening one throws.
   // https://en.wikipedia.org/wiki/WordPerfect
   word_perfect,
-
   // https://en.wikipedia.org/wiki/Rich_Text_Format
   rich_text_format,
 
@@ -103,18 +104,11 @@ enum class FileLocation {
   disk,
 };
 
-/// @brief Collection of decoder engines.
-enum class DecoderEngine {
-  odr,
-};
-
 /// @brief Preference for decoding files.
 struct DecodePreference final {
   std::optional<FileType> as_file_type;
-  std::optional<DecoderEngine> with_engine;
 
   std::vector<FileType> file_type_priority;
-  std::vector<DecoderEngine> engine_priority;
 };
 
 /// @brief Collection of encryption states.
@@ -169,7 +163,7 @@ public:
   [[nodiscard]] std::size_t size() const;
 
   [[nodiscard]] std::optional<std::string> disk_path() const;
-  [[nodiscard]] const char *memory_data() const;
+  [[nodiscard]] std::optional<std::string_view> memory_data() const;
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
   void pipe(std::ostream &out) const;
@@ -188,8 +182,6 @@ public:
   [[nodiscard]] static std::vector<FileType>
   list_file_types(const std::string &path,
                   const Logger &logger = Logger::null());
-  [[nodiscard]] static std::vector<DecoderEngine>
-  list_decoder_engines(FileType as);
   [[nodiscard]] static std::string_view
   mimetype(const std::string &path, const Logger &logger = Logger::null());
 
@@ -209,7 +201,6 @@ public:
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
   [[nodiscard]] FileMeta file_meta() const noexcept;
-  [[nodiscard]] DecoderEngine decoder_engine() const noexcept;
 
   [[nodiscard]] bool password_encrypted() const;
   [[nodiscard]] EncryptionState encryption_state() const;

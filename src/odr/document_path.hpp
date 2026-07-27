@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -55,8 +56,7 @@ public:
   DocumentPath() noexcept;
   explicit DocumentPath(const Container &components);
   explicit DocumentPath(Container &&components);
-  explicit DocumentPath(const char *c_string);
-  explicit DocumentPath(const std::string &string);
+  explicit DocumentPath(std::string_view string);
 
   bool operator==(const DocumentPath &other) const noexcept;
   bool operator!=(const DocumentPath &other) const noexcept;

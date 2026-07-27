@@ -34,7 +34,9 @@ std::optional<std::string> File::disk_path() const {
   return {};
 }
 
-const char *File::memory_data() const { return m_impl->memory_data(); }
+std::optional<std::string_view> File::memory_data() const {
+  return m_impl->memory_data();
+}
 
 std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
 
@@ -57,11 +59,6 @@ std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
 std::string_view DecodedFile::mimetype(const std::string &path,
                                        [[maybe_unused]] const Logger &logger) {
   return internal::magic::mimetype(path);
-}
-
-std::vector<DecoderEngine>
-DecodedFile::list_decoder_engines(const FileType as) {
-  return internal::open_strategy::list_decoder_engines(as);
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
@@ -103,10 +100,6 @@ FileCategory DecodedFile::file_category() const noexcept {
 }
 
 FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
-
-DecoderEngine DecodedFile::decoder_engine() const noexcept {
-  return m_impl->decoder_engine();
-}
 
 bool DecodedFile::password_encrypted() const {
   return m_impl->password_encrypted();

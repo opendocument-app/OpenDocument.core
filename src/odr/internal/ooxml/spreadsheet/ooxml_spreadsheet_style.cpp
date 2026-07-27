@@ -55,11 +55,11 @@ std::optional<Color> read_color(const pugi::xml_node node) {
     const char *value = rgb.value();
     if (std::strlen(value) == 8) {
       const std::uint32_t color = std::strtoull(value, nullptr, 16);
-      return Color(color, false);
+      return Color::from_argb(color);
     }
     if (std::strlen(value) == 6) {
       const std::uint32_t color = std::strtoull(value, nullptr, 16);
-      return Color(color);
+      return Color::from_rgb(color);
     }
   }
   return {};

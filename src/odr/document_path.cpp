@@ -68,10 +68,7 @@ DocumentPath::DocumentPath(const Container &components)
 DocumentPath::DocumentPath(Container &&components)
     : m_components{std::move(components)} {}
 
-DocumentPath::DocumentPath(const char *c_string)
-    : DocumentPath(std::string(c_string)) {}
-
-DocumentPath::DocumentPath(const std::string &string) {
+DocumentPath::DocumentPath(const std::string_view string) {
   if (string.empty()) {
     return;
   }
@@ -82,11 +79,11 @@ DocumentPath::DocumentPath(const std::string &string) {
       throw std::invalid_argument("missing /");
     }
     std::size_t next = string.find('/', pos + 1);
-    if (next == std::string::npos) {
+    if (next == std::string_view::npos) {
       next = string.size();
     }
-    m_components.push_back(
-        component_from_string(string.substr(pos + 1, next - pos - 1)));
+    m_components.push_back(component_from_string(
+        std::string(string.substr(pos + 1, next - pos - 1))));
     pos = next;
   }
 }

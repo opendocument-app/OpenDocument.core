@@ -128,23 +128,6 @@ Java_app_opendocument_core_Odr_mimetypeByFileTypeNative(JNIEnv *env, jclass,
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_Odr_decoderEngineToStringNative(JNIEnv *env, jclass,
-                                                           jint engine) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::decoder_engine_to_string(
-                               static_cast<odr::DecoderEngine>(engine)));
-  });
-}
-
-extern "C" JNIEXPORT jint JNICALL
-Java_app_opendocument_core_Odr_decoderEngineByNameNative(JNIEnv *env, jclass,
-                                                         jstring name) {
-  return guarded(env, [&] {
-    return static_cast<jint>(odr::decoder_engine_by_name(to_string(env, name)));
-  });
-}
-
 extern "C" JNIEXPORT jintArray JNICALL
 Java_app_opendocument_core_Odr_listFileTypesNative(JNIEnv *env, jclass,
                                                    jstring path) {
@@ -153,19 +136,6 @@ Java_app_opendocument_core_Odr_listFileTypesNative(JNIEnv *env, jclass,
     for (const odr::FileType type :
          odr::list_file_types(to_string(env, path))) {
       codes.push_back(static_cast<jint>(type));
-    }
-    return to_jint_array(env, codes);
-  });
-}
-
-extern "C" JNIEXPORT jintArray JNICALL
-Java_app_opendocument_core_Odr_listDecoderEnginesNative(JNIEnv *env, jclass,
-                                                        jint as) {
-  return guarded(env, [&] {
-    std::vector<jint> codes;
-    for (const odr::DecoderEngine engine :
-         odr::list_decoder_engines(static_cast<odr::FileType>(as))) {
-      codes.push_back(static_cast<jint>(engine));
     }
     return to_jint_array(env, codes);
   });
@@ -204,15 +174,12 @@ extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_Odr_openAsNative(
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Odr_openWithPreferenceNative(
-    JNIEnv *env, jclass, jstring path, jint as_file_type, jint with_engine,
-    jintArray file_type_priority, jintArray engine_priority) {
+    JNIEnv *env, jclass, jstring path, jint as_file_type,
+    jintArray file_type_priority) {
   return guarded(env, [&] {
     odr::DecodePreference preference;
     if (as_file_type >= 0) {
       preference.as_file_type = static_cast<odr::FileType>(as_file_type);
-    }
-    if (with_engine >= 0) {
-      preference.with_engine = static_cast<odr::DecoderEngine>(with_engine);
     }
     const auto append_codes = [&](jintArray array, auto &target,
                                   auto transform) {
@@ -225,9 +192,6 @@ Java_app_opendocument_core_Odr_openWithPreferenceNative(
     };
     append_codes(file_type_priority, preference.file_type_priority,
                  [](jint code) { return static_cast<odr::FileType>(code); });
-    append_codes(engine_priority, preference.engine_priority, [](jint code) {
-      return static_cast<odr::DecoderEngine>(code);
-    });
     return make_handle(odr::open(to_string(env, path), preference));
   });
 }

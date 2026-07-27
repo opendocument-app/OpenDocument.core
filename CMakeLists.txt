@@ -111,7 +111,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/random.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"
-        "src/odr/table_position.cpp"
         "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
 
@@ -228,6 +227,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/document_util.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"
+        "src/odr/internal/util/number_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
         "src/odr/internal/util/stream_util.cpp"
         "src/odr/internal/util/string_util.cpp"

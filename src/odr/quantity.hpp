@@ -1,16 +1,20 @@
 #pragma once
 
-#include <iomanip>
+#include <cctype>
+#include <cstdlib>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <type_traits>
 
 namespace odr {
 
 /// @brief Represents a runtime unit of measure.
 class DynamicUnit {
 public:
+  /// Constructs the unitless unit, equal to `DynamicUnit("")`.
   DynamicUnit();
-  explicit DynamicUnit(const char *name);
+  explicit DynamicUnit(std::string_view name);
 
   bool operator==(const DynamicUnit &rhs) const;
   bool operator!=(const DynamicUnit &rhs) const;
@@ -27,16 +31,27 @@ private:
   const Unit *m_unit{nullptr};
 };
 
+/// @brief The magnitude-type-independent part of @ref Quantity, so it can be
+/// compiled once in a source file instead of inline in every instantiation.
+class QuantityBase {
+protected:
+  /// Renders @p magnitude with 7 significant digits, always positional.
+  static std::string format_magnitude(double magnitude);
+};
+
 /// @brief Represents a quantity with a magnitude and a unit of measure.
-template <typename Magnitude, typename Unit = DynamicUnit> class Quantity {
+template <typename Magnitude, typename Unit = DynamicUnit>
+class Quantity : private QuantityBase {
 public:
   Quantity(Magnitude magnitude, Unit unit)
       : m_magnitude{std::move(magnitude)}, m_unit{std::move(unit)} {}
 
-  explicit Quantity(const char *string) {
+  explicit Quantity(const std::string_view string) {
+    // `std::strtod` needs a terminator, which a view does not promise
+    const std::string buffer(string);
     char *end{nullptr};
-    m_magnitude = std::strtod(string, &end);
-    while (*end && std::isspace(*end)) {
+    m_magnitude = std::strtod(buffer.c_str(), &end);
+    while (*end != '\0' && std::isspace(static_cast<unsigned char>(*end))) {
       ++end;
     }
     m_unit = DynamicUnit(end);
@@ -54,20 +69,26 @@ public:
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
 
-  void to_stream(std::ostream &out) const {
-    out << m_magnitude << m_unit.to_string();
-  }
+  void to_stream(std::ostream &out) const { out << to_string(); }
 
   [[nodiscard]] std::string to_string() const {
-    std::ostringstream ss;
-    ss << std::setprecision(4) << m_magnitude << m_unit.to_string();
-    return ss.str();
+    if constexpr (std::is_floating_point_v<Magnitude>) {
+      return format_magnitude(static_cast<double>(m_magnitude)) +
+             m_unit.to_string();
+    } else {
+      std::ostringstream ss;
+      ss << m_magnitude << m_unit.to_string();
+      return ss.str();
+    }
   }
 
 private:
   Magnitude m_magnitude{0};
   Unit m_unit;
 };
+
+/// @brief Represents a quantity: a magnitude and a unit of measure.
+using Measure = Quantity<double>;
 
 } // namespace odr
 

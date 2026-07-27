@@ -1,10 +1,14 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
 
 #include <odr/definitions.hpp>
+#include <odr/quantity.hpp>
 
 namespace odr {
 struct TablePosition;
@@ -186,8 +190,15 @@ protected:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
   ElementIdentifier m_identifier{null_element_id};
 
+  /// Identifiers are only unique within one document, so the adapter has to
+  /// take part. Elements that don't exist carry no adapter to compare and are
+  /// all equal to each other.
   friend bool operator==(const Element &lhs, const Element &rhs) {
-    return lhs.m_identifier == rhs.m_identifier;
+    if (!lhs.exists_() || !rhs.exists_()) {
+      return lhs.exists_() == rhs.exists_();
+    }
+    return lhs.m_adapter == rhs.m_adapter &&
+           lhs.m_identifier == rhs.m_identifier;
   }
 
   [[nodiscard]] bool exists_() const;
@@ -209,15 +220,22 @@ public:
   Element operator*() const;
 
   ElementIterator &operator++();
-  ElementIterator operator++(int) const;
+  ElementIterator operator++(int);
 
 private:
   const internal::abstract::ElementAdapter *m_adapter{nullptr};
   ElementIdentifier m_identifier{null_element_id};
 
+  /// Same rule as @ref Element: compare the adapter too, and treat every
+  /// exhausted iterator as the end iterator regardless of which range it came
+  /// from.
   friend bool operator==(const ElementIterator &lhs,
                          const ElementIterator &rhs) {
-    return lhs.m_identifier == rhs.m_identifier;
+    if (!lhs.exists_() || !rhs.exists_()) {
+      return lhs.exists_() == rhs.exists_();
+    }
+    return lhs.m_adapter == rhs.m_adapter &&
+           lhs.m_identifier == rhs.m_identifier;
   }
 
   [[nodiscard]] bool exists_() const;
@@ -446,11 +464,11 @@ public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] AnchorType anchor_type() const;
-  [[nodiscard]] std::optional<std::string> x() const;
-  [[nodiscard]] std::optional<std::string> y() const;
-  [[nodiscard]] std::optional<std::string> width() const;
-  [[nodiscard]] std::optional<std::string> height() const;
-  [[nodiscard]] std::optional<std::string> z_index() const;
+  [[nodiscard]] std::optional<Measure> x() const;
+  [[nodiscard]] std::optional<Measure> y() const;
+  [[nodiscard]] std::optional<Measure> width() const;
+  [[nodiscard]] std::optional<Measure> height() const;
+  [[nodiscard]] std::optional<std::int32_t> z_index() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -460,10 +478,10 @@ class Rect final : public ElementBase<internal::abstract::RectAdapter> {
 public:
   using ElementBase::ElementBase;
 
-  [[nodiscard]] std::string x() const;
-  [[nodiscard]] std::string y() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
+  [[nodiscard]] Measure x() const;
+  [[nodiscard]] Measure y() const;
+  [[nodiscard]] Measure width() const;
+  [[nodiscard]] Measure height() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -473,10 +491,10 @@ class Line final : public ElementBase<internal::abstract::LineAdapter> {
 public:
   using ElementBase::ElementBase;
 
-  [[nodiscard]] std::string x1() const;
-  [[nodiscard]] std::string y1() const;
-  [[nodiscard]] std::string x2() const;
-  [[nodiscard]] std::string y2() const;
+  [[nodiscard]] Measure x1() const;
+  [[nodiscard]] Measure y1() const;
+  [[nodiscard]] Measure x2() const;
+  [[nodiscard]] Measure y2() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -486,10 +504,10 @@ class Circle final : public ElementBase<internal::abstract::CircleAdapter> {
 public:
   using ElementBase::ElementBase;
 
-  [[nodiscard]] std::string x() const;
-  [[nodiscard]] std::string y() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
+  [[nodiscard]] Measure x() const;
+  [[nodiscard]] Measure y() const;
+  [[nodiscard]] Measure width() const;
+  [[nodiscard]] Measure height() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -500,10 +518,10 @@ class CustomShape final
 public:
   using ElementBase::ElementBase;
 
-  [[nodiscard]] std::optional<std::string> x() const;
-  [[nodiscard]] std::optional<std::string> y() const;
-  [[nodiscard]] std::string width() const;
-  [[nodiscard]] std::string height() const;
+  [[nodiscard]] std::optional<Measure> x() const;
+  [[nodiscard]] std::optional<Measure> y() const;
+  [[nodiscard]] Measure width() const;
+  [[nodiscard]] Measure height() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };

@@ -70,11 +70,6 @@ def test_mimetype_roundtrip():
     )
 
 
-def test_decoder_engine():
-    assert pyodr.decoder_engine_by_name("odr") == pyodr.DecoderEngine.odr
-    assert pyodr.decoder_engine_to_string(pyodr.DecoderEngine.odr) == "odr"
-
-
 def test_global_params():
     assert isinstance(pyodr.GlobalParams.odr_core_data_path(), str)
     assert isinstance(pyodr.GlobalParams.libmagic_database_path(), str)

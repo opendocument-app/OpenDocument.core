@@ -476,12 +476,13 @@ void html::translate_line(const Element &element, const WritingState &state) {
                             translate_drawing_style(style)));
 
   state.out().write_element_begin(
-      "line", HtmlElementOptions()
-                  .set_close_type(HtmlCloseType::trailing)
-                  .set_attributes(HtmlAttributesVector{{"x1", line.x1()},
-                                                       {"y1", line.y1()},
-                                                       {"x2", line.x2()},
-                                                       {"y2", line.y2()}}));
+      "line",
+      HtmlElementOptions()
+          .set_close_type(HtmlCloseType::trailing)
+          .set_attributes(HtmlAttributesVector{{"x1", line.x1().to_string()},
+                                               {"y1", line.y1().to_string()},
+                                               {"x2", line.x2().to_string()},
+                                               {"y2", line.y2().to_string()}}));
 
   state.out().write_element_end("svg");
 }

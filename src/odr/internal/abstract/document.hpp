@@ -1,5 +1,9 @@
 #pragma once
 
+#include <odr/definitions.hpp>
+#include <odr/quantity.hpp>
+
+#include <cstdint>
 #include <memory>
 #include <optional>
 
@@ -427,15 +431,15 @@ public:
 
   [[nodiscard]] virtual AnchorType
   frame_anchor_type(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   frame_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   frame_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   frame_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   frame_height(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<std::int32_t>
   frame_z_index(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
@@ -446,13 +450,11 @@ class RectAdapter {
 public:
   virtual ~RectAdapter() = default;
 
-  [[nodiscard]] virtual std::string
-  rect_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
-  rect_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure rect_x(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure rect_y(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure
   rect_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   rect_height(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
@@ -463,14 +465,10 @@ class LineAdapter {
 public:
   virtual ~LineAdapter() = default;
 
-  [[nodiscard]] virtual std::string
-  line_x1(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
-  line_y1(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
-  line_x2(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
-  line_y2(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure line_x1(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure line_y1(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure line_x2(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual Measure line_y2(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   line_style(ElementIdentifier element_id) const = 0;
@@ -480,13 +478,13 @@ class CircleAdapter {
 public:
   virtual ~CircleAdapter() = default;
 
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   circle_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   circle_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   circle_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   circle_height(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
@@ -497,13 +495,13 @@ class CustomShapeAdapter {
 public:
   virtual ~CustomShapeAdapter() = default;
 
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   custom_shape_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<std::string>
+  [[nodiscard]] virtual std::optional<Measure>
   custom_shape_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   custom_shape_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::string
+  [[nodiscard]] virtual Measure
   custom_shape_height(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle

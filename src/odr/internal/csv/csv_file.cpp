@@ -14,10 +14,6 @@ std::shared_ptr<abstract::File> CsvFile::file() const noexcept {
   return m_file->file();
 }
 
-DecoderEngine CsvFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 FileType CsvFile::file_type() const noexcept {
   return FileType::comma_separated_values;
 }

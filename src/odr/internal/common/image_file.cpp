@@ -16,10 +16,6 @@ FileType ImageFile::file_type() const noexcept { return m_file_type; }
 
 FileMeta ImageFile::file_meta() const noexcept { return {}; }
 
-DecoderEngine ImageFile::decoder_engine() const noexcept {
-  return DecoderEngine::odr;
-}
-
 std::string_view ImageFile::mimetype() const noexcept { return ""; }
 
 bool ImageFile::is_decodable() const noexcept { return false; }

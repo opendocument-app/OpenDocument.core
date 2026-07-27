@@ -724,41 +724,41 @@ Java_app_opendocument_core_Frame_anchorTypeNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_xNative(JNIEnv *env, jobject, jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_frame().x());
+    return odr_jni::make_measure(env, element(handle).as_frame().x());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_yNative(JNIEnv *env, jobject, jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_frame().y());
+    return odr_jni::make_measure(env, element(handle).as_frame().y());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_widthNative(JNIEnv *env, jobject,
                                              jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_frame().width());
+    return odr_jni::make_measure(env, element(handle).as_frame().width());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_heightNative(JNIEnv *env, jobject,
                                               jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_frame().height());
+    return odr_jni::make_measure(env, element(handle).as_frame().height());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_zIndexNative(JNIEnv *env, jobject,
                                               jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_frame().z_index());
+    return odr_jni::make_integer_opt(env, element(handle).as_frame().z_index());
   });
 }
 
@@ -772,30 +772,34 @@ Java_app_opendocument_core_Frame_styleNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.Rect
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Rect_xNative(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_rect().x()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_rect().x());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Rect_yNative(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_rect().y()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_rect().y());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Rect_widthNative(JNIEnv *env, jobject,
                                             jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_rect().width()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_rect().width());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Rect_heightNative(JNIEnv *env, jobject,
                                              jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_rect().height()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_rect().height());
+  });
 }
 
 extern "C" JNIEXPORT jobject JNICALL
@@ -808,28 +812,32 @@ Java_app_opendocument_core_Rect_styleNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.Line
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Line_x1Native(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_line().x1()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_line().x1());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Line_y1Native(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_line().y1()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_line().y1());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Line_x2Native(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_line().x2()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_line().x2());
+  });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Line_y2Native(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_line().y2()); });
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_line().y2());
+  });
 }
 
 extern "C" JNIEXPORT jobject JNICALL
@@ -842,31 +850,33 @@ Java_app_opendocument_core_Line_styleNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.Circle
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Circle_xNative(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_circle().x()); });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_Circle_yNative(JNIEnv *env, jobject, jlong handle) {
-  return guarded(
-      env, [&] { return to_jstring(env, element(handle).as_circle().y()); });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_Circle_widthNative(JNIEnv *env, jobject,
-                                              jlong handle) {
   return guarded(env, [&] {
-    return to_jstring(env, element(handle).as_circle().width());
+    return odr_jni::make_measure(env, element(handle).as_circle().x());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Circle_yNative(JNIEnv *env, jobject, jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_circle().y());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Circle_widthNative(JNIEnv *env, jobject,
+                                              jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_measure(env, element(handle).as_circle().width());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Circle_heightNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
-    return to_jstring(env, element(handle).as_circle().height());
+    return odr_jni::make_measure(env, element(handle).as_circle().height());
   });
 }
 
@@ -881,35 +891,37 @@ Java_app_opendocument_core_Circle_styleNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.CustomShape
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_CustomShape_xNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_custom_shape().x());
+    return odr_jni::make_measure(env, element(handle).as_custom_shape().x());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_CustomShape_yNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env, element(handle).as_custom_shape().y());
+    return odr_jni::make_measure(env, element(handle).as_custom_shape().y());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_CustomShape_widthNative(JNIEnv *env, jobject,
                                                    jlong handle) {
   return guarded(env, [&] {
-    return to_jstring(env, element(handle).as_custom_shape().width());
+    return odr_jni::make_measure(env,
+                                 element(handle).as_custom_shape().width());
   });
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_CustomShape_heightNative(JNIEnv *env, jobject,
                                                     jlong handle) {
   return guarded(env, [&] {
-    return to_jstring(env, element(handle).as_custom_shape().height());
+    return odr_jni::make_measure(env,
+                                 element(handle).as_custom_shape().height());
   });
 }
 

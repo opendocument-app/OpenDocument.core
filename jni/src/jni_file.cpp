@@ -138,13 +138,6 @@ Java_app_opendocument_core_DecodedFile_fileMetaNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT jint JNICALL
-Java_app_opendocument_core_DecodedFile_decoderEngineNative(JNIEnv *env, jobject,
-                                                           jlong handle) {
-  return guarded(
-      env, [&] { return static_cast<jint>(decoded(handle).decoder_engine()); });
-}
-
 extern "C" JNIEXPORT jboolean JNICALL
 Java_app_opendocument_core_DecodedFile_passwordEncryptedNative(JNIEnv *env,
                                                                jobject,
