@@ -39,13 +39,12 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
   };
 
   FileMeta result;
-  result.document_meta = DocumentMeta();
 
   for (const auto &[path, variant] : types) {
     if (files.is_file(path)) {
       result.type = variant.type;
       result.mimetype = variant.mimetype;
-      result.document_meta->document_type = variant.document_type;
+      result.document_type = variant.document_type;
       break;
     }
   }
@@ -83,15 +82,7 @@ std::string_view LegacyMicrosoftFile::mimetype() const noexcept {
 FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType LegacyMicrosoftFile::document_type() const {
-  // document_meta is always set for document files
-  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-  return m_file_meta.document_meta.value().document_type;
-}
-
-DocumentMeta LegacyMicrosoftFile::document_meta() const {
-  // document_meta is always set for document files
-  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-  return m_file_meta.document_meta.value();
+  return m_file_meta.document_type;
 }
 
 bool LegacyMicrosoftFile::password_encrypted() const noexcept {

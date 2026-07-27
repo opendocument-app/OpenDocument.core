@@ -143,10 +143,11 @@ above their text). So each run is raised by one font ascent:
 Things the code won't shout at you:
 
 - **`is_decodable()` returns `false`** for PDF; page-tree/content parsing is lazy
-  (on HTML request). But `file_meta()` still carries a best-effort `document_meta`
+  (on HTML request). But `file_meta()` still carries best-effort document metadata
   (page count + `/Info` strings), read once at construction (an owner-locked file
-  is unlocked with the empty password first so `/Info` decrypts). XMP is not
-  parsed — `document_meta` is `/Info`-only.
+  is unlocked with the empty password first so `/Info` decrypts). It is
+  all-or-nothing: a malformed structure leaves `document_type` at `unknown` rather
+  than half-filling the fields. XMP is not parsed — the strings are `/Info`-only.
 - **Image codecs are deliberately not decoded** in the filter framework
   (DCTDecode/JPXDecode/CCITTFaxDecode/JBIG2Decode): `decode()` stops and hands
   back the still-encoded payload for the image path; `read_decoded_stream` treats

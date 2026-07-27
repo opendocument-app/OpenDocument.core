@@ -58,6 +58,10 @@ def test_file_meta(csv_path):
     meta = file.file_meta()
     assert meta.type == pyodr.FileType.comma_separated_values
     assert not meta.password_encrypted
+    # not a document, so the document fields stay unset
+    assert meta.document_type == pyodr.DocumentType.unknown
+    assert meta.entry_count is None
+    assert meta.title is None
 
 
 def test_open_zip_archive(odt_path):

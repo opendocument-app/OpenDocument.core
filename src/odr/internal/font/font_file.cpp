@@ -34,7 +34,10 @@ std::string_view FontFile::mimetype() const noexcept {
 }
 
 FileMeta FontFile::file_meta() const noexcept {
-  return {file_type(), mimetype(), false, std::nullopt};
+  FileMeta result;
+  result.type = file_type();
+  result.mimetype = mimetype();
+  return result;
 }
 
 bool FontFile::is_decodable() const noexcept { return true; }

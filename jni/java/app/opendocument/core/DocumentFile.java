@@ -22,10 +22,6 @@ public final class DocumentFile extends DecodedFile {
     return DocumentType.fromNative(documentTypeNative(handle()));
   }
 
-  public DocumentMeta documentMeta() {
-    return documentMetaNative(handle());
-  }
-
   /** Returns a decrypted copy of this file. */
   @Override
   public DocumentFile decrypt(String password) {
@@ -43,8 +39,6 @@ public final class DocumentFile extends DecodedFile {
   private static native FileMeta metaByPathNative(String path);
 
   private native int documentTypeNative(long handle);
-
-  private native DocumentMeta documentMetaNative(long handle);
 
   private native long decryptDocumentFileNative(long handle, String password);
 

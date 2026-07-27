@@ -89,27 +89,24 @@ std::string info_mini_pdf() {
 } // namespace
 
 // `/Info` document-information strings and the page count surface through
-// `file_meta().document_meta`; a `/Title` UTF-16BE string is decoded to UTF-8.
+// `file_meta()`; a `/Title` UTF-16BE string is decoded to UTF-8.
 TEST(PdfFile, file_meta_carries_info_and_page_count) {
   const std::shared_ptr<pdf::PdfFile> file = open_pdf(info_mini_pdf());
   const FileMeta meta = file->file_meta();
 
   EXPECT_EQ(meta.type, FileType::portable_document_format);
-  ASSERT_TRUE(meta.document_meta.has_value());
-  const DocumentMeta &document_meta = *meta.document_meta;
+  EXPECT_EQ(meta.document_type, DocumentType::text);
+  ASSERT_TRUE(meta.entry_count.has_value());
+  EXPECT_EQ(*meta.entry_count, 2u);
 
-  EXPECT_EQ(document_meta.document_type, DocumentType::text);
-  ASSERT_TRUE(document_meta.entry_count.has_value());
-  EXPECT_EQ(*document_meta.entry_count, 2u);
-
-  ASSERT_TRUE(document_meta.title.has_value());
-  EXPECT_EQ(*document_meta.title, "HI");
-  ASSERT_TRUE(document_meta.author.has_value());
-  EXPECT_EQ(*document_meta.author, "Ada Lovelace");
-  ASSERT_TRUE(document_meta.producer.has_value());
-  EXPECT_EQ(*document_meta.producer, "odr-test");
-  EXPECT_FALSE(document_meta.subject.has_value());
-  EXPECT_FALSE(document_meta.keywords.has_value());
+  ASSERT_TRUE(meta.title.has_value());
+  EXPECT_EQ(*meta.title, "HI");
+  ASSERT_TRUE(meta.author.has_value());
+  EXPECT_EQ(*meta.author, "Ada Lovelace");
+  ASSERT_TRUE(meta.producer.has_value());
+  EXPECT_EQ(*meta.producer, "odr-test");
+  EXPECT_FALSE(meta.subject.has_value());
+  EXPECT_FALSE(meta.keywords.has_value());
 }
 
 // A file with no `/Info` still reports its page count; the `/Info` strings stay
@@ -124,12 +121,11 @@ TEST(PdfFile, file_meta_without_info) {
   const std::shared_ptr<pdf::PdfFile> file = open_pdf(pdf);
   const FileMeta meta = file->file_meta();
 
-  ASSERT_TRUE(meta.document_meta.has_value());
-  EXPECT_EQ(meta.document_meta->document_type, DocumentType::text);
-  ASSERT_TRUE(meta.document_meta->entry_count.has_value());
-  EXPECT_EQ(*meta.document_meta->entry_count, 1u);
-  EXPECT_FALSE(meta.document_meta->title.has_value());
-  EXPECT_FALSE(meta.document_meta->author.has_value());
+  EXPECT_EQ(meta.document_type, DocumentType::text);
+  ASSERT_TRUE(meta.entry_count.has_value());
+  EXPECT_EQ(*meta.entry_count, 1u);
+  EXPECT_FALSE(meta.title.has_value());
+  EXPECT_FALSE(meta.author.has_value());
 }
 
 // `/Link` annotations render as `<a>` overlays: a `/URI` action → external href

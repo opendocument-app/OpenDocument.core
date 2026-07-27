@@ -23,7 +23,10 @@ FileType TextFile::file_type() const noexcept { return FileType::text_file; }
 std::string_view TextFile::mimetype() const noexcept { return "text/plain"; }
 
 FileMeta TextFile::file_meta() const noexcept {
-  return {file_type(), mimetype(), false, std::nullopt};
+  FileMeta result;
+  result.type = file_type();
+  result.mimetype = mimetype();
+  return result;
 }
 
 bool TextFile::is_decodable() const noexcept { return false; }

@@ -33,7 +33,6 @@ jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout);
 jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions);
 jobject make_table_position(JNIEnv *env, const odr::TablePosition &position);
-jobject make_document_meta(JNIEnv *env, const odr::DocumentMeta &meta);
 jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta);
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);

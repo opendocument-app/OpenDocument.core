@@ -27,7 +27,10 @@ std::string_view JsonFile::mimetype() const noexcept {
 }
 
 FileMeta JsonFile::file_meta() const noexcept {
-  return {file_type(), mimetype(), false, std::nullopt};
+  FileMeta result;
+  result.type = file_type();
+  result.mimetype = mimetype();
+  return result;
 }
 
 bool JsonFile::is_decodable() const noexcept { return false; }

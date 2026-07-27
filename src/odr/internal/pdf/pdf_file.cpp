@@ -41,8 +41,7 @@ std::optional<std::string> info_string(DocumentParser &parser,
 /// /Count`, a single lookup — no tree walk) and the `/Info` document
 /// information dictionary (ISO 32000-1 14.3.3). Reads may throw on a malformed
 /// file; the caller treats that as "no metadata".
-DocumentMeta parse_document_meta(DocumentParser &parser) {
-  DocumentMeta meta;
+void parse_document_meta(DocumentParser &parser, FileMeta &meta) {
   meta.document_type = DocumentType::text;
 
   const Dictionary &trailer = parser.trailer();
@@ -76,17 +75,18 @@ DocumentMeta parse_document_meta(DocumentParser &parser) {
       meta.modification_date = info_string(parser, d, "ModDate");
     }
   }
-
-  return meta;
 }
 
-/// Fill `meta.document_meta` best-effort (page count + `/Info`) from a readable
-/// parser. Never fatal: a malformed structure simply leaves it unset.
+/// Fill the document fields of `meta` best-effort (page count + `/Info`) from a
+/// readable parser. Never fatal, and all-or-nothing: a malformed structure
+/// leaves every document field unset rather than half-filled.
 void populate_document_meta(DocumentParser &parser, FileMeta &meta) {
   try {
-    meta.document_meta = parse_document_meta(parser);
+    FileMeta parsed = meta;
+    parse_document_meta(parser, parsed);
+    meta = std::move(parsed);
   } catch (...) { // NOLINT(bugprone-empty-catch): metadata is best-effort, a
-                  // malformed file simply carries no `document_meta`.
+                  // malformed file simply carries no document metadata.
   }
 }
 

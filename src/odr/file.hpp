@@ -134,11 +134,14 @@ enum class DocumentType {
   drawing,
 };
 
-/// @brief Meta information about a document.
-struct DocumentMeta final {
-  DocumentMeta();
-  DocumentMeta(DocumentType document_type,
-               std::optional<std::uint32_t> entry_count);
+/// @brief Meta information about a file.
+///
+/// The document fields are only meaningful when @ref document_type is set;
+/// `document_type == DocumentType::unknown` means the file is not a document.
+struct FileMeta final {
+  FileType type{FileType::unknown};
+  std::string_view mimetype;
+  bool password_encrypted{false};
 
   DocumentType document_type{DocumentType::unknown};
   std::optional<std::uint32_t> entry_count;
@@ -153,18 +156,6 @@ struct DocumentMeta final {
   std::optional<std::string> producer;
   std::optional<std::string> creation_date;
   std::optional<std::string> modification_date;
-};
-
-/// @brief Meta information about a file.
-struct FileMeta final {
-  FileMeta();
-  FileMeta(FileType type, std::string_view mimetype, bool password_encrypted,
-           std::optional<DocumentMeta> document_meta);
-
-  FileType type{FileType::unknown};
-  std::string_view mimetype;
-  bool password_encrypted{false};
-  std::optional<DocumentMeta> document_meta;
 };
 
 /// @brief Represents a file.
@@ -291,7 +282,6 @@ public:
                         const Logger &logger = Logger::null());
 
   [[nodiscard]] DocumentType document_type() const;
-  [[nodiscard]] DocumentMeta document_meta() const;
 
   [[nodiscard]] DocumentFile decrypt(const std::string &password) const;
 
