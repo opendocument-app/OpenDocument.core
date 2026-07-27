@@ -113,6 +113,16 @@ PrefixInUse::PrefixInUse() : std::runtime_error("prefix in use") {}
 PrefixInUse::PrefixInUse(const std::string &prefix)
     : std::runtime_error("prefix in use: " + prefix) {}
 
+ServerBindFailed::ServerBindFailed(const std::string &host,
+                                   const std::uint32_t port)
+    : std::runtime_error("server bind failed: " + host + ":" +
+                         std::to_string(port)) {}
+
+ServerAlreadyBound::ServerAlreadyBound()
+    : std::runtime_error("server is bound already") {}
+
+ServerNotBound::ServerNotBound() : std::runtime_error("server is not bound") {}
+
 UnsupportedOption::UnsupportedOption(const std::string &message)
     : std::runtime_error("unsupported option: " + message) {}
 

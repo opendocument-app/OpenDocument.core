@@ -17,9 +17,19 @@ class HttpServer {
 public:
   constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";
 
+  // TODO remove together with serve_file, which is all cache_path is for
   struct Config {
     // TODO remove
     std::string cache_path{"/tmp/odr"};
+  };
+
+  /// Socket options for bind().
+  struct Options {
+    bool reuse_address{true}; ///< SO_REUSEADDR, so a port held only by sockets
+                              ///< in TIME_WAIT can be bound again
+    bool reuse_port{false};   ///< SO_REUSEPORT where the platform has it. Two
+                              ///< live servers on one port share the incoming
+                              ///< connections between them, hence off
   };
 
   explicit HttpServer(const Config &config,
@@ -34,10 +44,21 @@ public:
                                      const std::string &prefix,
                                      const HtmlConfig &config) const;
 
-  void listen(const std::string &host, std::uint32_t port) const;
+  /// Binds the socket and returns the port it got - pass port 0 for any free
+  /// one. Connections are accepted into the backlog from here on, before
+  /// listen() runs. Throws ServerBindFailed / ServerAlreadyBound.
+  std::uint32_t bind(const std::string &host, std::uint32_t port) const;
+  std::uint32_t bind(const std::string &host, std::uint32_t port,
+                     const Options &options) const;
+
+  /// Serves what bind() opened until stop(). Throws ServerNotBound.
+  void listen() const;
 
   void clear() const;
 
+  /// Stops listen() and releases the socket. A server that was bound but never
+  /// listened keeps its port until the process ends - cpp-httplib only closes
+  /// the socket from its accept loop.
   void stop() const;
 
 private:

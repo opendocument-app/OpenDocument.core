@@ -5,6 +5,7 @@
 #include <odr/html.hpp>
 #include <odr/http_server.hpp>
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 
@@ -43,6 +44,11 @@ int main(const int argc, char **argv) {
     HttpServer::Config server_config;
     HttpServer server(server_config);
 
+    // bind before anything is printed: the port is only known once the socket
+    // is, and it is not necessarily the one that was asked for
+    const std::uint32_t port = server.bind("localhost", 8080);
+    const std::string base_url = "http://localhost:" + std::to_string(port);
+
     HtmlConfig html_config;
     html_config.embed_images = false;
     html_config.embed_shipped_resources = true;
@@ -56,8 +62,7 @@ int main(const int argc, char **argv) {
           server.serve_file(decoded_file, prefix, html_config);
       ODR_INFO(*logger, "hosted decoded file with id: " << prefix);
       for (const auto &view : views) {
-        ODR_INFO(*logger,
-                 "http://localhost:8080/file/" << prefix << "/" << view.path());
+        ODR_INFO(*logger, base_url << "/file/" << prefix << "/" << view.path());
       }
     }
 
@@ -74,12 +79,11 @@ int main(const int argc, char **argv) {
       server.connect_service(filesystem_service, prefix);
       ODR_INFO(*logger, "hosted filesystem with id: " << prefix);
       for (const auto &view : filesystem_service.list_views()) {
-        ODR_INFO(*logger,
-                 "http://localhost:8080/file/" << prefix << "/" << view.path());
+        ODR_INFO(*logger, base_url << "/file/" << prefix << "/" << view.path());
       }
     }
 
-    server.listen("localhost", 8080);
+    server.listen();
 
     return 0;
   } catch (const std::exception &e) {

@@ -158,10 +158,63 @@ public:
     m_content.emplace(prefix, Content{prefix, std::move(service)});
   }
 
-  void listen(const std::string &host, const std::uint32_t port) const {
-    ODR_VERBOSE(*m_logger, "Listening on " << host << ":" << port);
+  std::uint32_t bind(const std::string &host, const std::uint32_t port,
+                     const Options &options) {
+    if (m_server == nullptr) {
+      throw ServerNotBound();
+    }
+    // binding twice would overwrite the socket cpp-httplib holds, leaking the
+    // first one and its port for good
+    if (m_bound.load(std::memory_order_acquire)) {
+      throw ServerAlreadyBound();
+    }
 
-    m_server->listen(host, static_cast<int>(port));
+    // cpp-httplib's default sets SO_REUSEPORT where it exists and SO_REUSEADDR
+    // only otherwise, which is the wrong way round for a server that gets
+    // restarted: only SO_REUSEADDR lets a port held by TIME_WAIT sockets be
+    // bound again, while SO_REUSEPORT hands a second server a share of the
+    // connections instead.
+    // socket_t is not in the httplib namespace in every version, hence auto
+    m_server->set_socket_options([options](const auto sock) {
+      constexpr int yes = 1;
+      const auto *const value = reinterpret_cast<const char *>(&yes);
+
+      if (options.reuse_address) {
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, value, sizeof(yes));
+      }
+#ifdef SO_REUSEPORT
+      if (options.reuse_port) {
+        setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, value, sizeof(yes));
+      }
+#endif
+    });
+
+    const int bound =
+        port == 0 ? m_server->bind_to_any_port(host)
+                  : (m_server->bind_to_port(host, static_cast<int>(port))
+                         ? static_cast<int>(port)
+                         : -1);
+    if (bound < 0) {
+      throw ServerBindFailed(host, port);
+    }
+
+    m_bound.store(true, std::memory_order_release);
+
+    ODR_VERBOSE(*m_logger, "Bound to " << host << ":" << bound);
+
+    return static_cast<std::uint32_t>(bound);
+  }
+
+  void listen() const {
+    // cpp-httplib's listen_after_bind() reports success for a server that was
+    // never bound, so the state has to be checked here
+    if (m_server == nullptr || !m_bound.load(std::memory_order_acquire)) {
+      throw ServerNotBound();
+    }
+
+    ODR_VERBOSE(*m_logger, "Serving...");
+
+    m_server->listen_after_bind();
   }
 
   void clear() {
@@ -194,6 +247,8 @@ public:
       m_server.reset(); // Destroy server, join all thread pool threads
     }
 
+    m_bound.store(false, std::memory_order_release);
+
     // Clear content after server is fully destroyed to avoid use-after-free.
     clear();
   }
@@ -206,6 +261,10 @@ private:
   // Flag to indicate server is shutting down - checked by handlers
   // to reject new requests during shutdown.
   std::atomic<bool> m_stopping{false};
+
+  // Whether bind() has taken a socket. listen() needs it because cpp-httplib
+  // will happily "serve" a server that never bound one.
+  std::atomic<bool> m_bound{false};
 
   struct Content {
     std::string id;
@@ -264,10 +323,18 @@ HtmlViews HttpServer::serve_file(const DecodedFile &file,
   return service.list_views();
 }
 
-void HttpServer::listen(const std::string &host,
-                        const std::uint32_t port) const {
-  m_impl->listen(host, port);
+std::uint32_t HttpServer::bind(const std::string &host,
+                               const std::uint32_t port) const {
+  return bind(host, port, Options{});
 }
+
+std::uint32_t HttpServer::bind(const std::string &host,
+                               const std::uint32_t port,
+                               const Options &options) const {
+  return m_impl->bind(host, port, options);
+}
+
+void HttpServer::listen() const { m_impl->listen(); }
 
 void HttpServer::clear() const { m_impl->clear(); }
 

@@ -87,14 +87,25 @@ Java_app_opendocument_core_HttpServer_serveFileNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_HttpServer_bindNative(JNIEnv *env, jobject,
+                                                 jlong handle, jstring host,
+                                                 jint port,
+                                                 jboolean reuse_address,
+                                                 jboolean reuse_port) {
+  return guarded(env, [&] {
+    odr::HttpServer::Options options;
+    options.reuse_address = reuse_address == JNI_TRUE;
+    options.reuse_port = reuse_port == JNI_TRUE;
+    return static_cast<jint>(server(handle).bind(
+        to_string(env, host), static_cast<std::uint32_t>(port), options));
+  });
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_HttpServer_listenNative(JNIEnv *env, jobject,
-                                                   jlong handle, jstring host,
-                                                   jint port) {
-  guarded(env, [&] {
-    server(handle).listen(to_string(env, host),
-                          static_cast<std::uint32_t>(port));
-  });
+                                                   jlong handle) {
+  guarded(env, [&] { server(handle).listen(); });
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -154,9 +165,16 @@ Java_app_opendocument_core_HttpServer_serveFileNative(JNIEnv *env, jobject,
   return odr_jni::guarded(env, [&]() -> jlongArray { unsupported(); });
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_HttpServer_bindNative(JNIEnv *env, jobject, jlong,
+                                                 jstring, jint, jboolean,
+                                                 jboolean) {
+  return odr_jni::guarded(env, [&]() -> jint { unsupported(); });
+}
+
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HttpServer_listenNative(JNIEnv *env, jobject, jlong,
-                                                   jstring, jint) {
+Java_app_opendocument_core_HttpServer_listenNative(JNIEnv *env, jobject,
+                                                   jlong) {
   odr_jni::guarded(env, [&] { unsupported(); });
 }
 

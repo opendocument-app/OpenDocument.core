@@ -14,6 +14,18 @@ public final class HttpServer extends NativeResource {
     public String cachePath = "/tmp/odr";
   }
 
+  /** Mirrors {@code odr::HttpServer::Options}: socket options for {@link #bind}. */
+  public static final class Options {
+    /** SO_REUSEADDR, so a port held only by sockets in TIME_WAIT can be bound again. */
+    public boolean reuseAddress = true;
+
+    /**
+     * SO_REUSEPORT where the platform has it. Two live servers on one port share the
+     * incoming connections between them, hence off.
+     */
+    public boolean reusePort = false;
+  }
+
   public HttpServer(Config config) {
     super(create(config.cachePath), null, HttpServer::destroy);
   }
@@ -39,9 +51,23 @@ public final class HttpServer extends NativeResource {
     return result;
   }
 
+  /**
+   * Binds the socket and returns the port it got - pass {@code 0} for any free one.
+   * Connections are accepted into the backlog from here on, before {@link #listen()}
+   * runs, so a caller can hand out the port as soon as this returns.
+   */
+  public int bind(String host, int port) {
+    return bind(host, port, new Options());
+  }
+
+  /** Binds with explicit socket options. */
+  public int bind(String host, int port, Options options) {
+    return bindNative(handle(), host, port, options.reuseAddress, options.reusePort);
+  }
+
   /** Blocks serving requests until {@link #stop()} is called from another thread. */
-  public void listen(String host, int port) {
-    listenNative(handle(), host, port);
+  public void listen() {
+    listenNative(handle());
   }
 
   public void clear() {
@@ -63,7 +89,10 @@ public final class HttpServer extends NativeResource {
   private native long[] serveFileNative(
       long handle, long fileHandle, String prefix, HtmlConfig config);
 
-  private native void listenNative(long handle, String host, int port);
+  private native int bindNative(
+      long handle, String host, int port, boolean reuseAddress, boolean reusePort);
+
+  private native void listenNative(long handle);
 
   private native void clearNative(long handle);
 

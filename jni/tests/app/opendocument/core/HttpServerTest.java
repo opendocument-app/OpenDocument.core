@@ -2,15 +2,17 @@ package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -20,12 +22,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 class HttpServerTest {
   @TempDir Path tempDir;
-
-  private static int freePort() throws IOException {
-    try (ServerSocket socket = new ServerSocket(0)) {
-      return socket.getLocalPort();
-    }
-  }
 
   private record Response(int status, String body) {}
 
@@ -74,13 +70,13 @@ class HttpServerTest {
     List<HtmlView> views = server.serveFile(file, "doc", htmlConfig);
     assertEquals(1, views.size());
 
-    int port = freePort();
+    int port = server.bind("127.0.0.1", 0);
     AtomicReference<Throwable> listenError = new AtomicReference<>();
     Thread thread =
         new Thread(
             () -> {
               try {
-                server.listen("127.0.0.1", port);
+                server.listen();
               } catch (Throwable t) {
                 listenError.set(t);
               }
@@ -102,5 +98,36 @@ class HttpServerTest {
       thread.join(Duration.ofSeconds(5).toMillis());
     }
     assertFalse(thread.isAlive());
+  }
+
+  @Test
+  void bindReportsWhatItGot() throws IOException {
+    assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
+
+    HttpServer.Config config = new HttpServer.Config();
+    config.cachePath = Files.createDirectories(tempDir.resolve("server-cache")).toString();
+    HttpServer server = new HttpServer(config);
+
+    // a literal address on purpose: "localhost" resolves to both ::1 and 127.0.0.1,
+    // so a second bind would land on the other one instead of colliding
+    int port = server.bind("127.0.0.1", 0);
+    assertNotEquals(0, port);
+
+    // a second bind would leak the first socket, so it is refused
+    assertThrows(RuntimeException.class, () -> server.bind("127.0.0.1", 0));
+
+    server.stop();
+  }
+
+  @Test
+  void listenWithoutBindThrows() throws IOException {
+    assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
+
+    HttpServer.Config config = new HttpServer.Config();
+    config.cachePath = Files.createDirectories(tempDir.resolve("server-cache")).toString();
+    HttpServer server = new HttpServer(config);
+
+    // cpp-httplib reports success for this, hence the guard being tested
+    assertThrows(RuntimeException.class, server::listen);
   }
 }
