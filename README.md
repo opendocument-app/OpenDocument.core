@@ -55,9 +55,7 @@ As an alternative to the Conan remote you can also export the package locally vi
 
 ## Version
 
-Notable changes are in [`CHANGELOG.md`](CHANGELOG.md), which also states what
-counts as public API and what stability to expect. Release history is on
-[GitHub](https://github.com/opendocument-app/OpenDocument.core/releases).
+Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
 
 ## Testing
 

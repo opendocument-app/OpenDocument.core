@@ -61,7 +61,7 @@ struct ZipSaveError : Exception {
 
 /// @brief CFB error base; NoCfbFile and CfbFileCorrupted refine it.
 struct CfbError : Exception {
-  explicit CfbError(const char *desc);
+  explicit CfbError(const std::string &desc);
 };
 
 /// @brief No CFB file exception base

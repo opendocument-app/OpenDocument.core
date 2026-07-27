@@ -31,7 +31,7 @@ NoZipFile::NoZipFile() : Exception("not a zip file") {}
 
 ZipSaveError::ZipSaveError() : Exception("zip save error") {}
 
-CfbError::CfbError(const char *desc) : Exception(desc) {}
+CfbError::CfbError(const std::string &desc) : Exception(desc) {}
 
 NoCfbFile::NoCfbFile() : CfbError("no cfb file") {}
 

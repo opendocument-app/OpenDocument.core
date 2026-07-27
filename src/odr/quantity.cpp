@@ -22,7 +22,9 @@ struct DynamicUnit::Unit final {
 
 class DynamicUnit::Registry final {
 public:
-  static const Unit *unit(const char *name) { return registry_().unit_(name); }
+  static const Unit *unit(const std::string_view name) {
+    return registry_().unit_(name);
+  }
 
 private:
   static Registry &registry_() {
@@ -34,8 +36,8 @@ private:
 
   std::unordered_map<std::string, std::unique_ptr<Unit>> m_registry;
 
-  const Unit *unit_(const char *name) {
-    std::unique_ptr<Unit> &unit = m_registry[name];
+  const Unit *unit_(const std::string_view name) {
+    std::unique_ptr<Unit> &unit = m_registry[std::string(name)];
     if (unit == nullptr) {
       unit = std::make_unique<Unit>();
       unit->name = name;
@@ -44,9 +46,14 @@ private:
   }
 };
 
-DynamicUnit::DynamicUnit() = default;
+/// The unitless unit, i.e. the same one `Measure("5")` parses out of a bare
+/// number. Registered rather than left null so that `m_unit` is never null and
+/// every accessor below can dereference it, and so that a default-constructed
+/// unit compares equal to a parsed one.
+DynamicUnit::DynamicUnit() : m_unit{Registry::unit("")} {}
 
-DynamicUnit::DynamicUnit(const char *name) : m_unit{Registry::unit(name)} {}
+DynamicUnit::DynamicUnit(const std::string_view name)
+    : m_unit{Registry::unit(name)} {}
 
 bool DynamicUnit::operator==(const DynamicUnit &rhs) const {
   return m_unit == rhs.m_unit;

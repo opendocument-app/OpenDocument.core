@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cctype>
+#include <cstdlib>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace odr {
@@ -9,8 +12,9 @@ namespace odr {
 /// @brief Represents a runtime unit of measure.
 class DynamicUnit {
 public:
+  /// Constructs the unitless unit, equal to `DynamicUnit("")`.
   DynamicUnit();
-  explicit DynamicUnit(const char *name);
+  explicit DynamicUnit(std::string_view name);
 
   bool operator==(const DynamicUnit &rhs) const;
   bool operator!=(const DynamicUnit &rhs) const;
@@ -42,10 +46,12 @@ public:
   Quantity(Magnitude magnitude, Unit unit)
       : m_magnitude{std::move(magnitude)}, m_unit{std::move(unit)} {}
 
-  explicit Quantity(const char *string) {
+  explicit Quantity(const std::string_view string) {
+    // `std::strtod` needs a terminator, which a view does not promise
+    const std::string buffer(string);
     char *end{nullptr};
-    m_magnitude = std::strtod(string, &end);
-    while (*end && std::isspace(*end)) {
+    m_magnitude = std::strtod(buffer.c_str(), &end);
+    while (*end != '\0' && std::isspace(static_cast<unsigned char>(*end))) {
       ++end;
     }
     m_unit = DynamicUnit(end);
