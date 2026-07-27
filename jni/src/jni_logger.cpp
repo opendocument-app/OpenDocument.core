@@ -16,6 +16,18 @@ using odr_jni::make_handle;
 using odr_jni::to_jstring;
 using odr_jni::to_string;
 
+/// `JavaVM::AttachCurrentThread` takes a `JNIEnv **` on android and a `void **`
+/// on the jdk, and neither pointer converts to the other, so the argument has
+/// to be typed per platform. `GetEnv` is `void **` on both and needs none of
+/// this.
+jint attach_current_thread(JavaVM *const vm, JNIEnv **const env) {
+#ifdef __ANDROID__
+  return vm->AttachCurrentThread(env, nullptr);
+#else
+  return vm->AttachCurrentThread(reinterpret_cast<void **>(env), nullptr);
+#endif
+}
+
 /// A `JNIEnv` for the calling thread, attaching it if the JVM does not know it
 /// yet. Log calls arrive on whatever thread the library happens to be working
 /// on, which is not necessarily one the JVM started.
@@ -28,8 +40,7 @@ public:
     const jint status =
         m_vm->GetEnv(reinterpret_cast<void **>(&m_env), JNI_VERSION_1_6);
     if (status == JNI_EDETACHED) {
-      if (m_vm->AttachCurrentThread(reinterpret_cast<void **>(&m_env),
-                                    nullptr) == JNI_OK) {
+      if (attach_current_thread(m_vm, &m_env) == JNI_OK) {
         m_attached = true;
       } else {
         m_env = nullptr;
