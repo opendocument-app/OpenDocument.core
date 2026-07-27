@@ -1,4 +1,3 @@
-import socket
 import threading
 import time
 import urllib.request
@@ -6,12 +5,6 @@ import urllib.request
 import pytest
 
 import pyodr
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("localhost", 0))
-        return sock.getsockname()[1]
 
 
 def fetch(url, timeout=5.0):
@@ -28,21 +21,22 @@ def fetch(url, timeout=5.0):
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
 def test_serve_file(core_data_path, odt_path, tmp_path):
-    config = pyodr.HttpServer.Config()
-    config.cache_path = str(tmp_path / "server-cache")
-    server = pyodr.HttpServer(config)
+    server = pyodr.HttpServer()
 
+    # the server hosts what it is given; translating is the caller's business
+    cache_path = tmp_path / "doc-cache"
+    cache_path.mkdir()
     file = pyodr.open(str(odt_path))
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
     html_config.relative_resource_paths = False
-    views = server.serve_file(file, "doc", html_config)
+    service = pyodr.html.translate(file, str(cache_path), html_config)
+    server.connect_service(service, "doc")
+    views = service.list_views()
     assert len(views) == 1
 
-    port = free_port()
-    thread = threading.Thread(
-        target=server.listen, args=("localhost", port), daemon=True
-    )
+    port = server.bind("localhost", 0)
+    thread = threading.Thread(target=server.listen, daemon=True)
     thread.start()
     try:
         status, body = fetch(f"http://localhost:{port}/file/doc/{views[0].path()}")
@@ -52,3 +46,41 @@ def test_serve_file(core_data_path, odt_path, tmp_path):
         server.stop()
         thread.join(timeout=5.0)
     assert not thread.is_alive()
+
+
+@pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
+def test_bind_reports_what_it_got():
+    server = pyodr.HttpServer()
+
+    port = server.bind("127.0.0.1", 0)
+    assert port != 0
+
+    # a second bind would leak the first socket, so it is refused
+    with pytest.raises(RuntimeError):
+        server.bind("127.0.0.1", 0)
+
+    server.stop()
+
+
+@pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
+def test_bind_reports_a_port_in_use():
+    taken = pyodr.HttpServer()
+    # a literal address on purpose: "localhost" resolves to both ::1 and
+    # 127.0.0.1, so a second bind lands on the other one instead of colliding
+    port = taken.bind("127.0.0.1", 0)
+
+    other = pyodr.HttpServer()
+    # reuse_port defaults off, or the two would share the port
+    with pytest.raises(RuntimeError):
+        other.bind("127.0.0.1", port)
+
+    taken.stop()
+
+
+@pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
+def test_listen_without_bind_raises():
+    server = pyodr.HttpServer()
+
+    # cpp-httplib reports success for this, hence the guard being tested
+    with pytest.raises(RuntimeError):
+        server.listen()

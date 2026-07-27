@@ -82,6 +82,12 @@ add_executable(odr_test
         "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"
 )
+if (ODR_WITH_HTTP_SERVER)
+    target_sources(odr_test
+            PRIVATE
+            "src/http_server_test.cpp"
+    )
+endif ()
 target_include_directories(odr_test
         PRIVATE
         "src"

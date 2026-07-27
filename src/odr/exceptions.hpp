@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <stdexcept>
 
 namespace odr {
@@ -193,6 +194,21 @@ struct ResourceNotAccessible final : std::runtime_error {
 struct PrefixInUse final : std::runtime_error {
   PrefixInUse();
   explicit PrefixInUse(const std::string &prefix);
+};
+
+/// @brief HTTP server socket could not be bound
+struct ServerBindFailed final : std::runtime_error {
+  ServerBindFailed(const std::string &host, std::uint32_t port);
+};
+
+/// @brief HTTP server is bound already
+struct ServerAlreadyBound final : std::runtime_error {
+  ServerAlreadyBound();
+};
+
+/// @brief HTTP server has not been bound
+struct ServerNotBound final : std::runtime_error {
+  ServerNotBound();
 };
 
 /// @brief Unsupported option
