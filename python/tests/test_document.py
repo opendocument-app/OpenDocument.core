@@ -23,7 +23,7 @@ def test_open_odt(odt_path):
 
 
 def test_document_meta(odt_path):
-    meta = pyodr.open(str(odt_path)).as_document_file().document_meta()
+    meta = pyodr.open(str(odt_path)).as_document_file().file_meta()
     assert meta.document_type == pyodr.DocumentType.text
 
 

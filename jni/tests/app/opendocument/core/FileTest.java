@@ -25,8 +25,7 @@ class FileTest {
 
       DocumentFile documentFile = file.asDocumentFile();
       assertEquals(DocumentType.TEXT, documentFile.documentType());
-      DocumentMeta meta = documentFile.documentMeta();
-      assertEquals(DocumentType.TEXT, meta.documentType);
+      assertEquals(DocumentType.TEXT, documentFile.fileMeta().documentType);
     }
   }
 
@@ -66,7 +65,7 @@ class FileTest {
       FileMeta meta = file.fileMeta();
       assertEquals(FileType.OPENDOCUMENT_TEXT, meta.type);
       assertFalse(meta.passwordEncrypted);
-      assertNotNull(meta.documentMeta);
+      assertEquals(DocumentType.TEXT, meta.documentType);
     }
   }
 

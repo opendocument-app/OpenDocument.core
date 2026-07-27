@@ -106,16 +106,14 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
   }
 
-  DocumentMeta document_meta;
-
   if (result.type == FileType::opendocument_text) {
-    document_meta.document_type = DocumentType::text;
+    result.document_type = DocumentType::text;
   } else if (result.type == FileType::opendocument_presentation) {
-    document_meta.document_type = DocumentType::presentation;
+    result.document_type = DocumentType::presentation;
   } else if (result.type == FileType::opendocument_spreadsheet) {
-    document_meta.document_type = DocumentType::spreadsheet;
+    result.document_type = DocumentType::spreadsheet;
   } else if (result.type == FileType::opendocument_graphics) {
-    document_meta.document_type = DocumentType::drawing;
+    result.document_type = DocumentType::drawing;
   }
 
   if (result.password_encrypted == decrypted &&
@@ -130,17 +128,15 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     if (result.type == FileType::opendocument_text) {
       if (const pugi::xml_attribute page_count =
               statistics.attribute("meta:page-count")) {
-        document_meta.entry_count = page_count.as_uint();
+        result.entry_count = page_count.as_uint();
       }
     } else if (result.type == FileType::opendocument_spreadsheet) {
       if (const pugi::xml_attribute table_count =
               statistics.attribute("meta:table-count")) {
-        document_meta.entry_count = table_count.as_uint();
+        result.entry_count = table_count.as_uint();
       }
     }
   }
-
-  result.document_meta = document_meta;
 
   return result;
 }

@@ -88,7 +88,6 @@ public:
   }
 
   [[nodiscard]] virtual DocumentType document_type() const = 0;
-  [[nodiscard]] virtual DocumentMeta document_meta() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };

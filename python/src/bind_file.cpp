@@ -93,20 +93,6 @@ void odr_python::bind_file(py::module_ &m) {
       .def_readwrite("engine_priority",
                      &odr::DecodePreference::engine_priority);
 
-  py::class_<odr::DocumentMeta>(m, "DocumentMeta")
-      .def(py::init<>())
-      .def_readwrite("document_type", &odr::DocumentMeta::document_type)
-      .def_readwrite("entry_count", &odr::DocumentMeta::entry_count)
-      .def_readwrite("title", &odr::DocumentMeta::title)
-      .def_readwrite("author", &odr::DocumentMeta::author)
-      .def_readwrite("subject", &odr::DocumentMeta::subject)
-      .def_readwrite("keywords", &odr::DocumentMeta::keywords)
-      .def_readwrite("creator", &odr::DocumentMeta::creator)
-      .def_readwrite("producer", &odr::DocumentMeta::producer)
-      .def_readwrite("creation_date", &odr::DocumentMeta::creation_date)
-      .def_readwrite("modification_date",
-                     &odr::DocumentMeta::modification_date);
-
   py::class_<odr::FileMeta>(m, "FileMeta")
       .def(py::init<>())
       .def_readwrite("type", &odr::FileMeta::type)
@@ -114,7 +100,16 @@ void odr_python::bind_file(py::module_ &m) {
           "mimetype",
           [](const odr::FileMeta &meta) { return std::string(meta.mimetype); })
       .def_readwrite("password_encrypted", &odr::FileMeta::password_encrypted)
-      .def_readwrite("document_meta", &odr::FileMeta::document_meta);
+      .def_readwrite("document_type", &odr::FileMeta::document_type)
+      .def_readwrite("entry_count", &odr::FileMeta::entry_count)
+      .def_readwrite("title", &odr::FileMeta::title)
+      .def_readwrite("author", &odr::FileMeta::author)
+      .def_readwrite("subject", &odr::FileMeta::subject)
+      .def_readwrite("keywords", &odr::FileMeta::keywords)
+      .def_readwrite("creator", &odr::FileMeta::creator)
+      .def_readwrite("producer", &odr::FileMeta::producer)
+      .def_readwrite("creation_date", &odr::FileMeta::creation_date)
+      .def_readwrite("modification_date", &odr::FileMeta::modification_date);
 
   py::class_<odr::File>(m, "File")
       .def(py::init<>())
@@ -183,7 +178,6 @@ void odr_python::bind_file(py::module_ &m) {
       .def_static("type_by_path", &odr::DocumentFile::type, py::arg("path"))
       .def_static("meta_by_path", &odr::DocumentFile::meta, py::arg("path"))
       .def("document_type", &odr::DocumentFile::document_type)
-      .def("document_meta", &odr::DocumentFile::document_meta)
       .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"))
       .def("document", &odr::DocumentFile::document);
 

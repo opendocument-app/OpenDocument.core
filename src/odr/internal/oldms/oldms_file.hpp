@@ -28,7 +28,6 @@ public:
   [[nodiscard]] FileMeta file_meta() const noexcept override;
 
   [[nodiscard]] DocumentType document_type() const override;
-  [[nodiscard]] DocumentMeta document_meta() const override;
 
   [[nodiscard]] bool password_encrypted() const noexcept override;
   [[nodiscard]] EncryptionState encryption_state() const noexcept override;

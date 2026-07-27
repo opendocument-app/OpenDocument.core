@@ -23,7 +23,8 @@ std::string_view ZipFile::mimetype() const noexcept {
 }
 
 FileMeta ZipFile::file_meta() const noexcept {
-  return {file_type(), mimetype(), false, std::nullopt};
+  return {
+      .type = file_type(), .mimetype = mimetype(), .password_encrypted = false};
 }
 
 bool ZipFile::is_decodable() const noexcept { return true; }

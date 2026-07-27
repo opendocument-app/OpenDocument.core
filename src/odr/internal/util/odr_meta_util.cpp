@@ -15,14 +15,11 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
       file_category_to_string(file_category_by_file_type(meta.type));
   result["isEncrypted"] = meta.password_encrypted;
 
-  if (meta.document_meta) {
-    const auto &document_meta = *meta.document_meta;
+  if (meta.document_type != DocumentType::unknown) {
+    result["documentType"] = document_type_to_string(meta.document_type);
 
-    result["documentType"] =
-        document_type_to_string(document_meta.document_type);
-
-    if (document_meta.entry_count) {
-      result["entryCount"] = *document_meta.entry_count;
+    if (meta.entry_count) {
+      result["entryCount"] = *meta.entry_count;
     }
 
     const auto put = [&](const char *key,
@@ -31,14 +28,14 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
         result[key] = *value;
       }
     };
-    put("title", document_meta.title);
-    put("author", document_meta.author);
-    put("subject", document_meta.subject);
-    put("keywords", document_meta.keywords);
-    put("creator", document_meta.creator);
-    put("producer", document_meta.producer);
-    put("creationDate", document_meta.creation_date);
-    put("modificationDate", document_meta.modification_date);
+    put("title", meta.title);
+    put("author", meta.author);
+    put("subject", meta.subject);
+    put("keywords", meta.keywords);
+    put("creator", meta.creator);
+    put("producer", meta.producer);
+    put("creationDate", meta.creation_date);
+    put("modificationDate", meta.modification_date);
   }
 
   return result;

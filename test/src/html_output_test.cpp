@@ -80,8 +80,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   EXPECT_EQ(file_meta.type, expected_file_type_pre_decryption(test_file));
   if (file_category == FileCategory::document) {
-    EXPECT_TRUE(file_meta.document_meta.has_value());
-    EXPECT_EQ(file_meta.document_meta->document_type,
+    EXPECT_EQ(file_meta.document_type,
               document_type_by_file_type(
                   expected_file_type_pre_decryption(test_file)));
   }
@@ -128,8 +127,7 @@ TEST_P(HtmlOutputTests, html_meta) {
 
     EXPECT_EQ(file_meta.type, expected_file_type_post_decryption(test_file));
     if (file_category == FileCategory::document) {
-      EXPECT_TRUE(file_meta.document_meta.has_value());
-      EXPECT_EQ(file_meta.document_meta->document_type,
+      EXPECT_EQ(file_meta.document_type,
                 document_type_by_file_type(
                     expected_file_type_post_decryption(test_file)));
     }

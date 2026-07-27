@@ -251,29 +251,21 @@ jobject make_table_position(JNIEnv *env, const odr::TablePosition &position) {
                     static_cast<jint>(position.row));
 }
 
-jobject make_document_meta(JNIEnv *env, const odr::DocumentMeta &meta) {
+jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta) {
   return new_object(
-      env, "app/opendocument/core/DocumentMeta",
-      "(ILjava/lang/Long;Ljava/lang/String;Ljava/lang/String;"
+      env, "app/opendocument/core/FileMeta",
+      "(ILjava/lang/String;ZILjava/lang/Long;Ljava/lang/String;"
       "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-      "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
+      "Ljava/lang/String;)V",
+      static_cast<jint>(meta.type), to_jstring(env, meta.mimetype),
+      static_cast<jboolean>(meta.password_encrypted),
       static_cast<jint>(meta.document_type), box_long(env, meta.entry_count),
       make_string_opt(env, meta.title), make_string_opt(env, meta.author),
       make_string_opt(env, meta.subject), make_string_opt(env, meta.keywords),
       make_string_opt(env, meta.creator), make_string_opt(env, meta.producer),
       make_string_opt(env, meta.creation_date),
       make_string_opt(env, meta.modification_date));
-}
-
-jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta) {
-  jobject document_meta = meta.document_meta.has_value()
-                              ? make_document_meta(env, *meta.document_meta)
-                              : nullptr;
-  return new_object(
-      env, "app/opendocument/core/FileMeta",
-      "(ILjava/lang/String;ZLapp/opendocument/core/DocumentMeta;)V",
-      static_cast<jint>(meta.type), to_jstring(env, meta.mimetype),
-      static_cast<jboolean>(meta.password_encrypted), document_meta);
 }
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {

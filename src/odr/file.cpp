@@ -15,20 +15,6 @@
 
 namespace odr {
 
-DocumentMeta::DocumentMeta() = default;
-
-DocumentMeta::DocumentMeta(const DocumentType document_type,
-                           const std::optional<std::uint32_t> entry_count)
-    : document_type{document_type}, entry_count{entry_count} {}
-
-FileMeta::FileMeta() = default;
-
-FileMeta::FileMeta(const FileType type, const std::string_view mimetype,
-                   const bool password_encrypted,
-                   const std::optional<DocumentMeta> document_meta)
-    : type{type}, mimetype{mimetype}, password_encrypted{password_encrypted},
-      document_meta{document_meta} {}
-
 File::File() = default;
 
 File::File(std::shared_ptr<internal::abstract::File> impl)
@@ -268,10 +254,6 @@ DocumentFile::DocumentFile(const std::string &path, const Logger &logger)
 
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();
-}
-
-DocumentMeta DocumentFile::document_meta() const {
-  return m_impl->document_meta();
 }
 
 DocumentFile DocumentFile::decrypt(const std::string &password) const {

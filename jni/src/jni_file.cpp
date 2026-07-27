@@ -356,15 +356,6 @@ Java_app_opendocument_core_DocumentFile_documentTypeNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT jobject JNICALL
-Java_app_opendocument_core_DocumentFile_documentMetaNative(JNIEnv *env, jobject,
-                                                           jlong handle) {
-  return guarded(env, [&] {
-    return odr_jni::make_document_meta(
-        env, decoded(handle).as_document_file().document_meta());
-  });
-}
-
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_DocumentFile_decryptDocumentFileNative(
     JNIEnv *env, jobject, jlong handle, jstring password) {

@@ -34,11 +34,6 @@
 
 ## Future
 
-### Breaking API changes (next major)
-
-- Collapse `FileMeta` into a single type. The nested `DocumentMeta`
-  does not earn the extra indirection.
-
 ### Document index
 
 - replace iterators where it makes sense with an index
