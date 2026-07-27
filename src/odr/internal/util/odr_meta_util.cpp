@@ -15,6 +15,10 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
       file_category_to_string(file_category_by_file_type(meta.type));
   result["isEncrypted"] = meta.password_encrypted;
 
+  // Only a known document type gets the document block. An office container we
+  // cannot name a type for (an encrypted OOXML package, an ODF file with an
+  // unrecognized mimetype) is therefore treated like any other non-document and
+  // omits these keys, rather than reporting `"documentType": "unknown"`.
   if (meta.document_type != DocumentType::unknown) {
     result["documentType"] = document_type_to_string(meta.document_type);
 

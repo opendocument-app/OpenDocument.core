@@ -25,8 +25,10 @@ FileType CsvFile::file_type() const noexcept {
 std::string_view CsvFile::mimetype() const noexcept { return "text/csv"; }
 
 FileMeta CsvFile::file_meta() const noexcept {
-  return {
-      .type = file_type(), .mimetype = mimetype(), .password_encrypted = false};
+  FileMeta result;
+  result.type = file_type();
+  result.mimetype = mimetype();
+  return result;
 }
 
 bool CsvFile::is_decodable() const noexcept { return false; }
