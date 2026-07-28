@@ -30,6 +30,10 @@ on release (`.github/workflows/maven.yml`, built from `pom.xml`). The artifact
 contains **only the Java API** — consumers build the native `odr_jni` library
 themselves for their target platform (see below) and provide it at runtime.
 
+On android there is a second, self-contained artifact:
+`app.opendocument:odr-core-android`, an AAR with these same classes plus the
+native library for every ABI and the runtime assets. See [`../android`](../android/README.md).
+
 ```gradle
 repositories {
     maven {

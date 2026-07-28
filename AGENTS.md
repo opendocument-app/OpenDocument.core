@@ -64,6 +64,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
 | `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |
 | `jni/` | JNI bindings (Java package `app.opendocument.core`); see [`jni/AGENTS.md`](jni/AGENTS.md). |
+| `android/` | The bindings packaged as an AAR (`odr-core-android`) + the instrumented tests; see [`android/AGENTS.md`](android/AGENTS.md). |
 | `tools/pdf/` | Dev tooling (not built): PDF encoding-data generators, see `tools/pdf/README.md`. |
 | `test/src/` | GoogleTest suites; data in `test/data` (git submodules). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (see [Specs](#specs)). |
