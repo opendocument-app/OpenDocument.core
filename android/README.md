@@ -33,19 +33,24 @@ dependencies {
 }
 ```
 
-GitHub Packages needs a token with `read:packages` even for public packages. Do
-not depend on `odr-core-java` as well — the AAR carries the same classes.
+GitHub Packages needs a token with `read:packages` even for public packages —
+see [Publishing](#publishing) for what that rules out. Do not depend on
+`odr-core-java` as well: the AAR carries the same classes.
 
-```java
-import app.opendocument.core.*;
-import app.opendocument.core.android.OdrAndroid;
+```kotlin
+import app.opendocument.core.*
+import app.opendocument.core.android.OdrAndroid
 
-OdrAndroid.init(context);  // extracts the bundled assets, loads the library
+OdrAndroid.init(context) // extracts the bundled assets, loads the library
 
-DecodedFile file = Odr.open(path);
-HtmlService service = Html.translate(file, cacheDir.getPath(), new HtmlConfig());
-Html html = service.bringOffline(outputDir.getPath());
+val file = Odr.open(path)
+val service = Html.translate(file, cacheDir.path, HtmlConfig())
+val html = service.bringOffline(outputDir.path)
 ```
+
+The java API is java and stays callable as such (`OdrAndroid.init(context)` is
+a static method, and it still throws a checked `IOException`); only this
+module's own code — `OdrAndroid` and the instrumented suite — is kotlin.
 
 `OdrAndroid.init` is idempotent and cheap after the first call: the assets are
 unpacked once per library build, into the app's no-backup storage, and the
@@ -84,6 +89,7 @@ The odrcore build is a normal one — `ODR_JNI=ON`, static core linked into
 ```bash
 ./gradlew lint                            # NewApi against minSdk 26, over ../jni/java too
 ./gradlew connectedDebugAndroidTest       # on a running emulator or device
+./gradlew spotlessApply                   # ktfmt, kotlinlang style
 ```
 
 The instrumented suite (`src/androidTest`) is the part that sees what a device
@@ -96,12 +102,21 @@ CI (`.github/workflows/android.yml`) cross compiles each ABI, assembles and
 lints the AAR, and runs the suite on API 26 — the floor OpenDocument.droid
 ships to — and on a current API level.
 
-## Relation to the conan package
+## Publishing
 
-OpenDocument.droid does not consume this artifact: it builds odrcore from the
-conan package (`with_jni=True`) and deploys `libodr_jni.so`, `odr-core-java.jar`
-and the assets out of it, which keeps the two halves in lockstep by
-construction and the build free of credentials, as f-droid requires. That path
-is unaffected by anything here — the AAR is a second packaging of the same
-build, for consumers that just want a dependency, and the reason android now
-gets compiled and exercised on every push.
+Releases go to GitHub Packages, like the maven jar. That is enough for
+consumers who can hold a token, and **not** enough for the one this is
+ultimately built for: GitHub Packages demands `read:packages` even to read a
+public artifact, and f-droid builds from source with no credentials at all.
+Making the AAR the base of OpenDocument.droid therefore means publishing it to
+Maven Central first, which is a separate piece of work — the `app.opendocument`
+namespace has to be verified, and every artifact signed.
+
+Until then OpenDocument.droid keeps building odrcore from the conan package
+(`with_jni=True`), deploying `libodr_jni.so`, `odr-core-java.jar` and the assets
+out of it. That path is unaffected by anything here, and it is the reason the
+two halves cannot drift: they come out of one build.
+
+So the AAR is, for now, a second packaging of that same build — for consumers
+that just want a dependency, and the reason android gets compiled and exercised
+on every push at all.

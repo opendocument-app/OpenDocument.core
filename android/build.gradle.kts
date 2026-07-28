@@ -1,6 +1,23 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.spotless)
     `maven-publish`
+}
+
+// ktfmt in the kotlinlang flavor, the same formatter and version
+// OpenDocument.droid runs, so a file can move between the two repos unchanged.
+// ./gradlew spotlessApply to fix, spotlessCheck to verify (the format workflow
+// does). Only this module's own kotlin: ../jni/java is java, formatted by hand
+// to the google-java-format style, and reformatting it from here would rewrite
+// the maven jar's sources as a side effect of an android build.
+spotless {
+    kotlin {
+        target("src/*/java/**/*.kt")
+
+        ktfmt(libs.versions.ktfmt.get()).kotlinlangStyle()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 // The version is injected on release, the way the maven jar takes -Drevision.

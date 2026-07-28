@@ -13,3 +13,25 @@ jobs:
         run: CLANG_FORMAT=clang-format-18 ./scripts/format
 
       - run: git diff --exit-code --name-only
+
+  # The kotlin of `android/`, which clang-format above does not see. spotless
+  # does not go through the android build, so this needs java and the sdk on the
+  # runner and nothing else — no NDK, no conan, no native libraries.
+  spotless:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: spotless
+        working-directory: android
+        run: ./gradlew spotlessCheck -Podr.abis=
