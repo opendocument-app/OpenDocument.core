@@ -104,7 +104,9 @@ ships to — and on a current API level.
 
 ## Publishing
 
-Releases go to GitHub Packages, like the maven jar. That is enough for
+Releases go to GitHub Packages, like the maven jar, and only once the
+instrumented suite has passed on every API level — an AAR that assembles and
+lints is no evidence that it works on a device. That is enough for
 consumers who can hold a token, and **not** enough for the one this is
 ultimately built for: GitHub Packages demands `read:packages` even to read a
 public artifact, and f-droid builds from source with no credentials at all.

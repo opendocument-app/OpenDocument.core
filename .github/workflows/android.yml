@@ -105,9 +105,6 @@ jobs:
   aar:
     needs: native
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -130,17 +127,6 @@ jobs:
           merge-multiple: true
           path: android/native/prebuilt
 
-      - name: get version
-        if: github.event_name != 'push'
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-        run: |
-          if [ "${{ github.event_name }}" = release ]; then
-            echo "ODR_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-          else
-            echo "ODR_VERSION=${INPUT_VERSION}" >> $GITHUB_ENV
-          fi
-
       # -Podr.abis= : the libraries are the artifacts downloaded above, so the
       # build must not try to cross compile them again
       - name: lint
@@ -157,13 +143,6 @@ jobs:
           name: odr-core-android
           path: android/build/outputs/aar/*.aar
           if-no-files-found: error
-
-      - name: publish
-        if: github.event_name != 'push'
-        working-directory: android
-        run: ./gradlew publishReleasePublicationToGitHubPackagesRepository -Podr.abis=
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # The other half of the guard, and the only one that sees what a device sees:
   # API 26 is the floor OpenDocument.droid ships to, where a java.* method the
@@ -217,3 +196,49 @@ jobs:
         with:
           name: instrumented-report-${{ matrix.api-level }}
           path: android/build/reports/androidTests
+
+  # Nothing reaches GitHub Packages that the device suite has not run: an AAR
+  # that assembles and lints is not evidence the bindings work on a device,
+  # which is the whole point of the two jobs above.
+  publish:
+    if: github.event_name != 'push'
+    needs: [aar, instrumented]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: download native libraries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: android-native-*
+          merge-multiple: true
+          path: android/native/prebuilt
+
+      - name: get version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.event_name }}" = release ]; then
+            echo "ODR_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+          else
+            echo "ODR_VERSION=${INPUT_VERSION}" >> $GITHUB_ENV
+          fi
+
+      - name: publish
+        working-directory: android
+        run: ./gradlew publishReleasePublicationToGitHubPackagesRepository -Podr.abis=
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
