@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The library needs nothing from the platform beyond its own storage. An app
+     that uses `HttpServer` has to declare `android.permission.INTERNET`
+     itself — a library that merged it in would hand the permission to every
+     consumer, including the ones that only render offline. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

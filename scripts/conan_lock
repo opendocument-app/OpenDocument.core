@@ -2,7 +2,17 @@
 
 conan lock create .
 
+# `android.jinja` is the shared body of the `android-*` profiles, not a profile
+# of its own, and the android profiles only ever act as host profiles.
 for profile in .github/config/conan/profiles/*; do
+    case "${profile}" in
+        *.jinja | */android-*) continue ;;
+    esac
     conan lock create . --profile:build "${profile}" --profile:host "${profile}"
 done
-conan lock create . --profile:build ".github/config/conan/profiles/ubuntu-24.04-clang-18" --profile:host ".github/config/conan/profiles/android-35-x86_64"
+
+for architecture in armv7 armv8 x86 x86_64; do
+    conan lock create . \
+        --profile:build ".github/config/conan/profiles/ubuntu-24.04-clang-18" \
+        --profile:host ".github/config/conan/profiles/android-${architecture}"
+done

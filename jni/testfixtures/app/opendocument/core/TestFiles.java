@@ -4,11 +4,18 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-/** Builds minimal test input files from inline content (mirrors python/tests/conftest.py). */
+/**
+ * Builds minimal test input files from inline content (mirrors python/tests/conftest.py).
+ *
+ * <p>Shared by the host junit suite ({@code jni/tests}) and the instrumented suite of the AAR
+ * ({@code android/}), so it stays within what android API 26 offers — no {@code Path.of}, no {@code
+ * Files.writeString}, no {@code String.formatted}.
+ */
 final class TestFiles {
   static final String ODT_FIRST_PARAGRAPH = "Hello from odr-core-java!";
   static final String ODT_SECOND_PARAGRAPH = "Second paragraph äöü 😀";
@@ -27,8 +34,10 @@ final class TestFiles {
           </office:text>
         </office:body>
       </office:document-content>
-      """
-          .formatted(ODT_FIRST_PARAGRAPH, ODT_SECOND_PARAGRAPH);
+      """;
+
+  private static final String ODT_CONTENT =
+      String.format(ODT_CONTENT_XML, ODT_FIRST_PARAGRAPH, ODT_SECOND_PARAGRAPH);
 
   private static final String ODT_STYLES_XML =
       """
@@ -68,7 +77,7 @@ final class TestFiles {
   /** Whether the odr core data (CSS/JS assets) is available for rendering. */
   static boolean hasCoreData() {
     String path = GlobalParams.odrCoreDataPath();
-    return path != null && !path.isEmpty() && Files.isDirectory(Path.of(path));
+    return path != null && !path.isEmpty() && Files.isDirectory(Paths.get(path));
   }
 
   /** A minimal OpenDocument text file built from inline XML. */
@@ -87,7 +96,7 @@ final class TestFiles {
       zip.write(mimetype);
       zip.closeEntry();
 
-      writeEntry(zip, "content.xml", ODT_CONTENT_XML);
+      writeEntry(zip, "content.xml", ODT_CONTENT);
       writeEntry(zip, "styles.xml", ODT_STYLES_XML);
       writeEntry(zip, "META-INF/manifest.xml", ODT_MANIFEST_XML);
     }
@@ -96,14 +105,18 @@ final class TestFiles {
 
   static Path csvFile(Path directory) throws IOException {
     Path path = directory.resolve("table.csv");
-    Files.writeString(path, "name,value\nalpha,1\nbeta,2\n");
+    write(path, "name,value\nalpha,1\nbeta,2\n");
     return path;
   }
 
   static Path txtFile(Path directory) throws IOException {
     Path path = directory.resolve("note.txt");
-    Files.writeString(path, "hello text file\nsecond line\n");
+    write(path, "hello text file\nsecond line\n");
     return path;
+  }
+
+  private static void write(Path path, String content) throws IOException {
+    Files.write(path, content.getBytes(StandardCharsets.UTF_8));
   }
 
   private static void writeEntry(ZipOutputStream zip, String name, String content)

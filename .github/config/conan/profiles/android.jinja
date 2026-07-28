@@ -1,7 +1,15 @@
+{# Shared body of the `android-*` profiles; the includer sets `arch`.
+   Not usable on its own — always include it from a per-ABI profile.
+
+   `api_level` is the *minimum* android version the native code runs on, and it
+   is baked into the target triple, so it has to match the java floor of the AAR
+   (`android/`, minSdk 26) — a higher value produces libraries the linker
+   refuses to load on older devices. #}
 {% set android_home = os.getenv("ANDROID_HOME") %}
 {% set ndk_version = "28.1.13356709" %}
-{% set api_level = "35" %}
-{% set arch = "x86_64" %}
+{% set api_level = "26" %}
+{% set host_tag = "darwin-x86_64" if platform.system() == "Darwin" else "linux-x86_64" %}
+{% set toolchain = android_home + "/ndk/" + ndk_version + "/toolchains/llvm/prebuilt/" + host_tag %}
 {% set cc = {
     "armv7": "armv7a-linux-androideabi" + api_level + "-clang",
     "armv8": "aarch64-linux-android" + api_level + "-clang",
@@ -27,10 +35,10 @@ tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccac
 # Cross compile toolchain evn vars are required to build
 # libffi, libgettext, libiconv, libxml2 and other autotools packages for Android
 # https://github.com/conan-io/conan/issues/16493
-AR={{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
-AS={{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-as
-RANLIB={{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
-CC=ccache {{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/{{cc}}
-CXX=ccache {{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/{{cc}}++
-LD={{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/ld
-STRIP={{android_home}}/ndk/{{ndk_version}}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+AR={{toolchain}}/bin/llvm-ar
+AS={{toolchain}}/bin/llvm-as
+RANLIB={{toolchain}}/bin/llvm-ranlib
+CC=ccache {{toolchain}}/bin/{{cc}}
+CXX=ccache {{toolchain}}/bin/{{cc}}++
+LD={{toolchain}}/bin/ld
+STRIP={{toolchain}}/bin/llvm-strip

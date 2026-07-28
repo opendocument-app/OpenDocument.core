@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- HttpServerTest talks to the server it starts on 127.0.0.1, and android
+         wants the permission even for the loopback interface -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- and, since API 28, permission for plain HTTP on top of that. An app
+         embedding the server needs the same, scoped to 127.0.0.1 via a network
+         security config; see README.md -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

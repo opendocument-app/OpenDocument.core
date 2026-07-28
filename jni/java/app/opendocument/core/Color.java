@@ -1,5 +1,7 @@
 package app.opendocument.core;
 
+import java.util.Locale;
+
 /** An RGBA color. Mirrors {@code odr::Color}; channels are 0-255. */
 public final class Color {
   public final int red;
@@ -42,6 +44,8 @@ public final class Color {
 
   @Override
   public String toString() {
-    return String.format("Color(%d, %d, %d, %d)", red, green, blue, alpha);
+    // ROOT, not the default locale: a device set to a locale with its own
+    // digits would render this unparseable
+    return String.format(Locale.ROOT, "Color(%d, %d, %d, %d)", red, green, blue, alpha);
   }
 }

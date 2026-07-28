@@ -43,7 +43,9 @@ jobs:
           - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
           - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14, bindings: true }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: android-35-x86_64, ndk_version: 28.1.13356709 }
+          # android is covered by `android.yml`, which cross compiles the core
+          # *and* the JNI bindings for every ABI the AAR ships and runs them on
+          # an emulator
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -74,10 +76,6 @@ jobs:
           python-version: 3.14
       - name: install python dependencies
         run: pip install conan ${{ matrix.bindings && 'pytest' || '' }}
-
-      - name: install NDK
-        if: startsWith(matrix.host_profile, 'android')
-        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install 'ndk;${{ matrix.ndk_version }}'
 
       - name: conan cache key
         shell: bash

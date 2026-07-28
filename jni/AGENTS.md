@@ -11,8 +11,9 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
 | `CMakeLists.txt` | Builds `libodr_jni` + `odr-core-java.jar`; included from the root build via `ODR_JNI`, or standalone against an installed `odrcore`. |
 | `pom.xml` | Maven distribution of the Java classes only (`app.opendocument:odr-core-java`); published to GitHub Packages on release via `.github/workflows/maven.yml`. Keep `--release`/`-Xlint` in sync with `CMAKE_JAVA_COMPILE_FLAGS`. |
 | `src/` | JNI sources, one `jni_*` unit per public-API area; `odr_jni.hpp` (strings, exceptions, handles) and `jni_convert.hpp` (struct/POJO marshalling) are the helpers. |
-| `java/app/opendocument/core/` | Java API: enums, POJOs (styles, metas, `HtmlConfig`), and handle-backed wrappers extending `NativeResource`. |
+| `java/app/opendocument/core/` | Java API: enums, POJOs (styles, metas, `HtmlConfig`), and handle-backed wrappers extending `NativeResource`. Also compiled as-is into the AAR (`../android`) — which is kotlin, but this stays java: `add_jar` below has no kotlin toolchain. |
 | `tests/` | JUnit 5 suite, run via ctest (`odr_jni_junit`); inputs are generated inline (tmp files, zip-built minimal ODT) — no fixture files. |
+| `testfixtures/` | `TestFiles`, the inline input builder, shared with the instrumented suite of the AAR — hence limited to what android API 26 offers. |
 
 ## Design
 
@@ -62,12 +63,16 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   hence the `PhantomReference` reaper), `List.of`/`Set.of`/`Map.of` (API 34),
   `Optional.isEmpty` (API 33), `java.time` (API 26 only in part). Core library
   desugaring does not cover `java.lang.ref`, and an app cannot shim a `java.*`
-  class, so the fix always has to happen here.
+  class, so the fix always has to happen here. This is no longer only a rule to
+  remember: `../android` cross compiles the bindings, lints `java/` against
+  minSdk 26 and runs an instrumented suite on an API 26 emulator on every push.
 - C++ sources follow the repo clang-format; Java follows the
   google-java-format style (2-space indent), no enforced formatter yet.
-- Tests must stay hermetic: build inputs inline in `tests/.../TestFiles.java`;
+- Tests must stay hermetic: build inputs inline in
+  `testfixtures/.../TestFiles.java`;
   HTML-rendering tests `assumeTrue(TestFiles.hasCoreData())` (skips when
   assets are missing). Use `127.0.0.1`, not `localhost`, for the HTTP server
   (the JVM prefers `::1`).
-- Build/test loop: see `jni/README.md`; CI lives in
-  `.github/workflows/jni.yml`.
+- Build/test loop: see `jni/README.md`; CI builds the bindings in the `build`
+  job of `.github/workflows/build_test.yml` (host) and in
+  `.github/workflows/android.yml` (android).

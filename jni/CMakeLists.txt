@@ -20,9 +20,21 @@ else ()
     set(ODR_JNI_ODR_TARGET odr)
 endif ()
 
-find_package(Java 11 REQUIRED COMPONENTS Development)
-find_package(JNI REQUIRED)
-include(UseJava)
+# On android the NDK sysroot ships `jni.h` and the JNI symbols come from the
+# runtime, so there is nothing to find or link against. A JDK stays optional
+# there rather than unused: the android odrcore package ships
+# `odr-core-java.jar` next to `libodr_jni.so` and OpenDocument.droid takes both
+# out of it, while `android/` (the AAR) builds the native half alone, with the
+# android toolchain compiling `java/` itself.
+if (ANDROID)
+    find_package(Java 11 COMPONENTS Development)
+else ()
+    find_package(Java 11 REQUIRED COMPONENTS Development)
+    find_package(JNI REQUIRED)
+endif ()
+if (Java_FOUND)
+    include(UseJava)
+endif ()
 
 add_library(odr_jni SHARED
         "src/odr_jni.cpp"
@@ -34,10 +46,18 @@ add_library(odr_jni SHARED
         "src/jni_http_server.cpp"
         "src/jni_style.cpp"
 )
-target_include_directories(odr_jni PRIVATE ${JNI_INCLUDE_DIRS})
+if (NOT ANDROID)
+    target_include_directories(odr_jni PRIVATE ${JNI_INCLUDE_DIRS})
+endif ()
 target_link_libraries(odr_jni PRIVATE ${ODR_JNI_ODR_TARGET})
 if (ODR_WITH_HTTP_SERVER)
     target_compile_definitions(odr_jni PRIVATE ODR_WITH_HTTP_SERVER)
+endif ()
+
+install(TARGETS odr_jni LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT jni)
+
+if (NOT Java_FOUND)
+    return()
 endif ()
 
 set(CMAKE_JAVA_COMPILE_FLAGS --release 17 -Xlint:all)
@@ -136,10 +156,12 @@ add_jar(odr_java
         OUTPUT_NAME odr-core-java
 )
 
-install(TARGETS odr_jni LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT jni)
 install_jar(odr_java DESTINATION "${CMAKE_INSTALL_DATADIR}/java" COMPONENT jni)
 
-if (ODR_TEST)
+# The junit suite loads `libodr_jni` into the JVM that runs it, so it is only
+# meaningful for a host build; the android build is covered by the instrumented
+# tests of the AAR (`android/`).
+if (ODR_TEST AND NOT ANDROID)
     include(FetchContent)
     FetchContent_Declare(junit_console
             URL "https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.2/junit-platform-console-standalone-1.10.2.jar"
@@ -158,7 +180,8 @@ if (ODR_TEST)
             "tests/app/opendocument/core/HttpServerTest.java"
             "tests/app/opendocument/core/LoggerTest.java"
             "tests/app/opendocument/core/MetaTest.java"
-            "tests/app/opendocument/core/TestFiles.java"
+            # shared with the instrumented suite of the AAR, see `android/`
+            "testfixtures/app/opendocument/core/TestFiles.java"
             INCLUDE_JARS odr_java "${ODR_JNI_JUNIT_JAR}"
             OUTPUT_NAME odr-core-java-tests
     )

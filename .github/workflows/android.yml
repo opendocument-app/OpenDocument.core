@@ -1,0 +1,244 @@
+name: android
+
+on:
+  push:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version to publish (e.g. 6.0.0-test1)
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# See the cache-key comment in `build_test.yml` for why the keys look like this.
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 1G
+  CCACHE_KEY_SUFFIX: r1
+  CONAN_HOME: ${{ github.workspace }}/.conan2
+  CONAN_KEY_SUFFIX: r1
+  NDK_VERSION: 28.1.13356709
+
+jobs:
+  # One cross build per ABI, uploaded as an artifact so the AAR job below can
+  # assemble all of them without cross compiling four times in one runner.
+  native:
+    runs-on: ubuntu-24.04
+    env:
+      CACHE_FLAVOR: aar
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [armv7, armv8, x86, x86_64]
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: checkout conan-odr-index
+        run: git submodule update --init --depth 1 conan-odr-index
+
+      - name: install ccache
+        run: |
+          sudo apt install ccache
+          ccache -V
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install python dependencies
+        run: pip install conan
+
+      - name: install NDK
+        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+
+      - name: conan cache key
+        shell: bash
+        run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+
+      - name: cache conan
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          restore-keys: |
+            conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-
+
+      - name: export conan-odr-index
+        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
+      - name: conan config
+        run: conan config install .github/config/conan
+
+      - name: restore ccache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-
+
+      # Cross compiling the bindings is the cheap half of the guard: #628 was a
+      # compile error in jni/src that only android sees, and no host job can.
+      - name: build
+        run: >
+          python android/build_native.py
+          --abi ${{ matrix.architecture }}
+          --build-profile ubuntu-24.04-clang-18
+
+      - name: save ccache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+
+      - name: upload native libraries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: android-native-${{ matrix.architecture }}
+          path: android/native/prebuilt
+          if-no-files-found: error
+
+  aar:
+    needs: native
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      # every ABI's artifact carries the same assets/, so they merge into the
+      # one prebuilt tree the gradle build reads
+      - name: download native libraries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: android-native-*
+          merge-multiple: true
+          path: android/native/prebuilt
+
+      # -Podr.abis= : the libraries are the artifacts downloaded above, so the
+      # build must not try to cross compile them again
+      - name: lint
+        working-directory: android
+        run: ./gradlew lint -Podr.abis=
+
+      - name: assemble
+        working-directory: android
+        run: ./gradlew assembleRelease -Podr.abis=
+
+      - name: upload aar
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: odr-core-android
+          path: android/build/outputs/aar/*.aar
+          if-no-files-found: error
+
+  # The other half of the guard, and the only one that sees what a device sees:
+  # API 26 is the floor OpenDocument.droid ships to, where a java.* method the
+  # JDK has and android does not throws at the call (#621).
+  instrumented:
+    needs: native
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 36]
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      # the emulator is x86_64, and nothing here needs the other ABIs
+      - name: download native libraries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: android-native-x86_64
+          path: android/native/prebuilt
+
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: instrumented tests
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: ${{ matrix.api-level >= 30 && 'google_apis' || 'default' }}
+          working-directory: android
+          script: ./gradlew connectedDebugAndroidTest -Podr.abis=
+
+      - name: upload test report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: instrumented-report-${{ matrix.api-level }}
+          path: android/build/reports/androidTests
+
+  # Nothing reaches GitHub Packages that the device suite has not run: an AAR
+  # that assembles and lints is not evidence the bindings work on a device,
+  # which is the whole point of the two jobs above.
+  publish:
+    if: github.event_name != 'push'
+    needs: [aar, instrumented]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: download native libraries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: android-native-*
+          merge-multiple: true
+          path: android/native/prebuilt
+
+      - name: get version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.event_name }}" = release ]; then
+            echo "ODR_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+          else
+            echo "ODR_VERSION=${INPUT_VERSION}" >> $GITHUB_ENV
+          fi
+
+      - name: publish
+        working-directory: android
+        run: ./gradlew publishReleasePublicationToGitHubPackagesRepository -Podr.abis=
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
