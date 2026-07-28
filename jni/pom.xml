@@ -24,6 +24,15 @@
     </license>
   </licenses>
 
+  <!-- Required by Maven Central; GitHub Packages does not ask for it. -->
+  <developers>
+    <developer>
+      <id>opendocument-app</id>
+      <name>OpenDocument.app</name>
+      <url>https://github.com/opendocument-app</url>
+    </developer>
+  </developers>
+
   <scm>
     <connection>scm:git:https://github.com/opendocument-app/OpenDocument.core.git</connection>
     <developerConnection>scm:git:git@github.com:opendocument-app/OpenDocument.core.git</developerConnection>
@@ -111,6 +120,9 @@
     </plugins>
   </build>
 
+  <!-- `mvn deploy` goes here. Maven Central is the `central` profile below,
+       because its plugin takes over the deploy lifecycle wholesale and the two
+       destinations cannot be driven by one invocation. -->
   <distributionManagement>
     <repository>
       <id>github</id>
@@ -118,4 +130,53 @@
       <url>https://maven.pkg.github.com/opendocument-app/OpenDocument.core</url>
     </repository>
   </distributionManagement>
+
+  <profiles>
+    <!-- `mvn deploy -Pcentral`. Kept off the default build so that neither a
+         signing key nor a portal token is needed to `mvn verify` or to deploy
+         to GitHub Packages, which checks no signature. -->
+    <profile>
+      <id>central</id>
+
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.8</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <!-- The passphrase comes from MAVEN_GPG_PASSPHRASE; loopback is
+                   what lets gpg take it without a tty to prompt on. -->
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.11.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!-- Uploads and stops, the way the AAR does: a human releases it
+                   from the portal, and Central is immutable once released. -->
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

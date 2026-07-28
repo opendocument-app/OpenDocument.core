@@ -24,7 +24,8 @@ The native library is loaded from `java.library.path` as `odr_jni`
 
 ## Maven distribution
 
-The Java classes are published as `app.opendocument:odr-core-java` to
+The Java classes are published as `app.opendocument:odr-core-java` to Maven
+Central and to
 [GitHub Packages](https://github.com/orgs/opendocument-app/packages?repo_name=OpenDocument.core)
 on release (`.github/workflows/maven.yml`, built from `pom.xml`). The artifact
 contains **only the Java API** — consumers build the native `odr_jni` library
@@ -36,13 +37,7 @@ native library for every ABI and the runtime assets. See [`../android`](../andro
 
 ```gradle
 repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/opendocument-app/OpenDocument.core")
-        credentials {
-            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
-            password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    mavenCentral()
 }
 
 dependencies {
@@ -50,11 +45,14 @@ dependencies {
 }
 ```
 
-Note: GitHub Packages requires authentication (a token with `read:packages`)
-even for public packages.
+Prefer Central: GitHub Packages requires authentication (a token with
+`read:packages`) even for public packages.
 
 Local build: `mvn --file jni/pom.xml verify` (produces the jar plus sources
-and javadoc jars in `jni/target/`).
+and javadoc jars in `jni/target/`). Central additionally wants every file PGP
+signed and a POM carrying `developers`; both live in the `central` profile
+(`mvn deploy -Pcentral`), kept off the default build so neither a signing key
+nor a portal token is needed to build or to deploy to GitHub Packages.
 
 ## Building
 

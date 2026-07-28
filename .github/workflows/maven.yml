@@ -14,13 +14,34 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  packages: write
-
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup java
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: build
+        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml verify
+
+  # Split out so the secrets sit behind an environment and are never in reach of
+  # a plain push build.
+  publish:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    environment: maven-central
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -34,7 +55,6 @@ jobs:
           server-id: github
 
       - name: get version
-        if: github.event_name != 'push'
         env:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
@@ -44,12 +64,31 @@ jobs:
             echo "REVISION=${INPUT_VERSION}" >> $GITHUB_ENV
           fi
 
-      - name: build
-        if: github.event_name == 'push'
-        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml verify
-
-      - name: publish
-        if: github.event_name != 'push'
+      - name: publish to github packages
         run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Drevision="${REVISION}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A second setup-java: the central profile deploys to a different server
+      # id and needs the signing key in the runner's gpg keyring, and the step
+      # above has already had its turn with settings.xml.
+      - name: setup java for maven central
+        uses: actions/setup-java@f4f1212c880fdec8162ea9a6493f4495191887b4 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: central
+          server-username: MAVEN_CENTRAL_USERNAME
+          server-password: MAVEN_CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.SIGNING_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      # Uploads and stops, the way the AAR does — released by hand from the
+      # portal, because Central never forgets a version.
+      - name: publish to maven central
+        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Pcentral -Drevision="${REVISION}"
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASS }}

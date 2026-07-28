@@ -19,13 +19,7 @@ ABIs: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`. minSdk 26.
 
 ```gradle
 repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/opendocument-app/OpenDocument.core")
-        credentials {
-            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
-            password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    mavenCentral()
 }
 
 dependencies {
@@ -33,8 +27,9 @@ dependencies {
 }
 ```
 
-GitHub Packages needs a token with `read:packages` even for public packages —
-see [Publishing](#publishing) for what that rules out. Do not depend on
+The same artifact is also on GitHub Packages, but prefer Central: GitHub
+Packages needs a token with `read:packages` even for public packages — see
+[Publishing](#publishing) for what that rules out. Do not depend on
 `odr-core-java` as well: the AAR carries the same classes.
 
 ```kotlin
@@ -104,17 +99,31 @@ ships to — and on a current API level.
 
 ## Publishing
 
-Releases go to GitHub Packages, like the maven jar, and only once the
+Releases go to **Maven Central and GitHub Packages**, and only once the
 instrumented suite has passed on every API level — an AAR that assembles and
-lints is no evidence that it works on a device. That is enough for
-consumers who can hold a token, and **not** enough for the one this is
-ultimately built for: GitHub Packages demands `read:packages` even to read a
-public artifact, and f-droid builds from source with no credentials at all.
-Making the AAR the base of OpenDocument.droid therefore means publishing it to
-Maven Central first, which is a separate piece of work — the `app.opendocument`
-namespace has to be verified, and every artifact signed.
+lints is no evidence that it works on a device.
 
-Until then OpenDocument.droid keeps building odrcore from the conan package
+Maven Central is the one that matters. GitHub Packages demands `read:packages`
+even to read a public artifact, which rules out the consumer this is ultimately
+built for: f-droid builds from source with no credentials at all. It stays
+published there only because the maven jar is, and dropping it would break
+whoever already reads it.
+
+`app.opendocument` is an established namespace on Central — `pdf2htmlex-android`
+and `wvware-android` have been there since 2024 — so this is a new artifact under
+an old name, not a new namespace. Central asks for more than GitHub Packages
+does, and the module supplies it: sources and javadoc jars, a POM carrying
+`developers`, and a PGP signature over every file. Signing is conditional on a
+key being configured, so `publishToMavenLocal` and the GitHub Packages publish
+still work without one; an unsigned upload is rejected by the portal, so the
+release path stays guarded either way.
+
+Publishing **uploads a deployment to the portal and stops**. Releasing it is a
+deliberate click in the portal UI, because Central never forgets a version —
+that click is the last point at which a bad artifact can be dropped rather than
+lived with.
+
+For now OpenDocument.droid keeps building odrcore from the conan package
 (`with_jni=True`), deploying `libodr_jni.so`, `odr-core-java.jar` and the assets
 out of it. That path is unaffected by anything here, and it is the reason the
 two halves cannot drift: they come out of one build.
