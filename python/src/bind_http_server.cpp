@@ -46,10 +46,19 @@ void odr_python::bind_http_server(py::module_ &m) {
           "Bind the socket, `port` 0 for any free one; returns the port it "
           "got. Connections are accepted from here on, before `listen` runs.")
       // Release the GIL: `listen` blocks and `stop` must remain callable from
-      // other Python threads.
+      // other Python threads. `stop` waits for the listen thread, which needs
+      // the GIL back to return out of `listen`, so it has to let go of it too.
       .def("listen", &odr::HttpServer::listen,
-           py::call_guard<py::gil_scoped_release>())
+           py::call_guard<py::gil_scoped_release>(),
+           "Serve what `bind` opened until `stop`. Returns right away if the "
+           "server has already been stopped.")
+      .def("is_running", &odr::HttpServer::is_running,
+           py::call_guard<py::gil_scoped_release>(),
+           "Whether a `listen` is in flight. False again once it has returned, "
+           "which is what `stop` waits for.")
       .def("clear", &odr::HttpServer::clear)
       .def("stop", &odr::HttpServer::stop,
-           py::call_guard<py::gil_scoped_release>());
+           py::call_guard<py::gil_scoped_release>(),
+           "Stop `listen` and release the socket. Blocks until `listen` has "
+           "returned, so nothing is serving any more once this returns.");
 }

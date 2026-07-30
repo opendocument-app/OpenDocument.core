@@ -29,6 +29,12 @@ struct HttpServerOptions {
                             ///< connections between them, hence off
 };
 
+/// Serves connected HtmlServices over HTTP. listen() blocks and therefore runs
+/// on a thread of the caller's; stop() - and destroying the last handle, which
+/// stops the server too - returns only once that thread is out of listen()
+/// again, so neither may be called from a request handler. A thread that has
+/// not entered listen() yet is invisible to both: as with any call on an object
+/// being destroyed, it has to be in before the last handle goes.
 class HttpServer {
 public:
   constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";
@@ -50,16 +56,22 @@ public:
   std::uint32_t bind(const std::string &host, std::uint32_t port,
                      const Options &options = {}) const;
 
-  /// Serves what bind() opened until stop(). Throws ServerNotBound.
+  /// Serves what bind() opened until stop(). Returns right away if the server
+  /// has already been stopped. Throws ServerNotBound.
   void listen() const;
+
+  /// Whether a listen() is in flight. False again once it has returned, which
+  /// is what stop() waits for.
+  bool is_running() const;
 
   /// Drops the connected services. Files they were translated into are the
   /// caller's, and are left alone.
   void clear() const;
 
-  /// Stops listen() and releases the socket. A server that was bound but never
-  /// listened keeps its port until the process ends - cpp-httplib only closes
-  /// the socket from its accept loop.
+  /// Stops listen() and releases the socket, blocking until listen() has
+  /// returned - nothing is serving any more once this returns. A server that
+  /// was bound but never listened keeps its port until the process ends -
+  /// cpp-httplib only closes the socket from its accept loop.
   void stop() const;
 
 private:

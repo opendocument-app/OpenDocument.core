@@ -69,6 +69,14 @@ Java_app_opendocument_core_HttpServer_listenNative(JNIEnv *env, jobject,
   guarded(env, [&] { server(handle).listen(); });
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_HttpServer_isRunningNative(JNIEnv *env, jobject,
+                                                      jlong handle) {
+  return guarded(env, [&]() -> jboolean {
+    return server(handle).is_running() ? JNI_TRUE : JNI_FALSE;
+  });
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_HttpServer_clearNative(JNIEnv *env, jobject,
                                                   jlong handle) {
@@ -124,6 +132,12 @@ extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_HttpServer_listenNative(JNIEnv *env, jobject,
                                                    jlong) {
   odr_jni::guarded(env, [&] { unsupported(); });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_HttpServer_isRunningNative(JNIEnv *env, jobject,
+                                                      jlong) {
+  return odr_jni::guarded(env, [&]() -> jboolean { unsupported(); });
 }
 
 extern "C" JNIEXPORT void JNICALL

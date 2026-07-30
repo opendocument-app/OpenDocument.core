@@ -7,14 +7,38 @@
 #include <httplib/httplib.h>
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <cstddef>
+#include <memory>
+#include <mutex>
 #include <sstream>
 
 namespace odr {
 
-class HttpServer::Impl {
+class HttpServer::Impl : public std::enable_shared_from_this<Impl> {
 public:
+  /// What a HttpServer holds: a second reference to the impl whose deleter
+  /// stops the server rather than destroying it. Running out of handles is what
+  /// has to stop a listen() in flight, and ~Impl cannot be that signal -
+  /// listen() keeps a reference of its own, so the impl outlives the handles
+  /// for as long as it serves. Destroying it is left to the reference captured
+  /// below.
+  static std::shared_ptr<Impl> create(const Logger &logger) {
+    std::shared_ptr<Impl> owner = std::make_shared<Impl>(logger);
+    Impl *const impl = owner.get();
+
+    // shared_from_this() stays bound to the control block make_shared put
+    // there: a second one only takes weak_this over when it has expired. So
+    // listen() holds that reference, not one of these, which is the whole point
+    return std::shared_ptr<Impl>{
+        impl, [owner = std::move(owner)](Impl * /*owner already has it*/) {
+          owner->stop();
+        }};
+  }
+
   explicit Impl(const Logger &logger)
-      : m_logger{logger}, m_server{std::make_unique<httplib::Server>()} {
+      : m_logger{logger}, m_server{std::make_shared<httplib::Server>()} {
     // Set up exception handler to catch any internal httplib exceptions.
     // This prevents crashes when exceptions occur during request processing.
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
@@ -59,21 +83,12 @@ public:
   }
 
   ~Impl() {
-    // Ensure the server is properly stopped before destruction.
-    // This prevents crashes from worker threads accessing freed memory.
-    //
-    // IMPORTANT: We must fully stop and destroy the server BEFORE
-    // m_content is destroyed. httplib's thread pool threads may still
-    // be running after stop() returns - they only fully stop when the
-    // Server destructor joins them. By explicitly destroying the server
-    // here (via unique_ptr::reset), we ensure all threads are joined
-    // before any other members are destroyed.
-    m_stopping.store(true, std::memory_order_release);
-    if (m_server != nullptr) {
-      m_server->stop();
-      m_server.reset(); // Destroy server, join all thread pool threads
-    }
-    // Now safe to let other members destruct - no threads are running
+    // listen() holds a reference to the impl of its own, so this cannot run
+    // underneath an accept loop. stop() is still what tears the server down: it
+    // closes the socket, waits for any listen() to return and only then drops
+    // the httplib server, whose destructor joins the thread pool. m_content is
+    // destroyed after this body, i.e. after all of that.
+    stop();
   }
 
   // Prevent copying - the lambdas capture 'this' so copying would be unsafe
@@ -154,12 +169,14 @@ public:
 
   std::uint32_t bind(const std::string &host, const std::uint32_t port,
                      const Options &options) {
+    const std::unique_lock lock{m_mutex};
+
     if (m_server == nullptr) {
       throw ServerNotBound();
     }
     // binding twice would overwrite the socket cpp-httplib holds, leaking the
     // first one and its port for good
-    if (m_bound.load(std::memory_order_acquire)) {
+    if (m_bound) {
       throw ServerAlreadyBound();
     }
 
@@ -201,23 +218,52 @@ public:
       throw ServerBindFailed(host, port);
     }
 
-    m_bound.store(true, std::memory_order_release);
+    m_bound = true;
 
     ODR_VERBOSE(m_logger, "Bound to " << host << ":" << bound);
 
     return static_cast<std::uint32_t>(bound);
   }
 
-  void listen() const {
-    // cpp-httplib's listen_after_bind() reports success for a server that was
-    // never bound, so the state has to be checked here
-    if (m_server == nullptr || !m_bound.load(std::memory_order_acquire)) {
-      throw ServerNotBound();
+  void listen() {
+    // listen() blocks, so it runs on a thread of the caller's. A reference of
+    // its own keeps the impl - and with it the httplib server, the mutex and
+    // the condition variable below - alive for as long as the accept loop is on
+    // it, whatever the thread that owns the HttpServer does meanwhile.
+    const std::shared_ptr<Impl> self = shared_from_this();
+
+    std::shared_ptr<httplib::Server> server;
+
+    {
+      std::unique_lock lock{m_mutex};
+
+      if (m_stopping.load(std::memory_order_acquire)) {
+        // stop() got here first, so there is nothing left to serve
+        return;
+      }
+      // cpp-httplib's listen_after_bind() reports success for a server that was
+      // never bound, so the state has to be checked here
+      if (m_server == nullptr || !m_bound) {
+        throw ServerNotBound();
+      }
+
+      server = m_server;
+      ++m_listening;
     }
+
+    // right after the count went up, before anything that can throw: stop()
+    // waits for the count and would never come back otherwise
+    const ListenGuard guard{*this};
 
     ODR_VERBOSE(m_logger, "Serving...");
 
-    m_server->listen_after_bind();
+    server->listen_after_bind();
+  }
+
+  bool is_running() const {
+    const std::unique_lock lock{m_mutex};
+
+    return m_listening > 0;
   }
 
   void clear() {
@@ -229,58 +275,103 @@ public:
   }
 
   void stop() {
-    ODR_VERBOSE(m_logger, "Stopping HTTP server...");
+    // whoever gets here first takes the server away from the impl; a second
+    // stop() finds nothing to close and only waits below
+    std::shared_ptr<httplib::Server> server;
 
-    // Set stopping flag first to reject new requests immediately.
-    // This prevents new requests from starting while we're shutting down.
-    m_stopping.store(true, std::memory_order_release);
+    {
+      std::unique_lock lock{m_mutex};
 
-    if (m_server != nullptr) {
-      // Stop the server to prevent new connections.
-      // Note: httplib::Server::stop() signals shutdown but thread pool
-      // threads may still be running. They only fully stop when the
-      // Server is destroyed. For explicit stop() calls (not destructor),
-      // we destroy the server here to ensure threads are joined.
-      m_server->stop();
-      m_server.reset(); // Destroy server, join all thread pool threads
+      if (m_stopping.load(std::memory_order_acquire) && m_server == nullptr &&
+          m_listening == 0) {
+        // stopped already, and nothing left in flight - both the last handle
+        // and ~Impl get here
+        return;
+      }
+
+      ODR_VERBOSE(m_logger, "Stopping HTTP server...");
+
+      // rejects requests in flight, and any listen() that has not started yet
+      m_stopping.store(true, std::memory_order_release);
+      m_bound = false;
+      server = std::move(m_server);
+
+      if (server != nullptr && m_listening > 0) {
+        // httplib::Server::stop() closes the listening socket, but only once
+        // listen_internal() has the accept loop up - and it asserts, then
+        // closes an already closed descriptor, if it runs a second time after
+        // that. A listen() that is still on its way there therefore has to be
+        // waited for, and httplib's own flag is the only thing to wait on.
+        while (m_listening > 0 && !server->is_running()) {
+          m_listen_done.wait_for(lock, std::chrono::milliseconds{1});
+        }
+        if (server->is_running()) {
+          lock.unlock();
+          server->stop();
+          lock.lock();
+        }
+      }
+
+      // the accept loop stands on the server object and on everything the
+      // handlers capture, so neither may go before listen() has returned:
+      // dropping the server underneath it was the use after free, and the two
+      // then raced over the listening socket as well
+      m_listen_done.wait(lock, [this] { return m_listening == 0; });
     }
 
-    m_bound.store(false, std::memory_order_release);
-
-    // Clear content after server is fully destroyed to avoid use-after-free.
+    // nothing is serving any more
     clear();
+
+    // ~server here, which joins the thread pool
   }
 
 private:
+  /// Marks a listen() as done however it leaves, so stop() can wait for it.
+  struct ListenGuard {
+    Impl &impl;
+
+    ~ListenGuard() {
+      const std::unique_lock lock{impl.m_mutex};
+
+      --impl.m_listening;
+      // under the lock: the waiter may be tearing the impl down right after
+      impl.m_listen_done.notify_all();
+    }
+  };
+
   Logger m_logger;
 
+  // guards the lifecycle state below as well as m_content
+  mutable std::mutex m_mutex;
+  // signalled when a listen() returns
+  std::condition_variable m_listen_done;
+  // listen() calls in flight - 0 or 1 in any sane use
+  std::size_t m_listening{0};
+
   // Flag to indicate server is shutting down - checked by handlers
-  // to reject new requests during shutdown.
+  // to reject new requests during shutdown. Atomic because they read it
+  // without the lock.
   std::atomic<bool> m_stopping{false};
 
   // Whether bind() has taken a socket. listen() needs it because cpp-httplib
   // will happily "serve" a server that never bound one.
-  std::atomic<bool> m_bound{false};
+  bool m_bound{false};
 
   struct Content {
     std::string id;
     HtmlService service;
   };
 
-  std::mutex m_mutex;
   std::unordered_map<std::string, Content> m_content;
 
-  // IMPORTANT: m_server is declared LAST and as unique_ptr so we can
-  // explicitly destroy it in the destructor BEFORE other members.
-  // httplib's Server destructor joins thread pool threads, so we must
-  // ensure threads are fully stopped before m_content is destroyed.
-  // Using unique_ptr allows us to call reset() to trigger destruction
-  // at a controlled point in the destructor.
-  std::unique_ptr<httplib::Server> m_server;
+  // Shared rather than unique: listen() takes a reference of its own, so the
+  // server outlives an overlapping stop() and is destroyed - joining the thread
+  // pool - only once the accept loop is off it.
+  std::shared_ptr<httplib::Server> m_server;
 };
 
 HttpServer::HttpServer(const Config & /*config*/, const Logger &logger)
-    : m_impl{std::make_unique<Impl>(logger)} {}
+    : m_impl{Impl::create(logger)} {}
 
 void HttpServer::connect_service(HtmlService service,
                                  const std::string &prefix) const {
@@ -308,6 +399,8 @@ std::uint32_t HttpServer::bind(const std::string &host,
 }
 
 void HttpServer::listen() const { m_impl->listen(); }
+
+bool HttpServer::is_running() const { return m_impl->is_running(); }
 
 void HttpServer::clear() const { m_impl->clear(); }
 

@@ -95,6 +95,33 @@ class HttpServerTest {
         assertFalse(thread.isAlive)
     }
 
+    /**
+     * Tearing the server down while its accept loop is up. android is where this is least
+     * forgiving: fdsan aborts the process when the listening socket is closed twice, and both
+     * teardown races showed up in an instrumented run (#631).
+     */
+    @Test
+    fun closeStopsListen() {
+        assumeTrue("built without the HTTP server", Odr.hasHttpServer())
+
+        val server = HttpServer()
+        server.bind("127.0.0.1", 0)
+
+        val thread = Thread { server.listen() }
+        thread.isDaemon = true
+        thread.start()
+        while (!server.isRunning) {
+            Thread.sleep(1)
+        }
+
+        // close() stops the server before freeing it, rather than pulling it out from
+        // under the accept loop
+        server.close()
+
+        thread.join(5000)
+        assertFalse(thread.isAlive)
+    }
+
     @Test
     fun bindReportsWhatItGot() {
         assumeTrue("built without the HTTP server", Odr.hasHttpServer())
