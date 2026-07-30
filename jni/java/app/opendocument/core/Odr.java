@@ -1,6 +1,7 @@
 package app.opendocument.core;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Library-level functions. Mirrors the free functions in {@code odr/odr.hpp}. */
@@ -25,8 +26,27 @@ public final class Odr {
   /** Whether the native library was built with the HTTP server. */
   public static native boolean hasHttpServer();
 
+  /** Every file type this library knows about. */
+  public static List<FileType> allFileTypes() {
+    List<FileType> result = new ArrayList<>();
+    for (int code : allFileTypesNative()) {
+      result.add(FileType.fromNative(code));
+    }
+    return result;
+  }
+
   public static FileType fileTypeByFileExtension(String extension) {
     return FileType.fromNative(fileTypeByFileExtensionNative(extension));
+  }
+
+  /** Every file extension accepted for the file type; the canonical one first. */
+  public static List<String> fileExtensionsByFileType(FileType type) {
+    return Arrays.asList(fileExtensionsByFileTypeNative(type.toNative()));
+  }
+
+  /** Canonical file extension for the file type, without a leading dot. */
+  public static String fileExtensionByFileType(FileType type) {
+    return fileExtensionByFileTypeNative(type.toNative());
   }
 
   public static FileCategory fileCategoryByFileType(FileType type) {
@@ -53,8 +73,19 @@ public final class Odr {
     return FileType.fromNative(fileTypeByMimetypeNative(mimetype));
   }
 
+  /** Canonical MIME type for the file type. */
   public static String mimetypeByFileType(FileType type) {
     return mimetypeByFileTypeNative(type.toNative());
+  }
+
+  /** Every MIME type accepted for the file type; the canonical one first. */
+  public static List<String> mimetypesByFileType(FileType type) {
+    return Arrays.asList(mimetypesByFileTypeNative(type.toNative()));
+  }
+
+  /** What this library can do with the file type. Format-level, i.e. an upper bound. */
+  public static FileTypeCapabilities capabilitiesByFileType(FileType type) {
+    return capabilitiesByFileTypeNative(type.toNative());
   }
 
   /** Determines the possible file types of a file. */
@@ -93,7 +124,13 @@ public final class Odr {
             preference.fileTypePriorityNative()));
   }
 
+  private static native int[] allFileTypesNative();
+
   private static native int fileTypeByFileExtensionNative(String extension);
+
+  private static native String[] fileExtensionsByFileTypeNative(int type);
+
+  private static native String fileExtensionByFileTypeNative(int type);
 
   private static native int fileCategoryByFileTypeNative(int type);
 
@@ -108,6 +145,10 @@ public final class Odr {
   private static native int fileTypeByMimetypeNative(String mimetype);
 
   private static native String mimetypeByFileTypeNative(int type);
+
+  private static native String[] mimetypesByFileTypeNative(int type);
+
+  private static native FileTypeCapabilities capabilitiesByFileTypeNative(int type);
 
   private static native int[] listFileTypesNative(String path);
 

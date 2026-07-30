@@ -9,6 +9,7 @@
 #include <pybind11/stl.h>
 
 #include <string>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -64,12 +65,27 @@ void odr_python::bind_core(py::module_ &m) {
 }
 
 void odr_python::bind_functions(py::module_ &m) {
+  m.def("all_file_types", &odr::all_file_types,
+        "Every file type this library knows about.");
   m.def(
       "file_type_by_file_extension",
       [](const std::string &extension) {
         return odr::file_type_by_file_extension(extension);
       },
       py::arg("extension"));
+  m.def(
+      "file_extensions_by_file_type",
+      [](const odr::FileType type) {
+        const auto extensions = odr::file_extensions_by_file_type(type);
+        return std::vector<std::string>(extensions.begin(), extensions.end());
+      },
+      py::arg("type"), "Every file extension accepted for the file type.");
+  m.def(
+      "file_extension_by_file_type",
+      [](const odr::FileType type) {
+        return std::string(odr::file_extension_by_file_type(type));
+      },
+      py::arg("type"));
   m.def("file_category_by_file_type", &odr::file_category_by_file_type,
         py::arg("type"));
   m.def("document_type_by_file_type", &odr::document_type_by_file_type,
@@ -91,6 +107,15 @@ void odr_python::bind_functions(py::module_ &m) {
         return std::string(odr::mimetype_by_file_type(type));
       },
       py::arg("type"));
+  m.def(
+      "mimetypes_by_file_type",
+      [](const odr::FileType type) {
+        const auto mimetypes = odr::mimetypes_by_file_type(type);
+        return std::vector<std::string>(mimetypes.begin(), mimetypes.end());
+      },
+      py::arg("type"), "Every MIME type accepted for the file type.");
+  m.def("capabilities_by_file_type", &odr::capabilities_by_file_type,
+        py::arg("type"), "What this library can do with the file type.");
 
   m.def(
       "list_file_types",

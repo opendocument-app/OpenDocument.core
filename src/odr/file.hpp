@@ -45,6 +45,9 @@ enum class FileType {
   office_open_xml_presentation,
   office_open_xml_workbook,
   office_open_xml_encrypted,
+  // Classification only — `.xlsb` stores the workbook in binary parts, not in
+  // the spreadsheetml XML the OOXML engine reads, so there is no decoder.
+  excel_binary_workbook,
 
   // https://en.wikipedia.org/wiki/List_of_Microsoft_Office_filename_extensions
   legacy_word_document,
@@ -102,6 +105,23 @@ enum class FileCategory {
 enum class FileLocation {
   memory,
   disk,
+};
+
+/// @brief What this library can do with a file format.
+///
+/// Declared, format-level support — an *upper bound*. A concrete file may still
+/// fail (corrupt, encrypted, an unsupported sub-variant); ask @ref DecodedFile
+/// or @ref Document for the precise answer. The point of the static query is
+/// the decisions a caller has to make *before* it holds a file, e.g. which
+/// MIME types to advertise to the platform's file picker.
+struct FileTypeCapabilities final {
+  bool detect_by_content{}; ///< recognised from its bytes alone
+  bool open{};              ///< a decoder exists; @ref odr::open can decode it
+  bool decrypt{};           ///< encrypted instances can be decrypted
+  bool translate_html{};    ///< @ref html::translate produces output
+  bool edit{};              ///< @ref Document::is_editable can be `true`
+  bool save{};              ///< @ref Document::save is supported
+  bool encrypt{}; ///< @ref Document::save with a password is supported
 };
 
 /// @brief Preference for decoding files.
@@ -207,6 +227,14 @@ public:
   [[nodiscard]] DecodedFile decrypt(const std::string &password) const;
 
   [[nodiscard]] bool is_decodable() const noexcept;
+
+  /// @brief What can be done with this file.
+  ///
+  /// Refines @ref capabilities_by_file_type with what is known about this
+  /// file. `edit`/`save`/`encrypt` are passed through from the format-level
+  /// declaration — resolving them exactly would mean decoding the document;
+  /// ask @ref Document::is_editable / @ref Document::is_savable for that.
+  [[nodiscard]] FileTypeCapabilities capabilities() const;
 
   [[nodiscard]] bool is_text_file() const;
   [[nodiscard]] bool is_image_file() const;

@@ -289,6 +289,20 @@ jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta) {
       make_string_opt(env, meta.modification_date));
 }
 
+jobject
+make_file_type_capabilities(JNIEnv *env,
+                            const odr::FileTypeCapabilities &capabilities) {
+  return new_object(env, "app/opendocument/core/FileTypeCapabilities",
+                    "(ZZZZZZZ)V",
+                    static_cast<jboolean>(capabilities.detect_by_content),
+                    static_cast<jboolean>(capabilities.open),
+                    static_cast<jboolean>(capabilities.decrypt),
+                    static_cast<jboolean>(capabilities.translate_html),
+                    static_cast<jboolean>(capabilities.edit),
+                    static_cast<jboolean>(capabilities.save),
+                    static_cast<jboolean>(capabilities.encrypt));
+}
+
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   jclass cls = env->FindClass("app/opendocument/core/HtmlConfig");
   if (cls == nullptr) {

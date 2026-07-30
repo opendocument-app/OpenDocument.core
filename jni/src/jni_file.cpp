@@ -173,6 +173,15 @@ Java_app_opendocument_core_DecodedFile_isDecodableNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_DecodedFile_capabilitiesNative(JNIEnv *env, jobject,
+                                                          jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_file_type_capabilities(env,
+                                                decoded(handle).capabilities());
+  });
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_app_opendocument_core_DecodedFile_isTextFileNative(JNIEnv *env, jobject,
                                                         jlong handle) {

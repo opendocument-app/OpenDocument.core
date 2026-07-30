@@ -54,6 +54,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, filesystem, `style`, table cursor/range, temp files. |
 | `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`, `xml_util`. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
+| `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |
 | `src/odr/internal/html/` | Generic HTML renderer. |
 | `src/odr/internal/cfb/`, `zip/` | Container formats (CFB, ZIP). |
 | `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
@@ -138,8 +139,12 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 
 ## Adding / extending a document format
 
-1. Detection: extend `magic`/`open_strategy` to map bytes → `FileType`
-   (+ `DecoderEngine`) and construct your `DecodedFile`.
+1. Detection: extend `magic`/`open_strategy` to map bytes → `FileType` and
+   construct your `DecodedFile`, and add a row to
+   `internal/file_type_table.cpp` (extensions, MIME types, category, document
+   type, capabilities) — `odr_test` fails if a `FileType` has no row, if an
+   alias is claimed twice, or if the declared capabilities exceed what the
+   engines actually do.
 2. For documents: subclass `internal::Document`; in its constructor build an
    `ElementRegistry` and an `ElementAdapter` (pattern above).
 3. Implement the per-element adapters you can populate; the **generic HTML

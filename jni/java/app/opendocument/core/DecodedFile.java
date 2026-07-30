@@ -55,6 +55,15 @@ public class DecodedFile extends NativeResource {
     return new DecodedFile(decryptNative(handle(), password));
   }
 
+  /**
+   * What can be done with this file. Refines {@link Odr#capabilitiesByFileType}; {@code edit},
+   * {@code save} and {@code encrypt} stay as declared for the format — ask {@link Document} for
+   * the precise answer.
+   */
+  public FileTypeCapabilities capabilities() {
+    return capabilitiesNative(handle());
+  }
+
   public boolean isDecodable() {
     return isDecodableNative(handle());
   }
@@ -128,6 +137,8 @@ public class DecodedFile extends NativeResource {
   private native int encryptionStateNative(long handle);
 
   private native long decryptNative(long handle, String password);
+
+  private native FileTypeCapabilities capabilitiesNative(long handle);
 
   private native boolean isDecodableNative(long handle);
 

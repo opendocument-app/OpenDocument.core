@@ -3,6 +3,7 @@
 #include <odr/archive.hpp>
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
@@ -115,6 +116,24 @@ DecodedFile DecodedFile::decrypt(const std::string &password) const {
 
 bool DecodedFile::is_decodable() const noexcept {
   return m_impl->is_decodable();
+}
+
+FileTypeCapabilities DecodedFile::capabilities() const {
+  FileTypeCapabilities result = capabilities_by_file_type(file_type());
+
+  // we are holding the decoded file, so this one is settled
+  result.open = true;
+  // only an actually encrypted file can be decrypted
+  result.decrypt =
+      result.decrypt && encryption_state() == EncryptionState::encrypted;
+  // an encrypted file has to be decrypted before it renders
+  result.translate_html =
+      result.translate_html && encryption_state() != EncryptionState::encrypted;
+
+  // `edit`/`save`/`encrypt` stay as declared — resolving them would mean
+  // decoding the document; ask `Document` for the precise answer
+
+  return result;
 }
 
 bool DecodedFile::is_text_file() const {

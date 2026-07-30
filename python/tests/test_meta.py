@@ -70,6 +70,64 @@ def test_mimetype_roundtrip():
     )
 
 
+def test_all_file_types_and_aliases_round_trip():
+    file_types = pyodr.all_file_types()
+    assert pyodr.FileType.opendocument_text in file_types
+
+    extensions = set()
+    mimetypes = set()
+    for file_type in file_types:
+        for extension in pyodr.file_extensions_by_file_type(file_type):
+            assert extension not in extensions
+            extensions.add(extension)
+            assert pyodr.file_type_by_file_extension(extension) == file_type
+        for mimetype in pyodr.mimetypes_by_file_type(file_type):
+            assert mimetype not in mimetypes
+            mimetypes.add(mimetype)
+            assert pyodr.file_type_by_mimetype(mimetype) == file_type
+
+    # the aliases the issue asked for
+    assert pyodr.file_type_by_file_extension("docm") == (
+        pyodr.FileType.office_open_xml_document
+    )
+    # its own type: an OOXML package we deliberately cannot open
+    assert pyodr.file_type_by_file_extension("xlsb") == (
+        pyodr.FileType.excel_binary_workbook
+    )
+    assert not pyodr.capabilities_by_file_type(
+        pyodr.FileType.excel_binary_workbook
+    ).open
+    assert pyodr.file_type_by_mimetype("application/x-vnd.oasis.opendocument.text") == (
+        pyodr.FileType.opendocument_text
+    )
+
+
+def test_capabilities_by_file_type():
+    odt = pyodr.capabilities_by_file_type(pyodr.FileType.opendocument_text)
+    assert odt.open
+    assert odt.translate_html
+    assert odt.edit
+
+    # detected and named, but there is no decoder behind it
+    wpd = pyodr.capabilities_by_file_type(pyodr.FileType.word_perfect)
+    assert wpd.detect_by_content
+    assert not wpd.open
+    assert not wpd.translate_html
+
+    # spreadsheet editing is force-disabled
+    assert not pyodr.capabilities_by_file_type(
+        pyodr.FileType.opendocument_spreadsheet
+    ).edit
+
+
+def test_decoded_file_capabilities(odt_path):
+    capabilities = pyodr.open(str(odt_path)).capabilities()
+    assert capabilities.open
+    assert capabilities.translate_html
+    # not encrypted, so there is nothing to decrypt
+    assert not capabilities.decrypt
+
+
 def test_global_params():
     assert isinstance(pyodr.GlobalParams.odr_core_data_path(), str)
     assert isinstance(pyodr.GlobalParams.libmagic_database_path(), str)

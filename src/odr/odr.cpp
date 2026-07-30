@@ -3,8 +3,19 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
+#include <odr/internal/file_type_table.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/project_info.hpp>
+
+#include <algorithm>
+#include <iterator>
+#include <span>
+#include <string_view>
+
+namespace {
+using odr::internal::file_type_table::Row;
+namespace table = odr::internal::file_type_table;
+} // namespace
 
 std::string odr::version() { return internal::project_info::version(); }
 
@@ -20,211 +31,49 @@ std::string odr::identify() noexcept {
          (is_dirty() ? " [dirty]" : "") + (is_debug() ? " [debug]" : "");
 }
 
+std::vector<odr::FileType> odr::all_file_types() {
+  std::vector<FileType> result;
+  result.reserve(table::rows().size());
+  std::ranges::transform(table::rows(), std::back_inserter(result), &Row::type);
+  return result;
+}
+
 odr::FileType
 odr::file_type_by_file_extension(const std::string &extension) noexcept {
-  if (extension == "zip") {
-    return FileType::zip;
+  const Row *row = table::find_by_extension(extension);
+  return row == nullptr ? FileType::unknown : row->type;
+}
+
+std::span<const std::string_view>
+odr::file_extensions_by_file_type(const FileType type) noexcept {
+  const Row *row = table::find(type);
+  return row == nullptr ? std::span<const std::string_view>{} : row->extensions;
+}
+
+std::string_view odr::file_extension_by_file_type(const FileType type) {
+  const std::span<const std::string_view> extensions =
+      file_extensions_by_file_type(type);
+  if (extensions.empty()) {
+    throw UnsupportedFileType(type);
   }
-  if (extension == "cfb") {
-    return FileType::compound_file_binary_format;
-  }
-  if (extension == "odt" || extension == "fodt" || extension == "ott" ||
-      extension == "odm") {
-    return FileType::opendocument_text;
-  }
-  if (extension == "odp" || extension == "fodp" || extension == "otp") {
-    return FileType::opendocument_presentation;
-  }
-  if (extension == "ods" || extension == "fods" || extension == "ots") {
-    return FileType::opendocument_spreadsheet;
-  }
-  if (extension == "odg" || extension == "fodg" || extension == "otg") {
-    return FileType::opendocument_graphics;
-  }
-  if (extension == "docx") {
-    return FileType::office_open_xml_document;
-  }
-  if (extension == "pptx") {
-    return FileType::office_open_xml_presentation;
-  }
-  if (extension == "xlsx") {
-    return FileType::office_open_xml_workbook;
-  }
-  if (extension == "doc") {
-    return FileType::legacy_word_document;
-  }
-  if (extension == "ppt") {
-    return FileType::legacy_powerpoint_presentation;
-  }
-  if (extension == "xls") {
-    return FileType::legacy_excel_worksheets;
-  }
-  if (extension == "wpd") {
-    return FileType::word_perfect;
-  }
-  if (extension == "rtf") {
-    return FileType::rich_text_format;
-  }
-  if (extension == "pdf") {
-    return FileType::portable_document_format;
-  }
-  if (extension == "png") {
-    return FileType::portable_network_graphics;
-  }
-  if (extension == "gif") {
-    return FileType::graphics_interchange_format;
-  }
-  if (extension == "jpg" || extension == "jpeg" || extension == "jpe" ||
-      extension == "jif" || extension == "jfif" || extension == "jfi") {
-    return FileType::jpeg;
-  }
-  if (extension == "bmp" || extension == "dib") {
-    return FileType::bitmap_image_file;
-  }
-  if (extension == "svm") {
-    return FileType::starview_metafile;
-  }
-  if (extension == "txt") {
-    return FileType::text_file;
-  }
-  if (extension == "csv") {
-    return FileType::comma_separated_values;
-  }
-  if (extension == "json") {
-    return FileType::javascript_object_notation;
-  }
-  if (extension == "ttf") {
-    return FileType::truetype_font;
-  }
-  if (extension == "otf") {
-    return FileType::opentype_font;
-  }
-  return FileType::unknown;
+  return extensions.front();
 }
 
 odr::FileCategory
 odr::file_category_by_file_type(const FileType type) noexcept {
-  switch (type) {
-  case FileType::zip:
-  case FileType::compound_file_binary_format:
-    return FileCategory::archive;
-  case FileType::opendocument_text:
-  case FileType::opendocument_presentation:
-  case FileType::opendocument_spreadsheet:
-  case FileType::opendocument_graphics:
-  case FileType::office_open_xml_document:
-  case FileType::office_open_xml_presentation:
-  case FileType::office_open_xml_workbook:
-  case FileType::legacy_word_document:
-  case FileType::legacy_powerpoint_presentation:
-  case FileType::legacy_excel_worksheets:
-  case FileType::word_perfect:
-  case FileType::rich_text_format:
-    return FileCategory::document;
-  case FileType::portable_network_graphics:
-  case FileType::graphics_interchange_format:
-  case FileType::jpeg:
-  case FileType::bitmap_image_file:
-  case FileType::starview_metafile:
-    return FileCategory::image;
-  case FileType::text_file:
-  case FileType::comma_separated_values:
-  case FileType::javascript_object_notation:
-  case FileType::markdown:
-    return FileCategory::text;
-  case FileType::truetype_font:
-  case FileType::opentype_font:
-    return FileCategory::font;
-  default:
-    return FileCategory::unknown;
-  }
+  const Row *row = table::find(type);
+  return row == nullptr ? FileCategory::unknown : row->category;
 }
 
 odr::DocumentType
 odr::document_type_by_file_type(const FileType type) noexcept {
-  switch (type) {
-  case FileType::opendocument_text:
-    return DocumentType::text;
-  case FileType::opendocument_presentation:
-    return DocumentType::presentation;
-  case FileType::opendocument_spreadsheet:
-    return DocumentType::spreadsheet;
-  case FileType::opendocument_graphics:
-    return DocumentType::drawing;
-  case FileType::office_open_xml_document:
-    return DocumentType::text;
-  case FileType::office_open_xml_presentation:
-    return DocumentType::presentation;
-  case FileType::office_open_xml_workbook:
-    return DocumentType::spreadsheet;
-  case FileType::legacy_word_document:
-    return DocumentType::text;
-  case FileType::legacy_powerpoint_presentation:
-    return DocumentType::presentation;
-  case FileType::legacy_excel_worksheets:
-    return DocumentType::spreadsheet;
-  default:
-    return DocumentType::unknown;
-  }
+  const Row *row = table::find(type);
+  return row == nullptr ? DocumentType::unknown : row->document_type;
 }
 
 std::string odr::file_type_to_string(const FileType type) {
-  switch (type) {
-  case FileType::unknown:
-    return "unknown";
-  case FileType::zip:
-    return "zip";
-  case FileType::compound_file_binary_format:
-    return "cfb";
-  case FileType::opendocument_text:
-    return "odt";
-  case FileType::opendocument_presentation:
-    return "odp";
-  case FileType::opendocument_spreadsheet:
-    return "ods";
-  case FileType::opendocument_graphics:
-    return "odg";
-  case FileType::office_open_xml_document:
-    return "docx";
-  case FileType::office_open_xml_presentation:
-    return "pptx";
-  case FileType::office_open_xml_workbook:
-    return "xlsx";
-  case FileType::legacy_word_document:
-    return "doc";
-  case FileType::legacy_powerpoint_presentation:
-    return "ppt";
-  case FileType::legacy_excel_worksheets:
-    return "xls";
-  case FileType::word_perfect:
-    return "wpd";
-  case FileType::rich_text_format:
-    return "rtf";
-  case FileType::portable_document_format:
-    return "pdf";
-  case FileType::portable_network_graphics:
-    return "png";
-  case FileType::graphics_interchange_format:
-    return "gif";
-  case FileType::jpeg:
-    return "jpg";
-  case FileType::bitmap_image_file:
-    return "bmp";
-  case FileType::starview_metafile:
-    return "svm";
-  case FileType::truetype_font:
-    return "ttf";
-  case FileType::opentype_font:
-    return "otf";
-  case FileType::text_file:
-    return "txt";
-  case FileType::comma_separated_values:
-    return "csv";
-  case FileType::javascript_object_notation:
-    return "json";
-  default:
-    return "unnamed";
-  }
+  const Row *row = table::find(type);
+  return row == nullptr ? "unnamed" : std::string(row->name);
 }
 
 std::string odr::file_category_to_string(const FileCategory type) {
@@ -265,154 +114,29 @@ std::string odr::document_type_to_string(const DocumentType type) {
 
 odr::FileType
 odr::file_type_by_mimetype(const std::string_view mimetype) noexcept {
-  if (mimetype == "application/vnd.oasis.opendocument.text") {
-    return FileType::opendocument_text;
-  }
-  if (mimetype == "application/vnd.oasis.opendocument.presentation") {
-    return FileType::opendocument_presentation;
-  }
-  if (mimetype == "application/vnd.oasis.opendocument.spreadsheet") {
-    return FileType::opendocument_spreadsheet;
-  }
-  if (mimetype == "application/vnd.oasis.opendocument.graphics") {
-    return FileType::opendocument_graphics;
-  }
-  if (mimetype ==
-      "application/"
-      "vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    return FileType::office_open_xml_document;
-  }
-  if (mimetype ==
-      "application/"
-      "vnd.openxmlformats-officedocument.presentationml.presentation") {
-    return FileType::office_open_xml_presentation;
-  }
-  if (mimetype ==
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
-    return FileType::office_open_xml_workbook;
-  }
-  if (mimetype == "application/msword") {
-    return FileType::legacy_word_document;
-  }
-  if (mimetype == "application/vnd.ms-powerpoint") {
-    return FileType::legacy_powerpoint_presentation;
-  }
-  if (mimetype == "application/vnd.ms-excel") {
-    return FileType::legacy_excel_worksheets;
-  }
-  if (mimetype == "application/zip" ||
-      mimetype == "application/x-zip-compressed") {
-    return FileType::zip;
-  }
-  if (mimetype == "application/pdf") {
-    return FileType::portable_document_format;
-  }
-  if (mimetype == "text/plain") {
-    return FileType::text_file;
-  }
-  if (mimetype == "text/csv") {
-    return FileType::comma_separated_values;
-  }
-  if (mimetype == "application/json") {
-    return FileType::javascript_object_notation;
-  }
-  if (mimetype == "text/markdown") {
-    return FileType::markdown;
-  }
-  if (mimetype == "image/png") {
-    return FileType::portable_network_graphics;
-  }
-  if (mimetype == "image/gif") {
-    return FileType::graphics_interchange_format;
-  }
-  if (mimetype == "image/jpeg") {
-    return FileType::jpeg;
-  }
-  if (mimetype == "image/bmp") {
-    return FileType::bitmap_image_file;
-  }
-  if (mimetype == "font/ttf" || mimetype == "application/x-font-ttf" ||
-      mimetype == "application/x-font-truetype") {
-    return FileType::truetype_font;
-  }
-  if (mimetype == "font/otf" || mimetype == "application/x-font-otf" ||
-      mimetype == "application/x-font-opentype" ||
-      mimetype == "application/vnd.ms-opentype") {
-    return FileType::opentype_font;
-  }
-  return FileType::unknown;
+  const Row *row = table::find_by_mimetype(mimetype);
+  return row == nullptr ? FileType::unknown : row->type;
 }
 
 std::string_view odr::mimetype_by_file_type(const FileType type) {
-  if (type == FileType::opendocument_text) {
-    return "application/vnd.oasis.opendocument.text";
+  const std::span<const std::string_view> mimetypes =
+      mimetypes_by_file_type(type);
+  if (mimetypes.empty()) {
+    throw UnsupportedFileType(type);
   }
-  if (type == FileType::opendocument_presentation) {
-    return "application/vnd.oasis.opendocument.presentation";
-  }
-  if (type == FileType::opendocument_spreadsheet) {
-    return "application/vnd.oasis.opendocument.spreadsheet";
-  }
-  if (type == FileType::opendocument_graphics) {
-    return "application/vnd.oasis.opendocument.graphics";
-  }
-  if (type == FileType::office_open_xml_document) {
-    return "application/"
-           "vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-  if (type == FileType::office_open_xml_presentation) {
-    return "application/"
-           "vnd.openxmlformats-officedocument.presentationml.presentation";
-  }
-  if (type == FileType::office_open_xml_workbook) {
-    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  }
-  if (type == FileType::legacy_word_document) {
-    return "application/msword";
-  }
-  if (type == FileType::legacy_powerpoint_presentation) {
-    return "application/vnd.ms-powerpoint";
-  }
-  if (type == FileType::legacy_excel_worksheets) {
-    return "application/vnd.ms-excel";
-  }
-  if (type == FileType::zip) {
-    return "application/zip";
-  }
-  if (type == FileType::portable_document_format) {
-    return "application/pdf";
-  }
-  if (type == FileType::text_file) {
-    return "text/plain";
-  }
-  if (type == FileType::comma_separated_values) {
-    return "text/csv";
-  }
-  if (type == FileType::javascript_object_notation) {
-    return "application/json";
-  }
-  if (type == FileType::markdown) {
-    return "text/markdown";
-  }
-  if (type == FileType::portable_network_graphics) {
-    return "image/png";
-  }
-  if (type == FileType::graphics_interchange_format) {
-    return "image/gif";
-  }
-  if (type == FileType::jpeg) {
-    return "image/jpeg";
-  }
-  if (type == FileType::bitmap_image_file) {
-    return "image/bmp";
-  }
-  if (type == FileType::truetype_font) {
-    return "font/ttf";
-  }
-  if (type == FileType::opentype_font) {
-    return "font/otf";
-  }
-  throw UnsupportedFileType(type);
+  return mimetypes.front();
+}
+
+std::span<const std::string_view>
+odr::mimetypes_by_file_type(const FileType type) noexcept {
+  const Row *row = table::find(type);
+  return row == nullptr ? std::span<const std::string_view>{} : row->mimetypes;
+}
+
+odr::FileTypeCapabilities
+odr::capabilities_by_file_type(const FileType type) noexcept {
+  const Row *row = table::find(type);
+  return row == nullptr ? FileTypeCapabilities{} : row->capabilities;
 }
 
 std::vector<odr::FileType> odr::list_file_types(const std::string &path,

@@ -39,6 +39,8 @@ jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions);
 jobject make_table_position(JNIEnv *env, const odr::TablePosition &position);
 jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta);
+jobject make_file_type_capabilities(JNIEnv *env,
+                                    const odr::FileTypeCapabilities &);
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);

@@ -93,6 +93,7 @@ set(ODR_SOURCE_FILES
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
 
+        "src/odr/internal/file_type_table.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp"
         "src/odr/internal/magic.cpp"
         "src/odr/internal/open_strategy.cpp"
