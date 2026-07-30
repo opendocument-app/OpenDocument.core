@@ -50,6 +50,12 @@ calls it.
 - **Shared test inputs stay in `../jni/testfixtures`**, which both suites
   compile — so it is limited to what android API 26 offers (no `Path.of`, no
   `Files.writeString`, no `String.formatted`).
+- **Publishing goes to Maven Central and GitHub Packages**, via
+  `com.vanniktech.maven.publish` — sonatype ships no official gradle plugin for
+  the portal. Central's extra requirements (sources + javadoc jars, `developers`
+  in the POM, a PGP signature per file) drive what that block declares; do not
+  drop one thinking GitHub Packages is the only consumer. Signing is conditional
+  on a key being present so `publishToMavenLocal` works without one.
 - **`native/` is build output**, never committed; the artifacts CI downloads
   land in the same place. `-Podr.abis=` (empty) is what tells the build the
   libraries are already there.

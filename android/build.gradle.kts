@@ -1,7 +1,9 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.spotless)
-    `maven-publish`
+    alias(libs.plugins.maven.publish)
 }
 
 // ktfmt in the kotlinlang flavor, the same formatter and version
@@ -143,13 +145,6 @@ android {
         // library outside java.library.path; android never takes that branch
         disable += "UnsafeDynamicallyLoadedCode"
     }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 dependencies {
@@ -159,37 +154,60 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
 }
 
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "app.opendocument"
-            artifactId = "odr-core-android"
-            version = odrVersion
+// Two destinations, deliberately. Maven Central is the one that matters: it is
+// the only one f-droid and any other credential-less source builder can resolve
+// from, and `app.opendocument` is already a live namespace there
+// (`pdf2htmlex-android`, `wvware-android`). GitHub Packages stays because the
+// maven jar publishes there and dropping it would break whoever already reads
+// it. Central mandates what the publication below carries — sources and javadoc
+// jars, a pom with developers, and a PGP signature over every file — none of
+// which GitHub Packages asks for.
+mavenPublishing {
+    configure(AndroidSingleVariantLibrary(variant = "release"))
 
-            afterEvaluate { from(components["release"]) }
+    // Uploads to the portal and stops. A human releases it from there, so a bad
+    // artifact is still recallable — Central is immutable once released.
+    publishToMavenCentral()
 
-            pom {
-                name = "odr-core-android"
-                description =
-                    "Android bindings for OpenDocument.core — decode office documents " +
-                        "(ODF, OOXML, legacy MS binary, PDF, CSV, ...) and render them to HTML"
-                url = "https://github.com/opendocument-app/OpenDocument.core"
-                licenses {
-                    license {
-                        name = "MPL-2.0"
-                        url = "https://www.mozilla.org/en-US/MPL/2.0/"
-                    }
-                }
-                scm {
-                    connection = "scm:git:https://github.com/opendocument-app/OpenDocument.core.git"
-                    developerConnection =
-                        "scm:git:git@github.com:opendocument-app/OpenDocument.core.git"
-                    url = "https://github.com/opendocument-app/OpenDocument.core"
-                }
-            }
-        }
+    // Only Central demands a signature. Making it unconditional would mean no
+    // `publishToMavenLocal` and no GitHub Packages publish without a private
+    // key on hand, which is a steep price for a repository that never checks
+    // one. A Central upload missing its .asc files is rejected by the portal,
+    // so the release path is still guarded.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
     }
 
+    coordinates("app.opendocument", "odr-core-android", odrVersion)
+
+    pom {
+        name = "odr-core-android"
+        description =
+            "Android bindings for OpenDocument.core — decode office documents " +
+                "(ODF, OOXML, legacy MS binary, PDF, CSV, ...) and render them to HTML"
+        url = "https://github.com/opendocument-app/OpenDocument.core"
+        licenses {
+            license {
+                name = "MPL-2.0"
+                url = "https://www.mozilla.org/en-US/MPL/2.0/"
+            }
+        }
+        developers {
+            developer {
+                id = "opendocument-app"
+                name = "OpenDocument.app"
+                url = "https://github.com/opendocument-app"
+            }
+        }
+        scm {
+            connection = "scm:git:https://github.com/opendocument-app/OpenDocument.core.git"
+            developerConnection = "scm:git:git@github.com:opendocument-app/OpenDocument.core.git"
+            url = "https://github.com/opendocument-app/OpenDocument.core"
+        }
+    }
+}
+
+publishing {
     repositories {
         maven {
             name = "GitHubPackages"

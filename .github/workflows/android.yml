@@ -204,6 +204,8 @@ jobs:
     if: github.event_name != 'push'
     needs: [aar, instrumented]
     runs-on: ubuntu-24.04
+    # holds the portal token and the signing key
+    environment: maven-central
     permissions:
       contents: read
       packages: write
@@ -237,8 +239,21 @@ jobs:
             echo "ODR_VERSION=${INPUT_VERSION}" >> $GITHUB_ENV
           fi
 
-      - name: publish
+      - name: publish to github packages
         working-directory: android
-        run: ./gradlew publishReleasePublicationToGitHubPackagesRepository -Podr.abis=
+        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository -Podr.abis=
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Uploads a deployment to the portal and leaves it there. Releasing it to
+      # Maven Central is a click in the portal UI, deliberately: Central never
+      # forgets a version, so this is the last point at which a bad artifact can
+      # still be dropped instead of lived with.
+      - name: publish to maven central
+        working-directory: android
+        run: ./gradlew publishToMavenCentral -Podr.abis=
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASS }}
