@@ -17,13 +17,34 @@ C++ library to visualize files, especially documents, in HTML.
 - [cfb](https://github.com/opendocument-app/OpenDocument.core/issues/110) (Microsoft Compound File Binary File Format)
 - ttf / otf (font specimen pages)
 
+Every accepted file extension and MIME type — including the template and
+macro-enabled aliases (`docm`, `dotx`, `xlsb`, `ppsx`, …) — is enumerable at
+runtime via `file_extensions_by_file_type` / `mimetypes_by_file_type`, so a
+consumer never has to maintain its own copy of these tables.
+
 ## Detected but not decoded
 
-These are recognised by `list_file_types` / `mimetype` so a caller can report
-them, but there is no decoder — opening one throws:
+These are classified by extension and MIME type, and `rtf`/`wpd` are also
+recognised from their bytes, so a caller can report them — but there is no
+decoder, and opening one throws:
 
 - rtf
 - wpd (WordPerfect)
+- md (Markdown)
+- xlsb (classified as a workbook; the binary package has no decoder)
+
+## Asking what is supported
+
+`capabilities_by_file_type(FileType)` answers, per format, whether the library
+can detect, open, decrypt, render, edit, save or encrypt it — the decisions a
+caller has to make *before* it holds a file, e.g. which MIME types to advertise
+to a system file picker. It is a declared upper bound; `DecodedFile::capabilities()`
+and `Document::is_editable` / `is_savable` give the precise answer for a
+concrete file.
+
+Editing and saving are currently limited to odt, odp, odg (`edit` + `save`),
+ods (`save` only) and docx (`edit` + `save`); saving with a password is not
+supported for any format.
 
 ## Unsupported files
 

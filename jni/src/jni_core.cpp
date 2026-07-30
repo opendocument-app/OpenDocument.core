@@ -1,3 +1,4 @@
+#include "jni_convert.hpp"
 #include "odr_jni.hpp"
 
 #include <odr/file.hpp>
@@ -6,13 +7,16 @@
 #include <odr/odr.hpp>
 #include <odr/table_position.hpp>
 
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
 
 using odr_jni::from_handle;
 using odr_jni::guarded;
+using odr_jni::make_file_type_capabilities;
 using odr_jni::make_handle;
 using odr_jni::to_jstring;
 using odr_jni::to_string;
@@ -24,6 +28,26 @@ jintArray to_jint_array(JNIEnv *env, const std::vector<jint> &values) {
   }
   env->SetIntArrayRegion(result, 0, static_cast<jsize>(values.size()),
                          values.data());
+  return result;
+}
+
+jobjectArray to_jstring_array(JNIEnv *env,
+                              const std::span<const std::string_view> values) {
+  jclass cls = env->FindClass("java/lang/String");
+  if (cls == nullptr) {
+    return nullptr;
+  }
+  jobjectArray result =
+      env->NewObjectArray(static_cast<jsize>(values.size()), cls, nullptr);
+  env->DeleteLocalRef(cls);
+  if (result == nullptr) {
+    return nullptr;
+  }
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    jstring value = to_jstring(env, values[i]);
+    env->SetObjectArrayElement(result, static_cast<jsize>(i), value);
+    env->DeleteLocalRef(value);
+  }
   return result;
 }
 
@@ -56,12 +80,43 @@ Java_app_opendocument_core_Odr_identify(JNIEnv *env, jclass) {
   return guarded(env, [&] { return to_jstring(env, odr::identify()); });
 }
 
+extern "C" JNIEXPORT jintArray JNICALL
+Java_app_opendocument_core_Odr_allFileTypesNative(JNIEnv *env, jclass) {
+  return guarded(env, [&] {
+    std::vector<jint> codes;
+    for (const odr::FileType type : odr::all_file_types()) {
+      codes.push_back(static_cast<jint>(type));
+    }
+    return to_jint_array(env, codes);
+  });
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_app_opendocument_core_Odr_fileTypeByFileExtensionNative(
     JNIEnv *env, jclass, jstring extension) {
   return guarded(env, [&] {
     return static_cast<jint>(
         odr::file_type_by_file_extension(to_string(env, extension)));
+  });
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_app_opendocument_core_Odr_fileExtensionsByFileTypeNative(JNIEnv *env,
+                                                              jclass,
+                                                              jint type) {
+  return guarded(env, [&] {
+    return to_jstring_array(env, odr::file_extensions_by_file_type(
+                                     static_cast<odr::FileType>(type)));
+  });
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_Odr_fileExtensionByFileTypeNative(JNIEnv *env,
+                                                             jclass,
+                                                             jint type) {
+  return guarded(env, [&] {
+    return to_jstring(env, odr::file_extension_by_file_type(
+                               static_cast<odr::FileType>(type)));
   });
 }
 
@@ -125,6 +180,24 @@ Java_app_opendocument_core_Odr_mimetypeByFileTypeNative(JNIEnv *env, jclass,
   return guarded(env, [&] {
     return to_jstring(
         env, odr::mimetype_by_file_type(static_cast<odr::FileType>(type)));
+  });
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_app_opendocument_core_Odr_mimetypesByFileTypeNative(JNIEnv *env, jclass,
+                                                         jint type) {
+  return guarded(env, [&] {
+    return to_jstring_array(
+        env, odr::mimetypes_by_file_type(static_cast<odr::FileType>(type)));
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Odr_capabilitiesByFileTypeNative(JNIEnv *env, jclass,
+                                                            jint type) {
+  return guarded(env, [&] {
+    return make_file_type_capabilities(
+        env, odr::capabilities_by_file_type(static_cast<odr::FileType>(type)));
   });
 }
 

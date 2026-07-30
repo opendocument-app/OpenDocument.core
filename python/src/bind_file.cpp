@@ -105,6 +105,18 @@ void odr_python::bind_file(py::module_ &m) {
       .def_readwrite("creation_date", &odr::FileMeta::creation_date)
       .def_readwrite("modification_date", &odr::FileMeta::modification_date);
 
+  py::class_<odr::FileTypeCapabilities>(m, "FileTypeCapabilities")
+      .def(py::init<>())
+      .def_readwrite("detect_by_content",
+                     &odr::FileTypeCapabilities::detect_by_content)
+      .def_readwrite("open", &odr::FileTypeCapabilities::open)
+      .def_readwrite("decrypt", &odr::FileTypeCapabilities::decrypt)
+      .def_readwrite("translate_html",
+                     &odr::FileTypeCapabilities::translate_html)
+      .def_readwrite("edit", &odr::FileTypeCapabilities::edit)
+      .def_readwrite("save", &odr::FileTypeCapabilities::save)
+      .def_readwrite("encrypt", &odr::FileTypeCapabilities::encrypt);
+
   py::class_<odr::File>(m, "File")
       .def(py::init<>())
       .def(py::init<const std::string &>(), py::arg("path"))
@@ -139,6 +151,7 @@ void odr_python::bind_file(py::module_ &m) {
       .def("encryption_state", &odr::DecodedFile::encryption_state)
       .def("decrypt", &odr::DecodedFile::decrypt, py::arg("password"))
       .def("is_decodable", &odr::DecodedFile::is_decodable)
+      .def("capabilities", &odr::DecodedFile::capabilities)
       .def("is_text_file", &odr::DecodedFile::is_text_file)
       .def("is_image_file", &odr::DecodedFile::is_image_file)
       .def("is_archive_file", &odr::DecodedFile::is_archive_file)

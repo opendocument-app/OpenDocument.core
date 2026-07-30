@@ -87,6 +87,7 @@ add_jar(odr_java
         "java/app/opendocument/core/FileLocation.java"
         "java/app/opendocument/core/FileMeta.java"
         "java/app/opendocument/core/FileType.java"
+        "java/app/opendocument/core/FileTypeCapabilities.java"
         "java/app/opendocument/core/FileWalker.java"
         "java/app/opendocument/core/Filesystem.java"
         "java/app/opendocument/core/FontFile.java"
