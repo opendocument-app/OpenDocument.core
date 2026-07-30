@@ -5,6 +5,7 @@
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/html.hpp>
 
 #include <vector>
 
@@ -51,6 +52,17 @@ jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_Document_destroy(JNIEnv *, jclass, jlong handle) {
   destroy_handle<odr::Document>(handle);
+}
+
+// odr::html::edit, but it belongs to Document: a native that takes a handle has
+// to be an instance method of whatever owns it, or the wrapper can be collected
+// - and the handle freed - while the call is still running
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Document_editNative(JNIEnv *env, jobject,
+                                               jlong handle, jstring diff) {
+  guarded(env, [&] {
+    odr::html::edit(*from_handle<odr::Document>(handle), to_string(env, diff));
+  });
 }
 
 extern "C" JNIEXPORT jboolean JNICALL

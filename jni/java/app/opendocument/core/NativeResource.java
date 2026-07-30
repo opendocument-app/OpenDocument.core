@@ -81,6 +81,32 @@ public abstract class NativeResource implements AutoCloseable {
     return closed;
   }
 
+  /**
+   * A use of this object that the optimiser cannot drop, so it stays reachable
+   * across whatever ran before it.
+   *
+   * <p>{@link #handle()} outlives the wrapper it came from: once nothing refers to
+   * the wrapper any more the collector may enqueue it and the reaper may free the
+   * handle, and the just-in-time compiler is free to decide that while a native
+   * call using it is still running. A native that takes the handle of the object it
+   * is called on is safe without this - the JNI frame holds the receiver - which is
+   * why every one of them is an instance method of its owner. This is for the
+   * handles that go in as arguments, where there is no receiver to hold them.
+   *
+   * <p>{@code java.lang.ref.Reference.reachabilityFence} is the API for it, and is
+   * unusable here: android has it from API level 28, {@code android/build.gradle.kts}
+   * sets {@code minSdk = 26}, and core library desugaring does not cover
+   * {@code java.lang.ref} - the same wall {@link java.lang.ref.Cleaner} hit above.
+   * Taking the monitor of an object the reference queue can also see is the fallback
+   * the JDK itself used before that method existed: lock elision needs the object to
+   * be provably confined, and this one is not.
+   */
+  final void keepAlive() {
+    synchronized (this) {
+      // empty on purpose - taking the monitor is the use
+    }
+  }
+
   /** Frees the native object early. Idempotent. */
   @Override
   public void close() {

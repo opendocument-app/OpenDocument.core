@@ -49,7 +49,11 @@ public class Element extends NativeResource {
 
   /** Whether this and {@code other} refer to the same element. */
   public boolean isSame(Element other) {
-    return isSameNative(handle(), other.handle());
+    try {
+      return isSameNative(handle(), other.handle());
+    } finally {
+      other.keepAlive();
+    }
   }
 
   public DocumentPath documentPath() {
@@ -57,7 +61,11 @@ public class Element extends NativeResource {
   }
 
   public Element navigatePath(DocumentPath path) {
-    return wrap(navigatePathNative(handle(), path.handle()));
+    try {
+      return wrap(navigatePathNative(handle(), path.handle()));
+    } finally {
+      path.keepAlive();
+    }
   }
 
   public List<Element> children() {

@@ -23,7 +23,11 @@ public final class DocumentPath extends NativeResource {
   }
 
   public DocumentPath join(DocumentPath other) {
-    return new DocumentPath(joinNative(handle(), other.handle()));
+    try {
+      return new DocumentPath(joinNative(handle(), other.handle()));
+    } finally {
+      other.keepAlive();
+    }
   }
 
   @Override

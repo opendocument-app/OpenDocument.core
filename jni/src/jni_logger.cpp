@@ -198,7 +198,7 @@ Java_app_opendocument_core_Logger_createFromSink(JNIEnv *env, jclass,
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_app_opendocument_core_Logger_willLogNative(JNIEnv *env, jclass,
+Java_app_opendocument_core_Logger_willLogNative(JNIEnv *env, jobject,
                                                 jlong handle, jint level) {
   return guarded(env, [&] {
     return static_cast<jboolean>(from_handle<odr::Logger>(handle)->will_log(
@@ -207,7 +207,7 @@ Java_app_opendocument_core_Logger_willLogNative(JNIEnv *env, jclass,
 }
 
 extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Logger_logNative(
-    JNIEnv *env, jclass, jlong handle, jint level, jstring message) {
+    JNIEnv *env, jobject, jlong handle, jint level, jstring message) {
   guarded(env, [&] {
     from_handle<odr::Logger>(handle)->log(static_cast<odr::LogLevel>(level),
                                           to_string(env, message));
@@ -215,7 +215,7 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Logger_logNative(
 }
 
 extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Logger_flushNative(
-    JNIEnv *env, jclass, jlong handle) {
+    JNIEnv *env, jobject, jlong handle) {
   guarded(env, [&] { from_handle<odr::Logger>(handle)->flush(); });
 }
 

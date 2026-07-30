@@ -59,6 +59,15 @@ class FileTest {
   }
 
   @Test
+  void decodeAnOpenFile() throws IOException {
+    Path odt = TestFiles.odtFile(tempDir);
+    try (File file = new File(odt.toString());
+        DecodedFile decoded = new DecodedFile(file)) {
+      assertEquals(FileType.OPENDOCUMENT_TEXT, decoded.fileType());
+    }
+  }
+
+  @Test
   void fileMeta() throws IOException {
     Path odt = TestFiles.odtFile(tempDir);
     try (DecodedFile file = Odr.open(odt.toString())) {

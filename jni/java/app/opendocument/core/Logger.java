@@ -48,11 +48,11 @@ public final class Logger extends NativeResource {
 
   private static native long createFromSink(ILogger sink);
 
-  private static native boolean willLogNative(long handle, int level);
+  private native boolean willLogNative(long handle, int level);
 
-  private static native void logNative(long handle, int level, String message);
+  private native void logNative(long handle, int level, String message);
 
-  private static native void flushNative(long handle);
+  private native void flushNative(long handle);
 
   private static native void destroy(long handle);
 }

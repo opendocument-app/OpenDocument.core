@@ -40,7 +40,11 @@ public final class HttpServer extends GuardedNativeResource {
 
   /** Hosts the service under {@code /<prefix>/<view path>}. */
   public void connectService(HtmlService service, String prefix) {
-    connectServiceNative(handle(), service.handle(), prefix);
+    try {
+      connectServiceNative(handle(), service.handle(), prefix);
+    } finally {
+      service.keepAlive();
+    }
   }
 
   /**

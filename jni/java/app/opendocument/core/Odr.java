@@ -107,7 +107,11 @@ public final class Odr {
 
   /** Opens and decodes a file, reporting diagnostics to {@code logger}. */
   public static DecodedFile open(String path, Logger logger) {
-    return new DecodedFile(openWithLoggerNative(path, logger.handle()));
+    try {
+      return new DecodedFile(openWithLoggerNative(path, logger.handle()));
+    } finally {
+      logger.keepAlive();
+    }
   }
 
   /** Opens and decodes a file as the given file type. */
