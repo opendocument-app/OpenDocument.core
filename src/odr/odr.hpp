@@ -1,7 +1,5 @@
 #pragma once
 
-// not just forward declarations: every lookup below is *about* these types, and
-// several of them (`FileTypeCapabilities`, `DecodedFile`) are returned by value
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 
