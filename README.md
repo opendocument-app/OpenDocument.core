@@ -18,7 +18,7 @@ C++ library to visualize files, especially documents, in HTML.
 - ttf / otf (font specimen pages)
 
 Every accepted file extension and MIME type — including the template and
-macro-enabled aliases (`docm`, `dotx`, `xlsb`, `ppsx`, …) — is enumerable at
+macro-enabled aliases (`docm`, `dotx`, `xltx`, `ppsx`, …) — is enumerable at
 runtime via `file_extensions_by_file_type` / `mimetypes_by_file_type`, so a
 consumer never has to maintain its own copy of these tables.
 
@@ -31,7 +31,8 @@ decoder, and opening one throws:
 - rtf
 - wpd (WordPerfect)
 - md (Markdown)
-- xlsb (classified as a workbook; the binary package has no decoder)
+- xlsb (Excel binary workbook — an OOXML package whose workbook parts are
+  binary rather than spreadsheetml)
 
 ## Asking what is supported
 

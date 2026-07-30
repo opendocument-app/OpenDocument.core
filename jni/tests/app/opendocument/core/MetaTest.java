@@ -61,6 +61,10 @@ class MetaTest {
     assertEquals(
         FileType.OFFICE_OPEN_XML_DOCUMENT, Odr.fileTypeByFileExtension("docm"));
     assertEquals("odt", Odr.fileExtensionByFileType(FileType.OPENDOCUMENT_TEXT));
+
+    // its own type: an OOXML package we deliberately cannot open
+    assertEquals(FileType.EXCEL_BINARY_WORKBOOK, Odr.fileTypeByFileExtension("xlsb"));
+    assertFalse(Odr.capabilitiesByFileType(FileType.EXCEL_BINARY_WORKBOOK).open);
   }
 
   @Test

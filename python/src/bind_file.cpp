@@ -30,6 +30,7 @@ void odr_python::bind_file(py::module_ &m) {
              odr::FileType::office_open_xml_workbook)
       .value("office_open_xml_encrypted",
              odr::FileType::office_open_xml_encrypted)
+      .value("excel_binary_workbook", odr::FileType::excel_binary_workbook)
       .value("legacy_word_document", odr::FileType::legacy_word_document)
       .value("legacy_powerpoint_presentation",
              odr::FileType::legacy_powerpoint_presentation)

@@ -90,9 +90,13 @@ def test_all_file_types_and_aliases_round_trip():
     assert pyodr.file_type_by_file_extension("docm") == (
         pyodr.FileType.office_open_xml_document
     )
+    # its own type: an OOXML package we deliberately cannot open
     assert pyodr.file_type_by_file_extension("xlsb") == (
-        pyodr.FileType.office_open_xml_workbook
+        pyodr.FileType.excel_binary_workbook
     )
+    assert not pyodr.capabilities_by_file_type(
+        pyodr.FileType.excel_binary_workbook
+    ).open
     assert pyodr.file_type_by_mimetype("application/x-vnd.oasis.opendocument.text") == (
         pyodr.FileType.opendocument_text
     )

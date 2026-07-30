@@ -71,18 +71,20 @@ constexpr std::array pptx_mimetypes{
     "application/vnd.ms-powerpoint.template.macroEnabled.12"sv,
 };
 
-// `xlsb` is a binary package, not an OOXML one — we classify it here because
-// that is its MIME family, but there is no decoder for it. Detection and
-// opening genuinely differ; see `FileTypeCapabilities`.
-constexpr std::array xlsx_extensions{"xlsx"sv, "xlsm"sv, "xltx"sv, "xltm"sv,
-                                     "xlsb"sv};
+constexpr std::array xlsx_extensions{"xlsx"sv, "xlsm"sv, "xltx"sv, "xltm"sv};
 constexpr std::array xlsx_mimetypes{
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"sv,
     "application/vnd.openxmlformats-officedocument.spreadsheetml.template"sv,
     "application/vnd.ms-excel.sheet.macroEnabled.12"sv,
     "application/vnd.ms-excel.template.macroEnabled.12"sv,
-    "application/vnd.ms-excel.sheet.binary.macroEnabled.12"sv,
 };
+
+// `.xlsb` ships in an OOXML package but stores the workbook in binary parts
+// instead of spreadsheetml, so it gets its own type rather than riding along
+// with `xlsx` — the capability row is what tells a caller we cannot open it.
+constexpr std::array xlsb_extensions{"xlsb"sv};
+constexpr std::array xlsb_mimetypes{
+    "application/vnd.ms-excel.sheet.binary.macroEnabled.12"sv};
 
 // An encrypted OOXML package is carried by an ordinary `docx`/`pptx`/`xlsx`
 // file, so it has no extension of its own.
@@ -264,6 +266,14 @@ constexpr std::array table{
         FileCategory::document,
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .decrypt = true}},
+    // classified so a caller can name and route the file; no decoder
+    Row{FileType::excel_binary_workbook,
+        "xlsb"sv,
+        xlsb_extensions,
+        xlsb_mimetypes,
+        FileCategory::document,
+        DocumentType::spreadsheet,
+        {}},
 
     Row{FileType::legacy_word_document,
         "doc"sv,

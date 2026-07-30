@@ -45,6 +45,9 @@ enum class FileType {
   office_open_xml_presentation,
   office_open_xml_workbook,
   office_open_xml_encrypted,
+  // Classification only — `.xlsb` stores the workbook in binary parts, not in
+  // the spreadsheetml XML the OOXML engine reads, so there is no decoder.
+  excel_binary_workbook,
 
   // https://en.wikipedia.org/wiki/List_of_Microsoft_Office_filename_extensions
   legacy_word_document,

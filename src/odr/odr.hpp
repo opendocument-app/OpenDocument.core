@@ -1,5 +1,8 @@
 #pragma once
 
+// not just forward declarations: every lookup below is *about* these types, and
+// several of them (`FileTypeCapabilities`, `DecodedFile`) are returned by value
+#include <odr/file.hpp>
 #include <odr/logger.hpp>
 
 #include <span>
@@ -8,12 +11,6 @@
 #include <vector>
 
 namespace odr {
-enum class FileType;
-enum class FileCategory;
-struct DecodePreference;
-struct FileTypeCapabilities;
-class DecodedFile;
-enum class DocumentType;
 
 /// @brief Get the version of the library.
 /// @return The version of the library.
