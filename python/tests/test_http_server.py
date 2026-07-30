@@ -84,3 +84,33 @@ def test_listen_without_bind_raises():
     # cpp-httplib reports success for this, hence the guard being tested
     with pytest.raises(RuntimeError):
         server.listen()
+
+
+@pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
+def test_stop_waits_for_listen():
+    server = pyodr.HttpServer()
+    server.bind("127.0.0.1", 0)
+
+    thread = threading.Thread(target=server.listen, daemon=True)
+    thread.start()
+    while not server.is_running():
+        time.sleep(0.001)
+
+    server.stop()
+    # the accept loop is gone for good by now, which is what makes dropping the
+    # server right after safe
+    assert not server.is_running()
+
+    thread.join(timeout=5.0)
+    assert not thread.is_alive()
+
+
+@pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
+def test_listen_after_stop_returns():
+    server = pyodr.HttpServer()
+    server.bind("127.0.0.1", 0)
+    server.stop()
+
+    # a listen thread that starts late finds the server stopped; there is
+    # nothing to serve, but nothing went wrong either
+    server.listen()

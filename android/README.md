@@ -62,6 +62,12 @@ and permission for plain HTTP on loopback (android blocks cleartext from API 28
 on) — a `networkSecurityConfig` with a `domain-config` for `127.0.0.1` is the
 narrow way to grant it.
 
+`HttpServer.listen()` blocks, so it runs on a thread of the app's. `stop()` and
+`close()` return only once that thread is back out of it, so tearing the server
+down needs no join or timeout of its own — and `close()` on its own is enough,
+it stops the server before freeing it. A server that outlives one document is
+best left listening with `clear()` between workloads: rebinding costs a port.
+
 ## Building
 
 The AAR needs the native libraries first; `build_native.py` cross compiles them

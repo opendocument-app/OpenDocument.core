@@ -76,6 +76,11 @@ public abstract class NativeResource implements AutoCloseable {
     return owner;
   }
 
+  /** Whether the native object has been freed already. */
+  final boolean isClosed() {
+    return closed;
+  }
+
   /** Frees the native object early. Idempotent. */
   @Override
   public void close() {

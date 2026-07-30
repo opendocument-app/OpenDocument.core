@@ -119,6 +119,72 @@ class HttpServerTest {
     server.stop();
   }
 
+  /** Starts a listen thread and returns once its accept loop is up. */
+  private static Thread listenInBackground(HttpServer server) throws InterruptedException {
+    Thread thread = new Thread(server::listen);
+    thread.setDaemon(true);
+    thread.start();
+    while (!server.isRunning()) {
+      Thread.sleep(1);
+    }
+    return thread;
+  }
+
+  @Test
+  void stopWaitsForListen() throws Exception {
+    assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
+
+    HttpServer server = new HttpServer();
+    server.bind("127.0.0.1", 0);
+    Thread thread = listenInBackground(server);
+
+    server.stop();
+    // the accept loop is gone for good by now, which is what makes freeing the
+    // native server right after safe
+    assertFalse(server.isRunning());
+
+    thread.join(Duration.ofSeconds(5).toMillis());
+    assertFalse(thread.isAlive());
+  }
+
+  @Test
+  void closeStopsListen() throws Exception {
+    assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
+
+    Thread thread;
+    try (HttpServer server = new HttpServer()) {
+      server.bind("127.0.0.1", 0);
+      thread = listenInBackground(server);
+    }
+
+    // close() stopped the server before freeing it, rather than pulling it out
+    // from under the accept loop
+    thread.join(Duration.ofSeconds(5).toMillis());
+    assertFalse(thread.isAlive());
+  }
+
+  @Test
+  void closeRacingTheStartOfListenIsSafe() throws Exception {
+    assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
+
+    // deliberately no wait for isRunning(): close() may get here while the listen
+    // thread has the handle but has not reached the native call, where stopping
+    // alone would find nothing to wait for and free the server underneath it
+    for (int i = 0; i < 20; i++) {
+      HttpServer server = new HttpServer();
+      server.bind("127.0.0.1", 0);
+
+      Thread thread = new Thread(server::listen);
+      thread.setDaemon(true);
+      thread.start();
+
+      server.close();
+
+      thread.join(Duration.ofSeconds(5).toMillis());
+      assertFalse(thread.isAlive());
+    }
+  }
+
   @Test
   void listenWithoutBindThrows() {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
