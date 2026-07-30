@@ -76,6 +76,16 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_File_copyNative(
           [&] { from_handle<odr::File>(handle)->copy(to_string(env, path)); });
 }
 
+// yields a DecodedFile but belongs to File: a native that takes a handle has to
+// be an instance method of whatever owns it, or the wrapper can be collected -
+// and the handle freed - while the call is still running
+extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_File_decodeNative(
+    JNIEnv *env, jobject, jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(odr::DecodedFile(*from_handle<odr::File>(handle)));
+  });
+}
+
 // app.opendocument.core.DecodedFile
 //
 // Handles hold a heap `odr::DecodedFile` (the typed C++ subclasses are sliced
@@ -94,14 +104,6 @@ Java_app_opendocument_core_DecodedFile_createAs(JNIEnv *env, jclass,
   return guarded(env, [&] {
     return make_handle(
         odr::DecodedFile(to_string(env, path), static_cast<odr::FileType>(as)));
-  });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DecodedFile_createFromFile(JNIEnv *env, jclass,
-                                                      jlong file_handle) {
-  return guarded(env, [&] {
-    return make_handle(odr::DecodedFile(*from_handle<odr::File>(file_handle)));
   });
 }
 

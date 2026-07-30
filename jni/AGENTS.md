@@ -29,9 +29,20 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
 - **Keep-alive**: navigation results carry an `owner` reference
   (`Element.owner()` → the `Document`) so the GC cannot free the root while
   handles into it are alive — the JNI analogue of pyodr's `keep_alive`.
-- **GC safety**: natives that use a handle are *instance* methods (the `this`
-  local reference keeps the wrapper — and its owner chain — reachable for the
-  duration of the call); only factories and `destroy` are static.
+- **GC safety**: natives that use a handle are *instance* methods **of the
+  object that owns it** (the `this` local reference keeps the wrapper — and its
+  owner chain — reachable for the duration of the call); only factories and
+  `destroy` are static. A static native taking someone else's handle is a bug
+  even where it reads fine: once `handle()` has returned nothing refers to the
+  wrapper, so the collector may enqueue it and the reaper free the handle while
+  the call is still running. Put the native on the owner and let the entry point
+  delegate — `Html.edit` → `Document.edit`, `new DecodedFile(file)` →
+  `File.decode`, and `Logger`'s own natives.
+- **Handles in argument position** — `a.fooNative(handle(), b.handle())` — have
+  no receiver holding them, so `b` needs `NativeResource.keepAlive()` in a
+  `finally` after the call. That is what `Reference.reachabilityFence` is for;
+  android only has it from API 28 (see the API floor below), so `keepAlive` is
+  the JDK's own pre-intrinsic fallback instead.
 - **Enums cross as ordinals**: Java enum constant order must match the C++
   enum declaration; `-1` encodes an absent `std::optional`.
 - **Strings**: use `odr_jni::to_string`/`to_jstring` (real UTF-8 ↔ UTF-16),
@@ -60,7 +71,9 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   `--release 17` compiler accepts. Anything newer fails at runtime, on device
   only, with `NoClassDefFoundError`/`NoSuchMethodError`. Known traps, all of
   which android added far later than the JDK: `java.lang.ref.Cleaner` (API 33,
-  hence the `PhantomReference` reaper), `List.of`/`Set.of`/`Map.of` (API 34),
+  hence the `PhantomReference` reaper),
+  `java.lang.ref.Reference.reachabilityFence` (API 28, hence `keepAlive`),
+  `List.of`/`Set.of`/`Map.of` (API 34),
   `Optional.isEmpty` (API 33), `java.time` (API 26 only in part). Core library
   desugaring does not cover `java.lang.ref`, and an app cannot shim a `java.*`
   class, so the fix always has to happen here. This is no longer only a rule to

@@ -43,7 +43,14 @@ public final class Document extends NativeResource {
     return new Filesystem(asFilesystemNative(handle()), this);
   }
 
+  /** Applies a diff; what {@link Html#edit} calls. */
+  void edit(String diff) {
+    editNative(handle(), diff);
+  }
+
   private static native void destroy(long handle);
+
+  private native void editNative(long handle, String diff);
 
   private native boolean isEditableNative(long handle);
 

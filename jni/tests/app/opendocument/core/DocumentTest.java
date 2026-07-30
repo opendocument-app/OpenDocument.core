@@ -85,5 +85,24 @@ class DocumentTest {
     DocumentPath path = first.documentPath();
     assertNotNull(path.toString());
     assertEquals(path, first.documentPath());
+
+    // join() and navigatePath() take another wrapper's handle as an argument
+    DocumentPath rejoined = path.parent().join(path);
+    assertTrue(path.parent().empty());
+    assertEquals(path, rejoined);
+    assertTrue(document.rootElement().navigatePath(rejoined).isSame(first));
+  }
+
+  @Test
+  void editAppliesADiff() throws IOException {
+    Document document = openDocument();
+    assertTrue(document.isEditable());
+
+    Element paragraph = document.rootElement().firstChild();
+    DocumentPath text = paragraph.firstChild().documentPath();
+
+    Html.edit(document, "{\"modifiedText\":{\"" + text + "\":\"edited by the diff\"}}");
+
+    assertTrue(walkText(document.rootElement()).contains("edited by the diff"));
   }
 }

@@ -23,7 +23,7 @@ public class DecodedFile extends NativeResource {
   }
 
   public DecodedFile(File file) {
-    this(createFromFile(file.handle()));
+    this(file.decode());
   }
 
   public File file() {
@@ -119,8 +119,6 @@ public class DecodedFile extends NativeResource {
   private static native long create(String path);
 
   private static native long createAs(String path, int as);
-
-  private static native long createFromFile(long fileHandle);
 
   static native void destroy(long handle);
 

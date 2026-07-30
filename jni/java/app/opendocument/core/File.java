@@ -36,9 +36,16 @@ public final class File extends NativeResource {
     copyNative(handle(), path);
   }
 
+  /** Decodes this file; the handle for {@link DecodedFile#DecodedFile(File)}. */
+  long decode() {
+    return decodeNative(handle());
+  }
+
   private static native long create(String path);
 
   private static native void destroy(long handle);
+
+  private native long decodeNative(long handle);
 
   private native int locationNative(long handle);
 
