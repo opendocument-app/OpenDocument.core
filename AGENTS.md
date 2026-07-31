@@ -90,7 +90,13 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 - CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_LIBMAGIC`,
   `ODR_PYTHON`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
   `ODR_SOURCE_FILES`.
-- **Test data lives in git submodules** under `test/data/`.
+- **Test data is fetched, not vendored**, and opt in: `-DODR_TEST_FETCH_DATA=ON`
+  makes `cmake/test_data.cmake` clone the repositories pinned in
+  `test/data.cmake` into `test/data/` (they were submodules until then; read
+  that file's header for why). Off by default — building `odr_test` does not
+  need the data, and several gigabytes should not arrive because someone turned
+  tests on. The `update_test_data` target moves existing checkouts onto the
+  pins. The two private repositories need credentials.
 
 ## Conventions
 

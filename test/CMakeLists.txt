@@ -2,6 +2,20 @@ find_package(GTest REQUIRED)
 
 include(GoogleTest REQUIRED)
 
+# The inputs and the reference output, pinned in `data.cmake` and fetched by
+# `../cmake/test_data.cmake` — they used to be git submodules, see that file.
+#
+# Opt in: `ODR_TEST_FETCH_DATA` is off by default, because building `odr_test`
+# does not require the data and several gigabytes is not something to download
+# because someone turned tests on.
+set(ODR_TEST_DATA_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/../cmake/test_data.cmake")
+if (ODR_TEST_FETCH_DATA)
+    include("${ODR_TEST_DATA_SCRIPT}")
+endif ()
+add_custom_target(update_test_data
+        COMMAND "${CMAKE_COMMAND}" -DODR_TEST_DATA_UPDATE=ON -P "${ODR_TEST_DATA_SCRIPT}"
+        COMMENT "Moving test/data onto the revisions pinned in test/data.cmake")
+
 set(ODR_TEST_DATA_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/data")
 configure_file("src/test_info.cpp.in" "src/test_info.cpp")
 

@@ -147,7 +147,8 @@ jobs:
 
       # Both suites run in seconds, so they stay in this job rather than paying
       # an artifact round-trip. The heavy `odr_test` still runs in `test`, which
-      # needs firefox and the reference-output submodule.
+      # needs firefox and the reference output — this job compiles `odr_test`
+      # but never runs it, so it never fetches the data either.
       - name: junit
         if: matrix.bindings
         run: ctest --test-dir build/jni --output-on-failure
@@ -244,12 +245,27 @@ jobs:
           # Running main() from C:\Users\runneradmin\.conan2\p\b\gtestdd9407d368b89\b\src\googletest\src\gtest_main.cc
           # [ FATAL ] C:/Users/runneradmin/.conan2/p/gtest28fa6787e7f6e/p/include\gtest/internal/gtest-param-util.h(585):: Condition IsValidParamName(param_name) failed. Parameterized test name 'odr_private\docx\03_smpldap_docx' is invalid, in D:\a\OpenDocument.core\OpenDocument.core\test\src\html_output_test.cpp line 129
           #- { os: windows-2022, host_profile: windows-2022-msvc-1940 }
+    env:
+      # read by the git credential helper, on every step that runs git
+      GH_TOKEN: ${{ secrets.PAT_ANDIWAND }}
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          token: ${{ secrets.PAT_ANDIWAND }}
-          submodules: true
+
+      # The test data stopped being submodules (see cmake/test_data.cmake), so
+      # the PAT is no longer the checkout token — it authenticates the two
+      # private clones instead. A credential helper rather than a url rewrite,
+      # so the token never lands in a git config file.
+      #
+      # `GH_TOKEN` is on the job rather than this step: the helper
+      # `gh auth setup-git` installs shells back out to `gh auth git-credential`,
+      # which reads the token from the environment at the moment git asks it.
+      # Set only here, the fetch below falls through to prompting and dies with
+      # "could not read Username for 'https://github.com'".
+      - name: authenticate to the private test data
+        run: gh auth setup-git
+      - name: fetch test data
+        run: cmake -DODR_TEST_DATA_UPDATE=ON -P cmake/test_data.cmake
 
       - name: ubuntu install tidy
         if: runner.os == 'Linux'
