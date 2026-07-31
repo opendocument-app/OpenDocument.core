@@ -7,21 +7,34 @@
 @implementation ODRGlobalParams
 
 + (NSString *)odrCoreDataPath {
-  return odr::apple::to_nsstring(odr::GlobalParams::odr_core_data_path());
+  return odr::apple::guarded_value(
+      [&] {
+        return odr::apple::to_nsstring(odr::GlobalParams::odr_core_data_path());
+      },
+      @"");
 }
 
 + (void)setOdrCoreDataPath:(NSString *)odrCoreDataPath {
-  odr::GlobalParams::set_odr_core_data_path(
-      odr::apple::to_string(odrCoreDataPath));
+  odr::apple::guarded_void([&] {
+    odr::GlobalParams::set_odr_core_data_path(
+        odr::apple::to_string(odrCoreDataPath));
+  });
 }
 
 + (NSString *)libmagicDatabasePath {
-  return odr::apple::to_nsstring(odr::GlobalParams::libmagic_database_path());
+  return odr::apple::guarded_value(
+      [&] {
+        return odr::apple::to_nsstring(
+            odr::GlobalParams::libmagic_database_path());
+      },
+      @"");
 }
 
 + (void)setLibmagicDatabasePath:(NSString *)libmagicDatabasePath {
-  odr::GlobalParams::set_libmagic_database_path(
-      odr::apple::to_string(libmagicDatabasePath));
+  odr::apple::guarded_void([&] {
+    odr::GlobalParams::set_libmagic_database_path(
+        odr::apple::to_string(libmagicDatabasePath));
+  });
 }
 
 + (void)bootstrapFromFrameworkBundle {

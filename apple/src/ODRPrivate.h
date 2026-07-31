@@ -2,11 +2,14 @@
 
 #import <OdrCoreObjC/ODRDocument.h>
 #import <OdrCoreObjC/ODRFile.h>
+#import <OdrCoreObjC/ODRFilesystem.h>
 #import <OdrCoreObjC/ODRHtml.h>
 #import <OdrCoreObjC/ODRLogger.h>
 
+#include <odr/archive.hpp>
 #include <odr/document.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
 
@@ -53,6 +56,20 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ODRLogger (Private)
 + (instancetype)loggerWithHandle:(odr::Logger)handle;
 - (const odr::Logger &)handle;
+@end
+
+@interface ODRFileWalker (Private)
++ (instancetype)walkerWithHandle:(odr::FileWalker)handle;
+@end
+
+@interface ODRFilesystem (Private)
++ (instancetype)filesystemWithHandle:(odr::Filesystem)handle;
+- (const odr::Filesystem &)handle;
+@end
+
+@interface ODRArchive (Private)
++ (instancetype)archiveWithHandle:(odr::Archive)handle;
+- (const odr::Archive &)handle;
 @end
 
 @interface ODRHtmlConfig (Private)

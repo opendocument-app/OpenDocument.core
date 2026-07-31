@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 
+#import <OdrCoreObjC/ODRFilesystem.h>
 #import <OdrCoreObjC/ODRTable.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -227,6 +228,20 @@ NS_SWIFT_NAME(HtmlTranslator)
                                         config:(ODRHtmlConfig *)config
                                          error:(NSError **)error
     NS_SWIFT_NAME(translate(document:cachePath:config:));
+
+/// Translates a filesystem — a document's parts, or an archive's contents.
++ (nullable ODRHtmlService *)translateFilesystem:(ODRFilesystem *)filesystem
+                                       cachePath:(NSString *)cachePath
+                                          config:(ODRHtmlConfig *)config
+                                           error:(NSError **)error
+    NS_SWIFT_NAME(translate(filesystem:cachePath:config:));
+
+/// Translates an archive.
++ (nullable ODRHtmlService *)translateArchive:(ODRArchive *)archive
+                                    cachePath:(NSString *)cachePath
+                                       config:(ODRHtmlConfig *)config
+                                        error:(NSError **)error
+    NS_SWIFT_NAME(translate(archive:cachePath:config:));
 
 /// Applies a diff produced by the browser-side JavaScript back to `document`.
 + (BOOL)editDocument:(ODRDocument *)document

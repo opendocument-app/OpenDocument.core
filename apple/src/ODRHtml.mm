@@ -10,6 +10,7 @@
 #include <vector>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
 using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
@@ -192,7 +193,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
 
 @implementation ODRHtmlResource {
   std::optional<odr::HtmlResource> _handle;
-  std::optional<odr::HtmlResourceLocation> _location;
+  // `HtmlResourceLocation` is itself a `std::optional`, so it needs no wrapper
+  odr::HtmlResourceLocation _location;
 }
 
 + (instancetype)resourceWithHandle:(odr::HtmlResource)handle
@@ -204,40 +206,46 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
 }
 
 - (ODRHtmlResourceType)type {
-  return static_cast<ODRHtmlResourceType>(_handle->type());
+  return guarded_value(
+      [&] { return static_cast<ODRHtmlResourceType>(_handle->type()); },
+      ODRHtmlResourceTypeHtmlFragment);
 }
 
 - (NSString *)mimeType {
-  return to_nsstring(_handle->mime_type());
+  return guarded_value([&] { return to_nsstring(_handle->mime_type()); }, @"");
 }
 
 - (NSString *)name {
-  return to_nsstring(_handle->name());
+  return guarded_value([&] { return to_nsstring(_handle->name()); }, @"");
 }
 
 - (NSString *)path {
-  return to_nsstring(_handle->path());
+  return guarded_value([&] { return to_nsstring(_handle->path()); }, @"");
 }
 
 - (nullable ODRFile *)file {
-  const std::optional<odr::File> &file = _handle->file();
-  return file.has_value() ? [ODRFile fileWithHandle:*file] : nil;
+  return guarded_value(
+      [&]() -> ODRFile * {
+        const std::optional<odr::File> &file = _handle->file();
+        return file.has_value() ? [ODRFile fileWithHandle:*file] : nil;
+      },
+      nil);
 }
 
 - (BOOL)isShipped {
-  return _handle->is_shipped() ? YES : NO;
+  return guarded_value([&] { return _handle->is_shipped() ? YES : NO; }, NO);
 }
 
 - (BOOL)isExternal {
-  return _handle->is_external() ? YES : NO;
+  return guarded_value([&] { return _handle->is_external() ? YES : NO; }, NO);
 }
 
 - (BOOL)isAccessible {
-  return _handle->is_accessible() ? YES : NO;
+  return guarded_value([&] { return _handle->is_accessible() ? YES : NO; }, NO);
 }
 
 - (nullable NSString *)location {
-  return _location->has_value() ? to_nsstring(**_location) : nil;
+  return _location.has_value() ? to_nsstring(*_location) : nil;
 }
 
 - (nullable NSData *)dataWithError:(NSError **)error {
@@ -310,15 +318,16 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 }
 
 - (NSString *)name {
-  return to_nsstring(_handle->name());
+  return guarded_value([&] { return to_nsstring(_handle->name()); }, @"");
 }
 
 - (NSUInteger)index {
-  return static_cast<NSUInteger>(_handle->index());
+  return guarded_value(
+      [&] { return static_cast<NSUInteger>(_handle->index()); }, NSUInteger{0});
 }
 
 - (NSString *)path {
-  return to_nsstring(_handle->path());
+  return guarded_value([&] { return to_nsstring(_handle->path()); }, @"");
 }
 
 - (nullable NSString *)writeHtmlWithResources:
@@ -361,13 +370,17 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 }
 
 - (NSArray<ODRHtmlView *> *)views {
-  const odr::HtmlViews &views = _handle->list_views();
-  NSMutableArray<ODRHtmlView *> *const result =
-      [NSMutableArray arrayWithCapacity:views.size()];
-  for (const odr::HtmlView &view : views) {
-    [result addObject:[ODRHtmlView viewWithHandle:view]];
-  }
-  return result;
+  return guarded_value(
+      [&]() -> NSArray<ODRHtmlView *> * {
+        const odr::HtmlViews &views = _handle->list_views();
+        NSMutableArray<ODRHtmlView *> *const result =
+            [NSMutableArray arrayWithCapacity:views.size()];
+        for (const odr::HtmlView &view : views) {
+          [result addObject:[ODRHtmlView viewWithHandle:view]];
+        }
+        return result;
+      },
+      @[]);
 }
 
 - (BOOL)warmupWithError:(NSError **)error {
@@ -378,7 +391,8 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 }
 
 - (BOOL)existsAtPath:(NSString *)path {
-  return _handle->exists(to_string(path)) ? YES : NO;
+  return guarded_value(
+      [&] { return _handle->exists(to_string(path)) ? YES : NO; }, NO);
 }
 
 - (nullable NSString *)mimetypeAtPath:(NSString *)path error:(NSError **)error {
@@ -455,6 +469,30 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
   return guarded(error, [&]() -> ODRHtmlService * {
     return [ODRHtmlService
         serviceWithHandle:odr::html::translate(document.handle,
+                                               to_string(cachePath),
+                                               config.nativeConfig)];
+  });
+}
+
++ (nullable ODRHtmlService *)translateFilesystem:(ODRFilesystem *)filesystem
+                                       cachePath:(NSString *)cachePath
+                                          config:(ODRHtmlConfig *)config
+                                           error:(NSError **)error {
+  return guarded(error, [&]() -> ODRHtmlService * {
+    return [ODRHtmlService
+        serviceWithHandle:odr::html::translate(filesystem.handle,
+                                               to_string(cachePath),
+                                               config.nativeConfig)];
+  });
+}
+
++ (nullable ODRHtmlService *)translateArchive:(ODRArchive *)archive
+                                    cachePath:(NSString *)cachePath
+                                       config:(ODRHtmlConfig *)config
+                                        error:(NSError **)error {
+  return guarded(error, [&]() -> ODRHtmlService * {
+    return [ODRHtmlService
+        serviceWithHandle:odr::html::translate(archive.handle,
                                                to_string(cachePath),
                                                config.nativeConfig)];
   });

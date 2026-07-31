@@ -106,6 +106,10 @@ NSString *error_message() {
 
 } // namespace
 
+void apple::report_swallowed(const char *what) {
+  NSLog(@"odr: swallowed an error the caller cannot be told about: %s", what);
+}
+
 void apple::fill_error(NSError **error) {
   const ODRError code = error_code();
   NSString *const message = error_message();

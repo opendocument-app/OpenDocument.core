@@ -58,9 +58,16 @@ then returns the app bundle, and the bootstrap points at the wrong place.
 - **`TARGET_BUNDLE_CONTENT_DIR` is wrong for frameworks** — it expands to the
   bundle root even on macOS, where content lives in `Versions/A`. The
   CMakeLists computes the path itself.
-- **Everything goes through `odr::apple::guarded`.** A C++ exception crossing
-  into ObjC++ unhandled terminates the process. Failures come back as `NSError`
-  under `ODRErrorDomain`; the code list mirrors
+- **Every single call into C++ is guarded — there are no exceptions to this.**
+  An exception crossing into ObjC++ unhandled calls `std::terminate`, i.e.
+  crashes the host app. Almost nothing in odrcore's public API is `noexcept`,
+  so a getter that "obviously cannot fail" still can:
+  `odr::Filesystem::exists("")` throws `std::invalid_argument`, which is how
+  this rule was learned. Three helpers in `ODRInternal.h`:
+  `guarded` where the caller gets an `NSError **`, `guarded_value` for a
+  property, and `guarded_void` for a `void` method. Pick a fallback that keeps
+  the caller sane — `YES` for a walker's `end`, so a `while (!end)` loop
+  terminates instead of spinning. The `NSError` code list mirrors
   `jni/src/odr_jni.cpp::throw_java` — keep the two in step.
 - **Strings**: `odr::apple::to_string` / `to_nsstring`, real UTF-8 ↔ UTF-16.
   Never hand a `-UTF8String` pointer to something that outlives the autorelease

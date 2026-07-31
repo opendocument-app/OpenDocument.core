@@ -10,6 +10,7 @@
 #include <vector>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
 using odr::apple::to_nsdata;
 using odr::apple::to_nsstring;
 using odr::apple::to_string;
@@ -202,12 +203,17 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (NSUInteger)size {
-  return static_cast<NSUInteger>(_handle->size());
+  return guarded_value([&] { return static_cast<NSUInteger>(_handle->size()); },
+                       NSUInteger{0});
 }
 
 - (nullable NSString *)diskPath {
-  const std::optional<std::string> path = _handle->disk_path();
-  return path.has_value() ? to_nsstring(*path) : nil;
+  return guarded_value(
+      [&]() -> NSString * {
+        const std::optional<std::string> path = _handle->disk_path();
+        return path.has_value() ? to_nsstring(*path) : nil;
+      },
+      nil);
 }
 
 - (nullable NSData *)dataWithError:(NSError **)error {
@@ -352,7 +358,9 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (ODRFile *)file {
-  return [ODRFile fileWithHandle:_handle->file()];
+  return guarded_value(
+      [&]() -> ODRFile * { return [ODRFile fileWithHandle:_handle->file()]; },
+      nil);
 }
 
 - (ODRFileType)fileType {
@@ -372,11 +380,16 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (BOOL)isPasswordEncrypted {
-  return _handle->password_encrypted() ? YES : NO;
+  return guarded_value([&] { return _handle->password_encrypted() ? YES : NO; },
+                       NO);
 }
 
 - (ODREncryptionState)encryptionState {
-  return static_cast<ODREncryptionState>(_handle->encryption_state());
+  return guarded_value(
+      [&] {
+        return static_cast<ODREncryptionState>(_handle->encryption_state());
+      },
+      ODREncryptionStateUnknown);
 }
 
 - (nullable ODRDecodedFile *)decryptWithPassword:(NSString *)password
@@ -388,27 +401,33 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (ODRFileTypeCapabilities *)capabilities {
-  return
-      [ODRFileTypeCapabilities capabilitiesWithHandle:_handle->capabilities()];
+  return guarded_value(
+      [&]() -> ODRFileTypeCapabilities * {
+        return [ODRFileTypeCapabilities
+            capabilitiesWithHandle:_handle->capabilities()];
+      },
+      nil);
 }
 
 - (BOOL)isTextFile {
-  return _handle->is_text_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_text_file() ? YES : NO; }, NO);
 }
 - (BOOL)isImageFile {
-  return _handle->is_image_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_image_file() ? YES : NO; }, NO);
 }
 - (BOOL)isArchiveFile {
-  return _handle->is_archive_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_archive_file() ? YES : NO; },
+                       NO);
 }
 - (BOOL)isDocumentFile {
-  return _handle->is_document_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_document_file() ? YES : NO; },
+                       NO);
 }
 - (BOOL)isPdfFile {
-  return _handle->is_pdf_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_pdf_file() ? YES : NO; }, NO);
 }
 - (BOOL)isFontFile {
-  return _handle->is_font_file() ? YES : NO;
+  return guarded_value([&] { return _handle->is_font_file() ? YES : NO; }, NO);
 }
 
 // The `as…` conversions go through the same factory, so they return the
@@ -462,9 +481,13 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 @implementation ODRTextFile
 
 - (nullable NSString *)charset {
-  const std::optional<std::string> charset =
-      self.handle.as_text_file().charset();
-  return charset.has_value() ? to_nsstring(*charset) : nil;
+  return guarded_value(
+      [&]() -> NSString * {
+        const std::optional<std::string> charset =
+            self.handle.as_text_file().charset();
+        return charset.has_value() ? to_nsstring(*charset) : nil;
+      },
+      nil);
 }
 
 - (nullable NSString *)textWithError:(NSError **)error {
@@ -488,6 +511,14 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 @end
 
 @implementation ODRArchiveFile
+
+- (nullable ODRArchive *)archiveWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRArchive * {
+    return
+        [ODRArchive archiveWithHandle:self.handle.as_archive_file().archive()];
+  });
+}
+
 @end
 
 @implementation ODRDocumentFile
@@ -505,7 +536,12 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (ODRDocumentType)documentType {
-  return static_cast<ODRDocumentType>(self.documentHandle.document_type());
+  return guarded_value(
+      [&] {
+        return static_cast<ODRDocumentType>(
+            self.documentHandle.document_type());
+      },
+      ODRDocumentTypeUnknown);
 }
 
 - (nullable ODRDocumentFile *)decryptWithPassword:(NSString *)password

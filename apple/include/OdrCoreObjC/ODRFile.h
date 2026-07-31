@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
 
+#import <OdrCoreObjC/ODRFilesystem.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class ODRDocument;
@@ -270,11 +272,10 @@ NS_SWIFT_NAME(ImageFile)
 @end
 
 /// A decoded archive — `odr::ArchiveFile`.
-///
-/// `archive` lands with ODRArchive.h; see the note in ODRDocument.h for why it
-/// is absent rather than declared against a forward declaration.
 NS_SWIFT_NAME(ArchiveFile)
 @interface ODRArchiveFile : ODRDecodedFile
+- (nullable ODRArchive *)archiveWithError:(NSError **)error
+    NS_SWIFT_NAME(archive());
 @end
 
 /// A decoded document file — `odr::DocumentFile`.

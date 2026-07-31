@@ -11,6 +11,8 @@
 #include <vector>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
+using odr::apple::guarded_void;
 using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
@@ -115,15 +117,21 @@ private:
 }
 
 - (BOOL)willLog:(ODRLogLevel)level {
-  return _handle->will_log(static_cast<odr::LogLevel>(level)) ? YES : NO;
+  return guarded_value(
+      [&] {
+        return _handle->will_log(static_cast<odr::LogLevel>(level)) ? YES : NO;
+      },
+      NO);
 }
 
 - (void)logLevel:(ODRLogLevel)level message:(NSString *)message {
-  _handle->log(static_cast<odr::LogLevel>(level), to_string(message));
+  guarded_void([&] {
+    _handle->log(static_cast<odr::LogLevel>(level), to_string(message));
+  });
 }
 
 - (void)flush {
-  _handle->flush();
+  guarded_void([&] { _handle->flush(); });
 }
 
 @end

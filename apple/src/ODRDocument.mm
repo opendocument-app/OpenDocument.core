@@ -8,6 +8,7 @@
 #include <optional>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
 using odr::apple::to_string;
 
 @implementation ODRDocument {
@@ -33,15 +34,17 @@ using odr::apple::to_string;
 }
 
 - (BOOL)isEditable {
-  return _handle->is_editable() ? YES : NO;
+  return guarded_value([&] { return _handle->is_editable() ? YES : NO; }, NO);
 }
 
 - (BOOL)isSavable {
-  return _handle->is_savable(false) ? YES : NO;
+  return guarded_value([&] { return _handle->is_savable(false) ? YES : NO; },
+                       NO);
 }
 
 - (BOOL)isSavableEncrypted {
-  return _handle->is_savable(true) ? YES : NO;
+  return guarded_value([&] { return _handle->is_savable(true) ? YES : NO; },
+                       NO);
 }
 
 - (BOOL)saveTo:(NSString *)path error:(NSError **)error {
@@ -57,6 +60,12 @@ using odr::apple::to_string;
   return guarded(error, [&] {
     _handle->save(to_string(path), to_string(password));
     return YES;
+  });
+}
+
+- (nullable ODRFilesystem *)filesystemWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRFilesystem * {
+    return [ODRFilesystem filesystemWithHandle:_handle->as_filesystem()];
   });
 }
 

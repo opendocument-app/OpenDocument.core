@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 
 #import <OdrCoreObjC/ODRFile.h>
+#import <OdrCoreObjC/ODRFilesystem.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -26,11 +27,15 @@ NS_SWIFT_NAME(Document)
       password:(NSString *)password
          error:(NSError **)error;
 
-// `rootElement` and `filesystem` land with ODRDocumentElement.h and
-// ODRFilesystem.h. They are deliberately absent rather than declared against a
-// forward declaration: Swift cannot import a method whose return type is an
-// incomplete ObjC class, so such a method is invisible to the callers who need
-// it most, while still looking bound from ObjC.
+/// The document's parts as a filesystem.
+- (nullable ODRFilesystem *)filesystemWithError:(NSError **)error
+    NS_SWIFT_NAME(filesystem());
+
+// `rootElement` lands with ODRDocumentElement.h. It is deliberately absent
+// rather than declared against a forward declaration: Swift cannot import a
+// method whose return type is an incomplete ObjC class, so such a method is
+// invisible to the callers who need it most while still looking bound from
+// ObjC.
 
 @end
 

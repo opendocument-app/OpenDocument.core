@@ -8,6 +8,7 @@
 #include <optional>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
 using odr::apple::to_string;
 
 @implementation ODRHttpServer {
@@ -74,7 +75,7 @@ using odr::apple::to_string;
 }
 
 - (BOOL)isRunning {
-  return _handle->is_running() ? YES : NO;
+  return guarded_value([&] { return _handle->is_running() ? YES : NO; }, NO);
 }
 
 - (BOOL)clearWithError:(NSError **)error {

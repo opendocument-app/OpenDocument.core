@@ -4,14 +4,18 @@
 
 #include <odr/odr.hpp>
 
+using odr::apple::guarded_value;
+
 @implementation ODROdr
 
 + (NSString *)libraryVersion {
-  return odr::apple::to_nsstring(odr::version());
+  return guarded_value([&] { return odr::apple::to_nsstring(odr::version()); },
+                       @"");
 }
 
 + (NSString *)commitHash {
-  return odr::apple::to_nsstring(odr::commit_hash());
+  return guarded_value(
+      [&] { return odr::apple::to_nsstring(odr::commit_hash()); }, @"");
 }
 
 + (BOOL)isDirty {
@@ -23,7 +27,8 @@
 }
 
 + (NSString *)identification {
-  return odr::apple::to_nsstring(odr::identify());
+  return guarded_value([&] { return odr::apple::to_nsstring(odr::identify()); },
+                       @"");
 }
 
 @end
