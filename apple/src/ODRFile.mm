@@ -14,13 +14,6 @@ using odr::apple::to_nsdata;
 using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
-// The ObjC enums are the C++ enums renumbered by hand, so drift between them is
-// a silent, total misinterpretation of every value that crosses. Make it a
-// compile error instead.
-#define ODR_SAME_ENUM(objc, cxx)                                               \
-  static_assert(static_cast<int>(objc) == static_cast<int>(cxx),               \
-                #objc " drifted from " #cxx)
-
 ODR_SAME_ENUM(ODRFileTypeUnknown, odr::FileType::unknown);
 ODR_SAME_ENUM(ODRFileTypeOpenDocumentText, odr::FileType::opendocument_text);
 ODR_SAME_ENUM(ODRFileTypeOpenDocumentPresentation,
@@ -89,8 +82,6 @@ ODR_SAME_ENUM(ODRDocumentTypeText, odr::DocumentType::text);
 ODR_SAME_ENUM(ODRDocumentTypePresentation, odr::DocumentType::presentation);
 ODR_SAME_ENUM(ODRDocumentTypeSpreadsheet, odr::DocumentType::spreadsheet);
 ODR_SAME_ENUM(ODRDocumentTypeDrawing, odr::DocumentType::drawing);
-
-#undef ODR_SAME_ENUM
 
 namespace {
 
@@ -305,6 +296,45 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 + (nullable instancetype)decodeFile:(ODRFile *)file error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile decodedFileWithHandle:odr::DecodedFile(file.handle)];
+  });
+}
+
++ (nullable instancetype)decodePath:(NSString *)path
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error {
+  return guarded(error, [&]() -> ODRDecodedFile * {
+    return [ODRDecodedFile
+        decodedFileWithHandle:odr::DecodedFile(to_string(path), logger.handle)];
+  });
+}
+
++ (nullable instancetype)decodePath:(NSString *)path
+                                 as:(ODRFileType)type
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error {
+  return guarded(error, [&]() -> ODRDecodedFile * {
+    return [ODRDecodedFile
+        decodedFileWithHandle:odr::DecodedFile(to_string(path),
+                                               static_cast<odr::FileType>(type),
+                                               logger.handle)];
+  });
+}
+
++ (nullable instancetype)decodeFile:(ODRFile *)file
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error {
+  return guarded(error, [&]() -> ODRDecodedFile * {
+    return [ODRDecodedFile
+        decodedFileWithHandle:odr::DecodedFile(file.handle, logger.handle)];
+  });
+}
+
++ (nullable NSArray<NSNumber *> *)listFileTypesAtPath:(NSString *)path
+                                               logger:(ODRLogger *)logger
+                                                error:(NSError **)error {
+  return guarded(error, [&]() -> NSArray<NSNumber *> * {
+    return to_nsarray(
+        odr::DecodedFile::list_file_types(to_string(path), logger.handle));
   });
 }
 

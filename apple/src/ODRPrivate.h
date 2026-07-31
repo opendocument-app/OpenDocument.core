@@ -2,9 +2,11 @@
 
 #import <OdrCoreObjC/ODRDocument.h>
 #import <OdrCoreObjC/ODRFile.h>
+#import <OdrCoreObjC/ODRLogger.h>
 
 #include <odr/document.hpp>
 #include <odr/file.hpp>
+#include <odr/logger.hpp>
 
 /// Cross-translation-unit access to the C++ value each wrapper owns.
 ///
@@ -44,6 +46,11 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ODRDocument (Private)
 + (instancetype)documentWithHandle:(odr::Document)handle;
 - (const odr::Document &)handle;
+@end
+
+@interface ODRLogger (Private)
++ (instancetype)loggerWithHandle:(odr::Logger)handle;
+- (const odr::Logger &)handle;
 @end
 
 @interface ODRFileMeta (Private)

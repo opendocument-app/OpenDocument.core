@@ -3,6 +3,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class ODRDocument;
+@class ODRLogger;
 
 @class ODRTextFile;
 @class ODRImageFile;
@@ -182,10 +183,30 @@ NS_SWIFT_NAME(DecodedFile)
                               error:(NSError **)error
     NS_SWIFT_NAME(decode(file:));
 
+/// The overloads that report progress and problems into `logger`. Every entry
+/// point above uses the null logger.
++ (nullable instancetype)decodePath:(NSString *)path
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error
+    NS_SWIFT_NAME(decode(path:logger:));
++ (nullable instancetype)decodePath:(NSString *)path
+                                 as:(ODRFileType)type
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error
+    NS_SWIFT_NAME(decode(path:as:logger:));
++ (nullable instancetype)decodeFile:(ODRFile *)file
+                             logger:(ODRLogger *)logger
+                              error:(NSError **)error
+    NS_SWIFT_NAME(decode(file:logger:));
+
 /// Every type `path` could plausibly be decoded as.
 + (nullable NSArray<NSNumber *> *)listFileTypesAtPath:(NSString *)path
                                                 error:(NSError **)error
     NS_SWIFT_NAME(listFileTypes(path:));
++ (nullable NSArray<NSNumber *> *)listFileTypesAtPath:(NSString *)path
+                                               logger:(ODRLogger *)logger
+                                                error:(NSError **)error
+    NS_SWIFT_NAME(listFileTypes(path:logger:));
 /// The MIME type of the file at `path`.
 + (nullable NSString *)mimetypeAtPath:(NSString *)path
                                 error:(NSError **)error

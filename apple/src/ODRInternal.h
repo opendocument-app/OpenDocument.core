@@ -9,6 +9,13 @@
 /// Shared internals of the bindings. Not part of the framework's public
 /// headers — nothing here ends up in `Headers/`.
 
+/// The ObjC enums are the C++ enums renumbered by hand, so drift between them
+/// is a silent, total misinterpretation of every value that crosses. Assert
+/// each pairing next to the code that relies on it.
+#define ODR_SAME_ENUM(objc, cxx)                                               \
+  static_assert(static_cast<int>(objc) == static_cast<int>(cxx),               \
+                #objc " drifted from " #cxx)
+
 NS_ASSUME_NONNULL_BEGIN
 
 namespace odr::apple {
