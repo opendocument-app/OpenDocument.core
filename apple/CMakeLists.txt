@@ -50,8 +50,10 @@ set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/ODRGlobalParams.h"
         "include/OdrCoreObjC/ODRDocument.h"
         "include/OdrCoreObjC/ODRFile.h"
+        "include/OdrCoreObjC/ODRHtml.h"
         "include/OdrCoreObjC/ODRLogger.h"
         "include/OdrCoreObjC/ODROdr.h"
+        "include/OdrCoreObjC/ODRTable.h"
 )
 
 # The renderer data the root build already staged, plus the libmagic database
@@ -67,8 +69,10 @@ add_library(odr_apple SHARED
         "src/ODRGlobalParams.mm"
         "src/ODRDocument.mm"
         "src/ODRFile.mm"
+        "src/ODRHtml.mm"
         "src/ODRLogger.mm"
         "src/ODROdr.mm"
+        "src/ODRTable.mm"
 )
 target_include_directories(odr_apple PRIVATE "include" "src")
 target_link_libraries(odr_apple PRIVATE odr "-framework Foundation")

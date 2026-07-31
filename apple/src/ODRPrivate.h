@@ -2,10 +2,12 @@
 
 #import <OdrCoreObjC/ODRDocument.h>
 #import <OdrCoreObjC/ODRFile.h>
+#import <OdrCoreObjC/ODRHtml.h>
 #import <OdrCoreObjC/ODRLogger.h>
 
 #include <odr/document.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/logger.hpp>
 
 /// Cross-translation-unit access to the C++ value each wrapper owns.
@@ -51,6 +53,34 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ODRLogger (Private)
 + (instancetype)loggerWithHandle:(odr::Logger)handle;
 - (const odr::Logger &)handle;
+@end
+
+@interface ODRHtmlConfig (Private)
+- (instancetype)initWithNativeConfig:(const odr::HtmlConfig &)config;
+- (odr::HtmlConfig)nativeConfig;
+@end
+
+@interface ODRHtmlResource (Private)
++ (instancetype)resourceWithHandle:(odr::HtmlResource)handle
+                          location:(odr::HtmlResourceLocation)location;
+@end
+
+@interface ODRHtmlPage (Private)
++ (instancetype)pageWithHandle:(const odr::HtmlPage &)handle;
+@end
+
+@interface ODRHtml (Private)
++ (instancetype)htmlWithHandle:(const odr::Html &)handle;
+@end
+
+@interface ODRHtmlView (Private)
++ (instancetype)viewWithHandle:(odr::HtmlView)handle;
+- (const odr::HtmlView &)handle;
+@end
+
+@interface ODRHtmlService (Private)
++ (instancetype)serviceWithHandle:(odr::HtmlService)handle;
+- (const odr::HtmlService &)handle;
 @end
 
 @interface ODRFileMeta (Private)

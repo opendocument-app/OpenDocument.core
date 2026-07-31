@@ -6,5 +6,7 @@
 #import <OdrCoreObjC/ODRError.h>
 #import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRGlobalParams.h>
+#import <OdrCoreObjC/ODRHtml.h>
 #import <OdrCoreObjC/ODRLogger.h>
 #import <OdrCoreObjC/ODROdr.h>
+#import <OdrCoreObjC/ODRTable.h>
