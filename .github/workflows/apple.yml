@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: version to release (e.g. 6.2.0)
-        required: true
+        description: version to release (e.g. 6.2.0) — leave empty for a full dry run
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -25,8 +25,13 @@ env:
 
 jobs:
   # macOS runners bill at 10x, and five cross builds plus two test runs on every
-  # push is not worth it. A push builds the two arm64 slices and tests on the
-  # host; main, a dispatch and a release build all five.
+  # push is not worth it. A push off main builds the two arm64 slices and stops
+  # there; main and a dispatch build all five, assemble and run the suites.
+  #
+  # A dispatch without a `version` is exactly that and nothing more, which is
+  # how the full matrix — including the simulator suite, the only job that runs
+  # what a device runs — gets exercised on a branch before it is merged.
+  # Releasing is what supplying a version adds.
   matrix:
     runs-on: ubuntu-24.04
     outputs:
@@ -109,7 +114,7 @@ jobs:
       # A release identifies itself by its tag rather than by the commit, which
       # is what keeps the checksum in `Package.swift` from chasing its own tail.
       - name: release version
-        if: github.event_name != 'push'
+        if: github.event_name == 'release' || inputs.version != ''
         run: |
           if [ "${{ github.event_name }}" = release ]; then
             echo "ODR_GIT_HEAD=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
@@ -228,7 +233,7 @@ jobs:
   # One step, and nothing lies about itself: the framework reports the tag it
   # was built for, and the tag carries the checksum of the artifact that exists.
   release:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.version != ''
     needs: [xcframework, test, resolve]
     runs-on: ubuntu-24.04
     permissions:
