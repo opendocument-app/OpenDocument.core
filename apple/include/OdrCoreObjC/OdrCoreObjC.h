@@ -11,4 +11,5 @@
 #import <OdrCoreObjC/ODRHttpServer.h>
 #import <OdrCoreObjC/ODRLogger.h>
 #import <OdrCoreObjC/ODROdr.h>
+#import <OdrCoreObjC/ODRStyle.h>
 #import <OdrCoreObjC/ODRTable.h>

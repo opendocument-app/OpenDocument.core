@@ -5,6 +5,7 @@
 #import <OdrCoreObjC/ODRFilesystem.h>
 #import <OdrCoreObjC/ODRHtml.h>
 #import <OdrCoreObjC/ODRLogger.h>
+#import <OdrCoreObjC/ODRStyle.h>
 
 #include <odr/archive.hpp>
 #include <odr/document.hpp>
@@ -12,6 +13,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
+#include <odr/style.hpp>
 
 /// Cross-translation-unit access to the C++ value each wrapper owns.
 ///
@@ -71,6 +73,58 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)archiveWithHandle:(odr::Archive)handle;
 - (const odr::Archive &)handle;
 @end
+
+@interface ODRMeasure (Private)
++ (instancetype)measureWithHandle:(const odr::Measure &)handle;
+@end
+
+@interface ODRDirectionalMeasure (Private)
++ (instancetype)directionalWithHandle:
+    (const odr::DirectionalStyle<odr::Measure> &)handle;
+@end
+
+@interface ODRDirectionalString (Private)
++ (instancetype)directionalWithHandle:
+    (const odr::DirectionalStyle<std::string> &)handle;
+@end
+
+@interface ODRTextStyle (Private)
++ (instancetype)styleWithHandle:(const odr::TextStyle &)handle;
+@end
+
+@interface ODRParagraphStyle (Private)
++ (instancetype)styleWithHandle:(const odr::ParagraphStyle &)handle;
+@end
+
+@interface ODRTableStyle (Private)
++ (instancetype)styleWithHandle:(const odr::TableStyle &)handle;
+@end
+
+@interface ODRTableColumnStyle (Private)
++ (instancetype)styleWithHandle:(const odr::TableColumnStyle &)handle;
+@end
+
+@interface ODRTableRowStyle (Private)
++ (instancetype)styleWithHandle:(const odr::TableRowStyle &)handle;
+@end
+
+@interface ODRTableCellStyle (Private)
++ (instancetype)styleWithHandle:(const odr::TableCellStyle &)handle;
+@end
+
+@interface ODRGraphicStyle (Private)
++ (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle;
+@end
+
+@interface ODRPageLayout (Private)
++ (instancetype)layoutWithHandle:(const odr::PageLayout &)handle;
+@end
+
+namespace odr::apple {
+/// Boxing helpers shared by the style and element bindings.
+NSValue *_Nullable box(const std::optional<odr::Color> &color);
+ODRMeasure *_Nullable box(const std::optional<odr::Measure> &measure);
+} // namespace odr::apple
 
 @interface ODRHtmlConfig (Private)
 - (instancetype)initWithNativeConfig:(const odr::HtmlConfig &)config;
