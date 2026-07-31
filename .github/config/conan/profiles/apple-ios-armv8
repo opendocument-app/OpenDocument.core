@@ -1,0 +1,4 @@
+{% set os = "iOS" %}
+{% set sdk = "iphoneos" %}
+{% set arch = "armv8" %}
+{% include "apple.jinja" %}

@@ -1,0 +1,4 @@
+{% set os = "iOS" %}
+{% set sdk = "iphonesimulator" %}
+{% set arch = "x86_64" %}
+{% include "apple.jinja" %}

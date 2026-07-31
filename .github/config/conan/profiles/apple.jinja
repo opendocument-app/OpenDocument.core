@@ -1,0 +1,28 @@
+{# Shared body of the `apple-*` profiles; the includer sets `os`, `arch` and,
+   for iOS, `sdk`. Not usable on its own — always include it from a per-slice
+   profile.
+
+   `os_version` is the *minimum* OS the slice runs on. It is baked into the
+   Mach-O `LC_BUILD_VERSION` and has to match `Package.swift`'s `platforms:`:
+   a higher value produces a framework Xcode refuses to link into an app with a
+   lower deployment target, and leaving it unset — which is what the existing
+   `macos-*` profiles do — lets the floor drift with whatever SDK the machine
+   happens to have. `apple/CMakeLists.txt` fails the configure rather than build
+   a framework whose deployment target nobody chose. #}
+{% set os_version = {"iOS": "15.0", "Macos": "12.0"}[os] %}
+
+[settings]
+os={{os}}
+os.version={{os_version}}
+{% if sdk %}os.sdk={{sdk}}
+{% endif %}arch={{arch}}
+build_type=Release
+compiler=apple-clang
+compiler.version=17
+compiler.cppstd=20
+compiler.libcxx=libc++
+
+[conf]
+{# `objcpp` is the one the bindings themselves are compiled with. #}
+tools.build:compiler_executables={'c': 'clang', 'cpp': 'clang++', 'objc': 'clang', 'objcpp': 'clang++'}
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache', 'CMAKE_OBJCXX_COMPILER_LAUNCHER': 'ccache'}

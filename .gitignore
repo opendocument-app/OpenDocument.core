@@ -51,6 +51,9 @@ CMakeUserPresets.json
 .vscode/.env
 
 offline/
+## Apple framework slices and the assembled xcframework
+apple/build/
+*.xcframework/
 ## Test inputs and reference output (fetched by cmake/test_data.cmake)
 test/data/input/odr-*/
 test/data/reference-output/odr-*/

@@ -16,7 +16,27 @@ read `../jni/AGENTS.md` first — the binding design is the same one, and
 | `module.modulemap` | Explicit, not inferred — an inferred module gives no `export *` control and Swift's importer prefers the real thing. |
 | `exported_symbols.txt` | The ld64 export list. |
 | `Info.plist.in` | Replaces CMake's template, which carries no platform keys. |
-| `build_xcframework.py` | conan + cmake per slice, then `create-xcframework`. |
+| `build_xcframework.py` | conan + cmake per slice, then `create-xcframework`. `apple/build/` is output, never committed. |
+
+## Slices
+
+An xcframework may not hold two entries for the same *platform*, and device vs
+simulator is a platform difference even at the same arch. Which one a binary is
+comes from its Mach-O `LC_BUILD_VERSION`, not from the SDK it was built
+against, so `build_xcframework.py` asserts it with `vtool` rather than trusting
+it — a simulator binary mistagged `IOS` is the classic
+"both ios-arm64 represent two equivalent library definitions" rejection.
+
+| slice | profiles |
+|-------|----------|
+| `ios-arm64` | `apple-ios-armv8` |
+| `ios-arm64_x86_64-simulator` | `apple-iossim-armv8` + `apple-iossim-x86_64` |
+| `macos-arm64_x86_64` | `apple-macos-armv8` + `apple-macos-x86_64` |
+
+`assemble` also fails the build if a framework is missing its headers, module
+map, `magic.mgc` or the plist's platform keys — the analogue of
+`android/build.gradle.kts`'s `checkNative`, and for the same reason: those all
+publish happily and then fail at the consumer.
 
 ## Why a dynamic framework
 
