@@ -209,7 +209,7 @@ jobs:
           ODR_XCFRAMEWORK: OdrCoreObjC.xcframework
         run: >
           xcodebuild test
-          -scheme OdrCore-Package
+          -scheme OdrCore
           -destination '${{ matrix.destination }}'
           -skipPackagePluginValidation
 
