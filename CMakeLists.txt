@@ -66,9 +66,18 @@ FetchContent_MakeAvailable(odr.js)
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
+# An explicitly injected `GIT_HEAD_SHA1` wins over the working tree, which is
+# what lets a release identify itself by its tag. Without that, the Apple
+# release would be circular: `Package.swift` must carry the checksum of an
+# artifact built from the commit that contains `Package.swift`, and baking the
+# working-tree sha into the binary makes the checksum change every time the
+# checksum is written. Identifying by tag breaks the loop, and is the more
+# useful answer for a released artifact anyway.
+if (EXISTS "${PROJECT_SOURCE_DIR}/.git" AND NOT DEFINED GIT_HEAD_SHA1)
+    set(ODR_GIT_WATCHED TRUE)
     include("cmake/git_watcher.cmake")
 else ()
+    set(ODR_GIT_WATCHED FALSE)
     if (NOT DEFINED GIT_HEAD_SHA1)
         set(GIT_HEAD_SHA1 "unknown")
     endif ()
@@ -336,7 +345,8 @@ endif ()
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
 
-if (EXISTS "${PROJECT_SOURCE_DIR}/.git")
+# `check_git` only exists when the watcher above ran
+if (ODR_GIT_WATCHED)
     add_dependencies(odr check_git)
 endif ()
 
