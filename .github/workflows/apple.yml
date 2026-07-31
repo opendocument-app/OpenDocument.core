@@ -10,8 +10,14 @@ on:
         description: version to release (e.g. 6.2.0) — leave empty for a full dry run
         required: false
 
+# Keyed on the ref *and* the event, so a second push to a branch supersedes the
+# first instead of queueing behind it, while a deliberate dispatch is never
+# cancelled by an unrelated push. `head_ref || run_id` — what the other
+# workflows use — is unique per run for push and dispatch events, so
+# `cancel-in-progress` never actually cancels anything there. On 10x-billed
+# macOS runners that piles up quickly.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 # See the cache-key comment in `build_test.yml` for why the keys look like this.
@@ -132,10 +138,14 @@ jobs:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
 
+      # The artifact is named after the profile because `download-artifact`
+      # unpacks each one into a directory named after the *artifact*, and
+      # `assemble` looks for `apple/build/<profile>`. Anything else lands in
+      # `apple/build/<artifact-name>/` and the assembly cannot find its slices.
       - name: upload slice
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: apple-slice-${{ matrix.profile }}
+          name: ${{ matrix.profile }}
           path: apple/build/${{ matrix.profile }}
           if-no-files-found: error
 
@@ -151,10 +161,11 @@ jobs:
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
+      # -> apple/build/<profile>/, which is where `assemble` looks
       - name: download slices
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: apple-slice-*
+          pattern: apple-*
           path: apple/build
 
       # `assemble` asserts each slice's platform tag, install name, bundle
