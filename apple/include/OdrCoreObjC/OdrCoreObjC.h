@@ -3,5 +3,6 @@
 /// re-exports this module.
 
 #import <OdrCoreObjC/ODRError.h>
+#import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRGlobalParams.h>
 #import <OdrCoreObjC/ODROdr.h>

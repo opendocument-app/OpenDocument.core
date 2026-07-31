@@ -20,9 +20,19 @@ std::string to_string(NSString *string);
 NSString *to_nsstring(const std::string &string);
 NSString *to_nsstring(std::string_view string);
 
+/// Drains `stream` into an `NSData`. The stream APIs of odrcore hand out a
+/// `std::istream`; ObjC callers want bytes.
+NSData *to_nsdata(std::istream &stream);
+
 /// Fills `*error` from the exception currently being handled. Call only from
 /// inside a `catch`.
 void fill_error(NSError *_Nullable *_Nullable error);
+
+/// Fills `*error` with `ODRErrorUnsupportedOperation` for an API area that is
+/// declared but not bound yet, and returns nil. Every use is a placeholder to
+/// delete, never a permanent answer.
+id _Nullable not_yet_bound(NSError *_Nullable *_Nullable error,
+                           const char *what);
 
 /// Runs `body`, mapping any C++ exception onto `*error`. A failed call returns
 /// a value-initialised `Result` — `nil` for an object, `NO` for a `BOOL`, `0`

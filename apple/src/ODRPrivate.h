@@ -1,0 +1,51 @@
+#pragma once
+
+#import <OdrCoreObjC/ODRFile.h>
+
+#include <odr/file.hpp>
+
+/// Cross-translation-unit access to the C++ value each wrapper owns.
+///
+/// The handle model is much lighter than the JNI one (`jni/AGENTS.md`): an
+/// ObjC++ `@implementation` can hold the C++ handle as an ivar directly, and
+/// ARC's `.cxx_construct`/`.cxx_destruct` run its constructor and destructor.
+/// No `long` handles, no `destroy` natives, no reaper thread.
+///
+/// Nor is there a keep-alive chain to maintain for these: the public C++
+/// handles hold a `shared_ptr` to the implementation, so a wrapper owning one
+/// by value already keeps it alive on its own.
+///
+/// Categories cannot add ivars, so each class declares its own accessors here
+/// and implements them next to its `@implementation`.
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface ODRFile (Private)
++ (instancetype)fileWithHandle:(odr::File)handle;
+- (const odr::File &)handle;
+@end
+
+@interface ODRDecodedFile (Private)
+/// Wraps `handle` in the most derived class it qualifies for, so a caller that
+/// asks for a decoded file gets an `ODRDocumentFile` when it is one.
++ (instancetype)decodedFileWithHandle:(odr::DecodedFile)handle;
+- (const odr::DecodedFile &)handle;
+@end
+
+@interface ODRDocumentFile (Private)
+/// By value, not by reference: like the JNI bindings, a typed view is
+/// re-derived from the base handle on each call rather than stored, so there is
+/// never a derived subobject sitting behind a base-typed handle.
+- (odr::DocumentFile)documentHandle;
+@end
+
+@interface ODRFileMeta (Private)
++ (instancetype)metaWithHandle:(const odr::FileMeta &)handle;
+@end
+
+@interface ODRFileTypeCapabilities (Private)
++ (instancetype)capabilitiesWithHandle:
+    (const odr::FileTypeCapabilities &)handle;
+@end
+
+NS_ASSUME_NONNULL_END

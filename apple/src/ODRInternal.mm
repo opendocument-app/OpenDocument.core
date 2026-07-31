@@ -5,6 +5,8 @@
 #include <odr/exceptions.hpp>
 
 #include <exception>
+#include <istream>
+#include <sstream>
 
 NSErrorDomain const ODRErrorDomain = @"app.opendocument.OdrCore.ErrorDomain";
 
@@ -43,6 +45,13 @@ NSString *apple::to_nsstring(std::string_view string) {
   // odrcore hands out bytes out of the document, which are not always valid
   // UTF-8; losing the string entirely is worse than replacing it
   return result != nil ? result : @"";
+}
+
+NSData *apple::to_nsdata(std::istream &stream) {
+  std::ostringstream buffer;
+  buffer << stream.rdbuf();
+  const std::string bytes = buffer.str();
+  return [NSData dataWithBytes:bytes.data() length:bytes.size()];
 }
 
 namespace {
@@ -96,6 +105,17 @@ NSString *error_message() {
 }
 
 } // namespace
+
+id apple::not_yet_bound(NSError **error, const char *what) {
+  if (error != nullptr) {
+    NSString *const message =
+        [NSString stringWithFormat:@"%s is not bound yet", what];
+    *error = [NSError errorWithDomain:ODRErrorDomain
+                                 code:ODRErrorUnsupportedOperation
+                             userInfo:@{NSLocalizedDescriptionKey : message}];
+  }
+  return nil;
+}
 
 void apple::fill_error(NSError **error) {
   const ODRError code = error_code();
