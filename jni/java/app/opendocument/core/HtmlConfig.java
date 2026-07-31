@@ -28,6 +28,13 @@ public final class HtmlConfig {
   public boolean spreadsheetLimitByContent = true;
   public HtmlTableGridlines spreadsheetGridlines = HtmlTableGridlines.SOFT;
 
+  /** Initial zoom on mobile. */
+  public HtmlViewportMode viewportMode = HtmlViewportMode.AUTOMATIC;
+  /** Overrides {@link #viewportMode} for spreadsheet content; {@code null} keeps it. */
+  public HtmlViewportMode spreadsheetViewportMode;
+  /** Raw {@code content} for the viewport meta tag; overrides the modes above when set. */
+  public String viewportContent;
+
   public boolean formatHtml = false;
   public int htmlIndent = 1;
   public String htmlIndentString = "\t";

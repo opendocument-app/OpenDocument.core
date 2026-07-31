@@ -1,6 +1,7 @@
 package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -22,12 +23,64 @@ class HtmlTest {
     return service.bringOffline(output.toString());
   }
 
+  private String renderOdt(HtmlConfig config) throws IOException {
+    Path cache = Files.createTempDirectory(tempDir, "render");
+    DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+    HtmlService service = Html.translate(file, cache.toString(), config);
+    return service.listViews().get(0).writeHtml().html;
+  }
+
   @Test
   void htmlConfigDefaults() {
     HtmlConfig config = new HtmlConfig();
     assertTrue(config.embedImages);
     assertTrue(!config.editable);
     assertEquals(HtmlTableGridlines.SOFT, config.spreadsheetGridlines);
+    assertEquals(HtmlViewportMode.AUTOMATIC, config.viewportMode);
+    assertNull(config.spreadsheetViewportMode);
+    assertNull(config.viewportContent);
+  }
+
+  @Test
+  void viewportConfigRoundTrips() throws IOException {
+    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
+    HtmlConfig config = new HtmlConfig();
+    config.viewportMode = HtmlViewportMode.FIT_WIDTH;
+    config.spreadsheetViewportMode = HtmlViewportMode.ACTUAL_SIZE;
+    config.viewportContent = "width=420";
+
+    Path cache = Files.createDirectories(tempDir.resolve("cache"));
+    DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+    HtmlConfig readBack = Html.translate(file, cache.toString(), config).config();
+
+    assertEquals(HtmlViewportMode.FIT_WIDTH, readBack.viewportMode);
+    assertEquals(HtmlViewportMode.ACTUAL_SIZE, readBack.spreadsheetViewportMode);
+    assertEquals("width=420", readBack.viewportContent);
+  }
+
+  /** The C++ suite covers the mode matrix; this only proves the config crosses JNI. */
+  @Test
+  void viewportModeReachesTheHtml() throws IOException {
+    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
+
+    // A text document without margins is reflowing content, so `AUTOMATIC`
+    // resolves to `ACTUAL_SIZE`.
+    String automatic = renderOdt(new HtmlConfig());
+    assertTrue(
+        automatic.contains(
+            "<meta name=\"viewport\""
+                + " content=\"width=device-width,initial-scale=1.0,user-scalable=yes\"/>"));
+
+    HtmlConfig fitWidth = new HtmlConfig();
+    fitWidth.viewportMode = HtmlViewportMode.FIT_WIDTH;
+    assertTrue(
+        renderOdt(fitWidth)
+            .contains(
+                "<meta name=\"viewport\" content=\"width=device-width,user-scalable=yes\"/>"));
+
+    HtmlConfig raw = new HtmlConfig();
+    raw.viewportContent = "width=420";
+    assertTrue(renderOdt(raw).contains("<meta name=\"viewport\" content=\"width=420\"/>"));
   }
 
   @Test

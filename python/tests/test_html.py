@@ -26,6 +26,50 @@ def test_html_config_defaults():
     assert config.spreadsheet_limit.rows == 100
 
 
+def test_html_config_viewport_defaults():
+    config = pyodr.HtmlConfig()
+    assert config.viewport_mode == pyodr.HtmlViewportMode.automatic
+    assert config.spreadsheet_viewport_mode is None
+    assert config.viewport_content is None
+
+    config.viewport_mode = pyodr.HtmlViewportMode.fit_width
+    config.spreadsheet_viewport_mode = pyodr.HtmlViewportMode.actual_size
+    config.viewport_content = "width=420"
+    assert config.viewport_mode == pyodr.HtmlViewportMode.fit_width
+    assert config.spreadsheet_viewport_mode == pyodr.HtmlViewportMode.actual_size
+    assert config.viewport_content == "width=420"
+
+
+def test_viewport_mode_reaches_the_html(core_data_path, odt_path, tmp_path):
+    # The C++ suite covers the mode matrix; this only proves the config crosses
+    # the binding. A text document without margins is reflowing content, so
+    # `automatic` resolves to `actual_size`.
+    def render(name, config):
+        cache = tmp_path / name
+        cache.mkdir()
+        file = pyodr.open(str(odt_path))
+        service = pyodr.html.translate(file, str(cache), config)
+        content, _ = service.list_views()[0].write_html()
+        return content
+
+    assert (
+        '<meta name="viewport" '
+        'content="width=device-width,initial-scale=1.0,user-scalable=yes"/>'
+        in render("automatic", pyodr.HtmlConfig())
+    )
+
+    fit_width = pyodr.HtmlConfig()
+    fit_width.viewport_mode = pyodr.HtmlViewportMode.fit_width
+    assert (
+        '<meta name="viewport" content="width=device-width,user-scalable=yes"/>'
+        in render("fit_width", fit_width)
+    )
+
+    raw = pyodr.HtmlConfig()
+    raw.viewport_content = "width=420"
+    assert '<meta name="viewport" content="width=420"/>' in render("raw", raw)
+
+
 def test_translate_text(core_data_path, txt_path, tmp_path):
     html = translate_offline(txt_path, tmp_path)
     pages = html.pages()
