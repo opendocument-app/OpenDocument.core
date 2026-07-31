@@ -1,0 +1,4 @@
+{% set os = "Macos" %}
+{% set sdk = "" %}
+{% set arch = "x86_64" %}
+{% include "apple.jinja" %}
