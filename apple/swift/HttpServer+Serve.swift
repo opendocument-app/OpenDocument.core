@@ -29,6 +29,17 @@ extension HttpServer {
     thread.name = "app.opendocument.OdrCore.HttpServer"
     thread.start()
 
+    // `listen()` runs on that thread, so `serve()` would otherwise return
+    // before the server is actually serving and `isRunning` would be false to
+    // the caller that just started it. Connections queue in the backlog from
+    // `bind()` onward, so this is about the observable state being honest
+    // rather than about correctness of the first request. Bounded, because a
+    // server that was already stopped never starts running at all.
+    let deadline = Date().addingTimeInterval(5)
+    while !isRunning && Date() < deadline {
+      Thread.sleep(forTimeInterval: 0.005)
+    }
+
     return ServerHandle(server: self, port: bound)
   }
 
@@ -55,6 +66,11 @@ extension HttpServer {
     }
 
     /// Stops the server, blocking until it is no longer serving. Idempotent.
+    ///
+    /// - Warning: takes ~5 seconds once anything has been served
+    ///   (opendocument-app/OpenDocument.core#641), so keep it off the main
+    ///   thread. `deinit` calls this, which means releasing the last reference
+    ///   to a handle blocks too.
     public func stop() {
       lock.lock()
       defer { lock.unlock() }

@@ -45,6 +45,10 @@ jobs:
 
   framework:
     needs: matrix
+    # A published release has nothing to build: `release` already produced and
+    # uploaded the artifact, and rebuilding it would only produce a second one
+    # nobody uses. `verify` is what runs then.
+    if: github.event_name != 'release'
     runs-on: macos-15
     env:
       CACHE_FLAVOR: apple

@@ -88,11 +88,21 @@ final class DecodeTests: XCTestCase {
     }
   }
 
+  /// A csv is a *text* file to odrcore, not a document — it has no element
+  /// tree. Worth pinning: the extension suggests otherwise.
+  func testCsvIsTextRatherThanADocument() throws {
+    let path = try write("a,b\n1,2\n", as: "table.csv")
+    let decoded = try DecodedFile.decode(path: path)
+    XCTAssertEqual(decoded.fileType, .commaSeparatedValues)
+    XCTAssertEqual(decoded.fileCategory, .text)
+    XCTAssertFalse(decoded.isDocumentFile)
+  }
+
   /// `odr::Filesystem::exists("")` throws `std::invalid_argument`. Unguarded,
   /// that crossed into ObjC++ and killed the process; it must be a plain `false`
   /// now. This is a regression test for a crash, not a curiosity.
   func testMalformedPathDoesNotCrash() throws {
-    let path = try write("a,b\n1,2\n", as: "table.csv")
+    let path = try MinimalOdt.write()
     let document = try DecodedFile.decode(path: path).asDocumentFile().document()
     let filesystem = try document.filesystem()
     XCTAssertFalse(filesystem.exists(path: ""))
@@ -102,8 +112,7 @@ final class DecodeTests: XCTestCase {
 
 final class HtmlTests: XCTestCase {
   private func service() throws -> HtmlService {
-    let path = try write("a,b\n1,2\n", as: "table.csv")
-    let file = try DecodedFile.decode(path: path)
+    let file = try DecodedFile.decode(path: try MinimalOdt.write())
     let config = HtmlConfig()
     // odrcore rejects relative resource paths when the output is served
     config.relativeResourcePaths = false
@@ -117,7 +126,7 @@ final class HtmlTests: XCTestCase {
     var resources: NSArray?
     let html = try view.writeHtml(resources: &resources)
     XCTAssertTrue(html.contains("<html"), "not html: \(html.prefix(80))")
-    XCTAssertTrue(html.contains("<table"), "the csv did not become a table")
+    XCTAssertTrue(html.contains("hello odr"), "the document text is missing")
   }
 
   /// The default config must already point at the framework's own resources.
@@ -137,11 +146,10 @@ final class HttpServerTests: XCTestCase {
   /// The only test that exercises the shape the app actually ships: render on
   /// demand, served over loopback into a web view.
   func testServesARenderedView() throws {
-    let path = try write("a,b\n1,2\n", as: "table.csv")
     let config = HtmlConfig()
     config.relativeResourcePaths = false
     let service = try HtmlTranslator.translate(
-      file: try DecodedFile.decode(path: path),
+      file: try DecodedFile.decode(path: try MinimalOdt.write()),
       cachePath: try temporaryDirectory(), config: config)
 
     let server = HttpServer()
@@ -178,14 +186,14 @@ final class HttpServerTests: XCTestCase {
 
 final class ElementTreeTests: XCTestCase {
   private func document() throws -> Document {
-    let path = try write("a,b\n1,2\n", as: "table.csv")
-    return try DecodedFile.decode(path: path).asDocumentFile().document()
+    try DecodedFile.decode(path: try MinimalOdt.write())
+      .asDocumentFile().document()
   }
 
   func testWalksTheTree() throws {
     let root = try XCTUnwrap(try document().rootElement())
-    let cells = Array(root.descendants(ofType: SheetCell.self))
-    XCTAssertFalse(cells.isEmpty, "no cells in a csv")
+    let texts = Array(root.descendants(ofType: Text.self))
+    XCTAssertEqual(texts.map(\.content), ["hello odr"])
     XCTAssertTrue(
       root.descendants.allSatisfy { $0.exists },
       "the walk produced an element that does not exist")
@@ -204,9 +212,8 @@ final class ElementTreeTests: XCTestCase {
 
   func testTypedNavigationReturnsTypedElements() throws {
     let root = try XCTUnwrap(try document().rootElement())
-    let sheet = root.firstDescendant(ofType: Sheet.self)
-    XCTAssertNotNil(sheet, "a csv should have a sheet")
-    XCTAssertGreaterThan(sheet?.dimensions.rows ?? 0, 0)
+    XCTAssertTrue(root is TextRoot, "root of an odt is a TextRoot, got \(type(of: root))")
+    XCTAssertNotNil(root.firstDescendant(ofType: Paragraph.self))
   }
 }
 

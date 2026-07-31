@@ -1,5 +1,12 @@
 import Foundation
 
+/// `NS_SWIFT_NAME` on a `typedef struct` is silently ignored, so the C value
+/// types arrive under their ObjC names. Renaming them is exactly the sort of
+/// thing this target exists for.
+public typealias Color = ODRColor
+public typealias TableDimensions = ODRTableDimensions
+public typealias TablePosition = ODRTablePosition
+
 // The ObjC layer boxes an absent `std::optional` as `nil` in an `NSNumber` or
 // `NSValue`, which is faithful but not how Swift reads. These unbox into real
 // optionals of the right type. Same values, no second source of truth.
@@ -59,9 +66,3 @@ extension Frame {
   public var depth: Int32? { zIndex?.int32Value }
 }
 
-extension Measure: @unchecked Sendable {}
-
-extension Measure {
-  /// `12pt`, the way odrcore writes it.
-  public var description: String { stringValue }
-}

@@ -65,6 +65,11 @@ NS_SWIFT_NAME(HttpServer)
 
 /// Stops `listen` and releases the socket, blocking until `listen` has
 /// returned — nothing is serving any more once this returns.
+///
+/// @warning Takes ~5 seconds if anything has been served, because the accept
+/// loop waits out the client's keep-alive connection — see
+/// opendocument-app/OpenDocument.core#641. Do not call it on the main thread
+/// until that is fixed.
 - (BOOL)stopWithError:(NSError **)error NS_SWIFT_NAME(stop());
 
 @end

@@ -61,6 +61,11 @@ webView.load(URLRequest(url: handle.url(prefix: "doc")
 `handle.stop()` stops the server and blocks until it has stopped; releasing the
 handle does the same. Both are idempotent.
 
+Keep that off the main thread for now: stopping takes about five seconds once
+anything has been served, because the accept loop waits out the web view's
+keep-alive connection
+([#641](https://github.com/opendocument-app/OpenDocument.core/issues/641)).
+
 Bind `127.0.0.1`, which is what `serve()` defaults to. `0.0.0.0` triggers the
 iOS Local Network permission prompt, and nothing off the device needs to reach
 a server that exists to feed a web view. A thread blocked in `listen()` is also
