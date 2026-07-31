@@ -133,7 +133,7 @@ function(odr_test_data)
             OUTPUT_STRIP_TRAILING_WHITESPACE
             COMMAND_ERROR_IS_FATAL ANY
             WORKING_DIRECTORY "${directory}")
-    if (head STREQUAL ARG_REVISION)
+    if ("${head}" STREQUAL "${ARG_REVISION}")
         return()
     endif ()
 
