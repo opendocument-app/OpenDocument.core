@@ -350,6 +350,17 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              "Lapp/opendocument/core/HtmlTableGridlines;",
              enum_from_code(env, "app/opendocument/core/HtmlTableGridlines",
                             static_cast<jint>(config.spreadsheet_gridlines)));
+  set_object("viewportMode", "Lapp/opendocument/core/HtmlViewportMode;",
+             enum_from_code(env, "app/opendocument/core/HtmlViewportMode",
+                            static_cast<jint>(config.viewport_mode)));
+  set_object(
+      "spreadsheetViewportMode", "Lapp/opendocument/core/HtmlViewportMode;",
+      enum_from_code(env, "app/opendocument/core/HtmlViewportMode",
+                     config.spreadsheet_viewport_mode.has_value()
+                         ? static_cast<jint>(*config.spreadsheet_viewport_mode)
+                         : -1));
+  set_object("viewportContent", "Ljava/lang/String;",
+             make_string_opt(env, config.viewport_content));
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
@@ -464,6 +475,23 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       result.spreadsheet_gridlines = static_cast<odr::HtmlTableGridlines>(code);
     }
   }
+  {
+    const jint code = enum_ordinal(
+        env,
+        get_object("viewportMode", "Lapp/opendocument/core/HtmlViewportMode;"));
+    if (code >= 0) {
+      result.viewport_mode = static_cast<odr::HtmlViewportMode>(code);
+    }
+  }
+  {
+    const jint code = enum_ordinal(
+        env, get_object("spreadsheetViewportMode",
+                        "Lapp/opendocument/core/HtmlViewportMode;"));
+    result.spreadsheet_viewport_mode =
+        code < 0 ? std::optional<odr::HtmlViewportMode>()
+                 : static_cast<odr::HtmlViewportMode>(code);
+  }
+  result.viewport_content = get_string_opt("viewportContent");
   result.format_html = get_boolean("formatHtml");
   result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));
   result.html_indent_string = get_string("htmlIndentString");

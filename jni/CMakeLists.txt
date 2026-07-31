@@ -112,6 +112,7 @@ add_jar(odr_java
         "java/app/opendocument/core/HtmlService.java"
         "java/app/opendocument/core/HtmlTableGridlines.java"
         "java/app/opendocument/core/HtmlView.java"
+        "java/app/opendocument/core/HtmlViewportMode.java"
         "java/app/opendocument/core/HttpServer.java"
         "java/app/opendocument/core/Image.java"
         "java/app/opendocument/core/ImageFile.java"

@@ -28,6 +28,12 @@ void odr_python::bind_html(py::module_ &m) {
       .value("soft", odr::HtmlTableGridlines::soft)
       .value("hard", odr::HtmlTableGridlines::hard);
 
+  py::enum_<odr::HtmlViewportMode>(m, "HtmlViewportMode")
+      .value("automatic", odr::HtmlViewportMode::automatic)
+      .value("fit_width", odr::HtmlViewportMode::fit_width)
+      .value("actual_size", odr::HtmlViewportMode::actual_size)
+      .value("none", odr::HtmlViewportMode::none);
+
   py::enum_<odr::PdfTextMode>(m, "PdfTextMode")
       .value("dual_layer", odr::PdfTextMode::dual_layer)
       .value("single_layer", odr::PdfTextMode::single_layer);
@@ -72,6 +78,10 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::spreadsheet_limit_by_content)
       .def_readwrite("spreadsheet_gridlines",
                      &odr::HtmlConfig::spreadsheet_gridlines)
+      .def_readwrite("viewport_mode", &odr::HtmlConfig::viewport_mode)
+      .def_readwrite("spreadsheet_viewport_mode",
+                     &odr::HtmlConfig::spreadsheet_viewport_mode)
+      .def_readwrite("viewport_content", &odr::HtmlConfig::viewport_content)
       .def_readwrite("format_html", &odr::HtmlConfig::format_html)
       .def_readwrite("html_indent", &odr::HtmlConfig::html_indent)
       .def_readwrite("html_indent_string", &odr::HtmlConfig::html_indent_string)
