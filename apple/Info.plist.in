@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Replaces CMake's MacOSXFrameworkInfo.plist.in, which carries none of the
+     platform keys. App Store Connect validates nested bundles for
+     MinimumOSVersion, and an embedded framework without it is a rejection
+     waiting to happen. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>${MACOSX_FRAMEWORK_BUNDLE_NAME}</string>
+	<key>CFBundleName</key>
+	<string>${MACOSX_FRAMEWORK_BUNDLE_NAME}</string>
+	<key>CFBundleIdentifier</key>
+	<string>${MACOSX_FRAMEWORK_IDENTIFIER}</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>FMWK</string>
+	<key>CFBundleShortVersionString</key>
+	<string>${MACOSX_FRAMEWORK_SHORT_VERSION_STRING}</string>
+	<key>CFBundleVersion</key>
+	<string>${MACOSX_FRAMEWORK_BUNDLE_VERSION}</string>
+	<key>MinimumOSVersion</key>
+	<string>${ODR_APPLE_DEPLOYMENT_TARGET}</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>${ODR_APPLE_PLATFORM}</string>
+	</array>
+	<key>DTPlatformName</key>
+	<string>${ODR_APPLE_SDK_NAME}</string>
+</dict>
+</plist>

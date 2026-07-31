@@ -1,0 +1,12 @@
+# The framework's entire public surface is its ObjC classes, so export those
+# and nothing else. Everything linked in — cryptopp, libmagic, all of `odr::` —
+# becomes private-extern, which keeps an app that links its own copy of any of
+# them from binding against ours.
+#
+# `-fvisibility=hidden` cannot do this job: it would hide the ObjC class
+# symbols too.
+_OBJC_CLASS_$_ODR*
+_OBJC_METACLASS_$_ODR*
+__OBJC_PROTOCOL_$_ODR*
+__OBJC_LABEL_PROTOCOL_$_ODR*
+_ODR*

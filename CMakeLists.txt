@@ -20,6 +20,7 @@ option(ODR_WITH_LIBMAGIC "Build with libmagic" ON)
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
+option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
 
 include(GNUInstallDirs)
 
@@ -349,6 +350,10 @@ endif ()
 
 if (ODR_JNI)
     add_subdirectory("jni")
+endif ()
+
+if (ODR_APPLE)
+    add_subdirectory("apple")
 endif ()
 
 if (ODR_TEST)
