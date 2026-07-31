@@ -458,14 +458,6 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 @end
 
 @implementation ODRArchiveFile
-
-- (nullable ODRArchive *)archiveWithError:(NSError **)error {
-  // Until `odr::Archive` is bound in ODRArchive.h. Fails loudly rather than
-  // returning nil with no error, which a caller cannot tell from a real
-  // failure.
-  return odr::apple::not_yet_bound(error, "ODRArchiveFile.archive");
-}
-
 @end
 
 @implementation ODRDocumentFile
@@ -496,8 +488,9 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (nullable ODRDocument *)documentWithError:(NSError **)error {
-  // Until `odr::Document` is bound in ODRDocument.h — see above.
-  return odr::apple::not_yet_bound(error, "ODRDocumentFile.document");
+  return guarded(error, [&]() -> ODRDocument * {
+    return [ODRDocument documentWithHandle:self.documentHandle.document()];
+  });
 }
 
 @end

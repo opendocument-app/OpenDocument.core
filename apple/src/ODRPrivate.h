@@ -1,7 +1,9 @@
 #pragma once
 
+#import <OdrCoreObjC/ODRDocument.h>
 #import <OdrCoreObjC/ODRFile.h>
 
+#include <odr/document.hpp>
 #include <odr/file.hpp>
 
 /// Cross-translation-unit access to the C++ value each wrapper owns.
@@ -37,6 +39,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// re-derived from the base handle on each call rather than stored, so there is
 /// never a derived subobject sitting behind a base-typed handle.
 - (odr::DocumentFile)documentHandle;
+@end
+
+@interface ODRDocument (Private)
++ (instancetype)documentWithHandle:(odr::Document)handle;
+- (const odr::Document &)handle;
 @end
 
 @interface ODRFileMeta (Private)

@@ -106,17 +106,6 @@ NSString *error_message() {
 
 } // namespace
 
-id apple::not_yet_bound(NSError **error, const char *what) {
-  if (error != nullptr) {
-    NSString *const message =
-        [NSString stringWithFormat:@"%s is not bound yet", what];
-    *error = [NSError errorWithDomain:ODRErrorDomain
-                                 code:ODRErrorUnsupportedOperation
-                             userInfo:@{NSLocalizedDescriptionKey : message}];
-  }
-  return nil;
-}
-
 void apple::fill_error(NSError **error) {
   const ODRError code = error_code();
   NSString *const message = error_message();
