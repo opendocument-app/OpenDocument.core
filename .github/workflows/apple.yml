@@ -1,0 +1,295 @@
+name: apple
+
+on:
+  push:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version to release (e.g. 6.2.0)
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# See the cache-key comment in `build_test.yml` for why the keys look like this.
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 2G
+  CCACHE_KEY_SUFFIX: r1
+  CONAN_HOME: ${{ github.workspace }}/.conan2
+  CONAN_KEY_SUFFIX: r1
+  XCODE_VERSION: '26.0'
+
+jobs:
+  # macOS runners bill at 10x, and five cross builds plus two test runs on every
+  # push is not worth it. A push builds the two arm64 slices and tests on the
+  # host; main, a dispatch and a release build all five.
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      profiles: ${{ steps.pick.outputs.profiles }}
+      full: ${{ steps.pick.outputs.full }}
+    steps:
+      - id: pick
+        run: |
+          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" != refs/heads/main ]; then
+            echo 'profiles=["apple-ios-armv8","apple-macos-armv8"]' >> "$GITHUB_OUTPUT"
+            echo 'full=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'profiles=["apple-ios-armv8","apple-iossim-armv8","apple-iossim-x86_64","apple-macos-armv8","apple-macos-x86_64"]' >> "$GITHUB_OUTPUT"
+            echo 'full=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  framework:
+    needs: matrix
+    runs-on: macos-15
+    env:
+      CACHE_FLAVOR: apple
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.matrix.outputs.profiles) }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: checkout conan-odr-index
+        run: git submodule update --init --depth 1 conan-odr-index
+
+      # `create-xcframework` behaviour and the default deployment targets move
+      # between Xcode versions, so the runner default is not good enough.
+      - name: select xcode
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: install ccache
+        run: |
+          brew install ccache
+          ccache -V
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install python dependencies
+        run: pip install conan
+
+      - name: conan cache key
+        shell: bash
+        run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+
+      - name: cache conan
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          restore-keys: |
+            conan-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CONAN_KEY_SUFFIX }}-
+
+      - name: export conan-odr-index
+        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
+      - name: conan config
+        run: conan config install .github/config/conan
+
+      - name: restore ccache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
+
+      # A release identifies itself by its tag rather than by the commit, which
+      # is what keeps the checksum in `Package.swift` from chasing its own tail.
+      - name: release version
+        if: github.event_name != 'push'
+        run: |
+          if [ "${{ github.event_name }}" = release ]; then
+            echo "ODR_GIT_HEAD=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            echo "ODR_GIT_HEAD=v${{ inputs.version }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: build
+        run: python apple/build_xcframework.py slice --profile ${{ matrix.profile }}
+
+      - name: save ccache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+
+      - name: upload slice
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: apple-slice-${{ matrix.profile }}
+          path: apple/build/${{ matrix.profile }}
+          if-no-files-found: error
+
+  xcframework:
+    needs: [matrix, framework]
+    if: needs.matrix.outputs.full == 'true'
+    runs-on: macos-15
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: select xcode
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: download slices
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: apple-slice-*
+          path: apple/build
+
+      # `assemble` asserts each slice's platform tag, install name, bundle
+      # contents and plist keys before merging them.
+      - name: assemble
+        run: python apple/build_xcframework.py assemble
+
+      - name: checksum
+        run: |
+          swift package compute-checksum OdrCoreObjC.xcframework.zip | tee checksum.txt
+
+      - name: upload xcframework
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: OdrCoreObjC.xcframework
+          path: |
+            OdrCoreObjC.xcframework.zip
+            checksum.txt
+          if-no-files-found: error
+
+  # The iOS *device* slice is only ever link checked; nothing runs it. The
+  # simulator run is the analogue of android's instrumented job and the only one
+  # that sees what a device sees — that `+load` fired, that `NSBundle` found
+  # `magic.mgc`, that a temp directory is writable inside an app container.
+  test:
+    needs: xcframework
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos, destination: 'platform=macOS,arch=arm64' }
+          - { name: simulator, destination: 'platform=iOS Simulator,name=iPhone 16' }
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: select xcode
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: download xcframework
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: OdrCoreObjC.xcframework
+      - name: unpack
+        run: ditto -x -k OdrCoreObjC.xcframework.zip .
+
+      # `swift test` cannot target a simulator; `xcodebuild` on a package can.
+      - name: test
+        env:
+          ODR_XCFRAMEWORK: OdrCoreObjC.xcframework
+        run: >
+          xcodebuild test
+          -scheme OdrCore-Package
+          -destination '${{ matrix.destination }}'
+          -skipPackagePluginValidation
+
+  # The only check that would catch a submodule creeping back into the package
+  # repo, which is invisible from inside it: SwiftPM initialises submodules on
+  # every consumer's checkout, and this repo used to carry 4.5 GB of them.
+  resolve:
+    runs-on: macos-15
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: resolve from a cold cache
+        env:
+          ODR_XCFRAMEWORK: OdrCoreObjC.xcframework
+        run: |
+          rm -rf ~/Library/Caches/org.swift.swiftpm
+          swift package dump-package > /dev/null
+          echo "manifest evaluates; submodules: $(git config --file .gitmodules --get-regexp path | wc -l)"
+
+  # Builds the artifact, then writes its checksum into `Package.swift` and tags.
+  # One step, and nothing lies about itself: the framework reports the tag it
+  # was built for, and the tag carries the checksum of the artifact that exists.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [xcframework, test, resolve]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          token: ${{ secrets.PAT_ANDIWAND }}
+
+      - name: download xcframework
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: OdrCoreObjC.xcframework
+
+      - name: point Package.swift at this release
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          CHECKSUM=$(cat checksum.txt | tr -d '[:space:]')
+          python3 - <<'PY'
+          import os, re, pathlib
+          version, checksum = os.environ["VERSION"], os.environ["CHECKSUM"]
+          path = pathlib.Path("Package.swift")
+          text = path.read_text()
+          text = re.sub(r"download/v[^/]+/OdrCoreObjC", f"download/v{version}/OdrCoreObjC", text)
+          text = re.sub(r'checksum: "[0-9a-f]{64}"', f'checksum: "{checksum}"', text)
+          path.write_text(text)
+          PY
+          git diff --stat
+
+      - name: tag and release
+        env:
+          GH_TOKEN: ${{ secrets.PAT_ANDIWAND }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -am "chore(apple): OdrCoreObjC.xcframework for v${VERSION}"
+          git push
+          gh release create "v${VERSION}" --target "$(git rev-parse HEAD)" \
+            --title "v${VERSION}" --generate-notes \
+            OdrCoreObjC.xcframework.zip
+
+  # A release cut without the job above would leave the tag pointing at a
+  # `Package.swift` whose URL and checksum belong to the previous version, and
+  # SwiftPM would happily serve that stale binary. Make it loud.
+  verify:
+    if: github.event_name == 'release'
+    runs-on: macos-15
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: the tag, the url and the checksum must agree
+        run: |
+          URL=$(grep -o 'https://[^"]*OdrCoreObjC.xcframework.zip' Package.swift)
+          DECLARED=$(grep -o 'checksum: "[0-9a-f]\{64\}"' Package.swift | cut -d'"' -f2)
+          case "$URL" in
+            */download/${GITHUB_REF_NAME}/*) ;;
+            *) echo "Package.swift points at $URL, but the tag is ${GITHUB_REF_NAME}" >&2; exit 1 ;;
+          esac
+          curl -fsSL "$URL" -o artifact.zip
+          ACTUAL=$(swift package compute-checksum artifact.zip)
+          if [ "$ACTUAL" != "$DECLARED" ]; then
+            echo "checksum mismatch: declared $DECLARED, asset is $ACTUAL" >&2
+            exit 1
+          fi
+          echo "tag, url and checksum agree"

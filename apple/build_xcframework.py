@@ -5,6 +5,9 @@ assembled into the artifact `Package.swift` points at.
     apple/build_xcframework.py slice --profile apple-ios-armv8
     apple/build_xcframework.py assemble
 
+Set `ODR_GIT_HEAD=v6.2.0` to build a release: the binary then reports the tag
+instead of the commit it happened to be built from.
+
 The sibling of `android/build_native.py`, and the same shape: each conan profile
 gets its own conan install and cmake build under `apple/build/<profile>`, and
 `assemble` merges the results.
@@ -84,9 +87,17 @@ def build(profile: str, conan: str, build_profile: str) -> None:
          "--output-folder", build_dir,
          "--build", "missing"])
 
+    # A release identifies itself by its tag rather than by the commit it was
+    # built from. That is what stops `Package.swift`'s checksum chasing its own
+    # tail: writing the checksum makes a new commit, and a binary that embeds
+    # the working-tree sha would change with it.
+    release = os.environ.get("ODR_GIT_HEAD")
+    version = [f"-DGIT_HEAD_SHA1={release}", "-DGIT_IS_DIRTY=false"] if release else []
+
     run(["cmake", "-B", cmake_dir, "-S", REPO_ROOT,
          "-DCMAKE_TOOLCHAIN_FILE=" + str(build_dir / "conan_toolchain.cmake"),
          "-DCMAKE_BUILD_TYPE=Release",
+         *version,
          # one self-contained dylib: odrcore and every dependency are linked
          # into the framework rather than shipped alongside it
          "-DBUILD_SHARED_LIBS=OFF",
