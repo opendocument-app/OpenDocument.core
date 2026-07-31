@@ -46,6 +46,7 @@ endif ()
 
 set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/OdrCoreObjC.h"
+        "include/OdrCoreObjC/ODRDocumentElement.h"
         "include/OdrCoreObjC/ODRError.h"
         "include/OdrCoreObjC/ODRGlobalParams.h"
         "include/OdrCoreObjC/ODRDocument.h"
@@ -71,6 +72,7 @@ add_library(odr_apple SHARED
         "src/OdrCoreBootstrap.mm"
         "src/ODRGlobalParams.mm"
         "src/ODRDocument.mm"
+        "src/ODRDocumentElement.mm"
         "src/ODRFile.mm"
         "src/ODRFilesystem.mm"
         "src/ODRHtml.mm"

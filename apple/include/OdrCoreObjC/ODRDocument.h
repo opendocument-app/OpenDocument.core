@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 
+#import <OdrCoreObjC/ODRDocumentElement.h>
 #import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRFilesystem.h>
 
@@ -31,11 +32,9 @@ NS_SWIFT_NAME(Document)
 - (nullable ODRFilesystem *)filesystemWithError:(NSError **)error
     NS_SWIFT_NAME(filesystem());
 
-// `rootElement` lands with ODRDocumentElement.h. It is deliberately absent
-// rather than declared against a forward declaration: Swift cannot import a
-// method whose return type is an incomplete ObjC class, so such a method is
-// invisible to the callers who need it most while still looking bound from
-// ObjC.
+/// The root of the element tree. Elements keep this document alive.
+- (nullable ODRElement *)rootElementWithError:(NSError **)error
+    NS_SWIFT_NAME(rootElement());
 
 @end
 

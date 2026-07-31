@@ -63,6 +63,12 @@ using odr::apple::to_string;
   });
 }
 
+- (nullable ODRElement *)rootElementWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRElement * {
+    return [ODRElement elementWithHandle:_handle->root_element() owner:self];
+  });
+}
+
 - (nullable ODRFilesystem *)filesystemWithError:(NSError **)error {
   return guarded(error, [&]() -> ODRFilesystem * {
     return [ODRFilesystem filesystemWithHandle:_handle->as_filesystem()];

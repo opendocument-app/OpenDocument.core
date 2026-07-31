@@ -1,6 +1,7 @@
 #pragma once
 
 #import <OdrCoreObjC/ODRDocument.h>
+#import <OdrCoreObjC/ODRDocumentElement.h>
 #import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRFilesystem.h>
 #import <OdrCoreObjC/ODRHtml.h>
@@ -9,6 +10,7 @@
 
 #include <odr/archive.hpp>
 #include <odr/document.hpp>
+#include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
@@ -72,6 +74,17 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ODRArchive (Private)
 + (instancetype)archiveWithHandle:(odr::Archive)handle;
 - (const odr::Archive &)handle;
+@end
+
+@interface ODRElement (Private)
+/// `nil` for an element that does not exist, so a caller never holds a handle
+/// to nothing. `owner` is what keeps the document alive behind the bare
+/// adapter pointer inside `odr::Element`.
++ (nullable ODRElement *)elementWithHandle:(odr::Element)handle owner:(id)owner;
+- (const odr::Element &)handle;
+- (id)owner;
+/// Wraps a navigation result, carrying this element's owner along.
+- (nullable ODRElement *)derive:(odr::Element)handle;
 @end
 
 @interface ODRMeasure (Private)
