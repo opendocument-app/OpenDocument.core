@@ -2,7 +2,7 @@
 
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
 
-echo "Running clang-format on all .hpp and .cpp files in the project"
+echo "Running clang-format on all .hpp/.cpp and .h/.mm files in the project"
 echo "Using clang-format: ${CLANG_FORMAT}"
 
 ${CLANG_FORMAT} --version
@@ -14,7 +14,7 @@ function format_file() {
 function format_folder() {
   export -f format_file
   export CLANG_FORMAT
-  find $1 -type f \( -iname \*.hpp -o -iname \*.cpp \) -exec bash -c 'format_file "${1}"' -- {} \;
+  find $1 -type f \( -iname \*.hpp -o -iname \*.cpp -o -iname \*.h -o -iname \*.mm \) -exec bash -c 'format_file "${1}"' -- {} \;
 }
 
 format_folder src
@@ -22,3 +22,5 @@ format_folder cli
 format_folder test/src
 format_folder python/src
 format_folder jni/src
+format_folder apple/src
+format_folder apple/include

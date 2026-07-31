@@ -123,4 +123,14 @@ StatementMacros:
   - QT_REQUIRE_VERSION
 TabWidth:        8
 UseTab:          Never
+---
+# The bindings in `apple/` are Objective-C++. clang-format refuses to touch an
+# Objective-C file unless the configuration declares a section for it, and both
+# `scripts/format` and the pre-commit hook now reach `.h`/`.mm` files that are.
+#
+# `BasedOnStyle: LLVM` rather than a copy of the section above: that section is
+# a dump from an older clang-format, so this inherits the same style without
+# the drift.
+Language:        ObjC
+BasedOnStyle:    LLVM
 ...
