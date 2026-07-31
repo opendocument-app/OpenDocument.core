@@ -488,8 +488,8 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
         env, get_object("spreadsheetViewportMode",
                         "Lapp/opendocument/core/HtmlViewportMode;"));
     result.spreadsheet_viewport_mode =
-        code < 0 ? std::optional<odr::HtmlViewportMode>()
-                 : static_cast<odr::HtmlViewportMode>(code);
+        code < 0 ? std::nullopt
+                 : std::make_optional(static_cast<odr::HtmlViewportMode>(code));
   }
   result.viewport_content = get_string_opt("viewportContent");
   result.format_html = get_boolean("formatHtml");
