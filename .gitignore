@@ -51,6 +51,9 @@ CMakeUserPresets.json
 .vscode/.env
 
 offline/
+## Test inputs and reference output (fetched by cmake/test_data.cmake)
+test/data/input/odr-*/
+test/data/reference-output/odr-*/
 ## PDF CJK CMap input data (fetched by tools/pdf/generate_cid_data.py)
 tools/pdf/cmap-resources/
 ## Adobe Glyph List (fetched by tools/pdf/generate_encoding_data.py)
