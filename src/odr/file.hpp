@@ -90,11 +90,12 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/OpenType
   opentype_font,
 
-  // Detection only, like `word_perfect` above: the media formats a viewer is
-  // regularly handed alongside documents. Naming them is the point - a caller
-  // that knows a file is a video hands it to a player instead of asking us to
-  // translate it, and without a name the text fallback would call it plain
-  // text. New entries go at the end: the bindings mirror this enum by ordinal.
+  // The media formats a viewer is regularly handed alongside documents.
+  // Nothing here is decoded - opening one wraps its bytes, and translating it
+  // puts those bytes in an `<img>` or in a player and lets the browser do the
+  // work. Naming them is what makes that possible; without a name the text
+  // fallback would call a video plain text.
+  // New entries go at the end: the bindings mirror this enum by ordinal.
   // https://en.wikipedia.org/wiki/WebP
   webp,
   // https://en.wikipedia.org/wiki/TIFF

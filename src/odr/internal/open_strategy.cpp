@@ -9,6 +9,7 @@
 #include <odr/internal/cfb/cfb_file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/image_file.hpp>
+#include <odr/internal/common/media_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/font/font_file.hpp>
 #include <odr/internal/json/json_file.hpp>
@@ -112,18 +113,6 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     throw NoPdfFile();
   }
 
-  if (as == FileType::portable_network_graphics ||
-      as == FileType::graphics_interchange_format || as == FileType::jpeg ||
-      as == FileType::bitmap_image_file) {
-    ODR_VERBOSE(logger, "open as image");
-    try {
-      return std::make_unique<ImageFile>(file, as);
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as image");
-    }
-    throw NoImageFile();
-  }
-
   if (as == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
     try {
@@ -132,6 +121,19 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       ODR_VERBOSE(logger, "failed to open as svm");
     }
     throw NoSvmFile();
+  }
+
+  // Everything below has no decoder: the bytes go to the browser as they are,
+  // so the category is all that has to be right. Every image but the starview
+  // metafile above lands here, and so does all audio and video.
+  const FileCategory category = file_category_by_file_type(as);
+  if (category == FileCategory::image) {
+    ODR_VERBOSE(logger, "open as image");
+    return std::make_unique<ImageFile>(file, as);
+  }
+  if (category == FileCategory::audio || category == FileCategory::video) {
+    ODR_VERBOSE(logger, "open as media");
+    return std::make_unique<MediaFile>(file, as);
   }
 
   if (as == FileType::truetype_font || as == FileType::opentype_font) {
@@ -348,15 +350,21 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "open as pdf");
     return std::make_unique<pdf::PdfFile>(file);
   }
-  if (file_type == FileType::portable_network_graphics ||
-      file_type == FileType::graphics_interchange_format ||
-      file_type == FileType::jpeg || file_type == FileType::bitmap_image_file) {
-    ODR_VERBOSE(logger, "open as image");
-    return std::make_unique<ImageFile>(file, file_type);
-  }
   if (file_type == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(file);
+  }
+  // see `open_file_as` — no decoder, so the category is all that has to be
+  // right
+  const FileCategory file_category = file_category_by_file_type(file_type);
+  if (file_category == FileCategory::image) {
+    ODR_VERBOSE(logger, "open as image");
+    return std::make_unique<ImageFile>(file, file_type);
+  }
+  if (file_category == FileCategory::audio ||
+      file_category == FileCategory::video) {
+    ODR_VERBOSE(logger, "open as media");
+    return std::make_unique<MediaFile>(file, file_type);
   }
   if (file_type == FileType::truetype_font ||
       file_type == FileType::opentype_font) {

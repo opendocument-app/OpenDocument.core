@@ -37,6 +37,7 @@ add_executable(odr_test
         "src/table_position_test.cpp"
 
         "src/internal/html/common_test.cpp"
+        "src/internal/html/media_file_test.cpp"
 
         "src/internal/magic_test.cpp"
 
