@@ -132,7 +132,16 @@ appears. That is the whole procedure — `.github/workflows/release.yml` and
   otherwise is SwiftPM: it resolves `Package.swift` at the tag, and a binary
   target there names a URL and a sha256 of an archive that does not exist until
   it is built.
-- `release.py` is runnable by hand and `--dry-run` mutates nothing.
+- **Publishing fans out, and `release-status.yml` is what makes a partial
+  release loud.** Each destination keeps its own workflow, credentials and
+  failure modes so one can be re-run without the others; `scripts/release_status.py`
+  waits for all of them and writes the outcome into the release body, failing if
+  a destination failed *or never started*. Its `EXPECTED` table is the only
+  complete list of where a release goes — add a line when a destination is
+  added. Release *assets* are not part of that: `release.yml` attaches
+  everything the run produced to the draft before it is published.
+- `release.py` and `release_status.py` are runnable by hand and `--dry-run`
+  mutates nothing.
 
 ## Conventions
 

@@ -1,0 +1,58 @@
+name: release-status
+
+# Publishing a release fans out to one workflow per destination — conan, maven,
+# android, pypi — and nothing has ever told you whether that worked. This waits
+# for them and writes the outcome back onto the release, so the release page is
+# the one place to look, and goes red if any destination failed or never
+# started. `scripts/release_status.py` holds the list of destinations.
+#
+# It does not gate anything, deliberately. Each publish keeps its own
+# credentials, its own runners and its own failure modes, and stays re-runnable
+# on its own — Maven Central is immutable once released, so an all-or-nothing
+# release across four registries was never on the table. Loud beats atomic here.
+#
+# Release *assets* are not part of this: `release.yml` uploads everything the
+# run produced onto the draft before it is ever published.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: release tag to report on (e.g. v6.2.0)
+        required: true
+
+# Re-reporting an older release while the newest one is still fanning out is
+# fine; they touch different releases.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to write the outcome into the release body
+  actions: read # to see how the sibling runs ended
+
+jobs:
+  status:
+    runs-on: ubuntu-24.04
+    # The slowest destination sets this: android builds every ABI and runs an
+    # emulator, python builds wheels for every platform. The script's own
+    # timeout is shorter, so it reports what it has rather than being killed
+    # mid-write.
+    timeout-minutes: 120
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+
+      - name: watch the fan-out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/release_status.py \
+            --tag "${{ inputs.tag || github.event.release.tag_name }}" \
+            --self-run-id "${{ github.run_id }}"
