@@ -132,18 +132,19 @@ set_property(TARGET odr_apple APPEND PROPERTY LINK_DEPENDS "${ODR_APPLE_EXPORTS}
 if (CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|watchOS|visionOS)$")
     set(ODR_APPLE_CONTENT "$<TARGET_BUNDLE_DIR:odr_apple>")
     set(ODR_APPLE_RESOURCE_DIR "${ODR_APPLE_CONTENT}")
-    set(ODR_APPLE_STALE_RESOURCES "${ODR_APPLE_CONTENT}/Resources")
+    # a `Resources/` left by a build made before the layout was fixed is enough
+    # on its own to make the bundle unloadable
+    add_custom_command(TARGET odr_apple POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ODR_APPLE_CONTENT}/Resources"
+            VERBATIM
+    )
 else ()
     set(ODR_APPLE_CONTENT
             "$<TARGET_BUNDLE_DIR:odr_apple>/Versions/${ODR_APPLE_FRAMEWORK_VERSION}")
     set(ODR_APPLE_RESOURCE_DIR "${ODR_APPLE_CONTENT}/Resources")
-    set(ODR_APPLE_STALE_RESOURCES "")
 endif ()
 
 add_custom_command(TARGET odr_apple POST_BUILD
-        # a `Resources/` left by a build made before the layout was fixed is
-        # enough on its own to make the bundle unloadable
-        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ODR_APPLE_STALE_RESOURCES}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ODR_APPLE_CONTENT}/Headers" "${ODR_APPLE_CONTENT}/Modules"
         "${ODR_APPLE_RESOURCE_DIR}"
