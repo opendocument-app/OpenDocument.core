@@ -212,6 +212,17 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertFalse(Array(root.descendants).isEmpty)
   }
 
+  /// The receiver comes first, and nothing is walked until it is asked for —
+  /// `subtree` reading as an `Array` means it built the whole document to hand
+  /// out the root.
+  func testSubtreeLeadsWithTheReceiver() throws {
+    let root = try XCTUnwrap(try document().rootElement())
+    let subtree = Array(root.subtree)
+    XCTAssertEqual(subtree.count, Array(root.descendants).count + 1)
+    XCTAssertTrue(subtree.first is TextRoot)
+    XCTAssertFalse(root.subtree is [Element], "subtree is not lazy")
+  }
+
   func testTypedNavigationReturnsTypedElements() throws {
     let root = try XCTUnwrap(try document().rootElement())
     XCTAssertTrue(root is TextRoot, "root of an odt is a TextRoot, got \(type(of: root))")

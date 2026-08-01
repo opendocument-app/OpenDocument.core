@@ -6,12 +6,12 @@ extension Element {
   /// Lazily produced — walking a large document to find the first match should
   /// not materialise the whole tree.
   public var descendants: some Sequence<Element> {
-    DescendantSequence(root: self)
+    DepthFirstSequence(children)
   }
 
   /// The receiver and every descendant, depth first.
   public var subtree: some Sequence<Element> {
-    [self].lazy.map { $0 } + descendants
+    DepthFirstSequence([self])
   }
 
   /// Every descendant of the given type, depth first.
@@ -34,11 +34,12 @@ extension Element {
 
 /// Depth first, iterative rather than recursive: a deeply nested document
 /// should not be able to overflow the stack of whoever iterates it.
-private struct DescendantSequence: Sequence, IteratorProtocol {
+private struct DepthFirstSequence: Sequence, IteratorProtocol {
   private var stack: [Element]
 
-  init(root: Element) {
-    stack = root.children.reversed()
+  /// `pending` in document order — the stack pops from the back.
+  init(_ pending: [Element]) {
+    stack = pending.reversed()
   }
 
   mutating func next() -> Element? {
