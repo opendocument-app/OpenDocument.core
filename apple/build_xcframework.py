@@ -185,12 +185,23 @@ def assert_contents(framework: Path) -> None:
             raise SystemExit(f"{plist} has an empty {key}")
 
 
-def assemble(output: Path) -> None:
+def assemble(output: Path, only: list[str] | None = None) -> None:
+    """Merges the built slices into the xcframework.
+
+    `only` narrows it to a subset, which is for a consumer that builds this
+    itself and needs one platform — a release always ships all of them.
+    """
+    unknown = set(only or []) - set(SLICES)
+    if unknown:
+        raise SystemExit(f"no such slice: {', '.join(sorted(unknown))}")
+
     staging = APPLE_ROOT / "build" / "slices"
     shutil.rmtree(staging, ignore_errors=True)
 
     arguments: list[str] = []
     for name, slice in SLICES.items():
+        if only and name not in only:
+            continue
         profiles = slice["profiles"]
         sources = [framework_dir(APPLE_ROOT / "build" / p) for p in profiles]
         for source in sources:
@@ -248,6 +259,9 @@ def main() -> int:
         "assemble", help="merge the built slices into an xcframework")
     assemble_parser.add_argument(
         "--output", type=Path, default=REPO_ROOT / f"{FRAMEWORK}.xcframework")
+    assemble_parser.add_argument(
+        "--slice", action="append", dest="slices", choices=list(SLICES),
+        help="only this slice; repeatable, defaults to all of them")
 
     args = parser.parse_args()
 
@@ -258,7 +272,7 @@ def main() -> int:
         for profile in args.profiles or PROFILES:
             build(profile, args.conan, args.build_profile)
     else:
-        assemble(args.output.resolve())
+        assemble(args.output.resolve(), args.slices)
     return 0
 
 
