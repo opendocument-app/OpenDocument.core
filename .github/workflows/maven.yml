@@ -2,9 +2,7 @@ name: maven
 
 on:
   push:
-    # `releases` and the maintenance lines are `release.yml`'s alone: a merge
-    # from main carries commits that were already green here, and the release
-    # run is the one run those branches should cost.
+    # release branches are `release.yml`'s alone
     branches-ignore:
       - 'releases'
       - 'release/**'

@@ -100,58 +100,34 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 
 ## Releasing
 
-Merge main into `releases`, push, publish the draft that appears. That is the
-whole procedure — `.github/workflows/release.yml` and `scripts/release.py`.
+Merge main into `releases`, push, publish the draft that appears —
+`.github/workflows/release.yml` and `scripts/release.py`.
 
-- **`releases` is the mainline train.** It only moves forward, and its
-  first-parent history *is* the release history — the one thing main
-  deliberately cannot tell you. Merging into it is what cutting a release means.
-- **A maintenance line branches off the tag, not off `releases`.**
-  `git branch release/v6.1.X v6.1.0`, cherry-pick, push. Off the tag, because
-  the version is derived against the nearest *reachable* one, and branching off
-  `releases` would derive against whatever shipped last.
-- **`main` carries no version.** No file is bumped, no changelog is committed,
-  and `git log main` never mentions a release. All a build records about itself
-  is `GIT_HEAD_SHA1` plus a dirty flag, and that is deliberate: the version of a
-  release is derived from its commits and the tag is where it lives.
-- **The version comes from the commit subjects** — `git cliff --bumped-version`
-  over the conventional commits since the last *reachable* tag, so `feat!` is a
-  major, `feat` a minor and the rest a patch. Writing them properly is therefore
-  load-bearing, not cosmetic.
-- **Maintenance releases fall out of reachability.** On `release/v6.1.X` the
-  last reachable tag is `v6.1.0`, so a cherry-picked `fix:` becomes `v6.1.1`
-  no matter how far `releases` has moved on. The same mechanism is the trap: a
-  `feat:` there bumps the *minor*, which the mainline may already have shipped —
-  a maintenance line usually wants `fix:` only, and `release.py version` refuses
-  to derive a version that is already tagged rather than colliding at publish
-  time. Pass `--version` when you mean it.
-- **Release branches run `release.yml` and nothing else** — every other workflow
-  carries `branches-ignore: ['releases', 'release/**']`. A merge from main
-  brings commits that were already green; a backport that did not come that way
-  is worth pushing to an ordinary branch first.
-- **The release is drafted, and a human publishes it.** GitHub does not create
-  the tag until then, which is what lets the tag point at a commit made during
-  the run. It also has to be a human: a release created by `GITHUB_TOKEN` raises
-  no `release: published`, and that event is what starts conan (`conan.yml`),
-  maven and android.
-- **Anything a release must record about itself is written in `release.yml`, in
-  one place, and committed by `release.py stamp` as `chore(release): vX.Y.Z`.**
-  Nothing else in the repo writes a version anywhere. If a run writes nothing
-  there is no commit at all and the tag lands on the merge from main — the
-  shape a release should have when nothing forces otherwise. What forces
-  otherwise is SwiftPM: it resolves `Package.swift` at the tag, and a binary
-  target there names a URL and a sha256 of an archive that does not exist until
-  it is built.
-- **Publishing fans out, and `release-status.yml` is what makes a partial
-  release loud.** Each destination keeps its own workflow, credentials and
-  failure modes so one can be re-run without the others; `scripts/release_status.py`
-  waits for all of them and writes the outcome into the release body, failing if
-  a destination failed *or never started*. Its `EXPECTED` table is the only
-  complete list of where a release goes — add a line when a destination is
-  added. Release *assets* are not part of that: `release.yml` attaches
-  everything the run produced to the draft before it is published.
-- `release.py` and `release_status.py` are runnable by hand and `--dry-run`
-  mutates nothing.
+- **`main` carries no version.** No file is bumped, no changelog committed; a
+  build records `GIT_HEAD_SHA1` and a dirty flag and nothing else. The version
+  is derived from the commit subjects (`git cliff --bumped-version`), so writing
+  them properly is load-bearing.
+- **`releases` is the mainline train**; its first-parent history is the release
+  history. To patch an older line, branch off the *tag* (`git branch
+  release/v6.1.X v6.1.0`) — the version is derived against the nearest
+  *reachable* tag. That is also the trap: a `feat:` there bumps the minor to a
+  number the mainline may already have shipped, so `release.py version` refuses
+  a version that is already tagged. Pass `--version` when you mean it.
+- **Release branches run `release.yml` only**; every other workflow carries
+  `branches-ignore: ['releases', 'release/**']`.
+- **The release is drafted, and a human publishes it.** GitHub creates the tag
+  only then, which is what lets it point at a commit made during the run. It
+  also has to be a human: a release created by `GITHUB_TOKEN` raises no
+  `release: published`, and that event starts conan, maven and android.
+- **`release.yml` is the only place that writes a version anywhere**, and
+  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Nothing writes one
+  today, so no commit is made. What will is SwiftPM: it resolves `Package.swift`
+  at the tag, and a binary target there names a sha256 of an archive that does
+  not exist until it is built.
+- **`release-status.yml` makes a partial release loud** — it waits for the
+  publish workflows and fails if one failed or never started. `EXPECTED` in
+  `scripts/release_status.py` is the list of destinations.
+- Both scripts are runnable by hand; `--dry-run` mutates nothing.
 
 ## Conventions
 

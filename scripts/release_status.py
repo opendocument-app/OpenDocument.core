@@ -1,22 +1,12 @@
 #!/usr/bin/env python3
 """Watches a published release fan out, and makes a partial one loud.
 
-Publishing a release starts one workflow per destination — conan, maven,
-android, pypi — each with its own credentials, its own runner needs and its own
-way of failing. That independence is deliberate: a Maven Central hiccup must
-not block a conan publish that already succeeded, and each has to be re-runnable
-on its own. What it costs is that nothing tells you the fan-out *worked*. The
-release page says published, four workflows go off somewhere, and a failure is
-found by remembering to look.
+Publishing starts one workflow per destination, each re-runnable on its own —
+and nothing tells you whether they all worked. This waits for them and writes
+the outcome onto the release between markers, exiting non-zero if one failed or
+never started. `EXPECTED` is the only complete list of where a release goes.
 
-So this waits for them and writes what happened back onto the release, between
-markers, so the release page is the one place to look. It exits non-zero if any
-destination failed — or never started, which is the failure mode that would
-otherwise be silent, since a workflow that does not run reports nothing at all.
-
-`EXPECTED` below is the only complete list of where a release goes.
-
-Read-only trial run against an old release:
+Read-only trial run:
 
     scripts/release_status.py --tag v6.1.0 --once --dry-run
 """
@@ -30,8 +20,7 @@ import subprocess
 import sys
 import time
 
-# workflow `name:` -> what publishing it means. A destination that is not in
-# here is not watched, so adding a publish workflow means adding a line.
+# workflow `name:` -> what publishing it means; not listed is not watched
 EXPECTED = {
     "conan": "conan package (`conan.yml`)",
     "maven": "`app.opendocument:odr-core-java` — Maven Central + GitHub Packages",
@@ -71,11 +60,7 @@ def release_commit(tag: str) -> str:
 
 
 def runs_for(commit: str, self_run_id: str | None) -> dict[str, dict]:
-    """The latest release-triggered run per workflow, for this commit.
-
-    Keyed by workflow name rather than by id: a re-run of `maven` after a fix
-    should replace the failed one, not sit next to it.
-    """
+    """Latest release-triggered run per workflow — a re-run replaces the failure."""
     payload = json.loads(gh(
         "api", "-X", "GET", f"repos/{repository()}/actions/runs",
         "-f", "event=release", "-f", f"head_sha={commit}", "-f", "per_page=100",
@@ -101,7 +86,6 @@ def report(tag: str, runs: dict[str, dict]) -> tuple[str, bool]:
     for name, what in EXPECTED.items():
         run = runs.get(name)
         if run is None:
-            # Never started. Nothing else would ever have said so.
             lines.append(f"- ❌ **{name}** — did not start · {what}")
             ok = False
             continue
@@ -163,9 +147,7 @@ def main() -> None:
             name for name in EXPECTED
             if name in runs and runs[name]["status"] != "completed"
         ]
-        # A destination with no run yet may simply not have been registered
-        # yet, so absence keeps us waiting rather than failing early — it only
-        # becomes a verdict once the timeout is up.
+        # absence may just mean not registered yet, so it waits rather than fails
         missing = [name for name in EXPECTED if name not in runs]
 
         if arguments.once or (not pending and not missing):

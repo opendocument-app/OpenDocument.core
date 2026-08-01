@@ -1,18 +1,9 @@
 name: release-status
 
-# Publishing a release fans out to one workflow per destination — conan, maven,
-# android, pypi — and nothing has ever told you whether that worked. This waits
-# for them and writes the outcome back onto the release, so the release page is
-# the one place to look, and goes red if any destination failed or never
-# started. `scripts/release_status.py` holds the list of destinations.
-#
-# It does not gate anything, deliberately. Each publish keeps its own
-# credentials, its own runners and its own failure modes, and stays re-runnable
-# on its own — Maven Central is immutable once released, so an all-or-nothing
-# release across four registries was never on the table. Loud beats atomic here.
-#
-# Release *assets* are not part of this: `release.yml` uploads everything the
-# run produced onto the draft before it is ever published.
+# Waits for the publish workflows a release triggers and writes the outcome onto
+# the release, going red if one failed or never started. Gates nothing: each
+# publish is re-runnable alone, and Maven Central is immutable once released, so
+# an atomic release across four registries was never available.
 on:
   release:
     types: [published]
@@ -22,8 +13,6 @@ on:
         description: release tag to report on (e.g. v6.2.0)
         required: true
 
-# Re-reporting an older release while the newest one is still fanning out is
-# fine; they touch different releases.
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
@@ -35,10 +24,8 @@ permissions:
 jobs:
   status:
     runs-on: ubuntu-24.04
-    # The slowest destination sets this: android builds every ABI and runs an
-    # emulator, python builds wheels for every platform. The script's own
-    # timeout is shorter, so it reports what it has rather than being killed
-    # mid-write.
+    # android runs an emulator, python builds every wheel; the script's own
+    # timeout is shorter so it reports rather than being killed mid-write
     timeout-minutes: 120
     steps:
       - name: checkout
