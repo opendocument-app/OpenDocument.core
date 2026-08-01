@@ -200,8 +200,8 @@ jobs:
 
   # The iOS *device* slice is only ever link checked; nothing runs it. The
   # simulator run is the analogue of android's instrumented job and the only one
-  # that sees what a device sees — that `+load` fired, that `NSBundle` found the
-  # renderer assets, that a temp directory is writable inside an app container.
+  # that sees what a device sees — that the framework loads, that rendering
+  # works unconfigured, that a temp directory is writable in an app container.
   test:
     needs: xcframework
     runs-on: macos-15

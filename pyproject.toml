@@ -61,11 +61,6 @@ ODR_PYTHON = "ON"
 ODR_CLI = "OFF"
 ODR_TEST = "OFF"
 BUILD_SHARED_LIBS = "OFF"
-# Stages the renderer's css/js so `python/CMakeLists.txt` can install them as
-# `pyodr/data`. The wheel used to carry `magic.mgc` here too (~0.4 MB deflated
-# of 8.5 MB); libmagic is gone and `mimetype` needs no database.
-ODR_BUNDLE_ASSETS = "ON"
-
 # Section must exist for setuptools-scm to pick up its pyproject config.
 [tool.setuptools_scm]
 

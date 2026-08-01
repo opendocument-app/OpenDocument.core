@@ -33,7 +33,7 @@ themselves for their target platform (see below) and provide it at runtime.
 
 On android there is a second, self-contained artifact:
 `app.opendocument:odr-core-android`, an AAR with these same classes plus the
-native library for every ABI and the runtime assets. See [`../android`](../android/README.md).
+native library for every ABI. See [`../android`](../android/README.md).
 
 ```gradle
 repositories {
@@ -72,10 +72,10 @@ standalone against an installed `odrcore` package.
 
 ## Runtime data
 
-Rendering uses shipped assets (CSS/JS). Point the library at them via
-`GlobalParams.setOdrCoreDataPath(...)` or the `ODR_CORE_DATA_PATH` environment
-variable (the tests read it; for in-tree builds it is `build/data`). Detection
-needs no runtime data of its own.
+There is none. The renderer's CSS/JS are part of the library and detection needs
+no database, so `GlobalParams.setOdrCoreDataPath(...)` and
+`setLibmagicDatabasePath(...)` are deprecated leftovers that store a path
+nothing reads.
 
 ## Notes
 

@@ -125,7 +125,6 @@ jobs:
           -DCMAKE_CXX_FLAGS="-Werror"
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
-          -DODR_BUNDLE_ASSETS=ON
           ${{ matrix.bindings && '-DODR_JNI=ON -DODR_PYTHON=ON' || '' }}
 
       - name: cmake
@@ -170,7 +169,6 @@ jobs:
             install
             build/test/odr_test
             build/test/Release/odr_test.exe
-            build/data
           if-no-files-found: error
           include-hidden-files: true
 

@@ -68,19 +68,17 @@ val buildNative =
         enabled = nativeAbis.isNotEmpty()
     }
 
-// An AAR without the native library or without its assets builds and publishes
-// happily and then fails at runtime in whatever app picked it up, so make the
-// absence a build error.
+// An AAR without the native library builds and publishes happily and then
+// fails at runtime in whatever app picked it up, so make the absence a build
+// error.
 val checkNative =
     tasks.register("checkNative") {
         dependsOn(buildNative)
-        val prebuilt = layout.projectDirectory.dir("native/prebuilt")
-        val required = listOf("jniLibs", "assets").map { prebuilt.dir(it).asFile }
+        val jniLibs = layout.projectDirectory.dir("native/prebuilt/jniLibs").asFile
         doLast {
-            val missing = required.filter { it.list().isNullOrEmpty() }
-            if (missing.isNotEmpty()) {
+            if (jniLibs.list().isNullOrEmpty()) {
                 throw GradleException(
-                    "nothing in ${missing.joinToString()} — run android/build_native.py, " +
+                    "nothing in $jniLibs — run android/build_native.py, " +
                         "or pass -Podr.abis=<abis> to have the build run it"
                 )
             }
@@ -104,10 +102,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // the instrumented apk carries the bindings and the renderer assets, and
-    // pushing that onto a cold emulator outlasts ddmlib's default timeout, which
-    // surfaces as a ShellCommandUnresponsiveException rather than as a failing
-    // test
+    // pushing the instrumented apk onto a cold emulator outlasts ddmlib's
+    // default timeout, which surfaces as a ShellCommandUnresponsiveException
+    // rather than as a failing test
     installation { timeOutInMs = 10 * 60 * 1000 }
 
     sourceSets {
@@ -116,7 +113,6 @@ android {
             // artifacts cannot drift apart
             java.srcDir("../jni/java")
             jniLibs.srcDir("native/prebuilt/jniLibs")
-            assets.srcDir("native/prebuilt/assets")
         }
         named("androidTest") {
             // the host junit suite's inputs, shared verbatim

@@ -32,10 +32,8 @@ for view in service.views {
 }
 ```
 
-Nothing needs configuring first. The framework points odrcore at the css and JS
-it carries before `main` runs — that is what the `+load` in
-`OdrCoreBootstrap.mm` is for. Override it with `GlobalParams` from
-`application(_:didFinishLaunchingWithOptions:)` if you relocated the resources.
+Nothing needs configuring first: the renderer's css and JS are part of the
+library and are written into the HTML it produces.
 
 ## Serve it into a web view
 
@@ -43,11 +41,8 @@ Rendering on demand and serving over loopback is what OpenDocument.ios does, and
 it beats writing every page to disk up front.
 
 ```swift
-let config = HtmlConfig()
-config.relativeResourcePaths = false   // odrcore rejects these in server mode
-
 let service = try HtmlTranslator.translate(
-  file: file, cachePath: cacheDirectory, config: config)
+  file: file, cachePath: cacheDirectory, config: HtmlConfig())
 
 let server = HttpServer()
 try server.connect(service, prefix: "doc")
@@ -95,13 +90,6 @@ do {
   // prompt for the password
 }
 ```
-
-## Do not enable mergeable libraries
-
-Merging relocates the framework's code into your app binary, at which point
-`Bundle(for:)` returns the app bundle and the bundled resources are no longer
-found. Embed and sign it as a normal dynamic framework, which is what SwiftPM
-does by default.
 
 ## Building it yourself
 

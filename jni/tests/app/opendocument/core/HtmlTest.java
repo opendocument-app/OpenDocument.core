@@ -3,7 +3,6 @@ package app.opendocument.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,7 +42,6 @@ class HtmlTest {
 
   @Test
   void viewportConfigRoundTrips() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
     HtmlConfig config = new HtmlConfig();
     config.viewportMode = HtmlViewportMode.FIT_WIDTH;
     config.spreadsheetViewportMode = HtmlViewportMode.ACTUAL_SIZE;
@@ -61,7 +59,6 @@ class HtmlTest {
   /** The C++ suite covers the mode matrix; this only proves the config crosses JNI. */
   @Test
   void viewportModeReachesTheHtml() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
 
     // A text document without margins is reflowing content, so `AUTOMATIC`
     // resolves to `ACTUAL_SIZE`.
@@ -85,7 +82,6 @@ class HtmlTest {
 
   @Test
   void translateText() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
     Html html = translateOffline(TestFiles.txtFile(tempDir));
     List<HtmlPage> pages = html.pages();
     assertEquals(1, pages.size());
@@ -95,7 +91,6 @@ class HtmlTest {
 
   @Test
   void translateCsv() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
     Html html = translateOffline(TestFiles.csvFile(tempDir));
     assertEquals(1, html.pages().size());
     String content = Files.readString(Path.of(html.pages().get(0).path));
@@ -104,7 +99,6 @@ class HtmlTest {
 
   @Test
   void translateDocument() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
     Html html = translateOffline(TestFiles.odtFile(tempDir));
     assertEquals(1, html.pages().size());
     String content = Files.readString(Path.of(html.pages().get(0).path));
@@ -113,7 +107,6 @@ class HtmlTest {
 
   @Test
   void htmlServiceViews() throws IOException {
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
     Path cache = Files.createDirectories(tempDir.resolve("cache"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlService service = Html.translate(file, cache.toString(), new HtmlConfig());

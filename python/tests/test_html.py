@@ -40,7 +40,7 @@ def test_html_config_viewport_defaults():
     assert config.viewport_content == "width=420"
 
 
-def test_viewport_mode_reaches_the_html(core_data_path, odt_path, tmp_path):
+def test_viewport_mode_reaches_the_html(odt_path, tmp_path):
     # The C++ suite covers the mode matrix; this only proves the config crosses
     # the binding. A text document without margins is reflowing content, so
     # `automatic` resolves to `actual_size`.
@@ -70,7 +70,7 @@ def test_viewport_mode_reaches_the_html(core_data_path, odt_path, tmp_path):
     assert '<meta name="viewport" content="width=420"/>' in render("raw", raw)
 
 
-def test_translate_text(core_data_path, txt_path, tmp_path):
+def test_translate_text(txt_path, tmp_path):
     html = translate_offline(txt_path, tmp_path)
     pages = html.pages()
     assert len(pages) == 1
@@ -78,7 +78,7 @@ def test_translate_text(core_data_path, txt_path, tmp_path):
     assert "hello text file" in content
 
 
-def test_translate_csv(core_data_path, csv_path, tmp_path):
+def test_translate_csv(csv_path, tmp_path):
     html = translate_offline(csv_path, tmp_path)
     pages = html.pages()
     assert len(pages) == 1
@@ -86,7 +86,7 @@ def test_translate_csv(core_data_path, csv_path, tmp_path):
     assert "alpha" in content
 
 
-def test_translate_document(core_data_path, odt_path, tmp_path):
+def test_translate_document(odt_path, tmp_path):
     html = translate_offline(odt_path, tmp_path)
     pages = html.pages()
     assert len(pages) == 1
@@ -94,7 +94,7 @@ def test_translate_document(core_data_path, odt_path, tmp_path):
     assert "Hello from pyodr!" in content
 
 
-def test_html_service_views(core_data_path, odt_path, tmp_path):
+def test_html_service_views(odt_path, tmp_path):
     file = pyodr.open(str(odt_path))
     cache = tmp_path / "cache"
     cache.mkdir()
@@ -108,7 +108,7 @@ def test_html_service_views(core_data_path, odt_path, tmp_path):
     assert isinstance(resources, list)
 
 
-def test_html_view_outlives_service(core_data_path, odt_path, tmp_path):
+def test_html_view_outlives_service(odt_path, tmp_path):
     file = pyodr.open(str(odt_path))
     cache = tmp_path / "cache"
     cache.mkdir()

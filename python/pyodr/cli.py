@@ -66,7 +66,6 @@ def _serve(args, file) -> int:
 
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
-    html_config.relative_resource_paths = False
 
     prefix = "file"
     views = server.serve_file(file, prefix, html_config)

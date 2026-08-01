@@ -9,9 +9,9 @@ first — the java API and its android constraints live there. User facing docs:
 
 | Path | What |
 |------|------|
-| `build.gradle.kts` | The library module: sources from `../jni/java`, prebuilt native libs and assets, lint, publishing. Single project — `rootProject.name` *is* the artifactId. |
-| `build_native.py` | conan + cmake per ABI → `native/prebuilt/{jniLibs,assets}`. Invoked by the `buildNative` gradle task and directly by CI. |
-| `src/main/java/.../android/OdrAndroid.kt` | The only android specific production code: extracts the bundled assets and registers them with `GlobalParams`. |
+| `build.gradle.kts` | The library module: sources from `../jni/java`, prebuilt native libs, lint, publishing. Single project — `rootProject.name` *is* the artifactId. |
+| `build_native.py` | conan + cmake per ABI → `native/prebuilt/jniLibs`. Invoked by the `buildNative` gradle task and directly by CI. |
+| `src/main/java/.../android/OdrAndroid.kt` | The only android specific production code, and a deprecated no-op: it used to extract the renderer's assets, which are part of the library now. |
 | `src/androidTest/` | Instrumented suite, JUnit 4 + androidx.test, inputs from `../jni/testfixtures`. |
 | `consumer-rules.pro` | Keeps `app.opendocument.core.**` — JNI resolves it by name, R8 cannot see that. |
 

@@ -109,13 +109,11 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
-      # Match the dependency set that pyproject.toml enables. `bundle_assets`
-      # is what stages the renderer's css/js so they land in `pyodr/data`.
+      # Match the dependency set that pyproject.toml enables.
       - name: conan install
         run: >
           conan install .
           -o '&:with_python=True'
-          -o '&:bundle_assets=True'
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --build missing

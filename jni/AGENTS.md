@@ -62,8 +62,8 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   returning `byte[]`/`String` via `std::ostringstream`.
 - **Not bound**: `HtmlConfig::resource_locator` (function pointer across JNI);
   the standard resource locator is always used. A `null` Java
-  `HtmlConfig.resourcePath` keeps the C++ default (the odr core data path) —
-  don't marshal it unconditionally.
+  `HtmlConfig.resourcePath` keeps the C++ default — don't marshal it
+  unconditionally.
 - New public C++ API? Extend the matching `jni_*.cpp` + Java class and add a
   JUnit test.
 - **Android API level 26 is the java floor**: OpenDocument.droid consumes this
@@ -88,9 +88,8 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   stay inline. Do not go back to building a zip here: the ODT this suite ran on
   for a while was written by `TestFiles` itself, which proved only that odrcore
   could read back what the test had written.
-  HTML-rendering tests `assumeTrue(TestFiles.hasCoreData())` (skips when
-  assets are missing). Use `127.0.0.1`, not `localhost`, for the HTTP server
-  (the JVM prefers `::1`).
+  Use `127.0.0.1`, not `localhost`, for the HTTP server (the JVM prefers
+  `::1`).
 - Build/test loop: see `jni/README.md`; CI builds the bindings in the `build`
   job of `.github/workflows/build_test.yml` (host) and in
   `.github/workflows/android.yml` (android).

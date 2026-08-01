@@ -2,16 +2,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Where odrcore looks for the files it needs at runtime.
+/// Runtime paths odrcore no longer needs.
 ///
-/// The framework points `odrCoreDataPath` at its own bundle before `main` runs,
-/// so an app that ships this framework unmodified never has to call anything
-/// here. Set it only to override that — from
-/// `application:didFinishLaunching...`, which is late enough to win.
+/// Nothing here has any effect: the renderer's css and js are part of the
+/// library, and detection needs no database. Both properties still store and
+/// return what is set, so a caller that configures them keeps working.
 NS_SWIFT_NAME(GlobalParams)
 @interface ODRGlobalParams : NSObject
 
-/// The css and js of the HTML renderer.
+/// Where the css and js of the HTML renderer used to be read from.
+///
+/// Deprecated and inert: they are written into the generated HTML now.
 @property(class, nonatomic, copy) NSString *odrCoreDataPath;
 /// The libmagic database (`magic.mgc`).
 ///
@@ -20,9 +21,10 @@ NS_SWIFT_NAME(GlobalParams)
 /// is odrcore's own now and needs no database.
 @property(class, nonatomic, copy) NSString *libmagicDatabasePath;
 
-/// Points `odrCoreDataPath` at this framework's bundle. Runs automatically at
-/// load; public because a consumer who relocated the resources — or reset the
-/// path and wants the default back — needs a way to redo it.
+/// Points `odrCoreDataPath` at this framework's bundle.
+///
+/// Deprecated and inert: the framework carries no resources any more. Kept so
+/// a caller that set the path up itself keeps compiling.
 + (void)bootstrapFromFrameworkBundle;
 
 - (instancetype)init NS_UNAVAILABLE;

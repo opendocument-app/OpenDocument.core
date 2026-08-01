@@ -1,7 +1,5 @@
 #include <odr/global_params.hpp>
 
-#include <odr/internal/project_info.hpp>
-
 namespace odr {
 
 GlobalParams &GlobalParams::instance() {
@@ -26,9 +24,8 @@ void GlobalParams::set_libmagic_database_path(const std::string &path) {
   instance().m_libmagic_database_path = path;
 }
 
-// `m_libmagic_database_path` starts empty: nothing reads it, and there is no
-// longer a database path to default it to.
-GlobalParams::GlobalParams()
-    : m_odr_core_data_path{internal::project_info::odr_data_path()} {}
+// Both paths start empty: nothing reads either of them, and there is no longer
+// anything on disk to default them to.
+GlobalParams::GlobalParams() = default;
 
 } // namespace odr

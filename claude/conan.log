@@ -1,0 +1,104 @@
+Using lockfile: '/Users/andreas/odr/OpenDocument.core/conan.lock'
+
+======== Input profiles ========
+Profile host:
+[settings]
+arch=armv8
+build_type=RelWithDebInfo
+compiler=apple-clang
+compiler.cppstd=gnu20
+compiler.libcxx=libc++
+compiler.version=17
+os=Macos
+&:build_type=RelWithDebInfo
+[conf]
+tools.build:cflags=['-fno-sanitize=all']
+tools.build:compiler_executables={'c': 'clang', 'cpp': 'clang++'}
+tools.build:cxxflags=['-fno-sanitize=all']
+
+Profile build:
+[settings]
+arch=armv8
+build_type=RelWithDebInfo
+compiler=apple-clang
+compiler.cppstd=gnu20
+compiler.libcxx=libc++
+compiler.version=17
+os=Macos
+[conf]
+tools.build:cflags=['-fno-sanitize=all']
+tools.build:compiler_executables={'c': 'clang', 'cpp': 'clang++'}
+tools.build:cxxflags=['-fno-sanitize=all']
+
+
+======== Computing dependency graph ========
+Graph root
+    conanfile.py (odrcore/): /Users/andreas/odr/OpenDocument.core/conanfile.py
+Requirements
+    argon2/20190702-odr#965901884bc82ec8a7c0a1305d42c127 - Cache
+    cpp-httplib/0.16.3#7aa89fbb81ffd19539a49fc132502966 - Cache
+    cryptopp/8.9.0#7a51e0038756b21bc3a6b82d681d5906 - Cache
+    miniz/3.0.2#bfbce07c6654293cce27ee24129d2df7 - Cache
+    nlohmann_json/3.12.0#2d634ab0ec8d9f56353e5ccef6d6612c - Cache
+    pugixml/1.15#979e88f4fafbfe3585d2c0510a071cc7 - Cache
+    uchardet/0.0.8#6ab25e452021fcdb560f4e37f4a27bc1 - Cache
+    utfcpp/4.0.9#b5eb56fe6b829b6f3eb8da167c4f41b2 - Cache
+    vincentlaucsb-csv-parser/2.3.0#ac67e368e82c9e3da4a663c35e3a1b2f - Cache
+Test requirements
+    gtest/1.14.0#f8f0757a574a8dd747d16af62d6eb1b7 - Cache
+Build requirements
+    cmake/3.31.12#173a926abc2b77f03c826b6fd6539426 - Cache
+
+======== Computing necessary packages ========
+Requirements
+    argon2/20190702-odr#965901884bc82ec8a7c0a1305d42c127:feb03f46c9959c27893b836ecdbc55b6918a717a#fc899289d08a4cfc2ab8ac2864e61633 - Cache
+    cpp-httplib/0.16.3#7aa89fbb81ffd19539a49fc132502966:da39a3ee5e6b4b0d3255bfef95601890afd80709#2a29e10d75d2fef86d43b1c06c969b48 - Cache
+    cryptopp/8.9.0#7a51e0038756b21bc3a6b82d681d5906:15b93b033c3e845d572f3f3cb280d3f16e428e55#b28f44eda1244bff463f565ff028f093 - Cache
+    miniz/3.0.2#bfbce07c6654293cce27ee24129d2df7:feb03f46c9959c27893b836ecdbc55b6918a717a#21941b0e116cc7481b9b59abf30279de - Cache
+    nlohmann_json/3.12.0#2d634ab0ec8d9f56353e5ccef6d6612c:da39a3ee5e6b4b0d3255bfef95601890afd80709#2ea4b814fc9da53f7cdf5b7d68052688 - Cache
+    pugixml/1.15#979e88f4fafbfe3585d2c0510a071cc7:c3e4b8a5de68cfbc0a8de1e72f9bd263ed74d9a9#34ea653086ef76d0718c329e7262a7fb - Cache
+    uchardet/0.0.8#6ab25e452021fcdb560f4e37f4a27bc1:3bdc9758c621240dda5fbba2b86d79f11cdc1a07#f13b5406d49c1e4db3487a2966b4d0cc - Cache
+    utfcpp/4.0.9#b5eb56fe6b829b6f3eb8da167c4f41b2:da39a3ee5e6b4b0d3255bfef95601890afd80709#880f2f857e7bb617ec8bc7d79e753955 - Cache
+    vincentlaucsb-csv-parser/2.3.0#ac67e368e82c9e3da4a663c35e3a1b2f:da39a3ee5e6b4b0d3255bfef95601890afd80709#a226abf292688ee34a770de504843a0f - Cache
+Test requirements
+    gtest/1.14.0#f8f0757a574a8dd747d16af62d6eb1b7:b939e1baecdc60c5570fbdd043b71c01845c1265#aa87d02af34457f6a87bc2a6e130e0aa - Cache
+Build requirements
+Skipped binaries
+    cmake/3.31.12
+
+======== Installing packages ========
+argon2/20190702-odr: Already installed! (1 of 10)
+cpp-httplib/0.16.3: Already installed! (2 of 10)
+gtest/1.14.0: Already installed! (3 of 10)
+miniz/3.0.2: Already installed! (4 of 10)
+nlohmann_json/3.12.0: Already installed! (5 of 10)
+pugixml/1.15: Already installed! (6 of 10)
+uchardet/0.0.8: Already installed! (7 of 10)
+utfcpp/4.0.9: Already installed! (8 of 10)
+vincentlaucsb-csv-parser/2.3.0: Already installed! (9 of 10)
+cryptopp/8.9.0: Already installed! (10 of 10)
+
+======== Finalizing install (deploy, generators) ========
+conanfile.py (odrcore/): Calling generate()
+conanfile.py (odrcore/): Generators folder: /Users/andreas/odr/OpenDocument.core/claude/build
+conanfile.py (odrcore/): CMakeToolchain generated: conan_toolchain.cmake
+conanfile.py (odrcore/): CMakeToolchain: Preset 'conan-relwithdebinfo' added to CMakePresets.json.
+    (cmake>=3.23) cmake --preset conan-relwithdebinfo
+    (cmake<3.23) cmake <path> -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=<output_folder>/conan_toolchain.cmake  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=RelWithDebInfo
+conanfile.py (odrcore/): CMakeToolchain generated: /Users/andreas/odr/OpenDocument.core/claude/build/CMakePresets.json
+conanfile.py (odrcore/): CMakeToolchain generated: /Users/andreas/odr/OpenDocument.core/CMakeUserPresets.json
+conanfile.py (odrcore/): CMakeDeps necessary find_package() and targets for your CMakeLists.txt
+    find_package(pugixml)
+    find_package(cryptopp)
+    find_package(miniz)
+    find_package(nlohmann_json)
+    find_package(vincentlaucsb-csv-parser)
+    find_package(uchardet)
+    find_package(utf8cpp)
+    find_package(httplib)
+    find_package(argon2)
+    find_package(GTest)
+    target_link_libraries(... pugixml::pugixml cryptopp::cryptopp miniz::miniz nlohmann_json::nlohmann_json vincentlaucsb-csv-parser::vincentlaucsb-csv-parser uchardet::uchardet utf8cpp::utf8cpp httplib::httplib argon2::argon2 gtest::gtest)
+conanfile.py (odrcore/): Generating aggregated env files
+conanfile.py (odrcore/): Generated aggregated env files: ['conanbuild.sh', 'conanrun.sh']
+Install finished successfully

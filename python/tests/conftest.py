@@ -1,25 +1,6 @@
-import os
 import zipfile
 
 import pytest
-
-import pyodr
-
-
-def pytest_configure(config):
-    data_path = os.environ.get("ODR_CORE_DATA_PATH")
-    if data_path:
-        pyodr.GlobalParams.set_odr_core_data_path(data_path)
-
-
-@pytest.fixture
-def core_data_path():
-    """Skip tests that render HTML when the shipped assets are unavailable."""
-    path = pyodr.GlobalParams.odr_core_data_path()
-    if not path or not os.path.isdir(path):
-        pytest.skip("odr core data path not available (set ODR_CORE_DATA_PATH)")
-    return path
-
 
 ODT_CONTENT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content

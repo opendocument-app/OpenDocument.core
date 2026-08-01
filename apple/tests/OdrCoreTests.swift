@@ -22,19 +22,7 @@ private func temporaryDirectory() throws -> String {
   return directory.path
 }
 
-final class BootstrapTests: XCTestCase {
-  /// The whole point of the dynamic framework: `+load` pointed odrcore at the
-  /// bundled resources before `main`, with nothing in this test calling it. If
-  /// this fails, every rendering test fails too, but for a reason that would be
-  /// much harder to read off.
-  func testResourcesAreWiredUpWithoutAnyoneAskingFor() {
-    let path = GlobalParams.odrCoreDataPath
-    XCTAssertFalse(path.isEmpty, "odr core data path was never set")
-    XCTAssertTrue(
-      FileManager.default.fileExists(atPath: path + "/document.css"),
-      "\(path) does not contain the renderer's css")
-  }
-
+final class LibraryTests: XCTestCase {
   func testLibraryIdentifiesItself() {
     XCTAssertFalse(Odr.identification.isEmpty)
     XCTAssertFalse(Odr.commitHash.isEmpty)
@@ -108,11 +96,8 @@ final class DecodeTests: XCTestCase {
 final class HtmlTests: XCTestCase {
   private func service() throws -> HtmlService {
     let file = try DecodedFile.decode(path: try Fixture.odt())
-    let config = HtmlConfig()
-    // odrcore rejects relative resource paths when the output is served
-    config.relativeResourcePaths = false
     return try HtmlTranslator.translate(
-      file: file, cachePath: try temporaryDirectory(), config: config)
+      file: file, cachePath: try temporaryDirectory(), config: HtmlConfig())
   }
 
   func testRendersHtml() throws {
@@ -124,9 +109,13 @@ final class HtmlTests: XCTestCase {
     XCTAssertTrue(html.contains("Landscape"), "the document text is missing")
   }
 
-  /// The default config must already point at the framework's own resources.
-  func testDefaultConfigUsesBundledResources() {
-    XCTAssertEqual(HtmlConfig().resourcePath, GlobalParams.odrCoreDataPath)
+  /// The renderer's css and js are part of the library, so a document renders
+  /// with nothing configured and carries its own styles.
+  func testRenderedHtmlCarriesItsOwnStyles() throws {
+    let view = try XCTUnwrap(try service().views.first)
+    var resources: NSArray?
+    let html = try view.writeHtml(resources: &resources)
+    XCTAssertTrue(html.contains("<style"), "the html has no stylesheet")
   }
 
   func testBringOfflineWritesFiles() throws {

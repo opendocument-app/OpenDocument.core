@@ -110,8 +110,7 @@ def build(profile: str, conan: str, build_profile: str) -> None:
          "-DODR_TEST=OFF",
          "-DODR_JNI=OFF",
          "-DODR_PYTHON=OFF",
-         "-DODR_WITH_HTTP_SERVER=ON",
-         "-DODR_BUNDLE_ASSETS=ON"])
+         "-DODR_WITH_HTTP_SERVER=ON"])
     run(["cmake", "--build", cmake_dir, "--target", "odr_apple",
          "--parallel", str(os.cpu_count() or 1)])
 
@@ -146,19 +145,18 @@ def assert_install_name(binary: Path) -> None:
 
 
 def assert_contents(framework: Path) -> None:
-    """A framework missing its headers, module map or resources builds and
-    publishes happily and then fails at the consumer, so make it a build error
-    here — the same reason `android/build.gradle.kts` has `checkNative`."""
+    """A framework missing its headers or module map builds and publishes
+    happily and then fails at the consumer, so make it a build error here — the
+    same reason `android/build.gradle.kts` has `checkNative`."""
     root = framework / "Versions" / "A"
     if not root.exists():
         root = framework
-    # Resources are flat on iOS and under `Resources/` only in the versioned
+    # `Info.plist` is flat on iOS and under `Resources/` only in the versioned
     # macOS layout — a bundle that gets that wrong does not load at all.
     resources = root / "Resources" if (root / "Resources").is_dir() else root
     required = [
         root / "Headers" / f"{FRAMEWORK}.h",
         root / "Modules" / "module.modulemap",
-        resources / "document.css",
     ]
     missing = [path for path in required if not path.exists()]
     if missing:

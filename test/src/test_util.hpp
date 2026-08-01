@@ -7,8 +7,6 @@
 
 namespace odr::test {
 
-void set_global_params();
-
 struct TestFile {
   std::string absolute_path;
   std::string short_path;

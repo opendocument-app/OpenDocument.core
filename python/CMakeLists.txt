@@ -53,28 +53,15 @@ add_custom_target(pyodr_package
         COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/pyodr" "${CMAKE_CURRENT_BINARY_DIR}/pyodr"
 )
-if (DEFINED ODR_BUILD_ODR_DATA_PATH)
-    add_custom_command(TARGET pyodr_package POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${ODR_BUILD_ODR_DATA_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/pyodr/data"
-    )
-endif ()
 add_dependencies(pyodr_core pyodr_package)
 
 install(TARGETS pyodr_core LIBRARY DESTINATION pyodr COMPONENT python)
 install(DIRECTORY pyodr/ DESTINATION pyodr COMPONENT python
         FILES_MATCHING PATTERN "*.py" PATTERN "py.typed")
-# Bundle the odr.js/css assets so the wheel is self-contained;
-# `pyodr/__init__.py` points `GlobalParams` at them.
-if (DEFINED ODR_BUILD_ODR_DATA_PATH)
-    install(DIRECTORY "${ODR_BUILD_ODR_DATA_PATH}/" DESTINATION pyodr/data
-            COMPONENT python)
-endif ()
-
 if (ODR_TEST)
     enable_testing()
     add_test(NAME pyodr_pytest
             COMMAND Python::Interpreter -m pytest "${CMAKE_CURRENT_SOURCE_DIR}/tests" -v)
     set_tests_properties(pyodr_pytest PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR};ODR_CORE_DATA_PATH=${ODR_BUILD_ODR_DATA_PATH}")
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}")
 endif ()

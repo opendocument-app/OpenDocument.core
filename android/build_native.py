@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""Build the native half of the AAR: `libodr_jni.so` per android ABI, plus the
-runtime assets, laid out the way `build.gradle.kts` expects.
+"""Build the native half of the AAR: `libodr_jni.so` per android ABI, laid out
+the way `build.gradle.kts` expects.
 
     android/build_native.py --abi x86_64 --abi armv8
 
 Each ABI gets its own conan install (`android-<arch>` host profile) and cmake
 build under `android/native/build/<arch>`, and the results are copied into
 `--output` (default `android/native/prebuilt`), which the gradle build reads as
-its jniLibs and assets source sets:
+its jniLibs source set:
 
     prebuilt/jniLibs/<abi>/libodr_jni.so     the bindings, core linked in
     prebuilt/jniLibs/<abi>/libc++_shared.so  from the NDK, see below
-    prebuilt/assets/core/odrcore/*           css/js of the html renderer
 
 `libc++_shared.so` has to be shipped because the android profiles build against
-the shared c++ runtime and nothing else in a consuming app pulls it in; the
-asset layout mirrors what OpenDocument.droid's conan deployer already produces.
+the shared c++ runtime and nothing else in a consuming app pulls it in.
 """
 
 import argparse
@@ -98,8 +96,7 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
          "-DODR_JNI=ON",
          "-DODR_CLI=OFF",
          "-DODR_TEST=OFF",
-         "-DODR_WITH_HTTP_SERVER=ON",
-         "-DODR_BUNDLE_ASSETS=ON"])
+         "-DODR_WITH_HTTP_SERVER=ON"])
     run(["cmake", "--build", cmake_dir, "--target", "odr_jni",
          "--parallel", str(os.cpu_count() or 1)])
 
@@ -110,12 +107,6 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
         target = jni_libs / source.name
         shutil.copy2(source, target)
         strip(ndk, target)
-
-    # architecture independent, so the last ABI built simply wins
-    data = cmake_dir / "data"
-    assets = output / "assets" / "core"
-    shutil.rmtree(assets, ignore_errors=True)
-    shutil.copytree(data, assets / "odrcore")
 
 
 def main() -> int:
@@ -128,7 +119,7 @@ def main() -> int:
     parser.add_argument("--build-profile", default="default",
                         help="conan build profile, i.e. the profile of this machine")
     parser.add_argument("--output", type=Path, default=ANDROID_ROOT / "native" / "prebuilt",
-                        help="where to lay out jniLibs/ and assets/")
+                        help="where to lay out jniLibs/")
     args = parser.parse_args()
 
     if not os.environ.get("ANDROID_HOME"):
