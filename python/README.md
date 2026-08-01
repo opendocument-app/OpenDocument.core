@@ -33,7 +33,7 @@ PYTHONPATH=build/python ODR_CORE_DATA_PATH=build/data python -m pytest python/te
 `pip install .` from the repository root builds a wheel via scikit-build-core
 (see the root `pyproject.toml`); run `conan install` first and point
 `CMAKE_ARGS` at the generated `conan_toolchain.cmake` so the C++ dependencies
-resolve. Wheels bundle libmagic's database, so match that option:
+resolve, and match the wheel's asset bundling:
 
 ```bash
 conan install . -o '&:with_python=True' -o '&:bundle_assets=True' --build missing
@@ -48,7 +48,7 @@ tests read it) or call `pyodr.GlobalParams.set_odr_core_data_path(...)`. Missing
 assets are not fatal — rendering then fails on the individual resource.
 
 MIME detection needs no runtime data: `mimetype` runs the open strategy, so it
-names what is *inside* a zip or a compound file. `ODR_LIBMAGIC_DATABASE_PATH`
-and `set_libmagic_database_path(...)` are read only by a core built with the
-deprecated `ODR_WITH_LIBMAGIC`, which the wheels are not, and which could only
-answer `application/zip` for an `.odt` anyway.
+names what is *inside* a zip or a compound file. `libmagic_database_path()` and
+`set_libmagic_database_path(...)` are deprecated leftovers of the libmagic
+backend that used to answer this and could only say `application/zip` for an
+`.odt`; they still store and return a path, but nothing reads it.

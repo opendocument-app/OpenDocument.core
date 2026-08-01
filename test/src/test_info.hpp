@@ -1,10 +1,11 @@
 #pragma once
 
+#include <string_view>
+
 namespace odr::test::info {
 
-const char *odr_data_path() noexcept;
-const char *libmagic_database_path() noexcept;
+std::string_view odr_data_path() noexcept;
 
-const char *odr_test_data_path() noexcept;
+std::string_view odr_test_data_path() noexcept;
 
 } // namespace odr::test::info

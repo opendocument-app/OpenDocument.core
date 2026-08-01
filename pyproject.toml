@@ -61,11 +61,9 @@ ODR_PYTHON = "ON"
 ODR_CLI = "OFF"
 ODR_TEST = "OFF"
 BUILD_SHARED_LIBS = "OFF"
-# libmagic is deprecated and stays off: `mimetype` runs the open strategy now,
-# which names what is *inside* a zip or a compound file where libmagic could
-# only answer `application/zip`. The wheel no longer carries `magic.mgc` for it
-# (~0.4 MB deflated of 8.5 MB), and `pyodr/__init__.py` finding no database is
-# the normal case rather than a problem.
+# Stages the renderer's css/js so `python/CMakeLists.txt` can install them as
+# `pyodr/data`. The wheel used to carry `magic.mgc` here too (~0.4 MB deflated
+# of 8.5 MB); libmagic is gone and `mimetype` needs no database.
 ODR_BUNDLE_ASSETS = "ON"
 
 # Section must exist for setuptools-scm to pick up its pyproject config.

@@ -35,13 +35,6 @@ final class BootstrapTests: XCTestCase {
       "\(path) does not contain the renderer's css")
   }
 
-  func testLibmagicDatabaseIsBundled() {
-    let path = GlobalParams.libmagicDatabasePath
-    XCTAssertTrue(
-      FileManager.default.fileExists(atPath: path),
-      "libmagic database missing at \(path)")
-  }
-
   func testLibraryIdentifiesItself() {
     XCTAssertFalse(Odr.identification.isEmpty)
     XCTAssertFalse(Odr.commitHash.isEmpty)

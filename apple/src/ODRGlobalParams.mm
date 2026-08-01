@@ -46,13 +46,6 @@
   if (resources != nil) {
     ODRGlobalParams.odrCoreDataPath = resources;
   }
-
-  // Only a framework built against the deprecated libmagic carries the
-  // database, so normally there is nothing to point at.
-  NSString *const magic = [bundle pathForResource:@"magic" ofType:@"mgc"];
-  if (magic != nil) {
-    ODRGlobalParams.libmagicDatabasePath = magic;
-  }
 }
 
 @end

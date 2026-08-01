@@ -19,7 +19,7 @@ FileType file_type(std::istream &in);
 FileType file_type(const abstract::File &file);
 FileType file_type(const File &file);
 
-/// Without libmagic this opens the file to tell what a container holds, so it
-/// needs a logger like the rest of the open strategy.
+/// Opens the file to tell what a container holds, so it needs a logger like the
+/// rest of the open strategy.
 std::string_view mimetype(const std::string &path, const Logger &logger);
 } // namespace odr::internal::magic

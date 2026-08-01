@@ -21,8 +21,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 1. **Detect** — `internal/magic.cpp` sniffs the head of the file;
    `internal/open_strategy.cpp` picks a `FileType` + `DecoderEngine` and builds
    the matching `abstract::DecodedFile`. `odr::mimetype` composes the two, so a
-   zip is named by what is inside it. (`internal/libmagic` is a deprecated
-   alternative to that last step, off by default.)
+   zip is named by what is inside it.
 2. **Decode** — a document file yields an `abstract::Document`.
 3. **Element tree** — a `Document` exposes a root `ElementIdentifier` plus an
    `abstract::ElementAdapter`. Public value-semantics handles (`Element`, `Slide`,
@@ -90,9 +89,9 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   when really necessary.
 - **Run the test binary from the build dir** so output stays out of the repo tree.
 - **For debugging, prefer the `translate` CLI** on a single file over the suite.
-- CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_LIBMAGIC`,
-  `ODR_PYTHON`, `ODR_JNI`, `ODR_APPLE`, `ODR_CLANG_TIDY`. A new `.cpp` must be
-  added to `ODR_SOURCE_FILES`.
+- CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_PYTHON`,
+  `ODR_JNI`, `ODR_APPLE`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
+  `ODR_SOURCE_FILES`.
 - **Test data is fetched, not vendored**, and opt in: `-DODR_TEST_FETCH_DATA=ON`
   makes `cmake/test_data.cmake` clone the repositories pinned in
   `test/data.cmake` into `test/data/` (they were submodules until then; read

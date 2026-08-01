@@ -1,13 +1,12 @@
 #pragma once
 
+#include <string_view>
+
 namespace odr::internal::project_info {
 
-const char *version() noexcept;
+std::string_view version() noexcept;
 bool is_debug() noexcept;
 
-bool has_libmagic() noexcept;
-
-const char *odr_data_path() noexcept;
-const char *libmagic_database_path() noexcept;
+std::string_view odr_data_path() noexcept;
 
 } // namespace odr::internal::project_info

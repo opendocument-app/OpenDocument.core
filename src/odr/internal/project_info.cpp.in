@@ -2,7 +2,7 @@
 
 namespace odr::internal {
 
-const char *project_info::version() noexcept {
+std::string_view project_info::version() noexcept {
   return "${CMAKE_PROJECT_VERSION}";
 }
 
@@ -14,20 +14,8 @@ bool project_info::is_debug() noexcept {
 #endif
 }
 
-bool project_info::has_libmagic() noexcept {
-#ifdef ODR_WITH_LIBMAGIC
-  return true;
-#else
-  return false;
-#endif
-}
-
-const char *project_info::odr_data_path() noexcept {
+std::string_view project_info::odr_data_path() noexcept {
   return "${ODR_INSTALL_ODR_DATA_PATH}";
-}
-
-const char *project_info::libmagic_database_path() noexcept {
-  return "${ODR_INSTALL_LIBMAGIC_DATABASE_PATH}";
 }
 
 } // namespace odr::internal

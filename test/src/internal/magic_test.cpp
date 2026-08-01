@@ -2,7 +2,6 @@
 #include <odr/logger.hpp>
 
 #include <odr/internal/magic.hpp>
-#include <odr/internal/project_info.hpp>
 
 #include <test_util.hpp>
 
@@ -14,11 +13,8 @@ using namespace odr;
 using namespace odr::internal;
 using namespace odr::test;
 
-// the mimetype comes from the open strategy, and from libmagic only in a build
-// that still asks for the deprecated option. both answers are asserted, because
-// the two agree on everything but `svm` - and because the open strategy branch
-// used to be unreachable in every job that runs the tests, and stayed broken
-// for it
+// the mimetype comes from the open strategy: the signature table names the
+// container, and opening it names what is inside
 
 TEST(magic, odt) {
   const File file(TestData::test_file_path("odr-public/odt/about.odt"));
@@ -41,15 +37,8 @@ TEST(magic, svm) {
   const File file(TestData::test_file_path("odr-public/svm/chart-1.svm"));
   EXPECT_EQ(magic::file_type(*file.impl()), FileType::starview_metafile);
 
-  // the one format the two disagree on, and the one where our own table is
-  // right
-  if (project_info::has_libmagic()) {
-    EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
-              "application/octet-stream");
-  } else {
-    EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
-              "application/x-starview-metafile");
-  }
+  EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
+            "application/x-starview-metafile");
 }
 
 TEST(magic, odf) {

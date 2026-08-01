@@ -9,8 +9,8 @@ public final class GlobalParams {
   public static native String odrCoreDataPath();
 
   /**
-   * @deprecated Read only by a native library built with the deprecated {@code
-   *     ODR_WITH_LIBMAGIC}. Detection is our own otherwise and needs no database.
+   * @deprecated Inert: libmagic is gone and nothing reads this. It still returns whatever was set,
+   *     so a caller that sets it keeps working — detection is our own now and needs no database.
    */
   @Deprecated
   public static native String libmagicDatabasePath();

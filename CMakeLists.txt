@@ -16,12 +16,11 @@ option(ODR_TEST_FETCH_DATA "Fetch the test data pinned in test/data.cmake" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_WITH_HTTP_SERVER "Build the HTTP server (requires cpp-httplib)" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
-# Deprecated, and off by default since our own detection took `mimetype` over:
-# that reads inside zip and cfb containers, which libmagic cannot, and it costs
-# neither a dependency nor the 8 MB `magic.mgc` database every consumer has to
-# ship and point us at. Kept for whoever still relies on the old answers; see
-# "Open tasks" in docs/design/README.md.
-option(ODR_WITH_LIBMAGIC "Build with libmagic (deprecated)" OFF)
+# Removed, and accepted only so a consumer still passing it keeps configuring.
+# `odr::mimetype` is our own detection now: it reads inside zip and cfb
+# containers, which libmagic cannot, and it costs neither a dependency nor the
+# 8 MB `magic.mgc` database every consumer had to ship and point us at.
+option(ODR_WITH_LIBMAGIC "Removed, does nothing (deprecated)" OFF)
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
@@ -279,30 +278,6 @@ set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
 file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
 set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
 
-# Validate an injected data-file path before it is used to bundle assets.
-#
-# These paths (LIBMAGIC_DATABASE_PATH, ...) are consumed but
-# never discovered by CMake — they must be injected from outside via `-D...=`;
-# our conanfile.py bridges them from the dependency runenv. A consumer that
-# builds odrcore without that bridge left the variable empty, and
-# `file(COPY "${empty}/" ...)` degraded to `file(COPY "/" ...)`, i.e. an attempt
-# to recursively copy the whole root filesystem (see issue #599). This guard
-# fails fast with an actionable message instead of copying "/".
-#
-#   path  value of the externally-injected path variable (may be empty)
-#   name  name of that variable, for the diagnostic
-function(odr_require_data_path path name)
-    if (NOT path)
-        message(FATAL_ERROR
-                "ODR_BUNDLE_ASSETS is ON but ${name} is not set. Provide it "
-                "explicitly (e.g. -D${name}=<path>) or build through the conan "
-                "recipe, or disable bundling with -DODR_BUNDLE_ASSETS=OFF.")
-    endif ()
-    if (NOT EXISTS "${path}")
-        message(FATAL_ERROR "${name} points to a path that does not exist: '${path}'.")
-    endif ()
-endfunction()
-
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)
     target_sources(odr
@@ -320,37 +295,9 @@ if (ODR_WITH_HTTP_SERVER)
 endif ()
 if (ODR_WITH_LIBMAGIC)
     message(DEPRECATION
-            "ODR_WITH_LIBMAGIC is deprecated and will be removed. Our own "
-            "detection answers `odr::mimetype` without it, and better for "
-            "container formats.")
-
-    find_package(libmagic REQUIRED)
-    target_sources(odr
-            PRIVATE
-            "src/odr/internal/libmagic/libmagic.cpp"
-    )
-    target_link_libraries(odr
-            PRIVATE
-            libmagic::libmagic
-    )
-    target_compile_definitions(odr
-            PRIVATE
-            ODR_WITH_LIBMAGIC
-    )
-
-    if (ODR_BUNDLE_ASSETS)
-        odr_require_data_path("${LIBMAGIC_DATABASE_PATH}" LIBMAGIC_DATABASE_PATH)
-
-        set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${ODR_BUILD_ODR_DATA_PATH}/magic.mgc")
-
-        file(COPY_FILE "${LIBMAGIC_DATABASE_PATH}" "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}")
-
-        set(ODR_INSTALL_LIBMAGIC_DATABASE_PATH "${ODR_INSTALL_ODR_DATA_PATH}/magic.mgc")
-    else ()
-        set(ODR_BUILD_LIBMAGIC_DATABASE_PATH "${LIBMAGIC_DATABASE_PATH}")
-
-        set(ODR_INSTALL_LIBMAGIC_DATABASE_PATH "${LIBMAGIC_DATABASE_PATH}")
-    endif ()
+            "ODR_WITH_LIBMAGIC no longer does anything: libmagic is gone and "
+            "`odr::mimetype` is our own detection. Drop the option; "
+            "`GlobalParams::libmagic_database_path` is inert too.")
 endif ()
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")

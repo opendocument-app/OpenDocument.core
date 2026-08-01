@@ -1,7 +1,6 @@
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
-from conan.tools.env import Environment
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -17,7 +16,8 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        # deprecated, see the option in CMakeLists.txt
+        # removed and inert, kept only so a consumer still passing it does not
+        # hard-fail on an unknown option; see CMakeLists.txt
         "with_libmagic": [True, False],
         "with_http_server": [True, False],
         "with_cli": [True, False],
@@ -56,8 +56,6 @@ class OpenDocumentCoreConan(ConanFile):
         if self.options.get_safe("with_http_server", False):
             self.requires("cpp-httplib/0.16.3")
         self.requires("argon2/20190702-odr")
-        if self.options.get_safe("with_libmagic", False):
-            self.requires("libmagic/5.45")
         if self.options.get_safe("with_python", False):
             self.requires("pybind11/2.13.6")
 
@@ -76,6 +74,8 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
+        # forwarded only so the CMake deprecation warning reaches a consumer
+        # who still sets it; neither end does anything with it
         tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
         tc.variables["ODR_CLI"] = self.options.get_safe("with_cli", True)
@@ -83,14 +83,6 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_JNI"] = self.options.get_safe("with_jni", False)
         tc.variables["ODR_APPLE"] = self.options.get_safe("with_apple", False)
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
-
-        # Get runenv info, exported by package_info() of dependencies
-        # We need to obtain MAGIC
-        runenv_info = Environment()
-        for dep in self.dependencies.host.topological_sort.values():
-            runenv_info.compose_env(dep.runenv_info)
-        envvars = runenv_info.vars(self)
-        tc.variables["LIBMAGIC_DATABASE_PATH"] = envvars.get("MAGIC")
 
         tc.generate()
 

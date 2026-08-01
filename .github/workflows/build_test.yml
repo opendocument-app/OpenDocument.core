@@ -44,10 +44,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18, bindings: true }
-          # the one job that still asks for the deprecated libmagic, so it keeps
-          # compiling and linking until it goes. everything else, `test`
-          # included, builds the default and detects on its own
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14, libmagic: true }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
           - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
           - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14, bindings: true }
           - { os: windows-2022, build_profile: windows-2022-msvc-1940, host_profile: windows-2022-msvc-1940 }
@@ -114,7 +111,6 @@ jobs:
         run: >
           conan install .
           ${{ matrix.bindings && '-o "&:with_jni=True" -o "&:with_python=True"' || '' }}
-          ${{ matrix.libmagic && '-o "&:with_libmagic=True"' || '' }}
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --build missing
@@ -130,7 +126,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=install
           -DODR_TEST=ON
           -DODR_BUNDLE_ASSETS=ON
-          ${{ matrix.libmagic && '-DODR_WITH_LIBMAGIC=ON' || '' }}
           ${{ matrix.bindings && '-DODR_JNI=ON -DODR_PYTHON=ON' || '' }}
 
       - name: cmake

@@ -6,7 +6,6 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
-#include <odr/internal/libmagic/libmagic.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -187,13 +186,7 @@ FileType magic::file_type(const File &file) {
 }
 
 std::string_view magic::mimetype(const std::string &path,
-                                 [[maybe_unused]] const Logger &logger) {
-#ifdef ODR_WITH_LIBMAGIC
-  // deprecated, and no longer what a default build does - see the option in
-  // CMakeLists.txt. it cannot see inside a zip or a compound file binary, so
-  // it answers `application/zip` where the branch below names the document
-  return libmagic::mimetype(path);
-#else
+                                 const Logger &logger) {
   // the signature table above is not enough on its own: a zip and a compound
   // file binary say nothing about which document they hold, and the answer for
   // those only comes out of opening them. that is what `list_file_types` does,
@@ -205,7 +198,6 @@ std::string_view magic::mimetype(const std::string &path,
   }
 
   return odr::mimetype_by_file_type(file_types.back());
-#endif
 }
 
 } // namespace odr::internal

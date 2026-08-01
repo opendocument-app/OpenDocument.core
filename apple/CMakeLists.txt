@@ -64,8 +64,7 @@ set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/ODRTable.h"
 )
 
-# Whatever the root build staged: the renderer data, and `magic.mgc` beside it
-# in the deprecated builds that still ask for libmagic.
+# The renderer's css/js, as the root build staged them.
 file(GLOB ODR_APPLE_RESOURCES "${ODR_BUILD_ODR_DATA_PATH}/*")
 if (NOT ODR_APPLE_RESOURCES)
     message(FATAL_ERROR "no resources in ${ODR_BUILD_ODR_DATA_PATH}")

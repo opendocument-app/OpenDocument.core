@@ -1,5 +1,5 @@
 # The framework's entire public surface is its ObjC classes, so export those
-# and nothing else. Everything linked in — cryptopp, libmagic, all of `odr::` —
+# and nothing else. Everything linked in — cryptopp, pugixml, all of `odr::` —
 # becomes private-extern, which keeps an app that links its own copy of any of
 # them from binding against ours.
 #

@@ -95,15 +95,11 @@
 
 ### Open tasks
 
-- remove libmagic. `ODR_WITH_LIBMAGIC` and the conan `with_libmagic` option are
-  deprecated and off by default: `odr::mimetype` runs the open strategy instead,
-  which names what is *inside* a zip or a compound file where libmagic could only
-  answer `application/zip`, and which gets `svm` right where libmagic does not.
-  What goes with the option: `src/odr/internal/libmagic/`, the CMake block that
-  stages `magic.mgc`, `GlobalParams::libmagic_database_path` and its java,
-  python and objc mirrors, `project_info::has_libmagic`,
-  `pyodr._init_libmagic_database_path`, and the `magic.mgc` lookups that stay
-  behind for it — the apple bootstrap, `android/build_native.py` and
-  `OdrAndroid.pointAtLibmagicDatabase`
+- drop the last inert traces of libmagic once consumers have moved off them:
+  `GlobalParams::libmagic_database_path` and its java, python and objc mirrors
+  still store and return a path nothing reads, and `ODR_WITH_LIBMAGIC` /
+  the conan `with_libmagic` option are still accepted so a build that sets one
+  keeps configuring. Removing them is the breaking change this deliberately
+  is not.
 - collect additional pdf files via the translate cli and capture the ones that break
 - exercise editing across all formats (odp editing appears broken via an HTML issue)

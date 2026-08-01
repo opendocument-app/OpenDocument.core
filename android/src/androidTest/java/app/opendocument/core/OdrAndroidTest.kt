@@ -48,7 +48,7 @@ class OdrAndroidTest {
         val odt = TestFiles.odtFile(directory)
 
         // naming the odt rather than the zip holding it means detection opened the
-        // container, which is the whole reason this no longer goes through libmagic
+        // container
         assertEquals("application/vnd.oasis.opendocument.text", Odr.mimetype(odt.toString()))
     }
 }

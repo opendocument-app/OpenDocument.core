@@ -2,14 +2,10 @@
 
 namespace odr::test {
 
-const char *info::odr_data_path() noexcept {
+std::string_view info::odr_data_path() noexcept {
   return "${ODR_BUILD_ODR_DATA_PATH}";
 }
 
-const char *info::libmagic_database_path() noexcept {
-  return "${ODR_BUILD_LIBMAGIC_DATABASE_PATH}";
-}
-
-const char *info::odr_test_data_path() noexcept { return "${ODR_TEST_DATA_DIRECTORY}"; }
+std::string_view info::odr_test_data_path() noexcept { return "${ODR_TEST_DATA_DIRECTORY}"; }
 
 } // namespace odr::test

@@ -35,9 +35,8 @@ pybind11 bindings for the public C++ API (`src/odr/*.hpp`), packaged as
   returning `bytes`/`str` via `std::ostringstream`.
 - New public C++ API? Extend the matching `bind_*.cpp` and add a pytest.
 - C++ sources follow the repo clang-format; python is formatted with `black`.
-- Tests must stay hermetic: build inputs inline in `tests/conftest.py`;
+- Tests must stay hermetic: build inputs inline in `tests/conftest.py`, and
   HTML-rendering tests take the `core_data_path` fixture (skips when assets are
-  missing), and tests needing libmagic skip on `_libmagic_database()` in
-  `tests/test_meta.py` (empty when the build has no database).
+  missing).
 - Build/test loop: see `python/README.md`; CI lives in
   `.github/workflows/python.yml`.
