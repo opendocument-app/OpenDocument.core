@@ -47,7 +47,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Builds the wheel-specific configuration that `pyproject.toml` pins
     # (static, no cli/tests, bundled assets), so it cannot share a cache with
-    # `build_test`.
+    # `build-test`.
     env:
       CACHE_FLAVOR: wheel
     strategy:

@@ -1,6 +1,6 @@
 # OpenDocument.core
 
-![build status](https://github.com/opendocument-app/OpenDocument.core/workflows/build_test/badge.svg)
+![build status](https://github.com/opendocument-app/OpenDocument.core/actions/workflows/build_test.yml/badge.svg)
 
 C++ library to visualize files, especially documents, in HTML.
 

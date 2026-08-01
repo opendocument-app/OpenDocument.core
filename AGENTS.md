@@ -122,7 +122,7 @@ appears. That is the whole procedure — `.github/workflows/release.yml` and
 - **The release is drafted, and a human publishes it.** GitHub does not create
   the tag until then, which is what lets the tag point at a commit made during
   the run. It also has to be a human: a release created by `GITHUB_TOKEN` raises
-  no `release: published`, and that event is what starts conan (`publish.yml`),
+  no `release: published`, and that event is what starts conan (`conan.yml`),
   maven and android.
 - **Anything a release must record about itself is written in `release.yml`, in
   one place, and committed by `release.py stamp` as `chore(release): vX.Y.Z`.**

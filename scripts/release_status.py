@@ -33,7 +33,7 @@ import time
 # workflow `name:` -> what publishing it means. A destination that is not in
 # here is not watched, so adding a publish workflow means adding a line.
 EXPECTED = {
-    "conan": "conan package (`publish.yml`)",
+    "conan": "conan package (`conan.yml`)",
     "maven": "`app.opendocument:odr-core-java` — Maven Central + GitHub Packages",
     "android": "`app.opendocument:odr-core-android` — Maven Central + GitHub Packages",
     "python": "`pyodr` wheels — PyPI",
