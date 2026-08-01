@@ -9,8 +9,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /**
- * Makes the library usable on android: the renderer reads its CSS/JS and the libmagic database as
- * plain files, and an APK holds them as assets, which are not files.
+ * Makes the library usable on android: the renderer reads its CSS/JS as plain files, and an APK
+ * holds them as assets, which are not files.
  *
  * Call [init] once before anything else touches the library:
  * ```
@@ -22,7 +22,9 @@ object OdrAndroid {
     /** Asset directory this AAR ships its runtime data under. */
     private const val ASSETS = "core"
 
-    /** The libmagic database alone is 8 MB, so the default 8 KB would be a lot of syscalls. */
+    /**
+     * A deprecated libmagic build adds an 8 MB database, so the default 8 KB is a lot of syscalls.
+     */
     private const val BUFFER_SIZE = 64 * 1024
 
     private var initialized = false
@@ -56,8 +58,20 @@ object OdrAndroid {
         }
 
         GlobalParams.setOdrCoreDataPath(File(root, "odrcore").absolutePath)
-        GlobalParams.setLibmagicDatabasePath(File(root, "libmagic/magic.mgc").absolutePath)
+        pointAtLibmagicDatabase(root)
         initialized = true
+    }
+
+    /**
+     * Only an AAR whose native library was built against the deprecated libmagic carries the
+     * database, and only such a library reads the path — finding nothing is the normal case.
+     */
+    @Suppress("DEPRECATION")
+    private fun pointAtLibmagicDatabase(root: File) {
+        val database = File(root, "libmagic/magic.mgc")
+        if (database.isFile) {
+            GlobalParams.setLibmagicDatabasePath(database.absolutePath)
+        }
     }
 
     /** An asset directory lists its children; an asset file lists nothing. */

@@ -109,9 +109,8 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
-      # Match the dependency set that pyproject.toml enables. libmagic stays on
-      # and `bundle_assets` bridges its database path into the build so
-      # `magic.mgc` lands in `pyodr/data`.
+      # Match the dependency set that pyproject.toml enables. `bundle_assets`
+      # is what stages the renderer's css/js so they land in `pyodr/data`.
       - name: conan install
         run: >
           conan install .

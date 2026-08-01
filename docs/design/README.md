@@ -102,7 +102,8 @@
   What goes with the option: `src/odr/internal/libmagic/`, the CMake block that
   stages `magic.mgc`, `GlobalParams::libmagic_database_path` and its java,
   python and objc mirrors, `project_info::has_libmagic`,
-  `pyodr._init_libmagic_database_path`, and the `magic.mgc` lookup in the apple
-  bootstrap
+  `pyodr._init_libmagic_database_path`, and the `magic.mgc` lookups that stay
+  behind for it — the apple bootstrap, `android/build_native.py` and
+  `OdrAndroid.pointAtLibmagicDatabase`
 - collect additional pdf files via the translate cli and capture the ones that break
 - exercise editing across all formats (odp editing appears broken via an HTML issue)

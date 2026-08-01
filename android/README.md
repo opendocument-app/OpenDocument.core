@@ -9,7 +9,6 @@ odr-core-android.aar
 ├── jni/<abi>/libodr_jni.so            the bindings with the core linked in
 ├── jni/<abi>/libc++_shared.so         the c++ runtime they were built against
 ├── assets/core/odrcore/*              css/js of the html renderer
-├── assets/core/libmagic/magic.mgc     libmagic database
 └── proguard.txt                       keeps the classes JNI resolves by name
 ```
 

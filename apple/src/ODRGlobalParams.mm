@@ -47,8 +47,8 @@
     ODRGlobalParams.odrCoreDataPath = resources;
   }
 
-  // Only the path is recorded here; `magic_load` stays lazy, so the 8 MB
-  // database is not read until something asks for a mimetype.
+  // Only a framework built against the deprecated libmagic carries the
+  // database, so normally there is nothing to point at.
   NSString *const magic = [bundle pathForResource:@"magic" ofType:@"mgc"];
   if (magic != nil) {
     ODRGlobalParams.libmagicDatabasePath = magic;

@@ -12,7 +12,7 @@ its jniLibs and assets source sets:
     prebuilt/jniLibs/<abi>/libodr_jni.so     the bindings, core linked in
     prebuilt/jniLibs/<abi>/libc++_shared.so  from the NDK, see below
     prebuilt/assets/core/odrcore/*           css/js of the html renderer
-    prebuilt/assets/core/libmagic/magic.mgc  libmagic database
+    prebuilt/assets/core/libmagic/magic.mgc  only in a deprecated libmagic build
 
 `libc++_shared.so` has to be shipped because the android profiles build against
 the shared c++ runtime and nothing else in a consuming app pulls it in; the
@@ -117,8 +117,12 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
     assets = output / "assets" / "core"
     shutil.rmtree(assets, ignore_errors=True)
     shutil.copytree(data, assets / "odrcore", ignore=shutil.ignore_patterns("magic.mgc"))
-    (assets / "libmagic").mkdir(parents=True, exist_ok=True)
-    shutil.copy2(data / "magic.mgc", assets / "libmagic" / "magic.mgc")
+    # only staged by a build that still asks for the deprecated libmagic, which
+    # this one does not; kept so such a build still packages the same way
+    magic = data / "magic.mgc"
+    if magic.is_file():
+        (assets / "libmagic").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(magic, assets / "libmagic" / "magic.mgc")
 
 
 def main() -> int:

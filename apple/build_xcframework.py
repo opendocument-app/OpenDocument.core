@@ -158,7 +158,6 @@ def assert_contents(framework: Path) -> None:
     required = [
         root / "Headers" / f"{FRAMEWORK}.h",
         root / "Modules" / "module.modulemap",
-        resources / "magic.mgc",
         resources / "document.css",
     ]
     missing = [path for path in required if not path.exists()]

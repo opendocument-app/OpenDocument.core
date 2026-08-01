@@ -66,6 +66,6 @@ calls it.
   finds the incompatibilities first.
 - The manifest stays permission-free; permissions the server needs are the
   app's call, and documented in `README.md` instead.
-- Assets keep the `core/odrcore` + `core/libmagic` layout of the droid conan
-  deployer, so an app can move between the two packagings without touching its
-  extraction code.
+- Assets keep the `core/odrcore` (+ `core/libmagic`, in a deprecated libmagic
+  build) layout of the droid conan deployer, so an app can move between the two
+  packagings without touching its extraction code.

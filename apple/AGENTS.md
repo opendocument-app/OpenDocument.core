@@ -34,17 +34,17 @@ it — a simulator binary mistagged `IOS` is the classic
 | `macos-arm64_x86_64` | `apple-macos-armv8` + `apple-macos-x86_64` |
 
 `assemble` also fails the build if a framework is missing its headers, module
-map, `magic.mgc` or the plist's platform keys — the analogue of
+map, renderer resources or the plist's platform keys — the analogue of
 `android/build.gradle.kts`'s `checkNative`, and for the same reason: those all
 publish happily and then fail at the consumer.
 
 ## Why a dynamic framework
 
-`+load` in `src/OdrCoreBootstrap.mm` is what points odrcore at the css/js and
-`magic.mgc` in this bundle, so an app never has to. In a **static** framework
-nothing references that translation unit, the linker drops it, and the
-bootstrap never runs — and a SwiftPM binary target gives the consumer no way to
-pass `-ObjC`/`-force_load` to get it back. Two lesser reasons: `.binaryTarget`
+`+load` in `src/OdrCoreBootstrap.mm` is what points odrcore at the css/js in
+this bundle, so an app never has to. In a **static** framework nothing
+references that translation unit, the linker drops it, and the bootstrap never
+runs — and a SwiftPM binary target gives the consumer no way to pass
+`-ObjC`/`-force_load` to get it back. Two lesser reasons: `.binaryTarget`
 has no `resources:`, so the assets have to live in the bundle; and an undefined
 symbol becomes a link error here instead of a crash at the consumer.
 
@@ -130,8 +130,8 @@ which would leave the tag serving the previous version's binary.
 The iOS *device* slice is only ever link-checked — nothing runs it. The
 simulator suite is the analogue of android's instrumented job and the only
 place that sees what a device sees: that `+load` fired, that `NSBundle` found
-`magic.mgc`, that `temp_directory_path()` is writable inside an app container.
-A new binding is only covered once something in `tests/` calls it.
+the renderer assets, that `temp_directory_path()` is writable inside an app
+container. A new binding is only covered once something in `tests/` calls it.
 
 `tests/Fixtures/mixed-layout.odt` is 9 KB of `odt/` from OpenDocument.test,
 carried here because `test/data/` is fetched by `cmake/test_data.cmake` and a
