@@ -293,16 +293,19 @@ constexpr const char *text_js = R"js(
     }
   };
 
+  // Lines are the element children: formatted output puts a whitespace text
+  // node between them, and counting or indexing those as lines is off by as
+  // much as a factor of two.
   TextEditor.prototype.getPosition = function (container, offset) {
     var line = container.nodeName === "DIV" ? container : container.parentNode;
     return {
-      line: Array.prototype.indexOf.call(this.textBody.childNodes, line),
+      line: Array.prototype.indexOf.call(this.textBody.children, line),
       offset: offset,
     };
   };
 
   TextEditor.prototype.getLine = function (lineNr) {
-    return this.textBody.childNodes[lineNr];
+    return this.textBody.children[lineNr];
   };
 
   TextEditor.prototype.getLineText = function (line) {
@@ -335,7 +338,7 @@ constexpr const char *text_js = R"js(
         break;
       }
 
-      line = sign > 0 ? line.nextSibling : line.previousSibling;
+      line = sign > 0 ? line.nextElementSibling : line.previousElementSibling;
       if (line === null) {
         break;
       }
@@ -391,14 +394,13 @@ constexpr const char *text_js = R"js(
       if (i > 0) {
         this.textBody.insertBefore(
           document.createElement("div"),
-          line.nextSibling
+          line.nextElementSibling
         );
-        line = line.nextSibling;
+        line = line.nextElementSibling;
 
         this.textNr.appendChild(document.createElement("div"));
-        this.textNr.lastChild.textContent = String(
-          this.textBody.childNodes.length + 1
-        );
+        // the line is already in, so the count is the number the cell gets
+        this.textNr.lastChild.textContent = String(this.textBody.children.length);
       }
 
       if (i === 0) {
@@ -427,7 +429,7 @@ constexpr const char *text_js = R"js(
     );
 
     for (var lineNr = from.line + 1; lineNr <= to.line; ++lineNr) {
-      this.textBody.removeChild(firstLine.nextSibling);
+      this.textBody.removeChild(firstLine.nextElementSibling);
       this.textNr.removeChild(this.textNr.lastChild);
     }
   };
@@ -568,16 +570,24 @@ void write_script(HtmlWriter &out, const char *js) {
 
 } // namespace
 
-void write_document_style(HtmlWriter &out) { write_style(out, document_css); }
+} // namespace odr::internal::html
 
-void write_spreadsheet_style(HtmlWriter &out) {
+namespace odr::internal {
+
+void html::write_document_style(HtmlWriter &out) {
+  write_style(out, document_css);
+}
+
+void html::write_spreadsheet_style(HtmlWriter &out) {
   write_style(out, spreadsheet_css);
 }
 
-void write_text_style(HtmlWriter &out) { write_style(out, text_css); }
+void html::write_text_style(HtmlWriter &out) { write_style(out, text_css); }
 
-void write_document_script(HtmlWriter &out) { write_script(out, document_js); }
+void html::write_document_script(HtmlWriter &out) {
+  write_script(out, document_js);
+}
 
-void write_text_script(HtmlWriter &out) { write_script(out, text_js); }
+void html::write_text_script(HtmlWriter &out) { write_script(out, text_js); }
 
-} // namespace odr::internal::html
+} // namespace odr::internal
