@@ -14,6 +14,7 @@
 #include <odr/internal/html/font_file.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/html/media_file.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -225,6 +226,14 @@ HtmlService html::translate(const DecodedFile &file,
   }
   if (file.is_font_file()) {
     return translate(file.as_font_file(), cache_path, config, logger);
+  }
+  // No wrapper type to go through: nothing is decoded, so the plain
+  // `DecodedFile` already carries the bytes and the type that names them.
+  if (const FileCategory category = file.file_category();
+      category == FileCategory::audio || category == FileCategory::video) {
+    std::filesystem::create_directories(cache_path);
+    return internal::html::create_media_service(file, cache_path, config,
+                                                logger);
   }
 
   throw UnsupportedFileType(file.file_type());

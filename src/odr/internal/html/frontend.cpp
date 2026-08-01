@@ -40,6 +40,12 @@ constexpr const char *text_css = R"css(
 [contenteditable]:focus{outline:none}
 )css";
 
+constexpr const char *media_css = R"css(
+.odr-media{display:flex;align-items:center;justify-content:center;margin:0;min-height:100vh;background:#000}
+.odr-media video{max-width:100%;max-height:100vh}
+.odr-media audio{width:100%;max-width:40rem;margin:0 1rem}
+)css";
+
 constexpr const char *document_js = R"js(
 (function () {
   "use strict";
@@ -583,6 +589,8 @@ void html::write_spreadsheet_style(HtmlWriter &out) {
 }
 
 void html::write_text_style(HtmlWriter &out) { write_style(out, text_css); }
+
+void html::write_media_style(HtmlWriter &out) { write_style(out, media_css); }
 
 void html::write_document_script(HtmlWriter &out) {
   write_script(out, document_js);

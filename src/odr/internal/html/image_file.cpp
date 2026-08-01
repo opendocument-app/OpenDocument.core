@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/html/common.hpp>
@@ -11,10 +12,46 @@
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_to_svg.hpp>
 
+#include <span>
 #include <sstream>
+#include <string_view>
 
 namespace odr::internal::html {
 namespace {
+
+/// A starview metafile is converted to svg; anything else goes out as its own
+/// bytes labelled @p mime_type.
+void write_image_src(const ImageFile &image_file, std::ostream &out,
+                     const std::string &mime_type) {
+  // try svm
+  try {
+    // TODO `image_file` is already an `SvmFile`
+    // TODO `impl()` might be a bit dirty
+    const std::shared_ptr<abstract::File> image_file_impl =
+        image_file.file().impl();
+    // TODO memory file might not be necessary; other istreams didn't support
+    // `tellg`
+    const svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
+    std::ostringstream svg_out;
+    svm::Translator::svg(svm_file, svg_out);
+    // TODO use stream
+    out << file_to_url(svg_out.str(), "image/svg+xml");
+  } catch (...) {
+    // else we guess that it is a usual image
+    // TODO use stream
+    out << file_to_url(*image_file.stream(), mime_type);
+  }
+}
+
+/// The image page knows exactly which format it is holding, so it says so
+/// rather than taking `translate_image_src`'s `image/jpg` - webp, heif and
+/// avif arrive here now, and a browser that honours the data URL's type would
+/// be left with nothing.
+std::string image_mime_type(const ImageFile &image_file) {
+  const std::span<const std::string_view> mimetypes =
+      mimetypes_by_file_type(image_file.file_type());
+  return mimetypes.empty() ? "image/jpg" : std::string(mimetypes.front());
+}
 
 class HtmlServiceImpl final : public HtmlService {
 public:
@@ -83,7 +120,7 @@ public:
       out.out() << " alt=\"Error: image not found or unsupported\"";
       out.out() << " src=\"";
 
-      translate_image_src(m_image_file, out.out(), config());
+      write_image_src(m_image_file, out.out(), image_mime_type(m_image_file));
 
       out.out() << "\">";
     }
@@ -118,25 +155,11 @@ void html::translate_image_src(const File &file, std::ostream &out,
 
 void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
                                const HtmlConfig & /*config*/) {
-  // try svm
-  try {
-    // TODO `image_file` is already an `SvmFile`
-    // TODO `impl()` might be a bit dirty
-    const std::shared_ptr<abstract::File> image_file_impl =
-        image_file.file().impl();
-    // TODO memory file might not be necessary; other istreams didn't support
-    // `tellg`
-    const svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
-    std::ostringstream svg_out;
-    svm::Translator::svg(svm_file, svg_out);
-    // TODO use stream
-    out << file_to_url(svg_out.str(), "image/svg+xml");
-  } catch (...) {
-    // else we guess that it is a usual image
-    // TODO hacky - `image/jpg` works for all common image types in chrome
-    // TODO use stream
-    out << file_to_url(*image_file.stream(), "image/jpg");
-  }
+  // TODO hacky - `image/jpg` works for all common image types in chrome.
+  // An image inside a document keeps it: browsers sniff `<img>`, and naming
+  // the real type here would rewrite every reference output we have. The
+  // standalone image page does name it - see `image_mime_type`.
+  write_image_src(image_file, out, "image/jpg");
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,

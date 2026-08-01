@@ -10,6 +10,7 @@ void write_document_style(HtmlWriter &out);
 /// Written in addition to the document style.
 void write_spreadsheet_style(HtmlWriter &out);
 void write_text_style(HtmlWriter &out);
+void write_media_style(HtmlWriter &out);
 
 /// The `odr` object a document view exposes to its host: `generateDiff()`,
 /// `search()`, `searchNext()`, `searchPrevious()`, `resetSearch()`.

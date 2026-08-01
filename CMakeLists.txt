@@ -116,6 +116,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/file.cpp"
         "src/odr/internal/common/filesystem.cpp"
         "src/odr/internal/common/image_file.cpp"
+        "src/odr/internal/common/media_file.cpp"
         "src/odr/internal/common/path.cpp"
         "src/odr/internal/common/random.cpp"
         "src/odr/internal/common/style.cpp"
@@ -138,6 +139,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/html_service.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
+        "src/odr/internal/html/media_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
         "src/odr/internal/html/text_file.cpp"
 

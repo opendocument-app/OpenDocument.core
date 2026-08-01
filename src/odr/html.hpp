@@ -31,6 +31,9 @@ enum class HtmlResourceType {
   js,
   image,
   font,
+  // appended rather than sorted in: the bindings mirror this enum by ordinal
+  /// Audio or video, never embedded — see @ref HtmlConfig::embed_images.
+  media,
 };
 
 class HtmlResource final {
