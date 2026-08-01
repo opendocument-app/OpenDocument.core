@@ -134,3 +134,12 @@ simulator suite is the analogue of android's instrumented job and the only
 place that sees what a device sees: that `+load` fired, that `NSBundle` found
 `magic.mgc`, that `temp_directory_path()` is writable inside an app container.
 A new binding is only covered once something in `tests/` calls it.
+
+`tests/Fixtures/mixed-layout.odt` is 9 KB of `odt/` from OpenDocument.test,
+carried here because `test/data/` is fetched by `cmake/test_data.cmake` and a
+package checkout has none of it — and reaching for it as a submodule is the one
+thing `Package.swift` must never do. It replaced an ODT the suite built itself,
+which proved only that odrcore could read back what the test had written. Text
+and CSV need no container and stay inline; keep it that way rather than growing
+the fixture set. The same document backs `../jni/testfixtures`, so an assertion
+can be compared across the two suites.

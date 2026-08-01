@@ -2,9 +2,8 @@ import XCTest
 
 @testable import OdrCore
 
-/// Inputs are built inline rather than shipped as fixtures, the same rule the
-/// JNI suite follows. Text and CSV need no container, so they can be written
-/// with `String.write` — which keeps the test target free of a zip writer.
+/// Writes an input inline. Text and CSV need no container, so they can be; the
+/// document the rest of the suite runs on is a real one, see `Fixture`.
 private func write(_ contents: String, as name: String) throws -> String {
   let directory = FileManager.default.temporaryDirectory
     .appendingPathComponent("odr-tests-\(UUID().uuidString)")
@@ -68,12 +67,15 @@ final class FileTypeTableTests: XCTestCase {
 }
 
 final class DecodeTests: XCTestCase {
+  /// The non-BMP character is the point of the payload: `to_nsstring` converts
+  /// UTF-8 to UTF-16, and a 😀 is a surrogate pair on the way out.
   func testDecodesTextFile() throws {
-    let path = try write("hello odr", as: "note.txt")
+    let contents = "hello odr äöü 😀"
+    let path = try write(contents, as: "note.txt")
     let decoded = try DecodedFile.decode(path: path)
     XCTAssertEqual(decoded.fileCategory, .text)
     XCTAssertTrue(decoded.isTextFile)
-    XCTAssertEqual(try (decoded as! TextFile).text(), "hello odr")
+    XCTAssertEqual(try (decoded as! TextFile).text(), contents)
   }
 
   /// The failure path has to arrive as a typed Swift error, not a crash and not
@@ -102,7 +104,7 @@ final class DecodeTests: XCTestCase {
   /// that crossed into ObjC++ and killed the process; it must be a plain `false`
   /// now. This is a regression test for a crash, not a curiosity.
   func testMalformedPathDoesNotCrash() throws {
-    let path = try MinimalOdt.write()
+    let path = try Fixture.odt()
     let document = try DecodedFile.decode(path: path).asDocumentFile().document()
     let filesystem = try document.filesystem()
     XCTAssertFalse(filesystem.exists(path: ""))
@@ -112,7 +114,7 @@ final class DecodeTests: XCTestCase {
 
 final class HtmlTests: XCTestCase {
   private func service() throws -> HtmlService {
-    let file = try DecodedFile.decode(path: try MinimalOdt.write())
+    let file = try DecodedFile.decode(path: try Fixture.odt())
     let config = HtmlConfig()
     // odrcore rejects relative resource paths when the output is served
     config.relativeResourcePaths = false
@@ -126,7 +128,7 @@ final class HtmlTests: XCTestCase {
     var resources: NSArray?
     let html = try view.writeHtml(resources: &resources)
     XCTAssertTrue(html.contains("<html"), "not html: \(html.prefix(80))")
-    XCTAssertTrue(html.contains("hello odr"), "the document text is missing")
+    XCTAssertTrue(html.contains("Landscape"), "the document text is missing")
   }
 
   /// The default config must already point at the framework's own resources.
@@ -149,7 +151,7 @@ final class HttpServerTests: XCTestCase {
     let config = HtmlConfig()
     config.relativeResourcePaths = false
     let service = try HtmlTranslator.translate(
-      file: try DecodedFile.decode(path: try MinimalOdt.write()),
+      file: try DecodedFile.decode(path: try Fixture.odt()),
       cachePath: try temporaryDirectory(), config: config)
 
     let server = HttpServer()
@@ -186,14 +188,14 @@ final class HttpServerTests: XCTestCase {
 
 final class ElementTreeTests: XCTestCase {
   private func document() throws -> Document {
-    try DecodedFile.decode(path: try MinimalOdt.write())
+    try DecodedFile.decode(path: try Fixture.odt())
       .asDocumentFile().document()
   }
 
   func testWalksTheTree() throws {
     let root = try XCTUnwrap(try document().rootElement())
     let texts = Array(root.descendants(ofType: Text.self))
-    XCTAssertEqual(texts.map(\.content), ["hello odr"])
+    XCTAssertEqual(texts.map(\.content), Fixture.odtText)
     XCTAssertTrue(
       root.descendants.allSatisfy { $0.exists },
       "the walk produced an element that does not exist")

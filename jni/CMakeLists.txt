@@ -185,6 +185,13 @@ if (ODR_TEST AND NOT ANDROID)
             "tests/app/opendocument/core/MetaTest.java"
             # shared with the instrumented suite of the AAR, see `android/`
             "testfixtures/app/opendocument/core/TestFiles.java"
+            # `RESOURCES NAMESPACE` rather than listing the file under SOURCES:
+            # the latter puts it in the jar at the path as written, and
+            # `TestFiles` looks it up next to its own class. Needs CMake 3.21.
+            # No leading slash — the namespace goes into the `jar` command line
+            # verbatim, where an absolute path is not found.
+            RESOURCES NAMESPACE "app/opendocument/core"
+            "testfixtures/resources/app/opendocument/core/mixed-layout.odt"
             INCLUDE_JARS odr_java "${ODR_JNI_JUNIT_JAR}"
             OUTPUT_NAME odr-core-java-tests
     )

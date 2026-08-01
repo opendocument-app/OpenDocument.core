@@ -49,7 +49,10 @@ calls it.
   `.github/workflows/format.yml`, which needs neither the NDK nor conan.
 - **Shared test inputs stay in `../jni/testfixtures`**, which both suites
   compile — so it is limited to what android API 26 offers (no `Path.of`, no
-  `Files.writeString`, no `String.formatted`).
+  `Files.writeString`, no `String.formatted`). Its `resources/` are on the
+  androidTest source set as **java resources**, not assets: `TestFiles` reads
+  the document off the classpath, and an asset would only be reachable from the
+  android half of the suite.
 - **Publishing goes to Maven Central and GitHub Packages**, via
   `com.vanniktech.maven.publish` — sonatype ships no official gradle plugin for
   the portal. Central's extra requirements (sources + javadoc jars, `developers`

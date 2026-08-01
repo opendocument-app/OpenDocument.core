@@ -52,10 +52,8 @@ class DocumentTest {
         val root = document.rootElement()
         assertEquals(ElementType.ROOT, root.type())
 
-        val text = walkText(root)
-        assertTrue(text.contains(TestFiles.ODT_FIRST_PARAGRAPH))
-        // exercises non-BMP characters across the JNI string conversion
-        assertTrue(text.contains(TestFiles.ODT_SECOND_PARAGRAPH))
+        // every text node of the document, in order — the spans included
+        assertEquals(TestFiles.ODT_TEXT, walkText(root))
     }
 
     @Test
@@ -100,7 +98,19 @@ class DocumentTest {
         // the renderer reads the css/js the AAR ships, so this only passes with the
         // extracted assets in place
         val content = read(Paths.get(pages[0].path))
-        assertTrue(content.contains(TestFiles.ODT_FIRST_PARAGRAPH))
+        assertTrue(content.contains(TestFiles.ODT_WORD))
+    }
+
+    /**
+     * The payload carries a non-BMP character, so this covers the UTF-8 -> UTF-16 conversion of the
+     * JNI string helpers on ART rather than on a desktop JVM.
+     */
+    @Test
+    fun textFile() {
+        Odr.open(TestFiles.txtFile(tempDir).toString()).use { file ->
+            assertTrue(file.isTextFile())
+            assertEquals(TestFiles.TXT_CONTENT, file.asTextFile().text())
+        }
     }
 
     @Test

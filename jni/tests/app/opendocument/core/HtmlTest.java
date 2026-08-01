@@ -108,7 +108,7 @@ class HtmlTest {
     Html html = translateOffline(TestFiles.odtFile(tempDir));
     assertEquals(1, html.pages().size());
     String content = Files.readString(Path.of(html.pages().get(0).path));
-    assertTrue(content.contains(TestFiles.ODT_FIRST_PARAGRAPH));
+    assertTrue(content.contains(TestFiles.ODT_WORD));
   }
 
   @Test
@@ -123,6 +123,6 @@ class HtmlTest {
     assertTrue(service.exists(views.get(0).path()));
 
     Html.Content content = views.get(0).writeHtml();
-    assertTrue(content.html.contains(TestFiles.ODT_FIRST_PARAGRAPH));
+    assertTrue(content.html.contains(TestFiles.ODT_WORD));
   }
 }

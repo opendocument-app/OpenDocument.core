@@ -97,7 +97,7 @@ The instrumented suite (`src/androidTest`) is the part that sees what a device
 sees: it loads the native library, extracts and reads the bundled assets,
 decodes and renders documents, drives a java log sink from native code, and
 serves a document over HTTP. Its inputs come from `../jni/testfixtures`, the
-same builder the host junit suite uses.
+same ones the host junit suite uses.
 
 CI (`.github/workflows/android.yml`) cross compiles each ABI, assembles and
 lints the AAR, and runs the suite on API 26 — the floor OpenDocument.droid

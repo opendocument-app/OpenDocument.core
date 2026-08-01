@@ -40,6 +40,10 @@ let package = Package(
         // Everything Apple lives under `apple/`, so the targets point there
         // rather than at the conventional `Sources/`.
         .target(name: "OdrCore", dependencies: ["OdrCoreObjC"], path: "apple/swift"),
-        .testTarget(name: "OdrCoreTests", dependencies: ["OdrCore"], path: "apple/tests"),
+        // `.copy`, not `.process`: the fixture is an input to decode verbatim,
+        // and processing an .odt would be a resource pipeline guessing at a zip.
+        .testTarget(
+            name: "OdrCoreTests", dependencies: ["OdrCore"], path: "apple/tests",
+            resources: [.copy("Fixtures")]),
     ]
 )
