@@ -89,7 +89,7 @@ class HttpServerTest {
       Response response =
           fetch("http://127.0.0.1:" + port + "/file/doc/" + views.get(0).path());
       assertEquals(200, response.status());
-      assertTrue(response.body().contains(TestFiles.ODT_FIRST_PARAGRAPH));
+      assertTrue(response.body().contains(TestFiles.ODT_WORD));
     } catch (Exception e) {
       if (listenError.get() != null) {
         throw new AssertionError("listen failed", listenError.get());

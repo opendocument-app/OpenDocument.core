@@ -165,6 +165,14 @@ install_jar(odr_java DESTINATION "${CMAKE_INSTALL_DATADIR}/java" COMPONENT jni)
 # meaningful for a host build; the android build is covered by the instrumented
 # tests of the AAR (`android/`).
 if (ODR_TEST AND NOT ANDROID)
+    # `add_jar`'s `RESOURCES` below. Say so here rather than let it fail on an
+    # unknown argument; the rest of the JNI build is fine on the repo minimum.
+    if (CMAKE_VERSION VERSION_LESS 3.21)
+        message(FATAL_ERROR
+                "The JNI test jar needs CMake 3.21 or newer, found ${CMAKE_VERSION}. "
+                "Configure with -DODR_TEST=OFF to build the bindings without it.")
+    endif ()
+
     include(FetchContent)
     FetchContent_Declare(junit_console
             URL "https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.2/junit-platform-console-standalone-1.10.2.jar"
@@ -185,6 +193,13 @@ if (ODR_TEST AND NOT ANDROID)
             "tests/app/opendocument/core/MetaTest.java"
             # shared with the instrumented suite of the AAR, see `android/`
             "testfixtures/app/opendocument/core/TestFiles.java"
+            # `RESOURCES NAMESPACE` rather than listing the file under SOURCES:
+            # the latter puts it in the jar at the path as written, and
+            # `TestFiles` looks it up next to its own class.
+            # No leading slash — the namespace goes into the `jar` command line
+            # verbatim, where an absolute path is not found.
+            RESOURCES NAMESPACE "app/opendocument/core"
+            "testfixtures/resources/app/opendocument/core/mixed-layout.odt"
             INCLUDE_JARS odr_java "${ODR_JNI_JUNIT_JAR}"
             OUTPUT_NAME odr-core-java-tests
     )

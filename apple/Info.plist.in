@@ -3,25 +3,31 @@
 <!-- Replaces CMake's MacOSXFrameworkInfo.plist.in, which carries none of the
      platform keys. App Store Connect validates nested bundles for
      MinimumOSVersion, and an embedded framework without it is a rejection
-     waiting to happen. -->
+     waiting to happen.
+
+     Every placeholder is one `apple/CMakeLists.txt` sets itself. CMake defines
+     only some of the `MACOSX_FRAMEWORK_*` names it uses in its own template,
+     and the rest expand to nothing — an empty CFBundleExecutable makes the
+     framework uninstallable, which surfaces as "Failed to load Info.plist"
+     from installd and nowhere earlier. -->
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>${MACOSX_FRAMEWORK_BUNDLE_NAME}</string>
+	<string>${ODR_APPLE_FRAMEWORK_NAME}</string>
 	<key>CFBundleName</key>
-	<string>${MACOSX_FRAMEWORK_BUNDLE_NAME}</string>
+	<string>${ODR_APPLE_FRAMEWORK_NAME}</string>
 	<key>CFBundleIdentifier</key>
-	<string>${MACOSX_FRAMEWORK_IDENTIFIER}</string>
+	<string>${ODR_APPLE_BUNDLE_IDENTIFIER}</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>${MACOSX_FRAMEWORK_SHORT_VERSION_STRING}</string>
+	<string>${ODR_APPLE_BUNDLE_VERSION}</string>
 	<key>CFBundleVersion</key>
-	<string>${MACOSX_FRAMEWORK_BUNDLE_VERSION}</string>
+	<string>${ODR_APPLE_BUNDLE_VERSION}</string>
 	<key>MinimumOSVersion</key>
 	<string>${ODR_APPLE_DEPLOYMENT_TARGET}</string>
 	<key>CFBundleSupportedPlatforms</key>

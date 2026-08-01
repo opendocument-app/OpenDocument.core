@@ -5,15 +5,19 @@ NS_ASSUME_NONNULL_BEGIN
 /// The size of a table — `odr::TableDimensions`.
 ///
 /// A plain C struct rather than a class: it is two integers with no identity,
-/// and Swift imports it as a value type.
+/// and Swift imports it as a value type with a memberwise initialiser.
+///
+/// Swift sees it as `ODRTableDimensions`, not `TableDimensions`:
+/// `NS_SWIFT_NAME` on a `typedef struct` is silently ignored. The `OdrCore`
+/// Swift target typealiases the shorter names.
 typedef struct ODRTableDimensions {
   uint32_t rows;
   uint32_t columns;
-} ODRTableDimensions NS_SWIFT_NAME(TableDimensions);
+} ODRTableDimensions;
 
+/// For ObjC callers; Swift has the synthesised memberwise initialiser.
 NS_INLINE ODRTableDimensions ODRTableDimensionsMake(uint32_t rows,
-                                                    uint32_t columns)
-    NS_SWIFT_NAME(TableDimensions.init(rows:columns:)) {
+                                                    uint32_t columns) {
   return (ODRTableDimensions){.rows = rows, .columns = columns};
 }
 
@@ -21,10 +25,9 @@ NS_INLINE ODRTableDimensions ODRTableDimensionsMake(uint32_t rows,
 typedef struct ODRTablePosition {
   uint32_t column;
   uint32_t row;
-} ODRTablePosition NS_SWIFT_NAME(TablePosition);
+} ODRTablePosition;
 
-NS_INLINE ODRTablePosition ODRTablePositionMake(uint32_t column, uint32_t row)
-    NS_SWIFT_NAME(TablePosition.init(column:row:)) {
+NS_INLINE ODRTablePosition ODRTablePositionMake(uint32_t column, uint32_t row) {
   return (ODRTablePosition){.column = column, .row = row};
 }
 

@@ -109,6 +109,22 @@ then returns the app bundle, and the bootstrap points at the wrong place.
   `CMakeLists.txt` fails the configure rather than let that ship.
 - C++ and ObjC++ follow the repo clang-format.
 
+## Releasing
+
+Nothing here cuts a release; the project's flow does (`AGENTS.md`). `release.yml`
+calls this workflow with the version it derived, takes the checksum back out and
+stamps it into `Package.swift` on the commit it tags.
+
+`Package.swift` must carry the checksum of an artifact built from the commit
+that contains `Package.swift`, which is circular because `git_watcher.cmake`
+bakes the working-tree sha into every binary. `ODR_GIT_HEAD=v6.2.0` breaks it:
+the binary identifies itself by the tag, known before the commit exists, and the
+trees then differ only in `Package.swift` — which the framework never sees.
+
+Off a tag the url says `UNRELEASED` and resolves to nothing, so only tags are
+consumable. `verify` on `release: published` catches a release cut by hand,
+which would leave the tag serving the previous version's binary.
+
 ## Testing
 
 The iOS *device* slice is only ever link-checked — nothing runs it. The
@@ -116,3 +132,12 @@ simulator suite is the analogue of android's instrumented job and the only
 place that sees what a device sees: that `+load` fired, that `NSBundle` found
 `magic.mgc`, that `temp_directory_path()` is writable inside an app container.
 A new binding is only covered once something in `tests/` calls it.
+
+`tests/Fixtures/mixed-layout.odt` is 9 KB of `odt/` from OpenDocument.test,
+carried here because `test/data/` is fetched by `cmake/test_data.cmake` and a
+package checkout has none of it — and reaching for it as a submodule is the one
+thing `Package.swift` must never do. It replaced an ODT the suite built itself,
+which proved only that odrcore could read back what the test had written. Text
+and CSV need no container and stay inline; keep it that way rather than growing
+the fixture set. The same document backs `../jni/testfixtures`, so an assertion
+can be compared across the two suites.

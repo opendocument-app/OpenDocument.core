@@ -51,6 +51,10 @@ CMakeUserPresets.json
 .vscode/.env
 
 offline/
+## SwiftPM
+.build/
+.swiftpm/
+Package.resolved
 ## Apple framework slices and the assembled xcframework
 apple/build/
 *.xcframework/
@@ -75,6 +79,10 @@ tools/pdf/afm/
 *.doc
 *.ppt
 *.xls
+# the bindings ship their own copy of one public test document, since neither a
+# SwiftPM checkout nor an android build tree has test/data/
+!apple/tests/Fixtures/*
+!jni/testfixtures/resources/**/*
 
 ## Python
 # Byte-compiled / optimized / DLL files

@@ -5,6 +5,9 @@ assembled into the artifact `Package.swift` points at.
     apple/build_xcframework.py slice --profile apple-ios-armv8
     apple/build_xcframework.py assemble
 
+Set `ODR_GIT_HEAD=v6.2.0` to build a release: the binary then reports the tag
+instead of the commit it happened to be built from.
+
 The sibling of `android/build_native.py`, and the same shape: each conan profile
 gets its own conan install and cmake build under `apple/build/<profile>`, and
 `assemble` merges the results.
@@ -84,9 +87,21 @@ def build(profile: str, conan: str, build_profile: str) -> None:
          "--output-folder", build_dir,
          "--build", "missing"])
 
+    # A release identifies itself by its tag rather than by the commit it was
+    # built from. That is what stops `Package.swift`'s checksum chasing its own
+    # tail: writing the checksum makes a new commit, and a binary that embeds
+    # the working-tree sha would change with it.
+    release = os.environ.get("ODR_GIT_HEAD")
+    version = [
+        f"-DGIT_HEAD_SHA1={release}",
+        "-DGIT_IS_DIRTY=false",
+        f"-DODR_APPLE_BUNDLE_VERSION={release.lstrip('v')}",
+    ] if release else []
+
     run(["cmake", "-B", cmake_dir, "-S", REPO_ROOT,
          "-DCMAKE_TOOLCHAIN_FILE=" + str(build_dir / "conan_toolchain.cmake"),
          "-DCMAKE_BUILD_TYPE=Release",
+         *version,
          # one self-contained dylib: odrcore and every dependency are linked
          # into the framework rather than shipped alongside it
          "-DBUILD_SHARED_LIBS=OFF",
@@ -138,19 +153,22 @@ def assert_contents(framework: Path) -> None:
     root = framework / "Versions" / "A"
     if not root.exists():
         root = framework
+    # Resources are flat on iOS and under `Resources/` only in the versioned
+    # macOS layout — a bundle that gets that wrong does not load at all.
+    resources = root / "Resources" if (root / "Resources").is_dir() else root
     required = [
         root / "Headers" / f"{FRAMEWORK}.h",
         root / "Modules" / "module.modulemap",
-        root / "Resources" / "magic.mgc",
-        root / "Resources" / "document.css",
+        resources / "magic.mgc",
+        resources / "document.css",
     ]
     missing = [path for path in required if not path.exists()]
     if missing:
         raise SystemExit(
             "framework is incomplete: " + ", ".join(str(p) for p in missing))
 
-    plist = root / "Resources" / "Info.plist" if (
-        root / "Resources" / "Info.plist").exists() else root / "Info.plist"
+    plist = resources / "Info.plist" if (
+        resources / "Info.plist").exists() else root / "Info.plist"
     with plist.open("rb") as stream:
         info = plistlib.load(stream)
     for key in ("MinimumOSVersion", "CFBundleSupportedPlatforms"):
@@ -158,14 +176,32 @@ def assert_contents(framework: Path) -> None:
             raise SystemExit(
                 f"{plist} has no {key}; App Store validation rejects an "
                 f"embedded framework without it")
+    # An empty value is what a placeholder nothing filled in leaves behind, and
+    # it is not caught by presence alone. `CFBundleExecutable` empty is fatal:
+    # installd refuses the app that embeds the framework.
+    for key in ("CFBundleExecutable", "CFBundleName", "CFBundleIdentifier",
+                "CFBundleVersion", "CFBundleShortVersionString"):
+        if not info.get(key):
+            raise SystemExit(f"{plist} has an empty {key}")
 
 
-def assemble(output: Path) -> None:
+def assemble(output: Path, only: list[str] | None = None) -> None:
+    """Merges the built slices into the xcframework.
+
+    `only` narrows it to a subset, which is for a consumer that builds this
+    itself and needs one platform — a release always ships all of them.
+    """
+    unknown = set(only or []) - set(SLICES)
+    if unknown:
+        raise SystemExit(f"no such slice: {', '.join(sorted(unknown))}")
+
     staging = APPLE_ROOT / "build" / "slices"
     shutil.rmtree(staging, ignore_errors=True)
 
     arguments: list[str] = []
     for name, slice in SLICES.items():
+        if only and name not in only:
+            continue
         profiles = slice["profiles"]
         sources = [framework_dir(APPLE_ROOT / "build" / p) for p in profiles]
         for source in sources:
@@ -223,6 +259,9 @@ def main() -> int:
         "assemble", help="merge the built slices into an xcframework")
     assemble_parser.add_argument(
         "--output", type=Path, default=REPO_ROOT / f"{FRAMEWORK}.xcframework")
+    assemble_parser.add_argument(
+        "--slice", action="append", dest="slices", choices=list(SLICES),
+        help="only this slice; repeatable, defaults to all of them")
 
     args = parser.parse_args()
 
@@ -233,7 +272,7 @@ def main() -> int:
         for profile in args.profiles or PROFILES:
             build(profile, args.conan, args.build_profile)
     else:
-        assemble(args.output.resolve())
+        assemble(args.output.resolve(), args.slices)
     return 0
 
 

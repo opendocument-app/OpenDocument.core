@@ -119,8 +119,12 @@ android {
             assets.srcDir("native/prebuilt/assets")
         }
         named("androidTest") {
-            // the inputs the host junit suite builds inline, shared verbatim
+            // the host junit suite's inputs, shared verbatim
             java.srcDir("../jni/testfixtures")
+            // TestFiles reads the odt off the classpath, so it has to be
+            // packaged into the test apk as a java resource — not an asset,
+            // which only the android half of the suite could reach
+            resources.srcDir("../jni/testfixtures/resources")
         }
     }
 

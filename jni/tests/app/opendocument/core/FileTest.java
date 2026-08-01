@@ -35,7 +35,9 @@ class FileTest {
     try (DecodedFile file = Odr.open(txt.toString())) {
       assertEquals(FileType.TEXT_FILE, file.fileType());
       assertTrue(file.isTextFile());
-      assertTrue(file.asTextFile().text().contains("hello text file"));
+      // The payload carries a non-BMP character, so this also covers the
+      // UTF-8 -> UTF-16 conversion of the JNI string helpers.
+      assertEquals(TestFiles.TXT_CONTENT, file.asTextFile().text());
     }
   }
 

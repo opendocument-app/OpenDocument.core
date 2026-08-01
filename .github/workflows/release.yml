@@ -61,17 +61,21 @@ jobs:
           echo "cutting $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-  # Artifacts the release commit has to record something about go here, with
-  # `needs: version` for the tag to build against, uploading what `release`
-  # should stamp and publish. The xcframework will land here — SwiftPM resolves
-  # `Package.swift` at the tag, and its binary target names a sha256 of an
-  # archive that does not exist until it is built.
+  # SwiftPM resolves `Package.swift` at the tag, and its binary target names a
+  # sha256 of an archive that does not exist until it is built — so the archive
+  # is built here, against the version derived above, and its checksum comes
+  # back to be stamped below.
   #
   # Anything that merely reacts to a release belongs in its own workflow on
   # `release: published`, the way conan, maven and android do.
+  apple:
+    needs: version
+    uses: ./.github/workflows/apple.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
 
   release:
-    needs: version
+    needs: [version, apple]
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ needs.version.outputs.version }}
@@ -90,10 +94,13 @@ jobs:
       - name: install git-cliff
         run: pip install git-cliff==2.13.1
 
-      # outside the repo, so an artifact can never be swept into the commit
+      # `release-asset-*` is the opt-in: a job that wants something on the
+      # release names its artifact that way. Downloaded outside the repo, so an
+      # artifact can never be swept into the commit.
       - name: download assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
+          pattern: release-asset-*
           path: ${{ runner.temp }}/assets
           merge-multiple: true
         continue-on-error: true
@@ -107,7 +114,20 @@ jobs:
           echo "assets: ${ARGS:-none}"
 
       # Whatever the release has to record about itself is written into the tree
-      # here; `stamp` commits it. Nothing does yet, so no commit is made.
+      # here; `stamp` commits all of it as one commit.
+      #
+      # The patterns match the previous release's values as well as the
+      # `UNRELEASED` placeholder main carries, since `releases` keeps the last
+      # stamp.
+      - name: point Package.swift at this release
+        env:
+          CHECKSUM: ${{ needs.apple.outputs.checksum }}
+        run: |
+          sed -i \
+            -e "s|download/[^/]*/OdrCoreObjC|download/${VERSION}/OdrCoreObjC|" \
+            -e "s|checksum: \"[0-9a-f]\{64\}\"|checksum: \"${CHECKSUM}\"|" \
+            Package.swift
+          git diff --stat Package.swift
 
       - name: release notes
         run: scripts/release.py notes --version "$VERSION" --output "${{ runner.temp }}/notes.md"

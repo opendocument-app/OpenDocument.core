@@ -36,6 +36,10 @@ else ()
     set(ODR_APPLE_SDK_NAME "macosx")
 endif ()
 set(ODR_APPLE_FRAMEWORK_VERSION "A")
+set(ODR_APPLE_FRAMEWORK_NAME "OdrCoreObjC")
+set(ODR_APPLE_BUNDLE_IDENTIFIER "app.opendocument.OdrCoreObjC")
+# The release passes the tag; nothing else has a version to give.
+set(ODR_APPLE_BUNDLE_VERSION "0.0.0" CACHE STRING "CFBundleVersion of the framework")
 set(ODR_APPLE_DEPLOYMENT_TARGET "${CMAKE_OSX_DEPLOYMENT_TARGET}")
 if (NOT ODR_APPLE_DEPLOYMENT_TARGET)
     message(FATAL_ERROR
@@ -92,9 +96,7 @@ set_target_properties(odr_apple PROPERTIES
         OUTPUT_NAME "OdrCoreObjC"
         FRAMEWORK TRUE
         FRAMEWORK_VERSION "${ODR_APPLE_FRAMEWORK_VERSION}"
-        MACOSX_FRAMEWORK_IDENTIFIER "app.opendocument.OdrCoreObjC"
-        MACOSX_FRAMEWORK_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}"
-        MACOSX_FRAMEWORK_SHORT_VERSION_STRING "${CMAKE_PROJECT_VERSION}"
+        MACOSX_FRAMEWORK_IDENTIFIER "${ODR_APPLE_BUNDLE_IDENTIFIER}"
         MACOSX_FRAMEWORK_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
         # the packaging copies the build output verbatim, so the built and the
         # shipped install name have to be the same
@@ -122,24 +124,37 @@ set_property(TARGET odr_apple APPEND PROPERTY LINK_DEPENDS "${ODR_APPLE_EXPORTS}
 # The content directory is spelled out rather than taken from
 # `TARGET_BUNDLE_CONTENT_DIR`, which expands to the bundle root even on macOS,
 # where the content actually lives in `Versions/<v>`.
+# A framework is a *flat* bundle everywhere except macOS: its resources sit at
+# the bundle root, not in `Resources/`. Staging them into a `Resources/`
+# subdirectory there makes the bundle unloadable — `installd` refuses the app
+# that embeds it with "Failed to load Info.plist from bundle", naming a plist
+# that is present and valid.
 if (CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|watchOS|visionOS)$")
     set(ODR_APPLE_CONTENT "$<TARGET_BUNDLE_DIR:odr_apple>")
+    set(ODR_APPLE_RESOURCE_DIR "${ODR_APPLE_CONTENT}")
+    # a `Resources/` left by a build made before the layout was fixed is enough
+    # on its own to make the bundle unloadable
+    add_custom_command(TARGET odr_apple POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ODR_APPLE_CONTENT}/Resources"
+            VERBATIM
+    )
 else ()
     set(ODR_APPLE_CONTENT
             "$<TARGET_BUNDLE_DIR:odr_apple>/Versions/${ODR_APPLE_FRAMEWORK_VERSION}")
+    set(ODR_APPLE_RESOURCE_DIR "${ODR_APPLE_CONTENT}/Resources")
 endif ()
 
 add_custom_command(TARGET odr_apple POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ODR_APPLE_CONTENT}/Headers" "${ODR_APPLE_CONTENT}/Modules"
-        "${ODR_APPLE_CONTENT}/Resources"
+        "${ODR_APPLE_RESOURCE_DIR}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         ${ODR_APPLE_PUBLIC_HEADERS} "${ODR_APPLE_CONTENT}/Headers"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/module.modulemap"
         "${ODR_APPLE_CONTENT}/Modules"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        ${ODR_APPLE_RESOURCES} "${ODR_APPLE_CONTENT}/Resources"
+        ${ODR_APPLE_RESOURCES} "${ODR_APPLE_RESOURCE_DIR}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Staging OdrCoreObjC.framework headers, module map and resources"
         VERBATIM

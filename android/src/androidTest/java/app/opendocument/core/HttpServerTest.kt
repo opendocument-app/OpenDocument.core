@@ -84,7 +84,7 @@ class HttpServerTest {
         thread.start()
         try {
             val body = fetch("http://127.0.0.1:$port/file/doc/${views[0].path()}")
-            assertTrue(body.contains(TestFiles.ODT_FIRST_PARAGRAPH))
+            assertTrue(body.contains(TestFiles.ODT_WORD))
         } catch (e: Exception) {
             listenError.get()?.let { throw AssertionError("listen failed", it) }
             throw e

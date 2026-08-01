@@ -1,70 +1,47 @@
 package app.opendocument.core;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.zip.CRC32;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * Builds minimal test input files from inline content (mirrors python/tests/conftest.py).
+ * The suite's input files.
+ *
+ * <p>The document is {@code odt/mixed-layout.odt} from <a
+ * href="https://github.com/opendocument-app/OpenDocument.test">OpenDocument.test</a>, carried here
+ * as a resource next to this class: {@code test/data/} is fetched by {@code cmake/test_data.cmake}
+ * and an android build tree never sees it. 9 KB of real LibreOffice output, and it replaced a
+ * document this fixture built with {@code ZipOutputStream} — which only ever proved that odrcore
+ * could read back what the test had written. Text and CSV need no container, so those stay inline.
  *
  * <p>Shared by the host junit suite ({@code jni/tests}) and the instrumented suite of the AAR
  * ({@code android/}), so it stays within what android API 26 offers — no {@code Path.of}, no {@code
  * Files.writeString}, no {@code String.formatted}.
  */
 final class TestFiles {
-  static final String ODT_FIRST_PARAGRAPH = "Hello from odr-core-java!";
-  static final String ODT_SECOND_PARAGRAPH = "Second paragraph äöü 😀";
+  static final String ODT_RESOURCE = "mixed-layout.odt";
 
-  private static final String ODT_CONTENT_XML =
-      """
-      <?xml version="1.0" encoding="UTF-8"?>
-      <office:document-content
-          xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-          xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
-          office:version="1.2">
-        <office:body>
-          <office:text>
-            <text:p>%s</text:p>
-            <text:p>%s</text:p>
-          </office:text>
-        </office:body>
-      </office:document-content>
-      """;
+  /**
+   * The text of the document, node by node in document order. Each paragraph is a run and a span,
+   * so the numbers are their own text elements — and the runs keep their trailing space.
+   */
+  static final List<String> ODT_TEXT =
+      Arrays.asList("Portrait ", "1", "Portrait ", "2", "Landscape ", "1", "Portrait ", "3");
 
-  private static final String ODT_CONTENT =
-      String.format(ODT_CONTENT_XML, ODT_FIRST_PARAGRAPH, ODT_SECOND_PARAGRAPH);
+  /**
+   * A word of the document, found in the element tree and in the rendered HTML alike. A whole run
+   * would not do for the latter: the renderer writes its trailing space as {@code &nbsp;}.
+   */
+  static final String ODT_WORD = "Landscape";
 
-  private static final String ODT_STYLES_XML =
-      """
-      <?xml version="1.0" encoding="UTF-8"?>
-      <office:document-styles
-          xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-          office:version="1.2">
-        <office:styles/>
-        <office:automatic-styles/>
-        <office:master-styles/>
-      </office:document-styles>
-      """;
-
-  private static final String ODT_MANIFEST_XML =
-      """
-      <?xml version="1.0" encoding="UTF-8"?>
-      <manifest:manifest
-          xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"
-          manifest:version="1.2">
-        <manifest:file-entry manifest:full-path="/"
-            manifest:media-type="application/vnd.oasis.opendocument.text"/>
-        <manifest:file-entry manifest:full-path="content.xml"
-            manifest:media-type="text/xml"/>
-        <manifest:file-entry manifest:full-path="styles.xml"
-            manifest:media-type="text/xml"/>
-      </manifest:manifest>
-      """;
+  /** Non-BMP, to exercise the UTF-8 ↔ UTF-16 conversion of the JNI string helpers. */
+  static final String TXT_CONTENT = "hello text file\nsecond line äöü 😀\n";
 
   static {
     // Mirror the python conftest: pick up the shipped assets for rendering.
@@ -80,25 +57,14 @@ final class TestFiles {
     return path != null && !path.isEmpty() && Files.isDirectory(Paths.get(path));
   }
 
-  /** A minimal OpenDocument text file built from inline XML. */
+  /** The OpenDocument text file, unpacked from the classpath into {@code directory}. */
   static Path odtFile(Path directory) throws IOException {
-    Path path = directory.resolve("minimal.odt");
-    try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(path))) {
-      byte[] mimetype =
-          "application/vnd.oasis.opendocument.text".getBytes(StandardCharsets.UTF_8);
-      ZipEntry entry = new ZipEntry("mimetype");
-      entry.setMethod(ZipEntry.STORED);
-      entry.setSize(mimetype.length);
-      CRC32 crc = new CRC32();
-      crc.update(mimetype);
-      entry.setCrc(crc.getValue());
-      zip.putNextEntry(entry);
-      zip.write(mimetype);
-      zip.closeEntry();
-
-      writeEntry(zip, "content.xml", ODT_CONTENT);
-      writeEntry(zip, "styles.xml", ODT_STYLES_XML);
-      writeEntry(zip, "META-INF/manifest.xml", ODT_MANIFEST_XML);
+    Path path = directory.resolve(ODT_RESOURCE);
+    try (InputStream stream = TestFiles.class.getResourceAsStream(ODT_RESOURCE)) {
+      if (stream == null) {
+        throw new IOException(ODT_RESOURCE + " is missing from the test classpath");
+      }
+      Files.copy(stream, path, StandardCopyOption.REPLACE_EXISTING);
     }
     return path;
   }
@@ -111,19 +77,12 @@ final class TestFiles {
 
   static Path txtFile(Path directory) throws IOException {
     Path path = directory.resolve("note.txt");
-    write(path, "hello text file\nsecond line\n");
+    write(path, TXT_CONTENT);
     return path;
   }
 
   private static void write(Path path, String content) throws IOException {
     Files.write(path, content.getBytes(StandardCharsets.UTF_8));
-  }
-
-  private static void writeEntry(ZipOutputStream zip, String name, String content)
-      throws IOException {
-    zip.putNextEntry(new ZipEntry(name));
-    zip.write(content.getBytes(StandardCharsets.UTF_8));
-    zip.closeEntry();
   }
 
   private TestFiles() {}

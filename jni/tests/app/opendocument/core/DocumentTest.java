@@ -41,13 +41,11 @@ class DocumentTest {
 
     List<Element> paragraphs =
         root.children().stream().filter(child -> child.type() == ElementType.PARAGRAPH).toList();
-    assertEquals(2, paragraphs.size());
+    assertEquals(4, paragraphs.size());
     assertNotNull(paragraphs.get(0).asParagraph());
 
-    List<String> text = walkText(root);
-    assertTrue(text.contains(TestFiles.ODT_FIRST_PARAGRAPH));
-    // Exercises non-BMP characters across the JNI string conversion.
-    assertTrue(text.contains(TestFiles.ODT_SECOND_PARAGRAPH));
+    // Every text node of the document, in order — the spans included.
+    assertEquals(TestFiles.ODT_TEXT, walkText(root));
   }
 
   @Test

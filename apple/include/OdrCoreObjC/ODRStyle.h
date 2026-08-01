@@ -51,16 +51,18 @@ typedef NS_ENUM(NSInteger, ODRTextWrap) {
 } NS_SWIFT_NAME(TextWrap);
 
 /// An RGBA colour — `odr::Color`.
+///
+/// Swift sees `ODRColor`; see the note in ODRTable.h.
 typedef struct ODRColor {
   uint8_t red;
   uint8_t green;
   uint8_t blue;
   uint8_t alpha;
-} ODRColor NS_SWIFT_NAME(Color);
+} ODRColor;
 
+/// For ObjC callers; Swift has the synthesised memberwise initialiser.
 NS_INLINE ODRColor ODRColorMake(uint8_t red, uint8_t green, uint8_t blue,
-                                uint8_t alpha)
-    NS_SWIFT_NAME(Color.init(red:green:blue:alpha:)) {
+                                uint8_t alpha) {
   return (ODRColor){.red = red, .green = green, .blue = blue, .alpha = alpha};
 }
 

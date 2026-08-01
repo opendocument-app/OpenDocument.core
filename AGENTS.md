@@ -66,8 +66,9 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |
 | `jni/` | JNI bindings (Java package `app.opendocument.core`); see [`jni/AGENTS.md`](jni/AGENTS.md). |
 | `android/` | The bindings packaged as an AAR (`odr-core-android`) + the instrumented tests; see [`android/AGENTS.md`](android/AGENTS.md). |
+| `apple/` | Objective-C bindings + the Swift package, shipped as `OdrCoreObjC.xcframework`; see [`apple/AGENTS.md`](apple/AGENTS.md). |
 | `tools/pdf/` | Dev tooling (not built): PDF encoding-data generators, see `tools/pdf/README.md`. |
-| `test/src/` | GoogleTest suites; data in `test/data` (git submodules). |
+| `test/src/` | GoogleTest suites; data fetched into `test/data` (see `cmake/test_data.cmake`). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (see [Specs](#specs)). |
 | `docs/design/README.md` | High-level design rationale. |
 
@@ -88,8 +89,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 - **Run the test binary from the build dir** so output stays out of the repo tree.
 - **For debugging, prefer the `translate` CLI** on a single file over the suite.
 - CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_WITH_LIBMAGIC`,
-  `ODR_PYTHON`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
-  `ODR_SOURCE_FILES`.
+  `ODR_PYTHON`, `ODR_JNI`, `ODR_APPLE`, `ODR_CLANG_TIDY`. A new `.cpp` must be
+  added to `ODR_SOURCE_FILES`.
 - **Test data is fetched, not vendored**, and opt in: `-DODR_TEST_FETCH_DATA=ON`
   makes `cmake/test_data.cmake` clone the repositories pinned in
   `test/data.cmake` into `test/data/` (they were submodules until then; read
@@ -120,10 +121,12 @@ Merge main into `releases`, push, publish the draft that appears —
   also has to be a human: a release created by `GITHUB_TOKEN` raises no
   `release: published`, and that event starts conan, maven and android.
 - **`release.yml` is the only place that writes a version anywhere**, and
-  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Nothing writes one
-  today, so no commit is made. What will is SwiftPM: it resolves `Package.swift`
-  at the tag, and a binary target there names a sha256 of an archive that does
-  not exist until it is built.
+  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Today that is
+  `Package.swift`: SwiftPM resolves it at the tag, and its binary target names
+  the sha256 of an archive that does not exist until the release builds it. Off
+  a tag the url says `UNRELEASED`.
+- **A job that wants something attached to the release** names its artifact
+  `release-asset-*`; `release.yml` uploads those and nothing else.
 - **`release-status.yml` makes a partial release loud** — it waits for the
   publish workflows and fails if one failed or never started. `EXPECTED` in
   `scripts/release_status.py` is the list of destinations.
