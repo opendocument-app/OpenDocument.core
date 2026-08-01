@@ -26,6 +26,7 @@ EXPECTED = {
     "maven": "`app.opendocument:odr-core-java` — Maven Central + GitHub Packages",
     "android": "`app.opendocument:odr-core-android` — Maven Central + GitHub Packages",
     "python": "`pyodr` wheels — PyPI",
+    "apple": "`OdrCoreObjC.xcframework` — the release asset and its manifest",
 }
 
 BEGIN = "<!-- release-status -->"

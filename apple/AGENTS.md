@@ -111,21 +111,19 @@ then returns the app bundle, and the bootstrap points at the wrong place.
 
 ## Releasing
 
-One `workflow_dispatch` on `apple.yml`, and nothing misreports itself.
+Nothing here cuts a release; the project's flow does (`AGENTS.md`). `release.yml`
+calls this workflow with the version it derived, takes the checksum back out and
+stamps it into `Package.swift` on the commit it tags.
 
-The circularity is real but not inherent: `Package.swift` must carry the
-checksum of an artifact built from the commit that *contains* `Package.swift`,
-and writing the checksum makes a new commit. What closed the loop was
-`git_watcher.cmake` baking the working-tree sha into every binary, so the
-artifact changed every time the checksum was written. Building with
-`ODR_GIT_HEAD=v6.2.0` makes the binary identify itself by the tag instead —
-known before the commit exists — and the loop becomes a fixed point: build,
-checksum, write, commit, tag, upload.
+`Package.swift` must carry the checksum of an artifact built from the commit
+that contains `Package.swift`, which is circular because `git_watcher.cmake`
+bakes the working-tree sha into every binary. `ODR_GIT_HEAD=v6.2.0` breaks it:
+the binary identifies itself by the tag, known before the commit exists, and the
+trees then differ only in `Package.swift` — which the framework never sees.
 
-`tree(release commit)` and `tree(built commit)` differ only in `Package.swift`,
-which the framework never sees. The `verify` job on `release: published` is the
-guard against a release cut by hand, which would leave the tag serving the
-previous version's binary.
+Off a tag the url says `UNRELEASED` and resolves to nothing, so only tags are
+consumable. `verify` on `release: published` catches a release cut by hand,
+which would leave the tag serving the previous version's binary.
 
 ## Testing
 

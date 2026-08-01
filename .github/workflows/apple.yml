@@ -2,23 +2,31 @@ name: apple
 
 on:
   push:
+    # release branches are `release.yml`'s alone
+    branches-ignore:
+      - 'releases'
+      - 'release/**'
   release:
     types: [published]
   workflow_dispatch:
+  # `release.yml` builds the artifact it has to checksum. The version comes in
+  # so the framework identifies itself by the tag rather than by a commit that
+  # does not exist yet; the checksum goes back out for `Package.swift`.
+  workflow_call:
     inputs:
       version:
-        description: version to release (e.g. 6.2.0) — leave empty for a full dry run
-        required: false
+        description: tag being cut (e.g. v6.2.0)
+        type: string
+        required: true
+    outputs:
+      checksum:
+        value: ${{ jobs.xcframework.outputs.checksum }}
 
-# Keyed on the ref *and* the event, so a second push to a branch supersedes the
-# first instead of queueing behind it, while a deliberate dispatch is never
-# cancelled by an unrelated push. `head_ref || run_id` — what the other
-# workflows use — is unique per run for push and dispatch events, so
-# `cancel-in-progress` never actually cancels anything there. On 10x-billed
-# macOS runners that piles up quickly.
+# Keyed on the event too, so a dispatch is not cancelled by an unrelated push.
+# A build `release.yml` is waiting on is never cancelled at all.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !inputs.version }}
 
 # See the cache-key comment in `build_test.yml` for why the keys look like this.
 env:
@@ -30,14 +38,10 @@ env:
   XCODE_VERSION: '26.0'
 
 jobs:
-  # macOS runners bill at 10x, and five cross builds plus two test runs on every
-  # push is not worth it. A push off main builds the two arm64 slices and stops
-  # there; main and a dispatch build all five, assemble and run the suites.
-  #
-  # A dispatch without a `version` is exactly that and nothing more, which is
-  # how the full matrix — including the simulator suite, the only job that runs
-  # what a device runs — gets exercised on a branch before it is merged.
-  # Releasing is what supplying a version adds.
+  # macOS runners bill at 10x. A push off main builds the two arm64 slices and
+  # stops there; main, a dispatch and a release build all five, assemble and run
+  # the suites — a dispatch being how a branch exercises the full matrix,
+  # including the simulator suite, before it is merged.
   matrix:
     runs-on: ubuntu-24.04
     outputs:
@@ -46,7 +50,7 @@ jobs:
     steps:
       - id: pick
         run: |
-          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" != refs/heads/main ]; then
+          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" != refs/heads/main ] && [ -z "${{ inputs.version }}" ]; then
             echo 'profiles=["apple-ios-armv8","apple-macos-armv8"]' >> "$GITHUB_OUTPUT"
             echo 'full=false' >> "$GITHUB_OUTPUT"
           else
@@ -117,16 +121,11 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
-      # A release identifies itself by its tag rather than by the commit, which
-      # is what keeps the checksum in `Package.swift` from chasing its own tail.
+      # Identify by the tag, not by the commit: the commit that carries the
+      # checksum does not exist yet, and would change the binary if it did.
       - name: release version
-        if: github.event_name == 'release' || inputs.version != ''
-        run: |
-          if [ "${{ github.event_name }}" = release ]; then
-            echo "ODR_GIT_HEAD=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-          else
-            echo "ODR_GIT_HEAD=v${{ inputs.version }}" >> "$GITHUB_ENV"
-          fi
+        if: inputs.version
+        run: echo "ODR_GIT_HEAD=${{ inputs.version }}" >> "$GITHUB_ENV"
 
       - name: build
         run: python apple/build_xcframework.py slice --profile ${{ matrix.profile }}
@@ -153,6 +152,8 @@ jobs:
     needs: [matrix, framework]
     if: needs.matrix.outputs.full == 'true'
     runs-on: macos-15
+    outputs:
+      checksum: ${{ steps.checksum.outputs.checksum }}
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -174,16 +175,27 @@ jobs:
         run: python apple/build_xcframework.py assemble
 
       - name: checksum
+        id: checksum
         run: |
-          swift package compute-checksum OdrCoreObjC.xcframework.zip | tee checksum.txt
+          CHECKSUM=$(swift package compute-checksum OdrCoreObjC.xcframework.zip)
+          echo "$CHECKSUM"
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
+      # The archive alone — the checksum travels as a workflow output.
       - name: upload xcframework
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: OdrCoreObjC.xcframework
-          path: |
-            OdrCoreObjC.xcframework.zip
-            checksum.txt
+          path: OdrCoreObjC.xcframework.zip
+          if-no-files-found: error
+
+      # `release.yml` attaches every `release-asset-*` artifact of the run
+      - name: upload as a release asset
+        if: inputs.version
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-asset-xcframework
+          path: OdrCoreObjC.xcframework.zip
           if-no-files-found: error
 
   # The iOS *device* slice is only ever link checked; nothing runs it. The
@@ -240,58 +252,9 @@ jobs:
           swift package dump-package > /dev/null
           echo "manifest evaluates; submodules: $(git config --file .gitmodules --get-regexp path | wc -l)"
 
-  # Builds the artifact, then writes its checksum into `Package.swift` and tags.
-  # One step, and nothing lies about itself: the framework reports the tag it
-  # was built for, and the tag carries the checksum of the artifact that exists.
-  release:
-    if: github.event_name == 'workflow_dispatch' && inputs.version != ''
-    needs: [xcframework, test, resolve]
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - name: checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          token: ${{ secrets.PAT_ANDIWAND }}
-
-      - name: download xcframework
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: OdrCoreObjC.xcframework
-
-      - name: point Package.swift at this release
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          CHECKSUM=$(cat checksum.txt | tr -d '[:space:]')
-          python3 - <<'PY'
-          import os, re, pathlib
-          version, checksum = os.environ["VERSION"], os.environ["CHECKSUM"]
-          path = pathlib.Path("Package.swift")
-          text = path.read_text()
-          text = re.sub(r"download/v[^/]+/OdrCoreObjC", f"download/v{version}/OdrCoreObjC", text)
-          text = re.sub(r'checksum: "[0-9a-f]{64}"', f'checksum: "{checksum}"', text)
-          path.write_text(text)
-          PY
-          git diff --stat
-
-      - name: tag and release
-        env:
-          GH_TOKEN: ${{ secrets.PAT_ANDIWAND }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -am "chore(apple): OdrCoreObjC.xcframework for v${VERSION}"
-          git push
-          gh release create "v${VERSION}" --target "$(git rev-parse HEAD)" \
-            --title "v${VERSION}" --generate-notes \
-            OdrCoreObjC.xcframework.zip
-
-  # A release cut without the job above would leave the tag pointing at a
-  # `Package.swift` whose URL and checksum belong to the previous version, and
-  # SwiftPM would happily serve that stale binary. Make it loud.
+  # A release cut by hand would leave the tag pointing at a `Package.swift`
+  # whose url and checksum belong to the previous version, and SwiftPM would
+  # serve that stale binary without complaint. Make it loud.
   verify:
     if: github.event_name == 'release'
     runs-on: macos-15

@@ -6,6 +6,10 @@ import PackageDescription
 // The bindings ship as a prebuilt xcframework — odrcore is a large C++ project
 // with conan dependencies, which SwiftPM cannot build.
 //
+// The url and checksum below are stamped by `release.yml` onto the commit it
+// tags, so off a release tag they say `UNRELEASED` and resolve to nothing. Only
+// tags are consumable.
+//
 // `ODR_XCFRAMEWORK` points at a locally built one, which is how the test target
 // and a developer working on `apple/` exercise what they just built rather than
 // the last release. Consumers never set it and get the release artifact.
@@ -20,7 +24,7 @@ let binary: Target = ProcessInfo.processInfo.environment["ODR_XCFRAMEWORK"]
     ?? Target.binaryTarget(
         name: "OdrCoreObjC",
         url:
-            "https://github.com/opendocument-app/OpenDocument.core/releases/download/v6.2.0/OdrCoreObjC.xcframework.zip",
+            "https://github.com/opendocument-app/OpenDocument.core/releases/download/UNRELEASED/OdrCoreObjC.xcframework.zip",
         checksum: "0000000000000000000000000000000000000000000000000000000000000000"
     )
 

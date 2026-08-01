@@ -121,10 +121,12 @@ Merge main into `releases`, push, publish the draft that appears —
   also has to be a human: a release created by `GITHUB_TOKEN` raises no
   `release: published`, and that event starts conan, maven and android.
 - **`release.yml` is the only place that writes a version anywhere**, and
-  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Nothing writes one
-  today, so no commit is made. What will is SwiftPM: it resolves `Package.swift`
-  at the tag, and a binary target there names a sha256 of an archive that does
-  not exist until it is built.
+  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Today that is
+  `Package.swift`: SwiftPM resolves it at the tag, and its binary target names
+  the sha256 of an archive that does not exist until the release builds it. Off
+  a tag the url says `UNRELEASED`.
+- **A job that wants something attached to the release** names its artifact
+  `release-asset-*`; `release.yml` uploads those and nothing else.
 - **`release-status.yml` makes a partial release loud** — it waits for the
   publish workflows and fails if one failed or never started. `EXPECTED` in
   `scripts/release_status.py` is the list of destinations.
