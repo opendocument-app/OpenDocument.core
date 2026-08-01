@@ -92,7 +92,11 @@ def build(profile: str, conan: str, build_profile: str) -> None:
     # tail: writing the checksum makes a new commit, and a binary that embeds
     # the working-tree sha would change with it.
     release = os.environ.get("ODR_GIT_HEAD")
-    version = [f"-DGIT_HEAD_SHA1={release}", "-DGIT_IS_DIRTY=false"] if release else []
+    version = [
+        f"-DGIT_HEAD_SHA1={release}",
+        "-DGIT_IS_DIRTY=false",
+        f"-DODR_APPLE_BUNDLE_VERSION={release.lstrip('v')}",
+    ] if release else []
 
     run(["cmake", "-B", cmake_dir, "-S", REPO_ROOT,
          "-DCMAKE_TOOLCHAIN_FILE=" + str(build_dir / "conan_toolchain.cmake"),
@@ -149,19 +153,22 @@ def assert_contents(framework: Path) -> None:
     root = framework / "Versions" / "A"
     if not root.exists():
         root = framework
+    # Resources are flat on iOS and under `Resources/` only in the versioned
+    # macOS layout — a bundle that gets that wrong does not load at all.
+    resources = root / "Resources" if (root / "Resources").is_dir() else root
     required = [
         root / "Headers" / f"{FRAMEWORK}.h",
         root / "Modules" / "module.modulemap",
-        root / "Resources" / "magic.mgc",
-        root / "Resources" / "document.css",
+        resources / "magic.mgc",
+        resources / "document.css",
     ]
     missing = [path for path in required if not path.exists()]
     if missing:
         raise SystemExit(
             "framework is incomplete: " + ", ".join(str(p) for p in missing))
 
-    plist = root / "Resources" / "Info.plist" if (
-        root / "Resources" / "Info.plist").exists() else root / "Info.plist"
+    plist = resources / "Info.plist" if (
+        resources / "Info.plist").exists() else root / "Info.plist"
     with plist.open("rb") as stream:
         info = plistlib.load(stream)
     for key in ("MinimumOSVersion", "CFBundleSupportedPlatforms"):
@@ -169,6 +176,13 @@ def assert_contents(framework: Path) -> None:
             raise SystemExit(
                 f"{plist} has no {key}; App Store validation rejects an "
                 f"embedded framework without it")
+    # An empty value is what a placeholder nothing filled in leaves behind, and
+    # it is not caught by presence alone. `CFBundleExecutable` empty is fatal:
+    # installd refuses the app that embeds the framework.
+    for key in ("CFBundleExecutable", "CFBundleName", "CFBundleIdentifier",
+                "CFBundleVersion", "CFBundleShortVersionString"):
+        if not info.get(key):
+            raise SystemExit(f"{plist} has an empty {key}")
 
 
 def assemble(output: Path) -> None:
