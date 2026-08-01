@@ -100,10 +100,16 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 
 ## Releasing
 
-Branch `release/v<major>.<minor>.X` off main, push it, publish the draft that
-appears. That is the whole procedure — `.github/workflows/release.yml` and
-`scripts/release.py`.
+Merge main into `releases`, push, publish the draft that appears. That is the
+whole procedure — `.github/workflows/release.yml` and `scripts/release.py`.
 
+- **`releases` is the mainline train.** It only moves forward, and its
+  first-parent history *is* the release history — the one thing main
+  deliberately cannot tell you. Merging into it is what cutting a release means.
+- **A maintenance line branches off the tag, not off `releases`.**
+  `git branch release/v6.1.X v6.1.0`, cherry-pick, push. Off the tag, because
+  the version is derived against the nearest *reachable* one, and branching off
+  `releases` would derive against whatever shipped last.
 - **`main` carries no version.** No file is bumped, no changelog is committed,
   and `git log main` never mentions a release. All a build records about itself
   is `GIT_HEAD_SHA1` plus a dirty flag, and that is deliberate: the version of a
@@ -114,11 +120,15 @@ appears. That is the whole procedure — `.github/workflows/release.yml` and
   load-bearing, not cosmetic.
 - **Maintenance releases fall out of reachability.** On `release/v6.1.X` the
   last reachable tag is `v6.1.0`, so a cherry-picked `fix:` becomes `v6.1.1`
-  while `release/v6.2.X` independently moves to `v6.2.1`.
+  no matter how far `releases` has moved on. The same mechanism is the trap: a
+  `feat:` there bumps the *minor*, which the mainline may already have shipped —
+  a maintenance line usually wants `fix:` only, and `release.py version` refuses
+  to derive a version that is already tagged rather than colliding at publish
+  time. Pass `--version` when you mean it.
 - **Release branches run `release.yml` and nothing else** — every other workflow
-  carries `branches-ignore: ['release/**']`. A merge from main brings commits
-  that were already green; a backport that did not come that way is worth
-  pushing to an ordinary branch first.
+  carries `branches-ignore: ['releases', 'release/**']`. A merge from main
+  brings commits that were already green; a backport that did not come that way
+  is worth pushing to an ordinary branch first.
 - **The release is drafted, and a human publishes it.** GitHub does not create
   the tag until then, which is what lets the tag point at a commit made during
   the run. It also has to be a human: a release created by `GITHUB_TOKEN` raises

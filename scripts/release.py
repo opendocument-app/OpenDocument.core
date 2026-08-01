@@ -7,7 +7,14 @@ about itself is `GIT_HEAD_SHA1` plus a dirty flag (`CMakeLists.txt`). The
 version of a release is derived from its commits, and the tag is where it
 lives.
 
-The flow, driven by `.github/workflows/release.yml` on a push to `release/**`:
+`releases` is the mainline train: merge main into it and push, and the run below
+cuts the next version. Its first-parent history is the release history, which is
+the one thing main deliberately cannot tell you. When the train has already left
+and an older line needs a patch, branch off the *tag* — `git branch
+release/v6.1.X v6.1.0` — cherry-pick, and push that. Off the tag rather than off
+`releases`, because the version is derived against the nearest reachable one.
+
+The flow, driven by `.github/workflows/release.yml`:
 
     version   what the conventional commits since the last reachable tag say
               the next version is
@@ -90,7 +97,27 @@ def head() -> str:
 
 def command_version(arguments: argparse.Namespace) -> None:
     """The next version, on stdout and nothing else — the workflow reads it."""
-    print(arguments.version or cliff("--bumped-version", capture=True))
+    version = arguments.version or cliff("--bumped-version", capture=True)
+
+    # A bump is computed against the last *reachable* tag, which is what lets a
+    # maintenance line version itself without knowing the mainline exists — and
+    # is also how it can collide with it. `release/v6.2.X` branched from
+    # `v6.2.0` sees only that tag, so a `feat:` on it bumps to `v6.3.0`, which
+    # the mainline may already have shipped. A maintenance line usually wants
+    # `fix:` only; where it genuinely does not, say the version outright.
+    tagged = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{version}"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+    ).returncode == 0
+    if tagged and not arguments.version:
+        raise SystemExit(
+            f"the commits say {version}, but {version} is already tagged — a "
+            f"maintenance line has bumped into a version the mainline used. "
+            f"Re-run with an explicit --version."
+        )
+
+    print(version)
 
 
 def command_notes(arguments: argparse.Namespace) -> None:
@@ -107,11 +134,12 @@ def command_stamp(arguments: argparse.Namespace) -> None:
     an `add -A` that was convenient at the time.
     """
     # A dispatch from the wrong branch would otherwise push a version commit
-    # onto it. Releases come from release branches; nothing else.
-    if not arguments.branch.startswith("release/"):
+    # onto it. Releases come from `releases` or a maintenance line; nothing else.
+    if arguments.branch != "releases" and not arguments.branch.startswith("release/"):
         raise SystemExit(
-            f"refusing to stamp {arguments.branch}: a release is cut from a "
-            f"`release/v<major>.<minor>.X` branch"
+            f"refusing to stamp {arguments.branch}: a release is cut from "
+            f"`releases`, or from a `release/v<major>.<minor>.X` branched off "
+            f"the tag it patches"
         )
 
     # Asked before staging rather than after, so `--dry-run` reports the same

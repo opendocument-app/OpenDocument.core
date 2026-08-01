@@ -1,7 +1,14 @@
 name: release
 
-# Cutting a release: branch `release/v<major>.<minor>.X` off main, push it, and
-# publish the draft this leaves behind. That is the whole procedure.
+# Cutting a release: merge main into `releases`, push, and publish the draft this
+# leaves behind. That is the whole procedure.
+#
+# `releases` is the mainline train — it only ever moves forward, and its
+# first-parent history is the release history, which is the one thing main
+# deliberately cannot tell you. Maintenance lines branch off a *tag* when the
+# train has already left: `git branch release/v6.1.X v6.1.0`, cherry-pick, push.
+# Off the tag, not off `releases`, or the version below is derived against the
+# wrong ancestor.
 #
 # Every other workflow stays out of release branches (`branches-ignore` on their
 # push triggers), so a merge from main into a release branch is *one* run — this
@@ -22,6 +29,7 @@ name: release
 on:
   push:
     branches:
+      - 'releases'
       - 'release/**'
   workflow_dispatch:
     inputs:

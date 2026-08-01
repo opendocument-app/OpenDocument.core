@@ -2,10 +2,11 @@ name: android
 
 on:
   push:
-    # Release branches are `release.yml`'s alone: a merge from main carries
-    # commits that were already green here, and the release run is the one run
-    # that branch should cost.
+    # `releases` and the maintenance lines are `release.yml`'s alone: a merge
+    # from main carries commits that were already green here, and the release
+    # run is the one run those branches should cost.
     branches-ignore:
+      - 'releases'
       - 'release/**'
   release:
     types: [published]
