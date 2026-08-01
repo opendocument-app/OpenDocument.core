@@ -22,8 +22,7 @@ namespace fs = std::filesystem;
 namespace odr {
 
 void test::set_global_params() {
-  GlobalParams::set_odr_core_data_path(info::odr_data_path());
-  GlobalParams::set_libmagic_database_path(info::libmagic_database_path());
+  GlobalParams::set_odr_core_data_path(std::string(info::odr_data_path()));
 }
 
 } // namespace odr

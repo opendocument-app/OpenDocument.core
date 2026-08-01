@@ -74,8 +74,8 @@ standalone against an installed `odrcore` package.
 
 Rendering uses shipped assets (CSS/JS). Point the library at them via
 `GlobalParams.setOdrCoreDataPath(...)` or the `ODR_CORE_DATA_PATH` environment
-variable (the tests read it; for in-tree builds it is `build/data`). The
-optional libmagic backend has its own path on `GlobalParams`.
+variable (the tests read it; for in-tree builds it is `build/data`). Detection
+needs no runtime data of its own.
 
 ## Notes
 

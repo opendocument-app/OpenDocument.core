@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Load the Conan runtime env from .vscode/.env (see gen-vscode-env.py) and exec
 # the given command with it. Used by VS Code tasks so the test binary and CLI
-# tools can find the libmagic database.
+# tools run against the dependency runtime the build was configured with.
 #
 # Usage: scripts/run-with-env.sh <command> [args...]
 set -euo pipefail

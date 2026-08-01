@@ -95,5 +95,11 @@
 
 ### Open tasks
 
+- drop the last inert traces of libmagic once consumers have moved off them:
+  `GlobalParams::libmagic_database_path` and its java, python and objc mirrors
+  still store and return a path nothing reads, and `ODR_WITH_LIBMAGIC` /
+  the conan `with_libmagic` option are still accepted so a build that sets one
+  keeps configuring. Removing them is the breaking change this deliberately
+  is not.
 - collect additional pdf files via the translate cli and capture the ones that break
 - exercise editing across all formats (odp editing appears broken via an HTML issue)

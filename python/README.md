@@ -33,7 +33,7 @@ PYTHONPATH=build/python ODR_CORE_DATA_PATH=build/data python -m pytest python/te
 `pip install .` from the repository root builds a wheel via scikit-build-core
 (see the root `pyproject.toml`); run `conan install` first and point
 `CMAKE_ARGS` at the generated `conan_toolchain.cmake` so the C++ dependencies
-resolve. Wheels bundle libmagic's database, so match that option:
+resolve, and match the wheel's asset bundling:
 
 ```bash
 conan install . -o '&:with_python=True' -o '&:bundle_assets=True' --build missing
@@ -42,14 +42,13 @@ CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$PWD/conan_toolchain.cmake" pip install .
 
 ## Runtime data
 
-Rendering uses shipped assets (CSS/JS), and MIME detection uses libmagic's
-compiled database (`magic.mgc`). Wheels bundle both under `pyodr/data` and pick
-them up automatically. For in-tree builds set `ODR_CORE_DATA_PATH` (the tests
-read it) and, if needed, `ODR_LIBMAGIC_DATABASE_PATH`, or call
-`pyodr.GlobalParams.set_odr_core_data_path(...)` /
-`set_libmagic_database_path(...)`.
+Rendering uses shipped assets (CSS/JS). Wheels bundle them under `pyodr/data`
+and pick them up automatically; for in-tree builds set `ODR_CORE_DATA_PATH` (the
+tests read it) or call `pyodr.GlobalParams.set_odr_core_data_path(...)`. Missing
+assets are not fatal — rendering then fails on the individual resource.
 
-Neither is fatal when missing: without the assets, rendering fails on the
-individual resource; without the database, odrcore tries the system database and
-then falls back to its own magic sniffing (which sees an `.odt` as
-`application/zip` rather than the ODF type).
+MIME detection needs no runtime data: `mimetype` runs the open strategy, so it
+names what is *inside* a zip or a compound file. `libmagic_database_path()` and
+`set_libmagic_database_path(...)` are deprecated leftovers of the libmagic
+backend that used to answer this and could only say `application/zip` for an
+`.odt`; they still store and return a path, but nothing reads it.

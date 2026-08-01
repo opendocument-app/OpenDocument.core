@@ -17,7 +17,9 @@ using odr::internal::file_type_table::Row;
 namespace table = odr::internal::file_type_table;
 } // namespace
 
-std::string odr::version() { return internal::project_info::version(); }
+std::string odr::version() {
+  return std::string(internal::project_info::version());
+}
 
 std::string odr::commit_hash() { return internal::git_info::commit_hash(); }
 
@@ -90,6 +92,10 @@ std::string odr::file_category_to_string(const FileCategory type) {
     return "text";
   case FileCategory::font:
     return "font";
+  case FileCategory::audio:
+    return "audio";
+  case FileCategory::video:
+    return "video";
   default:
     return "unnamed";
   }

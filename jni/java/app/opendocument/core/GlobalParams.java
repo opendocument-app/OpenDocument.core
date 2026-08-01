@@ -8,10 +8,19 @@ public final class GlobalParams {
 
   public static native String odrCoreDataPath();
 
+  /**
+   * @deprecated Inert: libmagic is gone and nothing reads this. It still returns whatever was set,
+   *     so a caller that sets it keeps working — detection is our own now and needs no database.
+   */
+  @Deprecated
   public static native String libmagicDatabasePath();
 
   public static native void setOdrCoreDataPath(String path);
 
+  /**
+   * @deprecated See {@link #libmagicDatabasePath()}.
+   */
+  @Deprecated
   public static native void setLibmagicDatabasePath(String path);
 
   private GlobalParams() {}

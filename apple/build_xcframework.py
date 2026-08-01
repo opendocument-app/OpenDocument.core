@@ -110,7 +110,6 @@ def build(profile: str, conan: str, build_profile: str) -> None:
          "-DODR_TEST=OFF",
          "-DODR_JNI=OFF",
          "-DODR_PYTHON=OFF",
-         "-DODR_WITH_LIBMAGIC=ON",
          "-DODR_WITH_HTTP_SERVER=ON",
          "-DODR_BUNDLE_ASSETS=ON"])
     run(["cmake", "--build", cmake_dir, "--target", "odr_apple",
@@ -159,7 +158,6 @@ def assert_contents(framework: Path) -> None:
     required = [
         root / "Headers" / f"{FRAMEWORK}.h",
         root / "Modules" / "module.modulemap",
-        resources / "magic.mgc",
         resources / "document.css",
     ]
     missing = [path for path in required if not path.exists()]

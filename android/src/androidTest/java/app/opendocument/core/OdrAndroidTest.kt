@@ -33,9 +33,6 @@ class OdrAndroidTest {
         assertTrue("$data is not a directory", data.isDirectory)
         assertTrue(File(data, "document.css").isFile)
         assertTrue(File(data, "document.js").isFile)
-
-        val magic = File(GlobalParams.libmagicDatabasePath())
-        assertTrue("$magic is not a file", magic.isFile)
     }
 
     @Test
@@ -46,12 +43,12 @@ class OdrAndroidTest {
     }
 
     @Test
-    fun detectsTypeWithTheBundledMagicDatabase() {
+    fun detectsTypeInsideTheContainer() {
         val directory = TestSupport.tempDir("magic")
         val odt = TestFiles.odtFile(directory)
 
-        // goes through libmagic, so it only works when the database extracted above
-        // is the one the native library actually opened
+        // naming the odt rather than the zip holding it means detection opened the
+        // container
         assertEquals("application/vnd.oasis.opendocument.text", Odr.mimetype(odt.toString()))
     }
 }

@@ -32,8 +32,8 @@ for view in service.views {
 }
 ```
 
-Nothing needs configuring first. The framework points odrcore at the css, JS and
-libmagic database it carries before `main` runs — that is what the `+load` in
+Nothing needs configuring first. The framework points odrcore at the css and JS
+it carries before `main` runs — that is what the `+load` in
 `OdrCoreBootstrap.mm` is for. Override it with `GlobalParams` from
 `application(_:didFinishLaunchingWithOptions:)` if you relocated the resources.
 

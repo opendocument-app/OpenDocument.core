@@ -89,6 +89,42 @@ enum class FileType {
   truetype_font,
   // https://en.wikipedia.org/wiki/OpenType
   opentype_font,
+
+  // Detection only, like `word_perfect` above: the media formats a viewer is
+  // regularly handed alongside documents. Naming them is the point - a caller
+  // that knows a file is a video hands it to a player instead of asking us to
+  // translate it, and without a name the text fallback would call it plain
+  // text. New entries go at the end: the bindings mirror this enum by ordinal.
+  // https://en.wikipedia.org/wiki/WebP
+  webp,
+  // https://en.wikipedia.org/wiki/TIFF
+  tagged_image_file_format,
+  // https://en.wikipedia.org/wiki/High_Efficiency_Image_File_Format
+  high_efficiency_image_format,
+  // https://en.wikipedia.org/wiki/AVIF
+  av1_image_file_format,
+
+  // https://en.wikipedia.org/wiki/MP3
+  mpeg_audio,
+  // https://en.wikipedia.org/wiki/MP4_file_format
+  mpeg4_audio,
+  // https://en.wikipedia.org/wiki/Ogg
+  ogg_audio,
+  // https://en.wikipedia.org/wiki/WAV
+  waveform_audio,
+  // https://en.wikipedia.org/wiki/FLAC
+  free_lossless_audio_codec,
+
+  // https://en.wikipedia.org/wiki/MP4_file_format
+  mpeg4_video,
+  // https://en.wikipedia.org/wiki/QuickTime_File_Format
+  quicktime_video,
+  // https://en.wikipedia.org/wiki/3GP_and_3G2
+  third_generation_partnership_video,
+  // https://en.wikipedia.org/wiki/Matroska
+  matroska_video,
+  // https://en.wikipedia.org/wiki/Audio_Video_Interleave
+  audio_video_interleave,
 };
 
 /// @brief Collection of file categories.
@@ -99,6 +135,9 @@ enum class FileCategory {
   archive,
   document,
   font,
+  // appended rather than sorted in, for the same reason as `FileType`
+  audio,
+  video,
 };
 
 /// @brief Collection of file locations.

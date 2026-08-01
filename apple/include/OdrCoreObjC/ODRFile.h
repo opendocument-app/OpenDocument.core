@@ -56,6 +56,23 @@ typedef NS_ENUM(NSInteger, ODRFileType) {
 
   ODRFileTypeTruetypeFont,
   ODRFileTypeOpentypeFont,
+
+  ODRFileTypeWebp,
+  ODRFileTypeTaggedImageFileFormat,
+  ODRFileTypeHighEfficiencyImageFormat,
+  ODRFileTypeAv1ImageFileFormat,
+
+  ODRFileTypeMpegAudio,
+  ODRFileTypeMpeg4Audio,
+  ODRFileTypeOggAudio,
+  ODRFileTypeWaveformAudio,
+  ODRFileTypeFreeLosslessAudioCodec,
+
+  ODRFileTypeMpeg4Video,
+  ODRFileTypeQuicktimeVideo,
+  ODRFileTypeThirdGenerationPartnershipVideo,
+  ODRFileTypeMatroskaVideo,
+  ODRFileTypeAudioVideoInterleave,
 } NS_SWIFT_NAME(FileType);
 
 typedef NS_ENUM(NSInteger, ODRFileCategory) {
@@ -65,6 +82,8 @@ typedef NS_ENUM(NSInteger, ODRFileCategory) {
   ODRFileCategoryArchive,
   ODRFileCategoryDocument,
   ODRFileCategoryFont,
+  ODRFileCategoryAudio,
+  ODRFileCategoryVideo,
 } NS_SWIFT_NAME(FileCategory);
 
 typedef NS_ENUM(NSInteger, ODRFileLocation) {

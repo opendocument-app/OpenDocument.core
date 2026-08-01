@@ -104,10 +104,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // the instrumented apk carries the bindings and the 8 MB libmagic database,
-    // and pushing that onto a cold emulator outlasts ddmlib's default timeout,
-    // which surfaces as a ShellCommandUnresponsiveException rather than as a
-    // failing test
+    // the instrumented apk carries the bindings and the renderer assets, and
+    // pushing that onto a cold emulator outlasts ddmlib's default timeout, which
+    // surfaces as a ShellCommandUnresponsiveException rather than as a failing
+    // test
     installation { timeOutInMs = 10 * 60 * 1000 }
 
     sourceSets {

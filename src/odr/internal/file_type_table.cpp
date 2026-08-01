@@ -162,6 +162,59 @@ constexpr std::array otf_mimetypes{"font/otf"sv, "application/x-font-otf"sv,
                                    "application/x-font-opentype"sv,
                                    "application/vnd.ms-opentype"sv};
 
+constexpr std::array webp_extensions{"webp"sv};
+constexpr std::array webp_mimetypes{"image/webp"sv};
+
+constexpr std::array tiff_extensions{"tif"sv, "tiff"sv};
+constexpr std::array tiff_mimetypes{"image/tiff"sv, "image/x-tiff"sv};
+
+constexpr std::array heif_extensions{"heic"sv, "heif"sv, "hif"sv};
+constexpr std::array heif_mimetypes{"image/heic"sv, "image/heif"sv,
+                                    "image/heic-sequence"sv,
+                                    "image/heif-sequence"sv};
+
+constexpr std::array avif_extensions{"avif"sv, "avifs"sv};
+constexpr std::array avif_mimetypes{"image/avif"sv, "image/avif-sequence"sv};
+
+constexpr std::array mp3_extensions{"mp3"sv};
+constexpr std::array mp3_mimetypes{"audio/mpeg"sv, "audio/mp3"sv,
+                                   "audio/x-mpeg"sv};
+
+constexpr std::array m4a_extensions{"m4a"sv, "m4b"sv};
+constexpr std::array m4a_mimetypes{"audio/mp4"sv, "audio/x-m4a"sv,
+                                   "audio/m4a"sv};
+
+constexpr std::array ogg_extensions{"ogg"sv, "oga"sv, "opus"sv};
+constexpr std::array ogg_mimetypes{"audio/ogg"sv, "application/ogg"sv,
+                                   "audio/opus"sv};
+
+constexpr std::array wav_extensions{"wav"sv, "wave"sv};
+constexpr std::array wav_mimetypes{"audio/wav"sv, "audio/x-wav"sv,
+                                   "audio/wave"sv, "audio/vnd.wave"sv};
+
+constexpr std::array flac_extensions{"flac"sv};
+constexpr std::array flac_mimetypes{"audio/flac"sv, "audio/x-flac"sv};
+
+constexpr std::array mp4_extensions{"mp4"sv, "m4v"sv};
+constexpr std::array mp4_mimetypes{"video/mp4"sv, "video/x-m4v"sv};
+
+constexpr std::array mov_extensions{"mov"sv, "qt"sv};
+constexpr std::array mov_mimetypes{"video/quicktime"sv};
+
+constexpr std::array third_gpp_extensions{"3gp"sv, "3g2"sv};
+constexpr std::array third_gpp_mimetypes{"video/3gpp"sv, "video/3gpp2"sv,
+                                         "audio/3gpp"sv};
+
+// one type for the whole EBML container: matroska and webm are the same bytes
+// until the DocType element, which sits deeper than a signature reaches
+constexpr std::array mkv_extensions{"mkv"sv, "webm"sv, "mka"sv};
+constexpr std::array mkv_mimetypes{"video/x-matroska"sv, "video/webm"sv,
+                                   "audio/x-matroska"sv, "audio/webm"sv};
+
+constexpr std::array avi_extensions{"avi"sv};
+constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
+                                   "video/msvideo"sv};
+
 // The single source of truth behind every public format lookup. `odr_test`
 // asserts that it covers each `FileType` exactly once and that the capability
 // bits agree with what the engines actually do.
@@ -420,6 +473,109 @@ constexpr std::array table{
         FileCategory::font,
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Named but not decoded, so `detect_by_content` is the only capability
+    // they carry - see the comment on these in `FileType`.
+    Row{FileType::webp,
+        "webp"sv,
+        webp_extensions,
+        webp_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::tagged_image_file_format,
+        "tiff"sv,
+        tiff_extensions,
+        tiff_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::high_efficiency_image_format,
+        "heif"sv,
+        heif_extensions,
+        heif_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::av1_image_file_format,
+        "avif"sv,
+        avif_extensions,
+        avif_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+
+    Row{FileType::mpeg_audio,
+        "mp3"sv,
+        mp3_extensions,
+        mp3_mimetypes,
+        FileCategory::audio,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::mpeg4_audio,
+        "m4a"sv,
+        m4a_extensions,
+        m4a_mimetypes,
+        FileCategory::audio,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::ogg_audio,
+        "ogg"sv,
+        ogg_extensions,
+        ogg_mimetypes,
+        FileCategory::audio,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::waveform_audio,
+        "wav"sv,
+        wav_extensions,
+        wav_mimetypes,
+        FileCategory::audio,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::free_lossless_audio_codec,
+        "flac"sv,
+        flac_extensions,
+        flac_mimetypes,
+        FileCategory::audio,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+
+    Row{FileType::mpeg4_video,
+        "mp4"sv,
+        mp4_extensions,
+        mp4_mimetypes,
+        FileCategory::video,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::quicktime_video,
+        "mov"sv,
+        mov_extensions,
+        mov_mimetypes,
+        FileCategory::video,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::third_generation_partnership_video,
+        "3gp"sv,
+        third_gpp_extensions,
+        third_gpp_mimetypes,
+        FileCategory::video,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::matroska_video,
+        "mkv"sv,
+        mkv_extensions,
+        mkv_mimetypes,
+        FileCategory::video,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
+    Row{FileType::audio_video_interleave,
+        "avi"sv,
+        avi_extensions,
+        avi_mimetypes,
+        FileCategory::video,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.

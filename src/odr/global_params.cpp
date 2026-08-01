@@ -26,9 +26,9 @@ void GlobalParams::set_libmagic_database_path(const std::string &path) {
   instance().m_libmagic_database_path = path;
 }
 
+// `m_libmagic_database_path` starts empty: nothing reads it, and there is no
+// longer a database path to default it to.
 GlobalParams::GlobalParams()
-    : m_odr_core_data_path{internal::project_info::odr_data_path()},
-      m_libmagic_database_path{
-          internal::project_info::libmagic_database_path()} {}
+    : m_odr_core_data_path{internal::project_info::odr_data_path()} {}
 
 } // namespace odr

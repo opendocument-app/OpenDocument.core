@@ -55,7 +55,25 @@ void odr_python::bind_file(py::module_ &m) {
       .value("bitmap_image_file", odr::FileType::bitmap_image_file)
       .value("starview_metafile", odr::FileType::starview_metafile)
       .value("truetype_font", odr::FileType::truetype_font)
-      .value("opentype_font", odr::FileType::opentype_font);
+      .value("opentype_font", odr::FileType::opentype_font)
+      .value("webp", odr::FileType::webp)
+      .value("tagged_image_file_format",
+             odr::FileType::tagged_image_file_format)
+      .value("high_efficiency_image_format",
+             odr::FileType::high_efficiency_image_format)
+      .value("av1_image_file_format", odr::FileType::av1_image_file_format)
+      .value("mpeg_audio", odr::FileType::mpeg_audio)
+      .value("mpeg4_audio", odr::FileType::mpeg4_audio)
+      .value("ogg_audio", odr::FileType::ogg_audio)
+      .value("waveform_audio", odr::FileType::waveform_audio)
+      .value("free_lossless_audio_codec",
+             odr::FileType::free_lossless_audio_codec)
+      .value("mpeg4_video", odr::FileType::mpeg4_video)
+      .value("quicktime_video", odr::FileType::quicktime_video)
+      .value("third_generation_partnership_video",
+             odr::FileType::third_generation_partnership_video)
+      .value("matroska_video", odr::FileType::matroska_video)
+      .value("audio_video_interleave", odr::FileType::audio_video_interleave);
 
   py::enum_<odr::FileCategory>(m, "FileCategory")
       .value("unknown", odr::FileCategory::unknown)
@@ -63,7 +81,9 @@ void odr_python::bind_file(py::module_ &m) {
       .value("image", odr::FileCategory::image)
       .value("archive", odr::FileCategory::archive)
       .value("document", odr::FileCategory::document)
-      .value("font", odr::FileCategory::font);
+      .value("font", odr::FileCategory::font)
+      .value("audio", odr::FileCategory::audio)
+      .value("video", odr::FileCategory::video);
 
   py::enum_<odr::FileLocation>(m, "FileLocation")
       .value("memory", odr::FileLocation::memory)

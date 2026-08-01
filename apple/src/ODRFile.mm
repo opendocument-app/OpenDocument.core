@@ -61,6 +61,26 @@ ODR_SAME_ENUM(ODRFileTypeBitmapImageFile, odr::FileType::bitmap_image_file);
 ODR_SAME_ENUM(ODRFileTypeStarviewMetafile, odr::FileType::starview_metafile);
 ODR_SAME_ENUM(ODRFileTypeTruetypeFont, odr::FileType::truetype_font);
 ODR_SAME_ENUM(ODRFileTypeOpentypeFont, odr::FileType::opentype_font);
+ODR_SAME_ENUM(ODRFileTypeWebp, odr::FileType::webp);
+ODR_SAME_ENUM(ODRFileTypeTaggedImageFileFormat,
+              odr::FileType::tagged_image_file_format);
+ODR_SAME_ENUM(ODRFileTypeHighEfficiencyImageFormat,
+              odr::FileType::high_efficiency_image_format);
+ODR_SAME_ENUM(ODRFileTypeAv1ImageFileFormat,
+              odr::FileType::av1_image_file_format);
+ODR_SAME_ENUM(ODRFileTypeMpegAudio, odr::FileType::mpeg_audio);
+ODR_SAME_ENUM(ODRFileTypeMpeg4Audio, odr::FileType::mpeg4_audio);
+ODR_SAME_ENUM(ODRFileTypeOggAudio, odr::FileType::ogg_audio);
+ODR_SAME_ENUM(ODRFileTypeWaveformAudio, odr::FileType::waveform_audio);
+ODR_SAME_ENUM(ODRFileTypeFreeLosslessAudioCodec,
+              odr::FileType::free_lossless_audio_codec);
+ODR_SAME_ENUM(ODRFileTypeMpeg4Video, odr::FileType::mpeg4_video);
+ODR_SAME_ENUM(ODRFileTypeQuicktimeVideo, odr::FileType::quicktime_video);
+ODR_SAME_ENUM(ODRFileTypeThirdGenerationPartnershipVideo,
+              odr::FileType::third_generation_partnership_video);
+ODR_SAME_ENUM(ODRFileTypeMatroskaVideo, odr::FileType::matroska_video);
+ODR_SAME_ENUM(ODRFileTypeAudioVideoInterleave,
+              odr::FileType::audio_video_interleave);
 
 ODR_SAME_ENUM(ODRFileCategoryUnknown, odr::FileCategory::unknown);
 ODR_SAME_ENUM(ODRFileCategoryText, odr::FileCategory::text);
@@ -68,6 +88,8 @@ ODR_SAME_ENUM(ODRFileCategoryImage, odr::FileCategory::image);
 ODR_SAME_ENUM(ODRFileCategoryArchive, odr::FileCategory::archive);
 ODR_SAME_ENUM(ODRFileCategoryDocument, odr::FileCategory::document);
 ODR_SAME_ENUM(ODRFileCategoryFont, odr::FileCategory::font);
+ODR_SAME_ENUM(ODRFileCategoryAudio, odr::FileCategory::audio);
+ODR_SAME_ENUM(ODRFileCategoryVideo, odr::FileCategory::video);
 
 ODR_SAME_ENUM(ODRFileLocationMemory, odr::FileLocation::memory);
 ODR_SAME_ENUM(ODRFileLocationDisk, odr::FileLocation::disk);
