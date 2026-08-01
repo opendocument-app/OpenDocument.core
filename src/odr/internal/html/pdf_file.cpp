@@ -1767,6 +1767,7 @@ public:
     };
 
     out.write_body_begin();
+    out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
       out.write_element_begin(
@@ -1795,6 +1796,7 @@ public:
 
       out.write_element_end("div"); // .p
     }
+    out.write_element_end("div"); // .d
     out.write_body_end();
     out.write_end();
 
@@ -2290,6 +2292,7 @@ public:
     };
 
     out.write_body_begin();
+    out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {
       out.write_element_begin(
@@ -2300,8 +2303,9 @@ public:
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
                        write_line);
       write_page_links(out, page.links);
-      out.write_element_end("div");
+      out.write_element_end("div"); // .p
     }
+    out.write_element_end("div"); // .d
     out.write_body_end();
     out.write_end();
 
@@ -2528,7 +2532,13 @@ public:
     write_viewport_meta(out, config(), true);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
-    out.out() << ".p{position:relative;margin:16px auto;background:#fff;"
+    // `.d`: the page column, sized to the widest page so pages of differing
+    // width centre against each other, not against the viewport. The page's
+    // side margin is part of that width, so fitting the document to a phone
+    // screen leaves a gutter instead of going edge to edge.
+    out.out() << ".d{display:flex;flex-direction:column;align-items:center;"
+                 "gap:16px;padding:16px 0;width:max-content;min-width:100%}";
+    out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
                  "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `.t`: shared base for all absolutely-positioned line blocks.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
