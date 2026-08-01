@@ -1,6 +1,16 @@
 name: format
 
-on: push
+on:
+  push:
+    # Release branches are `release.yml`'s alone: a merge from main carries
+    # commits that were already green here, and the release run is the one run
+    # that branch should cost.
+    branches-ignore:
+      - 'release/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

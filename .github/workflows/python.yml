@@ -2,12 +2,17 @@ name: python
 
 on:
   push:
+    # Release branches are `release.yml`'s alone: a merge from main carries
+    # commits that were already green here, and the release run is the one run
+    # that branch should cost.
+    branches-ignore:
+      - 'release/**'
   release:
     types:
       - published
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 # See the cache-key comment in `build_test.yml` for why the keys look like this.

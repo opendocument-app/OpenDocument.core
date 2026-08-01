@@ -98,6 +98,42 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   tests on. The `update_test_data` target moves existing checkouts onto the
   pins. The two private repositories need credentials.
 
+## Releasing
+
+Branch `release/v<major>.<minor>.X` off main, push it, publish the draft that
+appears. That is the whole procedure — `.github/workflows/release.yml` and
+`scripts/release.py`.
+
+- **`main` carries no version.** No file is bumped, no changelog is committed,
+  and `git log main` never mentions a release. All a build records about itself
+  is `GIT_HEAD_SHA1` plus a dirty flag, and that is deliberate: the version of a
+  release is derived from its commits and the tag is where it lives.
+- **The version comes from the commit subjects** — `git cliff --bumped-version`
+  over the conventional commits since the last *reachable* tag, so `feat!` is a
+  major, `feat` a minor and the rest a patch. Writing them properly is therefore
+  load-bearing, not cosmetic.
+- **Maintenance releases fall out of reachability.** On `release/v6.1.X` the
+  last reachable tag is `v6.1.0`, so a cherry-picked `fix:` becomes `v6.1.1`
+  while `release/v6.2.X` independently moves to `v6.2.1`.
+- **Release branches run `release.yml` and nothing else** — every other workflow
+  carries `branches-ignore: ['release/**']`. A merge from main brings commits
+  that were already green; a backport that did not come that way is worth
+  pushing to an ordinary branch first.
+- **The release is drafted, and a human publishes it.** GitHub does not create
+  the tag until then, which is what lets the tag point at a commit made during
+  the run. It also has to be a human: a release created by `GITHUB_TOKEN` raises
+  no `release: published`, and that event is what starts conan (`publish.yml`),
+  maven and android.
+- **Anything a release must record about itself is written in `release.yml`, in
+  one place, and committed by `release.py stamp` as `chore(release): vX.Y.Z`.**
+  Nothing else in the repo writes a version anywhere. If a run writes nothing
+  there is no commit at all and the tag lands on the merge from main — the
+  shape a release should have when nothing forces otherwise. What forces
+  otherwise is SwiftPM: it resolves `Package.swift` at the tag, and a binary
+  target there names a URL and a sha256 of an archive that does not exist until
+  it is built.
+- `release.py` is runnable by hand and `--dry-run` mutates nothing.
+
 ## Conventions
 
 - **Formatting**: clang-format (LLVM-based, `.clang-format`); run `scripts/format`

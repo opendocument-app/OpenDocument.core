@@ -1,0 +1,70 @@
+# git-cliff — derives the next version and the release notes from the commits.
+#
+# The whole point is that a release carries no information the commits do not
+# already have: `git cliff --bumped-version` reads the conventional-commit
+# subjects since the last reachable tag and says what the next version is.
+# `scripts/release.py` is the only caller; see the header there.
+#
+# "Reachable" is what makes maintenance branches work: on `release/v6.1.X` the
+# last tag reachable is `v6.1.0`, so a cherry-picked `fix:` yields `v6.1.1`
+# while `release/v6.2.X` independently moves to `v6.2.1`. Neither branch has to
+# know the other exists.
+
+[changelog]
+header = ""
+# One section per commit type. `group_by` sorts alphabetically, so the parsers
+# below number the groups in an html comment and the template strips it again —
+# the usual git-cliff idiom for controlling section order.
+#
+# Scopes stay in the subject: `feat(apple): …` reads better as-is than as a
+# nested heading, and the set of scopes is open. The PR number is not appended
+# either — squash-merge subjects already end in one, and adding it produced
+# `(#642) (#642)`.
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+# Anything that is not a conventional commit is not release-worthy prose. Merge
+# commits are the common case: merging main into a release branch brings the
+# individual `feat:`/`fix:` commits along, and those are what belongs in notes.
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+topo_order = false
+sort_commits = "oldest"
+
+# First match wins, so `chore(release)` has to precede `chore`.
+commit_parsers = [
+    # The stamp commit `scripts/release.py` writes. It exists to carry a
+    # checksum, says nothing a reader wants, and would otherwise show up in the
+    # *next* release's notes.
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^feat", group = "<!-- 0 -->Features" },
+    { message = "^fix", group = "<!-- 1 -->Fixes" },
+    { message = "^perf", group = "<!-- 2 -->Performance" },
+    { message = "^refactor", group = "<!-- 3 -->Refactoring" },
+    { message = "^docs", group = "<!-- 4 -->Documentation" },
+    { message = "^test", group = "<!-- 5 -->Tests" },
+    { message = "^build", group = "<!-- 6 -->Build" },
+    { message = "^ci", group = "<!-- 7 -->CI" },
+    { message = "^revert", group = "<!-- 8 -->Reverts" },
+    { message = "^chore", group = "<!-- 9 -->Chores" },
+]
+
+[bump]
+# Plain semver, which is what the commit subjects already encode: `feat!` or a
+# `BREAKING CHANGE:` trailer is a major, `feat` a minor, everything else a
+# patch. The project is past 1.0, so there is no pre-1.0 special case to make.
+features_always_bump_minor = true
+breaking_always_bump_major = true

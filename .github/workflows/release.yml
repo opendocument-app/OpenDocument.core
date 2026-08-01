@@ -1,0 +1,166 @@
+name: release
+
+# Cutting a release: branch `release/v<major>.<minor>.X` off main, push it, and
+# publish the draft this leaves behind. That is the whole procedure.
+#
+# Every other workflow stays out of release branches (`branches-ignore` on their
+# push triggers), so a merge from main into a release branch is *one* run — this
+# one. The commits arrived here already green from main; a backport that did not
+# come that way is worth pushing to an ordinary branch first.
+#
+# `main` never learns any of this. It carries no version, no changelog and no
+# checksum, and the only thing a build records about itself stays
+# `GIT_HEAD_SHA1` + a dirty flag. What a release is called comes from its
+# commits, and where it lives is the tag.
+#
+# Why a *draft*: GitHub does not create the tag until a release is published, so
+# the tag can land on a commit that did not exist when the run started — which
+# it must, if a release has to carry a checksum of something built from itself.
+# Publishing stays a human action, and has to be: a release created by
+# `GITHUB_TOKEN` raises no `release: published` event, which is what conan,
+# maven and android hang off.
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version to cut (e.g. v6.2.0) — leave empty to let the commits decide
+        required: false
+      dry_run:
+        description: go through the motions without pushing or drafting anything
+        type: boolean
+        default: false
+
+# Not `cancel-in-progress`. Everywhere else in this repo cancelling is right,
+# because a CI run is pure and killing it costs nothing. This one pushes a
+# commit, drafts a release and uploads assets — interrupt it between two of
+# those and it leaves the release half-made. Queue instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # Split out because the version is an *input* to everything that follows: an
+  # artifact that carries its own identity has to be built knowing the tag it
+  # will be published under, and the tag does not exist yet. Deriving it up
+  # front from the commits is what unties that knot.
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # git-cliff reads the history back to the last reachable tag
+          fetch-depth: 0
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install git-cliff
+        run: pip install git-cliff==2.13.1
+
+      - name: derive the version from the commits
+        id: derive
+        run: |
+          VERSION=$(scripts/release.py version ${{ inputs.version && format('--version {0}', inputs.version) || '' }})
+          echo "cutting $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # ── Artifacts that have to carry the version go between here and `release`.
+  #
+  # An artifact only needs a job of its own if the release commit has to record
+  # something about it — a checksum, a digest — because that has to be built
+  # before the commit exists. `needs: version` gives it the tag to build
+  # against; it uploads what `release` should stamp and publish as a run
+  # artifact. Everything that merely *reacts* to a release belongs in its own
+  # workflow on `release: published`, the way conan, maven and android do.
+  #
+  # The xcframework will land here: SwiftPM resolves `Package.swift` at the tag,
+  # and a binary target there names a URL and a sha256 of an archive that does
+  # not exist until it is built. See `apple/AGENTS.md`.
+
+  release:
+    needs: version
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      # The default `GITHUB_TOKEN`, deliberately, and with the credentials the
+      # checkout persists: a push it makes raises no `push` event, so the stamp
+      # commit below cannot retrigger this workflow. A PAT here would loop.
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install git-cliff
+        run: pip install git-cliff==2.13.1
+
+      # -> ${{ runner.temp }}/assets, which is outside the repo on purpose:
+      # `release.py stamp` only ever commits files git already tracks, and an
+      # artifact must not be one commit away from ending up in the tree.
+      - name: download assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: ${{ runner.temp }}/assets
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: collect assets
+        id: assets
+        run: |
+          mkdir -p "${{ runner.temp }}/assets"
+          ARGS=$(find "${{ runner.temp }}/assets" -type f | sed 's|^|--asset |' | tr '\n' ' ')
+          echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
+          echo "assets: ${ARGS:-none}"
+
+      # ── Stamping goes here: whatever a release has to record about itself is
+      # written into the tree now, and `stamp` below commits all of it in one
+      # go. It is the only place in the repo that writes a version anywhere.
+      # Nothing does yet, so no commit is made and the tag lands on the merge
+      # from main — which is the shape a release should have when nothing
+      # forces otherwise.
+
+      - name: release notes
+        run: scripts/release.py notes --version "$VERSION" --output "${{ runner.temp }}/notes.md"
+
+      - name: stamp
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          scripts/release.py stamp \
+            --version "$VERSION" \
+            --branch "${GITHUB_REF#refs/heads/}" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: draft the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/release.py publish \
+            --version "$VERSION" \
+            --notes "${{ runner.temp }}/notes.md" \
+            ${{ steps.assets.outputs.args }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: summary
+        run: |
+          {
+            echo "### ${VERSION} is drafted"
+            echo
+            echo "Publishing the draft creates the tag and starts conan, maven and android."
+            echo
+            cat "${{ runner.temp }}/notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
