@@ -1,0 +1,45 @@
+name: release-status
+
+# Waits for the publish workflows a release triggers and writes the outcome onto
+# the release, going red if one failed or never started. Gates nothing: each
+# publish is re-runnable alone, and Maven Central is immutable once released, so
+# an atomic release across four registries was never available.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: release tag to report on (e.g. v6.2.0)
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to write the outcome into the release body
+  actions: read # to see how the sibling runs ended
+
+jobs:
+  status:
+    runs-on: ubuntu-24.04
+    # android runs an emulator, python builds every wheel; the script's own
+    # timeout is shorter so it reports rather than being killed mid-write
+    timeout-minutes: 120
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+
+      - name: watch the fan-out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/release_status.py \
+            --tag "${{ inputs.tag || github.event.release.tag_name }}" \
+            --self-run-id "${{ github.run_id }}"

@@ -2,6 +2,10 @@ name: android
 
 on:
   push:
+    # release branches are `release.yml`'s alone
+    branches-ignore:
+      - 'releases'
+      - 'release/**'
   release:
     types: [published]
   workflow_dispatch:
@@ -11,7 +15,7 @@ on:
         required: true
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 # See the cache-key comment in `build_test.yml` for why the keys look like this.

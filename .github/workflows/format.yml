@@ -1,6 +1,15 @@
 name: format
 
-on: push
+on:
+  push:
+    # release branches are `release.yml`'s alone
+    branches-ignore:
+      - 'releases'
+      - 'release/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

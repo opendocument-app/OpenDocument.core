@@ -1,0 +1,49 @@
+# Derives the next version and the release notes from the commits, so a release
+# carries nothing the commits do not already have. Called by `scripts/release.py`.
+
+[changelog]
+header = ""
+# `group_by` sorts alphabetically, hence the numbering in an html comment that
+# the template strips again. No PR number: squash subjects already carry one.
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first }}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+# drops merge commits and old history; the merged `feat:`/`fix:` still show up
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+topo_order = false
+sort_commits = "oldest"
+
+# First match wins, so `chore(release)` has to precede `chore`.
+commit_parsers = [
+    # the stamp commit, which would otherwise land in the next release's notes
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^feat", group = "<!-- 0 -->Features" },
+    { message = "^fix", group = "<!-- 1 -->Fixes" },
+    { message = "^perf", group = "<!-- 2 -->Performance" },
+    { message = "^refactor", group = "<!-- 3 -->Refactoring" },
+    { message = "^docs", group = "<!-- 4 -->Documentation" },
+    { message = "^test", group = "<!-- 5 -->Tests" },
+    { message = "^build", group = "<!-- 6 -->Build" },
+    { message = "^ci", group = "<!-- 7 -->CI" },
+    { message = "^revert", group = "<!-- 8 -->Reverts" },
+    { message = "^chore", group = "<!-- 9 -->Chores" },
+]
+
+[bump]
+# plain semver: `feat!` major, `feat` minor, the rest patch
+features_always_bump_minor = true
+breaking_always_bump_major = true

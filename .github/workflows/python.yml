@@ -2,12 +2,16 @@ name: python
 
 on:
   push:
+    # release branches are `release.yml`'s alone
+    branches-ignore:
+      - 'releases'
+      - 'release/**'
   release:
     types:
       - published
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 # See the cache-key comment in `build_test.yml` for why the keys look like this.
@@ -42,7 +46,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Builds the wheel-specific configuration that `pyproject.toml` pins
     # (static, no cli/tests, bundled assets), so it cannot share a cache with
-    # `build_test`.
+    # `build-test`.
     env:
       CACHE_FLAVOR: wheel
     strategy:

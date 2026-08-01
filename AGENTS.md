@@ -98,6 +98,37 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   tests on. The `update_test_data` target moves existing checkouts onto the
   pins. The two private repositories need credentials.
 
+## Releasing
+
+Merge main into `releases`, push, publish the draft that appears —
+`.github/workflows/release.yml` and `scripts/release.py`.
+
+- **`main` carries no version.** No file is bumped, no changelog committed; a
+  build records `GIT_HEAD_SHA1` and a dirty flag and nothing else. The version
+  is derived from the commit subjects (`git cliff --bumped-version`), so writing
+  them properly is load-bearing.
+- **`releases` is the mainline train**; its first-parent history is the release
+  history. To patch an older line, branch off the *tag* (`git branch
+  release/v6.1.X v6.1.0`) — the version is derived against the nearest
+  *reachable* tag. That is also the trap: a `feat:` there bumps the minor to a
+  number the mainline may already have shipped, so `release.py version` refuses
+  a version that is already tagged. Pass `--version` when you mean it.
+- **Release branches run `release.yml` only**; every other workflow carries
+  `branches-ignore: ['releases', 'release/**']`.
+- **The release is drafted, and a human publishes it.** GitHub creates the tag
+  only then, which is what lets it point at a commit made during the run. It
+  also has to be a human: a release created by `GITHUB_TOKEN` raises no
+  `release: published`, and that event starts conan, maven and android.
+- **`release.yml` is the only place that writes a version anywhere**, and
+  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Nothing writes one
+  today, so no commit is made. What will is SwiftPM: it resolves `Package.swift`
+  at the tag, and a binary target there names a sha256 of an archive that does
+  not exist until it is built.
+- **`release-status.yml` makes a partial release loud** — it waits for the
+  publish workflows and fails if one failed or never started. `EXPECTED` in
+  `scripts/release_status.py` is the list of destinations.
+- Both scripts are runnable by hand; `--dry-run` mutates nothing.
+
 ## Conventions
 
 - **Formatting**: clang-format (LLVM-based, `.clang-format`); run `scripts/format`

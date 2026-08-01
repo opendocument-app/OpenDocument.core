@@ -1,0 +1,142 @@
+name: release
+
+# Merge main into `releases`, push, publish the draft this leaves behind.
+#
+# To patch an older line, branch off the *tag* — `git branch release/v6.1.X
+# v6.1.0` — not off `releases`: the version is derived against the nearest
+# reachable tag.
+#
+# The release is drafted, never published. GitHub creates the tag only on
+# publish, so the tag can land on a commit made during the run. Publishing has
+# to stay a human action anyway: a release created by `GITHUB_TOKEN` raises no
+# `release: published`, which is what conan, maven and android hang off.
+on:
+  push:
+    branches:
+      - 'releases'
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version to cut (e.g. v6.2.0) — leave empty to let the commits decide
+        required: false
+      dry_run:
+        description: go through the motions without pushing or drafting anything
+        type: boolean
+        default: false
+
+# Queued, not cancelled: this pushes a commit, drafts a release and uploads
+# assets, and an interrupt between two of those leaves the release half-made.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # Separate because the version is an input to everything below: an artifact
+  # that records its own identity has to know the tag before the tag exists.
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0 # git-cliff reads back to the last tag
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install git-cliff
+        run: pip install git-cliff==2.13.1
+
+      - name: derive the version from the commits
+        id: derive
+        run: |
+          VERSION=$(scripts/release.py version ${{ inputs.version && format('--version {0}', inputs.version) || '' }})
+          echo "cutting $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # Artifacts the release commit has to record something about go here, with
+  # `needs: version` for the tag to build against, uploading what `release`
+  # should stamp and publish. The xcframework will land here — SwiftPM resolves
+  # `Package.swift` at the tag, and its binary target names a sha256 of an
+  # archive that does not exist until it is built.
+  #
+  # Anything that merely reacts to a release belongs in its own workflow on
+  # `release: published`, the way conan, maven and android do.
+
+  release:
+    needs: version
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      # `GITHUB_TOKEN`, so the stamp push below raises no `push` event and
+      # cannot retrigger this workflow. A PAT would loop.
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: setup python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install git-cliff
+        run: pip install git-cliff==2.13.1
+
+      # outside the repo, so an artifact can never be swept into the commit
+      - name: download assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: ${{ runner.temp }}/assets
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: collect assets
+        id: assets
+        run: |
+          mkdir -p "${{ runner.temp }}/assets"
+          ARGS=$(find "${{ runner.temp }}/assets" -type f | sed 's|^|--asset |' | tr '\n' ' ')
+          echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
+          echo "assets: ${ARGS:-none}"
+
+      # Whatever the release has to record about itself is written into the tree
+      # here; `stamp` commits it. Nothing does yet, so no commit is made.
+
+      - name: release notes
+        run: scripts/release.py notes --version "$VERSION" --output "${{ runner.temp }}/notes.md"
+
+      - name: stamp
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          scripts/release.py stamp \
+            --version "$VERSION" \
+            --branch "${GITHUB_REF#refs/heads/}" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: draft the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/release.py publish \
+            --version "$VERSION" \
+            --notes "${{ runner.temp }}/notes.md" \
+            ${{ steps.assets.outputs.args }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: summary
+        run: |
+          {
+            echo "### ${VERSION} is drafted"
+            echo
+            echo "Publishing the draft creates the tag and starts conan, maven and android."
+            echo
+            cat "${{ runner.temp }}/notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
