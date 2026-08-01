@@ -14,6 +14,9 @@ NS_SWIFT_NAME(GlobalParams)
 /// The css and js of the HTML renderer.
 @property(class, nonatomic, copy) NSString *odrCoreDataPath;
 /// The libmagic database (`magic.mgc`).
+///
+/// Deprecated: read only by a core built with `ODR_WITH_LIBMAGIC`, which is off
+/// by default now that detection is odrcore's own and needs no database.
 @property(class, nonatomic, copy) NSString *libmagicDatabasePath;
 
 /// Points the paths above at this framework's bundle. Runs automatically at

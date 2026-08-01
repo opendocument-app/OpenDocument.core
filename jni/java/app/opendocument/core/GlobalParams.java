@@ -8,10 +8,19 @@ public final class GlobalParams {
 
   public static native String odrCoreDataPath();
 
+  /**
+   * @deprecated Read only by a native library built with the deprecated {@code
+   *     ODR_WITH_LIBMAGIC}. Detection is our own otherwise and needs no database.
+   */
+  @Deprecated
   public static native String libmagicDatabasePath();
 
   public static native void setOdrCoreDataPath(String path);
 
+  /**
+   * @deprecated See {@link #libmagicDatabasePath()}.
+   */
+  @Deprecated
   public static native void setLibmagicDatabasePath(String path);
 
   private GlobalParams() {}

@@ -48,9 +48,10 @@ def _init_odr_core_data_path() -> None:
 
 
 def _init_libmagic_database_path() -> None:
-    # Same resolution order for libmagic's compiled database, which is a file
-    # rather than a directory. Leaving it unresolved is not fatal: odrcore then
-    # tries the system database and finally falls back to its own sniffing.
+    # Deprecated, and a no-op for the wheels we ship: only a core built with
+    # `ODR_WITH_LIBMAGIC` reads this, and that is off by default now that
+    # detection is odrcore's own. Same resolution order as above, for a file
+    # rather than a directory, and finding nothing is the normal case.
     if _is_configured(_core.GlobalParams.libmagic_database_path()):
         return
     env_path = os.environ.get("ODR_LIBMAGIC_DATABASE_PATH")

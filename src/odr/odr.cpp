@@ -90,6 +90,10 @@ std::string odr::file_category_to_string(const FileCategory type) {
     return "text";
   case FileCategory::font:
     return "font";
+  case FileCategory::audio:
+    return "audio";
+  case FileCategory::video:
+    return "video";
   default:
     return "unnamed";
   }

@@ -18,9 +18,11 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
          DecoderEngine)                          format)    elements)          walks public API)
 ```
 
-1. **Detect** — `internal/magic.cpp` (+ `internal/libmagic`) sniffs the file;
+1. **Detect** — `internal/magic.cpp` sniffs the head of the file;
    `internal/open_strategy.cpp` picks a `FileType` + `DecoderEngine` and builds
-   the matching `abstract::DecodedFile`.
+   the matching `abstract::DecodedFile`. `odr::mimetype` composes the two, so a
+   zip is named by what is inside it. (`internal/libmagic` is a deprecated
+   alternative to that last step, off by default.)
 2. **Decode** — a document file yields an `abstract::Document`.
 3. **Element tree** — a `Document` exposes a root `ElementIdentifier` plus an
    `abstract::ElementAdapter`. Public value-semantics handles (`Element`, `Slide`,

@@ -16,7 +16,12 @@ option(ODR_TEST_FETCH_DATA "Fetch the test data pinned in test/data.cmake" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_WITH_HTTP_SERVER "Build the HTTP server (requires cpp-httplib)" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
-option(ODR_WITH_LIBMAGIC "Build with libmagic" ON)
+# Deprecated, and off by default since our own detection took `mimetype` over:
+# that reads inside zip and cfb containers, which libmagic cannot, and it costs
+# neither a dependency nor the 8 MB `magic.mgc` database every consumer has to
+# ship and point us at. Kept for whoever still relies on the old answers; see
+# "Open tasks" in docs/design/README.md.
+option(ODR_WITH_LIBMAGIC "Build with libmagic (deprecated)" OFF)
 option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
@@ -314,6 +319,11 @@ if (ODR_WITH_HTTP_SERVER)
     )
 endif ()
 if (ODR_WITH_LIBMAGIC)
+    message(DEPRECATION
+            "ODR_WITH_LIBMAGIC is deprecated and will be removed. Our own "
+            "detection answers `odr::mimetype` without it, and better for "
+            "container formats.")
+
     find_package(libmagic REQUIRED)
     target_sources(odr
             PRIVATE

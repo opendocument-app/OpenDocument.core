@@ -95,5 +95,14 @@
 
 ### Open tasks
 
+- remove libmagic. `ODR_WITH_LIBMAGIC` and the conan `with_libmagic` option are
+  deprecated and off by default: `odr::mimetype` runs the open strategy instead,
+  which names what is *inside* a zip or a compound file where libmagic could only
+  answer `application/zip`, and which gets `svm` right where libmagic does not.
+  What goes with the option: `src/odr/internal/libmagic/`, the CMake block that
+  stages `magic.mgc`, `GlobalParams::libmagic_database_path` and its java,
+  python and objc mirrors, `project_info::has_libmagic`,
+  `pyodr._init_libmagic_database_path`, and the `magic.mgc` lookup in the apple
+  bootstrap
 - collect additional pdf files via the translate cli and capture the ones that break
 - exercise editing across all formats (odp editing appears broken via an HTML issue)

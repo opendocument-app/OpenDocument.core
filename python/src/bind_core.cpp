@@ -25,6 +25,8 @@ void odr_python::bind_core(py::module_ &m) {
   py::class_<odr::GlobalParams>(m, "GlobalParams",
                                 "Global resource paths of the library.")
       .def_static("odr_core_data_path", &odr::GlobalParams::odr_core_data_path)
+      // the two libmagic paths are deprecated: only a core built with the
+      // deprecated `ODR_WITH_LIBMAGIC` reads them
       .def_static("libmagic_database_path",
                   &odr::GlobalParams::libmagic_database_path)
       .def_static("set_odr_core_data_path",

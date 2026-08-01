@@ -58,8 +58,8 @@ std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
 }
 
 std::string_view DecodedFile::mimetype(const std::string &path,
-                                       [[maybe_unused]] const Logger &logger) {
-  return internal::magic::mimetype(path);
+                                       const Logger &logger) {
+  return internal::magic::mimetype(path, logger);
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)

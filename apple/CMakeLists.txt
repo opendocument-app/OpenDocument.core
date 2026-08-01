@@ -17,8 +17,8 @@ if (BUILD_SHARED_LIBS)
 endif ()
 if (NOT ODR_BUNDLE_ASSETS)
     message(FATAL_ERROR
-            "ODR_APPLE needs ODR_BUNDLE_ASSETS=ON: the renderer's css/js and "
-            "the libmagic database ship as bundle resources")
+            "ODR_APPLE needs ODR_BUNDLE_ASSETS=ON: the renderer's css/js ship "
+            "as bundle resources")
 endif ()
 
 enable_language(OBJCXX)
@@ -64,8 +64,8 @@ set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/ODRTable.h"
 )
 
-# The renderer data the root build already staged, plus the libmagic database
-# `ODR_BUNDLE_ASSETS` copied in beside it.
+# Whatever the root build staged: the renderer data, and `magic.mgc` beside it
+# in the deprecated builds that still ask for libmagic.
 file(GLOB ODR_APPLE_RESOURCES "${ODR_BUILD_ODR_DATA_PATH}/*")
 if (NOT ODR_APPLE_RESOURCES)
     message(FATAL_ERROR "no resources in ${ODR_BUILD_ODR_DATA_PATH}")

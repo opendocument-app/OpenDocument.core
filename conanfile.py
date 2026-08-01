@@ -17,6 +17,7 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        # deprecated, see the option in CMakeLists.txt
         "with_libmagic": [True, False],
         "with_http_server": [True, False],
         "with_cli": [True, False],
@@ -28,7 +29,7 @@ class OpenDocumentCoreConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_libmagic": True,
+        "with_libmagic": False,
         "with_http_server": True,
         "with_cli": True,
         "with_python": False,

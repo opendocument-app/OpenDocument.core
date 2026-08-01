@@ -61,12 +61,11 @@ ODR_PYTHON = "ON"
 ODR_CLI = "OFF"
 ODR_TEST = "OFF"
 BUILD_SHARED_LIBS = "OFF"
-# libmagic's database is just a data file, so it can ship: `ODR_BUNDLE_ASSETS`
-# copies `magic.mgc` next to the odr.js assets, `python/CMakeLists.txt` installs
-# that directory as `pyodr/data`, and `pyodr/__init__.py` points `GlobalParams`
-# at the installed copy. Costs ~0.4 MB of wheel (the database deflates to that
-# from 8.5 MB) and buys real MIME detection instead of odr's 12-byte sniffing.
-ODR_WITH_LIBMAGIC = "ON"
+# libmagic is deprecated and stays off: `mimetype` runs the open strategy now,
+# which names what is *inside* a zip or a compound file where libmagic could
+# only answer `application/zip`. The wheel no longer carries `magic.mgc` for it
+# (~0.4 MB deflated of 8.5 MB), and `pyodr/__init__.py` finding no database is
+# the normal case rather than a problem.
 ODR_BUNDLE_ASSETS = "ON"
 
 # Section must exist for setuptools-scm to pick up its pyproject config.

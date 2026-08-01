@@ -99,7 +99,6 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
          "-DODR_JNI=ON",
          "-DODR_CLI=OFF",
          "-DODR_TEST=OFF",
-         "-DODR_WITH_LIBMAGIC=ON",
          "-DODR_WITH_HTTP_SERVER=ON",
          "-DODR_BUNDLE_ASSETS=ON"])
     run(["cmake", "--build", cmake_dir, "--target", "odr_jni",
