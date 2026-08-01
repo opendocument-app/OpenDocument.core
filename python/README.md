@@ -27,25 +27,24 @@ The bindings are part of the main CMake build, toggled by `ODR_PYTHON`:
 conan install . -o '&:with_python=True' --build missing
 cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DODR_PYTHON=ON
 cmake --build build --target pyodr_core
-PYTHONPATH=build/python ODR_CORE_DATA_PATH=build/data python -m pytest python/tests
+PYTHONPATH=build/python python -m pytest python/tests
 ```
 
 `pip install .` from the repository root builds a wheel via scikit-build-core
 (see the root `pyproject.toml`); run `conan install` first and point
 `CMAKE_ARGS` at the generated `conan_toolchain.cmake` so the C++ dependencies
-resolve, and match the wheel's asset bundling:
+resolve:
 
 ```bash
-conan install . -o '&:with_python=True' -o '&:bundle_assets=True' --build missing
+conan install . -o '&:with_python=True' --build missing
 CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$PWD/conan_toolchain.cmake" pip install .
 ```
 
 ## Runtime data
 
-Rendering uses shipped assets (CSS/JS). Wheels bundle them under `pyodr/data`
-and pick them up automatically; for in-tree builds set `ODR_CORE_DATA_PATH` (the
-tests read it) or call `pyodr.GlobalParams.set_odr_core_data_path(...)`. Missing
-assets are not fatal — rendering then fails on the individual resource.
+There is none. The renderer's css and js are part of the library, so rendering
+works out of the box; `odr_core_data_path()` and `set_odr_core_data_path(...)`
+are deprecated leftovers that still store and return a path nothing reads.
 
 MIME detection needs no runtime data: `mimetype` runs the open strategy, so it
 names what is *inside* a zip or a compound file. `libmagic_database_path()` and

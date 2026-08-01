@@ -1,11 +1,5 @@
 # The Objective-C bindings, built as a dynamic framework — the slice that
 # `build_xcframework.py` assembles into `OdrCoreObjC.xcframework`.
-#
-# Dynamic and not static, because `+load` (see `src/OdrCoreBootstrap.mm`) is what
-# points odrcore at the resources in this bundle, and a static archive member
-# nothing references is dropped by the linker. SwiftPM binary targets give a
-# consumer no way to pass `-ObjC`/`-force_load`, so there is no recovering
-# from that on their side.
 
 if (NOT APPLE)
     message(FATAL_ERROR "ODR_APPLE needs an Apple toolchain")
@@ -15,12 +9,6 @@ if (BUILD_SHARED_LIBS)
             "ODR_APPLE needs BUILD_SHARED_LIBS=OFF: the framework is the only "
             "dylib, odrcore is linked into it")
 endif ()
-if (NOT ODR_BUNDLE_ASSETS)
-    message(FATAL_ERROR
-            "ODR_APPLE needs ODR_BUNDLE_ASSETS=ON: the renderer's css/js ship "
-            "as bundle resources")
-endif ()
-
 enable_language(OBJCXX)
 
 # `CMAKE_OSX_SYSROOT` is the only thing that distinguishes the three slices, and
@@ -64,15 +52,8 @@ set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/ODRTable.h"
 )
 
-# The renderer's css/js, as the root build staged them.
-file(GLOB ODR_APPLE_RESOURCES "${ODR_BUILD_ODR_DATA_PATH}/*")
-if (NOT ODR_APPLE_RESOURCES)
-    message(FATAL_ERROR "no resources in ${ODR_BUILD_ODR_DATA_PATH}")
-endif ()
-
 add_library(odr_apple SHARED
         "src/ODRInternal.mm"
-        "src/OdrCoreBootstrap.mm"
         "src/ODRGlobalParams.mm"
         "src/ODRDocument.mm"
         "src/ODRDocumentElement.mm"
@@ -111,23 +92,22 @@ target_link_options(odr_apple PRIVATE
 )
 set_property(TARGET odr_apple APPEND PROPERTY LINK_DEPENDS "${ODR_APPLE_EXPORTS}")
 
-# Headers, Resources and Modules are staged by hand.
+# Headers and Modules are staged by hand.
 #
-# `PUBLIC_HEADER` and `RESOURCE` are the obvious way to do the first two, and
-# on CMake 3.28 with the Ninja generator they copy nothing at all — the
-# framework comes out with an empty `Resources` and no `Headers`, silently. A
-# framework that builds and then cannot be imported, with the renderer's assets
-# missing at runtime, is not a failure mode worth risking on a generator quirk.
-# `Modules/` has no property to begin with. So all three are explicit.
+# `PUBLIC_HEADER` is the obvious way to do the first, and on CMake 3.28 with the
+# Ninja generator it copies nothing at all — the framework comes out without
+# `Headers`, silently. A framework that builds and then cannot be imported is
+# not a failure mode worth risking on a generator quirk. `Modules/` has no
+# property to begin with. So both are explicit.
 #
 # The content directory is spelled out rather than taken from
 # `TARGET_BUNDLE_CONTENT_DIR`, which expands to the bundle root even on macOS,
 # where the content actually lives in `Versions/<v>`.
-# A framework is a *flat* bundle everywhere except macOS: its resources sit at
-# the bundle root, not in `Resources/`. Staging them into a `Resources/`
-# subdirectory there makes the bundle unloadable — `installd` refuses the app
-# that embeds it with "Failed to load Info.plist from bundle", naming a plist
-# that is present and valid.
+# A framework is a *flat* bundle everywhere except macOS, where the versioned
+# layout keeps `Info.plist` in `Resources/`. A `Resources/` subdirectory on iOS
+# makes the bundle unloadable — `installd` refuses the app that embeds it with
+# "Failed to load Info.plist from bundle", naming a plist that is present and
+# valid.
 if (CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|watchOS|visionOS)$")
     set(ODR_APPLE_CONTENT "$<TARGET_BUNDLE_DIR:odr_apple>")
     set(ODR_APPLE_RESOURCE_DIR "${ODR_APPLE_CONTENT}")
@@ -152,10 +132,8 @@ add_custom_command(TARGET odr_apple POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/module.modulemap"
         "${ODR_APPLE_CONTENT}/Modules"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        ${ODR_APPLE_RESOURCES} "${ODR_APPLE_RESOURCE_DIR}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Staging OdrCoreObjC.framework headers, module map and resources"
+        COMMENT "Staging OdrCoreObjC.framework headers and module map"
         VERBATIM
 )
 

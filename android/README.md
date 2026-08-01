@@ -8,7 +8,6 @@ odr-core-android.aar
 ├── classes.jar                        app.opendocument.core (../jni/java) + OdrAndroid
 ├── jni/<abi>/libodr_jni.so            the bindings with the core linked in
 ├── jni/<abi>/libc++_shared.so         the c++ runtime they were built against
-├── assets/core/odrcore/*              css/js of the html renderer
 └── proguard.txt                       keeps the classes JNI resolves by name
 ```
 
@@ -33,22 +32,16 @@ Packages needs a token with `read:packages` even for public packages — see
 
 ```kotlin
 import app.opendocument.core.*
-import app.opendocument.core.android.OdrAndroid
-
-OdrAndroid.init(context) // extracts the bundled assets, loads the library
 
 val file = Odr.open(path)
 val service = Html.translate(file, cacheDir.path, HtmlConfig())
 val html = service.bringOffline(outputDir.path)
 ```
 
-The java API is java and stays callable as such (`OdrAndroid.init(context)` is
-a static method, and it still throws a checked `IOException`); only this
-module's own code — `OdrAndroid` and the instrumented suite — is kotlin.
-
-`OdrAndroid.init` is idempotent and cheap after the first call: the assets are
-unpacked once per library build, into the app's no-backup storage, and the
-library is pointed at them via `GlobalParams`.
+Nothing needs initialising: the renderer's css and js are part of the native
+library. `OdrAndroid.init(context)` is a deprecated no-op — it used to unpack
+the assets that carried them — and stays callable, checked `IOException` and
+all, so apps written against the older AAR keep compiling.
 
 Serving the rendered HTML through `HttpServer` needs two things from the app,
 neither of which a library may decide on its own: `android.permission.INTERNET`,
@@ -93,8 +86,7 @@ The odrcore build is a normal one — `ODR_JNI=ON`, static core linked into
 ```
 
 The instrumented suite (`src/androidTest`) is the part that sees what a device
-sees: it loads the native library, extracts and reads the bundled assets,
-decodes and renders documents, drives a java log sink from native code, and
+sees: it loads the native library, decodes and renders documents, drives a java log sink from native code, and
 serves a document over HTTP. Its inputs come from `../jni/testfixtures`, the
 same ones the host junit suite uses.
 
@@ -129,8 +121,7 @@ that click is the last point at which a bad artifact can be dropped rather than
 lived with.
 
 For now OpenDocument.droid keeps building odrcore from the conan package
-(`with_jni=True`), deploying `libodr_jni.so`, `odr-core-java.jar` and the assets
-out of it. That path is unaffected by anything here, and it is the reason the
+(`with_jni=True`), deploying `libodr_jni.so` and `odr-core-java.jar` out of it. That path is unaffected by anything here, and it is the reason the
 two halves cannot drift: they come out of one build.
 
 So the AAR is, for now, a second packaging of that same build — for consumers

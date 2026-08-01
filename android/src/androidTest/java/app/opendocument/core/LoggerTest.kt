@@ -24,7 +24,6 @@ class LoggerTest {
 
     @Before
     fun setUp() {
-        TestSupport.initialize()
         tempDir = TestSupport.tempDir("logger")
     }
 

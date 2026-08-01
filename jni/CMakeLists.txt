@@ -215,6 +215,4 @@ if (ODR_TEST AND NOT ANDROID)
             --scan-class-path
             --fail-if-no-tests
     )
-    set_tests_properties(odr_jni_junit PROPERTIES
-            ENVIRONMENT "ODR_CORE_DATA_PATH=${ODR_BUILD_ODR_DATA_PATH}")
 endif ()

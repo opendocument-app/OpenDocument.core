@@ -57,7 +57,6 @@ class HttpServerTest {
   @Test
   void serveFile() throws Exception {
     assumeTrue(Odr.hasHttpServer(), "built without the HTTP server");
-    assumeTrue(TestFiles.hasCoreData(), "odr core data path not available");
 
     HttpServer server = new HttpServer();
 
@@ -66,7 +65,6 @@ class HttpServerTest {
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlConfig htmlConfig = new HtmlConfig();
     htmlConfig.embedImages = false;
-    htmlConfig.relativeResourcePaths = false;
     HtmlService service = Html.translate(file, cachePath, htmlConfig);
     server.connectService(service, "doc");
     List<HtmlView> views = service.listViews();

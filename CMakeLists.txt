@@ -21,7 +21,7 @@ option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
 # containers, which libmagic cannot, and it costs neither a dependency nor the
 # 8 MB `magic.mgc` database every consumer had to ship and point us at.
 option(ODR_WITH_LIBMAGIC "Removed, does nothing (deprecated)" OFF)
-option(ODR_BUNDLE_ASSETS "Bundle assets during build and install" OFF)
+option(ODR_BUNDLE_ASSETS "Removed, does nothing (deprecated)" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
@@ -60,13 +60,6 @@ find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 find_package(argon2 REQUIRED)
-
-include(FetchContent)
-FetchContent_Declare(odr.js
-        URL "https://github.com/opendocument-app/OpenDocument.js/releases/download/v2.0.0/build.zip"
-        URL_HASH SHA256=5ccbe1c5bb46d65bc0dccc6c6df6548a571eef5536fcb95f9dcb80add26800b6
-)
-FetchContent_MakeAvailable(odr.js)
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -141,6 +134,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/document_element.cpp"
         "src/odr/internal/html/filesystem.cpp"
         "src/odr/internal/html/font_file.cpp"
+        "src/odr/internal/html/frontend.cpp"
         "src/odr/internal/html/html_service.cpp"
         "src/odr/internal/html/html_writer.cpp"
         "src/odr/internal/html/image_file.cpp"
@@ -274,10 +268,6 @@ target_link_libraries(odr
         argon2::argon2
 )
 
-set(ODR_BUILD_ODR_DATA_PATH "${CMAKE_CURRENT_BINARY_DIR}/data")
-file(COPY "${odr.js_SOURCE_DIR}/" DESTINATION "${ODR_BUILD_ODR_DATA_PATH}")
-set(ODR_INSTALL_ODR_DATA_PATH "${CMAKE_INSTALL_DATADIR}")
-
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)
     target_sources(odr
@@ -298,6 +288,12 @@ if (ODR_WITH_LIBMAGIC)
             "ODR_WITH_LIBMAGIC no longer does anything: libmagic is gone and "
             "`odr::mimetype` is our own detection. Drop the option; "
             "`GlobalParams::libmagic_database_path` is inert too.")
+endif ()
+if (ODR_BUNDLE_ASSETS)
+    message(DEPRECATION
+            "ODR_BUNDLE_ASSETS no longer does anything: the css and js are "
+            "part of the library and there is nothing left to ship. Drop the "
+            "option; `GlobalParams::odr_core_data_path` is inert too.")
 endif ()
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
@@ -354,8 +350,4 @@ install(
         BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-)
-install(
-        DIRECTORY "${ODR_BUILD_ODR_DATA_PATH}/"
-        DESTINATION "${ODR_INSTALL_ODR_DATA_PATH}"
 )

@@ -33,8 +33,8 @@ namespace {
 void bring_offline(const HtmlResources &resources,
                    const std::string &output_path) {
   for (const auto &[resource, location] : resources) {
-    if (!location.has_value() || resource.is_shipped() ||
-        resource.is_external() || !resource.is_accessible()) {
+    if (!location.has_value() || resource.is_external() ||
+        !resource.is_accessible()) {
       continue;
     }
     const Path path = Path(output_path).join(RelPath(*location));
@@ -237,18 +237,8 @@ HtmlResourceLocator html::standard_resource_locator() {
       return resource.path();
     }
 
-    if ((config.embed_shipped_resources && resource.is_shipped()) ||
-        (config.embed_images && resource.type() == HtmlResourceType::image)) {
+    if (config.embed_images && resource.type() == HtmlResourceType::image) {
       return std::nullopt;
-    }
-
-    if (resource.is_shipped()) {
-      Path resource_path =
-          Path(config.resource_path).join(RelPath(resource.path()));
-      if (config.relative_resource_paths && config.output_path.has_value()) {
-        resource_path = resource_path.rebase(Path(*config.output_path));
-      }
-      return resource_path.string();
     }
 
     return resource.path();

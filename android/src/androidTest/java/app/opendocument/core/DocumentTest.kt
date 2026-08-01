@@ -25,7 +25,6 @@ class DocumentTest {
 
     @Before
     fun setUp() {
-        TestSupport.initialize()
         tempDir = TestSupport.tempDir("document")
     }
 

@@ -380,15 +380,6 @@ void HttpServer::connect_service(HtmlService service,
     throw InvalidPrefix(prefix);
   }
 
-  if (service.config().relative_resource_paths) {
-    throw UnsupportedOption(
-        "relative_resource_paths cannot be enabled in server mode");
-  }
-  if (!service.config().embed_shipped_resources) {
-    throw UnsupportedOption(
-        "embed_shipped_resources must be enabled in server mode");
-  }
-
   m_impl->connect_service(std::move(service), prefix);
 }
 

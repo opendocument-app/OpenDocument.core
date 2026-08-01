@@ -14,8 +14,4 @@ bool project_info::is_debug() noexcept {
 #endif
 }
 
-std::string_view project_info::odr_data_path() noexcept {
-  return "${ODR_INSTALL_ODR_DATA_PATH}";
-}
-
 } // namespace odr::internal

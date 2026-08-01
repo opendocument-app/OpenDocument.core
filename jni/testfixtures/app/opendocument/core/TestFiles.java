@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
@@ -42,20 +41,6 @@ final class TestFiles {
 
   /** Non-BMP, to exercise the UTF-8 ↔ UTF-16 conversion of the JNI string helpers. */
   static final String TXT_CONTENT = "hello text file\nsecond line äöü 😀\n";
-
-  static {
-    // Mirror the python conftest: pick up the shipped assets for rendering.
-    String dataPath = System.getenv("ODR_CORE_DATA_PATH");
-    if (dataPath != null && !dataPath.isEmpty()) {
-      GlobalParams.setOdrCoreDataPath(dataPath);
-    }
-  }
-
-  /** Whether the odr core data (CSS/JS assets) is available for rendering. */
-  static boolean hasCoreData() {
-    String path = GlobalParams.odrCoreDataPath();
-    return path != null && !path.isEmpty() && Files.isDirectory(Paths.get(path));
-  }
 
   /** The OpenDocument text file, unpacked from the classpath into {@code directory}. */
   static Path odtFile(Path directory) throws IOException {

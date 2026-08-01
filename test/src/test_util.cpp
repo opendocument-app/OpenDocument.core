@@ -3,7 +3,6 @@
 #include <test_info.hpp>
 
 #include <odr/file.hpp>
-#include <odr/global_params.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
@@ -18,14 +17,6 @@
 using namespace odr;
 using namespace odr::internal;
 namespace fs = std::filesystem;
-
-namespace odr {
-
-void test::set_global_params() {
-  GlobalParams::set_odr_core_data_path(std::string(info::odr_data_path()));
-}
-
-} // namespace odr
 
 namespace odr::test {
 

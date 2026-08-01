@@ -2,10 +2,6 @@
 
 namespace odr::test {
 
-std::string_view info::odr_data_path() noexcept {
-  return "${ODR_BUILD_ODR_DATA_PATH}";
-}
-
 std::string_view info::odr_test_data_path() noexcept { return "${ODR_TEST_DATA_DIRECTORY}"; }
 
 } // namespace odr::test

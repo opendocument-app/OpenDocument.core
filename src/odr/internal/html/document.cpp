@@ -9,13 +9,12 @@
 
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
-#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -43,43 +42,9 @@ void front(const Document &document, const WritingState &state) {
                           ? state.config().spreadsheet_viewport_mode
                           : std::nullopt);
 
-  auto document_css_file = File(AbsPath(state.config().resource_path)
-                                    .join(RelPath("document.css"))
-                                    .string());
-  odr::HtmlResource document_css_resource = HtmlResource::create(
-      HtmlResourceType::css, "text/css", "document.css", "document.css",
-      document_css_file, true, false, true);
-  HtmlResourceLocation document_css_location =
-      state.config().resource_locator(document_css_resource, state.config());
-  state.resources().emplace_back(std::move(document_css_resource),
-                                 document_css_location);
-  if (document_css_location.has_value()) {
-    out.write_header_style(document_css_location.value());
-  } else {
-    out.write_header_style_begin();
-    util::stream::pipe(*document_css_file.stream(), out.out());
-    out.write_header_style_end();
-  }
-
+  write_document_style(out);
   if (document.document_type() == DocumentType::spreadsheet) {
-    auto spreadsheet_css_file = File(AbsPath(state.config().resource_path)
-                                         .join(RelPath("spreadsheet.css"))
-                                         .string());
-    odr::HtmlResource spreadsheet_css_resource = HtmlResource::create(
-        HtmlResourceType::css, "text/css", "spreadsheet.css", "spreadsheet.css",
-        spreadsheet_css_file, true, false, true);
-    HtmlResourceLocation spreadsheet_css_location =
-        state.config().resource_locator(spreadsheet_css_resource,
-                                        state.config());
-    state.resources().emplace_back(std::move(spreadsheet_css_resource),
-                                   spreadsheet_css_location);
-    if (spreadsheet_css_location.has_value()) {
-      out.write_header_style(spreadsheet_css_location.value());
-    } else {
-      out.write_header_style_begin();
-      util::stream::pipe(*spreadsheet_css_file.stream(), out.out());
-      out.write_header_style_end();
-    }
+    write_spreadsheet_style(out);
   }
 
   out.write_header_end();
@@ -123,23 +88,7 @@ void back(const Document &document, const WritingState &state) {
     out.write_element_end("div");
   }
 
-  auto document_js_file = File(AbsPath(state.config().resource_path)
-                                   .join(RelPath("document.js"))
-                                   .string());
-  odr::HtmlResource document_js_resource = HtmlResource::create(
-      HtmlResourceType::js, "text/javascript", "document.js", "document.js",
-      document_js_file, true, false, true);
-  HtmlResourceLocation document_js_location =
-      state.config().resource_locator(document_js_resource, state.config());
-  state.resources().emplace_back(std::move(document_js_resource),
-                                 document_js_location);
-  if (document_js_location.has_value()) {
-    out.write_script(document_js_location.value());
-  } else {
-    out.write_script_begin();
-    util::stream::pipe(*document_js_file.stream(), out.out());
-    out.write_script_end();
-  }
+  write_document_script(out);
 
   out.write_body_end();
   out.write_end();

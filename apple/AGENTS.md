@@ -34,36 +34,21 @@ it — a simulator binary mistagged `IOS` is the classic
 | `macos-arm64_x86_64` | `apple-macos-armv8` + `apple-macos-x86_64` |
 
 `assemble` also fails the build if a framework is missing its headers, module
-map, renderer resources or the plist's platform keys — the analogue of
+map or the plist's platform keys — the analogue of
 `android/build.gradle.kts`'s `checkNative`, and for the same reason: those all
 publish happily and then fail at the consumer.
 
 ## Why a dynamic framework
 
-`+load` in `src/OdrCoreBootstrap.mm` is what points odrcore at the css/js in
-this bundle, so an app never has to. In a **static** framework nothing
-references that translation unit, the linker drops it, and the bootstrap never
-runs — and a SwiftPM binary target gives the consumer no way to pass
-`-ObjC`/`-force_load` to get it back. Two lesser reasons: `.binaryTarget`
-has no `resources:`, so the assets have to live in the bundle; and an undefined
-symbol becomes a link error here instead of a crash at the consumer.
-
-Consequence to document for consumers: **do not enable mergeable libraries**.
-Merging relocates the code into the app binary, `[NSBundle bundleForClass:]`
-then returns the app bundle, and the bootstrap points at the wrong place.
+An undefined symbol becomes a link error here instead of a crash at the
+consumer, and a SwiftPM binary target gives the consumer no way to pass
+`-ObjC`/`-force_load` for whatever a static archive would drop.
 
 ## Rules
 
-- **`+load`, not lazy initialisation.** `HtmlConfig::init()` (`src/odr/html.cpp`)
-  *snapshots* `GlobalParams::odr_core_data_path()` when constructed, so a hook
-  that only fires on the first ObjC call is already too late for a caller that
-  reaches odrcore's C++ directly — which OpenDocument.ios does today. It is safe
-  this early: Foundation is in the image's `LC_LOAD_DYLIB`, and
-  `GlobalParams::instance()` is a function-local static.
 - **`ODR` is the public prefix, `OdrCore` the internal one.** The export list
   globs `_OBJC_CLASS_$_ODR*`, so an internal class named `ODR…` would become
-  public surface by accident. `OdrCoreBootstrap` is named the way it is for
-  exactly that reason.
+  public surface by accident.
 - **Export list, never `-fvisibility=hidden`** — the latter hides the ObjC class
   symbols too. Keep ivars out of the headers (properties only), or
   `_OBJC_IVAR_$_ODR*` has to go on the list as well.
@@ -129,9 +114,9 @@ which would leave the tag serving the previous version's binary.
 
 The iOS *device* slice is only ever link-checked — nothing runs it. The
 simulator suite is the analogue of android's instrumented job and the only
-place that sees what a device sees: that `+load` fired, that `NSBundle` found
-the renderer assets, that `temp_directory_path()` is writable inside an app
-container. A new binding is only covered once something in `tests/` calls it.
+place that sees what a device sees: that the framework loads, that rendering
+works with nothing configured, that `temp_directory_path()` is writable inside
+an app container. A new binding is only covered once something in `tests/` calls it.
 
 `tests/Fixtures/mixed-layout.odt` is 9 KB of `odt/` from OpenDocument.test,
 carried here because `test/data/` is fetched by `cmake/test_data.cmake` and a

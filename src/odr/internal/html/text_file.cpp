@@ -5,8 +5,8 @@
 #include <odr/html.hpp>
 
 #include <odr/internal/common/null_stream.hpp>
-#include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -77,22 +77,7 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
 
-    auto css_file = File(
-        AbsPath(config().resource_path).join(RelPath("text.css")).string());
-    odr::HtmlResource document_css_resource =
-        HtmlResource::create(HtmlResourceType::css, "text/css", "text.css",
-                             "text.css", css_file, true, false, true);
-    HtmlResourceLocation document_css_location =
-        config().resource_locator(document_css_resource, config());
-    resources.emplace_back(std::move(document_css_resource),
-                           document_css_location);
-    if (document_css_location.has_value()) {
-      out.write_header_style(document_css_location.value());
-    } else {
-      out.write_header_style_begin();
-      util::stream::pipe(*css_file.stream(), out.out());
-      out.write_header_style_end();
-    }
+    write_text_style(out);
 
     out.write_header_end();
 
@@ -140,22 +125,7 @@ public:
 
     out.write_element_end("div");
 
-    auto js_file =
-        File(AbsPath(config().resource_path).join(RelPath("text.js")).string());
-    odr::HtmlResource document_js_resource =
-        HtmlResource::create(HtmlResourceType::js, "text/javascript", "text.js",
-                             "text.js", js_file, true, false, true);
-    HtmlResourceLocation document_js_location =
-        config().resource_locator(document_js_resource, config());
-    resources.emplace_back(std::move(document_js_resource),
-                           document_js_location);
-    if (document_js_location.has_value()) {
-      out.write_script(document_js_location.value());
-    } else {
-      out.write_script_begin();
-      util::stream::pipe(*js_file.stream(), out.out());
-      out.write_script_end();
-    }
+    write_text_script(out);
 
     out.write_body_end();
 

@@ -27,7 +27,6 @@ class HttpServerTest {
 
     @Before
     fun setUp() {
-        TestSupport.initialize()
         tempDir = TestSupport.tempDir("http-server")
     }
 

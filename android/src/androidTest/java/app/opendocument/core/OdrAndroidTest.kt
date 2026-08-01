@@ -1,23 +1,16 @@
 package app.opendocument.core
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import java.io.File
+import app.opendocument.core.android.OdrAndroid
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The AAR's own contract: the native library loads and the bundled assets end up on disk. */
+/** The AAR's own contract: the native library loads and works without any setup. */
 @RunWith(AndroidJUnit4::class)
 class OdrAndroidTest {
-    @Before
-    fun setUp() {
-        TestSupport.initialize()
-    }
-
     @Test
     fun nativeLibraryLoads() {
         // reaching the native side at all means the .so, its ABI and libc++_shared
@@ -28,18 +21,11 @@ class OdrAndroidTest {
     }
 
     @Test
-    fun assetsAreExtracted() {
-        val data = File(GlobalParams.odrCoreDataPath())
-        assertTrue("$data is not a directory", data.isDirectory)
-        assertTrue(File(data, "document.css").isFile)
-        assertTrue(File(data, "document.js").isFile)
-    }
-
-    @Test
-    fun initIsIdempotent() {
-        val dataPath = GlobalParams.odrCoreDataPath()
-        TestSupport.initialize()
-        assertEquals(dataPath, GlobalParams.odrCoreDataPath())
+    @Suppress("DEPRECATION")
+    fun initIsANoOp() {
+        // it is still called by apps built against the versions that needed it
+        OdrAndroid.init(TestSupport.context())
+        OdrAndroid.init(TestSupport.context())
     }
 
     @Test

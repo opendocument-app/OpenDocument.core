@@ -20,7 +20,7 @@ def fetch(url, timeout=5.0):
 
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
-def test_serve_file(core_data_path, odt_path, tmp_path):
+def test_serve_file(odt_path, tmp_path):
     server = pyodr.HttpServer()
 
     # the server hosts what it is given; translating is the caller's business
@@ -29,7 +29,6 @@ def test_serve_file(core_data_path, odt_path, tmp_path):
     file = pyodr.open(str(odt_path))
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
-    html_config.relative_resource_paths = False
     service = pyodr.html.translate(file, str(cache_path), html_config)
     server.connect_service(service, "doc")
     views = service.list_views()
