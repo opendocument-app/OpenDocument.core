@@ -1,10 +1,13 @@
 #include <odr/internal/crypto/crypto_argon2.hpp>
 
+#include <odr/internal/util/byte_util.hpp>
+
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -27,39 +30,19 @@ constexpr std::uint32_t max_uint32 = std::numeric_limits<std::uint32_t>::max();
 /// One 1024 byte Argon2 block, as the 128 little-endian words it is mixed as.
 using Block = std::array<std::uint64_t, block_words>;
 
-std::uint64_t load64(const byte *const in) {
-  std::uint64_t value = 0;
-  for (std::size_t i = 0; i < 8; ++i) {
-    value |= static_cast<std::uint64_t>(in[i]) << (8 * i);
-  }
-  return value;
-}
-
-void store32(byte *const out, const std::uint32_t value) {
-  for (std::size_t i = 0; i < 4; ++i) {
-    out[i] = static_cast<byte>(value >> (8 * i));
-  }
-}
-
-void store64(byte *const out, const std::uint64_t value) {
-  for (std::size_t i = 0; i < 8; ++i) {
-    out[i] = static_cast<byte>(value >> (8 * i));
-  }
-}
-
-const byte *bytes_of(const std::string_view in) {
-  return reinterpret_cast<const byte *>(in.data());
+std::span<const byte> bytes_of(const std::string_view in) {
+  return {reinterpret_cast<const byte *>(in.data()), in.size()};
 }
 
 void update(CryptoPP::BLAKE2b &hash, const std::string_view in) {
   if (!in.empty()) {
-    hash.Update(bytes_of(in), in.size());
+    hash.Update(bytes_of(in).data(), in.size());
   }
 }
 
 void update32(CryptoPP::BLAKE2b &hash, const std::uint32_t value) {
   std::array<byte, 4> in;
-  store32(in.data(), value);
+  util::byte::to_little_endian(value, in);
   hash.Update(in.data(), in.size());
 }
 
@@ -104,16 +87,19 @@ std::string blake2b_long(const std::size_t out_size,
 }
 
 void load_block(Block &block, const std::string_view in) {
+  const std::span bytes = bytes_of(in);
   for (std::size_t i = 0; i < block_words; ++i) {
-    block[i] = load64(bytes_of(in) + 8 * i);
+    block[i] =
+        util::byte::from_little_endian<std::uint64_t>(bytes.subspan(8 * i));
   }
 }
 
 std::string store_block(const Block &block) {
   std::string out(block_size, '\0');
-  auto *const data = reinterpret_cast<byte *>(out.data());
+  const std::span bytes(reinterpret_cast<byte *>(out.data()), out.size());
   for (std::size_t i = 0; i < block_words; ++i) {
-    store64(data + 8 * i, block[i]);
+    std::span word = bytes.subspan(8 * i);
+    util::byte::to_little_endian(block[i], word);
   }
   return out;
 }
@@ -270,12 +256,16 @@ std::string argon2::id(const std::size_t tag_size,
     hash.Final(prehash.data());
   }
 
+  // H0 is followed by the block index and the lane, which vary per block.
+  std::span index_bytes = std::span(prehash).subspan(prehash_size, 4);
+  std::span lane_bytes = std::span(prehash).subspan(prehash_size + 4, 4);
+
   std::vector<Block> blocks(block_count);
   for (std::uint32_t lane = 0; lane < lane_count; ++lane) {
     const std::size_t offset = static_cast<std::size_t>(lane) * lane_length;
+    util::byte::to_little_endian(lane, lane_bytes);
     for (std::uint32_t i = 0; i < 2; ++i) {
-      store32(prehash.data() + prehash_size, i);
-      store32(prehash.data() + prehash_size + 4, lane);
+      util::byte::to_little_endian(i, index_bytes);
       load_block(blocks[offset + i],
                  blake2b_long(block_size,
                               {reinterpret_cast<const char *>(prehash.data()),
