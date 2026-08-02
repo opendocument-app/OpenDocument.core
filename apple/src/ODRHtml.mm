@@ -306,11 +306,16 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 
 @implementation ODRHtmlView {
   std::optional<odr::HtmlView> _handle;
+  // The service the view belongs to. The view's impl holds a bare pointer to
+  // it, so without this a view handed out by `-views` could outlive what it
+  // points into — the same owner chain `ODRElement` keeps to its document.
+  id _owner;
 }
 
-+ (instancetype)viewWithHandle:(odr::HtmlView)handle {
++ (instancetype)viewWithHandle:(odr::HtmlView)handle owner:(id)owner {
   ODRHtmlView *const result = [[ODRHtmlView alloc] init];
   result->_handle = std::move(handle);
+  result->_owner = owner;
   return result;
 }
 
@@ -377,7 +382,7 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
         NSMutableArray<ODRHtmlView *> *const result =
             [NSMutableArray arrayWithCapacity:views.size()];
         for (const odr::HtmlView &view : views) {
-          [result addObject:[ODRHtmlView viewWithHandle:view]];
+          [result addObject:[ODRHtmlView viewWithHandle:view owner:self]];
         }
         return result;
       },

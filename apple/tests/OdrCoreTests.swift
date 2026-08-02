@@ -118,6 +118,20 @@ final class HtmlTests: XCTestCase {
     XCTAssertTrue(html.contains("<style"), "the html has no stylesheet")
   }
 
+  /// A view's impl points into its service without owning it, so the view has
+  /// to keep the service alive itself — the analogue of
+  /// `ElementTreeTests.testElementsKeepTheirDocumentAlive`. Rendering off a
+  /// service that only ever existed as a temporary used to segfault.
+  func testViewsKeepTheirServiceAlive() throws {
+    func viewOnly() throws -> HtmlView {
+      try XCTUnwrap(try service().views.first)
+    }
+    let view = try viewOnly()
+    XCTAssertFalse(view.path.isEmpty)
+    var resources: NSArray?
+    XCTAssertFalse(try view.writeHtml(resources: &resources).isEmpty)
+  }
+
   func testBringOfflineWritesFiles() throws {
     let output = try temporaryDirectory()
     let html = try service().bringOffline(to: output)
