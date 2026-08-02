@@ -1,5 +1,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
+#include <odr/internal/crypto/crypto_argon2.hpp>
+
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -24,8 +26,6 @@
 #include <cryptopp/sha.h>
 #include <cryptopp/zinflate.h>
 #include <cryptopp/zlib.h>
-
-#include <argon2.h>
 
 namespace odr::internal::crypto {
 
@@ -144,11 +144,7 @@ std::string util::argon2id(const std::size_t key_size,
                            const std::string &salt,
                            const std::size_t iteration_count,
                            const std::size_t memory, const std::size_t lanes) {
-  std::string result(key_size, '\0');
-  argon2id_hash_raw(iteration_count, memory, lanes, start_key.data(),
-                    start_key.size(), salt.data(), salt.size(), result.data(),
-                    result.size());
-  return result;
+  return argon2::id(key_size, start_key, salt, iteration_count, memory, lanes);
 }
 
 std::string util::decrypt_aes_ecb(const std::string &key,

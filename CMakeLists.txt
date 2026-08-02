@@ -59,7 +59,6 @@ find_package(nlohmann_json REQUIRED)
 find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
-find_package(argon2 REQUIRED)
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -124,6 +123,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
 
+        "src/odr/internal/crypto/crypto_argon2.cpp"
         "src/odr/internal/crypto/crypto_util.cpp"
 
         "src/odr/internal/csv/csv_file.cpp"
@@ -267,7 +267,6 @@ target_link_libraries(odr
         vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         utf8::cpp
-        argon2::argon2
 )
 
 if (ODR_WITH_HTTP_SERVER)

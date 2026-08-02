@@ -22,8 +22,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: checkout conan-odr-index
-        run: git submodule update --init --depth 1 conan-odr-index
 
       - name: ubuntu install ccache
         if: runner.os == 'Linux'
@@ -54,8 +52,6 @@ jobs:
           restore-keys: |
             conan-${{ matrix.host_profile }}-
 
-      - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 
