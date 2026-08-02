@@ -102,6 +102,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    packaging {
+        jniLibs {
+            // AGP strips the libraries on their way into the AAR unless told not
+            // to, silently — the published AAR comes out byte-identical to a
+            // fully stripped one however `build_native.py` built it.
+            keepDebugSymbols += "**/*.so"
+        }
+    }
+
     // pushing the instrumented apk onto a cold emulator outlasts ddmlib's
     // default timeout, which surfaces as a ShellCommandUnresponsiveException
     // rather than as a failing test
