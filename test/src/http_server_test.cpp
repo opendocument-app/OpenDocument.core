@@ -53,6 +53,20 @@ TEST(HttpServer, bind_reports_a_port_in_use) {
   taken.stop();
 }
 
+TEST(HttpServer, bind_can_be_retried_after_it_failed) {
+  const HttpServer taken;
+  const std::uint32_t port = taken.bind("127.0.0.1", 0);
+
+  // falling back to any port is the reason a failed bind may not be terminal:
+  // cpp-httplib decommissions the server on one, and only stop() undoes that
+  const HttpServer other;
+  EXPECT_THROW(other.bind("127.0.0.1", port), ServerBindFailed);
+  EXPECT_NE(other.bind("127.0.0.1", 0), 0);
+
+  other.stop();
+  taken.stop();
+}
+
 TEST(HttpServer, listen_without_bind_is_refused) {
   const HttpServer server;
 

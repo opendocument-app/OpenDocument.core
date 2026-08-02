@@ -215,6 +215,9 @@ public:
                          ? static_cast<int>(port)
                          : -1);
     if (bound < 0) {
+      // a failed bind decommissions the server and only stop() clears that, so
+      // without this no later bind - a fallback to any port - could succeed
+      m_server->stop();
       throw ServerBindFailed(host, port);
     }
 
