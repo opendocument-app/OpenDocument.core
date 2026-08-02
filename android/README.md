@@ -77,6 +77,15 @@ The odrcore build is a normal one — `ODR_JNI=ON`, static core linked into
 `libodr_jni.so` — driven by the `android-<arch>` conan profiles in
 `.github/config/conan/profiles`, which pin the NDK and API 26.
 
+The libraries ship unstripped — 60-72 MB per ABI, most of the AAR — so that a
+consuming app's `ndk.debugSymbolLevel` can hand play what it needs to symbolicate
+a crash inside the core. Devices never see it: play serves APKs built from the
+stripped copies, so the weight is on maven central and developer builds only.
+
+It takes both `build_native.py` not stripping and the
+`packaging.jniLibs.keepDebugSymbols` rule in `build.gradle.kts`. Without the
+second the first is invisible.
+
 ## Testing
 
 ```bash

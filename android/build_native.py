@@ -14,6 +14,10 @@ its jniLibs source set:
 
 `libc++_shared.so` has to be shipped because the android profiles build against
 the shared c++ runtime and nothing else in a consuming app pulls it in.
+
+Neither is stripped: the NDK's unconditional `-g` is what a consumer's
+`ndk.debugSymbolLevel` turns into symbolicated play crash reports. Costs 60-72 MB
+per ABI, and needs the `keepDebugSymbols` rule in `build.gradle.kts` to survive.
 """
 
 import argparse
@@ -65,13 +69,8 @@ def libcxx_shared(ndk: Path, triple: str) -> Path:
     return matches[0]
 
 
-def strip(ndk: Path, library: Path) -> None:
-    """The NDK compiles with `-g` in every configuration, so a release build of
-    the bindings is ~70 MB until it is stripped."""
-    matches = sorted(ndk.glob("toolchains/llvm/prebuilt/*/bin/llvm-strip"))
-    if not matches:
-        raise SystemExit(f"no llvm-strip under {ndk}")
-    run([matches[0], "--strip-unneeded", library])
+def report(library: Path) -> None:
+    print(f"  {library.name}: {library.stat().st_size // 1024} KiB", flush=True)
 
 
 def build(architecture: str, conan: str, build_profile: str, output: Path) -> None:
@@ -106,7 +105,7 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
     for source in (cmake_dir / "jni" / "libodr_jni.so", libcxx_shared(ndk, triple)):
         target = jni_libs / source.name
         shutil.copy2(source, target)
-        strip(ndk, target)
+        report(target)
 
 
 def main() -> int:
