@@ -76,12 +76,17 @@ consumer, and a SwiftPM binary target gives the consumer no way to pass
   `jni/src/odr_jni.cpp::throw_java` — keep the two in step.
 - **Elements carry their owner.** Most public C++ handles own a `shared_ptr`,
   so a wrapper holding one by value is self-sufficient and needs no keep-alive.
-  `odr::Element` is the exception: it holds a bare pointer into the document's
-  adapter. Every `ODRElement` therefore keeps a strong reference to its
-  `ODRDocument`, and navigation goes through `-derive:` so that reference is
-  carried along by construction rather than by remembering to pass it. This is
-  the JNI bindings' owner chain, and it is what lets a caller keep a subtree
-  after dropping the document.
+  `odr::Element` and `odr::HtmlView` are the exceptions: the first holds a bare
+  pointer into the document's adapter, the second one into its service. Every
+  `ODRElement` therefore keeps a strong reference to its `ODRDocument`, and
+  navigation goes through `-derive:` so that reference is carried along by
+  construction rather than by remembering to pass it; every `ODRHtmlView`
+  likewise keeps its `ODRHtmlService`. This is the JNI bindings' owner chain
+  (and python's `_service` attribute), and it is what lets a caller keep a
+  subtree after dropping the document, or render a view off a service it no
+  longer holds. **Check a new wrapper for a bare pointer before assuming the
+  `shared_ptr` makes it self-sufficient** — `HtmlView` looks like it owns
+  everything it needs, and does not.
 - **Strings**: `odr::apple::to_string` / `to_nsstring`, real UTF-8 ↔ UTF-16.
   Never hand a `-UTF8String` pointer to something that outlives the autorelease
   pool.

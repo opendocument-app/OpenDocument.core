@@ -158,7 +158,7 @@ ODRMeasure *_Nullable box(const std::optional<odr::Measure> &measure);
 @end
 
 @interface ODRHtmlView (Private)
-+ (instancetype)viewWithHandle:(odr::HtmlView)handle;
++ (instancetype)viewWithHandle:(odr::HtmlView)handle owner:(id)owner;
 - (const odr::HtmlView &)handle;
 @end
 
