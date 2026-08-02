@@ -54,7 +54,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.9")
         if self.options.get_safe("with_http_server", False):
-            self.requires("cpp-httplib/0.16.3")
+            self.requires("cpp-httplib/0.47.0")
         self.requires("argon2/20190702-odr")
         if self.options.get_safe("with_python", False):
             self.requires("pybind11/2.13.6")
