@@ -173,6 +173,10 @@
               <!-- Uploads and stops, the way the AAR does: a human releases it
                    from the portal, and Central is immutable once released. -->
               <autoPublish>false</autoPublish>
+              <!-- The plugin's default is the literal "Deployment", which tells
+                   nobody which of the two uploads they are looking at. Same
+                   shape the AAR's plugin builds for itself. -->
+              <deploymentName>${project.groupId}-${project.artifactId}-${project.version}</deploymentName>
             </configuration>
           </plugin>
         </plugins>
