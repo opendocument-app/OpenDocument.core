@@ -1,4 +1,5 @@
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.DeploymentValidation
 
 plugins {
     alias(libs.plugins.android.library)
@@ -176,7 +177,11 @@ mavenPublishing {
 
     // Uploads to the portal and stops. A human releases it from there, so a bad
     // artifact is still recallable — Central is immutable once released.
-    publishToMavenCentral()
+    //
+    // Waiting for VALIDATED is what makes a failed deployment fail the release:
+    // the default uploads, prints "Skipping deployment validation!" and exits 0
+    // whatever the portal then makes of the bundle.
+    publishToMavenCentral(false, DeploymentValidation.VALIDATED)
 
     // Only Central demands a signature. Making it unconditional would mean no
     // `publishToMavenLocal` and no GitHub Packages publish without a private
