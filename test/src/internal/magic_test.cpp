@@ -158,57 +158,6 @@ TEST(magic, image_signatures) {
   EXPECT_EQ(detect("\xff\xfb\x90\x00"s), FileType::mpeg_audio);
 }
 
-TEST(magic, svg) {
-  using namespace std::string_literals;
-
-  EXPECT_EQ(detect("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"s),
-            FileType::scalable_vector_graphics);
-  EXPECT_EQ(detect("<svg>"s), FileType::scalable_vector_graphics);
-  EXPECT_EQ(detect("<?xml version=\"1.0\"?>\n<svg width=\"1\"/>"s),
-            FileType::scalable_vector_graphics);
-  EXPECT_EQ(detect("\xef\xbb\xbf<?xml version=\"1.0\"?>\n"
-                   "<!-- drawn by hand -->\n"
-                   "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"x\">\n"
-                   "<svg:svg xmlns:svg=\"http://www.w3.org/2000/svg\"/>"s),
-            FileType::scalable_vector_graphics);
-}
-
-/// A prologue has no length limit - a generated file can carry a licence
-/// comment far longer than the signature head - so detection reads on until it
-/// reaches the root element.
-TEST(magic, svg_behind_a_long_prologue) {
-  using namespace std::string_literals;
-
-  const std::string comment = "<!-- " + std::string(8000, 'c') + " -->\n";
-  EXPECT_EQ(detect(R"(<?xml version="1.0"?>)"
-                   "\n" +
-                   comment + "<svg/>"),
-            FileType::scalable_vector_graphics);
-
-  // the same length of prologue in front of something that is not an svg
-  EXPECT_EQ(detect(comment + "<html/>"), FileType::unknown);
-
-  // reading on is bounded: a comment that never ends is not an svg
-  EXPECT_EQ(detect("<!-- " + std::string(200000, 'c')), FileType::unknown);
-}
-
-TEST(magic, not_svg) {
-  using namespace std::string_literals;
-
-  // an inline `<svg>` does not make an html page an image
-  EXPECT_EQ(detect("<!DOCTYPE html>\n<html><body><svg/></body></html>"s),
-            FileType::unknown);
-  // a flat opendocument declares the svg namespace and is still not an svg
-  EXPECT_EQ(detect("<?xml version=\"1.0\"?>\n<office:document "
-                   "xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:"
-                   "svg-compatible:1.0\"/>"s),
-            FileType::unknown);
-  // a prologue or a root element name that runs past the head tells us nothing
-  EXPECT_EQ(detect("<?xml version=\"1.0\""s), FileType::unknown);
-  EXPECT_EQ(detect("<svg"s), FileType::unknown);
-  EXPECT_EQ(detect("   \n\t"s), FileType::unknown);
-}
-
 TEST(magic, short_stream) {
   // a file shorter than the head buffer may only be matched against what was
   // actually read from it, never against what happened to sit behind it

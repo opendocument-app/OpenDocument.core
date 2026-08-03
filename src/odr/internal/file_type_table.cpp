@@ -176,6 +176,9 @@ constexpr std::array heif_mimetypes{"image/heic"sv, "image/heif"sv,
 constexpr std::array avif_extensions{"avif"sv, "avifs"sv};
 constexpr std::array avif_mimetypes{"image/avif"sv, "image/avif-sequence"sv};
 
+constexpr std::array xml_extensions{"xml"sv};
+constexpr std::array xml_mimetypes{"application/xml"sv, "text/xml"sv};
+
 constexpr std::array svg_extensions{"svg"sv};
 constexpr std::array svg_mimetypes{"image/svg+xml"sv};
 
@@ -660,6 +663,16 @@ constexpr std::array table{
         FileCategory::image,
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Detection reports it, nothing opens it yet - a plain xml file still
+    // decodes as text.
+    Row{FileType::xml,
+        "xml"sv,
+        xml_extensions,
+        xml_mimetypes,
+        FileCategory::text,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.

@@ -81,6 +81,8 @@ typedef NS_ENUM(NSInteger, ODRFileType) {
   ODRFileTypePhotoshopDocument,
   ODRFileTypeWindowsMetafile,
   ODRFileTypeEnhancedMetafile,
+
+  ODRFileTypeXml,
 } NS_SWIFT_NAME(FileType);
 
 typedef NS_ENUM(NSInteger, ODRFileCategory) {

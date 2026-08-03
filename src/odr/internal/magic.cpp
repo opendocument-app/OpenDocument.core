@@ -92,74 +92,6 @@ FileType iso_base_media_file_type(const std::string &head) {
   return FileType::mpeg4_video;
 }
 
-enum class SvgProbe {
-  no,         ///< the root element is there and is not `svg`
-  yes,        ///< the root element is `svg`
-  incomplete, ///< the head ends inside the prologue or the root element name
-};
-
-/// Whether @p head opens an svg document: an xml prologue - byte order mark,
-/// whitespace, `<?...?>`, `<!--...-->`, `<!DOCTYPE ...>` - and then a root
-/// element named `svg`, with or without a namespace prefix.
-///
-/// The root element is what makes this safe: a flat opendocument and an html
-/// page carrying an inline `<svg>` both open with a different one. A prologue
-/// has no length limit, so a head that ends inside one answers `incomplete`
-/// rather than `no` - the caller decides whether to read further.
-SvgProbe svg_probe(std::string_view head) {
-  static constexpr std::string_view byte_order_mark = "\xEF\xBB\xBF";
-  static constexpr std::string_view whitespace = " \t\r\n";
-  static constexpr std::string_view name_end = " \t\r\n/>";
-
-  if (head.starts_with(byte_order_mark)) {
-    head.remove_prefix(byte_order_mark.size());
-  }
-
-  while (true) {
-    const std::size_t begin = head.find_first_not_of(whitespace);
-    if (begin == std::string_view::npos) {
-      return SvgProbe::incomplete;
-    }
-    head.remove_prefix(begin);
-
-    std::string_view terminator;
-    if (head.starts_with("<?")) {
-      terminator = "?>";
-    } else if (head.starts_with("<!--")) {
-      terminator = "-->";
-    } else if (head.starts_with("<!")) {
-      terminator = ">";
-    } else if (head.size() < 4 && head.starts_with("<")) {
-      // too short to tell which of the three it is, or whether it is one
-      return SvgProbe::incomplete;
-    } else {
-      break;
-    }
-
-    const std::size_t end = head.find(terminator);
-    if (end == std::string_view::npos) {
-      return SvgProbe::incomplete;
-    }
-    head.remove_prefix(end + terminator.size());
-  }
-
-  if (!head.starts_with("<")) {
-    return SvgProbe::no;
-  }
-  head.remove_prefix(1);
-
-  const std::size_t end = head.find_first_of(name_end);
-  if (end == std::string_view::npos) {
-    return SvgProbe::incomplete;
-  }
-  std::string_view name = head.substr(0, end);
-  if (const std::size_t colon = name.find(':');
-      colon != std::string_view::npos) {
-    name.remove_prefix(colon + 1);
-  }
-  return name == "svg" ? SvgProbe::yes : SvgProbe::no;
-}
-
 } // namespace
 
 FileType magic::file_type(const std::string &magic) {
@@ -267,39 +199,15 @@ FileType magic::file_type(const std::string &magic) {
     return FileType::jpeg_xl;
   }
 
-  if (svg_probe(magic) == SvgProbe::yes) {
-    return FileType::scalable_vector_graphics;
-  }
-
   return FileType::unknown;
 }
 
 FileType magic::file_type(std::istream &in) {
-  // enough for every signature - the longest is the enhanced metafile's, which
-  // ends at offset 44 - and for the prologue of a normal svg
-  static constexpr std::size_t head_size = 1024;
-  // a prologue has no length limit, so reading up to the root element needs a
-  // bound of its own; a licence comment or a doctype with an internal subset
-  // fits many times over
-  static constexpr std::size_t max_svg_head_size = 64 * head_size;
+  // every signature is a prefix but one: an enhanced metafile names itself at
+  // offset 40, so the head has to reach 44
+  static constexpr std::size_t head_size = 64;
 
-  std::string head = read_head(in, head_size);
-  if (const FileType file_type = magic::file_type(head);
-      file_type != FileType::unknown) {
-    return file_type;
-  }
-
-  while (svg_probe(head) == SvgProbe::incomplete &&
-         head.size() < max_svg_head_size) {
-    const std::string next = read_head(in, head_size);
-    if (next.empty()) {
-      break;
-    }
-    head += next;
-  }
-
-  return svg_probe(head) == SvgProbe::yes ? FileType::scalable_vector_graphics
-                                          : FileType::unknown;
+  return file_type(read_head(in, head_size));
 }
 
 FileType magic::file_type(const abstract::File &file) {

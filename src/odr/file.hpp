@@ -143,6 +143,12 @@ enum class FileType {
   windows_metafile,
   // https://en.wikipedia.org/wiki/Windows_Metafile#Enhanced_Metafile
   enhanced_metafile,
+
+  // Classification only for now - detection reports it under the formats built
+  // on it, e.g. an svg comes back as `[text_file, xml, scalable_vector_
+  // graphics]`, but there is no decoder of its own behind it yet.
+  // https://en.wikipedia.org/wiki/XML
+  xml,
 };
 
 /// @brief Collection of file categories.

@@ -81,7 +81,8 @@ void odr_python::bind_file(py::module_ &m) {
       .value("jpeg_2000", odr::FileType::jpeg_2000)
       .value("photoshop_document", odr::FileType::photoshop_document)
       .value("windows_metafile", odr::FileType::windows_metafile)
-      .value("enhanced_metafile", odr::FileType::enhanced_metafile);
+      .value("enhanced_metafile", odr::FileType::enhanced_metafile)
+      .value("xml", odr::FileType::xml);
 
   py::enum_<odr::FileCategory>(m, "FileCategory")
       .value("unknown", odr::FileCategory::unknown)

@@ -1,15 +1,18 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/open_strategy.hpp>
 
 #include <gtest/gtest.h>
 
 #include <filesystem>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace odr;
 
@@ -51,6 +54,49 @@ std::string image_src(const File &file) {
 }
 
 } // namespace
+
+namespace {
+
+std::vector<FileType> detect(const std::string &content) {
+  return internal::open_strategy::list_file_types(
+      std::make_shared<internal::MemoryFile>(content), Logger::null());
+}
+
+} // namespace
+
+/// An svg has no signature - it is xml, and only the root element separates it
+/// from any other xml. So `magic` does not guess it; the open strategy parses
+/// the file and reports every layer it verified, least specific first.
+TEST(image_file, svg_is_detected_by_parsing_it) {
+  EXPECT_EQ(detect(R"(<?xml version="1.0"?><svg xmlns="x"/>)"),
+            (std::vector{FileType::text_file, FileType::xml,
+                         FileType::scalable_vector_graphics}));
+
+  // a namespace prefix binds the root element just the same
+  EXPECT_EQ(detect(R"(<svg:svg xmlns:svg="x"/>)"),
+            (std::vector{FileType::text_file, FileType::xml,
+                         FileType::scalable_vector_graphics}));
+
+  // a prologue of any length is the parser's problem, not a scanner's
+  EXPECT_EQ(detect("<!-- " + std::string(8000, 'c') + " -->\n<svg/>"),
+            (std::vector{FileType::text_file, FileType::xml,
+                         FileType::scalable_vector_graphics}));
+}
+
+/// The root element is what separates the two, so xml that is not an svg stops
+/// at xml - including the two that a head scanner would most easily confuse.
+TEST(image_file, xml_that_is_not_an_svg_stops_at_xml) {
+  for (const std::string &content :
+       {R"(<html><body><svg/></body></html>)",
+        R"(<?xml version="1.0"?><office:document xmlns:svg="x"/>)"}) {
+    EXPECT_EQ(detect(content),
+              (std::vector{FileType::text_file, FileType::xml}))
+        << content;
+  }
+
+  // not xml at all
+  EXPECT_EQ(detect("just some text"), (std::vector{FileType::text_file}));
+}
 
 TEST(image_file, svg_is_detected_and_opens_as_an_image) {
   const DecodedFile file{svg_file()};

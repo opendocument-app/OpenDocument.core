@@ -89,6 +89,7 @@ ODR_SAME_ENUM(ODRFileTypeJpeg2000, odr::FileType::jpeg_2000);
 ODR_SAME_ENUM(ODRFileTypePhotoshopDocument, odr::FileType::photoshop_document);
 ODR_SAME_ENUM(ODRFileTypeWindowsMetafile, odr::FileType::windows_metafile);
 ODR_SAME_ENUM(ODRFileTypeEnhancedMetafile, odr::FileType::enhanced_metafile);
+ODR_SAME_ENUM(ODRFileTypeXml, odr::FileType::xml);
 
 ODR_SAME_ENUM(ODRFileCategoryUnknown, odr::FileCategory::unknown);
 ODR_SAME_ENUM(ODRFileCategoryText, odr::FileCategory::text);
