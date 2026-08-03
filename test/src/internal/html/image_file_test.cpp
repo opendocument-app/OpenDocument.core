@@ -86,7 +86,7 @@ TEST(image_file, svg_is_detected_by_parsing_it) {
 /// The root element is what separates the two, so xml that is not an svg stops
 /// at xml - including the two that a head scanner would most easily confuse.
 TEST(image_file, xml_that_is_not_an_svg_stops_at_xml) {
-  for (const std::string &content :
+  for (const std::string content :
        {R"(<html><body><svg/></body></html>)",
         R"(<?xml version="1.0"?><office:document xmlns:svg="x"/>)"}) {
     EXPECT_EQ(detect(content),
