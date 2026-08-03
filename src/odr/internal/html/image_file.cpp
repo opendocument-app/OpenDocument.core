@@ -158,8 +158,14 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
   // TODO hacky - `image/jpg` works for all common image types in chrome.
   // An image inside a document keeps it: browsers sniff `<img>`, and naming
   // the real type here would rewrite every reference output we have. The
-  // standalone image page does name it - see `image_mime_type`.
-  write_image_src(image_file, out, "image/jpg");
+  // standalone image page does name it - see `image_mime_type`. Svg is the one
+  // exception: it is markup, not an image a browser sniffs, so a data url
+  // labelled `image/jpg` renders nothing at all.
+  const std::string mime_type =
+      image_file.file_type() == FileType::scalable_vector_graphics
+          ? "image/svg+xml"
+          : "image/jpg";
+  write_image_src(image_file, out, mime_type);
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,

@@ -12,6 +12,7 @@
 #include <array>
 #include <istream>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal {
@@ -81,6 +82,64 @@ FileType iso_base_media_file_type(const std::string &head) {
     return FileType::mpeg4_audio;
   }
   return FileType::mpeg4_video;
+}
+
+/// Whether @p head opens an svg document: an xml prologue - byte order mark,
+/// whitespace, `<?...?>`, `<!--...-->`, `<!DOCTYPE ...>` - and then a root
+/// element named `svg`, with or without a namespace prefix.
+///
+/// The root element is what makes this safe: a flat opendocument and an html
+/// page carrying an inline `<svg>` both open with a different one.
+bool is_svg(std::string_view head) {
+  static constexpr std::string_view byte_order_mark = "\xEF\xBB\xBF";
+  static constexpr std::string_view whitespace = " \t\r\n";
+
+  if (head.starts_with(byte_order_mark)) {
+    head.remove_prefix(byte_order_mark.size());
+  }
+
+  // skips the prologue; a part of it that does not end inside the head means
+  // we cannot tell, which is not an svg
+  while (true) {
+    const std::size_t begin = head.find_first_not_of(whitespace);
+    if (begin == std::string_view::npos) {
+      return false;
+    }
+    head.remove_prefix(begin);
+
+    std::string_view terminator;
+    if (head.starts_with("<?")) {
+      terminator = "?>";
+    } else if (head.starts_with("<!--")) {
+      terminator = "-->";
+    } else if (head.starts_with("<!")) {
+      terminator = ">";
+    } else {
+      break;
+    }
+
+    const std::size_t end = head.find(terminator);
+    if (end == std::string_view::npos) {
+      return false;
+    }
+    head.remove_prefix(end + terminator.size());
+  }
+
+  if (!head.starts_with("<")) {
+    return false;
+  }
+  head.remove_prefix(1);
+
+  const std::size_t name_end = head.find_first_of(" \t\r\n/>");
+  if (name_end == std::string_view::npos) { // the name runs past the head
+    return false;
+  }
+  std::string_view name = head.substr(0, name_end);
+  if (const std::size_t colon = name.find(':');
+      colon != std::string_view::npos) {
+    name.remove_prefix(colon + 1);
+  }
+  return name == "svg";
 }
 
 } // namespace
@@ -161,11 +220,47 @@ FileType magic::file_type(const std::string &magic) {
     return FileType::mpeg_audio;
   }
 
+  if (match_magic(magic, "00 00 01 00") || // icon
+      match_magic(magic, "00 00 02 00")) { // cursor
+    return FileType::windows_icon;
+  }
+  if (match_magic(magic, "00 00 00 0C 6A 50 20 20 0D 0A 87 0A") || // 'jP  ' box
+      match_magic(magic, "FF 4F FF 51")) { // bare codestream
+    return FileType::jpeg_2000;
+  }
+  if (match_magic(magic, "00 00 00 0C 4A 58 4C 20 0D 0A 87 0A")) { // 'JXL ' box
+    return FileType::jpeg_xl;
+  }
+  if (match_magic(magic, "38 42 50 53")) { // '8BPS'
+    return FileType::photoshop_document;
+  }
+  if (match_magic(magic, "D7 CD C6 9A") ||       // aldus placeable header
+      match_magic(magic, "01 00 09 00 00 03") || // memory metafile header
+      match_magic(magic, "02 00 09 00 00 03")) { // disk metafile header
+    return FileType::windows_metafile;
+  }
+  // the leading record type alone is far too weak, so the header signature at
+  // offset 40 has to agree
+  if (match_magic(magic, "01 00 00 00") && tag_at(magic, 40) == " EMF") {
+    return FileType::enhanced_metafile;
+  }
+  // two bytes and nothing more to check, so it goes after everything else
+  if (match_magic(magic, "FF 0A")) { // bare codestream
+    return FileType::jpeg_xl;
+  }
+
+  if (is_svg(magic)) {
+    return FileType::scalable_vector_graphics;
+  }
+
   return FileType::unknown;
 }
 
 FileType magic::file_type(std::istream &in) {
-  static constexpr std::size_t max_head_size = 12;
+  // most signatures are a prefix, but two are not: an enhanced metafile names
+  // itself at offset 40, and an svg root element sits behind a prologue of no
+  // fixed length
+  static constexpr std::size_t max_head_size = 1024;
 
   // value initialized, and cut back to what was actually read: a file shorter
   // than the longest signature would otherwise be matched against whatever the

@@ -73,6 +73,14 @@ typedef NS_ENUM(NSInteger, ODRFileType) {
   ODRFileTypeThirdGenerationPartnershipVideo,
   ODRFileTypeMatroskaVideo,
   ODRFileTypeAudioVideoInterleave,
+
+  ODRFileTypeScalableVectorGraphics,
+  ODRFileTypeWindowsIcon,
+  ODRFileTypeJpegXl,
+  ODRFileTypeJpeg2000,
+  ODRFileTypePhotoshopDocument,
+  ODRFileTypeWindowsMetafile,
+  ODRFileTypeEnhancedMetafile,
 } NS_SWIFT_NAME(FileType);
 
 typedef NS_ENUM(NSInteger, ODRFileCategory) {

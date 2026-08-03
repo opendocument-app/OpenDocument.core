@@ -73,7 +73,15 @@ void odr_python::bind_file(py::module_ &m) {
       .value("third_generation_partnership_video",
              odr::FileType::third_generation_partnership_video)
       .value("matroska_video", odr::FileType::matroska_video)
-      .value("audio_video_interleave", odr::FileType::audio_video_interleave);
+      .value("audio_video_interleave", odr::FileType::audio_video_interleave)
+      .value("scalable_vector_graphics",
+             odr::FileType::scalable_vector_graphics)
+      .value("windows_icon", odr::FileType::windows_icon)
+      .value("jpeg_xl", odr::FileType::jpeg_xl)
+      .value("jpeg_2000", odr::FileType::jpeg_2000)
+      .value("photoshop_document", odr::FileType::photoshop_document)
+      .value("windows_metafile", odr::FileType::windows_metafile)
+      .value("enhanced_metafile", odr::FileType::enhanced_metafile);
 
   py::enum_<odr::FileCategory>(m, "FileCategory")
       .value("unknown", odr::FileCategory::unknown)

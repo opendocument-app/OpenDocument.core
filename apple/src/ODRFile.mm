@@ -81,6 +81,14 @@ ODR_SAME_ENUM(ODRFileTypeThirdGenerationPartnershipVideo,
 ODR_SAME_ENUM(ODRFileTypeMatroskaVideo, odr::FileType::matroska_video);
 ODR_SAME_ENUM(ODRFileTypeAudioVideoInterleave,
               odr::FileType::audio_video_interleave);
+ODR_SAME_ENUM(ODRFileTypeScalableVectorGraphics,
+              odr::FileType::scalable_vector_graphics);
+ODR_SAME_ENUM(ODRFileTypeWindowsIcon, odr::FileType::windows_icon);
+ODR_SAME_ENUM(ODRFileTypeJpegXl, odr::FileType::jpeg_xl);
+ODR_SAME_ENUM(ODRFileTypeJpeg2000, odr::FileType::jpeg_2000);
+ODR_SAME_ENUM(ODRFileTypePhotoshopDocument, odr::FileType::photoshop_document);
+ODR_SAME_ENUM(ODRFileTypeWindowsMetafile, odr::FileType::windows_metafile);
+ODR_SAME_ENUM(ODRFileTypeEnhancedMetafile, odr::FileType::enhanced_metafile);
 
 ODR_SAME_ENUM(ODRFileCategoryUnknown, odr::FileCategory::unknown);
 ODR_SAME_ENUM(ODRFileCategoryText, odr::FileCategory::text);

@@ -15,7 +15,12 @@ std::shared_ptr<abstract::File> ImageFile::file() const noexcept {
 
 FileType ImageFile::file_type() const noexcept { return m_file_type; }
 
-FileMeta ImageFile::file_meta() const noexcept { return {}; }
+FileMeta ImageFile::file_meta() const noexcept {
+  FileMeta result;
+  result.type = file_type();
+  result.mimetype = mimetype();
+  return result;
+}
 
 std::string_view ImageFile::mimetype() const noexcept {
   // not `mimetype_by_file_type` — that throws, and this is `noexcept`
