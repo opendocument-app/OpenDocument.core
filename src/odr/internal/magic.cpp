@@ -9,7 +9,6 @@
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <array>
 #include <istream>
 #include <memory>
 #include <string_view>
@@ -18,6 +17,15 @@
 namespace odr::internal {
 
 namespace {
+
+/// At most @p size bytes, cut back to what was actually read - a file shorter
+/// than the longest signature must never be matched against what sat behind it.
+std::string read_head(std::istream &in, const std::size_t size) {
+  std::string result(size, '\0');
+  in.read(result.data(), static_cast<std::streamsize>(size));
+  result.resize(static_cast<std::size_t>(in.gcount()));
+  return result;
+}
 
 bool match_magic(const std::string &head, const std::string &pattern) {
   const auto bytes = util::string::split(pattern, " ");
@@ -84,26 +92,33 @@ FileType iso_base_media_file_type(const std::string &head) {
   return FileType::mpeg4_video;
 }
 
+enum class SvgProbe {
+  no,         ///< the root element is there and is not `svg`
+  yes,        ///< the root element is `svg`
+  incomplete, ///< the head ends inside the prologue or the root element name
+};
+
 /// Whether @p head opens an svg document: an xml prologue - byte order mark,
 /// whitespace, `<?...?>`, `<!--...-->`, `<!DOCTYPE ...>` - and then a root
 /// element named `svg`, with or without a namespace prefix.
 ///
 /// The root element is what makes this safe: a flat opendocument and an html
-/// page carrying an inline `<svg>` both open with a different one.
-bool is_svg(std::string_view head) {
+/// page carrying an inline `<svg>` both open with a different one. A prologue
+/// has no length limit, so a head that ends inside one answers `incomplete`
+/// rather than `no` - the caller decides whether to read further.
+SvgProbe svg_probe(std::string_view head) {
   static constexpr std::string_view byte_order_mark = "\xEF\xBB\xBF";
   static constexpr std::string_view whitespace = " \t\r\n";
+  static constexpr std::string_view name_end = " \t\r\n/>";
 
   if (head.starts_with(byte_order_mark)) {
     head.remove_prefix(byte_order_mark.size());
   }
 
-  // skips the prologue; a part of it that does not end inside the head means
-  // we cannot tell, which is not an svg
   while (true) {
     const std::size_t begin = head.find_first_not_of(whitespace);
     if (begin == std::string_view::npos) {
-      return false;
+      return SvgProbe::incomplete;
     }
     head.remove_prefix(begin);
 
@@ -114,32 +129,35 @@ bool is_svg(std::string_view head) {
       terminator = "-->";
     } else if (head.starts_with("<!")) {
       terminator = ">";
+    } else if (head.size() < 4 && head.starts_with("<")) {
+      // too short to tell which of the three it is, or whether it is one
+      return SvgProbe::incomplete;
     } else {
       break;
     }
 
     const std::size_t end = head.find(terminator);
     if (end == std::string_view::npos) {
-      return false;
+      return SvgProbe::incomplete;
     }
     head.remove_prefix(end + terminator.size());
   }
 
   if (!head.starts_with("<")) {
-    return false;
+    return SvgProbe::no;
   }
   head.remove_prefix(1);
 
-  const std::size_t name_end = head.find_first_of(" \t\r\n/>");
-  if (name_end == std::string_view::npos) { // the name runs past the head
-    return false;
+  const std::size_t end = head.find_first_of(name_end);
+  if (end == std::string_view::npos) {
+    return SvgProbe::incomplete;
   }
-  std::string_view name = head.substr(0, name_end);
+  std::string_view name = head.substr(0, end);
   if (const std::size_t colon = name.find(':');
       colon != std::string_view::npos) {
     name.remove_prefix(colon + 1);
   }
-  return name == "svg";
+  return name == "svg" ? SvgProbe::yes : SvgProbe::no;
 }
 
 } // namespace
@@ -249,7 +267,7 @@ FileType magic::file_type(const std::string &magic) {
     return FileType::jpeg_xl;
   }
 
-  if (is_svg(magic)) {
+  if (svg_probe(magic) == SvgProbe::yes) {
     return FileType::scalable_vector_graphics;
   }
 
@@ -257,19 +275,31 @@ FileType magic::file_type(const std::string &magic) {
 }
 
 FileType magic::file_type(std::istream &in) {
-  // most signatures are a prefix, but two are not: an enhanced metafile names
-  // itself at offset 40, and an svg root element sits behind a prologue of no
-  // fixed length
-  static constexpr std::size_t max_head_size = 1024;
+  // enough for every signature - the longest is the enhanced metafile's, which
+  // ends at offset 44 - and for the prologue of a normal svg
+  static constexpr std::size_t head_size = 1024;
+  // a prologue has no length limit, so reading up to the root element needs a
+  // bound of its own; a licence comment or a doctype with an internal subset
+  // fits many times over
+  static constexpr std::size_t max_svg_head_size = 64 * head_size;
 
-  // value initialized, and cut back to what was actually read: a file shorter
-  // than the longest signature would otherwise be matched against whatever the
-  // stack held behind it
-  std::array<char, max_head_size> head{};
-  in.read(head.data(), head.size());
+  std::string head = read_head(in, head_size);
+  if (const FileType file_type = magic::file_type(head);
+      file_type != FileType::unknown) {
+    return file_type;
+  }
 
-  return file_type(
-      std::string(head.data(), static_cast<std::size_t>(in.gcount())));
+  while (svg_probe(head) == SvgProbe::incomplete &&
+         head.size() < max_svg_head_size) {
+    const std::string next = read_head(in, head_size);
+    if (next.empty()) {
+      break;
+    }
+    head += next;
+  }
+
+  return svg_probe(head) == SvgProbe::yes ? FileType::scalable_vector_graphics
+                                          : FileType::unknown;
 }
 
 FileType magic::file_type(const abstract::File &file) {

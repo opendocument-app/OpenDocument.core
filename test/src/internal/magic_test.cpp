@@ -173,6 +173,25 @@ TEST(magic, svg) {
             FileType::scalable_vector_graphics);
 }
 
+/// A prologue has no length limit - a generated file can carry a licence
+/// comment far longer than the signature head - so detection reads on until it
+/// reaches the root element.
+TEST(magic, svg_behind_a_long_prologue) {
+  using namespace std::string_literals;
+
+  const std::string comment = "<!-- " + std::string(8000, 'c') + " -->\n";
+  EXPECT_EQ(detect(R"(<?xml version="1.0"?>)"
+                   "\n" +
+                   comment + "<svg/>"),
+            FileType::scalable_vector_graphics);
+
+  // the same length of prologue in front of something that is not an svg
+  EXPECT_EQ(detect(comment + "<html/>"), FileType::unknown);
+
+  // reading on is bounded: a comment that never ends is not an svg
+  EXPECT_EQ(detect("<!-- " + std::string(200000, 'c')), FileType::unknown);
+}
+
 TEST(magic, not_svg) {
   using namespace std::string_literals;
 
