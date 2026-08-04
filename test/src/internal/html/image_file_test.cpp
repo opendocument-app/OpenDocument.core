@@ -149,12 +149,23 @@ TEST(image_file, every_image_reports_its_meta) {
   }
 }
 
-/// An image inside a document keeps the `image/jpg` every reference output was
-/// written with; svg cannot, because markup labelled `image/jpg` renders
-/// nothing.
-TEST(image_file, an_embedded_svg_is_the_only_one_that_is_named) {
+/// An image inside a document is labelled by its own type, the same as the
+/// image page labels a standalone one.
+TEST(image_file, an_embedded_image_is_named_by_its_own_mime_type) {
   EXPECT_NE(image_src(svg_file()).find("data:image/svg+xml;base64,"),
             std::string::npos);
-  EXPECT_NE(image_src(png_file()).find("data:image/jpg;base64,"),
+  EXPECT_NE(image_src(png_file()).find("data:image/png;base64,"),
             std::string::npos);
+  EXPECT_NE(image_src(ico_file()).find("data:image/vnd.microsoft.icon;base64,"),
+            std::string::npos);
+}
+
+/// A file nothing could name still goes out - as a guess, since there is no
+/// type to read a mime type from.
+TEST(image_file, an_unrecognised_image_falls_back_to_a_guess) {
+  std::ostringstream out;
+  internal::html::translate_image_src(image_file("not an image at all"), out,
+                                      HtmlConfig());
+
+  EXPECT_NE(out.str().find("data:image/jpg;base64,"), std::string::npos);
 }
