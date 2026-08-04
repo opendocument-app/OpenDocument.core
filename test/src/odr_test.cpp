@@ -25,7 +25,7 @@ namespace {
 std::vector<FileType> every_file_type() {
   std::vector<FileType> result;
   for (auto i = static_cast<std::size_t>(FileType::unknown);
-       i <= static_cast<std::size_t>(FileType::audio_video_interleave); ++i) {
+       i <= static_cast<std::size_t>(FileType::xml); ++i) {
     result.push_back(static_cast<FileType>(i));
   }
   return result;

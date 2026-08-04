@@ -126,6 +126,29 @@ enum class FileType {
   matroska_video,
   // https://en.wikipedia.org/wiki/Audio_Video_Interleave
   audio_video_interleave,
+
+  // More images that arrive alongside documents, named the same way and for
+  // the same reason as the block above - nothing here is decoded either.
+  // https://en.wikipedia.org/wiki/SVG
+  scalable_vector_graphics,
+  // https://en.wikipedia.org/wiki/ICO_(file_format)
+  windows_icon,
+  // https://en.wikipedia.org/wiki/JPEG_XL
+  jpeg_xl,
+  // https://en.wikipedia.org/wiki/JPEG_2000
+  jpeg_2000,
+  // https://en.wikipedia.org/wiki/Adobe_Photoshop#File_format
+  photoshop_document,
+  // https://en.wikipedia.org/wiki/Windows_Metafile
+  windows_metafile,
+  // https://en.wikipedia.org/wiki/Windows_Metafile#Enhanced_Metafile
+  enhanced_metafile,
+
+  // Classification only for now - detection reports it under the formats built
+  // on it, e.g. an svg comes back as `[text_file, xml, scalable_vector_
+  // graphics]`, but there is no decoder of its own behind it yet.
+  // https://en.wikipedia.org/wiki/XML
+  xml,
 };
 
 /// @brief Collection of file categories.

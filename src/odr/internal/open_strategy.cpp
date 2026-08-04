@@ -18,7 +18,9 @@
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
+#include <odr/internal/svg/svg_util.hpp>
 #include <odr/internal/svm/svm_file.hpp>
+#include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <algorithm>
@@ -282,6 +284,24 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as json");
       }
+
+      // an svg has no signature to find it by - it is xml, and only the root
+      // element tells the two apart, so both are reported
+      try {
+        ODR_VERBOSE(logger, "try open as xml");
+        util::xml::check_xml_file(*file->stream());
+        result.push_back(FileType::xml);
+
+        try {
+          ODR_VERBOSE(logger, "try open as svg");
+          svg::check_svg_file(*file->stream());
+          result.push_back(FileType::scalable_vector_graphics);
+        } catch (...) {
+          ODR_VERBOSE(logger, "failed to open as svg");
+        }
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as xml");
+      }
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as text");
     }
@@ -391,6 +411,17 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         return std::make_unique<json::JsonFile>(text);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as json");
+      }
+
+      // see `list_file_types` - an svg is only recognised by parsing it, and
+      // a plain xml file has no decoder of its own, so it stays text
+      try {
+        ODR_VERBOSE(logger, "try open as svg");
+        svg::check_svg_file(*file->stream());
+        return std::make_unique<ImageFile>(file,
+                                           FileType::scalable_vector_graphics);
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as svg");
       }
 
       ODR_VERBOSE(logger, "open as text file");

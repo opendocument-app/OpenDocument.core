@@ -9,14 +9,23 @@
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <array>
 #include <istream>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal {
 
 namespace {
+
+/// At most @p size bytes, cut back to what was actually read - a file shorter
+/// than the longest signature must never be matched against what sat behind it.
+std::string read_head(std::istream &in, const std::size_t size) {
+  std::string result(size, '\0');
+  in.read(result.data(), static_cast<std::streamsize>(size));
+  result.resize(static_cast<std::size_t>(in.gcount()));
+  return result;
+}
 
 bool match_magic(const std::string &head, const std::string &pattern) {
   const auto bytes = util::string::split(pattern, " ");
@@ -161,20 +170,44 @@ FileType magic::file_type(const std::string &magic) {
     return FileType::mpeg_audio;
   }
 
+  if (match_magic(magic, "00 00 01 00") || // icon
+      match_magic(magic, "00 00 02 00")) { // cursor
+    return FileType::windows_icon;
+  }
+  if (match_magic(magic, "00 00 00 0C 6A 50 20 20 0D 0A 87 0A") || // 'jP  ' box
+      match_magic(magic, "FF 4F FF 51")) { // bare codestream
+    return FileType::jpeg_2000;
+  }
+  if (match_magic(magic, "00 00 00 0C 4A 58 4C 20 0D 0A 87 0A")) { // 'JXL ' box
+    return FileType::jpeg_xl;
+  }
+  if (match_magic(magic, "38 42 50 53")) { // '8BPS'
+    return FileType::photoshop_document;
+  }
+  if (match_magic(magic, "D7 CD C6 9A") ||       // aldus placeable header
+      match_magic(magic, "01 00 09 00 00 03") || // memory metafile header
+      match_magic(magic, "02 00 09 00 00 03")) { // disk metafile header
+    return FileType::windows_metafile;
+  }
+  // the leading record type alone is far too weak, so the header signature at
+  // offset 40 has to agree
+  if (match_magic(magic, "01 00 00 00") && tag_at(magic, 40) == " EMF") {
+    return FileType::enhanced_metafile;
+  }
+  // two bytes and nothing more to check, so it goes after everything else
+  if (match_magic(magic, "FF 0A")) { // bare codestream
+    return FileType::jpeg_xl;
+  }
+
   return FileType::unknown;
 }
 
 FileType magic::file_type(std::istream &in) {
-  static constexpr std::size_t max_head_size = 12;
+  // every signature is a prefix but one: an enhanced metafile names itself at
+  // offset 40, so the head has to reach 44
+  static constexpr std::size_t head_size = 64;
 
-  // value initialized, and cut back to what was actually read: a file shorter
-  // than the longest signature would otherwise be matched against whatever the
-  // stack held behind it
-  std::array<char, max_head_size> head{};
-  in.read(head.data(), head.size());
-
-  return file_type(
-      std::string(head.data(), static_cast<std::size_t>(in.gcount())));
+  return file_type(read_head(in, head_size));
 }
 
 FileType magic::file_type(const abstract::File &file) {

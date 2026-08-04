@@ -8,6 +8,8 @@
 
 #include <pugixml.hpp>
 
+#include <tuple>
+
 namespace odr::internal::util {
 
 pugi::xml_document xml::parse(const std::string &in) {
@@ -25,6 +27,8 @@ pugi::xml_document xml::parse(std::istream &in) {
   }
   return result;
 }
+
+void xml::check_xml_file(std::istream &in) { std::ignore = parse(in); }
 
 pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
                               const AbsPath &path) {

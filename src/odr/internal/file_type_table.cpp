@@ -176,6 +176,37 @@ constexpr std::array heif_mimetypes{"image/heic"sv, "image/heif"sv,
 constexpr std::array avif_extensions{"avif"sv, "avifs"sv};
 constexpr std::array avif_mimetypes{"image/avif"sv, "image/avif-sequence"sv};
 
+constexpr std::array xml_extensions{"xml"sv};
+constexpr std::array xml_mimetypes{"application/xml"sv, "text/xml"sv};
+
+constexpr std::array svg_extensions{"svg"sv};
+constexpr std::array svg_mimetypes{"image/svg+xml"sv};
+
+// `.cur` is the same container with a different resource type, so it rides
+// along here rather than becoming a type of its own
+constexpr std::array ico_extensions{"ico"sv, "cur"sv};
+constexpr std::array ico_mimetypes{"image/vnd.microsoft.icon"sv,
+                                   "image/x-icon"sv};
+
+constexpr std::array jxl_extensions{"jxl"sv};
+constexpr std::array jxl_mimetypes{"image/jxl"sv};
+
+constexpr std::array jp2_extensions{"jp2"sv, "jpx"sv, "jpf"sv,
+                                    "j2k"sv, "jpc"sv, "j2c"sv};
+constexpr std::array jp2_mimetypes{"image/jp2"sv, "image/jpx"sv};
+
+// `.psb` is the large document variant and carries the same signature
+constexpr std::array psd_extensions{"psd"sv, "psb"sv};
+constexpr std::array psd_mimetypes{"image/vnd.adobe.photoshop"sv,
+                                   "application/x-photoshop"sv};
+
+constexpr std::array wmf_extensions{"wmf"sv};
+constexpr std::array wmf_mimetypes{"image/wmf"sv, "image/x-wmf"sv,
+                                   "application/x-msmetafile"sv};
+
+constexpr std::array emf_extensions{"emf"sv};
+constexpr std::array emf_mimetypes{"image/emf"sv, "image/x-emf"sv};
+
 constexpr std::array mp3_extensions{"mp3"sv};
 constexpr std::array mp3_mimetypes{"audio/mpeg"sv, "audio/mp3"sv,
                                    "audio/x-mpeg"sv};
@@ -579,6 +610,69 @@ constexpr std::array table{
         FileCategory::video,
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Named but not decoded, like the images above. `translate_html` says the
+    // image page is written and the data url is labelled with the type below,
+    // not that every browser paints it - that is already true of tiff and heif.
+    Row{FileType::scalable_vector_graphics,
+        "svg"sv,
+        svg_extensions,
+        svg_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::windows_icon,
+        "ico"sv,
+        ico_extensions,
+        ico_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::jpeg_xl,
+        "jxl"sv,
+        jxl_extensions,
+        jxl_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::jpeg_2000,
+        "jp2"sv,
+        jp2_extensions,
+        jp2_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::photoshop_document,
+        "psd"sv,
+        psd_extensions,
+        psd_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::windows_metafile,
+        "wmf"sv,
+        wmf_extensions,
+        wmf_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::enhanced_metafile,
+        "emf"sv,
+        emf_extensions,
+        emf_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Detection reports it, nothing opens it yet - a plain xml file still
+    // decodes as text.
+    Row{FileType::xml,
+        "xml"sv,
+        xml_extensions,
+        xml_mimetypes,
+        FileCategory::text,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.

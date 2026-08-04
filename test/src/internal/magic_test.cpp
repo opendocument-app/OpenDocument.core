@@ -128,6 +128,36 @@ TEST(magic, standalone_media_signatures) {
   EXPECT_EQ(detect("\xff\xd8\xff\xdb"s), FileType::jpeg);
 }
 
+TEST(magic, image_signatures) {
+  using namespace std::string_literals;
+
+  EXPECT_EQ(detect("\x00\x00\x01\x00\x01\x00"s), FileType::windows_icon);
+  EXPECT_EQ(detect("\x00\x00\x02\x00\x01\x00"s), FileType::windows_icon);
+  EXPECT_EQ(detect("\x00\x00\x00\x0c"
+                   "jP  \r\n\x87\n"s),
+            FileType::jpeg_2000);
+  EXPECT_EQ(detect("\xff\x4f\xff\x51"s), FileType::jpeg_2000);
+  EXPECT_EQ(detect("\x00\x00\x00\x0c"
+                   "JXL \r\n\x87\n"s),
+            FileType::jpeg_xl);
+  EXPECT_EQ(detect("\xff\x0a"s), FileType::jpeg_xl);
+  EXPECT_EQ(detect("8BPS\x00\x01"s), FileType::photoshop_document);
+  EXPECT_EQ(detect("\xd7\xcd\xc6\x9a"s), FileType::windows_metafile);
+  EXPECT_EQ(detect("\x01\x00\x09\x00\x00\x03"s), FileType::windows_metafile);
+  EXPECT_EQ(detect("\x02\x00\x09\x00\x00\x03"s), FileType::windows_metafile);
+
+  // an enhanced metafile names itself at offset 40, not at the head
+  const std::string emf = "\x01\x00\x00\x00"s + std::string(36, '\0') + " EMF";
+  EXPECT_EQ(detect(emf), FileType::enhanced_metafile);
+  EXPECT_EQ(detect("\x01\x00\x00\x00"s + std::string(36, '\0') + "junk"),
+            FileType::unknown);
+
+  // the neighbours these must not steal
+  EXPECT_EQ(detect("\x00\x01\x00\x00"s), FileType::truetype_font);
+  EXPECT_EQ(detect("\xff\xd8\xff\xdb"s), FileType::jpeg);
+  EXPECT_EQ(detect("\xff\xfb\x90\x00"s), FileType::mpeg_audio);
+}
+
 TEST(magic, short_stream) {
   // a file shorter than the head buffer may only be matched against what was
   // actually read from it, never against what happened to sit behind it
