@@ -35,8 +35,6 @@ const char *translate_font_style(FontStyle font_style);
 const char *translate_font_position(FontPosition font_position);
 
 std::string translate_outer_page_style(const PageLayout &page_layout);
-/// Like `translate_outer_page_style`, but the page height only floors the box
-/// so that content may flow past it.
 std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
 std::string translate_text_style(const TextStyle &text_style);
