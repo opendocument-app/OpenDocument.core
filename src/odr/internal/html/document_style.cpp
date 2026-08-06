@@ -97,6 +97,19 @@ std::string html::translate_outer_page_style(const PageLayout &page_layout) {
   return result;
 }
 
+std::string
+html::translate_outer_flowing_page_style(const PageLayout &page_layout) {
+  PageLayout flowing_page_layout = page_layout;
+  flowing_page_layout.height = {};
+
+  std::string result = translate_outer_page_style(flowing_page_layout);
+  if (const std::optional<Measure> height = page_layout.height;
+      height.has_value()) {
+    result.append("min-height:").append(height->to_string()).append(";");
+  }
+  return result;
+}
+
 std::string html::translate_inner_page_style(const PageLayout &page_layout) {
   std::string result;
   if (const std::optional<Quantity<double>> margin_right =

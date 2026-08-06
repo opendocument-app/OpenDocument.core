@@ -299,13 +299,13 @@ public:
     const TextRoot element = root.as_text_root();
 
     if (state.config().text_document_margin) {
-      auto page_layout = element.page_layout();
-      page_layout.height = {};
+      const PageLayout page_layout = element.page_layout();
 
       out.write_element_begin(
-          "div", HtmlElementOptions()
-                     .set_class("odr-page-outer")
-                     .set_style(translate_outer_page_style(page_layout)));
+          "div",
+          HtmlElementOptions()
+              .set_class("odr-page-outer")
+              .set_style(translate_outer_flowing_page_style(page_layout)));
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class("odr-page-inner")
