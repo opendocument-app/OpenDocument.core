@@ -35,6 +35,7 @@ const char *translate_font_style(FontStyle font_style);
 const char *translate_font_position(FontPosition font_position);
 
 std::string translate_outer_page_style(const PageLayout &page_layout);
+std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
 std::string translate_text_style(const TextStyle &text_style);
 std::string translate_paragraph_style(const ParagraphStyle &paragraph_style);
