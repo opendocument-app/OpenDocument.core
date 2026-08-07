@@ -199,9 +199,7 @@ public:
   }
   [[nodiscard]] bool element_is_editable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // The presentation document is read-only (is_editable/is_savable are
-    // false), so no element is editable. The text_set_content machinery
-    // exists but stays dormant until pptx editing + save are wired up.
+    // read-only; text_set_content below stays dormant until save is wired up
     return false;
   }
   [[nodiscard]]
@@ -370,6 +368,12 @@ public:
       }
     }
 
+    if (new_first == old_first) {
+      // empty text still needs a live node to anchor the element to, or the
+      // removal below would leave the registry pointing at freed nodes
+      insert_node("a:t");
+    }
+
     element.node = new_first;
     text_element.last = new_last;
 
@@ -488,12 +492,12 @@ public:
     return read_emus_attribute(
         get_frame_xfrm(element_id).child("a:ext").attribute("cy"));
   }
-  [[nodiscard]] std::optional<std::int32_t>
-  frame_z_index(const ElementIdentifier) const override {
+  [[nodiscard]] std::optional<std::int32_t> frame_z_index(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] GraphicStyle
-  frame_style(const ElementIdentifier) const override {
+  [[nodiscard]] GraphicStyle frame_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
