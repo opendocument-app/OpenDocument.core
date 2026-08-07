@@ -306,9 +306,8 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 
 @implementation ODRHtmlView {
   std::optional<odr::HtmlView> _handle;
-  // The service the view belongs to. The view's impl holds a bare pointer to
-  // it, so without this a view handed out by `-views` could outlive what it
-  // points into — the same owner chain `ODRElement` keeps to its document.
+  // The view's impl holds a bare pointer to its service, so the view has to
+  // keep the service alive itself — as `ODRElement` does its document.
   id _owner;
 }
 

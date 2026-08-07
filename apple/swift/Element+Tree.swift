@@ -23,7 +23,7 @@ extension Element {
 
   /// The first descendant of the given type, or `nil`.
   public func firstDescendant<T: Element>(ofType type: T.Type) -> T? {
-    descendants.lazy.compactMap { $0 as? T }.first { _ in true }
+    descendants(ofType: type).first { _ in true }
   }
 
   /// The chain of ancestors, closest first.

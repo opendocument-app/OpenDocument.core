@@ -60,13 +60,24 @@ ODRTableDimensions to_dimensions(const odr::TableDimensions &value) {
   return ODRTableDimensionsMake(value.rows, value.columns);
 }
 
+/// Wraps a range through `-derive:`, so `source`'s owner is carried along.
+NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
+                                  const odr::ElementRange &range) {
+  NSMutableArray<ODRElement *> *const result = [NSMutableArray array];
+  for (const odr::Element element : range) {
+    if (ODRElement *const wrapped = [source derive:element]; wrapped != nil) {
+      [result addObject:wrapped];
+    }
+  }
+  return result;
+}
+
 } // namespace
 
 @implementation ODRElement {
   odr::Element _handle;
-  // The document the adapter behind `_handle` belongs to. `odr::Element` holds
-  // a bare pointer into it, so without this the tree could outlive what it
-  // points into — the analogue of the JNI bindings' owner chain.
+  // `odr::Element` holds a bare pointer into the document's adapter, so the
+  // tree has to keep the document alive itself.
   id _owner;
 }
 
@@ -212,15 +223,7 @@ ODRTableDimensions to_dimensions(const odr::TableDimensions &value) {
 - (NSArray<ODRElement *> *)children {
   return guarded_value(
       [&]() -> NSArray<ODRElement *> * {
-        NSMutableArray<ODRElement *> *const result = [NSMutableArray array];
-        for (odr::Element child = _handle.first_child(); child;
-             child = child.next_sibling()) {
-          ODRElement *const wrapped = [self derive:child];
-          if (wrapped != nil) {
-            [result addObject:wrapped];
-          }
-        }
-        return result;
+        return to_nsarray(self, _handle.children());
       },
       @[]);
 }
@@ -333,14 +336,7 @@ ODRTableDimensions to_dimensions(const odr::TableDimensions &value) {
 - (NSArray<ODRElement *> *)shapes {
   return guarded_value(
       [&]() -> NSArray<ODRElement *> * {
-        NSMutableArray<ODRElement *> *const result = [NSMutableArray array];
-        for (const odr::Element shape : self.handle.as_sheet().shapes()) {
-          ODRElement *const wrapped = [self derive:shape];
-          if (wrapped != nil) {
-            [result addObject:wrapped];
-          }
-        }
-        return result;
+        return to_nsarray(self, self.handle.as_sheet().shapes());
       },
       @[]);
 }
@@ -578,14 +574,7 @@ ODRTableDimensions to_dimensions(const odr::TableDimensions &value) {
 - (NSArray<ODRElement *> *)columns {
   return guarded_value(
       [&]() -> NSArray<ODRElement *> * {
-        NSMutableArray<ODRElement *> *const result = [NSMutableArray array];
-        for (const odr::Element column : self.handle.as_table().columns()) {
-          ODRElement *const wrapped = [self derive:column];
-          if (wrapped != nil) {
-            [result addObject:wrapped];
-          }
-        }
-        return result;
+        return to_nsarray(self, self.handle.as_table().columns());
       },
       @[]);
 }
@@ -593,14 +582,7 @@ ODRTableDimensions to_dimensions(const odr::TableDimensions &value) {
 - (NSArray<ODRElement *> *)rows {
   return guarded_value(
       [&]() -> NSArray<ODRElement *> * {
-        NSMutableArray<ODRElement *> *const result = [NSMutableArray array];
-        for (const odr::Element row : self.handle.as_table().rows()) {
-          ODRElement *const wrapped = [self derive:row];
-          if (wrapped != nil) {
-            [result addObject:wrapped];
-          }
-        }
-        return result;
+        return to_nsarray(self, self.handle.as_table().rows());
       },
       @[]);
 }

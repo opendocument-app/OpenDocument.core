@@ -19,14 +19,10 @@
 
 /// Cross-translation-unit access to the C++ value each wrapper owns.
 ///
-/// The handle model is much lighter than the JNI one (`jni/AGENTS.md`): an
-/// ObjC++ `@implementation` can hold the C++ handle as an ivar directly, and
-/// ARC's `.cxx_construct`/`.cxx_destruct` run its constructor and destructor.
-/// No `long` handles, no `destroy` natives, no reaper thread.
-///
-/// Nor is there a keep-alive chain to maintain for these: the public C++
-/// handles hold a `shared_ptr` to the implementation, so a wrapper owning one
-/// by value already keeps it alive on its own.
+/// Each `@implementation` holds its handle as an ivar, destroyed by ARC's
+/// `.cxx_destruct` — no `long` handles as in `jni/`. Most handles own a
+/// `shared_ptr`, so a wrapper holding one needs no keep-alive; the exceptions
+/// are `ODRElement` and `ODRHtmlView` below.
 ///
 /// Categories cannot add ivars, so each class declares its own accessors here
 /// and implements them next to its `@implementation`.

@@ -25,26 +25,33 @@ ODR_SAME_ENUM(ODRLogLevelFatal, odr::LogLevel::fatal);
 
 namespace {
 
+void report_sink_exception(NSException *const exception) {
+  // A logger must not derail the operation it is reporting on.
+  NSLog(@"odr: log sink threw %@: %@", exception.name, exception.reason);
+}
+
 /// Routes `odr::ILogger` into an ObjC sink, the analogue of `jni_logger.cpp`'s
-/// `JavaLogger`.
-///
-/// Holds the sink strongly: the C++ logger can outlive every ObjC reference the
-/// caller kept, and a sink collected out from under it would be a use after
-/// free on a background thread.
+/// `JavaLogger`. Holds the sink strongly: the C++ logger can outlive every ObjC
+/// reference the caller kept.
 class SinkLogger final : public odr::ILogger {
 public:
   explicit SinkLogger(id<ODRLogSink> sink) : m_sink{sink} {}
 
   [[nodiscard]] bool will_log(const odr::LogLevel level) const final {
     @autoreleasepool {
-      return [m_sink willLog:static_cast<ODRLogLevel>(level)] == YES;
+      @try {
+        return [m_sink willLog:static_cast<ODRLogLevel>(level)] == YES;
+      } @catch (NSException *const exception) {
+        report_sink_exception(exception);
+        return false;
+      }
     }
   }
 
   void log(const Time, const odr::LogLevel level, const std::string &message,
            const std::source_location &location) final {
-    // Log calls arrive on whatever thread the library works on, so each one
-    // gets its own pool rather than leaking into the caller's.
+    // Calls arrive on whatever thread the library works on, so each one gets
+    // its own pool rather than leaking into the caller's.
     @autoreleasepool {
       @try {
         [m_sink logLevel:static_cast<ODRLogLevel>(level)
@@ -53,8 +60,7 @@ public:
                              std::string_view(location.file_name()))
                     line:location.line()];
       } @catch (NSException *const exception) {
-        // A logger must not derail the operation it is reporting on.
-        NSLog(@"odr: log sink threw %@: %@", exception.name, exception.reason);
+        report_sink_exception(exception);
       }
     }
   }
@@ -64,7 +70,7 @@ public:
       @try {
         [m_sink flush];
       } @catch (NSException *const exception) {
-        NSLog(@"odr: log sink threw %@: %@", exception.name, exception.reason);
+        report_sink_exception(exception);
       }
     }
   }
