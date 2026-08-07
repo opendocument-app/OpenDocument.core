@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/exceptions.hpp>
+
 #include <cstdint>
 #include <istream>
 #include <string>
@@ -204,8 +206,12 @@ struct TextLineAction final {
   std::uint32_t overline{};
 };
 
+/// Reads a fixed-size field. A short read leaves the destination untouched, so
+/// the stream ending mid-field is malformed input rather than a stale value.
 template <typename T> void read_primitive(std::istream &in, T &out) {
-  in.read(reinterpret_cast<char *>(&out), sizeof(out));
+  if (!in.read(reinterpret_cast<char *>(&out), sizeof(out))) {
+    throw MalformedSvmFile();
+  }
 }
 
 std::string read_ascii_string(std::istream &in, std::uint32_t length);

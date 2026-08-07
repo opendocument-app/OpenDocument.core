@@ -4,24 +4,46 @@
 
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
 
 namespace odr::internal {
 
+namespace {
+
+/// Reads exactly @p size bytes, growing the buffer as the data arrives so that
+/// a bogus length prefix cannot allocate ahead of the stream.
+std::string read_bytes(std::istream &in, const std::uint64_t size) {
+  constexpr std::uint64_t chunk_size = 4096;
+
+  std::string result;
+  while (result.size() < size) {
+    const std::size_t offset = result.size();
+    const auto step =
+        static_cast<std::size_t>(std::min(chunk_size, size - offset));
+    result.resize(offset + step);
+    if (!in.read(result.data() + offset, static_cast<std::streamsize>(step))) {
+      throw MalformedSvmFile();
+    }
+  }
+  return result;
+}
+
+} // namespace
+
 std::string svm::read_ascii_string(std::istream &in,
                                    const std::uint32_t length) {
-  std::string result(length, ' ');
-  in.read(result.data(), static_cast<std::streamsize>(result.size()));
-  return result;
+  return read_bytes(in, length);
 }
 
 std::string svm::read_utf16_string(std::istream &in,
                                    const std::uint32_t length) {
-  std::u16string result_u16(length, ' ');
-  in.read(reinterpret_cast<char *>(result_u16.data()),
-          static_cast<std::streamsize>(length) * 2);
+  const std::string bytes =
+      read_bytes(in, static_cast<std::uint64_t>(length) * 2);
+  std::u16string result_u16(length, u' ');
+  std::memcpy(result_u16.data(), bytes.data(), bytes.size());
   return util::string::u16string_to_string(result_u16);
 }
 
@@ -310,9 +332,12 @@ svm::TextArrayAction svm::read_text_array_action(std::istream &in,
   read_primitive(in, result.length);
   std::uint32_t dx_array_length;
   read_primitive(in, dx_array_length);
-  result.dx_array.resize(dx_array_length);
+  // grown entry by entry: the declared length is only trustworthy as far as the
+  // stream actually reaches
   for (std::uint32_t i = 0; i < dx_array_length; ++i) {
-    read_primitive(in, result.dx_array[i]);
+    std::uint32_t dx;
+    read_primitive(in, dx);
+    result.dx_array.push_back(dx);
   }
 
   if (vl.version >= 2) {
