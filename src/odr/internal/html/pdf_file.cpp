@@ -2404,23 +2404,35 @@ public:
     add_class(classes, "m", std::move(t).str());
   }
 
+  /// Serializes `sfnt` re-encoded to the PUA, restoring the cmap
+  /// `reencode_to_pua` overwrites — the `SfntFont` is shared by every page, and
+  /// a left-behind PUA cmap makes the next `glyph_for_code` miss.
+  static std::string
+  write_sfnt_pua(font::sfnt::SfntFont &sfnt,
+                 const std::map<char32_t, std::uint16_t> &extra_unicode) {
+    std::map<char32_t, std::uint16_t> original_cmap = sfnt.cmap();
+    try {
+      font::reencode_to_pua(sfnt, extra_unicode);
+      std::string reencoded = sfnt.write();
+      sfnt.set_cmap(std::move(original_cmap));
+      return reencoded;
+    } catch (...) {
+      sfnt.set_cmap(std::move(original_cmap));
+      throw;
+    }
+  }
+
   /// Whether `font`'s embedded program re-encodes without throwing. Probes the
-  /// real encode path so failures surface here, not in the post-pass, and
-  /// restores the SFNT cmap it mutates.
+  /// real encode path so failures surface here, not in the post-pass.
   static bool font_is_usable(const pdf::Font &font) {
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
-      std::map<char32_t, std::uint16_t> original_cmap = sfnt->cmap();
-      bool usable = false;
       try {
-        font::reencode_to_pua(*sfnt);
-        (void)sfnt->write();
-        usable = true;
+        (void)write_sfnt_pua(*sfnt, {});
+        return true;
       } catch (...) {
-        usable = false;
+        return false;
       }
-      sfnt->set_cmap(std::move(original_cmap));
-      return usable;
     }
     if (const auto cff =
             std::dynamic_pointer_cast<font::cff::CffFont>(font.embedded_font)) {
@@ -2454,8 +2466,7 @@ public:
     std::string reencoded;
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
-      font::reencode_to_pua(*sfnt, extra_unicode);
-      reencoded = sfnt->write();
+      reencoded = write_sfnt_pua(*sfnt, extra_unicode);
     } else if (const auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
                    font.embedded_font)) {
       reencoded = font::cff::wrap_to_otf(*cff, extra_unicode);
