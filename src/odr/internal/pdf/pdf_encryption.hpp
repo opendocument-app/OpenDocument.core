@@ -17,11 +17,9 @@ enum class EncryptionMethod {
   aes_v3, ///< AES-256-CBC, file key used directly (V 5).
 };
 
-/// The decrypting half of the PDF standard security handler (ISO 32000-1 7.6):
-/// holds the derived file encryption key and the stream/string methods, and
-/// decrypts the strings and streams of indirect objects. Obtained from
-/// `Authenticator::authenticate`; immutable and always usable — there is no
-/// un-authenticated state. Read-only: permission bits are not enforced.
+/// The decrypting half of the PDF standard security handler (ISO 32000-1 7.6),
+/// holding the derived file key. Produced by `Authenticator::authenticate`, so
+/// its mere existence means the file is unlocked.
 class Decryptor {
 public:
   /// Wrap an already-derived file key and the resolved stream/string methods.
@@ -53,10 +51,9 @@ private:
 };
 
 /// The authenticating half of the PDF standard security handler (ISO 32000-1
-/// 7.6; AES-256 / R 6 per ISO 32000-2 7.6.4): parses the `/Encrypt` dictionary
-/// and validates a password, producing a `Decryptor` on success. Permission
-/// bits (`/P`) are recorded but not enforced — same stance as the rest of the
-/// engine.
+/// 7.6; AES-256 / R 6 per ISO 32000-2 7.6.4): validates a password against the
+/// `/Encrypt` dictionary, producing a `Decryptor`. Permission bits are recorded
+/// but not enforced.
 ///
 /// Supported configurations (anything else → `create` returns `nullopt`):
 ///   - `V 1/2`, `R 2/3` — RC4, 40-128 bit.
@@ -74,13 +71,9 @@ public:
   /// The raw `/P` permission bitfield (recorded, not enforced).
   [[nodiscard]] std::int64_t permissions() const { return m_p; }
 
-  /// Try `password` (UTF-8/PDFDocEncoded bytes) as the user password, then as
-  /// the owner password. Returns a ready-to-use `Decryptor` on success, or
-  /// `nullopt` if neither matches. The empty password is the usual case
-  /// (owner-locked-only files). The derived key lives only inside the returned
-  /// `Decryptor` — callers carry the `Decryptor` forward (e.g. to re-open the
-  /// file for rendering) rather than the bare key, so the password is never
-  /// retained.
+  /// Try `password` as the user password, then as the owner password;
+  /// `nullopt` if neither matches. The derived key lives only inside the
+  /// returned `Decryptor`, which callers carry forward instead of the key.
   [[nodiscard]] std::optional<Decryptor>
   authenticate(const std::string &password) const;
 

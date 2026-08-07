@@ -2,6 +2,7 @@
 
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <algorithm>
 #include <cstddef>
 
 namespace odr::internal::pdf {
@@ -34,10 +35,9 @@ parse_shading_functions(const Object &function, const ShadingContext &context) {
   }
   // A null entry (an unsupported function type) makes the whole shading
   // unusable: sampling would yield wrong colours silently.
-  for (const auto &f : functions) {
-    if (f == nullptr) {
-      return {};
-    }
+  if (std::ranges::any_of(functions,
+                          [](const auto &f) { return f == nullptr; })) {
+    return {};
   }
   return functions;
 }

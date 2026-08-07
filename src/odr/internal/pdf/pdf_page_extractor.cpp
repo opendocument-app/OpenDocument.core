@@ -16,6 +16,7 @@
 #include <cmath>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <sstream>
 #include <unordered_map>
@@ -54,11 +55,9 @@ struct MarkedContent {
 };
 using MarkedContentStack = std::vector<MarkedContent>;
 
-/// Resolve the extraction text of a shown segment. The nearest enclosing
-/// `/ActualText` sequence, if any, governs: its text is emitted for the first
-/// segment and the rest of the sequence is suppressed (empty). Otherwise the
-/// font's code -> Unicode chain applies; an empty result for non-empty codes is
-/// reported as `no_unicode` (the run is not extractable, only displayable).
+/// The extraction text of a shown segment. The nearest enclosing
+/// `/ActualText` wins, emitted once and then suppressed; otherwise the font's
+/// code -> Unicode chain, whose empty result is reported as `no_unicode`.
 struct ResolvedText {
   std::string text;
   bool no_unicode{false};
@@ -66,13 +65,13 @@ struct ResolvedText {
 
 ResolvedText resolve_text(MarkedContentStack &marked, const Font *font,
                           const std::string &codes) {
-  for (auto it = marked.rbegin(); it != marked.rend(); ++it) {
-    if (it->actual_text.has_value()) {
-      if (it->consumed) {
+  for (MarkedContent &entry : marked | std::views::reverse) {
+    if (entry.actual_text.has_value()) {
+      if (entry.consumed) {
         return {};
       }
-      it->consumed = true;
-      return {*it->actual_text, false};
+      entry.consumed = true;
+      return {*entry.actual_text, false};
     }
   }
   if (font == nullptr) {
@@ -230,14 +229,11 @@ void set_color_space(GraphicsState::Color &color, const std::string &name,
   }
 }
 
-/// Resolve a general colour operator (`sc`/`scn`/`SC`/`SCN`): convert the
-/// operand components through the active colour space to RGB. With no resource
-/// colour space, interpret the components as a device colour by their count
-/// (ISO 32000-1 8.6.8). A trailing name operand selects a `/Pattern`: its name
-/// is recorded on `color.pattern` and resolved against `Resources::pattern` at
-/// paint time (a shading pattern fills through its gradient). An uncoloured
-/// tiling pattern carries leading components — the colour in the pattern colour
-/// space's underlying space — which are still resolved into the fill colour.
+/// Apply `sc`/`scn`/`SC`/`SCN` (ISO 32000-1 8.6.8): convert the components
+/// through the active colour space, or — with no resource space — read them as
+/// a device colour by their count. A trailing name selects a `/Pattern`,
+/// resolved at paint time; an uncoloured tiling pattern also carries the
+/// components, which still resolve into the fill colour.
 void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
   std::vector<double> components;
   std::string pattern_name;
@@ -310,7 +306,7 @@ bool is_supported_blend_mode(const std::string &name) {
       "Darken",    "Lighten",    "ColorDodge", "ColorBurn", "HardLight",
       "SoftLight", "Difference", "Exclusion",  "Hue",       "Saturation",
       "Color",     "Luminosity"};
-  return supported.count(name) != 0;
+  return supported.contains(name);
 }
 
 /// Form XObjects currently being rendered, by element identity. The parser
@@ -333,14 +329,11 @@ build_soft_mask(const SoftMaskDef &def, const Resources &resources,
                 GraphicsState &state, const Logger &logger,
                 std::set<std::string> &warned, ActiveForms &active);
 
-/// Apply a `gs` operator: resolve the named `/ExtGState` dictionary and fold
-/// its constant alpha (`ca`/`CA`), blend mode (`/BM`) and soft mask (`/SMask`)
-/// into the general graphics state (ISO 32000-1 8.4.5). Other entries (line
-/// params,
-/// `/Font`) are out of scope. `/BM` may be a single name or an array of names,
-/// an ordered fallback list from which the reader picks the first mode it
-/// supports; `Compatible` is a legacy alias for `Normal`. `/SMask` is a mask
-/// dictionary (set) or `/None` (clear); absent leaves the mask unchanged.
+/// Apply `gs` (ISO 32000-1 8.4.5): fold the named `/ExtGState`'s `ca`/`CA`,
+/// `/BM` and `/SMask` into the general state. Other entries are out of scope.
+/// `/BM` may be an array — an ordered fallback list, so pick the first
+/// supported name. An absent `/SMask` leaves the mask unchanged; `/None`
+/// clears it.
 void apply_ext_g_state(const std::string &name, const Resources &resources,
                        GraphicsState &state, const Logger &logger,
                        std::set<std::string> &warned, ActiveForms &active) {
@@ -504,11 +497,9 @@ resolve_inline_color_space(const Object &color_space,
   return parse_color_space(color_space, context);
 }
 
-/// Emit an `ImageElement` for an inline image (`BI`/`ID`/`EI`). The operator
-/// carries the inline dictionary and the raw bytes; both are routed through the
-/// same image emission as an image XObject (placed by the CTM, under the
-/// current clip). An `/ImageMask true` stencil is painted in the current fill
-/// colour; an unsupported codec or colour space yields nothing.
+/// Emit an `ImageElement` for an inline image (`BI`/`ID`/`EI`), whose operator
+/// carries the dictionary and the raw bytes. Routed through the same emission
+/// as an image XObject; an unsupported codec or colour space yields nothing.
 void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
                        GraphicsState &state, std::vector<PageElement> &out) {
   if (op.arguments.size() < 2 || !op.arguments[0].is_dictionary() ||
@@ -620,12 +611,10 @@ void begin_marked_content(const GraphicsOperator &op,
   marked.push_back(std::move(entry));
 }
 
-/// Invoke a form XObject named by `Do`: save the state, concatenate the form's
-/// `/Matrix` onto the CTM, run its content with the form's own `/Resources`
-/// (falling back to the enclosing scope), then restore (ISO 32000-1 8.10.1).
-/// `/BBox` clips the form's content. An image XObject emits an `ImageElement`
-/// (when its codec passes through); unknown subtypes are skipped, and a form
-/// already on the render stack is skipped (cycle guard).
+/// Invoke the XObject `Do` names (ISO 32000-1 8.10.1): an image emits an
+/// `ImageElement`; a form runs inside a `save`/`restore` with its `/Matrix`
+/// concatenated, clipped to its `/BBox` and scoped to its own `/Resources`.
+/// Unknown subtypes and forms already on the render stack are skipped.
 void invoke_x_object(const std::string &name, const Resources &resources,
                      GraphicsState &state, std::vector<PageElement> &out,
                      const Logger &logger, std::set<std::string> &warned,
@@ -680,13 +669,10 @@ void invoke_x_object(const std::string &name, const Resources &resources,
     return; // already on the render stack
   }
 
-  // A transparency group is composited as a unit, then that result is painted
-  // with the constant alpha, blend mode and soft mask in force when the group
-  // was invoked (ISO 32000-1 11.6.6) — not each interior painting, which the
-  // group's own content may reset. Snapshot those, isolate them inside the
-  // group, and fold them into the produced elements below. (Per-element folding
-  // is exact for non-overlapping group content, as here; it approximates true
-  // group compositing where interior paints overlap.)
+  // A transparency group composites as a unit, and only then takes the alpha /
+  // blend / mask in force at invocation (ISO 32000-1 11.6.6) — not each
+  // interior painting, which the group's own content may reset. So snapshot
+  // them here and isolate them inside the group.
   const GraphicsState::General &invoke_general = state.current().general;
   const bool group = x_object->transparency_group;
   const double group_alpha = group ? invoke_general.fill_alpha : 1.0;
@@ -809,15 +795,11 @@ build_soft_mask(const SoftMaskDef &def, const Resources &resources,
   return mask;
 }
 
-/// Render a Type3 text-showing operation (ISO 32000-1 9.6.5). The selectable
-/// text element goes through the normal `show` — flagged so the renderer paints
-/// no visible text of its own — then each shown code's char proc is run through
-/// the page machinery at that glyph's transform
-/// (`/FontMatrix` x size x `Tm` x CTM), advancing the text matrix per glyph so
-/// the procs land where the glyphs belong. A `d1` (shape-only) glyph inherits
-/// the current fill colour from the graphics state; a `d0` glyph's own colour
-/// operators take effect as they run. Recursion (a char proc that shows text in
-/// the same Type3 font) is bounded by a depth guard.
+/// Show text in a Type3 font (ISO 32000-1 9.6.5): emit the selectable run via
+/// `show` (flagged to paint nothing), then replay the per-glyph advance,
+/// running each code's char proc at `/FontMatrix` x size x `Tm` x CTM so the
+/// glyphs paint as ordinary elements. Depth-guarded, since a char proc may
+/// itself show Type3 text.
 void show_type3(std::vector<PageElement> &out, const Resources &resources,
                 GraphicsState &state, const Logger &logger,
                 std::set<std::string> &warned, ActiveForms &active,

@@ -140,11 +140,9 @@ std::optional<std::int32_t> inline_color_components(const Object &color_space) {
   return std::nullopt;
 }
 
-// Byte length of an inline image's raw data, derived from its sample geometry —
-// but only when that length is knowable: the image must be unfiltered (a
-// filtered payload's size is unknown until decoded) and its colour space must
-// be a device space. Returns `nullopt` otherwise, leaving the caller to scan
-// for the `EI` terminator.
+// Byte length of an inline image's raw data from its sample geometry, when
+// that is knowable at all: the image must be unfiltered and in a device colour
+// space. `nullopt` otherwise, leaving the caller to scan for `EI`.
 std::optional<std::size_t>
 inline_image_raw_length(const Dictionary &dictionary) {
   if (!inline_image_entry(dictionary, "F", "Filter").is_null()) {
@@ -241,11 +239,10 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     } else if (m_parser.peek_dictionary()) {
       result.arguments.emplace_back(m_parser.read_dictionary());
     } else {
-      // A bareword here is either a `true`/`false` literal (a value inside an
-      // inline image dictionary, 8.9.7) or the operator name that ends the
-      // arguments. `peek_boolean` cannot disambiguate these because operators
-      // such as `f` (fill) or `Tj` share their leading character with the
-      // boolean keywords, so read the whole word and compare it.
+      // A bareword is either a `true`/`false` literal (inline image
+      // dictionaries carry them, 8.9.7) or the operator name ending the
+      // arguments. `peek_boolean` cannot tell them apart — `f` and `Tj` share
+      // their leading character with the keywords — so read the whole word.
       operator_name = read_operator_name();
       if (operator_name == "true") {
         result.arguments.emplace_back(Boolean(true));
@@ -301,11 +298,9 @@ GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
     m_parser.bumpc();
   }
 
-  // When the byte length is knowable (an unfiltered device-colour image), read
-  // exactly that many bytes. This is the only reliable terminator: raw samples
-  // can contain the bytes `E I <white-space>`, which the scan below would
-  // mistake for the real `EI` and so truncate the image (and corrupt the rest
-  // of the page).
+  // A knowable byte length is the only reliable terminator: raw samples can
+  // contain `E I <white-space>`, which the scan below would mistake for the
+  // real `EI`, truncating the image and derailing the rest of the page.
   if (const std::optional<std::size_t> length =
           inline_image_raw_length(dictionary)) {
     std::string data;
@@ -329,11 +324,9 @@ GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
     return data;
   }
 
-  // Otherwise the length is not encoded (a filtered payload), so scan for the
-  // `EI` terminator. `EI` also occurs inside the encoded bytes, so accept one
-  // only when it is bracketed by white-space — preceded by it (the writer's
-  // convention) and followed by it or eof — which makes a false match unlikely.
-  // The terminator (and the white-space before it) is left out of the data.
+  // A filtered payload encodes no length, so scan for `EI`. It also occurs
+  // inside encoded bytes, so accept it only bracketed by white-space, which
+  // makes a false match unlikely. The terminator is left out of the data.
   std::string data;
   while (true) {
     const int_type c = m_parser.geti();

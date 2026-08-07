@@ -19,6 +19,17 @@ ObjectParser::ObjectParser(std::istream &in) : m_in{&in}, m_sb{in.rdbuf()} {
   const std::istream::sentry se(in, true);
 }
 
+ObjectParser::NestingGuard::NestingGuard(ObjectParser &parser)
+    : m_parser{&parser} {
+  if (++m_parser->m_depth > max_nesting_depth) {
+    // the guard never finishes constructing, so nothing will undo this
+    --m_parser->m_depth;
+    throw std::runtime_error("object nesting too deep");
+  }
+}
+
+ObjectParser::NestingGuard::~NestingGuard() { --m_parser->m_depth; }
+
 std::istream &ObjectParser::in() { return *m_in; }
 
 std::streambuf &ObjectParser::sb() { return *m_sb; }
@@ -373,11 +384,9 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
           string += three_octet_to_char(octet[0], octet[1], octet[2]);
         } else {
           bumpc();
-          // Reverse-solidus escapes (ISO 32000-1 7.3.4.2, Table 3): the control
-          // escapes translate to their byte value, a backslash before an
-          // end-of-line marker is a line continuation (both elided), and any
-          // other escaped character (including `(`, `)`, `\`) stands for
-          // itself.
+          // Reverse-solidus escapes (ISO 32000-1 7.3.4.2, Table 3). A
+          // backslash before an end-of-line marker is a line continuation;
+          // anything else unlisted stands for itself.
           switch (c) {
           case 'n':
             string += '\n';
@@ -452,6 +461,7 @@ bool ObjectParser::peek_array() {
 }
 
 Array ObjectParser::read_array() {
+  const NestingGuard guard(*this);
   Array::Holder result;
 
   if (bumpc() != '[') {
@@ -498,6 +508,7 @@ bool ObjectParser::peek_dictionary() {
 }
 
 Dictionary ObjectParser::read_dictionary() {
+  const NestingGuard guard(*this);
   Dictionary::Holder result;
 
   if (bumpc() != '<') {
@@ -557,11 +568,9 @@ Object ObjectParser::read_object() {
 }
 
 void ObjectParser::promote_indirect_reference(Object &value) {
-  // The cursor sits just past `value` (trailing whitespace already skipped).
-  // This is called only where a value cannot legitimately be followed by
-  // another number — a dictionary value or an indirect-object body, which are
-  // followed by the next key, `>>`, or `endobj`. A digit there can only be the
-  // generation of an `n g R` indirect reference whose object number is `value`.
+  // Called only where a value cannot legitimately be followed by another
+  // number — the next token is a key, `>>` or `endobj` — so a digit here can
+  // only be the `g` of an `n g R` whose object number is `value`.
   if (!value.is_integer() || !peek_unsigned_integer()) {
     return;
   }

@@ -62,32 +62,58 @@ struct State {
     m_patterns[reference] = pattern;
   }
 
+  /// The `Pages` nodes on the current `/Kids` path. The page tree is required
+  /// to be acyclic (ISO 32000-1 7.7.3.2); without this a `/Kids` cycle recurses
+  /// until the stack overflows. `enter_pages` returns false on re-entry.
+  [[nodiscard]] bool enter_pages(const ObjectReference &reference) {
+    return m_active_pages.insert(reference).second;
+  }
+  void leave_pages(const ObjectReference &reference) {
+    m_active_pages.erase(reference);
+  }
+
 private:
   DocumentParser *m_parser{};
   Document *m_document{};
 
-  /// Memoized XObject elements by pointer. A shared form/image XObject (e.g.
-  /// a header reused on every page) is parsed once, and a cyclic form reference
-  /// resolves to the existing — possibly still-being-built — element instead of
-  /// recursing forever, so the in-memory graph mirrors the file (cycles
-  /// included). `find_x_object` returns `nullptr` when not yet parsed;
-  /// `cache_x_object` must register the element *before* its `/Resources` are
-  /// parsed. The drawing side guards against the resulting cycles.
+  /// Memoized XObject elements. Registering one *before* parsing its
+  /// `/Resources` is what makes a cyclic form reference resolve to the
+  /// (still-being-built) element instead of recursing forever; the drawing side
+  /// then guards the cycle at render time.
   std::map<ObjectReference, XObject *> m_x_objects;
 
-  /// Memoized Font elements by reference. Fonts are shared by indirect
-  /// reference across every page that uses them, so without this each page's
-  /// `/Resources` would parse a fresh `Font` element. The HTML writer dedups
-  /// embedded `@font-face` rules by `Font` pointer, so duplicate elements would
-  /// re-inline the (base64) font program once per page — a multi-page document
-  /// reusing one font would balloon to gigabytes.
+  /// Memoized Font elements. The HTML writer dedups `@font-face` rules by
+  /// `Font` pointer, so a duplicate element would re-inline the base64 font
+  /// program once per page.
   std::map<ObjectReference, Font *> m_fonts;
 
-  /// Memoized Pattern elements by reference, mirroring `m_x_objects`. A tiling
-  /// pattern's own `/Resources` may name patterns (including, in a malformed
-  /// file, itself); registering the element before its resources are parsed
-  /// breaks the cycle and shares a pattern reused across pages.
+  /// Memoized Pattern elements; register-before-parse as for `m_x_objects`,
+  /// since a tiling pattern's `/Resources` may name patterns (even itself).
   std::map<ObjectReference, Pattern *> m_patterns;
+
+  std::set<ObjectReference> m_active_pages;
+};
+
+/// RAII counterpart of `State::enter_pages` / `State::leave_pages`.
+class PagesScope {
+public:
+  PagesScope(State &state, const ObjectReference &reference)
+      : m_state{&state}, m_reference{reference},
+        m_entered{state.enter_pages(reference)} {}
+  ~PagesScope() {
+    if (m_entered) {
+      m_state->leave_pages(m_reference);
+    }
+  }
+  PagesScope(const PagesScope &) = delete;
+  PagesScope &operator=(const PagesScope &) = delete;
+
+  [[nodiscard]] bool entered() const { return m_entered; }
+
+private:
+  State *m_state;
+  ObjectReference m_reference;
+  bool m_entered;
 };
 
 /// Normalize /Rotate to {0, 90, 180, 270}: the spec requires a multiple of 90,
@@ -97,17 +123,13 @@ Integer normalize_rotate(Integer rotate) {
   return (rotate / 90) * 90;
 }
 
-/// The page attributes that are inherited through the `Pages` tree
-/// (ISO 32000-1 7.7.3.3, Table 30: exactly `Resources`, `MediaBox`,
-/// `CropBox`, `Rotate`). Threaded down the tree instead of walking `Parent`
-/// pointers — no cycle risk, no re-reads. Each slot holds the value set by the
-/// nearest ancestor that carried it (possibly an indirect reference, resolved
-/// lazily at the leaf); a null slot means no ancestor set it.
+/// The attributes inherited through the `Pages` tree (ISO 32000-1 7.7.3.3,
+/// Table 30). Threaded down the recursion rather than walked back up through
+/// `/Parent` — no cycle risk, no re-reads. Each slot holds the nearest
+/// ancestor's value, possibly still an indirect reference; null = unset.
 struct PageAttributes {
-  /// Default page size used when no `MediaBox` is present anywhere in the
-  /// page tree (US Letter, 612 × 792 pt). The spec requires `MediaBox`, so
-  /// this is a lenience for malformed files. (`Object` is not a literal type,
-  /// hence `static const` rather than `constexpr`.)
+  /// US Letter, the lenience for a page tree that declares no `MediaBox` at
+  /// all. (`Object` is not a literal type, hence not `constexpr`.)
   static const Object &default_media_box() {
     static const auto value =
         Object(Array({Object(Integer(0)), Object(Integer(0)),
@@ -120,9 +142,8 @@ struct PageAttributes {
   Object crop_box;
   Object rotate;
 
-  /// Overlay this node's own inheritable entries from `dictionary`. A
-  /// present-but-null entry counts as absent (7.3.9: null is equivalent to
-  /// omitting the entry) and leaves the inherited value untouched.
+  /// Overlay this node's own inheritable entries. A present-but-null entry
+  /// counts as absent (7.3.9).
   void overlay(const Dictionary &dictionary) {
     const auto take = [&](Object &slot, const std::string &key) {
       if (dictionary.has_value(key)) {
@@ -135,11 +156,8 @@ struct PageAttributes {
     take(rotate, "Rotate");
   }
 
-  /// Resolve the accumulated attributes into final values (7.7.3.4): write the
-  /// resolved `media_box`/`crop_box`/`rotate` onto `page` (references
-  /// resolved, missing `MediaBox` → US Letter, `CropBox` → `MediaBox`,
-  /// `Rotate` normalized) and return the `Resources` object (resolved, or an
-  /// empty dictionary if absent) for the caller to parse.
+  /// Write the resolved box/rotation onto `page` and return its `/Resources`
+  /// object for the caller to parse (7.7.3.4). Applies the Table-30 defaults.
   Object resolve_into(Page &page, DocumentParser &parser,
                       const ObjectReference &reference) const {
     page.media_box = parser.resolve_object_copy(media_box);
@@ -171,11 +189,9 @@ struct PageAttributes {
   }
 };
 
-/// Parse a simple-font `/Encoding`: either a base-encoding name, or a
-/// dictionary with an optional `/BaseEncoding` name overlaid with a
-/// `/Differences` array (`code name name … code name …`). Returns `nullopt` for
-/// an encoding that cannot be represented (e.g. an unsupported base name with
-/// no differences).
+/// Parse a simple-font `/Encoding` (ISO 32000-1 9.6.6): a base-encoding name,
+/// or a dictionary overlaying `/Differences` onto `/BaseEncoding`. `nullopt`
+/// for an encoding we cannot represent.
 std::optional<Encoding> parse_encoding(DocumentParser &parser,
                                        const Object &encoding_object) {
   const Object resolved = parser.resolve_object_copy(encoding_object);
@@ -290,19 +306,15 @@ util::math::Transform2D parse_matrix(DocumentParser &parser, Object object) {
           array[3].as_real(), array[4].as_real(), array[5].as_real()};
 }
 
-/// Load the embedded font from a `/FontDescriptor` through the `abstract::Font`
-/// interface: `/FontFile2` (TrueType / `CIDFontType2`) -> `SfntFont`, and
-/// `/FontFile3` (CFF / `Type1C` / `CIDFontType0C`, or OpenType-CFF) -> either
-/// an `SfntFont` (when the program is already a full SFNT, `/Subtype
-/// /OpenType`) or a bare `CffFont`. `/FontFile` (Type1) is translated to a CFF
-/// (`type1::to_cff`) and read as a `CffFont`, so it reuses the whole CFF path.
-/// A malformed font is logged and leaves `font.embedded_font` null, so such
-/// fonts keep rendering through the fallback path.
+/// Load a `/FontDescriptor`'s embedded program as an `abstract::Font`:
+/// `/FontFile2` -> `SfntFont`, `/FontFile3` -> `SfntFont` or bare `CffFont` by
+/// its magic, `/FontFile` (Type1) -> CFF via `type1::to_cff` so it reuses the
+/// CFF path. A malformed program is logged and leaves `embedded_font` null, so
+/// the font still renders through the substitute path.
 void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
                         Font &font) {
-  // Capture `/Ascent` (glyph space, /1000) for baseline placement. Both the
-  // simple- and composite-font paths route their descriptor through here, so
-  // this is the one place that sees every descriptor.
+  // Both the simple- and composite-font paths route their descriptor through
+  // here, so this is the one place that sees every `/Ascent`.
   if (descriptor.has_key("Ascent")) {
     const Object ascent = parser.resolve_object_copy(descriptor["Ascent"]);
     if (ascent.is_real()) {
@@ -450,20 +462,15 @@ void parse_cid_to_gid_map(DocumentParser &parser, const Object &map,
   }
 }
 
-/// Parse a composite (Type0) font's descendant CIDFont (`/DescendantFonts` is a
-/// one-element array of the CIDFont): records the `/CIDSystemInfo`
-/// `/Registry`/`/Ordering` used to pick a predefined CID -> Unicode table.
-/// The Type0 `/Encoding` (code -> CID) is `Identity-H/V` or a predefined CJK
-/// CMap; only `/ToUnicode` is used for extraction.
+/// Parse a composite (Type0) font: its `/Encoding` and the widths, embedded
+/// program and `/CIDSystemInfo` of its one descendant CIDFont.
 void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
                           Font &font) {
   font.composite = true;
 
-  // The Type0 `/Encoding`: a predefined CMap name (`Identity-H`,
-  // `UniGB-UCS2-H`, …) or an embedded CMap stream. A name drives the predefined
-  // Unicode-CMap path in `Font::to_unicode`; a stream is parsed into a
-  // code -> CID CMap (`Font::cid_encoding`) so `codes()` yields the right CIDs
-  // for a mixed-width encoding (ISO 32000-1 9.7.5.3).
+  // A predefined CMap name drives `Font::to_unicode`; an embedded stream is
+  // parsed into a code -> CID CMap so `codes()` yields the right CIDs for a
+  // mixed-width encoding (ISO 32000-1 9.7.5.3).
   if (dictionary.has_key("Encoding")) {
     const Object encoding = parser.resolve_object_copy(dictionary["Encoding"]);
     if (encoding.is_name()) {
@@ -488,7 +495,7 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
   }
   const Object descendants =
       parser.resolve_object_copy(dictionary["DescendantFonts"]);
-  if (!descendants.is_array() || descendants.as_array().size() == 0) {
+  if (!descendants.is_array() || descendants.as_array().empty()) {
     return;
   }
 
@@ -544,11 +551,9 @@ void parse_composite_font(DocumentParser &parser, const Dictionary &dictionary,
 
 Resources *parse_resources(State &state, const Object &object);
 
-/// Parse a Type3 font (ISO 32000-1 9.6.5): `/FontMatrix` (glyph -> text space),
-/// the `/CharProcs` glyph content streams (decoded and kept by glyph name), and
-/// the `/Resources` those procs draw against. `/FirstChar`/`/Widths` (glyph
-/// space) and `/Encoding` (code -> glyph name) are parsed by the caller, as for
-/// any simple font.
+/// Parse the Type3-specific parts of a font (ISO 32000-1 9.6.5): `/FontMatrix`,
+/// the `/CharProcs` streams and their `/Resources`. `/FirstChar`, `/Widths` and
+/// `/Encoding` are parsed by the caller, as for any simple font.
 void parse_type3_font(State &state, const Dictionary &dictionary, Font &font) {
   DocumentParser &parser = state.parser();
   Type3Data type3;
@@ -693,12 +698,9 @@ void bind_parser_io(Context &context, DocumentParser &parser) {
   };
 }
 
-/// Resolve a `/SMask` (soft mask) or stencil `/Mask` sub-image referenced by
-/// `mask` into a base-sized alpha plane (ISO 32000-1 11.6.5.2 / 8.9.6.3). The
-/// sub-image is a single-component raster: decode its `/Filter` chain, then map
-/// its samples to coverage (`decode_mask_alpha`). Returns empty when `mask` is
-/// not a stream reference or its codec is not decodable (CCITT/JBIG2/JPX), so
-/// the base image stays opaque.
+/// Resolve a `/SMask` or stencil `/Mask` sub-image into a base-sized alpha
+/// plane (ISO 32000-1 11.6.5.2 / 8.9.6.3). Empty when `mask` is not a stream
+/// reference or its codec is undecodable, leaving the base image opaque.
 std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
                                              const Object &mask,
                                              const std::int32_t base_width,
@@ -732,11 +734,9 @@ std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
       image_decode(parser, dictionary), stencil, base_width, base_height);
 }
 
-/// Carry an `/ImageMask true` stencil's decoded bitmap and geometry onto
-/// `x_object` (ISO 32000-1 8.9.6.2). The stencil is painted in the current fill
-/// colour, known only at `Do` time, so the page extractor recolours it; here we
-/// only decode and stash. An undecodable codec leaves `stencil_mask` false so
-/// `Do` skips it.
+/// Decode an `/ImageMask true` stencil onto `x_object` (ISO 32000-1 8.9.6.2).
+/// Only decoded, not coloured: the fill colour is known only at `Do` time. An
+/// undecodable codec leaves `stencil_mask` false, so `Do` skips it.
 void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
                         const IndirectObject &object, XObject &x_object) {
   Object filter;
@@ -764,16 +764,12 @@ void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
   x_object.stencil_decode = image_decode(parser, dictionary);
 }
 
-/// Build the browser-ready bytes of an image XObject (ISO 32000-1 8.9). A JPEG
-/// (`DCTDecode`) passes through undecoded; a fully decodable raster
-/// (Flate/LZW/RunLength/ASCII/raw) is decoded, its samples assembled through
-/// the image's colour space and re-encoded as a PNG — RGBA when a `/SMask`,
-/// stencil `/Mask` or colour-key `/Mask` supplies transparency. Codecs we
-/// cannot yet hand off (JPXDecode, CCITTFaxDecode, JBIG2Decode) and unresolved
-/// colour spaces leave the bytes empty, so `Do` skips the image. A `/SMask` or
-/// `/Mask` on a JPEG base is ignored (decoding the JPEG to composite is out of
-/// scope). `resources` supplies the enclosing `/ColorSpace` table so a `/CS…`
-/// named colour space resolves.
+/// Build the browser-ready bytes of an image XObject (ISO 32000-1 8.9): a JPEG
+/// passes through, any other decodable raster is assembled through its colour
+/// space and re-encoded as PNG (RGBA when masked). An undecodable codec or
+/// colour space leaves the bytes empty, so `Do` skips the image. Transparency
+/// on a JPEG base is ignored — compositing it would mean decoding the JPEG.
+/// `resources` resolves a named `/CS…` colour space.
 void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
                       const IndirectObject &object, XObject &x_object,
                       const Resources *resources) {
@@ -1005,12 +1001,9 @@ Pattern *parse_pattern(State &state, const ObjectReference &reference,
   return pattern;
 }
 
-/// Resolve a `/SMask` soft-mask dictionary from an `/ExtGState` (ISO 32000-1
-/// 11.6.5.2) into a `SoftMaskDef`: parse its `/G` transparency group as a form
-/// XObject, read `/S` (`/Luminosity` default, `/Alpha`) and the `/BC` backdrop.
-/// Returns null when `/G` is missing or not a form (then `gs` treats the state
-/// as having no mask). `/SMask /None` never reaches here — the caller filters
-/// non-dictionaries out first.
+/// Resolve an `/ExtGState` `/SMask` dictionary into a `SoftMaskDef` (ISO
+/// 32000-1 11.6.5.2). Null when `/G` is missing or not a form, which `gs` reads
+/// as "no mask". `/SMask /None` never reaches here — it is not a dictionary.
 std::shared_ptr<SoftMaskDef> parse_soft_mask(State &state,
                                              const Dictionary &dictionary) {
   DocumentParser &parser = state.parser();
@@ -1191,11 +1184,9 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
   const Object resources = attributes.resolve_into(*page, parser, reference);
   page->resources = parse_resources(state, resources);
 
-  // /Contents is a content stream or an array of them, supplied directly or
-  // through an indirect reference (7.7.3.3). It is optional — a page may have
-  // none (e.g. a blank page carrying only annotations). Resolve a reference
-  // first so that a reference to an array is expanded into its stream
-  // references rather than mistaken for a single stream.
+  // `/Contents` is optional, and is one stream or an array of them (7.7.3.3).
+  // Resolve first, so a reference *to an array* expands rather than being
+  // mistaken for a single stream.
   if (dictionary.has_key("Contents")) {
     const Object &contents = dictionary["Contents"];
     const Object resolved_contents = parser.resolve_object_copy(contents);
@@ -1230,6 +1221,12 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
 
 Pages *parse_pages(State &state, const ObjectReference &reference,
                    PageAttributes attributes) {
+  const PagesScope scope(state, reference);
+  if (!scope.entered()) {
+    throw std::runtime_error("cyclic PDF page tree at " +
+                             reference.to_string());
+  }
+
   DocumentParser &parser = state.parser();
   Document &document = state.document();
 
@@ -1320,11 +1317,9 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
     // Build an `Authenticator` from the trailer `/Encrypt` and `/ID`
     // (ISO 32000-1 7.6).
 
-    // The `/Encrypt` dictionary's own `/O`,`/U`,… strings are never encrypted
-    // (7.6.2), and need no explicit self-skip guard: it is resolved here while
-    // `m_decryptor` is still empty (installed only after this block), so
-    // `read_object` leaves its strings raw and caches that copy — every later
-    // lookup hits the cache and never re-decrypts it.
+    // The `/Encrypt` dictionary's own strings are never encrypted (7.6.2), and
+    // need no self-skip guard: resolving it here, before any decryptor exists,
+    // caches the raw strings that every later lookup then serves.
     Object encrypt = m_trailer["Encrypt"];
     resolve_object(encrypt);
     if (!encrypt.is_dictionary()) {
@@ -1340,11 +1335,10 @@ DocumentParser::DocumentParser(std::unique_ptr<std::istream> in,
       }
     }
 
-    // Set only after resolving `/Encrypt` above: `read_object` throws on an
-    // encrypted-but-unauthenticated read, and that resolution runs before any
-    // decryptor exists. `m_is_encrypted` records that the file declares
-    // encryption regardless of whether we can authenticate it, so an
-    // unsupported handler still reports as encrypted.
+    // Set only now: `read_object` throws on an encrypted-but-unauthenticated
+    // read, and the resolution above runs before any decryptor exists. This
+    // records that the file *declares* encryption, so an unsupported handler
+    // still reports as encrypted.
     m_is_encrypted = true;
     m_authenticator = Authenticator::create(encrypt.as_dictionary(), id0);
   }
@@ -1470,7 +1464,7 @@ DocumentParser::read_object_stream(const ObjectReference &reference) {
 }
 
 std::string DocumentParser::read_object_stream(const IndirectObject &object) {
-  Object length = object.object.as_dictionary()["Length"];
+  Object length = object.object.as_dictionary().get("Length");
   resolve_object(length);
 
   // a stream object always carries a stream position

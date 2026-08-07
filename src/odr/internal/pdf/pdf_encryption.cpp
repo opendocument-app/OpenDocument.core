@@ -43,8 +43,7 @@ std::string xor_key(std::string key, const std::uint8_t x) {
 /// Pad/truncate a password to 32 bytes with the padding constant (Algorithm 2,
 /// step a).
 std::string pad_password(const std::string &password) {
-  std::string pw =
-      password.substr(0, std::min<std::size_t>(password.size(), 32));
+  std::string pw = password.substr(0, 32);
   pw += padding.substr(0, 32 - pw.size());
   return pw;
 }
@@ -237,6 +236,12 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
 
   if (d.m_v >= 5) {
     if (!encrypt.has_key("OE") || !encrypt.has_key("UE")) {
+      return std::nullopt;
+    }
+    // `/O` and `/U` are 48 bytes: 32-byte hash + 8-byte validation salt +
+    // 8-byte key salt (ISO 32000-2 7.6.4.3). `authenticate` slices them
+    // unconditionally, so refuse a truncated pair here.
+    if (d.m_o.size() < 48 || d.m_u.size() < 48) {
       return std::nullopt;
     }
     d.m_oe = encrypt["OE"].as_string();
