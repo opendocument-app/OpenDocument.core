@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -150,10 +151,16 @@ public:
     clear_pending(env.get());
   }
 
+  /// False when the constructor could not resolve `LoggerBridge`, which leaves
+  /// a Java exception pending.
+  [[nodiscard]] bool valid() const {
+    return m_sink != nullptr && m_bridge != nullptr && m_will_log != nullptr &&
+           m_log != nullptr && m_flush != nullptr;
+  }
+
 private:
   [[nodiscard]] bool usable(JNIEnv *env) const {
-    return env != nullptr && m_sink != nullptr && m_bridge != nullptr &&
-           m_will_log != nullptr && m_log != nullptr && m_flush != nullptr;
+    return env != nullptr && valid();
   }
 
   /// A logger must not derail the operation it is reporting on, so an exception
@@ -196,8 +203,17 @@ Java_app_opendocument_core_Logger_createStdio(JNIEnv *env, jclass, jstring name,
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Logger_createFromSink(JNIEnv *env, jclass,
                                                  jobject sink) {
-  return guarded(env, [&] {
-    return make_handle(odr::Logger(std::make_shared<JavaLogger>(env, sink)));
+  return guarded(env, [&]() -> jlong {
+    auto logger = std::make_shared<JavaLogger>(env, sink);
+    if (!logger->valid()) {
+      // no handle is made, so the value the JVM discards while throwing cannot
+      // strand an odr::Logger
+      if (env->ExceptionCheck() == JNI_FALSE) {
+        throw std::runtime_error("could not bind the Java log sink");
+      }
+      return 0;
+    }
+    return make_handle(odr::Logger(std::move(logger)));
   });
 }
 

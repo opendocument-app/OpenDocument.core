@@ -36,7 +36,14 @@ void odr_python::bind_core(py::module_ &m) {
                   py::arg("path"));
 
   // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
-  const py::exception<odr::Exception> error(m, "Error");
+  // `register_exception`, not `py::exception`: the latter creates the type but
+  // installs no translator, leaving every subclass without one at RuntimeError.
+  // Registered first so it is tried last - pybind11 runs translators in reverse
+  // registration order, which is what lets the specific ones below win.
+  // Based on `RuntimeError`, which is where an untranslated `odr::Exception`
+  // used to land, so code catching that keeps working.
+  const py::exception<odr::Exception> &error =
+      py::register_exception<odr::Exception>(m, "Error", PyExc_RuntimeError);
 
   py::register_exception<odr::UnsupportedOperation>(m, "UnsupportedOperation",
                                                     error);
@@ -130,19 +137,22 @@ void odr_python::bind_functions(py::module_ &m) {
       py::arg("path"), py::arg("logger") = odr::Logger::null(),
       "Determine the MIME type of a file.");
 
+  // Decoding is long-running, so it must not hold the GIL. Re-entry is safe: a
+  // Python `ILogger` re-acquires it in the trampoline.
   m.def(
       "open",
       [](const std::string &path, const odr::Logger &logger) {
         return odr::open(path, logger);
       },
       py::arg("path"), py::arg("logger") = odr::Logger::null(),
-      "Open and decode a file.");
+      py::call_guard<py::gil_scoped_release>(), "Open and decode a file.");
   m.def(
       "open",
       [](const std::string &path, const odr::FileType as,
          const odr::Logger &logger) { return odr::open(path, as, logger); },
       py::arg("path"), py::arg("as_type"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Open and decode a file as a specific file type.");
   m.def(
       "open",
@@ -152,5 +162,6 @@ void odr_python::bind_functions(py::module_ &m) {
       },
       py::arg("path"), py::arg("preference"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Open and decode a file with a decode preference.");
 }

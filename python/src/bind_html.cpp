@@ -127,9 +127,10 @@ void odr_python::bind_html(py::module_ &m) {
             auto resources = view.write_html(out);
             return std::make_pair(out.str(), std::move(resources));
           },
+          py::call_guard<py::gil_scoped_release>(),
           "Render this view; returns (html, resources).")
       .def("bring_offline", &odr::HtmlView::bring_offline,
-           py::arg("output_path"));
+           py::arg("output_path"), py::call_guard<py::gil_scoped_release>());
 
   py::class_<odr::HtmlService>(m, "HtmlService")
       .def("config", &odr::HtmlService::config)
@@ -146,14 +147,20 @@ void odr_python::bind_html(py::module_ &m) {
              }
              return views;
            })
-      .def("warmup", &odr::HtmlService::warmup)
+      .def("warmup", &odr::HtmlService::warmup,
+           py::call_guard<py::gil_scoped_release>())
       .def("exists", &odr::HtmlService::exists, py::arg("path"))
       .def("mimetype", &odr::HtmlService::mimetype, py::arg("path"))
       .def(
           "write",
           [](const odr::HtmlService &service, const std::string &path) {
             std::ostringstream out;
-            service.write(path, out);
+            {
+              // scoped rather than a `call_guard`: the `py::bytes` below needs
+              // the GIL back
+              const py::gil_scoped_release release;
+              service.write(path, out);
+            }
             return py::bytes(out.str());
           },
           py::arg("path"))
@@ -164,21 +171,27 @@ void odr_python::bind_html(py::module_ &m) {
             auto resources = service.write_html(path, out);
             return std::make_pair(out.str(), std::move(resources));
           },
-          py::arg("path"), "Render one view path; returns (html, resources).")
+          py::arg("path"), py::call_guard<py::gil_scoped_release>(),
+          "Render one view path; returns (html, resources).")
       .def("bring_offline",
            py::overload_cast<const std::string &>(
                &odr::HtmlService::bring_offline, py::const_),
-           py::arg("output_path"))
+           py::arg("output_path"), py::call_guard<py::gil_scoped_release>())
       .def("bring_offline",
            py::overload_cast<const std::string &,
                              const std::vector<odr::HtmlView> &>(
                &odr::HtmlService::bring_offline, py::const_),
-           py::arg("output_path"), py::arg("views"));
+           py::arg("output_path"), py::arg("views"),
+           py::call_guard<py::gil_scoped_release>());
 
   auto html = m.def_submodule("html", "Translate decoded files to HTML.");
 
   html.def("standard_resource_locator", &odr::html::standard_resource_locator);
 
+  // Rendering is long-running, so it must not hold the GIL. Re-entry is safe:
+  // both ways back into Python - a `Logger` sink through the trampoline and a
+  // `resource_locator` through pybind11's `std::function` wrapper - acquire the
+  // GIL themselves.
   html.def(
       "translate",
       [](const odr::DecodedFile &file, const std::string &cache_path,
@@ -187,6 +200,7 @@ void odr_python::bind_html(py::module_ &m) {
       },
       py::arg("file"), py::arg("cache_path"), py::arg("config"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Translate a decoded file to HTML.");
   html.def(
       "translate",
@@ -195,7 +209,9 @@ void odr_python::bind_html(py::module_ &m) {
         return odr::html::translate(document, cache_path, config, logger);
       },
       py::arg("document"), py::arg("cache_path"), py::arg("config"),
-      py::arg("logger") = odr::Logger::null(), "Translate a document to HTML.");
+      py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
+      "Translate a document to HTML.");
   html.def(
       "translate",
       [](const odr::Filesystem &filesystem, const std::string &cache_path,
@@ -204,6 +220,7 @@ void odr_python::bind_html(py::module_ &m) {
       },
       py::arg("filesystem"), py::arg("cache_path"), py::arg("config"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Translate a filesystem to HTML.");
 
   html.def(

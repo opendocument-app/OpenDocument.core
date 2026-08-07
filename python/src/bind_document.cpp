@@ -313,14 +313,17 @@ void odr_python::bind_document(py::module_ &m) {
       .def("is_editable", &odr::Document::is_editable)
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
+      // saving serialises the whole document; holding the GIL for it blocks
+      // every other Python thread
       .def("save",
            py::overload_cast<const std::string &>(&odr::Document::save,
                                                   py::const_),
-           py::arg("path"))
+           py::arg("path"), py::call_guard<py::gil_scoped_release>())
       .def("save",
            py::overload_cast<const std::string &, const std::string &>(
                &odr::Document::save, py::const_),
-           py::arg("path"), py::arg("password"))
+           py::arg("path"), py::arg("password"),
+           py::call_guard<py::gil_scoped_release>())
       .def("file_type", &odr::Document::file_type)
       .def("document_type", &odr::Document::document_type)
       .def("root_element", &odr::Document::root_element, keep_self_alive)
