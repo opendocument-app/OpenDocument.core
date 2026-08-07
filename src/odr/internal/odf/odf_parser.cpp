@@ -3,6 +3,7 @@
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 
+#include <algorithm>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -97,8 +98,10 @@ parse_table_row(ElementRegistry &registry, const pugi::xml_node node) {
 
   for (const pugi::xml_node cell_node : node.children()) {
     // TODO log warning if repeated
-    auto [cell, _] = parse_any_element_tree(registry, cell_node);
-    registry.append_child(element_id, cell);
+    if (auto [cell_id, _] = parse_any_element_tree(registry, cell_node);
+        cell_id != null_element_id) {
+      registry.append_child(element_id, cell_id);
+    }
   }
 
   return {element_id, node.next_sibling()};
@@ -133,6 +136,13 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
+/// Empty: no content and no span beyond the one cell.
+bool is_cell_empty(const pugi::xml_node cell_node) {
+  return !cell_node.first_child() &&
+         cell_node.attribute("table:number-columns-spanned").as_uint(1) <= 1 &&
+         cell_node.attribute("table:number-rows-spanned").as_uint(1) <= 1;
+}
+
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   if (!node) {
@@ -162,31 +172,10 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
     sheet.register_row(cursor.row(), rows_repeated, row_node);
 
     // TODO covered cells
-    bool row_empty = true;
-    for (const pugi::xml_node cell_node :
-         row_node.children("table:table-cell")) {
-      const std::uint32_t colspan =
-          cell_node.attribute("table:number-columns-spanned").as_uint(1);
-      const std::uint32_t rowspan =
-          cell_node.attribute("table:number-rows-spanned").as_uint(1);
-
-      bool cell_empty = true;
-      if (cell_node.first_child()) {
-        cell_empty = false;
-      }
-      if (colspan > 1 || rowspan > 1) {
-        cell_empty = false;
-      }
-
-      if (!cell_empty) {
-        row_empty = false;
-        break;
-      }
-    }
+    const bool row_empty = std::ranges::all_of(
+        row_node.children("table:table-cell"), is_cell_empty);
 
     if (row_empty) {
-      sheet.register_row(cursor.row(), rows_repeated, row_node);
-
       // TODO covered cells
       for (const pugi::xml_node cell_node :
            row_node.children("table:table-cell")) {
@@ -222,15 +211,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
             cell_node.attribute("table:number-rows-spanned").as_uint(1);
         const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
 
-        bool cell_empty = true;
-        if (cell_node.first_child()) {
-          cell_empty = false;
-        }
-        if (colspan > 1 || rowspan > 1) {
-          cell_empty = false;
-        }
-
-        if (cell_empty) {
+        if (is_cell_empty(cell_node)) {
           sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
                               1, cell_node, null_element_id);
 

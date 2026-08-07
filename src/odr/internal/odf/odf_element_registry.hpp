@@ -124,6 +124,10 @@ private:
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
   std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
 
+  /// Links `child_id` as the last child of the chain `first_id`/`last_id`.
+  void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,
+                  ElementIdentifier &first_id, ElementIdentifier &last_id);
+
   void check_element_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;
   void check_table_id(ElementIdentifier id) const;

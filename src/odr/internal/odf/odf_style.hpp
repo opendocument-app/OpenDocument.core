@@ -31,24 +31,22 @@ class Style final {
 public:
   Style();
   Style(const StyleRegistry *registry, std::string family, pugi::xml_node node);
+  /// `parent`/`family` are the already resolved bases to copy from; neither is
+  /// retained.
   Style(const StyleRegistry *registry, std::string name, pugi::xml_node node,
-        Style *parent, Style *family);
+        const Style *parent, const Style *family);
 
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] const ResolvedStyle &resolved() const;
 
 private:
-  const StyleRegistry *m_registry{nullptr};
-
   std::string m_name;
   pugi::xml_node m_node;
-  Style *m_parent{nullptr};
-  Style *m_family{nullptr};
 
   ResolvedStyle m_resolved;
 
-  void resolve_style_();
+  void resolve_style_(const StyleRegistry *registry);
 
   static void resolve_text_style_(const StyleRegistry *registry,
                                   pugi::xml_node node, TextStyle &result);
