@@ -38,6 +38,9 @@ std::string decrypt_aes_cbc(const std::string &key, const std::string &iv,
 /// size). Needed by the PDF R 6 hardened-hash algorithm (ISO 32000-2 2.B).
 std::string encrypt_aes_cbc(const std::string &key, const std::string &iv,
                             const std::string &input);
+/// AES-GCM per XML Encryption 1.1 §5.2.4: @p input is `iv || ciphertext ||
+/// 16-byte tag` and must repeat @p iv. Throws if it does not, if @p input is
+/// too short to hold both, or if the tag fails to verify.
 std::string decrypt_aes_gcm(const std::string &key, const std::string &iv,
                             const std::string &input);
 std::string decrypt_triple_des(const std::string &key, const std::string &iv,

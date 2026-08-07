@@ -39,6 +39,14 @@ impl::CompoundFileEntry impl::parse_entry(std::istream &in) {
 namespace odr::internal::cfb::impl {
 
 std::string CompoundFileEntry::get_name() const {
+  // [MS-CFB] 2.6.1: `name_len` counts bytes including the terminating NUL and
+  // never exceeds the 64-byte name field.
+  if (name_len > sizeof(name)) {
+    throw CfbFileCorrupted();
+  }
+  if (name_len < 2) {
+    return {};
+  }
   return internal::util::string::c16str_to_string(name, name_len - 2);
 }
 
@@ -106,47 +114,6 @@ void CompoundFileReader::read_file(std::istream &in,
     read_mini_stream(in, {entry.start_sector_location, offset}, buffer, len);
   } else {
     read_stream(in, {entry.start_sector_location, offset}, buffer, len);
-  }
-}
-
-void CompoundFileReader::visit_descendants(
-    std::istream &in, const CompoundFileEntry &entry,
-    const std::int32_t max_level, const EnumFilesCallback &callback) const {
-  const CompoundFileEntry child_entry = parse_entry(in, entry.child_id);
-  visit_descendants(in, child_entry, 0, max_level, std::u16string(), callback);
-}
-
-void CompoundFileReader::visit_descendants(
-    std::istream &in, const CompoundFileEntry &entry,
-    const std::int32_t current_level, const std::int32_t max_level,
-    const std::u16string &dir, const EnumFilesCallback &callback) const {
-  if (max_level > 0 && current_level >= max_level) {
-    return;
-  }
-
-  callback(entry, dir, current_level + 1);
-
-  if (entry.child_id != NullId) {
-    const CompoundFileEntry child = parse_entry(in, entry.child_id);
-
-    std::u16string new_dir = dir;
-    new_dir.append(entry.name, entry.name_len / 2);
-    visit_descendants(in, child, current_level + 1, max_level, new_dir,
-                      callback);
-  }
-
-  if (entry.left_sibling_id != NullId) {
-    const CompoundFileEntry left_sibling =
-        parse_entry(in, entry.left_sibling_id);
-    visit_descendants(in, left_sibling, current_level, max_level, dir,
-                      callback);
-  }
-
-  if (entry.right_sibling_id != NullId) {
-    const CompoundFileEntry right_sibling =
-        parse_entry(in, entry.right_sibling_id);
-    visit_descendants(in, right_sibling, current_level, max_level, dir,
-                      callback);
   }
 }
 

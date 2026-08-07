@@ -24,7 +24,8 @@ struct Type2Charstring {
 /// charstring, so the caller emits it against the CFF `nominalWidthX`.
 ///
 /// Best-effort and display-oriented: hints are dropped (they affect rendering
-/// quality, not glyph shape), and unknown operators are skipped.
+/// quality, not glyph shape), and unknown operators are skipped. Throws
+/// `std::runtime_error` on a charstring that ends mid-operand.
 [[nodiscard]] Type2Charstring to_type2(std::string_view type1,
                                        const std::vector<std::string> &subrs);
 

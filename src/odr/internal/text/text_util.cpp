@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 
+#include <array>
 #include <istream>
 
 #include <uchardet/uchardet.h>
@@ -9,18 +10,16 @@
 namespace odr::internal {
 
 std::string text::guess_charset(std::istream &in) {
-  static constexpr auto BUFFER_SIZE = 4096;
-
   const auto ud = uchardet_new();
-  char buffer[BUFFER_SIZE];
+  std::array<char, 4096> buffer{};
 
   while (true) {
-    in.read(buffer, BUFFER_SIZE);
+    in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
     const auto read = in.gcount();
     if (read == 0) {
       break;
     }
-    uchardet_handle_data(ud, buffer, read);
+    uchardet_handle_data(ud, buffer.data(), read);
   }
 
   uchardet_data_end(ud);

@@ -49,8 +49,7 @@ public:
   [[nodiscard]] bool is_cid_keyed() const noexcept;
 
   /// The glyph's PostScript name (non-CID fonts), empty when unresolved (a
-  /// CID-keyed font, an out-of-range glyph, or a standard-string SID until the
-  /// standard-strings table lands — see the .cpp TODO).
+  /// CID-keyed font, an out-of-range glyph, or an unknown SID).
   [[nodiscard]] std::string glyph_name(std::uint16_t glyph) const;
 
   /// charset glyph -> CID (CID-keyed fonts), `0` when out of range or not
@@ -69,9 +68,24 @@ private:
     std::uint32_t length{};
   };
 
+  /// The two Private DICT entries a charstring's width is resolved against
+  /// (Adobe TN #5177 "width").
+  struct Widths {
+    double default_width{};
+    double nominal_width{};
+  };
+
   void parse();
   void parse_top_dict(Range top_dict);
-  void parse_private_dict(Range private_dict);
+  [[nodiscard]] Widths parse_private_dict(Range private_dict) const;
+  /// Parse `/FDArray`'s per-FD Private DICTs and `/FDSelect` (CID-keyed fonts;
+  /// Adobe TN #5176 §19). Without these a CID font resolves every width against
+  /// a `nominalWidthX` of 0.
+  void parse_fd_array(std::uint32_t offset);
+  void parse_fd_select(std::uint32_t offset);
+  /// The Private DICT widths governing @p glyph — its FD's for a CID-keyed
+  /// font, the Top DICT's otherwise.
+  [[nodiscard]] const Widths &widths_for_glyph(std::uint16_t glyph) const;
   void parse_charset(std::uint32_t offset);
   /// Materialize a predefined charset (id 0 ISOAdobe / 1 Expert / 2
   /// ExpertSubset) into `m_charset`, used when `/charset` is a predefined id or
@@ -100,8 +114,9 @@ private:
   std::vector<Range> m_strings;         // String INDEX members (SID 391+)
   std::vector<std::uint16_t> m_charset; // glyph -> SID (or CID, CID-keyed)
 
-  double m_default_width{};
-  double m_nominal_width{};
+  Widths m_widths;                       // Top DICT Private DICT
+  std::vector<Widths> m_fd_widths;       // per FDArray entry, CID-keyed only
+  std::vector<std::uint8_t> m_fd_select; // glyph -> FDArray index
 };
 
 } // namespace odr::internal::font::cff
