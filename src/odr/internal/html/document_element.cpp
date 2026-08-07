@@ -23,40 +23,58 @@ void html::translate_children(const ElementRange &range,
 
 void html::translate_element(const Element &element,
                              const WritingState &state) {
-  if (element.type() == ElementType::text) {
+  switch (element.type()) {
+  case ElementType::text:
     translate_text(element, state);
-  } else if (element.type() == ElementType::line_break) {
+    break;
+  case ElementType::line_break:
     translate_line_break(element, state);
-  } else if (element.type() == ElementType::paragraph) {
+    break;
+  case ElementType::paragraph:
     translate_paragraph(element, state);
-  } else if (element.type() == ElementType::span) {
+    break;
+  case ElementType::span:
     translate_span(element, state);
-  } else if (element.type() == ElementType::link) {
+    break;
+  case ElementType::link:
     translate_link(element, state);
-  } else if (element.type() == ElementType::bookmark) {
+    break;
+  case ElementType::bookmark:
     translate_bookmark(element, state);
-  } else if (element.type() == ElementType::list) {
+    break;
+  case ElementType::list:
     translate_list(element, state);
-  } else if (element.type() == ElementType::list_item) {
+    break;
+  case ElementType::list_item:
     translate_list_item(element, state);
-  } else if (element.type() == ElementType::table) {
+    break;
+  case ElementType::table:
     translate_table(element, state);
-  } else if (element.type() == ElementType::frame) {
+    break;
+  case ElementType::frame:
     translate_frame(element, state);
-  } else if (element.type() == ElementType::image) {
+    break;
+  case ElementType::image:
     translate_image(element, state);
-  } else if (element.type() == ElementType::rect) {
+    break;
+  case ElementType::rect:
     translate_rect(element, state);
-  } else if (element.type() == ElementType::line) {
+    break;
+  case ElementType::line:
     translate_line(element, state);
-  } else if (element.type() == ElementType::circle) {
+    break;
+  case ElementType::circle:
     translate_circle(element, state);
-  } else if (element.type() == ElementType::custom_shape) {
+    break;
+  case ElementType::custom_shape:
     translate_custom_shape(element, state);
-  } else if (element.type() == ElementType::group) {
+    break;
+  case ElementType::group:
     translate_children(element.children(), state);
-  } else {
+    break;
+  default:
     // TODO log
+    break;
   }
 }
 
@@ -196,36 +214,34 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   state.out().write_element_end("table");
 }
 
-void html::translate_slide(const Slide &slide, const WritingState &state) {
+namespace {
+
+/// A slide or a drawing page: the master page's content under the page's own,
+/// inside one outer page box. There is no inner (margin) box — unlike a text
+/// document, both anchor their children absolutely at page coordinates.
+template <typename PageLike>
+void translate_page_like(const PageLike &page,
+                         const html::WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions()
-                 .set_class("odr-page-outer")
-                 .set_style(translate_outer_page_style(slide.page_layout())));
-  //  state.out().write_element_begin(
-  //      "div", HtmlElementOptions().set_class("odr-page-inner").set_style(
-  //                 translate_inner_page_style(slide.page_layout())));
+      "div",
+      html::HtmlElementOptions()
+          .set_class("odr-page-outer")
+          .set_style(html::translate_outer_page_style(page.page_layout())));
 
-  translate_master_page(slide.master_page(), state);
-  translate_children(slide.children(), state);
+  html::translate_master_page(page.master_page(), state);
+  html::translate_children(page.children(), state);
 
-  //  state.out().write_element_end("div");
   state.out().write_element_end("div");
 }
 
+} // namespace
+
+void html::translate_slide(const Slide &slide, const WritingState &state) {
+  translate_page_like(slide, state);
+}
+
 void html::translate_page(const Page &page, const WritingState &state) {
-  state.out().write_element_begin(
-      "div", HtmlElementOptions()
-                 .set_class("odr-page-outer")
-                 .set_style(translate_outer_page_style(page.page_layout())));
-  //  state.out().write_element_begin(
-  //      "div", HtmlElementOptions().set_class("odr-page-inner").set_style(
-  //                 translate_inner_page_style(page.page_layout())));
-
-  translate_master_page(page.master_page(), state);
-  translate_children(page.children(), state);
-
-  //  state.out().write_element_end("div");
-  state.out().write_element_end("div");
+  translate_page_like(page, state);
 }
 
 void html::translate_master_page(const MasterPage &masterPage,
@@ -307,7 +323,7 @@ void html::translate_link(const Element &element, const WritingState &state) {
 
   state.out().write_element_begin(
       "a", HtmlElementOptions().set_inline(true).set_attributes(
-               HtmlAttributesVector{{"href", link.href()}}));
+               HtmlAttributesVector{{"href", escape_attribute(link.href())}}));
   translate_children(link.children(), state);
   state.out().write_element_end("a");
 }
@@ -317,8 +333,9 @@ void html::translate_bookmark(const Element &element,
   const Bookmark bookmark = element.as_bookmark();
 
   state.out().write_element_begin(
-      "a", HtmlElementOptions().set_inline(true).set_attributes(
-               HtmlAttributesVector{{"id", bookmark.name()}}));
+      "a",
+      HtmlElementOptions().set_inline(true).set_attributes(
+          HtmlAttributesVector{{"id", escape_attribute(bookmark.name())}}));
   state.out().write_element_end("a");
 }
 
@@ -425,7 +442,7 @@ void html::translate_image(const Element &element, const WritingState &state) {
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             clb("alt", "Error: image not found or unsupported");
             if (resource_location.has_value()) {
-              clb("src", resource_location.value());
+              clb("src", escape_attribute(resource_location.value()));
             } else {
               clb("src", [&](std::ostream &o) {
                 // reached only for internal images, which have a file
