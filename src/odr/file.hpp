@@ -90,11 +90,9 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/OpenType
   opentype_font,
 
-  // The media formats a viewer is regularly handed alongside documents.
-  // Nothing here is decoded - opening one wraps its bytes, and translating it
-  // puts those bytes in an `<img>` or in a player and lets the browser do the
-  // work. Naming them is what makes that possible; without a name the text
-  // fallback would call a video plain text.
+  // Media a viewer is handed alongside documents. Nothing here is decoded:
+  // opening one wraps its bytes and translating it hands them to an `<img>` or
+  // a player - but unnamed, a video would fall back to plain text.
   // New entries go at the end: the bindings mirror this enum by ordinal.
   // https://en.wikipedia.org/wiki/WebP
   webp,
@@ -144,9 +142,8 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/Windows_Metafile#Enhanced_Metafile
   enhanced_metafile,
 
-  // Classification only for now - detection reports it under the formats built
-  // on it, e.g. an svg comes back as `[text_file, xml, scalable_vector_
-  // graphics]`, but there is no decoder of its own behind it yet.
+  // Classification only - reported under the formats built on it (an svg comes
+  // back as `[text_file, xml, scalable_vector_graphics]`), no decoder yet.
   // https://en.wikipedia.org/wiki/XML
   xml,
 };
@@ -174,9 +171,8 @@ enum class FileLocation {
 ///
 /// Declared, format-level support — an *upper bound*. A concrete file may still
 /// fail (corrupt, encrypted, an unsupported sub-variant); ask @ref DecodedFile
-/// or @ref Document for the precise answer. The point of the static query is
-/// the decisions a caller has to make *before* it holds a file, e.g. which
-/// MIME types to advertise to the platform's file picker.
+/// or @ref Document for that. This answers what a caller has to decide before
+/// it holds a file, e.g. which MIME types to hand the platform's file picker.
 struct FileTypeCapabilities final {
   bool detect_by_content{}; ///< recognised from its bytes alone
   bool open{};              ///< a decoder exists; @ref odr::open can decode it
@@ -293,10 +289,9 @@ public:
 
   /// @brief What can be done with this file.
   ///
-  /// Refines @ref capabilities_by_file_type with what is known about this
-  /// file. `edit`/`save`/`encrypt` are passed through from the format-level
-  /// declaration — resolving them exactly would mean decoding the document;
-  /// ask @ref Document::is_editable / @ref Document::is_savable for that.
+  /// Refines @ref capabilities_by_file_type with what is known about this file.
+  /// `edit`/`save`/`encrypt` stay as declared — ask @ref Document::is_editable
+  /// / @ref Document::is_savable for those.
   [[nodiscard]] FileTypeCapabilities capabilities() const;
 
   [[nodiscard]] bool is_text_file() const;

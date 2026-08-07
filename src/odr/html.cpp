@@ -242,11 +242,9 @@ HtmlService html::translate(const DecodedFile &file,
 HtmlResourceLocator html::standard_resource_locator() {
   return [](const HtmlResource &resource,
             const HtmlConfig &config) -> HtmlResourceLocation {
-    if (!resource.is_accessible()) {
-      return resource.path();
-    }
-
-    if (config.embed_images && resource.type() == HtmlResourceType::image) {
+    // only an accessible image can be embedded; everything else is linked
+    if (resource.is_accessible() && config.embed_images &&
+        resource.type() == HtmlResourceType::image) {
       return std::nullopt;
     }
 

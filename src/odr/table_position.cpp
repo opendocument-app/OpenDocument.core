@@ -12,11 +12,11 @@ std::uint32_t TablePosition::to_column_num(const std::string &string) {
   }
 
   std::uint32_t result = 0;
-  for (std::size_t i = 0; i < string.size(); ++i) {
-    if (string[i] < 'A' || string[i] > 'Z') {
+  for (const char c : string) {
+    if (c < 'A' || c > 'Z') {
       throw std::invalid_argument("illegal character in \"" + string + "\"");
     }
-    result = result * 26 + (string[i] - 'A' + 1);
+    result = result * 26 + static_cast<std::uint32_t>(c - 'A' + 1);
   }
   return result - 1;
 }
@@ -25,19 +25,21 @@ std::uint32_t TablePosition::to_row_num(const std::string &string) {
   return std::stoul(string) - 1;
 }
 
-std::string TablePosition::to_column_string(std::uint32_t column) {
+std::string TablePosition::to_column_string(const std::uint32_t column) {
   std::string result;
 
-  column += 1;
+  // bijective base 26, i.e. digits 1-26 - a remainder of 0 is the `Z` of the
+  // previous multiple and borrows from the quotient
+  std::uint64_t number = static_cast<std::uint64_t>(column) + 1;
   do {
-    if (const std::uint32_t rem = column % 26; rem == 0) {
+    if (const std::uint64_t rem = number % 26; rem == 0) {
       result = 'Z' + result;
-      column /= 27;
+      number = number / 26 - 1;
     } else {
       result = static_cast<char>('A' + rem - 1) + result;
-      column /= 26;
+      number /= 26;
     }
-  } while (column > 0);
+  } while (number > 0);
 
   return result;
 }

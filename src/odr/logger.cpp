@@ -96,6 +96,13 @@ std::shared_ptr<ILogger> null_impl() {
   return instance;
 }
 
+/// Writes @p text clipped to @p width, padded to it, and one trailing space.
+void print_padded(std::ostream &out, const std::string_view text,
+                  const std::size_t width) {
+  const std::string_view clipped = text.substr(0, width);
+  out << clipped << std::string(width - clipped.size(), ' ') << " ";
+}
+
 std::string_view level_to_string(const LogLevel level) {
   switch (level) {
   case LogLevel::verbose:
@@ -163,45 +170,27 @@ void Logger::print_head(std::ostream &out, Time time, LogLevel level,
   }
 
   if (format.level_width > 0) {
-    std::string_view level_str = level_to_string(level);
-    std::stringstream level_ss;
-    level_ss << level_str.substr(0, format.level_width);
-    level_ss << std::string(
-        std::max<std::size_t>(0, format.level_width - level_ss.str().size()),
-        ' ');
-    out << level_ss.str() << " ";
+    print_padded(out, level_to_string(level), format.level_width);
   }
 
   if (format.name_width > 0) {
-    std::stringstream name_ss;
-    name_ss << name.substr(0, format.name_width);
-    name_ss << std::string(
-        std::max<std::size_t>(0, format.name_width - name_ss.str().size()),
-        ' ');
-    out << name_ss.str() << " ";
+    print_padded(out, name, format.name_width);
   }
 
   if (format.location_width > 0) {
     const std::string file_name =
         std::filesystem::path(location.file_name()).filename().string();
     const std::string line_number = std::to_string(location.line());
-    std::stringstream location_ss;
-    if (file_name.size() + 1 + line_number.size() > format.location_width) {
-      if (1 + line_number.size() < format.location_width) {
-        location_ss << file_name.substr(0, format.location_width - 1 -
-                                               line_number.size())
-                    << ":" << line_number;
-      } else {
-        location_ss << file_name.substr(0, format.location_width);
-      }
-    } else {
-      location_ss << file_name << ":" << line_number;
+    std::string text = file_name + ":" + line_number;
+    if (text.size() > format.location_width) {
+      // drop the file name's tail, or the line number if that leaves no room
+      text = 1 + line_number.size() < format.location_width
+                 ? file_name.substr(0, format.location_width - 1 -
+                                           line_number.size()) +
+                       ":" + line_number
+                 : file_name;
     }
-    location_ss << std::string(
-        std::max<std::size_t>(0,
-                              format.location_width - location_ss.str().size()),
-        ' ');
-    out << location_ss.str() << " ";
+    print_padded(out, text, format.location_width);
   }
 }
 

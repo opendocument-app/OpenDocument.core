@@ -19,7 +19,7 @@ FileNotFound::FileNotFound(const std::string &path)
 UnknownFileType::UnknownFileType() : Exception("unknown file type") {}
 
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
-    : Exception("unknown file type: " + file_type_to_string(file_type)),
+    : Exception("unsupported file type: " + file_type_to_string(file_type)),
       file_type{file_type} {}
 
 FileReadError::FileReadError() : Exception("file read error") {}
