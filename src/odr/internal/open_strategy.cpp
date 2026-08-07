@@ -213,44 +213,54 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
 
-    zip::ZipFile zip_file(file);
-    result.push_back(FileType::zip);
-
-    auto filesystem = zip_file.archive()->as_filesystem();
-
+    // a container the magic promised but that does not open is just another
+    // failed probe here — the callers degrade on an empty result
     try {
-      ODR_VERBOSE(logger, "try open as odf");
-      result.push_back(odf::OpenDocumentFile(filesystem).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as odf");
-    }
+      zip::ZipFile zip_file(file);
+      result.push_back(FileType::zip);
 
-    try {
-      ODR_VERBOSE(logger, "try open as ooxml");
-      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      auto filesystem = zip_file.archive()->as_filesystem();
+
+      try {
+        ODR_VERBOSE(logger, "try open as odf");
+        result.push_back(odf::OpenDocumentFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as odf");
+      }
+
+      try {
+        ODR_VERBOSE(logger, "try open as ooxml");
+        result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as ooxml");
+      }
     } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as ooxml");
+      ODR_VERBOSE(logger, "failed to open as zip");
     }
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
-    cfb::CfbFile cfb_file(file);
-    result.push_back(FileType::compound_file_binary_format);
-
-    auto filesystem = cfb_file.archive()->as_filesystem();
-
     try {
-      ODR_VERBOSE(logger, "try open as legacy ms");
-      result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as legacy ms");
-    }
+      cfb::CfbFile cfb_file(file);
+      result.push_back(FileType::compound_file_binary_format);
 
-    try {
-      ODR_VERBOSE(logger, "try open as ooxml");
-      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      auto filesystem = cfb_file.archive()->as_filesystem();
+
+      try {
+        ODR_VERBOSE(logger, "try open as legacy ms");
+        result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as legacy ms");
+      }
+
+      try {
+        ODR_VERBOSE(logger, "try open as ooxml");
+        result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as ooxml");
+      }
     } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as ooxml");
+      ODR_VERBOSE(logger, "failed to open as cfb");
     }
   } else if (file_type == FileType::starview_metafile) {
     try {

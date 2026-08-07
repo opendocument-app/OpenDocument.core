@@ -12,6 +12,8 @@ class ElementAdapter;
 
 namespace odr::internal::util::document {
 
+/// The path from @p from_element_id (`null_element_id` for the root) down to
+/// @p to_element_id; throws if the latter is not a descendant of the former.
 DocumentPath extract_path(const abstract::ElementAdapter &element_adapter,
                           ElementIdentifier to_element_id,
                           ElementIdentifier from_element_id);

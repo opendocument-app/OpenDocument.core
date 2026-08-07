@@ -42,6 +42,8 @@ void replace_all(std::string &string, const std::string &search,
 /// Concatenate `count` copies of `unit` (empty for `count == 0`).
 std::string repeat(const std::string &unit, std::size_t count);
 
+/// Splits on every occurrence of @p delimiter; throws `std::invalid_argument`
+/// if it is empty.
 void split(const std::string &string, const std::string &delimiter,
            const std::function<void(const std::string &)> &callback);
 std::vector<std::string> split(const std::string &string,

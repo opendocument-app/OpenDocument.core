@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 
 #include <utf8/unchecked.h>
 #include <utf8cpp/utf8/cpp17.h>
@@ -96,6 +97,11 @@ std::string string::repeat(const std::string &unit, const std::size_t count) {
 
 void string::split(const std::string &string, const std::string &delimiter,
                    const std::function<void(const std::string &)> &callback) {
+  // an empty delimiter never advances the scan, so it would loop forever
+  if (delimiter.empty()) {
+    throw std::invalid_argument("delimiter must not be empty");
+  }
+
   std::size_t last_end = 0;
   while (true) {
     const std::size_t pos = string.find(delimiter, last_end);
