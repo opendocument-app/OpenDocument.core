@@ -23,13 +23,6 @@ sfnt::SfntFont parse(std::string bytes) {
   return sfnt::SfntFont(std::move(bytes));
 }
 
-/// Serialize an SFNT to bytes.
-std::string
-build_font(std::uint32_t version,
-           std::vector<std::pair<std::string, std::string>> tables) {
-  return build_sfnt(version, std::move(tables));
-}
-
 /// Parse @p bytes, re-encode it to the PUA in place, and write it back out.
 std::string reencoded(std::string bytes) {
   sfnt::SfntFont font = parse(std::move(bytes));
@@ -90,7 +83,7 @@ std::string name_table(const std::string &ascii) {
 // A 3-glyph TrueType font (no original cmap — the re-encode supplies one),
 // assembled through the library's own serializer.
 std::string sample_font(std::uint16_t glyphs = 3) {
-  return build_font(0x00010000, {{"head", head_table()},
+  return build_sfnt(0x00010000, {{"head", head_table()},
                                  {"maxp", maxp_table(glyphs)},
                                  {"hhea", hhea_table(3)},
                                  {"hmtx", hmtx_table({500, 600, 700})},
@@ -159,7 +152,7 @@ TEST(SfntTransform, serialize_cmap_round_trips_multiple_segments) {
   // second segment — exercises the segment builder beyond a single run.
   const std::map<char32_t, std::uint16_t> map{{'A', 1}, {'B', 2}, {'Z', 5}};
   const std::string font =
-      build_font(0x00010000, {{"head", head_table()},
+      build_sfnt(0x00010000, {{"head", head_table()},
                               {"maxp", maxp_table(6)},
                               {"hhea", hhea_table(0)},
                               {"cmap", serialize_cmap(map)}});
@@ -178,7 +171,7 @@ TEST(SfntTransform, serialize_cmap_format12_round_trips_beyond_bmp) {
   const std::map<char32_t, std::uint16_t> map{
       {'A', 1}, {0xf0000, 2}, {0xf0001, 3}, {0x10fffd, 9}};
   const std::string font =
-      build_font(0x00010000, {{"head", head_table()},
+      build_sfnt(0x00010000, {{"head", head_table()},
                               {"maxp", maxp_table(10)},
                               {"hhea", hhea_table(0)},
                               {"cmap", serialize_cmap(map)}});
@@ -298,7 +291,7 @@ TEST(SfntTransform, write_synthesizes_post_when_absent) {
 TEST(SfntTransform, write_keeps_existing_post) {
   std::string original_post(32, '\0');
   original_post[1] = 0x02; // version 2.0 marker, distinct from the synthesized
-  const std::string font = build_font(0x00010000, {{"head", head_table()},
+  const std::string font = build_sfnt(0x00010000, {{"head", head_table()},
                                                    {"maxp", maxp_table(3)},
                                                    {"hhea", hhea_table(0)},
                                                    {"post", original_post}});
@@ -314,7 +307,7 @@ TEST(SfntTransform, write_keeps_existing_post) {
 TEST(SfntTransform, write_synthesizes_name_when_absent) {
   // OTS requires `name` and TrueType subsets often drop it; the writer must
   // synthesize a minimal one (empty source name falls back to "ODR Font").
-  const std::string font = build_font(0x00010000, {{"head", head_table()},
+  const std::string font = build_sfnt(0x00010000, {{"head", head_table()},
                                                    {"maxp", maxp_table(3)},
                                                    {"hhea", hhea_table(0)}});
   ASSERT_FALSE(table(font, "name").has_value());
@@ -358,7 +351,7 @@ TEST(SfntTransform, write_synthesizes_os2_when_absent) {
 TEST(SfntTransform, write_keeps_existing_os2) {
   std::string original_os2(96, '\0');
   original_os2[1] = 0x02; // version 2 marker, distinct from the synthesized 4
-  const std::string font = build_font(0x00010000, {{"head", head_table()},
+  const std::string font = build_sfnt(0x00010000, {{"head", head_table()},
                                                    {"maxp", maxp_table(3)},
                                                    {"hhea", hhea_table(0)},
                                                    {"OS/2", original_os2}});

@@ -9,10 +9,9 @@
 using namespace odr::internal::pdf;
 using namespace odr::internal::crypto::util;
 
-// Known-answer test from the real R 2 / RC4-40 fixture
-// (odr-public/pdf/Casio_WVA-M650-7AJF.pdf): derive the file key from /O, /P and
-// /ID[0] with the empty user password, then Algorithm 4 must reproduce /U. The
-// vectors come from a real producer, so this is not circular through our code.
+// Known-answer test against the real R 2 / RC4-40 fixture
+// (odr-public/pdf/Casio_WVA-M650-7AJF.pdf), so the vectors are a producer's,
+// not ours: Algorithm 4 over the derived file key must reproduce its /U.
 TEST(PdfEncryption, casio_r2_rc4_user_key) {
   const std::string o = hex_decode(
       "5ee983cbdfb3f64baa265a496c450467891a307fd45c5f7d53282fd1835ce1b1");
@@ -74,13 +73,11 @@ TEST(PdfEncryption, fontfile3_r6_aesv3) {
   EXPECT_FALSE(authenticator->authenticate("wrong-password").has_value());
 }
 
-// The fixtures above cover R 2 (RC4-40) and R 6 (AES-256). The remaining R 3
-// (RC4-128) and R 4 (AES-128 / AESV2) paths have no real-world fixture, so the
-// vectors below were produced by `qpdf --encrypt user owner 128 ...` over a
-// one-object content stream holding the marker "KAT-MARKER-12345". Decrypting
-// qpdf's output back to the marker proves the whole chain — file key,
-// per-object key (Algorithm 1, incl. the AES "sAlT"), RC4 / AES-128-CBC +
-// PKCS#7 — against an independent implementation, with no fixture file to ship.
+// R 3 (RC4-128) and R 4 (AES-128 / AESV2) have no real-world fixture; the
+// vectors below come from `qpdf --encrypt user owner 128 ...` over a content
+// stream holding "KAT-MARKER-12345". Recovering the marker proves the whole
+// chain (file key, Algorithm 1 object key, RC4 / AES-128-CBC + PKCS#7) against
+// an independent implementation, with no fixture file to ship.
 namespace {
 
 constexpr const char *kMarker = "KAT-MARKER-12345";

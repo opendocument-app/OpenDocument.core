@@ -66,6 +66,7 @@ TEST(PdfFunction, exponential_power) {
   dict["N"] = Object(Real{2});
 
   const auto fn = parse_function(Object(dict), context());
+  ASSERT_NE(fn, nullptr);
   EXPECT_DOUBLE_EQ(fn->eval({0.5})[0], 0.25);
 }
 
@@ -79,6 +80,7 @@ TEST(PdfFunction, clips_domain) {
   dict["N"] = Object(Real{1});
 
   const auto fn = parse_function(Object(dict), context());
+  ASSERT_NE(fn, nullptr);
   EXPECT_DOUBLE_EQ(fn->eval({2.0})[0], 1.0);  // clipped to 1
   EXPECT_DOUBLE_EQ(fn->eval({-1.0})[0], 0.0); // clipped to 0
 }

@@ -6,8 +6,8 @@
 
 #include <test_util.hpp>
 
-#include <fstream>
 #include <memory>
+#include <sstream>
 
 #include <gtest/gtest.h>
 
@@ -27,10 +27,6 @@ TEST(SvmToSvg, string) {
 
   std::stringstream out;
   svm::Translator::svg(svm, out);
-  auto out_string = out.str();
 
-  EXPECT_LT(0, out_string.size());
-
-  std::ofstream test("test.svg");
-  test << out_string;
+  EXPECT_LT(0, out.str().size());
 }
