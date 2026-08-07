@@ -592,6 +592,56 @@ void parse_type3_font(State &state, const Dictionary &dictionary, Font &font) {
   font.type3 = std::move(type3);
 }
 
+/// Parse a font dictionary onto `font` — everything but the identity and
+/// memoization, which only the indirect form has.
+void parse_font_dictionary(State &state, const Dictionary &dictionary,
+                           Font &font) {
+  DocumentParser &parser = state.parser();
+
+  font.object = Object(dictionary);
+
+  const bool is_type0 = dictionary.get("Subtype").is_name() &&
+                        dictionary["Subtype"].as_name() == "Type0";
+  const bool is_type3 = dictionary.get("Subtype").is_name() &&
+                        dictionary["Subtype"].as_name() == "Type3";
+
+  // `/ToUnicode` is a stream, hence always an indirect reference (ISO 32000-1
+  // 7.3.8); anything else (`null`, a name) carries no CMap.
+  if (const Object &to_unicode = dictionary.get("ToUnicode");
+      to_unicode.is_reference()) {
+    const std::string stream =
+        parser.read_decoded_stream(to_unicode.as_reference());
+    util::stream::ViewStream ss(stream);
+    CMapParser cmap_parser(ss, parser.logger());
+    font.cmap = cmap_parser.parse_cmap();
+  }
+
+  if (is_type0) {
+    // Composite (Type0) font: the `/Encoding` is a code -> CID CMap, not a
+    // simple-font glyph-name encoding, so it must not go through
+    // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above).
+    parse_composite_font(parser, dictionary, font);
+  } else {
+    parse_simple_font_widths(parser, dictionary, font);
+    if (dictionary.has_key("Encoding")) {
+      // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
+      // `/BaseEncoding` + `/Differences`. The text-extraction fallback for
+      // fonts without a `ToUnicode` CMap. Type3 fonts map codes to their
+      // `/CharProcs` glyph names through the same `/Differences` mechanism.
+      font.encoding = parse_encoding(parser, dictionary["Encoding"]);
+    }
+    if (is_type3) {
+      // Type3 glyphs are drawn by their char procs, not substituted; the
+      // widths parsed above are in glyph space (scaled by `/FontMatrix`).
+      parse_type3_font(state, dictionary, font);
+    } else {
+      // Non-embedded simple fonts render in a substitute family with AFM
+      // widths.
+      resolve_font_substitute(parser, dictionary, font);
+    }
+  }
+}
+
 Font *parse_font(State &state, const ObjectReference &reference) {
   // Shared fonts are parsed once; every page referencing the same font object
   // resolves to the one element so the HTML writer inlines it a single time.
@@ -600,55 +650,29 @@ Font *parse_font(State &state, const ObjectReference &reference) {
   }
 
   DocumentParser &parser = state.parser();
-  Document &document = state.document();
 
-  Font *font = document.create_element<Font>();
+  Font *font = state.document().create_element<Font>();
   state.cache_font(reference, font);
 
   IndirectObject object = parser.read_object(reference);
-  const Dictionary &dictionary = object.object.as_dictionary();
-
   font->object_reference = reference;
-  font->object = Object(dictionary);
+  parse_font_dictionary(state, object.object.as_dictionary(), *font);
 
-  const bool is_type0 = dictionary.get("Subtype").is_name() &&
-                        dictionary["Subtype"].as_name() == "Type0";
-  const bool is_type3 = dictionary.get("Subtype").is_name() &&
-                        dictionary["Subtype"].as_name() == "Type3";
+  return font;
+}
 
-  if (dictionary.has_key("ToUnicode")) {
-    const std::string stream =
-        parser.read_decoded_stream(dictionary["ToUnicode"].as_reference());
-    util::stream::ViewStream ss(stream);
-    CMapParser cmap_parser(ss, parser.logger());
-    font->cmap = cmap_parser.parse_cmap();
+/// A `/Font` resource entry (ISO 32000-1 7.8.3). Normally an indirect
+/// reference, so the element is shared; a direct font dictionary is legal too
+/// and is parsed in place, unshared. Null for anything else.
+Font *parse_font(State &state, const Object &object) {
+  if (object.is_reference()) {
+    return parse_font(state, object.as_reference());
   }
-
-  if (is_type0) {
-    // Composite (Type0) font: the `/Encoding` is a code -> CID CMap, not a
-    // simple-font glyph-name encoding, so it must not go through
-    // `parse_encoding`. Extraction relies on `/ToUnicode` (parsed above).
-    parse_composite_font(parser, dictionary, *font);
-  } else {
-    parse_simple_font_widths(parser, dictionary, *font);
-    if (dictionary.has_key("Encoding")) {
-      // Simple-font `/Encoding`: a base-encoding name, or a dictionary with
-      // `/BaseEncoding` + `/Differences`. The text-extraction fallback for
-      // fonts without a `ToUnicode` CMap. Type3 fonts map codes to their
-      // `/CharProcs` glyph names through the same `/Differences` mechanism.
-      font->encoding = parse_encoding(parser, dictionary["Encoding"]);
-    }
-    if (is_type3) {
-      // Type3 glyphs are drawn by their char procs, not substituted; the
-      // widths parsed above are in glyph space (scaled by `/FontMatrix`).
-      parse_type3_font(state, dictionary, *font);
-    } else {
-      // Non-embedded simple fonts render in a substitute family with AFM
-      // widths.
-      resolve_font_substitute(parser, dictionary, *font);
-    }
+  if (!object.is_dictionary()) {
+    return nullptr;
   }
-
+  Font *font = state.document().create_element<Font>();
+  parse_font_dictionary(state, object.as_dictionary(), *font);
   return font;
 }
 
@@ -904,6 +928,23 @@ XObject *parse_x_object(State &state, const ObjectReference &reference,
   return x_object;
 }
 
+/// An `/XObject` resource entry (ISO 32000-1 8.8). An XObject is a stream and
+/// streams are always indirect (7.3.8), so a direct value carries no content:
+/// keep its dictionary inspectable but leave the element inexecutable rather
+/// than failing the document. Null for anything but a reference or dictionary.
+XObject *parse_x_object(State &state, const Object &object,
+                        const Resources *resources) {
+  if (object.is_reference()) {
+    return parse_x_object(state, object.as_reference(), resources);
+  }
+  if (!object.is_dictionary()) {
+    return nullptr;
+  }
+  auto *x_object = state.document().create_element<XObject>();
+  x_object->object = object;
+  return x_object;
+}
+
 /// A `ColorSpaceContext` over the parser, resolving a base/alternate space
 /// named by name against the (being-built) `/ColorSpace` table of `resources`.
 ColorSpaceContext make_color_space_context(DocumentParser &parser,
@@ -1044,7 +1085,9 @@ Resources *parse_resources(State &state, const Object &object) {
     const Dictionary font_table =
         parser.resolve_object_copy(dictionary["Font"]).as_dictionary();
     for (const auto &[key, value] : font_table) {
-      resources->font[key] = parse_font(state, value.as_reference());
+      if (Font *font = parse_font(state, value); font != nullptr) {
+        resources->font[key] = font;
+      }
     }
   }
 
@@ -1082,8 +1125,10 @@ Resources *parse_resources(State &state, const Object &object) {
     const Dictionary x_object_table =
         parser.resolve_object_copy(dictionary["XObject"]).as_dictionary();
     for (const auto &[key, value] : x_object_table) {
-      resources->x_object[key] =
-          parse_x_object(state, value.as_reference(), resources);
+      if (XObject *x_object = parse_x_object(state, value, resources);
+          x_object != nullptr) {
+        resources->x_object[key] = x_object;
+      }
     }
   }
 
@@ -1440,6 +1485,12 @@ DocumentParser::load_object_stream(const ObjectReference &reference) {
     return it->second;
   }
 
+  const ObjectStreamScope scope(*this, reference);
+  if (!scope.entered()) {
+    throw std::runtime_error("cyclic object stream reference " +
+                             reference.to_string());
+  }
+
   const IndirectObject &object = read_object(reference);
   if (!object.has_stream) {
     throw std::runtime_error("object stream " + reference.to_string() +
@@ -1456,6 +1507,25 @@ DocumentParser::load_object_stream(const ObjectReference &reference) {
   return m_object_streams
       .emplace(reference, FileParser(in).read_object_stream(n, first))
       .first->second;
+}
+
+bool DocumentParser::enter_object_stream(const ObjectReference &reference) {
+  return m_active_object_streams.insert(reference).second;
+}
+
+void DocumentParser::leave_object_stream(const ObjectReference &reference) {
+  m_active_object_streams.erase(reference);
+}
+
+DocumentParser::ObjectStreamScope::ObjectStreamScope(
+    DocumentParser &parser, const ObjectReference &reference)
+    : m_parser{&parser}, m_reference{reference},
+      m_entered{parser.enter_object_stream(reference)} {}
+
+DocumentParser::ObjectStreamScope::~ObjectStreamScope() {
+  if (m_entered) {
+    m_parser->leave_object_stream(m_reference);
+  }
 }
 
 std::string

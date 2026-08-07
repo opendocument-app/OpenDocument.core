@@ -172,10 +172,26 @@ void GraphicsState::save() { stack.push_back(stack.back()); }
 
 void GraphicsState::restore() {
   // A `Q` without a matching `q` is malformed (ISO 32000-1 8.4.4) and real
-  // files emit it; keep the initial state so `current()` stays valid.
-  if (stack.size() > 1) {
+  // files emit it; keep the running stream's entry state so `current()` stays
+  // valid and no enclosing stream's state is popped away.
+  if (stack.size() > m_restore_floor) {
     stack.pop_back();
   }
+}
+
+GraphicsState::ContentScope::ContentScope(GraphicsState &state)
+    : m_state{&state}, m_depth{state.stack.size()},
+      m_floor{state.m_restore_floor} {
+  state.save();
+  state.m_restore_floor = state.stack.size();
+}
+
+GraphicsState::ContentScope::~ContentScope() {
+  // Only ever shrinks: the floor kept every `Q` above `m_depth`.
+  while (m_state->stack.size() > m_depth) {
+    m_state->stack.pop_back();
+  }
+  m_state->m_restore_floor = m_floor;
 }
 
 void GraphicsState::concat_matrix(const util::math::Transform2D &matrix) {
