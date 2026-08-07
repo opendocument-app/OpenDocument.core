@@ -51,19 +51,35 @@ public final class Html {
     }
   }
 
+  // The handles below go into a static native as arguments, so no receiver holds
+  // the wrapper for the duration - keepAlive() does.
+
   /** Translates a decoded file to HTML. */
   public static HtmlService translate(DecodedFile file, String cachePath, HtmlConfig config) {
-    return new HtmlService(translateFile(file.handle(), cachePath, config), file);
+    try {
+      return new HtmlService(translateFile(file.handle(), cachePath, config), file);
+    } finally {
+      file.keepAlive();
+    }
   }
 
   /** Translates a document to HTML. */
   public static HtmlService translate(Document document, String cachePath, HtmlConfig config) {
-    return new HtmlService(translateDocument(document.handle(), cachePath, config), document);
+    try {
+      return new HtmlService(translateDocument(document.handle(), cachePath, config), document);
+    } finally {
+      document.keepAlive();
+    }
   }
 
   /** Translates a filesystem to HTML. */
   public static HtmlService translate(Filesystem filesystem, String cachePath, HtmlConfig config) {
-    return new HtmlService(translateFilesystem(filesystem.handle(), cachePath, config), filesystem);
+    try {
+      return new HtmlService(
+          translateFilesystem(filesystem.handle(), cachePath, config), filesystem);
+    } finally {
+      filesystem.keepAlive();
+    }
   }
 
   /** Applies a diff (produced by the browser-side editor) to a document. */

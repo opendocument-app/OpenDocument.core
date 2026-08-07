@@ -94,8 +94,6 @@ class DocumentTest {
 
         val pages = html.pages()
         assertEquals(1, pages.size)
-        // the renderer reads the css/js the AAR ships, so this only passes with the
-        // extracted assets in place
         val content = read(Paths.get(pages[0].path))
         assertTrue(content.contains(TestFiles.ODT_WORD))
     }

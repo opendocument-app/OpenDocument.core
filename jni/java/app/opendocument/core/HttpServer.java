@@ -65,9 +65,8 @@ public final class HttpServer extends GuardedNativeResource {
    * Blocks serving requests until {@link #stop()} is called from another thread.
    * Returns right away if the server has already been stopped or closed.
    *
-   * <p>Guarded: this is the one call in the bindings that is meant to be made on a
-   * thread of its own while another closes the object it runs on, so the handle it
-   * takes has to stay valid until it hands it back.
+   * <p>Guarded: the handle stays valid until this returns, even if another thread
+   * closes the server meanwhile.
    */
   public void listen() {
     guarded(this::listenNative);

@@ -59,7 +59,14 @@ public final class HtmlService extends NativeResource {
     for (int i = 0; i < handles.length; i++) {
       handles[i] = views.get(i).handle();
     }
-    return bringOfflineViewsNative(handle(), outputPath, handles);
+    try {
+      return bringOfflineViewsNative(handle(), outputPath, handles);
+    } finally {
+      // the handles went in as arguments, so nothing else keeps the views alive
+      for (HtmlView view : views) {
+        view.keepAlive();
+      }
+    }
   }
 
   private static native void destroy(long handle);
