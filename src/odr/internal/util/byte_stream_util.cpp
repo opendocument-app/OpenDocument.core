@@ -31,7 +31,7 @@ std::uint8_t byte_stream::read_u8(std::istream &in) {
     in.setstate(std::ios::eofbit);
     throw std::runtime_error("unexpected stream exhaust");
   }
-  return static_cast<char_type>(c);
+  return static_cast<std::uint8_t>(c);
 }
 
 std::string byte_stream::read_u8s(std::istream &in, const std::size_t n) {

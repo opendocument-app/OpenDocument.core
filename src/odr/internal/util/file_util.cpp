@@ -20,7 +20,8 @@ std::ifstream file::open(const std::string &path) {
 
 std::size_t file::size(const std::string &path) {
   std::ifstream in = open(path);
-  return in.tellg();
+  in.seekg(0, std::ios::end);
+  return static_cast<std::size_t>(in.tellg());
 }
 
 std::string file::read(const std::string &path) {

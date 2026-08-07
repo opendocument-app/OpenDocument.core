@@ -12,13 +12,11 @@
 namespace odr::internal::util {
 
 bool string::starts_with(const std::string &string, const std::string &with) {
-  return string.rfind(with, 0) == 0;
+  return string.starts_with(with);
 }
 
 bool string::ends_with(const std::string &string, const std::string &with) {
-  return string.length() >= with.length() &&
-         string.compare(string.length() - with.length(), with.length(), with) ==
-             0;
+  return string.ends_with(with);
 }
 
 bool string::is_ascii_space(const char c) {

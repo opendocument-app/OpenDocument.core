@@ -11,10 +11,9 @@ using file_type_table::Row;
 
 using namespace std::string_view_literals;
 
-// File extensions and MIME types accepted for each file type. The first entry
-// of a list is the canonical one. Aliases have to stay unique across file
-// types — the lookups take the first match and `odr_test` asserts that no
-// extension or MIME type appears twice.
+// Extensions and MIME types per file type, canonical one first. Aliases are
+// unique across types — the lookups take the first match, `odr_test` asserts
+// no alias appears twice.
 
 constexpr std::array odt_extensions{"odt"sv, "fodt"sv, "ott"sv, "odm"sv,
                                     "otm"sv};
@@ -79,9 +78,8 @@ constexpr std::array xlsx_mimetypes{
     "application/vnd.ms-excel.template.macroEnabled.12"sv,
 };
 
-// `.xlsb` ships in an OOXML package but stores the workbook in binary parts
-// instead of spreadsheetml, so it gets its own type rather than riding along
-// with `xlsx` — the capability row is what tells a caller we cannot open it.
+// `.xlsb` ships in an OOXML package but stores the workbook in binary parts,
+// not spreadsheetml, so it is its own type with no capabilities.
 constexpr std::array xlsb_extensions{"xlsb"sv};
 constexpr std::array xlsb_mimetypes{
     "application/vnd.ms-excel.sheet.binary.macroEnabled.12"sv};
@@ -246,13 +244,12 @@ constexpr std::array avi_extensions{"avi"sv};
 constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
                                    "video/msvideo"sv};
 
-// The single source of truth behind every public format lookup. `odr_test`
-// asserts that it covers each `FileType` exactly once and that the capability
-// bits agree with what the engines actually do.
+// The single source of truth behind every public format lookup; `odr_test`
+// asserts one row per `FileType` and capabilities that match the engines.
 //
-// `decrypt` on the OOXML document types refers to a password-protected
-// package, which is detected as `office_open_xml_encrypted` and decrypts into
-// the type named here. ODF files decrypt in place and keep their type.
+// `decrypt` on an OOXML document type means a password-protected package,
+// detected as `office_open_xml_encrypted` and decrypting into the type named
+// here. ODF files decrypt in place and keep their type.
 constexpr std::array table{
     Row{FileType::unknown,
         "unknown"sv,
@@ -505,11 +502,9 @@ constexpr std::array table{
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
 
-    // Named but not decoded: `open` wraps the bytes without looking at them
-    // and `translate_html` hands them straight to the browser, in an `<img>`
-    // for the images below and in a player for the audio and video after them.
-    // Nothing here reads a pixel or a sample - see the comment on these in
-    // `FileType`.
+    // Named but not decoded: `open` wraps the bytes and `translate_html` hands
+    // them to the browser in an `<img>` or a player. Nothing reads a pixel or
+    // a sample.
     Row{FileType::webp,
         "webp"sv,
         webp_extensions,
@@ -611,9 +606,9 @@ constexpr std::array table{
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
 
-    // Named but not decoded, like the images above. `translate_html` says the
-    // image page is written and the data url is labelled with the type below,
-    // not that every browser paints it - that is already true of tiff and heif.
+    // Named but not decoded, like the images above. `translate_html` means the
+    // image page is written and the data url labelled, not that every browser
+    // paints it.
     Row{FileType::scalable_vector_graphics,
         "svg"sv,
         svg_extensions,
@@ -680,7 +675,8 @@ template <typename Projection>
 const Row *find_by_alias(const std::string_view needle,
                          Projection list) noexcept {
   const auto it = std::ranges::find_if(table, [&](const Row &row) {
-    return std::ranges::find(list(row), needle) != std::ranges::end(list(row));
+    const auto aliases = list(row);
+    return std::ranges::find(aliases, needle) != std::ranges::end(aliases);
   });
   return it == std::ranges::end(table) ? nullptr : &*it;
 }

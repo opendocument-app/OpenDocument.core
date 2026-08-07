@@ -29,23 +29,19 @@ namespace odr::internal {
 
 namespace {
 
+/// Orders by position in @p priority; anything not listed sorts last.
 template <typename T> auto priority_comparator(const std::vector<T> &priority) {
   return [&priority](const T &a, const T &b) {
-    auto a_it = std::find(std::begin(priority), std::end(priority), a);
-    auto b_it = std::find(std::begin(priority), std::end(priority), b);
+    const auto a_it = std::ranges::find(priority, a);
+    const auto b_it = std::ranges::find(priority, b);
 
-    if (a_it == std::end(priority) && b_it == std::end(priority)) {
+    if (b_it == std::ranges::end(priority)) {
+      return a_it != std::ranges::end(priority);
+    }
+    if (a_it == std::ranges::end(priority)) {
       return false;
     }
-    if (a_it == std::end(priority)) {
-      return false;
-    }
-    if (b_it == std::end(priority)) {
-      return true;
-    }
-
-    return std::distance(std::begin(priority), a_it) <
-           std::distance(std::begin(priority), b_it);
+    return a_it < b_it;
   };
 }
 
@@ -125,9 +121,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     throw NoSvmFile();
   }
 
-  // Everything below has no decoder: the bytes go to the browser as they are,
-  // so the category is all that has to be right. Every image but the starview
-  // metafile above lands here, and so does all audio and video.
+  // no decoder below: the bytes go to the browser as they are, so only the
+  // category has to be right
   const FileCategory category = file_category_by_file_type(as);
   if (category == FileCategory::image) {
     ODR_VERBOSE(logger, "open as image");
@@ -285,8 +280,8 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // an svg has no signature to find it by - it is xml, and only the root
-      // element tells the two apart, so both are reported
+      // an svg has no signature; only the xml root element tells it from plain
+      // xml, so both are reported
       try {
         ODR_VERBOSE(logger, "try open as xml");
         util::xml::check_xml_file(*file->stream());
@@ -374,8 +369,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(file);
   }
-  // see `open_file_as` — no decoder, so the category is all that has to be
-  // right
+  // see `open_file_as` — no decoder, only the category has to be right
   const FileCategory file_category = file_category_by_file_type(file_type);
   if (file_category == FileCategory::image) {
     ODR_VERBOSE(logger, "open as image");
@@ -413,8 +407,8 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // see `list_file_types` - an svg is only recognised by parsing it, and
-      // a plain xml file has no decoder of its own, so it stays text
+      // an svg is only recognised by parsing it; plain xml has no decoder of
+      // its own and stays text
       try {
         ODR_VERBOSE(logger, "try open as svg");
         svg::check_svg_file(*file->stream());

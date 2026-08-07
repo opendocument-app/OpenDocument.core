@@ -4,6 +4,20 @@
 
 namespace odr::internal {
 
+namespace {
+
+/// Whether @p path continues @p prefix at a component boundary, so that "/ab"
+/// is not taken for a descendant of "/a".
+bool has_path_prefix(const std::string &path, const std::string &prefix) {
+  if (!path.starts_with(prefix)) {
+    return false;
+  }
+  return prefix.empty() || prefix.back() == '/' ||
+         path.size() == prefix.size() || path[prefix.size()] == '/';
+}
+
+} // namespace
+
 Path::Path() noexcept : Path("") {}
 
 Path::Path(const char *c_string) : Path(std::string(c_string)) {}
@@ -32,15 +46,10 @@ Path::Path(const std::filesystem::path &path) : Path(path.string()) {}
 void Path::parent_() {
   if (m_downwards > 0) {
     --m_downwards;
-    if (m_downwards == 0) {
-      if (m_absolute) {
-        m_path = "/";
-      } else {
-        m_path = "";
-      }
+    if (m_upwards + m_downwards == 0) {
+      m_path = m_absolute ? "/" : "";
     } else {
-      const auto pos = m_path.rfind('/');
-      m_path = m_path.substr(0, pos);
+      m_path = m_path.substr(0, m_path.rfind('/'));
     }
   } else if (!m_absolute) {
     if (m_upwards + m_downwards == 0) {
@@ -129,7 +138,8 @@ bool Path::parent_of(const Path &b) const {
     throw std::invalid_argument("cannot compare absolute and relative path");
   }
   // TODO we need to check upwards as well
-  return (m_downwards + 1 == b.m_downwards) && (b.m_path.rfind(m_path, 0) == 0);
+  return (m_downwards + 1 == b.m_downwards) &&
+         has_path_prefix(b.m_path, m_path);
 }
 
 bool Path::ancestor_of(const Path &b) const { return b.descendant_of(*this); }
@@ -139,7 +149,7 @@ bool Path::descendant_of(const Path &b) const {
     throw std::invalid_argument("cannot compare absolute and relative path");
   }
   // TODO we need to check upwards as well
-  return (m_downwards < b.m_downwards) && (b.m_path.rfind(m_path, 0) == 0);
+  return (b.m_downwards < m_downwards) && has_path_prefix(m_path, b.m_path);
 }
 
 AbsPath Path::as_absolute() const & { return AbsPath(*this); }
@@ -176,10 +186,8 @@ std::string Path::basename() const {
 }
 
 std::string Path::extension() const {
-  // The extension is the last dot-separated segment of the file name, without
-  // the leading dot (e.g. "a.b.ppt" -> "ppt"). Delegate to std::filesystem so
-  // edge cases (no extension, dot-files like ".bashrc") match the platform's
-  // definition; it returns ".ppt", so strip the leading dot.
+  // `std::filesystem` defines the edge cases (none, dot-files); it yields
+  // ".ppt", we want "ppt"
   std::string extension = path().extension().string();
   if (!extension.empty() && extension.front() == '.') {
     extension.erase(extension.begin());
