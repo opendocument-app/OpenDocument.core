@@ -16,30 +16,54 @@
 
 namespace odr {
 
+namespace {
+
+/// The other constructors reject a null impl, so only a default-constructed
+/// @ref File reaches the throw.
+const internal::abstract::File &
+deref(const std::shared_ptr<internal::abstract::File> &impl) {
+  if (impl == nullptr) {
+    throw NullPointerError("impl");
+  }
+  return *impl;
+}
+
+} // namespace
+
 File::File() = default;
 
 File::File(std::shared_ptr<internal::abstract::File> impl)
-    : m_impl{std::move(impl)} {}
+    : m_impl{std::move(impl)} {
+  if (m_impl == nullptr) {
+    throw NullPointerError("impl");
+  }
+}
 
 File::File(const std::string &path)
     : m_impl{std::make_shared<internal::DiskFile>(path)} {}
 
-FileLocation File::location() const noexcept { return m_impl->location(); }
+/// `noexcept` leaves no way to report a null impl, and no `FileLocation` stands
+/// for "nowhere" — a null file carries no bytes on disk, so it reports memory.
+FileLocation File::location() const noexcept {
+  return m_impl == nullptr ? FileLocation::memory : m_impl->location();
+}
 
-std::size_t File::size() const { return m_impl->size(); }
+std::size_t File::size() const { return deref(m_impl).size(); }
 
 std::optional<std::string> File::disk_path() const {
-  if (const std::optional<internal::AbsPath> path = m_impl->disk_path()) {
+  if (const std::optional<internal::AbsPath> path = deref(m_impl).disk_path()) {
     return path->string();
   }
   return {};
 }
 
 std::optional<std::string_view> File::memory_data() const {
-  return m_impl->memory_data();
+  return deref(m_impl).memory_data();
 }
 
-std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
+std::unique_ptr<std::istream> File::stream() const {
+  return deref(m_impl).stream();
+}
 
 void File::pipe(std::ostream &out) const {
   internal::util::stream::pipe(*stream(), out);

@@ -234,7 +234,10 @@ struct FileMeta final {
 /// @brief Represents a file.
 class File final {
 public:
+  /// Constructs the null file — every accessor but @ref location throws @ref
+  /// NullPointerError on it, so assign a real one before use.
   File();
+  /// @throws NullPointerError if the impl is null.
   explicit File(std::shared_ptr<internal::abstract::File>);
   explicit File(const std::string &path);
 
