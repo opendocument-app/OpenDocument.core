@@ -271,8 +271,9 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 + (instancetype)decodedFileWithHandle:(odr::DecodedFile)handle {
   // The most derived wrapper the file qualifies for, so a caller never has to
-  // downcast something it already knows the type of. PDFs are document files
-  // too, so they have to be tested first.
+  // downcast something it already knows the type of. The predicates are
+  // mutually exclusive — a PDF is not an `is_document_file`, despite reporting
+  // `FileCategory::document`.
   Class klass = [ODRDecodedFile class];
   if (handle.is_pdf_file()) {
     klass = [ODRPdfFile class];

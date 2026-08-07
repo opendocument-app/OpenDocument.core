@@ -59,6 +59,28 @@ def test_element_navigation(odt_path):
     assert second.previous_sibling() == first
 
 
+def test_failed_cast_is_falsy(odt_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    paragraph = next(
+        child
+        for child in document.root_element()
+        if child.type() == pyodr.ElementType.paragraph
+    )
+
+    assert paragraph.as_paragraph()
+    # the wrong cast has to come back falsy, not as a valid-looking handle
+    assert not paragraph.as_slide()
+
+
+def test_children_outlive_the_document(odt_path):
+    def collect():
+        document = pyodr.open(str(odt_path)).as_document_file().document()
+        return list(document.root_element())
+
+    # the document is only reachable through the elements by now
+    assert [child.type() for child in collect()]
+
+
 def test_text_root(odt_path):
     document = pyodr.open(str(odt_path)).as_document_file().document()
     root = document.root_element().as_text_root()

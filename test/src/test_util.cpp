@@ -29,11 +29,12 @@ TestFile get_test_file(const std::string &root_path,
 
   std::string short_path = absolute_path.substr(root_path.size() + 1);
 
+  // `name$password$.ext` names the password in the file name itself.
   std::optional<std::string> password;
   const std::string filename = fs::path(absolute_path).filename().string();
   if (const auto left = filename.find('$'), right = filename.rfind('$');
       left != std::string::npos && left != right) {
-    password = filename.substr(left, right);
+    password = filename.substr(left + 1, right - left - 1);
   }
 
   return {std::move(absolute_path), std::move(short_path), type,

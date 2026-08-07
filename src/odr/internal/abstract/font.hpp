@@ -8,14 +8,8 @@
 
 namespace odr::internal::abstract {
 
-/// @brief Read-only view over a font program, exposing the *facts* every
-/// consumer needs while the raw glyph bytes pass through untouched.
-///
-/// Per the "IR for facts, pass-through for glyphs" architecture this never
-/// decompiles outlines: it reports counts / metrics / names and hands back the
-/// original bytes. The embedded-font reverse map reads Unicode from it, the OTF
-/// wrap synthesizes the SFNT skeleton from it, and the PUA re-encoder assigns
-/// code points from its glyph count.
+/// Read-only view over a font program: counts, metrics, names and character
+/// maps. Outlines are never decompiled, the glyph bytes pass through untouched.
 class Font {
 public:
   virtual ~Font() = default;
@@ -41,15 +35,13 @@ public:
   [[nodiscard]] virtual std::uint16_t
   advance_width(std::uint16_t glyph) const = 0;
 
-  /// The font's own forward map: Unicode code point -> glyph id, 0 (`.notdef`)
-  /// when unmapped. Seeds the specimen page and the PUA re-encode.
+  /// The font's own character map: code point -> glyph id, 0 (`.notdef`) when
+  /// unmapped.
   [[nodiscard]] virtual std::uint16_t
   glyph_for_code_point(char32_t code_point) const = 0;
 
-  /// The reverse map: glyph id -> Unicode code point, when the font's character
-  /// map reaches the glyph. This is the embedded-font reverse map used to
-  /// recover Unicode for a font with no usable `/ToUnicode` or `/Encoding`;
-  /// `nullopt` when no code point maps.
+  /// The reverse of that map, `nullopt` when no code point reaches @p glyph.
+  /// Recovers Unicode for a font without usable `/ToUnicode` or `/Encoding`.
   [[nodiscard]] virtual std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const = 0;
 };

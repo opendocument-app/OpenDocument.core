@@ -69,12 +69,8 @@ void odr_python::bind_core(py::module_ &m) {
 void odr_python::bind_functions(py::module_ &m) {
   m.def("all_file_types", &odr::all_file_types,
         "Every file type this library knows about.");
-  m.def(
-      "file_type_by_file_extension",
-      [](const std::string &extension) {
-        return odr::file_type_by_file_extension(extension);
-      },
-      py::arg("extension"));
+  m.def("file_type_by_file_extension", &odr::file_type_by_file_extension,
+        py::arg("extension"));
   m.def(
       "file_extensions_by_file_type",
       [](const odr::FileType type) {

@@ -125,9 +125,11 @@ ColorSpaceDef::to_rgb(const std::vector<double> &c) const {
     }
     const std::int32_t n = base->components;
     const auto index = static_cast<std::int32_t>(std::lround(at(0)));
-    const auto offset =
-        static_cast<std::size_t>(std::clamp<std::int32_t>(index, 0, hival)) *
-        static_cast<std::size_t>(n);
+    // `std::clamp` is undefined for hi < lo, so a negative `/HiVal` (malformed)
+    // must not reach it.
+    const auto offset = static_cast<std::size_t>(std::clamp<std::int32_t>(
+                            index, 0, std::max(hival, 0))) *
+                        static_cast<std::size_t>(n);
     std::vector<double> base_components(static_cast<std::size_t>(n), 0.0);
     for (std::int32_t j = 0; j < n; ++j) {
       const std::size_t k = offset + static_cast<std::size_t>(j);
@@ -188,7 +190,7 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
   if (resolved.is_name()) {
     return space_from_name(resolved.as_name(), context);
   }
-  if (!resolved.is_array() || resolved.as_array().size() == 0) {
+  if (!resolved.is_array() || resolved.as_array().empty()) {
     return nullptr;
   }
 

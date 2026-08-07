@@ -53,11 +53,13 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   jobjectArray page_array =
       env->NewObjectArray(static_cast<jsize>(pages.size()), page_cls, nullptr);
   for (jsize i = 0; i < static_cast<jsize>(pages.size()); ++i) {
-    jobject page =
-        env->NewObject(page_cls, page_ctor, to_jstring(env, pages[i].name),
-                       to_jstring(env, pages[i].path));
+    jstring name = to_jstring(env, pages[i].name);
+    jstring path = to_jstring(env, pages[i].path);
+    jobject page = env->NewObject(page_cls, page_ctor, name, path);
     env->SetObjectArrayElement(page_array, i, page);
     env->DeleteLocalRef(page);
+    env->DeleteLocalRef(path);
+    env->DeleteLocalRef(name);
   }
   env->DeleteLocalRef(page_cls);
 
@@ -94,11 +96,15 @@ jobject make_content(JNIEnv *env, const std::string &html,
     const auto &[resource, location] = resources[i];
     jobject resource_obj = env->NewObject(
         resource_cls, resource_ctor, make_handle(odr::HtmlResource(resource)));
-    jobject located = env->NewObject(
-        located_cls, located_ctor, resource_obj,
-        location.has_value() ? to_jstring(env, *location) : nullptr);
+    jstring location_str =
+        location.has_value() ? to_jstring(env, *location) : nullptr;
+    jobject located =
+        env->NewObject(located_cls, located_ctor, resource_obj, location_str);
     env->SetObjectArrayElement(located_array, i, located);
     env->DeleteLocalRef(located);
+    if (location_str != nullptr) {
+      env->DeleteLocalRef(location_str);
+    }
     env->DeleteLocalRef(resource_obj);
   }
   env->DeleteLocalRef(resource_cls);
@@ -174,8 +180,9 @@ Java_app_opendocument_core_Html_translateFilesystem(JNIEnv *env, jclass,
 // app.opendocument.core.HtmlService
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlService_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::HtmlService>(handle);
+Java_app_opendocument_core_HtmlService_destroy(JNIEnv *env, jclass,
+                                               jlong handle) {
+  destroy_handle<odr::HtmlService>(env, handle);
 }
 
 extern "C" JNIEXPORT jobject JNICALL
@@ -269,8 +276,8 @@ Java_app_opendocument_core_HtmlService_bringOfflineViewsNative(
 // app.opendocument.core.HtmlView
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlView_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::HtmlView>(handle);
+Java_app_opendocument_core_HtmlView_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::HtmlView>(env, handle);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -322,9 +329,9 @@ Java_app_opendocument_core_HtmlView_bringOfflineNative(JNIEnv *env, jobject,
 // app.opendocument.core.HtmlResource
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlResource_destroy(JNIEnv *, jclass,
+Java_app_opendocument_core_HtmlResource_destroy(JNIEnv *env, jclass,
                                                 jlong handle) {
-  destroy_handle<odr::HtmlResource>(handle);
+  destroy_handle<odr::HtmlResource>(env, handle);
 }
 
 extern "C" JNIEXPORT jint JNICALL

@@ -17,11 +17,8 @@ import java.util.function.LongConsumer;
  * collected while handles into it are alive.
  *
  * <p>The post-mortem free is a {@link PhantomReference} drained by a daemon
- * thread rather than a {@link java.lang.ref.Cleaner}, which is exactly what a
- * Cleaner does internally. Cleaner is a JDK 9 API that android only ships from
- * API level 33, and OpenDocument.droid targets API 26; referencing it made the
- * whole class fail to load there with a {@code NoClassDefFoundError}, and core
- * library desugaring does not cover {@code java.lang.ref}.
+ * thread, not a {@link java.lang.ref.Cleaner}: android ships Cleaner only from
+ * API 33 and desugaring does not cover {@code java.lang.ref}.
  */
 public abstract class NativeResource implements AutoCloseable {
   private static final ReferenceQueue<NativeResource> QUEUE = new ReferenceQueue<>();
@@ -82,24 +79,12 @@ public abstract class NativeResource implements AutoCloseable {
   }
 
   /**
-   * A use of this object that the optimiser cannot drop, so it stays reachable
-   * across whatever ran before it.
+   * A use the optimiser cannot drop, keeping this object reachable across the
+   * call before it. Needed for handles passed as arguments, where no receiver
+   * holds the wrapper and the reaper could free the handle mid-call.
    *
-   * <p>{@link #handle()} outlives the wrapper it came from: once nothing refers to
-   * the wrapper any more the collector may enqueue it and the reaper may free the
-   * handle, and the just-in-time compiler is free to decide that while a native
-   * call using it is still running. A native that takes the handle of the object it
-   * is called on is safe without this - the JNI frame holds the receiver - which is
-   * why every one of them is an instance method of its owner. This is for the
-   * handles that go in as arguments, where there is no receiver to hold them.
-   *
-   * <p>{@code java.lang.ref.Reference.reachabilityFence} is the API for it, and is
-   * unusable here: android has it from API level 28, {@code android/build.gradle.kts}
-   * sets {@code minSdk = 26}, and core library desugaring does not cover
-   * {@code java.lang.ref} - the same wall {@link java.lang.ref.Cleaner} hit above.
-   * Taking the monitor of an object the reference queue can also see is the fallback
-   * the JDK itself used before that method existed: lock elision needs the object to
-   * be provably confined, and this one is not.
+   * <p>The monitor stands in for {@code Reference.reachabilityFence}, which
+   * android only has from API 28 (see {@code jni/AGENTS.md}).
    */
   final void keepAlive() {
     synchronized (this) {

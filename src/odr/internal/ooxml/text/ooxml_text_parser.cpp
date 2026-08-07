@@ -111,14 +111,7 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
     const std::int32_t level = list_level(node);
 
     for (std::int32_t i = 0; i < level; ++i) {
-      /* TODO fix lists
-      auto list_item_unique = std::make_unique<ListItem>(node);
-      auto list_item = list_item_unique.get();
-      store.push_back(std::move(list_item_unique));
-
-      base->init_append_child(list_item);
-       */
-
+      // TODO a nested level should be a list_item wrapping the list
       const auto &[nested_id, _] =
           registry.create_element(ElementType::list, node);
 

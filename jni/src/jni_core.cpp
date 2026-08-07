@@ -254,17 +254,15 @@ Java_app_opendocument_core_Odr_openWithPreferenceNative(
     if (as_file_type >= 0) {
       preference.as_file_type = static_cast<odr::FileType>(as_file_type);
     }
-    const auto append_codes = [&](jintArray array, auto &target,
-                                  auto transform) {
-      const jsize length = env->GetArrayLength(array);
-      jint *codes = env->GetIntArrayElements(array, nullptr);
+    if (jint *codes = env->GetIntArrayElements(file_type_priority, nullptr);
+        codes != nullptr) {
+      const jsize length = env->GetArrayLength(file_type_priority);
       for (jsize i = 0; i < length; ++i) {
-        target.push_back(transform(codes[i]));
+        preference.file_type_priority.push_back(
+            static_cast<odr::FileType>(codes[i]));
       }
-      env->ReleaseIntArrayElements(array, codes, JNI_ABORT);
-    };
-    append_codes(file_type_priority, preference.file_type_priority,
-                 [](jint code) { return static_cast<odr::FileType>(code); });
+      env->ReleaseIntArrayElements(file_type_priority, codes, JNI_ABORT);
+    }
     return make_handle(odr::open(to_string(env, path), preference));
   });
 }

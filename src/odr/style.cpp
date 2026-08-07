@@ -2,6 +2,18 @@
 
 namespace odr {
 
+namespace {
+
+template <typename T>
+void override_if_set(std::optional<T> &property,
+                     const std::optional<T> &other) {
+  if (other.has_value()) {
+    property = other;
+  }
+}
+
+} // namespace
+
 Color Color::from_rgb(const std::uint32_t rgb) {
   return {static_cast<std::uint8_t>(rgb >> 16),
           static_cast<std::uint8_t>(rgb >> 8),
@@ -26,119 +38,63 @@ Color::Color(const std::uint8_t red, const std::uint8_t green,
     : red{red}, green{green}, blue{blue}, alpha{alpha} {}
 
 std::uint32_t Color::rgb() const {
-  std::uint32_t result{0};
-  result |= red << 16;
-  result |= green << 8;
-  result |= blue << 0;
-  return result;
+  return static_cast<std::uint32_t>(red) << 16 |
+         static_cast<std::uint32_t>(green) << 8 |
+         static_cast<std::uint32_t>(blue);
 }
 
 std::uint32_t Color::argb() const {
-  std::uint32_t result{0};
-  result |= alpha << 24;
-  result |= red << 16;
-  result |= green << 8;
-  result |= blue << 0;
-  return result;
+  // `alpha` promotes to `int`, so it has to be widened before the shift
+  return static_cast<std::uint32_t>(alpha) << 24 | rgb();
 }
 
 void TextStyle::override(const TextStyle &other) {
-  if (other.font_name.has_value()) {
-    font_name = other.font_name;
-  }
-  if (other.font_size.has_value()) {
-    font_size = other.font_size;
-  }
-  if (other.font_weight.has_value()) {
-    font_weight = other.font_weight;
-  }
-  if (other.font_style.has_value()) {
-    font_style = other.font_style;
-  }
-  if (other.font_underline.has_value()) {
-    font_underline = other.font_underline;
-  }
-  if (other.font_line_through.has_value()) {
-    font_line_through = other.font_line_through;
-  }
-  if (other.font_shadow.has_value()) {
-    font_shadow = other.font_shadow;
-  }
-  if (other.font_color.has_value()) {
-    font_color = other.font_color;
-  }
-  if (other.background_color.has_value()) {
-    background_color = other.background_color;
-  }
-  if (other.font_position.has_value()) {
-    font_position = other.font_position;
-  }
+  override_if_set(font_name, other.font_name);
+  override_if_set(font_size, other.font_size);
+  override_if_set(font_weight, other.font_weight);
+  override_if_set(font_style, other.font_style);
+  override_if_set(font_underline, other.font_underline);
+  override_if_set(font_line_through, other.font_line_through);
+  override_if_set(font_shadow, other.font_shadow);
+  override_if_set(font_color, other.font_color);
+  override_if_set(background_color, other.background_color);
+  override_if_set(font_position, other.font_position);
 }
 
 void ParagraphStyle::override(const ParagraphStyle &other) {
-  if (other.text_align.has_value()) {
-    text_align = other.text_align;
-  }
+  override_if_set(text_align, other.text_align);
   margin.override(other.margin);
-  if (other.line_height.has_value()) {
-    line_height = other.line_height;
-  }
-  if (other.text_indent.has_value()) {
-    text_indent = other.text_indent;
-  }
+  override_if_set(line_height, other.line_height);
+  override_if_set(text_indent, other.text_indent);
 }
 
 void TableStyle::override(const TableStyle &other) {
-  if (other.width.has_value()) {
-    width = other.width;
-  }
+  override_if_set(width, other.width);
 }
 
 void TableColumnStyle::override(const TableColumnStyle &other) {
-  if (other.width.has_value()) {
-    width = other.width;
-  }
+  override_if_set(width, other.width);
 }
 
 void TableRowStyle::override(const TableRowStyle &other) {
-  if (other.height.has_value()) {
-    height = other.height;
-  }
+  override_if_set(height, other.height);
 }
 
 void TableCellStyle::override(const TableCellStyle &other) {
-  if (other.horizontal_align.has_value()) {
-    horizontal_align = other.horizontal_align;
-  }
-  if (other.vertical_align.has_value()) {
-    vertical_align = other.vertical_align;
-  }
-  if (other.background_color.has_value()) {
-    background_color = other.background_color;
-  }
+  override_if_set(horizontal_align, other.horizontal_align);
+  override_if_set(vertical_align, other.vertical_align);
+  override_if_set(background_color, other.background_color);
   padding.override(other.padding);
   border.override(other.border);
-  if (other.text_rotation.has_value()) {
-    text_rotation = other.text_rotation;
-  }
+  override_if_set(text_rotation, other.text_rotation);
 }
 
 void GraphicStyle::override(const GraphicStyle &other) {
-  if (other.stroke_width.has_value()) {
-    stroke_width = other.stroke_width;
-  }
-  if (other.stroke_color.has_value()) {
-    stroke_color = other.stroke_color;
-  }
-  if (other.fill_color.has_value()) {
-    fill_color = other.fill_color;
-  }
-  if (other.vertical_align.has_value()) {
-    vertical_align = other.vertical_align;
-  }
-  if (other.text_wrap.has_value()) {
-    text_wrap = other.text_wrap;
-  }
+  override_if_set(stroke_width, other.stroke_width);
+  override_if_set(stroke_color, other.stroke_color);
+  override_if_set(fill_color, other.fill_color);
+  override_if_set(vertical_align, other.vertical_align);
+  override_if_set(text_wrap, other.text_wrap);
 }
 
 } // namespace odr

@@ -10,8 +10,6 @@
 #include <stdexcept>
 #include <utility>
 
-namespace {} // namespace
-
 namespace odr::internal::ooxml::crypto {
 
 ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
@@ -29,11 +27,7 @@ ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
   offset += sizeof(standard_header);
 
   std::memcpy(&m_encryption_header, offset, sizeof(m_encryption_header));
-  const std::u16string csp_name_u16(
-      reinterpret_cast<const char16_t *>(offset + sizeof(m_encryption_header)));
-  // the CSP name field is parsed but currently unused
-  [[maybe_unused]] const std::string csp_name =
-      util::string::u16string_to_string(csp_name_u16);
+  // the trailing CSP name is skipped; it is not needed to derive the key
   offset += standard_header.encryption_header_size;
 
   std::memcpy(&m_encryption_verifier, offset, sizeof(m_encryption_verifier));
@@ -131,8 +125,7 @@ Util::Util(const std::string &encryption_info) {
       version_info.minor == 2) {
     impl = std::make_unique<ECMA376Standard>(encryption_info);
   } else {
-    // everything else (agile 4.4, extensible 3.3/4.3, and unknown variants) is
-    // unsupported
+    // agile (4.4), extensible (3.3/4.3) and unknown variants
     throw MsUnsupportedCryptoAlgorithm();
   }
 }

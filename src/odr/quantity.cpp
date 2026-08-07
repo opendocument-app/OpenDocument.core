@@ -7,11 +7,9 @@
 
 namespace odr {
 
-/// 7 significant digits: enough that document geometry survives a
-/// parse/format round trip (drawing coordinates reach the thousands of mm,
-/// which the stream default of 6 would round), and no more than a `float`
-/// carries, so an xlsx column width stored as float `68.55` does not come back
-/// as `68.550003`.
+/// 7 significant digits: one more than the stream default, which rounds
+/// drawing coordinates in the thousands of mm, and no more than a `float`
+/// carries, so `68.55` does not come back as `68.550003`.
 std::string QuantityBase::format_magnitude(const double magnitude) {
   return internal::util::number::to_string_significant(magnitude, 7);
 }
@@ -46,10 +44,8 @@ private:
   }
 };
 
-/// The unitless unit, i.e. the same one `Measure("5")` parses out of a bare
-/// number. Registered rather than left null so that `m_unit` is never null and
-/// every accessor below can dereference it, and so that a default-constructed
-/// unit compares equal to a parsed one.
+/// Registered rather than left null, so that `m_unit` is always dereferenceable
+/// and this compares equal to the unit `Measure("5")` parses.
 DynamicUnit::DynamicUnit() : m_unit{Registry::unit("")} {}
 
 DynamicUnit::DynamicUnit(const std::string_view name)

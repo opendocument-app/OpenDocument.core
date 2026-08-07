@@ -9,10 +9,8 @@ TEST(Quantity, construct) {
   Quantity<double>{"10 ms"};
 }
 
-/// A default-constructed unit used to leave the unit pointer null, so anything
-/// that rendered such a quantity — the geometry fallback for a shape missing
-/// its `svg:*` attribute, for one — dereferenced null instead of emitting a
-/// bare number.
+/// A default-constructed unit used to leave the unit pointer null, so rendering
+/// such a quantity dereferenced null instead of emitting a bare number.
 TEST(DynamicUnit, default_constructed_is_the_unitless_unit) {
   EXPECT_EQ(DynamicUnit(), DynamicUnit(""));
   EXPECT_EQ(DynamicUnit().name(), "");

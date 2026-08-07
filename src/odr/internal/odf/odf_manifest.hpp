@@ -40,8 +40,8 @@ struct Manifest {
       std::string salt;
 
       // argon2 specific
-      std::uint64_t argon2_memory;
-      std::uint64_t argon2_lanes;
+      std::uint64_t argon2_memory{0};
+      std::uint64_t argon2_lanes{0};
     };
     struct StartKeyGeneration {
       ChecksumType type{ChecksumType::UNKNOWN};

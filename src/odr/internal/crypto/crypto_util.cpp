@@ -188,14 +188,20 @@ std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
                                   const std::string &input) {
   // follows https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
 
-  if (std::strncmp(iv.data(), input.data(), iv.size()) != 0) {
+  const std::size_t iv_size = iv.size();
+  constexpr std::size_t mac_size = 16;
+
+  // The input is IV || ciphertext || tag; anything shorter would wrap
+  // `cipher_size`. `memcmp`, not `strncmp` — both operands are binary.
+  if (input.size() < iv_size + mac_size) {
+    throw std::runtime_error("GCM input too short");
+  }
+  if (std::memcmp(iv.data(), input.data(), iv_size) != 0) {
     throw std::runtime_error("IV mismatch");
   }
 
   std::string result(input.size(), '\0');
 
-  const std::size_t iv_size = iv.size();
-  constexpr std::size_t mac_size = 16;
   const std::size_t cipher_size = input.size() - iv_size - mac_size;
   auto *message = reinterpret_cast<byte *>(result.data());
   const auto *mac =

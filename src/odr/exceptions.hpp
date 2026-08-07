@@ -6,11 +6,9 @@
 namespace odr {
 enum class FileType;
 
-/// @brief Base of every exception type this library declares.
-///
-/// Catching this catches every typed error below. Note that the decoders also
-/// throw plain `std::runtime_error` for malformed input that has no dedicated
-/// type, so `std::runtime_error` remains the widest net.
+/// @brief Base of every exception type this library declares. The decoders also
+/// throw plain `std::runtime_error` for malformed input with no dedicated type,
+/// so that remains the widest net.
 struct Exception : std::runtime_error {
   using std::runtime_error::runtime_error;
 };

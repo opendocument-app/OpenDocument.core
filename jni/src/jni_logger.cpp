@@ -17,9 +17,7 @@ using odr_jni::to_jstring;
 using odr_jni::to_string;
 
 /// `JavaVM::AttachCurrentThread` takes a `JNIEnv **` on android and a `void **`
-/// on the jdk, and neither pointer converts to the other, so the argument has
-/// to be typed per platform. `GetEnv` is `void **` on both and needs none of
-/// this.
+/// on the jdk, and neither converts to the other. `GetEnv` needs none of this.
 jint attach_current_thread(JavaVM *const vm, JNIEnv **const env) {
 #ifdef __ANDROID__
   return vm->AttachCurrentThread(env, nullptr);
@@ -81,6 +79,7 @@ public:
       return;
     }
     m_bridge = static_cast<jclass>(env->NewGlobalRef(bridge));
+    env->DeleteLocalRef(bridge);
     m_will_log = env->GetStaticMethodID(m_bridge, "willLog",
                                         "(Lapp/opendocument/core/ILogger;I)Z");
     m_log = env->GetStaticMethodID(m_bridge, "log",
@@ -135,6 +134,11 @@ public:
         static_cast<jint>(level), text, file_name, function_name,
         static_cast<jint>(location.line()));
     clear_pending(env.get());
+    // an already-attached thread keeps one frame for the whole native call, so
+    // the strings of every message logged during it would pile up in it
+    env.get()->DeleteLocalRef(text);
+    env.get()->DeleteLocalRef(function_name);
+    env.get()->DeleteLocalRef(file_name);
   }
 
   void flush() override {
@@ -220,6 +224,6 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Logger_flushNative(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Logger_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::Logger>(handle);
+Java_app_opendocument_core_Logger_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::Logger>(env, handle);
 }

@@ -10,22 +10,18 @@
 
 namespace odr::internal::pdf {
 
-/// Maps PDF character codes to Unicode, as described by a `ToUnicode` CMap.
-///
-/// A code is a sequence of bytes (1 or more, big-endian) whose width is defined
-/// by the codespace ranges; a destination is a sequence of UTF-16 units (more
-/// than one for ligatures). `translate_string` splits an input string into
-/// codes of the right width and concatenates their destinations.
+/// A parsed CMap: character codes (1+ big-endian bytes, width from the
+/// codespace ranges) to Unicode (several UTF-16 units for a ligature) and/or to
+/// CIDs. `translate_string` splits an input string and concatenates the
+/// destinations.
 class CMap {
 public:
   void add_codespace_range(std::string low_code, std::string high_code);
   void map_single(std::string code, std::u16string unicode);
 
-  /// CID mapping (a composite font's `/Encoding` CMap stream, ISO 32000-1
-  /// 9.7.5.3): `cidchar` maps a single code, `cidrange` maps a contiguous block
-  /// (`base_cid + (code - low)`). Codes are keyed by their raw big-endian bytes
-  /// / width so a 1-byte and a 2-byte code with the same numeric value stay
-  /// distinct (`<20>` -> CID 229 vs `<0020>` -> CID 32), the mixed-width case.
+  /// CID mapping from a composite font's `/Encoding` CMap stream (ISO 32000-1
+  /// 9.7.5.3); a range maps `base_cid + (code - low)`. Codes are keyed by their
+  /// raw bytes *and* width, so `<20>` and `<0020>` stay distinct.
   void map_cid_char(std::string code, std::uint32_t cid);
   void add_cid_range(std::uint32_t low, std::uint32_t high,
                      std::uint32_t base_cid, std::size_t width);
@@ -45,24 +41,19 @@ public:
     return m_inherits_external_cmap;
   }
 
-  /// True when this CMap declares an authoritative codespace: at least one
-  /// range, and it does not inherit an unresolved base CMap via `usecmap`. When
-  /// true, the code widths this CMap implies are authoritative for splitting a
-  /// code string (see `code_width`); when false, callers fall back to another
-  /// CMap's codespace or a fixed width. An inherited (`usecmap`) codespace is
-  /// deliberately excluded — its local ranges may cover only an override
-  /// subset, so trusting them would mis-split the inherited (e.g. 2-byte)
-  /// codes.
+  /// True when this CMap's `code_width` may be trusted to split a code string:
+  /// it declares at least one range and inherits no unresolved base CMap. A
+  /// `usecmap` stream is excluded because its local ranges may cover only an
+  /// override subset. False sends callers to another codespace or a fixed
+  /// width.
   [[nodiscard]] bool has_codespace() const {
     return !m_codespace_ranges.empty() && !m_inherits_external_cmap;
   }
 
-  /// Byte width of a code whose first byte is `first`, decided by the codespace
-  /// ranges (matched on the first byte, ISO 32000-1 9.7.6.2). Falls back to a
-  /// single byte when no range declares/matches it. This is the variable-width
-  /// split that `translate_string` uses; exposing it lets the glyph/advance
-  /// paths split codes identically, so a mixed 1-/2-byte codespace (e.g. a
-  /// 1-byte space among 2-byte CIDs) stays aligned across both.
+  /// Byte width of a code starting with `first`, from the codespace ranges
+  /// (matched on the first byte, ISO 32000-1 9.7.6.2); 1 when none matches.
+  /// Public so the glyph/advance paths split exactly as `translate_string`
+  /// does, keeping a mixed 1-/2-byte codespace aligned across both.
   [[nodiscard]] std::size_t code_width(std::uint8_t first) const;
 
   [[nodiscard]] std::string translate_string(const std::string &codes) const;

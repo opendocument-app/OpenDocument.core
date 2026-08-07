@@ -4,10 +4,12 @@
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
-#include <iterator>
 #include <map>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -33,6 +35,8 @@ enum Operator : std::uint16_t {
   op_font_bbox = 5,
   op_ros = 1230,
   op_charstring_type = 1206,
+  op_fd_array = 1236,
+  op_fd_select = 1237,
 };
 
 /// Number-operand byte markers shared by DICT data and Type2 charstrings
@@ -95,6 +99,12 @@ namespace bs = util::byte_string;
 /// A parsed DICT: operator -> operands. Reals are decoded to double; integers
 /// stay exact within double range (CFF integers fit).
 using Dict = std::map<std::uint16_t, std::vector<double>>;
+
+/// A DICT operand as an FWord. Clamping keeps an out-of-range operand out of
+/// the undefined double -> int16 conversion.
+[[nodiscard]] std::int16_t to_fword(const double value) {
+  return static_cast<std::int16_t>(std::clamp(value, -32768.0, 32767.0));
+}
 
 /// Parse a CFF DICT occupying the byte range [begin, end) of @p d.
 [[nodiscard]] Dict parse_dict(const std::string_view d,
@@ -181,28 +191,28 @@ enum PredefinedCharset : std::uint32_t {
 
 /// Predefined Expert charset: glyph -> SID (Adobe TN #5176 Appendix C). The
 /// ISOAdobe charset is the identity (SID == GID) so it needs no table.
-constexpr std::uint16_t expert_charset[] = {
-    0,   1,   229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 13,  14,
-    15,  99,  239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 27,  28,
-    249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262,
-    263, 264, 265, 266, 109, 110, 267, 268, 269, 270, 271, 272, 273, 274,
-    275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288,
-    289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302,
-    303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316,
-    317, 318, 158, 155, 163, 319, 320, 321, 322, 323, 324, 325, 326, 150,
-    164, 169, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338,
-    339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352,
-    353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366,
-    367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378};
+constexpr auto expert_charset = std::to_array<std::uint16_t>(
+    {0,   1,   229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 13,  14,
+     15,  99,  239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 27,  28,
+     249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262,
+     263, 264, 265, 266, 109, 110, 267, 268, 269, 270, 271, 272, 273, 274,
+     275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288,
+     289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302,
+     303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316,
+     317, 318, 158, 155, 163, 319, 320, 321, 322, 323, 324, 325, 326, 150,
+     164, 169, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338,
+     339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352,
+     353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366,
+     367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378});
 
 /// Predefined ExpertSubset charset: glyph -> SID (Adobe TN #5176 Appendix C).
-constexpr std::uint16_t expert_subset_charset[] = {
-    0,   1,   231, 232, 235, 236, 237, 238, 13,  14,  15,  99,  239, 240, 241,
-    242, 243, 244, 245, 246, 247, 248, 27,  28,  249, 250, 251, 253, 254, 255,
-    256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 109, 110, 267, 268,
-    269, 270, 272, 300, 301, 302, 305, 314, 315, 158, 155, 163, 320, 321, 322,
-    323, 324, 325, 326, 150, 164, 169, 327, 328, 329, 330, 331, 332, 333, 334,
-    335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346};
+constexpr auto expert_subset_charset = std::to_array<std::uint16_t>(
+    {0,   1,   231, 232, 235, 236, 237, 238, 13,  14,  15,  99,  239, 240, 241,
+     242, 243, 244, 245, 246, 247, 248, 27,  28,  249, 250, 251, 253, 254, 255,
+     256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 109, 110, 267, 268,
+     269, 270, 272, 300, 301, 302, 305, 314, 315, 158, 155, 163, 320, 321, 322,
+     323, 324, 325, 326, 150, 164, 169, 327, 328, 329, 330, 331, 332, 333, 334,
+     335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346});
 
 } // namespace
 
@@ -237,6 +247,11 @@ std::vector<CffFont::Range> CffFont::read_index(const std::uint32_t offset,
   for (std::uint16_t i = 1; i <= count; ++i) {
     const std::uint32_t next =
         read_be(d, offset_array + i * off_size, off_size);
+    // The offset array is non-decreasing (Adobe TN #5176 §5); otherwise the
+    // member length would wrap.
+    if (next < prev) {
+      throw std::runtime_error("cff: non-monotonic INDEX offsets");
+    }
     members.push_back({data_base + prev, next - prev});
     prev = next;
   }
@@ -295,10 +310,8 @@ void CffFont::parse_top_dict(const Range top_dict) {
 
   if (const auto it = dict.find(op_font_bbox);
       it != dict.end() && it->second.size() == 4) {
-    m_bbox = {static_cast<std::int16_t>(it->second[0]),
-              static_cast<std::int16_t>(it->second[1]),
-              static_cast<std::int16_t>(it->second[2]),
-              static_cast<std::int16_t>(it->second[3])};
+    m_bbox = {to_fword(it->second[0]), to_fword(it->second[1]),
+              to_fword(it->second[2]), to_fword(it->second[3])};
   }
 
   if (const auto it = dict.find(op_char_strings); it != dict.end()) {
@@ -311,7 +324,15 @@ void CffFont::parse_top_dict(const Range top_dict) {
       it != dict.end() && it->second.size() == 2) {
     const auto size = static_cast<std::uint32_t>(it->second[0]);
     const auto offset = static_cast<std::uint32_t>(it->second[1]);
-    parse_private_dict({offset, size});
+    m_widths = parse_private_dict({offset, size});
+  }
+
+  // A CID-keyed font keeps its Private DICTs per FD, not in the Top DICT.
+  if (const auto it = dict.find(op_fd_array); it != dict.end()) {
+    parse_fd_array(static_cast<std::uint32_t>(it->second.at(0)));
+  }
+  if (const auto it = dict.find(op_fd_select); it != dict.end()) {
+    parse_fd_select(static_cast<std::uint32_t>(it->second.at(0)));
   }
 
   // charset: an offset past the predefined ids (0/1/2) is a custom charset;
@@ -339,33 +360,87 @@ void CffFont::load_predefined_charset(const std::uint32_t id) {
     }
     return;
   }
-  const std::uint16_t *table = nullptr;
-  std::size_t size = 0;
-  if (id == predefined_charset_expert) {
-    table = expert_charset;
-    size = std::size(expert_charset);
-  } else { // predefined_charset_expert_subset
-    table = expert_subset_charset;
-    size = std::size(expert_subset_charset);
-  }
-  for (std::uint16_t gid = 1; gid < glyphs && gid < size; ++gid) {
+  const std::span<const std::uint16_t> table =
+      id == predefined_charset_expert
+          ? std::span<const std::uint16_t>(expert_charset)
+          : std::span<const std::uint16_t>(expert_subset_charset);
+  for (std::uint16_t gid = 1; gid < glyphs && gid < table.size(); ++gid) {
     m_charset[gid] = table[gid];
   }
 }
 
-void CffFont::parse_private_dict(const Range private_dict) {
+CffFont::Widths CffFont::parse_private_dict(const Range private_dict) const {
+  Widths widths;
   if (private_dict.length == 0) {
-    return;
+    return widths;
   }
   const std::string_view d{m_data};
   const Dict dict = parse_dict(d, private_dict.offset,
                                private_dict.offset + private_dict.length);
   if (const auto it = dict.find(op_default_width_x); it != dict.end()) {
-    m_default_width = it->second.at(0);
+    widths.default_width = it->second.at(0);
   }
   if (const auto it = dict.find(op_nominal_width_x); it != dict.end()) {
-    m_nominal_width = it->second.at(0);
+    widths.nominal_width = it->second.at(0);
   }
+  return widths;
+}
+
+void CffFont::parse_fd_array(const std::uint32_t offset) {
+  const std::string_view d{m_data};
+  std::uint32_t end = 0;
+  for (const Range font_dict : read_index(offset, end)) {
+    const Dict dict =
+        parse_dict(d, font_dict.offset, font_dict.offset + font_dict.length);
+    Widths widths;
+    if (const auto it = dict.find(op_private);
+        it != dict.end() && it->second.size() == 2) {
+      widths = parse_private_dict({static_cast<std::uint32_t>(it->second[1]),
+                                   static_cast<std::uint32_t>(it->second[0])});
+    }
+    m_fd_widths.push_back(widths);
+  }
+}
+
+void CffFont::parse_fd_select(const std::uint32_t offset) {
+  const std::string_view d{m_data};
+  const std::uint16_t glyphs = glyph_count();
+  const std::uint8_t format = u8(d, offset);
+
+  if (format == 0) {
+    m_fd_select.reserve(glyphs);
+    for (std::uint16_t gid = 0; gid < glyphs; ++gid) {
+      m_fd_select.push_back(u8(d, offset + 1 + gid));
+    }
+    return;
+  }
+  if (format != 3) {
+    throw std::runtime_error("cff: unknown FDSelect format");
+  }
+
+  // format 3: ranges of [first, next first) sharing one FD, then a sentinel
+  const auto ranges = static_cast<std::uint16_t>(read_be(d, offset + 1, 2));
+  m_fd_select.assign(glyphs, 0);
+  for (std::uint16_t i = 0; i < ranges; ++i) {
+    const std::uint32_t entry = offset + 3 + 3 * i;
+    const auto first = static_cast<std::uint16_t>(read_be(d, entry, 2));
+    const std::uint8_t fd = u8(d, entry + 2);
+    const auto next = static_cast<std::uint16_t>(read_be(d, entry + 3, 2));
+    for (std::uint32_t gid = first; gid < next && gid < glyphs; ++gid) {
+      m_fd_select[gid] = fd;
+    }
+  }
+}
+
+const CffFont::Widths &
+CffFont::widths_for_glyph(const std::uint16_t glyph) const {
+  if (!m_fd_widths.empty()) {
+    const std::size_t fd = glyph < m_fd_select.size() ? m_fd_select[glyph] : 0;
+    if (fd < m_fd_widths.size()) {
+      return m_fd_widths[fd];
+    }
+  }
+  return m_widths;
 }
 
 void CffFont::parse_charset(const std::uint32_t offset) {
@@ -510,11 +585,13 @@ bool CffFont::symbolic() const noexcept {
 FontBBox CffFont::bounding_box() const noexcept { return m_bbox; }
 
 std::uint16_t CffFont::advance_width(const std::uint16_t glyph) const {
-  if (const std::optional<std::int32_t> width = charstring_width(glyph);
-      width.has_value()) {
-    return static_cast<std::uint16_t>(m_nominal_width + *width);
-  }
-  return static_cast<std::uint16_t>(m_default_width);
+  const Widths &widths = widths_for_glyph(glyph);
+  const std::optional<std::int32_t> width = charstring_width(glyph);
+  const double advance =
+      width.has_value() ? widths.nominal_width + *width : widths.default_width;
+  // An advance is a uFWord; clamping keeps a hostile Private DICT out of the
+  // undefined double -> uint16 conversion.
+  return static_cast<std::uint16_t>(std::clamp(advance, 0.0, 65535.0));
 }
 
 std::uint16_t CffFont::glyph_for_code_point(const char32_t code_point) const {

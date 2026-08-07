@@ -5,10 +5,8 @@
 
 namespace odr::internal::oldms::presentation {
 
-// Filled by copying file bytes straight in (see ppt_io), so multi-byte fields
-// use host byte order — correct only on little-endian hosts (see ppt_io.hpp).
-// Bit-fields additionally assume LSB-first allocation, which all supported
-// compilers use on little-endian targets (shared oldms/ assumption).
+// Filled by copying file bytes straight in (see ppt_io): little-endian,
+// LSB-first hosts only — see oldms/AGENTS.md.
 
 /// Record types relevant to text extraction. See [MS-PPT] 2.13.24 RecordType.
 enum RecordType : std::uint16_t {

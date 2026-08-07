@@ -208,11 +208,9 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
         read_stretch_text_action(in, action_header.vl, context.encoding);
     write_text(out, action.point, action.text, context);
   } break;
-  case META_TEXTRECT_ACTION: {
-    TextRectangleAction action;
-    // action.read(in, action_header.vl, context.encoding);
-    // TODO
-  } break;
+  case META_TEXTRECT_ACTION:
+    // TODO read_text_rectangle_action; the caller skips the body meanwhile
+    break;
   case META_NULL_ACTION:
   case META_PUSH_ACTION:
   case META_POP_ACTION:

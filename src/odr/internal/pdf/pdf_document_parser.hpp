@@ -23,21 +23,15 @@ namespace odr::internal::pdf {
 struct Document;
 
 /// Resolution/memoization layer on top of the sequential `FileParser`: maps
-/// `ObjectReference`s to file positions via the cross-reference table and
-/// hands out resolved objects by reference.
+/// `ObjectReference`s to file positions via the cross-reference table and hands
+/// out resolved objects by reference.
 ///
-/// Reads are memoized in `m_objects` / `m_object_streams`. This is intrinsic,
-/// not a convenience: a compressed object can only be read by inflating and
-/// parsing the whole object stream that holds it, and only this class knows
-/// (from the xref) which objects share a stream — so the caller cannot dedupe
-/// that work. `read_object` is also reentrant (length resolution, object-stream
-/// loading, deep resolution), and the object graph has heavy sharing, so the
-/// cache must live here.
-///
-/// Both caches grow monotonically and are never evicted, which is safe only
-/// because a `DocumentParser` is a transient per-render object: build one,
-/// produce a `Document`, read its lazy streams, then discard it. Do not hold it
-/// long-lived or share it across documents.
+/// The caches are intrinsic, not a convenience: reading one compressed object
+/// means inflating and parsing the whole object stream holding it, and only
+/// this class knows from the xref which objects share one. They grow
+/// monotonically and are never evicted, which is safe only because a
+/// `DocumentParser` is transient per render — build one, produce a `Document`,
+/// read its lazy streams, discard it. Never share one across documents.
 class DocumentParser {
 public:
   /// Takes ownership of the input stream (move-only: the parser is the

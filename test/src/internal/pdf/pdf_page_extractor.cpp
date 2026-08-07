@@ -491,9 +491,13 @@ TEST(PdfPageExtractor, tj_kern_threshold) {
   res.font["F1"] = &font;
 
   // -50 -> +0.5 gap, below 0.2 em
-  EXPECT_EQ(run("BT /F1 10 Tf 0 0 Td [(A) -50 (B)] TJ ET", res)[1].text, "B");
+  const auto below = run("BT /F1 10 Tf 0 0 Td [(A) -50 (B)] TJ ET", res);
+  ASSERT_EQ(below.size(), 2);
+  EXPECT_EQ(below[1].text, "B");
   // -400 -> +4 gap, above 0.2 em
-  EXPECT_EQ(run("BT /F1 10 Tf 0 0 Td [(A) -400 (B)] TJ ET", res)[1].text, " B");
+  const auto above = run("BT /F1 10 Tf 0 0 Td [(A) -400 (B)] TJ ET", res);
+  ASSERT_EQ(above.size(), 2);
+  EXPECT_EQ(above[1].text, " B");
 }
 
 // A perpendicular jump (a new text line) infers a space so lines don't merge.
@@ -802,12 +806,9 @@ TEST(PdfPageExtractor, gs_soft_mask_scoped_by_q_Q) {
   EXPECT_EQ(path_at(page, 1).soft_mask, nullptr); // restored after Q
 }
 
-// A transparency group with a group-level parameter (soft mask here) is emitted
-// as a single `GroupElement` carrying that parameter, with the interior content
-// as its children — so the renderer composites the group first, then applies
-// the mask (ISO 32000-1 11.6.6). The mask survives even though the group's own
-// content resets it to none: the common drop-shadow/reflection idiom (a `gs`
-// sets the mask, then a group form paints the shape).
+// A group-level parameter (a soft mask here) rides on one `GroupElement` with
+// the interior as its children, so the renderer composites and then masks
+// (ISO 32000-1 11.6.6) — surviving the group resetting the mask internally.
 TEST(PdfPageExtractor, soft_mask_wraps_transparency_group) {
   XObject mask_group = form_x_object("0 0 10 10 re f");
   Resources form_res;
@@ -832,11 +833,9 @@ TEST(PdfPageExtractor, soft_mask_wraps_transparency_group) {
             nullptr);
 }
 
-// A transparency group's constant alpha rides on the `GroupElement`, not each
-// interior element, so the group composites first and then fades — the correct
-// model for content whose interior paints overlap (ISO 32000-1 11.6.6). The
-// group resets alpha internally (as real group content does), yet the group's
-// own alpha is the outer `ca`.
+// The constant alpha rides on the `GroupElement`, not each interior element, so
+// overlapping interior paints composite before fading (ISO 32000-1 11.6.6) —
+// even though the group resets alpha internally.
 TEST(PdfPageExtractor, transparency_group_carries_constant_alpha) {
   Resources form_res;
   form_res.ext_g_state["GS0"] = ext_g_state(1.0, std::nullopt, ""); // reset
@@ -1307,10 +1306,8 @@ TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_carries_colour) {
   EXPECT_EQ(p.fill_pattern->paint_type, 2);
 }
 
-// An uncoloured pattern selected through a *named* Pattern colour space with an
-// underlying base (`[/Pattern /DeviceRGB]`) resolves its leading components
-// through that base — `1 0 0` is red, not black (the base would be ignored if
-// the Pattern space's `to_rgb` dropped it).
+// A named Pattern space with an underlying base (`[/Pattern /DeviceRGB]`)
+// resolves the leading components through that base: `1 0 0` is red, not black.
 TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_colour_through_base) {
   Pattern pattern;
   pattern.type = Pattern::Type::tiling;

@@ -18,8 +18,7 @@ namespace odr::internal {
 
 namespace {
 
-/// At most @p size bytes, cut back to what was actually read - a file shorter
-/// than the longest signature must never be matched against what sat behind it.
+/// At most @p size bytes, cut back to what was actually read.
 std::string read_head(std::istream &in, const std::size_t size) {
   std::string result(size, '\0');
   in.read(result.data(), static_cast<std::streamsize>(size));
@@ -65,12 +64,8 @@ FileType riff_file_type(const std::string &head) {
   return FileType::unknown;
 }
 
-/// Which format an ISO base media container holds, from its major brand.
-///
-/// The brands are open ended and every writer adds its own, so this names the
-/// ones that mean something other than video and lets the rest - `isom`,
-/// `mp41`, `mp42`, `avc1`, `dash` and whatever comes next - fall through to
-/// what the container almost always is.
+/// Which format an ISO base media container holds, from its major brand. Only
+/// the brands that are not video are named; the open ended rest falls through.
 FileType iso_base_media_file_type(const std::string &head) {
   const std::string_view brand = tag_at(head, 8);
   if (brand == "qt  ") {
@@ -189,8 +184,8 @@ FileType magic::file_type(const std::string &magic) {
       match_magic(magic, "02 00 09 00 00 03")) { // disk metafile header
     return FileType::windows_metafile;
   }
-  // the leading record type alone is far too weak, so the header signature at
-  // offset 40 has to agree
+  // the leading record type alone is too weak, the signature at offset 40 has
+  // to agree
   if (match_magic(magic, "01 00 00 00") && tag_at(magic, 40) == " EMF") {
     return FileType::enhanced_metafile;
   }
@@ -203,8 +198,7 @@ FileType magic::file_type(const std::string &magic) {
 }
 
 FileType magic::file_type(std::istream &in) {
-  // every signature is a prefix but one: an enhanced metafile names itself at
-  // offset 40, so the head has to reach 44
+  // an enhanced metafile names itself at offset 40, so the head has to reach 44
   static constexpr std::size_t head_size = 64;
 
   return file_type(read_head(in, head_size));
@@ -220,10 +214,8 @@ FileType magic::file_type(const File &file) {
 
 std::string_view magic::mimetype(const std::string &path,
                                  const Logger &logger) {
-  // the signature table above is not enough on its own: a zip and a compound
-  // file binary say nothing about which document they hold, and the answer for
-  // those only comes out of opening them. that is what `list_file_types` does,
-  // and it reports the container first and what was decoded from it after
+  // a zip or compound file binary only names its document once opened;
+  // `list_file_types` reports the container first and the decoded type after
   const std::vector<FileType> file_types =
       open_strategy::list_file_types(std::make_shared<DiskFile>(path), logger);
   if (file_types.empty()) {

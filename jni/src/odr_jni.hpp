@@ -44,8 +44,10 @@ template <typename T> jlong make_handle(T value) {
   return reinterpret_cast<jlong>(new T(std::move(value)));
 }
 
-template <typename T> void destroy_handle(jlong handle) {
-  delete from_handle<T>(handle);
+/// Frees a handle. Guarded like every other native body: a destructor that
+/// throws would otherwise unwind through the JNI boundary.
+template <typename T> void destroy_handle(JNIEnv *env, jlong handle) {
+  guarded(env, [&] { delete from_handle<T>(handle); });
 }
 
 } // namespace odr_jni

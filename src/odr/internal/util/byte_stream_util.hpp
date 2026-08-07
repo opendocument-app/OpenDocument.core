@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <streambuf>
+#include <string>
 
 namespace odr::internal::util::byte_stream {
 
@@ -18,7 +20,7 @@ bool try_read(std::istream &in, char *out, std::size_t count);
 
 template <typename T> void try_read(std::istream &in, std::optional<T> &out) {
   out.emplace();
-  if (!try_read(in, reinterpret_cast<char *>(&out), sizeof(T))) {
+  if (!try_read(in, reinterpret_cast<char *>(&*out), sizeof(T))) {
     out.reset();
   }
 }
@@ -44,8 +46,8 @@ template <typename T> T read(std::istream &in) {
 std::uint8_t read_u8(std::istream &in);
 
 template <std::uint32_t N> std::array<char, N> read_u8s(std::istream &in) {
-  std::array<char, N> result;
-  if (in.rdbuf()->sgetn(result.data(), result.size()) != result.size()) {
+  std::array<char, N> result{};
+  if (in.rdbuf()->sgetn(result.data(), N) != static_cast<std::streamsize>(N)) {
     throw std::runtime_error("unexpected stream exhaust");
   }
   return result;

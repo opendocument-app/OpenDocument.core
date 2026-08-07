@@ -3,6 +3,7 @@
 #include <odr/internal/font/type1_crypt.hpp>
 #include <odr/internal/util/byte_util.hpp>
 
+#include <algorithm>
 #include <charconv>
 #include <cstdint>
 #include <optional>
@@ -54,6 +55,12 @@ namespace {
   } catch (const std::exception &) {
     return 0.0;
   }
+}
+
+/// A `/FontBBox` number as an FWord. Clamping keeps an out-of-range number out
+/// of the undefined double -> int16 conversion.
+[[nodiscard]] std::int16_t to_fword(const double value) {
+  return static_cast<std::int16_t>(std::clamp(value, -32768.0, 32767.0));
 }
 
 /// Parse the numbers inside the next `[...]` or `{...}` after @p key in @p s.
@@ -180,9 +187,8 @@ void Type1Font::parse_clear(const std::string_view clear) {
   }
   if (const std::vector<double> bbox = parse_number_array(clear, "/FontBBox");
       bbox.size() == 4) {
-    m_font_bbox = {
-        static_cast<std::int16_t>(bbox[0]), static_cast<std::int16_t>(bbox[1]),
-        static_cast<std::int16_t>(bbox[2]), static_cast<std::int16_t>(bbox[3])};
+    m_font_bbox = {to_fword(bbox[0]), to_fword(bbox[1]), to_fword(bbox[2]),
+                   to_fword(bbox[3])};
   }
 
   // /Encoding: `StandardEncoding def`, or a custom array built with
@@ -212,30 +218,36 @@ void Type1Font::parse_clear(const std::string_view clear) {
 }
 
 void Type1Font::parse_private(const std::string_view decrypted) {
-  std::int32_t len_iv = 4;
+  std::size_t len_iv = 4;
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
     std::int32_t value = 0;
     if (parse_int(read_token(decrypted, p), value)) {
-      len_iv = value;
+      if (value < 0) {
+        throw std::runtime_error("type1: negative /lenIV");
+      }
+      len_iv = static_cast<std::size_t>(value);
     }
   }
-  m_len_iv = len_iv;
+
+  // /CharStrings starts where /Subrs ends (Subrs precede it).
+  const std::size_t cs = decrypted.find("/CharStrings");
 
   // /Subrs: entries `dup <index> <length> RD <bytes> NP`.
   if (const std::size_t k = decrypted.find("/Subrs");
       k != std::string_view::npos) {
     std::size_t p = k;
     while ((p = decrypted.find("dup ", p)) != std::string_view::npos) {
-      // Stop when /CharStrings starts (Subrs precede it).
-      const std::size_t cs = decrypted.find("/CharStrings");
       if (cs != std::string_view::npos && p > cs) {
         break;
       }
       std::size_t q = p + 4;
       std::int32_t index = 0;
-      if (!parse_int(read_token(decrypted, q), index) || index < 0) {
+      // Every subr needs at least one byte of input, so an index at or past the
+      // input size cannot name one — and must not size the vector.
+      if (!parse_int(read_token(decrypted, q), index) || index < 0 ||
+          static_cast<std::size_t>(index) >= decrypted.size()) {
         p += 4;
         continue;
       }
@@ -254,7 +266,6 @@ void Type1Font::parse_private(const std::string_view decrypted) {
   }
 
   // /CharStrings: entries `/<name> <length> RD <bytes> ND`.
-  const std::size_t cs = decrypted.find("/CharStrings");
   if (cs == std::string_view::npos) {
     return;
   }

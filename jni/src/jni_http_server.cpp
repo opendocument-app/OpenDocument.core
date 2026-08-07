@@ -32,9 +32,9 @@ Java_app_opendocument_core_HttpServer_create(JNIEnv *env, jclass) {
   return guarded(env, [&] { return make_handle(odr::HttpServer()); });
 }
 
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HttpServer_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::HttpServer>(handle);
+extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_HttpServer_destroy(
+    JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::HttpServer>(env, handle);
 }
 
 extern "C" JNIEXPORT void JNICALL

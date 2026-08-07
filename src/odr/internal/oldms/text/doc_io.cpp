@@ -35,9 +35,7 @@ auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
     return f(TypeTag<FibRgFcLcb2007>{});
   }
   default:
-    // Newer-than-2007 FIBs only append entries; the fcClx we read lives in the
-    // FibRgFcLcb97 base, so reuse the newest modelled layout. Older/unknown
-    // fail.
+    // Newer FIBs only append entries, so the newest modelled layout fits.
     if (nFib > nFib2007) {
       return f(TypeTag<FibRgFcLcb2007>{});
     }
@@ -53,52 +51,6 @@ namespace odr::internal::oldms {
 
 void text::read(std::istream &in, FibBase &out) {
   util::byte_stream::read(in, out);
-}
-
-void text::read(std::istream &in, FibRgFcLcb97 &out) {
-  util::byte_stream::read(in, out);
-}
-
-void text::read(std::istream &in, FibRgFcLcb2000 &out) {
-  util::byte_stream::read(in, out);
-}
-
-void text::read(std::istream &in, FibRgFcLcb2002 &out) {
-  util::byte_stream::read(in, out);
-}
-
-void text::read(std::istream &in, FibRgFcLcb2003 &out) {
-  util::byte_stream::read(in, out);
-}
-
-void text::read(std::istream &in, FibRgFcLcb2007 &out) {
-  util::byte_stream::read(in, out);
-}
-
-std::size_t text::determine_size_Fib(std::istream &in) {
-  std::size_t result = 0;
-
-  const auto read_uint16_t = [&] {
-    const auto value = util::byte_stream::read<std::uint16_t>(in);
-    result += sizeof(std::uint16_t);
-    return value;
-  };
-  const auto ignore = [&](const std::size_t count) {
-    in.ignore(static_cast<std::streamsize>(count));
-    result += count;
-  };
-
-  ignore(sizeof(FibBase));
-  const std::uint16_t csw = read_uint16_t();
-  ignore(static_cast<std::size_t>(csw) * 2);
-  const std::uint16_t cslw = read_uint16_t();
-  ignore(static_cast<std::size_t>(cslw) * 4);
-  const std::uint16_t cbRgFcLcb = read_uint16_t();
-  ignore(static_cast<std::size_t>(cbRgFcLcb) * 8);
-  const std::uint16_t cswNew = read_uint16_t();
-  ignore(static_cast<std::size_t>(cswNew) * 2);
-
-  return result;
 }
 
 void text::read(std::istream &in, ParsedFib &out) {
@@ -122,8 +74,7 @@ void text::read(std::istream &in, ParsedFib &out) {
   in.ignore(static_cast<std::streamsize>(
       static_cast<std::size_t>(out.cslw) * 4 - sizeof(out.fibRgLw)));
 
-  // ccpText ([MS-DOC] 2.5.5) MUST be >= 0; reject a negative value as
-  // malformed.
+  // ccpText MUST be >= 0 ([MS-DOC] 2.5.5).
   if (out.ccpText() < 0) {
     throw std::runtime_error("Unexpected negative Fib.ccpText: " +
                              std::to_string(out.ccpText()));
@@ -146,9 +97,7 @@ void text::read(std::istream &in, ParsedFib &out) {
       nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
         using FibRgFcLcbType = T::type;
         auto result = std::make_unique<FibRgFcLcbType>();
-        // Copy only what fits: surplus entries of a newer FIB are ignored, a
-        // shorter one leaves the rest zero-initialised. fcClx is always
-        // covered.
+        // Clamped: surplus entries are dropped, a short block stays zeroed.
         const std::size_t copy =
             std::min<std::size_t>(sizeof(FibRgFcLcbType),
                                   static_cast<std::size_t>(out.cbRgFcLcb) * 8);
@@ -179,17 +128,6 @@ void text::read(std::istream &in, ParsedFibRgCswNew &out) {
     throw std::runtime_error("Unsupported nFibNew value: " +
                              std::to_string(out.nFibNew));
   }
-}
-
-std::unique_ptr<text::FibRgFcLcb97>
-text::read_FibRgFcLcb(std::istream &in, const std::uint16_t nFib) {
-  return type_dispatch_FibRgFcLcb(
-      nFib, [&in]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
-        using FibRgFcLcbType = T::type;
-        auto result = std::make_unique<FibRgFcLcbType>();
-        read(in, *result);
-        return result;
-      });
 }
 
 void text::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
@@ -246,8 +184,7 @@ std::string text::read_string_compressed(std::istream &in,
         uncompressed.has_value()) {
       util::string::append_c32(*uncompressed, result);
     } else {
-      // Unmapped byte ([MS-DOC] 2.4.1 step 6): denotes code point U+00XX, so
-      // UTF-8-encode it (emitting the raw byte would be invalid UTF-8 >= 0xA0).
+      // An unmapped byte denotes code point U+00XX ([MS-DOC] 2.4.1 step 6).
       util::string::append_c32(static_cast<char32_t>(ci), result);
     }
   }
@@ -260,8 +197,8 @@ std::u16string text::read_string_uncompressed(std::istream &in,
   std::u16string result;
   result.resize(length_cp);
 
-  in.read(reinterpret_cast<char *>(result.data()),
-          static_cast<std::streamsize>(length_cp * sizeof(char16_t)));
+  util::byte_stream::read(in, reinterpret_cast<char *>(result.data()),
+                          length_cp * sizeof(char16_t));
 
   return result;
 }

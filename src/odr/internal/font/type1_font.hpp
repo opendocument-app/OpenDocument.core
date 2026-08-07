@@ -22,12 +22,10 @@ struct Glyph {
 ///
 /// A Type1 program has three sections: a clear-text header (font dictionary up
 /// to `eexec`), an `eexec`-encrypted private portion (`/Subrs`,
-/// `/CharStrings`), and a zero-padded trailer. This reads the header for
-/// `/FontMatrix`,
-/// `/FontBBox`, `/Encoding` and `/FontName`, decrypts the `eexec` section
-/// (`type1_crypt`) and extracts every glyph's decrypted charstring plus the
-/// `/Subrs`. It does **not** yet interpret the charstrings — that is the
-/// Type1 -> Type2 translation that follows, feeding 3.4's CFF -> OTF path.
+/// `/CharStrings`), and a zero-padded trailer. This reads `/FontMatrix`,
+/// `/FontBBox`, `/Encoding` and `/FontName` from the header, decrypts the
+/// `eexec` section (`type1_crypt`) and keeps every glyph's decrypted
+/// charstring plus the `/Subrs`; interpreting them is `type1_charstring`.
 ///
 /// Throws `std::runtime_error` when the program has no `eexec` section or no
 /// `/CharStrings`.
@@ -78,7 +76,6 @@ private:
   bool m_standard_encoding{true};
   std::vector<Glyph> m_glyphs;
   std::vector<std::string> m_subrs;
-  std::int32_t m_len_iv{4};
 };
 
 } // namespace odr::internal::font::type1

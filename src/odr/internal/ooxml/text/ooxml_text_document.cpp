@@ -22,8 +22,7 @@ namespace odr::internal::ooxml::text {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
-                       const Relations &document_relations);
+create_element_adapter(const Document &document, ElementRegistry &registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
@@ -40,8 +39,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
 
   m_style_registry = StyleRegistry(m_styles_xml.document_element());
 
-  m_element_adapter =
-      create_element_adapter(*this, m_element_registry, m_document_relations);
+  m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -115,10 +113,8 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::FrameAdapter,
                              public abstract::ImageAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry,
-                 const Relations &document_relations)
-      : m_document(&document), m_registry(&registry),
-        m_document_relations(&document_relations) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry)
+      : m_document(&document), m_registry(&registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -320,6 +316,12 @@ public:
       }
     }
 
+    if (new_first == old_first) {
+      // empty text still needs a live node to anchor the element to, or the
+      // removal below would leave the registry pointing at freed nodes
+      insert_node("w:t");
+    }
+
     element.node = new_first;
     text_element.last = new_last;
 
@@ -341,7 +343,7 @@ public:
       return std::string("#") + anchor.value();
     }
     if (const pugi::xml_attribute ref = node.attribute("r:id"); ref) {
-      const auto relations = get_document_relations();
+      const Relations &relations = m_document->document_relations();
       if (const auto rel = relations.find(ref.value());
           rel != std::end(relations)) {
         return rel->second;
@@ -406,8 +408,6 @@ public:
 
   [[nodiscard]] bool
   table_cell_is_covered(const ElementIdentifier element_id) const override {
-    // A cell continues a vertical merge when `w:vMerge` is present without
-    // `w:val` or with `w:val="continue"`.
     return is_merge_continuation(
         get_node(element_id).child("w:tcPr").child("w:vMerge"));
   }
@@ -449,13 +449,10 @@ public:
         .table_cell_style;
   }
 
-  [[nodiscard]] AnchorType
-  frame_anchor_type(const ElementIdentifier element_id) const override {
-    if (const pugi::xml_node node = get_node(element_id);
-        node.child("wp:inline")) {
-      return AnchorType::as_char;
-    }
-    return AnchorType::as_char; // TODO default?
+  [[nodiscard]] AnchorType frame_anchor_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    // TODO `wp:anchor` is floating, not as_char
+    return AnchorType::as_char;
   }
   [[nodiscard]] std::optional<Measure>
   frame_x([[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -505,8 +502,9 @@ public:
                                             .child("pic:blipFill")
                                             .child("a:blip")
                                             .attribute("r:embed")) {
-      if (const auto rel = m_document_relations->find(ref.value());
-          rel != std::end(*m_document_relations)) {
+      const Relations &relations = m_document->document_relations();
+      if (const auto rel = relations.find(ref.value());
+          rel != std::end(relations)) {
         return AbsPath("/word").join(RelPath(rel->second)).string();
       }
     }
@@ -516,7 +514,6 @@ public:
 private:
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
-  const Relations *m_document_relations{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -535,6 +532,7 @@ private:
     return {};
   }
 
+  /// A `w:vMerge` continues the merge above unless it says `w:val="restart"`.
   [[nodiscard]] static bool is_merge_continuation(const pugi::xml_node merge) {
     if (!merge) {
       return false;
@@ -574,10 +572,6 @@ private:
                     .as_uint(1);
     }
     return {};
-  }
-
-  [[nodiscard]] const Relations &get_document_relations() const {
-    return m_document->document_relations();
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -621,10 +615,8 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
-                       const Relations &document_relations) {
-  return std::make_unique<ElementAdapter>(document, registry,
-                                          document_relations);
+create_element_adapter(const Document &document, ElementRegistry &registry) {
+  return std::make_unique<ElementAdapter>(document, registry);
 }
 
 } // namespace

@@ -43,17 +43,15 @@ namespace odr::internal::html {
 
 namespace {
 
-/// Round to 0.01 user-space units; sub-precision beyond that is invisible and
-/// the extra digits add up across a page full of path data.
+/// Round to 0.01 units; finer precision is invisible and the extra digits add
+/// up across a page full of path data.
 double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
 constexpr double pt_to_in = 1.0 / 72.0;
 
-/// Serialize a transform as an SVG `matrix(...)`. Only the translation (e, f)
-/// is rounded — it lives in page-box units where 1/100 px is plenty; the linear
-/// part (a..d) keeps full precision so small scale/skew factors aren't
-/// quantized to zero. Used for `transform`, `gradientTransform` and
-/// `patternTransform`.
+/// A transform as an SVG `matrix(...)`. Only the translation is rounded; the
+/// linear part keeps full precision so small scale/skew factors aren't
+/// quantized to zero.
 std::string svg_matrix(const util::math::Transform2D &m) {
   std::ostringstream f;
   f << "matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
@@ -73,14 +71,12 @@ struct LinkOut {
                         ///< `target="_self"`)
 };
 
-/// Maps a link's 0-based target page index to the href navigating to it: a
-/// "#pN" anchor in the combined document, a page-view file name in a
-/// standalone page. Returns "" to drop the link (target page not rendered).
+/// A link's 0-based target page index to the href navigating to it. Returns ""
+/// to drop the link (target page not rendered).
 using PageHref = std::function<std::string(std::size_t)>;
 
-/// Resolves a link annotation's destination to a page: a `page-object ->
-/// 0-based index` map plus the catalog's named-destination table (`/Dests`
-/// dictionary and the `/Names /Dests` name tree, ISO 32000-1 12.3.2.3).
+/// Resolves a link annotation's destination to a page index, via the catalog's
+/// named-destination tables (ISO 32000-1 12.3.2.3).
 struct LinkResolver {
   pdf::DocumentParser &parser;
   std::map<pdf::ObjectReference, std::size_t> page_index;
@@ -180,25 +176,22 @@ LinkResolver build_link_resolver(pdf::DocumentParser &parser,
   return resolver;
 }
 
-/// Whether a `/URI` action target is safe to emit as an `href`. A PDF is
-/// untrusted input, so active schemes (`javascript:`, `data:`, `vbscript:`, …)
-/// must not become a clickable link that executes in the generated document.
-/// We allow only the common navigable schemes plus scheme-less (relative)
-/// references. Embedded ASCII whitespace/control bytes are ignored when reading
-/// the scheme, matching browsers that strip them before dispatch (so
-/// `java\tscript:` cannot slip through).
+/// Whether a `/URI` action target is safe to emit as an `href`: only the
+/// navigable schemes plus scheme-less (relative) references, so `javascript:`
+/// and friends cannot become a clickable link. Embedded whitespace/control
+/// bytes are ignored while reading the scheme, as browsers strip them before
+/// dispatch (`java\tscript:` must not slip through).
 bool is_safe_uri(std::string_view uri) {
   std::string scheme;
   for (const char ch : uri) {
     const auto c = static_cast<unsigned char>(ch);
     if (ch == ':') {
-      for (char &s : scheme) {
-        s = static_cast<char>(std::tolower(static_cast<unsigned char>(s)));
-      }
-      static constexpr std::string_view allowed[] = {"http", "https", "mailto",
-                                                     "ftp",  "ftps",  "tel"};
-      return std::find(std::begin(allowed), std::end(allowed), scheme) !=
-             std::end(allowed);
+      std::ranges::transform(scheme, scheme.begin(), [](const char s) {
+        return static_cast<char>(std::tolower(static_cast<unsigned char>(s)));
+      });
+      static constexpr std::array<std::string_view, 6> allowed = {
+          "http", "https", "mailto", "ftp", "ftps", "tel"};
+      return std::ranges::find(allowed, scheme) != allowed.end();
     }
     if (ch == '/' || ch == '?' || ch == '#') {
       return true; // path/query/fragment reached first -> relative reference
@@ -215,10 +208,8 @@ bool is_safe_uri(std::string_view uri) {
   return true; // no ':' -> relative reference
 }
 
-/// Resolve a page's `/Link` annotations (ISO 32000-1 12.5.6.5) to positioned
-/// overlays: a `/URI` action becomes an external link, a `/GoTo` action or a
-/// direct `/Dest` an internal link via `page_href`. `to_box` maps PDF user
-/// space to the page box (points, y-down).
+/// A page's `/Link` annotations (ISO 32000-1 12.5.6.5) as positioned overlays.
+/// `to_box` maps PDF user space to the page box (points, y-down).
 std::vector<LinkOut> collect_page_links(const pdf::Page &page,
                                         const util::math::Transform2D &to_box,
                                         LinkResolver &resolver,
@@ -294,8 +285,7 @@ void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
   for (const LinkOut &link : links) {
     std::ostringstream a;
     // Internal `#pN` links must override the document's `<base
-    // target="_blank">` so they scroll within the rendered PDF instead of
-    // opening a new copy.
+    // target="_blank">` or they open a new copy instead of scrolling.
     a << "<a class=\"lk\" href=\"" << link.href << '"'
       << (link.internal ? " target=\"_self\"" : "")
       << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
@@ -311,10 +301,8 @@ std::int32_t to255(const double v) {
       std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
 }
 
-/// Convert a PDF device color to a CSS `rgb(...)` string. Non-device color
-/// spaces (Separation/ICCBased/…) are already converted to RGB at extract time;
-/// only the unknown space reaches here, falling back to black (the PDF initial
-/// color).
+/// A PDF device color as CSS `rgb(...)`. Other spaces are already converted at
+/// extract time; only `unknown` reaches here, falling back to black.
 std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
   std::int32_t r = 0;
   std::int32_t g = 0;
@@ -356,11 +344,10 @@ std::string rgb_to_css(const std::array<double, 3> &rgb) {
   return std::move(s).str();
 }
 
-/// Map a PDF blend-mode name (`/ExtGState` `/BM`, ISO 32000-1 11.3.5) to its
-/// CSS `mix-blend-mode` keyword. CSS derives its blend modes from PDF, so the
-/// separable and non-separable modes map 1:1 (camelCase -> kebab-case). Returns
-/// "" for `Normal` and for any unrecognized name (rendered normal), so a caller
-/// can skip the property entirely.
+/// A PDF blend-mode name (`/BM`, ISO 32000-1 11.3.5) as its CSS
+/// `mix-blend-mode` keyword — CSS took its blend modes from PDF, so they map
+/// 1:1. "" for `Normal` and for anything unrecognized, so callers can skip the
+/// property entirely.
 std::string blend_mode_to_css(const std::string &blend_mode) {
   static const std::unordered_map<std::string, std::string> map = {
       {"Multiply", "multiply"},     {"Screen", "screen"},
@@ -376,9 +363,8 @@ std::string blend_mode_to_css(const std::string &blend_mode) {
 }
 
 /// The CSS declaration a non-embedded font renders through: its substitute
-/// `font-family` stack plus the weight/style implied by the `/BaseFont` name
-/// and `/FontDescriptor` flags. Interned as an `ff` atomic class on the
-/// fallback (`font == 0`) runs of either text mode.
+/// family stack plus the weight/style implied by `/BaseFont` and the
+/// `/FontDescriptor` flags.
 std::string font_substitute_declaration(const pdf::FontSubstitute &substitute) {
   std::string declaration = "font-family:" + substitute.css_family;
   if (substitute.bold) {
@@ -390,10 +376,8 @@ std::string font_substitute_declaration(const pdf::FontSubstitute &substitute) {
   return declaration;
 }
 
-/// The `local(...)` sources of a CSS `font-family` stack, dropping the generic
-/// keywords an `@font-face src` cannot name. Returns e.g.
-/// "local('Times New Roman'),local(Times)" for "'Times New Roman',Times,serif",
-/// or "" when the stack names no concrete font (generic-only).
+/// The `local(...)` sources of a `font-family` stack, dropping the generic
+/// keywords an `@font-face src` cannot name. "" when the stack is generic-only.
 std::string local_font_sources(const std::string_view css_family) {
   static constexpr std::array<std::string_view, 6> generics = {
       "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"};
@@ -410,8 +394,7 @@ std::string local_font_sources(const std::string_view css_family) {
     while (!name.empty() && name.back() == ' ') {
       name.remove_suffix(1);
     }
-    const bool generic =
-        std::find(generics.begin(), generics.end(), name) != generics.end();
+    const bool generic = std::ranges::find(generics, name) != generics.end();
     if (!name.empty() && !generic) {
       if (!src.empty()) {
         src += ',';
@@ -428,13 +411,10 @@ std::string local_font_sources(const std::string_view css_family) {
   return src;
 }
 
-/// Registers one `@font-face` per (substitute family, style, ascent) that
-/// overrides the face's ascent/descent so a glyph's baseline lands exactly at
-/// the `top` `add_position_classes` derives from `ascent_em` — independent of
-/// the metrics of whichever local font actually resolves. Without the override
-/// the browser positions the baseline using the resolved font's own ascent,
-/// which for a large non-embedded run (e.g. a 120pt Times title) drops it well
-/// below the intended baseline.
+/// One `@font-face` per (substitute family, style, ascent) overriding the
+/// face's ascent/descent, so a glyph's baseline lands at the `top`
+/// `add_position_classes` derived from `ascent_em` rather than wherever
+/// whichever local font resolves would put it.
 class SubstituteFontFaces {
 public:
   /// The `font-family:...` (plus weight/style) declaration for `substitute`,
@@ -446,10 +426,9 @@ public:
     if (src.empty()) {
       return font_substitute_declaration(substitute);
     }
-    // ascent-override + descent-override sum to one em, so `line-height:1`
-    // leaves no leading and the baseline sits at exactly `ascent_em` of the em
-    // box. `ascent_em` is clamped to [0.5, 1.2]; the `max` keeps descent
-    // non-negative for the rare ascent > 1 (a slight baseline approximation).
+    // The two overrides sum to one em, so `line-height:1` leaves no leading and
+    // the baseline sits at exactly `ascent_em`. `max` keeps descent
+    // non-negative for the rare clamped ascent > 1.
     const double ascent = ascent_em;
     const double descent = std::max(0.0, 1.0 - ascent_em);
     std::ostringstream key;
@@ -489,9 +468,8 @@ private:
   std::vector<std::string> m_faces;
 };
 
-/// Build an SVG `d` attribute from a path's subpaths, each point mapped through
-/// `to_box` (PDF user space -> the page box, y-down). Lines become `L`, cubic
-/// Béziers `C`, and an explicitly closed subpath ends with `Z`.
+/// An SVG `d` attribute for a path's subpaths, each point mapped through
+/// `to_box` (PDF user space -> the page box, y-down).
 std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
                        const util::math::Transform2D &to_box) {
   std::ostringstream d;
@@ -522,13 +500,9 @@ std::string svg_path_d(const std::vector<pdf::Subpath> &subpaths,
   return std::move(d).str();
 }
 
-/// Serialize a painted path to an SVG `<path .../>` fragment in the page
-/// viewBox, or "" when it paints nothing. Fill honours the even-odd rule;
-/// stroke carries width (CTM-scaled in user space), caps, joins, miter limit
-/// and the dash pattern. A zero stroke width renders as a thin hairline.
-/// `clip_id`, when non-empty, references a `<clipPath>` installed via
-/// `clip-path`. `fill_url_id`, when non-empty, fills the path with that paint
-/// server (a shading gradient or a tiling `<pattern>`) instead of `fill_color`.
+/// A painted path as an SVG `<path .../>` fragment in the page viewBox, or ""
+/// when it paints nothing. `clip_id` and `fill_url_id`, when non-empty, name a
+/// `<clipPath>` and a paint server (gradient or tiling pattern) to reference.
 std::string svg_path_fragment(const pdf::PathElement &path,
                               const util::math::Transform2D &to_box,
                               const std::string &clip_id,
@@ -563,8 +537,7 @@ std::string svg_path_fragment(const pdf::PathElement &path,
     if (path.stroke_alpha < 1) {
       f << " stroke-opacity=\"" << round2(path.stroke_alpha) << '"';
     }
-    // A 0 width is "device-thinnest" in PDF; SVG would draw nothing, so floor
-    // it to a sub-point hairline.
+    // A 0 width is "device-thinnest" in PDF; SVG would draw nothing.
     const double width = path.line_width > 0 ? path.line_width : 0.5;
     f << " stroke-width=\"" << round2(width) << '"';
     if (path.line_cap == 1) {
@@ -603,16 +576,12 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   return std::move(f).str();
 }
 
-/// Serialize an image XObject to an SVG `<image>` fragment in the page viewBox,
-/// or "" when it carries no pass-through bytes. The image fills the unit square
-/// in user space (ISO 32000-1 8.10.5); the transform maps that square — through
-/// a vertical flip (the image's first row is its top, SVG draws y-down) and the
-/// CTM — into the page box. `clip_id`, when non-empty, installs a clip via a
-/// wrapping `<g clip-path>`. The clip geometry is in the page viewBox
-/// (`userSpaceOnUse`), but the `<image>` carries its own `transform`, so a
-/// `clip-path` placed *on the image* would be resolved in the image's
-/// post-transform unit-square space and clip the whole image away. The `<g>`
-/// carries no transform, so the clip is read in the viewBox where it lives.
+/// An image XObject as an SVG `<image>` fragment in the page viewBox, or ""
+/// when it carries no pass-through bytes. The image fills the unit square in
+/// user space (ISO 32000-1 8.10.5), flipped vertically because its first row is
+/// its top. `clip_id` is installed on a wrapping `<g>`, not on the `<image>`:
+/// the clip geometry is `userSpaceOnUse` in the viewBox, and on the image it
+/// would resolve in the image's post-transform unit-square space instead.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
                                const std::string &clip_id) {
@@ -643,11 +612,9 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
   return std::move(f).str();
 }
 
-/// Shared bookkeeping for the per-page `<defs>` registries below (clips,
-/// gradients, tiling patterns): a signature->id cache that deduplicates
-/// repeated definitions, a per-page monotonic id counter, and the accumulated
-/// `<defs>` markup (emitted once into the page's hidden `<svg>`). Ids are
-/// namespaced per page as `<prefix><page>_<n>`.
+/// Shared bookkeeping for the per-page `<defs>` registries below: a
+/// signature->id cache deduplicating repeated definitions plus the accumulated
+/// `<defs>` markup. Ids are namespaced per page as `<prefix><page>_<n>`.
 class DefsRegistry {
 public:
   explicit DefsRegistry(const std::uint32_t page) : m_page{page} {}
@@ -655,9 +622,8 @@ public:
   [[nodiscard]] std::string defs() const { return m_defs.str(); }
 
 protected:
-  /// The id for `signature`, minting `<prefix><page>_<n>` the first time it is
-  /// seen. `inserted` is true only on that first sight — when the caller still
-  /// needs to emit the definition into `m_defs`.
+  /// The id for `signature`. `inserted` is true only on first sight, when the
+  /// caller still has to emit the definition into `m_defs`.
   struct Entry {
     std::string id;
     bool inserted;
@@ -679,12 +645,10 @@ private:
   std::unordered_map<std::string, std::string> m_id_by_signature;
 };
 
-/// Registers a page's clip regions as nested `<clipPath>` defs, deduplicating
-/// shared prefixes. PDF's current clip is the *intersection* of an ordered list
-/// of regions; SVG expresses intersection by chaining `clip-path` from one
-/// `<clipPath>` to the next, so region i's clipPath references region i-1's and
-/// the painted element references the last. Ids are namespaced per page
-/// (`c<page>_<n>`).
+/// A page's clip regions as nested `<clipPath>` defs (`c<page>_<n>`). PDF's
+/// current clip is the *intersection* of an ordered region list; SVG expresses
+/// intersection by chaining `clip-path`, so region i references region i-1 and
+/// the painted element references the last.
 class ClipRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -718,18 +682,13 @@ public:
   }
 };
 
-/// Registers a page's shadings (axial/radial) as `<linearGradient>`/
-/// `<radialGradient>` defs, deduplicating by shading and placement. The
-/// shading's pre-sampled colour stops become `<stop>`s; `gradientTransform`
-/// (shading space -> page box) places the gradient in the page's user space, so
-/// referencing elements use `gradientUnits="userSpaceOnUse"`. Ids are
-/// namespaced per page (`g<page>_<n>`).
+/// A page's axial/radial shadings as `<linearGradient>`/`<radialGradient>` defs
+/// (`g<page>_<n>`), placed by `gradientTransform` in `userSpaceOnUse`.
 ///
-/// DEFERRED (out of scope for this stage): PDF `/Extend` is approximated by
-/// SVG's default `pad` spread (the end stops extend outward), so a non-extended
-/// shading is over-painted beyond its interval instead of being masked to it;
-/// `Shading::background` and `Shading::bbox` are likewise not yet honoured.
-/// Honouring them needs the fill clipped to the gradient band/annulus.
+/// DEFERRED: `/Extend` is approximated by SVG's default `pad` spread, so a
+/// non-extended shading over-paints beyond its interval; `Shading::background`
+/// and `Shading::bbox` are not honoured. Both need the fill clipped to the
+/// gradient band/annulus.
 class GradientRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -773,10 +732,9 @@ public:
   }
 };
 
-/// Serialize an `sh` shading flood to an SVG `<rect>` covering the page box,
-/// filled with `gradient_id` and bounded by `clip_id` (the clip in force at
-/// `sh` time). Returns "" when the shading produced no gradient. The rect spans
-/// the whole page; the clip (and the gradient's own extent) bound the paint.
+/// An `sh` shading flood as an SVG `<rect>` spanning the page box, filled with
+/// `gradient_id`; `clip_id` (and the gradient's own extent) bound the paint.
+/// "" when the shading produced no gradient.
 std::string svg_shading_fragment(const std::string &gradient_id,
                                  const std::string &clip_id, const double width,
                                  const double height, const double alpha,
@@ -800,17 +758,13 @@ std::string svg_shading_fragment(const std::string &gradient_id,
   return std::move(f).str();
 }
 
-/// Registers a page's tiling patterns (`/PatternType 1`) as SVG `<pattern>`
-/// defs. The pattern's content stream is run as a mini page (`extract_page`)
-/// into tile fragments laid out in pattern space; the `<pattern>` repeats them
-/// every `/XStep`/`/YStep`, and `patternTransform` (pattern space -> page box)
-/// places the lattice. An uncoloured pattern (`/PaintType 2`) ignores its
-/// content's own colours and paints in the path's fill colour, so the cache key
-/// folds that colour in. Each cell is clipped to its `/BBox` so marks outside
-/// the cell (or in the gap when a step exceeds the BBox) don't leak into the
-/// tile. Ids are namespaced per page (`pat<page>_<n>`). Only paths and images
-/// inside the tile are rendered (nested text/shadings/patterns are skipped —
-/// rare). Returns "" for an unrepresentable pattern.
+/// A page's tiling patterns (`/PatternType 1`) as SVG `<pattern>` defs
+/// (`pat<page>_<n>`). The content stream is run as a mini page into tile
+/// fragments in pattern space, repeated every `/XStep`/`/YStep` and placed by
+/// `patternTransform`. An uncoloured pattern (`/PaintType 2`) paints in the
+/// path's fill colour, so the cache key folds that colour in. Only paths and
+/// images are rendered (nested text/shadings/patterns are skipped — rare).
+/// "" for an unrepresentable pattern.
 class PatternRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -859,8 +813,7 @@ public:
            << "\" height=\"" << round2(std::abs(pattern.y_step))
            << "\" patternTransform=\"" << svg_matrix(m) << "\">";
     // Clip each cell to its `/BBox` (ISO 32000-1 8.7.3.1). An overlapping
-    // lattice (a step smaller than the BBox) can't be expressed as a single SVG
-    // `<pattern>` and is not reproduced.
+    // lattice (step < BBox) has no single-`<pattern>` equivalent and is lost.
     const double bbox_w = pattern.bbox[2] - pattern.bbox[0];
     const double bbox_h = pattern.bbox[3] - pattern.bbox[1];
     if (bbox_w > 0 && bbox_h > 0) {
@@ -879,13 +832,11 @@ public:
 
 class MaskRegistry;
 
-/// Serialize one graphic page element (a painted path, a shading flood, an
-/// image, or a nested transparency group) to an SVG fragment in the page
-/// viewBox, registering any clip, gradient, pattern or soft mask it needs.
-/// Returns "" for a text element or one that paints nothing. A soft mask on the
-/// element wraps its fragment in a masked `<g>`; a `GroupElement` renders its
-/// children then wraps them in one `<g>` carrying the group's opacity, blend
-/// and mask (so the group composites as a unit before those apply).
+/// One graphic page element as an SVG fragment in the page viewBox,
+/// registering any clip, gradient, pattern or soft mask it needs. "" for a text
+/// element or one that paints nothing. A `GroupElement`'s children are wrapped
+/// in a single `<g>` so the group composites as a unit before its
+/// opacity/blend/mask apply.
 std::string render_graphic_fragment(const pdf::PageElement &element,
                                     const util::math::Transform2D &to_box,
                                     double width, double height,
@@ -894,14 +845,10 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
                                     PatternRegistry &patterns,
                                     MaskRegistry &masks, const Logger &logger);
 
-/// Registers a page's soft masks (`/SMask`, ISO 32000-1 11.6.5.2) as `<mask>`
-/// defs. The extractor has rendered each mask's transparency group into a list
-/// of graphic elements (in user space); those are serialized into the mask body
-/// with the page's own clip/gradient/pattern registries, so their ids stay
-/// unique within the page. Coverage comes from luminance by default
-/// (`/Luminosity` -> the SVG mask default) or from alpha (`/Alpha` ->
-/// `mask-type="alpha"`); a non-black `/BC` backdrop floods behind the group.
-/// Ids are namespaced per page (`m<page>_<n>`).
+/// A page's soft masks (`/SMask`, ISO 32000-1 11.6.5.2) as `<mask>` defs
+/// (`m<page>_<n>`). The extractor has already rendered each mask's transparency
+/// group to graphic elements; those are serialized through the page's own
+/// clip/gradient/pattern registries so their ids stay unique within the page.
 class MaskRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -911,9 +858,8 @@ public:
                             const double width, const double height,
                             ClipRegistry &clips, GradientRegistry &gradients,
                             PatternRegistry &patterns, const Logger &logger) {
-    // A fresh `SoftMask` is built for every `gs`, but many are identical (the
-    // same drop-shadow reused across a run of glyphs, say). Dedupe on the
-    // rendered body + type + backdrop so those collapse to a single def.
+    // A fresh `SoftMask` is built for every `gs`, but many are identical (one
+    // drop-shadow across a run of glyphs); dedupe on the rendered body.
     std::ostringstream body;
     for (const pdf::PageElement &element : mask.group) {
       body << render_graphic_fragment(element, to_box, width, height, clips,
@@ -936,9 +882,7 @@ public:
       m_defs << " mask-type=\"alpha\"";
     }
     m_defs << '>';
-    // A non-black `/BC` backdrop floods the mask region behind the group; the
-    // default (black) needs none — SVG's mask background is already luminance
-    // 0.
+    // Black — SVG's mask background already — needs no backdrop rect.
     if (mask.backdrop.has_value() &&
         ((*mask.backdrop)[0] + (*mask.backdrop)[1] + (*mask.backdrop)[2] > 0)) {
       m_defs << "<rect x=\"0\" y=\"0\" width=\"" << round2(width)
@@ -1048,18 +992,12 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
   return {};
 }
 
-/// Lifts text out of transparency groups so this HTML backend can still render
-/// and select it. A `GroupElement`'s opacity/blend/mask is carried by an SVG
-/// `<g>`, but text is painted as positioned markup, not SVG, so it cannot ride
-/// inside that `<g>`. The extractor faithfully nests such text in the group; to
-/// avoid dropping it from both the visual and selection layers, each interior
-/// `TextElement` is hoisted to the top level — where the ordinary text pipeline
-/// renders it and `extract_text`-style top-level scans pick it up. The only
-/// thing forgone is the group effect on the text itself (see pdf/AGENTS.md
-/// gaps); the group's graphics are untouched and still composited as a unit.
-/// Nesting is flattened recursively; hoisted text is emitted at the group's
-/// position (ahead of the composited graphics), and a group left with no
-/// graphics is dropped.
+/// Hoists text out of transparency groups (recursively) to the top level. A
+/// group's effects ride an SVG `<g>`, but text is positioned markup, not SVG,
+/// so it cannot sit inside that `<g>` — without the hoist it would be dropped
+/// from both the visual and the selection layer. Forgone: the group effect on
+/// the text itself (see pdf/AGENTS.md gaps). The group's graphics are untouched
+/// and still composite as a unit; a group left with none is dropped.
 std::vector<pdf::PageElement>
 lift_group_text(std::vector<pdf::PageElement> elements) {
   std::vector<pdf::PageElement> result;
@@ -1097,14 +1035,11 @@ lift_group_text(std::vector<pdf::PageElement> elements) {
   return result;
 }
 
-/// Deduplicates CSS declarations into atomic, single-property classes. PDF text
-/// emits one absolutely-positioned line block per detected line, and the same
-/// font sizes, offsets and spacings recur across the (potentially millions of)
-/// elements. Writing each declaration inline bloats the document. Instead,
-/// every distinct declaration is registered once here, named `<prefix><n>` in
-/// first-seen order (e.g. `f1`, `f2` for font sizes, `t1` for a top offset),
-/// emitted once in <head>, and referenced by class on each element. This is
-/// representation-only: the computed style of every element is unchanged.
+/// Deduplicates CSS declarations into atomic, single-property classes named
+/// `<prefix><n>` in first-seen order, emitted once in `<head>`. The same font
+/// sizes, offsets and spacings recur across up to millions of positioned
+/// elements, and inline declarations bloat the document. Representation-only:
+/// no element's computed style changes.
 class AtomicStyles {
 public:
   /// `prefix` selects the property family; `declaration` is a full CSS
@@ -1121,9 +1056,8 @@ public:
     return it->second;
   }
 
-  /// Writes one rule per line (`.f1{font-size:9.96pt}`) so regeneration diffs
-  /// stay legible. Each rule is preceded by a newline; the caller has already
-  /// written the constant rules on the opening `<style>` line.
+  /// One rule per line (`.f1{font-size:9.96pt}`) so regeneration diffs stay
+  /// legible; each is preceded by a newline.
   void write_rules(std::ostream &o) const {
     for (const auto *entry : m_order) {
       o << "\n." << entry->second << '{' << entry->first << '}';
@@ -1144,11 +1078,10 @@ public:
       : HtmlService(std::move(config), logger),
         m_pdf_file{std::move(pdf_file)} {}
 
-  /// Parses the document once, applies the `[page_range_begin,
-  /// page_range_end)` page range and builds the view list: the combined
-  /// document plus one standalone view per rendered page. The parser and its
-  /// object cache are kept for the service's lifetime so the page views
-  /// render off one shared parse.
+  /// Parses once, applies the `[page_range_begin, page_range_end)` range and
+  /// builds the views: the combined document plus one per rendered page. The
+  /// parser and its object cache live for the service's lifetime so every view
+  /// renders off that one parse.
   void warmup() const override {
     std::lock_guard lock(m_mutex);
 
@@ -1241,10 +1174,9 @@ public:
     return write_pages(out, m_pages, m_first_page + 1, page_href);
   }
 
-  /// One standalone page (the `page{index}.html` view); internal links
-  /// navigate between the page files, rebased onto this page's own directory
-  /// (the browser resolves an href against the current document, so a nested
-  /// `page_output_file_name` must not be emitted output-root-relative).
+  /// One standalone page (the `page{index}.html` view). Internal links are
+  /// rebased onto this page's own directory: the browser resolves an href
+  /// against the current document, not the output root.
   HtmlResources write_page(const std::size_t page_index,
                            HtmlWriter &out) const {
     const RelPath from_dir = RelPath(m_views[page_index + 1].path()).parent();
@@ -1270,38 +1202,26 @@ public:
     return write_pages_dual_layer(out, pages, first_page_number, page_href);
   }
 
-  // =========================================================================
-  // DUAL-LAYER MODE
-  // =========================================================================
+  // ---- DUAL-LAYER MODE ----------------------------------------------------
   //
-  // Two separate layers per page:
+  // Visual layer (`.vis`, aria-hidden): paint-order glyphs in PUA-re-encoded
+  // fonts, grouped into baseline line blocks (`.t`) whose runs flow inline. A
+  // path or image closes the open block and goes into an SVG. Invisible text
+  // (Tr 3/7) is omitted.
   //
-  //  Visual layer (`<div class="vis" aria-hidden="true">`): paint-order glyph
-  //  rendering. Text runs are grouped into line blocks (`<div class="t ...">`)
-  //  by baseline; runs within a block flow inline, each nudged by a
-  //  `margin-left`. A path or image in paint order closes the open block and
-  //  is emitted into an SVG; the next text opens a fresh block. Fonts are
-  //  re-encoded to the PUA (no real-Unicode cmap entries needed — the visual
-  //  layer is `user-select:none`). Invisible text (Tr 3/7) is omitted here.
-  //
-  //  Selection layer (`<div class="sel">`): transparent, selectable real
-  //  Unicode. Text runs are grouped into per-line divs (`<div class="t ...
-  //  i">`) in content-stream order; space detection inserts separator spans
-  //  on line/column breaks or wide gaps. Each run span is
-  //  `display:inline-block; width:Xpt` with CSS `text-align:justify;
-  //  text-align-last:justify; text-justify:inter-character` so the browser
-  //  spreads the characters to fill the PDF advance without JavaScript.
-  //  For gap spans between runs a zero-content `display:inline-block;
-  //  width:Ypt` span is emitted.
+  // Selection layer (`.sel`): transparent real Unicode in content-stream
+  // order, one line block per detected line. Each run is an inline-block of
+  // the PDF advance width, spread to fill it by CSS
+  // `text-justify:inter-character` — no JavaScript; gaps are zero-content
+  // spacer spans.
 
-  /// One run inside a visual line block. `classes` carries margin-left, font
-  /// size, font-family+colour — the line block holds placement only.
+  /// One run inside a visual line block: margin-left, font size,
+  /// font-family+colour. The line block holds placement only.
   struct VisRunOut {
     std::string classes;
     std::string text; ///< PUA glyph string (or real unicode for fallback path)
   };
-  /// One line block in the visual layer: absolutely positioned at the first
-  /// run's origin. Runs flow inline, each nudged by margin-left.
+  /// One visual line block, absolutely positioned at its first run's origin.
   struct VisLineOut {
     std::string classes; ///< "t lN tN [mN]" (or matrix transform)
     std::vector<VisRunOut> runs;
@@ -1309,19 +1229,16 @@ public:
   struct PathOut {
     std::string svg;
   };
-  /// Visual-layer paint-order item: a line block of glyphs, or an SVG
-  /// fragment.
+  /// Visual-layer paint-order item: a glyph line block, or an SVG fragment.
   using VisItem = std::variant<VisLineOut, PathOut>;
 
-  /// One run in the selection layer: an inline-block span with a fixed width
-  /// (for CSS justify) and optional margin-left (gap from previous run). An
-  /// empty `text` with non-zero `width` is a spacer-only span (no text node).
+  /// One selection-layer run: an inline-block span of fixed width (for CSS
+  /// justify). Empty `text` means a spacer-only span.
   struct SelRunOut {
     std::string classes; ///< "sr wN [mlN]"
     std::string text; ///< real unicode (HTML-escaped), may be empty for spacer
   };
-  /// One line block in the selection layer: absolutely positioned,
-  /// transparent.
+  /// One selection-layer line block: absolutely positioned, transparent.
   struct SelLineOut {
     std::string classes; ///< "t lN tN i"
     std::vector<SelRunOut> runs;
@@ -1374,9 +1291,8 @@ public:
       classes += styles.intern(prefix, std::move(declaration));
     };
 
-    // Strips a trailing `wN` (width) class token, if present, so a merged
-    // selection run's width can be re-declared. Assumes at most one `w`
-    // class is ever attached to a selection run.
+    // Strips a trailing `wN` (width) token so a merged selection run's width
+    // can be re-declared. At most one is ever attached.
     const auto strip_width_class = [](std::string &classes) {
       const std::size_t pos = classes.rfind(' ');
       if (pos == std::string::npos) {
@@ -1385,8 +1301,9 @@ public:
       const std::string_view tail(classes.data() + pos + 1,
                                   classes.size() - pos - 1);
       if (tail.size() > 1 && tail.front() == 'w' &&
-          std::all_of(tail.begin() + 1, tail.end(),
-                      [](unsigned char c) { return std::isdigit(c) != 0; })) {
+          std::ranges::all_of(tail.substr(1), [](const char c) {
+            return std::isdigit(static_cast<unsigned char>(c)) != 0;
+          })) {
         classes.resize(pos);
       }
     };
@@ -1415,8 +1332,7 @@ public:
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
       MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
 
-      // Visual layer state: open line block.
-      /// index of open VisLineOut in vis_items, -1 = none
+      /// index of the open VisLineOut in vis_items, -1 = none
       std::int32_t vis_cur_line = -1;
       double vis_prev_end = 0;
       double vis_prev_baseline = 0;
@@ -1424,21 +1340,18 @@ public:
       bool vis_prev_was_matrix = false;
       const auto vis_close_line = [&] { vis_cur_line = -1; };
 
-      // Selection layer state: in-content-stream reading-order grouping.
+      // Selection layer state: content-stream (reading) order grouping.
       bool sel_have_prev = false;
       double sel_prev_baseline = 0;
       double sel_prev_end = 0;
-      /// previous run's advance height, for the line-break test (see
-      /// starts_new_line)
+      /// previous run's advance height, for `starts_new_line`
       double sel_prev_font_pt = 0;
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
-      /// `ox` of the open `.sr` run's start, for recomputing its width on
-      /// merge.
+      /// `ox` where the open `.sr` run starts, to recompute its width on merge
       double sel_cur_run_start_ox = 0;
-      /// font-size of the previous element, for the trailing space that closes
-      /// its line.
+      /// font-size of the previous element, for its line's trailing space
       double sel_prev_font_size_pt = 0;
 
       for (const pdf::PageElement &element : lift_group_text(
@@ -1465,11 +1378,9 @@ public:
         const std::string color_suffix = color_class(text, invisible, styles);
 
         // --- Visual layer ---------------------------------------------------
-        // Invisible runs (Tr 3/7) paint nothing; omit them from the visual
-        // layer. Type3 runs are painted by their char procs (separate path/
-        // image elements), so they too contribute only to the selection layer.
+        // Invisible runs paint nothing and Type3 runs are painted by their char
+        // procs, so both contribute to the selection layer only.
         if (!invisible && !text.render_as_graphics) {
-          // Determine if this run continues the current visual line block.
           bool new_vis_line =
               is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
           double vis_margin_pt = 0;
@@ -1483,7 +1394,6 @@ public:
           }
 
           if (new_vis_line) {
-            // Build the line block's placement classes.
             std::string line_base = "t";
             add_position_classes(line_base, add_class, m, is_matrix, ox,
                                  baseline, asc * text.size);
@@ -1493,19 +1403,14 @@ public:
             vis_cur_line = static_cast<int>(page_out.vis_items.size()) - 1;
           }
 
-          // Build the run's span classes: font-size, font-family+colour,
-          // margin-left (gap from previous run's right edge, or the line
-          // block's new-run offset from its own origin for new-line runs).
           std::string run_classes = "g"; // user-select:none
           add_class(run_classes, "f", pt_decl("font-size", font_size_pt));
           if (font != 0) {
             run_classes += ' ';
             run_classes += font_class(font_class_used, font, invisible);
           } else if (text.font != nullptr && text.font->substitute) {
-            // Non-embedded font: render the real Unicode in the substitute
-            // family (embedded fonts carry the family in `font_class`). The
-            // metric-overriding face pins the baseline to `asc` (see
-            // `SubstituteFontFaces`).
+            // Non-embedded: real Unicode in the substitute family, whose
+            // metric-overriding face pins the baseline to `asc`.
             add_class(
                 run_classes, "ff",
                 substitute_faces.declaration(*text.font->substitute, asc));
@@ -1515,8 +1420,6 @@ public:
           }
           run_classes += color_suffix;
 
-          // Run text: PUA glyphs for embedded font, or real unicode for
-          // fallback.
           std::string run_text;
           if (font != 0) {
             run_text = escape_text(glyph_run_str(*text.font, text.codes));
@@ -1528,11 +1431,9 @@ public:
               cs_pt != 0) {
             add_class(run_classes, "s", pt_decl("letter-spacing", cs_pt));
           }
-          // CSS `word-spacing` only affects real U+0020 separators, so it is
-          // inert on the PUA glyph runs (font != 0, which never emit a literal
-          // space) — apply it solely on the real-unicode fallback path. Skip
-          // composite fonts: PDF Tw applies only to single-byte code 32, as in
-          // the single-layer path.
+          // CSS `word-spacing` only affects real U+0020, so it is inert on PUA
+          // glyph runs — fallback path only. Composite fonts are skipped: PDF
+          // Tw applies to single-byte code 32 alone.
           if (font == 0 && !(text.font != nullptr && text.font->composite)) {
             if (const double ws_pt = round2(text.word_spacing * scale);
                 ws_pt != 0) {
@@ -1551,19 +1452,13 @@ public:
         }
 
         // --- Selection layer -----------------------------------------------
-        // Transparent, selectable real-unicode text in content-stream
-        // (reading) order. Each run is an inline-block span with a fixed width
-        // (the PDF advance) and CSS `text-justify:inter-character` so the
-        // browser distributes characters to fill that width without JS. Gaps
-        // between runs on the same baseline are zero-content spacer spans.
         // Matrix runs get their own single-run line block.
         if (!text.text.empty()) {
           const double width_pt = round2(extent);
           const double gap_pt = std::max(0.0, ox - sel_prev_end);
           const bool starts_space = text.text.front() == ' ';
-          // `core` is the run text with a leading inferred space stripped
-          // (the gap between runs is covered by the spacer span, not the
-          // run text).
+          // A leading inferred space is dropped: the gap between runs is
+          // covered by the spacer span, not by the run text.
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
           bool new_sel_line =
@@ -1576,9 +1471,8 @@ public:
           }
 
           if (new_sel_line) {
-            // Close previous line with a trailing space if needed. `sg`
-            // (spacer), not `sr` (text run) — it carries no PDF-derived
-            // width, just a lone space.
+            // Close the previous line with a trailing space. `sg`, not `sr`:
+            // it carries no PDF-derived width, just the space.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
               std::string space_cls = "sg";
               add_class(space_cls, "f",
@@ -1586,14 +1480,12 @@ public:
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(space_cls), " "});
             }
-            // Build the line block's placement.
             std::string sel_base = "t";
             add_position_classes(sel_base, add_class, m, is_matrix, ox,
                                  baseline, asc * text.size);
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
-            // Emit the run span.
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
@@ -1605,11 +1497,9 @@ public:
               sel_cur_run_start_ox = ox;
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
-            // Emit a spacer span for the gap, then the run span.
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
             if (!sel_prev_ends_space && !runs.empty()) {
-              // Spacer: display:inline-block with the gap width.
               std::string gap_cls = "sg";
               add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
               const double rounded_gap = round2(gap_pt);
@@ -1629,13 +1519,10 @@ public:
               sel_cur_run_start_ox = ox;
             }
           } else {
-            // Tight continuation on the same baseline — merge into the
-            // previous selection run's text so the browser treats the whole
-            // sequence as one word for double-click and find-in-page. Widen
-            // the run's declared width to the full merged extent (measured
-            // from where that run started) so CSS justify keeps spreading
-            // characters across the true PDF advance instead of the first
-            // sub-run's narrower one.
+            // Tight continuation on the same baseline: merge into the previous
+            // run so the browser reads the sequence as one word, and widen that
+            // run to the full merged extent so CSS justify still spreads across
+            // the true PDF advance.
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
@@ -1662,11 +1549,9 @@ public:
         }
       }
 
-      // Selection lines are kept in content-stream order. Re-sorting by
-      // baseline y would order out-of-order single-column content correctly but
-      // interleave multi-column layouts (the stream keeps columns contiguous);
-      // reading order can't be recovered by a scalar sort. Proper page
-      // segmentation (column detection / XY-cut) is the eventual fix.
+      // Selection lines stay in content-stream order: sorting by baseline y
+      // would interleave multi-column layouts, which the stream keeps
+      // contiguous. The fix is page segmentation (XY-cut), not a scalar sort.
       page_out.clip_defs =
           clips.defs() + gradients.defs() + patterns.defs() + masks.defs();
     }
@@ -1678,24 +1563,15 @@ public:
     }
     substitute_faces.append_faces(font_faces);
 
-    // Write HTML.
     write_header_common(out, font_faces, font_styles, styles, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
-      // Fallback font for the selection layer: `size-adjust` shrinks a local
-      // system font so its natural width lands near the PDF-derived `.sr`/`.sg`
-      // widths, leaving a small gap for `text-justify:inter-character` to fill.
-      // CSS justify only ever *adds* spacing, so undershooting is free (the
-      // text just spreads further; the layer is invisible) while overshooting
-      // overflows and is clipped by `overflow:hidden` — hence
-      // `pdf_dual_layer_fallback_font_size_adjust` (config, 0-1) is
-      // deliberately low. The vertical rescale is harmless: `.sr`/`.sg` fix
-      // their box height via `line-height:1` and baseline-align via
-      // `overflow:hidden` (below), never consulting the font's ascent/descent.
-      // If no `pdf_dual_layer_fallback_fonts` resolve locally the rule is
-      // skipped and
-      // `.i` falls through to plain `sans-serif`.
+      // Selection-layer fallback font: `size-adjust` shrinks a local system
+      // font under the PDF-derived `.sr`/`.sg` widths. CSS justify only ever
+      // *adds* spacing, so undershooting is free while overshooting overflows
+      // and is clipped — hence the deliberately low config default. With no
+      // fonts configured `.i` falls through to plain `sans-serif`.
       if (const std::vector<std::string> &fonts =
               config().pdf_dual_layer_fallback_fonts;
           !fonts.empty()) {
@@ -1723,18 +1599,15 @@ public:
       }
       // Transparent text for the selection layer line blocks.
       out.out() << ".i{color:transparent;font-family:sf,sans-serif}";
-      // Selection-layer run span: inline-block with CSS justify so the browser
-      // spreads characters to fill the declared width (the PDF advance) without
-      // JS; `overflow:hidden` clips a wider system font. `.t`'s inherited `pre`
-      // (not `nowrap`) blocks wrapping while preserving a run's own
+      // Selection-layer run span. `overflow:hidden` clips a wider system font;
+      // `.t`'s inherited `pre` blocks wrapping while preserving a run's own
       // leading/trailing space, which is real PDF content.
       out.out() << ".sr{display:inline-block;text-align:justify;"
                    "text-align-last:justify;text-justify:inter-character;"
                    "overflow:hidden}";
-      // Selection-layer gap spacer: inline-block, no text, just width.
-      // `overflow:hidden` matches `.sr`: an inline-block baseline-aligns to its
-      // bottom margin edge only when overflow isn't visible, so without it the
-      // spacer and run boxes align differently and the spacer shifts in y.
+      // Selection-layer gap spacer. `overflow:hidden` matches `.sr`: an
+      // inline-block baseline-aligns to its bottom margin edge only when
+      // overflow isn't visible, so without it the spacer shifts in y.
       out.out() << ".sg{display:inline-block;overflow:hidden}";
     });
 
@@ -1803,29 +1676,20 @@ public:
     return resources;
   }
 
-  // =========================================================================
-  // SINGLE-LAYER MODE
-  // =========================================================================
+  // ---- SINGLE-LAYER MODE --------------------------------------------------
   //
-  // One combined text layer per page (paint order). Text runs are grouped into
-  // line blocks (`<div class="t ...">`) in paint order; individual runs flow
-  // inline within the block, each nudged by a `margin-left` (the gen-time gap
-  // from the previous run's right edge, matching the embedded font's advance
-  // exactly when the font's `hmtx` matches the PDF `/Widths`).
+  // One combined text layer per page: runs grouped into paint-order line
+  // blocks (`.t`), each run nudged by a `margin-left` gap.
   //
-  // Unicode mapping uses frequency analysis: a pre-pass over all pages counts
-  // (uchar, glyph) co-occurrences per font, then the post-pass picks the
-  // most-frequent glyph for each uchar as the cmap entry. This ensures the
-  // common case wins instead of an arbitrary first-come-first-serve order.
+  // The embedded font's cmap is built by frequency analysis — a pre-pass counts
+  // (uchar, glyph) co-occurrences per font and the winner takes the entry — so
+  // the common shape wins instead of whichever run came first.
   //
-  // Clean runs (all (uchar, glyph) pairs match the frequency winner) render
-  // the real Unicode directly in the embedded font — natively findable and
-  // selectable. Unclean visible runs paint their glyphs via
-  // `::before{content:attr(data-g)}` CSS generated content (kept out of the
-  // DOM text stream so they never break find mid-word), with a zero-width
-  // `display:inline-block; overflow:hidden` overlay carrying the real Unicode
-  // alongside. No-unicode runs show only the glyph. Invisible (Tr 3/7) and
-  // fallback (no embedded font) runs render the real Unicode as ordinary text.
+  // A run whose pairs all match the winner ("clean") renders real Unicode
+  // directly in the embedded font, natively findable. An unclean run paints
+  // glyphs via `::before{content:attr(data-g)}` — out of the DOM text stream,
+  // so find never breaks mid-word — with a zero-width `.ov` overlay carrying
+  // the Unicode. Invisible and fallback runs render Unicode as ordinary text.
 
   struct SingleRunOut {
     std::string margin;     ///< "" or a `margin-left` class
@@ -1865,19 +1729,15 @@ public:
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
 
-    // ---- Font registration ------------------------------------------------
     // A real-Unicode scalar gets a cmap entry only inside the BMP and outside
-    // the PUA (`U+E000..U+F8FF`), so glyph-deterministic PUA code points are
-    // never shadowed.
+    // the PUA, so the glyph-deterministic PUA code points are never shadowed.
     const auto collapsible_unicode = [](const char32_t c) {
       return c <= 0xFFFF && !(c >= 0xE000 && c <= 0xF8FF);
     };
 
-    // A leading inferred space (space inference) carries no character code or
-    // advance, so the "collapsible" 1:1 alignment is between the codes and the
-    // run text *after* that space. These helpers view the run text past it: the
-    // core character count (to test 1:1 against `advances`) and the byte offset
-    // where the codes begin (to walk `text` alongside `font->codes`).
+    // A leading inferred space carries no character code or advance, so the 1:1
+    // codes-to-text alignment starts after it. These helpers view the run text
+    // past that space.
     const auto core_char_count = [](const pdf::TextElement &t) {
       return util::string::utf8_length(t.text) -
              (t.leading_space_inferred ? 1u : 0u);
@@ -1935,12 +1795,8 @@ public:
     }
 
     // ---- Pre-pass: frequency analysis ------------------------------------
-    // Count (uchar, glyph) co-occurrences per font over all pages. The main
-    // pass then uses the frequency winner for each uchar instead of first-come-
-    // first-serve, so the most common glyph shape wins its cmap entry.
-    // This re-runs `extract_page` on every page (the main pass parses each a
-    // second time) — a deliberate tradeoff: re-parsing the already-decoded
-    // stream is cheap next to buffering every page's element list in memory.
+    // Every page is extracted twice (here and in the main pass): re-parsing an
+    // already-decoded stream is cheaper than buffering every page's elements.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       const pdf::Page &page = *pages[pi];
       for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
@@ -1953,8 +1809,8 @@ public:
         if (font == 0) {
           continue;
         }
-        // Only collapsible-candidate runs contribute to frequency counts. A
-        // leading inferred space is skipped so a run carrying one still votes.
+        // Only collapsible-candidate runs vote; the leading inferred space is
+        // skipped so a run carrying one still does.
         if (core_char_count(*text) != text->advances.size()) {
           continue;
         }
@@ -1970,8 +1826,8 @@ public:
       }
     }
 
-    // Compute the frequency winner for each (font, uchar): the glyph with the
-    // highest count becomes the cmap entry. Ties broken by lower glyph id.
+    // The winning glyph per (font, uchar) takes the cmap entry; the map's
+    // ascending glyph order makes strict `>` break ties by lower glyph id.
     for (std::uint32_t fi = 0; fi < family_count; ++fi) {
       for (const auto &[uchar, counts] : glyph_freq[fi]) {
         std::uint16_t best_glyph = 0;
@@ -2043,14 +1899,9 @@ public:
         const double ws_pt = round2(text.word_spacing * scale);
         const std::string color_suffix = color_class(text, invisible, styles);
 
-        // ---- Run payload ------------------------------------------------
-        // Decide whether this is a clean collapse (real unicode renders
-        // directly via the frequency-winner cmap entries) or unclean (glyph
-        // painted via generated content, unicode as overlay).
         SingleRunOut run;
-        // `color_suffix` carries a leading space for the dual-layer paths that
-        // concatenate it onto a class string; the single-layer run stores just
-        // the class name.
+        // `color_suffix` leads with a space for the dual-layer paths that
+        // concatenate it; a single-layer run stores the bare class name.
         run.color =
             color_suffix.empty() ? std::string() : color_suffix.substr(1);
 
@@ -2058,11 +1909,10 @@ public:
           // Fallback / invisible: render real unicode directly.
           run.text = escape_markup(text.text);
         } else {
-          // Check collapse: 1:1 codes↔core-text and every (uchar, glyph)
-          // matches the frequency winner. A leading inferred space is metadata,
-          // not a coded char, so it is excluded from the alignment (otherwise a
-          // recovered word break would force the whole run onto the PUA path).
-          // `font != 0` here already implies `text.font != nullptr`.
+          // Collapse needs 1:1 codes-to-core-text and every (uchar, glyph) to
+          // match the frequency winner. The leading inferred space is metadata,
+          // not a coded char, so excluding it keeps a recovered word break from
+          // forcing the whole run onto the PUA path.
           bool collapse = core_char_count(text) > 0 &&
                           core_char_count(text) == text.advances.size();
           if (collapse) {
@@ -2081,14 +1931,11 @@ public:
             }
           }
           if (collapse) {
-            // Real Unicode renders directly via the cmap. Any leading inferred
-            // space becomes a dedicated selectable space span (`lead_space`),
-            // never a literal space in `text`, so `white-space:pre` cannot
-            // shift the glyphs right of their placement origin. When the run
-            // continues its line over a positive gap the span carries that gap
-            // as its width (pdf2htmlEX's model: one real space that is both the
-            // copyable character and the visible advance); otherwise it stays
-            // zero-width. See the `.sp`/`.ov` split in the main pass.
+            // A leading inferred space becomes its own span, never a literal
+            // space in `text`, so `white-space:pre` cannot shift the glyphs off
+            // their placement origin. Over a positive gap that span carries the
+            // gap as its width (pdf2htmlEX's model: one real space that is both
+            // the copyable character and the advance), else it is zero-width.
             run.lead_space = text.leading_space_inferred;
             run.text = escape_markup(
                 std::string(core_text_begin(text), text.text.end()));
@@ -2102,9 +1949,8 @@ public:
         }
 
         // ---- Flow grouping -----------------------------------------------
-        // The visible substitute family of a non-embedded font (`font == 0`);
-        // part of the flow key so two different substitutes (e.g. a Helvetica
-        // run then a Times run) never share one line block's `font_class`.
+        // The substitute family is part of the flow key, so a Helvetica run and
+        // a Times run never share one line block's `font_class`.
         const std::string substitute_declaration =
             (font == 0 && !invisible && text.font != nullptr &&
              text.font->substitute)
@@ -2163,8 +2009,7 @@ public:
         } else {
           if (run.lead_space && margin_pt > 0) {
             // Recovered word break over a positive gap: fold the advance into
-            // the selectable space span (pdf2htmlEX-style width-bearing space)
-            // rather than a zero-width `.ov` plus a `margin-left` on the run.
+            // the space span rather than a `margin-left` on the run.
             run.lead_space_width =
                 styles.intern("w", pt_decl("width", margin_pt));
           } else if (margin_pt != 0) {
@@ -2195,31 +2040,23 @@ public:
     write_header_common(out, font_faces, font_styles, styles, [&] {
       // Invisible text render modes (Tr 3/7).
       out.out() << ".i{color:transparent}";
-      // Unclean glyphs painted via CSS generated content (`data-g` attr), kept
-      // out of the DOM text stream so they never break find/double-click.
+      // Unclean glyphs via generated content, out of the DOM text stream.
       out.out() << ".gl::before{content:attr(data-g)}";
-      // Zero-width inline-block overlay carrying the real Unicode of an unclean
-      // run: invisible, zero-width, but still found/selected in reading order.
-      // `inline-block` lets `width:0` apply (a regular inline box ignores it);
-      // `overflow:hidden` clips the invisible text to zero width.
+      // The real Unicode of an unclean run: invisible and zero-width, but still
+      // found and selected in reading order. `inline-block` is what lets
+      // `width:0` apply at all.
       out.out() << ".ov{display:inline-block;width:0;overflow:hidden;"
                    "color:transparent;vertical-align:baseline}";
-      // Width-bearing selectable space for a recovered word break (pdf2htmlEX's
-      // model): a real `" "` inside an inline-block sized to the gap by a `wN`
-      // class, so the space is markable/copyable *and* carries the advance
-      // (no `margin-left` on the following run). No `overflow:hidden`: it would
-      // not clip the space glyph (transparent, and the declared width already
-      // fixes the advance) but *would* move the inline-block's baseline to its
-      // bottom margin edge (CSS quirk when overflow != visible), lifting the
-      // space's selection box off the text baseline so it highlights at the
-      // wrong height. `vertical-align:baseline` on a `visible` box keeps the
-      // space aligned with the neighbouring glyphs.
+      // Width-bearing selectable space for a recovered word break: a real `" "`
+      // sized to the gap by a `wN` class, copyable *and* carrying the advance.
+      // Deliberately no `overflow:hidden`: it would move the inline-block's
+      // baseline to its bottom margin edge and highlight the space at the wrong
+      // height, while clipping nothing (the space is transparent).
       out.out() << ".sp{display:inline-block;"
                    "color:transparent;vertical-align:baseline}";
     });
 
-    // Helper: derive a run's leading-span class from `head` prefix plus its
-    // optional margin-left and colour override.
+    // A run's span class: `head` plus its optional margin-left and colour.
     const auto run_class = [](const SingleRunOut &run, const char *head) {
       std::string cls = head;
       const auto add = [&](const std::string &t) {
@@ -2248,11 +2085,9 @@ public:
         if (run.glyph_data.empty()) {
           // Clean / invisible / fallback: real Unicode renders directly.
           if (run.lead_space) {
-            // Recovered word-break space: a real, selectable/copyable `" "`.
-            // With a `wN` width it carries the gap (pdf2htmlEX-style,
-            // markable); without one it is zero-width `.ov` (line-leading or
-            // negative gap) and never shifts the glyphs under
-            // `white-space:pre`.
+            // With a `wN` width the space carries the gap; without one it is a
+            // zero-width `.ov` (line-leading or negative gap) that cannot shift
+            // the glyphs under `white-space:pre`.
             const std::string space_cls = run.lead_space_width.empty()
                                               ? std::string("ov")
                                               : "sp " + run.lead_space_width;
@@ -2318,13 +2153,11 @@ public:
     return std::move(s).str();
   }
 
-  /// Whether a run at (`ox`, `baseline`) starts a new visual line rather than
-  /// continuing the previous run: its baseline jumped by more than 0.6× the
-  /// previous run's advance height, or its origin sits left of the previous
-  /// run's right edge (minus half that height) — a carriage return. Shared by
-  /// all three layers (visual, selection, single) so the heuristic, which is
-  /// always measured against the *previous* run's `prev_font_pt`, cannot drift
-  /// between them. Callers gate on `prev_font_pt > 0`.
+  /// Whether a run at (`ox`, `baseline`) starts a new visual line: its baseline
+  /// jumped by more than 0.6× the previous run's advance height, or its origin
+  /// sits left of that run's right edge — a carriage return. Shared by all
+  /// three layers so the heuristic cannot drift between them; callers gate on
+  /// `prev_font_pt > 0`.
   static bool starts_new_line(const double baseline, const double prev_baseline,
                               const double ox, const double prev_end,
                               const double prev_font_pt) {
@@ -2332,10 +2165,8 @@ public:
            ox < prev_end - 0.5 * prev_font_pt;
   }
 
-  /// The per-run geometry derived from a `TextElement` and the page's `to_box`
-  /// transform. Identical in every text mode, so it lives in one place — no
-  /// call site can compute it differently (that is how findings like the 180°
-  /// rotation and the drifting line-break threshold crept in).
+  /// Per-run geometry from a `TextElement` and the page's `to_box`. Identical
+  /// in every text mode, and kept in one place so no call site can drift.
   struct RunGeometry {
     util::math::Transform2D m; ///< glyph space -> page box (y-down, pt later)
     bool invisible;            ///< Tr 3/7 — paints nothing, selectable only
@@ -2357,9 +2188,8 @@ public:
     const bool invisible =
         text.rendering_mode == pdf::TextRenderingMode::invisible ||
         text.rendering_mode == pdf::TextRenderingMode::clip;
-    // `m.a > 0` keeps the axis-aligned fast path from swallowing a pure 180°
-    // rotation (a = d = -1, b = c = 0), which would otherwise feed a negative
-    // `m.a` into `font_size_pt` and the left/top math.
+    // `m.a > 0` keeps a pure 180° rotation (a = d = -1) off the axis-aligned
+    // fast path, where it would feed a negative `m.a` into the placement math.
     const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
     const double tz = text.horizontal_scaling / 100.0;
     const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
@@ -2378,8 +2208,7 @@ public:
   }
 
   /// The colour class suffix (with a leading space) for a run's paint colour,
-  /// or "" for black / invisible. Interns the declaration in `styles`. Shared
-  /// by both modes' run emission.
+  /// or "" for black / invisible.
   static std::string color_class(const pdf::TextElement &text,
                                  const bool invisible, AtomicStyles &styles) {
     if (invisible) {
@@ -2393,9 +2222,8 @@ public:
         text.rendering_mode == pdf::TextRenderingMode::fill_stroke_clip;
     const pdf::GraphicsState::Color &paint =
         stroked ? text.stroke_color : text.fill_color;
-    // The single span carries one opacity. A fill-and-stroke glyph paints both,
-    // so take the more opaque of the two: a transparent fill (`ca 0`) must not
-    // hide an opaque stroke (`CA 1`) and drop the outlined glyph entirely.
+    // The span carries one opacity, so a fill-and-stroke glyph takes the more
+    // opaque of the two: a transparent fill must not drop an opaque outline.
     const double alpha = stroked ? text.stroke_alpha
                          : fill_and_stroke
                              ? std::max(text.fill_alpha, text.stroke_alpha)
@@ -2417,8 +2245,7 @@ public:
     return ' ' + styles.intern("k", std::move(declaration).str());
   }
 
-  /// The page-box geometry (dimensions, the page `to_box` transform and the
-  /// `.p x# y#` class string) shared by both modes' page setup. `add_class`
+  /// The page-box geometry shared by both modes' page setup; `add_class`
   /// interns the width/height declarations.
   struct PageBox {
     double width;
@@ -2452,10 +2279,9 @@ public:
     return {width, height, to_box, std::move(classes)};
   }
 
-  /// Returns the 1-based font family index for `font`, or 0 when it is unusable
-  /// (or already rejected). On the first acceptance of a usable font runs
-  /// `on_accept(index)` so the caller can grow its parallel per-font arrays.
-  /// Shared accept/reject bookkeeping for both modes' `font_family` lambdas.
+  /// The 1-based font family index for `font`, or 0 when it is unusable. Runs
+  /// `on_accept(index)` on first acceptance so the caller can grow its parallel
+  /// per-font arrays.
   template <typename OnAccept>
   static std::uint32_t intern_font(
       std::unordered_map<const pdf::Font *, std::uint32_t> &family_index,
@@ -2474,10 +2300,8 @@ public:
     return index;
   }
 
-  /// Writes a page's `<defs>` clips and its paint-order body — an SVG
-  /// open/close dance around a `variant<LineT, PathT>` item list — via
-  /// `write_line`. The structure is identical in both modes; only the line and
-  /// path types and the line writer differ.
+  /// A page's `<defs>` and its paint-order body: an SVG open/close dance around
+  /// the item list, identical in both modes bar the line and path types.
   template <typename LineT, typename PathT, typename WriteLine>
   static void
   write_page_items(HtmlWriter &out, const std::string &clip_defs,
@@ -2515,10 +2339,8 @@ public:
     close_svg();
   }
 
-  /// Writes the document/head prologue shared by both modes: the constant
-  /// `body`/`.p`/`.t` rules, then `write_mode_css()` for the mode-specific
-  /// rules, then the constant `.s` rule, the font faces/styles and the interned
-  /// atomic rules. Leaves the writer positioned after `</head>`.
+  /// The document/head prologue shared by both modes, with `write_mode_css()`
+  /// slotted between the constant rules. Leaves the writer after `</head>`.
   template <typename WriteModeCss>
   void write_header_common(HtmlWriter &out, const std::string &font_faces,
                            const std::string &font_styles,
@@ -2533,9 +2355,8 @@ public:
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     // `.d`: the page column, sized to the widest page so pages of differing
-    // width centre against each other, not against the viewport. The page's
-    // side margin is part of that width, so fitting the document to a phone
-    // screen leaves a gutter instead of going edge to edge.
+    // width centre against each other rather than against the viewport. Their
+    // side margin is part of that width, so a phone screen keeps a gutter.
     out.out() << ".d{display:flex;flex-direction:column;align-items:center;"
                  "gap:16px;padding:16px 0;width:max-content;min-width:100%}";
     out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
@@ -2557,14 +2378,9 @@ public:
     out.write_header_end();
   }
 
-  /// Appends a text run's line-block placement classes via `add_class(classes,
-  /// prefix, declaration)`: `l`/`t` (left/top, in pt) for an axis-aligned run,
-  /// or `m` (a CSS `translate(...)` + `matrix(...)` transform, re-anchored to
-  /// the run's baseline by `ascent_pt`) for a rotated/skewed one. A CSS
-  /// `matrix()` translation is intrinsically px, so the (pt) translation is
-  /// carried by a leading `translate(...pt)` — keeping the whole text layer in
-  /// pt. Shared by the visual, selection and single-layer line blocks, which
-  /// all position runs the same way.
+  /// Appends a line block's placement classes: `l`/`t` (left/top in pt) for an
+  /// axis-aligned run, `m` (a transform re-anchored to the baseline by
+  /// `ascent_pt`) for a rotated or skewed one. Shared by all three layers.
   template <typename AddClass>
   static void add_position_classes(std::string &classes, AddClass &&add_class,
                                    const util::math::Transform2D &m,
@@ -2577,9 +2393,8 @@ public:
                 pt_decl("top", round2(baseline - ascent_pt * m.a)));
       return;
     }
-    // `translate()` accepts pt and is applied after (outside) the `matrix()`,
-    // so `translate(tx,ty) matrix(a,b,c,d,0,0)` reproduces the full affine with
-    // the translation authored in pt instead of matrix()'s implicit px.
+    // A CSS `matrix()` translation is intrinsically px; `translate()` takes pt
+    // and applies outside it, so the whole text layer stays in pt.
     const double tx = m.e - m.c * ascent_pt;
     const double ty = m.f - m.d * ascent_pt;
     std::ostringstream t;
@@ -2589,10 +2404,9 @@ public:
     add_class(classes, "m", std::move(t).str());
   }
 
-  /// Whether `font`'s embedded program can be re-encoded (SFNT PUA re-cmap or
-  /// CFF->OTF wrap) without throwing; probes the real encode path so failures
-  /// surface here rather than in the post-pass. Restores the SFNT's original
-  /// cmap after probing (the CFF probe is stateless).
+  /// Whether `font`'s embedded program re-encodes without throwing. Probes the
+  /// real encode path so failures surface here, not in the post-pass, and
+  /// restores the SFNT cmap it mutates.
   static bool font_is_usable(const pdf::Font &font) {
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
@@ -2629,10 +2443,9 @@ public:
     return (inv ? "fn" : "fv") + std::to_string(font);
   }
 
-  /// Re-encodes `font`'s embedded program (SFNT PUA re-cmap or CFF->OTF wrap,
-  /// folding in `extra_unicode`'s real-Unicode cmap entries alongside the PUA
-  /// range) and appends its `@font-face` and `.fvN`/`.fnN` rules.
-  /// `class_used[0]`/`[1]` gate whether the visible/invisible rule is needed.
+  /// Re-encodes `font`'s embedded program, folding `extra_unicode`'s cmap
+  /// entries in alongside the PUA range, and appends its `@font-face` plus the
+  /// `.fvN`/`.fnN` rules `class_used` says are needed.
   static void
   write_font_face(const pdf::Font &font, const std::uint32_t index,
                   const std::map<char32_t, std::uint16_t> &extra_unicode,
@@ -2697,11 +2510,9 @@ public:
     return s;
   }
 
-  /// Escapes only the three markup-significant characters for the selection /
-  /// unicode text. Deliberately *not* `html::escape_text`: that substitutes
-  /// spaces with `&nbsp;`, which browsers treat as a distinct character from
-  /// U+0020 and so breaks find-in-page word matching and double-click word
-  /// selection across the very text these layers exist to make selectable.
+  /// Escapes only the three markup-significant characters. Deliberately *not*
+  /// `html::escape_text`: its `&nbsp;` substitution is a distinct character
+  /// from U+0020 and breaks the find and word selection these layers exist for.
   static std::string escape_markup(std::string s) {
     util::string::replace_all(s, "&", "&amp;");
     util::string::replace_all(s, "<", "&lt;");
@@ -2709,10 +2520,8 @@ public:
     return s;
   }
 
-  /// Handles path/shading/image elements common to both rendering modes.
-  /// Calls close_line() and push_fragment(svg_string) when a non-empty
-  /// fragment is produced. Returns true when the element was a graphic
-  /// (caller should `continue`), false when it is a text element.
+  /// Handles the non-text elements common to both modes, calling `close_line`
+  /// and `push_svg` for a non-empty fragment. Returns false for a text element.
   template <typename CloseLine, typename PushSvg>
   static bool
   handle_graphic_element(const pdf::PageElement &element,

@@ -18,19 +18,15 @@ namespace odr {
 
 class HttpServer::Impl : public std::enable_shared_from_this<Impl> {
 public:
-  /// What a HttpServer holds: a second reference to the impl whose deleter
-  /// stops the server rather than destroying it. Running out of handles is what
-  /// has to stop a listen() in flight, and ~Impl cannot be that signal -
-  /// listen() keeps a reference of its own, so the impl outlives the handles
-  /// for as long as it serves. Destroying it is left to the reference captured
-  /// below.
+  /// What a HttpServer holds: a second reference whose deleter stops the server
+  /// rather than destroying it. ~Impl cannot be that signal - listen() keeps a
+  /// reference of its own, so the impl outlives the handles while it serves.
   static std::shared_ptr<Impl> create(const Logger &logger) {
     std::shared_ptr<Impl> owner = std::make_shared<Impl>(logger);
     Impl *const impl = owner.get();
 
     // shared_from_this() stays bound to the control block make_shared put
-    // there: a second one only takes weak_this over when it has expired. So
-    // listen() holds that reference, not one of these, which is the whole point
+    // there, so listen() holds `owner`'s reference, not one of these
     return std::shared_ptr<Impl>{
         impl, [owner = std::move(owner)](Impl * /*owner already has it*/) {
           owner->stop();
@@ -39,8 +35,7 @@ public:
 
   explicit Impl(const Logger &logger)
       : m_logger{logger}, m_server{std::make_shared<httplib::Server>()} {
-    // Set up exception handler to catch any internal httplib exceptions.
-    // This prevents crashes when exceptions occur during request processing.
+    // an exception escaping a handler tears down the process otherwise
     m_server->set_exception_handler([this](const httplib::Request & /*req*/,
                                            httplib::Response &res,
                                            const std::exception_ptr &ep) {
@@ -62,52 +57,46 @@ public:
                     res.set_content("Hello World!", "text/plain");
                   });
 
-    m_server->Get("/file/" + std::string(prefix_pattern),
-                  [this](const httplib::Request &req, httplib::Response &res) {
-                    if (m_stopping.load(std::memory_order_acquire)) {
-                      res.status = 503;
-                      res.set_content("Service Unavailable", "text/plain");
-                      return;
-                    }
-                    serve_file(req, res);
-                  });
+    const auto file_handler = [this](const httplib::Request &req,
+                                     httplib::Response &res) {
+      if (m_stopping.load(std::memory_order_acquire)) {
+        res.status = 503;
+        res.set_content("Service Unavailable", "text/plain");
+        return;
+      }
+      serve_file(req, res);
+    };
+    m_server->Get("/file/" + std::string(prefix_pattern), file_handler);
     m_server->Get("/file/" + std::string(prefix_pattern) + "/(.*)",
-                  [this](const httplib::Request &req, httplib::Response &res) {
-                    if (m_stopping.load(std::memory_order_acquire)) {
-                      res.status = 503;
-                      res.set_content("Service Unavailable", "text/plain");
-                      return;
-                    }
-                    serve_file(req, res);
-                  });
+                  file_handler);
   }
 
   ~Impl() {
-    // listen() holds a reference to the impl of its own, so this cannot run
-    // underneath an accept loop. stop() is still what tears the server down: it
-    // closes the socket, waits for any listen() to return and only then drops
-    // the httplib server, whose destructor joins the thread pool. m_content is
-    // destroyed after this body, i.e. after all of that.
+    // cannot run underneath an accept loop - listen() holds a reference of its
+    // own - but stop() is still what closes the socket and joins the pool,
+    // before m_content is destroyed after this body
     stop();
   }
 
-  // Prevent copying - the lambdas capture 'this' so copying would be unsafe
+  // the handler lambdas capture `this`
   Impl(const Impl &) = delete;
   Impl &operator=(const Impl &) = delete;
 
   void serve_file(const httplib::Request &req, httplib::Response &res) {
     try {
-      std::string id = req.matches[1].str();
-      std::string path = req.matches.size() > 1 ? req.matches[2].str() : "";
+      const std::string id = req.matches[1].str();
+      // the route without a trailing path has the one group
+      const std::string path =
+          req.matches.size() > 2 ? req.matches[2].str() : "";
 
       std::unique_lock lock{m_mutex};
-      auto it = m_content.find(id);
+      const auto it = m_content.find(id);
       if (it == m_content.end()) {
         ODR_ERROR(m_logger, "Content not found for ID: " << id);
         res.status = 404;
         return;
       }
-      auto [_, service] = it->second;
+      const HtmlService service = it->second.service;
       lock.unlock();
 
       serve_file(res, service, path);
@@ -132,14 +121,9 @@ public:
 
     ODR_VERBOSE(m_logger, "Serving file: " << path);
 
-    // Buffer content to avoid streaming issues on Android.
-    // Using ContentProviderWithoutLength (chunked transfer encoding) can cause
-    // SIGSEGV crashes in httplib::Server::write_response_core when:
-    // 1. The client disconnects during transfer
-    // 2. Exceptions are thrown during content generation
-    // 3. The server is stopped while requests are in-flight
-    // By buffering content first, we can handle errors gracefully and use
-    // Content-Length based responses which are more reliable.
+    // buffered rather than streamed: a chunked ContentProviderWithoutLength
+    // crashes httplib::Server::write_response_core when the client disconnects,
+    // the content generation throws, or the server stops mid-request
     try {
       std::ostringstream buffer;
       service.write(path, buffer);
@@ -164,7 +148,7 @@ public:
       throw PrefixInUse(prefix);
     }
 
-    m_content.emplace(prefix, Content{prefix, std::move(service)});
+    m_content.emplace(prefix, Content{std::move(service)});
   }
 
   std::uint32_t bind(const std::string &host, const std::uint32_t port,
@@ -181,18 +165,16 @@ public:
     }
 
 #ifdef _WIN32
-    // Windows keeps cpp-httplib's defaults, which set SO_EXCLUSIVEADDRUSE
-    // alongside SO_REUSEADDR. The two flags mean the opposite of what they do
-    // below: there SO_REUSEADDR lets a second live socket take the endpoint
-    // over, and SO_EXCLUSIVEADDRUSE is what keeps it ours. Replacing that with
-    // the posix mapping would hand the port away, so Options does not apply.
+    // Options does not apply: Windows keeps cpp-httplib's
+    // SO_EXCLUSIVEADDRUSE defaults, where SO_REUSEADDR lets another live socket
+    // take the endpoint over and the posix mapping below would hand the port
+    // away
     static_cast<void>(options);
 #else
-    // cpp-httplib's default sets SO_REUSEPORT where it exists and SO_REUSEADDR
-    // only otherwise, which is the wrong way round for a server that gets
-    // restarted: only SO_REUSEADDR lets a port held by TIME_WAIT sockets be
-    // bound again, while SO_REUSEPORT hands a second server a share of the
-    // connections instead.
+    // cpp-httplib defaults to SO_REUSEPORT where it exists, the wrong way round
+    // for a server that gets restarted: only SO_REUSEADDR rebinds a port held
+    // by TIME_WAIT sockets, SO_REUSEPORT shares connections with a second
+    // server instead.
     // socket_t is not in the httplib namespace in every version, hence auto
     m_server->set_socket_options([options](const auto sock) {
       constexpr int yes = 1;
@@ -229,10 +211,9 @@ public:
   }
 
   void listen() {
-    // listen() blocks, so it runs on a thread of the caller's. A reference of
-    // its own keeps the impl - and with it the httplib server, the mutex and
-    // the condition variable below - alive for as long as the accept loop is on
-    // it, whatever the thread that owns the HttpServer does meanwhile.
+    // this blocks on a thread of the caller's; a reference of its own keeps the
+    // impl - server, mutex, condition variable - alive under the accept loop,
+    // whatever the thread owning the HttpServer does meanwhile
     const std::shared_ptr<Impl> self = shared_from_this();
 
     std::shared_ptr<httplib::Server> server;
@@ -300,11 +281,10 @@ public:
       server = std::move(m_server);
 
       if (server != nullptr && m_listening > 0) {
-        // httplib::Server::stop() closes the listening socket, but only once
-        // listen_internal() has the accept loop up - and it asserts, then
-        // closes an already closed descriptor, if it runs a second time after
-        // that. A listen() that is still on its way there therefore has to be
-        // waited for, and httplib's own flag is the only thing to wait on.
+        // httplib::Server::stop() only closes the listening socket once the
+        // accept loop is up, and double-closes the descriptor if it runs again
+        // after that, so a listen() on its way there has to be waited for -
+        // httplib's own flag being the only thing to wait on
         while (m_listening > 0 && !server->is_running()) {
           m_listen_done.wait_for(lock, std::chrono::milliseconds{1});
         }
@@ -315,10 +295,8 @@ public:
         }
       }
 
-      // the accept loop stands on the server object and on everything the
-      // handlers capture, so neither may go before listen() has returned:
-      // dropping the server underneath it was the use after free, and the two
-      // then raced over the listening socket as well
+      // the accept loop stands on the server and on what the handlers capture,
+      // so neither may go before listen() has returned
       m_listen_done.wait(lock, [this] { return m_listening == 0; });
     }
 
@@ -351,17 +329,14 @@ private:
   // listen() calls in flight - 0 or 1 in any sane use
   std::size_t m_listening{0};
 
-  // Flag to indicate server is shutting down - checked by handlers
-  // to reject new requests during shutdown. Atomic because they read it
-  // without the lock.
+  // rejects new requests; atomic because the handlers read it without the lock
   std::atomic<bool> m_stopping{false};
 
-  // Whether bind() has taken a socket. listen() needs it because cpp-httplib
-  // will happily "serve" a server that never bound one.
+  // whether bind() has taken a socket - cpp-httplib will happily "serve" a
+  // server that never bound one
   bool m_bound{false};
 
   struct Content {
-    std::string id;
     HtmlService service;
   };
 

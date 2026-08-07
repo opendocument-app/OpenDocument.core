@@ -22,7 +22,7 @@ std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
   Element &element = m_elements.emplace_back();
-  ElementIdentifier element_id = m_elements.size();
+  const ElementIdentifier element_id = m_elements.size();
   element.type = type;
   element.node = node;
   return {element_id, element};
@@ -34,36 +34,39 @@ ElementRegistry::create_text_element(const pugi::xml_node first_node,
                                      const pugi::xml_node last_node) {
   const auto &[element_id, element] =
       create_element(ElementType::text, first_node);
-  auto [it, success] = m_texts.emplace(element_id, Text{last_node});
-  return {element_id, element, it->second};
+  Text &text = m_texts.emplace(element_id, Text{last_node}).first->second;
+  return {element_id, element, text};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Table &>
 ElementRegistry::create_table_element(const pugi::xml_node node) {
   const auto &[element_id, element] = create_element(ElementType::table, node);
-  auto [it, success] = m_tables.emplace(element_id, Table{});
-  return {element_id, element, it->second};
+  Table &table = m_tables.emplace(element_id, Table{}).first->second;
+  return {element_id, element, table};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Sheet &>
 ElementRegistry::create_sheet_element(const pugi::xml_node node) {
   const auto &[element_id, element] = create_element(ElementType::sheet, node);
-  auto [it, success] = m_sheets.emplace(element_id, Sheet{});
-  return {element_id, element, it->second};
+  Sheet &sheet = m_sheets.emplace(element_id, Sheet{}).first->second;
+  return {element_id, element, sheet};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::SheetCell &>
 ElementRegistry::create_sheet_cell_element(const pugi::xml_node node,
                                            const TablePosition &position,
-                                           bool is_repeated) {
+                                           const bool is_repeated) {
   const auto &[element_id, element] =
       create_element(ElementType::sheet_cell, node);
-  auto [it, success] = m_sheet_cells.emplace(
-      element_id, SheetCell{.position = position, .is_repeated = is_repeated});
-  return {element_id, element, it->second};
+  SheetCell &sheet_cell =
+      m_sheet_cells
+          .emplace(element_id,
+                   SheetCell{.position = position, .is_repeated = is_repeated})
+          .first->second;
+  return {element_id, element, sheet_cell};
 }
 
 ElementRegistry::Element &
@@ -128,6 +131,22 @@ ElementRegistry::sheet_cell_element(const ElementIdentifier id) const {
   return nullptr;
 }
 
+void ElementRegistry::link_child(const ElementIdentifier parent_id,
+                                 const ElementIdentifier child_id,
+                                 ElementIdentifier &first_id,
+                                 ElementIdentifier &last_id) {
+  Element &child = element_at(child_id);
+  child.parent_id = parent_id;
+  child.previous_sibling_id = last_id;
+
+  if (first_id == null_element_id) {
+    first_id = child_id;
+  } else {
+    element_at(last_id).next_sibling_id = child_id;
+  }
+  last_id = child_id;
+}
+
 void ElementRegistry::append_child(const ElementIdentifier parent_id,
                                    const ElementIdentifier child_id) {
   check_element_id(parent_id);
@@ -137,18 +156,8 @@ void ElementRegistry::append_child(const ElementIdentifier parent_id,
         "DocumentElementRegistry::append_child: child already has a parent");
   }
 
-  const ElementIdentifier previous_sibling_id =
-      element_at(parent_id).last_child_id;
-
-  element_at(child_id).parent_id = parent_id;
-  element_at(child_id).previous_sibling_id = previous_sibling_id;
-
-  if (element_at(parent_id).first_child_id == null_element_id) {
-    element_at(parent_id).first_child_id = child_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = child_id;
-  }
-  element_at(parent_id).last_child_id = child_id;
+  Element &parent = element_at(parent_id);
+  link_child(parent_id, child_id, parent.first_child_id, parent.last_child_id);
 }
 
 void ElementRegistry::append_column(const ElementIdentifier table_id,
@@ -160,18 +169,8 @@ void ElementRegistry::append_column(const ElementIdentifier table_id,
         "DocumentElementRegistry::append_column: child already has a parent");
   }
 
-  const ElementIdentifier previous_sibling_id =
-      table_element_at(table_id).last_column_id;
-
-  element_at(column_id).parent_id = table_id;
-  element_at(column_id).previous_sibling_id = previous_sibling_id;
-
-  if (table_element_at(table_id).first_column_id == null_element_id) {
-    table_element_at(table_id).first_column_id = column_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = column_id;
-  }
-  table_element_at(table_id).last_column_id = column_id;
+  Table &table = table_element_at(table_id);
+  link_child(table_id, column_id, table.first_column_id, table.last_column_id);
 }
 
 void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
@@ -183,18 +182,8 @@ void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
         "DocumentElementRegistry::append_shape: child already has a parent");
   }
 
-  const ElementIdentifier previous_sibling_id =
-      sheet_element_at(sheet_id).last_shape_id;
-
-  element_at(shape_id).parent_id = sheet_id;
-  element_at(shape_id).previous_sibling_id = previous_sibling_id;
-
-  if (sheet_element_at(sheet_id).first_shape_id == null_element_id) {
-    sheet_element_at(sheet_id).first_shape_id = shape_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = shape_id;
-  }
-  sheet_element_at(sheet_id).last_shape_id = shape_id;
+  Sheet &sheet = sheet_element_at(sheet_id);
+  link_child(sheet_id, shape_id, sheet.first_shape_id, sheet.last_shape_id);
 }
 
 void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,

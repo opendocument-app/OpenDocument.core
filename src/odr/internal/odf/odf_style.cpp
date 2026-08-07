@@ -24,7 +24,6 @@ std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
     try {
       return Measure(attribute.value());
     } catch (...) { // NOLINT(bugprone-empty-catch)
-      // an unparsable measure yields nullopt
       // TODO log
     }
   }
@@ -168,7 +167,7 @@ std::optional<Color> read_color(const pugi::xml_attribute attribute) {
     return {};
   }
   const char *value = attribute.value();
-  if (std::strcmp("transparent", attribute.value()) == 0) {
+  if (std::strcmp("transparent", value) == 0) {
     return {}; // TODO use alpha
   }
   if (value[0] == '#') {
@@ -239,29 +238,29 @@ Style::Style() = default;
 
 Style::Style(const StyleRegistry *registry, std::string family,
              const pugi::xml_node node)
-    : m_registry{registry}, m_name{std::move(family)}, m_node{node} {
-  resolve_style_();
+    : m_name{std::move(family)}, m_node{node} {
+  resolve_style_(registry);
 }
 
 Style::Style(const StyleRegistry *registry, std::string name,
-             const pugi::xml_node node, Style *parent, Style *family)
-    : m_registry{registry}, m_name{std::move(name)}, m_node{node},
-      m_parent{parent}, m_family{family} {
-  if (const Style *copy_from = m_parent != nullptr ? m_parent : m_family;
+             const pugi::xml_node node, const Style *parent,
+             const Style *family)
+    : m_name{std::move(name)}, m_node{node} {
+  if (const Style *copy_from = parent != nullptr ? parent : family;
       copy_from != nullptr) {
     m_resolved = copy_from->m_resolved;
   }
 
-  resolve_style_();
+  resolve_style_(registry);
 }
 
 std::string Style::name() const { return m_name; }
 
 const ResolvedStyle &Style::resolved() const { return m_resolved; }
 
-void Style::resolve_style_() {
+void Style::resolve_style_(const StyleRegistry *registry) {
   // TODO use override?
-  resolve_text_style_(m_registry, m_node, m_resolved.text_style);
+  resolve_text_style_(registry, m_node, m_resolved.text_style);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
   resolve_table_column_style_(m_node, m_resolved.table_column_style);
@@ -581,8 +580,11 @@ Style *StyleRegistry::generate_default_style_(const std::string &name,
 
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
-  auto &&style = m_styles[name];
-  if (style != nullptr) {
+  // a null entry means the style is still resolving, i.e. the parent chain is
+  // cyclic; break it rather than recurse forever
+  const auto [style_it, inserted] = m_styles.try_emplace(name);
+  std::unique_ptr<Style> &style = style_it->second;
+  if (!inserted) {
     return style.get();
   }
 
@@ -590,8 +592,9 @@ Style *StyleRegistry::generate_style_(const std::string &name,
   if (const pugi::xml_attribute parent_attr =
           node.attribute("style:parent-style-name");
       parent_attr) {
-    if (const pugi::xml_node parent_node = m_index_style[parent_attr.value()]) {
-      parent = generate_style_(parent_attr.value(), parent_node);
+    if (const auto parent_it = m_index_style.find(parent_attr.value());
+        parent_it != std::end(m_index_style)) {
+      parent = generate_style_(parent_attr.value(), parent_it->second);
     }
   }
 

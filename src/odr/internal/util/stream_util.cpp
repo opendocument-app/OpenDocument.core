@@ -1,5 +1,6 @@
 #include <odr/internal/util/stream_util.hpp>
 
+#include <array>
 #include <iterator>
 #include <sstream>
 #include <streambuf>
@@ -17,34 +18,30 @@ std::string stream::read(std::istream &in) {
 std::string stream::read(std::istream &in, const std::size_t size) {
   std::string result(size, '\0');
   in.read(result.data(), static_cast<std::streamsize>(size));
-  result.resize(in.gcount());
+  result.resize(static_cast<std::size_t>(in.gcount()));
   return result;
 }
 
 void stream::pipe(std::istream &in, std::ostream &out) {
-  static constexpr auto BUFFER_SIZE = 4096;
+  static constexpr std::size_t BUFFER_SIZE = 4096;
 
-  char buffer[BUFFER_SIZE];
+  std::array<char, BUFFER_SIZE> buffer{};
 
   while (true) {
-    in.read(buffer, BUFFER_SIZE);
+    in.read(buffer.data(), BUFFER_SIZE);
     const auto read = in.gcount();
     if (read == 0) {
       break;
     }
-    out.write(buffer, read);
+    out.write(buffer.data(), read);
   }
 }
 
 // from https://stackoverflow.com/a/6089413
 std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
                                 const bool inclusive) {
-  // The characters in the stream are read one-by-one using a std::streambuf.
-  // That is faster than reading them one-by-one using the std::istream.
-  // Code that uses streambuf this way must be guarded by a sentry object.
-  // The sentry object performs various tasks, such as thread synchronization
-  // and updating the stream state.
-
+  // reading through the streambuf is faster than through the istream, but has
+  // to be guarded by a sentry
   std::istream::sentry se(in, true);
   std::streambuf *sb = in.rdbuf();
 
@@ -117,15 +114,12 @@ namespace odr::internal::util::stream {
 
 namespace {
 
-/// Read-only stream buffer over an existing `string_view`, so a `std::istream`
-/// can scan it without copying into a `std::string`/`std::istringstream`. The
-/// view must outlive the buffer. Only the get area is exposed; seeking is not
-/// supported.
+/// Read-only stream buffer over an existing `string_view`, which must outlive
+/// it. No seeking.
 class ViewStreamBuf : public std::streambuf {
 public:
   explicit ViewStreamBuf(std::string_view view) {
-    // The get area is only ever read, never written through, so dropping the
-    // `const` is safe.
+    // the get area is never written through
     auto *begin = const_cast<char *>(view.data());
     setg(begin, begin, begin + view.size());
   }

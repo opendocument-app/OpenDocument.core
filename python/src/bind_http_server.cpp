@@ -16,9 +16,8 @@ void odr_python::bind_http_server(py::module_ &m) {
 
   py::class_<odr::HttpServer::Config>(
       server, "Config",
-      "Server-wide settings. Empty since the cache path went with "
-      "`serve_file`: "
-      "what a service was translated into belongs to whoever translated it.")
+      "Server-wide settings, empty for now: what a service was translated "
+      "into belongs to whoever translated it.")
       .def(py::init<>());
 
   py::class_<odr::HttpServer::Options>(server, "Options",

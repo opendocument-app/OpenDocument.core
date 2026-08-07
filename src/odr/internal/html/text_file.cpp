@@ -30,11 +30,7 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    if (path == "text.html") {
-      return true;
-    }
-
-    return false;
+    return path == "text.html";
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
@@ -112,11 +108,11 @@ public:
 
       std::ostringstream ss_out;
       util::stream::pipe_line(*in, ss_out, false);
-      if (const std::string &line = ss_out.str(); line.empty()) {
+      if (std::string line = ss_out.str(); line.empty()) {
         out.write_element_begin(
             "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
       } else {
-        out.out() << escape_text(ss_out.str());
+        out.out() << escape_text(std::move(line));
       }
 
       out.write_element_end("div");

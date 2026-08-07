@@ -2,6 +2,8 @@
 
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
 
+#include <cstddef>
+
 namespace odr::internal::pdf {
 
 namespace {
@@ -10,6 +12,34 @@ util::math::Transform2D matrix_from_args(const GraphicsOperator &op) {
   return {op.arguments.at(0).as_real(), op.arguments.at(1).as_real(),
           op.arguments.at(2).as_real(), op.arguments.at(3).as_real(),
           op.arguments.at(4).as_real(), op.arguments.at(5).as_real()};
+}
+
+// The device colour operators carry their components inline and supersede any
+// `cs`/`CS`-selected colour space and pattern (ISO 32000-1 8.6.8).
+
+void set_device_grey(GraphicsState::Color &color, const GraphicsOperator &op) {
+  color.space = ColorSpace::device_grey;
+  color.grey = op.arguments.at(0).as_real();
+  color.def = nullptr;
+  color.pattern.clear();
+}
+
+void set_device_rgb(GraphicsState::Color &color, const GraphicsOperator &op) {
+  color.space = ColorSpace::device_rgb;
+  for (std::size_t i = 0; i < color.rgb.size(); ++i) {
+    color.rgb[i] = op.arguments.at(i).as_real();
+  }
+  color.def = nullptr;
+  color.pattern.clear();
+}
+
+void set_device_cmyk(GraphicsState::Color &color, const GraphicsOperator &op) {
+  color.space = ColorSpace::device_cmyk;
+  for (std::size_t i = 0; i < color.cmyk.size(); ++i) {
+    color.cmyk[i] = op.arguments.at(i).as_real();
+  }
+  color.def = nullptr;
+  color.pattern.clear();
 }
 
 } // namespace
@@ -140,7 +170,13 @@ void GraphicsState::clip_bounding_box(const double x0, const double y0,
 
 void GraphicsState::save() { stack.push_back(stack.back()); }
 
-void GraphicsState::restore() { stack.pop_back(); }
+void GraphicsState::restore() {
+  // A `Q` without a matching `q` is malformed (ISO 32000-1 8.4.4) and real
+  // files emit it; keep the initial state so `current()` stays valid.
+  if (stack.size() > 1) {
+    stack.pop_back();
+  }
+}
 
 void GraphicsState::concat_matrix(const util::math::Transform2D &matrix) {
   // CTM = matrix * CTM (ISO 32000-1 8.4.4).
@@ -284,69 +320,36 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     next_line(0, -current().text.leading);
     break;
 
-  // The color-space (`cs`/`CS`) and general color (`sc`/`scn`/`SC`/`SCN`)
-  // operators need the `/ColorSpace` resources to resolve, so they are handled
-  // in `pdf_page_extractor` (which has the `Resources`), not here. The device
-  // color operators below carry their components inline and clear any active
-  // non-device color space.
+  // `cs`/`CS` and `sc`/`scn`/`SC`/`SCN` need the `/ColorSpace` resources, so
+  // they are handled in `pdf_page_extractor`, not here.
   case GraphicsOperatorType::set_stroke_grey_color:
-    current().stroke_color.space = ColorSpace::device_grey;
-    current().stroke_color.grey = op.arguments.at(0).as_real();
-    current().stroke_color.def = nullptr;
-    current().stroke_color.pattern.clear();
+    set_device_grey(current().stroke_color, op);
     break;
   case GraphicsOperatorType::set_stroke_rgb_color:
-    current().stroke_color.space = ColorSpace::device_rgb;
-    for (int i = 0; i < 3; ++i) {
-      current().stroke_color.rgb.at(i) = op.arguments.at(i).as_real();
-    }
-    current().stroke_color.def = nullptr;
-    current().stroke_color.pattern.clear();
+    set_device_rgb(current().stroke_color, op);
     break;
   case GraphicsOperatorType::set_stroke_cmyk_color:
-    current().stroke_color.space = ColorSpace::device_cmyk;
-    for (int i = 0; i < 4; ++i) {
-      current().stroke_color.cmyk.at(i) = op.arguments.at(i).as_real();
-    }
-    current().stroke_color.def = nullptr;
-    current().stroke_color.pattern.clear();
+    set_device_cmyk(current().stroke_color, op);
     break;
 
   case GraphicsOperatorType::set_other_grey_color:
-    current().other_color.space = ColorSpace::device_grey;
-    current().other_color.grey = op.arguments.at(0).as_real();
-    current().other_color.def = nullptr;
-    current().other_color.pattern.clear();
+    set_device_grey(current().other_color, op);
     break;
   case GraphicsOperatorType::set_other_rgb_color:
-    current().other_color.space = ColorSpace::device_rgb;
-    for (int i = 0; i < 3; ++i) {
-      current().other_color.rgb.at(i) = op.arguments.at(i).as_real();
-    }
-    current().other_color.def = nullptr;
-    current().other_color.pattern.clear();
+    set_device_rgb(current().other_color, op);
     break;
   case GraphicsOperatorType::set_other_cmyk_color:
-    current().other_color.space = ColorSpace::device_cmyk;
-    for (int i = 0; i < 4; ++i) {
-      current().other_color.cmyk.at(i) = op.arguments.at(i).as_real();
-    }
-    current().other_color.def = nullptr;
-    current().other_color.pattern.clear();
+    set_device_cmyk(current().other_color, op);
     break;
 
-  case GraphicsOperatorType::set_glyph_width:
-    for (int i = 0; i < 2; ++i) {
-      current().text.glyph_width.at(i) = op.arguments.at(i).as_real();
-    }
-    break;
   case GraphicsOperatorType::set_glyph_width_bounding_box:
-    for (int i = 0; i < 2; ++i) {
-      current().text.glyph_width.at(i) = op.arguments.at(i).as_real();
+    for (std::size_t i = 0; i < 4; ++i) {
+      current().text.glyph_bounding_box[i] = op.arguments.at(i + 2).as_real();
     }
-    for (int i = 0; i < 4; ++i) {
-      current().text.glyph_bounding_box.at(i) =
-          op.arguments.at(i + 2).as_real();
+    [[fallthrough]];
+  case GraphicsOperatorType::set_glyph_width:
+    for (std::size_t i = 0; i < 2; ++i) {
+      current().text.glyph_width[i] = op.arguments.at(i).as_real();
     }
     break;
 

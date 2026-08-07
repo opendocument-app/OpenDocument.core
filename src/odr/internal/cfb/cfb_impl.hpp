@@ -3,7 +3,6 @@
 #include <odr/internal/abstract/file.hpp>
 
 #include <cstdint>
-#include <functional>
 #include <string>
 
 namespace odr::internal::cfb::impl {
@@ -68,10 +67,6 @@ CompoundFileEntry parse_entry(std::istream &in);
 
 class CompoundFileReader final {
 public:
-  using EnumFilesCallback =
-      std::function<void(const CompoundFileEntry &entry,
-                         const std::u16string &dir, std::uint32_t level)>;
-
   static constexpr auto MAGIC = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
 
   explicit CompoundFileReader(std::istream &in, std::uint64_t file_size);
@@ -100,10 +95,6 @@ public:
   void read_file(std::istream &in, const CompoundFileEntry &entry,
                  std::uint64_t offset, char *buffer, std::uint64_t len) const;
 
-  void visit_descendants(std::istream &in, const CompoundFileEntry &entry,
-                         int max_level,
-                         const EnumFilesCallback &callback) const;
-
 private:
   struct SectorOffset final {
     Sector sector;
@@ -111,12 +102,6 @@ private:
   };
 
   static constexpr Sector MaxSector = 0xFFFFFFFA;
-
-  // Enum entries with same level, including 'entry' itself
-  void visit_descendants(std::istream &in, const CompoundFileEntry &entry,
-                         std::int32_t current_level, std::int32_t max_level,
-                         const std::u16string &dir,
-                         const EnumFilesCallback &callback) const;
 
   void read_stream(std::istream &in, const SectorOffset &sector_offset,
                    char *buffer, std::uint64_t length) const;

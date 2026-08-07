@@ -92,3 +92,21 @@ TEST(Path, common_root_relative) {
   EXPECT_EQ("../..",
             Path("../../other/directory").common_root(Path("../..")).string());
 }
+
+TEST(Path, escaping_relative_parent) {
+  EXPECT_EQ("..", Path("../a").parent().string());
+  EXPECT_EQ("../..", Path("../../a").parent().string());
+}
+
+TEST(Path, descendant_of) {
+  EXPECT_TRUE(Path("/a/b").descendant_of(Path("/a")));
+  EXPECT_FALSE(Path("/a").descendant_of(Path("/a/b")));
+  EXPECT_TRUE(Path("/a").ancestor_of(Path("/a/b")));
+  EXPECT_FALSE(Path("/a/b").ancestor_of(Path("/a")));
+}
+
+TEST(Path, descendant_of_respects_component_boundary) {
+  EXPECT_FALSE(Path("/ab/c").descendant_of(Path("/a")));
+  EXPECT_FALSE(Path("/a").parent_of(Path("/ab")));
+  EXPECT_TRUE(Path("/a").parent_of(Path("/a/b")));
+}

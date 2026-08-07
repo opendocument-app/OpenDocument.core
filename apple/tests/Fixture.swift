@@ -1,19 +1,13 @@
 import Foundation
 import XCTest
 
-/// The document the suite runs on.
-///
-/// `Fixtures/mixed-layout.odt` is `odt/mixed-layout.odt` from
+/// The document the suite runs on: `odt/mixed-layout.odt` from
 /// [OpenDocument.test](https://github.com/opendocument-app/OpenDocument.test),
-/// copied in rather than referenced. `test/data/` is fetched by
-/// `cmake/test_data.cmake` and is not part of a package checkout, and pulling
-/// it in as a submodule is precisely what `Package.swift` must not do — SwiftPM
-/// initialises submodules on every consumer's checkout.
+/// copied in because `test/data/` is fetched and a package checkout has none of
+/// it — and a submodule is the one thing `Package.swift` must never grow.
 ///
-/// 9 KB of real LibreOffice output, four paragraphs across three master pages,
-/// each a text run plus a span. It replaced a document this suite wrote itself,
-/// which only ever proved that odrcore could read back what the test had
-/// written.
+/// 9 KB of real LibreOffice output: four paragraphs across three master pages,
+/// each a text run plus a span.
 enum Fixture {
   /// The text nodes of `odt`, in document order. Each paragraph is a run and a
   /// span, so the numbers are their own nodes.

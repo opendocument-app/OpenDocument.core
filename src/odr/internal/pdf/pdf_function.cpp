@@ -55,8 +55,10 @@ protected:
   std::vector<double> compute(const std::vector<double> &in) const override {
     const double x = in.empty() ? 0.0 : in[0];
     const double xn = std::pow(x, m_n);
-    std::vector<double> out(m_c0.size());
-    for (std::size_t j = 0; j < m_c0.size(); ++j) {
+    // `/C0` and `/C1` must be equally long; a malformed file may disagree.
+    const std::size_t count = std::min(m_c0.size(), m_c1.size());
+    std::vector<double> out(count);
+    for (std::size_t j = 0; j < count; ++j) {
       out[j] = m_c0[j] + xn * (m_c1[j] - m_c0[j]);
     }
     return out;
@@ -95,8 +97,12 @@ protected:
     }
     const double lo = k == 0 ? d0 : m_bounds[k - 1];
     const double hi = k < m_bounds.size() ? m_bounds[k] : d1;
-    const double e0 = m_encode[2 * k];
-    const double e1 = m_encode[2 * k + 1];
+    // `/Bounds` must have one entry fewer than `/Functions`, and `/Encode` two
+    // per function; a malformed file may declare fewer of either.
+    k = std::min(k, m_functions.size() - 1);
+    const bool encoded_k = 2 * k + 1 < m_encode.size();
+    const double e0 = encoded_k ? m_encode[2 * k] : 0.0;
+    const double e1 = encoded_k ? m_encode[2 * k + 1] : 1.0;
     const double encoded = interpolate(x, lo, hi, e0, e1);
 
     if (m_functions[k] == nullptr) {
@@ -400,10 +406,15 @@ private:
         s.emplace_back(static_cast<double>(~static_cast<std::int32_t>(a)));
       }
     } else if (op == "bitshift") {
-      const auto shift = static_cast<std::int32_t>(pop_number(s));
+      const double shift = pop_number(s);
       const auto value = static_cast<std::int32_t>(pop_number(s));
-      s.emplace_back(
-          static_cast<double>(shift >= 0 ? value << shift : value >> -shift));
+      // Shifting a 32-bit value by 32 or more is undefined in C++; PostScript
+      // shifts every bit out. (The comparison also catches a NaN shift.)
+      const double magnitude = std::abs(shift);
+      const std::int32_t by =
+          magnitude < 32.0 ? static_cast<std::int32_t>(magnitude) : 32;
+      s.emplace_back(static_cast<double>(
+          by == 32 ? 0 : (shift >= 0 ? value << by : value >> by)));
     } else if (op == "true") {
       s.emplace_back(1.0);
     } else if (op == "false") {
@@ -416,9 +427,12 @@ private:
       s[s.size() - 1] = a;
       s[s.size() - 2] = b;
     } else if (op == "dup") {
-      s.push_back(s.back());
+      s.push_back(s.at(s.size() - 1));
     } else if (op == "copy") {
       const auto count = static_cast<std::size_t>(pop_number(s));
+      if (count > s.size()) {
+        throw std::runtime_error("stack underflow");
+      }
       const std::size_t start = s.size() - count;
       for (std::size_t i = 0; i < count; ++i) {
         s.push_back(s[start + i]);
@@ -430,6 +444,9 @@ private:
       const auto j = static_cast<std::int32_t>(pop_number(s));
       const auto count = static_cast<std::int32_t>(pop_number(s));
       if (count > 0) {
+        if (static_cast<std::size_t>(count) > s.size()) {
+          throw std::runtime_error("stack underflow");
+        }
         const auto first = s.end() - count;
         const std::int32_t shift = ((j % count) + count) % count;
         std::rotate(first, s.end() - shift, s.end());
@@ -614,7 +631,21 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
       decode = range;
     }
     std::string samples = context.load_stream(object);
-    if (size.empty() || bits == 0 || range.empty()) {
+    if (domain.empty()) {
+      domain.assign(2 * size.size(), 0.0);
+      for (std::size_t i = 1; i < domain.size(); i += 2) {
+        domain[i] = 1.0;
+      }
+    }
+    // `SampledFunction::compute` indexes `2 * m` domain/encode entries and
+    // `2 * n` decode entries, and interpolates over the `2^m` corners around
+    // the sample point — so a malformed `/Size` must not outrun any of them.
+    // Real sampled functions take one or two inputs (7.10.2).
+    constexpr std::size_t max_inputs = 8;
+    if (size.empty() || size.size() > max_inputs || bits < 1 || bits > 32 ||
+        range.empty() || domain.size() < 2 * size.size() ||
+        encode.size() < 2 * size.size() || decode.size() < range.size() ||
+        std::ranges::find(size, std::size_t{0}) != size.end()) {
       return nullptr;
     }
     return std::make_shared<SampledFunction>(

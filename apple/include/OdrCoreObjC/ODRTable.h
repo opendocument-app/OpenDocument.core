@@ -35,8 +35,11 @@ NS_INLINE ODRTablePosition ODRTablePositionMake(uint32_t column, uint32_t row) {
 NS_SWIFT_NAME(TableAddress)
 @interface ODRTableAddress : NSObject
 
+/// 0 for anything that is not a column, e.g. `"c"` or `""`; use
+/// `position:fromString:` to be told why instead.
 + (uint32_t)columnNumberFromString:(NSString *)string
     NS_SWIFT_NAME(columnNumber(from:));
+/// 0 for anything that is not a row number.
 + (uint32_t)rowNumberFromString:(NSString *)string
     NS_SWIFT_NAME(rowNumber(from:));
 + (NSString *)stringFromColumnNumber:(uint32_t)column

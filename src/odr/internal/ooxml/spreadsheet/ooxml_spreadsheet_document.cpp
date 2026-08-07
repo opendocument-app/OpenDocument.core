@@ -16,8 +16,7 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
-                       StyleRegistry &style_registry);
+create_element_adapter(const Document &document, ElementRegistry &registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
@@ -59,8 +58,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, parse_context,
                               workbook_xml.document_element());
 
-  m_element_adapter =
-      create_element_adapter(*this, m_element_registry, m_style_registry);
+  m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -108,10 +106,8 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::FrameAdapter,
                              public abstract::ImageAdapter {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry,
-                 StyleRegistry &style_registry)
-      : m_document(&document), m_registry(&registry),
-        m_style_registry(&style_registry) {}
+  ElementAdapter(const Document &document, ElementRegistry &registry)
+      : m_document(&document), m_registry(&registry) {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -268,10 +264,9 @@ public:
     const pugi::xml_node cell_node = sheet_element.cell_node(column, row);
 
     TableCellStyle result;
-    if (const pugi::xml_attribute style_attribute = cell_node.attribute("s");
-        style_attribute) {
-      const std::uint32_t style_id = style_attribute.as_uint();
-      const ResolvedStyle style = m_style_registry->cell_style(style_id);
+    if (const pugi::xml_attribute style_attribute = cell_node.attribute("s")) {
+      const ResolvedStyle style =
+          m_document->style_registry().cell_style(style_attribute.as_uint());
       result.override(style.table_cell_style);
     }
     return result;
@@ -435,7 +430,6 @@ public:
 private:
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
-  StyleRegistry *m_style_registry{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -495,9 +489,8 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
-                       StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(document, registry, style_registry);
+create_element_adapter(const Document &document, ElementRegistry &registry) {
+  return std::make_unique<ElementAdapter>(document, registry);
 }
 
 } // namespace

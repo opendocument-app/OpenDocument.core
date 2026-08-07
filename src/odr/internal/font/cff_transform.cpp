@@ -99,24 +99,9 @@ std::string cff::wrap_to_otf(const CffFont &font,
                              const std::map<char32_t, std::uint16_t> &extra) {
   const std::uint16_t glyphs = font.glyph_count();
 
-  // The uniform PUA re-encode: pua_code_point(glyph) -> glyph over every glyph.
-  // Glyphs past the 6400-slot BMP PUA overflow into Supplementary PUA-A, and
-  // serialize_cmap emits a format-12 subtable to cover them.
-  std::map<char32_t, std::uint16_t> pua;
-  for (std::uint16_t glyph = 0; glyph < glyphs; ++glyph) {
-    pua[pua_code_point(glyph)] = glyph;
-  }
-  // Real-Unicode entries: caller guarantees BMP, non-PUA keys, so these never
-  // collide with the PUA range filled above. A glyph id the font does not have
-  // is dropped: `glyph_for_code` can fall back to "code as GID" (ISO 32000-1
-  // 9.6.6.4) and yield an out-of-range index, and a single cmap reference past
-  // `numGlyphs` makes the OTS sanitizer reject the *entire* font (so every
-  // glyph would render as a tofu box, not just the unmappable code).
-  for (const auto &[code, glyph] : extra) {
-    if (glyph < glyphs) {
-      pua[code] = glyph;
-    }
-  }
+  // Glyphs past the 6400-slot BMP PUA overflow into Supplementary PUA-A, which
+  // serialize_cmap covers with a format-12 subtable.
+  const std::map<char32_t, std::uint16_t> pua = pua_cmap(glyphs, extra);
 
   std::uint16_t advance_width_max = 0;
   for (std::uint16_t glyph = 0; glyph < glyphs; ++glyph) {

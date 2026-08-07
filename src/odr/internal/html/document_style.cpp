@@ -142,7 +142,9 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   std::string result;
   if (const std::optional<std::string_view> font_name = text_style.font_name;
       font_name.has_value()) {
-    result.append("font-family:").append(*font_name).append(";");
+    result.append("font-family:")
+        .append(escape_attribute(std::string(*font_name)))
+        .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
       font_size.has_value()) {
@@ -168,7 +170,9 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   }
   if (const std::optional<std::string> font_shadow = text_style.font_shadow;
       font_shadow.has_value()) {
-    result.append("text-shadow:").append(*font_shadow).append(";");
+    result.append("text-shadow:")
+        .append(escape_attribute(*font_shadow))
+        .append(";");
   }
   if (const std::optional<Color> font_color = text_style.font_color;
       font_color.has_value()) {
@@ -329,21 +333,29 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
   if (const std::optional<std::string> border_right =
           table_cell_style.border.right;
       border_right.has_value()) {
-    result.append("border-right:").append(*border_right).append(";");
+    result.append("border-right:")
+        .append(escape_attribute(*border_right))
+        .append(";");
   }
   if (const std::optional<std::string> border_top = table_cell_style.border.top;
       border_top.has_value()) {
-    result.append("border-top:").append(*border_top).append(";");
+    result.append("border-top:")
+        .append(escape_attribute(*border_top))
+        .append(";");
   }
   if (const std::optional<std::string> border_left =
           table_cell_style.border.left;
       border_left.has_value()) {
-    result.append("border-left:").append(*border_left).append(";");
+    result.append("border-left:")
+        .append(escape_attribute(*border_left))
+        .append(";");
   }
   if (const std::optional<std::string> border_bottom =
           table_cell_style.border.bottom;
       border_bottom.has_value()) {
-    result.append("border-bottom:").append(*border_bottom).append(";");
+    result.append("border-bottom:")
+        .append(escape_attribute(*border_bottom))
+        .append(";");
   }
   if (const std::optional<double> text_rotation =
           table_cell_style.text_rotation;

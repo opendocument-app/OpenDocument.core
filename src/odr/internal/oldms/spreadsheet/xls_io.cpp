@@ -5,7 +5,9 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdio>
 #include <istream>
 #include <stdexcept>
 
@@ -174,9 +176,9 @@ std::string spreadsheet::format_number(const double value) {
     return "NaN";
   }
 
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%.15g", value);
-  return buffer;
+  std::array<char, 32> buffer{};
+  std::snprintf(buffer.data(), buffer.size(), "%.15g", value);
+  return buffer.data();
 }
 
 std::string spreadsheet::error_code_string(const std::uint8_t error) {

@@ -252,18 +252,24 @@ void StyleRegistry::generate_styles_(const pugi::xml_node styles_root) {
 
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
-  std::unique_ptr<Style> &style = m_styles[name];
-  if (style) {
-    return style.get();
+  // an entry present but still null means we are inside its own resolution;
+  // returning it breaks a cyclic `w:basedOn` chain
+  if (const auto styles_it = m_styles.find(name);
+      styles_it != std::end(m_styles)) {
+    return styles_it->second.get();
   }
+  std::unique_ptr<Style> &style = m_styles[name];
 
   Style *parent{nullptr};
 
   if (const pugi::xml_attribute parent_attr =
           node.child("w:basedOn").attribute("w:val");
       parent_attr) {
-    if (const pugi::xml_node parent_node = m_index[parent_attr.value()]) {
-      parent = generate_style_(parent_attr.value(), parent_node);
+    // `find`, not `operator[]`: an unknown parent id must not grow m_index
+    // while generate_styles_ iterates it
+    if (const auto index_it = m_index.find(parent_attr.value());
+        index_it != std::end(m_index)) {
+      parent = generate_style_(index_it->first, index_it->second);
     }
   }
 

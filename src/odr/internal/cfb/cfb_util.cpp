@@ -1,5 +1,7 @@
 #include <odr/internal/cfb/cfb_util.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -172,6 +174,13 @@ std::optional<Archive::Entry> Archive::Entry::child() const {
                m_path.join(RelPath(child.get_name())));
 }
 
+void Archive::Iterator::enter_(Entry entry) {
+  if (!m_visited.insert(entry.m_entry_id).second) {
+    throw CfbFileCorrupted();
+  }
+  m_entry = std::move(entry);
+}
+
 void Archive::Iterator::dig_left_() {
   if (!m_entry.has_value()) {
     return;
@@ -183,7 +192,7 @@ void Archive::Iterator::dig_left_() {
       break;
     }
     m_ancestors.push_back(*m_entry);
-    m_entry = left;
+    enter_(*left);
   }
 }
 
@@ -194,7 +203,7 @@ void Archive::Iterator::next_() {
 
   if (const std::optional<Entry> child = m_entry->child(); child.has_value()) {
     m_directories.push_back(*m_entry);
-    m_entry = child;
+    enter_(*child);
     dig_left_();
     return;
   }
@@ -208,7 +217,7 @@ void Archive::Iterator::next_flat_() {
   }
 
   if (const std::optional<Entry> right = m_entry->right(); right.has_value()) {
-    m_entry = right;
+    enter_(*right);
     dig_left_();
     return;
   }

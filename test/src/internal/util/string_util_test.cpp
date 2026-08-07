@@ -68,6 +68,13 @@ TEST(string_util, split) {
     EXPECT_EQ(strings[1], "");
     EXPECT_EQ(strings[2], "y");
   }
+
+  // Empty input is one empty segment, never zero segments.
+  {
+    const std::vector<std::string> strings = split("", ",");
+    EXPECT_EQ(strings.size(), 1);
+    EXPECT_EQ(strings[0], "");
+  }
 }
 
 TEST(string_util, trim_view) {

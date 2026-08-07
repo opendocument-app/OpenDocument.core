@@ -4,6 +4,8 @@
 
 #include <odr/internal/util/string_util.hpp>
 
+#include <array>
+#include <cstdint>
 #include <cstring>
 
 namespace odr::internal {
@@ -107,15 +109,15 @@ svm::read_poly_polygon(std::istream &in) {
 svm::Header svm::read_header(std::istream &in) {
   Header result;
 
-  char magic[6];
-  in.read(magic, sizeof(magic));
-  if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
+  std::array<char, 6> magic{};
+  in.read(magic.data(), static_cast<std::streamsize>(magic.size()));
+  if (!in || std::memcmp("VCLMTF", magic.data(), magic.size()) != 0) {
     throw NoSvmFile();
   }
 
   result.vl = read_version_length(in);
 
-  const std::size_t start = in.tellg();
+  const std::int64_t start = in.tellg();
   read_primitive(in, result.compression_mode);
   result.map_mode = read_map_mode(in);
   result.size = read_int_pair(in);
@@ -125,8 +127,10 @@ svm::Header svm::read_header(std::istream &in) {
     read_primitive(in, result.render_graphic_replacements);
   }
 
-  if (const std::size_t left =
-          result.vl.length - (static_cast<std::size_t>(in.tellg()) - start);
+  // Only skip forward: reading past the declared length would otherwise wrap
+  // the difference and swallow the rest of the stream.
+  if (const std::int64_t left =
+          result.vl.length - (static_cast<std::int64_t>(in.tellg()) - start);
       left > 0) {
     // TODO log header skipping bytes
     in.ignore(static_cast<std::streamsize>(left));

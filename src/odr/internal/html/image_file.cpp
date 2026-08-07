@@ -65,11 +65,7 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    if (path == "image.html") {
-      return true;
-    }
-
-    return false;
+    return path == "image.html";
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {

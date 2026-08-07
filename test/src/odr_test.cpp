@@ -33,6 +33,7 @@ std::vector<FileType> every_file_type() {
 
 } // namespace
 
+/// `main` carries no version — only a release build stamps one (see AGENTS.md).
 TEST(odr, version) { EXPECT_TRUE(odr::version().empty()); }
 
 TEST(odr, commit) { EXPECT_FALSE(odr::commit_hash().empty()); }

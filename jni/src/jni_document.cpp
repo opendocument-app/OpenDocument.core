@@ -50,13 +50,12 @@ jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
 // app.opendocument.core.Document
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Document_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::Document>(handle);
+Java_app_opendocument_core_Document_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::Document>(env, handle);
 }
 
-// odr::html::edit, but it belongs to Document: a native that takes a handle has
-// to be an instance method of whatever owns it, or the wrapper can be collected
-// - and the handle freed - while the call is still running
+// odr::html::edit, but it belongs to Document: a native taking a handle must be
+// an instance method of its owner, or the wrapper can be collected mid-call.
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_Document_editNative(JNIEnv *env, jobject,
                                                jlong handle, jstring diff) {
@@ -147,9 +146,9 @@ Java_app_opendocument_core_DocumentPath_create(JNIEnv *env, jclass,
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_DocumentPath_destroy(JNIEnv *, jclass,
+Java_app_opendocument_core_DocumentPath_destroy(JNIEnv *env, jclass,
                                                 jlong handle) {
-  destroy_handle<odr::DocumentPath>(handle);
+  destroy_handle<odr::DocumentPath>(env, handle);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -190,8 +189,8 @@ Java_app_opendocument_core_DocumentPath_toStringNative(JNIEnv *env, jobject,
 // app.opendocument.core.Element
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Element_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::Element>(handle);
+Java_app_opendocument_core_Element_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::Element>(env, handle);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_app_opendocument_core_Element_typeNative(

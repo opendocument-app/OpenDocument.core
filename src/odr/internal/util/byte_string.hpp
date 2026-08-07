@@ -7,12 +7,9 @@
 
 namespace odr::internal::util::byte_string {
 
-// Byte primitives over in-memory buffers, the `std::string`/`std::string_view`
-// counterpart to `byte_stream` (which reads from an `std::istream`). Reads take
-// a `std::string_view` and decode from its **front** — the view's data pointer
-// is the offset, its `size()` is the bound — so a sequential reader advances by
-// shrinking the view and a random-access reader passes `view.substr(offset)`.
-// Reads throw `std::runtime_error` when the view is too short.
+// The in-memory counterpart to `byte_stream`. Reads decode from the front of
+// the view — its data pointer is the offset, its `size()` the bound — and
+// throw `std::runtime_error` when it is too short.
 
 [[nodiscard]] std::uint8_t read_u8(std::string_view data);
 

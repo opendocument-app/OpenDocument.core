@@ -18,7 +18,7 @@ std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
   Element &element = m_elements.emplace_back();
-  ElementIdentifier element_id = m_elements.size();
+  const ElementIdentifier element_id = m_elements.size();
   element.type = type;
   element.node = node;
   return {element_id, element};

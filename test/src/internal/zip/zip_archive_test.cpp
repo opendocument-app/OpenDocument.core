@@ -12,6 +12,8 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <string>
+#include <vector>
 
 using namespace odr;
 using namespace odr::internal;
@@ -118,10 +120,10 @@ TEST(ZipArchive, create_order) {
   {
     util::Archive zip(std::make_shared<DiskFile>(path));
 
-    auto it = entries.begin();
+    std::vector<std::string> actual;
     for (auto &&e : zip) {
-      EXPECT_EQ(Path(*it), e.path());
-      ++it;
+      actual.push_back(e.path().string());
     }
+    EXPECT_EQ(actual, entries);
   }
 }

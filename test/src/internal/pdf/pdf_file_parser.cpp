@@ -5,10 +5,11 @@
 
 #include <test_util.hpp>
 
+#include <cstddef>
 #include <memory>
-#include <ranges>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -16,7 +17,9 @@ using namespace odr::internal;
 using namespace odr::internal::pdf;
 using namespace odr::test;
 
-TEST(FileParser, foo) {
+// A linear walk from the header to eof: every indirect object comes out, the
+// trailer names the catalog, and the FlateDecode streams inflate.
+TEST(FileParser, reads_every_entry_linearly) {
   const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
@@ -24,6 +27,10 @@ TEST(FileParser, foo) {
   FileParser parser(*in);
 
   parser.read_header();
+
+  std::size_t objects = 0;
+  std::size_t inflated_streams = 0;
+  Dictionary trailer;
   while (true) {
     Entry entry = parser.read_entry();
 
@@ -31,53 +38,34 @@ TEST(FileParser, foo) {
       break;
     }
     if (entry.is_trailer()) {
-      const auto &[size, dictionary] = entry.as_trailer();
-
-      for (const auto &key : dictionary | std::views::keys) {
-        std::cout << key << '\n';
-      }
+      trailer = entry.as_trailer().dictionary;
     }
-    if (entry.is_object()) {
-      const IndirectObject &object = entry.as_object();
+    if (!entry.is_object()) {
+      continue;
+    }
 
-      std::cout << "object " << object.reference.id << " "
-                << object.reference.gen << '\n';
+    ++objects;
+    const IndirectObject &object = entry.as_object();
+    if (!object.has_stream) {
+      continue;
+    }
 
-      if (object.object.is_integer()) {
-        std::cout << "integer " << object.object.as_integer() << '\n';
-      }
-      if (object.object.is_array()) {
-        std::cout << "array size " << object.object.as_array().size() << '\n';
-      }
-      if (object.object.is_dictionary()) {
-        const auto &dictionary = object.object.as_dictionary();
-        std::cout << "dictionary size " << dictionary.size() << '\n';
-        for (const auto &key : dictionary | std::views::keys) {
-          std::cout << key << '\n';
-        }
-      }
-
-      if (object.has_stream) {
-        const Dictionary &dictionary = object.object.as_dictionary();
-        std::string stream = parser.read_stream();
-        std::cout << stream.size() << '\n';
-
-        if (dictionary.has_key("Filter")) {
-          const std::string &filter = dictionary["Filter"].as_string();
-          std::cout << filter << '\n';
-          if (filter == "FlateDecode") {
-            std::string inflated = crypto::util::zlib_inflate(stream);
-            std::cout << inflated.size() << '\n';
-          }
-        }
-      }
-
-      std::cout << '\n';
+    // reading the stream is what advances the parser past the object
+    const std::string stream = parser.read_stream();
+    const Dictionary &dictionary = object.object.as_dictionary();
+    if (dictionary.has_key("Filter") &&
+        dictionary["Filter"].as_string() == "FlateDecode") {
+      EXPECT_FALSE(crypto::util::zlib_inflate(stream).empty());
+      ++inflated_streams;
     }
   }
+
+  EXPECT_GT(objects, 0u);
+  EXPECT_GT(inflated_streams, 0u);
+  EXPECT_TRUE(trailer.has_key("Root"));
 }
 
-TEST(FileParser, bar) {
+TEST(FileParser, walks_the_xref_chain_to_the_catalog) {
   const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
 
@@ -111,7 +99,7 @@ TEST(FileParser, bar) {
     if (ref.id == 0) {
       EXPECT_TRUE(entry.is_free());
     } else {
-      EXPECT_TRUE(entry.is_used());
+      ASSERT_TRUE(entry.is_used());
       EXPECT_GT(entry.as_used().position, 0);
     }
   }
