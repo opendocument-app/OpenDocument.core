@@ -9,10 +9,8 @@
 
 namespace odr::internal::oldms::text {
 
-// Filled by copying file bytes straight in (see doc_io), so multi-byte fields
-// use host byte order — correct only on little-endian hosts. Bit-fields
-// additionally assume LSB-first allocation, which all supported compilers use
-// on little-endian targets (shared oldms/ assumption).
+// Filled by copying file bytes straight in (see doc_io): little-endian,
+// LSB-first hosts only — see oldms/AGENTS.md.
 
 enum NFibValues : std::uint16_t {
   nFib97 = 0x00C1,
@@ -385,77 +383,49 @@ struct ParsedFib {
   std::uint16_t cswNew;
   std::optional<ParsedFibRgCswNew> fibRgCswNew;
 
-  // FibRgLw97.ccpText: count of CPs in the main document. It is the 4th 32-bit
-  // field (cbMac, reserved1, reserved2, ccpText), i.e. uint16 indices 6-7.
-  // Stored little-endian, consistent with the rest of this parser.
+  /// FibRgLw97.ccpText ([MS-DOC] 2.5.5), the 4th 32-bit field of fibRgLw.
   [[nodiscard]] std::int32_t ccpText() const {
-    // Assemble unsigned to avoid signed-shift overflow (UB) when the high word
-    // has the sign bit set; the caller validates the resulting sign.
+    // Assembled unsigned: a signed shift would be UB with the sign bit set.
     const std::uint32_t value = static_cast<std::uint32_t>(fibRgLw[6]) |
                                 (static_cast<std::uint32_t>(fibRgLw[7]) << 16);
     return static_cast<std::int32_t>(value);
   }
 };
 
-template <typename Derived, typename Data> class PlcBase {
+/// Zero-copy view over a PLC ([MS-DOC] 2.2.2): n+1 CPs followed by n data
+/// elements, over a buffer that must outlive the view.
+template <typename Data> class PlcMap {
 public:
-  static constexpr std::uint32_t cbData() { return sizeof(Data); }
+  PlcMap(const char *data, const std::size_t cbPlc)
+      : m_data(data), m_cbPlc(cbPlc) {}
 
+  /// Number of data elements; throws unless cbPlc yields a whole number.
   [[nodiscard]] std::uint32_t n() const {
-    return (self().cbPlc() - 4) / (4 + sizeof(Data));
-  }
-
-  [[nodiscard]] const std::uint32_t *aCP_ptr() const {
-    return reinterpret_cast<const std::uint32_t *>(self().data());
-  }
-
-  [[nodiscard]] const Data *aData_ptr() const {
-    return reinterpret_cast<const Data *>(self().data() + (n() + 1) * 4);
+    constexpr std::size_t stride = 4 + sizeof(Data);
+    if (m_cbPlc < 4 || (m_cbPlc - 4) % stride != 0) {
+      throw std::runtime_error("doc: malformed Plc size");
+    }
+    return static_cast<std::uint32_t>((m_cbPlc - 4) / stride);
   }
 
   [[nodiscard]] std::uint32_t aCP(const std::uint32_t i) const {
-    return aCP_ptr()[i];
+    return reinterpret_cast<const std::uint32_t *>(m_data)[i];
   }
 
   [[nodiscard]] Data aData(const std::uint32_t i) const {
-    return aData_ptr()[i];
+    return reinterpret_cast<const Data *>(m_data + (n() + 1) * 4)[i];
   }
 
 private:
-  [[nodiscard]] Derived &self() { return *static_cast<Derived *>(this); }
-  [[nodiscard]] const Derived &self() const {
-    return *static_cast<const Derived *>(this);
-  }
-};
-
-template <typename Derived> class PlcPcdBase : public PlcBase<Derived, Pcd> {};
-
-class PlcPcdMap : public PlcPcdBase<PlcPcdMap> {
-public:
-  PlcPcdMap(char *data, const std::size_t cbPlc)
-      : m_data(data), m_cbPlc(cbPlc) {}
-
-  [[nodiscard]] char *data() const { return m_data; }
-  [[nodiscard]] std::size_t cbPlc() const { return m_cbPlc; }
-
-private:
-  char *m_data{nullptr};
+  const char *m_data{nullptr};
   std::size_t m_cbPlc{0};
 };
 
-/// PlcBteChpx ([MS-DOC] 2.8.5): a PLC keyed by WordDocument-stream offsets
-/// (fc, not CP) whose data elements locate the ChpxFkp pages.
-class PlcBteChpxMap : public PlcBase<PlcBteChpxMap, PnFkpChpx> {
-public:
-  PlcBteChpxMap(char *data, const std::size_t cbPlc)
-      : m_data(data), m_cbPlc(cbPlc) {}
+/// PlcPcd ([MS-DOC] 2.8.35): the piece table, keyed by CP.
+using PlcPcdMap = PlcMap<Pcd>;
 
-  [[nodiscard]] char *data() const { return m_data; }
-  [[nodiscard]] std::size_t cbPlc() const { return m_cbPlc; }
-
-private:
-  char *m_data{nullptr};
-  std::size_t m_cbPlc{0};
-};
+/// PlcBteChpx ([MS-DOC] 2.8.5): keyed by WordDocument-stream offsets (fc, not
+/// CP); its data elements locate the ChpxFkp pages.
+using PlcBteChpxMap = PlcMap<PnFkpChpx>;
 
 } // namespace odr::internal::oldms::text

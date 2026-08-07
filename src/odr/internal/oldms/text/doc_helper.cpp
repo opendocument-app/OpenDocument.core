@@ -65,11 +65,16 @@ text::CharacterIndex text::read_character_index(std::istream &in) {
     std::string plcPcd = util::stream::read(in, lcb);
     const PlcPcdMap plc_pcd_map(plcPcd.data(), plcPcd.size());
 
-    for (std::uint32_t i = 0; i < plc_pcd_map.n(); ++i) {
-      const bool is_compressed = plc_pcd_map.aData(i).fc.fCompressed != 0;
-      const std::size_t data_offset = is_compressed
-                                          ? plc_pcd_map.aData(i).fc.fc / 2
-                                          : plc_pcd_map.aData(i).fc.fc;
+    const std::uint32_t count = plc_pcd_map.n();
+    for (std::uint32_t i = 0; i < count; ++i) {
+      // aCp is strictly ascending ([MS-DOC] 2.8.35); otherwise the piece
+      // length below would wrap around.
+      if (plc_pcd_map.aCP(i + 1) <= plc_pcd_map.aCP(i)) {
+        throw std::runtime_error("doc: PlcPcd CPs must be ascending");
+      }
+      const FcCompressed fc = plc_pcd_map.aData(i).fc;
+      const bool is_compressed = fc.fCompressed != 0;
+      const std::size_t data_offset = is_compressed ? fc.fc / 2 : fc.fc;
       const std::size_t length_cp = plc_pcd_map.aCP(i + 1) - plc_pcd_map.aCP(i);
       result.append(plc_pcd_map.aCP(i), length_cp, data_offset, is_compressed);
     }
@@ -110,10 +115,10 @@ text::read_character_runs(std::istream &document_stream,
     return it->second;
   };
 
-  for (std::uint32_t i = 0; i < plc.n(); ++i) {
-    // A 512-byte ChpxFkp page ([MS-DOC] 2.9.33) at pn * 512: crun in the last
-    // byte, crun+1 rgfc offsets, crun rgb bytes; rgb[j] * 2 locates the Chpx
-    // within the page, 0 means default properties.
+  // A ChpxFkp page ([MS-DOC] 2.9.33) is 512 bytes at pn * 512; rgb[j] * 2
+  // locates the run's Chpx within it, 0 meaning default properties.
+  const std::uint32_t page_count = plc.n();
+  for (std::uint32_t i = 0; i < page_count; ++i) {
     std::array<char, 512> page;
     document_stream.seekg(static_cast<std::streamoff>(plc.aData(i).pn) * 512);
     document_stream.read(page.data(), page.size());

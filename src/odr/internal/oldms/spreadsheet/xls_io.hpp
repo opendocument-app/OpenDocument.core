@@ -8,17 +8,13 @@
 
 namespace odr::internal::oldms::spreadsheet {
 
-// NOTE: like the sibling .doc/.ppt modules, multi-byte values are read in host
-// byte order, so this is correct only on little-endian hosts.
+// Multi-byte values are read in host byte order — little-endian hosts only,
+// see oldms/AGENTS.md.
 
-/// Sequential reader over the flat BIFF8 record stream ([MS-XLS] 2.1.4).
-///
-/// `next_record` advances to the next record header (skipping any unread body
-/// bytes). The `read_*` body accessors hop transparently into a following
-/// CONTINUE record when the current body is exhausted — required for the SST
-/// and String records, whose payload may be split across CONTINUE records —
-/// and throw if more bytes are requested but the next record is not a
-/// CONTINUE.
+/// Sequential reader over the flat BIFF8 record stream ([MS-XLS] 2.1.4). The
+/// `read_*` body accessors hop transparently into a following CONTINUE record
+/// when the current body is exhausted (the SST and String payloads may split
+/// across them), and throw if that next record is not a CONTINUE.
 class BiffReader final {
 public:
   explicit BiffReader(std::istream &in);

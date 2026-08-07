@@ -33,32 +33,6 @@ std::uint32_t presentation::read_u32(std::istream &in) {
   return util::byte_stream::read<std::uint32_t>(in);
 }
 
-std::string presentation::read_text_chars(std::istream &in,
-                                          const std::uint32_t rec_len) {
-  const std::size_t count = rec_len / 2;
-  std::u16string buffer;
-  buffer.resize(count);
-  in.read(reinterpret_cast<char *>(buffer.data()),
-          static_cast<std::streamsize>(count * sizeof(char16_t)));
-  return util::string::u16string_to_string(buffer);
-}
-
-std::string presentation::read_text_bytes(std::istream &in,
-                                          const std::uint32_t rec_len) {
-  static constexpr auto eof = std::istream::traits_type::eof();
-
-  std::u16string buffer;
-  buffer.reserve(rec_len);
-  for (std::uint32_t i = 0; i < rec_len; ++i) {
-    const auto c = in.get();
-    if (c == eof) {
-      break;
-    }
-    buffer.push_back(static_cast<std::uint8_t>(c));
-  }
-  return util::string::u16string_to_string(buffer);
-}
-
 presentation::Anchor
 presentation::read_client_anchor(std::istream &in,
                                  const std::uint32_t rec_len) {
@@ -83,10 +57,15 @@ presentation::read_client_anchor(std::istream &in,
 
 std::u16string presentation::read_raw_text_chars(std::istream &in,
                                                  const std::uint32_t rec_len) {
+  // recLen MUST be even ([MS-PPT] 2.9.42); an odd one would leave the caller's
+  // record cursor one byte behind the stream.
+  if (rec_len % 2 != 0) {
+    throw std::runtime_error("ppt: odd TextCharsAtom length " +
+                             std::to_string(rec_len));
+  }
   std::u16string buffer;
   buffer.resize(rec_len / 2);
-  in.read(reinterpret_cast<char *>(buffer.data()),
-          static_cast<std::streamsize>(buffer.size() * sizeof(char16_t)));
+  util::byte_stream::read(in, reinterpret_cast<char *>(buffer.data()), rec_len);
   return buffer;
 }
 
