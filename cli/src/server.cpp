@@ -13,6 +13,11 @@
 using namespace odr;
 
 int main(const int argc, char **argv) {
+  if (argc < 2) {
+    std::cerr << "usage: server <input> [password]\n";
+    return 2;
+  }
+
   try {
     const Logger logger = Logger::create_stdio("odr-server", LogLevel::verbose);
 

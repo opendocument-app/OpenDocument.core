@@ -9,6 +9,11 @@
 using namespace odr;
 
 int main(const int argc, char **argv) {
+  if (argc < 3) {
+    std::cerr << "usage: translate <input> <output> [password]\n";
+    return 2;
+  }
+
   try {
     const Logger logger =
         Logger::create_stdio("odr-translate", LogLevel::verbose);
@@ -40,11 +45,9 @@ int main(const int argc, char **argv) {
     config.editable = true;
     config.format_html = true;
 
-    const std::string output_tmp = output + "/tmp";
-    std::filesystem::create_directories(output_tmp);
+    std::filesystem::create_directories(output);
     const HtmlService service = html::translate(decoded_file, output, config);
-    Html html = service.bring_offline(output);
-    std::filesystem::remove_all(output_tmp);
+    const Html html = service.bring_offline(output);
 
     return 0;
   } catch (const std::exception &e) {

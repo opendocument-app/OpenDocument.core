@@ -17,16 +17,27 @@ namespace py = pybind11;
 
 namespace {
 
-// Ties the returned object to `self` so navigation handles keep the
-// originating `Document` alive transitively.
+// Ties the returned object to `self`: navigation handles keep the originating
+// `Document` alive transitively, and so does a `TextStyle`, whose `font_name`
+// borrows from the document.
 constexpr auto keep_self_alive = py::keep_alive<0, 1>();
 
 py::object make_element_iterator(const odr::ElementRange &range) {
-  return py::make_iterator(range.begin(), range.end());
+  // The elements need the same tie: pybind11 hands them out by value, which
+  // drops the keep-alive `reference_internal` would otherwise imply.
+  return py::make_iterator(range.begin(), range.end(), keep_self_alive);
 }
 
 py::object make_children_iterator(const odr::Element &element) {
   return make_element_iterator(element.children());
+}
+
+/// `__bool__` has to come from the derived type: `Element::operator bool`
+/// ignores the typed adapter, so a failed `as_*` cast would look valid.
+template <typename T>
+py::class_<T, odr::Element> bind_element(py::module_ &m, const char *name) {
+  return py::class_<T, odr::Element>(m, name).def("__bool__",
+                                                  &T::operator bool);
 }
 
 } // namespace
@@ -162,17 +173,17 @@ void odr_python::bind_document(py::module_ &m) {
       .def("as_custom_shape", &odr::Element::as_custom_shape, keep_self_alive)
       .def("as_image", &odr::Element::as_image, keep_self_alive);
 
-  py::class_<odr::TextRoot, odr::Element>(m, "TextRoot")
+  bind_element<odr::TextRoot>(m, "TextRoot")
       .def("page_layout", &odr::TextRoot::page_layout)
       .def("first_master_page", &odr::TextRoot::first_master_page,
            keep_self_alive);
 
-  py::class_<odr::Slide, odr::Element>(m, "Slide")
+  bind_element<odr::Slide>(m, "Slide")
       .def("name", &odr::Slide::name)
       .def("page_layout", &odr::Slide::page_layout)
       .def("master_page", &odr::Slide::master_page, keep_self_alive);
 
-  py::class_<odr::Sheet, odr::Element>(m, "Sheet")
+  bind_element<odr::Sheet>(m, "Sheet")
       .def("name", &odr::Sheet::name)
       .def("dimensions", &odr::Sheet::dimensions)
       .def("content", &odr::Sheet::content, py::arg("range"))
@@ -190,44 +201,43 @@ void odr_python::bind_document(py::module_ &m) {
       .def("cell_style", &odr::Sheet::cell_style, py::arg("column"),
            py::arg("row"));
 
-  py::class_<odr::SheetCell, odr::Element>(m, "SheetCell")
+  bind_element<odr::SheetCell>(m, "SheetCell")
       .def("position", &odr::SheetCell::position)
       .def("is_covered", &odr::SheetCell::is_covered)
       .def("span", &odr::SheetCell::span)
       .def("value_type", &odr::SheetCell::value_type);
 
-  py::class_<odr::Page, odr::Element>(m, "Page")
+  bind_element<odr::Page>(m, "Page")
       .def("name", &odr::Page::name)
       .def("page_layout", &odr::Page::page_layout)
       .def("master_page", &odr::Page::master_page, keep_self_alive);
 
-  py::class_<odr::MasterPage, odr::Element>(m, "MasterPage")
+  bind_element<odr::MasterPage>(m, "MasterPage")
       .def("page_layout", &odr::MasterPage::page_layout);
 
-  py::class_<odr::LineBreak, odr::Element>(m, "LineBreak")
-      .def("style", &odr::LineBreak::style);
+  bind_element<odr::LineBreak>(m, "LineBreak")
+      .def("style", &odr::LineBreak::style, keep_self_alive);
 
-  py::class_<odr::Paragraph, odr::Element>(m, "Paragraph")
+  bind_element<odr::Paragraph>(m, "Paragraph")
       .def("style", &odr::Paragraph::style)
-      .def("text_style", &odr::Paragraph::text_style);
+      .def("text_style", &odr::Paragraph::text_style, keep_self_alive);
 
-  py::class_<odr::Span, odr::Element>(m, "Span").def("style",
-                                                     &odr::Span::style);
+  bind_element<odr::Span>(m, "Span").def("style", &odr::Span::style,
+                                         keep_self_alive);
 
-  py::class_<odr::Text, odr::Element>(m, "Text")
+  bind_element<odr::Text>(m, "Text")
       .def("content", &odr::Text::content)
       .def("set_content", &odr::Text::set_content, py::arg("text"))
-      .def("style", &odr::Text::style);
+      .def("style", &odr::Text::style, keep_self_alive);
 
-  py::class_<odr::Link, odr::Element>(m, "Link").def("href", &odr::Link::href);
+  bind_element<odr::Link>(m, "Link").def("href", &odr::Link::href);
 
-  py::class_<odr::Bookmark, odr::Element>(m, "Bookmark")
-      .def("name", &odr::Bookmark::name);
+  bind_element<odr::Bookmark>(m, "Bookmark").def("name", &odr::Bookmark::name);
 
-  py::class_<odr::ListItem, odr::Element>(m, "ListItem")
-      .def("style", &odr::ListItem::style);
+  bind_element<odr::ListItem>(m, "ListItem")
+      .def("style", &odr::ListItem::style, keep_self_alive);
 
-  py::class_<odr::Table, odr::Element>(m, "Table")
+  bind_element<odr::Table>(m, "Table")
       .def("first_row", &odr::Table::first_row, keep_self_alive)
       .def("first_column", &odr::Table::first_column, keep_self_alive)
       .def(
@@ -245,19 +255,19 @@ void odr_python::bind_document(py::module_ &m) {
       .def("dimensions", &odr::Table::dimensions)
       .def("style", &odr::Table::style);
 
-  py::class_<odr::TableColumn, odr::Element>(m, "TableColumn")
+  bind_element<odr::TableColumn>(m, "TableColumn")
       .def("style", &odr::TableColumn::style);
 
-  py::class_<odr::TableRow, odr::Element>(m, "TableRow")
+  bind_element<odr::TableRow>(m, "TableRow")
       .def("style", &odr::TableRow::style);
 
-  py::class_<odr::TableCell, odr::Element>(m, "TableCell")
+  bind_element<odr::TableCell>(m, "TableCell")
       .def("is_covered", &odr::TableCell::is_covered)
       .def("span", &odr::TableCell::span)
       .def("value_type", &odr::TableCell::value_type)
       .def("style", &odr::TableCell::style);
 
-  py::class_<odr::Frame, odr::Element>(m, "Frame")
+  bind_element<odr::Frame>(m, "Frame")
       .def("anchor_type", &odr::Frame::anchor_type)
       .def("x", &odr::Frame::x)
       .def("y", &odr::Frame::y)
@@ -266,35 +276,35 @@ void odr_python::bind_document(py::module_ &m) {
       .def("z_index", &odr::Frame::z_index)
       .def("style", &odr::Frame::style);
 
-  py::class_<odr::Rect, odr::Element>(m, "Rect")
+  bind_element<odr::Rect>(m, "Rect")
       .def("x", &odr::Rect::x)
       .def("y", &odr::Rect::y)
       .def("width", &odr::Rect::width)
       .def("height", &odr::Rect::height)
       .def("style", &odr::Rect::style);
 
-  py::class_<odr::Line, odr::Element>(m, "Line")
+  bind_element<odr::Line>(m, "Line")
       .def("x1", &odr::Line::x1)
       .def("y1", &odr::Line::y1)
       .def("x2", &odr::Line::x2)
       .def("y2", &odr::Line::y2)
       .def("style", &odr::Line::style);
 
-  py::class_<odr::Circle, odr::Element>(m, "Circle")
+  bind_element<odr::Circle>(m, "Circle")
       .def("x", &odr::Circle::x)
       .def("y", &odr::Circle::y)
       .def("width", &odr::Circle::width)
       .def("height", &odr::Circle::height)
       .def("style", &odr::Circle::style);
 
-  py::class_<odr::CustomShape, odr::Element>(m, "CustomShape")
+  bind_element<odr::CustomShape>(m, "CustomShape")
       .def("x", &odr::CustomShape::x)
       .def("y", &odr::CustomShape::y)
       .def("width", &odr::CustomShape::width)
       .def("height", &odr::CustomShape::height)
       .def("style", &odr::CustomShape::style);
 
-  py::class_<odr::Image, odr::Element>(m, "Image")
+  bind_element<odr::Image>(m, "Image")
       .def("is_internal", &odr::Image::is_internal)
       .def("file", &odr::Image::file)
       .def("href", &odr::Image::href);

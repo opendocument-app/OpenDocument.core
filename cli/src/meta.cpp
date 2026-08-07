@@ -10,6 +10,11 @@
 using namespace odr;
 
 int main(const int argc, char **argv) {
+  if (argc < 2) {
+    std::cerr << "usage: meta <input> [password]\n";
+    return 2;
+  }
+
   try {
     const Logger logger = Logger::create_stdio("odr-meta", LogLevel::verbose);
 
