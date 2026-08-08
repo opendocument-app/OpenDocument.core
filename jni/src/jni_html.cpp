@@ -60,6 +60,9 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   const std::vector<odr::HtmlPage> &pages = html.pages();
   jobjectArray page_array =
       env->NewObjectArray(static_cast<jsize>(pages.size()), page_cls, nullptr);
+  if (page_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(pages.size()); ++i) {
     jstring name = to_jstring(env, pages[i].name);
     jstring path = to_jstring(env, pages[i].path);
@@ -112,6 +115,9 @@ jobject make_content(JNIEnv *env, const std::string &html,
 
   jobjectArray located_array = env->NewObjectArray(
       static_cast<jsize>(resources.size()), located_cls, nullptr);
+  if (located_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(resources.size()); ++i) {
     const auto &[resource, location] = resources[i];
     HandleGuard<odr::HtmlResource> guard(1);
@@ -120,6 +126,7 @@ jobject make_content(JNIEnv *env, const std::string &html,
     if (resource_obj == nullptr) {
       return nullptr;
     }
+    // the Java wrapper exists, so its post-mortem destroyer owns the handle now
     guard.release();
     jstring location_str =
         location.has_value() ? to_jstring(env, *location) : nullptr;
