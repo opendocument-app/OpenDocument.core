@@ -612,7 +612,7 @@ void begin_marked_content(const GraphicsOperator &op,
 }
 
 /// Invoke the XObject `Do` names (ISO 32000-1 8.10.1): an image emits an
-/// `ImageElement`; a form runs inside a `save`/`restore` with its `/Matrix`
+/// `ImageElement`; a form runs inside a `ContentScope` with its `/Matrix`
 /// concatenated, clipped to its `/BBox` and scoped to its own `/Resources`.
 /// Unknown subtypes and forms already on the render stack are skipped.
 void invoke_x_object(const std::string &name, const Resources &resources,
@@ -684,38 +684,41 @@ void invoke_x_object(const std::string &name, const Resources &resources,
   const bool group_unit =
       group && (group_alpha < 1.0 || !group_blend.empty() || group_mask);
 
-  state.save();
-  state.concat_matrix(x_object->matrix);
-  if (group_unit) {
-    // Isolate the group-level parameters so interior paintings are relative to
-    // the group; they are applied once to the composited group (below), not
-    // inherited by each interior element as well.
-    GraphicsState::General &inner = state.current().general;
-    inner.fill_alpha = 1.0;
-    inner.stroke_alpha = 1.0;
-    inner.blend_mode.clear();
-    inner.soft_mask = nullptr;
-  }
-  // `/BBox` clips the form's content to its bounding box (ISO 32000-1 8.10.2),
-  // mapped through the (now form-matrix-concatenated) CTM. Scoped by the
-  // surrounding save/restore.
-  if (x_object->bbox.has_value()) {
-    const std::array<double, 4> &b = *x_object->bbox;
-    state.clip_bounding_box(b[0], b[1], b[2], b[3]);
-  }
-  const Resources &scope =
-      x_object->resources != nullptr ? *x_object->resources : resources;
-  // A form's marked content must be self-balanced; truncate back to the entry
-  // depth afterwards so an unbalanced form cannot corrupt the enclosing scope.
-  const std::size_t depth = marked.size();
   // A group painted as a unit collects its content into its own child list; a
   // plain form appends straight to the page stream.
   std::vector<PageElement> group_out;
-  std::vector<PageElement> &sink = group_unit ? group_out : out;
-  run_content(x_object->content, scope, state, sink, logger, warned, active,
-              marked, pen);
-  marked.resize(depth);
-  state.restore();
+  {
+    // Scoped like `q`/`Q`, but pinned: the form's own `q`/`Q` cannot escape it.
+    const GraphicsState::ContentScope content_scope(state);
+    state.concat_matrix(x_object->matrix);
+    if (group_unit) {
+      // Isolate the group-level parameters so interior paintings are relative
+      // to the group; they are applied once to the composited group (below),
+      // not inherited by each interior element as well.
+      GraphicsState::General &inner = state.current().general;
+      inner.fill_alpha = 1.0;
+      inner.stroke_alpha = 1.0;
+      inner.blend_mode.clear();
+      inner.soft_mask = nullptr;
+    }
+    // `/BBox` clips the form's content to its bounding box (ISO 32000-1
+    // 8.10.2), mapped through the (now form-matrix-concatenated) CTM. Scoped by
+    // the surrounding content scope.
+    if (x_object->bbox.has_value()) {
+      const std::array<double, 4> &b = *x_object->bbox;
+      state.clip_bounding_box(b[0], b[1], b[2], b[3]);
+    }
+    const Resources &scope =
+        x_object->resources != nullptr ? *x_object->resources : resources;
+    // A form's marked content must be self-balanced; truncate back to the
+    // entry depth afterwards so an unbalanced form cannot corrupt the
+    // enclosing scope.
+    const std::size_t depth = marked.size();
+    std::vector<PageElement> &sink = group_unit ? group_out : out;
+    run_content(x_object->content, scope, state, sink, logger, warned, active,
+                marked, pen);
+    marked.resize(depth);
+  }
 
   if (group_unit) {
     auto children = std::make_shared<GroupChildren>();
@@ -854,14 +857,15 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
                                    ? *font->type3->resources
                                    : resources;
 
-      state.save();
+      // Scoped like `q`/`Q`, but pinned: the char proc's own `q`/`Q` cannot
+      // escape it and disturb the text state driving the glyph loop.
+      const GraphicsState::ContentScope content_scope(state);
       state.current().general.transform_matrix = glyph_to_user;
       const std::size_t marked_depth = marked.size();
       std::optional<Pen> inner_pen;
       run_content(it->second, scope, state, out, logger, warned, active, marked,
                   inner_pen);
       marked.resize(marked_depth);
-      state.restore();
     }
     state.advance_text(advance, 0);
   }

@@ -3,6 +3,7 @@
 #include <odr/internal/util/math_util.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -174,7 +175,8 @@ struct GraphicsState {
 
   /// `q`: push a copy of the current state.
   void save();
-  /// `Q`: pop it. An unmatched `Q` is ignored — the base state always remains.
+  /// `Q`: pop it. An unmatched `Q` is ignored — the state the running content
+  /// stream started from always remains.
   void restore();
   /// `CTM = matrix * CTM`, as `cm` and form invocation do.
   void concat_matrix(const util::math::Transform2D &matrix);
@@ -187,6 +189,26 @@ struct GraphicsState {
   /// Advance `Tm` by `(tx, ty)` in text space after showing glyphs; `Tlm` is
   /// unaffected.
   void advance_text(double tx, double ty);
+
+  /// Scopes a nested content stream (form XObject, Type3 char proc): pushes a
+  /// state like `q` and pops back to exactly the entry depth on destruction,
+  /// while confining the stream's own `q`/`Q` to that region. Content streams
+  /// are required to be q/Q-balanced (ISO 32000-1 8.10.1) and real files are
+  /// not, so an unbalanced stream must neither leak a state to nor pop one off
+  /// its caller.
+  class ContentScope final {
+  public:
+    explicit ContentScope(GraphicsState &state);
+    ~ContentScope();
+
+    ContentScope(const ContentScope &) = delete;
+    ContentScope &operator=(const ContentScope &) = delete;
+
+  private:
+    GraphicsState *m_state{nullptr};
+    std::size_t m_depth{0};
+    std::size_t m_floor{0};
+  };
 
 private:
   /// `Tlm = translate(tx, ty) * Tlm`, `Tm = Tlm` — behind
@@ -205,6 +227,9 @@ private:
   /// by a painting/`n` operator before any `q`/`Q` (ISO 32000-1 8.5.4).
   enum class PendingClip { none, nonzero, even_odd };
   PendingClip m_pending_clip{PendingClip::none};
+
+  /// Lowest stack size a `Q` may pop to; raised by `ContentScope`.
+  std::size_t m_restore_floor{1};
 };
 
 } // namespace odr::internal::pdf

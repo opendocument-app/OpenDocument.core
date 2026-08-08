@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -115,6 +116,31 @@ private:
   [[nodiscard]] const ObjectStream &
   load_object_stream(const ObjectReference &reference);
 
+  /// The object streams currently being loaded. Loading one resolves its
+  /// `/Length`, `/N` and `/First`, and a file may put those in an object
+  /// compressed inside that very stream; the cache fills only on completion, so
+  /// without this the resolution recurses. `enter_object_stream` returns false
+  /// on re-entry.
+  [[nodiscard]] bool enter_object_stream(const ObjectReference &reference);
+  void leave_object_stream(const ObjectReference &reference);
+
+  /// RAII counterpart of `enter_object_stream` / `leave_object_stream`.
+  class ObjectStreamScope final {
+  public:
+    ObjectStreamScope(DocumentParser &parser, const ObjectReference &reference);
+    ~ObjectStreamScope();
+
+    ObjectStreamScope(const ObjectStreamScope &) = delete;
+    ObjectStreamScope &operator=(const ObjectStreamScope &) = delete;
+
+    [[nodiscard]] bool entered() const { return m_entered; }
+
+  private:
+    DocumentParser *m_parser{nullptr};
+    ObjectReference m_reference;
+    bool m_entered{false};
+  };
+
   std::unique_ptr<std::istream> m_stream;
   FileParser m_parser;
   Logger m_logger;
@@ -129,6 +155,7 @@ private:
 
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<ObjectReference, ObjectStream> m_object_streams;
+  std::set<ObjectReference> m_active_object_streams;
 };
 
 } // namespace odr::internal::pdf

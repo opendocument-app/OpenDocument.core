@@ -88,6 +88,12 @@ document::extract_path(const abstract::ElementAdapter &element_adapter,
     const ElementIdentifier parent_id =
         element_adapter.element_parent(current_id);
     if (parent_id == null_element_id) {
+      // the walk reached the root; a named origin we never met is not an
+      // ancestor, and the path collected so far would be rooted elsewhere
+      if (from_element_id != null_element_id) {
+        throw std::invalid_argument(
+            "Element is not a descendant of the specified root.");
+      }
       break;
     }
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <numbers>
 #include <stdexcept>
 #include <variant>
@@ -227,6 +228,27 @@ private:
 
 // --- type 4: PostScript calculator (ISO 32000-1 7.10.5) --------------------
 
+/// The integer operand of `idiv`/`mod`/the bitwise operators. Every type-4
+/// value is held as a `double`, and converting one outside the destination
+/// range is undefined behaviour, so saturate to the 32-bit signed range a
+/// PostScript integer occupies and map NaN to zero.
+std::int32_t to_int32(const double v) {
+  constexpr auto lowest =
+      static_cast<double>(std::numeric_limits<std::int32_t>::min());
+  constexpr auto highest =
+      static_cast<double>(std::numeric_limits<std::int32_t>::max());
+  if (std::isnan(v)) {
+    return 0;
+  }
+  return static_cast<std::int32_t>(std::clamp(v, lowest, highest));
+}
+
+/// Whether `x / y` (and `x % y`) is undefined in C++: a zero divisor, or the
+/// non-representable `INT32_MIN / -1`.
+bool is_undefined_division(const std::int32_t x, const std::int32_t y) {
+  return y == 0 || (y == -1 && x == std::numeric_limits<std::int32_t>::min());
+}
+
 /// One token of a type-4 program: a literal number, an operator name, or a
 /// nested `{ ... }` procedure block (used by `if`/`ifelse`).
 struct PostScriptItem {
@@ -326,19 +348,21 @@ private:
     } else if (op == "div") {
       binary([](double a, double b) { return b == 0 ? 0.0 : a / b; });
     } else if (op == "idiv") {
-      binary([](double a, double b) {
-        if (b == 0) {
+      binary([](const double a, const double b) {
+        const std::int32_t x = to_int32(a);
+        const std::int32_t y = to_int32(b);
+        // A zero divisor already yielded 0 before; INT32_MIN / -1 joins it.
+        if (is_undefined_division(x, y)) {
           return 0.0;
         }
         // NOLINTNEXTLINE(bugprone-integer-division): idiv is integer division
-        return static_cast<double>(static_cast<std::int32_t>(a) /
-                                   static_cast<std::int32_t>(b));
+        return static_cast<double>(x / y);
       });
     } else if (op == "mod") {
-      binary([](double a, double b) {
-        return b == 0 ? 0.0
-                      : static_cast<double>(static_cast<std::int32_t>(a) %
-                                            static_cast<std::int32_t>(b));
+      binary([](const double a, const double b) {
+        const std::int32_t x = to_int32(a);
+        const std::int32_t y = to_int32(b);
+        return is_undefined_division(x, y) ? 0.0 : static_cast<double>(x % y);
       });
     } else if (op == "neg") {
       unary([](double a) { return -a; });
@@ -403,11 +427,11 @@ private:
       if (a == 0.0 || a == 1.0) {
         s.emplace_back(a == 0.0 ? 1.0 : 0.0);
       } else {
-        s.emplace_back(static_cast<double>(~static_cast<std::int32_t>(a)));
+        s.emplace_back(static_cast<double>(~to_int32(a)));
       }
     } else if (op == "bitshift") {
       const double shift = pop_number(s);
-      const auto value = static_cast<std::int32_t>(pop_number(s));
+      const std::int32_t value = to_int32(pop_number(s));
       // Shifting a 32-bit value by 32 or more is undefined in C++; PostScript
       // shifts every bit out. (The comparison also catches a NaN shift.)
       const double magnitude = std::abs(shift);
@@ -476,8 +500,7 @@ private:
     if (boolean) {
       s.emplace_back(bool_op(a != 0.0, b != 0.0) ? 1.0 : 0.0);
     } else {
-      s.emplace_back(static_cast<double>(
-          int_op(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b))));
+      s.emplace_back(static_cast<double>(int_op(to_int32(a), to_int32(b))));
     }
   }
 

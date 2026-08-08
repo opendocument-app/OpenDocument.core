@@ -7,16 +7,20 @@
 
 namespace odr::internal {
 
+/// Owns the path it names and removes it on destruction, hence move-only.
 class TemporaryDiskFile final : public DiskFile {
 public:
   explicit TemporaryDiskFile(const char *path);
   explicit TemporaryDiskFile(const std::string &path);
   explicit TemporaryDiskFile(AbsPath path);
-  TemporaryDiskFile(const TemporaryDiskFile &);
+  TemporaryDiskFile(const TemporaryDiskFile &) = delete;
   TemporaryDiskFile(TemporaryDiskFile &&) noexcept;
   ~TemporaryDiskFile() override;
-  TemporaryDiskFile &operator=(const TemporaryDiskFile &);
+  TemporaryDiskFile &operator=(const TemporaryDiskFile &) = delete;
   TemporaryDiskFile &operator=(TemporaryDiskFile &&) noexcept;
+
+private:
+  bool m_owns_path{true}; ///< cleared by a move, so only one owner removes
 };
 
 class TemporaryDiskFileFactory final {

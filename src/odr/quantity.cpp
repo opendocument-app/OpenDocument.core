@@ -2,7 +2,10 @@
 
 #include <odr/internal/util/number_util.hpp>
 
+#include <functional>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 
 namespace odr {
@@ -25,6 +28,15 @@ public:
   }
 
 private:
+  /// Transparent, so the lookup path does not have to allocate a key.
+  struct Hash final {
+    using is_transparent = void;
+
+    std::size_t operator()(const std::string_view name) const noexcept {
+      return std::hash<std::string_view>{}(name);
+    }
+  };
+
   static Registry &registry_() {
     static Registry registry;
     return registry;
@@ -32,9 +44,23 @@ private:
 
   Registry() = default;
 
-  std::unordered_map<std::string, std::unique_ptr<Unit>> m_registry;
+  std::shared_mutex m_mutex;
+  std::unordered_map<std::string, std::unique_ptr<Unit>, Hash, std::equal_to<>>
+      m_registry;
 
+  /// `std::unordered_map` keeps element addresses stable across a rehash, so a
+  /// `Unit *` already handed out survives later insertions and only the map
+  /// access itself needs guarding. Every `Measure` goes through here and the
+  /// http server renders on a thread pool, hence the shared read path.
   const Unit *unit_(const std::string_view name) {
+    {
+      const std::shared_lock lock(m_mutex);
+      if (const auto it = m_registry.find(name); it != m_registry.end()) {
+        return it->second.get();
+      }
+    }
+
+    const std::unique_lock lock(m_mutex);
     std::unique_ptr<Unit> &unit = m_registry[std::string(name)];
     if (unit == nullptr) {
       unit = std::make_unique<Unit>();

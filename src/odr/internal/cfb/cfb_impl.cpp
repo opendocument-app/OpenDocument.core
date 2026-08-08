@@ -59,7 +59,13 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
     throw NoCfbFile();
   }
 
-  m_sector_size = m_header.major_version == 3 ? 512 : 4096;
+  // [MS-CFB] 2.2: major version 3 or 4, pinned to sector shift 9 resp. 12; the
+  // sector size is 1 << sector_shift.
+  if (!(m_header.major_version == 3 && m_header.sector_shift == 9) &&
+      !(m_header.major_version == 4 && m_header.sector_shift == 12)) {
+    throw CfbFileCorrupted();
+  }
+  m_sector_size = std::uint64_t{1} << m_header.sector_shift;
 
   // The file must contain at least 3 sectors
   if (m_file_size < m_sector_size * 3) {

@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <unordered_set>
 
 #include <nlohmann/json.hpp>
 
@@ -124,12 +125,15 @@ Html HtmlService::bring_offline(const std::string &output_path,
     pages.emplace_back(view.name(), path.string());
   }
 
+  // a resource shared by two views appears once per view, and those need not be
+  // adjacent - dedup by path, keeping the first occurrence and the order
   {
-    const auto it =
-        std::ranges::unique(resources, [](const auto &lhs, const auto &rhs) {
-          return lhs.first.path() == rhs.first.path();
-        }).begin();
-    resources.erase(it, resources.end());
+    std::unordered_set<std::string> seen;
+    const auto removed =
+        std::ranges::remove_if(resources, [&seen](const auto &resource) {
+          return !seen.insert(resource.first.path()).second;
+        });
+    resources.erase(removed.begin(), removed.end());
   }
 
   odr::bring_offline(resources, output_path);

@@ -95,6 +95,7 @@ void odr_python::bind_file(py::module_ &m) {
       .value("video", odr::FileCategory::video);
 
   py::enum_<odr::FileLocation>(m, "FileLocation")
+      .value("unknown", odr::FileLocation::unknown)
       .value("memory", odr::FileLocation::memory)
       .value("disk", odr::FileLocation::disk);
 
@@ -179,7 +180,10 @@ void odr_python::bind_file(py::module_ &m) {
       .def("file_meta", &odr::DecodedFile::file_meta)
       .def("password_encrypted", &odr::DecodedFile::password_encrypted)
       .def("encryption_state", &odr::DecodedFile::encryption_state)
-      .def("decrypt", &odr::DecodedFile::decrypt, py::arg("password"))
+      // decrypting rewrites the whole file; holding the GIL for it blocks
+      // every other Python thread
+      .def("decrypt", &odr::DecodedFile::decrypt, py::arg("password"),
+           py::call_guard<py::gil_scoped_release>())
       .def("is_decodable", &odr::DecodedFile::is_decodable)
       .def("capabilities", &odr::DecodedFile::capabilities)
       .def("is_text_file", &odr::DecodedFile::is_text_file)
@@ -214,11 +218,13 @@ void odr_python::bind_file(py::module_ &m) {
       .def_static("type_by_path", &odr::DocumentFile::type, py::arg("path"))
       .def_static("meta_by_path", &odr::DocumentFile::meta, py::arg("path"))
       .def("document_type", &odr::DocumentFile::document_type)
-      .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"))
+      .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"),
+           py::call_guard<py::gil_scoped_release>())
       .def("document", &odr::DocumentFile::document);
 
   py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")
-      .def("decrypt", &odr::PdfFile::decrypt, py::arg("password"));
+      .def("decrypt", &odr::PdfFile::decrypt, py::arg("password"),
+           py::call_guard<py::gil_scoped_release>());
 
   py::class_<odr::FontFile, odr::DecodedFile>(m, "FontFile")
       .def("read", [](const odr::FontFile &file) {

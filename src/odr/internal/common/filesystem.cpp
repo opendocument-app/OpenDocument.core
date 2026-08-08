@@ -170,9 +170,16 @@ public:
     return std::make_unique<VirtualFileWalker>(*this);
   }
 
+  /// The iterators belong to different maps, so only the keys can be compared.
   [[nodiscard]] bool equals(const FileWalker &rhs_) const override {
-    auto &&rhs = dynamic_cast<const VirtualFileWalker &>(rhs_);
-    return m_iterator == rhs.m_iterator;
+    const auto *rhs = dynamic_cast<const VirtualFileWalker *>(&rhs_);
+    if (rhs == nullptr) {
+      return false;
+    }
+    if (end() || rhs->end()) {
+      return end() && rhs->end();
+    }
+    return m_iterator->first == rhs->m_iterator->first;
   }
 
   [[nodiscard]] bool end() const override {

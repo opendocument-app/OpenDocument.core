@@ -58,6 +58,9 @@ struct SearchHints {
   std::uint16_t range_shift;
 };
 SearchHints search_hints(const std::uint16_t count, const std::uint16_t unit) {
+  if (count == 0) {
+    return {0, 0, 0}; // log2(0) is undefined; an empty directory has no range
+  }
   const auto entry_selector =
       static_cast<std::uint16_t>(std::bit_width(count) - 1);
   const auto search_range =

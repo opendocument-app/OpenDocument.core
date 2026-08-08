@@ -2,6 +2,7 @@
 
 #include <odr/internal/util/hash_util.hpp>
 
+#include <limits>
 #include <stdexcept>
 
 namespace odr {
@@ -21,8 +22,26 @@ std::uint32_t TablePosition::to_column_num(const std::string &string) {
   return result - 1;
 }
 
+/// @param string the 1-based row number, as written in a cell reference.
 std::uint32_t TablePosition::to_row_num(const std::string &string) {
-  return std::stoul(string) - 1;
+  if (string.empty()) {
+    throw std::invalid_argument("s is empty");
+  }
+
+  std::uint64_t result = 0;
+  for (const char c : string) {
+    if (c < '0' || c > '9') {
+      throw std::invalid_argument("illegal character in \"" + string + "\"");
+    }
+    result = result * 10 + static_cast<std::uint64_t>(c - '0');
+    if (result > std::numeric_limits<std::uint32_t>::max()) {
+      throw std::invalid_argument("row out of range in \"" + string + "\"");
+    }
+  }
+  if (result == 0) {
+    throw std::invalid_argument("row is not 1-based in \"" + string + "\"");
+  }
+  return static_cast<std::uint32_t>(result) - 1;
 }
 
 std::string TablePosition::to_column_string(const std::uint32_t column) {

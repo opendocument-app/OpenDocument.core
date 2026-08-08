@@ -9,6 +9,15 @@
 
 namespace odr::internal {
 
+namespace {
+
+void remove_quietly(const AbsPath &path) {
+  std::error_code error_code;
+  std::filesystem::remove(path.string(), error_code);
+}
+
+} // namespace
+
 TemporaryDiskFile::TemporaryDiskFile(const char *path) : DiskFile{path} {}
 
 TemporaryDiskFile::TemporaryDiskFile(const std::string &path)
@@ -17,21 +26,31 @@ TemporaryDiskFile::TemporaryDiskFile(const std::string &path)
 TemporaryDiskFile::TemporaryDiskFile(AbsPath path)
     : DiskFile{std::move(path)} {}
 
-TemporaryDiskFile::TemporaryDiskFile(const TemporaryDiskFile &) = default;
-
-TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&) noexcept = default;
+TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&other) noexcept
+    : DiskFile{std::move(other)},
+      m_owns_path{std::exchange(other.m_owns_path, false)} {}
 
 TemporaryDiskFile::~TemporaryDiskFile() {
+  if (!m_owns_path) {
+    return;
+  }
   assert(disk_path().has_value());
-  std::error_code ec;
-  std::filesystem::remove(disk_path()->string(), ec);
+  remove_quietly(*disk_path());
 }
 
 TemporaryDiskFile &
-TemporaryDiskFile::operator=(const TemporaryDiskFile &) = default;
-
-TemporaryDiskFile &
-TemporaryDiskFile::operator=(TemporaryDiskFile &&) noexcept = default;
+TemporaryDiskFile::operator=(TemporaryDiskFile &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  if (m_owns_path) {
+    assert(disk_path().has_value());
+    remove_quietly(*disk_path());
+  }
+  DiskFile::operator=(std::move(other));
+  m_owns_path = std::exchange(other.m_owns_path, false);
+  return *this;
+}
 
 const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
   static TemporaryDiskFileFactory instance(

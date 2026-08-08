@@ -1,6 +1,7 @@
 #include <odr/logger.hpp>
 
 #include <algorithm>
+#include <ctime>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
@@ -96,6 +97,18 @@ std::shared_ptr<ILogger> null_impl() {
   return instance;
 }
 
+/// `std::localtime` hands out a pointer into one shared `std::tm`, which two
+/// logging threads would race on.
+std::tm local_time(const std::time_t time) {
+  std::tm result{};
+#ifdef _WIN32
+  localtime_s(&result, &time);
+#else
+  localtime_r(&time, &result);
+#endif
+  return result;
+}
+
 /// Writes @p text clipped to @p width, padded to it, and one trailing space.
 void print_padded(std::ostream &out, const std::string_view text,
                   const std::size_t width) {
@@ -165,8 +178,8 @@ void Logger::print_head(std::ostream &out, Time time, LogLevel level,
                         const std::source_location &location,
                         const LogFormat &format) {
   if (!format.time_format.empty()) {
-    auto t = Clock::to_time_t(time);
-    out << std::put_time(std::localtime(&t), format.time_format.c_str()) << " ";
+    const std::tm local = local_time(Clock::to_time_t(time));
+    out << std::put_time(&local, format.time_format.c_str()) << " ";
   }
 
   if (format.level_width > 0) {

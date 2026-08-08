@@ -42,6 +42,8 @@ void replace_all(std::string &string, const std::string &search,
 /// Concatenate `count` copies of `unit` (empty for `count == 0`).
 std::string repeat(const std::string &unit, std::size_t count);
 
+/// Splits on every occurrence of @p delimiter; throws `std::invalid_argument`
+/// if it is empty.
 void split(const std::string &string, const std::string &delimiter,
            const std::function<void(const std::string &)> &callback);
 std::vector<std::string> split(const std::string &string,
@@ -52,7 +54,7 @@ std::string to_string(double d, int precision);
 std::size_t utf8_length(const std::string &string);
 
 std::string u16string_to_string(const std::u16string &string);
-std::u16string string_to_u16string(const std::string &string);
+std::u16string string_to_u16string(std::string_view string);
 /// @p length is a byte count, not a number of code units.
 std::string c16str_to_string(const char16_t *c16str, std::size_t length);
 void append_c32(char32_t c, std::string &string);

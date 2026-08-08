@@ -14,6 +14,7 @@ namespace {
 using odr_jni::destroy_handle;
 using odr_jni::from_handle;
 using odr_jni::guarded;
+using odr_jni::HandleGuard;
 using odr_jni::make_handle;
 using odr_jni::to_jstring;
 using odr_jni::to_string;
@@ -32,16 +33,18 @@ jlong wrap_element(odr::Element value) {
 }
 
 jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
-  std::vector<jlong> handles;
+  HandleGuard<odr::Element> guard;
   for (const odr::Element &value : range) {
-    handles.push_back(make_handle(odr::Element(value)));
+    guard.add(value);
   }
+  const std::vector<jlong> &handles = guard.handles();
   jlongArray result = env->NewLongArray(static_cast<jsize>(handles.size()));
   if (result == nullptr) {
     return nullptr;
   }
   env->SetLongArrayRegion(result, 0, static_cast<jsize>(handles.size()),
                           handles.data());
+  guard.release();
   return result;
 }
 

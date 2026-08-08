@@ -15,6 +15,7 @@ namespace {
 using odr_jni::destroy_handle;
 using odr_jni::from_handle;
 using odr_jni::guarded;
+using odr_jni::HandleGuard;
 using odr_jni::make_handle;
 using odr_jni::to_jbytes;
 using odr_jni::to_jstring;
@@ -31,12 +32,16 @@ jlongArray to_jlong_array(JNIEnv *env, const std::vector<jlong> &values) {
 }
 
 jlongArray wrap_views(JNIEnv *env, const odr::HtmlViews &views) {
-  std::vector<jlong> handles;
-  handles.reserve(views.size());
+  HandleGuard<odr::HtmlView> guard(views.size());
   for (const odr::HtmlView &view : views) {
-    handles.push_back(make_handle(odr::HtmlView(view)));
+    guard.add(view);
   }
-  return to_jlong_array(env, handles);
+  jlongArray result = to_jlong_array(env, guard.handles());
+  if (result == nullptr) {
+    return nullptr;
+  }
+  guard.release();
+  return result;
 }
 
 /// Builds an `app.opendocument.core.Html` from an offline result.
@@ -49,9 +54,15 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   }
   jmethodID page_ctor = env->GetMethodID(
       page_cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
+  if (page_ctor == nullptr) {
+    return nullptr;
+  }
   const std::vector<odr::HtmlPage> &pages = html.pages();
   jobjectArray page_array =
       env->NewObjectArray(static_cast<jsize>(pages.size()), page_cls, nullptr);
+  if (page_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(pages.size()); ++i) {
     jstring name = to_jstring(env, pages[i].name);
     jstring path = to_jstring(env, pages[i].path);
@@ -70,6 +81,9 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   jmethodID html_ctor = env->GetMethodID(
       html_cls, "<init>",
       "(Lapp/opendocument/core/HtmlConfig;[Lapp/opendocument/core/HtmlPage;)V");
+  if (html_ctor == nullptr) {
+    return nullptr;
+  }
   jobject result = env->NewObject(html_cls, html_ctor, config, page_array);
   env->DeleteLocalRef(html_cls);
   return result;
@@ -87,15 +101,33 @@ jobject make_content(JNIEnv *env, const std::string &html,
   jmethodID located_ctor = env->GetMethodID(
       located_cls, "<init>",
       "(Lapp/opendocument/core/HtmlResource;Ljava/lang/String;)V");
+  if (located_ctor == nullptr) {
+    return nullptr;
+  }
   jclass resource_cls = env->FindClass("app/opendocument/core/HtmlResource");
+  if (resource_cls == nullptr) {
+    return nullptr;
+  }
   jmethodID resource_ctor = env->GetMethodID(resource_cls, "<init>", "(J)V");
+  if (resource_ctor == nullptr) {
+    return nullptr;
+  }
 
   jobjectArray located_array = env->NewObjectArray(
       static_cast<jsize>(resources.size()), located_cls, nullptr);
+  if (located_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(resources.size()); ++i) {
     const auto &[resource, location] = resources[i];
-    jobject resource_obj = env->NewObject(
-        resource_cls, resource_ctor, make_handle(odr::HtmlResource(resource)));
+    HandleGuard<odr::HtmlResource> guard(1);
+    jobject resource_obj =
+        env->NewObject(resource_cls, resource_ctor, guard.add(resource));
+    if (resource_obj == nullptr) {
+      return nullptr;
+    }
+    // the Java wrapper exists, so its post-mortem destroyer owns the handle now
+    guard.release();
     jstring location_str =
         location.has_value() ? to_jstring(env, *location) : nullptr;
     jobject located =
@@ -117,6 +149,9 @@ jobject make_content(JNIEnv *env, const std::string &html,
   jmethodID content_ctor = env->GetMethodID(
       content_cls, "<init>",
       "(Ljava/lang/String;[Lapp/opendocument/core/Html$LocatedResource;)V");
+  if (content_ctor == nullptr) {
+    return nullptr;
+  }
   jobject result = env->NewObject(content_cls, content_ctor,
                                   to_jstring(env, html), located_array);
   env->DeleteLocalRef(content_cls);
