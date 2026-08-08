@@ -80,9 +80,10 @@ tools/pdf/afm/
 *.ppt
 *.xls
 # the bindings ship their own copy of one public test document, since neither a
-# SwiftPM checkout nor an android build tree has test/data/
+# SwiftPM checkout, an android build tree nor an npm consumer has test/data/
 !apple/tests/Fixtures/*
 !jni/testfixtures/resources/**/*
+!wasm/testfixtures/*
 
 ## Python
 # Byte-compiled / optimized / DLL files

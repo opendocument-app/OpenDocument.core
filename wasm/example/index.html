@@ -1,0 +1,118 @@
+<!doctype html>
+<!--
+  Eyeball the renderer's output. No bundler, no install: build `odr_wasm`, then
+  serve the repository over HTTP and open this file. It imports the built
+  package straight out of the build directory.
+
+  This is manual QA and the page a contributor is pointed at, not a product.
+  The real viewer lives in its own repository.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>odr — WebAssembly example</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        font: 14px/1.5 system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      }
+      #status { opacity: 0.7; }
+      #views { margin-left: auto; }
+      iframe { flex: 1; border: 0; width: 100%; }
+      #drop { flex: 1; display: grid; place-items: center; opacity: 0.6; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input type="file" id="file" />
+      <span id="status">loading…</span>
+      <select id="views" hidden></select>
+    </header>
+    <div id="drop">drop a document anywhere, or pick one above</div>
+    <iframe id="view" hidden sandbox="allow-same-origin allow-scripts"></iframe>
+
+    <script type="module">
+      import { Odr } from '../../build-wasm/wasm/dist/index.js';
+
+      const status = document.getElementById('status');
+      const views = document.getElementById('views');
+      const frame = document.getElementById('view');
+      const drop = document.getElementById('drop');
+
+      const odr = await Odr.load();
+      status.textContent = odr.identify();
+
+      let doc = null;
+      let url = null;
+
+      function show(index) {
+        const { html, externalResources } = doc.render(index);
+        if (externalResources.length > 0) {
+          // Media is never inlined, so a blob: iframe cannot resolve it. A real
+          // viewer mints blob: URLs through a resource locator; this page just
+          // says so.
+          console.warn('not inlined, will not load here:', externalResources);
+        }
+        if (url) URL.revokeObjectURL(url);
+        url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        frame.src = url;
+        frame.hidden = false;
+        drop.hidden = true;
+      }
+
+      async function open(file) {
+        doc?.close();
+        try {
+          doc = odr.open(new Uint8Array(await file.arrayBuffer()), {
+            editable: true,
+          });
+        } catch (e) {
+          status.textContent = `${file.name}: ${e.name} — ${e.message}`;
+          return;
+        }
+
+        if (doc.isPasswordEncrypted()) {
+          const password = prompt(`Password for ${file.name}`);
+          try {
+            doc.decrypt(password ?? '');
+          } catch (e) {
+            status.textContent = `${file.name}: ${e.name}`;
+            return;
+          }
+        }
+
+        const list = doc.listViews();
+        views.replaceChildren(
+          ...list.map((v) => new Option(`${v.name} (${v.path})`, v.index)),
+        );
+        views.hidden = list.length < 2;
+        status.textContent = `${file.name} — ${list.length} view(s)`;
+        show(0);
+      }
+
+      document
+        .getElementById('file')
+        .addEventListener('change', (e) => e.target.files[0] && open(e.target.files[0]));
+      views.addEventListener('change', () => show(Number(views.value)));
+
+      document.addEventListener('dragover', (e) => e.preventDefault());
+      document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files[0]) open(e.dataTransfer.files[0]);
+      });
+    </script>
+  </body>
+</html>

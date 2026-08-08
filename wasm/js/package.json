@@ -1,0 +1,44 @@
+{
+  "name": "@opendocument/odr-core",
+  "version": "0.0.0",
+  "description": "Render documents (ODF, OOXML, legacy MS binary, PDF, ...) to HTML in the browser, with no server",
+  "keywords": [
+    "odf",
+    "odt",
+    "ooxml",
+    "docx",
+    "pdf",
+    "wasm",
+    "webassembly",
+    "viewer"
+  ],
+  "homepage": "https://github.com/opendocument-app/OpenDocument.core/tree/main/wasm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opendocument-app/OpenDocument.core.git",
+    "directory": "wasm"
+  },
+  "license": "MPL-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./odr-core.wasm": "./odr-core.wasm",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "odr-core.mjs",
+    "odr-core.wasm",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

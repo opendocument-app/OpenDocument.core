@@ -25,6 +25,7 @@ option(ODR_BUNDLE_ASSETS "Removed, does nothing (deprecated)" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
+option(ODR_WASM "Build WebAssembly bindings" OFF)
 
 include(GNUInstallDirs)
 
@@ -318,6 +319,10 @@ endif ()
 
 if (ODR_APPLE)
     add_subdirectory("apple")
+endif ()
+
+if (ODR_WASM)
+    add_subdirectory("wasm")
 endif ()
 
 if (ODR_TEST)
