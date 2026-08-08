@@ -111,7 +111,9 @@ jobs:
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
 
       - name: test
-        run: ctest --test-dir build/wasm --output-on-failure
+        # `--no-tests=error`: without a usable node the suite is skipped, and a
+        # silently green job would be worse than a red one
+        run: ctest --test-dir build/wasm --output-on-failure --no-tests=error
 
       # The regression that matters for a new target: a difference here is
       # endianness, float formatting, hash ordering or locale drift. The wasm

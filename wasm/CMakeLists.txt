@@ -83,14 +83,45 @@ add_dependencies(odr_wasm odr_wasm_package)
 
 if (ODR_TEST)
     enable_testing()
-    find_program(ODR_WASM_NODE NAMES node nodejs)
+
+    # Look outside the conan search path first. `emsdk` pulls in `nodejs/16.3.0`
+    # as a tool requirement, and CMakeToolchain puts its `bin` on
+    # `CMAKE_PROGRAM_PATH` — so a plain `find_program` finds a node that predates
+    # `--test` and the suite fails as "bad option" rather than as a test.
+    find_program(ODR_WASM_NODE NAMES node nodejs
+            NO_CMAKE_PATH NO_CMAKE_SYSTEM_PATH)
+    if (NOT ODR_WASM_NODE)
+        find_program(ODR_WASM_NODE NAMES node nodejs)
+    endif ()
+
+    set(ODR_WASM_NODE_MINIMUM 18) # `node --test`
+
     if (ODR_WASM_NODE)
-        add_test(NAME odr_wasm_node
-                COMMAND "${ODR_WASM_NODE}" --test "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+        execute_process(COMMAND "${ODR_WASM_NODE}" --version
+                OUTPUT_VARIABLE ODR_WASM_NODE_VERSION
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+        string(REGEX REPLACE "^v" "" ODR_WASM_NODE_VERSION "${ODR_WASM_NODE_VERSION}")
+    endif ()
+
+    if (ODR_WASM_NODE AND ODR_WASM_NODE_VERSION
+            AND NOT ODR_WASM_NODE_VERSION VERSION_LESS ODR_WASM_NODE_MINIMUM)
+        # No path argument: node discovers `*.test.mjs` under the working
+        # directory itself. Passing the directory instead works on node 20 but
+        # not on 22, which reads a bare path as a module to execute and fails
+        # with `Cannot find module`.
+        add_test(NAME odr_wasm_node COMMAND "${ODR_WASM_NODE}" --test)
         set_tests_properties(odr_wasm_node PROPERTIES
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
                 ENVIRONMENT "ODR_WASM_DIST=${CMAKE_CURRENT_BINARY_DIR}/dist")
     else ()
-        message(WARNING "node not found; skipping the odr_wasm test registration")
+        # Left as a warning rather than an error so a contributor without node
+        # can still build. CI passes `--no-tests=error` to ctest, so skipping
+        # there is loud.
+        message(WARNING
+                "no node >= ${ODR_WASM_NODE_MINIMUM} "
+                "(found '${ODR_WASM_NODE}' ${ODR_WASM_NODE_VERSION}); "
+                "skipping the odr_wasm test registration")
     endif ()
 endif ()
 
