@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <iostream>
 #include <optional>
-#include <stdexcept>
 #include <streambuf>
 #include <string>
 
@@ -47,13 +46,13 @@ std::uint8_t read_u8(std::istream &in);
 
 template <std::uint32_t N> std::array<char, N> read_u8s(std::istream &in) {
   std::array<char, N> result{};
-  if (in.rdbuf()->sgetn(result.data(), N) != static_cast<std::streamsize>(N)) {
-    throw std::runtime_error("unexpected stream exhaust");
-  }
+  read(in, result.data(), N);
   return result;
 }
 
-std::string read_u8s(std::istream &in, std::size_t n);
+/// Reads exactly @p n bytes, growing the buffer as the data arrives so that a
+/// bogus length prefix cannot allocate ahead of the stream.
+std::string read_u8s(std::istream &in, std::uint64_t n);
 
 std::uint16_t read_u16_le(std::istream &in);
 std::uint32_t read_u32_le(std::istream &in);

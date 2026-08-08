@@ -2,33 +2,24 @@
 
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
 
 namespace odr::internal {
 
 namespace {
 
-/// Reads exactly @p size bytes, growing the buffer as the data arrives so that
-/// a bogus length prefix cannot allocate ahead of the stream.
 std::string read_bytes(std::istream &in, const std::uint64_t size) {
-  constexpr std::uint64_t chunk_size = 4096;
-
-  std::string result;
-  while (result.size() < size) {
-    const std::size_t offset = result.size();
-    const auto step =
-        static_cast<std::size_t>(std::min(chunk_size, size - offset));
-    result.resize(offset + step);
-    if (!in.read(result.data() + offset, static_cast<std::streamsize>(step))) {
-      throw MalformedSvmFile();
-    }
+  try {
+    return util::byte_stream::read_u8s(in, size);
+  } catch (const std::runtime_error &) {
+    throw MalformedSvmFile();
   }
-  return result;
 }
 
 } // namespace

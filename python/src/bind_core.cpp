@@ -36,12 +36,8 @@ void odr_python::bind_core(py::module_ &m) {
                   py::arg("path"));
 
   // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
-  // `register_exception`, not `py::exception`: the latter creates the type but
-  // installs no translator, leaving every subclass without one at RuntimeError.
-  // Registered first so it is tried last - pybind11 runs translators in reverse
-  // registration order, which is what lets the specific ones below win.
-  // Based on `RuntimeError`, which is where an untranslated `odr::Exception`
-  // used to land, so code catching that keeps working.
+  // `register_exception`, not `py::exception`: the latter has no translator.
+  // Registered first so it is tried last - pybind11 reverses that order.
   const py::exception<odr::Exception> &error =
       py::register_exception<odr::Exception>(m, "Error", PyExc_RuntimeError);
 

@@ -2,6 +2,7 @@
 
 #include <odr/internal/util/byte_util.hpp>
 
+#include <cstring>
 #include <stdexcept>
 
 namespace odr::internal::util {
@@ -107,6 +108,26 @@ void byte_string::write_u32_be(std::string &out, const std::size_t pos,
   out[pos + 1] = static_cast<char>((value >> 16) & 0xff);
   out[pos + 2] = static_cast<char>((value >> 8) & 0xff);
   out[pos + 3] = static_cast<char>(value & 0xff);
+}
+
+void byte_string::Reader::skip(const std::size_t count) {
+  if (count > remaining()) {
+    throw std::runtime_error("byte_string: read past end");
+  }
+  m_position += count;
+}
+
+void byte_string::Reader::seek(const std::size_t position) {
+  if (position > m_data.size()) {
+    throw std::runtime_error("byte_string: seek past end");
+  }
+  m_position = position;
+}
+
+void byte_string::Reader::read_bytes(void *const out, const std::size_t size) {
+  const std::size_t at = m_position;
+  skip(size);
+  std::memcpy(out, m_data.data() + at, size);
 }
 
 } // namespace odr::internal::util

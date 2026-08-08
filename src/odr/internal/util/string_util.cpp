@@ -136,7 +136,7 @@ std::string string::u16string_to_string(const std::u16string &string) {
   return utf8::utf16to8(string);
 }
 
-std::u16string string::string_to_u16string(const std::string &string) {
+std::u16string string::string_to_u16string(const std::string_view string) {
   return utf8::utf8to16(string);
 }
 

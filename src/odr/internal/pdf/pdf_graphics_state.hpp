@@ -205,9 +205,9 @@ struct GraphicsState {
     ContentScope &operator=(const ContentScope &) = delete;
 
   private:
-    GraphicsState *m_state;
-    std::size_t m_depth;
-    std::size_t m_floor;
+    GraphicsState *m_state{nullptr};
+    std::size_t m_depth{0};
+    std::size_t m_floor{0};
   };
 
 private:

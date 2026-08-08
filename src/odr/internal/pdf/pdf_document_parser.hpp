@@ -136,9 +136,9 @@ private:
     [[nodiscard]] bool entered() const { return m_entered; }
 
   private:
-    DocumentParser *m_parser;
+    DocumentParser *m_parser{nullptr};
     ObjectReference m_reference;
-    bool m_entered;
+    bool m_entered{false};
   };
 
   std::unique_ptr<std::istream> m_stream;

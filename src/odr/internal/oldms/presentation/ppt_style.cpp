@@ -1,41 +1,14 @@
 #include <odr/internal/oldms/presentation/ppt_style.hpp>
 
-#include <cstring>
-#include <stdexcept>
+#include <odr/internal/util/byte_string.hpp>
+
 #include <utility>
 
 namespace odr::internal::oldms::presentation {
 
 namespace {
 
-/// Bounds-checked reader over an in-memory record body.
-class BodyCursor final {
-public:
-  explicit BodyCursor(const std::string_view body) : m_body(body) {}
-
-  [[nodiscard]] std::size_t remaining() const { return m_body.size() - m_at; }
-
-  template <typename T> T read() {
-    if (remaining() < sizeof(T)) {
-      throw std::runtime_error("ppt: truncated StyleTextPropAtom");
-    }
-    T value;
-    std::memcpy(&value, m_body.data() + m_at, sizeof(T));
-    m_at += sizeof(T);
-    return value;
-  }
-
-  void skip(const std::size_t count) {
-    if (remaining() < count) {
-      throw std::runtime_error("ppt: truncated StyleTextPropAtom");
-    }
-    m_at += count;
-  }
-
-private:
-  std::string_view m_body;
-  std::size_t m_at{0};
-};
+using BodyCursor = util::byte_string::Reader;
 
 /// PFMasks bits ([MS-PPT] 2.9.21).
 enum PFMask : std::uint32_t {
