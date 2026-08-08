@@ -56,7 +56,6 @@ find_package(pugixml REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 
@@ -266,7 +265,6 @@ target_link_libraries(odr
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         utf8::cpp
 )
