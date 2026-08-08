@@ -212,17 +212,22 @@ FileType magic::file_type(const File &file) {
   return file_type(*file.stream());
 }
 
-std::string_view magic::mimetype(const std::string &path,
+std::string_view magic::mimetype(const std::shared_ptr<abstract::File> &file,
                                  const Logger &logger) {
   // a zip or compound file binary only names its document once opened;
   // `list_file_types` reports the container first and the decoded type after
   const std::vector<FileType> file_types =
-      open_strategy::list_file_types(std::make_shared<DiskFile>(path), logger);
+      open_strategy::list_file_types(file, logger);
   if (file_types.empty()) {
     throw UnknownFileType();
   }
 
   return odr::mimetype_by_file_type(file_types.back());
+}
+
+std::string_view magic::mimetype(const std::string &path,
+                                 const Logger &logger) {
+  return mimetype(std::make_shared<DiskFile>(path), logger);
 }
 
 } // namespace odr::internal

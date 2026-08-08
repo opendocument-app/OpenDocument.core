@@ -235,11 +235,20 @@ struct FileMeta final {
 /// @brief Represents a file.
 class File final {
 public:
+  /// @brief A file read from @p path on disk.
+  [[nodiscard]] static File from_disk(const std::string &path);
+  /// @brief A file held in memory; @p data is its bytes, moved in.
+  ///
+  /// The only way to hand the library a file that has no path — a download, a
+  /// browser upload, a decrypted payload.
+  [[nodiscard]] static File from_memory(std::string data);
+
   /// Constructs the null file — every accessor but @ref location throws @ref
   /// NullPointerError on it, so assign a real one before use.
   File();
   /// @throws NullPointerError if the impl is null.
   explicit File(std::shared_ptr<internal::abstract::File>);
+  /// @brief Equivalent to @ref from_disk.
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
@@ -263,14 +272,20 @@ protected:
 class DecodedFile {
 public:
   [[nodiscard]] static std::vector<FileType>
+  list_file_types(const File &file, const Logger &logger = Logger::null());
+  [[nodiscard]] static std::vector<FileType>
   list_file_types(const std::string &path,
                   const Logger &logger = Logger::null());
+  [[nodiscard]] static std::string_view
+  mimetype(const File &file, const Logger &logger = Logger::null());
   [[nodiscard]] static std::string_view
   mimetype(const std::string &path, const Logger &logger = Logger::null());
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file, const Logger &logger = Logger::null());
   DecodedFile(const File &file, FileType as,
+              const Logger &logger = Logger::null());
+  DecodedFile(const File &file, const DecodePreference &preference,
               const Logger &logger = Logger::null());
   explicit DecodedFile(const std::string &path,
                        const Logger &logger = Logger::null());
@@ -355,10 +370,22 @@ private:
 /// @brief Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
+  /// @brief Decodes the document file at @p path on disk.
+  [[nodiscard]] static DocumentFile
+  from_disk(const std::string &path, const Logger &logger = Logger::null());
+  /// @brief Decodes a document file held in memory; @p data is its bytes,
+  /// moved in.
+  [[nodiscard]] static DocumentFile
+  from_memory(std::string data, const Logger &logger = Logger::null());
+
+  static FileType type(const File &file);
   static FileType type(const std::string &path);
+  static FileMeta meta(const File &file);
   static FileMeta meta(const std::string &path);
 
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
+  explicit DocumentFile(const File &file,
+                        const Logger &logger = Logger::null());
   explicit DocumentFile(const std::string &path,
                         const Logger &logger = Logger::null());
 
