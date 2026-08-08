@@ -257,50 +257,78 @@ namespace html {
 
 HtmlResourceLocator standard_resource_locator();
 
-/// @brief Translates a decoded file to HTML. `cache_path` is the directory
-/// temporary output goes into.
-HtmlService translate(const DecodedFile &file, const std::string &cache_path,
-                      const HtmlConfig &config,
+/// @brief Translates a decoded file to HTML.
+HtmlService translate(const DecodedFile &file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a text file to HTML.
-HtmlService translate(const TextFile &text_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const TextFile &text_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates an image file to HTML.
-HtmlService translate(const ImageFile &image_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+HtmlService translate(const ImageFile &image_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates an archive file to HTML.
-HtmlService translate(const ArchiveFile &archive_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+HtmlService translate(const ArchiveFile &archive_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates a document file to HTML.
 HtmlService translate(const DocumentFile &document_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+                      const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates a PDF file to HTML.
-HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const PdfFile &pdf_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a font file to HTML (a specimen page).
-HtmlService translate(const FontFile &font_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const FontFile &font_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a filesystem to HTML.
+HtmlService translate(const Filesystem &filesystem, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+/// @brief Translates an archive to HTML.
+HtmlService translate(const Archive &archive, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+/// @brief Translates a document to HTML.
+HtmlService translate(const Document &document, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+
+/// @name Translation with a cache path
+///
+/// `cache_path` is ignored — nothing on the render path writes to disk, and no
+/// renderer has read it since the output became a set of streams. Kept so
+/// existing callers keep compiling; prefer the overloads above.
+/// @{
+HtmlService translate(const DecodedFile &file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const TextFile &text_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const ImageFile &image_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const ArchiveFile &archive_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const DocumentFile &document_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const FontFile &font_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
 HtmlService translate(const Filesystem &filesystem,
                       const std::string &cache_path, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates an archive to HTML.
 HtmlService translate(const Archive &archive, const std::string &cache_path,
                       const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates a document to HTML.
 HtmlService translate(const Document &document, const std::string &cache_path,
                       const HtmlConfig &config,
                       const Logger &logger = Logger::null());
+/// @}
 
 /// @brief Applies a diff to a document. The diff is what our JavaScript
 /// produces in the browser.

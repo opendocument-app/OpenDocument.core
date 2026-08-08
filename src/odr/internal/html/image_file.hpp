@@ -18,8 +18,7 @@ void translate_image_src(const File &file, std::ostream &out,
 void translate_image_src(const ImageFile &image_file, std::ostream &out,
                          const HtmlConfig &config);
 
-HtmlService create_image_service(const ImageFile &image_file,
-                                 const std::string &cache_path,
-                                 HtmlConfig config, const Logger &logger);
+HtmlService create_image_service(const ImageFile &image_file, HtmlConfig config,
+                                 const Logger &logger);
 
 } // namespace odr::internal::html

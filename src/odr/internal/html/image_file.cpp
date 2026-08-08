@@ -154,7 +154,6 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,
-                                       const std::string & /*cache_path*/,
                                        HtmlConfig config,
                                        const Logger &logger) {
   return odr::HtmlService(

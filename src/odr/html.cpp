@@ -210,34 +210,31 @@ void HtmlResource::write_resource(std::ostream &os) const {
   m_impl->write_resource(os);
 }
 
-HtmlService html::translate(const DecodedFile &file,
-                            const std::string &cache_path,
-                            const HtmlConfig &config, const Logger &logger) {
+HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
+                            const Logger &logger) {
   if (file.is_text_file()) {
-    return translate(file.as_text_file(), cache_path, config, logger);
+    return translate(file.as_text_file(), config, logger);
   }
   if (file.is_image_file()) {
-    return translate(file.as_image_file(), cache_path, config, logger);
+    return translate(file.as_image_file(), config, logger);
   }
   if (file.is_archive_file()) {
-    return translate(file.as_archive_file(), cache_path, config, logger);
+    return translate(file.as_archive_file(), config, logger);
   }
   if (file.is_document_file()) {
-    return translate(file.as_document_file(), cache_path, config, logger);
+    return translate(file.as_document_file(), config, logger);
   }
   if (file.is_pdf_file()) {
-    return translate(file.as_pdf_file(), cache_path, config, logger);
+    return translate(file.as_pdf_file(), config, logger);
   }
   if (file.is_font_file()) {
-    return translate(file.as_font_file(), cache_path, config, logger);
+    return translate(file.as_font_file(), config, logger);
   }
   // No wrapper type to go through: nothing is decoded, so the plain
   // `DecodedFile` already carries the bytes and the type that names them.
   if (const FileCategory category = file.file_category();
       category == FileCategory::audio || category == FileCategory::video) {
-    std::filesystem::create_directories(cache_path);
-    return internal::html::create_media_service(file, cache_path, config,
-                                                logger);
+    return internal::html::create_media_service(file, config, logger);
   }
 
   throw UnsupportedFileType(file.file_type());
@@ -256,69 +253,113 @@ HtmlResourceLocator html::standard_resource_locator() {
   };
 }
 
-HtmlService html::translate(const TextFile &text_file,
-                            const std::string &cache_path,
-                            const HtmlConfig &config, const Logger &logger) {
-  std::filesystem::create_directories(cache_path);
-  return internal::html::create_text_service(text_file, cache_path, config,
-                                             logger);
+HtmlService html::translate(const TextFile &text_file, const HtmlConfig &config,
+                            const Logger &logger) {
+  return internal::html::create_text_service(text_file, config, logger);
 }
 
 HtmlService html::translate(const ImageFile &image_file,
-                            const std::string &cache_path,
                             const HtmlConfig &config, const Logger &logger) {
-  std::filesystem::create_directories(cache_path);
-  return internal::html::create_image_service(image_file, cache_path, config,
-                                              logger);
+  return internal::html::create_image_service(image_file, config, logger);
 }
 
 HtmlService html::translate(const ArchiveFile &archive_file,
-                            const std::string &cache_path,
                             const HtmlConfig &config, const Logger &logger) {
-  return translate(archive_file.archive(), cache_path, config, logger);
+  return translate(archive_file.archive(), config, logger);
 }
 
 HtmlService html::translate(const DocumentFile &document_file,
-                            const std::string &cache_path,
                             const HtmlConfig &config, const Logger &logger) {
-  return translate(document_file.document(), cache_path, config, logger);
+  return translate(document_file.document(), config, logger);
 }
 
-HtmlService html::translate(const PdfFile &pdf_file,
-                            const std::string &cache_path,
-                            const HtmlConfig &config, const Logger &logger) {
-  return internal::html::create_pdf_service(pdf_file, cache_path, config,
-                                            logger);
+HtmlService html::translate(const PdfFile &pdf_file, const HtmlConfig &config,
+                            const Logger &logger) {
+  return internal::html::create_pdf_service(pdf_file, config, logger);
 }
 
-HtmlService html::translate(const FontFile &font_file,
-                            const std::string &cache_path,
-                            const HtmlConfig &config, const Logger &logger) {
-  std::filesystem::create_directories(cache_path);
-  return internal::html::create_font_service(font_file, cache_path, config,
-                                             logger);
+HtmlService html::translate(const FontFile &font_file, const HtmlConfig &config,
+                            const Logger &logger) {
+  return internal::html::create_font_service(font_file, config, logger);
 }
 
 HtmlService html::translate(const Filesystem &filesystem,
-                            const std::string &cache_path,
                             const HtmlConfig &config, const Logger &logger) {
-  std::filesystem::create_directories(cache_path);
-  return internal::html::create_filesystem_service(filesystem, cache_path,
-                                                   config, logger);
+  return internal::html::create_filesystem_service(filesystem, config, logger);
+}
+
+HtmlService html::translate(const Archive &archive, const HtmlConfig &config,
+                            const Logger &logger) {
+  return translate(archive.as_filesystem(), config, logger);
+}
+
+HtmlService html::translate(const Document &document, const HtmlConfig &config,
+                            const Logger &logger) {
+  return internal::html::create_document_service(document, config, logger);
+}
+
+// The `cache_path` overloads. Nothing reads the path: no renderer has since the
+// output became a set of streams, and the `create_directories` that used to sit
+// here made a directory nobody wrote into.
+
+HtmlService html::translate(const DecodedFile &file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(file, config, logger);
+}
+
+HtmlService html::translate(const TextFile &text_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(text_file, config, logger);
+}
+
+HtmlService html::translate(const ImageFile &image_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(image_file, config, logger);
+}
+
+HtmlService html::translate(const ArchiveFile &archive_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(archive_file, config, logger);
+}
+
+HtmlService html::translate(const DocumentFile &document_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(document_file, config, logger);
+}
+
+HtmlService html::translate(const PdfFile &pdf_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(pdf_file, config, logger);
+}
+
+HtmlService html::translate(const FontFile &font_file,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(font_file, config, logger);
+}
+
+HtmlService html::translate(const Filesystem &filesystem,
+                            const std::string & /*cache_path*/,
+                            const HtmlConfig &config, const Logger &logger) {
+  return translate(filesystem, config, logger);
 }
 
 HtmlService html::translate(const Archive &archive,
-                            const std::string &cache_path,
+                            const std::string & /*cache_path*/,
                             const HtmlConfig &config, const Logger &logger) {
-  return translate(archive.as_filesystem(), cache_path, config, logger);
+  return translate(archive, config, logger);
 }
 
 HtmlService html::translate(const Document &document,
-                            const std::string &cache_path,
+                            const std::string & /*cache_path*/,
                             const HtmlConfig &config, const Logger &logger) {
-  std::filesystem::create_directories(cache_path);
-  return internal::html::create_document_service(document, cache_path, config,
-                                                 logger);
+  return translate(document, config, logger);
 }
 
 void html::edit(const Document &document, const std::string_view diff,

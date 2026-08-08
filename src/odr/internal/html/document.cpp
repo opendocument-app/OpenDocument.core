@@ -353,7 +353,6 @@ using PageHtmlFragment = ElementHtmlFragment<Page, translate_page>;
 namespace odr::internal {
 
 HtmlService html::create_document_service(const Document &document,
-                                          const std::string & /*cache_path*/,
                                           HtmlConfig config,
                                           const Logger &logger) {
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;

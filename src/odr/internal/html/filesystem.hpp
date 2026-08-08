@@ -13,7 +13,6 @@ class Logger;
 namespace odr::internal::html {
 
 HtmlService create_filesystem_service(const Filesystem &filesystem,
-                                      const std::string &cache_path,
                                       HtmlConfig config, const Logger &logger);
 
 }

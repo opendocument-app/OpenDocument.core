@@ -16,8 +16,7 @@ namespace odr::internal::html {
 /// name/metrics header plus a glyph grid showing *every* glyph (including ones
 /// the original `cmap` never reached), the font served via `@font-face` after
 /// the uniform PUA re-encode.
-HtmlService create_font_service(const FontFile &font_file,
-                                const std::string &cache_path,
-                                HtmlConfig config, const Logger &logger);
+HtmlService create_font_service(const FontFile &font_file, HtmlConfig config,
+                                const Logger &logger);
 
 } // namespace odr::internal::html
