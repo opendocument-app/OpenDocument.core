@@ -1,0 +1,36 @@
+{# The WebAssembly slice; see `wasm/AGENTS.md` for the constraints behind it.
+
+   `compiler.threads` is absent on purpose — the build must stay single-threaded
+   — and cannot be written as `compiler.threads=null`: a profile value is a
+   string, so that reads as the literal "null" and fails against `settings.yml`.
+   Omitting the line is how "unset" is spelled.
+
+   `-fwasm-exceptions` is `[conf]` rather than a CMake flag because the EH mode
+   is an ABI: every dependency has to be built with the same one or the link
+   fails. #}
+{% set emsdk_version = "3.1.73" %}
+
+[settings]
+os=Emscripten
+arch=wasm
+build_type=Release
+compiler=emcc
+compiler.version={{emsdk_version}}
+compiler.libcxx=libc++
+compiler.cppstd=20
+
+[options]
+# No sockets and no threads in a browser; the CLI has no meaning here either.
+&:shared=False
+&:with_http_server=False
+&:with_cli=False
+
+[tool_requires]
+emsdk/{{emsdk_version}}
+
+[conf]
+tools.build:cflags=['-fwasm-exceptions']
+tools.build:cxxflags=['-fwasm-exceptions']
+tools.build:exelinkflags=['-fwasm-exceptions']
+tools.build:sharedlinkflags=['-fwasm-exceptions']
+tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
