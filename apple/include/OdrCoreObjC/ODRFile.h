@@ -97,7 +97,8 @@ typedef NS_ENUM(NSInteger, ODRFileCategory) {
 } NS_SWIFT_NAME(FileCategory);
 
 typedef NS_ENUM(NSInteger, ODRFileLocation) {
-  ODRFileLocationMemory = 0,
+  ODRFileLocationUnknown = 0,
+  ODRFileLocationMemory,
   ODRFileLocationDisk,
 } NS_SWIFT_NAME(FileLocation);
 

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -25,6 +26,15 @@ TEST(File, memory_file_reports_memory_and_its_bytes) {
   EXPECT_FALSE(file.disk_path().has_value());
   ASSERT_TRUE(file.memory_data().has_value());
   EXPECT_EQ(*file.memory_data(), "hello");
+}
+
+/// The null file has no bytes anywhere; every other accessor throws.
+TEST(File, default_constructed_reports_unknown_location) {
+  const File file;
+
+  EXPECT_EQ(file.location(), FileLocation::unknown);
+  EXPECT_THROW(std::ignore = file.size(), NullPointerError);
+  EXPECT_THROW(std::ignore = file.stream(), NullPointerError);
 }
 
 TEST(File, disk_file_has_no_memory_data) {

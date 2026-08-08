@@ -100,6 +100,7 @@ ODR_SAME_ENUM(ODRFileCategoryFont, odr::FileCategory::font);
 ODR_SAME_ENUM(ODRFileCategoryAudio, odr::FileCategory::audio);
 ODR_SAME_ENUM(ODRFileCategoryVideo, odr::FileCategory::video);
 
+ODR_SAME_ENUM(ODRFileLocationUnknown, odr::FileLocation::unknown);
 ODR_SAME_ENUM(ODRFileLocationMemory, odr::FileLocation::memory);
 ODR_SAME_ENUM(ODRFileLocationDisk, odr::FileLocation::disk);
 

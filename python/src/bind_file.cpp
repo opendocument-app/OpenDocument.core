@@ -95,6 +95,7 @@ void odr_python::bind_file(py::module_ &m) {
       .value("video", odr::FileCategory::video);
 
   py::enum_<odr::FileLocation>(m, "FileLocation")
+      .value("unknown", odr::FileLocation::unknown)
       .value("memory", odr::FileLocation::memory)
       .value("disk", odr::FileLocation::disk);
 

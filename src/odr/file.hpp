@@ -163,6 +163,7 @@ enum class FileCategory {
 
 /// @brief Collection of file locations.
 enum class FileLocation {
+  unknown, ///< no file behind the handle
   memory,
   disk,
 };

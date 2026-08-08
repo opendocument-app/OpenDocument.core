@@ -42,10 +42,9 @@ File::File(std::shared_ptr<internal::abstract::File> impl)
 File::File(const std::string &path)
     : m_impl{std::make_shared<internal::DiskFile>(path)} {}
 
-/// `noexcept` leaves no way to report a null impl, and no `FileLocation` stands
-/// for "nowhere" — a null file carries no bytes on disk, so it reports memory.
+/// `noexcept` leaves no way to report a null impl, hence `unknown`.
 FileLocation File::location() const noexcept {
-  return m_impl == nullptr ? FileLocation::memory : m_impl->location();
+  return m_impl == nullptr ? FileLocation::unknown : m_impl->location();
 }
 
 std::size_t File::size() const { return deref(m_impl).size(); }
