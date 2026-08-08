@@ -1,0 +1,154 @@
+#include <odr_wasm.hpp>
+
+#include <odr/document.hpp>
+#include <odr/file.hpp>
+#include <odr/html.hpp>
+
+#include <emscripten/bind.h>
+
+#include <sstream>
+#include <string>
+
+namespace odr::wasm {
+
+namespace {
+
+/// An absent or null key leaves @p target alone, so a caller sends only what it
+/// means to change.
+template <typename T>
+void read(const emscripten::val &value, const char *key, T &target) {
+  const emscripten::val field = value[key];
+  if (field.isUndefined() || field.isNull()) {
+    return;
+  }
+  target = field.as<T>();
+}
+
+/// @ref read for an enum, which JS carries as its ordinal.
+template <typename T>
+void read_enum(const emscripten::val &value, const char *key, T &target) {
+  const emscripten::val field = value[key];
+  if (field.isUndefined() || field.isNull()) {
+    return;
+  }
+  target = static_cast<T>(field.as<int>());
+}
+
+/// Translates on first use, so a caller that only wants metadata does not pay
+/// for a render at open.
+Session &warm(const Handle handle) {
+  Session &s = session(handle);
+  if (!s.service.has_value()) {
+    s.service = html::translate(s.file, s.config, s.logger);
+    s.views = s.service->list_views();
+  }
+  return s;
+}
+
+emscripten::val list_views(const Handle handle) {
+  return guarded([&] {
+    const Session &s = warm(handle);
+
+    emscripten::val result = emscripten::val::array();
+    for (const HtmlView &view : s.views) {
+      emscripten::val entry = emscripten::val::object();
+      entry.set("name", view.name());
+      entry.set("index", static_cast<double>(view.index()));
+      entry.set("path", view.path());
+      result.call<void>("push", entry);
+    }
+    return ok(result);
+  });
+}
+
+/// The rendered view as one HTML string, self-contained under the default
+/// `embedImages` — which is what lets a viewer drop it into a `blob:` iframe.
+emscripten::val render_view(const Handle handle, const std::size_t index) {
+  return guarded([&] {
+    const Session &s = warm(handle);
+    if (index >= s.views.size()) {
+      return error("OdrError", "no such view index: " + std::to_string(index));
+    }
+
+    std::ostringstream out;
+    const HtmlResources resources = s.views[index].write_html(out);
+
+    // A located resource is one the markup links to rather than inlines. The
+    // viewer has to serve those itself, so it is told rather than discovering
+    // a broken `src`.
+    emscripten::val external = emscripten::val::array();
+    for (const auto &[resource, location] : resources) {
+      if (!location.has_value()) {
+        continue;
+      }
+      emscripten::val entry = emscripten::val::object();
+      entry.set("path", *location);
+      entry.set("mimeType", resource.mime_type());
+      entry.set("type", static_cast<int>(resource.type()));
+      external.call<void>("push", entry);
+    }
+
+    emscripten::val result = emscripten::val::object();
+    result.set("html", out.str());
+    result.set("externalResources", external);
+    return ok(result);
+  });
+}
+
+/// The bytes behind a path the service knows — a view, or a resource
+/// `renderView` reported. Same contract as `HttpServer::serve_file`.
+emscripten::val read_path(const Handle handle, const std::string &path) {
+  return guarded([&] {
+    const Session &s = warm(handle);
+    if (!s.service->exists(path)) {
+      return error("FileNotFound", "no such path in the document: " + path);
+    }
+
+    std::ostringstream out;
+    s.service->write(path, out);
+
+    emscripten::val result = emscripten::val::object();
+    result.set("bytes", to_uint8_array(out.str()));
+    result.set("mimeType", s.service->mimetype(path));
+    return ok(result);
+  });
+}
+
+} // namespace
+
+HtmlConfig to_html_config(const emscripten::val &value) {
+  HtmlConfig config;
+  if (value.isUndefined() || value.isNull()) {
+    return config;
+  }
+
+  read(value, "embedImages", config.embed_images);
+  read(value, "editable", config.editable);
+  read(value, "textDocumentMargin", config.text_document_margin);
+  read(value, "formatHtml", config.format_html);
+  read(value, "embedOutline", config.embed_outline);
+  read(value, "noDrm", config.no_drm);
+
+  read(value, "backgroundImageFormat", config.background_image_format);
+  read(value, "backgroundImageDpi", config.background_image_dpi);
+
+  read(value, "pageRangeBegin", config.page_range_begin);
+  if (const emscripten::val end = value["pageRangeEnd"];
+      !end.isUndefined() && !end.isNull()) {
+    config.page_range_end = end.as<std::uint32_t>();
+  }
+
+  read_enum(value, "spreadsheetGridlines", config.spreadsheet_gridlines);
+  read_enum(value, "viewportMode", config.viewport_mode);
+  read_enum(value, "pdfTextMode", config.pdf_text_mode);
+
+  return config;
+}
+
+} // namespace odr::wasm
+
+EMSCRIPTEN_BINDINGS(odr_html) {
+  emscripten::function("listViews", &odr::wasm::list_views);
+  emscripten::function("renderView", &odr::wasm::render_view);
+  emscripten::function("readPath", &odr::wasm::read_path);
+}

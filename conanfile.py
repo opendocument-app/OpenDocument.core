@@ -24,6 +24,7 @@ class OpenDocumentCoreConan(ConanFile):
         "with_python": [True, False],
         "with_jni": [True, False],
         "with_apple": [True, False],
+        "with_wasm": [True, False],
         "bundle_assets": [True, False],
     }
     default_options = {
@@ -35,10 +36,11 @@ class OpenDocumentCoreConan(ConanFile):
         "with_python": False,
         "with_jni": False,
         "with_apple": False,
+        "with_wasm": False,
         "bundle_assets": False,
     }
 
-    exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -80,6 +82,7 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_PYTHON"] = self.options.get_safe("with_python", False)
         tc.variables["ODR_JNI"] = self.options.get_safe("with_jni", False)
         tc.variables["ODR_APPLE"] = self.options.get_safe("with_apple", False)
+        tc.variables["ODR_WASM"] = self.options.get_safe("with_wasm", False)
         tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
 
         tc.generate()

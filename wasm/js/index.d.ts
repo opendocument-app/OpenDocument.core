@@ -1,0 +1,139 @@
+/** Hand-written, because the package ships plain JavaScript — see `wasm/AGENTS.md`. */
+
+/** Ordinals, mirroring the C++ enums. Read them from `Odr.enums`, never inline
+ * a number: the headers guarantee only that values are appended. */
+export interface EnumTables {
+  FileType: Record<string, number>;
+  FileCategory: Record<string, number>;
+  DocumentType: Record<string, number>;
+  HtmlResourceType: Record<string, number>;
+  HtmlTableGridlines: Record<string, number>;
+  HtmlViewportMode: Record<string, number>;
+  PdfTextMode: Record<string, number>;
+  EncryptionState: Record<string, number>;
+  LogLevel: Record<string, number>;
+}
+
+export interface Capabilities {
+  detectByContent: boolean;
+  open: boolean;
+  decrypt: boolean;
+  translateHtml: boolean;
+  edit: boolean;
+  save: boolean;
+  encrypt: boolean;
+}
+
+export interface FileTypeInfo {
+  fileType: number;
+  name: string;
+  category: number;
+  documentType: number;
+  extensions: string[];
+  mimeTypes: string[];
+  capabilities: Capabilities;
+}
+
+export interface Detection {
+  /** Most specific last: a zip names the container first, its contents after. */
+  fileTypes: number[];
+  mimeType: string;
+}
+
+export interface View {
+  name: string;
+  index: number;
+  path: string;
+}
+
+/** A resource the markup links to rather than inlining. Fetch with
+ * {@link Document.read}. Empty unless the document carries media, or
+ * `embedImages` was turned off. */
+export interface ExternalResource {
+  path: string;
+  mimeType: string;
+  type: number;
+}
+
+export interface Rendered {
+  html: string;
+  externalResources: ExternalResource[];
+}
+
+export interface Content {
+  bytes: Uint8Array;
+  mimeType: string;
+}
+
+/** Anything omitted keeps the library's default. */
+export interface HtmlConfig {
+  embedImages?: boolean;
+  editable?: boolean;
+  textDocumentMargin?: boolean;
+  formatHtml?: boolean;
+  embedOutline?: boolean;
+  noDrm?: boolean;
+  backgroundImageFormat?: string;
+  backgroundImageDpi?: number;
+  pageRangeBegin?: number;
+  pageRangeEnd?: number;
+  spreadsheetGridlines?: number;
+  viewportMode?: number;
+  pdfTextMode?: number;
+}
+
+export interface OpenOptions extends HtmlConfig {
+  /** Force an interpretation instead of detecting one. */
+  fileType?: number;
+}
+
+/** `name` is the C++ exception type: `WrongPassword`, `UnsupportedFileType`, … */
+export declare class OdrError extends Error {
+  /** Set when `name` is `UnsupportedFileType`. */
+  fileType?: number;
+}
+
+export declare class Document {
+  /** Pass this across `postMessage`, never the `Document` — the wrapper's state
+   * is in private fields and clones away to an empty object. */
+  readonly handle: number;
+  readonly fileType: number;
+
+  meta(): Record<string, unknown>;
+  capabilities(): Capabilities;
+  isPasswordEncrypted(): boolean;
+  /** @throws OdrError `WrongPassword` */
+  decrypt(password: string): this;
+
+  listViews(): View[];
+  /** With the default `embedImages`, `html` is self-contained and can go
+   * straight into a `blob:` iframe. */
+  render(index?: number): Rendered;
+  read(path: string): Content;
+
+  /** Idempotent; returns whether it released anything. */
+  close(): boolean;
+  [Symbol.dispose](): void;
+}
+
+export declare class Odr {
+  readonly enums: EnumTables;
+
+  static load(moduleOptions?: Record<string, unknown>): Promise<Odr>;
+
+  version(): string;
+  /** Version, commit and dirty flag. Reads "unknown version" on an unreleased
+   * build, which is correct — `main` carries none. */
+  identify(): string;
+  /** Every known type, enough to populate an `<input accept>` or a PWA
+   * manifest's file handlers without opening anything. */
+  fileTypes(): FileTypeInfo[];
+  detect(bytes: Uint8Array): Detection;
+  open(bytes: Uint8Array, options?: OpenOptions): Document;
+  /** Applies to documents opened after the call. Null silences it again. */
+  setLogger(sink: ((level: number, message: string) => void) | null, level?: number): void;
+  /** Releases every open document; prefer closing them individually. */
+  closeAll(): void;
+}
+
+export default Odr;
