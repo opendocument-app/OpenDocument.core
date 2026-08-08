@@ -27,6 +27,7 @@ EXPECTED = {
     "android": "`app.opendocument:odr-core-android` — Maven Central + GitHub Packages",
     "python": "`pyodr` wheels — PyPI",
     "apple": "`OdrCoreObjC.xcframework` — the release asset and its manifest",
+    "wasm": "`@opendocument/odr-core` — npm",
 }
 
 BEGIN = "<!-- release-status -->"

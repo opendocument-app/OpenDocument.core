@@ -68,6 +68,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `jni/` | JNI bindings (Java package `app.opendocument.core`); see [`jni/AGENTS.md`](jni/AGENTS.md). |
 | `android/` | The bindings packaged as an AAR (`odr-core-android`) + the instrumented tests; see [`android/AGENTS.md`](android/AGENTS.md). |
 | `apple/` | Objective-C bindings + the Swift package, shipped as `OdrCoreObjC.xcframework`; see [`apple/AGENTS.md`](apple/AGENTS.md). |
+| `wasm/` | WebAssembly bindings (embind), packaged as the npm package `@opendocument/odr-core`; see [`wasm/AGENTS.md`](wasm/AGENTS.md). |
 | `tools/pdf/` | Dev tooling (not built): PDF encoding-data generators, see `tools/pdf/README.md`. |
 | `test/src/` | GoogleTest suites; data fetched into `test/data` (see `cmake/test_data.cmake`). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (see [Specs](#specs)). |
@@ -90,7 +91,7 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 - **Run the test binary from the build dir** so output stays out of the repo tree.
 - **For debugging, prefer the `translate` CLI** on a single file over the suite.
 - CMake options (`CMakeLists.txt`): `ODR_TEST`, `ODR_CLI`, `ODR_PYTHON`,
-  `ODR_JNI`, `ODR_APPLE`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
+  `ODR_JNI`, `ODR_APPLE`, `ODR_WASM`, `ODR_CLANG_TIDY`. A new `.cpp` must be added to
   `ODR_SOURCE_FILES`.
 - **Test data is fetched, not vendored**, and opt in: `-DODR_TEST_FETCH_DATA=ON`
   makes `cmake/test_data.cmake` clone the repositories pinned in
