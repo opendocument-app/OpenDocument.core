@@ -15,11 +15,9 @@ static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 namespace {
 
-// PDF character codes are 1–4 bytes wide (PDF 32000-1 §9.7.6.2); that bound is
-// what lets a code be packed losslessly into a `std::uint32_t`. The call sites
-// validate widths and skip out-of-spec entries, so in practice the guards in
-// the helpers below never fire — they enforce the invariant defensively so a
-// stray caller fails loudly rather than silently corrupting the mapping.
+// Character codes are 1-4 bytes wide (ISO 32000-1 9.7.6.2), which is what lets
+// one pack losslessly into a `std::uint32_t`. Call sites already skip
+// out-of-spec entries, so the guards below only catch a stray new caller.
 constexpr std::size_t max_code_width = 4;
 
 // A conforming `bfrange`'s low/high codes differ only in their last byte
@@ -310,12 +308,10 @@ CMap CMapParser::parse_cmap() {
       } else if (command == "begincidrange") {
         read_cidrange(last_int, cmap);
       } else if (command == "usecmap") {
-        // `/BaseCMap usecmap`: this stream inherits another CMap's codespace
-        // and mappings (ISO 32000-1 9.7.5.3). We do not resolve the base, so
-        // any codespace declared locally is (potentially) an override-only
-        // subset; flag it so it is no longer treated as authoritative and
-        // callers fall back to the ToUnicode codespace / fixed width instead of
-        // mis-splitting the inherited (e.g. 2-byte) codes.
+        // `/BaseCMap usecmap` inherits another CMap (ISO 32000-1 9.7.5.3).
+        // We do not resolve the base, so what is declared locally may be an
+        // override-only subset; flagging it stops callers from splitting the
+        // inherited (e.g. 2-byte) codes by an incomplete codespace.
         cmap.mark_inherits_external_cmap();
         ODR_WARNING(m_logger,
                     "pdf: unresolved 'usecmap'; local codespace not treated as "

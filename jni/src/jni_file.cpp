@@ -33,8 +33,8 @@ Java_app_opendocument_core_File_create(JNIEnv *env, jclass, jstring path) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_File_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::File>(handle);
+Java_app_opendocument_core_File_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::File>(env, handle);
 }
 
 extern "C" JNIEXPORT jint JNICALL
@@ -76,9 +76,8 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_File_copyNative(
           [&] { from_handle<odr::File>(handle)->copy(to_string(env, path)); });
 }
 
-// yields a DecodedFile but belongs to File: a native that takes a handle has to
-// be an instance method of whatever owns it, or the wrapper can be collected -
-// and the handle freed - while the call is still running
+// Yields a DecodedFile but belongs to File: a native taking a handle must be an
+// instance method of its owner, or the wrapper can be collected mid-call.
 extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_File_decodeNative(
     JNIEnv *env, jobject, jlong handle) {
   return guarded(env, [&] {
@@ -108,8 +107,9 @@ Java_app_opendocument_core_DecodedFile_createAs(JNIEnv *env, jclass,
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_DecodedFile_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::DecodedFile>(handle);
+Java_app_opendocument_core_DecodedFile_destroy(JNIEnv *env, jclass,
+                                               jlong handle) {
+  destroy_handle<odr::DecodedFile>(env, handle);
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -403,9 +403,9 @@ Java_app_opendocument_core_FontFile_readNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.FileWalker
 
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_FileWalker_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::FileWalker>(handle);
+extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_FileWalker_destroy(
+    JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::FileWalker>(env, handle);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -470,9 +470,9 @@ Java_app_opendocument_core_FileWalker_flatNextNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.Filesystem
 
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Filesystem_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::Filesystem>(handle);
+extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_Filesystem_destroy(
+    JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::Filesystem>(env, handle);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -526,8 +526,8 @@ Java_app_opendocument_core_Filesystem_openNative(JNIEnv *env, jobject,
 // app.opendocument.core.Archive
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Archive_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::Archive>(handle);
+Java_app_opendocument_core_Archive_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::Archive>(env, handle);
 }
 
 extern "C" JNIEXPORT jlong JNICALL

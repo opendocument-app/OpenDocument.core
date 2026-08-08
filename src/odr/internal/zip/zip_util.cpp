@@ -5,6 +5,7 @@
 #include <odr/internal/common/file.hpp>
 
 #include <algorithm>
+#include <array>
 
 namespace odr::internal::zip::util {
 
@@ -38,6 +39,11 @@ protected:
         std::min<std::uint64_t>(m_remaining, m_buffer.size());
     const std::uint32_t result =
         mz_zip_reader_extract_iter_read(m_iter, m_buffer.data(), amount);
+    // miniz reports a failed inflate as a short read; leaving the get area
+    // empty while claiming success would spin `underflow` forever.
+    if (result == 0) {
+      return traits_type::eof();
+    }
     m_remaining -= result;
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + result);
 
@@ -125,10 +131,10 @@ bool Archive::Entry::is_directory() const {
 
 RelPath Archive::Entry::path() const {
   std::lock_guard lock(m_archive->mutex());
-  char filename[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
-  mz_zip_reader_get_filename(m_archive->zip(), m_index, filename,
-                             MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE);
-  return RelPath(filename);
+  std::array<char, MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE> filename{};
+  mz_zip_reader_get_filename(m_archive->zip(), m_index, filename.data(),
+                             static_cast<mz_uint>(filename.size()));
+  return RelPath(filename.data());
 }
 
 Method Archive::Entry::method() const {
@@ -197,9 +203,13 @@ void util::open_from_file(mz_zip_archive &archive, const abstract::File &file,
   archive.m_pRead = [](void *opaque, const std::uint64_t offset, void *buffer,
                        const std::size_t size) {
     const auto in = static_cast<std::istream *>(opaque);
+    // Reporting `size` regardless would hand miniz whatever was already in the
+    // buffer; a short read has to surface as one. Clear first so an earlier
+    // read past the end does not poison every later seek.
+    in->clear();
     in->seekg(static_cast<std::streamsize>(offset));
     in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(size));
-    return size;
+    return static_cast<std::size_t>(in->gcount());
   };
   const bool state = mz_zip_reader_init(
       &archive, file.size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);

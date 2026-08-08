@@ -7,6 +7,7 @@
 
 #include <optional>
 
+using odr::apple::guarded_value;
 using odr::apple::to_nsstring;
 
 ODR_SAME_ENUM(ODRFontWeightNormal, odr::FontWeight::normal);
@@ -59,14 +60,11 @@ using odr::apple::box;
 
 namespace {
 
-/// The boxed forms of an absent `std::optional`. `nil` and not a sentinel: a
-/// style that does not set a property is different from one that sets it to a
-/// default, and only the caller knows what to fall back to.
-NSNumber *_Nullable box_bool(const std::optional<bool> &value) {
-  return value.has_value() ? @(*value) : nil;
-}
-
-NSNumber *_Nullable box_double(const std::optional<double> &value) {
+/// An absent `std::optional` boxes as `nil` and not as a sentinel: a style that
+/// does not set a property is different from one that sets it to a default, and
+/// only the caller knows what to fall back to.
+template <typename T>
+NSNumber *_Nullable box_number(const std::optional<T> &value) {
   return value.has_value() ? @(*value) : nil;
 }
 
@@ -75,15 +73,10 @@ NSNumber *_Nullable box_enum(const std::optional<Enum> &value) {
   return value.has_value() ? @(static_cast<NSInteger>(*value)) : nil;
 }
 
-NSString *_Nullable box_string(const std::optional<std::string> &value) {
-  return value.has_value() ? to_nsstring(*value) : nil;
-}
-
-/// `font_name` is a `string_view` borrowing from the document that produced the
-/// style, so it must be copied here — an `NSString` outliving that document is
-/// the whole point of handing it to a caller.
-NSString *_Nullable box_string_view(
-    const std::optional<std::string_view> &value) {
+/// Also takes the `string_view` of `font_name`, which borrows from the document
+/// that produced the style — copying it here is the point.
+template <typename T>
+NSString *_Nullable box_string(const std::optional<T> &value) {
   return value.has_value() ? to_nsstring(*value) : nil;
 }
 
@@ -102,15 +95,16 @@ NSString *_Nullable box_string_view(
 }
 
 - (double)magnitude {
-  return _handle->magnitude();
+  return guarded_value([&] { return _handle->magnitude(); }, 0.0);
 }
 
 - (NSString *)unit {
-  return to_nsstring(_handle->unit().name());
+  return guarded_value([&] { return to_nsstring(_handle->unit().name()); },
+                       @"");
 }
 
 - (NSString *)stringValue {
-  return to_nsstring(_handle->to_string());
+  return guarded_value([&] { return to_nsstring(_handle->to_string()); }, @"");
 }
 
 - (NSString *)description {
@@ -155,12 +149,12 @@ NSString *_Nullable box_string_view(
 
 + (instancetype)styleWithHandle:(const odr::TextStyle &)handle {
   ODRTextStyle *const result = [[ODRTextStyle alloc] init];
-  result->_fontName = box_string_view(handle.font_name);
+  result->_fontName = box_string(handle.font_name);
   result->_fontSize = box(handle.font_size);
   result->_fontWeight = box_enum(handle.font_weight);
   result->_fontStyle = box_enum(handle.font_style);
-  result->_fontUnderline = box_bool(handle.font_underline);
-  result->_fontLineThrough = box_bool(handle.font_line_through);
+  result->_fontUnderline = box_number(handle.font_underline);
+  result->_fontLineThrough = box_number(handle.font_line_through);
   result->_fontShadow = box_string(handle.font_shadow);
   result->_fontColor = box(handle.font_color);
   result->_backgroundColor = box(handle.background_color);
@@ -223,7 +217,7 @@ NSString *_Nullable box_string_view(
   result->_padding =
       [ODRDirectionalMeasure directionalWithHandle:handle.padding];
   result->_border = [ODRDirectionalString directionalWithHandle:handle.border];
-  result->_textRotation = box_double(handle.text_rotation);
+  result->_textRotation = box_number(handle.text_rotation);
   return result;
 }
 

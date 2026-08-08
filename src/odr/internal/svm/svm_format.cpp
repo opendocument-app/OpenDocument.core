@@ -2,24 +2,39 @@
 
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <array>
+#include <cstdint>
 #include <cstring>
+#include <stdexcept>
 
 namespace odr::internal {
 
+namespace {
+
+std::string read_bytes(std::istream &in, const std::uint64_t size) {
+  try {
+    return util::byte_stream::read_u8s(in, size);
+  } catch (const std::runtime_error &) {
+    throw MalformedSvmFile();
+  }
+}
+
+} // namespace
+
 std::string svm::read_ascii_string(std::istream &in,
                                    const std::uint32_t length) {
-  std::string result(length, ' ');
-  in.read(result.data(), static_cast<std::streamsize>(result.size()));
-  return result;
+  return read_bytes(in, length);
 }
 
 std::string svm::read_utf16_string(std::istream &in,
                                    const std::uint32_t length) {
-  std::u16string result_u16(length, ' ');
-  in.read(reinterpret_cast<char *>(result_u16.data()),
-          static_cast<std::streamsize>(length) * 2);
+  const std::string bytes =
+      read_bytes(in, static_cast<std::uint64_t>(length) * 2);
+  std::u16string result_u16(length, u' ');
+  std::memcpy(result_u16.data(), bytes.data(), bytes.size());
   return util::string::u16string_to_string(result_u16);
 }
 
@@ -107,15 +122,15 @@ svm::read_poly_polygon(std::istream &in) {
 svm::Header svm::read_header(std::istream &in) {
   Header result;
 
-  char magic[6];
-  in.read(magic, sizeof(magic));
-  if (std::strncmp("VCLMTF", magic, sizeof(magic)) != 0) {
+  std::array<char, 6> magic{};
+  in.read(magic.data(), static_cast<std::streamsize>(magic.size()));
+  if (!in || std::memcmp("VCLMTF", magic.data(), magic.size()) != 0) {
     throw NoSvmFile();
   }
 
   result.vl = read_version_length(in);
 
-  const std::size_t start = in.tellg();
+  const std::int64_t start = in.tellg();
   read_primitive(in, result.compression_mode);
   result.map_mode = read_map_mode(in);
   result.size = read_int_pair(in);
@@ -125,8 +140,10 @@ svm::Header svm::read_header(std::istream &in) {
     read_primitive(in, result.render_graphic_replacements);
   }
 
-  if (const std::size_t left =
-          result.vl.length - (static_cast<std::size_t>(in.tellg()) - start);
+  // Only skip forward: reading past the declared length would otherwise wrap
+  // the difference and swallow the rest of the stream.
+  if (const std::int64_t left =
+          result.vl.length - (static_cast<std::int64_t>(in.tellg()) - start);
       left > 0) {
     // TODO log header skipping bytes
     in.ignore(static_cast<std::streamsize>(left));
@@ -306,9 +323,12 @@ svm::TextArrayAction svm::read_text_array_action(std::istream &in,
   read_primitive(in, result.length);
   std::uint32_t dx_array_length;
   read_primitive(in, dx_array_length);
-  result.dx_array.resize(dx_array_length);
+  // grown entry by entry: the declared length is only trustworthy as far as the
+  // stream actually reaches
   for (std::uint32_t i = 0; i < dx_array_length; ++i) {
-    read_primitive(in, result.dx_array[i]);
+    std::uint32_t dx;
+    read_primitive(in, dx);
+    result.dx_array.push_back(dx);
   }
 
   if (vl.version >= 2) {

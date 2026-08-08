@@ -127,8 +127,7 @@ void Document::save(const Path & /*path*/, const char * /*password*/) const {
 
 namespace {
 
-/// Parses a `svg:*` length attribute. An absent or unparsable value yields
-/// nullopt rather than throwing — geometry is presentational.
+/// Absent or unparsable geometry yields nullopt rather than throwing.
 std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return std::nullopt;
@@ -140,8 +139,7 @@ std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
   }
 }
 
-/// Same, for the attributes the API reports unconditionally; a missing value
-/// degrades to a bare zero.
+/// Same, for attributes the API reports unconditionally.
 Measure read_measure_or_zero(const pugi::xml_attribute attribute) {
   return read_measure(attribute).value_or(Measure(0, DynamicUnit()));
 }
@@ -212,13 +210,11 @@ public:
   element_is_editable(const ElementIdentifier element_id) const override {
     const ElementRegistry::Element &element =
         m_registry->element_at(element_id);
+    if (element.type == ElementType::sheet_cell) {
+      return !m_registry->sheet_cell_element_at(element_id).is_repeated;
+    }
     if (element.parent_id != null_element_id) {
       return element_is_editable(element.parent_id);
-    }
-    if (element.type == ElementType::sheet_cell) {
-      const ElementRegistry::SheetCell &sheet_cell =
-          m_registry->sheet_cell_element_at(element_id);
-      return !sheet_cell.is_repeated;
     }
     return true;
   }
@@ -423,10 +419,10 @@ public:
         cursor.add_cell(colspan, rowspan, columns_repeated);
 
         const std::uint32_t new_rows = cursor.row();
-        if (const std::uint32_t new_cols =
-                std::max(result.columns, cursor.column());
-            cell.first_child() && range && new_rows < range->rows &&
-            new_cols < range->columns) {
+        const std::uint32_t new_cols =
+            std::max(result.columns, cursor.column());
+        if (cell.first_child() &&
+            (!range || (new_rows < range->rows && new_cols < range->columns))) {
           result.rows = new_rows;
           result.columns = new_cols;
         }
@@ -476,9 +472,9 @@ public:
                   const std::uint32_t row) const override {
     const ElementRegistry::Sheet &sheet_registry =
         m_registry->sheet_element_at(element_id);
-    const pugi::xml_node column_node = sheet_registry.row_node(row);
+    const pugi::xml_node row_node = sheet_registry.row_node(row);
     if (const pugi::xml_attribute attr =
-            column_node.attribute("table:style-name")) {
+            row_node.attribute("table:style-name")) {
       if (const Style *style = m_document->style_registry().style(attr.value());
           style != nullptr) {
         return style->resolved().table_row_style;
@@ -556,11 +552,10 @@ public:
         m_registry->text_element_at(element_id);
 
     const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element.last;
+    const pugi::xml_node end = text_element.last.next_sibling();
 
     std::string result;
-    for (pugi::xml_node node = first; node != last.next_sibling();
-         node = node.next_sibling()) {
+    for (pugi::xml_node node = first; node != end; node = node.next_sibling()) {
       result += get_text(node);
     }
     return result;
@@ -571,32 +566,27 @@ public:
     ElementRegistry::Text &text_element =
         m_registry->text_element_at(element_id);
 
-    const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element.last;
-
-    pugi::xml_node parent = first.parent();
-    const pugi::xml_node old_first = first;
-    const pugi::xml_node old_last = last;
+    pugi::xml_node parent = get_node(element_id).parent();
+    const pugi::xml_node old_first = get_node(element_id);
+    const pugi::xml_node old_last = text_element.last;
+    // the removal loop below invalidates `old_last`
+    const pugi::xml_node old_end = old_last.next_sibling();
     pugi::xml_node new_first = old_first;
-    pugi::xml_node new_last = last;
+    pugi::xml_node new_last = old_last;
 
-    const auto insert_pcdata = [&] {
-      const pugi::xml_node new_node = parent.insert_child_before(
-          pugi::xml_node_type::node_pcdata, old_first);
+    const auto track = [&](const pugi::xml_node new_node) {
       if (new_first == old_first) {
         new_first = new_node;
       }
       new_last = new_node;
       return new_node;
     };
+    const auto insert_pcdata = [&] {
+      return track(parent.insert_child_before(pugi::xml_node_type::node_pcdata,
+                                              old_first));
+    };
     const auto insert_node = [&](const char *node) {
-      const pugi::xml_node new_node =
-          parent.insert_child_before(node, old_first);
-      if (new_first == old_first) {
-        new_first = new_node;
-      }
-      new_last = new_node;
-      return new_node;
+      return track(parent.insert_child_before(node, old_first));
     };
 
     for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
@@ -619,10 +609,16 @@ public:
       }
     }
 
+    if (new_first == old_first) {
+      // empty text still needs a live node to anchor the element to, or the
+      // removal below would leave the registry pointing at freed nodes
+      insert_pcdata();
+    }
+
     element.node = new_first;
     text_element.last = new_last;
 
-    for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
+    for (pugi::xml_node node = old_first; node != old_end;) {
       const pugi::xml_node next = node.next_sibling();
       parent.remove_child(node);
       node = next;

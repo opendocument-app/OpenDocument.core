@@ -81,30 +81,43 @@ public:
   [[nodiscard]] Dictionary read_dictionary();
 
   /// Read one *self-delimiting* object: null, boolean, number, name, string,
-  /// array, or dictionary. Arrays and dictionaries may contain indirect
-  /// references (assembled while parsing them), but a bare top-level reference
-  /// is **not** returned as such — `n g R` is not recognizable from its first
-  /// token (it looks like the integer `n` until the `R` two tokens later, and
-  /// in an array `[1 2 3]` a leading integer is ambiguous with a reference
-  /// start). So a leading object number comes back as a plain integer; the
-  /// enclosing context folds it into a reference — `read_array` on seeing the
-  /// `R` token, dictionary values and indirect-object bodies via
-  /// `promote_indirect_reference` — or use `read_object_reference` where a
+  /// array, or dictionary. A bare `n g R` is **not** one: it is
+  /// indistinguishable from the integer `n` until the `R` two tokens later, so
+  /// it comes back as that integer and the enclosing context folds it in —
+  /// `read_array` at the `R`, dictionary values and indirect-object bodies via
+  /// `promote_indirect_reference`. Use `read_object_reference` where a
   /// reference is required outright.
   [[nodiscard]] Object read_object();
 
   /// With the cursor just past a freshly-read `value` (trailing whitespace
-  /// skipped), fold `value` in place into an `n g R` indirect reference if a
-  /// `g R` tail follows; otherwise leave `value` untouched. Only valid where a
-  /// value cannot be followed by another bare number — dictionary values and
-  /// indirect-object bodies — not array elements.
+  /// skipped), fold it into an `n g R` reference if a `g R` tail follows. Only
+  /// valid where a value cannot be followed by another bare number — so not for
+  /// array elements.
   void promote_indirect_reference(Object &value);
 
   [[nodiscard]] ObjectReference read_object_reference();
 
 private:
+  /// Bounds the `read_array`/`read_dictionary` -> `read_object` recursion: each
+  /// level is a C++ stack frame, so an unbounded nesting depth would overflow
+  /// it. Well past anything real content nests to.
+  static constexpr std::uint32_t max_nesting_depth = 256;
+
+  /// RAII depth counter around one composite read; `throw`s past the limit.
+  class NestingGuard {
+  public:
+    explicit NestingGuard(ObjectParser &parser);
+    ~NestingGuard();
+    NestingGuard(const NestingGuard &) = delete;
+    NestingGuard &operator=(const NestingGuard &) = delete;
+
+  private:
+    ObjectParser *m_parser;
+  };
+
   std::istream *m_in{nullptr};
   std::streambuf *m_sb{nullptr};
+  std::uint32_t m_depth{0};
 };
 
 } // namespace odr::internal::pdf

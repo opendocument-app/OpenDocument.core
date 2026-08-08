@@ -22,6 +22,9 @@ pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
 
+/// Throws unless @p in holds a well formed xml document.
+void check_xml_file(std::istream &in);
+
 struct StringToken {
   enum class Type {
     none,

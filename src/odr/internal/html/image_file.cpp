@@ -37,16 +37,14 @@ void write_image_src(const ImageFile &image_file, std::ostream &out,
     // TODO use stream
     out << file_to_url(svg_out.str(), "image/svg+xml");
   } catch (...) {
-    // else we guess that it is a usual image
+    // else it is a usual image and goes out as it came in
     // TODO use stream
     out << file_to_url(*image_file.stream(), mime_type);
   }
 }
 
-/// The image page knows exactly which format it is holding, so it says so
-/// rather than taking `translate_image_src`'s `image/jpg` - webp, heif and
-/// avif arrive here now, and a browser that honours the data URL's type would
-/// be left with nothing.
+/// An image file knows exactly which format it is holding, so the data url
+/// says so. The table's first mime type is the canonical one.
 std::string image_mime_type(const ImageFile &image_file) {
   const std::span<const std::string_view> mimetypes =
       mimetypes_by_file_type(image_file.file_type());
@@ -67,11 +65,7 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    if (path == "image.html") {
-      return true;
-    }
-
-    return false;
+    return path == "image.html";
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
@@ -147,7 +141,8 @@ void html::translate_image_src(const File &file, std::ostream &out,
   try {
     translate_image_src(DecodedFile(file).as_image_file(), out, config);
   } catch (...) {
-    // TODO hacky - `image/jpg` works for all common image types in chrome
+    // nothing named it, so the label is a guess - browsers sniff `<img>` and
+    // `image/jpg` is what they have been handed here for years
     // TODO use stream
     out << file_to_url(*file.stream(), "image/jpg");
   }
@@ -155,15 +150,10 @@ void html::translate_image_src(const File &file, std::ostream &out,
 
 void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
                                const HtmlConfig & /*config*/) {
-  // TODO hacky - `image/jpg` works for all common image types in chrome.
-  // An image inside a document keeps it: browsers sniff `<img>`, and naming
-  // the real type here would rewrite every reference output we have. The
-  // standalone image page does name it - see `image_mime_type`.
-  write_image_src(image_file, out, "image/jpg");
+  write_image_src(image_file, out, image_mime_type(image_file));
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,
-                                       const std::string & /*cache_path*/,
                                        HtmlConfig config,
                                        const Logger &logger) {
   return odr::HtmlService(

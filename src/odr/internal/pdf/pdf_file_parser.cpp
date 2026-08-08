@@ -133,12 +133,10 @@ std::string FileParser::read_stream(const std::uint32_t size) {
 }
 
 std::string FileParser::read_stream() {
-  // Length unknown (recovery path): the stream terminator is the `endstream`
-  // keyword followed by the object's `endobj` (7.3.8.1). `endstream` can occur
-  // inside binary/compressed payload, so scan for the whole `endstream <ws>
-  // endobj` sequence rather than stopping at the first `endstream` — which
-  // would truncate such streams. Bytes consumed while probing a false match are
-  // folded back into the data, so no rewind is needed.
+  // Length unknown (recovery path), so scan for the terminator (7.3.8.1). It
+  // must be the whole `endstream <ws> endobj` sequence: a bare `endstream` also
+  // occurs inside binary payload, and stopping there would truncate the stream.
+  // Bytes consumed probing a false match are folded back into the data.
   static const std::string end_stream = "endstream";
   static const std::string end_obj = "endobj";
 
@@ -224,7 +222,7 @@ void FileParser::read_header() {
 }
 
 Entry FileParser::read_entry() {
-  std::uint32_t position = in().tellg();
+  const std::uint32_t position = in().tellg();
   const std::string entry_header = m_parser.read_line();
   in().seekg(position);
 
@@ -383,11 +381,9 @@ match_object_start(const std::string_view content) {
   return ObjectReference(id, gen);
 }
 
-/// True if `content` (already trimmed) ends with the `stream` keyword on a word
-/// boundary. This covers both a bare `stream` line and a compact object that
-/// inlines its dictionary and the `stream` token on one line
-/// (`N G obj<<...>>stream`). The boundary check rejects `endstream` and
-/// identifiers that merely end in `stream`.
+/// True if the trimmed `content` ends with the `stream` keyword on a word
+/// boundary — covering a compact `N G obj<<...>>stream` line as well as a bare
+/// one. The boundary check rejects `endstream`.
 bool opens_stream_body(const std::string_view content) {
   constexpr std::string_view keyword = "stream";
   if (!content.ends_with(keyword)) {

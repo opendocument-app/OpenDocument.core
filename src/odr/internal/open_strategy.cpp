@@ -18,7 +18,9 @@
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
+#include <odr/internal/svg/svg_util.hpp>
 #include <odr/internal/svm/svm_file.hpp>
+#include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <algorithm>
@@ -27,23 +29,19 @@ namespace odr::internal {
 
 namespace {
 
+/// Orders by position in @p priority; anything not listed sorts last.
 template <typename T> auto priority_comparator(const std::vector<T> &priority) {
   return [&priority](const T &a, const T &b) {
-    auto a_it = std::find(std::begin(priority), std::end(priority), a);
-    auto b_it = std::find(std::begin(priority), std::end(priority), b);
+    const auto a_it = std::ranges::find(priority, a);
+    const auto b_it = std::ranges::find(priority, b);
 
-    if (a_it == std::end(priority) && b_it == std::end(priority)) {
+    if (b_it == std::ranges::end(priority)) {
+      return a_it != std::ranges::end(priority);
+    }
+    if (a_it == std::ranges::end(priority)) {
       return false;
     }
-    if (a_it == std::end(priority)) {
-      return false;
-    }
-    if (b_it == std::end(priority)) {
-      return true;
-    }
-
-    return std::distance(std::begin(priority), a_it) <
-           std::distance(std::begin(priority), b_it);
+    return a_it < b_it;
   };
 }
 
@@ -123,9 +121,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     throw NoSvmFile();
   }
 
-  // Everything below has no decoder: the bytes go to the browser as they are,
-  // so the category is all that has to be right. Every image but the starview
-  // metafile above lands here, and so does all audio and video.
+  // no decoder below: the bytes go to the browser as they are, so only the
+  // category has to be right
   const FileCategory category = file_category_by_file_type(as);
   if (category == FileCategory::image) {
     ODR_VERBOSE(logger, "open as image");
@@ -216,44 +213,54 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   if (file_type == FileType::zip) {
     ODR_VERBOSE(logger, "open as zip");
 
-    zip::ZipFile zip_file(file);
-    result.push_back(FileType::zip);
-
-    auto filesystem = zip_file.archive()->as_filesystem();
-
+    // a container the magic promised but that does not open is just another
+    // failed probe here — the callers degrade on an empty result
     try {
-      ODR_VERBOSE(logger, "try open as odf");
-      result.push_back(odf::OpenDocumentFile(filesystem).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as odf");
-    }
+      zip::ZipFile zip_file(file);
+      result.push_back(FileType::zip);
 
-    try {
-      ODR_VERBOSE(logger, "try open as ooxml");
-      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      auto filesystem = zip_file.archive()->as_filesystem();
+
+      try {
+        ODR_VERBOSE(logger, "try open as odf");
+        result.push_back(odf::OpenDocumentFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as odf");
+      }
+
+      try {
+        ODR_VERBOSE(logger, "try open as ooxml");
+        result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as ooxml");
+      }
     } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as ooxml");
+      ODR_VERBOSE(logger, "failed to open as zip");
     }
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
-    cfb::CfbFile cfb_file(file);
-    result.push_back(FileType::compound_file_binary_format);
-
-    auto filesystem = cfb_file.archive()->as_filesystem();
-
     try {
-      ODR_VERBOSE(logger, "try open as legacy ms");
-      result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
-    } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as legacy ms");
-    }
+      cfb::CfbFile cfb_file(file);
+      result.push_back(FileType::compound_file_binary_format);
 
-    try {
-      ODR_VERBOSE(logger, "try open as ooxml");
-      result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      auto filesystem = cfb_file.archive()->as_filesystem();
+
+      try {
+        ODR_VERBOSE(logger, "try open as legacy ms");
+        result.push_back(oldms::LegacyMicrosoftFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as legacy ms");
+      }
+
+      try {
+        ODR_VERBOSE(logger, "try open as ooxml");
+        result.push_back(ooxml::OfficeOpenXmlFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as ooxml");
+      }
     } catch (...) {
-      ODR_VERBOSE(logger, "failed to open as ooxml");
+      ODR_VERBOSE(logger, "failed to open as cfb");
     }
   } else if (file_type == FileType::starview_metafile) {
     try {
@@ -281,6 +288,24 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         result.push_back(json::JsonFile(text).file_type());
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as json");
+      }
+
+      // an svg has no signature; only the xml root element tells it from plain
+      // xml, so both are reported
+      try {
+        ODR_VERBOSE(logger, "try open as xml");
+        util::xml::check_xml_file(*file->stream());
+        result.push_back(FileType::xml);
+
+        try {
+          ODR_VERBOSE(logger, "try open as svg");
+          svg::check_svg_file(*file->stream());
+          result.push_back(FileType::scalable_vector_graphics);
+        } catch (...) {
+          ODR_VERBOSE(logger, "failed to open as svg");
+        }
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as xml");
       }
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as text");
@@ -354,8 +379,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(file);
   }
-  // see `open_file_as` — no decoder, so the category is all that has to be
-  // right
+  // see `open_file_as` — no decoder, only the category has to be right
   const FileCategory file_category = file_category_by_file_type(file_type);
   if (file_category == FileCategory::image) {
     ODR_VERBOSE(logger, "open as image");
@@ -391,6 +415,17 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         return std::make_unique<json::JsonFile>(text);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as json");
+      }
+
+      // an svg is only recognised by parsing it; plain xml has no decoder of
+      // its own and stays text
+      try {
+        ODR_VERBOSE(logger, "try open as svg");
+        svg::check_svg_file(*file->stream());
+        return std::make_unique<ImageFile>(file,
+                                           FileType::scalable_vector_graphics);
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as svg");
       }
 
       ODR_VERBOSE(logger, "open as text file");

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 
 #include <utf8/unchecked.h>
 #include <utf8cpp/utf8/cpp17.h>
@@ -12,13 +13,11 @@
 namespace odr::internal::util {
 
 bool string::starts_with(const std::string &string, const std::string &with) {
-  return string.rfind(with, 0) == 0;
+  return string.starts_with(with);
 }
 
 bool string::ends_with(const std::string &string, const std::string &with) {
-  return string.length() >= with.length() &&
-         string.compare(string.length() - with.length(), with.length(), with) ==
-             0;
+  return string.ends_with(with);
 }
 
 bool string::is_ascii_space(const char c) {
@@ -98,6 +97,11 @@ std::string string::repeat(const std::string &unit, const std::size_t count) {
 
 void string::split(const std::string &string, const std::string &delimiter,
                    const std::function<void(const std::string &)> &callback) {
+  // an empty delimiter never advances the scan, so it would loop forever
+  if (delimiter.empty()) {
+    throw std::invalid_argument("delimiter must not be empty");
+  }
+
   std::size_t last_end = 0;
   while (true) {
     const std::size_t pos = string.find(delimiter, last_end);
@@ -132,7 +136,7 @@ std::string string::u16string_to_string(const std::u16string &string) {
   return utf8::utf16to8(string);
 }
 
-std::u16string string::string_to_u16string(const std::string &string) {
+std::u16string string::string_to_u16string(const std::string_view string) {
   return utf8::utf8to16(string);
 }
 

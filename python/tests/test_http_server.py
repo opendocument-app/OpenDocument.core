@@ -55,7 +55,7 @@ def test_bind_reports_what_it_got():
     assert port != 0
 
     # a second bind would leak the first socket, so it is refused
-    with pytest.raises(RuntimeError):
+    with pytest.raises(pyodr.Error):
         server.bind("127.0.0.1", 0)
 
     server.stop()
@@ -70,7 +70,7 @@ def test_bind_reports_a_port_in_use():
 
     other = pyodr.HttpServer()
     # reuse_port defaults off, or the two would share the port
-    with pytest.raises(RuntimeError):
+    with pytest.raises(pyodr.Error):
         other.bind("127.0.0.1", port)
 
     taken.stop()
@@ -81,7 +81,7 @@ def test_listen_without_bind_raises():
     server = pyodr.HttpServer()
 
     # cpp-httplib reports success for this, hence the guard being tested
-    with pytest.raises(RuntimeError):
+    with pytest.raises(pyodr.Error):
         server.listen()
 
 

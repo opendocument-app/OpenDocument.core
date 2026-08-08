@@ -119,18 +119,19 @@ bool SystemFilesystem::copy(const AbsPath &from, const AbsPath &to) {
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(const abstract::File &from, const AbsPath &to) {
+  // `create_file` and `open` translate `to` themselves
   const auto istream = from.stream();
-  const auto ostream = create_file(to_system_path_(to));
+  const auto ostream = create_file(to);
 
   util::stream::pipe(*istream, *ostream);
 
-  return open(to_system_path_(to));
+  return open(to);
 }
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(const std::shared_ptr<abstract::File> from,
                        const AbsPath &to) {
-  return copy(*from, to_system_path_(to));
+  return copy(*from, to);
 }
 
 bool SystemFilesystem::move(const AbsPath &from, const AbsPath &to) {
@@ -150,7 +151,7 @@ public:
 
   VirtualFileWalker(const AbsPath &root, const Files &files) {
     for (const auto &[path, file] : files) {
-      if (path.ancestor_of(root)) {
+      if (path.descendant_of(root)) {
         m_files[path] = file;
       }
     }
@@ -158,13 +159,27 @@ public:
     m_iterator = std::begin(m_files);
   }
 
+  /// The iterator has to be re-seated into the copied map.
+  VirtualFileWalker(const VirtualFileWalker &other) : m_files{other.m_files} {
+    m_iterator = other.m_iterator == std::end(other.m_files)
+                     ? std::end(m_files)
+                     : m_files.find(other.m_iterator->first);
+  }
+
   [[nodiscard]] std::unique_ptr<FileWalker> clone() const override {
     return std::make_unique<VirtualFileWalker>(*this);
   }
 
+  /// The iterators belong to different maps, so only the keys can be compared.
   [[nodiscard]] bool equals(const FileWalker &rhs_) const override {
-    auto &&rhs = dynamic_cast<const VirtualFileWalker &>(rhs_);
-    return m_iterator == rhs.m_iterator;
+    const auto *rhs = dynamic_cast<const VirtualFileWalker *>(&rhs_);
+    if (rhs == nullptr) {
+      return false;
+    }
+    if (end() || rhs->end()) {
+      return end() && rhs->end();
+    }
+    return m_iterator->first == rhs->m_iterator->first;
   }
 
   [[nodiscard]] bool end() const override {

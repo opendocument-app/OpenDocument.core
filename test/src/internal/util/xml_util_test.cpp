@@ -41,11 +41,22 @@ TEST(xml_util, tokenize_text) {
   EXPECT_EQ("world!", example5[2].string);
 
   auto example6 = tokenize_text("\t  \t");
-  EXPECT_EQ(3, example5.size());
+  EXPECT_EQ(3, example6.size());
   EXPECT_EQ(StringToken::Type::tabs, example6[0].type);
   EXPECT_EQ("\t", example6[0].string);
   EXPECT_EQ(StringToken::Type::spaces, example6[1].type);
   EXPECT_EQ("  ", example6[1].string);
   EXPECT_EQ(StringToken::Type::tabs, example6[2].type);
   EXPECT_EQ("\t", example6[2].string);
+}
+
+TEST(xml_util, tokenize_text_empty) { EXPECT_TRUE(tokenize_text("").empty()); }
+
+// Only a run of two or more spaces is significant; a lone space is ordinary
+// text, so it must not be split off as a `spaces` token.
+TEST(xml_util, tokenize_text_single_space) {
+  const auto tokens = tokenize_text("a b");
+  ASSERT_EQ(1, tokens.size());
+  EXPECT_EQ(StringToken::Type::string, tokens[0].type);
+  EXPECT_EQ("a b", tokens[0].string);
 }

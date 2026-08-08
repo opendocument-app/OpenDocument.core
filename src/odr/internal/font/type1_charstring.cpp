@@ -2,13 +2,26 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::font::type1 {
 
 namespace {
+
+/// Charstring byte at @p i; an operand cut short by the end of the charstring
+/// is malformed input, not something to read past.
+[[nodiscard]] std::uint8_t byte_at(const std::string_view cs,
+                                   const std::size_t i) {
+  if (i >= cs.size()) {
+    throw std::runtime_error("type1: truncated charstring");
+  }
+  return static_cast<std::uint8_t>(cs[i]);
+}
 
 // Type1 charstring operators (single byte; 12 = escape to a two-byte op).
 enum T1 : std::int32_t {
@@ -127,18 +140,18 @@ private:
           p += 1;
         } else if (b <= 250) {
           value = (static_cast<std::int32_t>(b) - 247) * 256 +
-                  static_cast<std::uint8_t>(cs[p + 1]) + 108;
+                  byte_at(cs, p + 1) + 108;
           p += 2;
         } else if (b <= 254) {
           value = -(static_cast<std::int32_t>(b) - 251) * 256 -
-                  static_cast<std::uint8_t>(cs[p + 1]) - 108;
+                  byte_at(cs, p + 1) - 108;
           p += 2;
         } else { // 255: Type1 32-bit integer
           value = static_cast<std::int32_t>(
-              (static_cast<std::uint8_t>(cs[p + 1]) << 24) |
-              (static_cast<std::uint8_t>(cs[p + 2]) << 16) |
-              (static_cast<std::uint8_t>(cs[p + 3]) << 8) |
-              static_cast<std::uint8_t>(cs[p + 4]));
+              static_cast<std::uint32_t>(byte_at(cs, p + 1)) << 24 |
+              static_cast<std::uint32_t>(byte_at(cs, p + 2)) << 16 |
+              static_cast<std::uint32_t>(byte_at(cs, p + 3)) << 8 |
+              byte_at(cs, p + 4));
           p += 5;
         }
         m_stack.push_back(value);
@@ -147,7 +160,7 @@ private:
       std::int32_t op = b;
       ++p;
       if (b == 12) {
-        op = 1200 + static_cast<std::uint8_t>(cs[p]);
+        op = 1200 + byte_at(cs, p);
         ++p;
       }
       handle(op, depth);

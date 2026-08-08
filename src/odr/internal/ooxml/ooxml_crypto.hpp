@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace odr::internal::ooxml::crypto {
 
@@ -48,24 +50,23 @@ class Algorithm {
 public:
   virtual ~Algorithm() = default;
   [[nodiscard]] virtual std::string
-  derive_key(const std::string &password) const = 0;
-  [[nodiscard]] virtual bool verify(const std::string &key) const = 0;
-  [[nodiscard]] virtual std::string
-  decrypt(const std::string &encrypted_package,
-          const std::string &key) const = 0;
+  derive_key(std::string_view password) const = 0;
+  [[nodiscard]] virtual bool verify(std::string_view key) const = 0;
+  [[nodiscard]] virtual std::string decrypt(std::string_view encrypted_package,
+                                            std::string_view key) const = 0;
 };
 
 class ECMA376Standard final : public Algorithm {
 public:
   ECMA376Standard(const EncryptionHeader &, const EncryptionVerifier &,
                   std::string encrypted_verifier_hash);
-  explicit ECMA376Standard(const std::string &encryption_info);
+  explicit ECMA376Standard(std::string_view encryption_info);
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const override;
-  [[nodiscard]] bool verify(const std::string &key) const override;
-  [[nodiscard]] std::string decrypt(const std::string &encrypted_package,
-                                    const std::string &key) const override;
+  derive_key(std::string_view password) const override;
+  [[nodiscard]] bool verify(std::string_view key) const override;
+  [[nodiscard]] std::string decrypt(std::string_view encrypted_package,
+                                    std::string_view key) const override;
 
 private:
   static constexpr auto ITER_COUNT = 50000;
@@ -77,14 +78,14 @@ private:
 
 class Util final : public Algorithm {
 public:
-  explicit Util(const std::string &encryption_info);
+  explicit Util(std::string_view encryption_info);
   ~Util() override;
 
   [[nodiscard]] std::string
-  derive_key(const std::string &password) const override;
-  [[nodiscard]] bool verify(const std::string &key) const override;
-  [[nodiscard]] std::string decrypt(const std::string &encrypted_package,
-                                    const std::string &key) const override;
+  derive_key(std::string_view password) const override;
+  [[nodiscard]] bool verify(std::string_view key) const override;
+  [[nodiscard]] std::string decrypt(std::string_view encrypted_package,
+                                    std::string_view key) const override;
 
 private:
   std::unique_ptr<Algorithm> impl;

@@ -12,8 +12,7 @@ class Logger;
 
 namespace odr::internal::html {
 
-HtmlService create_document_service(const Document &document,
-                                    const std::string &cache_path,
-                                    HtmlConfig config, const Logger &logger);
+HtmlService create_document_service(const Document &document, HtmlConfig config,
+                                    const Logger &logger);
 
 } // namespace odr::internal::html

@@ -145,13 +145,36 @@ odr::capabilities_by_file_type(const FileType type) noexcept {
   return row == nullptr ? FileTypeCapabilities{} : row->capabilities;
 }
 
+std::vector<odr::FileType> odr::list_file_types(const File &file,
+                                                const Logger &logger) {
+  return DecodedFile::list_file_types(file, logger);
+}
+
 std::vector<odr::FileType> odr::list_file_types(const std::string &path,
                                                 const Logger &logger) {
   return DecodedFile::list_file_types(path, logger);
 }
 
+std::string_view odr::mimetype(const File &file, const Logger &logger) {
+  return DecodedFile::mimetype(file, logger);
+}
+
 std::string_view odr::mimetype(const std::string &path, const Logger &logger) {
   return DecodedFile::mimetype(path, logger);
+}
+
+odr::DecodedFile odr::open(const File &file, const Logger &logger) {
+  return DecodedFile(file, logger);
+}
+
+odr::DecodedFile odr::open(const File &file, const FileType as,
+                           const Logger &logger) {
+  return {file, as, logger};
+}
+
+odr::DecodedFile odr::open(const File &file, const DecodePreference &preference,
+                           const Logger &logger) {
+  return {file, preference, logger};
 }
 
 odr::DecodedFile odr::open(const std::string &path, const Logger &logger) {

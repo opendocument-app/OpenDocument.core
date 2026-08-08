@@ -1,12 +1,15 @@
+#include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/util/file_util.hpp>
 
 #include <test_util.hpp>
 
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -14,6 +17,50 @@ using namespace odr;
 using namespace odr::test;
 
 TEST(File, open) { EXPECT_THROW(File("/"), FileNotFound); }
+
+TEST(File, from_disk_matches_the_path_constructor) {
+  const std::string path = TestData::test_file_path("odr-public/odt/about.odt");
+
+  const File file = File::from_disk(path);
+
+  EXPECT_EQ(file.location(), FileLocation::disk);
+  EXPECT_EQ(file.disk_path(), File(path).disk_path());
+  EXPECT_EQ(file.size(), File(path).size());
+}
+
+TEST(File, from_memory_holds_its_bytes) {
+  const File file = File::from_memory("hello");
+
+  EXPECT_EQ(file.location(), FileLocation::memory);
+  EXPECT_EQ(file.size(), 5);
+  EXPECT_FALSE(file.disk_path().has_value());
+  ASSERT_TRUE(file.memory_data().has_value());
+  EXPECT_EQ(*file.memory_data(), "hello");
+}
+
+/// The whole point of `from_memory`: a caller with bytes and no path — a
+/// download, a browser upload — decodes to exactly what the same bytes on disk
+/// would have decoded to.
+TEST(File, from_memory_decodes_the_same_as_from_disk) {
+  const std::string path = TestData::test_file_path("odr-public/odt/about.odt");
+
+  const DecodedFile from_disk(File::from_disk(path));
+  const DecodedFile from_memory(
+      File::from_memory(internal::util::file::read(path)));
+
+  EXPECT_EQ(from_memory.file_type(), from_disk.file_type());
+  EXPECT_EQ(from_memory.file_category(), from_disk.file_category());
+  EXPECT_EQ(from_memory.file_meta().type, from_disk.file_meta().type);
+  EXPECT_EQ(from_memory.file_meta().document_type,
+            from_disk.file_meta().document_type);
+
+  EXPECT_EQ(DecodedFile::list_file_types(
+                File::from_memory(internal::util::file::read(path))),
+            DecodedFile::list_file_types(path));
+  EXPECT_EQ(DecodedFile::mimetype(
+                File::from_memory(internal::util::file::read(path))),
+            DecodedFile::mimetype(path));
+}
 
 /// `MemoryFile` used to report itself as `disk`, and `memory_data()` handed
 /// back a bare pointer that only meant something alongside `size()`.
@@ -27,6 +74,15 @@ TEST(File, memory_file_reports_memory_and_its_bytes) {
   EXPECT_EQ(*file.memory_data(), "hello");
 }
 
+/// The null file has no bytes anywhere; every other accessor throws.
+TEST(File, default_constructed_reports_unknown_location) {
+  const File file;
+
+  EXPECT_EQ(file.location(), FileLocation::unknown);
+  EXPECT_THROW(std::ignore = file.size(), NullPointerError);
+  EXPECT_THROW(std::ignore = file.stream(), NullPointerError);
+}
+
 TEST(File, disk_file_has_no_memory_data) {
   const File file(std::make_shared<internal::DiskFile>(
       TestData::test_file_path("odr-public/odt/about.odt")));
@@ -37,6 +93,25 @@ TEST(File, disk_file_has_no_memory_data) {
 }
 
 TEST(DocumentFile, open) { EXPECT_THROW(DocumentFile("/"), FileNotFound); }
+
+TEST(DocumentFile, from_disk_and_from_memory_agree) {
+  const std::string path = TestData::test_file_path("odr-public/odt/about.odt");
+
+  const DocumentFile from_disk = DocumentFile::from_disk(path);
+  const DocumentFile from_memory =
+      DocumentFile::from_memory(internal::util::file::read(path));
+
+  EXPECT_EQ(from_memory.file_type(), from_disk.file_type());
+  EXPECT_EQ(from_memory.document_type(), from_disk.document_type());
+  EXPECT_EQ(from_memory.document().document_type(),
+            from_disk.document().document_type());
+}
+
+/// Not a document, so both factories have to refuse it the same way.
+TEST(DocumentFile, from_memory_throws_on_a_non_document) {
+  EXPECT_THROW(std::ignore = DocumentFile::from_memory("not a document"),
+               NoDocumentFile);
+}
 
 TEST(DecodedFile, wpd) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);

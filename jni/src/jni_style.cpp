@@ -97,9 +97,16 @@ jobject enum_from_code(JNIEnv *env, const char *class_name, const jint code) {
   }
   auto array =
       static_cast<jobjectArray>(env->CallStaticObjectMethod(cls, values));
-  jobject result = env->GetObjectArrayElement(array, code);
-  env->DeleteLocalRef(array);
   env->DeleteLocalRef(cls);
+  if (array == nullptr) {
+    return nullptr;
+  }
+  // out of range means the java enum lags the C++ one; every JNI call after a
+  // pending ArrayIndexOutOfBoundsException would be undefined
+  jobject result = code < env->GetArrayLength(array)
+                       ? env->GetObjectArrayElement(array, code)
+                       : nullptr;
+  env->DeleteLocalRef(array);
   return result;
 }
 
@@ -142,12 +149,7 @@ jobject make_measure(JNIEnv *env, const odr::Measure &value) {
 }
 
 jobject make_measure(JNIEnv *env, const std::optional<odr::Measure> &value) {
-  if (!value.has_value()) {
-    return nullptr;
-  }
-  return new_object(env, "app/opendocument/core/Measure",
-                    "(DLjava/lang/String;)V", value->magnitude(),
-                    to_jstring(env, value->unit().to_string()));
+  return value.has_value() ? make_measure(env, *value) : nullptr;
 }
 
 jobject make_color(JNIEnv *env, const std::optional<odr::Color> &value) {
@@ -380,8 +382,9 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
     for (jsize i = 0;
          i < static_cast<jsize>(config.pdf_dual_layer_fallback_fonts.size());
          ++i) {
-      env->SetObjectArrayElement(
-          fonts, i, to_jstring(env, config.pdf_dual_layer_fallback_fonts[i]));
+      jstring font = to_jstring(env, config.pdf_dual_layer_fallback_fonts[i]);
+      env->SetObjectArrayElement(fonts, i, font);
+      env->DeleteLocalRef(font);
     }
     set_object("pdfDualLayerFallbackFonts", "[Ljava/lang/String;", fonts);
     env->DeleteLocalRef(string_cls);

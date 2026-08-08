@@ -72,37 +72,24 @@ enum class HtmlTableGridlines {
 };
 
 /// @brief Initial zoom of the emitted HTML on mobile (viewport meta tag).
-///
-/// Desktop browsers ignore the viewport meta tag entirely.
-///
-/// - `automatic`: per-content default — fixed-size paged content (PDF pages,
-///   slides, drawings, images, text documents with page margins) uses
-///   `fit_width`; reflowing content (spreadsheets, plain text) uses
-///   `actual_size`.
-/// - `fit_width`: the browser picks the initial zoom so the content's full
-///   width fits the screen.
-/// - `actual_size`: initial zoom locked to 100% (`initial-scale=1.0`).
-/// - `none`: no viewport meta tag is written.
+/// Desktop browsers ignore the tag entirely.
 enum class HtmlViewportMode {
-  automatic,
-  fit_width,
-  actual_size,
-  none,
+  automatic,   ///< `fit_width` for fixed-size paged content (PDF pages, slides,
+               ///< drawings, images, text documents with page margins),
+               ///< `actual_size` for reflowing content (spreadsheets, text)
+  fit_width,   ///< initial zoom fits the content's full width on screen
+  actual_size, ///< initial zoom locked to 100% (`initial-scale=1.0`)
+  none,        ///< no viewport meta tag at all
 };
 
-/// @brief PDF text rendering mode.
-///
-/// Selects how text is emitted in PDF→HTML output.
-///
-/// - `dual_layer`: A visual layer (paint order, embedded PUA glyphs) and a
-///   separate transparent selection/search layer (reading order, real Unicode).
-///   Similar to pdf.js. No JavaScript required.
-/// - `single_layer`: A single combined layer where every glyph is mapped to
-///   Unicode via frequency analysis. Similar to pdf2htmlEX. No JavaScript
-///   required.
+/// @brief How text is emitted in PDF→HTML output. Neither mode needs
+/// JavaScript.
 enum class PdfTextMode {
-  dual_layer,
-  single_layer,
+  dual_layer,   ///< a visual layer (paint order, embedded PUA glyphs) plus a
+                ///< transparent selection layer (reading order, real Unicode),
+                ///< like pdf.js
+  single_layer, ///< one layer, every glyph mapped to Unicode by frequency
+                ///< analysis, like pdf2htmlEX
 };
 
 /// @brief HTML configuration.
@@ -165,17 +152,12 @@ struct HtmlConfig {
 
   // PDF text mode
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
-  // `dual_layer`'s invisible selection-layer text is rendered in a local
-  // system font (tried in order; the first that resolves wins) rather than
-  // the embedded PDF font, so its natural width rarely matches the
-  // PDF-derived box width CSS `text-justify` is asked to fill (justify can
-  // only add spacing, never compress).
-  // `pdf_dual_layer_fallback_font_size_adjust` is applied as that @font-face's
-  // `size-adjust` (0-1, written out as a percent) to shrink the fallback font's
-  // metrics toward the PDF's, leaving less — ideally no — gap for justify to
-  // compress instead of stretch into. Safe to underestimate (justify then just
-  // spreads characters further; harmless on an invisible layer) but not to
-  // overestimate (the excess is clipped, not shrunk).
+  // `dual_layer` renders its invisible selection layer in a local system font
+  // (first of these that resolves), whose natural width rarely matches the
+  // PDF-derived box CSS justify has to fill — and justify can only add spacing.
+  // The size-adjust (0-1, written as the @font-face percent) shrinks the
+  // fallback's metrics toward the PDF's to close that gap. Safe to
+  // underestimate, not to overestimate: the excess is clipped, not shrunk.
   std::vector<std::string> pdf_dual_layer_fallback_fonts{
       "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Nimbus Sans"};
   double pdf_dual_layer_fallback_font_size_adjust{0.5};
@@ -276,116 +258,80 @@ namespace html {
 HtmlResourceLocator standard_resource_locator();
 
 /// @brief Translates a decoded file to HTML.
-///
-/// @param file Decoded file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const DecodedFile &file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const DecodedFile &file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a text file to HTML.
-///
-/// @param text_file Text file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const TextFile &text_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const TextFile &text_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates an image file to HTML.
-///
-/// @param image_file Image file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const ImageFile &image_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+HtmlService translate(const ImageFile &image_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates an archive to HTML.
-///
-/// @param archive_file Archive file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const ArchiveFile &archive_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+/// @brief Translates an archive file to HTML.
+HtmlService translate(const ArchiveFile &archive_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates a document to HTML.
-///
-/// @param document_file Document file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
+/// @brief Translates a document file to HTML.
 HtmlService translate(const DocumentFile &document_file,
-                      const std::string &cache_path, const HtmlConfig &config,
+                      const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 /// @brief Translates a PDF file to HTML.
-///
-/// @param pdf_file PDF file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const PdfFile &pdf_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a font file to HTML (a specimen page).
-///
-/// @param font_file Font file to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
-HtmlService translate(const FontFile &font_file, const std::string &cache_path,
-                      const HtmlConfig &config,
+HtmlService translate(const FontFile &font_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a filesystem to HTML.
+HtmlService translate(const Filesystem &filesystem, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+/// @brief Translates an archive to HTML.
+HtmlService translate(const Archive &archive, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+/// @brief Translates a document to HTML.
+HtmlService translate(const Document &document, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+
+/// @name Translation with a cache path
 ///
-/// @param filesystem Filesystem to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
+/// `cache_path` is ignored — nothing on the render path writes to disk, and no
+/// renderer has read it since the output became a set of streams. Kept so
+/// existing callers keep compiling; prefer the overloads above.
+/// @{
+HtmlService translate(const DecodedFile &file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const TextFile &text_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const ImageFile &image_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const ArchiveFile &archive_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const DocumentFile &document_file,
+                      const std::string &cache_path, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const PdfFile &pdf_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+HtmlService translate(const FontFile &font_file, const std::string &cache_path,
+                      const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
 HtmlService translate(const Filesystem &filesystem,
                       const std::string &cache_path, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates an archive to HTML.
-///
-/// @param archive Archive to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
 HtmlService translate(const Archive &archive, const std::string &cache_path,
                       const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates a document to HTML.
-///
-/// @param document Document to translate.
-/// @param cache_path Directory path for temporary output.
-/// @param config Configuration for the HTML output.
-/// @param logger Logger to use for logging.
-/// @return HTML output.
 HtmlService translate(const Document &document, const std::string &cache_path,
                       const HtmlConfig &config,
                       const Logger &logger = Logger::null());
+/// @}
 
-/// @brief Edits a document with a diff.
-///
-/// @note The diff is generated by our JavaScript code in the browser.
-///
-/// @param document Document to edit.
-/// @param diff Diff to apply.
-/// @param logger Logger to use for logging.
+/// @brief Applies a diff to a document. The diff is what our JavaScript
+/// produces in the browser.
 void edit(const Document &document, std::string_view diff,
           const Logger &logger = Logger::null());
 

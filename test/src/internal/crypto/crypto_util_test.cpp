@@ -42,6 +42,43 @@ TEST(CryptoUtil, hex_decode_rejects_bad_input) {
   EXPECT_THROW(hex_decode("48 65"), std::invalid_argument);
 }
 
+// Argon2id v=19 vectors published by the reference implementation
+// (P-H-C/phc-winner-argon2, src/test.c).
+TEST(CryptoUtil, argon2id) {
+  EXPECT_EQ(hex_encode(argon2id(32, "password", "somesalt", 2, 65536, 1)),
+            "09316115d5cf24ed5a15a31a3ba326e5cf32edc24702987c02b6566f61913cf7");
+  EXPECT_EQ(hex_encode(argon2id(32, "password", "somesalt", 2, 256, 1)),
+            "9dfeb910e80bad0311fee20f9c0e2b12c17987b4cac90c2ef54d5b3021c68bfe");
+  EXPECT_EQ(hex_encode(argon2id(32, "password", "somesalt", 2, 256, 2)),
+            "6d093c501fd5999645e0ea3bf620d7b8be7fd2db59c20d9fff9539da2bf57037");
+}
+
+// Generated with the same reference implementation — its published vectors go
+// no further than two lanes.
+TEST(CryptoUtil, argon2id_lanes) {
+  // What LibreOffice writes for ODF package encryption.
+  EXPECT_EQ(
+      hex_encode(argon2id(32, "password", "0123456789abcdef", 3, 65536, 4)),
+      "b8a64b68dea6b88ca8c8862be706aac37cbecda0db7bd68b48f8fa2e7feb6f3e");
+  EXPECT_EQ(hex_encode(argon2id(64, "password", "somesalt", 2, 256, 4)),
+            "862f0a0272a6ce8aeb7edf3efabd8287b7dfa4c550207c77471532fec400e46e"
+            "a5751a3a8fe4cb2ede8b60ca66de2a8180d3ea39a242d0b4e413f834b9a049ad");
+  // Memory is rounded down to a multiple of 4 * lanes.
+  EXPECT_EQ(hex_encode(argon2id(32, "password", "somesalt", 2, 37, 3)),
+            "fd3d6c0350c90b38be1da55d3387c3da995b683542cf1de6af4cb06f0cbd1188");
+}
+
+TEST(CryptoUtil, argon2id_rejects_bad_parameters) {
+  EXPECT_THROW(argon2id(32, "password", "short", 2, 256, 1),
+               std::invalid_argument);
+  EXPECT_THROW(argon2id(32, "password", "somesalt", 2, 32, 8),
+               std::invalid_argument);
+  EXPECT_THROW(argon2id(32, "password", "somesalt", 0, 256, 1),
+               std::invalid_argument);
+  EXPECT_THROW(argon2id(2, "password", "somesalt", 2, 256, 1),
+               std::invalid_argument);
+}
+
 // Well-known RC4 test vector (key "Key", plaintext "Plaintext").
 TEST(CryptoUtil, rc4) {
   const std::string cipher = rc4("Key", "Plaintext");

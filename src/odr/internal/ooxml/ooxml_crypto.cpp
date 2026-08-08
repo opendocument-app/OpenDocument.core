@@ -3,14 +3,13 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <cstring>
+#include <cstdint>
 #include <stdexcept>
 #include <utility>
-
-namespace {} // namespace
 
 namespace odr::internal::ooxml::crypto {
 
@@ -21,30 +20,34 @@ ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
       m_encryption_verifier{encryption_verifier},
       m_encrypted_verifier_hash{std::move(encrypted_verifier_hash)} {}
 
-ECMA376Standard::ECMA376Standard(const std::string &encryption_info) {
-  const char *offset = encryption_info.data() + sizeof(VersionInfo);
+ECMA376Standard::ECMA376Standard(const std::string_view encryption_info) {
+  util::byte_string::Reader reader(encryption_info);
+  reader.seek(sizeof(VersionInfo));
 
   StandardHeader standard_header{};
-  std::memcpy(&standard_header, offset, sizeof(standard_header));
-  offset += sizeof(standard_header);
+  reader.read(standard_header);
 
-  std::memcpy(&m_encryption_header, offset, sizeof(m_encryption_header));
-  const std::u16string csp_name_u16(
-      reinterpret_cast<const char16_t *>(offset + sizeof(m_encryption_header)));
-  // the CSP name field is parsed but currently unused
-  [[maybe_unused]] const std::string csp_name =
-      util::string::u16string_to_string(csp_name_u16);
-  offset += standard_header.encryption_header_size;
+  // [MS-OFFCRYPTO] 2.3.4.5: `encryption_header_size` spans the header plus the
+  // trailing CSP name, which is not needed to derive the key.
+  if (standard_header.encryption_header_size < sizeof(EncryptionHeader)) {
+    throw std::runtime_error("bad ooxml crypto header size");
+  }
+  const std::size_t encryption_header_begin = reader.position();
+  reader.read(m_encryption_header);
+  reader.seek(encryption_header_begin + standard_header.encryption_header_size);
 
-  std::memcpy(&m_encryption_verifier, offset, sizeof(m_encryption_verifier));
-  offset += sizeof(m_encryption_verifier);
+  reader.read(m_encryption_verifier);
 
-  m_encrypted_verifier_hash = std::string(
-      offset, encryption_info.size() - (offset - encryption_info.data()));
+  m_encrypted_verifier_hash = reader.rest();
 }
 
-std::string ECMA376Standard::derive_key(const std::string &password) const {
+std::string ECMA376Standard::derive_key(const std::string_view password) const {
   // https://msdn.microsoft.com/en-us/library/dd925430(v=office.12).aspx
+
+  // [MS-OFFCRYPTO] 2.3.3: `salt_size` is fixed at the size of the salt field.
+  if (m_encryption_verifier.salt_size != sizeof(m_encryption_verifier.salt)) {
+    throw std::runtime_error("bad ooxml crypto salt size");
+  }
 
   std::string hash;
   {
@@ -90,12 +93,12 @@ std::string ECMA376Standard::derive_key(const std::string &password) const {
   return result;
 }
 
-bool ECMA376Standard::verify(const std::string &key) const {
+bool ECMA376Standard::verify(const std::string_view key) const {
   // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
 
   const std::string verifier = internal::crypto::util::decrypt_aes_ecb(
-      key, std::string(m_encryption_verifier.encrypted_verifier,
-                       sizeof(m_encryption_verifier.encrypted_verifier)));
+      key, std::string_view(m_encryption_verifier.encrypted_verifier,
+                            sizeof(m_encryption_verifier.encrypted_verifier)));
   const std::string hash = internal::crypto::util::sha1(verifier);
   const std::string verifier_hash =
       internal::crypto::util::decrypt_aes_ecb(key, m_encrypted_verifier_hash)
@@ -104,18 +107,17 @@ bool ECMA376Standard::verify(const std::string &key) const {
   return hash == verifier_hash;
 }
 
-std::string ECMA376Standard::decrypt(const std::string &encrypted_package,
-                                     const std::string &key) const {
-  const std::uint64_t total_size =
-      *reinterpret_cast<const std::uint64_t *>(encrypted_package.data());
-  std::string result =
-      internal::crypto::util::decrypt_aes_ecb(key, encrypted_package.substr(8))
-          .substr(0, total_size);
+std::string ECMA376Standard::decrypt(const std::string_view encrypted_package,
+                                     const std::string_view key) const {
+  util::byte_string::Reader reader(encrypted_package);
+  // [MS-OFFCRYPTO] 2.3.4.4: the stream opens with the plaintext size.
+  const auto total_size = reader.read<std::uint64_t>();
 
-  return result;
+  return internal::crypto::util::decrypt_aes_ecb(key, reader.rest())
+      .substr(0, total_size);
 }
 
-Util::Util(const std::string &encryption_info) {
+Util::Util(const std::string_view encryption_info) {
   {
     // big endian is not supported
     constexpr std::uint16_t num = 1;
@@ -124,29 +126,30 @@ Util::Util(const std::string &encryption_info) {
     }
   }
 
-  VersionInfo version_info{};
-  std::memcpy(&version_info, encryption_info.data(), sizeof(version_info));
+  util::byte_string::Reader reader(encryption_info);
+  const auto version_info = reader.read<VersionInfo>();
   if ((version_info.major == 2 || version_info.major == 3 ||
        version_info.major == 4) &&
       version_info.minor == 2) {
     impl = std::make_unique<ECMA376Standard>(encryption_info);
   } else {
-    // everything else (agile 4.4, extensible 3.3/4.3, and unknown variants) is
-    // unsupported
+    // agile (4.4), extensible (3.3/4.3) and unknown variants
     throw MsUnsupportedCryptoAlgorithm();
   }
 }
 
 Util::~Util() = default;
 
-std::string Util::derive_key(const std::string &password) const {
+std::string Util::derive_key(const std::string_view password) const {
   return impl->derive_key(password);
 }
 
-bool Util::verify(const std::string &key) const { return impl->verify(key); }
+bool Util::verify(const std::string_view key) const {
+  return impl->verify(key);
+}
 
-std::string Util::decrypt(const std::string &encrypted_package,
-                          const std::string &key) const {
+std::string Util::decrypt(const std::string_view encrypted_package,
+                          const std::string_view key) const {
   return impl->decrypt(encrypted_package, key);
 }
 

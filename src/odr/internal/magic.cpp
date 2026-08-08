@@ -9,14 +9,22 @@
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <array>
 #include <istream>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal {
 
 namespace {
+
+/// At most @p size bytes, cut back to what was actually read.
+std::string read_head(std::istream &in, const std::size_t size) {
+  std::string result(size, '\0');
+  in.read(result.data(), static_cast<std::streamsize>(size));
+  result.resize(static_cast<std::size_t>(in.gcount()));
+  return result;
+}
 
 bool match_magic(const std::string &head, const std::string &pattern) {
   const auto bytes = util::string::split(pattern, " ");
@@ -56,12 +64,8 @@ FileType riff_file_type(const std::string &head) {
   return FileType::unknown;
 }
 
-/// Which format an ISO base media container holds, from its major brand.
-///
-/// The brands are open ended and every writer adds its own, so this names the
-/// ones that mean something other than video and lets the rest - `isom`,
-/// `mp41`, `mp42`, `avc1`, `dash` and whatever comes next - fall through to
-/// what the container almost always is.
+/// Which format an ISO base media container holds, from its major brand. Only
+/// the brands that are not video are named; the open ended rest falls through.
 FileType iso_base_media_file_type(const std::string &head) {
   const std::string_view brand = tag_at(head, 8);
   if (brand == "qt  ") {
@@ -161,20 +165,43 @@ FileType magic::file_type(const std::string &magic) {
     return FileType::mpeg_audio;
   }
 
+  if (match_magic(magic, "00 00 01 00") || // icon
+      match_magic(magic, "00 00 02 00")) { // cursor
+    return FileType::windows_icon;
+  }
+  if (match_magic(magic, "00 00 00 0C 6A 50 20 20 0D 0A 87 0A") || // 'jP  ' box
+      match_magic(magic, "FF 4F FF 51")) { // bare codestream
+    return FileType::jpeg_2000;
+  }
+  if (match_magic(magic, "00 00 00 0C 4A 58 4C 20 0D 0A 87 0A")) { // 'JXL ' box
+    return FileType::jpeg_xl;
+  }
+  if (match_magic(magic, "38 42 50 53")) { // '8BPS'
+    return FileType::photoshop_document;
+  }
+  if (match_magic(magic, "D7 CD C6 9A") ||       // aldus placeable header
+      match_magic(magic, "01 00 09 00 00 03") || // memory metafile header
+      match_magic(magic, "02 00 09 00 00 03")) { // disk metafile header
+    return FileType::windows_metafile;
+  }
+  // the leading record type alone is too weak, the signature at offset 40 has
+  // to agree
+  if (match_magic(magic, "01 00 00 00") && tag_at(magic, 40) == " EMF") {
+    return FileType::enhanced_metafile;
+  }
+  // two bytes and nothing more to check, so it goes after everything else
+  if (match_magic(magic, "FF 0A")) { // bare codestream
+    return FileType::jpeg_xl;
+  }
+
   return FileType::unknown;
 }
 
 FileType magic::file_type(std::istream &in) {
-  static constexpr std::size_t max_head_size = 12;
+  // an enhanced metafile names itself at offset 40, so the head has to reach 44
+  static constexpr std::size_t head_size = 64;
 
-  // value initialized, and cut back to what was actually read: a file shorter
-  // than the longest signature would otherwise be matched against whatever the
-  // stack held behind it
-  std::array<char, max_head_size> head{};
-  in.read(head.data(), head.size());
-
-  return file_type(
-      std::string(head.data(), static_cast<std::size_t>(in.gcount())));
+  return file_type(read_head(in, head_size));
 }
 
 FileType magic::file_type(const abstract::File &file) {
@@ -185,19 +212,22 @@ FileType magic::file_type(const File &file) {
   return file_type(*file.stream());
 }
 
-std::string_view magic::mimetype(const std::string &path,
+std::string_view magic::mimetype(const std::shared_ptr<abstract::File> &file,
                                  const Logger &logger) {
-  // the signature table above is not enough on its own: a zip and a compound
-  // file binary say nothing about which document they hold, and the answer for
-  // those only comes out of opening them. that is what `list_file_types` does,
-  // and it reports the container first and what was decoded from it after
+  // a zip or compound file binary only names its document once opened;
+  // `list_file_types` reports the container first and the decoded type after
   const std::vector<FileType> file_types =
-      open_strategy::list_file_types(std::make_shared<DiskFile>(path), logger);
+      open_strategy::list_file_types(file, logger);
   if (file_types.empty()) {
     throw UnknownFileType();
   }
 
   return odr::mimetype_by_file_type(file_types.back());
+}
+
+std::string_view magic::mimetype(const std::string &path,
+                                 const Logger &logger) {
+  return mimetype(std::make_shared<DiskFile>(path), logger);
 }
 
 } // namespace odr::internal

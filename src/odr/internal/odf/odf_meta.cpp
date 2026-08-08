@@ -17,7 +17,7 @@ namespace odr::internal::odf {
 
 namespace {
 
-bool lookup_file_type(const std::string &mimetype_in, FileType &file_type,
+void lookup_file_type(const std::string &mimetype_in, FileType &file_type,
                       std::string_view &mimetype_out) {
   // https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
   static const std::unordered_map<std::string, FileType> MIME_TYPES = {
@@ -60,7 +60,6 @@ bool lookup_file_type(const std::string &mimetype_in, FileType &file_type,
     file_type = FileType::unknown;
     mimetype_out = "application/octet-stream";
   }
-  return false;
 }
 
 } // namespace

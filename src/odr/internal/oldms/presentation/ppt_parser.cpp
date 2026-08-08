@@ -33,10 +33,9 @@ constexpr char line_break_mark = '\x0B';
 /// The control characters `build_paragraphs` splits on.
 constexpr std::array<char, 2> control_marks = {paragraph_mark, line_break_mark};
 
-/// Sequentially walks a container's child records — no tellg/absolute offsets.
-/// Construct with the stream at the container body. next() returns the next
-/// child header with the stream at its body; read up to recLen bytes and report
-/// them via consume(), the rest is skipped. Advances exactly container.recLen.
+/// Sequentially walks a container's child records; the stream must be at the
+/// container body. next() leaves the stream at the child's body — read up to
+/// recLen bytes and report them via consume(), the rest is skipped.
 class ChildCursor {
 public:
   ChildCursor(std::istream &in, const RecordHeader &container)
@@ -73,15 +72,6 @@ public:
       m_in->ignore(m_body);
       m_remaining -= static_cast<std::int64_t>(m_body);
       m_body = 0;
-    }
-  }
-
-  /// Skips any trailing bytes so the cursor advances by exactly
-  /// container.recLen.
-  void finish() {
-    if (m_remaining > 0) {
-      m_in->ignore(m_remaining);
-      m_remaining = 0;
     }
   }
 
@@ -137,8 +127,6 @@ std::string clean_text(const std::string &in) {
   out.reserve(in.size());
   for (const char c : in) {
     const auto uc = static_cast<std::uint8_t>(c);
-    // Keep tab and any non-control byte (>= 0x20, including UTF-8 lead and
-    // continuation bytes); drop the remaining control characters.
     if (uc < 0x20 && c != '\x09') {
       continue;
     }
@@ -250,9 +238,8 @@ struct Shape final {
 };
 
 /// Builds the paragraph/span/text subtree of one shape's text under
-/// `parent_id`. Paragraphs open lazily (the trailing paragraph mark adds no
-/// empty paragraph); each span and paragraph stores its style so empty
-/// paragraphs keep their height.
+/// `parent_id`; paragraphs open lazily, so the trailing paragraph mark adds no
+/// empty one.
 void build_paragraphs(ElementRegistry &registry,
                       const ElementIdentifier parent_id,
                       const StyledText &shape_text) {
@@ -441,10 +428,8 @@ std::vector<Shape>
 read_slide_shapes(std::istream &in, const RecordHeader &slide,
                   const std::vector<StyledText> &outline_texts,
                   StyleContext &context) {
-  // SlideContainer → DrawingContainer → OfficeArtDgContainer (mandatory).
   // The drawing holds a mandatory OfficeArtSpgrContainer plus optionally a
-  // direct shape not in any group ([MS-ODRAW] 2.2.13); both are read in
-  // stream (z) order.
+  // shape not in any group ([MS-ODRAW] 2.2.13), read in stream (z) order.
   const RecordHeader drawing = require_child(in, slide, RT_Drawing);
   const RecordHeader dg = require_child(in, drawing, RT_OfficeArtDgContainer);
 
@@ -526,9 +511,8 @@ SlideListText read_slide_list_text(std::istream &in,
   constexpr std::uint32_t persist_ref_size = sizeof(std::uint32_t);
 
   SlideListText result;
-  // Outline texts of the slide currently being read; valid until reassigned at
-  // the next SlidePersistAtom (unordered_map keeps references stable on
-  // insert).
+  // Outline texts of the slide being read; unordered_map keeps the pointer
+  // valid across inserts.
   std::vector<StyledText> *current = nullptr;
   PendingText pending;
   const auto flush = [&](const std::vector<TextCFRun> &runs) {
@@ -655,9 +639,9 @@ std::vector<BlipSlot> read_blip_store(std::istream &in,
       }
     } else if (child->recType == RT_OfficeArtBlipJPEG ||
                child->recType == RT_OfficeArtBlipPNG) {
-      // A BLIP directly in the store occupies a slot of its own; rewind is
-      // impossible on this stream, so re-parse from the header we just read.
-      // The header was already consumed by the cursor; read body inline.
+      // A BLIP directly in the store occupies a slot of its own; its header is
+      // already consumed, so the body is read here rather than via
+      // read_blip_record.
       const std::uint32_t prefix = blip_prefix_size(*child);
       if (child->recLen < prefix) {
         throw std::runtime_error("ppt: truncated BLIP record");
@@ -712,13 +696,10 @@ std::vector<std::string> read_font_collection(std::istream &in,
   return fonts;
 }
 
-/// Resolves the presentation slides via the [MS-PPT] reading algorithm (the
-/// only spec-defined path): the "Current User" stream points at the newest
-/// UserEditAtom, whose chain builds the persist directory, which resolves the
-/// live DocumentContainer and each SlideContainer — so slides come out in order
-/// from the live records, ignoring stale copies left by incremental saves.
-/// Malformed records throw. Returns each slide's shapes in z order; the
-/// shapes' styles accumulate in `context`.
+/// Resolves the presentation's slides via the [MS-PPT] 2.1.2 reading
+/// algorithm: "Current User" → UserEditAtom chain → persist directory → the
+/// live DocumentContainer and each SlideContainer. Returns each slide's shapes
+/// in z order; their styles accumulate in `context`.
 std::vector<std::vector<Shape>>
 collect_slides(std::istream &current_user, std::istream &document,
                const abstract::ReadableFilesystem &files,
@@ -752,8 +733,8 @@ collect_slides(std::istream &current_user, std::istream &document,
         read_header(document, RT_PersistDirectoryAtom);
     read_persist_directory(document, dir_header, directory);
 
-    // offsetLastEdit MUST strictly decrease (0 ends the chain); a
-    // non-decreasing value is a malformed/looping chain.
+    // offsetLastEdit MUST strictly decrease (0 ends the chain), so this also
+    // breaks a looping chain.
     if (edit.offsetLastEdit != 0 && edit.offsetLastEdit >= edit_offset) {
       throw std::runtime_error("ppt: non-decreasing UserEditAtom chain");
     }

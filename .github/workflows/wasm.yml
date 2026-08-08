@@ -1,0 +1,275 @@
+name: wasm
+
+on:
+  push:
+    # release branches are `release.yml`'s alone
+    branches-ignore:
+      - 'releases'
+      - 'release/**'
+  release:
+    types:
+      - published
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# See the cache-key comment in `build_test.yml` for why the keys look like this.
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 1G
+  CCACHE_KEY_SUFFIX: r1
+  CONAN_HOME: ${{ github.workspace }}/.conan2
+  CONAN_KEY_SUFFIX: r1
+
+jobs:
+  # Its own dependency set — no http server, no cli, a different exception ABI —
+  # so it cannot share a cache with `build-test`.
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # attaching the bundle to the release
+    env:
+      CACHE_FLAVOR: wasm
+      HOST_PROFILE: emscripten-wasm
+      BUILD_PROFILE: ubuntu-24.04-clang-18
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # the profiles use ccache as compiler launcher, so it must exist even for
+      # `--build missing`
+      - name: install ccache
+        run: |
+          sudo apt install ccache
+          ccache -V
+
+      - name: setup node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: 22
+
+      - name: setup python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install conan
+        run: pip install conan
+
+      - name: conan cache key
+        shell: bash
+        run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+
+      - name: cache conan
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          restore-keys: |
+            conan-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CONAN_KEY_SUFFIX }}-
+
+      - name: conan config
+        run: conan config install .github/config/conan
+
+      - name: restore ccache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-
+
+      # `--lockfile-partial`: the lockfile knows nothing of `emsdk`, a build
+      # requirement of this slice alone
+      - name: conan install
+        run: >
+          conan install .
+          --output-folder build
+          -o '&:with_wasm=True'
+          --profile:host '${{ env.HOST_PROFILE }}'
+          --profile:build '${{ env.BUILD_PROFILE }}'
+          --lockfile-partial
+          --build missing
+
+      - name: cmake configure
+        run: >
+          cmake -B build -S .
+          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DODR_WASM=ON
+          -DODR_CLI=OFF
+          -DODR_WITH_HTTP_SERVER=OFF
+          -DODR_TEST=ON
+
+      - name: cmake build
+        run: cmake --build build --target odr_wasm
+
+      - name: save ccache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+
+      - name: test
+        # `--no-tests=error`: without a usable node the suite is skipped, and a
+        # silently green job would be worse than a red one
+        run: ctest --test-dir build/wasm --output-on-failure --no-tests=error
+
+      # The regression that matters for a new target: a difference here is
+      # endianness, float formatting, hash ordering or locale drift. The wasm
+      # side goes through the package because that is what ships, and the CLI
+      # would need `-sNODERAWFS` to see the host's files. `translate` writes
+      # views with `write_html`, which is what `render()` returns, so matching
+      # `editable`/`formatHtml` makes the two byte-comparable.
+      - name: build the native translate to compare against
+        run: |
+          set -euo pipefail
+          conan install . \
+            --output-folder build-native \
+            --profile:host '${{ env.BUILD_PROFILE }}' \
+            --profile:build '${{ env.BUILD_PROFILE }}' \
+            --build missing
+          cmake -B build-native -S . \
+            -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DODR_CLI=ON -DODR_WITH_HTTP_SERVER=OFF -DODR_TEST=OFF
+          cmake --build build-native --target translate
+
+      - name: render matches the native build
+        run: |
+          set -euo pipefail
+          input="$PWD/wasm/testfixtures/mixed-layout.odt"
+          ./build-native/cli/translate "$input" "$PWD/out-native"
+          node --input-type=module -e '
+            import { Odr } from "./build/wasm/dist/index.js";
+            import { readFileSync, writeFileSync } from "node:fs";
+            const odr = await Odr.load();
+            const doc = odr.open(new Uint8Array(readFileSync(process.argv[1])), {
+              editable: true,
+              formatHtml: true,
+            });
+            writeFileSync(process.argv[2], doc.render(0).html);
+            doc.close();
+          ' "$input" "$PWD/out-wasm.html"
+          diff "$PWD/out-native/document.html" "$PWD/out-wasm.html"
+
+      - name: size report
+        run: |
+          set -euo pipefail
+          sudo apt install -y brotli
+          wasm=build/wasm/dist/odr-core.wasm
+          raw=$(stat -c%s "$wasm")
+          br=$(brotli -q 11 -c "$wasm" | wc -c)
+          {
+            echo "| | bytes |"
+            echo "|---|---|"
+            echo "| \`odr-core.wasm\` | $raw |"
+            echo "| brotli -q 11 | $br |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # A ratchet, not a target: the library sat at ~820 K brotli'd when
+          # this was written, so 1.5 M means something was linked in that
+          # should not have been.
+          if [ "$br" -gt 1572864 ]; then
+            echo "::error::brotli'd wasm is ${br} bytes, over the 1.5 M ratchet"
+            exit 1
+          fi
+
+      - name: assemble package
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            (cd build/wasm/dist && npm version --no-git-tag-version "$version")
+          fi
+          cp wasm/README.md build/wasm/dist/
+          (cd build/wasm/dist && npm pack)
+
+      - name: upload package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-asset-odr-core-npm
+          path: build/wasm/dist/*.tgz
+          if-no-files-found: error
+
+      # The npm tarball is an npm layout; this is the same files flat, to unzip
+      # onto a static host. `example.html` is `wasm/example/index.html` with its
+      # dev import repointed, so the demo has one source.
+      - name: assemble the browser bundle
+        run: |
+          set -euo pipefail
+          sed 's|\.\./\.\./build-wasm/wasm/dist/index\.js|./index.js|' \
+            wasm/example/index.html > build/wasm/dist/example.html
+          grep -q "'./index.js'" build/wasm/dist/example.html
+          bundle="odr-core-browser.zip"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            bundle="odr-core-browser-${GITHUB_REF_NAME}.zip"
+          fi
+          (cd build/wasm/dist && zip -qr "${GITHUB_WORKSPACE}/${bundle}" . -x '*.tgz')
+          echo "BUNDLE=${bundle}" >> "$GITHUB_ENV"
+          unzip -l "$bundle"
+
+      - name: upload the browser bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: odr-core-browser
+          path: ${{ env.BUNDLE }}
+          if-no-files-found: error
+
+      # Uploaded here rather than collected by `release.yml` as a
+      # `release-asset-*`: that only sweeps artifacts from the release run, and
+      # this workflow is not part of it — it reacts to `release: published`.
+      - name: attach the bundle to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" --clobber
+
+  # npm trusted publishing (OIDC), as `python.yml` does with PyPI: the package
+  # on npm must name this repository and workflow.
+  npm:
+    needs: build
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: download package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-asset-odr-core-npm
+          path: dist
+
+      # OIDC needs npm >= 11.5.1, and node 24's bundled npm varies by minor, so
+      # the CLI is upgraded outright. Too old and the publish fails `ENEEDAUTH`.
+      - name: setup node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: upgrade npm for OIDC
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      # `apple/AGENTS.md`'s rule: a merely well-formed package publishes happily
+      # and then fails at the consumer.
+      - name: smoke the packed tarball
+        run: |
+          set -euo pipefail
+          mkdir -p verify && cd verify
+          npm init -y >/dev/null
+          npm install ../dist/*.tgz
+          node --input-type=module -e '
+            import { Odr } from "@opendocument/odr-core";
+            const odr = await Odr.load();
+            if (!odr.identify()) throw new Error("no identity");
+            if (odr.fileTypes().length === 0) throw new Error("no file types");
+            console.log("ok:", odr.identify());
+          '
+
+      - name: publish
+        run: npm publish dist/*.tgz --provenance --access public

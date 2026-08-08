@@ -45,8 +45,6 @@ std::optional<TextAlign> read_text_align_attribute(pugi::xml_attribute);
 std::optional<VerticalAlign> read_vertical_align_attribute(pugi::xml_attribute);
 std::optional<std::string> read_border_node(pugi::xml_node);
 
-std::string read_text_property(pugi::xml_node);
-
 using Relations = std::unordered_map<std::string, std::string>;
 using XmlDocumentsAndRelations =
     std::unordered_map<AbsPath, std::pair<pugi::xml_document, Relations>>;

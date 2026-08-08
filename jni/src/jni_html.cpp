@@ -15,6 +15,7 @@ namespace {
 using odr_jni::destroy_handle;
 using odr_jni::from_handle;
 using odr_jni::guarded;
+using odr_jni::HandleGuard;
 using odr_jni::make_handle;
 using odr_jni::to_jbytes;
 using odr_jni::to_jstring;
@@ -31,12 +32,16 @@ jlongArray to_jlong_array(JNIEnv *env, const std::vector<jlong> &values) {
 }
 
 jlongArray wrap_views(JNIEnv *env, const odr::HtmlViews &views) {
-  std::vector<jlong> handles;
-  handles.reserve(views.size());
+  HandleGuard<odr::HtmlView> guard(views.size());
   for (const odr::HtmlView &view : views) {
-    handles.push_back(make_handle(odr::HtmlView(view)));
+    guard.add(view);
   }
-  return to_jlong_array(env, handles);
+  jlongArray result = to_jlong_array(env, guard.handles());
+  if (result == nullptr) {
+    return nullptr;
+  }
+  guard.release();
+  return result;
 }
 
 /// Builds an `app.opendocument.core.Html` from an offline result.
@@ -49,15 +54,23 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   }
   jmethodID page_ctor = env->GetMethodID(
       page_cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
+  if (page_ctor == nullptr) {
+    return nullptr;
+  }
   const std::vector<odr::HtmlPage> &pages = html.pages();
   jobjectArray page_array =
       env->NewObjectArray(static_cast<jsize>(pages.size()), page_cls, nullptr);
+  if (page_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(pages.size()); ++i) {
-    jobject page =
-        env->NewObject(page_cls, page_ctor, to_jstring(env, pages[i].name),
-                       to_jstring(env, pages[i].path));
+    jstring name = to_jstring(env, pages[i].name);
+    jstring path = to_jstring(env, pages[i].path);
+    jobject page = env->NewObject(page_cls, page_ctor, name, path);
     env->SetObjectArrayElement(page_array, i, page);
     env->DeleteLocalRef(page);
+    env->DeleteLocalRef(path);
+    env->DeleteLocalRef(name);
   }
   env->DeleteLocalRef(page_cls);
 
@@ -68,6 +81,9 @@ jobject make_html(JNIEnv *env, odr::Html html) {
   jmethodID html_ctor = env->GetMethodID(
       html_cls, "<init>",
       "(Lapp/opendocument/core/HtmlConfig;[Lapp/opendocument/core/HtmlPage;)V");
+  if (html_ctor == nullptr) {
+    return nullptr;
+  }
   jobject result = env->NewObject(html_cls, html_ctor, config, page_array);
   env->DeleteLocalRef(html_cls);
   return result;
@@ -85,20 +101,42 @@ jobject make_content(JNIEnv *env, const std::string &html,
   jmethodID located_ctor = env->GetMethodID(
       located_cls, "<init>",
       "(Lapp/opendocument/core/HtmlResource;Ljava/lang/String;)V");
+  if (located_ctor == nullptr) {
+    return nullptr;
+  }
   jclass resource_cls = env->FindClass("app/opendocument/core/HtmlResource");
+  if (resource_cls == nullptr) {
+    return nullptr;
+  }
   jmethodID resource_ctor = env->GetMethodID(resource_cls, "<init>", "(J)V");
+  if (resource_ctor == nullptr) {
+    return nullptr;
+  }
 
   jobjectArray located_array = env->NewObjectArray(
       static_cast<jsize>(resources.size()), located_cls, nullptr);
+  if (located_array == nullptr) {
+    return nullptr;
+  }
   for (jsize i = 0; i < static_cast<jsize>(resources.size()); ++i) {
     const auto &[resource, location] = resources[i];
-    jobject resource_obj = env->NewObject(
-        resource_cls, resource_ctor, make_handle(odr::HtmlResource(resource)));
-    jobject located = env->NewObject(
-        located_cls, located_ctor, resource_obj,
-        location.has_value() ? to_jstring(env, *location) : nullptr);
+    HandleGuard<odr::HtmlResource> guard(1);
+    jobject resource_obj =
+        env->NewObject(resource_cls, resource_ctor, guard.add(resource));
+    if (resource_obj == nullptr) {
+      return nullptr;
+    }
+    // the Java wrapper exists, so its post-mortem destroyer owns the handle now
+    guard.release();
+    jstring location_str =
+        location.has_value() ? to_jstring(env, *location) : nullptr;
+    jobject located =
+        env->NewObject(located_cls, located_ctor, resource_obj, location_str);
     env->SetObjectArrayElement(located_array, i, located);
     env->DeleteLocalRef(located);
+    if (location_str != nullptr) {
+      env->DeleteLocalRef(location_str);
+    }
     env->DeleteLocalRef(resource_obj);
   }
   env->DeleteLocalRef(resource_cls);
@@ -111,6 +149,9 @@ jobject make_content(JNIEnv *env, const std::string &html,
   jmethodID content_ctor = env->GetMethodID(
       content_cls, "<init>",
       "(Ljava/lang/String;[Lapp/opendocument/core/Html$LocatedResource;)V");
+  if (content_ctor == nullptr) {
+    return nullptr;
+  }
   jobject result = env->NewObject(content_cls, content_ctor,
                                   to_jstring(env, html), located_array);
   env->DeleteLocalRef(content_cls);
@@ -174,8 +215,9 @@ Java_app_opendocument_core_Html_translateFilesystem(JNIEnv *env, jclass,
 // app.opendocument.core.HtmlService
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlService_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::HtmlService>(handle);
+Java_app_opendocument_core_HtmlService_destroy(JNIEnv *env, jclass,
+                                               jlong handle) {
+  destroy_handle<odr::HtmlService>(env, handle);
 }
 
 extern "C" JNIEXPORT jobject JNICALL
@@ -269,8 +311,8 @@ Java_app_opendocument_core_HtmlService_bringOfflineViewsNative(
 // app.opendocument.core.HtmlView
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlView_destroy(JNIEnv *, jclass, jlong handle) {
-  destroy_handle<odr::HtmlView>(handle);
+Java_app_opendocument_core_HtmlView_destroy(JNIEnv *env, jclass, jlong handle) {
+  destroy_handle<odr::HtmlView>(env, handle);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -322,9 +364,9 @@ Java_app_opendocument_core_HtmlView_bringOfflineNative(JNIEnv *env, jobject,
 // app.opendocument.core.HtmlResource
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_HtmlResource_destroy(JNIEnv *, jclass,
+Java_app_opendocument_core_HtmlResource_destroy(JNIEnv *env, jclass,
                                                 jlong handle) {
-  destroy_handle<odr::HtmlResource>(handle);
+  destroy_handle<odr::HtmlResource>(env, handle);
 }
 
 extern "C" JNIEXPORT jint JNICALL

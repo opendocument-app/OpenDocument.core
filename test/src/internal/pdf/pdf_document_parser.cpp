@@ -26,12 +26,18 @@ using PdfFileBuilder = odr::test::pdf::PdfFileBuilder;
 
 namespace {
 
+/// Null rather than undefined behaviour when the parse fell short, so the
+/// caller's `ASSERT_NE` reports instead of the test crashing.
 const Page *first_page(const Document &document) {
-  return dynamic_cast<Page *>(document.catalog->pages->kids.front());
+  const auto &kids = document.catalog->pages->kids;
+  return kids.empty() ? nullptr : dynamic_cast<Page *>(kids.front());
 }
 
 const Font *first_page_font(const Document &document, const std::string &name) {
   const auto *page = first_page(document);
+  if (page == nullptr || page->resources == nullptr) {
+    return nullptr;
+  }
   return page->resources->font.at(name);
 }
 
@@ -405,6 +411,7 @@ TEST(DocumentParser, form_xobject_cycle_is_represented_via_cache) {
   const std::unique_ptr<Document> document = parser.parse_document();
 
   const Page *page = first_page(*document);
+  ASSERT_NE(page, nullptr);
   ASSERT_NE(page->resources, nullptr);
 
   const XObject *fm0 = page->resources->x_object.at("Fm0");
@@ -434,6 +441,7 @@ TEST(DocumentParser, image_named_colorspace_resolves_and_encodes) {
   const std::unique_ptr<Document> document = parser.parse_document();
 
   const Page *page = first_page(*document);
+  ASSERT_NE(page, nullptr);
   ASSERT_NE(page->resources, nullptr);
   const XObject *image = page->resources->x_object.at("Im0");
   ASSERT_NE(image, nullptr);

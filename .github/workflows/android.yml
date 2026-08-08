@@ -41,8 +41,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: checkout conan-odr-index
-        run: git submodule update --init --depth 1 conan-odr-index
 
       - name: install ccache
         run: |
@@ -61,7 +59,7 @@ jobs:
 
       - name: conan cache key
         shell: bash
-        run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+        run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
       - name: cache conan
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -71,8 +69,6 @@ jobs:
           restore-keys: |
             conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-
 
-      - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 

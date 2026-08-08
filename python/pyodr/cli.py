@@ -60,17 +60,20 @@ def _serve(args, file) -> int:
         print("pyodr was built without the HTTP server", file=sys.stderr)
         return 1
 
-    server_config = pyodr.HttpServer.Config()
-    server_config.cache_path = tempfile.mkdtemp(prefix="pyodr-server-")
-    server = pyodr.HttpServer(server_config)
-
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
+    cache = tempfile.mkdtemp(prefix="pyodr-server-")
+    service = pyodr.html.translate(file, cache, html_config)
 
     prefix = "file"
-    views = server.serve_file(file, prefix, html_config)
+    server = pyodr.HttpServer()
+    server.connect_service(service, prefix)
+    # bind before printing: the port is only known once the socket is, and it is
+    # not necessarily the one that was asked for
+    port = server.bind(args.host, args.port)
     urls = [
-        f"http://{args.host}:{args.port}/file/{prefix}/{view.path()}" for view in views
+        f"http://{args.host}:{port}/file/{prefix}/{view.path()}"
+        for view in service.list_views()
     ]
     for url in urls:
         print(url)
@@ -80,7 +83,7 @@ def _serve(args, file) -> int:
     # `listen` blocks in C++; restore the default SIGINT handler so Ctrl+C
     # terminates the server.
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    server.listen(args.host, args.port)
+    server.listen()
 
     return 0
 

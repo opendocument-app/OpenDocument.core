@@ -2,9 +2,20 @@
 
 #include <odr/internal/util/byte_util.hpp>
 
+#include <algorithm>
 #include <iostream>
+#include <stdexcept>
 
 namespace odr::internal::util {
+
+namespace {
+
+/// The one failure every read here reports.
+[[noreturn]] void throw_exhausted() {
+  throw std::runtime_error("byte_stream: unexpected stream exhaust");
+}
+
+} // namespace
 
 bool byte_stream::try_read(std::istream &in, char *out, std::size_t count) {
   while (count > 0) {
@@ -21,7 +32,7 @@ bool byte_stream::try_read(std::istream &in, char *out, std::size_t count) {
 
 void byte_stream::read(std::istream &in, char *out, std::size_t count) {
   if (!try_read(in, out, count)) {
-    throw std::runtime_error("byte_stream: failed to read from stream");
+    throw_exhausted();
   }
 }
 
@@ -29,16 +40,21 @@ std::uint8_t byte_stream::read_u8(std::istream &in) {
   const auto c = in.rdbuf()->sbumpc();
   if (c == eof) {
     in.setstate(std::ios::eofbit);
-    throw std::runtime_error("unexpected stream exhaust");
+    throw_exhausted();
   }
-  return static_cast<char_type>(c);
+  return static_cast<std::uint8_t>(c);
 }
 
-std::string byte_stream::read_u8s(std::istream &in, const std::size_t n) {
-  std::string result(n, '\0');
-  if (const auto m = static_cast<std::streamsize>(n);
-      in.rdbuf()->sgetn(result.data(), m) != m) {
-    throw std::runtime_error("unexpected stream exhaust");
+std::string byte_stream::read_u8s(std::istream &in, const std::uint64_t n) {
+  constexpr std::uint64_t chunk_size = 4096;
+
+  std::string result;
+  while (result.size() < n) {
+    const std::size_t offset = result.size();
+    const auto step =
+        static_cast<std::size_t>(std::min(chunk_size, n - offset));
+    result.resize(offset + step);
+    read(in, result.data() + offset, step);
   }
   return result;
 }

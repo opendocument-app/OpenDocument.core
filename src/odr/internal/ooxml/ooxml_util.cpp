@@ -10,6 +10,31 @@
 
 namespace odr::internal {
 
+namespace {
+
+// value readers shared by the `w:val`-node and the bare-attribute overloads
+
+bool line_from_value(const char *value) {
+  return std::strcmp("none", value) != 0 && std::strcmp("false", value) != 0 &&
+         std::strcmp("noStrike", value) != 0;
+}
+
+std::optional<FontWeight> font_weight_from_value(const char *value) {
+  if (std::strcmp("false", value) == 0 || std::strcmp("0", value) == 0) {
+    return FontWeight::normal;
+  }
+  return FontWeight::bold;
+}
+
+std::optional<FontStyle> font_style_from_value(const char *value) {
+  if (std::strcmp("false", value) == 0) {
+    return {};
+  }
+  return FontStyle::italic;
+}
+
+} // namespace
+
 std::optional<std::string>
 ooxml::read_string_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
@@ -89,10 +114,8 @@ ooxml::read_pct_attribute(const pugi::xml_attribute attribute) {
     return {};
   }
 
-  // handle percentage which is not always a percentage for tables
-  // http://officeopenxml.com/WPtableWidth.php
-  // potentially this should be moved to a table parser
-
+  // a table width in "pct" is in fiftieths of a percent unless it carries a
+  // literal `%` — http://officeopenxml.com/WPtableWidth.php
   std::string val = attribute.value();
   util::string::trim_inplace(val);
 
@@ -128,24 +151,14 @@ bool ooxml::read_line_attribute(const pugi::xml_node node) {
   if (!node) {
     return false;
   }
-  if (const char *val = node.attribute("w:val").value();
-      std::strcmp("none", val) == 0 || std::strcmp("false", val) == 0 ||
-      std::strcmp("noStrike", val) == 0) {
-    return false;
-  }
-  return true;
+  return line_from_value(node.attribute("w:val").value());
 }
 
 bool ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return false;
   }
-  if (const char *val = attribute.value(); std::strcmp("none", val) == 0 ||
-                                           std::strcmp("false", val) == 0 ||
-                                           std::strcmp("noStrike", val) == 0) {
-    return false;
-  }
-  return true;
+  return line_from_value(attribute.value());
 }
 
 std::optional<std::string>
@@ -169,11 +182,7 @@ ooxml::read_font_weight_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  if (const char *val = node.attribute("w:val").value();
-      std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
-    return FontWeight::normal;
-  }
-  return FontWeight::bold;
+  return font_weight_from_value(node.attribute("w:val").value());
 }
 
 std::optional<FontWeight>
@@ -181,11 +190,7 @@ ooxml::read_font_weight_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  if (const char *val = attribute.value();
-      std::strcmp("false", val) == 0 || std::strcmp("0", val) == 0) {
-    return FontWeight::normal;
-  }
-  return FontWeight::bold;
+  return font_weight_from_value(attribute.value());
 }
 
 std::optional<FontStyle>
@@ -193,11 +198,7 @@ ooxml::read_font_style_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  if (const char *val = node.attribute("w:val").value();
-      std::strcmp("false", val) == 0) {
-    return {};
-  }
-  return FontStyle::italic;
+  return font_style_from_value(node.attribute("w:val").value());
 }
 
 std::optional<FontStyle>
@@ -205,10 +206,7 @@ ooxml::read_font_style_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  if (const char *val = attribute.value(); std::strcmp("false", val) == 0) {
-    return {};
-  }
-  return FontStyle::italic;
+  return font_style_from_value(attribute.value());
 }
 
 std::optional<TextAlign>
@@ -259,11 +257,7 @@ std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
   }
   std::string result;
   result.append(size->to_string()).append(" ");
-  if (std::strcmp("none", val) == 0) {
-    result.append(node.attribute("w:val").value()).append(" ");
-  } else {
-    result.append("solid ");
-  }
+  result.append(std::strcmp("none", val) == 0 ? "none " : "solid ");
   if (const std::optional<Color> color =
           read_color_attribute(node.attribute("w:color"))) {
     result.append(html::color(*color));

@@ -58,6 +58,9 @@ struct SearchHints {
   std::uint16_t range_shift;
 };
 SearchHints search_hints(const std::uint16_t count, const std::uint16_t unit) {
+  if (count == 0) {
+    return {0, 0, 0}; // log2(0) is undefined; an empty directory has no range
+  }
   const auto entry_selector =
       static_cast<std::uint16_t>(std::bit_width(count) - 1);
   const auto search_range =
@@ -150,12 +153,11 @@ font::build_sfnt(const std::uint32_t sfnt_version,
   return out;
 }
 
-/// Format-12 `cmap` subtable (segmented coverage): sequential map groups over
-/// the full Unicode range, each `[startCharCode, endCharCode]` mapping to
-/// `startGlyphID + (code - startCharCode)`. Used when the map reaches beyond
-/// the BMP (glyphs overflowing into Supplementary PUA-A), which format 4 cannot
-/// express. Wrapped in a (Windows, Unicode full repertoire) encoding record.
-static std::string
+namespace {
+
+/// Format-12 `cmap` subtable (segmented coverage), in a (Windows, Unicode full
+/// repertoire) encoding record — what format 4 cannot express.
+std::string
 serialize_cmap_format12(const std::map<char32_t, std::uint16_t> &map) {
   struct Group {
     std::uint32_t start_code;
@@ -195,6 +197,8 @@ serialize_cmap_format12(const std::map<char32_t, std::uint16_t> &map) {
   cmap += sub;
   return cmap;
 }
+
+} // namespace
 
 std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   // Format 4 tops out at the BMP; a map that overflows into the Supplementary
@@ -375,29 +379,32 @@ std::string font::serialize_os2(const std::uint16_t units_per_em,
   return os2;
 }
 
-void font::reencode_to_pua(sfnt::SfntFont &font,
-                           const std::map<char32_t, std::uint16_t> &extra) {
+std::map<char32_t, std::uint16_t>
+font::pua_cmap(const std::uint16_t glyph_count,
+               const std::map<char32_t, std::uint16_t> &extra) {
   // A uint16 glyph id always fits: `pua_code_point` maps the BMP PUA first
   // (6400 slots) then overflows into Supplementary PUA-A, whose combined
   // `pua_capacity` (71934) exceeds any 16-bit glyph count.
   static_assert(std::numeric_limits<std::uint16_t>::max() < pua_capacity);
 
   std::map<char32_t, std::uint16_t> map;
-  for (std::uint16_t glyph = 0; glyph < font.glyph_count(); ++glyph) {
+  for (std::uint16_t glyph = 0; glyph < glyph_count; ++glyph) {
     map[pua_code_point(glyph)] = glyph;
   }
-  // Real-Unicode entries: caller guarantees BMP, non-PUA keys, so these never
-  // collide with the PUA range filled above. A glyph id the font does not have
-  // is dropped: `glyph_for_code` can fall back to "code as GID" (ISO 32000-1
-  // 9.6.6.4) and yield an out-of-range index, and a single cmap reference past
-  // `numGlyphs` makes the OTS sanitizer reject the *entire* font (so every
-  // glyph would render as a tofu box, not just the unmappable code).
+  // The caller guarantees BMP, non-PUA keys, so these never collide with the
+  // range filled above. An out-of-range glyph is dropped: `glyph_for_code` can
+  // fall back to "code as GID" (ISO 32000-1 9.6.6.4).
   for (const auto &[code, glyph] : extra) {
-    if (glyph < font.glyph_count()) {
+    if (glyph < glyph_count) {
       map[code] = glyph;
     }
   }
-  font.set_cmap(std::move(map));
+  return map;
+}
+
+void font::reencode_to_pua(sfnt::SfntFont &font,
+                           const std::map<char32_t, std::uint16_t> &extra) {
+  font.set_cmap(pua_cmap(font.glyph_count(), extra));
 }
 
 } // namespace odr::internal

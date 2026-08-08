@@ -18,11 +18,11 @@ namespace odr::internal::pdf {
 namespace {
 
 /// Append a PNG chunk: length, four-byte type, data, CRC over type+data.
-void write_chunk(std::string &out, const char (&type)[5],
+void write_chunk(std::string &out, const std::string_view type,
                  const std::string &data) {
   util::byte_string::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
   const std::size_t crc_start = out.size();
-  out.append(type, 4);
+  out.append(type);
   out.append(data);
   util::byte_string::put_u32_be(
       out, crypto::util::crc32(std::string_view(out).substr(crc_start)));
@@ -95,11 +95,11 @@ std::string pdf::write_png(const std::string &pixels, const std::int32_t width,
     raw.append(pixels, static_cast<std::size_t>(y) * stride, stride);
   }
 
-  std::string out;
-  static const char signature[] = {
+  static constexpr std::array<char, 8> signature = {
       static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
       static_cast<char>(0x1A), '\n'};
-  out.append(signature, sizeof(signature));
+  std::string out;
+  out.append(signature.data(), signature.size());
 
   std::string ihdr;
   util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
@@ -131,9 +131,7 @@ std::string pdf::encode_image_png(const std::string &samples,
   }
 
   const std::uint32_t max_sample =
-      (bits_per_component >= 32)
-          ? 0xFFFFFFFFu
-          : ((1u << static_cast<std::uint32_t>(bits_per_component)) - 1u);
+      (1u << static_cast<std::uint32_t>(bits_per_component)) - 1u;
   const bool indexed = color_space.kind == ColorSpaceKind::indexed;
 
   const auto row_bits = static_cast<std::size_t>(width) *

@@ -27,6 +27,7 @@
 using namespace odr;
 using namespace odr::test;
 using odr::test::oldms::append_u16;
+using odr::test::oldms::append_u32;
 using odr::test::oldms::collect_text;
 
 namespace {
@@ -117,11 +118,6 @@ TEST(OldMs, xls_decode_rk) {
 }
 
 namespace {
-
-void append_u32(std::string &out, const std::uint32_t value) {
-  append_u16(out, static_cast<std::uint16_t>(value & 0xFFFF));
-  append_u16(out, static_cast<std::uint16_t>(value >> 16));
-}
 
 /// A Font record body ([MS-XLS] 2.4.122).
 std::string make_font(const std::uint16_t dy_height, const std::uint16_t grbit,

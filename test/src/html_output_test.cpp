@@ -21,6 +21,8 @@ using namespace odr::internal;
 using namespace odr::test;
 namespace fs = std::filesystem;
 
+namespace {
+
 FileType expected_file_type_pre_decryption(const TestFile &test_file) {
   if (test_file.password.has_value()) {
     if (test_file.type == FileType::office_open_xml_document ||
@@ -45,6 +47,8 @@ bool document_type_is_comparable(const TestFile &test_file,
   return test_file.type != FileType::portable_document_format ||
          file_meta.document_type != DocumentType::unknown;
 }
+
+} // namespace
 
 struct TestParams {
   TestFile test_file;
@@ -166,11 +170,10 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.pdf_text_mode = params.pdf_text_mode;
 
   const std::string output_path_tmp = output_path + "/tmp";
-  fs::create_directories(output_path);
-  std::filesystem::create_directories(output_path_tmp);
+  fs::create_directories(output_path_tmp);
   HtmlService service = html::translate(file, output_path_tmp, config);
   Html html = service.bring_offline(output_path);
-  std::filesystem::remove_all(output_path_tmp);
+  fs::remove_all(output_path_tmp);
 
   for (const HtmlPage &html_page : html.pages()) {
     EXPECT_TRUE(fs::is_regular_file(html_page.path));

@@ -25,6 +25,7 @@ option(ODR_BUNDLE_ASSETS "Removed, does nothing (deprecated)" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
+option(ODR_WASM "Build WebAssembly bindings" OFF)
 
 include(GNUInstallDirs)
 
@@ -56,10 +57,8 @@ find_package(pugixml REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(vincentlaucsb-csv-parser REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
-find_package(argon2 REQUIRED)
 
 set(PRE_CONFIGURE_FILE "src/odr/internal/git_info.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp")
@@ -124,6 +123,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
 
+        "src/odr/internal/crypto/crypto_argon2.cpp"
         "src/odr/internal/crypto/crypto_util.cpp"
 
         "src/odr/internal/csv/csv_file.cpp"
@@ -226,6 +226,8 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
 
+        "src/odr/internal/svg/svg_util.cpp"
+
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"
         "src/odr/internal/svm/svm_to_svg.cpp"
@@ -264,10 +266,8 @@ target_link_libraries(odr
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         utf8::cpp
-        argon2::argon2
 )
 
 if (ODR_WITH_HTTP_SERVER)
@@ -319,6 +319,10 @@ endif ()
 
 if (ODR_APPLE)
     add_subdirectory("apple")
+endif ()
+
+if (ODR_WASM)
+    add_subdirectory("wasm")
 endif ()
 
 if (ODR_TEST)

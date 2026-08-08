@@ -6,14 +6,9 @@ import java.util.function.LongConsumer;
  * A {@link NativeResource} whose handle stays valid for the duration of a native
  * call, even when another thread closes it meanwhile.
  *
- * <p>{@link NativeResource#handle()} hands out a raw pointer and {@link #close()}
- * frees what it points at, so a call that has read the handle but not used it yet
- * is left holding a dangling one. For nearly every binding that is caller error -
- * you do not use an object while you close it - and plain {@link NativeResource}
- * is right, at no cost in fields or locks. It is not caller error where the API
- * asks for the call to be made on a thread of its own, which is
- * {@code HttpServer.listen()}: closing the server is exactly how that call is
- * meant to end.
+ * <p>Using an object while closing it is caller error everywhere except where the
+ * API asks for the call to run on a thread of its own - {@code HttpServer.listen()},
+ * which closing the server is meant to end.
  *
  * <p>{@link #guarded} counts such a call in and out. {@link #close()} stops new
  * ones from starting, calls {@link #unblock()} to make the ones in flight return,

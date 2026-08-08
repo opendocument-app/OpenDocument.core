@@ -82,9 +82,8 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
     if (const std::int32_t fixed_size = sprm.operand_size(); fixed_size >= 0) {
       operand_size = static_cast<std::size_t>(fixed_size);
     } else {
-      // spra == 6: the first operand byte is the size of the remainder. The
-      // two SPRMs encoded differently (sprmTDefTable, sprmPChgTabs with
-      // cb == 0xFF) are not character properties and must not appear here.
+      // spra == 6: the first operand byte sizes the remainder. The two SPRMs
+      // encoded otherwise are not character properties ([MS-DOC] 2.2.7).
       if (at >= grpprl.size()) {
         throw std::runtime_error("doc: Prl operand overruns grpprl");
       }
@@ -133,8 +132,8 @@ text::apply_character_sprms(TextStyle style, const std::string_view grpprl,
       style.font_size = Measure(half_points / 2.0, DynamicUnit("pt"));
     } break;
     case sprmCRgFtc0: {
-      // SttbfFfn index ([MS-DOC] 2.6.1); with 0 entries the value MUST be 0
-      // and the (unmodelled) style-sheet default font applies — leave unset.
+      // SttbfFfn index ([MS-DOC] 2.6.1); with 0 entries it MUST be 0 and the
+      // unmodelled style-sheet default font applies.
       const auto ftc = static_cast<std::int16_t>(
           util::byte::from_little_endian<std::uint16_t>(operand));
       if (ftc < 0 || (font_names.empty() ? ftc != 0
@@ -192,8 +191,7 @@ std::vector<std::string> text::read_font_names(std::istream &table_stream,
     const auto ffn = util::byte_stream::read<FfnFixed>(table_stream);
     (void)ffn;
 
-    // xszFfn: null-terminated UTF-16 within the remaining bytes; an
-    // alternative name (xszAlt) may follow the terminator.
+    // xszFfn: null-terminated UTF-16; an alternative name may follow it.
     const std::size_t name_units = (cch_data - sizeof(FfnFixed)) / 2;
     std::u16string name = read_string_uncompressed(table_stream, name_units);
     if ((cch_data - sizeof(FfnFixed)) % 2 != 0) {

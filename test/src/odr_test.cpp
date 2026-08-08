@@ -25,7 +25,7 @@ namespace {
 std::vector<FileType> every_file_type() {
   std::vector<FileType> result;
   for (auto i = static_cast<std::size_t>(FileType::unknown);
-       i <= static_cast<std::size_t>(FileType::audio_video_interleave); ++i) {
+       i <= static_cast<std::size_t>(FileType::xml); ++i) {
     result.push_back(static_cast<FileType>(i));
   }
   return result;
@@ -33,6 +33,7 @@ std::vector<FileType> every_file_type() {
 
 } // namespace
 
+/// `main` carries no version — only a release build stamps one (see AGENTS.md).
 TEST(odr, version) { EXPECT_TRUE(odr::version().empty()); }
 
 TEST(odr, commit) { EXPECT_FALSE(odr::commit_hash().empty()); }

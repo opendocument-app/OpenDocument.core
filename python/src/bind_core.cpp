@@ -36,7 +36,10 @@ void odr_python::bind_core(py::module_ &m) {
                   py::arg("path"));
 
   // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
-  const py::exception<odr::Exception> error(m, "Error");
+  // `register_exception`, not `py::exception`: the latter has no translator.
+  // Registered first so it is tried last - pybind11 reverses that order.
+  const py::exception<odr::Exception> &error =
+      py::register_exception<odr::Exception>(m, "Error", PyExc_RuntimeError);
 
   py::register_exception<odr::UnsupportedOperation>(m, "UnsupportedOperation",
                                                     error);
@@ -69,12 +72,8 @@ void odr_python::bind_core(py::module_ &m) {
 void odr_python::bind_functions(py::module_ &m) {
   m.def("all_file_types", &odr::all_file_types,
         "Every file type this library knows about.");
-  m.def(
-      "file_type_by_file_extension",
-      [](const std::string &extension) {
-        return odr::file_type_by_file_extension(extension);
-      },
-      py::arg("extension"));
+  m.def("file_type_by_file_extension", &odr::file_type_by_file_extension,
+        py::arg("extension"));
   m.def(
       "file_extensions_by_file_type",
       [](const odr::FileType type) {
@@ -119,6 +118,16 @@ void odr_python::bind_functions(py::module_ &m) {
   m.def("capabilities_by_file_type", &odr::capabilities_by_file_type,
         py::arg("type"), "What this library can do with the file type.");
 
+  // Each of these is bound for `File` as well as for a path: a caller holding
+  // bytes (`File.from_memory`) must be able to reach everything a caller
+  // holding a path can.
+  m.def(
+      "list_file_types",
+      [](const odr::File &file, const odr::Logger &logger) {
+        return odr::list_file_types(file, logger);
+      },
+      py::arg("file"), py::arg("logger") = odr::Logger::null(),
+      "Determine the possible file types of a file.");
   m.def(
       "list_file_types",
       [](const std::string &path, const odr::Logger &logger) {
@@ -128,25 +137,60 @@ void odr_python::bind_functions(py::module_ &m) {
       "Determine the possible file types of a file.");
   m.def(
       "mimetype",
+      [](const odr::File &file, const odr::Logger &logger) {
+        return std::string(odr::mimetype(file, logger));
+      },
+      py::arg("file"), py::arg("logger") = odr::Logger::null(),
+      "Determine the MIME type of a file.");
+  m.def(
+      "mimetype",
       [](const std::string &path, const odr::Logger &logger) {
         return std::string(odr::mimetype(path, logger));
       },
       py::arg("path"), py::arg("logger") = odr::Logger::null(),
       "Determine the MIME type of a file.");
 
+  // Decoding is long-running, so it must not hold the GIL. Re-entry is safe: a
+  // Python `ILogger` re-acquires it in the trampoline.
+  m.def(
+      "open",
+      [](const odr::File &file, const odr::Logger &logger) {
+        return odr::open(file, logger);
+      },
+      py::arg("file"), py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(), "Decode a file.");
+  m.def(
+      "open",
+      [](const odr::File &file, const odr::FileType as,
+         const odr::Logger &logger) { return odr::open(file, as, logger); },
+      py::arg("file"), py::arg("as_type"),
+      py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
+      "Decode a file as a specific file type.");
+  m.def(
+      "open",
+      [](const odr::File &file, const odr::DecodePreference &preference,
+         const odr::Logger &logger) {
+        return odr::open(file, preference, logger);
+      },
+      py::arg("file"), py::arg("preference"),
+      py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
+      "Decode a file with a decode preference.");
   m.def(
       "open",
       [](const std::string &path, const odr::Logger &logger) {
         return odr::open(path, logger);
       },
       py::arg("path"), py::arg("logger") = odr::Logger::null(),
-      "Open and decode a file.");
+      py::call_guard<py::gil_scoped_release>(), "Open and decode a file.");
   m.def(
       "open",
       [](const std::string &path, const odr::FileType as,
          const odr::Logger &logger) { return odr::open(path, as, logger); },
       py::arg("path"), py::arg("as_type"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Open and decode a file as a specific file type.");
   m.def(
       "open",
@@ -156,5 +200,6 @@ void odr_python::bind_functions(py::module_ &m) {
       },
       py::arg("path"), py::arg("preference"),
       py::arg("logger") = odr::Logger::null(),
+      py::call_guard<py::gil_scoped_release>(),
       "Open and decode a file with a decode preference.");
 }

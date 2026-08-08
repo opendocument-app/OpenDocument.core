@@ -8,6 +8,7 @@
 #include <odr/internal/zip/zip_exceptions.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
+#include <algorithm>
 #include <string>
 
 #include <miniz/miniz.h>
@@ -83,7 +84,8 @@ void ZipArchive::save(std::ostream &out) const {
     const auto o = static_cast<std::ostream *>(opaque);
     o->write(static_cast<const char *>(buffer),
              static_cast<std::streamsize>(size));
-    return size;
+    // A short write has to surface, or the archive is silently truncated.
+    return o->good() ? size : std::size_t{0};
   };
   state = mz_zip_writer_init(&archive, 0);
   if (!state) {
@@ -131,13 +133,8 @@ ZipArchive::Iterator ZipArchive::begin() const {
 ZipArchive::Iterator ZipArchive::end() const { return std::cend(m_entries); }
 
 ZipArchive::Iterator ZipArchive::find(const RelPath &path) const {
-  for (auto it = begin(); it != end(); ++it) {
-    if (it->path() == path) {
-      return it;
-    }
-  }
-
-  return end();
+  return std::ranges::find_if(
+      *this, [&path](const Entry &entry) { return entry.path() == path; });
 }
 
 ZipArchive::Iterator

@@ -2,10 +2,12 @@
 
 #include <jni.h>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace odr_jni {
 
@@ -44,8 +46,40 @@ template <typename T> jlong make_handle(T value) {
   return reinterpret_cast<jlong>(new T(std::move(value)));
 }
 
-template <typename T> void destroy_handle(jlong handle) {
-  delete from_handle<T>(handle);
+/// Frees a handle. Guarded like every other native body: a destructor that
+/// throws would otherwise unwind through the JNI boundary.
+template <typename T> void destroy_handle(JNIEnv *env, jlong handle) {
+  guarded(env, [&] { delete from_handle<T>(handle); });
 }
+
+/// Owns the handles made for one Java allocation until `release` hands them
+/// over. Without it a failing `NewLongArray`/`NewObject` strands the C++ copies
+/// the handles point at.
+template <typename T> class HandleGuard {
+public:
+  explicit HandleGuard(const std::size_t capacity = 0) {
+    m_handles.reserve(capacity);
+  }
+
+  HandleGuard(const HandleGuard &) = delete;
+  HandleGuard &operator=(const HandleGuard &) = delete;
+
+  ~HandleGuard() {
+    for (const jlong handle : m_handles) {
+      delete from_handle<T>(handle);
+    }
+  }
+
+  jlong add(T value) {
+    return m_handles.emplace_back(make_handle(std::move(value)));
+  }
+
+  [[nodiscard]] const std::vector<jlong> &handles() const { return m_handles; }
+
+  void release() { m_handles.clear(); }
+
+private:
+  std::vector<jlong> m_handles;
+};
 
 } // namespace odr_jni

@@ -9,7 +9,12 @@
 
 using namespace odr;
 
-int main(int, char **argv) {
+int main(const int argc, char **argv) {
+  if (argc < 4) {
+    std::cerr << "usage: back_translate <input> <diff> <output>\n";
+    return 2;
+  }
+
   try {
     const Logger logger =
         Logger::create_stdio("odr-back-translate", LogLevel::verbose);

@@ -61,8 +61,6 @@ jobs:
         with:
           # setuptools-scm derives the package version from git tags.
           fetch-depth: 0
-      - name: checkout conan-odr-index
-        run: git submodule update --init --depth 1 conan-odr-index
 
       # The conan profiles use ccache as compiler launcher, so it must exist
       # even for `--build missing` source builds.
@@ -86,7 +84,7 @@ jobs:
 
       - name: conan cache key
         shell: bash
-        run: echo "CONAN_CACHE_KEY=$(git rev-parse HEAD:conan-odr-index)-${{ hashFiles('conanfile.py', 'pyproject.toml', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+        run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', 'pyproject.toml', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
       - name: cache conan
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -96,8 +94,6 @@ jobs:
           restore-keys: |
             conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-
 
-      - name: export conan-odr-index
-        run: python conan-odr-index/scripts/conan_export_all_packages.py --selection-config conan-odr-index/defaults.yaml
       - name: conan config
         run: conan config install .github/config/conan
 
@@ -195,8 +191,8 @@ jobs:
   # Uses PyPI trusted publishing (OIDC, no token): the `pyodr` project on PyPI
   # must list this repo + workflow + the `pypi` environment as a publisher.
   # Note pip cannot build the published sdist on its own (the build needs a
-  # conan-generated toolchain plus the conan-odr-index recipes, see
-  # python/README.md); it is published for completeness.
+  # conan-generated toolchain, see python/README.md); it is published for
+  # completeness.
   pypi:
     needs: [wheels, sdist]
     runs-on: ubuntu-24.04

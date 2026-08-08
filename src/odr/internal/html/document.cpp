@@ -23,14 +23,19 @@
 namespace odr::internal::html {
 namespace {
 
+/// Whether the document renders as fixed-size pages on a backdrop rather than
+/// reflowing to the viewport.
+bool is_paged_content(const Document &document, const HtmlConfig &config) {
+  return (document.document_type() == DocumentType::text &&
+          config.text_document_margin) ||
+         document.document_type() == DocumentType::presentation ||
+         document.document_type() == DocumentType::drawing;
+}
+
 void front(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
-  const bool paged_content =
-      (document.document_type() == DocumentType::text &&
-       state.config().text_document_margin) ||
-      document.document_type() == DocumentType::presentation ||
-      document.document_type() == DocumentType::drawing;
+  const bool paged_content = is_paged_content(document, state.config());
 
   out.write_begin();
   out.write_header_begin();
@@ -78,13 +83,7 @@ void front(const Document &document, const WritingState &state) {
 void back(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
-  const bool paged_content =
-      (document.document_type() == DocumentType::text &&
-       state.config().text_document_margin) ||
-      document.document_type() == DocumentType::presentation ||
-      document.document_type() == DocumentType::drawing;
-
-  if (paged_content) {
+  if (is_paged_content(document, state.config())) {
     out.write_element_end("div");
   }
 
@@ -299,13 +298,13 @@ public:
     const TextRoot element = root.as_text_root();
 
     if (state.config().text_document_margin) {
-      auto page_layout = element.page_layout();
-      page_layout.height = {};
+      const PageLayout page_layout = element.page_layout();
 
       out.write_element_begin(
-          "div", HtmlElementOptions()
-                     .set_class("odr-page-outer")
-                     .set_style(translate_outer_page_style(page_layout)));
+          "div",
+          HtmlElementOptions()
+              .set_class("odr-page-outer")
+              .set_style(translate_outer_flowing_page_style(page_layout)));
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class("odr-page-inner")
@@ -323,56 +322,30 @@ public:
   }
 };
 
-class SlideHtmlFragment final : public HtmlFragmentBase {
+/// A fragment rendering one top-level element handle (slide, sheet, page)
+/// through its `translate_*` function.
+template <typename Handle,
+          void (*Translate)(const Handle &, const WritingState &)>
+class ElementHtmlFragment final : public HtmlFragmentBase {
 public:
-  explicit SlideHtmlFragment(std::string name, const std::size_t index,
-                             std::string path, Document document,
-                             const Slide &slide)
+  explicit ElementHtmlFragment(std::string name, const std::size_t index,
+                               std::string path, Document document,
+                               const Handle &element)
       : HtmlFragmentBase(std::move(name), index, std::move(path),
                          std::move(document)),
-        m_slide{slide} {}
+        m_element{element} {}
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
-    translate_slide(m_slide, state);
+    Translate(m_element, state);
   }
 
 private:
-  Slide m_slide;
+  Handle m_element;
 };
 
-class SheetHtmlFragment final : public HtmlFragmentBase {
-public:
-  explicit SheetHtmlFragment(std::string name, const std::size_t index,
-                             std::string path, Document document,
-                             const Sheet &sheet)
-      : HtmlFragmentBase(std::move(name), index, std::move(path),
-                         std::move(document)),
-        m_sheet{sheet} {}
-
-  void write_fragment(HtmlWriter &, WritingState &state) const override {
-    translate_sheet(m_sheet, state);
-  }
-
-private:
-  Sheet m_sheet;
-};
-
-class PageHtmlFragment final : public HtmlFragmentBase {
-public:
-  explicit PageHtmlFragment(std::string name, const std::size_t index,
-                            std::string path, Document document,
-                            const Page &page)
-      : HtmlFragmentBase(std::move(name), index, std::move(path),
-                         std::move(document)),
-        m_page{page} {}
-
-  void write_fragment(HtmlWriter &, WritingState &state) const override {
-    translate_page(m_page, state);
-  }
-
-private:
-  Page m_page;
-};
+using SlideHtmlFragment = ElementHtmlFragment<Slide, translate_slide>;
+using SheetHtmlFragment = ElementHtmlFragment<Sheet, translate_sheet>;
+using PageHtmlFragment = ElementHtmlFragment<Page, translate_page>;
 
 } // namespace
 } // namespace odr::internal::html
@@ -380,7 +353,6 @@ private:
 namespace odr::internal {
 
 HtmlService html::create_document_service(const Document &document,
-                                          const std::string & /*cache_path*/,
                                           HtmlConfig config,
                                           const Logger &logger) {
   std::vector<std::shared_ptr<HtmlFragmentBase>> fragments;

@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <istream>
 #include <limits>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,12 +30,9 @@ constexpr char line_break_mark = '\x0B';
 // End-of-section / manual page break ([MS-DOC] 2.8.26); surfaced as page_break.
 constexpr char page_break_mark = '\x0C';
 
-// Drops anchor/control characters and resolves field codes, keeping only the
-// visible text. A field is 0x13 begin ... [0x14 separator] ... 0x15 end
-// ([MS-DOC] 2.8.25): the instruction (begin..separator) is hidden, the result
-// (separator..end) shown. A separator-less field is hidden entirely.
-// Stateful: a field can span style runs and paragraphs, so one cleaner
-// processes the whole body in order.
+/// Drops control/anchor characters and hides field instructions ([MS-DOC]
+/// 2.8.25). Stateful — a field can span style runs and paragraphs, so one
+/// cleaner must process the whole body in order.
 class TextCleaner {
 public:
   std::string clean(const std::string_view in) {
@@ -81,7 +79,6 @@ public:
       case '\x1F': // optional hyphen: drop
         break;
       default:
-        // Drop remaining control/anchor characters (< 0x20); keep the rest.
         if (static_cast<std::uint8_t>(c) >= 0x20) {
           out.push_back(c);
         }
@@ -165,17 +162,20 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   ParsedFib fib;
   read(*document_stream, fib);
 
-  const std::string tableStreamPath =
-      fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table";
-  const auto table_stream = files.open(AbsPath(tableStreamPath))->stream();
+  // The table stream ([MS-DOC] 1.4) is required; which one is in fWhichTblStm.
+  const auto table_file =
+      files.open(AbsPath(fib.base.fWhichTblStm == 1 ? "/1Table" : "/0Table"));
+  if (table_file == nullptr) {
+    throw std::runtime_error("doc: missing table stream");
+  }
+  const auto table_stream = table_file->stream();
 
-  // Font table; TextStyle::font_name points into the strings, which keep
-  // their buffers when the vector is moved into the registry below.
+  // TextStyle::font_name points into these strings, which keep their buffers
+  // when the vector is moved into the registry below.
   std::vector<std::string> font_names =
       read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn);
 
-  // Direct character formatting ([MS-DOC] 2.4.6.2); Pcd.Prm modifications are
-  // not modelled.
+  // Direct character formatting only ([MS-DOC] 2.4.6.2).
   std::vector<TextStyle> styles{default_character_style()}; // index 0
   const CharacterRuns character_runs =
       read_character_runs(*document_stream, *table_stream,
@@ -189,10 +189,7 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   const std::vector<StyledRun> runs = decode_styled_runs(
       *document_stream, character_index, character_runs, ccp_text);
 
-  // Build the tree: paragraphs are opened lazily so the trailing guard
-  // paragraph mark does not produce an extra empty paragraph. Each paragraph
-  // and span stores its style index; empty paragraphs keep their height
-  // through the paragraph style.
+  // Paragraphs open lazily, so the trailing paragraph mark adds no empty one.
   TextCleaner cleaner;
   ElementIdentifier paragraph_id = null_element_id;
 

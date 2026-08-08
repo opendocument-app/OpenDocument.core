@@ -6,9 +6,13 @@
 #include <odr/internal/cfb/cfb_impl.hpp>
 #include <odr/internal/common/path.hpp>
 
+#include <cstdint>
 #include <istream>
 #include <memory>
+#include <optional>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace odr::internal::cfb::impl {
 class CompoundFileReader;
@@ -102,12 +106,17 @@ public:
     std::optional<Entry> m_entry;
     std::vector<Entry> m_ancestors;
     std::vector<Entry> m_directories;
+    std::set<std::uint32_t> m_visited;
 
     Iterator() = default;
-    explicit Iterator(const Entry &root_entry) : m_entry{root_entry} {
+    explicit Iterator(const Entry &root_entry) {
+      enter_(root_entry);
       dig_left_();
     }
 
+    /// Move onto a not-yet-visited entry; a repeat means a cyclic
+    /// child/sibling link ([MS-CFB] 2.6.4) that would never terminate.
+    void enter_(Entry entry);
     void dig_left_();
     void next_();
     void next_flat_();

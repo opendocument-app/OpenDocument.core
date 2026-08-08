@@ -6,6 +6,7 @@
 #include <odr/table_position.hpp>
 
 using odr::apple::guarded;
+using odr::apple::guarded_value;
 using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
@@ -16,25 +17,37 @@ static_assert(sizeof(ODRTablePosition) == sizeof(odr::TablePosition),
 
 @implementation ODRTableAddress
 
+// The parses throw on anything that is not a cell address — an empty string, a
+// lowercase column, a non-numeric row. These have no error out-parameter, so
+// they fall back to 0; `position:fromString:` is the one that reports why.
 + (uint32_t)columnNumberFromString:(NSString *)string {
-  return odr::TablePosition::to_column_num(to_string(string));
+  return guarded_value(
+      [&] { return odr::TablePosition::to_column_num(to_string(string)); }, 0u);
 }
 
 + (uint32_t)rowNumberFromString:(NSString *)string {
-  return odr::TablePosition::to_row_num(to_string(string));
+  return guarded_value(
+      [&] { return odr::TablePosition::to_row_num(to_string(string)); }, 0u);
 }
 
 + (NSString *)stringFromColumnNumber:(uint32_t)column {
-  return to_nsstring(odr::TablePosition::to_column_string(column));
+  return guarded_value(
+      [&] { return to_nsstring(odr::TablePosition::to_column_string(column)); },
+      @"");
 }
 
 + (NSString *)stringFromRowNumber:(uint32_t)row {
-  return to_nsstring(odr::TablePosition::to_row_string(row));
+  return guarded_value(
+      [&] { return to_nsstring(odr::TablePosition::to_row_string(row)); }, @"");
 }
 
 + (NSString *)stringFromPosition:(ODRTablePosition)position {
-  return to_nsstring(
-      odr::TablePosition(position.column, position.row).to_string());
+  return guarded_value(
+      [&] {
+        return to_nsstring(
+            odr::TablePosition(position.column, position.row).to_string());
+      },
+      @"");
 }
 
 + (BOOL)position:(ODRTablePosition *)position

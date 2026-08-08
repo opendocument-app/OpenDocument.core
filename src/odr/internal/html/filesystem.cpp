@@ -28,11 +28,7 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    if (path == "files.html") {
-      return true;
-    }
-
-    return false;
+    return path == "files.html";
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
@@ -81,46 +77,38 @@ public:
 
     out.write_body_begin();
 
+    const auto span = [&out](const HtmlWritable &content) {
+      out.write_element_begin("span");
+      out.write_raw(content);
+      out.write_element_end("span");
+    };
+
     for (; !file_walker.end(); file_walker.next()) {
-      Path file_path(file_walker.path());
+      const Path file_path(file_walker.path());
       const bool is_file = file_walker.is_file();
 
       out.write_element_begin("p");
 
-      out.write_element_begin("span");
-      out.write_raw(file_path.string());
-      out.write_element_end("span");
-
-      out.write_element_begin("span");
-      out.write_raw(" ");
-      out.write_element_end("span");
-
-      out.write_element_begin("span");
-      out.write_raw(file_walker.is_file() ? "file" : "directory");
-      out.write_element_end("span");
+      span(escape_text(file_path.string()));
+      span(" ");
+      span(is_file ? "file" : "directory");
 
       if (is_file) {
-        out.write_element_begin("span");
-        out.write_raw(" ");
-        out.write_element_end("span");
+        span(" ");
 
         File file = m_filesystem.open(file_path.string());
 
-        out.write_element_begin("span");
-        out.write_raw(std::to_string(file.size()));
-        out.write_element_end("span");
+        span(std::to_string(file.size()));
 
         if (const std::unique_ptr<std::istream> stream = file.stream();
             stream != nullptr) {
-          out.write_element_begin("span");
-          out.write_raw(" ");
-          out.write_element_end("span");
+          span(" ");
 
           out.write_element_begin(
               "a",
               HtmlElementOptions().set_attributes(HtmlAttributesVector{
                   {"href", file_to_url(*stream, "application/octet-stream")},
-                  {"download", file_path.basename()}}));
+                  {"download", escape_attribute(file_path.basename())}}));
           out.write_raw("download");
           out.write_element_end("a");
         }
@@ -148,7 +136,6 @@ protected:
 namespace odr::internal {
 
 HtmlService html::create_filesystem_service(const Filesystem &filesystem,
-                                            const std::string & /*cache_path*/,
                                             HtmlConfig config,
                                             const Logger &logger) {
   return odr::HtmlService(

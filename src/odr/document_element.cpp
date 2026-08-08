@@ -74,105 +74,175 @@ Element Element::navigate_path(const DocumentPath &path) const {
 }
 
 TextRoot Element::as_text_root() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->text_root_adapter(m_identifier)};
 }
 
 Slide Element::as_slide() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->slide_adapter(m_identifier)};
 }
 
 Sheet Element::as_sheet() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->sheet_adapter(m_identifier)};
 }
 
 Page Element::as_page() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->page_adapter(m_identifier)};
 }
 
 SheetCell Element::as_sheet_cell() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->sheet_cell_adapter(m_identifier)};
 }
 
 MasterPage Element::as_master_page() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier,
           m_adapter->master_page_adapter(m_identifier)};
 }
 
 LineBreak Element::as_line_break() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->line_break_adapter(m_identifier)};
 }
 
 Paragraph Element::as_paragraph() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->paragraph_adapter(m_identifier)};
 }
 
 Span Element::as_span() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->span_adapter(m_identifier)};
 }
 
 Text Element::as_text() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->text_adapter(m_identifier)};
 }
 
 Link Element::as_link() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->link_adapter(m_identifier)};
 }
 
 Bookmark Element::as_bookmark() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->bookmark_adapter(m_identifier)};
 }
 
 ListItem Element::as_list_item() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->list_item_adapter(m_identifier)};
 }
 
 Table Element::as_table() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->table_adapter(m_identifier)};
 }
 
 TableColumn Element::as_table_column() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier,
           m_adapter->table_column_adapter(m_identifier)};
 }
 
 TableRow Element::as_table_row() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->table_row_adapter(m_identifier)};
 }
 
 TableCell Element::as_table_cell() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->table_cell_adapter(m_identifier)};
 }
 
 Frame Element::as_frame() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->frame_adapter(m_identifier)};
 }
 
 Rect Element::as_rect() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->rect_adapter(m_identifier)};
 }
 
 Line Element::as_line() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->line_adapter(m_identifier)};
 }
 
 Circle Element::as_circle() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->circle_adapter(m_identifier)};
 }
 
 CustomShape Element::as_custom_shape() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier,
           m_adapter->custom_shape_adapter(m_identifier)};
 }
 
 Image Element::as_image() const {
+  if (!exists_()) {
+    return {};
+  }
   return {m_adapter, m_identifier, m_adapter->image_adapter(m_identifier)};
 }
 
 ElementRange Element::children() const {
-  return {exists_() ? ElementIterator(m_adapter, m_adapter->element_first_child(
-                                                     m_identifier))
-                    : ElementIterator(),
-          ElementIterator()};
+  if (!exists_()) {
+    return {};
+  }
+  return ElementRange(
+      ElementIterator(m_adapter, m_adapter->element_first_child(m_identifier)));
 }
 
 ElementIterator::ElementIterator() = default;

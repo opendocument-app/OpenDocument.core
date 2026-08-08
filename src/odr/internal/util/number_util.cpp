@@ -15,9 +15,8 @@ std::string number::to_string_significant(const double value,
     return ss.str();
   }
 
-  // `std::fixed` counts decimals, not significant digits, so shift by the size
-  // of the integer part. Clamped: a denormal would otherwise ask for hundreds
-  // of decimals, and a huge value for a negative count.
+  // `std::fixed` counts decimals, not significant digits, so shift by the
+  // integer part; clamped because a denormal or a huge value would blow up
   int integer_digits = 1;
   if (value != 0.0) {
     integer_digits =

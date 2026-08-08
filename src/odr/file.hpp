@@ -90,11 +90,9 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/OpenType
   opentype_font,
 
-  // The media formats a viewer is regularly handed alongside documents.
-  // Nothing here is decoded - opening one wraps its bytes, and translating it
-  // puts those bytes in an `<img>` or in a player and lets the browser do the
-  // work. Naming them is what makes that possible; without a name the text
-  // fallback would call a video plain text.
+  // Media a viewer is handed alongside documents. Nothing here is decoded:
+  // opening one wraps its bytes and translating it hands them to an `<img>` or
+  // a player - but unnamed, a video would fall back to plain text.
   // New entries go at the end: the bindings mirror this enum by ordinal.
   // https://en.wikipedia.org/wiki/WebP
   webp,
@@ -126,6 +124,28 @@ enum class FileType {
   matroska_video,
   // https://en.wikipedia.org/wiki/Audio_Video_Interleave
   audio_video_interleave,
+
+  // More images that arrive alongside documents, named the same way and for
+  // the same reason as the block above - nothing here is decoded either.
+  // https://en.wikipedia.org/wiki/SVG
+  scalable_vector_graphics,
+  // https://en.wikipedia.org/wiki/ICO_(file_format)
+  windows_icon,
+  // https://en.wikipedia.org/wiki/JPEG_XL
+  jpeg_xl,
+  // https://en.wikipedia.org/wiki/JPEG_2000
+  jpeg_2000,
+  // https://en.wikipedia.org/wiki/Adobe_Photoshop#File_format
+  photoshop_document,
+  // https://en.wikipedia.org/wiki/Windows_Metafile
+  windows_metafile,
+  // https://en.wikipedia.org/wiki/Windows_Metafile#Enhanced_Metafile
+  enhanced_metafile,
+
+  // Classification only - reported under the formats built on it (an svg comes
+  // back as `[text_file, xml, scalable_vector_graphics]`), no decoder yet.
+  // https://en.wikipedia.org/wiki/XML
+  xml,
 };
 
 /// @brief Collection of file categories.
@@ -143,6 +163,7 @@ enum class FileCategory {
 
 /// @brief Collection of file locations.
 enum class FileLocation {
+  unknown, ///< no file behind the handle
   memory,
   disk,
 };
@@ -151,9 +172,8 @@ enum class FileLocation {
 ///
 /// Declared, format-level support — an *upper bound*. A concrete file may still
 /// fail (corrupt, encrypted, an unsupported sub-variant); ask @ref DecodedFile
-/// or @ref Document for the precise answer. The point of the static query is
-/// the decisions a caller has to make *before* it holds a file, e.g. which
-/// MIME types to advertise to the platform's file picker.
+/// or @ref Document for that. This answers what a caller has to decide before
+/// it holds a file, e.g. which MIME types to hand the platform's file picker.
 struct FileTypeCapabilities final {
   bool detect_by_content{}; ///< recognised from its bytes alone
   bool open{};              ///< a decoder exists; @ref odr::open can decode it
@@ -215,8 +235,20 @@ struct FileMeta final {
 /// @brief Represents a file.
 class File final {
 public:
+  /// @brief A file read from @p path on disk.
+  [[nodiscard]] static File from_disk(const std::string &path);
+  /// @brief A file held in memory; @p data is its bytes, moved in.
+  ///
+  /// The only way to hand the library a file that has no path — a download, a
+  /// browser upload, a decrypted payload.
+  [[nodiscard]] static File from_memory(std::string data);
+
+  /// Constructs the null file — every accessor but @ref location throws @ref
+  /// NullPointerError on it, so assign a real one before use.
   File();
+  /// @throws NullPointerError if the impl is null.
   explicit File(std::shared_ptr<internal::abstract::File>);
+  /// @brief Equivalent to @ref from_disk.
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
@@ -240,14 +272,20 @@ protected:
 class DecodedFile {
 public:
   [[nodiscard]] static std::vector<FileType>
+  list_file_types(const File &file, const Logger &logger = Logger::null());
+  [[nodiscard]] static std::vector<FileType>
   list_file_types(const std::string &path,
                   const Logger &logger = Logger::null());
+  [[nodiscard]] static std::string_view
+  mimetype(const File &file, const Logger &logger = Logger::null());
   [[nodiscard]] static std::string_view
   mimetype(const std::string &path, const Logger &logger = Logger::null());
 
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file, const Logger &logger = Logger::null());
   DecodedFile(const File &file, FileType as,
+              const Logger &logger = Logger::null());
+  DecodedFile(const File &file, const DecodePreference &preference,
               const Logger &logger = Logger::null());
   explicit DecodedFile(const std::string &path,
                        const Logger &logger = Logger::null());
@@ -270,10 +308,9 @@ public:
 
   /// @brief What can be done with this file.
   ///
-  /// Refines @ref capabilities_by_file_type with what is known about this
-  /// file. `edit`/`save`/`encrypt` are passed through from the format-level
-  /// declaration — resolving them exactly would mean decoding the document;
-  /// ask @ref Document::is_editable / @ref Document::is_savable for that.
+  /// Refines @ref capabilities_by_file_type with what is known about this file.
+  /// `edit`/`save`/`encrypt` stay as declared — ask @ref Document::is_editable
+  /// / @ref Document::is_savable for those.
   [[nodiscard]] FileTypeCapabilities capabilities() const;
 
   [[nodiscard]] bool is_text_file() const;
@@ -333,10 +370,22 @@ private:
 /// @brief Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
+  /// @brief Decodes the document file at @p path on disk.
+  [[nodiscard]] static DocumentFile
+  from_disk(const std::string &path, const Logger &logger = Logger::null());
+  /// @brief Decodes a document file held in memory; @p data is its bytes,
+  /// moved in.
+  [[nodiscard]] static DocumentFile
+  from_memory(std::string data, const Logger &logger = Logger::null());
+
+  static FileType type(const File &file);
   static FileType type(const std::string &path);
+  static FileMeta meta(const File &file);
   static FileMeta meta(const std::string &path);
 
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
+  explicit DocumentFile(const File &file,
+                        const Logger &logger = Logger::null());
   explicit DocumentFile(const std::string &path,
                         const Logger &logger = Logger::null());
 

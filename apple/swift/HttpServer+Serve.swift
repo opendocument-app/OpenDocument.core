@@ -1,17 +1,14 @@
 import Foundation
 
 extension HttpServer {
-  /// Binds, serves, and stops when the returned handle is released or
-  /// cancelled.
+  /// Binds and serves, stopping when the returned handle is released.
   ///
-  /// `listen()` blocks its thread until `stop()`, which is a shape no Swift
-  /// caller wants to manage by hand — and getting it wrong deadlocks, because
-  /// `stop()` waits for `listen()` to return and so must never be called from
-  /// the thread that is inside it. This runs `listen()` on a detached thread of
-  /// its own and hands back the port. Returns only once the server is actually
-  /// serving, and throws rather than hand back a handle if it never gets there.
+  /// Runs the blocking `listen()` on a thread of its own — `stop()` waits for
+  /// `listen()` to return, so calling it from that thread deadlocks. Returns
+  /// only once the server is really serving, and throws instead of handing back
+  /// a handle if it never gets there.
   ///
-  /// Bind `127.0.0.1` on iOS. `0.0.0.0` trips the Local Network permission
+  /// Bind `127.0.0.1` on iOS: `0.0.0.0` trips the Local Network permission
   /// prompt, and nothing off the device needs to reach a server that exists to
   /// feed a web view.
   public func serve(
@@ -32,12 +29,8 @@ extension HttpServer {
     thread.name = "app.opendocument.OdrCore.HttpServer"
     thread.start()
 
-    // `listen()` runs on that thread, so `serve()` would otherwise return
-    // before the server is actually serving and `isRunning` would be false to
-    // the caller that just started it. Connections queue in the backlog from
-    // `bind()` onward, so this is about the observable state being honest
-    // rather than about correctness of the first request. Bounded, because a
-    // server that was already stopped never starts running at all.
+    // Otherwise `isRunning` would be false to the caller that just started the
+    // server. Bounded, because one that was already stopped never starts.
     let deadline = Date().addingTimeInterval(5)
     while !isRunning, failure.stored == nil, Date() < deadline {
       Thread.sleep(forTimeInterval: 0.005)

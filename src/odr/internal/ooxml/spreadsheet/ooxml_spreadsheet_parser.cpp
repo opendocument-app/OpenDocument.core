@@ -5,6 +5,7 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 
+#include <algorithm>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -61,15 +62,15 @@ void parse_root_children(ElementRegistry &registry, const ParseContext &context,
                          const pugi::xml_node node) {
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
-    AbsPath sheet_path = context.document_path().parent().join(
+    const AbsPath sheet_path = context.document_path().parent().join(
         RelPath(context.document_relations().at(id)));
     const auto &[sheet_xml, sheet_relations] =
         context.documents_and_relations().at(sheet_path);
-    ParseContext newContext(sheet_path, sheet_relations,
-                            context.documents_and_relations(),
-                            context.shared_strings());
+    const ParseContext sheet_context(sheet_path, sheet_relations,
+                                     context.documents_and_relations(),
+                                     context.shared_strings());
     const auto &[sheet, _] = parse_any_element_tree(
-        registry, newContext, sheet_xml.document_element());
+        registry, sheet_context, sheet_xml.document_element());
     registry.append_child(parent_id, sheet);
   }
 }
@@ -107,6 +108,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     sheet.register_column(min, max, col_node);
   }
 
+  TableDimensions used;
   for (const pugi::xml_node row_node :
        node.child("sheetData").children("row")) {
     const std::uint32_t row = row_node.attribute("r").as_uint() - 1;
@@ -120,6 +122,9 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
       registry.append_sheet_cell(element_id, cell_id);
       sheet.register_cell(position.column, position.row, cell_node, cell_id);
       parse_sheet_cell_children(registry, context, cell_id, cell_node);
+
+      used.rows = std::max(used.rows, position.row + 1);
+      used.columns = std::max(used.columns, position.column + 1);
     }
   }
 
@@ -131,9 +136,8 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     }
     const TableRange range(ref);
 
-    // The renderer's cursor learns covered positions only from the anchor's
-    // span, so a range whose anchor cell is absent from sheetData must be
-    // dropped entirely — stray covered flags would starve the cursor.
+    // covered flags are only meaningful next to the anchor's span, so a range
+    // whose anchor is absent from sheetData must be dropped entirely
     const ElementRegistry::Sheet::Cell *anchor =
         sheet.cell(range.from().column, range.from().row);
     if (anchor == nullptr) {
@@ -157,15 +161,16 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     }
   }
 
-  {
-    const std::string dimension_ref =
-        node.child("dimension").attribute("ref").value();
-    TablePosition position_to;
-    if (dimension_ref.find(':') == std::string::npos) {
-      position_to = TablePosition(dimension_ref);
-    } else {
-      position_to = TableRange(dimension_ref).to();
-    }
+  // `dimension` is optional; fall back to the range the cells actually span
+  if (const std::string dimension_ref =
+          node.child("dimension").attribute("ref").value();
+      dimension_ref.empty()) {
+    sheet.dimensions = used;
+  } else {
+    const TablePosition position_to =
+        dimension_ref.find(':') == std::string::npos
+            ? TablePosition(dimension_ref)
+            : TableRange(dimension_ref).to();
     sheet.dimensions =
         TableDimensions(position_to.row + 1, position_to.column + 1);
   }

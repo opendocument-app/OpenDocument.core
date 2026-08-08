@@ -58,8 +58,10 @@ supported for any format.
 Currently, used as backend for [OpenDocument.droid](https://github.com/opendocument-app/OpenDocument.droid) and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
 
 Bindings: [Python](python/README.md) (`pyodr`), [Java/JNI](jni/README.md) and
-[Android](android/README.md) (`app.opendocument:odr-core-android`), and
-[Apple](apple/README.md) (`OdrCore`, a Swift package).
+[Android](android/README.md) (`app.opendocument:odr-core-android`),
+[Apple](apple/README.md) (`OdrCore`, a Swift package), and
+[WebAssembly](wasm/README.md) (`@opendocument/odr-core`, for rendering in the
+browser with no server).
 
 Replaces legacy projects [OpenDocument.java](https://github.com/andiwand/OpenDocument.java), [JOpenDocument](https://github.com/andiwand/JOpenDocument) and [svm](https://github.com/andiwand/svm).
 

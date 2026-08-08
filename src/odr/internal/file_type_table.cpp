@@ -11,10 +11,9 @@ using file_type_table::Row;
 
 using namespace std::string_view_literals;
 
-// File extensions and MIME types accepted for each file type. The first entry
-// of a list is the canonical one. Aliases have to stay unique across file
-// types — the lookups take the first match and `odr_test` asserts that no
-// extension or MIME type appears twice.
+// Extensions and MIME types per file type, canonical one first. Aliases are
+// unique across types — the lookups take the first match, `odr_test` asserts
+// no alias appears twice.
 
 constexpr std::array odt_extensions{"odt"sv, "fodt"sv, "ott"sv, "odm"sv,
                                     "otm"sv};
@@ -79,9 +78,8 @@ constexpr std::array xlsx_mimetypes{
     "application/vnd.ms-excel.template.macroEnabled.12"sv,
 };
 
-// `.xlsb` ships in an OOXML package but stores the workbook in binary parts
-// instead of spreadsheetml, so it gets its own type rather than riding along
-// with `xlsx` — the capability row is what tells a caller we cannot open it.
+// `.xlsb` ships in an OOXML package but stores the workbook in binary parts,
+// not spreadsheetml, so it is its own type with no capabilities.
 constexpr std::array xlsb_extensions{"xlsb"sv};
 constexpr std::array xlsb_mimetypes{
     "application/vnd.ms-excel.sheet.binary.macroEnabled.12"sv};
@@ -176,6 +174,37 @@ constexpr std::array heif_mimetypes{"image/heic"sv, "image/heif"sv,
 constexpr std::array avif_extensions{"avif"sv, "avifs"sv};
 constexpr std::array avif_mimetypes{"image/avif"sv, "image/avif-sequence"sv};
 
+constexpr std::array xml_extensions{"xml"sv};
+constexpr std::array xml_mimetypes{"application/xml"sv, "text/xml"sv};
+
+constexpr std::array svg_extensions{"svg"sv};
+constexpr std::array svg_mimetypes{"image/svg+xml"sv};
+
+// `.cur` is the same container with a different resource type, so it rides
+// along here rather than becoming a type of its own
+constexpr std::array ico_extensions{"ico"sv, "cur"sv};
+constexpr std::array ico_mimetypes{"image/vnd.microsoft.icon"sv,
+                                   "image/x-icon"sv};
+
+constexpr std::array jxl_extensions{"jxl"sv};
+constexpr std::array jxl_mimetypes{"image/jxl"sv};
+
+constexpr std::array jp2_extensions{"jp2"sv, "jpx"sv, "jpf"sv,
+                                    "j2k"sv, "jpc"sv, "j2c"sv};
+constexpr std::array jp2_mimetypes{"image/jp2"sv, "image/jpx"sv};
+
+// `.psb` is the large document variant and carries the same signature
+constexpr std::array psd_extensions{"psd"sv, "psb"sv};
+constexpr std::array psd_mimetypes{"image/vnd.adobe.photoshop"sv,
+                                   "application/x-photoshop"sv};
+
+constexpr std::array wmf_extensions{"wmf"sv};
+constexpr std::array wmf_mimetypes{"image/wmf"sv, "image/x-wmf"sv,
+                                   "application/x-msmetafile"sv};
+
+constexpr std::array emf_extensions{"emf"sv};
+constexpr std::array emf_mimetypes{"image/emf"sv, "image/x-emf"sv};
+
 constexpr std::array mp3_extensions{"mp3"sv};
 constexpr std::array mp3_mimetypes{"audio/mpeg"sv, "audio/mp3"sv,
                                    "audio/x-mpeg"sv};
@@ -215,13 +244,12 @@ constexpr std::array avi_extensions{"avi"sv};
 constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
                                    "video/msvideo"sv};
 
-// The single source of truth behind every public format lookup. `odr_test`
-// asserts that it covers each `FileType` exactly once and that the capability
-// bits agree with what the engines actually do.
+// The single source of truth behind every public format lookup; `odr_test`
+// asserts one row per `FileType` and capabilities that match the engines.
 //
-// `decrypt` on the OOXML document types refers to a password-protected
-// package, which is detected as `office_open_xml_encrypted` and decrypts into
-// the type named here. ODF files decrypt in place and keep their type.
+// `decrypt` on an OOXML document type means a password-protected package,
+// detected as `office_open_xml_encrypted` and decrypting into the type named
+// here. ODF files decrypt in place and keep their type.
 constexpr std::array table{
     Row{FileType::unknown,
         "unknown"sv,
@@ -474,11 +502,9 @@ constexpr std::array table{
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
 
-    // Named but not decoded: `open` wraps the bytes without looking at them
-    // and `translate_html` hands them straight to the browser, in an `<img>`
-    // for the images below and in a player for the audio and video after them.
-    // Nothing here reads a pixel or a sample - see the comment on these in
-    // `FileType`.
+    // Named but not decoded: `open` wraps the bytes and `translate_html` hands
+    // them to the browser in an `<img>` or a player. Nothing reads a pixel or
+    // a sample.
     Row{FileType::webp,
         "webp"sv,
         webp_extensions,
@@ -579,6 +605,69 @@ constexpr std::array table{
         FileCategory::video,
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Named but not decoded, like the images above. `translate_html` means the
+    // image page is written and the data url labelled, not that every browser
+    // paints it.
+    Row{FileType::scalable_vector_graphics,
+        "svg"sv,
+        svg_extensions,
+        svg_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::windows_icon,
+        "ico"sv,
+        ico_extensions,
+        ico_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::jpeg_xl,
+        "jxl"sv,
+        jxl_extensions,
+        jxl_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::jpeg_2000,
+        "jp2"sv,
+        jp2_extensions,
+        jp2_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::photoshop_document,
+        "psd"sv,
+        psd_extensions,
+        psd_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::windows_metafile,
+        "wmf"sv,
+        wmf_extensions,
+        wmf_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+    Row{FileType::enhanced_metafile,
+        "emf"sv,
+        emf_extensions,
+        emf_mimetypes,
+        FileCategory::image,
+        DocumentType::unknown,
+        {.detect_by_content = true, .open = true, .translate_html = true}},
+
+    // Detection reports it, nothing opens it yet - a plain xml file still
+    // decodes as text.
+    Row{FileType::xml,
+        "xml"sv,
+        xml_extensions,
+        xml_mimetypes,
+        FileCategory::text,
+        DocumentType::unknown,
+        {.detect_by_content = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.
@@ -586,7 +675,8 @@ template <typename Projection>
 const Row *find_by_alias(const std::string_view needle,
                          Projection list) noexcept {
   const auto it = std::ranges::find_if(table, [&](const Row &row) {
-    return std::ranges::find(list(row), needle) != std::ranges::end(list(row));
+    const auto aliases = list(row);
+    return std::ranges::find(aliases, needle) != std::ranges::end(aliases);
   });
   return it == std::ranges::end(table) ? nullptr : &*it;
 }

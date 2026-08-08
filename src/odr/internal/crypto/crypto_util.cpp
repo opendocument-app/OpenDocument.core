@@ -1,5 +1,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
+#include <odr/internal/crypto/crypto_argon2.hpp>
+
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -25,13 +27,11 @@
 #include <cryptopp/zinflate.h>
 #include <cryptopp/zlib.h>
 
-#include <argon2.h>
-
 namespace odr::internal::crypto {
 
 using byte = std::uint8_t;
 
-std::string util::base64_encode(const std::string &in) {
+std::string util::base64_encode(const std::string_view in) {
   std::string out;
   CryptoPP::Base64Encoder b(new CryptoPP::StringSink(out), false);
   b.Put(reinterpret_cast<const byte *>(in.data()), in.size());
@@ -39,7 +39,7 @@ std::string util::base64_encode(const std::string &in) {
   return out;
 }
 
-std::string util::base64_decode(const std::string &in) {
+std::string util::base64_decode(const std::string_view in) {
   std::string out;
   CryptoPP::Base64Decoder b(new CryptoPP::StringSink(out));
   b.Put(reinterpret_cast<const byte *>(in.data()), in.size());
@@ -47,7 +47,7 @@ std::string util::base64_decode(const std::string &in) {
   return out;
 }
 
-std::string util::hex_encode(const std::string &in) {
+std::string util::hex_encode(const std::string_view in) {
   std::string out;
   CryptoPP::HexEncoder e(new CryptoPP::StringSink(out), false);
   e.Put(reinterpret_cast<const byte *>(in.data()), in.size());
@@ -55,7 +55,7 @@ std::string util::hex_encode(const std::string &in) {
   return out;
 }
 
-std::string util::hex_decode(const std::string &in) {
+std::string util::hex_decode(const std::string_view in) {
   if (in.size() % 2 != 0) {
     throw std::invalid_argument("hex_decode: odd number of digits");
   }
@@ -82,42 +82,43 @@ std::uint32_t util::crc32(const std::string_view in) {
   return value;
 }
 
-std::string util::md5(const std::string &in) {
+std::string util::md5(const std::string_view in) {
   std::array<byte, CryptoPP::Weak::MD5::DIGESTSIZE> out;
   CryptoPP::Weak::MD5().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
-std::string util::sha1(const std::string &in) {
+std::string util::sha1(const std::string_view in) {
   std::array<byte, CryptoPP::SHA1::DIGESTSIZE> out;
   CryptoPP::SHA1().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
-std::string util::sha256(const std::string &in) {
+std::string util::sha256(const std::string_view in) {
   std::array<byte, CryptoPP::SHA256::DIGESTSIZE> out;
   CryptoPP::SHA256().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
-std::string util::sha384(const std::string &in) {
+std::string util::sha384(const std::string_view in) {
   std::array<byte, CryptoPP::SHA384::DIGESTSIZE> out;
   CryptoPP::SHA384().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
-std::string util::sha512(const std::string &in) {
+std::string util::sha512(const std::string_view in) {
   std::array<byte, CryptoPP::SHA512::DIGESTSIZE> out;
   CryptoPP::SHA512().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 
-std::string util::rc4(const std::string &key, const std::string &input) {
+std::string util::rc4(const std::string_view key,
+                      const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::Weak::ARC4 rc4(reinterpret_cast<const byte *>(key.data()),
                            key.size());
@@ -127,7 +128,8 @@ std::string util::rc4(const std::string &key, const std::string &input) {
 }
 
 std::string util::pbkdf2(const std::size_t key_size,
-                         const std::string &start_key, const std::string &salt,
+                         const std::string_view start_key,
+                         const std::string_view salt,
                          const std::size_t iteration_count) {
   std::string result(key_size, '\0');
   const CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
@@ -140,19 +142,15 @@ std::string util::pbkdf2(const std::size_t key_size,
 }
 
 std::string util::argon2id(const std::size_t key_size,
-                           const std::string &start_key,
-                           const std::string &salt,
+                           const std::string_view start_key,
+                           const std::string_view salt,
                            const std::size_t iteration_count,
                            const std::size_t memory, const std::size_t lanes) {
-  std::string result(key_size, '\0');
-  argon2id_hash_raw(iteration_count, memory, lanes, start_key.data(),
-                    start_key.size(), salt.data(), salt.size(), result.data(),
-                    result.size());
-  return result;
+  return argon2::id(key_size, start_key, salt, iteration_count, memory, lanes);
 }
 
-std::string util::decrypt_aes_ecb(const std::string &key,
-                                  const std::string &input) {
+std::string util::decrypt_aes_ecb(const std::string_view key,
+                                  const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKey(reinterpret_cast<const byte *>(key.data()), key.size());
@@ -162,8 +160,9 @@ std::string util::decrypt_aes_ecb(const std::string &key,
   return result;
 }
 
-std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
-                                  const std::string &input) {
+std::string util::decrypt_aes_cbc(const std::string_view key,
+                                  const std::string_view iv,
+                                  const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -175,8 +174,9 @@ std::string util::decrypt_aes_cbc(const std::string &key, const std::string &iv,
   return result;
 }
 
-std::string util::encrypt_aes_cbc(const std::string &key, const std::string &iv,
-                                  const std::string &input) {
+std::string util::encrypt_aes_cbc(const std::string_view key,
+                                  const std::string_view iv,
+                                  const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption encryption;
   encryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -188,18 +188,25 @@ std::string util::encrypt_aes_cbc(const std::string &key, const std::string &iv,
   return result;
 }
 
-std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
-                                  const std::string &input) {
+std::string util::decrypt_aes_gcm(const std::string_view key,
+                                  const std::string_view iv,
+                                  const std::string_view input) {
   // follows https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
 
-  if (std::strncmp(iv.data(), input.data(), iv.size()) != 0) {
+  const std::size_t iv_size = iv.size();
+  constexpr std::size_t mac_size = 16;
+
+  // The input is IV || ciphertext || tag; anything shorter would wrap
+  // `cipher_size`. `memcmp`, not `strncmp` — both operands are binary.
+  if (input.size() < iv_size + mac_size) {
+    throw std::runtime_error("GCM input too short");
+  }
+  if (std::memcmp(iv.data(), input.data(), iv_size) != 0) {
     throw std::runtime_error("IV mismatch");
   }
 
   std::string result(input.size(), '\0');
 
-  const std::size_t iv_size = iv.size();
-  constexpr std::size_t mac_size = 16;
   const std::size_t cipher_size = input.size() - iv_size - mac_size;
   auto *message = reinterpret_cast<byte *>(result.data());
   const auto *mac =
@@ -222,9 +229,9 @@ std::string util::decrypt_aes_gcm(const std::string &key, const std::string &iv,
   return result;
 }
 
-std::string util::decrypt_triple_des(const std::string &key,
-                                     const std::string &iv,
-                                     const std::string &input) {
+std::string util::decrypt_triple_des(const std::string_view key,
+                                     const std::string_view iv,
+                                     const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::DES_EDE3>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -236,9 +243,9 @@ std::string util::decrypt_triple_des(const std::string &key,
   return result;
 }
 
-std::string util::decrypt_blowfish(const std::string &key,
-                                   const std::string &iv,
-                                   const std::string &input) {
+std::string util::decrypt_blowfish(const std::string_view key,
+                                   const std::string_view iv,
+                                   const std::string_view input) {
   std::string result(input.size(), '\0');
   CryptoPP::CFB_Mode<CryptoPP::Blowfish>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
@@ -270,7 +277,7 @@ private:
 };
 } // namespace
 
-std::string util::inflate(const std::string &input) {
+std::string util::inflate(const std::string_view input) {
   std::string result;
   MyInflator inflator(new CryptoPP::StringSink(result));
   inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
@@ -278,14 +285,14 @@ std::string util::inflate(const std::string &input) {
   return result;
 }
 
-std::size_t util::padding(const std::string &input) {
+std::size_t util::padding(const std::string_view input) {
   MyInflator inflator;
   inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
   inflator.MessageEnd();
   return inflator.GetPadding();
 }
 
-std::string util::zlib_inflate(const std::string &input) {
+std::string util::zlib_inflate(const std::string_view input) {
   std::string result;
   CryptoPP::ZlibDecompressor inflator(new CryptoPP::StringSink(result));
   inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
@@ -293,7 +300,7 @@ std::string util::zlib_inflate(const std::string &input) {
   return result;
 }
 
-std::string util::zlib_deflate(const std::string &input) {
+std::string util::zlib_deflate(const std::string_view input) {
   std::string out;
   CryptoPP::ZlibCompressor compressor(new CryptoPP::StringSink(out));
   compressor.Put(reinterpret_cast<const CryptoPP::byte *>(input.data()),

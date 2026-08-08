@@ -5,6 +5,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -18,9 +19,7 @@ namespace bs = util::byte_string;
 
 namespace {
 
-// SFNT enumerations (OpenType spec). Values are the on-disk codes; casting a
-// raw `u16` to one and switching/comparing keeps the magic numbers in one
-// place.
+// The enumerators below are the on-disk codes (OpenType spec).
 
 /// `cmap`/`name` platform IDs.
 enum class PlatformId : std::uint16_t {
@@ -164,6 +163,22 @@ struct NameEntry {
   return 0;
 }
 
+/// The tables `write()` keeps. One malformed table — routine in a PDF subset —
+/// makes the OpenType Sanitizer reject the whole font, and the dropped ones buy
+/// nothing: the caller positions every glyph, so layout never applies.
+bool is_kept_table(const std::string_view tag) {
+  constexpr std::array<std::string_view, 22> kept = {
+      // required / metrics
+      "head", "hhea", "hmtx", "maxp", "cmap", "name", "OS/2", "post",
+      // outlines
+      "glyf", "loca", "CFF ", "CFF2",
+      // hinting
+      "cvt ", "fpgm", "prep", "gasp",
+      // color
+      "COLR", "CPAL", "CBDT", "CBLC", "sbix", "SVG "};
+  return std::ranges::find(kept, tag) != kept.end();
+}
+
 } // namespace
 
 bool SfntFont::is_sfnt(const std::string_view data) {
@@ -203,8 +218,7 @@ void SfntFont::read_directory(const std::string_view sfnt) {
                                          : FontFormat::truetype;
   const std::uint16_t num_tables = bs::read_u16_be(sfnt.substr(4));
 
-  // The offset table is 12 bytes (sfntVersion, numTables, then the three search
-  // hints); each of the `num_tables` directory entries is 16 bytes: tag(4),
+  // Past the 12 byte offset table, each directory entry is 16 bytes: tag(4),
   // checkSum(4), offset(4), length(4).
   for (std::uint16_t i = 0; i < num_tables; ++i) {
     const std::size_t entry = 12 + static_cast<std::size_t>(i) * 16;
@@ -309,9 +323,6 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     m_cmap[code] = glyph;
   };
 
-  // Every subtable format has a fixed-layout header, so each field is read at
-  // its known offset (matching the rest of this file). Format 4's arrays are
-  // variable-length, but each one's offset is a fixed function of segCount.
   const auto read_u16_vector = [](const std::string_view v,
                                   const std::size_t count) {
     std::vector<std::uint16_t> out;
@@ -330,11 +341,10 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     }
     break;
   }
-  case CmapFormat::segment_mapping: { // segment mapping to delta values
-    // format(0), length(2), language(4), segCountX2(6), then searchRange(8),
-    // entrySelector(10), rangeShift(12). The four parallel segs-sized arrays
-    // follow: endCode(14), reservedPad, startCode, idDelta, idRangeOffset, each
-    // starting at a fixed offset once segCount is known.
+  case CmapFormat::segment_mapping: {
+    // format(0), length(2), language(4), segCountX2(6), 3 search hints(8..12),
+    // then the parallel segs-sized arrays endCode(14), reservedPad, startCode,
+    // idDelta, idRangeOffset.
     const std::uint16_t length = bs::read_u16_be(s.substr(2));
     const std::size_t segs = bs::read_u16_be(s.substr(6)) / 2U;
     const std::vector<std::uint16_t> end_codes =
@@ -345,9 +355,8 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
         read_u16_vector(s.substr(16 + 4 * segs), segs);
     const std::vector<std::uint16_t> id_range_offsets =
         read_u16_vector(s.substr(16 + 6 * segs), segs);
-    // Whatever remains of the subtable is the glyphIdArray that non-zero
-    // idRangeOffsets index into; preload it so the inner loop is a plain
-    // lookup. The header up to this point is 16 + 8*segs bytes.
+    // What remains past the 16 + 8*segs byte header is the glyphIdArray that
+    // non-zero idRangeOffsets index into.
     const std::size_t header = 16 + 8 * segs;
     if (length < header) {
       throw std::runtime_error("sfnt: cmap format 4 subtable too short");
@@ -498,29 +507,24 @@ std::string SfntFont::write() const {
   std::vector<std::pair<std::string, std::string>> tables;
   tables.reserve(m_tables.size() + 1);
   for (const auto &[tag, location] : m_tables) {
-    if (tag == "cmap") {
-      continue; // rebuilt from the cmap() model below
+    // `cmap` is rebuilt from the cmap() model below.
+    if (tag == "cmap" || !is_kept_table(tag)) {
+      continue;
     }
     tables.emplace_back(tag, m_data.substr(location.offset, location.length));
   }
   tables.emplace_back("cmap", serialize_cmap(m_cmap));
 
-  // A `post` table is required by OTS; PDF-embedded TrueType fonts often omit
-  // it. Synthesize a minimal one so the browser accepts the `@font-face`.
+  // OTS rejects a font missing `post` / `name` / `OS/2`, and PDF-embedded
+  // TrueType routinely omits all three; synthesize the missing ones so the
+  // browser accepts the `@font-face`. build_sfnt sorts the directory, so the
+  // insertion order here does not matter.
   if (!m_tables.contains("post")) {
     tables.emplace_back("post", serialize_post());
   }
-
-  // `name` is likewise required by OTS and likewise often omitted from
-  // TrueType subsets. Synthesize a minimal one (falls back to "ODR Font" when
-  // the font carries no name at all).
   if (!m_tables.contains("name")) {
     tables.emplace_back("name", serialize_name(m_name));
   }
-
-  // `OS/2` is likewise required by OTS and likewise often omitted. Synthesize
-  // it from the cmap bounds and bounding box (build_sfnt sorts the directory,
-  // so the insertion order here does not matter).
   if (!m_tables.contains("OS/2")) {
     std::uint16_t first_char = 0;
     std::uint16_t last_char = 0;

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 
 namespace odr {
 class File;
@@ -33,16 +34,11 @@ class Path;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
-}
-
-namespace odr::internal::abstract {
 class ElementAdapter;
 class TextRootAdapter;
 class SlideAdapter;
 class PageAdapter;
 class SheetAdapter;
-class SheetColumnAdapter;
-class SheetRowAdapter;
 class SheetCellAdapter;
 class MasterPageAdapter;
 class LineBreakAdapter;
@@ -67,34 +63,22 @@ class Document {
 public:
   virtual ~Document() = default;
 
-  /// \return `true` if the document is editable in any way.
+  /// Editable in any way.
   [[nodiscard]] virtual bool is_editable() const noexcept = 0;
 
-  /// \param encrypted to ask for encrypted saves.
-  /// \return `true` if the document is is_savable.
+  /// Savable, @p encrypted to ask for an encrypted save.
   [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
-  /// \param path the destination path.
   virtual void save(const Path &path) const = 0;
-
-  /// \param path the destination path.
-  /// \param password the encryption password.
   virtual void save(const Path &path, const char *password) const = 0;
 
-  /// \return the type of the document.
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
-
-  /// \return the type of the document.
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
 
-  /// \return the underlying filesystem of the document.
   [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
   as_filesystem() const noexcept = 0;
 
-  /// \return cursor to the root element of the document.
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
-
-  /// \return the element adapter for this document.
   [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
 };
 

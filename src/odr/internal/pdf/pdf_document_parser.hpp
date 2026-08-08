@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,21 +24,15 @@ namespace odr::internal::pdf {
 struct Document;
 
 /// Resolution/memoization layer on top of the sequential `FileParser`: maps
-/// `ObjectReference`s to file positions via the cross-reference table and
-/// hands out resolved objects by reference.
+/// `ObjectReference`s to file positions via the cross-reference table and hands
+/// out resolved objects by reference.
 ///
-/// Reads are memoized in `m_objects` / `m_object_streams`. This is intrinsic,
-/// not a convenience: a compressed object can only be read by inflating and
-/// parsing the whole object stream that holds it, and only this class knows
-/// (from the xref) which objects share a stream — so the caller cannot dedupe
-/// that work. `read_object` is also reentrant (length resolution, object-stream
-/// loading, deep resolution), and the object graph has heavy sharing, so the
-/// cache must live here.
-///
-/// Both caches grow monotonically and are never evicted, which is safe only
-/// because a `DocumentParser` is a transient per-render object: build one,
-/// produce a `Document`, read its lazy streams, then discard it. Do not hold it
-/// long-lived or share it across documents.
+/// The caches are intrinsic, not a convenience: reading one compressed object
+/// means inflating and parsing the whole object stream holding it, and only
+/// this class knows from the xref which objects share one. They grow
+/// monotonically and are never evicted, which is safe only because a
+/// `DocumentParser` is transient per render — build one, produce a `Document`,
+/// read its lazy streams, discard it. Never share one across documents.
 class DocumentParser {
 public:
   /// Takes ownership of the input stream (move-only: the parser is the
@@ -121,6 +116,31 @@ private:
   [[nodiscard]] const ObjectStream &
   load_object_stream(const ObjectReference &reference);
 
+  /// The object streams currently being loaded. Loading one resolves its
+  /// `/Length`, `/N` and `/First`, and a file may put those in an object
+  /// compressed inside that very stream; the cache fills only on completion, so
+  /// without this the resolution recurses. `enter_object_stream` returns false
+  /// on re-entry.
+  [[nodiscard]] bool enter_object_stream(const ObjectReference &reference);
+  void leave_object_stream(const ObjectReference &reference);
+
+  /// RAII counterpart of `enter_object_stream` / `leave_object_stream`.
+  class ObjectStreamScope final {
+  public:
+    ObjectStreamScope(DocumentParser &parser, const ObjectReference &reference);
+    ~ObjectStreamScope();
+
+    ObjectStreamScope(const ObjectStreamScope &) = delete;
+    ObjectStreamScope &operator=(const ObjectStreamScope &) = delete;
+
+    [[nodiscard]] bool entered() const { return m_entered; }
+
+  private:
+    DocumentParser *m_parser{nullptr};
+    ObjectReference m_reference;
+    bool m_entered{false};
+  };
+
   std::unique_ptr<std::istream> m_stream;
   FileParser m_parser;
   Logger m_logger;
@@ -135,6 +155,7 @@ private:
 
   std::map<ObjectReference, IndirectObject> m_objects;
   std::map<ObjectReference, ObjectStream> m_object_streams;
+  std::set<ObjectReference> m_active_object_streams;
 };
 
 } // namespace odr::internal::pdf

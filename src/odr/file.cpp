@@ -16,30 +16,61 @@
 
 namespace odr {
 
+namespace {
+
+/// The other constructors reject a null impl, so only a default-constructed
+/// @ref File reaches the throw.
+const internal::abstract::File &
+deref(const std::shared_ptr<internal::abstract::File> &impl) {
+  if (impl == nullptr) {
+    throw NullPointerError("impl");
+  }
+  return *impl;
+}
+
+} // namespace
+
+File File::from_disk(const std::string &path) {
+  return File(std::make_shared<internal::DiskFile>(path));
+}
+
+File File::from_memory(std::string data) {
+  return File(std::make_shared<internal::MemoryFile>(std::move(data)));
+}
+
 File::File() = default;
 
 File::File(std::shared_ptr<internal::abstract::File> impl)
-    : m_impl{std::move(impl)} {}
+    : m_impl{std::move(impl)} {
+  if (m_impl == nullptr) {
+    throw NullPointerError("impl");
+  }
+}
 
 File::File(const std::string &path)
     : m_impl{std::make_shared<internal::DiskFile>(path)} {}
 
-FileLocation File::location() const noexcept { return m_impl->location(); }
+/// `noexcept` leaves no way to report a null impl, hence `unknown`.
+FileLocation File::location() const noexcept {
+  return m_impl == nullptr ? FileLocation::unknown : m_impl->location();
+}
 
-std::size_t File::size() const { return m_impl->size(); }
+std::size_t File::size() const { return deref(m_impl).size(); }
 
 std::optional<std::string> File::disk_path() const {
-  if (const std::optional<internal::AbsPath> path = m_impl->disk_path()) {
+  if (const std::optional<internal::AbsPath> path = deref(m_impl).disk_path()) {
     return path->string();
   }
   return {};
 }
 
 std::optional<std::string_view> File::memory_data() const {
-  return m_impl->memory_data();
+  return deref(m_impl).memory_data();
 }
 
-std::unique_ptr<std::istream> File::stream() const { return m_impl->stream(); }
+std::unique_ptr<std::istream> File::stream() const {
+  return deref(m_impl).stream();
+}
 
 void File::pipe(std::ostream &out) const {
   internal::util::stream::pipe(*stream(), out);
@@ -51,15 +82,23 @@ void File::copy(const std::string &path) const {
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
+std::vector<FileType> DecodedFile::list_file_types(const File &file,
+                                                   const Logger &logger) {
+  return internal::open_strategy::list_file_types(file.impl(), logger);
+}
+
 std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
                                                    const Logger &logger) {
-  return internal::open_strategy::list_file_types(
-      std::make_shared<internal::DiskFile>(path), logger);
+  return list_file_types(File::from_disk(path), logger);
+}
+
+std::string_view DecodedFile::mimetype(const File &file, const Logger &logger) {
+  return internal::magic::mimetype(file.impl(), logger);
 }
 
 std::string_view DecodedFile::mimetype(const std::string &path,
                                        const Logger &logger) {
-  return internal::magic::mimetype(path, logger);
+  return mimetype(File::from_disk(path), logger);
 }
 
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
@@ -77,20 +116,22 @@ DecodedFile::DecodedFile(const File &file, const FileType as,
     : DecodedFile(internal::open_strategy::open_file(file.impl(), as, logger)) {
 }
 
+DecodedFile::DecodedFile(const File &file, const DecodePreference &preference,
+                         const Logger &logger)
+    : DecodedFile(internal::open_strategy::open_file(file.impl(), preference,
+                                                     logger)) {}
+
 DecodedFile::DecodedFile(const std::string &path, const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::DiskFile>(path), logger)) {}
+    : DecodedFile(File::from_disk(path), logger) {}
 
 DecodedFile::DecodedFile(const std::string &path, const FileType as,
                          const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::DiskFile>(path), as, logger)) {}
+    : DecodedFile(File::from_disk(path), as, logger) {}
 
 DecodedFile::DecodedFile(const std::string &path,
                          const DecodePreference &preference,
                          const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(
-          std::make_shared<internal::DiskFile>(path), preference, logger)) {}
+    : DecodedFile(File::from_disk(path), preference, logger) {}
 
 File DecodedFile::file() const { return File(m_impl->file()); }
 
@@ -248,21 +289,41 @@ ArchiveFile::ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile> impl)
 
 Archive ArchiveFile::archive() const { return Archive(m_impl->archive()); }
 
+DocumentFile DocumentFile::from_disk(const std::string &path,
+                                     const Logger &logger) {
+  return DocumentFile(File::from_disk(path), logger);
+}
+
+DocumentFile DocumentFile::from_memory(std::string data, const Logger &logger) {
+  return DocumentFile(File::from_memory(std::move(data)), logger);
+}
+
+FileType DocumentFile::type(const File &file) {
+  return DocumentFile(file).file_type();
+}
+
 FileType DocumentFile::type(const std::string &path) {
-  return DocumentFile(path).file_type();
+  return type(File::from_disk(path));
+}
+
+FileMeta DocumentFile::meta(const File &file) {
+  return DocumentFile(file).file_meta();
 }
 
 FileMeta DocumentFile::meta(const std::string &path) {
-  return DocumentFile(path).file_meta();
+  return meta(File::from_disk(path));
 }
 
 DocumentFile::DocumentFile(
     std::shared_ptr<internal::abstract::DocumentFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
+DocumentFile::DocumentFile(const File &file, const Logger &logger)
+    : DocumentFile(
+          internal::open_strategy::open_document_file(file.impl(), logger)) {}
+
 DocumentFile::DocumentFile(const std::string &path, const Logger &logger)
-    : DocumentFile(internal::open_strategy::open_document_file(
-          std::make_shared<internal::DiskFile>(path), logger)) {}
+    : DocumentFile(File::from_disk(path), logger) {}
 
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();

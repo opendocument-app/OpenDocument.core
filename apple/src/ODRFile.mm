@@ -81,6 +81,15 @@ ODR_SAME_ENUM(ODRFileTypeThirdGenerationPartnershipVideo,
 ODR_SAME_ENUM(ODRFileTypeMatroskaVideo, odr::FileType::matroska_video);
 ODR_SAME_ENUM(ODRFileTypeAudioVideoInterleave,
               odr::FileType::audio_video_interleave);
+ODR_SAME_ENUM(ODRFileTypeScalableVectorGraphics,
+              odr::FileType::scalable_vector_graphics);
+ODR_SAME_ENUM(ODRFileTypeWindowsIcon, odr::FileType::windows_icon);
+ODR_SAME_ENUM(ODRFileTypeJpegXl, odr::FileType::jpeg_xl);
+ODR_SAME_ENUM(ODRFileTypeJpeg2000, odr::FileType::jpeg_2000);
+ODR_SAME_ENUM(ODRFileTypePhotoshopDocument, odr::FileType::photoshop_document);
+ODR_SAME_ENUM(ODRFileTypeWindowsMetafile, odr::FileType::windows_metafile);
+ODR_SAME_ENUM(ODRFileTypeEnhancedMetafile, odr::FileType::enhanced_metafile);
+ODR_SAME_ENUM(ODRFileTypeXml, odr::FileType::xml);
 
 ODR_SAME_ENUM(ODRFileCategoryUnknown, odr::FileCategory::unknown);
 ODR_SAME_ENUM(ODRFileCategoryText, odr::FileCategory::text);
@@ -91,6 +100,7 @@ ODR_SAME_ENUM(ODRFileCategoryFont, odr::FileCategory::font);
 ODR_SAME_ENUM(ODRFileCategoryAudio, odr::FileCategory::audio);
 ODR_SAME_ENUM(ODRFileCategoryVideo, odr::FileCategory::video);
 
+ODR_SAME_ENUM(ODRFileLocationUnknown, odr::FileLocation::unknown);
 ODR_SAME_ENUM(ODRFileLocationMemory, odr::FileLocation::memory);
 ODR_SAME_ENUM(ODRFileLocationDisk, odr::FileLocation::disk);
 
@@ -262,8 +272,9 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 + (instancetype)decodedFileWithHandle:(odr::DecodedFile)handle {
   // The most derived wrapper the file qualifies for, so a caller never has to
-  // downcast something it already knows the type of. PDFs are document files
-  // too, so they have to be tested first.
+  // downcast something it already knows the type of. The predicates are
+  // mutually exclusive — a PDF is not an `is_document_file`, despite reporting
+  // `FileCategory::document`.
   Class klass = [ODRDecodedFile class];
   if (handle.is_pdf_file()) {
     klass = [ODRPdfFile class];

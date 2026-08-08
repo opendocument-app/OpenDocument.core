@@ -6,6 +6,7 @@
 #include <iostream>
 #include <optional>
 #include <streambuf>
+#include <string>
 
 namespace odr::internal::util::byte_stream {
 
@@ -18,7 +19,7 @@ bool try_read(std::istream &in, char *out, std::size_t count);
 
 template <typename T> void try_read(std::istream &in, std::optional<T> &out) {
   out.emplace();
-  if (!try_read(in, reinterpret_cast<char *>(&out), sizeof(T))) {
+  if (!try_read(in, reinterpret_cast<char *>(&*out), sizeof(T))) {
     out.reset();
   }
 }
@@ -44,14 +45,14 @@ template <typename T> T read(std::istream &in) {
 std::uint8_t read_u8(std::istream &in);
 
 template <std::uint32_t N> std::array<char, N> read_u8s(std::istream &in) {
-  std::array<char, N> result;
-  if (in.rdbuf()->sgetn(result.data(), result.size()) != result.size()) {
-    throw std::runtime_error("unexpected stream exhaust");
-  }
+  std::array<char, N> result{};
+  read(in, result.data(), N);
   return result;
 }
 
-std::string read_u8s(std::istream &in, std::size_t n);
+/// Reads exactly @p n bytes, growing the buffer as the data arrives so that a
+/// bogus length prefix cannot allocate ahead of the stream.
+std::string read_u8s(std::istream &in, std::uint64_t n);
 
 std::uint16_t read_u16_le(std::istream &in);
 std::uint32_t read_u32_le(std::istream &in);
