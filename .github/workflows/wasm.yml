@@ -271,5 +271,6 @@ jobs:
             console.log("ok:", odr.identify());
           '
 
+      # a bare `dist/x.tgz` is a github spec to npm; `./` makes it a file path
       - name: publish
-        run: npm publish dist/*.tgz --provenance --access public
+        run: npm publish ./dist/*.tgz --provenance --access public
