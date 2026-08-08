@@ -12,8 +12,7 @@ class Logger;
 
 namespace odr::internal::html {
 
-HtmlService create_pdf_service(const PdfFile &pdf_file,
-                               const std::string &cache_path, HtmlConfig config,
+HtmlService create_pdf_service(const PdfFile &pdf_file, HtmlConfig config,
                                const Logger &logger);
 
 }

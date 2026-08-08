@@ -15,7 +15,6 @@ namespace odr::internal::html {
 /// here — nothing is decoded, so the plain @ref DecodedFile carries everything
 /// the page needs: the bytes and the file type they are named by.
 HtmlService create_media_service(const DecodedFile &media_file,
-                                 const std::string &cache_path,
                                  HtmlConfig config, const Logger &logger);
 
 } // namespace odr::internal::html

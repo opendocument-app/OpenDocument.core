@@ -205,10 +205,9 @@ private:
 
 namespace odr::internal {
 
-HtmlService
-html::create_media_service(const DecodedFile &media_file,
-                           [[maybe_unused]] const std::string &cache_path,
-                           HtmlConfig config, const Logger &logger) {
+HtmlService html::create_media_service(const DecodedFile &media_file,
+                                       HtmlConfig config,
+                                       const Logger &logger) {
   return odr::HtmlService(
       std::make_unique<HtmlServiceImpl>(media_file, std::move(config), logger));
 }

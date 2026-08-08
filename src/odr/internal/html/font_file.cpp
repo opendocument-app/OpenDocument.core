@@ -162,7 +162,6 @@ private:
 } // namespace
 
 odr::HtmlService create_font_service(const FontFile &font_file,
-                                     const std::string & /*cache_path*/,
                                      HtmlConfig config, const Logger &logger) {
   return odr::HtmlService(
       std::make_unique<HtmlServiceImpl>(font_file, std::move(config), logger));

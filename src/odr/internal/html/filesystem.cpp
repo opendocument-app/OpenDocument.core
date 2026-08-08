@@ -136,7 +136,6 @@ protected:
 namespace odr::internal {
 
 HtmlService html::create_filesystem_service(const Filesystem &filesystem,
-                                            const std::string & /*cache_path*/,
                                             HtmlConfig config,
                                             const Logger &logger) {
   return odr::HtmlService(
