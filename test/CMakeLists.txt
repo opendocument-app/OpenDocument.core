@@ -52,7 +52,6 @@ add_executable(odr_test
         "src/internal/crypto/crypto_util_test.cpp"
 
         "src/internal/csv/csv_file_test.cpp"
-        "src/internal/csv/csv_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
         "src/internal/oldms/ppt_test.cpp"
@@ -117,7 +116,6 @@ target_link_libraries(odr_test
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
-        vincentlaucsb-csv-parser::vincentlaucsb-csv-parser
         uchardet::uchardet
         GTest::gtest
 

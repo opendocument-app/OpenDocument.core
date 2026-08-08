@@ -6,12 +6,13 @@
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
-
-#include <csv.hpp>
+#include <odr/internal/csv/csv_util.hpp>
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 using namespace odr;
@@ -21,6 +22,29 @@ namespace fs = std::filesystem;
 namespace odr::test {
 
 namespace {
+
+/// The rows of a header-carrying csv, each keyed by column name. Absent columns
+/// read as empty, so a row that stops short of the header is not an error.
+std::vector<std::unordered_map<std::string, std::string>>
+read_indexed_csv(const std::string &path) {
+  std::ifstream in(path);
+
+  std::vector<std::string> header;
+  if (!csv::read_record(in, header)) {
+    return {};
+  }
+
+  std::vector<std::unordered_map<std::string, std::string>> rows;
+  std::vector<std::string> fields;
+  while (csv::read_record(in, fields)) {
+    std::unordered_map<std::string, std::string> row;
+    for (std::size_t i = 0; i < header.size() && i < fields.size(); ++i) {
+      row[header[i]] = fields[i];
+    }
+    rows.push_back(std::move(row));
+  }
+  return rows;
+}
 
 TestFile get_test_file(const std::string &root_path,
                        std::string absolute_path) {
@@ -54,13 +78,18 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
 
   const std::string index_path = input_path + "/index.csv";
   if (fs::is_regular_file(index_path)) {
-    for (const auto &row : csv::CSVReader(index_path)) {
-      std::string absolute_path = input_path + "/" + row["path"].get<>();
+    for (const auto &row : read_indexed_csv(index_path)) {
+      const auto field = [&row](const std::string &name) {
+        const auto it = row.find(name);
+        return it == row.end() ? std::string() : it->second;
+      };
+
+      std::string absolute_path = input_path + "/" + field("path");
       std::string short_path = absolute_path.substr(root_path.size() + 1);
-      FileType type = file_type_by_file_extension(row["type"].get<>());
-      std::optional<std::string> password = row["encrypted"].get<>() == "yes"
-                                                ? row["password"].get<>()
-                                                : std::optional<std::string>();
+      FileType type = file_type_by_file_extension(field("type"));
+      std::optional<std::string> password =
+          field("encrypted") == "yes" ? std::optional(field("password"))
+                                      : std::optional<std::string>();
 
       if (type == FileType::unknown) {
         continue;
