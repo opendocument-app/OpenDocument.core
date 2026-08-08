@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace odr;
@@ -61,11 +62,26 @@ std::string build_index(const std::vector<std::string> &members) {
   return out;
 }
 
+/// The bytes of the @p tag table within @p sfnt, via its table directory.
+std::string sfnt_table(const std::string &sfnt, const std::string_view tag) {
+  const std::string_view d{sfnt};
+  const std::uint16_t count = bs::read_u16_be(d.substr(4));
+  for (std::uint16_t i = 0; i < count; ++i) {
+    const std::string_view entry = d.substr(12 + i * 16);
+    if (entry.substr(0, 4) == tag) {
+      return sfnt.substr(bs::read_u32_be(entry.substr(8)),
+                         bs::read_u32_be(entry.substr(12)));
+    }
+  }
+  return {};
+}
+
 /// Build a minimal name-keyed CFF: two glyphs (.notdef + one named glyph). When
 /// @p glyph1_sid is a custom SID (>= 391) the name comes from the String INDEX
 /// ("myglyph"); a standard SID (< 391) names the glyph via the CFF standard
 /// strings (no String INDEX entry needed).
-std::string build_cff(const std::uint16_t glyph1_sid = 391) {
+std::string build_cff(const std::uint16_t glyph1_sid = 391,
+                      const std::string &font_name = "TestFont") {
   // Charstrings (Type2): glyph 0 = endchar; glyph 1 = width-operand 50,
   // endchar. operand 50 -> single byte 50 + 139 = 189; endchar = 14.
   const std::string cs_notdef(1, static_cast<char>(14));
@@ -86,7 +102,7 @@ std::string build_cff(const std::uint16_t glyph1_sid = 391) {
   dict_int(private_dict, 200);
   private_dict += static_cast<char>(21);
 
-  const std::string name_index = build_index({"TestFont"});
+  const std::string name_index = build_index({font_name});
   const std::string string_index =
       glyph1_sid >= 391 ? build_index({"myglyph"}) : build_index({});
   const std::string global_subrs = build_index({});
@@ -438,6 +454,25 @@ TEST(CffFontTest, WrapsToLoadableOtf) {
   EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(0)), 0);
   // The synthesized hmtx carries the CFF advance widths.
   EXPECT_EQ(wrapped.advance_width(1), 250);
+}
+
+TEST(CffFontTest, WrapSanitizesTheFontName) {
+  using namespace odr::internal::font;
+  // PDF producers emit names with spaces and other PostScript delimiters; the
+  // OpenType Sanitizer discards the whole `CFF ` table over them.
+  const CffFont cff{build_cff(391, "*Test Font (3111)")};
+  ASSERT_EQ(cff.name(), "*Test Font (3111)");
+
+  const std::string otf = cff::wrap_to_otf(cff);
+  ASSERT_TRUE(sfnt::SfntFont::is_sfnt(otf));
+
+  // Same-length patch: the pass-through CFF still parses against its own
+  // absolute offsets.
+  const CffFont patched{sfnt_table(otf, "CFF ")};
+  EXPECT_EQ(patched.name(), "*Test-Font--3111-");
+  EXPECT_EQ(patched.glyph_count(), cff.glyph_count());
+  EXPECT_EQ(patched.glyph_name(1), cff.glyph_name(1));
+  EXPECT_EQ(patched.advance_width(1), cff.advance_width(1));
 }
 
 TEST(CffFontTest, WrapDropsExtraEntriesPastGlyphCount) {

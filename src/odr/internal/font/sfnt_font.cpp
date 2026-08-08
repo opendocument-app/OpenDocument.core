@@ -5,6 +5,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -160,6 +161,22 @@ struct NameEntry {
                : 0;
   }
   return 0;
+}
+
+/// The tables `write()` keeps. One malformed table — routine in a PDF subset —
+/// makes the OpenType Sanitizer reject the whole font, and the dropped ones buy
+/// nothing: the caller positions every glyph, so layout never applies.
+bool is_kept_table(const std::string_view tag) {
+  constexpr std::array<std::string_view, 22> kept = {
+      // required / metrics
+      "head", "hhea", "hmtx", "maxp", "cmap", "name", "OS/2", "post",
+      // outlines
+      "glyf", "loca", "CFF ", "CFF2",
+      // hinting
+      "cvt ", "fpgm", "prep", "gasp",
+      // color
+      "COLR", "CPAL", "CBDT", "CBLC", "sbix", "SVG "};
+  return std::ranges::find(kept, tag) != kept.end();
 }
 
 } // namespace
@@ -490,8 +507,9 @@ std::string SfntFont::write() const {
   std::vector<std::pair<std::string, std::string>> tables;
   tables.reserve(m_tables.size() + 1);
   for (const auto &[tag, location] : m_tables) {
-    if (tag == "cmap") {
-      continue; // rebuilt from the cmap() model below
+    // `cmap` is rebuilt from the cmap() model below.
+    if (tag == "cmap" || !is_kept_table(tag)) {
+      continue;
     }
     tables.emplace_back(tag, m_data.substr(location.offset, location.length));
   }

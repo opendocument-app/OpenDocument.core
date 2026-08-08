@@ -22,4 +22,4 @@ odr_test_data(
 odr_test_data(
         PATH "reference-output/odr-private"
         URL "https://github.com/opendocument-app/OpenDocument.test-private.output.git"
-        REVISION "27367bf7cdfe73ac40a01afed92f325627652755")
+        REVISION "7b9a508e84e3f281dfb9808e0dd03e2e70fd2cff")

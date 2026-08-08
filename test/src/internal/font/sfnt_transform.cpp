@@ -304,6 +304,24 @@ TEST(SfntTransform, write_keeps_existing_post) {
   EXPECT_EQ(table(out, "post"), original_post);
 }
 
+TEST(SfntTransform, write_drops_tables_it_does_not_need) {
+  // A malformed layout table costs the whole font at the sanitizer, and nothing
+  // here needs one; the outlines and their hinting must survive.
+  const std::string font = build_sfnt(0x00010000, {{"head", head_table()},
+                                                   {"maxp", maxp_table(3)},
+                                                   {"hhea", hhea_table(0)},
+                                                   {"prep", "hint"},
+                                                   {"GSUB", "junk"},
+                                                   {"DSIG", "junk"},
+                                                   {"FFTM", "junk"}});
+
+  const std::string out = reencoded(font);
+  EXPECT_EQ(table(out, "prep"), "hint");
+  EXPECT_FALSE(table(out, "GSUB").has_value());
+  EXPECT_FALSE(table(out, "DSIG").has_value());
+  EXPECT_FALSE(table(out, "FFTM").has_value());
+}
+
 TEST(SfntTransform, write_synthesizes_name_when_absent) {
   // OTS requires `name` and TrueType subsets often drop it; the writer must
   // synthesize a minimal one (empty source name falls back to "ODR Font").

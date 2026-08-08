@@ -5,9 +5,12 @@
 #include <odr/internal/util/byte_string.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <map>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -89,6 +92,41 @@ std::string serialize_hmtx(const CffFont &font) {
   return hmtx;
 }
 
+/// A byte the OpenType Sanitizer rejects in a CFF font name.
+bool bad_name_byte(const char c) {
+  constexpr std::string_view delimiters = "[](){}<>/%";
+  const auto byte = static_cast<std::uint8_t>(c);
+  return byte <= 32 || byte >= 127 ||
+         delimiters.find(c) != std::string_view::npos;
+}
+
+/// Replace the bytes OTS rejects in the Name INDEX entry — it discards the
+/// whole `CFF ` table over them. Same-length and in place: the Top DICT's
+/// offsets are absolute.
+void sanitize_name_index(std::string &cff) {
+  const std::string_view d{cff};
+  const std::size_t header = bs::read_u8(d.substr(2)); // hdrSize
+  const std::uint16_t count = bs::read_u16_be(d.substr(header));
+  if (count == 0) {
+    return;
+  }
+  const std::size_t off_size = bs::read_u8(d.substr(header + 2));
+  const std::size_t offsets = header + 3;
+  const std::size_t data_base = offsets + (count + 1) * off_size - 1;
+  const std::size_t begin =
+      data_base + bs::read_uint_be(d.substr(offsets), off_size);
+  const std::size_t end =
+      data_base + bs::read_uint_be(d.substr(offsets + off_size), off_size);
+  if (begin > end || end > cff.size()) {
+    throw std::runtime_error("cff: bad Name INDEX offsets");
+  }
+  for (std::size_t i = begin; i < end; ++i) {
+    if (bad_name_byte(cff[i])) {
+      cff[i] = '-';
+    }
+  }
+}
+
 } // namespace
 
 } // namespace odr::internal::font::cff
@@ -114,8 +152,11 @@ std::string cff::wrap_to_otf(const CffFont &font,
   const char32_t first = pua.empty() ? 0 : pua.begin()->first;
   const char32_t last = pua.empty() ? 0 : pua.rbegin()->first;
 
+  std::string cff_table{font.data()};
+  sanitize_name_index(cff_table);
+
   std::vector<std::pair<std::string, std::string>> tables;
-  tables.emplace_back("CFF ", std::string(font.data()));
+  tables.emplace_back("CFF ", std::move(cff_table));
   tables.emplace_back("head", serialize_head(font.units_per_em(), bbox));
   tables.emplace_back("hhea", serialize_hhea(bbox, advance_width_max, glyphs));
   tables.emplace_back("maxp", serialize_maxp(glyphs));
