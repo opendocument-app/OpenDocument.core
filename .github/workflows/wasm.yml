@@ -27,6 +27,8 @@ jobs:
   # so it cannot share a cache with `build-test`.
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write # attaching the bundle to the release
     env:
       CACHE_FLAVOR: wasm
       HOST_PROFILE: emscripten-wasm
@@ -190,6 +192,39 @@ jobs:
           name: release-asset-odr-core-npm
           path: build/wasm/dist/*.tgz
           if-no-files-found: error
+
+      # The npm tarball is an npm layout; this is the same files flat, to unzip
+      # onto a static host. `example.html` is `wasm/example/index.html` with its
+      # dev import repointed, so the demo has one source.
+      - name: assemble the browser bundle
+        run: |
+          set -euo pipefail
+          sed 's|\.\./\.\./build-wasm/wasm/dist/index\.js|./index.js|' \
+            wasm/example/index.html > build/wasm/dist/example.html
+          grep -q "'./index.js'" build/wasm/dist/example.html
+          bundle="odr-core-browser.zip"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            bundle="odr-core-browser-${GITHUB_REF_NAME}.zip"
+          fi
+          (cd build/wasm/dist && zip -qr "${GITHUB_WORKSPACE}/${bundle}" . -x '*.tgz')
+          echo "BUNDLE=${bundle}" >> "$GITHUB_ENV"
+          unzip -l "$bundle"
+
+      - name: upload the browser bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: odr-core-browser
+          path: ${{ env.BUNDLE }}
+          if-no-files-found: error
+
+      # Uploaded here rather than collected by `release.yml` as a
+      # `release-asset-*`: that only sweeps artifacts from the release run, and
+      # this workflow is not part of it — it reacts to `release: published`.
+      - name: attach the bundle to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" --clobber
 
   # npm trusted publishing (OIDC), as `python.yml` does with PyPI: the package
   # on npm must name this repository and workflow.

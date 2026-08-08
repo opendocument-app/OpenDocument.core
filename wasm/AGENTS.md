@@ -20,7 +20,7 @@ a complete HTML document whose emitted JS is pure DOM — no `fetch`, no `XHR`.
 | `js/` | The hand-written half of the package. Copied next to the generated glue at build time, so the build directory is importable and `npm pack` has one source. |
 | `tests/` | `node --test` suite, run via ctest (`odr_wasm_node`). |
 | `testfixtures/` | The two documents the suite cannot build in memory. |
-| `example/` | A no-bundler page for eyeballing output. Not built, not packaged. |
+| `example/` | A no-bundler page for eyeballing output. Not packaged, but `wasm.yml` repoints its import and ships it in the release zip, so keep that import a plain relative path. |
 
 ## The three rules, and why they are not the other bindings' rules
 

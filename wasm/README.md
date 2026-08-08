@@ -23,6 +23,11 @@ is the least-machinery way to put a viewer on a static host:
 </script>
 ```
 
+For a self-hosted copy with no npm and no CDN, every release carries
+`odr-core-browser-<version>.zip`: the same files flat, plus an `example.html`
+that runs against them. Unzip it where your pages are served from and import
+`./index.js`.
+
 ## Use
 
 ```js
