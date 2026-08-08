@@ -76,7 +76,7 @@ where `Symbol.dispose` is supported.
 ## Hosting
 
 - Serve `.wasm` as `application/wasm`, or the browser cannot stream-compile it.
-- **Enable brotli.** It takes the module from 3.0 M to about 820 K — worth more
+- **Enable brotli.** It takes the module from 2.9 M to about 830 K — worth more
   than every code-size flag put together. Hosts that only gzip land at ~1.2 M.
 - No COOP/COEP headers needed. The build is deliberately single-threaded so
   that a plain static host, GitHub Pages included, is enough.

@@ -98,6 +98,6 @@ Every dependency cross-compiles, cryptopp included and unpatched — no
 odt, docx, ods, xlsx, odp, pptx, doc, xls, ppt, pdf, odg, csv and txt, and for
 encrypted docx/ods/odt with their passwords, which covers endianness, float
 formatting and hash ordering in one check. At `-O3` and before any size tuning
-the whole library is 3.0 M of wasm, 816 K brotli'd, plus 77 K of JS glue — so
+the whole library is 2.9 M of wasm, 831 K brotli'd, plus 92 K of JS glue — so
 splitting PDF into a lazily loaded second bundle is not worth introducing.
 `-Oz` and `-flto` are untried.
