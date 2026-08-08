@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 
 namespace odr {
@@ -21,5 +22,7 @@ FileType file_type(const File &file);
 
 /// Opens the file to tell what a container holds, so it needs a logger like the
 /// rest of the open strategy.
+std::string_view mimetype(const std::shared_ptr<abstract::File> &file,
+                          const Logger &logger);
 std::string_view mimetype(const std::string &path, const Logger &logger);
 } // namespace odr::internal::magic

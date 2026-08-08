@@ -64,13 +64,29 @@ mimetypes_by_file_type(FileType type) noexcept;
 [[nodiscard]] FileTypeCapabilities
 capabilities_by_file_type(FileType type) noexcept;
 
+/// @brief The file types detected for @p file.
+[[nodiscard]] std::vector<FileType>
+list_file_types(const File &file, const Logger &logger = Logger::null());
 /// @brief The file types detected for the file at @p path.
 [[nodiscard]] std::vector<FileType>
 list_file_types(const std::string &path, const Logger &logger = Logger::null());
+/// @brief The MIME type detected for @p file.
+[[nodiscard]] std::string_view mimetype(const File &file,
+                                        const Logger &logger = Logger::null());
 /// @brief The MIME type detected for the file at @p path.
 [[nodiscard]] std::string_view mimetype(const std::string &path,
                                         const Logger &logger = Logger::null());
 
+/// @brief Decodes @p file.
+[[nodiscard]] DecodedFile open(const File &file,
+                               const Logger &logger = Logger::null());
+/// @brief Decodes @p file as @p as.
+[[nodiscard]] DecodedFile open(const File &file, FileType as,
+                               const Logger &logger = Logger::null());
+/// @brief Decodes @p file by @p preference.
+[[nodiscard]] DecodedFile open(const File &file,
+                               const DecodePreference &preference,
+                               const Logger &logger = Logger::null());
 /// @brief Opens and decodes the file at @p path.
 [[nodiscard]] DecodedFile open(const std::string &path,
                                const Logger &logger = Logger::null());
