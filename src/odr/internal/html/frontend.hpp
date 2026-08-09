@@ -11,6 +11,7 @@ void write_document_style(const WritingState &state);
 /// Written in addition to the document style.
 void write_spreadsheet_style(const WritingState &state);
 void write_text_style(const WritingState &state);
+void write_filesystem_style(const WritingState &state);
 void write_media_style(const WritingState &state);
 
 /// The `odr` object a document view exposes to its host: `generateDiff()`,

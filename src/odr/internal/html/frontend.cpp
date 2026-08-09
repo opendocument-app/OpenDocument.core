@@ -79,6 +79,27 @@ constexpr const char *text_css = R"css(
 [contenteditable]:focus{outline:none}
 )css";
 
+constexpr const char *filesystem_css = R"css(
+:root{
+--odr-files-line:#e3e5e8;
+--odr-files-muted:#5c6169;
+--odr-files-link:#3c78dc;
+--odr-files-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+--odr-files-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body{background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
+.odr-files{border-collapse:collapse;width:100%}
+.odr-files td{padding:5px 12px;border-top:1px solid var(--odr-files-line)}
+.odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04))}
+.odr-files-name{font-family:var(--odr-files-mono);word-break:break-all}
+.odr-files-directory .odr-files-name{color:var(--odr-files-muted)}
+.odr-files-size{width:1%;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--odr-files-muted)}
+.odr-files-action{width:1%;white-space:nowrap}
+/* U+2193: the download glyphs are missing from enough system fonts to tofu. */
+.odr-files-action a{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:4px;color:var(--odr-files-muted);font-size:15px;line-height:1;text-decoration:none}
+.odr-files-action a:hover{background:rgba(0,0,0,.07);color:var(--odr-files-link)}
+)css";
+
 constexpr const char *media_css = R"css(
 .odr-media{display:flex;align-items:center;justify-content:center;margin:0;min-height:100vh;background:#000}
 .odr-media video{max-width:100%;max-height:100vh}
@@ -861,6 +882,8 @@ constexpr Asset spreadsheet_css_asset{HtmlResourceType::css, "text/css",
                                       "spreadsheet.css", spreadsheet_css};
 constexpr Asset text_css_asset{HtmlResourceType::css, "text/css", "text.css",
                                text_css};
+constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
+                                     "filesystem.css", filesystem_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
                                 media_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
@@ -921,6 +944,10 @@ void html::write_spreadsheet_style(const WritingState &state) {
 
 void html::write_text_style(const WritingState &state) {
   write_style(text_css_asset, state);
+}
+
+void html::write_filesystem_style(const WritingState &state) {
+  write_style(filesystem_css_asset, state);
 }
 
 void html::write_media_style(const WritingState &state) {
