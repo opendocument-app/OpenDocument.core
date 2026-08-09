@@ -93,13 +93,23 @@ accumulator is a byte buffer plus the run's `TextEncoding`, flushed through
 paragraph ends. Decoding per escape would corrupt every multibyte run and is the
 single easiest mistake to make here.
 
-`\uN` is different — it is already a code point, so it bypasses the byte buffer
-via `util::string::append_c32` (flushing the buffer first, to keep order). Two
-traps: N is a *signed 16-bit* value, so `U+F020` arrives as `\u-4064` and must be
-folded back with `+ 65536`; and `\ucN` gives the number of following characters
-to skip as the ANSI fallback, is scoped like a character property (so it lives
-in `RtfState`, restored by `}`), defaults to 1, and counts *any* control word or
-symbol as one character — with a `\binN` and its payload counting as one.
+`\uN` is different — it bypasses the byte buffer (flushing it first, to keep
+order). Three traps:
+
+- N is a **UTF-16 code unit, not a code point**, and anything above the BMP
+  arrives as a *surrogate pair*: two consecutive `\uN`, each with its own `\ucN`
+  fallback in between. So a high surrogate is held pending and combined with the
+  low one that follows; only the combined code point goes through
+  `util::string::append_c32`. Appending each half on its own turns every emoji
+  into two replacement characters. An unpaired surrogate still standing at a
+  flush is U+FFFD.
+- N is *signed 16-bit*, so `U+F020` arrives as `\u-4064` and must be folded back
+  with `+ 65536` — before the surrogate test, which is what the folded value is
+  for.
+- `\ucN` gives the number of following characters to skip as the ANSI fallback,
+  is scoped like a character property (so it lives in `RtfState`, restored by
+  `}`), defaults to 1, and counts *any* control word or symbol as one
+  character — with a `\binN` and its payload counting as one.
 
 **Encoding comes from `internal/encoding`.** `\ansi`/`\mac`/`\pc`/`\pca` set a
 document default, `\ansicpgN` overrides it, the font table's `\fcharsetN` (or
@@ -130,10 +140,14 @@ anything is layered on them.
 
 - `rtf_tokenizer.{hpp,cpp}` as above, with the delimiter rules from *Control
   Word* exactly: a control word is `\` + ASCII letters, terminated by a space
-  (consumed), by a digit or `-` (a parameter of up to 10 digits follows, itself
-  terminated by any non-digit, which is **not** consumed), or by any other
-  character (not consumed). A control *symbol* is `\` + one non-letter and takes
-  no delimiter — a space after it is text.
+  (consumed), by a digit or `-` (a parameter of up to 10 digits follows), or by
+  any other character (not consumed). **The parameter's terminator is a
+  delimiter under the same rule** — a space there is consumed, anything else is
+  left unread. So `\fs24 Text` starts its text at `T`, not at a space, and
+  `\bin4 ` puts the four raw bytes immediately after the consumed space;
+  swallowing that space is the difference between correct text and a payload
+  read shifted by one. A control *symbol* is `\` + one non-letter and takes no
+  delimiter — a space after it is text.
 - `rtf_state.{hpp,cpp}`: the group stack, the current destination, and the
   character/paragraph property structs (empty but for `\uc` in this stage).
 - destination handling: a table of known destinations; `{\*\unknown` skips to the
@@ -158,10 +172,11 @@ anything is layered on them.
 - `CMakeLists.txt` `ODR_SOURCE_FILES`.
 
 **Tests** are inline string literals against the tokenizer and against a small
-whole document — the delimiter rules (space eaten, digit kept, `\b0` vs `\b`),
-`\'hh` in a windows-1252 run, `\uN` negative folding, `\ucN` skipping across a
-control word, an unmatched `}`, an unterminated group, and a `\bin` payload
-containing `}`.
+whole document — the delimiter rules (space eaten after a control word *and*
+after its parameter, digit kept, `\b0` vs `\b`), `\'hh` in a windows-1252 run,
+`\uN` negative folding, a non-BMP character as a surrogate pair across two
+`\uN`, an unpaired surrogate, `\ucN` skipping across a control word, an
+unmatched `}`, an unterminated group, and a `\bin` payload containing `}`.
 
 ## Stage 2 — character formatting
 
