@@ -212,6 +212,11 @@ void HtmlResource::write_resource(std::ostream &os) const {
 
 HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
                             const Logger &logger) {
+  // before the text branch: a csv is a text file, and rendering one as a line
+  // list rather than a table is never what a viewer wants
+  if (file.is_csv_file()) {
+    return translate(file.as_csv_file().document(), config, logger);
+  }
   if (file.is_text_file()) {
     return translate(file.as_text_file(), config, logger);
   }

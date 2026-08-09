@@ -435,6 +435,11 @@ public:
 
   explicit CsvFile(std::shared_ptr<internal::abstract::CsvFile>);
 
+  /// @brief The csv as a one-sheet spreadsheet. The other view of the same
+  /// bytes — a csv stays a text file, so @ref TextFile::text still works.
+  /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
+  [[nodiscard]] Document document() const;
+
   /// @brief The options in use, every field resolved.
   [[nodiscard]] CsvOptions options() const;
 

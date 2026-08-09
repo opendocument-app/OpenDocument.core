@@ -67,16 +67,6 @@ public:
   [[nodiscard]] virtual TextEncoding encoding() const noexcept = 0;
 };
 
-class CsvFile : public TextFile {
-public:
-  /// The options in use, every field resolved.
-  [[nodiscard]] virtual CsvOptions options() const = 0;
-
-  /// The same file read with @p options.
-  [[nodiscard]] virtual std::shared_ptr<CsvFile>
-  with_options(const CsvOptions &options) const = 0;
-};
-
 class ImageFile : public DecodedFile {
 public:
   [[nodiscard]] FileCategory file_category() const noexcept final {
@@ -103,6 +93,22 @@ public:
 
   [[nodiscard]] virtual DocumentType document_type() const = 0;
 
+  [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
+};
+
+/// A csv is a text file that can also be loaded as a document — a one-sheet
+/// spreadsheet. It stays in @ref FileCategory::text, so reading it as text
+/// needs no reopening; @ref document is the other view of the same bytes.
+class CsvFile : public TextFile {
+public:
+  /// The options in use, every field resolved.
+  [[nodiscard]] virtual CsvOptions options() const = 0;
+
+  /// The same file read with @p options.
+  [[nodiscard]] virtual std::shared_ptr<CsvFile>
+  with_options(const CsvOptions &options) const = 0;
+
+  /// The csv as a one-sheet spreadsheet.
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 

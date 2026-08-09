@@ -81,9 +81,11 @@ def test_translate_text(txt_path, tmp_path):
 def test_translate_csv(csv_path, tmp_path):
     html = translate_offline(csv_path, tmp_path)
     pages = html.pages()
-    assert len(pages) == 1
-    content = Path(pages[0].path).read_text()
+    # a spreadsheet: a document view plus one per sheet
+    assert len(pages) == 2
+    content = Path(pages[-1].path).read_text()
     assert "alpha" in content
+    assert "<table" in content
 
 
 def test_translate_document(odt_path, tmp_path):

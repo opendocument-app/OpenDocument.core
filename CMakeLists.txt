@@ -130,6 +130,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/crypto/crypto_argon2.cpp"
         "src/odr/internal/crypto/crypto_util.cpp"
 
+        "src/odr/internal/csv/csv_document.cpp"
         "src/odr/internal/csv/csv_file.cpp"
         "src/odr/internal/csv/csv_util.cpp"
 

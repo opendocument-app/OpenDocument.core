@@ -418,7 +418,7 @@ constexpr std::array table{
         csv_extensions,
         csv_mimetypes,
         FileCategory::text,
-        DocumentType::unknown,
+        DocumentType::spreadsheet,
         {.detect_by_content = true, .open = true, .translate_html = true}},
     Row{FileType::javascript_object_notation,
         "json"sv,

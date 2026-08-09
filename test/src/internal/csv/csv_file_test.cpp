@@ -1,5 +1,10 @@
+#include <odr/document.hpp>
+#include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <test_util.hpp>
 
@@ -10,6 +15,7 @@
 #include <odr/internal/csv/csv_util.hpp>
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -220,4 +226,108 @@ TEST(CsvOptions, a_decoded_csv_is_reachable_as_one) {
 
   EXPECT_TRUE(decoded.is_csv_file());
   EXPECT_EQ(decoded.as_csv_file().options().separator, ',');
+}
+
+TEST(CsvDocument, a_csv_is_a_one_sheet_spreadsheet) {
+  const CsvFile file = CsvFile::from_file(
+      File::from_memory("a,b,c\n1,2,3\n4,5,6\n"), CsvOptions{});
+
+  const Document document = file.document();
+  EXPECT_EQ(document.document_type(), DocumentType::spreadsheet);
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  EXPECT_EQ(sheet.dimensions().rows, 3u);
+  EXPECT_EQ(sheet.dimensions().columns, 3u);
+  EXPECT_EQ((*sheet.cell(0, 0).children().begin()).as_text().content(), "a");
+  EXPECT_EQ((*sheet.cell(2, 2).children().begin()).as_text().content(), "6");
+}
+
+/// The sheet is rectangular even where the file is not: a short row pads, a
+/// long one widens.
+TEST(CsvDocument, ragged_rows_become_a_rectangle) {
+  const CsvFile file = CsvFile::from_file(File::from_memory("a,b\n1,2,3\n4\n"),
+                                          CsvOptions{.separator = ','});
+
+  const Document document = file.document();
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  EXPECT_EQ(sheet.dimensions().rows, 3u);
+  EXPECT_EQ(sheet.dimensions().columns, 3u);
+  EXPECT_EQ((*sheet.cell(2, 0).children().begin()).as_text().content(), "");
+  EXPECT_EQ((*sheet.cell(2, 1).children().begin()).as_text().content(), "3");
+}
+
+TEST(CsvDocument, the_separator_directive_is_not_data) {
+  const CsvFile file =
+      CsvFile::from_file(File::from_memory("sep=;\na;b\n1;2\n"), CsvOptions{});
+
+  const Document document = file.document();
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  EXPECT_EQ(sheet.dimensions().rows, 2u);
+  EXPECT_EQ((*sheet.cell(0, 0).children().begin()).as_text().content(), "a");
+}
+
+/// Nothing can read those bytes, so nothing can probe them either — the
+/// separator has to be declared, and there is still no document at the end.
+TEST(CsvDocument, an_undecodable_encoding_has_no_document) {
+  const File bytes = File::from_memory("a,b\n1,2\n");
+
+  EXPECT_THROW(
+      (void)CsvFile::from_file(bytes, {.encoding = TextEncoding::shift_jis}),
+      NoCsvFile);
+
+  const CsvFile file = CsvFile::from_file(
+      bytes, {.encoding = TextEncoding::shift_jis, .separator = ','});
+  EXPECT_FALSE(file.is_decodable());
+  EXPECT_THROW((void)file.document(), UnsupportedTextEncoding);
+}
+
+TEST(CsvDocument, renders_as_a_table) {
+  const CsvFile file =
+      CsvFile::from_file(File::from_memory("a,b\n1,2\n"), CsvOptions{});
+
+  const HtmlService service =
+      html::translate(file.document(), "", HtmlConfig());
+  std::ostringstream out;
+  service.list_views().back().write_html(out);
+
+  EXPECT_THAT(out.str(), testing::HasSubstr("<table"));
+  EXPECT_THAT(out.str(), testing::HasSubstr("<td"));
+  EXPECT_THAT(out.str(), testing::HasSubstr(">a<"));
+  EXPECT_THAT(out.str(), testing::HasSubstr(">2<"));
+}
+
+/// Cells are not reachable by walking, so the generic path machinery has to
+/// get at them the other way — through `sheet_cell`.
+TEST(CsvDocument, a_cell_path_round_trips) {
+  const CsvFile file =
+      CsvFile::from_file(File::from_memory("a,b\n1,2\n3,4\n"), CsvOptions{});
+  const Document document = file.document();
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  const SheetCell cell = sheet.cell(1, 2);
+  const DocumentPath path = cell.document_path();
+
+  const Element found = document.root_element().navigate_path(path);
+  EXPECT_EQ(found.type(), ElementType::sheet_cell);
+  EXPECT_EQ((*found.as_sheet_cell().children().begin()).as_text().content(),
+            "4");
+}
+
+/// The whole point: a csv handed to the renderer comes out as a table, not a
+/// line list.
+TEST(CsvDocument, translating_the_decoded_file_yields_a_table) {
+  const File bytes = File::from_memory("a,b\n1,2\n");
+  const DecodedFile decoded(bytes, FileType::comma_separated_values);
+
+  // a csv stays a text file and is rendered as a table anyway
+  EXPECT_TRUE(decoded.is_text_file());
+
+  const HtmlService service = html::translate(decoded, HtmlConfig());
+  std::ostringstream out;
+  service.list_views().back().write_html(out);
+
+  EXPECT_THAT(out.str(), testing::HasSubstr("<table"));
+  EXPECT_THAT(out.str(), testing::HasSubstr(">a<"));
 }

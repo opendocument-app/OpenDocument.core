@@ -116,9 +116,10 @@ class DocumentTest {
         val file = Odr.open(TestFiles.csvFile(tempDir).toString())
         val service = Html.translate(file, cache.toString(), HtmlConfig())
 
+        // a spreadsheet: a document view plus one per sheet
         val views = service.listViews()
-        assertEquals(1, views.size)
-        assertTrue(views[0].writeHtml().html.contains("alpha"))
+        assertEquals(2, views.size)
+        assertTrue(views.last().writeHtml().html.contains("alpha"))
     }
 
     private fun read(path: Path): String = String(Files.readAllBytes(path), StandardCharsets.UTF_8)

@@ -1,7 +1,9 @@
 #include <odr/internal/csv/csv_file.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/odr.hpp>
 
+#include <odr/internal/csv/csv_document.hpp>
 #include <odr/internal/csv/csv_util.hpp>
 
 #include <stdexcept>
@@ -75,7 +77,17 @@ FileMeta CsvFile::file_meta() const noexcept {
   return result;
 }
 
-bool CsvFile::is_decodable() const noexcept { return false; }
+bool CsvFile::is_decodable() const noexcept {
+  return text_encoding_is_decodable(encoding());
+}
+
+std::shared_ptr<abstract::Document> CsvFile::document() const {
+  if (!is_decodable()) {
+    throw UnsupportedTextEncoding(encoding());
+  }
+  return std::make_shared<CsvDocument>(*m_file->file(), encoding(), m_dialect,
+                                       m_separator_directive);
+}
 
 TextEncoding CsvFile::encoding() const noexcept { return m_file->encoding(); }
 
@@ -87,7 +99,8 @@ CsvOptions CsvFile::options() const {
 
 std::shared_ptr<abstract::CsvFile>
 CsvFile::with_options(const CsvOptions &options) const {
-  return std::make_shared<CsvFile>(m_file->file(), options);
+  return std::static_pointer_cast<abstract::CsvFile>(
+      std::make_shared<CsvFile>(m_file->file(), options));
 }
 
 Dialect CsvFile::dialect() const noexcept { return m_dialect; }
