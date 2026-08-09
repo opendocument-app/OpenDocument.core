@@ -116,7 +116,7 @@ The structural/foundational gaps, roughly by value:
    empty-row/cell detection is approximate.
 6. **Style gaps beyond missing properties**: percent margins dropped;
    `transparent`/alpha colours → `nullopt`; the Style-vs-element cascade layering
-   is provisional (`// TODO use override?`). List/outline numbering is indexed but
-   not rendered as numbers.
+   is provisional (`// TODO use override?`). Outline numbering is indexed but not
+   applied to headings.
 7. **StarOffice/template mimetypes** are aliased onto the four base types; they
    may deserve distinct `FileType`s (`odf_meta.cpp`).

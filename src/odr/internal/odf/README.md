@@ -80,8 +80,11 @@ Roughly ordered by importance.
 - [x] soft page breaks
 - [x] listings
   - [x] bullets
-  - [ ] numbering (`style:list-style` / `style:outline-style` are indexed but
-    not yet rendered as numbers)
+  - [x] numbering (`text:list-style` levels resolved to markers: format,
+    prefix / suffix, `text:display-levels`, `text:start-value`,
+    `text:continue-numbering`)
+  - [ ] `text:list-level-style-image` (falls back to a bullet)
+  - [ ] `text:outline-style` (indexed, not applied to headings)
 
 ### Spreadsheet documents (`.ods`)
 

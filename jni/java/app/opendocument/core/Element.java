@@ -136,6 +136,11 @@ public class Element extends NativeResource {
     return h == 0 ? null : new Bookmark(h, owner());
   }
 
+  public ListElement asList() {
+    long h = asListNative(handle());
+    return h == 0 ? null : new ListElement(h, owner());
+  }
+
   public ListItem asListItem() {
     long h = asListItemNative(handle());
     return h == 0 ? null : new ListItem(h, owner());
@@ -250,6 +255,8 @@ public class Element extends NativeResource {
   private native long asLinkNative(long handle);
 
   private native long asBookmarkNative(long handle);
+
+  private native long asListNative(long handle);
 
   private native long asListItemNative(long handle);
 

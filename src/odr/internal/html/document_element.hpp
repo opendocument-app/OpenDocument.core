@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace odr {
 class Element;
 class ElementRange;
@@ -25,7 +27,9 @@ void translate_master_page(const MasterPage &masterPage,
 
 void translate_text(const Element &element, const WritingState &state);
 void translate_line_break(const Element &element, const WritingState &state);
-void translate_paragraph(const Element &element, const WritingState &state);
+/// `marker`, when set, is written inside the paragraph ahead of its content.
+void translate_paragraph(const Element &element, const WritingState &state,
+                         const std::string &marker = "");
 void translate_span(const Element &element, const WritingState &state);
 void translate_link(const Element &element, const WritingState &state);
 void translate_bookmark(const Element &element, const WritingState &state);

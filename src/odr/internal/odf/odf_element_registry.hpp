@@ -2,6 +2,8 @@
 
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
+
+#include <odr/internal/common/list_numbering.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
@@ -112,6 +114,12 @@ public:
 
   [[nodiscard]] const SheetCell *sheet_cell_element(ElementIdentifier id) const;
 
+  void set_list_type(ElementIdentifier id, ListType type);
+  void set_list_marker(ElementIdentifier id, ListMarker marker);
+
+  [[nodiscard]] ListType list_type(ElementIdentifier id) const;
+  [[nodiscard]] const ListMarker &list_marker(ElementIdentifier id) const;
+
   void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);
   void append_shape(ElementIdentifier sheet_id, ElementIdentifier shape_id);
@@ -123,6 +131,8 @@ private:
   std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;
   std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
+  std::unordered_map<ElementIdentifier, ListType> m_list_types;
+  std::unordered_map<ElementIdentifier, ListMarker> m_list_markers;
 
   /// Links `child_id` as the last child of the chain `first_id`/`last_id`.
   void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,

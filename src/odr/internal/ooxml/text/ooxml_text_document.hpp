@@ -3,6 +3,7 @@
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_list.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 
 #include <memory>
@@ -32,11 +33,13 @@ public:
 private:
   pugi::xml_document m_document_xml;
   pugi::xml_document m_styles_xml;
+  pugi::xml_document m_numbering_xml;
 
   Relations m_document_relations;
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;
+  NumberingRegistry m_numbering_registry;
 };
 
 } // namespace odr::internal::ooxml::text

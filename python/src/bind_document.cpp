@@ -79,6 +79,10 @@ void odr_python::bind_document(py::module_ &m) {
       .value("at_page", odr::AnchorType::at_page)
       .value("at_paragraph", odr::AnchorType::at_paragraph);
 
+  py::enum_<odr::ListType>(m, "ListType")
+      .value("unordered", odr::ListType::unordered)
+      .value("ordered", odr::ListType::ordered);
+
   py::enum_<odr::ValueType>(m, "ValueType")
       .value("unknown", odr::ValueType::unknown)
       .value("string", odr::ValueType::string)
@@ -160,6 +164,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("as_span", &odr::Element::as_span, keep_self_alive)
       .def("as_text", &odr::Element::as_text, keep_self_alive)
       .def("as_link", &odr::Element::as_link, keep_self_alive)
+      .def("as_list", &odr::Element::as_list, keep_self_alive)
       .def("as_bookmark", &odr::Element::as_bookmark, keep_self_alive)
       .def("as_list_item", &odr::Element::as_list_item, keep_self_alive)
       .def("as_table", &odr::Element::as_table, keep_self_alive)
@@ -234,8 +239,12 @@ void odr_python::bind_document(py::module_ &m) {
 
   bind_element<odr::Bookmark>(m, "Bookmark").def("name", &odr::Bookmark::name);
 
+  bind_element<odr::List>(m, "List").def("list_type", &odr::List::type);
+
   bind_element<odr::ListItem>(m, "ListItem")
-      .def("style", &odr::ListItem::style, keep_self_alive);
+      .def("style", &odr::ListItem::style, keep_self_alive)
+      .def("marker", &odr::ListItem::marker)
+      .def("number", &odr::ListItem::number);
 
   bind_element<odr::Table>(m, "Table")
       .def("first_row", &odr::Table::first_row, keep_self_alive)

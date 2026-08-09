@@ -16,6 +16,7 @@ enum class ElementType;
 class DocumentPath;
 enum class ValueType;
 enum class AnchorType;
+enum class ListType;
 struct PageLayout;
 struct TableDimensions;
 struct TablePosition;
@@ -47,6 +48,7 @@ class SpanAdapter;
 class TextAdapter;
 class LinkAdapter;
 class BookmarkAdapter;
+class ListAdapter;
 class ListItemAdapter;
 class TableAdapter;
 class TableColumnAdapter;
@@ -158,6 +160,10 @@ public:
   }
   [[nodiscard]] virtual const BookmarkAdapter *
   bookmark_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
+    return nullptr;
+  }
+  [[nodiscard]] virtual const ListAdapter *
+  list_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const ListItemAdapter *
@@ -354,12 +360,26 @@ public:
   bookmark_name(ElementIdentifier element_id) const = 0;
 };
 
+class ListAdapter {
+public:
+  virtual ~ListAdapter() = default;
+
+  [[nodiscard]] virtual ListType
+  list_type(ElementIdentifier element_id) const = 0;
+};
+
 class ListItemAdapter {
 public:
   virtual ~ListItemAdapter() = default;
 
   [[nodiscard]] virtual TextStyle
   list_item_style(ElementIdentifier element_id) const = 0;
+
+  [[nodiscard]] virtual std::string
+  list_item_marker(ElementIdentifier element_id) const = 0;
+
+  [[nodiscard]] virtual std::optional<std::uint32_t>
+  list_item_number(ElementIdentifier element_id) const = 0;
 };
 
 class TableAdapter {

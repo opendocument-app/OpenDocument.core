@@ -8,6 +8,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
+#include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -41,6 +42,8 @@ Document::Document(const FileType file_type, const DocumentType document_type,
 
   m_style_registry = StyleRegistry(*this, m_content_xml.document_element(),
                                    m_styles_xml.document_element());
+
+  resolve_list_numbering(m_element_registry, m_style_registry, m_root_element);
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
@@ -157,6 +160,7 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextAdapter,
                              public abstract::LinkAdapter,
                              public abstract::BookmarkAdapter,
+                             public abstract::ListAdapter,
                              public abstract::ListItemAdapter,
                              public abstract::TableAdapter,
                              public abstract::TableColumnAdapter,
@@ -278,6 +282,11 @@ public:
   bookmark_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::bookmark ? this : nullptr;
   }
+  [[nodiscard]] const ListAdapter *
+  list_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::list ? this : nullptr;
+  }
+
   [[nodiscard]] const ListItemAdapter *
   list_item_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::list_item ? this : nullptr;
@@ -639,9 +648,24 @@ public:
     return get_node(element_id).attribute("text:name").value();
   }
 
+  [[nodiscard]] ListType
+  list_type(const ElementIdentifier element_id) const override {
+    return m_registry->list_type(element_id);
+  }
+
   [[nodiscard]] TextStyle
   list_item_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
+  }
+
+  [[nodiscard]] std::string
+  list_item_marker(const ElementIdentifier element_id) const override {
+    return m_registry->list_marker(element_id).text;
+  }
+
+  [[nodiscard]] std::optional<std::uint32_t>
+  list_item_number(const ElementIdentifier element_id) const override {
+    return m_registry->list_marker(element_id).number;
   }
 
   [[nodiscard]] TableDimensions

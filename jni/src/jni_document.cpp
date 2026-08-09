@@ -304,6 +304,7 @@ ODR_JNI_ELEMENT_AS(Span, as_span)
 ODR_JNI_ELEMENT_AS(Text, as_text)
 ODR_JNI_ELEMENT_AS(Link, as_link)
 ODR_JNI_ELEMENT_AS(Bookmark, as_bookmark)
+ODR_JNI_ELEMENT_AS(List, as_list)
 ODR_JNI_ELEMENT_AS(ListItem, as_list_item)
 ODR_JNI_ELEMENT_AS(Table, as_table)
 ODR_JNI_ELEMENT_AS(TableColumn, as_table_column)
@@ -608,6 +609,15 @@ Java_app_opendocument_core_Bookmark_nameNative(JNIEnv *env, jobject,
   });
 }
 
+// app.opendocument.core.ListElement
+
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_ListElement_listTypeNative(JNIEnv *env, jobject,
+                                                      jlong handle) {
+  return guarded(
+      env, [&] { return static_cast<jint>(element(handle).as_list().type()); });
+}
+
 // app.opendocument.core.ListItem
 
 extern "C" JNIEXPORT jobject JNICALL
@@ -616,6 +626,28 @@ Java_app_opendocument_core_ListItem_styleNative(JNIEnv *env, jobject,
   return guarded(env, [&] {
     return odr_jni::make_text_style(env,
                                     element(handle).as_list_item().style());
+  });
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_ListItem_markerNative(JNIEnv *env, jobject,
+                                                 jlong handle) {
+  return guarded(env, [&] {
+    return to_jstring(env, element(handle).as_list_item().marker());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_ListItem_numberNative(JNIEnv *env, jobject,
+                                                 jlong handle) {
+  return guarded(env, [&] {
+    std::optional<std::int32_t> number;
+    if (const std::optional<std::uint32_t> value =
+            element(handle).as_list_item().number();
+        value.has_value()) {
+      number = static_cast<std::int32_t>(*value);
+    }
+    return odr_jni::make_integer_opt(env, number);
   });
 }
 
