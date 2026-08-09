@@ -7,6 +7,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/open_strategy.hpp>
@@ -183,6 +184,11 @@ bool DecodedFile::is_text_file() const {
          nullptr;
 }
 
+bool DecodedFile::is_csv_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::CsvFile>(m_impl) !=
+         nullptr;
+}
+
 bool DecodedFile::is_image_file() const {
   return std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl) !=
          nullptr;
@@ -215,6 +221,15 @@ TextFile DecodedFile::as_text_file() const {
     return TextFile(text_file);
   }
   throw NoTextFile();
+}
+
+CsvFile DecodedFile::as_csv_file() const {
+  if (const std::shared_ptr csv_file =
+          std::dynamic_pointer_cast<internal::abstract::CsvFile>(m_impl);
+      csv_file != nullptr) {
+    return CsvFile(csv_file);
+  }
+  throw NoCsvFile();
 }
 
 ImageFile DecodedFile::as_image_file() const {
@@ -288,6 +303,26 @@ std::string TextFile::text() const {
     return bytes;
   }
   return internal::encoding::to_utf8(bytes, encoding);
+}
+
+CsvFile CsvFile::from_file(const File &file, const CsvOptions &options,
+                           const Logger &logger) {
+  ODR_VERBOSE(logger, "open as csv with options");
+  return CsvFile(
+      std::make_shared<internal::csv::CsvFile>(file.impl(), options));
+}
+
+CsvFile::CsvFile(std::shared_ptr<internal::abstract::CsvFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+CsvOptions CsvFile::options() const { return m_impl->options(); }
+
+CsvFile CsvFile::with_options(const CsvOptions &options) const {
+  return CsvFile(m_impl->with_options(options));
+}
+
+std::shared_ptr<internal::abstract::CsvFile> CsvFile::impl() const {
+  return m_impl;
 }
 
 ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)

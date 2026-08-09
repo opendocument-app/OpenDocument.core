@@ -67,6 +67,16 @@ public:
   [[nodiscard]] virtual TextEncoding encoding() const noexcept = 0;
 };
 
+class CsvFile : public TextFile {
+public:
+  /// The options in use, every field resolved.
+  [[nodiscard]] virtual CsvOptions options() const = 0;
+
+  /// The same file read with @p options.
+  [[nodiscard]] virtual std::shared_ptr<CsvFile>
+  with_options(const CsvOptions &options) const = 0;
+};
+
 class ImageFile : public DecodedFile {
 public:
   [[nodiscard]] FileCategory file_category() const noexcept final {

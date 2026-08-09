@@ -146,3 +146,78 @@ TEST(RecordReader, an_unterminated_quote_still_yields_its_field) {
   EXPECT_EQ(fields, (std::vector<std::string>{"a", "b"}));
   EXPECT_TRUE(reader.unterminated());
 }
+
+TEST(CsvOptions, detection_fills_in_what_was_not_given) {
+  const CsvFile file =
+      CsvFile::from_file(File::from_memory("a;b\n1;2\n"), CsvOptions{});
+
+  const CsvOptions options = file.options();
+  EXPECT_EQ(options.separator, ';');
+  EXPECT_EQ(options.quote, '"');
+  EXPECT_EQ(options.encoding, TextEncoding::utf8);
+}
+
+/// Detection is a guess; a caller who knows better does not have to argue with
+/// it, and nothing is refused for disagreeing.
+TEST(CsvOptions, a_given_separator_is_taken_as_given) {
+  const std::string content = "a|b\n1|2\n";
+
+  EXPECT_EQ(
+      CsvFile::from_file(File::from_memory(content), {}).options().separator,
+      '|');
+  EXPECT_EQ(CsvFile::from_file(File::from_memory(content), {.separator = ','})
+                .options()
+                .separator,
+            ',');
+}
+
+/// One column is no evidence of a csv, but it is a perfectly good csv once
+/// someone says so.
+TEST(CsvOptions, a_declared_separator_makes_anything_readable) {
+  EXPECT_THROW((void)CsvFile::from_file(File::from_memory("a\nb\nc\n"), {}),
+               NoCsvFile);
+  EXPECT_NO_THROW((void)CsvFile::from_file(File::from_memory("a\nb\nc\n"),
+                                           {.separator = ','}));
+  // and so is prose, and an empty file
+  EXPECT_NO_THROW((void)CsvFile::from_file(
+      File::from_memory("lorem ipsum dolor\nsit amet\n"), {.separator = ','}));
+  EXPECT_NO_THROW(
+      (void)CsvFile::from_file(File::from_memory(""), {.separator = ','}));
+}
+
+TEST(CsvOptions, an_incoherent_dialect_is_a_caller_mistake) {
+  EXPECT_THROW((void)CsvFile::from_file(File::from_memory("a,b\n"),
+                                        {.separator = '"', .quote = '"'}),
+               std::invalid_argument);
+  EXPECT_THROW(
+      (void)CsvFile::from_file(File::from_memory("a,b\n"), {.separator = '\n'}),
+      std::invalid_argument);
+}
+
+TEST(CsvOptions, a_given_encoding_skips_detection) {
+  // latin-1 bytes that are not valid utf-8; detection would not name them
+  const File file = File::from_memory("caf\xe9,x\nb,y\n");
+
+  EXPECT_EQ(CsvFile::from_file(file, {.encoding = TextEncoding::iso_8859_1})
+                .options()
+                .encoding,
+            TextEncoding::iso_8859_1);
+}
+
+TEST(CsvOptions, with_options_derives_another_handle) {
+  const CsvFile file =
+      CsvFile::from_file(File::from_memory("a;b\n1;2\n"), CsvOptions{});
+  const CsvFile other = file.with_options({.separator = ','});
+
+  EXPECT_EQ(file.options().separator, ';');
+  EXPECT_EQ(other.options().separator, ',');
+}
+
+TEST(CsvOptions, a_decoded_csv_is_reachable_as_one) {
+  const File file(
+      TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv"));
+  const DecodedFile decoded(file, FileType::comma_separated_values);
+
+  EXPECT_TRUE(decoded.is_csv_file());
+  EXPECT_EQ(decoded.as_csv_file().options().separator, ',');
+}
