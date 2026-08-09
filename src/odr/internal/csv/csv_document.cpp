@@ -220,9 +220,9 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {1, 1};
   }
-  [[nodiscard]] ValueType sheet_cell_value_type(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return ValueType::string;
+  [[nodiscard]] ValueType
+  sheet_cell_value_type(const ElementIdentifier element_id) const override {
+    return m_document->value_type(column_of(element_id), row_of(element_id));
   }
 
   // TextAdapter
@@ -277,6 +277,31 @@ CsvDocument::CsvDocument(const abstract::File &file,
 
   m_dimensions = {static_cast<std::uint32_t>(m_rows.size()), columns};
 
+  // Walks the fields that exist rather than the rectangle they span: one wide
+  // record widens every row, and scanning `rows * columns` synthesized cells
+  // costs more than the file holds.
+  //
+  // The first row is a header, not a value — one word would otherwise make
+  // every column prose.
+  std::vector<bool> has_value(columns, false);
+  m_numeric_columns.assign(columns, true);
+  for (std::size_t row = 1; row < m_rows.size(); ++row) {
+    const std::vector<std::string> &fields = m_rows[row];
+    for (std::size_t column = 0; column < fields.size(); ++column) {
+      const std::string &value = fields[column];
+      if (value.empty()) {
+        continue;
+      }
+      has_value[column] = true;
+      if (!is_number(value)) {
+        m_numeric_columns[column] = false;
+      }
+    }
+  }
+  for (std::uint32_t column = 0; column < columns; ++column) {
+    m_numeric_columns[column] = m_numeric_columns[column] && has_value[column];
+  }
+
   m_root_element = make_id(Kind::root);
   m_element_adapter = std::make_unique<ElementAdapter>(*this);
 }
@@ -312,6 +337,16 @@ std::string_view CsvDocument::cell(const std::uint32_t column,
 
 TableDimensions CsvDocument::dimensions() const noexcept {
   return m_dimensions;
+}
+
+ValueType CsvDocument::value_type(const std::uint32_t column,
+                                  const std::uint32_t row) const {
+  if (column >= m_numeric_columns.size() || !m_numeric_columns[column]) {
+    return ValueType::string;
+  }
+  // the header of a numeric column is still a name
+  return is_number(cell(column, row)) ? ValueType::float_number
+                                      : ValueType::string;
 }
 
 } // namespace odr::internal::csv

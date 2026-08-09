@@ -65,6 +65,14 @@ struct Probe final {
 [[nodiscard]] Probe probe(std::string_view text, bool complete,
                           char quote = '"');
 
+/// Whether @p field is a number: optional sign, digits, an optional fraction
+/// and exponent, surrounding blanks.
+///
+/// Rejects a leading zero (`007` is an identifier, not a quantity) and any
+/// thousands separator (`1,234` means two different numbers depending on where
+/// you live, and a csv does not say which).
+[[nodiscard]] bool is_number(std::string_view field) noexcept;
+
 /// Reads @p file's opening bytes, decodes them and scores them. Not a csv when
 /// @p encoding cannot be decoded.
 [[nodiscard]] Probe probe(const abstract::File &file, TextEncoding encoding,
