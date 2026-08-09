@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.4.0 - 2026-08-09
+
 - csv opens as a spreadsheet, its dialect probed unless the caller gives one,
   and a value that only looks numeric left as text.
 - Text encodings are named and decoded, so a document that is not UTF-8 comes
