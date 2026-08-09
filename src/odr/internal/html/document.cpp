@@ -94,6 +94,9 @@ void back(const Document &document, const WritingState &state) {
   }
 
   write_document_script(state);
+  if (document.document_type() == DocumentType::spreadsheet) {
+    write_spreadsheet_script(state);
+  }
 
   out.write_body_end();
   out.write_end();

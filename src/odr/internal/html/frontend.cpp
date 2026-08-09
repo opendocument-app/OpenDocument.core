@@ -35,6 +35,10 @@ constexpr const char *spreadsheet_css = R"css(
 --odr-sheet-ruler:#f5f6f7;
 --odr-sheet-ruler-text:#5c6169;
 --odr-sheet-canvas:#eceef1;
+--odr-sheet-wash:rgba(0,0,0,.045);
+--odr-sheet-wash-pinned:rgba(0,0,0,.09);
+--odr-sheet-wash-ruler:rgba(0,0,0,.10);
+--odr-sheet-focus:#3c78dc;
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 /* A sheet is not a page: past the last row and column is canvas. */
@@ -53,6 +57,12 @@ td x-p{height:inherit}
 .odr-gridlines-soft .odr-sheet td{border-top:1px solid var(--odr-sheet-line);border-left:1px solid var(--odr-sheet-line)}
 .odr-gridlines-hard .odr-sheet td{border:1px solid var(--odr-sheet-line)!important}
 .odr-sheet td.odr-value-type-float{text-align:right}
+/* `background-image` layers over the document's own cell background instead of
+   replacing it, and leaves `box-shadow` to the ruler. */
+.odr-sheet tbody tr:hover>*{background-image:linear-gradient(var(--odr-sheet-wash),var(--odr-sheet-wash))}
+.odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
+.odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
+.odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
 )css";
 
 constexpr const char *text_css = R"css(
@@ -247,6 +257,124 @@ constexpr const char *document_js = R"js(
   odr.searchPrevious = function (text) {
     return step(-1, text);
   };
+})();
+)js";
+
+/// Highlights the row and column under the pointer, and pins them on a click.
+/// A column has no `:hover` selector, so one generated `:nth-child` rule lights
+/// it — free per cell, but only correct while cell and column line up.
+constexpr const char *spreadsheet_js = R"js(
+(function () {
+  "use strict";
+
+  var table = document.querySelector(".odr-sheet");
+  if (table === null) {
+    return;
+  }
+
+  var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
+
+  var style = document.createElement("style");
+  document.head.appendChild(style);
+
+  var hovered = -1;
+  var pinnedColumn = -1;
+  var pinnedRow = null;
+  var pinnedCell = null;
+
+  // Column 0 is the gutter, which labels no column.
+  function columnRule(index, wash, scope) {
+    if (index < 1) {
+      return "";
+    }
+    return (
+      ".odr-sheet " +
+      scope +
+      "tr>:nth-child(" +
+      (index + 1) +
+      "){background-image:linear-gradient(" +
+      wash +
+      "," +
+      wash +
+      ")}"
+    );
+  }
+
+  // The ruler reacts harder than the cells: it is the label being followed.
+  function paint() {
+    style.textContent =
+      columnRule(hovered, "var(--odr-sheet-wash)", "") +
+      columnRule(pinnedColumn, "var(--odr-sheet-wash-pinned)", "") +
+      columnRule(hovered, "var(--odr-sheet-wash-ruler)", "thead ") +
+      columnRule(pinnedColumn, "var(--odr-sheet-wash-ruler)", "thead ");
+  }
+
+  function columnOf(cell) {
+    return cell !== null && !merged ? cell.cellIndex : -1;
+  }
+
+  function pin(column, row, cell) {
+    if (pinnedRow !== null) {
+      pinnedRow.classList.remove("odr-sheet-pinned");
+    }
+    if (pinnedCell !== null) {
+      pinnedCell.classList.remove("odr-sheet-pinned-cell");
+    }
+
+    pinnedColumn = column;
+    pinnedRow = row;
+    pinnedCell = cell;
+
+    if (pinnedRow !== null) {
+      pinnedRow.classList.add("odr-sheet-pinned");
+    }
+    if (pinnedCell !== null) {
+      pinnedCell.classList.add("odr-sheet-pinned-cell");
+    }
+    paint();
+  }
+
+  table.addEventListener("mouseover", function (event) {
+    var column = columnOf(event.target.closest("td,th"));
+    if (column !== hovered) {
+      hovered = column;
+      paint();
+    }
+  });
+
+  table.addEventListener("mouseleave", function () {
+    hovered = -1;
+    paint();
+  });
+
+  table.addEventListener("click", function (event) {
+    var cell = event.target.closest("td,th");
+    if (cell === null) {
+      return;
+    }
+
+    // Clicking what is pinned clears it.
+    if (cell === pinnedCell) {
+      pin(-1, null, null);
+      return;
+    }
+
+    if (cell.classList.contains("odr-sheet-column-header")) {
+      pin(columnOf(cell), null, cell);
+    } else if (cell.classList.contains("odr-sheet-row-header")) {
+      pin(-1, cell.parentElement, cell);
+    } else if (cell.classList.contains("odr-sheet-corner")) {
+      pin(-1, null, null);
+    } else {
+      pin(columnOf(cell), cell.parentElement, cell);
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      pin(-1, null, null);
+    }
+  });
 })();
 )js";
 
@@ -604,6 +732,8 @@ constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
                                 media_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", document_js};
+constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
+                                     "spreadsheet.js", spreadsheet_js};
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
                               "text.js", text_js};
 
@@ -666,6 +796,10 @@ void html::write_media_style(const WritingState &state) {
 
 void html::write_document_script(const WritingState &state) {
   write_script(document_js_asset, state);
+}
+
+void html::write_spreadsheet_script(const WritingState &state) {
+  write_script(spreadsheet_js_asset, state);
 }
 
 void html::write_text_script(const WritingState &state) {
