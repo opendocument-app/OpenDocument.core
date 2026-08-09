@@ -112,10 +112,8 @@ TEST_P(HtmlOutputTests, html_meta) {
     EXPECT_EQ(test_file.type, file.file_type());
   }
 
-  // TODO enable zip, csv, json
-  if (test_file.type == FileType::zip ||
-      test_file.type == FileType::comma_separated_values ||
-      test_file.type == FileType::javascript_object_notation) {
+  // TODO enable json
+  if (test_file.type == FileType::javascript_object_notation) {
     GTEST_SKIP();
   }
 
