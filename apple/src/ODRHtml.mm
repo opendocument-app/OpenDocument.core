@@ -21,6 +21,7 @@ ODR_SAME_ENUM(ODRHtmlResourceTypeJs, odr::HtmlResourceType::js);
 ODR_SAME_ENUM(ODRHtmlResourceTypeImage, odr::HtmlResourceType::image);
 ODR_SAME_ENUM(ODRHtmlResourceTypeFont, odr::HtmlResourceType::font);
 ODR_SAME_ENUM(ODRHtmlResourceTypeMedia, odr::HtmlResourceType::media);
+ODR_SAME_ENUM(ODRHtmlResourceTypeFile, odr::HtmlResourceType::file);
 
 ODR_SAME_ENUM(ODRHtmlTableGridlinesNone, odr::HtmlTableGridlines::none);
 ODR_SAME_ENUM(ODRHtmlTableGridlinesSoft, odr::HtmlTableGridlines::soft);

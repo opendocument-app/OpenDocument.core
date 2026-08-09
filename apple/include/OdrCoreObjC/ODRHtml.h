@@ -17,6 +17,7 @@ typedef NS_ENUM(NSInteger, ODRHtmlResourceType) {
   ODRHtmlResourceTypeImage,
   ODRHtmlResourceTypeFont,
   ODRHtmlResourceTypeMedia,
+  ODRHtmlResourceTypeFile,
 } NS_SWIFT_NAME(HtmlResourceType);
 
 typedef NS_ENUM(NSInteger, ODRHtmlTableGridlines) {
