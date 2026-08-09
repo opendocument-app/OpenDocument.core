@@ -108,6 +108,26 @@ TEST(Document, odt) {
   EXPECT_EQ(Measure("0.7874in"), page_layout.margin.top);
 }
 
+TEST(Document, docx_page_layout) {
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/docx/sample3.docx"), logger);
+
+  const Document document = document_file.document();
+
+  const PageLayout page_layout =
+      document.root_element().as_text_root().page_layout();
+  // Two sections; the 0.5in bottom margin is the first one's, the body's own
+  // `w:sectPr` says 1in.
+  EXPECT_EQ(Measure("8.5in"), page_layout.width);
+  EXPECT_EQ(Measure("11in"), page_layout.height);
+  EXPECT_EQ(Measure("1in"), page_layout.margin.top);
+  EXPECT_EQ(Measure("1in"), page_layout.margin.right);
+  EXPECT_EQ(Measure("0.5in"), page_layout.margin.bottom);
+  EXPECT_EQ(Measure("1in"), page_layout.margin.left);
+}
+
 TEST(Document, xlsx_sheet_names) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 

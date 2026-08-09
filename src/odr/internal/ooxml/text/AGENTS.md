@@ -38,6 +38,13 @@ interleaved list. `w:lvlText` is the template, `%N` naming a level's counter;
 the shared expansion and the number formats are in `common/list_numbering.*`,
 where ODF lowers to the same shape.
 
+**Page layout comes from the first `w:sectPr` in document order.** The model
+carries one `PageLayout` per text root, while Word carries one per section —
+and `w:body/w:sectPr` describes the *last* section, a section being closed by
+the `w:pPr/w:sectPr` of its final paragraph. Taking the first one in document
+order therefore gives the layout the document opens with, and collapses to the
+body's own for the single-section documents that are the norm.
+
 **Style resolution mixes a static hierarchy with a runtime cascade.**
 `StyleRegistry` indexes `w:style` by `w:styleId` and pre-flattens the
 `w:basedOn` chain: each `Style` recursively resolves its parent, copies the

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/style.hpp>
+
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
@@ -23,6 +25,7 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
   [[nodiscard]] const StyleRegistry &style_registry() const;
   [[nodiscard]] const Relations &document_relations() const;
+  [[nodiscard]] const PageLayout &page_layout() const;
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
@@ -36,6 +39,8 @@ private:
   pugi::xml_document m_numbering_xml;
 
   Relations m_document_relations;
+
+  PageLayout m_page_layout;
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;

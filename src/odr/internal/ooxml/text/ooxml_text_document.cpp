@@ -23,7 +23,44 @@ namespace odr::internal::ooxml::text {
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(const Document &document, ElementRegistry &registry);
+
+/// `w:top` and `w:bottom` are signed: a negative margin lets the header flow
+/// into the body, which as a CSS margin would push the text off the page.
+std::optional<Measure> read_page_margin(const pugi::xml_attribute attribute) {
+  const std::optional<Measure> margin = read_twips_attribute(attribute);
+  if (margin.has_value() && margin->magnitude() < 0) {
+    return Measure(0, margin->unit());
+  }
+  return margin;
 }
+
+/// [ECMA-376] 17.6.17 `w:sectPr`. The body's own are the *last* section's, so
+/// the first in document order is the one the document opens with.
+PageLayout read_page_layout(const pugi::xml_node body) {
+  const pugi::xml_node section_properties =
+      body.select_node(".//w:sectPr").node();
+
+  PageLayout result;
+
+  const pugi::xml_node page_size = section_properties.child("w:pgSz");
+  result.width = read_twips_attribute(page_size.attribute("w:w"));
+  result.height = read_twips_attribute(page_size.attribute("w:h"));
+  if (const pugi::xml_attribute orientation = page_size.attribute("w:orient")) {
+    result.print_orientation =
+        std::strcmp("landscape", orientation.value()) == 0
+            ? PrintOrientation::landscape
+            : PrintOrientation::portrait;
+  }
+
+  const pugi::xml_node page_margin = section_properties.child("w:pgMar");
+  result.margin.right = read_page_margin(page_margin.attribute("w:right"));
+  result.margin.top = read_page_margin(page_margin.attribute("w:top"));
+  result.margin.left = read_page_margin(page_margin.attribute("w:left"));
+  result.margin.bottom = read_page_margin(page_margin.attribute("w:bottom"));
+
+  return result;
+}
+} // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_document, DocumentType::text,
@@ -39,6 +76,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
 
   m_document_relations =
       parse_relationships(*m_files, AbsPath("/word/document.xml"));
+
+  m_page_layout =
+      read_page_layout(m_document_xml.document_element().child("w:body"));
 
   m_root_element = parse_tree(
       m_element_registry, m_document_xml.document_element().child("w:body"));
@@ -68,6 +108,8 @@ const StyleRegistry &Document::style_registry() const {
 const Relations &Document::document_relations() const {
   return m_document_relations;
 }
+
+const PageLayout &Document::page_layout() const { return m_page_layout; }
 
 bool Document::is_editable() const noexcept { return true; }
 
@@ -242,7 +284,7 @@ public:
 
   [[nodiscard]] PageLayout text_root_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {};
+    return m_document->page_layout();
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
