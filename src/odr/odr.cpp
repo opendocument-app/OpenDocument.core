@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
+#include <odr/internal/encoding/text_encoding_table.hpp>
 #include <odr/internal/file_type_table.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/project_info.hpp>
@@ -15,6 +16,9 @@
 namespace {
 using odr::internal::file_type_table::Row;
 namespace table = odr::internal::file_type_table;
+
+using EncodingRow = odr::internal::encoding::text_encoding_table::Row;
+namespace encoding_table = odr::internal::encoding::text_encoding_table;
 } // namespace
 
 std::string odr::version() {
@@ -143,6 +147,39 @@ odr::FileTypeCapabilities
 odr::capabilities_by_file_type(const FileType type) noexcept {
   const Row *row = table::find(type);
   return row == nullptr ? FileTypeCapabilities{} : row->capabilities;
+}
+
+std::vector<odr::TextEncoding> odr::all_text_encodings() {
+  std::vector<TextEncoding> result;
+  result.reserve(encoding_table::rows().size());
+  std::ranges::transform(encoding_table::rows(), std::back_inserter(result),
+                         &EncodingRow::encoding);
+  return result;
+}
+
+std::string_view odr::text_encoding_to_string(const TextEncoding encoding) {
+  const EncodingRow *row = encoding_table::find(encoding);
+  if (row == nullptr) {
+    throw UnsupportedTextEncoding(encoding);
+  }
+  return row->names.front();
+}
+
+odr::TextEncoding
+odr::text_encoding_by_name(const std::string_view name) noexcept {
+  const EncodingRow *row = encoding_table::find_by_name(name);
+  return row == nullptr ? TextEncoding::unknown : row->encoding;
+}
+
+std::span<const std::string_view>
+odr::text_encoding_names(const TextEncoding encoding) noexcept {
+  const EncodingRow *row = encoding_table::find(encoding);
+  return row == nullptr ? std::span<const std::string_view>{} : row->names;
+}
+
+bool odr::text_encoding_is_decodable(const TextEncoding encoding) noexcept {
+  const EncodingRow *row = encoding_table::find(encoding);
+  return row != nullptr && row->decodable;
 }
 
 std::vector<odr::FileType> odr::list_file_types(const File &file,

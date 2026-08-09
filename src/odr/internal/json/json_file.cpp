@@ -31,4 +31,6 @@ FileMeta JsonFile::file_meta() const noexcept {
 
 bool JsonFile::is_decodable() const noexcept { return false; }
 
+TextEncoding JsonFile::encoding() const noexcept { return m_file->encoding(); }
+
 } // namespace odr::internal::json

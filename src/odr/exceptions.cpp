@@ -22,6 +22,10 @@ UnsupportedFileType::UnsupportedFileType(const FileType file_type)
     : Exception("unsupported file type: " + file_type_to_string(file_type)),
       file_type{file_type} {}
 
+UnsupportedTextEncoding::UnsupportedTextEncoding(
+    const TextEncoding text_encoding)
+    : Exception("unsupported text encoding"), text_encoding{text_encoding} {}
+
 FileReadError::FileReadError() : Exception("file read error") {}
 
 FileWriteError::FileWriteError(const std::string &path)

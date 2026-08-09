@@ -52,6 +52,7 @@ add_executable(odr_test
         "src/internal/crypto/crypto_util_test.cpp"
 
         "src/internal/csv/csv_file_test.cpp"
+        "src/internal/encoding/text_encoding_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
         "src/internal/oldms/ppt_test.cpp"

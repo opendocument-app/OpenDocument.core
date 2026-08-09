@@ -5,6 +5,7 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/logger.hpp>
+#include <odr/odr.hpp>
 
 #include <pybind11/stl.h>
 
@@ -215,7 +216,14 @@ void odr_python::bind_file(py::module_ &m) {
       .def("as_font_file", &odr::DecodedFile::as_font_file);
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
-      .def("charset", &odr::TextFile::charset)
+      .def("charset",
+           [](const odr::TextFile &file) -> std::optional<std::string> {
+             const odr::TextEncoding encoding = file.encoding();
+             if (encoding == odr::TextEncoding::unknown) {
+               return {};
+             }
+             return std::string(odr::text_encoding_to_string(encoding));
+           })
       .def("text", &odr::TextFile::text);
 
   py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")

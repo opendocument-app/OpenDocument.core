@@ -5,6 +5,7 @@
 
 namespace odr {
 enum class FileType;
+enum class TextEncoding;
 
 /// @brief Base of every exception type this library declares. The decoders also
 /// throw plain `std::runtime_error` for malformed input with no dedicated type,
@@ -35,6 +36,13 @@ struct UnsupportedFileType final : Exception {
   FileType file_type;
 
   explicit UnsupportedFileType(FileType file_type);
+};
+
+/// @brief Unsupported text encoding exception
+struct UnsupportedTextEncoding final : Exception {
+  TextEncoding text_encoding;
+
+  explicit UnsupportedTextEncoding(TextEncoding text_encoding);
 };
 
 /// @brief File read error
@@ -88,7 +96,9 @@ struct NoJsonFile final : Exception {
 };
 
 /// @brief Unknown charset exception
-struct UnknownCharset final : Exception {
+/// @deprecated Nothing throws this any more: a file whose encoding cannot be
+/// named is still text, and reports @ref TextEncoding::unknown.
+struct [[deprecated("nothing throws this")]] UnknownCharset final : Exception {
   UnknownCharset();
 };
 

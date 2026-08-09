@@ -64,6 +64,26 @@ mimetypes_by_file_type(FileType type) noexcept;
 [[nodiscard]] FileTypeCapabilities
 capabilities_by_file_type(FileType type) noexcept;
 
+/// @brief Every text encoding this library knows about, in declaration order,
+/// excluding @ref TextEncoding::unknown.
+[[nodiscard]] std::vector<TextEncoding> all_text_encodings();
+
+/// @brief The text encoding's canonical name, a label a browser accepts.
+/// @throws UnsupportedTextEncoding for @ref TextEncoding::unknown.
+[[nodiscard]] std::string_view text_encoding_to_string(TextEncoding encoding);
+/// @brief The text encoding for a name, @ref TextEncoding::unknown if none.
+///
+/// Case and any `-`, `_` or space are ignored, so `windows-1252`,
+/// `WINDOWS_1252` and `cp1252` all name the same encoding.
+[[nodiscard]] TextEncoding
+text_encoding_by_name(std::string_view name) noexcept;
+/// @brief Every name accepted for the text encoding, canonical one first.
+[[nodiscard]] std::span<const std::string_view>
+text_encoding_names(TextEncoding encoding) noexcept;
+/// @brief Whether the library can decode the text encoding, as opposed to
+/// merely naming it.
+[[nodiscard]] bool text_encoding_is_decodable(TextEncoding encoding) noexcept;
+
 /// @brief The file types detected for @p file.
 [[nodiscard]] std::vector<FileType>
 list_file_types(const File &file, const Logger &logger = Logger::null());

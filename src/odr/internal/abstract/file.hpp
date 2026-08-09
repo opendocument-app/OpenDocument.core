@@ -62,6 +62,9 @@ public:
   [[nodiscard]] FileCategory file_category() const noexcept final {
     return FileCategory::text;
   }
+
+  /// The encoding the bytes were detected as, or decoded with.
+  [[nodiscard]] virtual TextEncoding encoding() const noexcept = 0;
 };
 
 class ImageFile : public DecodedFile {
