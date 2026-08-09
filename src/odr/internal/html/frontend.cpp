@@ -7,11 +7,14 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
+#include <string>
+#include <string_view>
+
 namespace odr::internal::html {
 
 namespace {
 
-constexpr const char *document_css = R"css(
+constexpr std::string_view document_css = R"css(
 *{margin:0;position:relative}
 x-p{display:block;font-size:0}
 x-s{display:inline}
@@ -28,7 +31,7 @@ mark.current{background:orange}
 
 /// No `text-overflow`: it sat on `td`, whose overflow is visible, and making it
 /// work would mean clipping.
-constexpr const char *spreadsheet_css = R"css(
+constexpr std::string_view spreadsheet_css = R"css(
 :root{
 --odr-sheet-line:#e3e5e8;
 --odr-sheet-rule:#c8ccd1;
@@ -71,7 +74,7 @@ td x-p{height:inherit}
 .odr-sheet-sort-asc::after{content:"\25B4"}
 )css";
 
-constexpr const char *text_css = R"css(
+constexpr std::string_view text_css = R"css(
 .odr-text{display:flex;flex-direction:row;font-family:monospace}
 .odr-text-nr{display:flex;flex-direction:column;text-align:right;vertical-align:top;color:#999;border-right:solid #999}
 .odr-text-body{display:flex;flex-direction:column;padding-left:5pt;white-space:pre}
@@ -79,7 +82,7 @@ constexpr const char *text_css = R"css(
 [contenteditable]:focus{outline:none}
 )css";
 
-constexpr const char *filesystem_css = R"css(
+constexpr std::string_view filesystem_css = R"css(
 :root{
 --odr-files-line:#e3e5e8;
 --odr-files-muted:#5c6169;
@@ -100,13 +103,13 @@ body{background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files-action a:hover{background:rgba(0,0,0,.07);color:var(--odr-files-link)}
 )css";
 
-constexpr const char *media_css = R"css(
+constexpr std::string_view media_css = R"css(
 .odr-media{display:flex;align-items:center;justify-content:center;margin:0;min-height:100vh;background:#000}
 .odr-media video{max-width:100%;max-height:100vh}
 .odr-media audio{width:100%;max-width:40rem;margin:0 1rem}
 )css";
 
-constexpr const char *document_js = R"js(
+constexpr std::string_view document_js = R"js(
 (function () {
   "use strict";
 
@@ -290,7 +293,7 @@ constexpr const char *document_js = R"js(
 /// Highlights the row and column under the pointer, and pins them on a click.
 /// A column has no `:hover` selector, so one generated `:nth-child` rule lights
 /// it — free per cell, but only correct while cell and column line up.
-constexpr const char *spreadsheet_js = R"js(
+constexpr std::string_view spreadsheet_js = R"js(
 (function () {
   "use strict";
 
@@ -534,7 +537,7 @@ constexpr const char *spreadsheet_js = R"js(
 
 /// Every input is applied to the line `<div>`s by hand, so the line numbers
 /// stay in step and undo/redo replay changes instead of the browser's history.
-constexpr const char *text_js = R"js(
+constexpr std::string_view text_js = R"js(
 (function () {
   "use strict";
 
@@ -871,9 +874,9 @@ constexpr const char *text_js = R"js(
 /// @ref odr::HtmlConfig::embed_shipped_resources means.
 struct Asset {
   HtmlResourceType type;
-  const char *mime_type;
-  const char *name;
-  const char *content;
+  std::string_view mime_type;
+  std::string_view name;
+  std::string_view content;
 };
 
 constexpr Asset document_css_asset{HtmlResourceType::css, "text/css",
@@ -896,8 +899,9 @@ constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
 /// Registers @p asset among the view's resources; `nullopt` to embed it.
 HtmlResourceLocation locate(const Asset &asset, const WritingState &state) {
   const odr::HtmlResource resource = HtmlResource::create(
-      asset.type, asset.mime_type, asset.name, asset.name,
-      odr::File::from_memory(asset.content), true, false, true);
+      asset.type, std::string(asset.mime_type), std::string(asset.name),
+      std::string(asset.name),
+      odr::File::from_memory(std::string(asset.content)), true, false, true);
   HtmlResourceLocation location =
       state.config().resource_locator(resource, state.config());
   state.resources().emplace_back(resource, location);
