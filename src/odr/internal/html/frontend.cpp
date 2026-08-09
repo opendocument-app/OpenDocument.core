@@ -7,6 +7,8 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
+#include <array>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -896,20 +898,30 @@ constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
                               "text.js", text_js};
 
-/// Registers @p asset among the view's resources; `nullopt` to embed it.
-HtmlResourceLocation locate(const Asset &asset, const WritingState &state) {
+/// Appends @p asset to @p resources; `nullopt` to embed it.
+HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
+                            HtmlResources &resources) {
   const odr::HtmlResource resource = HtmlResource::create(
       asset.type, std::string(asset.mime_type), std::string(asset.name),
       std::string(asset.name),
       odr::File::from_memory(std::string(asset.content)), true, false, true);
-  HtmlResourceLocation location =
-      state.config().resource_locator(resource, state.config());
-  state.resources().emplace_back(resource, location);
+  HtmlResourceLocation location = config.resource_locator(resource, config);
+  resources.emplace_back(resource, location);
   return location;
 }
 
+HtmlResources locate_all(const std::span<const Asset> assets,
+                         const HtmlConfig &config) {
+  HtmlResources resources;
+  for (const Asset &asset : assets) {
+    locate(asset, config, resources);
+  }
+  return resources;
+}
+
 void write_style(const Asset &asset, const WritingState &state) {
-  if (const HtmlResourceLocation location = locate(asset, state);
+  if (const HtmlResourceLocation location =
+          locate(asset, state.config(), state.resources());
       location.has_value()) {
     state.out().write_header_style(escape_attribute(*location));
     return;
@@ -921,7 +933,8 @@ void write_style(const Asset &asset, const WritingState &state) {
 }
 
 void write_script(const Asset &asset, const WritingState &state) {
-  if (const HtmlResourceLocation location = locate(asset, state);
+  if (const HtmlResourceLocation location =
+          locate(asset, state.config(), state.resources());
       location.has_value()) {
     state.out().write_script(escape_attribute(*location));
     return;
@@ -968,6 +981,21 @@ void html::write_spreadsheet_script(const WritingState &state) {
 
 void html::write_text_script(const WritingState &state) {
   write_script(text_js_asset, state);
+}
+
+HtmlResources html::locate_text_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{text_css_asset, text_js_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_filesystem_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{filesystem_css_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_media_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{media_css_asset};
+  return locate_all(assets, config);
 }
 
 } // namespace odr::internal

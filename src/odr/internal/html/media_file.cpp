@@ -93,7 +93,8 @@ public:
         m_view_path{m_element + ".html"},
         m_extension{source_extension(m_media_file)},
         m_source_path{m_element + "." + m_extension},
-        m_mime_type{mime_type_for(m_media_file.file_type(), m_extension)} {
+        m_mime_type{mime_type_for(m_media_file.file_type(), m_extension)},
+        m_resources{locate_media_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, m_element, 0, m_view_path));
   }
@@ -103,7 +104,8 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == m_view_path || path == m_source_path;
+    return path == m_view_path || path == m_source_path ||
+           resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
@@ -112,6 +114,10 @@ public:
     }
     if (path == m_source_path) {
       return m_mime_type;
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -125,6 +131,11 @@ public:
     }
     if (path == m_source_path) {
       m_media_file.file().pipe(out);
+      return;
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
       return;
     }
 
@@ -197,6 +208,8 @@ private:
   std::string m_extension;
   std::string m_source_path;
   std::string m_mime_type;
+  /// The css this view links; empty of locations when the config embeds it.
+  HtmlResources m_resources;
 
   HtmlViews m_views;
 };

@@ -76,3 +76,18 @@ void HtmlResource::write_resource(std::ostream &os) const {
 }
 
 } // namespace odr::internal::html
+
+namespace odr::internal {
+
+const odr::HtmlResource *html::resource_at(const HtmlResources &resources,
+                                           const std::string &path) {
+  for (const auto &[resource, location] : resources) {
+    if (location.has_value() && *location == path) {
+      return &resource;
+    }
+  }
+
+  return nullptr;
+}
+
+} // namespace odr::internal

@@ -206,14 +206,7 @@ public:
 
     warmup();
 
-    if (std::ranges::any_of(m_resources, [&path](const auto &pair) {
-          const auto &[resource, location] = pair;
-          return location.has_value() && location.value() == path;
-        })) {
-      return true;
-    }
-
-    return false;
+    return resource_at(m_resources, path) != nullptr;
   }
 
   std::string mimetype(const std::string &path) const override {
@@ -225,10 +218,9 @@ public:
 
     warmup();
 
-    for (const auto &[resource, location] : m_resources) {
-      if (location.has_value() && location.value() == path) {
-        return resource.mime_type();
-      }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -245,11 +237,10 @@ public:
 
     warmup();
 
-    for (const auto &[resource, location] : m_resources) {
-      if (location.has_value() && location.value() == path) {
-        resource.write_resource(out);
-        return;
-      }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
+      return;
     }
 
     throw FileNotFound("Unknown path: " + path);

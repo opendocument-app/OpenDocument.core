@@ -21,7 +21,8 @@ class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(TextFile text_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger),
-        m_text_file{std::move(text_file)} {
+        m_text_file{std::move(text_file)},
+        m_resources{locate_text_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "text", 0, "text.html"));
   }
@@ -31,12 +32,16 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == "text.html";
+    return path == "text.html" || resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "text.html") {
       return "text/html";
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -46,6 +51,11 @@ public:
     if (path == "text.html") {
       HtmlWriter writer(out, config());
       write_text(writer);
+      return;
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
       return;
     }
 
@@ -149,6 +159,9 @@ public:
 
 protected:
   TextFile m_text_file;
+  /// The css and js this view links; empty of locations when the config embeds
+  /// them.
+  HtmlResources m_resources;
 
   HtmlViews m_views;
 };

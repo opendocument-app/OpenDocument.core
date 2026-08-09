@@ -41,7 +41,8 @@ public:
   HtmlServiceImpl(Filesystem filesystem, HtmlConfig config,
                   const Logger &logger)
       : HtmlService(std::move(config), logger),
-        m_filesystem{std::move(filesystem)} {
+        m_filesystem{std::move(filesystem)},
+        m_resources{locate_filesystem_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "files", 0, "files.html"));
   }
@@ -51,12 +52,16 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == "files.html";
+    return path == "files.html" || resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "files.html") {
       return "text/html";
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -66,6 +71,11 @@ public:
     if (path == "files.html") {
       HtmlWriter writer(out, config());
       write_filesystem(writer);
+      return;
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
       return;
     }
 
@@ -170,6 +180,8 @@ public:
 
 protected:
   Filesystem m_filesystem;
+  /// The css this view links; empty of locations when the config embeds it.
+  HtmlResources m_resources;
 
   HtmlViews m_views;
 };

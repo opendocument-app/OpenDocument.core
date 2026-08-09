@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/html.hpp>
+
 namespace odr::internal::html {
 
 struct WritingState;
@@ -20,5 +22,12 @@ void write_document_script(const WritingState &state);
 /// Written in addition to the document script.
 void write_spreadsheet_script(const WritingState &state);
 void write_text_script(const WritingState &state);
+
+/// What the corresponding `write_*` calls would link, without writing anything:
+/// a service has to answer for these paths as well as for its views. Every
+/// entry is located `nullopt` when the config embeds them.
+HtmlResources locate_text_resources(const HtmlConfig &config);
+HtmlResources locate_filesystem_resources(const HtmlConfig &config);
+HtmlResources locate_media_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html
