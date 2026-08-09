@@ -32,7 +32,10 @@ bool is_paged_content(const Document &document, const HtmlConfig &config) {
          document.document_type() == DocumentType::drawing;
 }
 
-void front(const Document &document, const WritingState &state) {
+/// @p name titles the view; empty when the whole document is written as one
+/// file, which no one view names.
+void front(const Document &document, const WritingState &state,
+           const std::string &name) {
   HtmlWriter &out = state.out();
 
   const bool paged_content = is_paged_content(document, state.config());
@@ -41,7 +44,10 @@ void front(const Document &document, const WritingState &state) {
   out.write_header_begin();
   out.write_header_charset("UTF-8");
   out.write_header_target("_blank");
-  out.write_header_title("odr");
+  out.write_header_title(
+      document.document_type() == DocumentType::spreadsheet && !name.empty()
+          ? escape_text(name)
+          : "odr");
   write_viewport_meta(out, state.config(), paged_content,
                       document.document_type() == DocumentType::spreadsheet
                           ? state.config().spreadsheet_viewport_mode
@@ -109,7 +115,7 @@ public:
   virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
 
   void write_document(HtmlWriter &out, WritingState &state) const {
-    front(m_document, state);
+    front(m_document, state, m_name);
     write_fragment(out, state);
     back(m_document, state);
   }
@@ -266,7 +272,7 @@ public:
 
     WritingState state(out, config(), resources);
 
-    front(m_document, state);
+    front(m_document, state, "");
     for (const auto &fragment : m_fragments) {
       fragment->write_fragment(out, state);
     }

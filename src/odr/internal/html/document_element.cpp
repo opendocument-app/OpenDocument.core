@@ -122,9 +122,18 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     state.out().write_element_begin("thead");
     state.out().write_element_begin("tr");
 
+    // Under `table-layout:fixed` the first row sizes the columns, and `ch`
+    // resolves against the ruler's font — so the gutter width sits here rather
+    // than on the `<col>`.
     state.out().write_element_begin(
         "th",
-        HtmlElementOptions().set_inline(true).set_class("odr-sheet-corner"));
+        HtmlElementOptions()
+            .set_inline(true)
+            .set_class("odr-sheet-corner")
+            .set_style("width:calc(" +
+                       std::to_string(
+                           TablePosition::to_row_string(end_row - 1).size()) +
+                       "ch + 14px);"));
     state.out().write_element_end("th");
 
     for (std::uint32_t column_index = 0; column_index < end_column;

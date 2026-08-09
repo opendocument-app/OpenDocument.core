@@ -27,16 +27,28 @@ mark{background:#ff0}
 mark.current{background:orange}
 )css";
 
+/// No `text-overflow`: it sat on `td`, whose overflow is visible, and making it
+/// work would mean clipping.
 constexpr const char *spreadsheet_css = R"css(
+:root{
+--odr-sheet-line:#e3e5e8;
+--odr-sheet-rule:#c8ccd1;
+--odr-sheet-ruler:#f5f6f7;
+--odr-sheet-ruler-text:#5c6169;
+--odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
 table{border-collapse:collapse;table-layout:fixed}
-td{vertical-align:bottom;text-overflow:ellipsis;height:inherit}
-x-p{font-family:"Arial",serif;font-size:10pt}
+td{vertical-align:bottom;height:inherit;padding:1px 6px}
+x-p{font-family:var(--odr-sheet-font);font-size:10pt}
 td x-p{height:inherit}
-.odr-sheet th{font-weight:normal;text-align:center;vertical-align:middle}
-.odr-sheet-gutter{width:30px}
-.odr-sheet-corner{height:20px}
-.odr-gridlines-soft .odr-sheet td,.odr-gridlines-soft .odr-sheet th{border-top:1px solid #c0c0c0;border-left:1px solid #c0c0c0}
-.odr-gridlines-hard .odr-sheet td,.odr-gridlines-hard .odr-sheet th{border:1px solid #c0c0c0!important}
+/* Sticky cells in a collapsed border model do not repaint their borders in
+   Chrome or WebKit, so the ruler uses inset shadows. */
+.odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 11px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
+.odr-sheet thead th{top:0;z-index:2;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
+.odr-sheet-row-header{left:0;z-index:1;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
+.odr-sheet-corner{left:0;z-index:3;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-rule)}
+.odr-gridlines-soft .odr-sheet td{border-top:1px solid var(--odr-sheet-line);border-left:1px solid var(--odr-sheet-line)}
+.odr-gridlines-hard .odr-sheet td{border:1px solid var(--odr-sheet-line)!important}
 .odr-sheet td.odr-value-type-float{text-align:right}
 )css";
 
