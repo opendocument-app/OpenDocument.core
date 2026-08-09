@@ -47,9 +47,9 @@ void front(const Document &document, const WritingState &state) {
                           ? state.config().spreadsheet_viewport_mode
                           : std::nullopt);
 
-  write_document_style(out);
+  write_document_style(state);
   if (document.document_type() == DocumentType::spreadsheet) {
-    write_spreadsheet_style(out);
+    write_spreadsheet_style(state);
   }
 
   out.write_header_end();
@@ -87,7 +87,7 @@ void back(const Document &document, const WritingState &state) {
     out.write_element_end("div");
   }
 
-  write_document_script(out);
+  write_document_script(state);
 
   out.write_body_end();
   out.write_end();

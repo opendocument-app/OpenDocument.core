@@ -142,6 +142,7 @@ public:
 
   HtmlResources write_media(HtmlWriter &out) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     // The media stays a resource rather than a data URI: a video is regularly
     // larger than everything else we emit put together, and base64 in the
@@ -159,7 +160,7 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
-    write_media_style(out);
+    write_media_style(state);
     out.write_header_end();
 
     out.write_body_begin(HtmlElementOptions().set_class("odr-media"));

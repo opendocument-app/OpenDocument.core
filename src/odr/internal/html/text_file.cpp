@@ -77,6 +77,7 @@ public:
 
   HtmlResources write_text(HtmlWriter &out) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     const auto [text, charset] = body_and_charset();
 
@@ -89,7 +90,7 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
 
-    write_text_style(out);
+    write_text_style(state);
 
     out.write_header_end();
 
@@ -137,7 +138,7 @@ public:
 
     out.write_element_end("div");
 
-    write_text_script(out);
+    write_text_script(state);
 
     out.write_body_end();
 

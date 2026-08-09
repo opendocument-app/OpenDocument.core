@@ -56,6 +56,7 @@ struct TestParams {
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
   std::string test_repo;
   std::string output_path;
+  std::string output_path_prefix;
 };
 
 using HtmlOutputTests = testing::TestWithParam<TestParams>;
@@ -66,6 +67,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   const TestParams &params = GetParam();
   const TestFile &test_file = params.test_file;
   const std::string &output_path = params.output_path;
+  const std::string &output_path_prefix = params.output_path_prefix;
 
   const FileCategory file_category = file_category_by_file_type(test_file.type);
 
@@ -159,6 +161,12 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   HtmlConfig config(output_path);
   config.embed_images = true;
+  // Linked once per test repository, so a stylesheet change moves those files
+  // rather than every document.
+  config.embed_shipped_resources = false;
+  config.resource_path =
+      Path(output_path_prefix).parent().join(RelPath("resources")).string();
+  config.relative_resource_paths = true;
   config.editable = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   config.page_range_end = 100;
@@ -222,6 +230,7 @@ TestParams create_test_params(const TestFile &test_file,
       .pdf_text_mode = pdf_text_mode,
       .test_repo = test_repo,
       .output_path = output_path,
+      .output_path_prefix = output_path_prefix,
   };
 }
 

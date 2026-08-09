@@ -46,8 +46,8 @@ public:
   [[nodiscard]] const std::string &name() const;
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const std::optional<File> &file() const;
-  /// @deprecated Inert: always false. The css and js are written into the
-  /// document, so no resource is shipped alongside it any more.
+  /// One of the renderer's own compiled-in css/js rather than something the
+  /// document carries. See @ref HtmlConfig::embed_shipped_resources.
   [[nodiscard]] bool is_shipped() const;
   [[nodiscard]] bool is_external() const;
   [[nodiscard]] bool is_accessible() const;
@@ -104,14 +104,16 @@ struct HtmlConfig {
 
   // embedding
   bool embed_images{true};
-  /// @deprecated Inert: nothing is shipped any more, the css and js are
-  /// written into the document.
+  /// Write the renderer's own css and js into every document rather than beside
+  /// it as one shared file the documents link.
   bool embed_shipped_resources{true};
 
   // resources
-  /// @deprecated See @ref embed_shipped_resources.
+  /// Where linked shipped resources go, relative to the output path unless
+  /// named absolutely. Empty puts them beside the document.
   std::string resource_path;
-  /// @deprecated See @ref embed_shipped_resources.
+  /// Link an absolute @ref resource_path relative to the document, so the
+  /// output stays movable.
   bool relative_resource_paths{true};
 
   // create editable output

@@ -1,5 +1,10 @@
 #include <odr/internal/html/frontend.hpp>
 
+#include <odr/file.hpp>
+#include <odr/html.hpp>
+
+#include <odr/internal/html/common.hpp>
+#include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
 namespace odr::internal::html {
@@ -562,16 +567,61 @@ constexpr const char *text_js = R"js(
 })();
 )js";
 
-void write_style(HtmlWriter &out, const char *css) {
-  out.write_header_style_begin();
-  out.out() << css;
-  out.write_header_style_end();
+/// One of the renderer's own stylesheets or scripts — "shipped" in the sense
+/// @ref odr::HtmlConfig::embed_shipped_resources means.
+struct Asset {
+  HtmlResourceType type;
+  const char *mime_type;
+  const char *name;
+  const char *content;
+};
+
+constexpr Asset document_css_asset{HtmlResourceType::css, "text/css",
+                                   "document.css", document_css};
+constexpr Asset spreadsheet_css_asset{HtmlResourceType::css, "text/css",
+                                      "spreadsheet.css", spreadsheet_css};
+constexpr Asset text_css_asset{HtmlResourceType::css, "text/css", "text.css",
+                               text_css};
+constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
+                                media_css};
+constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
+                                  "document.js", document_js};
+constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
+                              "text.js", text_js};
+
+/// Registers @p asset among the view's resources; `nullopt` to embed it.
+HtmlResourceLocation locate(const Asset &asset, const WritingState &state) {
+  const odr::HtmlResource resource = HtmlResource::create(
+      asset.type, asset.mime_type, asset.name, asset.name,
+      odr::File::from_memory(asset.content), true, false, true);
+  HtmlResourceLocation location =
+      state.config().resource_locator(resource, state.config());
+  state.resources().emplace_back(resource, location);
+  return location;
 }
 
-void write_script(HtmlWriter &out, const char *js) {
-  out.write_script_begin();
-  out.out() << js;
-  out.write_script_end();
+void write_style(const Asset &asset, const WritingState &state) {
+  if (const HtmlResourceLocation location = locate(asset, state);
+      location.has_value()) {
+    state.out().write_header_style(escape_attribute(*location));
+    return;
+  }
+
+  state.out().write_header_style_begin();
+  state.out().out() << asset.content;
+  state.out().write_header_style_end();
+}
+
+void write_script(const Asset &asset, const WritingState &state) {
+  if (const HtmlResourceLocation location = locate(asset, state);
+      location.has_value()) {
+    state.out().write_script(escape_attribute(*location));
+    return;
+  }
+
+  state.out().write_script_begin();
+  state.out().out() << asset.content;
+  state.out().write_script_end();
 }
 
 } // namespace
@@ -580,22 +630,28 @@ void write_script(HtmlWriter &out, const char *js) {
 
 namespace odr::internal {
 
-void html::write_document_style(HtmlWriter &out) {
-  write_style(out, document_css);
+void html::write_document_style(const WritingState &state) {
+  write_style(document_css_asset, state);
 }
 
-void html::write_spreadsheet_style(HtmlWriter &out) {
-  write_style(out, spreadsheet_css);
+void html::write_spreadsheet_style(const WritingState &state) {
+  write_style(spreadsheet_css_asset, state);
 }
 
-void html::write_text_style(HtmlWriter &out) { write_style(out, text_css); }
-
-void html::write_media_style(HtmlWriter &out) { write_style(out, media_css); }
-
-void html::write_document_script(HtmlWriter &out) {
-  write_script(out, document_js);
+void html::write_text_style(const WritingState &state) {
+  write_style(text_css_asset, state);
 }
 
-void html::write_text_script(HtmlWriter &out) { write_script(out, text_js); }
+void html::write_media_style(const WritingState &state) {
+  write_style(media_css_asset, state);
+}
+
+void html::write_document_script(const WritingState &state) {
+  write_script(document_js_asset, state);
+}
+
+void html::write_text_script(const WritingState &state) {
+  write_script(text_js_asset, state);
+}
 
 } // namespace odr::internal
