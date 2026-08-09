@@ -3,8 +3,10 @@
 #include <odr/document_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <vector>
 
 #include <pugixml.hpp>
 
@@ -106,24 +108,37 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
   const auto &[element_id, _] =
       registry.create_element(ElementType::list, node);
 
-  for (; is_list_item(node); node = node.next_sibling()) {
-    ElementIdentifier base_id = element_id;
-    const std::int32_t level = list_level(node);
+  // Word writes a flat run of paragraphs and leaves the nesting to `w:ilvl`, so
+  // the tree is rebuilt here: one list per open level, each nested list hanging
+  // off the item that opened it, and consecutive items of one level sharing it.
+  std::vector<ElementIdentifier> open_lists{element_id};
+  std::vector<ElementIdentifier> open_items{null_element_id};
 
-    for (std::int32_t i = 0; i < level; ++i) {
-      // TODO a nested level should be a list_item wrapping the list
+  for (; is_list_item(node); node = node.next_sibling()) {
+    const auto level = static_cast<std::size_t>(std::max(0, list_level(node)));
+
+    while (open_lists.size() > level + 1) {
+      open_lists.pop_back();
+      open_items.pop_back();
+    }
+    while (open_lists.size() <= level) {
       const auto &[nested_id, _] =
           registry.create_element(ElementType::list, node);
 
-      registry.append_child(base_id, nested_id);
+      registry.append_child(open_items.back() != null_element_id
+                                ? open_items.back()
+                                : open_lists.back(),
+                            nested_id);
 
-      base_id = nested_id;
+      open_lists.push_back(nested_id);
+      open_items.push_back(null_element_id);
     }
 
     const auto &[item_id, _] =
         registry.create_element(ElementType::list_item, node);
 
-    registry.append_child(base_id, item_id);
+    registry.append_child(open_lists.back(), item_id);
+    open_items.back() = item_id;
 
     auto [child_id, unused] = parse_element_tree(
         registry, ElementType::paragraph, node, parse_any_element_children);
