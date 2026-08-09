@@ -22,7 +22,8 @@ void odr_python::bind_html(py::module_ &m) {
       .value("js", odr::HtmlResourceType::js)
       .value("image", odr::HtmlResourceType::image)
       .value("font", odr::HtmlResourceType::font)
-      .value("media", odr::HtmlResourceType::media);
+      .value("media", odr::HtmlResourceType::media)
+      .value("file", odr::HtmlResourceType::file);
 
   py::enum_<odr::HtmlTableGridlines>(m, "HtmlTableGridlines")
       .value("none", odr::HtmlTableGridlines::none)

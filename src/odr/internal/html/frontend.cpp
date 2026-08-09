@@ -97,9 +97,10 @@ body{background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files td{padding:5px 12px;border-top:1px solid var(--odr-files-line)}
 .odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04))}
 .odr-files-name{font-family:var(--odr-files-mono);word-break:break-all}
-.odr-files-directory .odr-files-name{color:var(--odr-files-muted)}
+.odr-files-name a{color:inherit;text-decoration:none}
+.odr-files-name a:hover{color:var(--odr-files-link);text-decoration:underline}
 .odr-files-size{width:1%;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--odr-files-muted)}
-.odr-files-action{width:1%;white-space:nowrap}
+.odr-files-action{width:1%;white-space:nowrap;text-align:right}
 /* U+2193: the download glyphs are missing from enough system fonts to tofu. */
 .odr-files-action a{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:4px;color:var(--odr-files-muted);font-size:15px;line-height:1;text-decoration:none}
 .odr-files-action a:hover{background:rgba(0,0,0,.07);color:var(--odr-files-link)}
@@ -985,11 +986,6 @@ void html::write_text_script(const WritingState &state) {
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset, text_js_asset};
-  return locate_all(assets, config);
-}
-
-HtmlResources html::locate_filesystem_resources(const HtmlConfig &config) {
-  static constexpr std::array assets{filesystem_css_asset};
   return locate_all(assets, config);
 }
 

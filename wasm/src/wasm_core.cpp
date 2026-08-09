@@ -97,7 +97,8 @@ emscripten::val enum_tables() {
                    entry("js", HtmlResourceType::js),
                    entry("image", HtmlResourceType::image),
                    entry("font", HtmlResourceType::font),
-                   entry("media", HtmlResourceType::media)));
+                   entry("media", HtmlResourceType::media),
+                   entry("file", HtmlResourceType::file)));
   result.set("HtmlTableGridlines",
              table(entry("none", HtmlTableGridlines::none),
                    entry("soft", HtmlTableGridlines::soft),

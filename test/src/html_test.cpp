@@ -59,6 +59,35 @@ TEST(html, linked_resources_are_served) {
 }
 
 // The one archive the reference-output suite renders has no directory in it.
+// An archive may hold a file named like the stylesheet. Forcing the collision
+// through the locator saves needing such an archive in the test data.
+TEST(html, archive_entry_yields_to_a_shipped_resource) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DecodedFile file(TestData::test_file_path("odr-public/odt/about.odt"),
+                         FileType::zip, logger);
+
+  HtmlConfig config((std::filesystem::current_path() / "collision").string());
+  config.embed_shipped_resources = false;
+  config.resource_locator = [](const HtmlResource &resource,
+                               const HtmlConfig &) -> HtmlResourceLocation {
+    return resource.is_shipped() ? "content.xml" : resource.path();
+  };
+
+  std::ostringstream out;
+  const HtmlResources resources =
+      html::translate(file, config, logger).list_views().at(0).write_html(out);
+
+  std::size_t claimants = 0;
+  for (const auto &[resource, location] : resources) {
+    if (location.has_value() && *location == "content.xml") {
+      ++claimants;
+      EXPECT_TRUE(resource.is_shipped());
+    }
+  }
+  EXPECT_EQ(claimants, 1);
+}
+
 TEST(html, archive_listing) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -80,14 +109,25 @@ TEST(html, archive_listing) {
   EXPECT_NE(page.find(R"(<table class="odr-files">)"), std::string::npos);
   // no header row: the listing carries no words to translate
   EXPECT_EQ(page.find("<thead>"), std::string::npos);
-  EXPECT_NE(page.find(R"(<td class="odr-files-name">/mimetype</td>)"),
+  // directories are not listed; every entry names its own whole path
+  EXPECT_EQ(page.find("Configurations2/menubar/<"), std::string::npos);
+  EXPECT_NE(page.find("/Configurations2/accelerator/current.xml"),
             std::string::npos);
-  // a directory says so by its trailing separator and carries no size
-  EXPECT_NE(page.find(R"(<tr class="odr-files-directory">)"),
+
+  // entries are written beside the listing and linked, rather than base64'd
+  // into it, so the path opens one and the glyph saves it
+  EXPECT_EQ(page.find("data:"), std::string::npos);
+  EXPECT_NE(page.find(R"(<a href="content.xml" title="content.xml">)"),
             std::string::npos);
   EXPECT_NE(
-      page.find(R"(<td class="odr-files-name">/Configurations2/menubar/</td>)"),
+      page.find(
+          R"(<a href="content.xml" download="content.xml" title="content.xml">)"),
       std::string::npos);
+  EXPECT_TRUE(std::filesystem::is_regular_file(
+      std::filesystem::path(output_path) / "content.xml"));
+  EXPECT_TRUE(std::filesystem::is_regular_file(
+      std::filesystem::path(output_path) / "Pictures" /
+      "10000000000001F4000001FF1D2394A8.jpg"));
 }
 
 TEST(html, views) {

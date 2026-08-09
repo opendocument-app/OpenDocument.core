@@ -34,6 +34,8 @@ enum class HtmlResourceType {
   // appended rather than sorted in: the bindings mirror this enum by ordinal
   /// Audio or video, never embedded — see @ref HtmlConfig::embed_images.
   media,
+  /// An entry of an archive, offered as itself rather than rendered.
+  file,
 };
 
 class HtmlResource final {
