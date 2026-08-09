@@ -31,8 +31,6 @@ sort_commits = "oldest"
 commit_parsers = [
     # the stamp commit, which would otherwise land in the next release's notes
     { message = "^chore\\(release\\)", skip = true },
-    # the changelog heading cut, which is a version number moving and nothing else
-    { message = "^docs\\(changelog\\)", skip = true },
     { message = "^feat", group = "<!-- 0 -->Features" },
     { message = "^fix", group = "<!-- 1 -->Fixes" },
     { message = "^perf", group = "<!-- 2 -->Performance" },

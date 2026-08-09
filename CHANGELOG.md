@@ -11,10 +11,8 @@ only for what a consumer notices: API, formats, rendering, behaviour, packaging.
 Refactoring, tests and CI are in the generated list already. A breaking change
 says **Breaking** first.
 
-Cutting the heading to the version is the last commit on `main` before the merge
-into `releases`, and the run refuses a version with no section here. A
-maintenance branch keeps its own history — sections written there are not merged
-back.
+The release run heads these entries with the version and opens a fresh
+`## Unreleased`. A release with nothing under it is refused.
 
 ## Unreleased
 
