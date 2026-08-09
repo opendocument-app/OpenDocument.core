@@ -29,6 +29,10 @@ x-s{display:inline}
 .odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);z-index:-1000}
 mark{background:#ff0}
 mark.current{background:orange}
+/* The label is text rather than a `::marker`, which no selection would copy.
+   It hangs into the item's padding so wrapped lines align under the text. */
+.odr-list-item{padding-left:2em}
+.odr-list-marker{display:inline-block;min-width:2em;margin-left:-2em;white-space:pre}
 )css";
 
 /// No `text-overflow`: it sat on `td`, whose overflow is visible, and making it

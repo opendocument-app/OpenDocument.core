@@ -301,13 +301,25 @@ void html::translate_line_break(const Element &element,
 }
 
 void html::translate_paragraph(const Element &element,
-                               const WritingState &state) {
+                               const WritingState &state,
+                               const std::string &marker) {
   const Paragraph paragraph = element.as_paragraph();
 
   state.out().write_element_begin(
       "x-p",
       HtmlElementOptions().set_inline(true).set_style(
           "display:block;" + translate_paragraph_style(paragraph.style())));
+  if (!marker.empty()) {
+    state.out().write_element_begin(
+        "x-s", HtmlElementOptions()
+                   .set_inline(true)
+                   .set_class("odr-list-marker")
+                   .set_style(translate_text_style(paragraph.text_style())));
+    // The tab separates label from text once copied; `x-p` collapses to
+    // `font-size:0`, so the marker has to carry the item's text style itself.
+    state.out().out() << escape_text(marker) << "&#9;";
+    state.out().write_element_end("x-s");
+  }
   translate_children(paragraph.children(), state);
   if (paragraph.first_child()) {
     // TODO if element is content (e.g. bookmark does not count)
@@ -359,9 +371,15 @@ void html::translate_bookmark(const Element &element,
 }
 
 void html::translate_list(const Element &element, const WritingState &state) {
-  state.out().write_element_begin("ul");
+  // `div`s, not `ul`/`li`: an importer that draws its own marker over the one
+  // we write shows both, and the macOS rich-text one does exactly that whatever
+  // `list-style` says. The roles keep what a screen reader needs.
+  state.out().write_element_begin(
+      "div", HtmlElementOptions()
+                 .set_class("odr-list")
+                 .set_attributes(HtmlAttributesVector{{"role", "list"}}));
   translate_children(element.children(), state);
-  state.out().write_element_end("ul");
+  state.out().write_element_end("div");
 }
 
 void html::translate_list_item(const Element &element,
@@ -369,10 +387,24 @@ void html::translate_list_item(const Element &element,
   const ListItem list_item = element.as_list_item();
 
   state.out().write_element_begin(
-      "li",
-      HtmlElementOptions().set_style(translate_text_style(list_item.style())));
-  translate_children(list_item.children(), state);
-  state.out().write_element_end("li");
+      "div", HtmlElementOptions()
+                 .set_class("odr-list-item")
+                 .set_attributes(HtmlAttributesVector{{"role", "listitem"}})
+                 .set_style(translate_text_style(list_item.style())));
+
+  // Inside the first paragraph, not beside it: a sibling of that block copies
+  // onto a line of its own.
+  std::string marker = list_item.marker();
+  for (const Element child : list_item.children()) {
+    if (!marker.empty() && child.type() == ElementType::paragraph) {
+      translate_paragraph(child, state, marker);
+      marker.clear();
+      continue;
+    }
+    translate_element(child, state);
+  }
+
+  state.out().write_element_end("div");
 }
 
 void html::translate_table(const Element &element, const WritingState &state) {
