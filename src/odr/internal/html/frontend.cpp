@@ -50,8 +50,8 @@ x-p{font-family:var(--odr-sheet-font);font-size:10pt}
 td x-p{height:inherit}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
-.odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 11px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
-.odr-sheet thead th{top:0;z-index:2;height:22px;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
+.odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
+.odr-sheet thead th{top:0;z-index:2;height:24px;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
 .odr-sheet-row-header{left:0;z-index:1;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
 .odr-sheet-corner{left:0;z-index:3;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-rule)}
 .odr-gridlines-soft .odr-sheet td{border-top:1px solid var(--odr-sheet-line);border-left:1px solid var(--odr-sheet-line)}
