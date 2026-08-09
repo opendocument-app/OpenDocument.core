@@ -7,6 +7,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -264,8 +265,14 @@ FontFile DecodedFile::as_font_file() const {
 TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
+TextEncoding TextFile::encoding() const { return m_impl->encoding(); }
+
 std::optional<std::string> TextFile::charset() const {
-  return {}; // TODO
+  const TextEncoding encoding = this->encoding();
+  if (encoding == TextEncoding::unknown) {
+    return {};
+  }
+  return std::string(text_encoding_to_string(encoding));
 }
 
 std::unique_ptr<std::istream> TextFile::stream() const {
@@ -274,7 +281,13 @@ std::unique_ptr<std::istream> TextFile::stream() const {
 
 std::string TextFile::text() const {
   const auto stream = m_impl->file()->stream();
-  return internal::util::stream::read(*stream);
+  std::string bytes = internal::util::stream::read(*stream);
+
+  const TextEncoding encoding = this->encoding();
+  if (!text_encoding_is_decodable(encoding)) {
+    return bytes;
+  }
+  return internal::encoding::to_utf8(bytes, encoding);
 }
 
 ImageFile::ImageFile(std::shared_ptr<internal::abstract::ImageFile> impl)

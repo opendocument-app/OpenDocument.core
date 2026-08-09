@@ -5,6 +5,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/odr.hpp>
 
 #include <sstream>
 
@@ -288,8 +289,12 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_app_opendocument_core_TextFile_charsetNative(JNIEnv *env, jobject,
                                                   jlong handle) {
   return guarded(env, [&] {
-    return odr_jni::make_string_opt(env,
-                                    decoded(handle).as_text_file().charset());
+    const odr::TextEncoding encoding =
+        decoded(handle).as_text_file().encoding();
+    return odr_jni::make_string_opt(
+        env, encoding == odr::TextEncoding::unknown
+                 ? std::optional<std::string>{}
+                 : std::string(odr::text_encoding_to_string(encoding)));
   });
 }
 

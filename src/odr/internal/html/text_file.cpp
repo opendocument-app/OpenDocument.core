@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/html/common.hpp>
@@ -60,15 +61,30 @@ public:
     throw FileNotFound("Unknown path: " + path);
   }
 
+  /// The bytes to write and the charset to declare. What we can decode becomes
+  /// UTF-8; what we can only name passes through for the browser, which works
+  /// because those encodings are ASCII-compatible and the page is ASCII.
+  [[nodiscard]] std::pair<std::string, std::string> body_and_charset() const {
+    const TextEncoding encoding = m_text_file.encoding();
+    std::string text = m_text_file.text();
+
+    if (encoding == TextEncoding::unknown ||
+        text_encoding_is_decodable(encoding)) {
+      return {std::move(text), "UTF-8"};
+    }
+    return {std::move(text), std::string(text_encoding_to_string(encoding))};
+  }
+
   HtmlResources write_text(HtmlWriter &out) const {
     HtmlResources resources;
+
+    const auto [text, charset] = body_and_charset();
 
     out.write_begin();
 
     out.write_header_begin();
 
-    // TODO charset
-    out.write_header_charset("UTF-8");
+    out.write_header_charset(charset);
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
@@ -83,14 +99,14 @@ public:
 
     out.write_element_begin("div",
                             HtmlElementOptions().set_class("odr-text-nr"));
-    std::unique_ptr<std::istream> in = m_text_file.stream();
-    for (std::uint32_t line = 1; !in->eof(); ++line) {
+    std::istringstream in(text);
+    for (std::uint32_t line = 1; !in.eof(); ++line) {
       out.write_element_begin("div", HtmlElementOptions().set_inline(true));
       out.out() << line;
       out.write_element_end("div");
 
       NullStream ss_out;
-      util::stream::pipe_line(*in, ss_out, false);
+      util::stream::pipe_line(in, ss_out, false);
     }
     out.write_element_end("div");
 
@@ -102,12 +118,12 @@ public:
                                     clb("contenteditable", "true");
                                   }
                                 }));
-    in = m_text_file.stream();
-    while (!in->eof()) {
+    in = std::istringstream(text);
+    while (!in.eof()) {
       out.write_element_begin("div", HtmlElementOptions().set_inline(true));
 
       std::ostringstream ss_out;
-      util::stream::pipe_line(*in, ss_out, false);
+      util::stream::pipe_line(in, ss_out, false);
       if (std::string line = ss_out.str(); line.empty()) {
         out.write_element_begin(
             "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));

@@ -20,9 +20,10 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
+  [[nodiscard]] TextEncoding encoding() const noexcept override;
+
 private:
   std::shared_ptr<text::TextFile> m_file;
-  std::string m_charset;
 };
 
 } // namespace odr::internal::csv

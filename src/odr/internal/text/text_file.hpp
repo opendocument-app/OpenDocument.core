@@ -11,7 +11,7 @@ namespace odr::internal::text {
 class TextFile final : public abstract::TextFile {
 public:
   explicit TextFile(std::shared_ptr<abstract::File> file);
-  TextFile(std::shared_ptr<abstract::File> file, std::string charset);
+  TextFile(std::shared_ptr<abstract::File> file, TextEncoding encoding);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -21,9 +21,15 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
+  [[nodiscard]] TextEncoding encoding() const noexcept override;
+
+  /// The file's bytes decoded to UTF-8.
+  /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
+  [[nodiscard]] std::string text() const;
+
 private:
   std::shared_ptr<abstract::File> m_file;
-  std::string m_charset;
+  TextEncoding m_encoding{TextEncoding::unknown};
 };
 
 } // namespace odr::internal::text

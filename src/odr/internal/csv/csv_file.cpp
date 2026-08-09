@@ -29,4 +29,6 @@ FileMeta CsvFile::file_meta() const noexcept {
 
 bool CsvFile::is_decodable() const noexcept { return false; }
 
+TextEncoding CsvFile::encoding() const noexcept { return m_file->encoding(); }
+
 } // namespace odr::internal::csv

@@ -208,6 +208,60 @@ enum class DocumentType {
   drawing,
 };
 
+/// @brief Collection of text encodings.
+///
+/// Only some can be decoded — see @ref text_encoding_is_decodable; the rest are
+/// named so a caller can say what a file is and hand it to something that can.
+enum class TextEncoding {
+  unknown,
+
+  // unicode
+  utf8,
+  utf16le,
+  utf16be,
+  utf32le,
+  utf32be,
+
+  // single byte
+  ibm866,
+  iso_8859_1,
+  iso_8859_2,
+  iso_8859_3,
+  iso_8859_4,
+  iso_8859_5,
+  iso_8859_6,
+  iso_8859_7,
+  iso_8859_8,
+  iso_8859_10,
+  iso_8859_13,
+  iso_8859_14,
+  iso_8859_15,
+  iso_8859_16,
+  koi8_r,
+  koi8_u,
+  macintosh,
+  windows_874,
+  windows_1250,
+  windows_1251,
+  windows_1252,
+  windows_1253,
+  windows_1254,
+  windows_1255,
+  windows_1256,
+  windows_1257,
+  windows_1258,
+  x_mac_cyrillic,
+
+  // multi byte; named but not decoded
+  big5,
+  euc_jp,
+  euc_kr,
+  gb18030,
+  iso_2022_jp,
+  iso_2022_kr,
+  shift_jis,
+};
+
 /// @brief Meta information about a file.
 ///
 /// The document fields are only meaningful when @ref document_type is set;
@@ -336,9 +390,18 @@ class TextFile final : public DecodedFile {
 public:
   explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
 
-  [[nodiscard]] std::optional<std::string> charset() const;
+  /// @brief The encoding the file's bytes were detected as, or decoded with.
+  [[nodiscard]] TextEncoding encoding() const;
 
+  /// @deprecated See @ref encoding. Returns the encoding's canonical name, and
+  /// `nullopt` for @ref TextEncoding::unknown.
+  [[deprecated("use encoding()")]] [[nodiscard]] std::optional<std::string>
+  charset() const;
+
+  /// @brief The file's bytes as they are.
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
+  /// @brief The file's text, decoded to UTF-8 where @ref encoding is
+  /// decodable, and the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
 
 private:

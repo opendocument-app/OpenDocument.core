@@ -100,6 +100,10 @@ set(ODR_SOURCE_FILES
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
 
+        "src/odr/internal/encoding/detect.cpp"
+        "src/odr/internal/encoding/encoding_data.cpp"
+        "src/odr/internal/encoding/text_encoding_table.cpp"
+        "src/odr/internal/encoding/transcode.cpp"
         "src/odr/internal/file_type_table.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/odr/internal/git_info.cpp"
         "src/odr/internal/magic.cpp"
@@ -233,7 +237,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/svm/svm_to_svg.cpp"
 
         "src/odr/internal/text/text_file.cpp"
-        "src/odr/internal/text/text_util.cpp"
 
         "src/odr/internal/util/byte_util.cpp"
         "src/odr/internal/util/byte_stream_util.cpp"

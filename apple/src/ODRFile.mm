@@ -4,6 +4,7 @@
 #import "ODRPrivate.h"
 
 #include <odr/file.hpp>
+#include <odr/odr.hpp>
 
 #include <istream>
 #include <optional>
@@ -516,9 +517,12 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 - (nullable NSString *)charset {
   return guarded_value(
       [&]() -> NSString * {
-        const std::optional<std::string> charset =
-            self.handle.as_text_file().charset();
-        return charset.has_value() ? to_nsstring(*charset) : nil;
+        const odr::TextEncoding encoding =
+            self.handle.as_text_file().encoding();
+        return encoding == odr::TextEncoding::unknown
+                   ? nil
+                   : to_nsstring(
+                         std::string(odr::text_encoding_to_string(encoding)));
       },
       nil);
 }
