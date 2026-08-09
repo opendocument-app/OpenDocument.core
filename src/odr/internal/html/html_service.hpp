@@ -40,6 +40,11 @@ private:
   std::string m_path;
 };
 
+/// The resource a service serves at @p path, or `nullptr`. An embedded resource
+/// has no location and so is never served.
+const odr::HtmlResource *resource_at(const HtmlResources &resources,
+                                     const std::string &path);
+
 class HtmlResource : public abstract::HtmlResource {
 public:
   static odr::HtmlResource create(HtmlResourceType type, std::string mime_type,

@@ -108,6 +108,23 @@ TEST(Document, odt) {
   EXPECT_EQ(Measure("0.7874in"), page_layout.margin.top);
 }
 
+TEST(Document, xlsx_sheet_names) {
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/xlsx/sampledatainsurance.xlsx"),
+      logger);
+  const Document document = document_file.document();
+
+  std::vector<std::string> names;
+  for (const Element child : document.root_element().children()) {
+    names.push_back(child.as_sheet().name());
+  }
+
+  EXPECT_EQ((std::vector<std::string>{"Instructions", "PolicyData", "MyLinks"}),
+            names);
+}
+
 TEST(Document, odt_element_path) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 

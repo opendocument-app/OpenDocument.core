@@ -7,18 +7,42 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 
+#include <array>
+#include <iomanip>
+#include <sstream>
+
 namespace odr::internal::html {
 namespace {
+
+/// Binary multiples, named as such — nothing to guess the base of.
+std::string human_size(const std::size_t size) {
+  static constexpr std::array<const char *, 5> units{"B", "KiB", "MiB", "GiB",
+                                                     "TiB"};
+
+  double value = static_cast<double>(size);
+  std::size_t unit = 0;
+  while (value >= 1024.0 && unit + 1 < units.size()) {
+    value /= 1024.0;
+    ++unit;
+  }
+
+  std::ostringstream result;
+  result << std::fixed << std::setprecision(unit == 0 ? 0 : 1) << value << " "
+         << units.at(unit);
+  return result.str();
+}
 
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(Filesystem filesystem, HtmlConfig config,
                   const Logger &logger)
       : HtmlService(std::move(config), logger),
-        m_filesystem{std::move(filesystem)} {
+        m_filesystem{std::move(filesystem)},
+        m_resources{locate_filesystem_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "files", 0, "files.html"));
   }
@@ -28,12 +52,16 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == "files.html";
+    return path == "files.html" || resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "files.html") {
       return "text/html";
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -43,6 +71,11 @@ public:
     if (path == "files.html") {
       HtmlWriter writer(out, config());
       write_filesystem(writer);
+      return;
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
       return;
     }
 
@@ -60,6 +93,7 @@ public:
 
   HtmlResources write_filesystem(HtmlWriter &out) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     const FileWalker file_walker = m_filesystem.file_walker("/");
 
@@ -70,52 +104,72 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
-    out.write_header_style_begin();
-    out.write_raw("*{font-family:monospace;}");
-    out.write_header_style_end();
+    write_filesystem_style(state);
     out.write_header_end();
 
     out.write_body_begin();
 
-    const auto span = [&out](const HtmlWritable &content) {
-      out.write_element_begin("span");
-      out.write_raw(content);
-      out.write_element_end("span");
-    };
+    out.write_element_begin("table",
+                            HtmlElementOptions().set_class("odr-files"));
+
+    // No header row: labels would be the only words in the page to translate.
+    out.write_element_begin("tbody");
 
     for (; !file_walker.end(); file_walker.next()) {
       const Path file_path(file_walker.path());
       const bool is_file = file_walker.is_file();
 
-      out.write_element_begin("p");
+      out.write_element_begin("tr", HtmlElementOptions().set_class(
+                                        is_file ? std::nullopt
+                                                : std::optional<HtmlWritable>(
+                                                      "odr-files-directory")));
 
-      span(escape_text(file_path.string()));
-      span(" ");
-      span(is_file ? "file" : "directory");
+      // A trailing separator says "directory" without a column saying so.
+      out.write_element_begin(
+          "td",
+          HtmlElementOptions().set_inline(true).set_class("odr-files-name"));
+      out.write_raw(
+          escape_text(is_file ? file_path.string() : file_path.string() + "/"));
+      out.write_element_end("td");
 
+      const File file =
+          is_file ? m_filesystem.open(file_path.string()) : File();
+
+      out.write_element_begin(
+          "td",
+          HtmlElementOptions().set_inline(true).set_class("odr-files-size"));
       if (is_file) {
-        span(" ");
+        out.write_raw(human_size(file.size()));
+      }
+      out.write_element_end("td");
 
-        File file = m_filesystem.open(file_path.string());
-
-        span(std::to_string(file.size()));
-
+      out.write_element_begin(
+          "td",
+          HtmlElementOptions().set_inline(true).set_class("odr-files-action"));
+      if (is_file) {
         if (const std::unique_ptr<std::istream> stream = file.stream();
             stream != nullptr) {
-          span(" ");
-
+          const std::string name = file_path.basename();
+          // The glyph has no name of its own; the file's is what a tooltip and
+          // a screen reader read.
           out.write_element_begin(
-              "a",
-              HtmlElementOptions().set_attributes(HtmlAttributesVector{
-                  {"href", file_to_url(*stream, "application/octet-stream")},
-                  {"download", escape_attribute(file_path.basename())}}));
-          out.write_raw("download");
+              "a", HtmlElementOptions().set_inline(true).set_attributes(
+                       HtmlAttributesVector{
+                           {"href",
+                            file_to_url(*stream, "application/octet-stream")},
+                           {"download", escape_attribute(name)},
+                           {"title", escape_attribute(name)}}));
+          out.write_raw("\u2193");
           out.write_element_end("a");
         }
       }
+      out.write_element_end("td");
 
-      out.write_element_end("p");
+      out.write_element_end("tr");
     }
+
+    out.write_element_end("tbody");
+    out.write_element_end("table");
 
     out.write_body_end();
 
@@ -126,6 +180,8 @@ public:
 
 protected:
   Filesystem m_filesystem;
+  /// The css this view links; empty of locations when the config embeds it.
+  HtmlResources m_resources;
 
   HtmlViews m_views;
 };

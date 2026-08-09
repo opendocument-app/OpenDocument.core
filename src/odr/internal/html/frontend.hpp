@@ -1,20 +1,33 @@
 #pragma once
 
+#include <odr/html.hpp>
+
 namespace odr::internal::html {
 
-class HtmlWriter;
+struct WritingState;
 
-/// Each of these writes one complete `<style>`/`<script>` element.
+/// Each of these writes one complete `<style>`/`<script>` element, or links it
+/// as a shipped @ref odr::HtmlResource when the config asks for that.
 
-void write_document_style(HtmlWriter &out);
+void write_document_style(const WritingState &state);
 /// Written in addition to the document style.
-void write_spreadsheet_style(HtmlWriter &out);
-void write_text_style(HtmlWriter &out);
-void write_media_style(HtmlWriter &out);
+void write_spreadsheet_style(const WritingState &state);
+void write_text_style(const WritingState &state);
+void write_filesystem_style(const WritingState &state);
+void write_media_style(const WritingState &state);
 
 /// The `odr` object a document view exposes to its host: `generateDiff()`,
 /// `search()`, `searchNext()`, `searchPrevious()`, `resetSearch()`.
-void write_document_script(HtmlWriter &out);
-void write_text_script(HtmlWriter &out);
+void write_document_script(const WritingState &state);
+/// Written in addition to the document script.
+void write_spreadsheet_script(const WritingState &state);
+void write_text_script(const WritingState &state);
+
+/// What the corresponding `write_*` calls would link, without writing anything:
+/// a service has to answer for these paths as well as for its views. Every
+/// entry is located `nullopt` when the config embeds them.
+HtmlResources locate_text_resources(const HtmlConfig &config);
+HtmlResources locate_filesystem_resources(const HtmlConfig &config);
+HtmlResources locate_media_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html

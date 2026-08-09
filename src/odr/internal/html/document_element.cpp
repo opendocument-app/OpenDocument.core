@@ -79,10 +79,8 @@ void html::translate_element(const Element &element,
 }
 
 void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
-  state.out().write_element_begin(
-      "table",
-      HtmlElementOptions().set_attributes(HtmlAttributesVector{
-          {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}}));
+  state.out().write_element_begin("table",
+                                  HtmlElementOptions().set_class("odr-sheet"));
 
   const TableDimensions dimensions = sheet.dimensions();
   std::uint32_t end_column = dimensions.columns;
@@ -101,8 +99,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   end_column = std::max(1u, end_column);
   end_row = std::max(1u, end_row);
 
-  state.out().write_element_begin(
-      "col", HtmlElementOptions().set_close_type(HtmlCloseType::none));
+  state.out().write_element_begin("col",
+                                  HtmlElementOptions()
+                                      .set_close_type(HtmlCloseType::none)
+                                      .set_class("odr-sheet-gutter"));
 
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
@@ -116,25 +116,40 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
             .set_style(translate_table_column_style(table_column_style)));
   }
 
+  // No `scope`: the letters and numbers are a ruler, not headers of what they
+  // label.
   {
+    state.out().write_element_begin("thead");
     state.out().write_element_begin("tr");
 
-    state.out().write_element_begin("td",
-                                    HtmlElementOptions()
-                                        .set_close_type(HtmlCloseType::trailing)
-                                        .set_style("width:30px;height:20px;"));
+    // Under `table-layout:fixed` the first row sizes the columns, and `ch`
+    // resolves against the ruler's font — so the gutter width sits here rather
+    // than on the `<col>`.
+    state.out().write_element_begin(
+        "th",
+        HtmlElementOptions()
+            .set_inline(true)
+            .set_class("odr-sheet-corner")
+            .set_style("width:calc(" +
+                       std::to_string(
+                           TablePosition::to_row_string(end_row - 1).size()) +
+                       "ch + 14px);"));
+    state.out().write_element_end("th");
 
     for (std::uint32_t column_index = 0; column_index < end_column;
          ++column_index) {
       state.out().write_element_begin(
-          "td", HtmlElementOptions().set_inline(true).set_style(
-                    "text-align:center;vertical-align:middle;"));
+          "th", HtmlElementOptions().set_inline(true).set_class(
+                    "odr-sheet-column-header"));
       state.out().write_raw(TablePosition::to_column_string(column_index));
-      state.out().write_element_end("td");
+      state.out().write_element_end("th");
     }
 
     state.out().write_element_end("tr");
+    state.out().write_element_end("thead");
   }
+
+  state.out().write_element_begin("tbody");
 
   TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
@@ -146,17 +161,20 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                   translate_table_row_style(table_row_style)));
 
     state.out().write_element_begin(
-        "td", HtmlElementOptions().set_inline(true).set_style([&] {
-          std::string style = "text-align:center;vertical-align:middle;";
-          if (const std::optional<Measure> height = table_row_style.height;
-              height.has_value()) {
-            style += "height:" + height->to_string() + ";";
-            style += "max-height:" + height->to_string() + ";";
-          }
-          return style;
-        }()));
+        "th", HtmlElementOptions()
+                  .set_inline(true)
+                  .set_class("odr-sheet-row-header")
+                  .set_style([&]() -> std::optional<HtmlWritable> {
+                    const std::optional<Measure> height =
+                        table_row_style.height;
+                    if (!height.has_value()) {
+                      return std::nullopt;
+                    }
+                    return "height:" + height->to_string() +
+                           ";max-height:" + height->to_string() + ";";
+                  }()));
     state.out().write_raw(TablePosition::to_row_string(row_index));
-    state.out().write_element_end("td");
+    state.out().write_element_end("th");
 
     for (std::uint32_t column_index = cursor.column();
          column_index < end_column; column_index = cursor.column()) {
@@ -211,6 +229,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     cursor.add_row();
   }
 
+  state.out().write_element_end("tbody");
   state.out().write_element_end("table");
 }
 

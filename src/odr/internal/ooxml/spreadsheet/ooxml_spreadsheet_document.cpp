@@ -197,7 +197,7 @@ public:
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
-    return get_node(element_id).attribute("name").value();
+    return m_registry->sheet_element_at(element_id).name;
   }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ElementIdentifier element_id) const override {

@@ -96,12 +96,14 @@
 ### Open tasks
 
 - drop the last inert traces of the shipped css/js once consumers have moved
-  off them: `GlobalParams::odr_core_data_path`, `HtmlConfig::resource_path`,
-  `embed_shipped_resources`, `relative_resource_paths`,
-  `HtmlResource::is_shipped` and their java, python and objc mirrors, plus
-  `OdrAndroid.init`, `ODRGlobalParams.bootstrapFromFrameworkBundle` and the
-  `ODR_BUNDLE_ASSETS` / conan `bundle_assets` option, all still accepted and
-  all doing nothing.
+  off them: `GlobalParams::odr_core_data_path` and its java, python and objc
+  mirrors, plus `OdrAndroid.init`,
+  `ODRGlobalParams.bootstrapFromFrameworkBundle` and the `ODR_BUNDLE_ASSETS` /
+  conan `bundle_assets` option, all still accepted and all doing nothing. They
+  are about *finding* a data directory, which nothing does any more — unlike
+  `HtmlConfig::embed_shipped_resources`, `resource_path`,
+  `relative_resource_paths` and `HtmlResource::is_shipped`, which decide where
+  the compiled-in css and js land and are live again.
 - drop the last inert traces of libmagic once consumers have moved off them:
   `GlobalParams::libmagic_database_path` and its java, python and objc mirrors
   still store and return a path nothing reads, and `ODR_WITH_LIBMAGIC` /

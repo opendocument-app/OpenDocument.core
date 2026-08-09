@@ -5,7 +5,6 @@
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/global_params.hpp>
 
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/path.hpp>
@@ -57,7 +56,6 @@ HtmlConfig::HtmlConfig(std::string output_path_)
 }
 
 void HtmlConfig::init() {
-  resource_path = GlobalParams::odr_core_data_path();
   resource_locator = html::standard_resource_locator();
 }
 
@@ -248,10 +246,26 @@ HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
 HtmlResourceLocator html::standard_resource_locator() {
   return [](const HtmlResource &resource,
             const HtmlConfig &config) -> HtmlResourceLocation {
-    // only an accessible image can be embedded; everything else is linked
-    if (resource.is_accessible() && config.embed_images &&
-        resource.type() == HtmlResourceType::image) {
+    // what we cannot read can only be linked
+    if (!resource.is_accessible()) {
+      return resource.path();
+    }
+
+    if ((config.embed_shipped_resources && resource.is_shipped()) ||
+        (config.embed_images && resource.type() == HtmlResourceType::image)) {
       return std::nullopt;
+    }
+
+    if (resource.is_shipped()) {
+      Path path = Path(config.resource_path).join(RelPath(resource.path()));
+      // `rebase` throws across absolute and relative; a relative one is already
+      // relative to the document.
+      if (const Path output(config.output_path.value_or(""));
+          config.relative_resource_paths && config.output_path.has_value() &&
+          path.absolute() == output.absolute()) {
+        path = path.rebase(output);
+      }
+      return path.string();
     }
 
     return resource.path();
