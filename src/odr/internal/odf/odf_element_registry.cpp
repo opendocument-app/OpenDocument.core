@@ -12,6 +12,8 @@ void ElementRegistry::clear() noexcept {
   m_tables.clear();
   m_sheets.clear();
   m_sheet_cells.clear();
+  m_list_types.clear();
+  m_list_markers.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -319,6 +321,31 @@ ElementRegistry::Sheet::cell_node(const std::uint32_t column,
     return cell_entry->node;
   }
   return {};
+}
+
+void ElementRegistry::set_list_type(const ElementIdentifier id,
+                                    const ListType type) {
+  check_element_id(id);
+  m_list_types[id] = type;
+}
+
+void ElementRegistry::set_list_marker(const ElementIdentifier id,
+                                      ListMarker marker) {
+  check_element_id(id);
+  m_list_markers[id] = std::move(marker);
+}
+
+[[nodiscard]] ListType
+ElementRegistry::list_type(const ElementIdentifier id) const {
+  const auto it = m_list_types.find(id);
+  return it != std::end(m_list_types) ? it->second : ListType::unordered;
+}
+
+[[nodiscard]] const ListMarker &
+ElementRegistry::list_marker(const ElementIdentifier id) const {
+  static const ListMarker none;
+  const auto it = m_list_markers.find(id);
+  return it != std::end(m_list_markers) ? it->second : none;
 }
 
 } // namespace odr::internal::odf

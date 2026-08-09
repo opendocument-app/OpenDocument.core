@@ -152,7 +152,6 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextAdapter,
                              public abstract::LinkAdapter,
                              public abstract::BookmarkAdapter,
-                             public abstract::ListItemAdapter,
                              public abstract::TableAdapter,
                              public abstract::TableColumnAdapter,
                              public abstract::TableRowAdapter,
@@ -240,10 +239,6 @@ public:
   [[nodiscard]] const BookmarkAdapter *
   bookmark_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::bookmark ? this : nullptr;
-  }
-  [[nodiscard]] const ListItemAdapter *
-  list_item_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::list_item ? this : nullptr;
   }
   [[nodiscard]] const TableAdapter *
   table_adapter(const ElementIdentifier element_id) const override {
@@ -396,11 +391,6 @@ public:
   [[nodiscard]] std::string
   bookmark_name(const ElementIdentifier element_id) const override {
     return get_node(element_id).attribute("text:name").value();
-  }
-
-  [[nodiscard]] TextStyle
-  list_item_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).text_style;
   }
 
   [[nodiscard]] TableDimensions

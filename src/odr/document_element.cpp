@@ -158,6 +158,13 @@ Bookmark Element::as_bookmark() const {
   return {m_adapter, m_identifier, m_adapter->bookmark_adapter(m_identifier)};
 }
 
+List Element::as_list() const {
+  if (!exists_()) {
+    return {};
+  }
+  return {m_adapter, m_identifier, m_adapter->list_adapter(m_identifier)};
+}
+
 ListItem Element::as_list_item() const {
   if (!exists_()) {
     return {};
@@ -456,8 +463,20 @@ std::string Bookmark::name() const {
   return exists_() ? m_adapter2->bookmark_name(m_identifier) : "";
 }
 
+ListType List::type() const {
+  return exists_() ? m_adapter2->list_type(m_identifier) : ListType::unordered;
+}
+
 TextStyle ListItem::style() const {
   return exists_() ? m_adapter2->list_item_style(m_identifier) : TextStyle();
+}
+
+std::string ListItem::marker() const {
+  return exists_() ? m_adapter2->list_item_marker(m_identifier) : "";
+}
+
+std::optional<std::uint32_t> ListItem::number() const {
+  return exists_() ? m_adapter2->list_item_number(m_identifier) : std::nullopt;
 }
 
 TableRow Table::first_row() const {

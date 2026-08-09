@@ -542,9 +542,9 @@ void StyleRegistry::generate_indices_(const pugi::xml_node node) {
       m_index_default_style[e.attribute("style:family").value()] = e;
     } else if (name == "style:style") {
       m_index_style[e.attribute("style:name").value()] = e;
-    } else if (name == "style:list-style") {
+    } else if (name == "text:list-style") {
       m_index_list_style[e.attribute("style:name").value()] = e;
-    } else if (name == "style:outline-style") {
+    } else if (name == "text:outline-style") {
       m_index_outline_style[e.attribute("style:name").value()] = e;
     } else if (name == "style:page-layout") {
       m_index_page_layout[e.attribute("style:name").value()] = e;
@@ -639,6 +639,14 @@ pugi::xml_node StyleRegistry::font_face_node(const std::string &name) const {
   if (const auto font_face_it = m_index_font_face.find(name);
       font_face_it != std::end(m_index_font_face)) {
     return font_face_it->second;
+  }
+  return {};
+}
+
+pugi::xml_node StyleRegistry::list_style_node(const std::string &name) const {
+  if (const auto list_style_it = m_index_list_style.find(name);
+      list_style_it != std::end(m_index_list_style)) {
+    return list_style_it->second;
   }
   return {};
 }

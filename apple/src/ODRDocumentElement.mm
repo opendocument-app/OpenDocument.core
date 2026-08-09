@@ -30,6 +30,9 @@ ODR_SAME_ENUM(ODRElementTypeParagraph, odr::ElementType::paragraph);
 ODR_SAME_ENUM(ODRElementTypeSpan, odr::ElementType::span);
 ODR_SAME_ENUM(ODRElementTypeLink, odr::ElementType::link);
 ODR_SAME_ENUM(ODRElementTypeBookmark, odr::ElementType::bookmark);
+ODR_SAME_ENUM(ODRListTypeUnordered, odr::ListType::unordered);
+ODR_SAME_ENUM(ODRListTypeOrdered, odr::ListType::ordered);
+
 ODR_SAME_ENUM(ODRElementTypeList, odr::ElementType::list);
 ODR_SAME_ENUM(ODRElementTypeListItem, odr::ElementType::list_item);
 ODR_SAME_ENUM(ODRElementTypeTable, odr::ElementType::table);
@@ -126,6 +129,9 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
     break;
   case odr::ElementType::bookmark:
     klass = [ODRBookmark class];
+    break;
+  case odr::ElementType::list:
+    klass = [ODRList class];
     break;
   case odr::ElementType::list_item:
     klass = [ODRListItem class];
@@ -540,6 +546,16 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
 
 @end
 
+@implementation ODRList
+
+- (ODRListType)listType {
+  return guarded_value(
+      [&] { return static_cast<ODRListType>(self.handle.as_list().type()); },
+      ODRListTypeUnordered);
+}
+
+@end
+
 @implementation ODRListItem
 
 - (ODRTextStyle *)style {
@@ -547,6 +563,24 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       [&]() -> ODRTextStyle * {
         return
             [ODRTextStyle styleWithHandle:self.handle.as_list_item().style()];
+      },
+      nil);
+}
+
+- (NSString *)marker {
+  return guarded_value(
+      [&]() -> NSString * {
+        return to_nsstring(self.handle.as_list_item().marker());
+      },
+      @"");
+}
+
+- (nullable NSNumber *)number {
+  return guarded_value(
+      [&]() -> NSNumber * {
+        const std::optional<std::uint32_t> number =
+            self.handle.as_list_item().number();
+        return number.has_value() ? @(*number) : nil;
       },
       nil);
 }

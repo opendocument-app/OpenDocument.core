@@ -7,6 +7,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class ODRFile;
 
+typedef NS_ENUM(NSInteger, ODRListType) {
+  ODRListTypeUnordered,
+  ODRListTypeOrdered,
+} NS_SWIFT_NAME(ListType);
+
 typedef NS_ENUM(NSInteger, ODRElementType) {
   ODRElementTypeNone = 0,
 
@@ -195,10 +200,21 @@ NS_SWIFT_NAME(Bookmark)
 @property(nonatomic, readonly, copy) NSString *name;
 @end
 
+/// `odr::List`.
+NS_SWIFT_NAME(List)
+@interface ODRList : ODRElement
+/// Named apart from `ODRElement.type`, which every element answers.
+@property(nonatomic, readonly) ODRListType listType;
+@end
+
 /// `odr::ListItem`.
 NS_SWIFT_NAME(ListItem)
 @interface ODRListItem : ODRElement
 @property(nonatomic, readonly) ODRTextStyle *style;
+/// The resolved label, or empty where the list style asks for none.
+@property(nonatomic, readonly, copy) NSString *marker;
+/// The counter behind `marker`, `nil` for an unordered item.
+@property(nonatomic, readonly, nullable) NSNumber *number;
 @end
 
 /// `odr::Table`.

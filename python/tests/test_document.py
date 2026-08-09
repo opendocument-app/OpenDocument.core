@@ -93,3 +93,27 @@ def test_document_filesystem(odt_path):
     document = pyodr.open(str(odt_path)).as_document_file().document()
     filesystem = document.as_filesystem()
     assert filesystem.is_file("/content.xml")
+
+
+def test_list_markers(odt_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+
+    lists = [
+        child
+        for child in document.root_element().children()
+        if child.type() == pyodr.ElementType.list
+    ]
+    assert len(lists) == 2
+
+    bullets, numbers = (element.as_list() for element in lists)
+    assert bullets.list_type() == pyodr.ListType.unordered
+    assert numbers.list_type() == pyodr.ListType.ordered
+
+    def items(element):
+        return [child.as_list_item() for child in element.children()]
+
+    assert [item.marker() for item in items(lists[0])] == ["•"]
+    assert [item.number() for item in items(lists[0])] == [None]
+
+    assert [item.marker() for item in items(lists[1])] == ["1.", "2."]
+    assert [item.number() for item in items(lists[1])] == [1, 2]

@@ -41,6 +41,7 @@ class SpanAdapter;
 class TextAdapter;
 class LinkAdapter;
 class BookmarkAdapter;
+class ListAdapter;
 class ListItemAdapter;
 class TableAdapter;
 class TableColumnAdapter;
@@ -71,6 +72,7 @@ class Span;
 class Text;
 class Link;
 class Bookmark;
+class List;
 class ListItem;
 class Table;
 class TableColumn;
@@ -138,6 +140,12 @@ enum class ValueType {
   float_number,
 };
 
+/// @brief Collection of list types.
+enum class ListType {
+  unordered,
+  ordered,
+};
+
 /// @brief Represents an element in a document.
 class Element {
 public:
@@ -174,6 +182,7 @@ public:
   [[nodiscard]] Text as_text() const;
   [[nodiscard]] Link as_link() const;
   [[nodiscard]] Bookmark as_bookmark() const;
+  [[nodiscard]] List as_list() const;
   [[nodiscard]] ListItem as_list_item() const;
   [[nodiscard]] Table as_table() const;
   [[nodiscard]] TableColumn as_table_column() const;
@@ -404,12 +413,27 @@ public:
   [[nodiscard]] std::string name() const;
 };
 
+/// @brief Represents a list element in a document.
+class List final : public ElementBase<internal::abstract::ListAdapter> {
+public:
+  using ElementBase::ElementBase;
+
+  [[nodiscard]] ListType type() const;
+};
+
 /// @brief Represents a list item element in a document.
 class ListItem final : public ElementBase<internal::abstract::ListItemAdapter> {
 public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] TextStyle style() const;
+
+  /// The label this item is marked with, already resolved against the list
+  /// style and the running counters — a bullet, "1.", "I.a)", or empty where
+  /// the list style asks for no label.
+  [[nodiscard]] std::string marker() const;
+  /// The counter behind `marker`, absent for an unordered item.
+  [[nodiscard]] std::optional<std::uint32_t> number() const;
 };
 
 /// @brief Represents a table element in a document.

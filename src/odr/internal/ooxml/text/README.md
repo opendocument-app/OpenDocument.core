@@ -35,8 +35,10 @@ Roughly ordered by importance.
 - [x] structured document tags (rendered as generic groups)
 - [x] listings
   - [x] bullets (incl. nesting by level)
-  - [ ] numbering (`w:numPr` levels are honored, but `numbering.xml` formats are
-    not resolved to actual numbers)
+  - [x] numbering (`numbering.xml` resolved to markers: `w:numFmt`, `w:lvlText`
+    templates, `w:start`, `w:lvlOverride`, `w:numStyleLink`)
+  - [ ] a `w:numPr` inherited through `w:pStyle`
+  - [ ] picture bullets (`w:lvlPicBulletId`)
 - [ ] annotations / comments
 
 ### Styles

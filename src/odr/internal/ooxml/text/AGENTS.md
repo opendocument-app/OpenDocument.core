@@ -25,7 +25,18 @@ siblings for a continuation at the same grid column (grid column = sum of
 preceding cells' `gridSpan`s).
 
 **Lists are detected structurally**, before the tag table: a paragraph with
-`w:pPr/w:numPr` is a list item, nesting synthesised from the `w:ilvl` level.
+`w:pPr/w:numPr` is a list item, nesting synthesised from the `w:ilvl` level —
+one list per open level, each nested list hanging off the item that opened it.
+A `w:numPr` inherited from `w:pStyle` is *not* seen, so such a paragraph is not
+recognised as a list item.
+
+**Numbering resolves at load, not at render.** `NumberingRegistry`
+(`ooxml_text_list.*`) indexes `word/numbering.xml`; a post-parse pass walks the
+tree in document order and stamps each item with its label. Counters live per
+`w:numId` — not per element — which is what makes Word's numbering survive an
+interleaved list. `w:lvlText` is the template, `%N` naming a level's counter;
+the shared expansion and the number formats are in `common/list_numbering.*`,
+where ODF lowers to the same shape.
 
 **Style resolution mixes a static hierarchy with a runtime cascade.**
 `StyleRegistry` indexes `w:style` by `w:styleId` and pre-flattens the
@@ -53,15 +64,17 @@ throws (no re-encryption).
 | `ooxml_text_parser.{hpp,cpp}` | `parse_tree`: tag dispatch, list/text/table special parsers |
 | `ooxml_text_element_registry.{hpp,cpp}` | Flat element store + Table/Text side maps |
 | `ooxml_text_style.{hpp,cpp}` | `StyleRegistry`/`Style`: `w:styleId` index, `w:basedOn` flatten, docDefaults, partial-style readers |
+| `ooxml_text_list.{hpp,cpp}` | `NumberingRegistry`: `word/numbering.xml` index; the post-parse pass that stamps every item's marker |
 
 ## Status & open work
 
 Style/element coverage is in [`README.md`](README.md). Foundational gaps:
 
-1. **Numbering.** `w:numPr` levels drive list *nesting*, but `numbering.xml` is
-   never parsed, so list formats are not resolved to actual numbers (bullets
-   only). The nested-level construction in the parser is partly stubbed
-   (`/* TODO fix lists */`).
+1. **Numbering gaps.** A `w:numPr` reached through `w:pStyle` is not detected;
+   `w:lvlOverride` handles `w:startOverride` and a replacement `w:lvl` but
+   nothing else; symbol-font bullets are mapped to Unicode by a small table and
+   otherwise fall back to the level's default shape, since the private-use code
+   points Word writes render only in Symbol / Wingdings.
 2. **No structural editing**; save doesn't stream (buffers document.xml, re-zips
    the whole package); no re-encryption on save.
 3. **Theme fonts unhandled.** `w:rFonts w:asciiTheme="minorHAnsi"` (etc.) is

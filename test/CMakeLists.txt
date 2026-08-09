@@ -26,6 +26,7 @@ add_executable(odr_test
         "src/test_util.cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_info.cpp"
 
+        "src/document_list_test.cpp"
         "src/document_path_test.cpp"
         "src/document_test.cpp"
         "src/file_test.cpp"
@@ -45,6 +46,7 @@ add_executable(odr_test
 
         "src/internal/cfb/cfb_archive_test.cpp"
 
+        "src/internal/common/list_numbering_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/table_range_test.cpp"
