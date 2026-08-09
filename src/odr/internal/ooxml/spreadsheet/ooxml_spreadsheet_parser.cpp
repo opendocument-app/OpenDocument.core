@@ -71,6 +71,8 @@ void parse_root_children(ElementRegistry &registry, const ParseContext &context,
                                      context.shared_strings());
     const auto &[sheet, _] = parse_any_element_tree(
         registry, sheet_context, sheet_xml.document_element());
+    registry.sheet_element_at(sheet).name =
+        child_node.attribute("name").value();
     registry.append_child(parent_id, sheet);
   }
 }

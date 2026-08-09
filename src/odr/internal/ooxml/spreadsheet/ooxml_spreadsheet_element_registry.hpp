@@ -10,6 +10,7 @@
 #include <odr/table_position.hpp>
 
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -51,6 +52,9 @@ public:
       pugi::xml_node node;
       ElementIdentifier element_id{null_element_id};
     };
+
+    /// From the workbook's `<sheet name=…>`; the worksheet part carries none.
+    std::string name;
 
     TableDimensions dimensions;
 
