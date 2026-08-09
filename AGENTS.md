@@ -103,48 +103,42 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 
 ## Releasing
 
-Cut the changelog heading, merge main into `releases`, push, publish the draft
-that appears — `.github/workflows/release.yml` and `scripts/release.py`.
+Dispatch `release.yml` against main, publish the draft that appears —
+`.github/workflows/release.yml` and `scripts/release.py`.
 
-- **`main` carries no version in anything the build reads.** No file is bumped;
-  a build records `GIT_HEAD_SHA1` and a dirty flag and nothing else. The version
-  is derived from the commit subjects (`git cliff --bumped-version`), so writing
-  them properly is load-bearing.
-- **`CHANGELOG.md` is the exception, and only as prose.** A change a consumer
-  would notice gets an entry under `## Unreleased` in the pull request that
-  makes it. Cut that heading to the version — `docs(changelog): cut vX.Y.Z` — as
-  the last commit on main before the merge, so both branches carry the identical
-  cut and the merge stays clean. The run refuses a version with no section, and
-  puts that section above the generated commit list in the release body.
-- **Which version that is cannot be derived from main.** Since the release
-  train, tags sit on `chore(release)` commits that only `releases` carries, so
-  main's nearest reachable tag is v6.1.0 and drifts further every release —
-  `scripts/release.py version` only answers correctly where it runs, on
-  `releases` after the merge. Take the last release (`gh release list -L 1`) and
-  bump the minor if a `feat:` landed since, the patch otherwise. Guess wrong and
-  the changelog check refuses in the first job, before anything is built; re-cut
-  the heading, or dispatch with `--version`.
-- **`releases` is the mainline train**; its first-parent history is the release
-  history. To patch an older line, branch off the *tag* (`git branch
-  release/v6.1.X v6.1.0`) — the version is derived against the nearest
-  *reachable* tag. That is also the trap: a `feat:` there bumps the minor to a
-  number the mainline may already have shipped, so `release.py version` refuses
-  a version that is already tagged. Pass `--version` when you mean it. Such a
-  branch also keeps its own changelog: it covers what that branch contains, so
-  it neither knows about later mainline versions nor sends its sections back to
-  main — a cherry-pick brings the entry with it, and the mainline entry for the
-  same fix can mention the backport.
-- **Release branches run `release.yml` only**; every other workflow carries
-  `branches-ignore: ['releases', 'release/**']`.
+- **Dispatch is the only trigger**, and the first job refuses a ref that is
+  neither main nor `release/**`. `dry_run` goes through the motions without
+  pushing — the rehearsal for the release body.
+- **`main` carries no version in anything the build reads.** No file is bumped
+  by hand; a build records `GIT_HEAD_SHA1` and a dirty flag and nothing else.
+  The version is derived from the commit subjects (`git cliff
+  --bumped-version`), so writing them properly is load-bearing.
+  `scripts/release.py version` answers the same question locally.
+- **`CHANGELOG.md` is written as the changes land**, under `## Unreleased`, in
+  the pull request that makes them; the file's header says what earns an entry.
+  The run heads them with the version and puts them above the generated commit
+  list. An empty `## Unreleased` fails the first job — say "no consumer-visible
+  changes" rather than nothing.
+- **To patch an older line, branch off the *tag*** (`git branch release/v6.1.X
+  v6.1.0`) and dispatch against that — the version is derived against the
+  nearest *reachable* tag. That is also the trap: a `feat:` there bumps the
+  minor to a number the mainline may already have shipped, so
+  `release.py version` refuses a version that is already tagged. Pass
+  `--version` when you mean it. Its changelog covers what that branch contains
+  and is not merged back; a cherry-pick brings the entry with it.
 - **The release is drafted, and a human publishes it.** GitHub creates the tag
   only then, which is what lets it point at a commit made during the run. It
   also has to be a human: a release created by `GITHUB_TOKEN` raises no
   `release: published`, and that event starts conan, maven and android.
 - **`release.yml` is the only place that writes a version into the build**, and
-  `release.py stamp` commits it as `chore(release): vX.Y.Z`. Today that is
-  `Package.swift`: SwiftPM resolves it at the tag, and its binary target names
-  the sha256 of an archive that does not exist until the release builds it. Off
-  a tag the url says `UNRELEASED`.
+  `release.py stamp` commits it to main as `chore(release): vX.Y.Z`. Today that
+  is `Package.swift` and the changelog heading: SwiftPM resolves the manifest at
+  the tag, and its binary target names the sha256 of an archive that does not
+  exist until the release builds it. That push cannot use `GITHUB_TOKEN` —
+  GitHub Actions cannot be a bypass actor on the main ruleset — so the job mints
+  one from a GitHub App that is on the bypass list (`RELEASE_APP_ID`,
+  `RELEASE_APP_PRIVATE_KEY`). An app token does raise events, hence `[skip ci]`
+  in the stamp subject.
 - **A job that wants something attached to the release** names its artifact
   `release-asset-*`; `release.yml` uploads those and nothing else.
 - **`release-status.yml` makes a partial release loud** — it waits for the

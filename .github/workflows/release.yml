@@ -1,21 +1,19 @@
 name: release
 
-# Cut the `## Unreleased` heading in CHANGELOG.md to the version being released,
-# merge main into `releases`, push, publish the draft this leaves behind.
+# Dispatch this against main, publish the draft it leaves behind.
 #
 # To patch an older line, branch off the *tag* — `git branch release/v6.1.X
-# v6.1.0` — not off `releases`: the version is derived against the nearest
-# reachable tag.
+# v6.1.0` — and dispatch against that: the version is derived against the
+# nearest reachable tag.
+#
+# A tag push cannot be the trigger: the tag has to land on the stamp commit
+# this run makes.
 #
 # The release is drafted, never published. GitHub creates the tag only on
 # publish, so the tag can land on a commit made during the run. Publishing has
 # to stay a human action anyway: a release created by `GITHUB_TOKEN` raises no
 # `release: published`, which is what conan, maven and android hang off.
 on:
-  push:
-    branches:
-      - 'releases'
-      - 'release/**'
   workflow_dispatch:
     inputs:
       version:
@@ -32,8 +30,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# write is the `release` job's alone — it is the one that pushes
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # Separate because the version is an input to everything below: an artifact
@@ -43,6 +42,17 @@ jobs:
     outputs:
       version: ${{ steps.derive.outputs.version }}
     steps:
+      # dispatch takes any ref; `stamp` would only refuse it after the build
+      - name: refuse a ref that is not a release line
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          case "$REF" in
+            main | release/*) ;;
+            *) echo "::error::$REF is neither main nor a release/vX.Y.X branch"
+               exit 1 ;;
+          esac
+
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -65,7 +75,7 @@ jobs:
       # Here rather than beside `notes`, so release copy nobody wrote costs
       # seconds instead of a version. Dry runs included — a dry run is the
       # rehearsal for the release body.
-      - name: check the changelog names this version
+      - name: check the changelog has something to say
         env:
           VERSION: ${{ steps.derive.outputs.version }}
         run: scripts/release.py changelog --version "$VERSION" > /dev/null
@@ -86,15 +96,25 @@ jobs:
   release:
     needs: [version, apple]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write # the draft
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      # `GITHUB_TOKEN`, so the stamp push below raises no `push` event and
-      # cannot retrigger this workflow. A PAT would loop.
+      # `GITHUB_TOKEN` cannot push to main: the ruleset holds it to the pull
+      # request rule, and GitHub Actions cannot be a bypass actor. This app can.
+      - name: mint a token for the app
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          token: ${{ steps.app.outputs.token }} # the stamp push below
 
       - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -126,8 +146,7 @@ jobs:
       # here; `stamp` commits all of it as one commit.
       #
       # The patterns match the previous release's values as well as the
-      # `UNRELEASED` placeholder main carries, since `releases` keeps the last
-      # stamp.
+      # `UNRELEASED` placeholder, since main keeps the last stamp.
       - name: point Package.swift at this release
         env:
           CHECKSUM: ${{ needs.apple.outputs.checksum }}
@@ -138,13 +157,19 @@ jobs:
             Package.swift
           git diff --stat Package.swift
 
+      - name: cut the changelog
+        run: |
+          scripts/release.py cut \
+            --version "$VERSION" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
       - name: release notes
         run: scripts/release.py notes --version "$VERSION" --output "${{ runner.temp }}/notes.md"
 
       - name: stamp
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "${{ steps.app.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app.outputs.app-slug }}[bot]@users.noreply.github.com"
           scripts/release.py stamp \
             --version "$VERSION" \
             --branch "${GITHUB_REF#refs/heads/}" \

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """The release procedure.
 
-`releases` is the mainline: merge main into it and push, and the run cuts the
-next version. To patch an older line, branch off the *tag* — `git branch
-release/v6.1.X v6.1.0` — since the version is derived against the nearest
+Dispatch `release.yml` against main and the run cuts the next version. To patch
+an older line, branch off the *tag* — `git branch release/v6.1.X v6.1.0` — and
+dispatch against that, since the version is derived against the nearest
 reachable one.
 
 Driven by `.github/workflows/release.yml`:
 
     version   what the commits since the last reachable tag say comes next
-    changelog the CHANGELOG.md section for a version, and nothing if there is none
+    changelog the CHANGELOG.md section a release would be built from
+    cut       rename `## Unreleased` to the version, and open a fresh one
     notes     the release body: that section above the generated commit list
     stamp     commit whatever the workflow wrote into the tree, if anything
     publish   create or update the draft release, targeting HEAD, with assets
@@ -28,6 +29,7 @@ Runnable by hand; `--dry-run` mutates nothing:
 from __future__ import annotations
 
 import argparse
+import datetime
 import os
 import re
 import subprocess
@@ -37,12 +39,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLIFF_CONFIG = REPO_ROOT / ".github" / "cliff.toml"
 CHANGELOG = REPO_ROOT / "CHANGELOG.md"
+UNRELEASED = "Unreleased"
 
 # `## v6.3.0 - 2026-08-08`, or `## Unreleased`; the date is decoration
 VERSION_HEADING = re.compile(r"^## +(\S+)")
 
-# skipped by `cliff.toml`, so it stays out of the next release's notes
-STAMP_SUBJECT = "chore(release): {version}"
+# skipped by `cliff.toml`, so it stays out of the next release's notes.
+# `[skip ci]` because the app token pushing it does raise events, and the commit
+# carries no code — the tree at the tag is the one main last built.
+STAMP_SUBJECT = "chore(release): {version} [skip ci]"
 
 
 def run(command: list[str], *, capture: bool = False, dry_run: bool = False) -> str:
@@ -103,17 +108,13 @@ def command_version(arguments: argparse.Namespace) -> None:
     print(version)
 
 
-def changelog_section(version: str) -> str:
-    """The body under `## <version>` in CHANGELOG.md.
-
-    Read before anything is built, so release copy nobody wrote costs seconds
-    rather than a version. Being read is what keeps the changelog from rotting.
-    """
-    wanted = version.strip().removeprefix("v")
+def section(text: str, wanted: str) -> str | None:
+    """The body under `## <wanted>`, or None if there is no such heading."""
+    wanted = wanted.strip().removeprefix("v")
 
     found = False
     body: list[str] = []
-    for line in CHANGELOG.read_text().splitlines():
+    for line in text.splitlines():
         heading = VERSION_HEADING.match(line)
         if heading:
             if found:
@@ -123,24 +124,57 @@ def changelog_section(version: str) -> str:
         if found:
             body.append(line)
 
-    if not found:
-        raise SystemExit(
-            f"CHANGELOG.md has no section for {version}. Cut the `## Unreleased` "
-            f"heading to `## {version} - <date>` on main before merging into "
-            f"`releases` — that copy is the top of the release body."
-        )
+    return "\n".join(body).strip("\n") if found else None
 
-    text = "\n".join(body).strip("\n")
-    if not text:
+
+def changelog_section(version: str) -> str:
+    """What the release body will be built from.
+
+    `## <version>` once `cut` has run, `## Unreleased` before it — the same
+    lines either way, so the workflow can read them before it builds anything.
+    """
+    text = CHANGELOG.read_text()
+    body = section(text, version)
+    if body is None:
+        body = section(text, "Unreleased")
+    if body is None:
         raise SystemExit(
-            f"the `## {version}` section of CHANGELOG.md is empty. A release "
-            f"with nothing worth telling a consumer should say so, not nothing."
+            f"CHANGELOG.md has neither a `## {version}` nor a `## Unreleased` "
+            f"section. One of them has to hold the release copy."
         )
-    return text
+    if not body.strip():
+        raise SystemExit(
+            f"CHANGELOG.md says nothing about {version}. Write what a consumer "
+            f"would notice under `## Unreleased` — a release with nothing worth "
+            f"telling them should say so, not nothing."
+        )
+    return body
 
 
 def command_changelog(arguments: argparse.Namespace) -> None:
     print(changelog_section(arguments.version))
+
+
+def command_cut(arguments: argparse.Namespace) -> None:
+    """Rename `## Unreleased` to the version and open an empty one above it.
+
+    A version that already has a section keeps it, so re-running a release
+    neither cuts twice nor swallows what landed in between.
+    """
+    text = CHANGELOG.read_text()
+    if section(text, arguments.version) is not None:
+        print(f"{arguments.version} is already cut")
+        return
+
+    heading = f"## {UNRELEASED}\n"
+    if heading not in text:
+        raise SystemExit(f"CHANGELOG.md has no `## {UNRELEASED}` heading to cut")
+
+    date = arguments.date or datetime.date.today().isoformat()
+    cut = f"## {UNRELEASED}\n\n## {arguments.version} - {date}\n"
+    print(f"cutting `## {UNRELEASED}` to `## {arguments.version} - {date}`")
+    if not arguments.dry_run:
+        CHANGELOG.write_text(text.replace(heading, cut, 1))
 
 
 def command_notes(arguments: argparse.Namespace) -> None:
@@ -153,11 +187,11 @@ def command_notes(arguments: argparse.Namespace) -> None:
 
 def command_stamp(arguments: argparse.Namespace) -> None:
     """Commit whatever the workflow wrote, and push it. A no-op if nothing did."""
-    if arguments.branch != "releases" and not arguments.branch.startswith("release/"):
+    if arguments.branch != "main" and not arguments.branch.startswith("release/"):
         raise SystemExit(
             f"refusing to stamp {arguments.branch}: a release is cut from "
-            f"`releases`, or from a `release/v<major>.<minor>.X` branched off "
-            f"the tag it patches"
+            f"`main`, or from a `release/v<major>.<minor>.X` branched off the "
+            f"tag it patches"
         )
 
     # Asked before staging, so `--dry-run` reaches the same verdict as a real run.
@@ -228,6 +262,12 @@ def main() -> None:
                                       help="print the CHANGELOG.md section")
     changelog.add_argument("--version", required=True)
     changelog.set_defaults(function=command_changelog)
+
+    cut = subparsers.add_parser("cut", help="head the entries with the version")
+    cut.add_argument("--version", required=True)
+    cut.add_argument("--date", help="defaults to today")
+    cut.add_argument("--dry-run", action="store_true")
+    cut.set_defaults(function=command_cut)
 
     notes = subparsers.add_parser("notes", help="write the release body")
     notes.add_argument("--version", required=True)

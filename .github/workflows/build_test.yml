@@ -2,10 +2,8 @@ name: build-test
 
 on:
   push:
-    # release branches are `release.yml`'s alone
-    branches-ignore:
-      - 'releases'
-      - 'release/**'
+    # branches only: publishing a release pushes a tag, which is not a change
+    branches: ['**']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
