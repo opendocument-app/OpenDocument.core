@@ -12,6 +12,7 @@ namespace odr::internal::abstract {
 class File;
 class DecodedFile;
 class TextFile;
+class CsvFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
@@ -21,6 +22,7 @@ class FontFile;
 
 namespace odr {
 class TextFile;
+class CsvFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
@@ -368,6 +370,7 @@ public:
   [[nodiscard]] FileTypeCapabilities capabilities() const;
 
   [[nodiscard]] bool is_text_file() const;
+  [[nodiscard]] bool is_csv_file() const;
   [[nodiscard]] bool is_image_file() const;
   [[nodiscard]] bool is_archive_file() const;
   [[nodiscard]] bool is_document_file() const;
@@ -375,6 +378,7 @@ public:
   [[nodiscard]] bool is_font_file() const;
 
   [[nodiscard]] TextFile as_text_file() const;
+  [[nodiscard]] CsvFile as_csv_file() const;
   [[nodiscard]] ImageFile as_image_file() const;
   [[nodiscard]] ArchiveFile as_archive_file() const;
   [[nodiscard]] DocumentFile as_document_file() const;
@@ -406,6 +410,41 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
+};
+
+/// @brief How to read a csv file.
+///
+/// An unset field is detected from the file's opening bytes; a set one is taken
+/// as given. @ref CsvFile::options returns these with every field resolved, so
+/// a caller can show what was detected and offer to change it.
+struct CsvOptions final {
+  std::optional<TextEncoding> encoding{};
+  std::optional<char> separator{};
+  std::optional<char> quote{};
+};
+
+/// @brief Represents a csv file.
+class CsvFile final : public DecodedFile {
+public:
+  /// @brief Decodes @p file as a csv, with @p options.
+  /// @throws NoCsvFile if no separator was given and the file does not look
+  ///         like one.
+  [[nodiscard]] static CsvFile from_file(const File &file,
+                                         const CsvOptions &options,
+                                         const Logger &logger = Logger::null());
+
+  explicit CsvFile(std::shared_ptr<internal::abstract::CsvFile>);
+
+  /// @brief The options in use, every field resolved.
+  [[nodiscard]] CsvOptions options() const;
+
+  /// @brief The same file read with @p options.
+  [[nodiscard]] CsvFile with_options(const CsvOptions &options) const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::CsvFile> impl() const;
+
+private:
+  std::shared_ptr<internal::abstract::CsvFile> m_impl;
 };
 
 /// @brief Represents an image file.
