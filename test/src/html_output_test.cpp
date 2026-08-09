@@ -168,6 +168,11 @@ TEST_P(HtmlOutputTests, html_meta) {
       Path(output_path_prefix).parent().join(RelPath("resources")).string();
   config.relative_resource_paths = true;
   config.editable = true;
+  // Keep a text document's page margins instead of reflowing it to the
+  // viewport. The Android viewer turns this on by default, so leaving it off
+  // here left the reference output showing a rendering path most readers never
+  // see — including the page box and the backdrop it brings with it.
+  config.text_document_margin = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   config.page_range_end = 100;
   config.format_html = true;
