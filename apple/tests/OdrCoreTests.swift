@@ -71,8 +71,9 @@ final class DecodeTests: XCTestCase {
     }
   }
 
-  /// A csv is a *text* file to odrcore, not a document — it has no element
-  /// tree. Worth pinning: the extension suggests otherwise.
+  /// A csv is a *text* file to odrcore, not a document file. It does have an
+  /// element tree — `CsvFile.document()` is a second view of the same bytes —
+  /// but that does not move it out of `FileCategory.text`.
   func testCsvIsTextRatherThanADocument() throws {
     let path = try write("a,b\n1,2\n", as: "table.csv")
     let decoded = try DecodedFile.decode(path: path)

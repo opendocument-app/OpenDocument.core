@@ -315,6 +315,8 @@ CsvFile CsvFile::from_file(const File &file, const CsvOptions &options,
 CsvFile::CsvFile(std::shared_ptr<internal::abstract::CsvFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
+Document CsvFile::document() const { return Document(m_impl->document()); }
+
 CsvOptions CsvFile::options() const { return m_impl->options(); }
 
 CsvFile CsvFile::with_options(const CsvOptions &options) const {

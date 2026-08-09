@@ -92,9 +92,11 @@ class HtmlTest {
   @Test
   void translateCsv() throws IOException {
     Html html = translateOffline(TestFiles.csvFile(tempDir));
-    assertEquals(1, html.pages().size());
-    String content = Files.readString(Path.of(html.pages().get(0).path));
+    // a spreadsheet: a document view plus one per sheet
+    assertEquals(2, html.pages().size());
+    String content = Files.readString(Path.of(html.pages().get(1).path));
     assertTrue(content.contains("alpha"));
+    assertTrue(content.contains("<table"));
   }
 
   @Test
