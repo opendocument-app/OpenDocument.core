@@ -51,7 +51,7 @@ td x-p{height:inherit}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
 .odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 11px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
-.odr-sheet thead th{top:0;z-index:2;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
+.odr-sheet thead th{top:0;z-index:2;height:22px;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
 .odr-sheet-row-header{left:0;z-index:1;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
 .odr-sheet-corner{left:0;z-index:3;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-rule)}
 .odr-gridlines-soft .odr-sheet td{border-top:1px solid var(--odr-sheet-line);border-left:1px solid var(--odr-sheet-line)}
@@ -63,6 +63,12 @@ td x-p{height:inherit}
 .odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
 .odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
 .odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
+/* `*{position:relative}` already makes the header a containing block. */
+.odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
+.odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}
+.odr-sheet-sort:hover{background:var(--odr-sheet-wash-ruler)}
+.odr-sheet-sort::after{content:"\25BE";font-size:15px;line-height:1}
+.odr-sheet-sort-asc::after{content:"\25B4"}
 )css";
 
 constexpr const char *text_css = R"css(
@@ -375,6 +381,133 @@ constexpr const char *spreadsheet_js = R"js(
       pin(-1, null, null);
     }
   });
+
+  var body = table.tBodies[0];
+  var original = null;
+  var sortedColumn = -1;
+  var sortedDirection = 0;
+
+  // Only the rendered text is in the markup, not the number behind it. The last
+  // separator is the decimal one, which settles 1,234.56 against 1.234,56.
+  function toNumber(text) {
+    var cleaned = text.replace(/[^0-9,.eE+-]/g, "");
+    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      cleaned = cleaned.replace(/,/g, "");
+    }
+    var value = parseFloat(cleaned);
+    return isFinite(value) ? value : NaN;
+  }
+
+  // Numbers, then text, then blanks: no column is forced into one kind.
+  var NUMBER = 0;
+  var TEXT = 1;
+  var BLANK = 2;
+
+  function keyOf(row, index) {
+    var cell = row.children[index];
+    var text = cell === undefined ? "" : cell.textContent.trim();
+    if (text === "") {
+      return { rank: BLANK, value: 0 };
+    }
+    if (cell.classList.contains("odr-value-type-float")) {
+      var value = toNumber(text);
+      if (!isNaN(value)) {
+        return { rank: NUMBER, value: value };
+      }
+    }
+    return { rank: TEXT, value: text };
+  }
+
+  function reorder(rows) {
+    var fragment = document.createDocumentFragment();
+    for (var i = 0; i < rows.length; ++i) {
+      fragment.appendChild(rows[i]);
+    }
+    body.appendChild(fragment);
+  }
+
+  function sortBy(index, direction) {
+    if (original === null) {
+      original = Array.prototype.slice.call(body.rows);
+    }
+    if (direction === 0) {
+      reorder(original);
+      return;
+    }
+
+    var rows = Array.prototype.slice.call(body.rows);
+    var keys = new Map();
+    for (var i = 0; i < rows.length; ++i) {
+      keys.set(rows[i], keyOf(rows[i], index));
+    }
+
+    // A blank is an absent value, not the smallest one, so it stays last either
+    // way round. The stable sort keeps the document's order for ties.
+    rows.sort(function (a, b) {
+      var x = keys.get(a);
+      var y = keys.get(b);
+      if (x.rank === BLANK || y.rank === BLANK) {
+        return x.rank === y.rank ? 0 : x.rank === BLANK ? 1 : -1;
+      }
+      if (x.rank !== y.rank) {
+        return (x.rank - y.rank) * direction;
+      }
+      var result =
+        x.rank === NUMBER
+          ? x.value - y.value
+          : x.value.localeCompare(y.value, undefined, { numeric: true });
+      return result * direction;
+    });
+    reorder(rows);
+  }
+
+  // A `rowspan` would reach into a row no longer beneath it and a `colspan`
+  // breaks the column index, so a merged sheet gets no sort control.
+  if (!merged) {
+    var headers = table.tHead.rows[0].children;
+    for (var column = 1; column < headers.length; ++column) {
+      var control = document.createElement("span");
+      control.className = "odr-sheet-sort";
+      control.setAttribute("title", "sort by column " + headers[column].textContent);
+      headers[column].appendChild(control);
+    }
+
+    table.addEventListener(
+      "click",
+      function (event) {
+        var control = event.target.closest(".odr-sheet-sort");
+        if (control === null) {
+          return;
+        }
+        // The header itself pins the column; only this control sorts it.
+        event.stopPropagation();
+
+        var index = control.parentElement.cellIndex;
+        var direction =
+          index !== sortedColumn ? 1 : sortedDirection === 1 ? -1 : 0;
+
+        sortBy(index, direction);
+
+        control.classList.remove("odr-sheet-sort-asc", "odr-sheet-sort-desc");
+        if (direction === 1) {
+          control.classList.add("odr-sheet-sort-asc");
+        } else if (direction === -1) {
+          control.classList.add("odr-sheet-sort-desc");
+        }
+        if (sortedColumn !== index && sortedColumn >= 0) {
+          headers[sortedColumn]
+            .querySelector(".odr-sheet-sort")
+            .classList.remove("odr-sheet-sort-asc", "odr-sheet-sort-desc");
+        }
+
+        sortedColumn = direction === 0 ? -1 : index;
+        sortedDirection = direction;
+      },
+      true
+    );
+  }
 })();
 )js";
 
