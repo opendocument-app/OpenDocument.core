@@ -7,6 +7,7 @@
 
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/csv/csv_util.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -28,15 +29,17 @@ namespace {
 std::vector<std::unordered_map<std::string, std::string>>
 read_indexed_csv(const std::string &path) {
   std::ifstream in(path);
+  const std::string content = internal::util::stream::read(in);
+  csv::RecordReader reader(content, csv::Dialect{});
 
   std::vector<std::string> header;
-  if (!csv::read_record(in, header)) {
+  if (!reader.read(header)) {
     return {};
   }
 
   std::vector<std::unordered_map<std::string, std::string>> rows;
   std::vector<std::string> fields;
-  while (csv::read_record(in, fields)) {
+  while (reader.read(fields)) {
     std::unordered_map<std::string, std::string> row;
     for (std::size_t i = 0; i < header.size() && i < fields.size(); ++i) {
       row[header[i]] = fields[i];

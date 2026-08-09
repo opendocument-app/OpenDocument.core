@@ -2,6 +2,7 @@
 
 #include <odr/file.hpp>
 
+#include <odr/internal/csv/csv_util.hpp>
 #include <odr/internal/text/text_file.hpp>
 
 #include <memory>
@@ -22,8 +23,12 @@ public:
 
   [[nodiscard]] TextEncoding encoding() const noexcept override;
 
+  /// The dialect detection resolved.
+  [[nodiscard]] Dialect dialect() const noexcept;
+
 private:
   std::shared_ptr<text::TextFile> m_file;
+  Dialect m_dialect;
 };
 
 } // namespace odr::internal::csv
