@@ -32,9 +32,12 @@ table{border-collapse:collapse;table-layout:fixed}
 td{vertical-align:bottom;text-overflow:ellipsis;height:inherit}
 x-p{font-family:"Arial",serif;font-size:10pt}
 td x-p{height:inherit}
-.odr-gridlines-soft table td{border-top:1px solid #c0c0c0;border-left:1px solid #c0c0c0}
-.odr-gridlines-hard table td{border:1px solid #c0c0c0!important}
-table td.odr-value-type-float{text-align:right}
+.odr-sheet th{font-weight:normal;text-align:center;vertical-align:middle}
+.odr-sheet-gutter{width:30px}
+.odr-sheet-corner{height:20px}
+.odr-gridlines-soft .odr-sheet td,.odr-gridlines-soft .odr-sheet th{border-top:1px solid #c0c0c0;border-left:1px solid #c0c0c0}
+.odr-gridlines-hard .odr-sheet td,.odr-gridlines-hard .odr-sheet th{border:1px solid #c0c0c0!important}
+.odr-sheet td.odr-value-type-float{text-align:right}
 )css";
 
 constexpr const char *text_css = R"css(
