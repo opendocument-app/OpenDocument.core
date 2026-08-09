@@ -606,9 +606,9 @@ constexpr std::array table{
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
 
-    // Named but not decoded, like the images above. `translate_html` means the
-    // image page is written and the data url labelled, not that every browser
-    // paints it.
+    // Named but not decoded, like the images above — except svg, which is xml
+    // and is parsed. For the rest `translate_html` means the image page is
+    // written and the data url labelled, not that every browser paints it.
     Row{FileType::scalable_vector_graphics,
         "svg"sv,
         svg_extensions,

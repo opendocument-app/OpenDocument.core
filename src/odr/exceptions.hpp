@@ -147,6 +147,11 @@ struct NoXmlFile final : Exception {
   NoXmlFile();
 };
 
+/// @brief No SVG file exception
+struct NoSvgFile final : Exception {
+  NoSvgFile();
+};
+
 /// @brief Unsupported crypto algorithm exception
 struct UnsupportedCryptoAlgorithm final : Exception {
   UnsupportedCryptoAlgorithm();

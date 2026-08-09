@@ -128,7 +128,8 @@ enum class FileType {
   audio_video_interleave,
 
   // More images that arrive alongside documents, named the same way and for
-  // the same reason as the block above - nothing here is decoded either.
+  // the same reason as the block above - nothing here is decoded either,
+  // except svg, which is xml.
   // https://en.wikipedia.org/wiki/SVG
   scalable_vector_graphics,
   // https://en.wikipedia.org/wiki/ICO_(file_format)
@@ -460,6 +461,8 @@ public:
   explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::ImageFile> impl() const;
 
 private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;

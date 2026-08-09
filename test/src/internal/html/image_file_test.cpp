@@ -111,6 +111,8 @@ TEST(image_file, svg_is_detected_and_opens_as_an_image) {
   EXPECT_FALSE(file.is_text_file());
 }
 
+/// The image page, but an svg goes into it as markup — see
+/// `internal/svg/svg_file_test.cpp`. Every other image is a data url.
 TEST(image_file, svg_translates_to_an_image_page) {
   const DecodedFile file{svg_file()};
   const HtmlService service =
@@ -120,8 +122,8 @@ TEST(image_file, svg_translates_to_an_image_page) {
   EXPECT_EQ(service.list_views().front().name(), "image");
 
   const std::string html = write_path(service, "image.html");
-  EXPECT_NE(html.find("<img"), std::string::npos);
-  EXPECT_NE(html.find("data:image/svg+xml;base64,"), std::string::npos);
+  EXPECT_NE(html.find("<svg"), std::string::npos);
+  EXPECT_EQ(html.find("data:image/svg+xml;base64,"), std::string::npos);
 }
 
 TEST(image_file, ico_is_named_by_its_own_mime_type) {

@@ -123,6 +123,13 @@ body{background:#fff}
 .odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}
 )css";
 
+/// The svg keeps whatever intrinsic size it declares; these rules only cap it.
+constexpr std::string_view svg_css = R"css(
+body{margin:0;background:#fff}
+.odr-svg{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.odr-svg>svg{max-width:100%;max-height:100vh}
+)css";
+
 constexpr std::string_view filesystem_css = R"css(
 :root{
 --odr-files-line:#e3e5e8;
@@ -929,6 +936,8 @@ constexpr Asset text_css_asset{HtmlResourceType::css, "text/css", "text.css",
                                text_css};
 constexpr Asset xml_css_asset{HtmlResourceType::css, "text/css", "xml.css",
                               xml_css};
+constexpr Asset svg_css_asset{HtmlResourceType::css, "text/css", "svg.css",
+                              svg_css};
 constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
                                      "filesystem.css", filesystem_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
@@ -1009,6 +1018,10 @@ void html::write_xml_style(const WritingState &state) {
   write_style(xml_css_asset, state);
 }
 
+void html::write_svg_style(const WritingState &state) {
+  write_style(svg_css_asset, state);
+}
+
 void html::write_filesystem_style(const WritingState &state) {
   write_style(filesystem_css_asset, state);
 }
@@ -1036,6 +1049,11 @@ HtmlResources html::locate_text_resources(const HtmlConfig &config) {
 
 HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
   static constexpr std::array assets{xml_css_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_svg_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{svg_css_asset};
   return locate_all(assets, config);
 }
 

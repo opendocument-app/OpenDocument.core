@@ -70,6 +70,8 @@ NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
 
 NoXmlFile::NoXmlFile() : Exception("not an xml file") {}
 
+NoSvgFile::NoSvgFile() : Exception("not an svg file") {}
+
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
     : Exception("unsupported crypto algorithm") {}
 

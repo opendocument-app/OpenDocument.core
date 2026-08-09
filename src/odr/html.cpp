@@ -15,8 +15,10 @@
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/media_file.hpp>
 #include <odr/internal/html/pdf_file.hpp>
+#include <odr/internal/html/svg_file.hpp>
 #include <odr/internal/html/text_file.hpp>
 #include <odr/internal/html/xml_file.hpp>
+#include <odr/internal/svg/svg_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <algorithm>
@@ -286,6 +288,12 @@ HtmlService html::translate(const TextFile &text_file, const HtmlConfig &config,
 
 HtmlService html::translate(const ImageFile &image_file,
                             const HtmlConfig &config, const Logger &logger) {
+  // an svg is markup, and goes into the page as markup
+  if (const auto svg_file =
+          std::dynamic_pointer_cast<internal::svg::SvgFile>(image_file.impl());
+      svg_file != nullptr) {
+    return internal::html::create_svg_service(svg_file, config, logger);
+  }
   return internal::html::create_image_service(image_file, config, logger);
 }
 
