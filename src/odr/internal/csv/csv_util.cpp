@@ -205,6 +205,57 @@ csv::Probe csv::probe(const std::string_view text, const bool complete,
   return result;
 }
 
+bool csv::is_number(std::string_view field) noexcept {
+  constexpr std::string_view blanks = " \t";
+  const std::size_t first = field.find_first_not_of(blanks);
+  if (first == std::string_view::npos) {
+    return false;
+  }
+  field = field.substr(first, field.find_last_not_of(blanks) - first + 1);
+
+  std::size_t i = 0;
+  const auto digits = [&] {
+    const std::size_t start = i;
+    while (i < field.size() && field[i] >= '0' && field[i] <= '9') {
+      ++i;
+    }
+    return i - start;
+  };
+
+  if (i < field.size() && (field[i] == '-' || field[i] == '+')) {
+    ++i;
+  }
+
+  const std::size_t integer_start = i;
+  const std::size_t integer_digits = digits();
+  if (integer_digits == 0) {
+    return false;
+  }
+  // a leading zero means the digits are an identifier, not a quantity
+  if (field[integer_start] == '0' && integer_digits > 1) {
+    return false;
+  }
+
+  if (i < field.size() && field[i] == '.') {
+    ++i;
+    if (digits() == 0) {
+      return false;
+    }
+  }
+
+  if (i < field.size() && (field[i] == 'e' || field[i] == 'E')) {
+    ++i;
+    if (i < field.size() && (field[i] == '-' || field[i] == '+')) {
+      ++i;
+    }
+    if (digits() == 0) {
+      return false;
+    }
+  }
+
+  return i == field.size();
+}
+
 csv::Probe csv::probe(const abstract::File &file, const TextEncoding encoding,
                       const char quote) {
   if (!text_encoding_is_decodable(encoding)) {

@@ -298,6 +298,93 @@ TEST(CsvDocument, renders_as_a_table) {
   EXPECT_THAT(out.str(), testing::HasSubstr(">2<"));
 }
 
+TEST(CsvNumbers, a_number_is_a_number) {
+  EXPECT_TRUE(csv::is_number("0"));
+  EXPECT_TRUE(csv::is_number("42"));
+  EXPECT_TRUE(csv::is_number("-42"));
+  EXPECT_TRUE(csv::is_number("+42"));
+  EXPECT_TRUE(csv::is_number("3.14"));
+  EXPECT_TRUE(csv::is_number("0.5"));
+  EXPECT_TRUE(csv::is_number("-0.5"));
+  EXPECT_TRUE(csv::is_number("1e9"));
+  EXPECT_TRUE(csv::is_number("1.5E-3"));
+  EXPECT_TRUE(csv::is_number("  42  "));
+
+  EXPECT_FALSE(csv::is_number(""));
+  EXPECT_FALSE(csv::is_number("   "));
+  EXPECT_FALSE(csv::is_number("abc"));
+  EXPECT_FALSE(csv::is_number("42abc"));
+  EXPECT_FALSE(csv::is_number("4 2"));
+  EXPECT_FALSE(csv::is_number("."));
+  EXPECT_FALSE(csv::is_number("1."));
+  EXPECT_FALSE(csv::is_number("1e"));
+  EXPECT_FALSE(csv::is_number("-"));
+}
+
+/// A leading zero is what tells a code from a quantity, and a thousands
+/// separator does not say which side of the Atlantic wrote it.
+TEST(CsvNumbers, an_identifier_is_not_a_number) {
+  EXPECT_FALSE(csv::is_number("007"));
+  EXPECT_FALSE(csv::is_number("0123456789012"));
+  EXPECT_FALSE(csv::is_number("1,234"));
+  EXPECT_FALSE(csv::is_number("1.234,56"));
+  EXPECT_FALSE(csv::is_number("1,234.56"));
+  // dates are left alone entirely
+  EXPECT_FALSE(csv::is_number("2026-08-09"));
+  EXPECT_FALSE(csv::is_number("03/04/2026"));
+}
+
+namespace {
+
+ValueType value_type_at(const std::string &content, const std::uint32_t column,
+                        const std::uint32_t row) {
+  const CsvFile file = CsvFile::from_file(File::from_memory(content),
+                                          CsvOptions{.separator = ','});
+  const Document document = file.document();
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  return sheet.cell(column, row).value_type();
+}
+
+} // namespace
+
+TEST(CsvValueType, a_numeric_column_is_a_number) {
+  const std::string content = "name,age\nx,42\ny,7\n";
+
+  EXPECT_EQ(value_type_at(content, 1, 1), ValueType::float_number);
+  EXPECT_EQ(value_type_at(content, 1, 2), ValueType::float_number);
+  EXPECT_EQ(value_type_at(content, 0, 1), ValueType::string);
+  // the header of a numeric column is still a name
+  EXPECT_EQ(value_type_at(content, 1, 0), ValueType::string);
+}
+
+/// A reader compares down a column, so one number in a column of prose is not
+/// a quantity.
+TEST(CsvValueType, a_lone_number_in_a_text_column_is_not) {
+  EXPECT_EQ(value_type_at("a,b\nx,note\ny,42\n", 1, 2), ValueType::string);
+}
+
+TEST(CsvValueType, an_empty_cell_does_not_break_a_numeric_column) {
+  const std::string content = "a,b\nx,1\ny,\nz,3\n";
+  EXPECT_EQ(value_type_at(content, 1, 1), ValueType::float_number);
+  EXPECT_EQ(value_type_at(content, 1, 2), ValueType::string);
+  EXPECT_EQ(value_type_at(content, 1, 3), ValueType::float_number);
+}
+
+TEST(CsvValueType, a_column_of_codes_stays_text) {
+  EXPECT_EQ(value_type_at("a,code\nx,007\ny,008\n", 1, 1), ValueType::string);
+}
+
+/// A column only one record reaches is padding everywhere else, and padding is
+/// not a value: the inference sees the one field, not the empty rectangle
+/// around it.
+TEST(CsvValueType, a_column_one_wide_record_opened_holds_one_value) {
+  const std::string content = "a\nb\nc,1\nd\n";
+
+  EXPECT_EQ(value_type_at(content, 1, 2), ValueType::float_number);
+  EXPECT_EQ(value_type_at(content, 1, 1), ValueType::string);
+  EXPECT_EQ(value_type_at(content, 1, 3), ValueType::string);
+}
+
 /// Cells are not reachable by walking, so the generic path machinery has to
 /// get at them the other way — through `sheet_cell`.
 TEST(CsvDocument, a_cell_path_round_trips) {
