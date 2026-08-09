@@ -13,7 +13,6 @@ namespace {
 
 constexpr const char *document_css = R"css(
 *{margin:0;position:relative}
-body{padding:5px}
 x-p{display:block;font-size:0}
 x-s{display:inline}
 .odr-background{padding:0;background:#525659}
@@ -35,8 +34,12 @@ constexpr const char *spreadsheet_css = R"css(
 --odr-sheet-rule:#c8ccd1;
 --odr-sheet-ruler:#f5f6f7;
 --odr-sheet-ruler-text:#5c6169;
+--odr-sheet-canvas:#eceef1;
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
+/* A sheet is not a page: past the last row and column is canvas. */
+body{background:var(--odr-sheet-canvas)}
+.odr-sheet{background:#fff}
 table{border-collapse:collapse;table-layout:fixed}
 td{vertical-align:bottom;height:inherit;padding:1px 6px}
 x-p{font-family:var(--odr-sheet-font);font-size:10pt}
