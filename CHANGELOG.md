@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An xml file opens as xml and reads as a foldable, highlighted source view
+  rather than as one very long line, in the encoding its declaration names.
+
 ## v6.4.0 - 2026-08-09
 
 - csv opens as a spreadsheet, its dialect probed unless the caller gives one,

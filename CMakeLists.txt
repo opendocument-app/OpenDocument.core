@@ -148,6 +148,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/media_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
         "src/odr/internal/html/text_file.cpp"
+        "src/odr/internal/html/xml_file.cpp"
 
         "src/odr/internal/json/json_file.cpp"
         "src/odr/internal/json/json_util.cpp"
@@ -253,6 +254,8 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/stream_util.cpp"
         "src/odr/internal/util/string_util.cpp"
         "src/odr/internal/util/xml_util.cpp"
+
+        "src/odr/internal/xml/xml_file.cpp"
 
         "src/odr/internal/zip/zip_archive.cpp"
         "src/odr/internal/zip/zip_exceptions.cpp"
