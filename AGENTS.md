@@ -136,7 +136,7 @@ Dispatch `release.yml` against main, publish the draft that appears —
   the tag, and its binary target names the sha256 of an archive that does not
   exist until the release builds it. That push cannot use `GITHUB_TOKEN` —
   GitHub Actions cannot be a bypass actor on the main ruleset — so the job mints
-  one from a GitHub App that is on the bypass list (`RELEASE_APP_ID`,
+  one from a GitHub App that is on the bypass list (`RELEASE_APP_CLIENT_ID`,
   `RELEASE_APP_PRIVATE_KEY`). An app token does raise events, hence `[skip ci]`
   in the stamp subject.
 - **A job that wants something attached to the release** names its artifact
