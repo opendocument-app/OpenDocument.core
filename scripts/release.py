@@ -9,7 +9,8 @@ reachable one.
 Driven by `.github/workflows/release.yml`:
 
     version   what the commits since the last reachable tag say comes next
-    notes     the release body, from the same commits
+    changelog the CHANGELOG.md section for a version, and nothing if there is none
+    notes     the release body: that section above the generated commit list
     stamp     commit whatever the workflow wrote into the tree, if anything
     publish   create or update the draft release, targeting HEAD, with assets
 
@@ -19,6 +20,7 @@ to carry is the workflow's business, this is only that they land in one commit.
 Runnable by hand; `--dry-run` mutates nothing:
 
     scripts/release.py version
+    scripts/release.py changelog --version v6.2.0
     scripts/release.py notes --version v6.2.0 --output /tmp/notes.md
     scripts/release.py publish --version v6.2.0 --notes /tmp/notes.md --dry-run
 """
@@ -27,12 +29,17 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLIFF_CONFIG = REPO_ROOT / ".github" / "cliff.toml"
+CHANGELOG = REPO_ROOT / "CHANGELOG.md"
+
+# `## v6.3.0 - 2026-08-08`, or `## Unreleased`; the date is decoration
+VERSION_HEADING = re.compile(r"^## +(\S+)")
 
 # skipped by `cliff.toml`, so it stays out of the next release's notes
 STAMP_SUBJECT = "chore(release): {version}"
@@ -96,9 +103,52 @@ def command_version(arguments: argparse.Namespace) -> None:
     print(version)
 
 
+def changelog_section(version: str) -> str:
+    """The body under `## <version>` in CHANGELOG.md.
+
+    Read before anything is built, so release copy nobody wrote costs seconds
+    rather than a version. Being read is what keeps the changelog from rotting.
+    """
+    wanted = version.strip().removeprefix("v")
+
+    found = False
+    body: list[str] = []
+    for line in CHANGELOG.read_text().splitlines():
+        heading = VERSION_HEADING.match(line)
+        if heading:
+            if found:
+                break
+            found = heading.group(1).removeprefix("v") == wanted
+            continue
+        if found:
+            body.append(line)
+
+    if not found:
+        raise SystemExit(
+            f"CHANGELOG.md has no section for {version}. Cut the `## Unreleased` "
+            f"heading to `## {version} - <date>` on main before merging into "
+            f"`releases` — that copy is the top of the release body."
+        )
+
+    text = "\n".join(body).strip("\n")
+    if not text:
+        raise SystemExit(
+            f"the `## {version}` section of CHANGELOG.md is empty. A release "
+            f"with nothing worth telling a consumer should say so, not nothing."
+        )
+    return text
+
+
+def command_changelog(arguments: argparse.Namespace) -> None:
+    print(changelog_section(arguments.version))
+
+
 def command_notes(arguments: argparse.Namespace) -> None:
-    cliff("--tag", arguments.version, "--latest", "--unreleased",
-          "-o", str(arguments.output))
+    """The hand-written section, then the commits it summarises."""
+    summary = changelog_section(arguments.version)
+    generated = cliff("--tag", arguments.version, "--latest", "--unreleased",
+                      capture=True)
+    arguments.output.write_text(f"{summary}\n\n---\n\n{generated}\n")
 
 
 def command_stamp(arguments: argparse.Namespace) -> None:
@@ -173,6 +223,11 @@ def main() -> None:
     version = subparsers.add_parser("version", help="print the next version")
     version.add_argument("--version", help="override what the commits say")
     version.set_defaults(function=command_version)
+
+    changelog = subparsers.add_parser("changelog",
+                                      help="print the CHANGELOG.md section")
+    changelog.add_argument("--version", required=True)
+    changelog.set_defaults(function=command_changelog)
 
     notes = subparsers.add_parser("notes", help="write the release body")
     notes.add_argument("--version", required=True)

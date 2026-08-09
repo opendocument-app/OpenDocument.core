@@ -83,7 +83,8 @@ As an alternative to the Conan remote you can also export the package locally vi
 
 ## Version
 
-Versions and history are tracked on [GitHub](https://github.com/opendocument-app/OpenDocument.core).
+What changed per version is in [`CHANGELOG.md`](CHANGELOG.md), and in full in the
+[releases](https://github.com/opendocument-app/OpenDocument.core/releases).
 
 ## Testing
 

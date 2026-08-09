@@ -1,6 +1,7 @@
 name: release
 
-# Merge main into `releases`, push, publish the draft this leaves behind.
+# Cut the `## Unreleased` heading in CHANGELOG.md to the version being released,
+# merge main into `releases`, push, publish the draft this leaves behind.
 #
 # To patch an older line, branch off the *tag* — `git branch release/v6.1.X
 # v6.1.0` — not off `releases`: the version is derived against the nearest
@@ -60,6 +61,14 @@ jobs:
           VERSION=$(scripts/release.py version ${{ inputs.version && format('--version {0}', inputs.version) || '' }})
           echo "cutting $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # Here rather than beside `notes`, so release copy nobody wrote costs
+      # seconds instead of a version. Dry runs included — a dry run is the
+      # rehearsal for the release body.
+      - name: check the changelog names this version
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: scripts/release.py changelog --version "$VERSION" > /dev/null
 
   # SwiftPM resolves `Package.swift` at the tag, and its binary target names a
   # sha256 of an archive that does not exist until it is built — so the archive

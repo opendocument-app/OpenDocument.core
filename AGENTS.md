@@ -103,26 +103,44 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 
 ## Releasing
 
-Merge main into `releases`, push, publish the draft that appears —
-`.github/workflows/release.yml` and `scripts/release.py`.
+Cut the changelog heading, merge main into `releases`, push, publish the draft
+that appears — `.github/workflows/release.yml` and `scripts/release.py`.
 
-- **`main` carries no version.** No file is bumped, no changelog committed; a
-  build records `GIT_HEAD_SHA1` and a dirty flag and nothing else. The version
+- **`main` carries no version in anything the build reads.** No file is bumped;
+  a build records `GIT_HEAD_SHA1` and a dirty flag and nothing else. The version
   is derived from the commit subjects (`git cliff --bumped-version`), so writing
   them properly is load-bearing.
+- **`CHANGELOG.md` is the exception, and only as prose.** A change a consumer
+  would notice gets an entry under `## Unreleased` in the pull request that
+  makes it. Cut that heading to the version — `docs(changelog): cut vX.Y.Z` — as
+  the last commit on main before the merge, so both branches carry the identical
+  cut and the merge stays clean. The run refuses a version with no section, and
+  puts that section above the generated commit list in the release body.
+- **Which version that is cannot be derived from main.** Since the release
+  train, tags sit on `chore(release)` commits that only `releases` carries, so
+  main's nearest reachable tag is v6.1.0 and drifts further every release —
+  `scripts/release.py version` only answers correctly where it runs, on
+  `releases` after the merge. Take the last release (`gh release list -L 1`) and
+  bump the minor if a `feat:` landed since, the patch otherwise. Guess wrong and
+  the changelog check refuses in the first job, before anything is built; re-cut
+  the heading, or dispatch with `--version`.
 - **`releases` is the mainline train**; its first-parent history is the release
   history. To patch an older line, branch off the *tag* (`git branch
   release/v6.1.X v6.1.0`) — the version is derived against the nearest
   *reachable* tag. That is also the trap: a `feat:` there bumps the minor to a
   number the mainline may already have shipped, so `release.py version` refuses
-  a version that is already tagged. Pass `--version` when you mean it.
+  a version that is already tagged. Pass `--version` when you mean it. Such a
+  branch also keeps its own changelog: it covers what that branch contains, so
+  it neither knows about later mainline versions nor sends its sections back to
+  main — a cherry-pick brings the entry with it, and the mainline entry for the
+  same fix can mention the backport.
 - **Release branches run `release.yml` only**; every other workflow carries
   `branches-ignore: ['releases', 'release/**']`.
 - **The release is drafted, and a human publishes it.** GitHub creates the tag
   only then, which is what lets it point at a commit made during the run. It
   also has to be a human: a release created by `GITHUB_TOKEN` raises no
   `release: published`, and that event starts conan, maven and android.
-- **`release.yml` is the only place that writes a version anywhere**, and
+- **`release.yml` is the only place that writes a version into the build**, and
   `release.py stamp` commits it as `chore(release): vX.Y.Z`. Today that is
   `Package.swift`: SwiftPM resolves it at the tag, and its binary target names
   the sha256 of an archive that does not exist until the release builds it. Off
@@ -177,7 +195,8 @@ Merge main into `releases`, push, publish the draft that appears —
 - **Doc-comment markers**: `///` for functions/classes/structs/enums; trailing
   `///<` for the short note on the same line (enumerator/member). Keep terse.
 - **Pull requests**: put the `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
-  line **at the top** of the PR body.
+  line **at the top** of the PR body. If the change is one a consumer would
+  notice, add its `CHANGELOG.md` entry in the same PR — see *Releasing*.
 
 ## Adding / extending a document format
 
