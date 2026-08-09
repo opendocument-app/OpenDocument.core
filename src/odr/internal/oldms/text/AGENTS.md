@@ -193,6 +193,11 @@ WordDocument stream
   (`PlcBtePapx` → `PapxFkp`) belongs here too.
 - **Fields show only the cached result** (§2.8.25) — never evaluated. Acceptable
   for "visible text".
+- **No page layout** — `text_root_page_layout` returns `{}`, so the paginated
+  HTML renders a page box that hugs the text instead of a sheet of paper with
+  margins. Section properties (`PlcfSed` → `Sepx`, `sprmSXaPage`/`sprmSYaPage`
+  for the size, `sprmSDxaLeft`/`Right`, `sprmSDyaTop`/`sprmSDyaBottom` for the
+  margins, §2.6.4) are unparsed.
 - **Images / OLE / drawn objects** — anchor chars dropped; would need `PlcfSpa` /
   Office Art (`dggInfo`).
 - **Encrypted / obfuscated** — `fEncrypted`/`fObfuscated` parsed but not acted on;

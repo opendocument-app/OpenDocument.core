@@ -60,7 +60,8 @@ Roughly ordered by importance.
   - [x] cell vertical alignment, borders
   - [ ] cell width (parsed but not applied)
   - [ ] table row styles
-- [x] page layout (via master page)
+- [x] page layout (`w:sectPr`: size, orientation, margins)
+  - [ ] one layout per section; the first section's applies to the document
 - [ ] graphic / drawing styles
 
 ## References
