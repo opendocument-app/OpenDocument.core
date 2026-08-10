@@ -78,6 +78,10 @@ bool xml::XmlFile::is_decodable() const noexcept { return false; }
 
 TextEncoding xml::XmlFile::encoding() const noexcept { return m_encoding; }
 
+std::shared_ptr<text::TextFile> xml::XmlFile::text_file() const noexcept {
+  return m_file;
+}
+
 std::string xml::XmlFile::text() const {
   // a parser only ever sees utf-8; there is no handing the bytes on undecoded
   if (!text_encoding_is_decodable(m_encoding)) {
@@ -89,6 +93,10 @@ std::string xml::XmlFile::text() const {
 
 const pugi::xml_document &xml::XmlFile::document() const noexcept {
   return *m_document;
+}
+
+std::string_view xml::XmlFile::root_name() const noexcept {
+  return m_document->document_element().name();
 }
 
 } // namespace odr::internal

@@ -17,6 +17,19 @@ using CharPredicate = bool (*)(char);
 /// `std::isspace` for the default C locale, made safe for any `char` value.
 bool is_ascii_space(char c);
 
+/// `std::tolower` for the default C locale, made safe for any `char` value.
+char to_lower(char c);
+std::string to_lower(std::string_view string);
+
+/// The comparisons below fold case with @ref to_lower, so only ascii letters
+/// are folded and a utf-8 sequence is compared byte for byte.
+bool equals_ignore_case(std::string_view a, std::string_view b);
+bool starts_with_ignore_case(std::string_view string, std::string_view prefix);
+/// The first occurrence of @p needle in @p string at or after @p from, or
+/// `std::string_view::npos`.
+std::size_t find_ignore_case(std::string_view string, std::string_view needle,
+                             std::size_t from = 0);
+
 void ltrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
 void rtrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
 void trim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);

@@ -18,12 +18,13 @@
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
-#include <odr/internal/svg/svg_util.hpp>
+#include <odr/internal/svg/svg_file.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/xml/xml_file.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <algorithm>
+#include <memory>
 
 namespace odr::internal {
 
@@ -119,6 +120,18 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       ODR_VERBOSE(logger, "failed to open as svm");
     }
     throw NoSvmFile();
+  }
+
+  if (as == FileType::scalable_vector_graphics) {
+    ODR_VERBOSE(logger, "open as svg");
+    try {
+      auto text = std::make_shared<text::TextFile>(file);
+      return std::make_unique<svg::SvgFile>(
+          std::make_shared<xml::XmlFile>(text));
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as svg");
+    }
+    throw NoSvgFile();
   }
 
   // no decoder below: the bytes go to the browser as they are, so only the
@@ -305,14 +318,12 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       // xml, so both are reported
       try {
         ODR_VERBOSE(logger, "try open as xml");
-        result.push_back(xml::XmlFile(text).file_type());
+        auto xml_file = std::make_shared<xml::XmlFile>(text);
+        result.push_back(xml_file->file_type());
 
-        try {
-          ODR_VERBOSE(logger, "try open as svg");
-          svg::check_svg_file(*file->stream());
-          result.push_back(FileType::scalable_vector_graphics);
-        } catch (...) {
-          ODR_VERBOSE(logger, "failed to open as svg");
+        if (svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as svg");
+          result.push_back(svg::SvgFile(xml_file).file_type());
         }
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
@@ -427,20 +438,22 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // svg first - it is the more specific reading of the same bytes - and
-      // xml last, before the line list
-      try {
-        ODR_VERBOSE(logger, "try open as svg");
-        svg::check_svg_file(*file->stream());
-        return std::make_unique<ImageFile>(file,
-                                           FileType::scalable_vector_graphics);
-      } catch (...) {
-        ODR_VERBOSE(logger, "failed to open as svg");
-      }
-
+      // svg is read off the parse xml already did: it is the more specific
+      // reading of the same bytes, and xml is the last resort before the line
+      // list
       try {
         ODR_VERBOSE(logger, "try open as xml");
-        return std::make_unique<xml::XmlFile>(text);
+        auto xml_file = std::make_unique<xml::XmlFile>(text);
+
+        if (!svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "not an svg");
+          // handed on as it is, so the parse is not repeated
+          return xml_file;
+        }
+
+        ODR_VERBOSE(logger, "open as svg");
+        return std::make_unique<svg::SvgFile>(
+            std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
       }

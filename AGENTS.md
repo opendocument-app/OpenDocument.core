@@ -63,6 +63,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/pdf/` | PDF (own parser). |
 | `src/odr/internal/xml/` | XML, rendered as a source view; see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
+| `src/odr/internal/svg/` | SVG, detected by reading it as xml; see [`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
 | `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |
@@ -177,6 +178,15 @@ Dispatch `release.yml` against main, publish the draft that appears —
   drifts from the header fails at **compile** time instead of becoming an obscure
   linker error. (The `util` helpers use the `struct string { static … }` idiom for
   exactly this.) Keep translation-unit-local helpers in an **anonymous namespace**.
+- **The input file never authors the output markup**: we interpret a file and
+  emit our own html — text through `escape_text`, images as an `<img>` we
+  construct. Nothing is passed through as live markup, which is why an svg goes
+  out as a data url rather than inlined ([`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md))
+  and why the rendered page needs no sanitiser. What is *not* consistent today
+  is link targets: `html/pdf_file.cpp` filters a PDF `/URI` action down to an
+  allowlist of navigable schemes, while a document hyperlink
+  (`html/document_element.cpp`) is only `escape_attribute`d, so a `javascript:`
+  href in an odt reaches the page. Pick one policy before adding a third.
 - **Public API**: value semantics; immutable handles; iterators only for immutable
   traversal (`docs/design/README.md`).
 - **Byte parsing**: read POD structs via `util::byte_stream::read`; assumes host

@@ -34,6 +34,10 @@ public:
   /// bytes were detected as.
   [[nodiscard]] TextEncoding encoding() const noexcept override;
 
+  /// The text file the bytes came from. Its `text()` decodes with the encoding
+  /// detected over the bytes; @ref text uses the one the declaration names.
+  [[nodiscard]] std::shared_ptr<text::TextFile> text_file() const noexcept;
+
   /// The file's bytes decoded to utf-8.
   /// @throws UnsupportedTextEncoding if @ref encoding cannot be decoded.
   [[nodiscard]] std::string text() const;
@@ -45,6 +49,10 @@ public:
   /// Held rather than reparsed per render, and pugixml's dom is roughly twice
   /// the file — so an `XmlFile` costs that for as long as it is open.
   [[nodiscard]] const pugi::xml_document &document() const noexcept;
+
+  /// The document element's name, prefix and all, read off @ref document so
+  /// telling a dialect apart costs no parse of its own.
+  [[nodiscard]] std::string_view root_name() const noexcept;
 
 private:
   std::shared_ptr<text::TextFile> m_file;

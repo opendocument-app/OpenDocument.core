@@ -235,7 +235,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
 
-        "src/odr/internal/svg/svg_util.cpp"
+        "src/odr/internal/svg/svg_file.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"
