@@ -144,8 +144,8 @@ enum class FileType {
   // https://en.wikipedia.org/wiki/Windows_Metafile#Enhanced_Metafile
   enhanced_metafile,
 
-  // Classification only - reported under the formats built on it (an svg comes
-  // back as `[text_file, xml, scalable_vector_graphics]`), no decoder yet.
+  // Also reported under the formats built on it - an svg comes back as
+  // `[text_file, xml, scalable_vector_graphics]`.
   // https://en.wikipedia.org/wiki/XML
   xml,
 };
@@ -407,6 +407,8 @@ public:
   /// @brief The file's text, decoded to UTF-8 where @ref encoding is
   /// decodable, and the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::TextFile> impl() const;
 
 private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;

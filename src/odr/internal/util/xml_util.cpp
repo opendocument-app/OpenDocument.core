@@ -8,6 +8,8 @@
 
 #include <pugixml.hpp>
 
+#include <cstddef>
+#include <string_view>
 #include <tuple>
 
 namespace odr::internal::util {
@@ -29,6 +31,50 @@ pugi::xml_document xml::parse(std::istream &in) {
 }
 
 void xml::check_xml_file(std::istream &in) { std::ignore = parse(in); }
+
+std::string xml::read_declared_encoding(std::istream &in) {
+  static constexpr std::size_t probe_size = 1024;
+  static constexpr std::string_view space = " \t\r\n";
+
+  std::string probe(probe_size, '\0');
+  in.read(probe.data(), static_cast<std::streamsize>(probe.size()));
+  probe.resize(static_cast<std::size_t>(in.gcount()));
+
+  std::string_view head(probe);
+  if (head.starts_with("\xef\xbb\xbf")) {
+    head.remove_prefix(3);
+  }
+  if (!head.starts_with("<?xml")) {
+    return {};
+  }
+  const std::size_t declaration_end = head.find("?>");
+  if (declaration_end == std::string_view::npos) {
+    return {};
+  }
+  head = head.substr(0, declaration_end);
+
+  const std::size_t name = head.find("encoding");
+  if (name == std::string_view::npos) {
+    return {};
+  }
+  head.remove_prefix(name + std::string_view("encoding").size());
+
+  std::size_t at = head.find_first_not_of(space);
+  if (at == std::string_view::npos || head[at] != '=') {
+    return {};
+  }
+  at = head.find_first_not_of(space, at + 1);
+  if (at == std::string_view::npos || (head[at] != '"' && head[at] != '\'')) {
+    return {};
+  }
+  const char quote = head[at];
+  ++at;
+  const std::size_t value_end = head.find(quote, at);
+  if (value_end == std::string_view::npos) {
+    return {};
+  }
+  return std::string(head.substr(at, value_end - at));
+}
 
 pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
                               const AbsPath &path) {

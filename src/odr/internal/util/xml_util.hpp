@@ -25,6 +25,11 @@ pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
 /// Throws unless @p in holds a well formed xml document.
 void check_xml_file(std::istream &in);
 
+/// The `encoding` pseudo-attribute of an `<?xml …?>` declaration at the head of
+/// @p in, empty if there is none. Ascii only - utf-16 and utf-32 are named by
+/// their byte order mark.
+[[nodiscard]] std::string read_declared_encoding(std::istream &in);
+
 struct StringToken {
   enum class Type {
     none,

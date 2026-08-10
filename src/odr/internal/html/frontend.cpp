@@ -88,6 +88,41 @@ constexpr std::string_view text_css = R"css(
 [contenteditable]:focus{outline:none}
 )css";
 
+/// No numbered gutter - the numbers would be ours, not the file's. The column
+/// carries the fold handles, and every line reserves it.
+constexpr std::string_view xml_css = R"css(
+:root{
+--odr-xml-text:#1f2328;
+--odr-xml-muted:#6e7781;
+--odr-xml-punct:#57606a;
+--odr-xml-name:#116329;
+--odr-xml-attr:#953800;
+--odr-xml-value:#0a3069;
+--odr-xml-meta:#8250df;
+--odr-xml-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body{background:#fff}
+.odr-xml{color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
+.odr-xml-line,.odr-xml summary{padding-left:1.5em}
+.odr-xml summary{display:block;position:relative;list-style:none;cursor:pointer}
+.odr-xml summary::-webkit-details-marker{display:none}
+/* U+25BE, U+25B8 */
+.odr-xml summary::before{content:"\25BE";position:absolute;left:.35em;color:var(--odr-xml-muted)}
+.odr-xml details:not([open])>summary::before{content:"\25B8"}
+.odr-xml summary:hover{background:rgba(0,0,0,.04)}
+/* Indentation is spaces, not padding, so a copy of the page carries it. */
+.odr-xml-indent{white-space:pre}
+.odr-xml-tag{color:var(--odr-xml-punct)}
+.odr-xml-name{color:var(--odr-xml-name)}
+.odr-xml-attr{color:var(--odr-xml-attr)}
+.odr-xml-value{color:var(--odr-xml-value)}
+/* Source text, everywhere it is written - html would fold a run of spaces. */
+.odr-xml-text,.odr-xml-cdata,.odr-xml-comment,.odr-xml-value,.odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{white-space:pre-wrap}
+.odr-xml-cdata{color:var(--odr-xml-value)}
+.odr-xml-comment{color:var(--odr-xml-muted)}
+.odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}
+)css";
+
 constexpr std::string_view filesystem_css = R"css(
 :root{
 --odr-files-line:#e3e5e8;
@@ -892,6 +927,8 @@ constexpr Asset spreadsheet_css_asset{HtmlResourceType::css, "text/css",
                                       "spreadsheet.css", spreadsheet_css};
 constexpr Asset text_css_asset{HtmlResourceType::css, "text/css", "text.css",
                                text_css};
+constexpr Asset xml_css_asset{HtmlResourceType::css, "text/css", "xml.css",
+                              xml_css};
 constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
                                      "filesystem.css", filesystem_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
@@ -968,6 +1005,10 @@ void html::write_text_style(const WritingState &state) {
   write_style(text_css_asset, state);
 }
 
+void html::write_xml_style(const WritingState &state) {
+  write_style(xml_css_asset, state);
+}
+
 void html::write_filesystem_style(const WritingState &state) {
   write_style(filesystem_css_asset, state);
 }
@@ -990,6 +1031,11 @@ void html::write_text_script(const WritingState &state) {
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset, text_js_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{xml_css_asset};
   return locate_all(assets, config);
 }
 

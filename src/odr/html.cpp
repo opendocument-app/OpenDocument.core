@@ -16,6 +16,7 @@
 #include <odr/internal/html/media_file.hpp>
 #include <odr/internal/html/pdf_file.hpp>
 #include <odr/internal/html/text_file.hpp>
+#include <odr/internal/html/xml_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <algorithm>
@@ -214,6 +215,12 @@ HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
   // list rather than a table is never what a viewer wants
   if (file.is_csv_file()) {
     return translate(file.as_csv_file().document(), config, logger);
+  }
+  // and before it for the same reason. Translating it as a text file by hand
+  // still writes the line list.
+  if (file.file_type() == FileType::xml) {
+    return internal::html::create_xml_service(file.as_text_file(), config,
+                                              logger);
   }
   if (file.is_text_file()) {
     return translate(file.as_text_file(), config, logger);

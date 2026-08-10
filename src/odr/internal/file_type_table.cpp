@@ -659,15 +659,14 @@ constexpr std::array table{
         DocumentType::unknown,
         {.detect_by_content = true, .open = true, .translate_html = true}},
 
-    // Detection reports it, nothing opens it yet - a plain xml file still
-    // decodes as text.
+    // Not decoded: it renders as a source view of itself.
     Row{FileType::xml,
         "xml"sv,
         xml_extensions,
         xml_mimetypes,
         FileCategory::text,
         DocumentType::unknown,
-        {.detect_by_content = true}},
+        {.detect_by_content = true, .open = true, .translate_html = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.
