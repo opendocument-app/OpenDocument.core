@@ -44,8 +44,9 @@ void write_indent(std::ostream &out, const std::uint32_t depth) {
   write_span(out, "odr-xml-indent", std::string(std::size_t{2} * depth, ' '));
 }
 
-/// `name="value"`, single-quoted where the value carries a double quote. The
-/// file's own quoting is not in the tree.
+/// `name="value"`, single-quoted where that is the delimiter the value does not
+/// carry; a value carrying both takes the double quote as `&quot;`. The file's
+/// own quoting is not in the tree.
 void write_attributes(std::ostream &out, const pugi::xml_node &node) {
   for (const pugi::xml_attribute &attribute : node.attributes()) {
     out << " ";
@@ -53,8 +54,14 @@ void write_attributes(std::ostream &out, const pugi::xml_node &node) {
     out << "=";
 
     const std::string value = attribute.value();
-    const char quote = value.find('"') == std::string::npos ? '"' : '\'';
-    write_span(out, "odr-xml-value", quote + escape_source(value) + quote);
+    const bool single_quoted = value.find('"') != std::string::npos &&
+                               value.find('\'') == std::string::npos;
+    const char quote = single_quoted ? '\'' : '"';
+    std::string content = escape_source(value);
+    if (!single_quoted) {
+      util::string::replace_all(content, "\"", "&quot;");
+    }
+    write_span(out, "odr-xml-value", quote + content + quote);
   }
 }
 

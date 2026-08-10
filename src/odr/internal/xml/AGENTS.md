@@ -95,7 +95,9 @@ two differ only for `<a>   </a>`, and the looser rule leaves it alone.
 - **Indentation is spaces, not padding**, so a copy of the page carries it.
 - **Not `html::escape_text`** — it folds spaces into `&nbsp;` and tabs into
   `&emsp;`. `escape_source` in `html/xml_file.cpp` escapes `&`, `<` and `>`.
-- **Attribute values take whichever quote needs no entity.**
+- **Attribute values take whichever quote needs no entity**, and where the
+  value carries both, the double quote becomes `&quot;`. Their whitespace is
+  source text like any other, so the span preserves it.
 
 ## Two parses
 

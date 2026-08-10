@@ -116,7 +116,8 @@ body{background:#fff}
 .odr-xml-name{color:var(--odr-xml-name)}
 .odr-xml-attr{color:var(--odr-xml-attr)}
 .odr-xml-value{color:var(--odr-xml-value)}
-.odr-xml-text,.odr-xml-cdata,.odr-xml-comment{white-space:pre-wrap}
+/* Source text, everywhere it is written - html would fold a run of spaces. */
+.odr-xml-text,.odr-xml-cdata,.odr-xml-comment,.odr-xml-value,.odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{white-space:pre-wrap}
 .odr-xml-cdata{color:var(--odr-xml-value)}
 .odr-xml-comment{color:var(--odr-xml-muted)}
 .odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}

@@ -183,3 +183,19 @@ TEST(XmlHtml, an_attribute_value_is_quoted_so_it_needs_no_entity) {
   EXPECT_THAT(xml_html(R"(<a b='say "hi"'/>)"),
               HasSubstr(R"(<span class="odr-xml-value">'say "hi"'</span>)"));
 }
+
+/// Neither delimiter is free, so one of them has to be written as an entity.
+TEST(XmlHtml, an_attribute_value_carrying_both_quotes_escapes_the_delimiter) {
+  EXPECT_THAT(
+      xml_html(R"(<a b="can&apos;t say &quot;hi&quot;"/>)"),
+      HasSubstr(
+          R"(<span class="odr-xml-value">"can't say &quot;hi&quot;"</span>)"));
+}
+
+/// The value is source text, and html would fold its spaces.
+TEST(XmlHtml, an_attribute_values_whitespace_is_preserved) {
+  const std::string html = xml_html(R"(<a b="x  y"/>)");
+
+  EXPECT_THAT(html, HasSubstr(R"(<span class="odr-xml-value">"x  y"</span>)"));
+  EXPECT_THAT(html, HasSubstr(".odr-xml-value,"));
+}
