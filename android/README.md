@@ -125,8 +125,8 @@ still work without one; an unsigned upload is rejected by the portal, so the
 release path stays guarded either way.
 
 Publishing **releases the deployment**, no click in the portal. The build waits
-for the portal's verdict, so a bundle Central rejects fails the release instead
-of sitting there unnoticed.
+until it is published, so a green publish job means the version is on Central
+and a bundle the portal rejects fails the release.
 
 For now OpenDocument.droid keeps building odrcore from the conan package
 (`with_jni=True`), deploying `libodr_jni.so` and `odr-core-java.jar` out of it. That path is unaffected by anything here, and it is the reason the

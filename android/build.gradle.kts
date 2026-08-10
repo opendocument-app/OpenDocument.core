@@ -175,11 +175,11 @@ dependencies {
 mavenPublishing {
     configure(AndroidSingleVariantLibrary(variant = "release"))
 
-    // Releases the deployment rather than parking it in the portal. VALIDATED
-    // makes a deployment the portal rejects fail the build; without it the
-    // upload prints "Skipping deployment validation!" and exits 0 whatever the
-    // portal then makes of the bundle.
-    publishToMavenCentral(true, DeploymentValidation.VALIDATED)
+    // Releases the deployment rather than parking it in the portal, and waits
+    // for it to land: a release is reported as published on the strength of
+    // this task's exit code, and the default prints "Skipping deployment
+    // validation!" and exits 0 whatever the portal makes of the bundle.
+    publishToMavenCentral(true, DeploymentValidation.PUBLISHED)
 
     // Only Central demands a signature. Making it unconditional would mean no
     // `publishToMavenLocal` and no GitHub Packages publish without a private
