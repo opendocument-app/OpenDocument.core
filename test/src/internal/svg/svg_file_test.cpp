@@ -142,6 +142,36 @@ TEST(SvgHtml, animating_a_stripped_attribute_is_stripped_too) {
               HasSubstr(R"(attributeName="x")"));
 }
 
+/// The html parser lowercases the attribute name too and maps it back, so
+/// `attributename` aims at what `attributeName` aims at.
+TEST(SvgHtml, the_animated_attribute_is_named_case_insensitively) {
+  EXPECT_THAT(svg_html(R"(<rect><set attributename="onclick" )"
+                       R"(to="evil"/></rect>)"),
+              Not(HasSubstr("evil")));
+  EXPECT_THAT(svg_html(R"(<use><animate ATTRIBUTENAME="href" )"
+                       R"(values="javascript:evil"/></use>)"),
+              Not(HasSubstr("javascript")));
+}
+
+/// The html parser enters foreign content on `svg`, not on `s:svg` — a prefixed
+/// document drew as an `<img>` data url and has to keep drawing in the page.
+TEST(SvgHtml, a_prefixed_document_is_written_unprefixed) {
+  const HtmlService service = odr::html::translate(
+      DecodedFile(svg_file(R"(<s:svg xmlns:s="http://www.w3.org/2000/svg")"
+                           R"( xmlns:h="http://www.w3.org/1999/xhtml">)"
+                           R"(<s:rect width="10"/><h:span>x</h:span>)"
+                           R"(</s:svg>)")),
+      HtmlConfig(), Logger::null());
+
+  std::ostringstream out;
+  service.write("image.html", out);
+
+  EXPECT_THAT(out.str(), HasSubstr(R"(<div class="odr-svg"><svg)"));
+  EXPECT_THAT(out.str(), HasSubstr(R"(<rect width="10"/>)"));
+  // a foreign prefix stays: a bare `span` in foreign content ends the svg
+  EXPECT_THAT(out.str(), HasSubstr("<h:span>"));
+}
+
 TEST(SvgHtml, css_that_reaches_outside_the_document_is_stripped) {
   EXPECT_THAT(
       svg_html("<style>@import url(https://example.com/x.css);</style>"),

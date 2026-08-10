@@ -9,7 +9,10 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <ranges>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace odr::internal {
@@ -30,6 +33,8 @@ constexpr std::array animation_elements{"set"sv, "animate"sv,
 
 constexpr std::array reference_attributes{"href"sv, "src"sv};
 
+constexpr std::string_view svg_namespace = "http://www.w3.org/2000/svg"sv;
+
 /// pugixml does not process namespaces, so the prefix comes off by hand.
 std::string_view local_name(std::string_view name) {
   if (const std::size_t colon = name.find(':');
@@ -37,6 +42,12 @@ std::string_view local_name(std::string_view name) {
     name.remove_prefix(colon + 1);
   }
   return name;
+}
+
+std::string_view name_prefix(const std::string_view name) {
+  const std::size_t colon = name.find(':');
+  return colon == std::string_view::npos ? std::string_view()
+                                         : name.substr(0, colon);
 }
 
 char lower(const char c) {
@@ -118,6 +129,19 @@ bool is_event_handler(const std::string_view name) {
   return starts_with_ignore_case(name, "on");
 }
 
+/// `xml_node::attribute` matches the name exactly, and every other lookup here
+/// is on the local name, case-insensitively - `attributename` is what the html
+/// parser makes of `attributeName` either way.
+std::string_view attribute_value(const pugi::xml_node &node,
+                                 const std::string_view name) {
+  for (const pugi::xml_attribute &attribute : node.attributes()) {
+    if (equals_ignore_case(local_name(attribute.name()), name)) {
+      return attribute.value();
+    }
+  }
+  return {};
+}
+
 bool drop_element(const pugi::xml_node &node) {
   const std::string_view name = local_name(node.name());
 
@@ -126,7 +150,7 @@ bool drop_element(const pugi::xml_node &node) {
   }
   if (is_in(animation_elements, name)) {
     const std::string_view target =
-        local_name(node.attribute("attributeName").value());
+        local_name(attribute_value(node, "attributeName"));
     return is_event_handler(target) || is_in(reference_attributes, target);
   }
   if (equals_ignore_case(name, "style")) {
@@ -156,12 +180,58 @@ std::size_t sanitize_attributes(pugi::xml_node node) {
   return dropped.size();
 }
 
+/// The prefix bindings in scope, innermost last, each flagged for whether it
+/// names the svg namespace.
+using Bindings = std::vector<std::pair<std::string_view, bool>>;
+
+bool binds_svg(const Bindings &bindings, const std::string_view prefix) {
+  for (const auto &[bound, is_svg] : std::views::reverse(bindings)) {
+    if (bound == prefix) {
+      return is_svg;
+    }
+  }
+  return false;
+}
+
+/// Only the prefixes the document bound to the svg namespace: an element of
+/// some other namespace keeps its prefix, because a bare `span` or `div` in
+/// foreign content is what ends the svg early.
+void drop_prefixes(pugi::xml_node node, Bindings &bindings) {
+  const std::size_t outer = bindings.size();
+
+  for (const pugi::xml_attribute &attribute : node.attributes()) {
+    if (const std::string_view name = attribute.name();
+        name.starts_with("xmlns:")) {
+      bindings.emplace_back(name.substr(6), svg_namespace == attribute.value());
+    }
+  }
+
+  if (const std::string_view prefix = name_prefix(node.name());
+      !prefix.empty() && binds_svg(bindings, prefix)) {
+    const std::string local(local_name(node.name()));
+    node.set_name(local.c_str());
+  }
+
+  for (const pugi::xml_node &child : node.children()) {
+    if (child.type() == pugi::node_element) {
+      drop_prefixes(child, bindings);
+    }
+  }
+
+  bindings.resize(outer);
+}
+
 } // namespace
 
 void svg::check_svg_file(const xml::XmlFile &file) {
   if (local_name(file.root_name()) != "svg") {
     throw NoSvgFile();
   }
+}
+
+void svg::drop_namespace_prefixes(pugi::xml_node node) {
+  Bindings bindings;
+  drop_prefixes(node, bindings);
 }
 
 std::size_t svg::sanitize(pugi::xml_node node) {

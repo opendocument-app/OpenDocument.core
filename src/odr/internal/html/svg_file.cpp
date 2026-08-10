@@ -82,6 +82,7 @@ public:
 
     const std::unique_ptr<pugi::xml_document> document =
         xml::parse_source(m_svg_file->text());
+    svg::drop_namespace_prefixes(document->document_element());
     svg::sanitize(document->document_element());
 
     out.write_begin();

@@ -25,6 +25,12 @@ Every other image goes into the page as `<img src="data:…">`. An svg is writte
 into the page as the markup it is, so it scales to the viewport and its text is
 selectable.
 
+Which is why the prefix a document bound to the svg namespace comes off the
+element names first: the html parser enters foreign content on `svg`, not on
+`s:svg`, and a file that used to draw as an `<img>` has to keep drawing. Only
+that prefix — an element of some other namespace keeps its own, because a bare
+`span` or `div` in foreign content is what ends the svg early.
+
 An svg **inside** a document keeps the data url — `translate_image_src` — where
 it is one image in a layout and `<img>` renders svg in secure static mode. A
 starview metafile converted to svg (`html/image_file.cpp`) takes that path too.
@@ -44,9 +50,12 @@ came from wherever the user got it. Two lines of defence:
 
 Two rules need their reasons on record:
 
-- **Everything is matched case-insensitively.** In html *foreign content* the
-  parser lowercases names, so `<SCRIPT>` — a distinct element in
-  case-sensitive xml — arrives in the page as an svg script and runs.
+- **Everything is matched case-insensitively, and on the local name.** In html
+  *foreign content* the parser lowercases names, so `<SCRIPT>` — a distinct
+  element in case-sensitive xml — arrives in the page as an svg script and
+  runs. That holds for the name a SMIL element animates as much as for the
+  attributes themselves: `attributename` targets what `attributeName` targets,
+  so no lookup here goes through pugixml's exact-match `attribute()`.
 - **External references are dropped even though they cannot execute.** A
   `<image href="https://…">` or a css `url(https://…)` tells someone the file
   was opened, and no rendering path here has ever made a network request. That
