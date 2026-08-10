@@ -86,8 +86,6 @@ jobs:
           gpg-private-key: ${{ secrets.SIGNING_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      # Uploads and stops, the way the AAR does — released by hand from the
-      # portal, because Central never forgets a version.
       - name: publish to maven central
         run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Pcentral -Drevision="${REVISION}"
         env:

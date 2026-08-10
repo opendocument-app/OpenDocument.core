@@ -27,7 +27,8 @@ The native library is loaded from `java.library.path` as `odr_jni`
 The Java classes are published as `app.opendocument:odr-core-java` to Maven
 Central and to
 [GitHub Packages](https://github.com/orgs/opendocument-app/packages?repo_name=OpenDocument.core)
-on release (`.github/workflows/maven.yml`, built from `pom.xml`). The artifact
+on release (`.github/workflows/maven.yml`, built from `pom.xml`); the Central
+deployment publishes itself, no click in the portal. The artifact
 contains **only the Java API** — consumers build the native `odr_jni` library
 themselves for their target platform (see below) and provide it at runtime.
 

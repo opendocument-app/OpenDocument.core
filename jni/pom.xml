@@ -170,9 +170,9 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <!-- Uploads and stops, the way the AAR does: a human releases it
-                   from the portal, and Central is immutable once released. -->
-              <autoPublish>false</autoPublish>
+              <!-- `waitUntil` defaults to `validated`, so a bundle the portal
+                   rejects fails the build rather than being published. -->
+              <autoPublish>true</autoPublish>
               <!-- The plugin's default is the literal "Deployment", which tells
                    nobody which of the two uploads they are looking at. Same
                    shape the AAR's plugin builds for itself. -->
