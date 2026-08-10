@@ -305,6 +305,10 @@ std::string TextFile::text() const {
   return internal::encoding::to_utf8(bytes, encoding);
 }
 
+std::shared_ptr<internal::abstract::TextFile> TextFile::impl() const {
+  return m_impl;
+}
+
 CsvFile CsvFile::from_file(const File &file, const CsvOptions &options,
                            const Logger &logger) {
   ODR_VERBOSE(logger, "open as csv with options");

@@ -13,12 +13,6 @@ class xml_document;
 
 namespace odr::internal::xml {
 
-/// Parses @p text, which has to be utf-8, keeping what a source view has to
-/// show: the declaration, the doctype, processing instructions, comments, and
-/// whitespace-only text where it is an element's only child.
-/// @throws NoXmlFile if @p text is not a well formed xml document.
-[[nodiscard]] pugi::xml_document parse_source(const std::string &text);
-
 /// An xml file. Nothing is decoded beyond the parse that recognises it: it
 /// renders as a source view, not as a document.
 class XmlFile final : public abstract::TextFile {
@@ -26,6 +20,7 @@ public:
   /// @throws NoXmlFile if @p file is not a well formed xml document.
   /// @throws UnsupportedTextEncoding if its encoding cannot be decoded.
   explicit XmlFile(std::shared_ptr<text::TextFile> file);
+  ~XmlFile() override;
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -43,9 +38,18 @@ public:
   /// @throws UnsupportedTextEncoding if @ref encoding cannot be decoded.
   [[nodiscard]] std::string text() const;
 
+  /// The tree the constructor parsed, keeping what a source view has to show:
+  /// the declaration, the doctype, processing instructions, comments, and
+  /// whitespace-only text where it is an element's only child.
+  ///
+  /// Held rather than reparsed per render, and pugixml's dom is roughly twice
+  /// the file — so an `XmlFile` costs that for as long as it is open.
+  [[nodiscard]] const pugi::xml_document &document() const noexcept;
+
 private:
   std::shared_ptr<text::TextFile> m_file;
   TextEncoding m_encoding{TextEncoding::unknown};
+  std::unique_ptr<pugi::xml_document> m_document;
 };
 
 } // namespace odr::internal::xml

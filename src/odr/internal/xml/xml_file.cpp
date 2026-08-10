@@ -10,7 +10,7 @@
 #include <pugixml.hpp>
 
 #include <istream>
-#include <tuple>
+#include <memory>
 #include <utility>
 
 namespace odr::internal {
@@ -30,17 +30,16 @@ TextEncoding resolve_encoding(const text::TextFile &file) {
   return file.encoding();
 }
 
-} // namespace
-
-pugi::xml_document xml::parse_source(const std::string &text) {
+/// @throws NoXmlFile if @p text is not a well formed xml document.
+std::unique_ptr<pugi::xml_document> parse_source(const std::string &text) {
   // `parse_full` adds the four node kinds `parse_default` drops, all of which
   // a viewer has to show; `parse_ws_pcdata_single` keeps `<a>   </a>` while
   // dropping the newline between two siblings.
   static constexpr unsigned int options =
       pugi::parse_full | pugi::parse_ws_pcdata_single;
 
-  pugi::xml_document result;
-  if (const pugi::xml_parse_result success = result.load_buffer(
+  auto result = std::make_unique<pugi::xml_document>();
+  if (const pugi::xml_parse_result success = result->load_buffer(
           text.data(), text.size(), options, pugi::encoding_utf8);
       !success) {
     throw NoXmlFile();
@@ -48,11 +47,15 @@ pugi::xml_document xml::parse_source(const std::string &text) {
   return result;
 }
 
+} // namespace
+
 xml::XmlFile::XmlFile(std::shared_ptr<text::TextFile> file)
     : m_file{std::move(file)} {
   m_encoding = resolve_encoding(*m_file);
-  std::ignore = parse_source(text());
+  m_document = parse_source(text());
 }
+
+xml::XmlFile::~XmlFile() = default;
 
 std::shared_ptr<abstract::File> xml::XmlFile::file() const noexcept {
   return m_file->file();
@@ -82,6 +85,10 @@ std::string xml::XmlFile::text() const {
   }
   const std::unique_ptr<std::istream> in = m_file->file()->stream();
   return encoding::to_utf8(util::stream::read(*in), m_encoding);
+}
+
+const pugi::xml_document &xml::XmlFile::document() const noexcept {
+  return *m_document;
 }
 
 } // namespace odr::internal

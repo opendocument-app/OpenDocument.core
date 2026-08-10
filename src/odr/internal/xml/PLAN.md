@@ -16,8 +16,9 @@ Everything a string literal can express stays inline in
 ## Size
 
 A `content.xml` is routinely tens of megabytes, and this path multiplies it:
-pugixml's dom is roughly 1.5–2× the file, and a span per token can be 5–10× the
-input in emitted html. Both land in a WebView on a phone.
+pugixml's dom is roughly 1.5–2× the file and `XmlFile` holds it for its
+lifetime, and a span per token can be 5–10× the input in emitted html. Both
+land in a WebView on a phone.
 
 - a node budget in `HtmlConfig`, following `spreadsheet_limit` —
   `std::optional<std::uint32_t> xml_node_limit`, `nullopt` for unlimited — and

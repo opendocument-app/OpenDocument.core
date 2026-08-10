@@ -9,8 +9,9 @@ class Logger;
 
 namespace odr::internal::html {
 
-/// Renders @p text_file, which has to be a @ref odr::FileType::xml, as an
-/// indented, highlighted, foldable source view.
+/// Renders @p text_file as an indented, highlighted, foldable source view.
+/// @throws NoXmlFile if @p text_file was not decoded as a
+///         @ref odr::FileType::xml.
 HtmlService create_xml_service(const TextFile &text_file, HtmlConfig config,
                                const Logger &logger);
 

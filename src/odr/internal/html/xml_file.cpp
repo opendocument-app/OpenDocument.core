@@ -16,9 +16,11 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace odr::internal::html {
 namespace {
@@ -191,9 +193,9 @@ void write_node(HtmlWriter &out, const pugi::xml_node &node,
 
 class HtmlServiceImpl final : public HtmlService {
 public:
-  HtmlServiceImpl(TextFile text_file, HtmlConfig config, const Logger &logger)
-      : HtmlService(std::move(config), logger),
-        m_text_file{std::move(text_file)},
+  HtmlServiceImpl(std::shared_ptr<xml::XmlFile> xml_file, HtmlConfig config,
+                  const Logger &logger)
+      : HtmlService(std::move(config), logger), m_xml_file{std::move(xml_file)},
         m_resources{locate_xml_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "xml", 0, "xml.html"));
@@ -247,9 +249,7 @@ public:
     HtmlResources resources;
     const WritingState state(out, config(), resources);
 
-    // not held between writes: the tree is roughly twice the file, and a
-    // service outlives the page it wrote
-    const pugi::xml_document document = xml::parse_source(m_text_file.text());
+    const pugi::xml_document &document = m_xml_file->document();
 
     out.write_begin();
 
@@ -280,7 +280,7 @@ public:
   }
 
 protected:
-  TextFile m_text_file;
+  std::shared_ptr<xml::XmlFile> m_xml_file;
   /// The css this view links; empty of locations when the config embeds it.
   HtmlResources m_resources;
 
@@ -294,8 +294,13 @@ namespace odr::internal {
 
 HtmlService html::create_xml_service(const TextFile &text_file,
                                      HtmlConfig config, const Logger &logger) {
-  return odr::HtmlService(
-      std::make_unique<HtmlServiceImpl>(text_file, std::move(config), logger));
+  std::shared_ptr<xml::XmlFile> xml_file =
+      std::dynamic_pointer_cast<xml::XmlFile>(text_file.impl());
+  if (xml_file == nullptr) {
+    throw NoXmlFile();
+  }
+  return odr::HtmlService(std::make_unique<HtmlServiceImpl>(
+      std::move(xml_file), std::move(config), logger));
 }
 
 } // namespace odr::internal

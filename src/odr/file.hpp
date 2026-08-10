@@ -408,6 +408,8 @@ public:
   /// decodable, and the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
 
+  [[nodiscard]] std::shared_ptr<internal::abstract::TextFile> impl() const;
+
 private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
 };

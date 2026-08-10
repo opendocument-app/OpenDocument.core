@@ -24,8 +24,9 @@ list is never what a viewer wants from a file with no line breaks in it.
 `html::translate(const TextFile &)` is left alone — asking for the text
 rendering gets the text rendering.
 
-The service takes the public `odr::TextFile`, whose `text()` decodes with
-whatever `XmlFile::encoding()` resolved.
+The service takes the public `odr::TextFile` and casts its impl back to
+`XmlFile` — the parse is the file's, not the writer's, so the writer never gets
+to parse something the decoder did not accept.
 
 ## The tree is not the bytes
 
@@ -40,9 +41,9 @@ is most wanted.
 
 ## The parse flags, and where they live
 
-`parse_source` (`xml_file.cpp`) is the only place they are written, and both
-the decoder and the html service call it. Not `util::xml::parse`, whose every
-other caller wants pugixml's defaults.
+`parse_source` (`xml_file.cpp`, file-local) is the only place they are written,
+and `XmlFile`'s constructor is its only caller. Not `util::xml::parse`, whose
+every other caller wants pugixml's defaults.
 
 - `parse_full` adds the four node kinds `parse_default` drops — comments,
   processing instructions, the declaration, the doctype.
@@ -99,16 +100,22 @@ two differ only for `<a>   </a>`, and the looser rule leaves it alone.
   value carries both, the double quote becomes `&quot;`. Their whitespace is
   source text like any other, so the span preserves it.
 
-## Two parses
+## One parse, and the file holds it
 
-`XmlFile`'s constructor parses to validate; the html service parses again when
-it writes, and does not hold the tree — it is roughly twice the file, and a
-service outlives the page it wrote. `PLAN.md` stage 3 is the size question this
-defers.
+`XmlFile`'s constructor parses, and keeps the tree; `document()` hands out a
+`const &` and the html service walks it per render. Recognising the file and
+rendering it are the same parse.
 
-`root_name()` is the exception: the constructor keeps the document element's
-name, so telling a dialect apart — all [`svg`](../svg/AGENTS.md) needs — costs
-no second parse.
+Two things ruled the alternatives out. pugixml is dom-only — no sax, no
+incremental mode — so there is no validating the head of a file the way csv's
+`probe` scores its opening bytes; and a source view's whole contract is that
+what opened will render, which a sniff gives up. And a document cannot be
+copied out (`reset(proto)` is a deep clone, no cheaper than reparsing), so
+lending it beats returning it.
+
+The price is memory: the dom is roughly twice the file, held for as long as the
+`XmlFile` is, whether or not anyone renders it. `PLAN.md`'s size section owns
+that number.
 
 ## Detection
 
