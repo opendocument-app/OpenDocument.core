@@ -124,10 +124,9 @@ key being configured, so `publishToMavenLocal` and the GitHub Packages publish
 still work without one; an unsigned upload is rejected by the portal, so the
 release path stays guarded either way.
 
-Publishing **uploads a deployment to the portal and stops**. Releasing it is a
-deliberate click in the portal UI, because Central never forgets a version —
-that click is the last point at which a bad artifact can be dropped rather than
-lived with.
+Publishing **releases the deployment**, no click in the portal. The build waits
+until it is published, so a green publish job means the version is on Central
+and a bundle the portal rejects fails the release.
 
 For now OpenDocument.droid keeps building odrcore from the conan package
 (`with_jni=True`), deploying `libodr_jni.so` and `odr-core-java.jar` out of it. That path is unaffected by anything here, and it is the reason the
