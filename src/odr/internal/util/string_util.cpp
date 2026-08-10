@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstdint>
 #include <iomanip>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 
@@ -22,6 +23,48 @@ bool string::ends_with(const std::string &string, const std::string &with) {
 
 bool string::is_ascii_space(const char c) {
   return std::isspace(static_cast<std::uint8_t>(c)) != 0;
+}
+
+char string::to_lower(const char c) {
+  return static_cast<char>(std::tolower(static_cast<std::uint8_t>(c)));
+}
+
+std::string string::to_lower(const std::string_view string) {
+  std::string result;
+  result.reserve(string.size());
+  std::ranges::transform(string, std::back_inserter(result),
+                         [](const char c) { return to_lower(c); });
+  return result;
+}
+
+bool string::equals_ignore_case(const std::string_view a,
+                                const std::string_view b) {
+  return std::ranges::equal(a, b, [](const char x, const char y) {
+    return to_lower(x) == to_lower(y);
+  });
+}
+
+bool string::starts_with_ignore_case(const std::string_view string,
+                                     const std::string_view prefix) {
+  return string.size() >= prefix.size() &&
+         equals_ignore_case(string.substr(0, prefix.size()), prefix);
+}
+
+std::size_t string::find_ignore_case(const std::string_view string,
+                                     const std::string_view needle,
+                                     const std::size_t from) {
+  if (from > string.size()) {
+    return std::string_view::npos;
+  }
+  const std::string_view rest = string.substr(from);
+  const auto found =
+      std::ranges::search(rest, needle, [](const char x, const char y) {
+        return to_lower(x) == to_lower(y);
+      });
+  if (found.empty()) {
+    return std::string_view::npos;
+  }
+  return from + static_cast<std::size_t>(found.begin() - rest.begin());
 }
 
 void string::ltrim_inplace(std::string &s, const CharPredicate is_space) {

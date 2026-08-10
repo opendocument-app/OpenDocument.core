@@ -1,8 +1,9 @@
 #include <odr/internal/encoding/text_encoding_table.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <string>
 
 namespace odr::internal::encoding {
@@ -127,8 +128,7 @@ std::string normalize(const std::string_view name) {
     if (c == '-' || c == '_' || c == ' ') {
       continue;
     }
-    result.push_back(
-        static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    result.push_back(util::string::to_lower(c));
   }
   return result;
 }

@@ -4,6 +4,7 @@
 
 #include <odr/internal/encoding/detect.hpp>
 #include <odr/internal/encoding/transcode.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <gtest/gtest.h>
 
@@ -36,8 +37,7 @@ TEST(TextEncoding, no_name_is_claimed_twice) {
       std::string normalized;
       for (const char c : name) {
         if (c != '-' && c != '_') {
-          normalized.push_back(
-              static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+          normalized.push_back(util::string::to_lower(c));
         }
       }
       EXPECT_TRUE(seen.insert(normalized).second)

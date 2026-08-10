@@ -128,3 +128,47 @@ TEST(string_util, trim_owning_delegates_to_view) {
   trim_inplace(d, is_dot);
   EXPECT_EQ(d, "abc");
 }
+
+TEST(string_util, to_lower) {
+  EXPECT_EQ(to_lower('A'), 'a');
+  EXPECT_EQ(to_lower('a'), 'a');
+  EXPECT_EQ(to_lower('7'), '7');
+
+  EXPECT_EQ(to_lower("MiXeD Case 42"), "mixed case 42");
+  EXPECT_EQ(to_lower(""), "");
+
+  // Bytes above ascii keep their value - a utf-8 sequence must survive
+  // unchanged rather than be folded byte by byte.
+  EXPECT_EQ(to_lower("ÄÖÜ"), "ÄÖÜ");
+}
+
+TEST(string_util, equals_ignore_case) {
+  EXPECT_TRUE(equals_ignore_case("script", "SCRIPT"));
+  EXPECT_TRUE(equals_ignore_case("", ""));
+  EXPECT_FALSE(equals_ignore_case("script", "scrip"));
+  EXPECT_FALSE(equals_ignore_case("script", "scripts"));
+  EXPECT_FALSE(equals_ignore_case("script", "style"));
+}
+
+TEST(string_util, starts_with_ignore_case) {
+  EXPECT_TRUE(starts_with_ignore_case("DATA:image/png", "data:"));
+  EXPECT_TRUE(starts_with_ignore_case("abc", ""));
+  EXPECT_TRUE(starts_with_ignore_case("abc", "abc"));
+  // A prefix longer than the string matches nothing, empty string included.
+  EXPECT_FALSE(starts_with_ignore_case("ab", "abc"));
+  EXPECT_FALSE(starts_with_ignore_case("", "a"));
+  EXPECT_FALSE(starts_with_ignore_case("xabc", "abc"));
+}
+
+TEST(string_util, find_ignore_case) {
+  EXPECT_EQ(find_ignore_case("a @IMPORT b", "@import"), 2);
+  EXPECT_EQ(find_ignore_case("abc", "d"), std::string_view::npos);
+
+  // The search starts at `from`, and the result is an index into the whole
+  // string.
+  EXPECT_EQ(find_ignore_case("url(url(", "URL(", 1), 4);
+  EXPECT_EQ(find_ignore_case("url(url(", "URL(", 5), std::string_view::npos);
+
+  // `from` past the end is not an out-of-range read.
+  EXPECT_EQ(find_ignore_case("abc", "a", 99), std::string_view::npos);
+}

@@ -1,10 +1,10 @@
 #include <odr/internal/pdf/pdf_afm.hpp>
 
 #include <odr/internal/pdf/pdf_afm_data.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 
 namespace odr::internal::pdf {
 
@@ -35,11 +35,7 @@ std::string normalize_name(std::string_view base_font) {
       base_font.remove_prefix(7);
     }
   }
-  std::string result(base_font);
-  for (char &c : result) {
-    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-  }
-  return result;
+  return util::string::to_lower(base_font);
 }
 
 bool contains(const std::string &haystack, const std::string_view needle) {

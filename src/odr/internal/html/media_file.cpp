@@ -10,9 +10,9 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <filesystem>
 #include <optional>
 #include <span>
@@ -38,9 +38,7 @@ std::string source_extension(const DecodedFile &media_file) {
     std::string extension = std::filesystem::path(*path).extension().string();
     if (!extension.empty()) {
       extension.erase(0, 1); // the dot
-      std::ranges::transform(extension, extension.begin(), [](const char c) {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-      });
+      extension = util::string::to_lower(extension);
       if (std::ranges::find(extensions, extension) != extensions.end()) {
         return extension;
       }

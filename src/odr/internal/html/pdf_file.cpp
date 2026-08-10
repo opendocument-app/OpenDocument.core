@@ -186,12 +186,11 @@ bool is_safe_uri(std::string_view uri) {
   for (const char ch : uri) {
     const auto c = static_cast<unsigned char>(ch);
     if (ch == ':') {
-      std::ranges::transform(scheme, scheme.begin(), [](const char s) {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(s)));
-      });
       static constexpr std::array<std::string_view, 6> allowed = {
           "http", "https", "mailto", "ftp", "ftps", "tel"};
-      return std::ranges::find(allowed, scheme) != allowed.end();
+      return std::ranges::any_of(allowed, [&scheme](const std::string_view s) {
+        return util::string::equals_ignore_case(scheme, s);
+      });
     }
     if (ch == '/' || ch == '?' || ch == '#') {
       return true; // path/query/fragment reached first -> relative reference
