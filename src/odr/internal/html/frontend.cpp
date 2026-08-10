@@ -16,8 +16,11 @@ namespace odr::internal::html {
 
 namespace {
 
+/// Every page we write states its own body margin and background, rather than
+/// reading whatever the browser's default sheet says.
 constexpr std::string_view document_css = R"css(
 *{margin:0;position:relative}
+body{margin:0;background:#fff}
 x-p{display:block;font-size:0}
 x-s{display:inline}
 .odr-background{padding:0;background:#525659}
@@ -51,7 +54,7 @@ constexpr std::string_view spreadsheet_css = R"css(
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 /* A sheet is not a page: past the last row and column is canvas. */
-body{background:var(--odr-sheet-canvas)}
+body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet{background:#fff}
 table{border-collapse:collapse;table-layout:fixed}
 td{vertical-align:bottom;height:inherit;padding:1px 6px}
@@ -120,8 +123,8 @@ constexpr std::string_view xml_css = R"css(
 --odr-xml-meta:#8250df;
 --odr-xml-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-body{background:#fff}
-.odr-xml{color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
+body{margin:0;background:#fff}
+.odr-xml{padding:16px;color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
 .odr-xml-line,.odr-xml summary{padding-left:1.5em}
 .odr-xml summary{display:block;position:relative;list-style:none;cursor:pointer}
 .odr-xml summary::-webkit-details-marker{display:none}
@@ -150,7 +153,7 @@ constexpr std::string_view filesystem_css = R"css(
 --odr-files-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 --odr-files-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-body{background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
+body{margin:0;background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files{border-collapse:collapse;width:100%}
 .odr-files td{padding:5px 12px;border-top:1px solid var(--odr-files-line)}
 .odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04))}
@@ -165,7 +168,8 @@ body{background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 )css";
 
 constexpr std::string_view media_css = R"css(
-.odr-media{display:flex;align-items:center;justify-content:center;margin:0;min-height:100vh;background:#000}
+body{margin:0;background:#000}
+.odr-media{display:flex;align-items:center;justify-content:center;min-height:100vh}
 .odr-media video{max-width:100%;max-height:100vh}
 .odr-media audio{width:100%;max-width:40rem;margin:0 1rem}
 )css";

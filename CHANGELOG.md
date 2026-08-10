@@ -22,6 +22,8 @@ The release run heads these entries with the version and opens a fresh
   that are not one no longer open as an image that cannot be shown.
 - A text file reads in a quieter gutter: the line numbers line up with their
   lines, stay out of a copy of the page, and the hovered line is marked.
+- Every page states its own body margin and background instead of inheriting the
+  browser's, so no view opens inset by an eight-pixel border.
 
 ## v6.4.0 - 2026-08-09
 

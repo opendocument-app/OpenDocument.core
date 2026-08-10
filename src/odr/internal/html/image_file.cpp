@@ -104,6 +104,9 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
+    out.write_header_style_begin();
+    out.out() << "body{margin:0;background:#fff}";
+    out.write_header_style_end();
     out.write_header_end();
 
     out.write_body_begin();

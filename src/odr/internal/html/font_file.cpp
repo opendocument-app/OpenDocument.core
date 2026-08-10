@@ -110,7 +110,9 @@ public:
     out.out() << "<style>";
     out.out() << "@font-face{font-family:'odr-specimen';src:url(" << url
               << ");}";
-    out.out() << "body{font-family:sans-serif;}";
+    // The page's own margin, so it does not depend on the browser's.
+    out.out() << "body{margin:0;padding:8px;background:#fff;"
+                 "font-family:sans-serif;}";
     out.out() << ".grid{display:flex;flex-wrap:wrap;}";
     out.out() << ".cell{width:4em;height:4em;border:1px solid #ddd;margin:2px;"
                  "display:flex;flex-direction:column;align-items:center;"
