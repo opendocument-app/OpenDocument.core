@@ -18,8 +18,8 @@ The release run heads these entries with the version and opens a fresh
 
 - An xml file opens as xml and reads as a foldable, highlighted source view
   rather than as one very long line, in the encoding its declaration names.
-- An svg is recognised by reading it rather than by what it is called, and
-  renders as a drawing that fits the screen instead of a fixed-size image.
+- An svg is recognised by reading it rather than by what it is called, so bytes
+  that are not one no longer open as an image that cannot be shown.
 
 ## v6.4.0 - 2026-08-09
 

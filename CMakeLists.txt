@@ -147,7 +147,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/media_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
-        "src/odr/internal/html/svg_file.cpp"
         "src/odr/internal/html/text_file.cpp"
         "src/odr/internal/html/xml_file.cpp"
 
@@ -237,7 +236,6 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/font_file.cpp"
 
         "src/odr/internal/svg/svg_file.cpp"
-        "src/odr/internal/svg/svg_util.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"

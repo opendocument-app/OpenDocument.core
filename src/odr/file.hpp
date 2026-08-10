@@ -462,8 +462,6 @@ public:
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
 
-  [[nodiscard]] std::shared_ptr<internal::abstract::ImageFile> impl() const;
-
 private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };

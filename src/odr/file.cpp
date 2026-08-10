@@ -338,10 +338,6 @@ std::unique_ptr<std::istream> ImageFile::stream() const {
   return m_impl->file()->stream();
 }
 
-std::shared_ptr<internal::abstract::ImageFile> ImageFile::impl() const {
-  return m_impl;
-}
-
 ArchiveFile::ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 

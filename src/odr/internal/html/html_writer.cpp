@@ -172,17 +172,6 @@ void HtmlWriter::write_header_meta(const std::string &name,
   out() << R"("/>)";
 }
 
-void HtmlWriter::write_header_meta_equiv(const std::string &equiv,
-                                         const std::string &content) {
-  write_new_line();
-
-  out() << R"(<meta http-equiv=")";
-  out() << equiv;
-  out() << R"(" content=")";
-  out() << content;
-  out() << R"("/>)";
-}
-
 void HtmlWriter::write_header_viewport(const std::string &viewport) {
   write_header_meta("viewport", viewport);
 }

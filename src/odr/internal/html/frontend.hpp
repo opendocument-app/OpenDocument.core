@@ -14,7 +14,6 @@ void write_document_style(const WritingState &state);
 void write_spreadsheet_style(const WritingState &state);
 void write_text_style(const WritingState &state);
 void write_xml_style(const WritingState &state);
-void write_svg_style(const WritingState &state);
 void write_filesystem_style(const WritingState &state);
 void write_media_style(const WritingState &state);
 
@@ -30,7 +29,6 @@ void write_text_script(const WritingState &state);
 /// entry is located `nullopt` when the config embeds them.
 HtmlResources locate_text_resources(const HtmlConfig &config);
 HtmlResources locate_xml_resources(const HtmlConfig &config);
-HtmlResources locate_svg_resources(const HtmlConfig &config);
 HtmlResources locate_media_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html

@@ -30,9 +30,8 @@ TextEncoding resolve_encoding(const text::TextFile &file) {
   return file.encoding();
 }
 
-} // namespace
-
-std::unique_ptr<pugi::xml_document> xml::parse_source(const std::string &text) {
+/// @throws NoXmlFile if @p text is not a well formed xml document.
+std::unique_ptr<pugi::xml_document> parse_source(const std::string &text) {
   // `parse_full` adds the four node kinds `parse_default` drops, all of which
   // a viewer has to show; `parse_ws_pcdata_single` keeps `<a>   </a>` while
   // dropping the newline between two siblings.
@@ -48,10 +47,12 @@ std::unique_ptr<pugi::xml_document> xml::parse_source(const std::string &text) {
   return result;
 }
 
+} // namespace
+
 xml::XmlFile::XmlFile(std::shared_ptr<text::TextFile> file)
     : m_file{std::move(file)} {
   m_encoding = resolve_encoding(*m_file);
-  m_document = xml::parse_source(text());
+  m_document = parse_source(text());
 }
 
 xml::XmlFile::~XmlFile() = default;
@@ -76,6 +77,10 @@ FileMeta xml::XmlFile::file_meta() const noexcept {
 bool xml::XmlFile::is_decodable() const noexcept { return false; }
 
 TextEncoding xml::XmlFile::encoding() const noexcept { return m_encoding; }
+
+std::shared_ptr<text::TextFile> xml::XmlFile::text_file() const noexcept {
+  return m_file;
+}
 
 std::string xml::XmlFile::text() const {
   // a parser only ever sees utf-8; there is no handing the bytes on undecoded

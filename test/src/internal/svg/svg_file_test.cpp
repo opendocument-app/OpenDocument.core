@@ -4,11 +4,11 @@
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
-#include <odr/internal/html/image_file.hpp>
-
 #include <odr/internal/svg/svg_file.hpp>
 #include <odr/internal/text/text_file.hpp>
 #include <odr/internal/xml/xml_file.hpp>
+
+#include <pugixml.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -20,7 +20,6 @@
 using namespace odr;
 using namespace odr::internal;
 using testing::HasSubstr;
-using testing::Not;
 
 namespace {
 
@@ -29,16 +28,6 @@ constexpr const char *svg_open = R"(<svg xmlns="http://www.w3.org/2000/svg">)";
 std::shared_ptr<svg::SvgFile> svg_file(const std::string &content) {
   return std::make_shared<svg::SvgFile>(std::make_shared<xml::XmlFile>(
       std::make_shared<text::TextFile>(File::from_memory(content).impl())));
-}
-
-std::string svg_html(const std::string &body) {
-  const HtmlService service =
-      odr::html::translate(DecodedFile(svg_file(svg_open + body + "</svg>")),
-                           HtmlConfig(), Logger::null());
-
-  std::ostringstream out;
-  service.write("image.html", out);
-  return out.str();
 }
 
 } // namespace
@@ -73,126 +62,43 @@ TEST(SvgFile, a_prefixed_root_element_is_still_an_svg) {
                       R"(<s:svg xmlns:s="http://www.w3.org/2000/svg"/>)"));
 }
 
-TEST(SvgHtml, the_markup_goes_into_the_page) {
-  const std::string html = svg_html(R"(<rect width="10" height="10"/>)");
+/// Every layer the file was read through stays reachable, so what the parse
+/// already did is not done again downstream.
+TEST(SvgFile, the_layers_it_was_read_through_are_reachable) {
+  const std::string content = std::string(svg_open) + "<rect/></svg>";
+  const std::shared_ptr<svg::SvgFile> file = svg_file(content);
 
-  EXPECT_THAT(html, HasSubstr(R"(<div class="odr-svg"><svg)"));
-  EXPECT_THAT(html, HasSubstr(R"(<rect width="10" height="10")"));
-  // and not as the base64 the image service would write
-  EXPECT_THAT(html, Not(HasSubstr("data:image/svg+xml;base64")));
+  EXPECT_EQ(file->text(), content);
+  EXPECT_EQ(file->text_file()->text(), content);
+  EXPECT_EQ(file->xml_file()->root_name(), "svg");
+  EXPECT_STREQ(file->document().document_element().name(), "svg");
+  EXPECT_EQ(file->file()->size(), content.size());
 }
 
-TEST(SvgHtml, the_page_forbids_script_outright) {
-  EXPECT_THAT(svg_html(""),
-              HasSubstr(R"(<meta http-equiv="Content-Security-Policy" )"
-                        R"(content="script-src 'none'"/>)"));
+/// The encoding comes off the declaration, which is what the xml layer is for.
+TEST(SvgFile, the_declared_encoding_is_what_it_is_decoded_with) {
+  const std::shared_ptr<svg::SvgFile> file =
+      svg_file(R"(<?xml version="1.0" encoding="ISO-8859-1"?>)" +
+               std::string(svg_open) + "<title>\xe4</title></svg>");
+
+  EXPECT_EQ(file->xml_file()->encoding(), TextEncoding::iso_8859_1);
+  EXPECT_THAT(file->text(), HasSubstr("<title>ä</title>"));
 }
 
-TEST(SvgHtml, a_script_element_does_not_reach_the_page) {
-  const std::string html = svg_html("<script>evil</script><rect/>");
-
-  EXPECT_THAT(html, Not(HasSubstr("evil")));
-  EXPECT_THAT(html, HasSubstr("<rect/>"));
-}
-
-/// The html parser lowercases element names in foreign content, so `<SCRIPT>`
-/// would arrive in the page as a script element.
-TEST(SvgHtml, an_uppercased_script_element_does_not_either) {
-  EXPECT_THAT(svg_html("<SCRIPT>evil</SCRIPT>"), Not(HasSubstr("evil")));
-  EXPECT_THAT(svg_html("<foreignObject><b>x</b></foreignObject>"),
-              Not(HasSubstr("foreignObject")));
-}
-
-TEST(SvgHtml, event_handlers_are_stripped) {
-  EXPECT_THAT(svg_html(R"(<rect onload="evil" width="1"/>)"),
-              Not(HasSubstr("evil")));
-  EXPECT_THAT(svg_html(R"(<rect ONCLICK="evil"/>)"), Not(HasSubstr("evil")));
-  // and the element itself survives
-  EXPECT_THAT(svg_html(R"(<rect onload="evil" width="1"/>)"),
-              HasSubstr(R"(<rect width="1"/>)"));
-}
-
-/// A reference is kept only where it goes nowhere — same document, or an image
-/// carried in the url itself.
-TEST(SvgHtml, references_that_leave_the_document_are_stripped) {
-  EXPECT_THAT(svg_html(R"(<use href="#a"/>)"),
-              HasSubstr(R"(<use href="#a"/>)"));
-  EXPECT_THAT(svg_html(R"(<image href="data:image/png;base64,AA=="/>)"),
-              HasSubstr("data:image/png;base64,AA=="));
-
-  EXPECT_THAT(svg_html(R"(<a href="javascript:evil"><rect/></a>)"),
-              Not(HasSubstr("javascript")));
-  EXPECT_THAT(svg_html("<a href=\"java\nscript:evil\"><rect/></a>"),
-              Not(HasSubstr("evil")));
-  EXPECT_THAT(svg_html(R"(<image href="https://example.com/tracker.png"/>)"),
-              Not(HasSubstr("example.com")));
-}
-
-/// SMIL animates whatever attribute it is pointed at, including the ones the
-/// attribute rules just removed.
-TEST(SvgHtml, animating_a_stripped_attribute_is_stripped_too) {
-  EXPECT_THAT(svg_html(R"(<rect><set attributeName="onclick" )"
-                       R"(to="evil"/></rect>)"),
-              Not(HasSubstr("evil")));
-  EXPECT_THAT(svg_html(R"(<use><animate attributeName="href" )"
-                       R"(values="javascript:evil"/></use>)"),
-              Not(HasSubstr("javascript")));
-  // an ordinary animation is left alone
-  EXPECT_THAT(svg_html(R"(<rect><animate attributeName="x" to="5"/></rect>)"),
-              HasSubstr(R"(attributeName="x")"));
-}
-
-/// The html parser lowercases the attribute name too and maps it back, so
-/// `attributename` aims at what `attributeName` aims at.
-TEST(SvgHtml, the_animated_attribute_is_named_case_insensitively) {
-  EXPECT_THAT(svg_html(R"(<rect><set attributename="onclick" )"
-                       R"(to="evil"/></rect>)"),
-              Not(HasSubstr("evil")));
-  EXPECT_THAT(svg_html(R"(<use><animate ATTRIBUTENAME="href" )"
-                       R"(values="javascript:evil"/></use>)"),
-              Not(HasSubstr("javascript")));
-}
-
-/// The html parser enters foreign content on `svg`, not on `s:svg` — a prefixed
-/// document drew as an `<img>` data url and has to keep drawing in the page.
-TEST(SvgHtml, a_prefixed_document_is_written_unprefixed) {
+/// An svg renders as the `<img>` data url every other image does - inside one
+/// a browser renders svg in secure static mode, and nothing here has to scrub
+/// the markup to earn that.
+TEST(SvgFile, it_renders_as_an_image) {
   const HtmlService service = odr::html::translate(
-      DecodedFile(svg_file(R"(<s:svg xmlns:s="http://www.w3.org/2000/svg")"
-                           R"( xmlns:h="http://www.w3.org/1999/xhtml">)"
-                           R"(<s:rect width="10"/><h:span>x</h:span>)"
-                           R"(</s:svg>)")),
+      DecodedFile(svg_file(std::string(svg_open) + "<rect/></svg>")),
       HtmlConfig(), Logger::null());
+
+  ASSERT_EQ(service.list_views().size(), 1);
+  EXPECT_EQ(service.list_views().front().name(), "image");
 
   std::ostringstream out;
   service.write("image.html", out);
 
-  EXPECT_THAT(out.str(), HasSubstr(R"(<div class="odr-svg"><svg)"));
-  EXPECT_THAT(out.str(), HasSubstr(R"(<rect width="10"/>)"));
-  // a foreign prefix stays: a bare `span` in foreign content ends the svg
-  EXPECT_THAT(out.str(), HasSubstr("<h:span>"));
-}
-
-TEST(SvgHtml, css_that_reaches_outside_the_document_is_stripped) {
-  EXPECT_THAT(
-      svg_html("<style>@import url(https://example.com/x.css);</style>"),
-      Not(HasSubstr("example.com")));
-  EXPECT_THAT(
-      svg_html(R"(<style>rect{fill:url(https://example.com/x)}</style>)"),
-      Not(HasSubstr("example.com")));
-  EXPECT_THAT(svg_html("<rect style=\"fill:url(https://example.com/x)\"/>"),
-              Not(HasSubstr("example.com")));
-
-  // a fragment url is how a gradient is referenced, and stays
-  EXPECT_THAT(svg_html("<style>rect{fill:url(#grad)}</style>"),
-              HasSubstr("url(#grad)"));
-}
-
-/// An svg inside a document is still written as a data url — an `<img>` is
-/// what the renderer has there, and it renders svg in secure static mode.
-TEST(SvgHtml, an_svg_referenced_by_a_document_stays_a_data_url) {
-  std::ostringstream out;
-  internal::html::translate_image_src(
-      File::from_memory(std::string(svg_open) + "</svg>"), out, HtmlConfig());
-
+  EXPECT_THAT(out.str(), HasSubstr("<img"));
   EXPECT_THAT(out.str(), HasSubstr("data:image/svg+xml;base64,"));
 }

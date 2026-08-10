@@ -19,7 +19,6 @@
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/svg/svg_file.hpp>
-#include <odr/internal/svg/svg_util.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/xml/xml_file.hpp>
 #include <odr/internal/zip/zip_file.hpp>
@@ -322,11 +321,9 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         auto xml_file = std::make_shared<xml::XmlFile>(text);
         result.push_back(xml_file->file_type());
 
-        try {
-          ODR_VERBOSE(logger, "try open as svg");
+        if (svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as svg");
           result.push_back(svg::SvgFile(xml_file).file_type());
-        } catch (...) {
-          ODR_VERBOSE(logger, "failed to open as svg");
         }
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
@@ -448,15 +445,13 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_unique<xml::XmlFile>(text);
 
-        try {
-          ODR_VERBOSE(logger, "try open as svg");
-          svg::check_svg_file(*xml_file);
-        } catch (...) {
-          ODR_VERBOSE(logger, "failed to open as svg");
+        if (!svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "not an svg");
           // handed on as it is, so the parse is not repeated
           return xml_file;
         }
 
+        ODR_VERBOSE(logger, "open as svg");
         return std::make_unique<svg::SvgFile>(
             std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
       } catch (...) {
