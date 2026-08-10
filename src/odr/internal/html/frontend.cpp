@@ -80,11 +80,30 @@ td x-p{height:inherit}
 .odr-sheet-sort-asc::after{content:"\25B4"}
 )css";
 
+/// A whole-pixel line height, because the line numbers are a second column
+/// whose cells are sized to the lines by script - a fractional line would round
+/// per cell and the two columns would drift apart.
 constexpr std::string_view text_css = R"css(
-.odr-text{display:flex;flex-direction:row;font-family:monospace}
-.odr-text-nr{display:flex;flex-direction:column;text-align:right;vertical-align:top;color:#999;border-right:solid #999}
-.odr-text-body{display:flex;flex-direction:column;padding-left:5pt;white-space:pre}
+:root{
+--odr-text-fg:#1f2328;
+--odr-text-muted:#8c959f;
+--odr-text-line:#d8dee4;
+--odr-text-gutter:#f6f8fa;
+--odr-text-wash:rgba(0,0,0,.04);
+--odr-text-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body{margin:0;background:#fff}
+.odr-text{display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4}
+/* The numbers are ours, not the file's, so the gutter stays out of a selection
+   of the page. */
+.odr-text-nr{display:flex;flex-direction:column;flex:none;padding:16px 12px 16px 16px;text-align:right;color:var(--odr-text-muted);background:var(--odr-text-gutter);border-right:1px solid var(--odr-text-line);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:16px;white-space:pre}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
+/* A hovered line reaches its number, which is in the other column, by beginning
+   a viewport to the left of it; the padding puts the text back where it was.
+   Overflow to the left of the page does not scroll. */
+.odr-text-body>div{margin-left:-100vw;padding-left:100vw}
+.odr-text-body>div:hover{background:var(--odr-text-wash)}
 [contenteditable]:focus{outline:none}
 )css";
 
@@ -641,11 +660,14 @@ constexpr std::string_view text_js = R"js(
     });
   }
 
+  // The measured height is fractional; `offsetHeight` would round it per line
+  // and the numbers would walk away from the lines they belong to.
   TextEditor.prototype.updateLineNumberHeight = function () {
     var nrCells = this.textNr.querySelectorAll("div");
     var textCells = this.textBody.querySelectorAll("div");
     for (var i = 0; i < textCells.length && i < nrCells.length; ++i) {
-      nrCells[i].style.height = textCells[i].offsetHeight + "px";
+      nrCells[i].style.height =
+        textCells[i].getBoundingClientRect().height + "px";
     }
   };
 

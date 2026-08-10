@@ -20,6 +20,8 @@ The release run heads these entries with the version and opens a fresh
   rather than as one very long line, in the encoding its declaration names.
 - An svg is recognised by reading it rather than by what it is called, so bytes
   that are not one no longer open as an image that cannot be shown.
+- A text file reads in a quieter gutter: the line numbers line up with their
+  lines, stay out of a copy of the page, and the hovered line is marked.
 
 ## v6.4.0 - 2026-08-09
 
