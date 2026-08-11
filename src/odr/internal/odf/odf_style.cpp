@@ -529,10 +529,11 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
           read_text_wrap(graphic_properties.attribute("style:wrap"))) {
     result.text_wrap = text_wrap;
   }
-  if (const std::optional<HorizontalAlign> horizontal_position =
-          read_horizontal_position(
-              graphic_properties.attribute("style:horizontal-pos"))) {
-    result.horizontal_position = horizontal_position;
+  // assigned even when it reads as none, so a `from-*` overrides an inherited
+  // side rather than keeping it
+  if (const pugi::xml_attribute attribute =
+          graphic_properties.attribute("style:horizontal-pos")) {
+    result.horizontal_position = read_horizontal_position(attribute);
   }
 }
 
