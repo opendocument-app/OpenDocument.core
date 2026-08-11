@@ -38,6 +38,8 @@ std::string translate_outer_page_style(const PageLayout &page_layout);
 std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
 std::string translate_text_style(const TextStyle &text_style);
+/// The part of a text style a block may carry: what paints belongs on the run.
+std::string translate_block_font_style(const TextStyle &text_style);
 std::string translate_paragraph_style(const ParagraphStyle &paragraph_style);
 std::string translate_table_style(const TableStyle &table_style);
 std::string

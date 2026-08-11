@@ -35,3 +35,24 @@ TEST(html_document_style, outer_flowing_page_style_without_height) {
   EXPECT_EQ(ihtml::translate_outer_flowing_page_style(page_layout),
             "width:21cm;");
 }
+
+TEST(html_document_style, block_font_style_carries_the_font) {
+  TextStyle text_style;
+  text_style.font_name = "Arial";
+  text_style.font_size = Measure("14pt");
+  EXPECT_EQ(ihtml::translate_block_font_style(text_style),
+            "font-family:Arial;font-size:14pt;");
+}
+
+TEST(html_document_style, block_font_style_leaves_what_paints_to_the_run) {
+  TextStyle text_style;
+  text_style.font_size = Measure("14pt");
+  text_style.font_weight = FontWeight::bold;
+  text_style.background_color = Color(0xff, 0xff, 0x00);
+  text_style.font_underline = true;
+  EXPECT_EQ(ihtml::translate_block_font_style(text_style), "font-size:14pt;");
+}
+
+TEST(html_document_style, block_font_style_of_a_style_naming_no_font) {
+  EXPECT_EQ(ihtml::translate_block_font_style(TextStyle()), "");
+}

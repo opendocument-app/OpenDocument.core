@@ -300,6 +300,36 @@ void html::translate_line_break(const Element &element,
   state.out().write_element_end("x-s");
 }
 
+namespace {
+
+/// Whether a reader sees anything. A bookmark marks a place rather than filling
+/// one, and a span or a link is a style around what it holds, so a paragraph
+/// holding only those is still an empty line.
+bool has_content(const ElementRange &children) {
+  for (const Element child : children) {
+    switch (child.type()) {
+    case ElementType::bookmark:
+      break;
+    case ElementType::span:
+    case ElementType::link:
+      if (has_content(child.children())) {
+        return true;
+      }
+      break;
+    case ElementType::text:
+      if (!child.as_text().content().empty()) {
+        return true;
+      }
+      break;
+    default:
+      return true;
+    }
+  }
+  return false;
+}
+
+} // namespace
+
 void html::translate_paragraph(const Element &element,
                                const WritingState &state,
                                const std::string &marker) {
@@ -308,34 +338,29 @@ void html::translate_paragraph(const Element &element,
   state.out().write_element_begin(
       "x-p",
       HtmlElementOptions().set_inline(true).set_style(
-          "display:block;" + translate_paragraph_style(paragraph.style())));
+          "display:block;" + translate_paragraph_style(paragraph.style()) +
+          translate_block_font_style(paragraph.text_style())));
   if (!marker.empty()) {
     state.out().write_element_begin(
         "x-s", HtmlElementOptions()
                    .set_inline(true)
                    .set_class("odr-list-marker")
                    .set_style(translate_text_style(paragraph.text_style())));
-    // The tab separates label from text once copied; `x-p` collapses to
-    // `font-size:0`, so the marker has to carry the item's text style itself.
+    // The tab separates label from text once copied.
     state.out().out() << escape_text(marker) << "&#9;";
     state.out().write_element_end("x-s");
   }
   translate_children(paragraph.children(), state);
-  if (paragraph.first_child()) {
-    // TODO if element is content (e.g. bookmark does not count)
-
-    // TODO example `encrypted-exception-3$aabbcc$.odt` at the very bottom
-    // TODO has a missing line break after "As the result of the project we ..."
-
-    // TODO example `style-missing+image-1.odt` first paragraph has no height
-  } else {
+  if (marker.empty() && !has_content(paragraph.children())) {
+    // A line break, not a break opportunity: only a break is copied, so a blank
+    // line between two paragraphs survives being pasted somewhere else.
     state.out().write_element_begin(
-        "x-s", HtmlElementOptions().set_inline(true).set_style(
-                   translate_text_style(paragraph.text_style())));
-    state.out().write_element_end("x-s");
+        "br", HtmlElementOptions().set_close_type(HtmlCloseType::none));
+  } else {
+    // A paragraph whose content is all out of flow has no line box of its own.
+    state.out().write_element_begin(
+        "wbr", HtmlElementOptions().set_close_type(HtmlCloseType::none));
   }
-  state.out().write_element_begin(
-      "wbr", HtmlElementOptions().set_close_type(HtmlCloseType::none));
   state.out().write_element_end("x-p");
 }
 
