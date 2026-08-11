@@ -245,10 +245,11 @@ jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
   return new_object(
       env, "app/opendocument/core/GraphicStyle",
       "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Color;"
-      "Lapp/opendocument/core/Color;II)V",
+      "Lapp/opendocument/core/Color;III)V",
       make_measure(env, style.stroke_width),
       make_color(env, style.stroke_color), make_color(env, style.fill_color),
-      enum_code(style.vertical_align), enum_code(style.text_wrap));
+      enum_code(style.vertical_align), enum_code(style.text_wrap),
+      enum_code(style.horizontal_position));
 }
 
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {

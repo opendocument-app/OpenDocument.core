@@ -175,7 +175,9 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("stroke_color", &odr::GraphicStyle::stroke_color)
       .def_readwrite("fill_color", &odr::GraphicStyle::fill_color)
       .def_readwrite("vertical_align", &odr::GraphicStyle::vertical_align)
-      .def_readwrite("text_wrap", &odr::GraphicStyle::text_wrap);
+      .def_readwrite("text_wrap", &odr::GraphicStyle::text_wrap)
+      .def_readwrite("horizontal_position",
+                     &odr::GraphicStyle::horizontal_position);
 
   py::class_<odr::PageLayout>(m, "PageLayout")
       .def(py::init<>())

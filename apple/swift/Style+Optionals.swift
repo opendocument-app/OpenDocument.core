@@ -54,6 +54,9 @@ extension GraphicStyle {
   public var fill: Color? { fillColor?.asColor }
   public var vertical: VerticalAlign? { verticalAlign?.asEnum(VerticalAlign.self) }
   public var wrap: TextWrap? { textWrap?.asEnum(TextWrap.self) }
+  public var horizontal: HorizontalAlign? {
+    horizontalPosition?.asEnum(HorizontalAlign.self)
+  }
 }
 
 extension PageLayout {

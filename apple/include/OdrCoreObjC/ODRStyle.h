@@ -208,6 +208,8 @@ NS_SWIFT_NAME(GraphicStyle)
 @property(nonatomic, readonly, nullable) NSNumber *verticalAlign;
 /// `ODRTextWrap`, boxed.
 @property(nonatomic, readonly, nullable) NSNumber *textWrap;
+/// `ODRHorizontalAlign`, boxed.
+@property(nonatomic, readonly, nullable) NSNumber *horizontalPosition;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
