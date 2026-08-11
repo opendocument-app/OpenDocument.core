@@ -57,11 +57,13 @@ constexpr std::string_view spreadsheet_css = R"css(
 }
 /* A sheet is not a page: past the last row and column is canvas. */
 body{margin:0;background:var(--odr-sheet-canvas)}
-.odr-sheet{background:#fff}
-table{border-collapse:collapse;table-layout:fixed}
-td{vertical-align:bottom;height:inherit;padding:1px 6px}
-x-p{font-family:var(--odr-sheet-font);font-size:10pt}
-td x-p{height:inherit}
+.odr-sheet{background:#fff;border-collapse:collapse;table-layout:fixed}
+/* The sheet's own cells, not a table the document itself drew inside one. */
+.odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px}
+.odr-sheet>tbody>tr>td>x-p{height:inherit}
+/* Sheet-wide, not cell-only: a shape's text would otherwise fall to the
+   `font-size:0` a page carries. */
+.odr-sheet x-p{font-family:var(--odr-sheet-font);font-size:10pt}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
 .odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
