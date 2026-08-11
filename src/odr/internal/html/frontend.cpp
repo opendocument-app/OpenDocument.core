@@ -23,7 +23,7 @@ body{margin:0;background:#fff}
 /* What the formats anchor against: a page for shapes, a paragraph or a cell
    for frames. */
 x-p,td,.odr-page-outer{position:relative}
-x-p{display:block;font-size:0}
+x-p{display:block}
 x-s{display:inline}
 .odr-background{padding:0;background:#525659}
 /* The page column, sized to the widest page so pages of differing width centre
@@ -61,9 +61,9 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 /* The sheet's own cells, not a table the document itself drew inside one. */
 .odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px}
 .odr-sheet>tbody>tr>td>x-p{height:inherit}
-/* Sheet-wide, not cell-only: a shape's text would otherwise fall to the
-   `font-size:0` a page carries. */
-.odr-sheet x-p{font-family:var(--odr-sheet-font);font-size:10pt}
+/* The font anything in a cell falls back to, a shape's text included, where the
+   file names none of its own. */
+.odr-sheet>tbody>tr>td x-p{font-family:var(--odr-sheet-font);font-size:10pt}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
 .odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}

@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A paragraph states its own font, so a run that names none of its own is read
+  at that font instead of at nothing. Slides whose text was there but invisible
+  now show it.
+- An empty paragraph keeps the height its font implies, whether or not the file
+  names a size for it, and copying across one yields a blank line.
+- A sheet's cells read in the font the file names, falling back to the sheet's
+  own only where it names none.
 - An image stays inside its frame on a page read without the shipped stylesheet,
   rather than covering the whole page.
 - A frame that names a side instead of an offset sits on that side, so a centred

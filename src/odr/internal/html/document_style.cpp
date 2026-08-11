@@ -194,6 +194,21 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   return result;
 }
 
+std::string html::translate_block_font_style(const TextStyle &text_style) {
+  std::string result;
+  if (const std::optional<std::string_view> font_name = text_style.font_name;
+      font_name.has_value()) {
+    result.append("font-family:")
+        .append(escape_attribute(std::string(*font_name)))
+        .append(";");
+  }
+  if (const std::optional<Measure> font_size = text_style.font_size;
+      font_size.has_value()) {
+    result.append("font-size:").append(font_size->to_string()).append(";");
+  }
+  return result;
+}
+
 std::string
 html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
   std::string result;
