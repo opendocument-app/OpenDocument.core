@@ -402,8 +402,10 @@ std::string html::translate_frame_properties(const Frame &frame) {
   }
 
   // a side, but only where no offset already places the frame
-  const std::optional<HorizontalAlign> horizontal_position =
-      frame.x().has_value() ? std::nullopt : style.horizontal_position;
+  auto horizontal_position = HorizontalAlign::left;
+  if (!frame.x().has_value() && style.horizontal_position.has_value()) {
+    horizontal_position = *style.horizontal_position;
+  }
 
   // The frame says it positions itself: read without the stylesheet's
   // `*{position:relative}`, its image would fill the viewport instead.
