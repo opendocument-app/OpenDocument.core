@@ -147,6 +147,25 @@ std::optional<TextWrap> read_text_wrap(const pugi::xml_attribute attribute) {
   return {};
 }
 
+/// `from-*` names no side - the offset places those frames.
+std::optional<HorizontalAlign>
+read_horizontal_position(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  const char *value = attribute.value();
+  if (std::strcmp("left", value) == 0 || std::strcmp("inside", value) == 0) {
+    return HorizontalAlign::left;
+  }
+  if (std::strcmp("center", value) == 0) {
+    return HorizontalAlign::center;
+  }
+  if (std::strcmp("right", value) == 0 || std::strcmp("outside", value) == 0) {
+    return HorizontalAlign::right;
+  }
+  return {};
+}
+
 std::optional<PrintOrientation>
 read_print_orientation(const pugi::xml_attribute attribute) {
   if (!attribute) {
@@ -509,6 +528,11 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
   if (const std::optional<TextWrap> text_wrap =
           read_text_wrap(graphic_properties.attribute("style:wrap"))) {
     result.text_wrap = text_wrap;
+  }
+  if (const std::optional<HorizontalAlign> horizontal_position =
+          read_horizontal_position(
+              graphic_properties.attribute("style:horizontal-pos"))) {
+    result.horizontal_position = horizontal_position;
   }
 }
 

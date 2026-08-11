@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An image stays inside its frame on a page read without the shipped stylesheet,
+  rather than covering the whole page.
+- A frame that names a side instead of an offset sits on that side, so a centred
+  image in an odt is centred.
+
 ## v6.5.0 - 2026-08-10
 
 - An xml file opens as xml and reads as a foldable, highlighted source view
