@@ -19,8 +19,10 @@ namespace {
 /// Every page we write states its own body margin and background, rather than
 /// reading whatever the browser's default sheet says.
 constexpr std::string_view document_css = R"css(
-*{margin:0;position:relative}
 body{margin:0;background:#fff}
+/* What the formats anchor against: a page for shapes, a paragraph or a cell
+   for frames. */
+x-p,td,.odr-page-outer{position:relative}
 x-p{display:block;font-size:0}
 x-s{display:inline}
 .odr-background{padding:0;background:#525659}
@@ -75,7 +77,7 @@ td x-p{height:inherit}
 .odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
 .odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
 .odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
-/* `*{position:relative}` already makes the header a containing block. */
+/* The header's `position:sticky` already makes it a containing block. */
 .odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
 .odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}
 .odr-sheet-sort:hover{background:var(--odr-sheet-wash-ruler)}

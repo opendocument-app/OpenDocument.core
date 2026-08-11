@@ -407,8 +407,7 @@ std::string html::translate_frame_properties(const Frame &frame) {
     horizontal_position = *style.horizontal_position;
   }
 
-  // The frame says it positions itself: read without the stylesheet's
-  // `*{position:relative}`, its image would fill the viewport instead.
+  // The frame is what its image sizes against.
   std::string result;
   if (const AnchorType anchor_type = frame.anchor_type();
       anchor_type == AnchorType::as_char) {
