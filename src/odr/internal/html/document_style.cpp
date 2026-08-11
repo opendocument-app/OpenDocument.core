@@ -394,16 +394,28 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
 }
 
 std::string html::translate_frame_properties(const Frame &frame) {
+  const GraphicStyle style = frame.style();
+
   auto text_wrap = TextWrap::run_through;
-  if (const GraphicStyle style = frame.style(); style.text_wrap.has_value()) {
+  if (style.text_wrap.has_value()) {
     text_wrap = *style.text_wrap;
   }
 
+  // a side, but only where no offset already places the frame
+  auto horizontal_position = HorizontalAlign::left;
+  if (!frame.x().has_value() && style.horizontal_position.has_value()) {
+    horizontal_position = *style.horizontal_position;
+  }
+
+  // The frame says it positions itself: read without the stylesheet's
+  // `*{position:relative}`, its image would fill the viewport instead.
   std::string result;
   if (const AnchorType anchor_type = frame.anchor_type();
       anchor_type == AnchorType::as_char) {
+    result += "position:relative;";
     result += "display:inline-block;";
   } else if (text_wrap == TextWrap::before) {
+    result += "position:relative;";
     result += "display:block;";
     result += "float:right;clear:both;";
     result += "shape-outside:content-box;";
@@ -413,12 +425,15 @@ std::string html::translate_frame_properties(const Frame &frame) {
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
       result += "margin-top:" + y->to_string() + ";";
     }
-    result += "margin-right:calc(100% - ";
-    result += frame.x().value_or(Measure(0, DynamicUnit("in"))).to_string();
-    result += " - ";
-    result += frame.width()->to_string();
-    result += ");";
+    if (const std::optional<Measure> width = frame.width(); width.has_value()) {
+      result += "margin-right:calc(100% - ";
+      result += frame.x().value_or(Measure(0, DynamicUnit("in"))).to_string();
+      result += " - ";
+      result += width->to_string();
+      result += ");";
+    }
   } else if (text_wrap == TextWrap::after) {
+    result += "position:relative;";
     result += "display:block;";
     result += "float:left;clear:both;";
     result += "shape-outside:content-box;";
@@ -429,9 +444,15 @@ std::string html::translate_frame_properties(const Frame &frame) {
       result += "margin-top:" + y->to_string() + ";";
     }
   } else if (text_wrap == TextWrap::none) {
+    result += "position:relative;";
     result += "display:block;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {
       result += "margin-left:" + x->to_string() + ";";
+    }
+    if (horizontal_position == HorizontalAlign::center) {
+      result += "margin-left:auto;margin-right:auto;";
+    } else if (horizontal_position == HorizontalAlign::right) {
+      result += "margin-left:auto;";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
       result += "margin-top:" + y->to_string() + ";";
@@ -441,6 +462,11 @@ std::string html::translate_frame_properties(const Frame &frame) {
     result += "position:absolute;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {
       result += "left:" + x->to_string() + ";";
+    }
+    if (horizontal_position == HorizontalAlign::center) {
+      result += "left:0;right:0;margin-left:auto;margin-right:auto;";
+    } else if (horizontal_position == HorizontalAlign::right) {
+      result += "right:0;";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
       result += "top:" + y->to_string() + ";";

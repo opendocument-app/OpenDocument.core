@@ -201,6 +201,8 @@ struct GraphicStyle final {
   std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;
   std::optional<TextWrap> text_wrap;
+  /// The side a frame sits on; unset where its offset decides instead.
+  std::optional<HorizontalAlign> horizontal_position;
 
   void override(const GraphicStyle &other);
 };

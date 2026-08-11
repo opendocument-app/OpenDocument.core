@@ -232,6 +232,7 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_fillColor = box(handle.fill_color);
   result->_verticalAlign = box_enum(handle.vertical_align);
   result->_textWrap = box_enum(handle.text_wrap);
+  result->_horizontalPosition = box_enum(handle.horizontal_position);
   return result;
 }
 

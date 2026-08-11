@@ -95,6 +95,7 @@ void GraphicStyle::override(const GraphicStyle &other) {
   override_if_set(fill_color, other.fill_color);
   override_if_set(vertical_align, other.vertical_align);
   override_if_set(text_wrap, other.text_wrap);
+  override_if_set(horizontal_position, other.horizontal_position);
 }
 
 } // namespace odr
