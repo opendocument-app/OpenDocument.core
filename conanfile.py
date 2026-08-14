@@ -52,6 +52,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("cryptopp/8.9.0")
         self.requires("miniz/3.0.2")
         self.requires("nlohmann_json/3.12.0")
+        self.requires("openjpeg/2.5.4")
         self.requires("uchardet/0.0.8")
         self.requires("utfcpp/4.0.9")
         if self.options.get_safe("with_http_server", False):

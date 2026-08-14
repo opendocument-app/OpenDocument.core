@@ -37,7 +37,9 @@ ColorSpaceDef device(const ColorSpaceKind kind, const int components) {
 
 } // namespace
 
-// The device spaces convert as expected (CMYK by the naive formula).
+// The device spaces convert as expected. CMYK follows Adobe's transform, so no
+// ink is white, full key is a dark neutral rather than `#000`, and full cyan is
+// a process cyan.
 TEST(PdfColor, device_spaces) {
   EXPECT_EQ(device(ColorSpaceKind::device_gray, 1).to_rgb({0.5}),
             (std::array<double, 3>{0.5, 0.5, 0.5}));
@@ -45,8 +47,16 @@ TEST(PdfColor, device_spaces) {
             (std::array<double, 3>{0.2, 0.4, 0.6}));
   EXPECT_EQ(device(ColorSpaceKind::device_cmyk, 4).to_rgb({0, 0, 0, 0}),
             (std::array<double, 3>{1, 1, 1}));
-  EXPECT_EQ(device(ColorSpaceKind::device_cmyk, 4).to_rgb({0, 0, 0, 1}),
-            (std::array<double, 3>{0, 0, 0}));
+  const std::array<double, 3> key =
+      device(ColorSpaceKind::device_cmyk, 4).to_rgb({0, 0, 0, 1});
+  EXPECT_NEAR(key[0], 0.17, 0.01);
+  EXPECT_NEAR(key[1], 0.18, 0.01);
+  EXPECT_NEAR(key[2], 0.21, 0.01);
+  const std::array<double, 3> cyan =
+      device(ColorSpaceKind::device_cmyk, 4).to_rgb({1, 0, 0, 0});
+  EXPECT_NEAR(cyan[0], 0.0, 0.01);
+  EXPECT_NEAR(cyan[1], 0.72, 0.01);
+  EXPECT_NEAR(cyan[2], 0.95, 0.01);
 }
 
 // L*a*b* maps the lightness extremes to white and black under the default
@@ -133,8 +143,7 @@ TEST(PdfColor, initial_components) {
   // so a resource alias to /DeviceCMYK matches a direct /DeviceCMYK selection.
   const ColorSpaceDef cmyk = device(ColorSpaceKind::device_cmyk, 4);
   EXPECT_EQ(cmyk.initial_components(), (std::vector<double>{0, 0, 0, 1}));
-  EXPECT_EQ(cmyk.to_rgb(cmyk.initial_components()),
-            (std::array<double, 3>{0, 0, 0}));
+  EXPECT_EQ(cmyk.to_rgb(cmyk.initial_components()), cmyk_to_rgb(0, 0, 0, 1));
 }
 
 // A name resolves to the matching device space.

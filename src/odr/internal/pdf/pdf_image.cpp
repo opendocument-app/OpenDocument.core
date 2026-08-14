@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_filter.hpp>
+#include <odr/internal/pdf/pdf_jpx.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
@@ -68,8 +69,49 @@ std::uint8_t to_byte(const double v) {
   return static_cast<std::uint8_t>(scaled);
 }
 
-} // namespace
+/// A decoded JPEG 2000 raster as a PNG, through the image's own colour space
+/// when the count matches and a device space of its component count otherwise
+/// (ISO 32000-1 8.9.5.1: `/ColorSpace` is optional for `JPXDecode`).
+std::optional<EncodedImage> encode_jpx(const std::string &data,
+                                       const ColorSpaceDef *color_space,
+                                       const std::vector<double> &decode_array,
+                                       const std::vector<std::uint8_t> &alpha,
+                                       const std::vector<double> &color_key) {
+  const std::optional<JpxImage> image = decode_jpx(data);
+  if (!image.has_value()) {
+    return std::nullopt;
+  }
 
+  ColorSpaceDef device;
+  device.components = image->components;
+  switch (image->components) {
+  case 1:
+    device.kind = ColorSpaceKind::device_gray;
+    break;
+  case 3:
+    device.kind = ColorSpaceKind::device_rgb;
+    break;
+  case 4:
+    device.kind = ColorSpaceKind::device_cmyk;
+    break;
+  default:
+    return std::nullopt;
+  }
+  const ColorSpaceDef &space =
+      color_space != nullptr && color_space->components == image->components
+          ? *color_space
+          : device;
+
+  const std::string png = encode_image_png(
+      image->samples, image->width, image->height, 8, space, decode_array,
+      alpha.empty() ? image->alpha : alpha, color_key);
+  if (png.empty()) {
+    return std::nullopt;
+  }
+  return EncodedImage{png, "image/png"};
+}
+
+} // namespace
 } // namespace odr::internal::pdf
 
 namespace odr::internal {
@@ -313,8 +355,15 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     }
     return std::nullopt;
   }
+  if (terminal == "JPXDecode") {
+    DecodeResult result = decode(filter, decode_parms, std::move(raw));
+    if (result.stopped_at_filter != "JPXDecode") {
+      return std::nullopt;
+    }
+    return encode_jpx(result.data, color_space, decode_array, alpha, color_key);
+  }
   if (terminal.has_value()) {
-    return std::nullopt; // JPX/CCITT/JBIG2: not yet a pass-through
+    return std::nullopt; // CCITT/JBIG2: not decodable
   }
 
   // A fully decodable raster: decode, assemble samples and PNG-encode.

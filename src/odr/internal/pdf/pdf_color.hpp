@@ -73,6 +73,10 @@ struct ColorSpaceContext {
   std::function<std::shared_ptr<ColorSpaceDef>(const std::string &)> named;
 };
 
+/// DeviceCMYK -> sRGB without an ICC engine: pdf.js's polynomial fit of Adobe's
+/// transform. The naive `(1-c)(1-k)` reads pure cyan as `#00ffff`.
+std::array<double, 3> cmyk_to_rgb(double c, double m, double y, double k);
+
 /// Build a colour space from its PDF object — a name (`/DeviceRGB`, …) or an
 /// array (`[/ICCBased 5 0 R]`, `[/Separation …]`, …). Returns `nullptr` for an
 /// unsupported or malformed definition.

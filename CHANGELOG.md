@@ -32,6 +32,14 @@ The release run heads these entries with the version and opens a fresh
   white space wherever it stands, not the start of a token.
 - Text that decodes to half a surrogate pair costs that character a replacement
   mark instead of the whole document.
+- A pdf's text sits where the file puts it: a line was placed against the
+  browser's default font rather than its own, which dropped small text by
+  several points.
+- A pdf's cmyk colours are converted as Adobe converts them, so a process cyan
+  reads as one instead of as pure `#00ffff`.
+- A pdf page shows what is on it and no more: content outside the crop box is
+  clipped, as a viewer clips it.
+- A pdf's JPEG 2000 images render. New dependency: `openjpeg`.
 
 ## v6.5.0 - 2026-08-10
 

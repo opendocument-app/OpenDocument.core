@@ -749,7 +749,7 @@ std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
   DecodeResult result =
       decode(filter, decode_parms, parser.read_object_stream(object));
   if (result.stopped_at_filter.has_value()) {
-    return {}; // an image codec we cannot decode (CCITT/JBIG2/JPX)
+    return {}; // an image codec we cannot decode (CCITT/JBIG2)
   }
   return decode_mask_alpha(
       result.data, image_int(parser, dictionary, "Width", 0),

@@ -276,21 +276,17 @@ void set_color(GraphicsState::Color &color, const GraphicsOperator &op) {
 
 /// Resolve a graphics-state colour to sRGB in [0, 1]. Non-device spaces have
 /// already been converted to `rgb` by `set_color`/`set_color_space` (they set
-/// `space` to `device_rgb`); CMYK uses the same naive conversion as the HTML
-/// emitter. Used to paint a stencil image mask in the current fill colour.
+/// `space` to `device_rgb`). Used to paint a stencil image mask in the current
+/// fill colour.
 std::array<double, 3> color_to_rgb(const GraphicsState::Color &color) {
   switch (color.space) {
   case ColorSpace::device_grey:
     return {color.grey, color.grey, color.grey};
   case ColorSpace::device_rgb:
     return {color.rgb[0], color.rgb[1], color.rgb[2]};
-  case ColorSpace::device_cmyk: {
-    const double c = color.cmyk[0];
-    const double m = color.cmyk[1];
-    const double y = color.cmyk[2];
-    const double k = color.cmyk[3];
-    return {(1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)};
-  }
+  case ColorSpace::device_cmyk:
+    return cmyk_to_rgb(color.cmyk[0], color.cmyk[1], color.cmyk[2],
+                       color.cmyk[3]);
   case ColorSpace::unknown:
     break;
   }

@@ -161,8 +161,8 @@ struct XObject final : Element {
   // --- image (`/Subtype /Image`) ---
   /// Browser-ready bytes: a `DCTDecode` JPEG passed through, or a raster
   /// re-encoded as PNG (with any `/SMask`/`/Mask` composited into RGBA). Empty
-  /// for an undecodable codec (JPX/CCITT/JBIG2) and for a stencil, so `Do`
-  /// skips it.
+  /// for an undecodable codec (CCITT/JBIG2) and for a stencil, so `Do` skips
+  /// it.
   std::string image_data;
   std::string image_mime;
 

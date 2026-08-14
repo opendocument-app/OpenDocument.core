@@ -22,8 +22,9 @@ struct EncodedImage {
 /// `DCTDecode` JPEG passes through, any other decodable raster is re-encoded as
 /// PNG through `color_space` (required only on that path). `alpha` and
 /// `color_key` (see `encode_image_png`) make the raster RGBA and are ignored by
-/// the JPEG pass-through. `nullopt` for an undecodable codec
-/// (JPX/CCITTFax/JBIG2) or an inconsistent raster.
+/// the JPEG pass-through. A `JPXDecode` raster comes through `decode_jpx`.
+/// `nullopt` for an undecodable codec (CCITTFax/JBIG2) or an inconsistent
+/// raster.
 std::optional<EncodedImage>
 encode_image(std::string raw, const Object &filter, const Object &decode_parms,
              std::int32_t width, std::int32_t height,

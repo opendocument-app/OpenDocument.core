@@ -14,6 +14,7 @@
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -316,14 +317,11 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
     b = to255(color.rgb[2]);
     break;
   case pdf::ColorSpace::device_cmyk: {
-    // Naive CMYK -> RGB (no ICC).
-    const double c = color.cmyk[0];
-    const double m = color.cmyk[1];
-    const double y = color.cmyk[2];
-    const double k = color.cmyk[3];
-    r = to255((1 - c) * (1 - k));
-    g = to255((1 - m) * (1 - k));
-    b = to255((1 - y) * (1 - k));
+    const std::array<double, 3> rgb = pdf::cmyk_to_rgb(
+        color.cmyk[0], color.cmyk[1], color.cmyk[2], color.cmyk[3]);
+    r = to255(rgb[0]);
+    g = to255(rgb[1]);
+    b = to255(rgb[2]);
     break;
   }
   case pdf::ColorSpace::unknown:
@@ -2358,8 +2356,10 @@ public:
     // side margin is part of that width, so a phone screen keeps a gutter.
     out.out() << ".d{display:flex;flex-direction:column;align-items:center;"
                  "gap:16px;padding:16px 0;width:max-content;min-width:100%}";
+    // `overflow:hidden` clips to the crop box, as a viewer does: content may
+    // sit outside it (a bleed, or an InDesign spread's other page).
     out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
-                 "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+                 "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `.t`: shared base for all absolutely-positioned line blocks.
     // `font-size:0` collapses its strut, which outranks the run it holds and
     // would take the line box's baseline.
