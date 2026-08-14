@@ -2196,7 +2196,7 @@ public:
         .m = m,
         .invisible = invisible,
         .is_matrix = is_matrix,
-        .asc = ascent_em(text),
+        .asc = ascent_em(text.font),
         .scale = is_matrix ? 1.0 : m.a,
         .ox = m.e,
         .baseline = m.f,
@@ -2361,8 +2361,10 @@ public:
     out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
                  "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `.t`: shared base for all absolutely-positioned line blocks.
+    // `font-size:0` collapses its strut, which outranks the run it holds and
+    // would take the line box's baseline.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre;line-height:1;font-kerning:none;"
+                 "white-space:pre;line-height:1;font-size:0;font-kerning:none;"
                  "font-variant-ligatures:none}";
     write_mode_css();
     // SVG overlay covering the page box (visual graphics layer).
@@ -2472,11 +2474,15 @@ public:
     }
     const std::string url = file_to_url(reencoded, "font/ttf");
     const std::string n = std::to_string(index + 1);
-    font_faces += "@font-face{font-family:'odr-f";
-    font_faces += n;
-    font_faces += "';src:url(";
-    font_faces += url;
-    font_faces += ");}";
+    // The overrides sum to one em, so `line-height:1` puts the baseline at
+    // exactly the `ascent_em` a run's `top` is derived from.
+    const double ascent = ascent_em(&font);
+    std::ostringstream face;
+    face << "@font-face{font-family:'odr-f" << n << "';src:url(" << url
+         << ");ascent-override:" << round2(ascent * 100.0)
+         << "%;descent-override:" << round2((1.0 - ascent) * 100.0)
+         << "%;line-gap-override:0%}";
+    font_faces += std::move(face).str();
     const auto rule = [&](const char *cls, const char *color) {
       font_styles += '.';
       font_styles += cls;
@@ -2495,19 +2501,20 @@ public:
     }
   }
 
-  static double ascent_em(const pdf::TextElement &text) {
+  /// Baseline offset below a line block's `top`, in em. Capped at one em so
+  /// the `@font-face` descent can make the two sum to it.
+  static double ascent_em(const pdf::Font *font) {
     double em = 0.8;
-    if (text.font != nullptr && text.font->descriptor_ascent) {
-      em = *text.font->descriptor_ascent;
-    } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
-      const std::uint16_t units = text.font->embedded_font->units_per_em();
+    if (font != nullptr && font->descriptor_ascent) {
+      em = *font->descriptor_ascent;
+    } else if (font != nullptr && font->embedded_font != nullptr) {
+      const std::uint16_t units = font->embedded_font->units_per_em();
       if (units != 0) {
-        em = static_cast<double>(
-                 text.font->embedded_font->bounding_box().y_max) /
+        em = static_cast<double>(font->embedded_font->bounding_box().y_max) /
              units;
       }
     }
-    return std::clamp(em, 0.5, 1.2);
+    return std::clamp(em, 0.5, 1.0);
   }
 
   static std::string glyph_run_str(const pdf::Font &font,
