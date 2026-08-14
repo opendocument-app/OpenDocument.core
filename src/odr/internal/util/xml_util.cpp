@@ -79,37 +79,44 @@ std::string xml::read_declared_encoding(std::istream &in) {
   return std::string(head.substr(at, value_end - at));
 }
 
-/// Reads the part once; pugixml's stream loader buffers it twice. The buffer is
+/// Reads @p file once; pugixml's stream loader buffers it twice. The buffer is
 /// `malloc`ed because pugixml takes it over and frees it, parse or no parse.
+pugi::xml_document xml::parse(const abstract::File &file) {
+  const std::size_t size = file.size();
+  if (size == 0) {
+    throw NoXmlFile();
+  }
+  // before the buffer: opening an entry that is encrypted or compressed by a
+  // method we do not have throws, and the size is the file's claim until then
+  const std::unique_ptr<std::istream> stream = file.stream();
+
+  std::unique_ptr<char, decltype(&std::free)> buffer(
+      static_cast<char *>(std::malloc(size)), &std::free);
+  if (buffer == nullptr) {
+    throw std::bad_alloc();
+  }
+
+  stream->read(buffer.get(), static_cast<std::streamsize>(size));
+  if (stream->gcount() != static_cast<std::streamsize>(size)) {
+    throw NoXmlFile();
+  }
+
+  pugi::xml_document result;
+  if (const auto success =
+          result.load_buffer_inplace_own(buffer.release(), size);
+      !success) {
+    throw NoXmlFile();
+  }
+  return result;
+}
+
 pugi::xml_document xml::parse(const abstract::ReadableFilesystem &filesystem,
                               const AbsPath &path) {
   const std::shared_ptr<abstract::File> file = filesystem.open(path);
   if (!file) {
     throw FileNotFound();
   }
-
-  const std::size_t size = file->size();
-  if (size == 0) {
-    throw NoXmlFile();
-  }
-  auto *buffer = static_cast<char *>(std::malloc(size));
-  if (buffer == nullptr) {
-    throw std::bad_alloc();
-  }
-
-  const std::unique_ptr<std::istream> stream = file->stream();
-  stream->read(buffer, static_cast<std::streamsize>(size));
-  if (stream->gcount() != static_cast<std::streamsize>(size)) {
-    std::free(buffer);
-    throw NoXmlFile();
-  }
-
-  pugi::xml_document result;
-  if (const auto success = result.load_buffer_inplace_own(buffer, size);
-      !success) {
-    throw NoXmlFile();
-  }
-  return result;
+  return parse(*file);
 }
 
 xml::StringToken::StringToken(const Type type, std::string string)
