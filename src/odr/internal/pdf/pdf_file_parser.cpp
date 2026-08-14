@@ -20,16 +20,17 @@ IndirectObject FileParser::read_indirect_object() {
   IndirectObject result;
 
   result.reference.id = m_parser.read_unsigned_integer();
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   result.reference.gen = m_parser.read_unsigned_integer();
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   // `obj` is not necessarily followed by a newline; some producers keep the
   // object on the same line
   m_parser.expect_characters("obj");
-  m_parser.skip_whitespace();
+  // A comment is white space in the gaps around the body (7.2.4).
+  m_parser.skip_whitespace_and_comments();
 
   result.object = m_parser.read_object();
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   // an indirect object whose body is itself a reference (`5 0 obj 12 0 R
   // endobj`): the body is followed by `endobj`/`stream`, so a digit here can
   // only be the generation of an `n g R`
@@ -57,7 +58,7 @@ IndirectObject FileParser::read_indirect_object() {
 
 Trailer FileParser::read_trailer() {
   m_parser.expect_characters("trailer");
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
 
   Trailer result;
 
@@ -188,9 +189,9 @@ ObjectStream FileParser::read_object_stream(const std::uint32_t n,
   offsets.reserve(n);
   {
     for (std::uint32_t i = 0; i < n; ++i) {
-      parser().skip_whitespace();
+      parser().skip_whitespace_and_comments();
       const std::uint64_t id = parser().read_unsigned_integer();
-      parser().skip_whitespace();
+      parser().skip_whitespace_and_comments();
       const std::uint64_t offset = parser().read_unsigned_integer();
       offsets.emplace_back(id, first + static_cast<std::uint32_t>(offset));
     }
@@ -202,7 +203,7 @@ ObjectStream FileParser::read_object_stream(const std::uint32_t n,
   for (const auto &[id, position] : offsets) {
     in().clear();
     in().seekg(position);
-    parser().skip_whitespace();
+    parser().skip_whitespace_and_comments();
     members.push_back({id, parser().read_object()});
   }
 

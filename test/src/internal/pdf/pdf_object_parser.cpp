@@ -195,13 +195,22 @@ TEST(PdfObjectParser, read_object_reference_in_containers) {
 // 7.2.4: a comment runs from `%` to the end of the line and stands wherever
 // white space may, so `%` inside an object is not the start of a token.
 TEST(PdfObjectParser, comment_inside_containers) {
-  const auto [object, rest] =
-      read_object("<< % a key follows\n/A [1 % and a value\n2] /B 3 >>");
-  ASSERT_TRUE(object.is_dictionary());
-  const Dictionary &dictionary = object.as_dictionary();
-  ASSERT_TRUE(dictionary["A"].is_array());
-  EXPECT_EQ(dictionary["A"].as_array().size(), 2u);
-  EXPECT_EQ(dictionary["B"].as_integer(), 3);
+  {
+    const auto [object, rest] =
+        read_object("<< % a key follows\n/A [1 % and a value\n2] /B 3 >>");
+    ASSERT_TRUE(object.is_dictionary());
+    const Dictionary &dictionary = object.as_dictionary();
+    ASSERT_TRUE(dictionary["A"].is_array());
+    EXPECT_EQ(dictionary["A"].as_array().size(), 2u);
+    EXPECT_EQ(dictionary["B"].as_integer(), 3);
+  }
+  {
+    // `%` is a delimiter (7.2.2), so a comment may sit between the generation
+    // and the `R` that completes a reference — with no white space at all
+    const auto [object, rest] = read_object("<< /A 5 0% a comment\nR >>");
+    ASSERT_TRUE(object.is_dictionary());
+    EXPECT_EQ(object.as_dictionary()["A"].as_reference().id, 5u);
+  }
 }
 
 // 7.3.4.2: a literal string is the bytes between balanced parentheses.

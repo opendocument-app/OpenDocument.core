@@ -595,19 +595,19 @@ void ObjectParser::promote_indirect_reference(Object &value) {
   }
   const auto id = static_cast<UnsignedInteger>(value.as_integer());
   const UnsignedInteger gen = read_unsigned_integer();
-  skip_whitespace();
+  skip_whitespace_and_comments();
   if (bumpc() != 'R') {
     throw std::runtime_error("expected 'R' to complete indirect reference");
   }
-  skip_whitespace();
+  skip_whitespace_and_comments();
   value = Object(ObjectReference{id, gen});
 }
 
 ObjectReference ObjectParser::read_object_reference() {
   UnsignedInteger id = read_unsigned_integer();
-  skip_whitespace();
+  skip_whitespace_and_comments();
   UnsignedInteger gen = read_unsigned_integer();
-  skip_whitespace();
+  skip_whitespace_and_comments();
 
   if (bumpc() != 'R') {
     throw std::runtime_error("unexpected character");

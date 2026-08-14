@@ -45,8 +45,8 @@ public:
   [[nodiscard]] bool peek_whitespace();
   void skip_whitespace();
   /// White space plus the comments (`%` to the end of the line, 7.2.4) it may
-  /// be interleaved with. Not for the file structure, which reads its `%PDF-`
-  /// and `%%EOF` markers as entries of their own.
+  /// be interleaved with. Not between entries: `%PDF-` and `%%EOF` are read as
+  /// entries of their own.
   void skip_whitespace_and_comments();
   void skip_line();
   std::string read_line(bool inclusive = false);
