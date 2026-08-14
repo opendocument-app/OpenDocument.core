@@ -422,13 +422,18 @@ std::string html::translate_frame_properties(const Frame &frame) {
     horizontal_position = *style.horizontal_position;
   }
 
+  // Only a frame anchored in the text takes its place from the wrap. Text does
+  // not flow around a page-anchored one: css cannot place a box away from where
+  // it sits in the flow and still have the flow react to it.
+  const AnchorType anchor_type = frame.anchor_type();
+  const bool in_text = anchor_type != AnchorType::at_page;
+
   // The frame is what its image sizes against.
   std::string result;
-  if (const AnchorType anchor_type = frame.anchor_type();
-      anchor_type == AnchorType::as_char) {
+  if (anchor_type == AnchorType::as_char) {
     result += "position:relative;";
     result += "display:inline-block;";
-  } else if (text_wrap == TextWrap::before) {
+  } else if (in_text && text_wrap == TextWrap::before) {
     result += "position:relative;";
     result += "display:block;";
     result += "float:right;clear:both;";
@@ -446,7 +451,7 @@ std::string html::translate_frame_properties(const Frame &frame) {
       result += width->to_string();
       result += ");";
     }
-  } else if (text_wrap == TextWrap::after) {
+  } else if (in_text && text_wrap == TextWrap::after) {
     result += "position:relative;";
     result += "display:block;";
     result += "float:left;clear:both;";
@@ -457,7 +462,7 @@ std::string html::translate_frame_properties(const Frame &frame) {
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
       result += "margin-top:" + y->to_string() + ";";
     }
-  } else if (text_wrap == TextWrap::none) {
+  } else if (in_text && text_wrap == TextWrap::none) {
     result += "position:relative;";
     result += "display:block;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {

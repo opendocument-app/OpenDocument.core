@@ -78,6 +78,9 @@ public:
 
   [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
   [[nodiscard]] ElementIdentifier first_master_page() const;
+  /// The master page a style or one of its bases names (20.283); null if none.
+  [[nodiscard]] ElementIdentifier
+  master_page_of_style(const char *style_name) const;
 
 private:
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
