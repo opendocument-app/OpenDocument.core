@@ -40,6 +40,9 @@ The release run heads these entries with the version and opens a fresh
 - A pdf page is the size of its crop box and shows what is on it and no more,
   as a viewer shows it.
 - A pdf's JPEG 2000 images render. New dependency: `openjpeg`.
+- A frame anchored to the page sits where the page says, whatever the text
+  around it wraps like - a letter's address and date boxes land in their fields
+  instead of in the running text.
 
 ## v6.5.0 - 2026-08-10
 
