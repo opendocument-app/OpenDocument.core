@@ -132,6 +132,25 @@ void ObjectParser::skip_whitespace() {
   }
 }
 
+void ObjectParser::skip_whitespace_and_comments() {
+  while (true) {
+    skip_whitespace();
+    if (geti() != '%') {
+      return;
+    }
+    while (true) {
+      const int_type c = sb().sbumpc();
+      if (c == eof) {
+        in().setstate(std::ios::eofbit);
+        return;
+      }
+      if (c == '\n' || c == '\r') {
+        break;
+      }
+    }
+  }
+}
+
 void ObjectParser::skip_line() { read_line(); }
 
 std::string ObjectParser::read_line(const bool inclusive) {
@@ -467,7 +486,7 @@ Array ObjectParser::read_array() {
   if (bumpc() != '[') {
     throw std::runtime_error("unexpected character");
   }
-  skip_whitespace();
+  skip_whitespace_and_comments();
 
   while (true) {
     if (const char_type c = getc(); c == ']') {
@@ -475,14 +494,14 @@ Array ObjectParser::read_array() {
       return Array(std::move(result));
     }
     result.emplace_back(read_object());
-    skip_whitespace();
+    skip_whitespace_and_comments();
 
     // Array elements may be bare adjacent integers, so a reference can only be
     // recognised once the `R` token actually appears: it retroactively folds
     // the two preceding integers (`n g`) into an `n g R` reference.
     if (const char_type c = getc(); c == 'R' && result.size() >= 2) {
       bumpc();
-      skip_whitespace();
+      skip_whitespace_and_comments();
 
       const UnsignedInteger gen = result.back().as_integer();
       result.pop_back();
@@ -517,7 +536,7 @@ Dictionary ObjectParser::read_dictionary() {
   if (bumpc() != '<') {
     throw std::runtime_error("unexpected character");
   }
-  skip_whitespace();
+  skip_whitespace_and_comments();
 
   while (true) {
     if (const char_type c = getc(); c == '>') {
@@ -527,9 +546,9 @@ Dictionary ObjectParser::read_dictionary() {
     }
 
     Name name = read_name();
-    skip_whitespace();
+    skip_whitespace_and_comments();
     Object value = read_object();
-    skip_whitespace();
+    skip_whitespace_and_comments();
     promote_indirect_reference(value);
 
     result.emplace(std::move(name.string), std::move(value));

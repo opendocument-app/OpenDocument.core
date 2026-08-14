@@ -28,6 +28,10 @@ The release run heads these entries with the version and opens a fresh
 - A frame that names a side instead of an offset sits on that side, so a centred
   image in an odt is centred. The side it names is `GraphicStyle`'s new
   `horizontal_position`, carried by the python, java and objc bindings.
+- A pdf that comments its content stream renders: `%` to the end of the line is
+  white space wherever it stands, not the start of a token.
+- Text that decodes to half a surrogate pair costs that character a replacement
+  mark instead of the whole document.
 
 ## v6.5.0 - 2026-08-10
 

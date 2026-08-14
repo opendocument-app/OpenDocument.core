@@ -224,6 +224,8 @@ std::string GraphicsOperatorParser::read_operator_name() {
 GraphicsOperator GraphicsOperatorParser::read_operator() {
   GraphicsOperator result;
 
+  m_parser.skip_whitespace_and_comments();
+
   std::string operator_name;
   while (true) {
     if (m_parser.peek_number()) {
@@ -252,7 +254,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
         break;
       }
     }
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
   }
 
   result.type = operator_name_to_type(operator_name);
@@ -273,7 +275,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     result.arguments.emplace_back(StandardString(std::move(data)));
   }
 
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
 
   return result;
 }

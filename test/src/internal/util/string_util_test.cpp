@@ -172,3 +172,17 @@ TEST(string_util, find_ignore_case) {
   // `from` past the end is not an out-of-range read.
   EXPECT_EQ(find_ignore_case("abc", "a", 99), std::string_view::npos);
 }
+
+TEST(string_util, u16string_to_string) {
+  EXPECT_EQ(u16string_to_string(u"abc"), "abc");
+  EXPECT_EQ(u16string_to_string(u"\U0001f600"), "\xf0\x9f\x98\x80");
+
+  // A surrogate completing no pair is not a code point: it costs its own
+  // character rather than the whole string.
+  EXPECT_EQ(u16string_to_string(std::u16string{u'a', 0xdc62, u'b'}),
+            "a\xef\xbf\xbd"
+            "b");
+  EXPECT_EQ(u16string_to_string(std::u16string{0xd83d}), "\xef\xbf\xbd");
+  EXPECT_EQ(u16string_to_string(std::u16string{0xd83d, u'a'}), "\xef\xbf\xbd"
+                                                               "a");
+}
