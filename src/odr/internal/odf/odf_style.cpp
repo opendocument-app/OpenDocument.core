@@ -5,8 +5,10 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <ranges>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::odf {
 
@@ -603,34 +605,54 @@ Style *StyleRegistry::generate_default_style_(const std::string &name,
   return style.get();
 }
 
+/// Walks the `style:parent-style-name` chain onto a stack and builds it from
+/// the root down; recursing it costs a stack frame per link.
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
-  // a null entry means the style is still resolving, i.e. the parent chain is
-  // cyclic; break it rather than recurse forever
-  const auto [style_it, inserted] = m_styles.try_emplace(name);
-  std::unique_ptr<Style> &style = style_it->second;
-  if (!inserted) {
-    return style.get();
-  }
+  // the names are the map's own, which keep their addresses across a rehash
+  std::vector<std::pair<const std::string *, pugi::xml_node>> chain;
 
+  const std::string *current_name = &name;
+  pugi::xml_node current_node = node;
   Style *parent{nullptr};
-  if (const pugi::xml_attribute parent_attr =
-          node.attribute("style:parent-style-name");
-      parent_attr) {
-    if (const auto parent_it = m_index_style.find(parent_attr.value());
-        parent_it != std::end(m_index_style)) {
-      parent = generate_style_(parent_attr.value(), parent_it->second);
+
+  while (true) {
+    // an entry present but still null means the link is already on this chain
+    const auto [style_it, inserted] = m_styles.try_emplace(*current_name);
+    if (!inserted) {
+      parent = style_it->second.get();
+      break;
     }
+    chain.emplace_back(&style_it->first, current_node);
+
+    const pugi::xml_attribute parent_attr =
+        current_node.attribute("style:parent-style-name");
+    if (!parent_attr) {
+      break;
+    }
+    const auto parent_it = m_index_style.find(parent_attr.value());
+    if (parent_it == std::end(m_index_style)) {
+      break;
+    }
+    current_name = &parent_it->first;
+    current_node = parent_it->second;
   }
 
-  Style *family{nullptr};
-  if (const pugi::xml_attribute family_attr = node.attribute("style:family");
-      family_attr) {
-    family = generate_default_style_(family_attr.value(), {});
+  for (const auto &[chain_name, chain_node] : chain | std::views::reverse) {
+    Style *family{nullptr};
+    if (const pugi::xml_attribute family_attr =
+            chain_node.attribute("style:family");
+        family_attr) {
+      family = generate_default_style_(family_attr.value(), {});
+    }
+
+    std::unique_ptr<Style> &style = m_styles[*chain_name];
+    style =
+        std::make_unique<Style>(this, *chain_name, chain_node, parent, family);
+    parent = style.get();
   }
 
-  style = std::make_unique<Style>(this, name, node, parent, family);
-  return style.get();
+  return parent;
 }
 
 void StyleRegistry::generate_master_pages_(Document &document) {

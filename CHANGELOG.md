@@ -45,6 +45,11 @@ The release run heads these entries with the version and opens a fresh
   instead of in the running text.
 - A text document is laid out on the master page it names, so a letter template
   keeps the margins that leave room for its letterhead.
+- A docx or odt that chains its styles deeply opens instead of taking the
+  process down with it: the `w:basedOn` / `style:parent-style-name` chain is
+  walked onto a stack rather than recursed, so its length costs no stack.
+- A document's xml parts are read once instead of buffered twice on the way into
+  the parser, which lowers the memory opening a large one takes.
 
 ## v6.5.0 - 2026-08-10
 
