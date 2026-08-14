@@ -343,8 +343,43 @@ public:
     }
     return {};
   }
+  static bool is_anchored_frame(const pugi::xml_node node) {
+    return std::strcmp(node.name(), "draw:frame") == 0;
+  }
+
+  /// Whether laying this out would put a word on the page; a frame is anchored,
+  /// not written.
+  static bool writes_text(const pugi::xml_node node) {
+    for (const pugi::xml_node child : node.children()) {
+      if (child.type() == pugi::node_pcdata &&
+          !std::string_view(child.value()).empty()) {
+        return true;
+      }
+      if (!is_anchored_frame(child) && writes_text(child)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
+      const ElementIdentifier element_id) const override {
+    // A paragraph may name the master page its page uses (20.283). One page box
+    // is all we lay out, so only a name ahead of every written word counts.
+    for (const pugi::xml_node child : get_node(element_id).children()) {
+      if (is_anchored_frame(child)) {
+        continue;
+      }
+      if (const ElementIdentifier master_page_id =
+              m_document->style_registry().master_page_of_style(
+                  child.attribute("text:style-name").value());
+          master_page_id != null_element_id) {
+        return master_page_id;
+      }
+      if (writes_text(child)) {
+        break;
+      }
+    }
     return m_document->style_registry().first_master_page();
   }
 

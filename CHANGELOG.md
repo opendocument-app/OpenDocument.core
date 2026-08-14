@@ -43,6 +43,8 @@ The release run heads these entries with the version and opens a fresh
 - A frame anchored to the page sits where the page says, whatever the text
   around it wraps like - a letter's address and date boxes land in their fields
   instead of in the running text.
+- A text document is laid out on the master page it names, so a letter template
+  keeps the margins that leave room for its letterhead.
 
 ## v6.5.0 - 2026-08-10
 

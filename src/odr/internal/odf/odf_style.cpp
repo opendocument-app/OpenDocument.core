@@ -688,4 +688,23 @@ ElementIdentifier StyleRegistry::first_master_page() const {
   return m_first_master_page_element;
 }
 
+ElementIdentifier
+StyleRegistry::master_page_of_style(const char *style_name) const {
+  // Bounded against a style naming itself as its own parent.
+  for (std::uint32_t depth = 0; depth < 16 && style_name[0] != '\0'; ++depth) {
+    const auto style_it = m_index_style.find(style_name);
+    if (style_it == std::end(m_index_style)) {
+      break;
+    }
+    const pugi::xml_node node = style_it->second;
+    if (const pugi::xml_attribute master_page_name =
+            node.attribute("style:master-page-name");
+        master_page_name && master_page_name.value()[0] != '\0') {
+      return master_page(master_page_name.value());
+    }
+    style_name = node.attribute("style:parent-style-name").value();
+  }
+  return {};
+}
+
 } // namespace odr::internal::odf
