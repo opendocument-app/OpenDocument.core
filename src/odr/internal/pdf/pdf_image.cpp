@@ -69,6 +69,25 @@ std::uint8_t to_byte(const double v) {
   return static_cast<std::uint8_t>(scaled);
 }
 
+/// Undo the premultiplication `/SMaskInData 2` declares, leaving the straight
+/// colour a PNG carries.
+void unpremultiply(std::string &samples, const std::int32_t components,
+                   const std::vector<std::uint8_t> &alpha) {
+  for (std::size_t pixel = 0; pixel < alpha.size(); ++pixel) {
+    const std::uint8_t a = alpha[pixel];
+    for (std::int32_t c = 0; c < components; ++c) {
+      const std::size_t i = pixel * static_cast<std::size_t>(components) +
+                            static_cast<std::size_t>(c);
+      if (i >= samples.size()) {
+        return;
+      }
+      const auto value = static_cast<std::uint8_t>(samples[i]);
+      samples[i] = static_cast<char>(
+          a == 0 ? 0 : to_byte(std::min(1.0, value / static_cast<double>(a))));
+    }
+  }
+}
+
 /// A decoded JPEG 2000 raster as a PNG, through the image's own colour space
 /// when the count matches and a device space of its component count otherwise
 /// (ISO 32000-1 8.9.5.1: `/ColorSpace` is optional for `JPXDecode`).
@@ -76,10 +95,18 @@ std::optional<EncodedImage> encode_jpx(const std::string &data,
                                        const ColorSpaceDef *color_space,
                                        const std::vector<double> &decode_array,
                                        const std::vector<std::uint8_t> &alpha,
-                                       const std::vector<double> &color_key) {
-  const std::optional<JpxImage> image = decode_jpx(data);
+                                       const std::vector<double> &color_key,
+                                       const std::int32_t smask_in_data) {
+  std::optional<JpxImage> image = decode_jpx(data);
   if (!image.has_value()) {
     return std::nullopt;
+  }
+  // Table 89: the codestream's own opacity counts only where the image asks for
+  // it, and `2` says the colour is premultiplied by it.
+  if (smask_in_data == 0) {
+    image->alpha.clear();
+  } else if (smask_in_data == 2) {
+    unpremultiply(image->samples, image->components, image->alpha);
   }
 
   ColorSpaceDef device;
@@ -344,7 +371,7 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     const std::int32_t bits_per_component, const ColorSpaceDef *color_space,
     const std::vector<double> &decode_array,
     const std::vector<std::uint8_t> &alpha,
-    const std::vector<double> &color_key) {
+    const std::vector<double> &color_key, const std::int32_t smask_in_data) {
   const std::optional<std::string> terminal = terminal_image_codec(filter);
 
   if (terminal == "DCTDecode") {
@@ -360,7 +387,8 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     if (result.stopped_at_filter != "JPXDecode") {
       return std::nullopt;
     }
-    return encode_jpx(result.data, color_space, decode_array, alpha, color_key);
+    return encode_jpx(result.data, color_space, decode_array, alpha, color_key,
+                      smask_in_data);
   }
   if (terminal.has_value()) {
     return std::nullopt; // CCITT/JBIG2: not decodable

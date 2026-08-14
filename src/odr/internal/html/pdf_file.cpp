@@ -2253,11 +2253,17 @@ public:
 
   template <typename AddClass>
   static PageBox begin_page(const pdf::Page &page, AddClass &&add_class) {
-    const pdf::Array &page_box = page.media_box.as_array();
-    const double box_x0 = page_box[0].as_real();
-    const double box_y0 = page_box[1].as_real();
-    const double width = page_box[2].as_real() - box_x0;
-    const double height = page_box[3].as_real() - box_y0;
+    // The crop box is what a viewer shows (14.11.2); it falls back to the media
+    // box. Its corners may be given in either order (7.9.5).
+    const pdf::Array &page_box = page.crop_box.as_array();
+    const double box_x0 =
+        std::min(page_box[0].as_real(), page_box[2].as_real());
+    const double box_y0 =
+        std::min(page_box[1].as_real(), page_box[3].as_real());
+    const double width =
+        std::max(page_box[0].as_real(), page_box[2].as_real()) - box_x0;
+    const double height =
+        std::max(page_box[1].as_real(), page_box[3].as_real()) - box_y0;
 
     std::string classes = "p";
     {

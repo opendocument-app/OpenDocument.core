@@ -37,8 +37,8 @@ The release run heads these entries with the version and opens a fresh
   several points.
 - A pdf's cmyk colours are converted as Adobe converts them, so a process cyan
   reads as one instead of as pure `#00ffff`.
-- A pdf page shows what is on it and no more: content outside the crop box is
-  clipped, as a viewer clips it.
+- A pdf page is the size of its crop box and shows what is on it and no more,
+  as a viewer shows it.
 - A pdf's JPEG 2000 images render. New dependency: `openjpeg`.
 
 ## v6.5.0 - 2026-08-10

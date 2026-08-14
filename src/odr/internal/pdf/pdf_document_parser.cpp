@@ -841,10 +841,15 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
     }
   }
 
+  // A JPX codestream may carry its own opacity; `/SMaskInData` says whether it
+  // counts (8.9.5.4).
+  const std::int32_t smask_in_data =
+      image_int(parser, dictionary, "SMaskInData", 0);
+
   if (std::optional<EncodedImage> encoded =
           encode_image(parser.read_object_stream(object), filter, decode_parms,
                        width, height, bits_per_component, color_space.get(),
-                       decode_array, alpha, color_key)) {
+                       decode_array, alpha, color_key, smask_in_data)) {
     x_object.image_data = std::move(encoded->data);
     x_object.image_mime = std::move(encoded->mime);
   }
