@@ -2,6 +2,10 @@
 
 #include <odr/internal/ooxml/ooxml_util.hpp>
 
+#include <ranges>
+#include <utility>
+#include <vector>
+
 namespace odr::internal::ooxml::text {
 
 namespace {
@@ -250,31 +254,48 @@ void StyleRegistry::generate_styles_(const pugi::xml_node styles_root) {
   }
 }
 
+/// Walks the `w:basedOn` chain onto a stack and builds it from the root down;
+/// recursing it costs a stack frame per link.
 Style *StyleRegistry::generate_style_(const std::string &name,
                                       const pugi::xml_node node) {
-  // an entry present but still null means we are inside its own resolution;
-  // returning it breaks a cyclic `w:basedOn` chain
-  if (const auto styles_it = m_styles.find(name);
-      styles_it != std::end(m_styles)) {
-    return styles_it->second.get();
-  }
-  std::unique_ptr<Style> &style = m_styles[name];
+  // the names are the map's own, which keep their addresses across a rehash
+  std::vector<std::pair<const std::string *, pugi::xml_node>> chain;
 
+  const std::string *current_name = &name;
+  pugi::xml_node current_node = node;
   Style *parent{nullptr};
 
-  if (const pugi::xml_attribute parent_attr =
-          node.child("w:basedOn").attribute("w:val");
-      parent_attr) {
+  while (true) {
+    // an entry present but still null means the link is already on this chain
+    const auto [styles_it, inserted] = m_styles.try_emplace(*current_name);
+    if (!inserted) {
+      parent = styles_it->second.get();
+      break;
+    }
+    chain.emplace_back(&styles_it->first, current_node);
+
+    const pugi::xml_attribute parent_attr =
+        current_node.child("w:basedOn").attribute("w:val");
+    if (!parent_attr) {
+      break;
+    }
     // `find`, not `operator[]`: an unknown parent id must not grow m_index
     // while generate_styles_ iterates it
-    if (const auto index_it = m_index.find(parent_attr.value());
-        index_it != std::end(m_index)) {
-      parent = generate_style_(index_it->first, index_it->second);
+    const auto index_it = m_index.find(parent_attr.value());
+    if (index_it == std::end(m_index)) {
+      break;
     }
+    current_name = &index_it->first;
+    current_node = index_it->second;
   }
 
-  style = std::make_unique<Style>(name, node, parent);
-  return style.get();
+  for (const auto &[chain_name, chain_node] : chain | std::views::reverse) {
+    std::unique_ptr<Style> &style = m_styles[*chain_name];
+    style = std::make_unique<Style>(*chain_name, chain_node, parent);
+    parent = style.get();
+  }
+
+  return parent;
 }
 
 } // namespace odr::internal::ooxml::text

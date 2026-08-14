@@ -63,6 +63,7 @@ add_executable(odr_test
         "src/internal/oldms/xls_test.cpp"
 
         "src/internal/ooxml/ooxml_crypto_test.cpp"
+        "src/internal/ooxml/ooxml_text_style_test.cpp"
 
         "src/internal/pdf/pdf_cid.cpp"
         "src/internal/pdf/pdf_cmap.cpp"
