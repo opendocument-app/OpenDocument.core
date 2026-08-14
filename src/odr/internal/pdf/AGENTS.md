@@ -146,10 +146,12 @@ Things the code won't shout at you:
   is unlocked with the empty password first so `/Info` decrypts). It is
   all-or-nothing: a malformed structure leaves `document_type` at `unknown` rather
   than half-filling the fields. XMP is not parsed — the strings are `/Info`-only.
-- **Image codecs are deliberately not decoded** in the filter framework
+- **Image codecs are not decoded** in the filter framework
   (DCTDecode/JPXDecode/CCITTFaxDecode/JBIG2Decode): `decode()` stops and hands
   back the still-encoded payload for the image path; `read_decoded_stream` treats
-  them as an error. `Crypt` passes through only as `Identity`.
+  them as an error. A JPEG then passes through to the browser and a JPEG 2000
+  goes to `pdf_jpx` (openjpeg) to be re-encoded as PNG like any other raster;
+  CCITT and JBIG2 remain undecodable. `Crypt` passes through only as `Identity`.
 - **Inherited page attributes** (`Resources`/`MediaBox`/`CropBox`/`Rotate`, Table
   30) are resolved by threading an accumulator down the `Pages` recursion — *not*
   by a `Parent` walk. Lenience (all with a `Logger` warning): `CropBox` ←

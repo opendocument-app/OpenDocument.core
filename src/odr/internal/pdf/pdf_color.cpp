@@ -11,12 +11,6 @@ namespace {
 
 double clamp01(const double v) { return std::clamp(v, 0.0, 1.0); }
 
-/// Naive DeviceCMYK -> RGB (no ICC), matching the HTML emitter's conversion.
-std::array<double, 3> cmyk_to_rgb(const double c, const double m,
-                                  const double y, const double k) {
-  return {(1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)};
-}
-
 /// sRGB gamma encode of a linear component (IEC 61966-2-1).
 double linear_to_srgb(const double c) {
   const double v = clamp01(c);
@@ -182,6 +176,38 @@ std::vector<double> ColorSpaceDef::initial_components() const {
 } // namespace odr::internal::pdf
 
 namespace odr::internal {
+
+std::array<double, 3> pdf::cmyk_to_rgb(const double c, const double m,
+                                       const double y, const double k) {
+  const double r =
+      255 +
+      c * (-4.387332384609988 * c + 54.48615194189176 * m +
+           18.82290502165302 * y + 212.25662451639585 * k - 285.2331026137004) +
+      m * (1.7149763477362134 * m - 5.6096736904047315 * y -
+           17.873870861415444 * k - 5.497006427196366) +
+      y * (-2.5217340131683033 * y - 21.248923337353073 * k +
+           17.5119270841813) +
+      k * (-21.86122147463605 * k - 189.48180835922747);
+  const double g =
+      255 +
+      c * (8.841041422036149 * c + 60.118027045597366 * m +
+           6.871425592049007 * y + 31.159100130055922 * k - 79.2970844816548) +
+      m * (-15.310361306967817 * m + 17.575251261109482 * y +
+           131.35250912493976 * k - 190.9453302588951) +
+      y * (4.444339102852739 * y + 9.8632861493405 * k - 24.86741582555878) +
+      k * (-20.737325471181034 * k - 187.80453709719578);
+  const double b = 255 +
+                   c * (0.8842522430003296 * c + 8.078677503112928 * m +
+                        30.89978309703729 * y - 0.23883238689178934 * k -
+                        14.183576799673286) +
+                   m * (10.49593273432072 * m + 63.02378494754052 * y +
+                        50.606957656360734 * k - 112.23884253719248) +
+                   y * (0.03296041114873217 * y + 115.60384449646641 * k -
+                        193.58209356861505) +
+                   k * (-22.33816807309886 * k - 180.12613974708367);
+  return {pdf::clamp01(r / 255.0), pdf::clamp01(g / 255.0),
+          pdf::clamp01(b / 255.0)};
+}
 
 std::shared_ptr<pdf::ColorSpaceDef>
 pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {

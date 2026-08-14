@@ -14,6 +14,7 @@
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -316,14 +317,11 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
     b = to255(color.rgb[2]);
     break;
   case pdf::ColorSpace::device_cmyk: {
-    // Naive CMYK -> RGB (no ICC).
-    const double c = color.cmyk[0];
-    const double m = color.cmyk[1];
-    const double y = color.cmyk[2];
-    const double k = color.cmyk[3];
-    r = to255((1 - c) * (1 - k));
-    g = to255((1 - m) * (1 - k));
-    b = to255((1 - y) * (1 - k));
+    const std::array<double, 3> rgb = pdf::cmyk_to_rgb(
+        color.cmyk[0], color.cmyk[1], color.cmyk[2], color.cmyk[3]);
+    r = to255(rgb[0]);
+    g = to255(rgb[1]);
+    b = to255(rgb[2]);
     break;
   }
   case pdf::ColorSpace::unknown:
@@ -2196,7 +2194,7 @@ public:
         .m = m,
         .invisible = invisible,
         .is_matrix = is_matrix,
-        .asc = ascent_em(text),
+        .asc = ascent_em(text.font),
         .scale = is_matrix ? 1.0 : m.a,
         .ox = m.e,
         .baseline = m.f,
@@ -2255,11 +2253,17 @@ public:
 
   template <typename AddClass>
   static PageBox begin_page(const pdf::Page &page, AddClass &&add_class) {
-    const pdf::Array &page_box = page.media_box.as_array();
-    const double box_x0 = page_box[0].as_real();
-    const double box_y0 = page_box[1].as_real();
-    const double width = page_box[2].as_real() - box_x0;
-    const double height = page_box[3].as_real() - box_y0;
+    // The crop box is what a viewer shows (14.11.2); it falls back to the media
+    // box. Its corners may be given in either order (7.9.5).
+    const pdf::Array &page_box = page.crop_box.as_array();
+    const double box_x0 =
+        std::min(page_box[0].as_real(), page_box[2].as_real());
+    const double box_y0 =
+        std::min(page_box[1].as_real(), page_box[3].as_real());
+    const double width =
+        std::max(page_box[0].as_real(), page_box[2].as_real()) - box_x0;
+    const double height =
+        std::max(page_box[1].as_real(), page_box[3].as_real()) - box_y0;
 
     std::string classes = "p";
     {
@@ -2358,11 +2362,15 @@ public:
     // side margin is part of that width, so a phone screen keeps a gutter.
     out.out() << ".d{display:flex;flex-direction:column;align-items:center;"
                  "gap:16px;padding:16px 0;width:max-content;min-width:100%}";
+    // `overflow:hidden` clips to the crop box, as a viewer does: content may
+    // sit outside it (a bleed, or an InDesign spread's other page).
     out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
-                 "box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+                 "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `.t`: shared base for all absolutely-positioned line blocks.
+    // `font-size:0` collapses its strut, which outranks the run it holds and
+    // would take the line box's baseline.
     out.out() << ".t{position:absolute;left:0;top:0;transform-origin:0 0;"
-                 "white-space:pre;line-height:1;font-kerning:none;"
+                 "white-space:pre;line-height:1;font-size:0;font-kerning:none;"
                  "font-variant-ligatures:none}";
     write_mode_css();
     // SVG overlay covering the page box (visual graphics layer).
@@ -2472,11 +2480,15 @@ public:
     }
     const std::string url = file_to_url(reencoded, "font/ttf");
     const std::string n = std::to_string(index + 1);
-    font_faces += "@font-face{font-family:'odr-f";
-    font_faces += n;
-    font_faces += "';src:url(";
-    font_faces += url;
-    font_faces += ");}";
+    // The overrides sum to one em, so `line-height:1` puts the baseline at
+    // exactly the `ascent_em` a run's `top` is derived from.
+    const double ascent = ascent_em(&font);
+    std::ostringstream face;
+    face << "@font-face{font-family:'odr-f" << n << "';src:url(" << url
+         << ");ascent-override:" << round2(ascent * 100.0)
+         << "%;descent-override:" << round2((1.0 - ascent) * 100.0)
+         << "%;line-gap-override:0%}";
+    font_faces += std::move(face).str();
     const auto rule = [&](const char *cls, const char *color) {
       font_styles += '.';
       font_styles += cls;
@@ -2495,19 +2507,20 @@ public:
     }
   }
 
-  static double ascent_em(const pdf::TextElement &text) {
+  /// Baseline offset below a line block's `top`, in em. Capped at one em so
+  /// the `@font-face` descent can make the two sum to it.
+  static double ascent_em(const pdf::Font *font) {
     double em = 0.8;
-    if (text.font != nullptr && text.font->descriptor_ascent) {
-      em = *text.font->descriptor_ascent;
-    } else if (text.font != nullptr && text.font->embedded_font != nullptr) {
-      const std::uint16_t units = text.font->embedded_font->units_per_em();
+    if (font != nullptr && font->descriptor_ascent) {
+      em = *font->descriptor_ascent;
+    } else if (font != nullptr && font->embedded_font != nullptr) {
+      const std::uint16_t units = font->embedded_font->units_per_em();
       if (units != 0) {
-        em = static_cast<double>(
-                 text.font->embedded_font->bounding_box().y_max) /
+        em = static_cast<double>(font->embedded_font->bounding_box().y_max) /
              units;
       }
     }
-    return std::clamp(em, 0.5, 1.2);
+    return std::clamp(em, 0.5, 1.0);
   }
 
   static std::string glyph_run_str(const pdf::Font &font,

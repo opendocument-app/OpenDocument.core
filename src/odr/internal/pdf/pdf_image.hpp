@@ -22,15 +22,16 @@ struct EncodedImage {
 /// `DCTDecode` JPEG passes through, any other decodable raster is re-encoded as
 /// PNG through `color_space` (required only on that path). `alpha` and
 /// `color_key` (see `encode_image_png`) make the raster RGBA and are ignored by
-/// the JPEG pass-through. `nullopt` for an undecodable codec
-/// (JPX/CCITTFax/JBIG2) or an inconsistent raster.
-std::optional<EncodedImage>
-encode_image(std::string raw, const Object &filter, const Object &decode_parms,
-             std::int32_t width, std::int32_t height,
-             std::int32_t bits_per_component, const ColorSpaceDef *color_space,
-             const std::vector<double> &decode,
-             const std::vector<std::uint8_t> &alpha = {},
-             const std::vector<double> &color_key = {});
+/// the JPEG pass-through. A `JPXDecode` raster comes through `decode_jpx`, its
+/// own opacity channel taken only as `smask_in_data` says (Table 89: 0 ignores
+/// it, 2 says the colour is premultiplied by it). `nullopt` for an undecodable
+/// codec (CCITTFax/JBIG2) or an inconsistent raster.
+std::optional<EncodedImage> encode_image(
+    std::string raw, const Object &filter, const Object &decode_parms,
+    std::int32_t width, std::int32_t height, std::int32_t bits_per_component,
+    const ColorSpaceDef *color_space, const std::vector<double> &decode,
+    const std::vector<std::uint8_t> &alpha = {},
+    const std::vector<double> &color_key = {}, std::int32_t smask_in_data = 0);
 
 /// Assemble decoded image samples (ISO 32000-1 8.9.5: MSB-first, rows padded
 /// to a byte boundary, `bits_per_component` of 1/2/4/8/16) into an 8-bit PNG,

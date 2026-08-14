@@ -57,6 +57,7 @@ find_package(pugixml REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(OpenJPEG REQUIRED)
 find_package(uchardet REQUIRED)
 find_package(utf8cpp REQUIRED)
 
@@ -216,6 +217,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_filter.cpp"
         "src/odr/internal/pdf/pdf_function.cpp"
         "src/odr/internal/pdf/pdf_image.cpp"
+        "src/odr/internal/pdf/pdf_jpx.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
         "src/odr/internal/pdf/pdf_graphics_state.cpp"
         "src/odr/internal/pdf/pdf_object.cpp"
@@ -276,6 +278,7 @@ target_link_libraries(odr
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json
+        openjp2
         uchardet::uchardet
         utf8::cpp
 )
