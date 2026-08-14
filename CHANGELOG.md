@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.6.0 - 2026-08-14
+
 - A paragraph states its own font, so a run that names none of its own is read
   at that font instead of at nothing. Slides whose text was there but invisible
   now show it.
