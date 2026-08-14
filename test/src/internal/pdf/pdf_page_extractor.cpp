@@ -71,6 +71,27 @@ TEST(PdfPageExtractor, crlf_delimited_operators) {
   EXPECT_EQ(texts[0].codes, "Hi");
 }
 
+// A comment stands where white space may (7.2.4), so a `%<TAG>` line between
+// operators is a comment and not the start of a hex string that swallows the
+// rest of the page.
+TEST(PdfPageExtractor, comment_between_operators) {
+  const auto texts = run("%<ODT_ATTRIBUTION_LABEL_SIGNAL>\nq\n"
+                         "%<ODT_ATTRIBUTION_LABEL_SIGNAL>\n"
+                         "BT /F1 12 Tf 1 0 0 1 100 700 Tm (Hi) Tj ET\nQ\n");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100);
+  EXPECT_EQ(texts[0].codes, "Hi");
+}
+
+// `%` delimits (7.2.2), so a comment needs no white space before it.
+TEST(PdfPageExtractor, comment_directly_after_operator) {
+  const auto texts =
+      run("BT /F1 12 Tf 1 0 0 1 100 700 Tm (Hi) Tj% right after\nET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100);
+  EXPECT_EQ(texts[0].codes, "Hi");
+}
+
 // `Tm` sets the text matrix outright, scaling and all.
 TEST(PdfPageExtractor, tm_scaling) {
   const auto texts = run("BT /F1 10 Tf 2 0 0 2 50 60 Tm (X) Tj ET");

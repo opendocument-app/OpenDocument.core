@@ -132,6 +132,18 @@ TEST(IndirectObject, reference_body) {
   EXPECT_EQ(object.object.as_reference().gen, 0u);
 }
 
+// A comment is white space in the gaps around an object's body (7.2.4).
+TEST(IndirectObject, comment_around_body) {
+  std::istringstream in("5 0 obj\n% the catalog\n<< /Type /Catalog >>\n"
+                        "% and done\nendobj");
+  FileParser parser(in);
+
+  const IndirectObject object = parser.read_indirect_object();
+  EXPECT_EQ(object.reference.id, 5u);
+  ASSERT_TRUE(object.object.is_dictionary());
+  EXPECT_EQ(object.object.as_dictionary()["Type"].as_name(), "Catalog");
+}
+
 // read_stream with a known /Length reads exactly that many bytes, then the
 // `endstream` and `endobj` keywords.
 TEST(ReadStream, known_length) {

@@ -210,9 +210,10 @@ std::string GraphicsOperatorParser::read_operator_name() {
       return result;
     }
     // Any white-space (7.2.2, incl. `\r` in CRLF streams) or the start of a
-    // following token ends the bareword.
+    // following token ends the bareword. `%` is a delimiter too (7.2.2), so a
+    // comment may follow an operator with nothing in between.
     if (ObjectParser::is_whitespace(static_cast<char_type>(c)) || c == '/' ||
-        c == '<' || c == '[') {
+        c == '<' || c == '[' || c == '%') {
       return result;
     }
 
@@ -223,6 +224,8 @@ std::string GraphicsOperatorParser::read_operator_name() {
 
 GraphicsOperator GraphicsOperatorParser::read_operator() {
   GraphicsOperator result;
+
+  m_parser.skip_whitespace_and_comments();
 
   std::string operator_name;
   while (true) {
@@ -252,7 +255,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
         break;
       }
     }
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
   }
 
   result.type = operator_name_to_type(operator_name);
@@ -273,7 +276,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
     result.arguments.emplace_back(StandardString(std::move(data)));
   }
 
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
 
   return result;
 }

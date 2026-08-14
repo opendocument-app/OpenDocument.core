@@ -176,7 +176,33 @@ std::size_t string::utf8_length(const std::string &string) {
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {
-  return utf8::utf16to8(string);
+  static constexpr char32_t replacement = 0xfffd;
+
+  std::string result;
+  result.reserve(string.size());
+
+  for (std::size_t i = 0; i < string.size(); ++i) {
+    const char32_t unit = string[i];
+
+    if (unit < 0xd800 || unit > 0xdfff) {
+      utf8::append(unit, result);
+      continue;
+    }
+    // a low surrogate first, or a high one with nothing to pair with
+    if (unit > 0xdbff || i + 1 >= string.size()) {
+      utf8::append(replacement, result);
+      continue;
+    }
+    const char32_t second = string[i + 1];
+    if (second < 0xdc00 || second > 0xdfff) {
+      utf8::append(replacement, result);
+      continue;
+    }
+    utf8::append(0x10000 + ((unit - 0xd800) << 10) + (second - 0xdc00), result);
+    ++i;
+  }
+
+  return result;
 }
 
 std::u16string string::string_to_u16string(const std::string_view string) {

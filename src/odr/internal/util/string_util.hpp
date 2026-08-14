@@ -66,6 +66,7 @@ std::string to_string(double d, int precision);
 
 std::size_t utf8_length(const std::string &string);
 
+/// A surrogate completing no pair becomes U+FFFD rather than throwing.
 std::string u16string_to_string(const std::u16string &string);
 std::u16string string_to_u16string(std::string_view string);
 /// @p length is a byte count, not a number of code units.
