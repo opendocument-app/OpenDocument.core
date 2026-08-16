@@ -374,12 +374,41 @@ std::string font_substitute_declaration(const pdf::FontSubstitute &substitute) {
   return declaration;
 }
 
+/// The suffixes naming a family's styled cut, most specific first. `local()`
+/// matches a face name, not a family plus a weight, so bold must be asked for.
+std::vector<std::string_view> style_suffixes(const bool bold,
+                                             const bool italic) {
+  if (bold && italic) {
+    return {"-BoldItalic", " Bold Italic", "-BoldOblique", " Bold Oblique"};
+  }
+  if (bold) {
+    return {"-Bold", " Bold"};
+  }
+  if (italic) {
+    return {"-Italic", " Italic", "-Oblique", " Oblique"};
+  }
+  return {};
+}
+
 /// The `local(...)` sources of a `font-family` stack, dropping the generic
-/// keywords an `@font-face src` cannot name. "" when the stack is generic-only.
-std::string local_font_sources(const std::string_view css_family) {
+/// keywords an `@font-face src` cannot name, each family styled-cut-first so a
+/// system without the cut still resolves. "" when the stack is generic-only.
+std::string local_font_sources(const std::string_view css_family,
+                               const bool bold, const bool italic) {
   static constexpr std::array<std::string_view, 6> generics = {
       "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"};
+  const std::vector<std::string_view> suffixes = style_suffixes(bold, italic);
   std::string src;
+  const auto add = [&src](const std::string_view name,
+                          const std::string_view suffix) {
+    if (!src.empty()) {
+      src += ',';
+    }
+    src += "local(\"";
+    src += name;
+    src += suffix;
+    src += "\")";
+  };
   std::size_t start = 0;
   while (start <= css_family.size()) {
     const std::size_t comma = css_family.find(',', start);
@@ -394,12 +423,10 @@ std::string local_font_sources(const std::string_view css_family) {
     }
     const bool generic = std::ranges::find(generics, name) != generics.end();
     if (!name.empty() && !generic) {
-      if (!src.empty()) {
-        src += ',';
+      for (const std::string_view suffix : suffixes) {
+        add(name, suffix);
       }
-      src += "local(";
-      src += name;
-      src += ')';
+      add(name, "");
     }
     if (comma == std::string_view::npos) {
       break;
@@ -420,7 +447,8 @@ public:
   /// to the plain family stack when the stack names no concrete font.
   std::string declaration(const pdf::FontSubstitute &substitute,
                           const double ascent_em) {
-    const std::string src = local_font_sources(substitute.css_family);
+    const std::string src = local_font_sources(
+        substitute.css_family, substitute.bold, substitute.italic);
     if (src.empty()) {
       return font_substitute_declaration(substitute);
     }
@@ -436,8 +464,15 @@ public:
         std::move(key).str(), static_cast<int>(m_faces.size()) + 1);
     if (inserted) {
       std::ostringstream face;
-      face << "@font-face{font-family:'odr-s" << it->second << "';src:" << src
-           << ";ascent-override:" << round2(ascent * 100.0)
+      face << "@font-face{font-family:'odr-s" << it->second << "';src:" << src;
+      // Declared, so the browser does not synthesise them a second time.
+      if (substitute.bold) {
+        face << ";font-weight:bold";
+      }
+      if (substitute.italic) {
+        face << ";font-style:italic";
+      }
+      face << ";ascent-override:" << round2(ascent * 100.0)
            << "%;descent-override:" << round2(descent * 100.0)
            << "%;line-gap-override:0%}";
       m_faces.push_back(std::move(face).str());
@@ -1350,6 +1385,7 @@ public:
       double vis_prev_baseline = 0;
       double vis_prev_font_pt = 0;
       bool vis_prev_was_matrix = false;
+      std::string vis_cur_flow_key;
       const auto vis_close_line = [&] { vis_cur_line = -1; };
 
       // Selection layer state: content-stream (reading) order grouping.
@@ -1393,8 +1429,18 @@ public:
         // Invisible runs paint nothing and Type3 runs are painted by their char
         // procs, so both contribute to the selection layer only.
         if (!invisible && !text.render_as_graphics) {
-          bool new_vis_line =
-              is_matrix || vis_prev_was_matrix || vis_cur_line < 0;
+          // A block carries its first run's placement and the rest flow off it,
+          // so another font, size or ascent needs a block of its own.
+          std::ostringstream key;
+          key << font << '|' << font_size_pt << '|' << round2(asc * text.size);
+          if (font == 0 && text.font != nullptr && text.font->substitute) {
+            key << '|' << font_substitute_declaration(*text.font->substitute);
+          }
+          const std::string vis_flow_key = std::move(key).str();
+
+          bool new_vis_line = is_matrix || vis_prev_was_matrix ||
+                              vis_cur_line < 0 ||
+                              vis_flow_key != vis_cur_flow_key;
           double vis_margin_pt = 0;
           if (!new_vis_line && vis_prev_font_pt > 0) {
             if (starts_new_line(baseline, vis_prev_baseline, ox, vis_prev_end,
@@ -1413,6 +1459,7 @@ public:
             line_out.classes = std::move(line_base);
             page_out.vis_items.push_back(std::move(line_out));
             vis_cur_line = static_cast<int>(page_out.vis_items.size()) - 1;
+            vis_cur_flow_key = vis_flow_key;
           }
 
           std::string run_classes = "g"; // user-select:none
@@ -1436,7 +1483,9 @@ public:
           if (font != 0) {
             run_text = escape_text(glyph_run_str(*text.font, text.codes));
           } else {
-            run_text = escape_text(text.text);
+            // `margin-left` already spans the word break; rendering it too
+            // shifts the glyphs by a space, once per run.
+            run_text = escape_text(core_text(text));
           }
 
           if (const double cs_pt = round2(text.char_spacing * scale);
@@ -1517,6 +1566,11 @@ public:
               const double rounded_gap = round2(gap_pt);
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", pt_decl("width", rounded_gap));
+                // Only a gap that still reads as a word space: a column of
+                // white painted solid is worse than the sliver.
+                if (rounded_gap <= font_size_pt) {
+                  gap_cls += " sw";
+                }
               }
               runs.push_back(SelRunOut{std::move(gap_cls), " "});
             }
@@ -1621,6 +1675,9 @@ public:
       // inline-block baseline-aligns to its bottom margin edge only when
       // overflow isn't visible, so without it the spacer shifts in y.
       out.out() << ".sg{display:inline-block;overflow:hidden}";
+      // A lone space cannot be justified to its box, so pad the advance and let
+      // the width clip it: else every word break shows a sliver of white.
+      out.out() << ".sw{letter-spacing:1000pt}";
     });
 
     const auto write_vis_line = [&](const VisLineOut &line) {
@@ -1750,18 +1807,10 @@ public:
     };
 
     // A leading inferred space carries no character code or advance, so the 1:1
-    // codes-to-text alignment starts after it. These helpers view the run text
-    // past that space.
+    // codes-to-text alignment starts after it — as `core_text_begin` views it.
     const auto core_char_count = [](const pdf::TextElement &t) {
       return util::string::utf8_length(t.text) -
              (t.leading_space_inferred ? 1u : 0u);
-    };
-    const auto core_text_begin = [](const pdf::TextElement &t) {
-      auto cp = t.text.begin();
-      if (t.leading_space_inferred) {
-        utf8::unchecked::next(cp); // skip the one-byte U+0020
-      }
-      return cp;
     };
 
     std::uint32_t family_count = 0;
@@ -1920,8 +1969,10 @@ public:
             color_suffix.empty() ? std::string() : color_suffix.substr(1);
 
         if (font == 0 || invisible) {
-          // Fallback / invisible: render real unicode directly.
-          run.text = escape_markup(text.text);
+          // Fallback / invisible: real unicode directly. The word break rides
+          // its own span as below, else it is margined *and* advanced over.
+          run.lead_space = text.leading_space_inferred;
+          run.text = escape_markup(core_text(text));
         } else {
           // Collapse needs 1:1 codes-to-core-text and every (uchar, glyph) to
           // match the frequency winner. The leading inferred space is metadata,
@@ -2562,6 +2613,20 @@ public:
                                s);
     }
     return s;
+  }
+
+  /// `text.text` past an inferred leading space, which backs no advance.
+  static std::string::const_iterator
+  core_text_begin(const pdf::TextElement &text) {
+    auto cp = text.text.begin();
+    if (text.leading_space_inferred) {
+      utf8::unchecked::next(cp); // skip the one-byte U+0020
+    }
+    return cp;
+  }
+
+  static std::string core_text(const pdf::TextElement &text) {
+    return std::string(core_text_begin(text), text.text.end());
   }
 
   /// Escapes only the three markup-significant characters. Deliberately *not*
