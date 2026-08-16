@@ -25,6 +25,9 @@ The release run heads these entries with the version and opens a fresh
 - A keyword is found across the spans it happens to be written in — a pdf puts
   a word in each — and a space matches whichever kind the page carries. It
   still does not run across a line, a cell or a paragraph.
+- A tap on a paged document reaches its text: a negative `z-index` painted the
+  page behind its container, which took every tap. No caret, and no keyboard on
+  ios.
 
 ## v6.6.0 - 2026-08-14
 
