@@ -30,6 +30,18 @@ The release run heads these entries with the version and opens a fresh
 - A tap on a paged document reaches its text: a negative `z-index` painted the
   page behind its container, which took every tap. No caret, and no keyboard on
   ios.
+- A pdf whose fonts are not embedded sits where the file puts it: a recovered
+  word break was both written into the run and spanned by its offset, so every
+  word drifted another space right and a search hit landed on its neighbour.
+- A pdf's bold and italic text is bold and italic — a non-embedded font is
+  asked for by the name of that cut, not faked at the regular cut's widths.
+- A pdf line that mixes fonts or sizes puts each run at its own baseline
+  instead of against the metrics of whichever run opened the line. Subscripts
+  and superscripts sit where the file puts them, and the text after a bullet
+  no longer parts company with the highlight that selects it.
+- A search hit or a selection running across words in a pdf paints the word
+  gaps between them rather than leaving a sliver of white in each. A gap wider
+  than the text is left alone: it is a column of white, not a space.
 
 ## v6.6.0 - 2026-08-14
 
