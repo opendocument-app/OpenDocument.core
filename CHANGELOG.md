@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.7.0 - 2026-08-16
+
 - `odr.search()`, `searchNext()`, `searchPrevious()` and `resetSearch()` now
   come with every view that renders text — a pdf, a text file, an xml view, an
   archive listing — as the shipped `search.css` and `search.js`, which a host
