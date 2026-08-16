@@ -101,6 +101,7 @@ public:
     write_viewport_meta(out, config(), false);
 
     write_text_style(state);
+    write_search_style(state);
 
     out.write_header_end();
 
@@ -108,8 +109,11 @@ public:
 
     out.write_element_begin("div", HtmlElementOptions().set_class("odr-text"));
 
-    out.write_element_begin("div",
-                            HtmlElementOptions().set_class("odr-text-nr"));
+    // `aria-hidden`: the numbers are ours, not the file's - nothing reading the
+    // page as content takes them.
+    out.write_element_begin("div", HtmlElementOptions()
+                                       .set_class("odr-text-nr")
+                                       .set_extra(R"(aria-hidden="true")"));
     std::istringstream in(text);
     for (std::uint32_t line = 1; !in.eof(); ++line) {
       out.write_element_begin("div", HtmlElementOptions().set_inline(true));
@@ -148,6 +152,7 @@ public:
 
     out.write_element_end("div");
 
+    write_search_script(state);
     write_text_script(state);
 
     out.write_body_end();

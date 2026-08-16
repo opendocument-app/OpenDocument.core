@@ -189,6 +189,7 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
     write_filesystem_style(state);
+    write_search_style(state);
     out.write_header_end();
 
     out.write_body_begin();
@@ -262,6 +263,8 @@ public:
 
     out.write_element_end("tbody");
     out.write_element_end("table");
+
+    write_search_script(state);
 
     out.write_body_end();
 

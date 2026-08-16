@@ -32,8 +32,6 @@ x-s{display:inline}
    instead of going edge to edge. */
 .odr-pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px 0;width:max-content;min-width:100%}
 .odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);z-index:-1000}
-mark{background:#ff0}
-mark.current{background:orange}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
@@ -178,6 +176,12 @@ body{margin:0;background:#000}
 .odr-media audio{width:100%;max-width:40rem;margin:0 1rem}
 )css";
 
+/// What the search script paints.
+constexpr std::string_view search_css = R"css(
+mark{background:#ff0}
+mark.current{background:orange}
+)css";
+
 constexpr std::string_view document_js = R"js(
 (function () {
   "use strict";
@@ -230,6 +234,15 @@ constexpr std::string_view document_js = R"js(
       odr.onError(errorIllegalEditNewLine.code, errorIllegalEditNewLine.message);
     }
   });
+})();
+)js";
+
+/// Text search over the rendered page, format-agnostic: it walks text nodes.
+constexpr std::string_view search_js = R"js(
+(function () {
+  "use strict";
+
+  var odr = (window.odr = window.odr || {});
 
   var marks = [];
   var current = -1;
@@ -238,7 +251,9 @@ constexpr std::string_view document_js = R"js(
   // Case- and diacritic-folded `text` plus a folded-index to source-index map
   // (with an end sentinel), so a match maps back onto the source string.
   // Folding per character is what keeps that map right when a character folds
-  // to none or to several.
+  // to none or to several. Every space folds to one: a run's leading and
+  // trailing space is written as `&nbsp;` and a tab as `&emsp;`, and a keyword
+  // is typed with neither.
   function fold(text) {
     var folded = "";
     var map = [];
@@ -246,6 +261,7 @@ constexpr std::string_view document_js = R"js(
       var character = text[i]
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
         .toLowerCase();
       for (var j = 0; j < character.length; ++j) {
         map.push(i);
@@ -256,18 +272,51 @@ constexpr std::string_view document_js = R"js(
     return { text: folded, map: map };
   }
 
+  var inlineElements = new WeakMap();
+
+  function isInline(element) {
+    var inline = inlineElements.get(element);
+    if (inline === undefined) {
+      var display = getComputedStyle(element).display;
+      inline = display.indexOf("inline") === 0 || display === "contents";
+      inlineElements.set(element, inline);
+    }
+    return inline;
+  }
+
+  // The box a text node flows in. Text under one reads as a run; text under two
+  // does not, and a keyword must not match across the break between them.
+  function blockOf(node) {
+    var element = node.parentElement;
+    while (element !== null && isInline(element)) {
+      element = element.parentElement;
+    }
+    return element;
+  }
+
+  // Rejected by the subtree, `aria-hidden` included: that is what keeps a pdf's
+  // glyph layer out of a search of the same page's text layer.
   function textNodes() {
-    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-      acceptNode: function (node) {
-        var name = node.parentNode ? node.parentNode.nodeName : "";
-        if (name === "SCRIPT" || name === "STYLE" || name === "MARK") {
-          return NodeFilter.FILTER_REJECT;
-        }
-        return node.nodeValue.length > 0
-          ? NodeFilter.FILTER_ACCEPT
-          : NodeFilter.FILTER_REJECT;
-      },
-    });
+    var walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function (node) {
+          if (node.nodeType !== Node.TEXT_NODE) {
+            var name = node.nodeName;
+            return name === "SCRIPT" ||
+              name === "STYLE" ||
+              name === "MARK" ||
+              node.getAttribute("aria-hidden") === "true"
+              ? NodeFilter.FILTER_REJECT
+              : NodeFilter.FILTER_SKIP;
+          }
+          return node.nodeValue.length > 0
+            ? NodeFilter.FILTER_ACCEPT
+            : NodeFilter.FILTER_REJECT;
+        },
+      }
+    );
     var nodes = [];
     while (walker.nextNode()) {
       nodes.push(walker.currentNode);
@@ -275,31 +324,95 @@ constexpr std::string_view document_js = R"js(
     return nodes;
   }
 
-  function markNode(node, needle) {
-    var found = [];
-    while (true) {
-      var folded = fold(node.nodeValue);
-      var at = folded.text.indexOf(needle);
-      if (at === -1) {
-        return found;
+  // One folded string per block, with the piece of it each text node
+  // contributed. A pdf writes a word per span and a slide a run per span, so a
+  // keyword spanning several of them is the ordinary case, not the exception.
+  function blocks() {
+    var nodes = textNodes();
+    var result = [];
+    var block = null;
+    var open = null;
+    for (var i = 0; i < nodes.length; ++i) {
+      var node = nodes[i];
+      var owner = blockOf(node);
+      if (open === null || owner !== block) {
+        open = { text: "", pieces: [] };
+        block = owner;
+        result.push(open);
       }
-      var match = node.splitText(folded.map[at]);
-      node = match.splitText(folded.map[at + needle.length] - folded.map[at]);
-      var mark = document.createElement("mark");
-      mark.className = "highlight";
-      match.parentNode.replaceChild(mark, match);
-      mark.appendChild(match);
-      found.push(mark);
+      var folded = fold(node.nodeValue);
+      open.pieces.push({
+        node: node,
+        begin: open.text.length,
+        end: open.text.length + folded.text.length,
+        map: folded.map,
+      });
+      open.text += folded.text;
     }
+    return result;
+  }
+
+  // Wraps `[from, to)` of a text node. Applied back to front within a node, so
+  // the split never moves an offset still to be used.
+  function wrap(node, from, to) {
+    var match = node.splitText(from);
+    match.splitText(to - from);
+    var mark = document.createElement("mark");
+    mark.className = "highlight";
+    match.parentNode.replaceChild(mark, match);
+    mark.appendChild(match);
+    return mark;
+  }
+
+  // Every occurrence in `block`, each as the slices of the text nodes it
+  // covers. Collected before anything is wrapped, because wrapping splits the
+  // nodes the offsets are measured in.
+  function findIn(block, needle) {
+    var found = [];
+    var at = block.text.indexOf(needle);
+    while (at !== -1) {
+      var end = at + needle.length;
+      var slices = [];
+      for (var i = 0; i < block.pieces.length; ++i) {
+        var piece = block.pieces[i];
+        if (piece.end <= at || piece.begin >= end) {
+          continue;
+        }
+        slices.push({
+          node: piece.node,
+          from: piece.map[Math.max(at, piece.begin) - piece.begin],
+          to: piece.map[Math.min(end, piece.end) - piece.begin],
+        });
+      }
+      if (slices.length > 0) {
+        found.push(slices);
+      }
+      at = block.text.indexOf(needle, end);
+    }
+    return found;
   }
 
   function select(index) {
     if (current >= 0 && marks[current]) {
-      marks[current].classList.remove("current");
+      marks[current].forEach(function (mark) {
+        mark.classList.remove("current");
+      });
     }
     current = index;
-    marks[current].classList.add("current");
-    marks[current].scrollIntoView({ block: "center", inline: "center" });
+    marks[current].forEach(function (mark) {
+      mark.classList.add("current");
+    });
+    // A hit inside a folded section is scrolled to but not shown.
+    for (
+      var element = marks[current][0].parentElement;
+      element !== null;
+      element = element.parentElement
+    ) {
+      if (element.nodeName === "DETAILS") {
+        element.open = true;
+      }
+    }
+    marks[current][0].scrollIntoView({ block: "center", inline: "center" });
   }
 
   function step(delta, next) {
@@ -314,33 +427,47 @@ constexpr std::string_view document_js = R"js(
   }
 
   odr.resetSearch = function () {
-    for (var i = 0; i < marks.length; ++i) {
-      var parent = marks[i].parentNode;
-      if (!parent) {
-        continue;
-      }
-      while (marks[i].firstChild) {
-        parent.insertBefore(marks[i].firstChild, marks[i]);
-      }
-      parent.removeChild(marks[i]);
-      parent.normalize();
-    }
+    marks.forEach(function (hit) {
+      hit.forEach(function (mark) {
+        var parent = mark.parentNode;
+        if (!parent) {
+          return;
+        }
+        while (mark.firstChild) {
+          parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+        parent.normalize();
+      });
+    });
     marks = [];
     current = -1;
     keyword = "";
   };
 
-  // Highlights every occurrence, selects the first and returns the count.
+  // Highlights every occurrence, selects the first and returns the count. An
+  // occurrence is one hit however many nodes it is written across.
   odr.search = function (text) {
     odr.resetSearch();
     keyword = fold(text === undefined || text === null ? "" : String(text)).text;
     if (keyword === "") {
       return 0;
     }
-    var nodes = textNodes();
-    for (var i = 0; i < nodes.length; ++i) {
-      marks = marks.concat(markNode(nodes[i], keyword));
-    }
+    blocks().forEach(function (block) {
+      var hits = findIn(block, keyword);
+      // Wrapped back to front: an offset still to be used sits before the split
+      // that would move it. The marks are collected back into reading order.
+      var wrapped = [];
+      for (var i = hits.length - 1; i >= 0; --i) {
+        var hit = [];
+        for (var j = hits[i].length - 1; j >= 0; --j) {
+          var slice = hits[i][j];
+          hit.unshift(wrap(slice.node, slice.from, slice.to));
+        }
+        wrapped.unshift(hit);
+      }
+      marks = marks.concat(wrapped);
+    });
     if (marks.length > 0) {
       select(0);
     }
@@ -681,12 +808,22 @@ constexpr std::string_view text_js = R"js(
 
   // Lines are the element children: formatted output puts a whitespace text
   // node between them, and counting or indexing those as lines is off by as
-  // much as a factor of two.
+  // much as a factor of two. The line is the ancestor the body owns and the
+  // offset is measured from its start: a search `<mark>` may sit in between.
   TextEditor.prototype.getPosition = function (container, offset) {
-    var line = container.nodeName === "DIV" ? container : container.parentNode;
+    var line = container;
+    while (line !== null && line.parentNode !== this.textBody) {
+      line = line.parentNode;
+    }
+    if (line === null) {
+      return { line: -1, offset: offset };
+    }
+    var range = document.createRange();
+    range.selectNodeContents(line);
+    range.setEnd(container, offset);
     return {
       line: Array.prototype.indexOf.call(this.textBody.children, line),
-      offset: offset,
+      offset: range.toString().length,
     };
   };
 
@@ -963,8 +1100,12 @@ constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
                                      "filesystem.css", filesystem_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
                                 media_css};
+constexpr Asset search_css_asset{HtmlResourceType::css, "text/css",
+                                 "search.css", search_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", document_js};
+constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
+                                "search.js", search_js};
 constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
                                      "spreadsheet.js", spreadsheet_js};
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
@@ -1047,8 +1188,16 @@ void html::write_media_style(const WritingState &state) {
   write_style(media_css_asset, state);
 }
 
+void html::write_search_style(const WritingState &state) {
+  write_style(search_css_asset, state);
+}
+
 void html::write_document_script(const WritingState &state) {
   write_script(document_js_asset, state);
+}
+
+void html::write_search_script(const WritingState &state) {
+  write_script(search_js_asset, state);
 }
 
 void html::write_spreadsheet_script(const WritingState &state) {
@@ -1060,12 +1209,19 @@ void html::write_text_script(const WritingState &state) {
 }
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
-  static constexpr std::array assets{text_css_asset, text_js_asset};
+  static constexpr std::array assets{text_css_asset, search_css_asset,
+                                     search_js_asset, text_js_asset};
   return locate_all(assets, config);
 }
 
 HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
-  static constexpr std::array assets{xml_css_asset};
+  static constexpr std::array assets{xml_css_asset, search_css_asset,
+                                     search_js_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_search_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{search_css_asset, search_js_asset};
   return locate_all(assets, config);
 }
 

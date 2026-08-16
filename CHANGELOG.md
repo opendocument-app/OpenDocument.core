@@ -16,6 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `odr.search()`, `searchNext()`, `searchPrevious()` and `resetSearch()` now
+  come with every view that renders text — a pdf, a text file, an xml view, an
+  archive listing — as the shipped `search.css` and `search.js`, which a host
+  that links rather than embeds has to serve.
+- A search hit in a pdf tints its glyphs instead of covering them; a pdf's
+  glyph layer and the text view's line numbers are not searched.
+- A keyword is found across the spans it happens to be written in — a pdf puts
+  a word in each — and a space matches whichever kind the page carries. It
+  still does not run across a line, a cell or a paragraph.
+
 ## v6.6.0 - 2026-08-14
 
 - A paragraph states its own font, so a run that names none of its own is read
