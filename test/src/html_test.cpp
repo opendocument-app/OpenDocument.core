@@ -56,6 +56,9 @@ TEST(html, linked_resources_are_served) {
   check(DecodedFile(TestData::test_file_path("odr-public/txt/lorem ipsum.txt"),
                     logger),
         "text.html");
+  check(
+      DecodedFile(TestData::test_file_path("odr-public/pdf/empty.pdf"), logger),
+      "document.html");
 }
 
 // The one archive the reference-output suite renders has no directory in it.
@@ -78,14 +81,21 @@ TEST(html, archive_entry_yields_to_a_shipped_resource) {
   const HtmlResources resources =
       html::translate(file, config, logger).list_views().at(0).write_html(out);
 
+  // The locator puts every shipped resource on that one location, so what the
+  // count says is that the entry of that name is not among them.
+  std::size_t shipped = 0;
   std::size_t claimants = 0;
   for (const auto &[resource, location] : resources) {
+    if (resource.is_shipped()) {
+      ++shipped;
+    }
     if (location.has_value() && *location == "content.xml") {
       ++claimants;
       EXPECT_TRUE(resource.is_shipped());
     }
   }
-  EXPECT_EQ(claimants, 1);
+  EXPECT_GT(shipped, 0);
+  EXPECT_EQ(claimants, shipped);
 }
 
 TEST(html, archive_listing) {

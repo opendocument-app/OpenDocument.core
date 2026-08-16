@@ -86,11 +86,13 @@ two differ only for `<a>   </a>`, and the looser rule leaves it alone.
 - **Highlighting is server-side spans**, one per token, emitted as the writer
   walks the tree. A JavaScript highlighter would undo the self-contained output
   for a job the writer already does.
-- **Folding is `<details>`/`<summary>`, with no script** — keyboard access,
-  screen-reader semantics, and find-in-page that natively expands a collapsed
-  section. Start tag in the `<summary>`, children then end tag in the body, so
-  collapsing hides the whole node. Everything is open by default. Bulk
-  expand-all/collapse-all would need JavaScript, and there is none.
+- **Folding is `<details>`/`<summary>`, and nothing drives it** — keyboard
+  access, screen-reader semantics, and find-in-page that natively expands a
+  collapsed section. Start tag in the `<summary>`, children then end tag in the
+  body, so collapsing hides the whole node. Everything is open by default. Bulk
+  expand-all/collapse-all would need JavaScript of its own, and there is none.
+  The view's only script is the shared `search.js`, which opens the section a
+  hit is in.
 - **No line numbers**; the column carries the fold handles, and every line
   reserves it so folding does not shift siblings.
 - **Indentation is spaces, not padding**, so a copy of the page carries it.

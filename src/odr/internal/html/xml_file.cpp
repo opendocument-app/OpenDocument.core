@@ -261,6 +261,7 @@ public:
     write_viewport_meta(out, config(), false);
 
     write_xml_style(state);
+    write_search_style(state);
 
     out.write_header_end();
 
@@ -271,6 +272,8 @@ public:
       write_node(out, child, 0);
     }
     out.write_element_end("div");
+
+    write_search_script(state);
 
     out.write_body_end();
 

@@ -12,6 +12,7 @@
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
@@ -1072,8 +1073,8 @@ private:
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
-      : HtmlService(std::move(config), logger),
-        m_pdf_file{std::move(pdf_file)} {}
+      : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
+        m_resources{locate_search_resources(this->config())} {}
 
   /// Parses once, applies the `[page_range_begin, page_range_end)` range and
   /// builds the views: the combined document plus one per rendered page. The
@@ -1121,20 +1122,33 @@ public:
     return m_views;
   }
 
-  [[nodiscard]] bool exists(const std::string &path) const override {
+  [[nodiscard]] bool is_view(const std::string &path) const {
     warmup();
     return std::ranges::any_of(
         m_views, [&path](const auto &view) { return view.path() == path; });
   }
 
+  [[nodiscard]] bool exists(const std::string &path) const override {
+    return is_view(path) || resource_at(m_resources, path) != nullptr;
+  }
+
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
-    if (exists(path)) {
+    if (is_view(path)) {
       return "text/html";
+    }
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
     throw FileNotFound("Unknown path: " + path);
   }
 
   void write(const std::string &path, std::ostream &out) const override {
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        !is_view(path) && resource != nullptr) {
+      resource->write_resource(out);
+      return;
+    }
     HtmlWriter writer(out, config());
     write_html(path, writer);
   }
@@ -1256,6 +1270,7 @@ public:
                                        const std::size_t first_page_number,
                                        const PageHref &page_href) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
@@ -1560,7 +1575,7 @@ public:
     }
     substitute_faces.append_faces(font_faces);
 
-    write_header_common(out, font_faces, font_styles, styles, [&] {
+    write_header_common(state, font_faces, font_styles, styles, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
@@ -1667,6 +1682,7 @@ public:
       out.write_element_end("div"); // .p
     }
     out.write_element_end("div"); // .d
+    write_search_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -1722,6 +1738,7 @@ public:
       HtmlWriter &out, const std::span<pdf::Page *const> pages,
       const std::size_t first_page_number, const PageHref &page_href) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
@@ -2034,7 +2051,7 @@ public:
     substitute_faces.append_faces(font_faces);
 
     // ---- Pass 2: write HTML ---------------------------------------------
-    write_header_common(out, font_faces, font_styles, styles, [&] {
+    write_header_common(state, font_faces, font_styles, styles, [&] {
       // Invisible text render modes (Tr 3/7).
       out.out() << ".i{color:transparent}";
       // Unclean glyphs via generated content, out of the DOM text stream.
@@ -2051,6 +2068,12 @@ public:
       // height, while clipping nothing (the space is transparent).
       out.out() << ".sp{display:inline-block;"
                    "color:transparent;vertical-align:baseline}";
+      // A hit in the overlay is clipped away with it, so the glyphs it belongs
+      // to carry the highlight instead - the whole run of them, which is as
+      // narrow as the overlay can say.
+      out.out() << ".gl:has(+.ov mark){background:#ff0;"
+                   "mix-blend-mode:multiply}";
+      out.out() << ".gl:has(+.ov mark.current){background:orange}";
     });
 
     // A run's span class: `head` plus its optional margin-left and colour.
@@ -2138,6 +2161,7 @@ public:
       out.write_element_end("div"); // .p
     }
     out.write_element_end("div"); // .d
+    write_search_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -2345,10 +2369,13 @@ public:
   /// The document/head prologue shared by both modes, with `write_mode_css()`
   /// slotted between the constant rules. Leaves the writer after `</head>`.
   template <typename WriteModeCss>
-  void write_header_common(HtmlWriter &out, const std::string &font_faces,
+  void write_header_common(const WritingState &state,
+                           const std::string &font_faces,
                            const std::string &font_styles,
                            const AtomicStyles &styles,
                            WriteModeCss &&write_mode_css) const {
+    HtmlWriter &out = state.out();
+
     out.write_begin();
     out.write_header_begin();
     out.write_header_charset("UTF-8");
@@ -2378,10 +2405,14 @@ public:
                  "overflow:hidden;pointer-events:none}";
     // Link annotation overlays (absolutely positioned in page-box points).
     out.out() << ".lk{position:absolute;transform-origin:0 0}";
+    // A search hit marks the text layer over the page: the browser's own `mark`
+    // colour would paint invisible text, an opaque highlight hide the glyphs.
+    out.out() << "mark{color:inherit;mix-blend-mode:multiply}";
     out.out() << font_faces;
     out.out() << font_styles;
     styles.write_rules(out.out());
     out.write_header_style_end();
+    write_search_style(state);
     out.write_header_end();
   }
 
@@ -2569,6 +2600,9 @@ public:
 
 protected:
   PdfFile m_pdf_file;
+  /// The search css and js every view links; empty of locations when the config
+  /// embeds them.
+  HtmlResources m_resources;
 
   // Lazily initialized by `warmup()` (all guarded by `m_mutex`): one parse
   // shared by the combined-document and per-page renders.

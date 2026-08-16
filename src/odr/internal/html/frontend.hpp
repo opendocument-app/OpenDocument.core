@@ -16,13 +16,17 @@ void write_text_style(const WritingState &state);
 void write_xml_style(const WritingState &state);
 void write_filesystem_style(const WritingState &state);
 void write_media_style(const WritingState &state);
+/// Written by every view that writes the search script.
+void write_search_style(const WritingState &state);
 
-/// The `odr` object a document view exposes to its host: `generateDiff()`,
-/// `search()`, `searchNext()`, `searchPrevious()`, `resetSearch()`.
+/// The `odr` object a document view exposes to its host: `generateDiff()`.
 void write_document_script(const WritingState &state);
 /// Written in addition to the document script.
 void write_spreadsheet_script(const WritingState &state);
 void write_text_script(const WritingState &state);
+/// `odr.search()`, `searchNext()`, `searchPrevious()`, `resetSearch()` — the
+/// rest of that object, for every view rendering text, whatever the format.
+void write_search_script(const WritingState &state);
 
 /// What the corresponding `write_*` calls would link, without writing anything:
 /// a service has to answer for these paths as well as for its views. Every
@@ -30,5 +34,6 @@ void write_text_script(const WritingState &state);
 HtmlResources locate_text_resources(const HtmlConfig &config);
 HtmlResources locate_xml_resources(const HtmlConfig &config);
 HtmlResources locate_media_resources(const HtmlConfig &config);
+HtmlResources locate_search_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html

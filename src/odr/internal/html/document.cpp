@@ -54,6 +54,7 @@ void front(const Document &document, const WritingState &state,
                           : std::nullopt);
 
   write_document_style(state);
+  write_search_style(state);
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_style(state);
   }
@@ -93,6 +94,7 @@ void back(const Document &document, const WritingState &state) {
     out.write_element_end("div");
   }
 
+  write_search_script(state);
   write_document_script(state);
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);

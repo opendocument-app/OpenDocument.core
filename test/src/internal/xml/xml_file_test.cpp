@@ -174,7 +174,6 @@ TEST(XmlHtml, an_element_with_element_children_folds) {
   EXPECT_THAT(html, HasSubstr("<summary>"));
   // the end tag is inside the fold, so collapsing hides the whole node
   EXPECT_THAT(html, HasSubstr(R"(&lt;/<span class="odr-xml-name">a</span>)"));
-  EXPECT_THAT(html, Not(HasSubstr("<script")));
 }
 
 /// An attribute value the tree gives back with a double quote in it has to be
