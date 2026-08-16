@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.7.1 - 2026-08-16
+
 - A pdf whose fonts are not embedded sits where the file puts it: a recovered
   word break was both written into the run and spanned by its offset, so every
   word drifted another space right and a search hit landed on its neighbour.
