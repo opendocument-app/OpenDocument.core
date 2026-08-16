@@ -31,7 +31,10 @@ x-s{display:inline}
    of that width, so fitting the document to a phone screen leaves a gutter
    instead of going edge to edge. */
 .odr-pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px 0;width:max-content;min-width:100%}
-.odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);z-index:-1000}
+/* A stacking context, for the shape backgrounds a page holds at `z-index:-1`.
+   Not a negative `z-index`, which is one too but takes the page out of reach of
+   hit testing. */
+.odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
