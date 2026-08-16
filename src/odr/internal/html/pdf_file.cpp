@@ -421,6 +421,13 @@ std::string local_font_sources(const std::string_view css_family,
     while (!name.empty() && name.back() == ' ') {
       name.remove_suffix(1);
     }
+    // The stack quotes a name that needs it ('Times New Roman'); `add` quotes
+    // again, and a doubly quoted name matches no installed face.
+    if (name.size() > 1 && (name.front() == '\'' || name.front() == '"') &&
+        name.back() == name.front()) {
+      name.remove_prefix(1);
+      name.remove_suffix(1);
+    }
     const bool generic = std::ranges::find(generics, name) != generics.end();
     if (!name.empty() && !generic) {
       for (const std::string_view suffix : suffixes) {
