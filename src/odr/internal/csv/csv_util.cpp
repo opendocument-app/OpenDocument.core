@@ -52,14 +52,67 @@ constexpr double punctuation_spacing = 0.9;
 /// @ref punctuation_spacing.
 constexpr std::size_t prose_field_length = 12;
 
-/// The length of @p field without the spaces around it.
+/// The length of @p field in characters, without the spaces around it. Bytes
+/// would read four cjk characters as a sentence.
 std::size_t trimmed_length(const std::string_view field) {
   constexpr std::string_view blanks = " \t";
   const std::size_t first = field.find_first_not_of(blanks);
   if (first == std::string_view::npos) {
     return 0;
   }
-  return field.find_last_not_of(blanks) - first + 1;
+  const std::string_view trimmed =
+      field.substr(first, field.find_last_not_of(blanks) - first + 1);
+  // every byte that is not a utf-8 continuation byte opens a character
+  return static_cast<std::size_t>(
+      std::ranges::count_if(trimmed, [](const char c) {
+        return (static_cast<unsigned char>(c) & 0xc0) != 0x80;
+      }));
+}
+
+/// What a record's fields look like — the evidence that its separator is
+/// punctuation rather than a delimiter.
+struct Fields final {
+  /// Fields after the first of their record - the ones a separator precedes.
+  std::size_t following{0};
+  /// How many of those begin with a space.
+  std::size_t space_led{0};
+  /// Every field's length in characters, spaces around it excluded.
+  std::size_t total_length{0};
+  std::size_t count{0};
+
+  Fields &operator+=(const Fields &other) noexcept {
+    following += other.following;
+    space_led += other.space_led;
+    total_length += other.total_length;
+    count += other.count;
+    return *this;
+  }
+
+  Fields &operator-=(const Fields &other) noexcept {
+    following -= other.following;
+    space_led -= other.space_led;
+    total_length -= other.total_length;
+    count -= other.count;
+    return *this;
+  }
+};
+
+Fields inspect(const std::vector<std::string> &fields) {
+  Fields result;
+  for (std::size_t i = 0; i < fields.size(); ++i) {
+    const std::string &field = fields[i];
+    result.total_length += trimmed_length(field);
+    ++result.count;
+
+    if (i == 0) {
+      continue;
+    }
+    ++result.following;
+    if (!field.empty() && field.front() == ' ') {
+      ++result.space_led;
+    }
+  }
+  return result;
 }
 
 /// What @p dialect finds in @p text: a field count per record, and what those
@@ -67,13 +120,10 @@ std::size_t trimmed_length(const std::string_view field) {
 struct Scan final {
   std::vector<std::uint32_t> counts;
   bool unterminated{false};
-  /// Fields after the first of their record - the ones a separator precedes.
-  std::size_t following_fields{0};
-  /// How many of those begin with a space.
-  std::size_t space_led_fields{0};
-  /// Every field's length, spaces around it excluded.
-  std::size_t total_field_length{0};
-  std::size_t field_count{0};
+  Fields fields;
+  /// The last record's share of @ref fields, so a truncated one can be taken
+  /// back out.
+  Fields last_record;
 };
 
 Scan scan(const std::string_view text, const Dialect dialect) {
@@ -82,20 +132,8 @@ Scan scan(const std::string_view text, const Dialect dialect) {
   std::vector<std::string> fields;
   while (reader.read(fields)) {
     result.counts.push_back(static_cast<std::uint32_t>(fields.size()));
-
-    for (std::size_t i = 0; i < fields.size(); ++i) {
-      const std::string &field = fields[i];
-      result.total_field_length += trimmed_length(field);
-      ++result.field_count;
-
-      if (i == 0) {
-        continue;
-      }
-      ++result.following_fields;
-      if (!field.empty() && field.front() == ' ') {
-        ++result.space_led_fields;
-      }
-    }
+    result.last_record = inspect(fields);
+    result.fields += result.last_record;
   }
   result.unterminated = reader.unterminated();
   return result;
@@ -119,6 +157,7 @@ Score score(Scan scan, const bool complete) {
   // a sample cut mid-record says nothing about the record it cut
   if (!complete && !scan.counts.empty()) {
     scan.counts.pop_back();
+    scan.fields -= scan.last_record;
   }
   if (scan.counts.empty()) {
     return {};
@@ -131,13 +170,13 @@ Score score(Scan scan, const bool complete) {
   const auto modal = std::ranges::max_element(
       histogram, {}, [](const auto &entry) { return entry.second; });
 
-  const bool spaced = scan.following_fields > 0 &&
-                      static_cast<double>(scan.space_led_fields) /
-                              static_cast<double>(scan.following_fields) >=
+  const bool spaced = scan.fields.following > 0 &&
+                      static_cast<double>(scan.fields.space_led) /
+                              static_cast<double>(scan.fields.following) >=
                           punctuation_spacing;
   const bool wordy =
-      scan.field_count > 0 &&
-      scan.total_field_length / scan.field_count >= prose_field_length;
+      scan.fields.count > 0 &&
+      scan.fields.total_length / scan.fields.count >= prose_field_length;
 
   return {modal->first,
           static_cast<double>(modal->second) /
