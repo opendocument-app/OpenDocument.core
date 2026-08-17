@@ -800,12 +800,19 @@ constexpr std::string_view text_js = R"js(
 
   // The measured height is fractional; `offsetHeight` would round it per line
   // and the numbers would walk away from the lines they belong to.
+  //
+  // Every height is read before any is written: interleaving them makes each
+  // read force the layout the write before it invalidated, one per line.
   TextEditor.prototype.updateLineNumberHeight = function () {
     var nrCells = this.textNr.querySelectorAll("div");
     var textCells = this.textBody.querySelectorAll("div");
-    for (var i = 0; i < textCells.length && i < nrCells.length; ++i) {
-      nrCells[i].style.height =
-        textCells[i].getBoundingClientRect().height + "px";
+    var count = Math.min(textCells.length, nrCells.length);
+    var heights = new Array(count);
+    for (var i = 0; i < count; ++i) {
+      heights[i] = textCells[i].getBoundingClientRect().height;
+    }
+    for (var j = 0; j < count; ++j) {
+      nrCells[j].style.height = heights[j] + "px";
     }
   };
 

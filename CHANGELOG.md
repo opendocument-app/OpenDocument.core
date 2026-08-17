@@ -19,6 +19,8 @@ The release run heads these entries with the version and opens a fresh
 - Prose is no longer read as a csv. A separator that every field follows with a
   space, in fields long enough to be sentences, is punctuation; `a, b, c` with
   short values is still a csv. One record is a line, not a table.
+- A large text file appears at once: sizing the line numbers laid the page out
+  once per line. A megabyte took 38s and now takes under a second.
 
 ## v6.7.1 - 2026-08-16
 
