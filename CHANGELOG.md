@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Prose is no longer read as a csv. A separator that every field follows with a
+  space, in fields long enough to be sentences, is punctuation; `a, b, c` with
+  short values is still a csv. One record is a line, not a table.
+
 ## v6.7.1 - 2026-08-16
 
 - A pdf whose fonts are not embedded sits where the file puts it: a recovered

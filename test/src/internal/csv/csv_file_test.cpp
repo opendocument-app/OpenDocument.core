@@ -119,6 +119,42 @@ TEST(CsvProbe, a_separator_that_only_sometimes_appears_loses) {
   EXPECT_EQ(result.columns, 2u);
 }
 
+/// Prose puts a comma between clauses and a space after it, which is a two
+/// column table by field count alone. The doubt breaks towards text: it is the
+/// readable way to be wrong about either one.
+TEST(CsvProbe, prose_is_not_a_table) {
+  EXPECT_FALSE(probe("Lorem ipsum dolor sit, consectetur adipiscing elit\n"
+                     "Lorem ipsum dolor sit, consectetur adipiscing elit\n"
+                     "Lorem ipsum dolor sit, consectetur adipiscing elit\n")
+                   .is_csv);
+
+  EXPECT_FALSE(probe("Sehr geehrte Damen und Herren, hiermit teile ich mit\n"
+                     "dass die Lieferung, wie besprochen, eingetroffen ist\n"
+                     "Mit freundlichen Gruessen, Ihre Buchhaltung heute\n")
+                   .is_csv);
+
+  // the same shape with a semicolon between the clauses
+  EXPECT_FALSE(probe("Lorem ipsum dolor sit; consectetur adipiscing elit\n"
+                     "Lorem ipsum dolor sit; consectetur adipiscing elit\n"
+                     "Lorem ipsum dolor sit; consectetur adipiscing elit\n")
+                   .is_csv);
+}
+
+/// The space after the separator is only evidence against alongside fields long
+/// enough to be sentences: a csv written with room to breathe is still a csv.
+TEST(CsvProbe, short_values_may_be_spaced_out) {
+  EXPECT_TRUE(
+      probe("name, age, city\nada, 36, london\nalan, 41, dublin\n").is_csv);
+  EXPECT_TRUE(probe("city, country\nlondon, england\nlyon, france\n").is_csv);
+}
+
+/// However many separators it holds - a paragraph is one record, and one record
+/// is a line rather than a table.
+TEST(CsvProbe, a_single_record_is_not_a_table) {
+  EXPECT_FALSE(probe("a,b,c,d,e,f,g,h").is_csv);
+  EXPECT_FALSE(probe("a,b,c,d,e,f,g,h\n").is_csv);
+}
+
 TEST(CsvProbe, excel_declares_its_separator) {
   const csv::Probe result = probe("sep=;\na;b\n1;2\n");
   EXPECT_TRUE(result.is_csv);

@@ -43,10 +43,37 @@ std::optional<char> separator_directive(const std::string_view text) {
   return separator;
 }
 
-/// The field counts of every record @p dialect finds in @p text.
+/// Share of the fields after the first that must begin with a space before the
+/// separator is read as punctuation rather than a delimiter.
+constexpr double punctuation_spacing = 0.9;
+
+/// Mean field length, in characters, above which the fields read as prose
+/// rather than as values. Only ever consulted together with
+/// @ref punctuation_spacing.
+constexpr std::size_t prose_field_length = 12;
+
+/// The length of @p field without the spaces around it.
+std::size_t trimmed_length(const std::string_view field) {
+  constexpr std::string_view blanks = " \t";
+  const std::size_t first = field.find_first_not_of(blanks);
+  if (first == std::string_view::npos) {
+    return 0;
+  }
+  return field.find_last_not_of(blanks) - first + 1;
+}
+
+/// What @p dialect finds in @p text: a field count per record, and what those
+/// fields look like.
 struct Scan final {
   std::vector<std::uint32_t> counts;
   bool unterminated{false};
+  /// Fields after the first of their record - the ones a separator precedes.
+  std::size_t following_fields{0};
+  /// How many of those begin with a space.
+  std::size_t space_led_fields{0};
+  /// Every field's length, spaces around it excluded.
+  std::size_t total_field_length{0};
+  std::size_t field_count{0};
 };
 
 Scan scan(const std::string_view text, const Dialect dialect) {
@@ -55,16 +82,37 @@ Scan scan(const std::string_view text, const Dialect dialect) {
   std::vector<std::string> fields;
   while (reader.read(fields)) {
     result.counts.push_back(static_cast<std::uint32_t>(fields.size()));
+
+    for (std::size_t i = 0; i < fields.size(); ++i) {
+      const std::string &field = fields[i];
+      result.total_field_length += trimmed_length(field);
+      ++result.field_count;
+
+      if (i == 0) {
+        continue;
+      }
+      ++result.following_fields;
+      if (!field.empty() && field.front() == ' ') {
+        ++result.space_led_fields;
+      }
+    }
   }
   result.unterminated = reader.unterminated();
   return result;
 }
 
 /// How well @p dialect explains @p text: the field count most records carry,
-/// and the share of records carrying it.
+/// the share of records carrying it, and whether the separator is doing the
+/// work of a delimiter or of punctuation.
 struct Score final {
   std::uint32_t columns{0};
   double agreement{0.0};
+  std::size_t records{0};
+  /// Whether the separator reads as punctuation: every field after it opens
+  /// with a space, and the fields are long enough to be sentences. Prose that
+  /// puts a comma between clauses is a two column table without this, and a
+  /// table is the worse way to be wrong about text.
+  bool punctuation{false};
 };
 
 Score score(Scan scan, const bool complete) {
@@ -83,8 +131,18 @@ Score score(Scan scan, const bool complete) {
   const auto modal = std::ranges::max_element(
       histogram, {}, [](const auto &entry) { return entry.second; });
 
-  return {modal->first, static_cast<double>(modal->second) /
-                            static_cast<double>(scan.counts.size())};
+  const bool spaced = scan.following_fields > 0 &&
+                      static_cast<double>(scan.space_led_fields) /
+                              static_cast<double>(scan.following_fields) >=
+                          punctuation_spacing;
+  const bool wordy =
+      scan.field_count > 0 &&
+      scan.total_field_length / scan.field_count >= prose_field_length;
+
+  return {modal->first,
+          static_cast<double>(modal->second) /
+              static_cast<double>(scan.counts.size()),
+          scan.counts.size(), spaced && wordy};
 }
 
 } // namespace
@@ -190,7 +248,11 @@ csv::Probe csv::probe(const std::string_view text, const bool complete,
     }
 
     const Score scored = score(scanned, complete);
-    if (scored.columns < 2) {
+    if (scored.columns < 2 || scored.punctuation) {
+      continue;
+    }
+    // one record is a line, not a table, however many separators it holds
+    if (scored.records < 2) {
       continue;
     }
     if (scored.agreement > best.agreement ||
