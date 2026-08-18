@@ -359,6 +359,22 @@ TEST(CffFontTest, ResolvesStandardStringAndReverseMap) {
   EXPECT_EQ(font.glyph_for_code_point(U'A'), 1);
 }
 
+TEST(CffFontTest, SelectsGlyphByName) {
+  // A custom name resolves through the String INDEX, a standard one through
+  // the generated table, and an absent one answers 0.
+  const CffFont custom{build_cff()};
+  EXPECT_EQ(custom.glyph_for_name("myglyph"), 1);
+  EXPECT_EQ(custom.glyph_for_name("A"), 0); // SID 34, but no glyph carries it
+  EXPECT_EQ(custom.glyph_for_name(""), 0);
+
+  const CffFont standard{build_cff(/*glyph1_sid=*/34)};
+  EXPECT_EQ(standard.glyph_for_name("A"), 1);
+
+  // A CID-keyed charset holds CIDs, so it names nothing.
+  const CffFont cid_keyed{build_cid_keyed_cff()};
+  EXPECT_EQ(cid_keyed.glyph_for_name("A"), 0);
+}
+
 TEST(CffFontTest, MaterializesIsoAdobePredefinedCharset) {
   // `/charset 0` (and an omitted `/charset`) selects the ISOAdobe charset, the
   // identity SID == GID; without materializing it the glyphs would be

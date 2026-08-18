@@ -128,6 +128,16 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
     }
     return code < cid_to_gid.size() ? cid_to_gid[code] : 0;
   }
+  // Simple Type1/CFF (ISO 32000-1 9.6.6.2): the name selects the glyph in the
+  // font program. Subset producers name glyphs `gidNNNNN`, which no glyph list
+  // translates, so the charset is the only link that reaches them.
+  if (encoding.has_value()) {
+    if (const std::uint16_t glyph = embedded_font->glyph_for_name(
+            encoding->glyph_name(static_cast<std::uint8_t>(code)));
+        glyph != 0) {
+      return glyph;
+    }
+  }
   // Simple TrueType (ISO 32000-1 9.6.6.4), best effort: the embedded cmap keyed
   // on the byte code first (symbolic (3,0)/(1,0) fonts), then on the code's
   // Unicode (via the /Encoding glyph name), then the code as a GID.

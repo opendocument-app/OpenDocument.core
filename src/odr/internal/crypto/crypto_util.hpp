@@ -51,6 +51,7 @@ std::string decrypt_blowfish(std::string_view key, std::string_view iv,
 std::string inflate(std::string_view input);
 std::size_t padding(std::string_view input);
 
+/// Inflates a zlib stream, ignoring its ADLER32 trailer.
 std::string zlib_inflate(std::string_view input);
 std::string zlib_deflate(std::string_view input);
 
