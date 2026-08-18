@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A document can be read in the dark: `HtmlConfig::color_scheme` is `light` (a
+  white page, what it has always been), `dark`, or `system`, which follows the
+  reader's `prefers-color-scheme`. It reaches every document type, and the
+  colors the file itself authored give way to it — a fill to the page, a run of
+  text to one legible against it — because no media query reaches an inline
+  style. Mirrored in the python, wasm, jni and apple bindings as
+  `HtmlColorScheme`.
+- A text document reflowed to the viewport — page margins off — is inset from
+  the edge of the screen by 3mm instead of starting at the first pixel of it.
 - Prose is no longer read as a csv. A separator that every field follows with a
   space, in fields long enough to be sentences, is punctuation; `a, b, c` with
   short values is still a csv. One record is a line, not a table.

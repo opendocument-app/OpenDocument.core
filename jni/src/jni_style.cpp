@@ -344,6 +344,9 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_boolean("relativeResourcePaths", config.relative_resource_paths);
   set_boolean("editable", config.editable);
   set_boolean("textDocumentMargin", config.text_document_margin);
+  set_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;",
+             enum_from_code(env, "app/opendocument/core/HtmlColorScheme",
+                            static_cast<jint>(config.color_scheme)));
   set_object("spreadsheetLimit", "Lapp/opendocument/core/TableDimensions;",
              config.spreadsheet_limit.has_value()
                  ? make_table_dimensions(env, *config.spreadsheet_limit)
@@ -452,6 +455,14 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   result.relative_resource_paths = get_boolean("relativeResourcePaths");
   result.editable = get_boolean("editable");
   result.text_document_margin = get_boolean("textDocumentMargin");
+  {
+    const jint code = enum_ordinal(
+        env,
+        get_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;"));
+    if (code >= 0) {
+      result.color_scheme = static_cast<odr::HtmlColorScheme>(code);
+    }
+  }
   {
     jobject limit = get_object("spreadsheetLimit",
                                "Lapp/opendocument/core/TableDimensions;");

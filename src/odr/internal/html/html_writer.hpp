@@ -5,6 +5,7 @@
 #include <functional>
 #include <iosfwd>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -61,8 +62,9 @@ public:
   void write_header_viewport(const std::string &viewport);
   void write_header_target(const std::string &target);
   void write_header_charset(const std::string &charset);
-  void write_header_style(const std::string &href);
-  void write_header_style_begin();
+  /// @p media, when given, gates the stylesheet on that media query.
+  void write_header_style(const std::string &href, std::string_view media = {});
+  void write_header_style_begin(std::string_view media = {});
   void write_header_style_end();
 
   void write_script(const std::string &src);

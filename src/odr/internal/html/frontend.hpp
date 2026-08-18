@@ -12,6 +12,10 @@ struct WritingState;
 void write_document_style(const WritingState &state);
 /// Written in addition to the document style.
 void write_spreadsheet_style(const WritingState &state);
+/// Written last of a document's styles, and only where the config asks for a
+/// scheme other than @ref odr::HtmlColorScheme::light: it restates what those
+/// before it painted white.
+void write_color_scheme_style(const WritingState &state);
 void write_text_style(const WritingState &state);
 void write_xml_style(const WritingState &state);
 void write_filesystem_style(const WritingState &state);

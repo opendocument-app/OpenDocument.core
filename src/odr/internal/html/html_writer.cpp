@@ -192,19 +192,28 @@ void HtmlWriter::write_header_charset(const std::string &charset) {
   out() << "\"/>";
 }
 
-void HtmlWriter::write_header_style(const std::string &href) {
+void HtmlWriter::write_header_style(const std::string &href,
+                                    const std::string_view media) {
   write_new_line();
 
   out() << R"(<link rel="stylesheet" href=")";
   out() << href;
-  out() << "\"/>";
+  out() << "\"";
+  if (!media.empty()) {
+    out() << R"( media=")" << media << "\"";
+  }
+  out() << "/>";
 }
 
-void HtmlWriter::write_header_style_begin() {
+void HtmlWriter::write_header_style_begin(const std::string_view media) {
   write_new_line();
   ++m_current_indent;
 
-  out() << "<style>";
+  out() << "<style";
+  if (!media.empty()) {
+    out() << R"( media=")" << media << "\"";
+  }
+  out() << ">";
 }
 
 void HtmlWriter::write_header_style_end() {

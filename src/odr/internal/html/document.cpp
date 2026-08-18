@@ -58,6 +58,7 @@ void front(const Document &document, const WritingState &state,
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_style(state);
   }
+  write_color_scheme_style(state);
 
   out.write_header_end();
 
@@ -317,7 +318,8 @@ public:
       out.write_element_end("div");
       out.write_element_end("div");
     } else {
-      out.write_element_begin("div");
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class("odr-text-flow"));
       translate_children(element.children(), state);
       out.write_element_end("div");
     }

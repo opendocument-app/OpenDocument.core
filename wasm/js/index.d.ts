@@ -7,6 +7,7 @@ export interface EnumTables {
   FileCategory: Record<string, number>;
   DocumentType: Record<string, number>;
   HtmlResourceType: Record<string, number>;
+  HtmlColorScheme: Record<string, number>;
   HtmlTableGridlines: Record<string, number>;
   HtmlViewportMode: Record<string, number>;
   PdfTextMode: Record<string, number>;
@@ -77,6 +78,7 @@ export interface HtmlConfig {
   backgroundImageDpi?: number;
   pageRangeBegin?: number;
   pageRangeEnd?: number;
+  colorScheme?: number;
   spreadsheetGridlines?: number;
   viewportMode?: number;
   pdfTextMode?: number;

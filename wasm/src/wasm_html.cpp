@@ -138,6 +138,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
     config.page_range_end = end.as<std::uint32_t>();
   }
 
+  read_enum(value, "colorScheme", config.color_scheme);
   read_enum(value, "spreadsheetGridlines", config.spreadsheet_gridlines);
   read_enum(value, "viewportMode", config.viewport_mode);
   read_enum(value, "pdfTextMode", config.pdf_text_mode);

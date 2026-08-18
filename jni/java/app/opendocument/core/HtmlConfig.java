@@ -23,6 +23,9 @@ public final class HtmlConfig {
 
   public boolean textDocumentMargin = false;
 
+  /** The colors a document renders against. */
+  public HtmlColorScheme colorScheme = HtmlColorScheme.LIGHT;
+
   /** {@code null} disables the spreadsheet limit. */
   public TableDimensions spreadsheetLimit = new TableDimensions(10000, 500);
   public boolean spreadsheetLimitByContent = true;

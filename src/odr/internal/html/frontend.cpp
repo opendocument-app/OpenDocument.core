@@ -35,6 +35,11 @@ x-s{display:inline}
    Not a negative `z-index`, which is one too but takes the page out of reach of
    hit testing. */
 .odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
+/* Reflowed to the viewport there is no page box to inset the text, and the body
+   has no margin of its own, so it would begin at the screen edge. A page's own
+   margin is a physical measure, and so is this one, rather than a `ch` of
+   whatever font the browser happens to default to. */
+.odr-text-flow{padding:3mm}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
@@ -177,6 +182,41 @@ body{margin:0;background:#000}
 .odr-media{display:flex;align-items:center;justify-content:center;min-height:100vh}
 .odr-media video{max-width:100%;max-height:100vh}
 .odr-media audio{width:100%;max-width:40rem;margin:0 1rem}
+)css";
+
+/// The dark palette. Written after every stylesheet it restates, and — for
+/// @ref odr::HtmlColorScheme::system — carried by an element whose `media`
+/// attribute gates it, so no rule in here needs a query of its own.
+constexpr std::string_view dark_css = R"css(
+:root{
+color-scheme:dark;
+--odr-sheet-line:#30363d;
+--odr-sheet-rule:#484f58;
+--odr-sheet-ruler:#161b22;
+--odr-sheet-ruler-text:#8b949e;
+--odr-sheet-canvas:#0d1117;
+--odr-sheet-wash:rgba(255,255,255,.05);
+--odr-sheet-wash-pinned:rgba(255,255,255,.10);
+--odr-sheet-wash-ruler:rgba(255,255,255,.12);
+--odr-sheet-focus:#4c8dff;
+}
+body{background:#0d1117;color:#e6edf3}
+/* The backdrop stays darker than the page, as it is lighter than it in light:
+   what makes a page read as a sheet is the step between them. */
+.odr-background{background:#010409}
+.odr-page-outer{background-color:#161b22!important;box-shadow:0 1px 4px rgba(0,0,0,.8)}
+.odr-sheet{background-color:#161b22!important}
+/* The colors the file authored are inline, and no media query reaches an inline
+   style — so they are overridden here rather than dropped as the file is read.
+   Every fill gives way to the page and every run of text to one legible against
+   it, which costs a slide its own fills and is what keeps its text readable.
+   `background-image` is left alone: a page printed on a picture keeps it. */
+div,table,tr,td,x-p,x-s{background-color:transparent!important}
+td,x-p,x-s{color:#e6edf3!important}
+a,a x-p,a x-s{color:#6cb6ff!important}
+/* Ours rather than the file's, and the only light thing left: the search mark
+   keeps its yellow and takes dark text against it. */
+mark{color:#0d1117!important}
 )css";
 
 /// What the search script paints.
@@ -1110,6 +1150,8 @@ constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
                                      "filesystem.css", filesystem_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
                                 media_css};
+constexpr Asset dark_css_asset{HtmlResourceType::css, "text/css", "dark.css",
+                               dark_css};
 constexpr Asset search_css_asset{HtmlResourceType::css, "text/css",
                                  "search.css", search_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
@@ -1142,15 +1184,17 @@ HtmlResources locate_all(const std::span<const Asset> assets,
   return resources;
 }
 
-void write_style(const Asset &asset, const WritingState &state) {
+/// @p media, when given, gates the stylesheet on that media query.
+void write_style(const Asset &asset, const WritingState &state,
+                 const std::string_view media = {}) {
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
       location.has_value()) {
-    state.out().write_header_style(escape_attribute(*location));
+    state.out().write_header_style(escape_attribute(*location), media);
     return;
   }
 
-  state.out().write_header_style_begin();
+  state.out().write_header_style_begin(media);
   state.out().out() << asset.content;
   state.out().write_header_style_end();
 }
@@ -1180,6 +1224,20 @@ void html::write_document_style(const WritingState &state) {
 
 void html::write_spreadsheet_style(const WritingState &state) {
   write_style(spreadsheet_css_asset, state);
+}
+
+void html::write_color_scheme_style(const WritingState &state) {
+  switch (state.config().color_scheme) {
+  case HtmlColorScheme::dark:
+    write_style(dark_css_asset, state);
+    break;
+  case HtmlColorScheme::system:
+    write_style(dark_css_asset, state, "(prefers-color-scheme: dark)");
+    break;
+  case HtmlColorScheme::light:
+  default:
+    break;
+  }
 }
 
 void html::write_text_style(const WritingState &state) {

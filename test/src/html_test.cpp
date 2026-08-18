@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -138,6 +139,75 @@ TEST(html, archive_listing) {
   EXPECT_TRUE(std::filesystem::is_regular_file(
       std::filesystem::path(output_path) / "Pictures" /
       "10000000000001F4000001FF1D2394A8.jpg"));
+}
+
+namespace {
+
+std::string render_odt(const HtmlConfig &config) {
+  const DecodedFile file(TestData::test_file_path("odr-public/odt/about.odt"),
+                         Logger::null());
+
+  std::ostringstream out;
+  html::translate(file, config).list_views().at(0).write_html(out);
+  return out.str();
+}
+
+} // namespace
+
+// Reflowed to the viewport a text document has no page box to inset it, and the
+// body carries no margin of its own.
+TEST(html, flowing_text_is_inset_from_the_screen_edge) {
+  HtmlConfig config;
+  config.text_document_margin = false;
+
+  const std::string page = render_odt(config);
+
+  EXPECT_NE(page.find(R"(<div class="odr-text-flow">)"), std::string::npos);
+  EXPECT_NE(page.find(".odr-text-flow{padding:"), std::string::npos);
+}
+
+// The colors a document sets are inline, out of reach of a media query, so the
+// dark scheme is a stylesheet that overrides them — and for `system` it is the
+// element carrying that stylesheet which is gated, not a rule inside it.
+TEST(html, color_scheme_writes_the_dark_style) {
+  HtmlConfig config;
+
+  EXPECT_EQ(config.color_scheme, HtmlColorScheme::light);
+  EXPECT_EQ(render_odt(config).find("color-scheme:dark"), std::string::npos);
+
+  config.color_scheme = HtmlColorScheme::dark;
+  const std::string dark = render_odt(config);
+  EXPECT_NE(dark.find("color-scheme:dark"), std::string::npos);
+  EXPECT_EQ(dark.find("prefers-color-scheme"), std::string::npos);
+
+  config.color_scheme = HtmlColorScheme::system;
+  const std::string system = render_odt(config);
+  EXPECT_NE(
+      system.find(R"html(<style media="(prefers-color-scheme: dark)">)html"),
+      std::string::npos);
+}
+
+// A linked stylesheet keeps its media query, and the service answers for it.
+TEST(html, linked_dark_style_is_served) {
+  HtmlConfig config;
+  config.embed_shipped_resources = false;
+  config.color_scheme = HtmlColorScheme::system;
+
+  const DecodedFile file(TestData::test_file_path("odr-public/odt/about.odt"),
+                         Logger::null());
+  const HtmlService service = html::translate(file, config);
+
+  std::ostringstream out;
+  const HtmlResources resources = service.list_views().at(0).write_html(out);
+
+  EXPECT_NE(
+      out.str().find(
+          R"html(<link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)"/>)html"),
+      std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &entry) {
+    return entry.second.has_value() && *entry.second == "dark.css";
+  }));
+  EXPECT_TRUE(service.exists("dark.css"));
 }
 
 TEST(html, views) {

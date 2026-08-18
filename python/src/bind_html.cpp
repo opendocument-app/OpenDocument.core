@@ -30,6 +30,11 @@ void odr_python::bind_html(py::module_ &m) {
       .value("soft", odr::HtmlTableGridlines::soft)
       .value("hard", odr::HtmlTableGridlines::hard);
 
+  py::enum_<odr::HtmlColorScheme>(m, "HtmlColorScheme")
+      .value("light", odr::HtmlColorScheme::light)
+      .value("dark", odr::HtmlColorScheme::dark)
+      .value("system", odr::HtmlColorScheme::system);
+
   py::enum_<odr::HtmlViewportMode>(m, "HtmlViewportMode")
       .value("automatic", odr::HtmlViewportMode::automatic)
       .value("fit_width", odr::HtmlViewportMode::fit_width)
@@ -75,6 +80,7 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("editable", &odr::HtmlConfig::editable)
       .def_readwrite("text_document_margin",
                      &odr::HtmlConfig::text_document_margin)
+      .def_readwrite("color_scheme", &odr::HtmlConfig::color_scheme)
       .def_readwrite("spreadsheet_limit", &odr::HtmlConfig::spreadsheet_limit)
       .def_readwrite("spreadsheet_limit_by_content",
                      &odr::HtmlConfig::spreadsheet_limit_by_content)
