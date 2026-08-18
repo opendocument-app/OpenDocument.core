@@ -31,6 +31,9 @@ The release run heads these entries with the version and opens a fresh
   short values is still a csv. One record is a line, not a table.
 - A large text file appears at once: sizing the line numbers laid the page out
   once per line. A megabyte took 38s and now takes under a second.
+- **Deprecated** `HtmlConfig::embed_outline`, `no_drm`,
+  `background_image_format` and `background_image_dpi`. Nothing has read them
+  for a while; they still store and return what is set.
 
 ## v6.7.1 - 2026-08-16
 

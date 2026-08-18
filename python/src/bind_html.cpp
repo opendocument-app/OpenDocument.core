@@ -94,9 +94,11 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("html_indent", &odr::HtmlConfig::html_indent)
       .def_readwrite("html_indent_string", &odr::HtmlConfig::html_indent_string)
       .def_readwrite("background_image_format",
-                     &odr::HtmlConfig::background_image_format)
+                     &odr::HtmlConfig::background_image_format,
+                     "Deprecated and inert.")
       .def_readwrite("background_image_dpi",
-                     &odr::HtmlConfig::background_image_dpi)
+                     &odr::HtmlConfig::background_image_dpi,
+                     "Deprecated and inert.")
       .def_readwrite("page_range_begin", &odr::HtmlConfig::page_range_begin)
       .def_readwrite("page_range_end", &odr::HtmlConfig::page_range_end)
       .def_readwrite("pdf_text_mode", &odr::HtmlConfig::pdf_text_mode)
@@ -104,8 +106,10 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::pdf_dual_layer_fallback_fonts)
       .def_readwrite("pdf_dual_layer_fallback_font_size_adjust",
                      &odr::HtmlConfig::pdf_dual_layer_fallback_font_size_adjust)
-      .def_readwrite("no_drm", &odr::HtmlConfig::no_drm)
-      .def_readwrite("embed_outline", &odr::HtmlConfig::embed_outline)
+      .def_readwrite("no_drm", &odr::HtmlConfig::no_drm,
+                     "Deprecated and inert.")
+      .def_readwrite("embed_outline", &odr::HtmlConfig::embed_outline,
+                     "Deprecated and inert.")
       .def_readwrite("output_path", &odr::HtmlConfig::output_path)
       .def_readwrite("resource_locator", &odr::HtmlConfig::resource_locator);
 

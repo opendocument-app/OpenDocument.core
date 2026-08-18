@@ -42,8 +42,11 @@ public final class HtmlConfig {
   public int htmlIndent = 1;
   public String htmlIndentString = "\t";
 
-  public String backgroundImageFormat = "png";
-  public double backgroundImageDpi = 144.0;
+  /** @deprecated Inert. */
+  @Deprecated public String backgroundImageFormat = "png";
+
+  /** @deprecated Inert. */
+  @Deprecated public double backgroundImageDpi = 144.0;
 
   public int pageRangeBegin = 0;
   /** {@code null} renders to the end of the document. */
@@ -55,9 +58,11 @@ public final class HtmlConfig {
   };
   public double pdfDualLayerFallbackFontSizeAdjust = 0.5;
 
-  public boolean noDrm = false;
+  /** @deprecated Inert. */
+  @Deprecated public boolean noDrm = false;
 
-  public boolean embedOutline = false;
+  /** @deprecated Inert. */
+  @Deprecated public boolean embedOutline = false;
 
   /** {@code null} keeps output in the cache directory. */
   public String outputPath;
