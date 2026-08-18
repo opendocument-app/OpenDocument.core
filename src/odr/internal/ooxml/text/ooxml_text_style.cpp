@@ -2,6 +2,7 @@
 
 #include <odr/internal/ooxml/ooxml_util.hpp>
 
+#include <cstring>
 #include <ranges>
 #include <utility>
 #include <vector>
@@ -75,6 +76,34 @@ void resolve_paragraph_style_(const pugi::xml_node node,
           paragraph_properties.child("w:ind").attribute("w:end"))) {
     result.margin.right = margin_right;
   }
+
+  const pugi::xml_node spacing = paragraph_properties.child("w:spacing");
+
+  // an autospacing flag makes word compute the spacing itself and ignore the
+  // value next to it
+  if (!read_on_off_attribute(spacing.attribute("w:beforeAutospacing"))) {
+    if (const std::optional<Measure> margin_top =
+            read_twips_attribute(spacing.attribute("w:before"))) {
+      result.margin.top = margin_top;
+    }
+  }
+  if (!read_on_off_attribute(spacing.attribute("w:afterAutospacing"))) {
+    if (const std::optional<Measure> margin_bottom =
+            read_twips_attribute(spacing.attribute("w:after"))) {
+      result.margin.bottom = margin_bottom;
+    }
+  }
+  if (const pugi::xml_attribute line = spacing.attribute("w:line")) {
+    // [ECMA-376] 17.3.1.33: `atLeast`/`exact` measure in twips, the default
+    // `auto` in 240ths of a line
+    const char *line_rule = spacing.attribute("w:lineRule").value();
+    if (std::strcmp("atLeast", line_rule) == 0 ||
+        std::strcmp("exact", line_rule) == 0) {
+      result.line_height = read_twips_attribute(line);
+    } else {
+      result.line_height = Measure(line.as_double() / 2.4, DynamicUnit("%"));
+    }
+  }
 }
 
 void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
@@ -86,10 +115,19 @@ void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
   }
 }
 
-void resolve_table_row_style_(pugi::xml_node /*node*/,
-                              TableRowStyle & /*result*/) {
-  // TODO
-  // auto table_row_properties = node.child("w:trPr");
+void resolve_table_row_style_(const pugi::xml_node node,
+                              TableRowStyle &result) {
+  const pugi::xml_node table_row_properties = node.child("w:trPr");
+
+  // `auto` makes the row grow with its content, which is what html does anyway;
+  // word omits the rule for `atLeast`, so a bare `w:val` is a minimum height
+  const pugi::xml_node height = table_row_properties.child("w:trHeight");
+  if (std::strcmp("auto", height.attribute("w:hRule").value()) != 0) {
+    if (const std::optional<Measure> height_value =
+            read_twips_attribute(height.attribute("w:val"))) {
+      result.height = height_value;
+    }
+  }
 }
 
 void resolve_table_cell_style_(const pugi::xml_node node,
@@ -127,6 +165,68 @@ void resolve_graphic_style_(pugi::xml_node, GraphicStyle &) {
   // TODO
 }
 
+/// A `w:sdt` and its `w:sdtContent` become a group, which the html renderer
+/// writes as nothing but its children — the paragraphs around one are
+/// neighbours on the page.
+bool is_transparent_wrapper(const pugi::xml_node node) {
+  const char *name = node.name();
+  return std::strcmp("w:sdt", name) == 0 ||
+         std::strcmp("w:sdtContent", name) == 0;
+}
+
+bool is_block(const pugi::xml_node node) {
+  const char *name = node.name();
+  return std::strcmp("w:p", name) == 0 || std::strcmp("w:tbl", name) == 0;
+}
+
+/// The block `node` puts on the given side, `node` itself unless it wraps one;
+/// nothing for a marker element such as `w:bookmarkEnd`.
+pugi::xml_node block_within(const pugi::xml_node node, const bool previous) {
+  if (!is_transparent_wrapper(node)) {
+    return is_block(node) ? node : pugi::xml_node();
+  }
+  for (pugi::xml_node child = previous ? node.last_child() : node.first_child();
+       child;
+       child = previous ? child.previous_sibling() : child.next_sibling()) {
+    if (const pugi::xml_node block = block_within(child, previous)) {
+      return block;
+    }
+  }
+  return {};
+}
+
+/// The block that neighbours `node` in document order, stepping over marker
+/// elements and seeing through the wrappers. Stops at anything else — a cell
+/// or the body end — so a paragraph never neighbours one outside its container.
+pugi::xml_node block_neighbour(pugi::xml_node node, const bool previous) {
+  while (true) {
+    for (pugi::xml_node sibling = previous ? node.previous_sibling()
+                                           : node.next_sibling();
+         sibling; sibling = previous ? sibling.previous_sibling()
+                                     : sibling.next_sibling()) {
+      if (const pugi::xml_node block = block_within(sibling, previous)) {
+        return block;
+      }
+    }
+    if (!is_transparent_wrapper(node.parent())) {
+      return {};
+    }
+    node = node.parent();
+  }
+}
+
+/// Whether `node` is a paragraph carrying the paragraph style `style_name`
+/// names, an absent name matching an absent `w:pStyle`.
+bool has_paragraph_style(const pugi::xml_node node,
+                         const pugi::xml_attribute style_name) {
+  if (std::strcmp("w:p", node.name()) != 0) {
+    return false;
+  }
+  return std::strcmp(
+             node.child("w:pPr").child("w:pStyle").attribute("w:val").value(),
+             style_name.value()) == 0;
+}
+
 } // namespace
 
 Style::Style(const pugi::xml_node node) : m_node{node} {
@@ -140,6 +240,7 @@ Style::Style(std::string name, const pugi::xml_node node, const Style *parent)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
   if (parent != nullptr) {
     m_resolved = parent->m_resolved;
+    m_contextual_spacing = parent->m_contextual_spacing;
   }
 
   resolve_style_();
@@ -151,7 +252,14 @@ const Style *Style::parent() const { return m_parent; }
 
 const ResolvedStyle &Style::resolved() const { return m_resolved; }
 
+bool Style::contextual_spacing() const { return m_contextual_spacing; }
+
 void Style::resolve_style_() {
+  if (const pugi::xml_node contextual_spacing =
+          m_node.child("w:pPr").child("w:contextualSpacing")) {
+    m_contextual_spacing = read_on_off_attribute(contextual_spacing);
+  }
+
   resolve_text_style_(m_node, m_resolved.text_style);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
@@ -204,29 +312,58 @@ StyleRegistry::partial_text_style(const pugi::xml_node node) const {
 
 ResolvedStyle
 StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
+  const pugi::xml_node paragraph_properties = node.child("w:pPr");
+  const pugi::xml_attribute style_name =
+      paragraph_properties.child("w:pStyle").attribute("w:val");
+
   ResolvedStyle result;
   // TODO consider w:default="1"
-  if (const pugi::xml_attribute style_name =
-          node.child("w:pPr").child("w:pStyle").attribute("w:val")) {
-    if (const Style *style = this->style(style_name.value())) {
-      result = style->resolved();
-    }
+  const Style *style = style_name ? this->style(style_name.value()) : nullptr;
+  if (style != nullptr) {
+    result = style->resolved();
   }
   resolve_paragraph_style_(node, result.paragraph_style);
-  result.override(partial_text_style(node.child("w:pPr")));
+  result.override(partial_text_style(paragraph_properties));
+
+  bool contextual_spacing = style != nullptr && style->contextual_spacing();
+  if (const pugi::xml_node contextual_spacing_node =
+          paragraph_properties.child("w:contextualSpacing")) {
+    contextual_spacing = read_on_off_attribute(contextual_spacing_node);
+  }
+  if (contextual_spacing) {
+    // [ECMA-376] 17.3.1.9: the spacing towards a neighbouring paragraph of the
+    // same style is dropped, which is what keeps a list tight
+    const Measure none(0, DynamicUnit("in"));
+    if (has_paragraph_style(block_neighbour(node, true), style_name)) {
+      result.paragraph_style.margin.top = none;
+    }
+    if (has_paragraph_style(block_neighbour(node, false), style_name)) {
+      result.paragraph_style.margin.bottom = none;
+    }
+  }
   return result;
 }
 
 ResolvedStyle
 StyleRegistry::partial_table_style(const pugi::xml_node node) const {
   ResolvedStyle result;
+  // a table style also carries the paragraph and text properties of everything
+  // in the table, which the element tree cascades down from here
+  if (const pugi::xml_attribute style_name =
+          node.child("w:tblPr").child("w:tblStyle").attribute("w:val")) {
+    if (const Style *style = this->style(style_name.value())) {
+      result = style->resolved();
+    }
+  }
   resolve_table_style_(node, result.table_style);
   return result;
 }
 
 ResolvedStyle
-StyleRegistry::partial_table_row_style(const pugi::xml_node) const {
-  return {};
+StyleRegistry::partial_table_row_style(const pugi::xml_node node) const {
+  ResolvedStyle result;
+  resolve_table_row_style_(node, result.table_row_style);
+  return result;
 }
 
 ResolvedStyle

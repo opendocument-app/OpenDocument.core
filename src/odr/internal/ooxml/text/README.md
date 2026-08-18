@@ -54,12 +54,21 @@ Roughly ordered by importance.
 - [x] paragraph
   - [x] alignment
   - [x] indentation / left & right margins
-  - [ ] top / bottom margins, line height
+  - [x] top / bottom margins, line height (`w:spacing`, incl.
+    `w:contextualSpacing`)
+  - [ ] `w:beforeLines` / `w:afterLines`, autospacing (the value next to an
+    autospacing flag is dropped rather than computed)
+  - [ ] `w:lineRule="atLeast"` as a *minimum* — css has no minimum line
+    height, so the value is applied as the line height and a line whose font
+    is taller than it does not grow the way word grows it
 - [x] tables
   - [x] table width
   - [x] cell vertical alignment, borders
+  - [x] row height (`w:trHeight`, as a minimum — `w:hRule="exact"` is not)
+  - [x] table style reference (`w:tblStyle`, cascading its paragraph and text
+    properties into the table)
   - [ ] cell width (parsed but not applied)
-  - [ ] table row styles
+  - [ ] conditional table formatting (`w:tblStylePr`: banding, first row, …)
 - [x] page layout (`w:sectPr`: size, orientation, margins)
   - [ ] one layout per section; the first section's applies to the document
 - [ ] graphic / drawing styles

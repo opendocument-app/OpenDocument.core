@@ -671,6 +671,9 @@ private:
     if (element.type == ElementType::span) {
       return m_document->style_registry().partial_text_style(element.node);
     }
+    if (element.type == ElementType::table) {
+      return m_document->style_registry().partial_table_style(element.node);
+    }
     return {};
   }
 
