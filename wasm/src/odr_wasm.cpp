@@ -118,6 +118,7 @@ emscripten::val to_capabilities(const FileTypeCapabilities &capabilities) {
   result.set("open", capabilities.open);
   result.set("decrypt", capabilities.decrypt);
   result.set("translateHtml", capabilities.translate_html);
+  result.set("colorScheme", capabilities.color_scheme);
   result.set("edit", capabilities.edit);
   result.set("save", capabilities.save);
   result.set("encrypt", capabilities.encrypt);

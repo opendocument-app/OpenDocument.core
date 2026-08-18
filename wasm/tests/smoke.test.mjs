@@ -64,7 +64,13 @@ describe('smoke', () => {
     assert.ok(odt.extensions.includes('odt'));
     assert.ok(odt.mimeTypes.includes('application/vnd.oasis.opendocument.text'));
     assert.equal(odt.capabilities.translateHtml, true);
+    assert.equal(odt.capabilities.colorScheme, true);
     assert.equal(odt.capabilities.open, true);
+
+    // a pdf renders, but paints its own page backgrounds
+    const pdf = types.find((t) => t.name === 'pdf');
+    assert.equal(pdf.capabilities.translateHtml, true);
+    assert.equal(pdf.capabilities.colorScheme, false);
 
     // both tables are always present, so a caller may concatenate without
     // checking

@@ -25,6 +25,11 @@ The release run heads these entries with the version and opens a fresh
   fill to the page, a run of text to one legible against it — because no media
   query reaches an inline style. Mirrored in the python, wasm, jni and apple
   bindings as `HtmlColorScheme`.
+- `FileTypeCapabilities::color_scheme` says whether a file type's view honors
+  the setting, the way `translate_html` says whether it renders at all — true
+  for every type that renders but a pdf, whose pages paint their own
+  backgrounds, and audio and video, which are black in any scheme. Mirrored in
+  the bindings beside the capabilities already there.
 - A text document reflowed to the viewport — page margins off — is inset from
   the edge of the screen by 3mm instead of starting at the first pixel of it.
 - Prose is no longer read as a csv. A separator that every field follows with a

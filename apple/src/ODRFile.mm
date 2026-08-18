@@ -156,6 +156,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   result->_open = handle.open ? YES : NO;
   result->_decrypt = handle.decrypt ? YES : NO;
   result->_translateHtml = handle.translate_html ? YES : NO;
+  result->_colorScheme = handle.color_scheme ? YES : NO;
   result->_edit = handle.edit ? YES : NO;
   result->_save = handle.save ? YES : NO;
   result->_encrypt = handle.encrypt ? YES : NO;

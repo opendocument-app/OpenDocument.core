@@ -145,6 +145,7 @@ void odr_python::bind_file(py::module_ &m) {
       .def_readwrite("decrypt", &odr::FileTypeCapabilities::decrypt)
       .def_readwrite("translate_html",
                      &odr::FileTypeCapabilities::translate_html)
+      .def_readwrite("color_scheme", &odr::FileTypeCapabilities::color_scheme)
       .def_readwrite("edit", &odr::FileTypeCapabilities::edit)
       .def_readwrite("save", &odr::FileTypeCapabilities::save)
       .def_readwrite("encrypt", &odr::FileTypeCapabilities::encrypt);

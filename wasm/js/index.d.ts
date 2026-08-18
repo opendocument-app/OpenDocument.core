@@ -20,6 +20,8 @@ export interface Capabilities {
   open: boolean;
   decrypt: boolean;
   translateHtml: boolean;
+  /** The view this type renders as honors `HtmlConfig.colorScheme`. */
+  colorScheme: boolean;
   edit: boolean;
   save: boolean;
   encrypt: boolean;

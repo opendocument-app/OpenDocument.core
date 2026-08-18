@@ -72,6 +72,7 @@ class MetaTest {
     FileTypeCapabilities odt = Odr.capabilitiesByFileType(FileType.OPENDOCUMENT_TEXT);
     assertTrue(odt.open);
     assertTrue(odt.translateHtml);
+    assertTrue(odt.colorScheme);
     assertTrue(odt.edit);
 
     // detected and named, but there is no decoder behind it
@@ -82,6 +83,11 @@ class MetaTest {
 
     // spreadsheet editing is force-disabled
     assertFalse(Odr.capabilitiesByFileType(FileType.OPENDOCUMENT_SPREADSHEET).edit);
+
+    // a pdf renders, but paints its own page backgrounds
+    FileTypeCapabilities pdf = Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT);
+    assertTrue(pdf.translateHtml);
+    assertFalse(pdf.colorScheme);
   }
 
   @Test

@@ -296,11 +296,12 @@ jobject
 make_file_type_capabilities(JNIEnv *env,
                             const odr::FileTypeCapabilities &capabilities) {
   return new_object(env, "app/opendocument/core/FileTypeCapabilities",
-                    "(ZZZZZZZ)V",
+                    "(ZZZZZZZZ)V",
                     static_cast<jboolean>(capabilities.detect_by_content),
                     static_cast<jboolean>(capabilities.open),
                     static_cast<jboolean>(capabilities.decrypt),
                     static_cast<jboolean>(capabilities.translate_html),
+                    static_cast<jboolean>(capabilities.color_scheme),
                     static_cast<jboolean>(capabilities.edit),
                     static_cast<jboolean>(capabilities.save),
                     static_cast<jboolean>(capabilities.encrypt));
