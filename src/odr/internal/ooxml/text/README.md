@@ -58,6 +58,9 @@ Roughly ordered by importance.
     `w:contextualSpacing`)
   - [ ] `w:beforeLines` / `w:afterLines`, autospacing (the value next to an
     autospacing flag is dropped rather than computed)
+  - [ ] `w:lineRule="atLeast"` as a *minimum* — css has no minimum line
+    height, so the value is applied as the line height and a line whose font
+    is taller than it does not grow the way word grows it
 - [x] tables
   - [x] table width
   - [x] cell vertical alignment, borders

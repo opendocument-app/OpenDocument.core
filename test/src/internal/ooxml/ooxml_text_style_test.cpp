@@ -237,3 +237,39 @@ TEST(ooxml_text_style, table_style_reference) {
   ASSERT_TRUE(style.text_align.has_value());
   EXPECT_EQ(TextAlign::center, *style.text_align);
 }
+
+/// A `w:sdt` renders as nothing but its children, and a marker element is not
+/// content either, so neither breaks the neighbourhood.
+TEST(ooxml_text_style, paragraph_contextual_spacing_through_wrappers) {
+  pugi::xml_document document;
+  const pugi::xml_node body = node_of(
+      R"(<w:body>)"
+      R"(<w:sdt><w:sdtContent>)"
+      R"(<w:p><w:pPr><w:pStyle w:val="list"/><w:spacing w:after="240"/><w:contextualSpacing/></w:pPr></w:p>)"
+      R"(</w:sdtContent></w:sdt>)"
+      R"(<w:bookmarkEnd w:id="1"/>)"
+      R"(<w:p><w:pPr><w:pStyle w:val="list"/><w:spacing w:before="240" w:after="240"/><w:contextualSpacing/></w:pPr></w:p>)"
+      R"(<w:tbl/>)"
+      R"(</w:body>)",
+      document);
+
+  const StyleRegistry registry;
+  const ParagraphStyle inside_wrapper =
+      registry
+          .partial_paragraph_style(
+              body.child("w:sdt").child("w:sdtContent").child("w:p"))
+          .paragraph_style;
+  const ParagraphStyle after_wrapper =
+      registry.partial_paragraph_style(body.child("w:p")).paragraph_style;
+
+  // the paragraph below reaches out of the wrapper and past the marker
+  ASSERT_TRUE(inside_wrapper.margin.bottom.has_value());
+  EXPECT_EQ(Measure(0, DynamicUnit("in")), *inside_wrapper.margin.bottom);
+  // and is seen from the other side too, while the table below is not a
+  // paragraph of the same style
+  ASSERT_TRUE(after_wrapper.margin.top.has_value());
+  EXPECT_EQ(Measure(0, DynamicUnit("in")), *after_wrapper.margin.top);
+  ASSERT_TRUE(after_wrapper.margin.bottom.has_value());
+  EXPECT_EQ(Measure(240 / 1440.0, DynamicUnit("in")),
+            *after_wrapper.margin.bottom);
+}

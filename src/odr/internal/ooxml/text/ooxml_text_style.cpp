@@ -165,6 +165,56 @@ void resolve_graphic_style_(pugi::xml_node, GraphicStyle &) {
   // TODO
 }
 
+/// A `w:sdt` and its `w:sdtContent` become a group, which the html renderer
+/// writes as nothing but its children — the paragraphs around one are
+/// neighbours on the page.
+bool is_transparent_wrapper(const pugi::xml_node node) {
+  const char *name = node.name();
+  return std::strcmp("w:sdt", name) == 0 ||
+         std::strcmp("w:sdtContent", name) == 0;
+}
+
+bool is_block(const pugi::xml_node node) {
+  const char *name = node.name();
+  return std::strcmp("w:p", name) == 0 || std::strcmp("w:tbl", name) == 0;
+}
+
+/// The block `node` puts on the given side, `node` itself unless it wraps one;
+/// nothing for a marker element such as `w:bookmarkEnd`.
+pugi::xml_node block_within(const pugi::xml_node node, const bool previous) {
+  if (!is_transparent_wrapper(node)) {
+    return is_block(node) ? node : pugi::xml_node();
+  }
+  for (pugi::xml_node child = previous ? node.last_child() : node.first_child();
+       child;
+       child = previous ? child.previous_sibling() : child.next_sibling()) {
+    if (const pugi::xml_node block = block_within(child, previous)) {
+      return block;
+    }
+  }
+  return {};
+}
+
+/// The block that neighbours `node` in document order, stepping over marker
+/// elements and seeing through the wrappers. Stops at anything else — a cell
+/// or the body end — so a paragraph never neighbours one outside its container.
+pugi::xml_node block_neighbour(pugi::xml_node node, const bool previous) {
+  while (true) {
+    for (pugi::xml_node sibling = previous ? node.previous_sibling()
+                                           : node.next_sibling();
+         sibling; sibling = previous ? sibling.previous_sibling()
+                                     : sibling.next_sibling()) {
+      if (const pugi::xml_node block = block_within(sibling, previous)) {
+        return block;
+      }
+    }
+    if (!is_transparent_wrapper(node.parent())) {
+      return {};
+    }
+    node = node.parent();
+  }
+}
+
 /// Whether `node` is a paragraph carrying the paragraph style `style_name`
 /// names, an absent name matching an absent `w:pStyle`.
 bool has_paragraph_style(const pugi::xml_node node,
@@ -284,10 +334,10 @@ StyleRegistry::partial_paragraph_style(const pugi::xml_node node) const {
     // [ECMA-376] 17.3.1.9: the spacing towards a neighbouring paragraph of the
     // same style is dropped, which is what keeps a list tight
     const Measure none(0, DynamicUnit("in"));
-    if (has_paragraph_style(node.previous_sibling(), style_name)) {
+    if (has_paragraph_style(block_neighbour(node, true), style_name)) {
       result.paragraph_style.margin.top = none;
     }
-    if (has_paragraph_style(node.next_sibling(), style_name)) {
+    if (has_paragraph_style(block_neighbour(node, false), style_name)) {
       result.paragraph_style.margin.bottom = none;
     }
   }

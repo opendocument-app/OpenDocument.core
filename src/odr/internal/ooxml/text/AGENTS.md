@@ -101,5 +101,9 @@ Style/element coverage is in [`README.md`](README.md). Foundational gaps:
    parsed but not applied; the `w:default="1"` style flag is ignored. Paragraph
    spacing reads `w:before`/`w:after`/`w:line` but not `w:beforeLines`/
    `w:afterLines`, and drops the value an autospacing flag shadows rather than
-   computing what word would.
+   computing what word would. `w:lineRule="atLeast"` lowers to the same fixed
+   `line-height` as `exact`, because css has no minimum: right where the value
+   exceeds the natural line, tight where a taller font would have grown it.
+   Expressing it needs a second field on the public `ParagraphStyle`, since the
+   renderer cannot tell the two rules apart from one `Measure`.
 5. **Comments / annotations** not modelled.
