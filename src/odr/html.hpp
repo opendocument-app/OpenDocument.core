@@ -155,8 +155,9 @@ struct HtmlConfig {
   std::uint8_t html_indent{1};
   std::string html_indent_string{"\t"};
 
-  // background image
+  /// @deprecated Inert: no view renders a background image to a file.
   std::string background_image_format{"png"};
+  /// @deprecated See @ref background_image_format.
   double background_image_dpi{144.0};
 
   // Paged-document page range (currently honored by the PDF pipeline): render
@@ -177,10 +178,10 @@ struct HtmlConfig {
       "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Nimbus Sans"};
   double pdf_dual_layer_fallback_font_size_adjust{0.5};
 
-  // drm options
+  /// @deprecated Inert: no output carries a restriction to lift.
   bool no_drm{false};
 
-  // outline options
+  /// @deprecated Inert: an outline is never written.
   bool embed_outline{false};
 
   std::optional<std::string> output_path;

@@ -100,7 +100,9 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) uint8_t htmlIndent;
 @property(nonatomic, copy) NSString *htmlIndentString;
 
+/// @deprecated Inert.
 @property(nonatomic, copy) NSString *backgroundImageFormat;
+/// @deprecated Inert.
 @property(nonatomic) double backgroundImageDpi;
 
 /// Render only pages `[begin, end)`, 0-based. `nil` end means to the last page.
@@ -111,7 +113,9 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, copy) NSArray<NSString *> *pdfDualLayerFallbackFonts;
 @property(nonatomic) double pdfDualLayerFallbackFontSizeAdjust;
 
+/// @deprecated Inert.
 @property(nonatomic) BOOL noDrm;
+/// @deprecated Inert.
 @property(nonatomic) BOOL embedOutline;
 
 @property(nonatomic, copy, nullable) NSString *outputPath;
