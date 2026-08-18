@@ -1075,6 +1075,22 @@ lift_group_text(std::vector<pdf::PageElement> elements) {
   return result;
 }
 
+/// A page's content stream, then the annotation appearances painting on top of
+/// it (ISO 32000-1 12.5.5).
+std::vector<pdf::PageElement> page_elements(const pdf::Page &page,
+                                            const std::string &content,
+                                            const Logger &logger) {
+  std::vector<pdf::PageElement> elements =
+      lift_group_text(pdf::extract_page(content, *page.resources, logger));
+  for (const pdf::Annotation *annotation : page.annotations) {
+    std::vector<pdf::PageElement> appearance =
+        lift_group_text(pdf::extract_annotation(*annotation, logger));
+    elements.insert(elements.end(), std::make_move_iterator(appearance.begin()),
+                    std::make_move_iterator(appearance.end()));
+  }
+  return elements;
+}
+
 /// Deduplicates CSS declarations into atomic, single-property classes named
 /// `<prefix><n>` in first-seen order, emitted once in `<head>`. The same font
 /// sizes, offsets and spacings recur across up to millions of positioned
@@ -1409,8 +1425,8 @@ public:
       /// font-size of the previous element, for its line's trailing space
       double sel_prev_font_size_pt = 0;
 
-      for (const pdf::PageElement &element : lift_group_text(
-               pdf::extract_page(stream, *page->resources, m_logger))) {
+      for (const pdf::PageElement &element :
+           page_elements(*page, stream, m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
                 masks, m_logger, [&] { vis_close_line(); },
@@ -1870,8 +1886,8 @@ public:
     // already-decoded stream is cheaper than buffering every page's elements.
     for (std::size_t pi = 0; pi < pages.size(); ++pi) {
       const pdf::Page &page = *pages[pi];
-      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
-               page_streams[pi], *page.resources, m_logger))) {
+      for (const pdf::PageElement &element :
+           page_elements(page, page_streams[pi], m_logger)) {
         const auto *text = std::get_if<pdf::TextElement>(&element);
         if (text == nullptr || text->text.empty() || text->font == nullptr) {
           continue;
@@ -1945,8 +1961,8 @@ public:
       double prev_font_pt = 0;
       const auto close_line = [&] { cur_line = -1; };
 
-      for (const pdf::PageElement &element : lift_group_text(pdf::extract_page(
-               page_streams[pi], *page.resources, m_logger))) {
+      for (const pdf::PageElement &element :
+           page_elements(page, page_streams[pi], m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
                 masks, m_logger, [&] { close_line(); },

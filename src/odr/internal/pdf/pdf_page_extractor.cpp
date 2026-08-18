@@ -1033,6 +1033,50 @@ std::vector<pdf::PageElement> pdf::extract_page(const std::string &content,
   return result;
 }
 
+std::vector<pdf::PageElement>
+pdf::extract_annotation(const Annotation &annotation, const Logger &logger) {
+  if (annotation.appearance == nullptr) {
+    return {};
+  }
+  const XObject &appearance = *annotation.appearance;
+
+  std::vector<PageElement> result;
+  std::set<std::string> warned;
+  ActiveForms active;
+  MarkedContentStack marked;
+  std::optional<Pen> pen;
+  GraphicsState state;
+
+  // A form invocation with no enclosing content: the fit-to-`/Rect` matrix,
+  // then the form's own `/Matrix`, then its `/BBox` clip. The appearance joins
+  // the active set so a `Do` back to it is caught like any other cycle.
+  active.insert(&appearance);
+  state.concat_matrix(annotation.appearance_transform);
+  state.concat_matrix(appearance.matrix);
+  if (appearance.bbox.has_value()) {
+    const std::array<double, 4> &box = *appearance.bbox;
+    state.clip_bounding_box(box[0], box[1], box[2], box[3]);
+  }
+
+  const Resources fallback;
+  run_content(appearance.content,
+              appearance.resources != nullptr ? *appearance.resources
+                                              : fallback,
+              state, result, logger, warned, active, marked, pen);
+
+  // `/CA` applies to the appearance as a whole (12.5.2), so it composites as a
+  // group; folding it onto each element would show the overlaps through.
+  if (annotation.appearance_alpha < 1 && !result.empty()) {
+    auto children = std::make_shared<GroupChildren>();
+    children->elements = std::move(result);
+    GroupElement group;
+    group.children = std::move(children);
+    group.alpha = annotation.appearance_alpha;
+    return {PageElement{std::move(group)}};
+  }
+  return result;
+}
+
 std::vector<pdf::TextElement> pdf::extract_text(const std::string &content,
                                                 const Resources &resources,
                                                 const Logger &logger) {

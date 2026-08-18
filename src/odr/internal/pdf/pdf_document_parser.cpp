@@ -17,6 +17,7 @@
 #include <odr/internal/pdf/pdf_image.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <istream>
 #include <memory>
@@ -1236,20 +1237,125 @@ Resources *parse_resources(State &state, const Object &object) {
   return resources;
 }
 
-Annotation *parse_annotation(Document &document, const Dictionary &dictionary) {
-  auto *annotation = document.create_element<Annotation>();
+/// 12.5.5: fit the appearance's `/Matrix`-transformed `/BBox` onto `/Rect`. A
+/// degenerate box or rect yields the identity.
+util::math::Transform2D
+fit_appearance_to_rect(const std::array<double, 4> &bbox,
+                       const util::math::Transform2D &matrix,
+                       const std::vector<double> &rect) {
+  if (rect.size() < 4) {
+    return {};
+  }
+  const std::array<std::array<double, 2>, 4> corners{
+      matrix.apply(bbox[0], bbox[1]), matrix.apply(bbox[2], bbox[1]),
+      matrix.apply(bbox[2], bbox[3]), matrix.apply(bbox[0], bbox[3])};
+  double x_min = corners[0][0];
+  double x_max = corners[0][0];
+  double y_min = corners[0][1];
+  double y_max = corners[0][1];
+  for (const std::array<double, 2> &corner : corners) {
+    x_min = std::min(x_min, corner[0]);
+    x_max = std::max(x_max, corner[0]);
+    y_min = std::min(y_min, corner[1]);
+    y_max = std::max(y_max, corner[1]);
+  }
+
+  const double rect_x0 = std::min(rect[0], rect[2]);
+  const double rect_y0 = std::min(rect[1], rect[3]);
+  const double rect_width = std::abs(rect[2] - rect[0]);
+  const double rect_height = std::abs(rect[3] - rect[1]);
+  const double box_width = x_max - x_min;
+  const double box_height = y_max - y_min;
+  const double sx = box_width > 0 ? rect_width / box_width : 1;
+  const double sy = box_height > 0 ? rect_height / box_height : 1;
+
+  return {sx, 0, 0, sy, rect_x0 - sx * x_min, rect_y0 - sy * y_min};
+}
+
+/// 12.5.5: `/AP /N` is either the form itself or a dictionary of states that
+/// `/AS` selects (a check box's `/Off` and `/Yes`).
+void parse_annotation_appearance(State &state, const Dictionary &dictionary,
+                                 Annotation &annotation) {
+  DocumentParser &parser = state.parser();
+
+  // A popup paints only while its parent is open, a viewer state we do not
+  // have (12.5.6.14).
+  if (parser.resolve_object_copy(dictionary.get("Subtype")).as_name_opt() ==
+      "Popup") {
+    return;
+  }
+  // `/F` (12.5.3): Hidden (bit 2) and NoView (bit 6) keep it off the page.
+  if (dictionary.has_key("F")) {
+    const Object flags = parser.resolve_object_copy(dictionary["F"]);
+    if (flags.is_integer() && (flags.as_integer() & 0x22) != 0) {
+      return;
+    }
+  }
+  if (!dictionary.has_key("AP")) {
+    return;
+  }
+  const Object appearances = parser.resolve_object_copy(dictionary["AP"]);
+  if (!appearances.is_dictionary() ||
+      !appearances.as_dictionary().has_key("N")) {
+    return;
+  }
+
+  Object normal = appearances.as_dictionary()["N"];
+  const Object resolved = parser.resolve_object_copy(normal);
+  if (!resolved.is_dictionary()) {
+    return;
+  }
+  // A stream carries `/BBox`; anything else is the state sub-dictionary.
+  if (!resolved.as_dictionary().has_key("BBox")) {
+    const Object as = parser.resolve_object_copy(dictionary.get("AS"));
+    if (!as.is_name() || !resolved.as_dictionary().has_key(as.as_name())) {
+      return; // no state in force names an appearance
+    }
+    normal = resolved.as_dictionary()[as.as_name()];
+  }
+
+  XObject *appearance = parse_x_object(state, normal, nullptr);
+  if (appearance == nullptr || appearance->subtype != XObject::Subtype::form ||
+      !appearance->bbox.has_value()) {
+    return;
+  }
+  // Without a `/Rect` there is nowhere to put it (12.5.2 requires one).
+  // `/Rect` corners are commonly indirect, and one resolve reaches only the
+  // array.
+  Object rect = parser.resolve_object_copy(dictionary.get("Rect"));
+  parser.deep_resolve_object(rect);
+  if (!rect.is_array()) {
+    return;
+  }
+  std::vector<double> corners;
+  for (const Object &corner : rect.as_array()) {
+    const std::optional<Real> value = corner.as_real_opt();
+    if (!value.has_value()) {
+      return;
+    }
+    corners.push_back(*value);
+  }
+
+  annotation.appearance = appearance;
+  annotation.appearance_transform =
+      fit_appearance_to_rect(*appearance->bbox, appearance->matrix, corners);
+  if (const std::optional<Real> alpha =
+          parser.resolve_object_copy(dictionary.get("CA")).as_real_opt()) {
+    annotation.appearance_alpha = std::clamp(*alpha, 0.0, 1.0);
+  }
+}
+
+Annotation *parse_annotation(State &state, const Dictionary &dictionary) {
+  auto *annotation = state.document().create_element<Annotation>();
   annotation->object = Object(dictionary);
+  parse_annotation_appearance(state, dictionary, *annotation);
   return annotation;
 }
 
-Annotation *parse_annotation(const State &state,
-                             const ObjectReference &reference) {
-  DocumentParser &parser = state.parser();
-  Document &document = state.document();
-
-  IndirectObject object = parser.read_object(reference);
+Annotation *parse_annotation(State &state, const ObjectReference &reference) {
+  IndirectObject object = state.parser().read_object(reference);
   Annotation *annotation =
-      parse_annotation(document, object.object.as_dictionary());
+      parse_annotation(state, object.object.as_dictionary());
   annotation->object_reference = reference;
   return annotation;
 }
@@ -1301,7 +1407,7 @@ Page *parse_page(State &state, const ObjectReference &reference, Pages *parent,
             parse_annotation(state, annotation.as_reference()));
       } else if (annotation.is_dictionary()) {
         page->annotations.push_back(
-            parse_annotation(document, annotation.as_dictionary()));
+            parse_annotation(state, annotation.as_dictionary()));
       }
     }
   }

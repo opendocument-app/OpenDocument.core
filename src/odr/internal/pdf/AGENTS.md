@@ -184,6 +184,14 @@ Things the code won't shout at you:
   dictionaries (no parser/IR change): `/URI` → external `<a>`, `/GoTo`/`/Dest` →
   internal `#pN` (each page `div` carries `id="pN"`), named dests via `/Dests` +
   the `/Names` name tree (depth-guarded).
+- **Annotation appearances** paint after the page content (12.5.5): the parser
+  resolves `/AP /N` — through `/AS` when it is a dictionary of states — into a
+  form XObject and the matrix fitting its `/Matrix`-transformed `/BBox` onto
+  `/Rect`; `extract_annotation` then runs it like a `Do`, so a filled form
+  field's value and a markup annotation's drawing are ordinary elements, text
+  included (and selectable). Hidden/NoView (`/F`) and popup annotations paint
+  nothing. AcroForm *interactivity* stays out of scope: the appearance is what
+  the writer left in the file, never regenerated from `/V` and `/DA`.
 - **CMYK is naive (no ICC); overprint ignored.** CIE/ICCBased/Indexed/Separation/
   DeviceN/Lab resolve to RGB at emission by sampling the tint `/Function` (types
   0/2/3/4).
@@ -265,9 +273,6 @@ implementation. Grow the corpus alongside (odr-public fixtures + the PDF101
 
 Link annotations (`/URI` + internal `/GoTo`) already land. Remaining:
 
-- **Annotation appearances**: render `/AP` streams (form XObjects again) for
-  highlights/stamps/form-field appearances; AcroForm *interactivity* stays out of
-  scope (read-only).
 - **Remote/launch actions** (`/GoToR`, `/Launch`) and destination scroll
   position/zoom (the internal-link handler uses only the target page).
 - **Link overlays vs. text selection**: `<a>` overlays sit above `.sel` text, so

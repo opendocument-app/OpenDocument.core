@@ -83,7 +83,17 @@ struct Page final : Element {
   std::vector<ObjectReference> contents_reference;
 };
 
-struct Annotation final : Element {};
+struct Annotation final : Element {
+  /// The normal appearance to paint (`/AP /N`, 12.5.5), resolved through
+  /// `/AS` when `/N` is a dictionary of states. Null when there is none, the
+  /// annotation is hidden, or the appearance is not a form.
+  XObject *appearance{nullptr};
+  /// Places `appearance`'s `/Matrix`-transformed `/BBox` onto `/Rect`; the
+  /// form's own `/Matrix` concatenates onto this, as it would at `Do`.
+  util::math::Transform2D appearance_transform;
+  /// `/CA` (12.5.2), the opacity the whole appearance composites at.
+  double appearance_alpha{1};
+};
 
 /// A resource dictionary (ISO 32000-1 7.8.3). Every subdictionary is resolved
 /// eagerly at parse time so extraction needs no parser handle. Element pointers
