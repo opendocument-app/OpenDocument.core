@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_jbig2.hpp>
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
 #include <algorithm>
@@ -206,7 +207,7 @@ std::string apply_png_predictor(const std::string &data, const Integer colors,
 namespace odr::internal {
 
 pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
-                              std::string data) {
+                              std::string data, const DecodeOptions &options) {
   DecodeResult result;
 
   std::vector<Object> filters;
@@ -229,6 +230,15 @@ pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
   for (std::size_t i = 0; i < filters.size(); ++i) {
     const std::string name = canonical_filter_name(filters[i].as_string());
     const Object parms = parms_for(i);
+    if (name == "JBIG2Decode") {
+      // The one image codec we decode ourselves; past the decoder's reach it
+      // stops the chain like the others.
+      if (std::optional<Jbig2Image> image =
+              decode_jbig2(data, options.jbig2_globals)) {
+        data = std::move(image->samples);
+        continue;
+      }
+    }
     if (is_image_codec(name)) {
       result.stopped_at_filter = name;
       result.stopped_at_parms = parms;

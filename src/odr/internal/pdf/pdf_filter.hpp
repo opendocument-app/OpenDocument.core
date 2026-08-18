@@ -8,8 +8,9 @@
 namespace odr::internal::pdf {
 
 /// Result of decoding a stream through its `/Filter` chain (ISO 32000-1 7.4).
-/// If the chain reaches an image codec (DCTDecode, JPXDecode, CCITTFaxDecode,
-/// JBIG2Decode), decoding stops there: `data` holds the still-encoded payload,
+/// If the chain reaches an image codec it cannot decode (DCTDecode, JPXDecode,
+/// CCITTFaxDecode, or a JBIG2 stream past `decode_jbig2`'s reach), decoding
+/// stops there: `data` holds the still-encoded payload,
 /// `stopped_at_filter` the codec's canonical name and `stopped_at_parms` its
 /// decode parameters.
 struct DecodeResult {
@@ -18,11 +19,18 @@ struct DecodeResult {
   Object stopped_at_parms;
 };
 
+/// What a filter needs from the document but cannot resolve itself.
+struct DecodeOptions {
+  /// The `/JBIG2Globals` stream's bytes: `/DecodeParms` names it by reference,
+  /// which only the parser can follow.
+  std::string jbig2_globals;
+};
+
 /// `filter` and `decode_parms` are the already reference-resolved values of
 /// `/Filter` and `/DecodeParms`: null, a single name/dictionary, or parallel
 /// arrays.
 DecodeResult decode(const Object &filter, const Object &decode_parms,
-                    std::string data);
+                    std::string data, const DecodeOptions &options = {});
 
 /// The image codec a `/Filter` chain terminates in — its last entry, when that
 /// is an image codec such as DCTDecode (the filter `decode` would stop at) —

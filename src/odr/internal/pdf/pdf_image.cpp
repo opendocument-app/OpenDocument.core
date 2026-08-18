@@ -371,7 +371,8 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     const std::int32_t bits_per_component, const ColorSpaceDef *color_space,
     const std::vector<double> &decode_array,
     const std::vector<std::uint8_t> &alpha,
-    const std::vector<double> &color_key, const std::int32_t smask_in_data) {
+    const std::vector<double> &color_key, const std::int32_t smask_in_data,
+    const DecodeOptions &options) {
   const std::optional<std::string> terminal = terminal_image_codec(filter);
 
   if (terminal == "DCTDecode") {
@@ -390,15 +391,15 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     return encode_jpx(result.data, color_space, decode_array, alpha, color_key,
                       smask_in_data);
   }
-  if (terminal.has_value()) {
-    return std::nullopt; // CCITT/JBIG2: not decodable
+  if (terminal.has_value() && terminal != "JBIG2Decode") {
+    return std::nullopt; // CCITTFax: not decodable
   }
 
   // A fully decodable raster: decode, assemble samples and PNG-encode.
   if (color_space == nullptr) {
     return std::nullopt;
   }
-  DecodeResult result = decode(filter, decode_parms, std::move(raw));
+  DecodeResult result = decode(filter, decode_parms, std::move(raw), options);
   if (result.stopped_at_filter.has_value()) {
     return std::nullopt;
   }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/pdf/pdf_filter.hpp>
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -24,14 +26,18 @@ struct EncodedImage {
 /// `color_key` (see `encode_image_png`) make the raster RGBA and are ignored by
 /// the JPEG pass-through. A `JPXDecode` raster comes through `decode_jpx`, its
 /// own opacity channel taken only as `smask_in_data` says (Table 89: 0 ignores
-/// it, 2 says the colour is premultiplied by it). `nullopt` for an undecodable
-/// codec (CCITTFax/JBIG2) or an inconsistent raster.
-std::optional<EncodedImage> encode_image(
-    std::string raw, const Object &filter, const Object &decode_parms,
-    std::int32_t width, std::int32_t height, std::int32_t bits_per_component,
-    const ColorSpaceDef *color_space, const std::vector<double> &decode,
-    const std::vector<std::uint8_t> &alpha = {},
-    const std::vector<double> &color_key = {}, std::int32_t smask_in_data = 0);
+/// it, 2 says the colour is premultiplied by it). A `JBIG2Decode` raster goes
+/// through `decode_jbig2`, `options` carrying the globals it may need.
+/// `nullopt` for an undecodable codec (CCITTFax, or JBIG2 past the decoder's
+/// reach) or an inconsistent raster.
+std::optional<EncodedImage>
+encode_image(std::string raw, const Object &filter, const Object &decode_parms,
+             std::int32_t width, std::int32_t height,
+             std::int32_t bits_per_component, const ColorSpaceDef *color_space,
+             const std::vector<double> &decode,
+             const std::vector<std::uint8_t> &alpha = {},
+             const std::vector<double> &color_key = {},
+             std::int32_t smask_in_data = 0, const DecodeOptions &options = {});
 
 /// Assemble decoded image samples (ISO 32000-1 8.9.5: MSB-first, rows padded
 /// to a byte boundary, `bits_per_component` of 1/2/4/8/16) into an 8-bit PNG,
