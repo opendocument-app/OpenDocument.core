@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A scanned pdf page is no longer blank: `JBIG2Decode` images decode in house.
+  MMR/Huffman, refinement and halftone regions still skip the image.
 - Justified pdf text is spaced as the file asks: word spacing (`Tw`) applies to
   runs painted with an embedded font, which had rendered short.
 - A pdf page is turned as its `/Rotate` says.

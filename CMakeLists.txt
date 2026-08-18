@@ -217,6 +217,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_filter.cpp"
         "src/odr/internal/pdf/pdf_function.cpp"
         "src/odr/internal/pdf/pdf_image.cpp"
+        "src/odr/internal/pdf/pdf_jbig2.cpp"
         "src/odr/internal/pdf/pdf_jpx.cpp"
         "src/odr/internal/pdf/pdf_graphics_operator_parser.cpp"
         "src/odr/internal/pdf/pdf_graphics_state.cpp"

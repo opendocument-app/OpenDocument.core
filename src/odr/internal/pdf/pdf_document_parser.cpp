@@ -758,6 +758,44 @@ std::vector<std::uint8_t> resolve_mask_alpha(DocumentParser &parser,
       image_decode(parser, dictionary), stencil, base_width, base_height);
 }
 
+/// The `/JBIG2Globals` stream a `JBIG2Decode` filter names (ISO 32000-1
+/// 7.4.7). One we cannot read leaves the bytes empty: the decoder then fails
+/// and the image is skipped, rather than the document.
+DecodeOptions jbig2_decode_options(DocumentParser &parser,
+                                   const Object &decode_parms) {
+  DecodeOptions options;
+  const auto take = [&](const Object &parms) {
+    const Object resolved = parser.resolve_object_copy(parms);
+    if (!resolved.is_dictionary()) {
+      return;
+    }
+    const Dictionary &dictionary = resolved.as_dictionary();
+    if (!dictionary.has_key("JBIG2Globals")) {
+      return;
+    }
+    const Object &globals = dictionary["JBIG2Globals"];
+    if (!globals.is_reference()) {
+      return;
+    }
+    try {
+      options.jbig2_globals =
+          parser.read_decoded_stream(globals.as_reference());
+    } catch (const std::exception &) {
+      options.jbig2_globals.clear();
+    }
+  };
+
+  const Object resolved = parser.resolve_object_copy(decode_parms);
+  if (resolved.is_array()) {
+    for (const Object &entry : resolved.as_array()) {
+      take(entry);
+    }
+  } else {
+    take(resolved);
+  }
+  return options;
+}
+
 /// Decode an `/ImageMask true` stencil onto `x_object` (ISO 32000-1 8.9.6.2).
 /// Only decoded, not coloured: the fill colour is known only at `Do` time. An
 /// undecodable codec leaves `stencil_mask` false, so `Do` skips it.
@@ -772,9 +810,10 @@ void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
     decode_parms = parser.deep_resolve_object_copy(dictionary["DecodeParms"]);
   }
   DecodeResult result =
-      decode(filter, decode_parms, parser.read_object_stream(object));
+      decode(filter, decode_parms, parser.read_object_stream(object),
+             jbig2_decode_options(parser, dictionary.get("DecodeParms")));
   if (result.stopped_at_filter.has_value()) {
-    return; // CCITT/JBIG2 fax stencils are not yet decodable
+    return; // a CCITT fax stencil is not yet decodable
   }
   const std::int32_t width = image_int(parser, dictionary, "Width", 0);
   const std::int32_t height = image_int(parser, dictionary, "Height", 0);
@@ -846,10 +885,11 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
   const std::int32_t smask_in_data =
       image_int(parser, dictionary, "SMaskInData", 0);
 
-  if (std::optional<EncodedImage> encoded =
-          encode_image(parser.read_object_stream(object), filter, decode_parms,
-                       width, height, bits_per_component, color_space.get(),
-                       decode_array, alpha, color_key, smask_in_data)) {
+  if (std::optional<EncodedImage> encoded = encode_image(
+          parser.read_object_stream(object), filter, decode_parms, width,
+          height, bits_per_component, color_space.get(), decode_array, alpha,
+          color_key, smask_in_data,
+          jbig2_decode_options(parser, dictionary.get("DecodeParms")))) {
     x_object.image_data = std::move(encoded->data);
     x_object.image_mime = std::move(encoded->mime);
   }

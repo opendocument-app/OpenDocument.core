@@ -78,6 +78,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_font.cpp"
         "src/internal/pdf/pdf_function.cpp"
         "src/internal/pdf/pdf_image.cpp"
+        "src/internal/pdf/pdf_jbig2.cpp"
         "src/internal/pdf/pdf_jpx.cpp"
         "src/internal/util/math_util_test.cpp"
         "src/internal/pdf/pdf_object.cpp"
