@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.9.0 - 2026-08-18
+
 - A filled pdf form shows what was filled in, and a marked-up one its markup:
   an annotation's appearance stream is painted onto the page. Hidden, no-view
   and popup annotations stay unpainted.
