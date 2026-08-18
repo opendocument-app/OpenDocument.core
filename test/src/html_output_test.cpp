@@ -275,14 +275,16 @@ std::vector<std::pair<std::string, ConfigVariant>> list_variant_cases() {
       // renders one.
       {"odr-private/pdf/978-3-030-65771-0.pdf", single},
 
-      // One file per view honoring a color scheme. The pdf view honors none,
-      // and no test file reaches the image view at all.
+      // One file per view honoring a color scheme. The pdf view honors none.
       {"odr-public/odt/style-various-1.odt", dark},
       {"odr-public/odp/style-various-1.odp", dark},
       {"odr-public/ods/style-border-1.ods", dark},
       {"odr-public/txt/lorem ipsum.txt", dark},
       {"odr-public/zip/small.zip", dark},
       {"odr-private/otf/OpenSans-Regular.otf", dark},
+      // The image view paints the ground the picture sits on and nothing else,
+      // so the file that shows it is one with transparency.
+      {"odr-public/png/tango-example-icons.png", dark},
       // `system` writes what `dark` writes, wrapped in a media query; one file
       // pins that wrapper.
       {"odr-public/txt/lorem ipsum.txt", system},
