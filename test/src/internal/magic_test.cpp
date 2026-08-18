@@ -8,6 +8,8 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <string>
+#include <tuple>
 
 using namespace odr;
 using namespace odr::internal;
@@ -56,6 +58,45 @@ TEST(magic, wpd) {
 
   EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
             "application/vnd.wordperfect");
+}
+
+/// What an encoder actually writes, rather than the signature a table says it
+/// should: a jpeg names itself with whichever application marker it happens to
+/// carry, and a webp only after its RIFF form tag.
+TEST(magic, images) {
+  for (const auto &[path, type, mimetype] :
+       {std::tuple{"odr-public/png/tango-example-icons.png",
+                   FileType::portable_network_graphics, "image/png"},
+        std::tuple{"odr-public/jpg/fantastic-landscape.jpg", FileType::jpeg,
+                   "image/jpeg"},
+        std::tuple{"odr-public/gif/knights-tour.gif",
+                   FileType::graphics_interchange_format, "image/gif"},
+        std::tuple{"odr-public/bmp/tango-example-icons.bmp",
+                   FileType::bitmap_image_file, "image/bmp"},
+        std::tuple{"odr-public/webp/lorine-niedecker.webp", FileType::webp,
+                   "image/webp"}}) {
+    const File file(TestData::test_file_path(path));
+
+    EXPECT_EQ(magic::file_type(*file.impl()), type) << path;
+    EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
+              mimetype)
+        << path;
+  }
+}
+
+/// An svg carries no signature at all - it is named by parsing it, and only the
+/// open strategy does that.
+TEST(magic, svg) {
+  for (const std::string path :
+       {"odr-public/svg/rotating-snakes.svg",
+        "odr-public/svg/civitas-schinesghe-emblem.svg"}) {
+    const File file(TestData::test_file_path(path));
+
+    EXPECT_EQ(magic::file_type(*file.impl()), FileType::unknown) << path;
+    EXPECT_EQ(magic::mimetype(file.disk_path().value(), Logger::null()),
+              "image/svg+xml")
+        << path;
+  }
 }
 
 namespace {
