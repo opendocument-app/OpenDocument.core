@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A filled pdf form shows what was filled in, and a marked-up one its markup:
+  an annotation's appearance stream is painted onto the page. Hidden, no-view
+  and popup annotations stay unpainted.
 - A scanned pdf page is no longer blank: `JBIG2Decode` images decode in house.
   MMR/Huffman, refinement and halftone regions still skip the image.
 - Justified pdf text is spaced as the file asks: word spacing (`Tw`) applies to

@@ -7,6 +7,7 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 
+#include <array>
 #include <initializer_list>
 #include <memory>
 #include <optional>
@@ -47,6 +48,57 @@ Font simple_font(int first_char, std::vector<double> widths) {
 
 // `Td` places the origin via the text line matrix; the font size is carried
 // separately, not folded into the transform.
+// An annotation paints its appearance stream fitted onto its `/Rect`
+// (12.5.5): the appearance's `/BBox` maps onto the rectangle, so content at
+// the box's origin lands at the rectangle's, scaled by their size ratio.
+TEST(PdfPageExtractor, annotation_appearance_fits_the_rect) {
+  XObject appearance;
+  appearance.subtype = XObject::Subtype::form;
+  appearance.bbox = std::array<double, 4>{0, 0, 10, 20};
+  appearance.content = "BT /F1 12 Tf 1 0 0 1 0 0 Tm (Hi) Tj ET";
+
+  Annotation annotation;
+  annotation.appearance = &appearance;
+  // The rect is twice as wide and half as tall as the box, at (100, 700).
+  annotation.appearance_transform = Transform2D{2, 0, 0, 0.5, 100, 700};
+
+  const std::vector<PageElement> elements =
+      extract_annotation(annotation, Logger::null());
+  ASSERT_EQ(elements.size(), 1);
+  const auto &text = std::get<TextElement>(elements[0]);
+  EXPECT_DOUBLE_EQ(text.transform.e, 100);
+  EXPECT_DOUBLE_EQ(text.transform.f, 700);
+  EXPECT_DOUBLE_EQ(text.transform.a, 2);
+  EXPECT_DOUBLE_EQ(text.transform.d, 0.5);
+}
+
+// An annotation with no appearance to paint contributes nothing.
+TEST(PdfPageExtractor, annotation_without_appearance_paints_nothing) {
+  Annotation annotation;
+  EXPECT_TRUE(extract_annotation(annotation, Logger::null()).empty());
+}
+
+// The appearance's own `/Matrix` concatenates onto the fit, exactly as a form
+// XObject's does at `Do`.
+TEST(PdfPageExtractor, annotation_appearance_applies_its_matrix) {
+  XObject appearance;
+  appearance.subtype = XObject::Subtype::form;
+  appearance.bbox = std::array<double, 4>{0, 0, 10, 10};
+  appearance.matrix = Transform2D::translation(5, 3);
+  appearance.content = "BT /F1 12 Tf 1 0 0 1 0 0 Tm (Hi) Tj ET";
+
+  Annotation annotation;
+  annotation.appearance = &appearance;
+  annotation.appearance_transform = Transform2D::translation(100, 700);
+
+  const std::vector<PageElement> elements =
+      extract_annotation(annotation, Logger::null());
+  ASSERT_EQ(elements.size(), 1);
+  const auto &text = std::get<TextElement>(elements[0]);
+  EXPECT_DOUBLE_EQ(text.transform.e, 105);
+  EXPECT_DOUBLE_EQ(text.transform.f, 703);
+}
+
 TEST(PdfPageExtractor, td_translation) {
   const auto texts = run("BT /F1 12 Tf 100 700 Td (Hi) Tj ET");
   ASSERT_EQ(texts.size(), 1);
