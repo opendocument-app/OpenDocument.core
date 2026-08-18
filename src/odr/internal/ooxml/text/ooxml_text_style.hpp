@@ -18,6 +18,9 @@ public:
   [[nodiscard]] const Style *parent() const;
 
   [[nodiscard]] const ResolvedStyle &resolved() const;
+  /// `w:contextualSpacing`, which is applied per paragraph and so is not part
+  /// of the resolved style.
+  [[nodiscard]] bool contextual_spacing() const;
 
 private:
   std::string m_name;
@@ -25,6 +28,7 @@ private:
   const Style *m_parent{nullptr};
 
   ResolvedStyle m_resolved;
+  bool m_contextual_spacing{false};
 
   void resolve_style_();
   void resolve_default_style_();

@@ -28,6 +28,11 @@ The release run heads these entries with the version and opens a fresh
   named glyph variant such as `hyphen.case` is the one painted: a simple font's
   `/Encoding` names select through the font program's charset.
 - A pdf whose Flate streams omit the ADLER32 trailer opens.
+- A `.docx` is spaced the way word spaces it: paragraph spacing before and after
+  and line height (`w:spacing`), the `w:contextualSpacing` that keeps a list
+  tight, and table row heights (`w:trHeight`, as a minimum height).
+- A `.docx` table follows its table style: the paragraph and text properties
+  `w:tblStyle` names reach everything in the table.
 
 ## v6.8.0 - 2026-08-18
 

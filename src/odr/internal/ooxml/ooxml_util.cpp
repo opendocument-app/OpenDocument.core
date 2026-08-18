@@ -147,6 +147,29 @@ std::optional<Measure> ooxml::read_width_attribute(const pugi::xml_node node) {
   return {};
 }
 
+/// [ECMA-376] 17.17.4 ST_OnOff, as an attribute that is off when absent.
+bool ooxml::read_on_off_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return false;
+  }
+  const char *value = attribute.value();
+  return std::strcmp("0", value) != 0 && std::strcmp("false", value) != 0 &&
+         std::strcmp("off", value) != 0;
+}
+
+/// [ECMA-376] 17.17.4 ST_OnOff, as an element that is on unless `w:val` says
+/// otherwise.
+bool ooxml::read_on_off_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return false;
+  }
+  const pugi::xml_attribute value = node.attribute("w:val");
+  if (!value) {
+    return true;
+  }
+  return read_on_off_attribute(value);
+}
+
 bool ooxml::read_line_attribute(const pugi::xml_node node) {
   if (!node) {
     return false;

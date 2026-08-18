@@ -286,7 +286,7 @@ html::translate_table_column_style(const TableColumnStyle &table_column_style) {
 std::string
 html::translate_table_row_style(const TableRowStyle &table_row_style) {
   std::string result;
-  // TODO that does not work with HTML; height would need to be applied to the
+  // html takes a row height as a minimum; capping one would have to go on the
   // cells
   if (const std::optional<Measure> height = table_row_style.height;
       height.has_value()) {

@@ -54,7 +54,17 @@ Partial styles overlay a `wStyle` reference with the element's direct props —
 paragraphs additionally fold in the paragraph-mark run props (`w:pPr/w:rPr`).
 The *element-tree* cascade is then computed live: `get_intermediate_style` walks
 the element parent chain from docDefaults down, `.override()`-ing each partial.
-Table styles are direct-only (no `w:tblStyle` reference resolution).
+A table resolves its `w:tblStyle` the same way a paragraph resolves its
+`w:pStyle`, and contributes the whole resolved style — a table style carries the
+paragraph and text properties of everything inside the table, and the cascade is
+what carries them down. Its conditional formats (`w:tblStylePr`) are ignored.
+
+**Contextual spacing is decided per paragraph, not per style.**
+`w:contextualSpacing` drops the spacing towards a neighbouring paragraph of the
+same style, which is what keeps a list tight, so it cannot live in the resolved
+style: `partial_paragraph_style` compares the `w:pStyle` of the adjacent `w:p`
+siblings and zeroes the margin it applies to. `Style` carries the flag
+separately from its `ResolvedStyle` so an inherited one is seen.
 
 **Editing & save.** `is_editable` → true. `text_set_content` tokenises the new
 string and splices `w:t` (with `xml:space="preserve"` for spaces) / `w:tab` nodes
@@ -87,7 +97,9 @@ Style/element coverage is in [`README.md`](README.md). Foundational gaps:
 3. **Theme fonts unhandled.** `w:rFonts w:asciiTheme="minorHAnsi"` (etc.) is
    ignored — only literal `w:ascii` names are read (README example
    `Sample large docx.docx`).
-4. **Style stubs**: `resolve_table_row_style_` and `resolve_graphic_style_` are
-   empty; table cell width is parsed but not applied; the `w:default="1"` style
-   flag is ignored.
+4. **Style stubs**: `resolve_graphic_style_` is empty; table cell width is
+   parsed but not applied; the `w:default="1"` style flag is ignored. Paragraph
+   spacing reads `w:before`/`w:after`/`w:line` but not `w:beforeLines`/
+   `w:afterLines`, and drops the value an autospacing flag shadows rather than
+   computing what word would.
 5. **Comments / annotations** not modelled.
