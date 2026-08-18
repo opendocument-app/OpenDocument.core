@@ -10,8 +10,11 @@
 
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -48,16 +51,25 @@ bool document_type_is_comparable(const TestFile &test_file,
          file_meta.document_type != DocumentType::unknown;
 }
 
-} // namespace
+/// A deviation from the config the reference output is rendered with, applied
+/// last. A file that carries one is rendered twice: the default output keeps
+/// its path, the variant's goes to a sibling directory suffixed with the
+/// variant's name.
+struct ConfigVariant {
+  std::string name;
+  std::function<void(HtmlConfig &)> apply{[](HtmlConfig &) {}};
+};
 
 struct TestParams {
   TestFile test_file;
   std::string path;
-  PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
+  ConfigVariant variant;
   std::string test_repo;
   std::string output_path;
   std::string output_path_prefix;
 };
+
+} // namespace
 
 using HtmlOutputTests = testing::TestWithParam<TestParams>;
 
@@ -178,7 +190,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   config.format_html = true;
   config.html_indent = 1;
   config.html_indent_string = "\t";
-  config.pdf_text_mode = params.pdf_text_mode;
+  params.variant.apply(config);
 
   const std::string output_path_tmp = output_path + "/tmp";
   fs::create_directories(output_path_tmp);
@@ -194,15 +206,14 @@ TEST_P(HtmlOutputTests, html_meta) {
 
 namespace {
 
-/// The default `dual_layer` mode carries no suffix so existing (non-PDF and
-/// dual-layer) reference outputs keep their paths; single-layer variants are
-/// disambiguated with `-single`.
-std::string text_mode_suffix(const PdfTextMode pdf_text_mode) {
-  return pdf_text_mode == PdfTextMode::dual_layer ? "" : "-single";
+/// The default config carries no suffix, so the reference output rendered with
+/// it keeps its path; a variant is disambiguated with `-{name}`.
+std::string variant_suffix(const ConfigVariant &variant) {
+  return variant.name.empty() ? "" : "-" + variant.name;
 }
 
 std::string test_params_to_name(const TestParams &params) {
-  std::string path = params.path + text_mode_suffix(params.pdf_text_mode);
+  std::string path = params.path + variant_suffix(params.variant);
   util::string::replace_all(path, "/", "_");
   util::string::replace_all(path, "-", "_");
   util::string::replace_all(path, "+", "_");
@@ -213,7 +224,7 @@ std::string test_params_to_name(const TestParams &params) {
 }
 
 TestParams create_test_params(const TestFile &test_file,
-                              const PdfTextMode pdf_text_mode) {
+                              const ConfigVariant &variant) {
   const std::string test_file_path = test_file.short_path;
 
   const std::string test_repo = *RelPath(test_file_path).begin();
@@ -222,35 +233,83 @@ TestParams create_test_params(const TestFile &test_file,
                                              .join(RelPath(test_repo))
                                              .join(RelPath("output"))
                                              .string();
-  const std::string output_path_suffix = text_mode_suffix(pdf_text_mode);
   const std::string output_path =
       AbsPath(output_path_prefix)
           .join(RelPath(test_file_path).rebase(RelPath(test_repo)))
           .string() +
-      output_path_suffix;
+      variant_suffix(variant);
 
   return {
       .test_file = test_file,
       .path = test_file_path,
-      .pdf_text_mode = pdf_text_mode,
+      .variant = variant,
       .test_repo = test_repo,
       .output_path = output_path,
       .output_path_prefix = output_path_prefix,
   };
 }
 
+/// The extra configs to render in, each paired with the file to render. A
+/// variant is meant to cover a rendering path the default config never takes,
+/// so it is pinned to as few files as cover that path — for a color scheme
+/// that is one file per *view*, each of which carries its own dark stylesheet,
+/// rather than one per format.
+std::vector<std::pair<std::string, ConfigVariant>> list_variant_cases() {
+  const ConfigVariant single{"single", [](HtmlConfig &config) {
+                               config.pdf_text_mode = PdfTextMode::single_layer;
+                             }};
+  const ConfigVariant dark{"dark", [](HtmlConfig &config) {
+                             config.color_scheme = HtmlColorScheme::dark;
+                           }};
+  const ConfigVariant system{"system", [](HtmlConfig &config) {
+                               config.color_scheme = HtmlColorScheme::system;
+                             }};
+  const ConfigVariant reflow{"reflow", [](HtmlConfig &config) {
+                               config.text_document_margin = false;
+                             }};
+  const ConfigVariant read_only{
+      "read-only", [](HtmlConfig &config) { config.editable = false; }};
+
+  return {
+      // The text mode only affects the pdf view, and only the odr engine
+      // renders one.
+      {"odr-private/pdf/978-3-030-65771-0.pdf", single},
+
+      // One file per view honoring a color scheme. The pdf view honors none,
+      // and no test file reaches the image view at all.
+      {"odr-public/odt/style-various-1.odt", dark},
+      {"odr-public/odp/style-various-1.odp", dark},
+      {"odr-public/ods/style-border-1.ods", dark},
+      {"odr-public/txt/lorem ipsum.txt", dark},
+      {"odr-public/zip/small.zip", dark},
+      {"odr-private/otf/OpenSans-Regular.otf", dark},
+      // `system` writes what `dark` writes, wrapped in a media query; one file
+      // pins that wrapper.
+      {"odr-public/txt/lorem ipsum.txt", system},
+
+      // A text document reflowed to the viewport rather than kept in its page
+      // box — the default the library ships, and the one the reference output
+      // stopped showing when the margins were turned on here.
+      {"odr-public/odt/about.odt", reflow},
+      {"odr-public/docx/physics.docx", reflow},
+
+      // The output a reader gets rather than an editor.
+      {"odr-public/odt/style-various-1.odt", read_only},
+  };
+}
+
 std::vector<TestParams> list_test_params() {
+  const std::vector<std::pair<std::string, ConfigVariant>> variant_cases =
+      list_variant_cases();
+
   std::vector<TestParams> params;
   for (const TestFile &test_file : TestData::test_files()) {
-    params.push_back(create_test_params(test_file, PdfTextMode::dual_layer));
+    params.push_back(create_test_params(test_file, {}));
 
-    // PDFs default to `PdfTextMode::dual_layer`. To keep the single-layer path
-    // under reference-output coverage too, eject an extra `-single` test case
-    // for one representative PDF (odr engine only, since the text mode only
-    // affects odr's PDF rendering).
-    if (test_file.short_path == "odr-private/pdf/978-3-030-65771-0.pdf") {
-      params.push_back(
-          create_test_params(test_file, PdfTextMode::single_layer));
+    for (const auto &[path, variant] : variant_cases) {
+      if (path == test_file.short_path) {
+        params.push_back(create_test_params(test_file, variant));
+      }
     }
   }
   return params;
