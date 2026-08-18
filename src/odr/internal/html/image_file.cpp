@@ -7,6 +7,7 @@
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
@@ -107,6 +108,11 @@ public:
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#fff}";
     out.write_header_style_end();
+    if (writes_dark_style(config())) {
+      out.write_header_style_begin(dark_style_media(config()));
+      out.out() << ":root{color-scheme:dark}body{background:#0d1117}";
+      out.write_header_style_end();
+    }
     out.write_header_end();
 
     out.write_body_begin();

@@ -26,6 +26,14 @@ def test_html_config_defaults():
     assert config.spreadsheet_limit.rows == 100
 
 
+def test_html_config_color_scheme_defaults():
+    config = pyodr.HtmlConfig()
+    assert config.color_scheme == pyodr.HtmlColorScheme.light
+
+    config.color_scheme = pyodr.HtmlColorScheme.system
+    assert config.color_scheme == pyodr.HtmlColorScheme.system
+
+
 def test_html_config_viewport_defaults():
     config = pyodr.HtmlConfig()
     assert config.viewport_mode == pyodr.HtmlViewportMode.automatic

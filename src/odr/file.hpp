@@ -182,6 +182,7 @@ struct FileTypeCapabilities final {
   bool open{};              ///< a decoder exists; @ref odr::open can decode it
   bool decrypt{};           ///< encrypted instances can be decrypted
   bool translate_html{};    ///< @ref html::translate produces output
+  bool color_scheme{};      ///< the view honors @ref HtmlConfig::color_scheme
   bool edit{};              ///< @ref Document::is_editable can be `true`
   bool save{};              ///< @ref Document::save is supported
   bool encrypt{}; ///< @ref Document::save with a password is supported

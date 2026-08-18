@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A file can be read in the dark: `HtmlConfig::color_scheme` is `light`, `dark`
+  or `system`, following the reader's `prefers-color-scheme`. Every view honors
+  it but the pdf one, and the colors the file authored give way to it. Bound in
+  the python, wasm, jni and apple bindings as `HtmlColorScheme`.
+- `FileTypeCapabilities::color_scheme` says whether a type's view honors it —
+  every type that renders but pdf, audio and video. Bound in the bindings too.
+- A text document reflowed to the viewport is inset 3mm from the screen edge
+  rather than starting at the first pixel of it.
 - Prose is no longer read as a csv. A separator that every field follows with a
   space, in fields long enough to be sentences, is punctuation; `a, b, c` with
   short values is still a csv. One record is a line, not a table.

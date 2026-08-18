@@ -27,6 +27,10 @@ ODR_SAME_ENUM(ODRHtmlTableGridlinesNone, odr::HtmlTableGridlines::none);
 ODR_SAME_ENUM(ODRHtmlTableGridlinesSoft, odr::HtmlTableGridlines::soft);
 ODR_SAME_ENUM(ODRHtmlTableGridlinesHard, odr::HtmlTableGridlines::hard);
 
+ODR_SAME_ENUM(ODRHtmlColorSchemeLight, odr::HtmlColorScheme::light);
+ODR_SAME_ENUM(ODRHtmlColorSchemeDark, odr::HtmlColorScheme::dark);
+ODR_SAME_ENUM(ODRHtmlColorSchemeSystem, odr::HtmlColorScheme::system);
+
 ODR_SAME_ENUM(ODRHtmlViewportModeAutomatic, odr::HtmlViewportMode::automatic);
 ODR_SAME_ENUM(ODRHtmlViewportModeFitWidth, odr::HtmlViewportMode::fit_width);
 ODR_SAME_ENUM(ODRHtmlViewportModeActualSize,
@@ -84,6 +88,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _relativeResourcePaths = config.relative_resource_paths ? YES : NO;
   _editable = config.editable ? YES : NO;
   _textDocumentMargin = config.text_document_margin ? YES : NO;
+  _colorScheme = static_cast<ODRHtmlColorScheme>(config.color_scheme);
   if (config.spreadsheet_limit.has_value()) {
     const ODRTableDimensions limit = ODRTableDimensionsMake(
         config.spreadsheet_limit->rows, config.spreadsheet_limit->columns);
@@ -141,6 +146,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.relative_resource_paths = _relativeResourcePaths == YES;
   config.editable = _editable == YES;
   config.text_document_margin = _textDocumentMargin == YES;
+  config.color_scheme = static_cast<odr::HtmlColorScheme>(_colorScheme);
   if (_spreadsheetLimit != nil) {
     ODRTableDimensions limit{};
     [_spreadsheetLimit getValue:&limit size:sizeof(limit)];

@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/odr.hpp>
 
 #include <test_util.hpp>
@@ -8,6 +9,7 @@
 #include <algorithm>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -155,6 +157,56 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
     if (capabilities.edit) {
       EXPECT_TRUE(capabilities.save) << file_type_to_string(type);
     }
+    if (!capabilities.translate_html) {
+      EXPECT_FALSE(capabilities.color_scheme) << file_type_to_string(type);
+    }
+  }
+}
+
+/// Holds the declared `color_scheme` against what the renderer emits.
+TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
+  const auto &logger = Logger::null();
+
+  for (const FileType type : every_file_type()) {
+    const FileTypeCapabilities declared = capabilities_by_file_type(type);
+    if (!declared.translate_html) {
+      continue;
+    }
+
+    const std::vector<TestFile> test_files = TestData::test_files(type);
+    if (test_files.empty() || test_files.front().password.has_value()) {
+      continue;
+    }
+
+    std::optional<DecodedFile> file;
+    try {
+      file = open(test_files.front().absolute_path, type, logger);
+    } catch (...) {
+      continue;
+    }
+
+    const auto render = [&](const HtmlColorScheme scheme) {
+      HtmlConfig config;
+      config.color_scheme = scheme;
+      // one page of a pdf is enough, and the rest is slow
+      config.page_range_end = 1;
+
+      std::ostringstream out;
+      html::translate(*file, config).list_views().at(0).write_html(out);
+      return out.str();
+    };
+
+    std::string light;
+    std::string dark;
+    try {
+      light = render(HtmlColorScheme::light);
+      dark = render(HtmlColorScheme::dark);
+    } catch (...) {
+      continue;
+    }
+
+    EXPECT_EQ(light != dark, declared.color_scheme)
+        << file_type_to_string(type) << " " << test_files.front().short_path;
   }
 }
 

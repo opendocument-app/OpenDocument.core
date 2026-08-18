@@ -22,6 +22,9 @@ public final class FileTypeCapabilities {
   /** {@link Html#translate} produces output. */
   public final boolean translateHtml;
 
+  /** The view this type renders as honors {@link HtmlConfig#colorScheme}. */
+  public final boolean colorScheme;
+
   /** {@link Document#isEditable} can be {@code true}. */
   public final boolean edit;
 
@@ -36,6 +39,7 @@ public final class FileTypeCapabilities {
       boolean open,
       boolean decrypt,
       boolean translateHtml,
+      boolean colorScheme,
       boolean edit,
       boolean save,
       boolean encrypt) {
@@ -43,6 +47,7 @@ public final class FileTypeCapabilities {
     this.open = open;
     this.decrypt = decrypt;
     this.translateHtml = translateHtml;
+    this.colorScheme = colorScheme;
     this.edit = edit;
     this.save = save;
     this.encrypt = encrypt;

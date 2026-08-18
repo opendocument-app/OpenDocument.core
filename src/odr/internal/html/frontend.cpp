@@ -35,10 +35,31 @@ x-s{display:inline}
    Not a negative `z-index`, which is one too but takes the page out of reach of
    hit testing. */
 .odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
+/* Reflowed to the viewport there is no page box to inset the text. A physical
+   measure, like the page margin it stands in for. */
+.odr-text-flow{padding:3mm}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
 .odr-list-marker{display:inline-block;min-width:2em;margin-left:-2em;white-space:pre}
+)css";
+
+/// Dark counterpart of the style above. The `media` attribute of the element
+/// carrying it gates it — a rule inside a query cannot beat an inline color.
+constexpr std::string_view document_dark_css = R"css(
+:root{color-scheme:dark}
+body{background:#0d1117;color:#e6edf3}
+/* The step to the page is what makes it read as a sheet. */
+.odr-background{background:#010409}
+.odr-page-outer{background-color:#161b22!important;box-shadow:0 1px 4px rgba(0,0,0,.8)}
+/* Fills give way to the page, text to one legible against it.
+   `background-image` is left alone: a page printed on a picture keeps it. */
+div,table,tr,td,x-p,x-s{background-color:transparent!important}
+/* A shape's fill is an svg `fill` (`translate_drawing_style`), not a
+   background, and gives way like one. The stroke stays: it is the line. */
+svg,svg *{fill:transparent!important}
+td,x-p,x-s{color:#e6edf3!important}
+a,a x-p,a x-s{color:#6cb6ff!important}
 )css";
 
 /// No `text-overflow`: it sat on `td`, whose overflow is visible, and making it
@@ -88,6 +109,21 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-sort-asc::after{content:"\25B4"}
 )css";
 
+constexpr std::string_view spreadsheet_dark_css = R"css(
+:root{
+--odr-sheet-line:#30363d;
+--odr-sheet-rule:#484f58;
+--odr-sheet-ruler:#161b22;
+--odr-sheet-ruler-text:#8b949e;
+--odr-sheet-canvas:#0d1117;
+--odr-sheet-wash:rgba(255,255,255,.05);
+--odr-sheet-wash-pinned:rgba(255,255,255,.10);
+--odr-sheet-wash-ruler:rgba(255,255,255,.12);
+--odr-sheet-focus:#4c8dff;
+}
+.odr-sheet{background-color:#161b22!important}
+)css";
+
 /// A whole-pixel line height, because the line numbers are a second column
 /// whose cells are sized to the lines by script - a fractional line would round
 /// per cell and the two columns would drift apart.
@@ -113,6 +149,19 @@ body{margin:0;background:#fff}
 .odr-text-body>div{margin-left:-100vw;padding-left:100vw}
 .odr-text-body>div:hover{background:var(--odr-text-wash)}
 [contenteditable]:focus{outline:none}
+)css";
+
+/// The gutter steps the other way in dark: lighter than the ground.
+constexpr std::string_view text_dark_css = R"css(
+:root{
+color-scheme:dark;
+--odr-text-fg:#e6edf3;
+--odr-text-muted:#8b949e;
+--odr-text-line:#30363d;
+--odr-text-gutter:#161b22;
+--odr-text-wash:rgba(255,255,255,.05);
+}
+body{background:#0d1117}
 )css";
 
 /// No numbered gutter - the numbers would be ours, not the file's. The column
@@ -150,6 +199,21 @@ body{margin:0;background:#fff}
 .odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}
 )css";
 
+constexpr std::string_view xml_dark_css = R"css(
+:root{
+color-scheme:dark;
+--odr-xml-text:#e6edf3;
+--odr-xml-muted:#8b949e;
+--odr-xml-punct:#9198a1;
+--odr-xml-name:#7ee787;
+--odr-xml-attr:#ffa657;
+--odr-xml-value:#a5d6ff;
+--odr-xml-meta:#d2a8ff;
+}
+body{background:#0d1117}
+.odr-xml summary:hover{background:rgba(255,255,255,.06)}
+)css";
+
 constexpr std::string_view filesystem_css = R"css(
 :root{
 --odr-files-line:#e3e5e8;
@@ -172,6 +236,19 @@ body{margin:0;background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files-action a:hover{background:rgba(0,0,0,.07);color:var(--odr-files-link)}
 )css";
 
+/// The washes lighten rather than darken: a black one paints nothing here.
+constexpr std::string_view filesystem_dark_css = R"css(
+:root{
+color-scheme:dark;
+--odr-files-line:#30363d;
+--odr-files-muted:#8b949e;
+--odr-files-link:#6cb6ff;
+}
+body{background:#0d1117;color:#e6edf3}
+.odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(255,255,255,.05),rgba(255,255,255,.05))}
+.odr-files-action a:hover{background:rgba(255,255,255,.08)}
+)css";
+
 constexpr std::string_view media_css = R"css(
 body{margin:0;background:#000}
 .odr-media{display:flex;align-items:center;justify-content:center;min-height:100vh}
@@ -183,6 +260,11 @@ body{margin:0;background:#000}
 constexpr std::string_view search_css = R"css(
 mark{background:#ff0}
 mark.current{background:orange}
+)css";
+
+/// The mark keeps its yellow; only the text on it turns over.
+constexpr std::string_view search_dark_css = R"css(
+mark{color:#0d1117!important}
 )css";
 
 constexpr std::string_view document_js = R"js(
@@ -1100,18 +1182,32 @@ struct Asset {
 
 constexpr Asset document_css_asset{HtmlResourceType::css, "text/css",
                                    "document.css", document_css};
+constexpr Asset document_dark_css_asset{HtmlResourceType::css, "text/css",
+                                        "document-dark.css", document_dark_css};
 constexpr Asset spreadsheet_css_asset{HtmlResourceType::css, "text/css",
                                       "spreadsheet.css", spreadsheet_css};
+constexpr Asset spreadsheet_dark_css_asset{HtmlResourceType::css, "text/css",
+                                           "spreadsheet-dark.css",
+                                           spreadsheet_dark_css};
 constexpr Asset text_css_asset{HtmlResourceType::css, "text/css", "text.css",
                                text_css};
+constexpr Asset text_dark_css_asset{HtmlResourceType::css, "text/css",
+                                    "text-dark.css", text_dark_css};
 constexpr Asset xml_css_asset{HtmlResourceType::css, "text/css", "xml.css",
                               xml_css};
+constexpr Asset xml_dark_css_asset{HtmlResourceType::css, "text/css",
+                                   "xml-dark.css", xml_dark_css};
 constexpr Asset filesystem_css_asset{HtmlResourceType::css, "text/css",
                                      "filesystem.css", filesystem_css};
+constexpr Asset filesystem_dark_css_asset{HtmlResourceType::css, "text/css",
+                                          "filesystem-dark.css",
+                                          filesystem_dark_css};
 constexpr Asset media_css_asset{HtmlResourceType::css, "text/css", "media.css",
                                 media_css};
 constexpr Asset search_css_asset{HtmlResourceType::css, "text/css",
                                  "search.css", search_css};
+constexpr Asset search_dark_css_asset{HtmlResourceType::css, "text/css",
+                                      "search-dark.css", search_dark_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", document_js};
 constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
@@ -1142,17 +1238,38 @@ HtmlResources locate_all(const std::span<const Asset> assets,
   return resources;
 }
 
-void write_style(const Asset &asset, const WritingState &state) {
+/// Adds the dark sheets where the config asks for them.
+HtmlResources locate_all(const std::span<const Asset> assets,
+                         const std::span<const Asset> dark,
+                         const HtmlConfig &config) {
+  HtmlResources resources = locate_all(assets, config);
+  if (writes_dark_style(config)) {
+    for (const Asset &asset : dark) {
+      locate(asset, config, resources);
+    }
+  }
+  return resources;
+}
+
+/// @p media, when given, gates the stylesheet on that media query.
+void write_style(const Asset &asset, const WritingState &state,
+                 const std::string_view media = {}) {
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
       location.has_value()) {
-    state.out().write_header_style(escape_attribute(*location));
+    state.out().write_header_style(escape_attribute(*location), media);
     return;
   }
 
-  state.out().write_header_style_begin();
+  state.out().write_header_style_begin(media);
   state.out().out() << asset.content;
   state.out().write_header_style_end();
+}
+
+void write_dark_style(const Asset &asset, const WritingState &state) {
+  if (writes_dark_style(state.config())) {
+    write_style(asset, state, dark_style_media(state.config()));
+  }
 }
 
 void write_script(const Asset &asset, const WritingState &state) {
@@ -1174,6 +1291,16 @@ void write_script(const Asset &asset, const WritingState &state) {
 
 namespace odr::internal {
 
+bool html::writes_dark_style(const HtmlConfig &config) {
+  return config.color_scheme != HtmlColorScheme::light;
+}
+
+std::string_view html::dark_style_media(const HtmlConfig &config) {
+  return config.color_scheme == HtmlColorScheme::system
+             ? "(prefers-color-scheme: dark)"
+             : "";
+}
+
 void html::write_document_style(const WritingState &state) {
   write_style(document_css_asset, state);
 }
@@ -1182,16 +1309,36 @@ void html::write_spreadsheet_style(const WritingState &state) {
   write_style(spreadsheet_css_asset, state);
 }
 
+void html::write_document_dark_style(const WritingState &state) {
+  write_dark_style(document_dark_css_asset, state);
+}
+
+void html::write_spreadsheet_dark_style(const WritingState &state) {
+  write_dark_style(spreadsheet_dark_css_asset, state);
+}
+
 void html::write_text_style(const WritingState &state) {
   write_style(text_css_asset, state);
+}
+
+void html::write_text_dark_style(const WritingState &state) {
+  write_dark_style(text_dark_css_asset, state);
 }
 
 void html::write_xml_style(const WritingState &state) {
   write_style(xml_css_asset, state);
 }
 
+void html::write_xml_dark_style(const WritingState &state) {
+  write_dark_style(xml_dark_css_asset, state);
+}
+
 void html::write_filesystem_style(const WritingState &state) {
   write_style(filesystem_css_asset, state);
+}
+
+void html::write_filesystem_dark_style(const WritingState &state) {
+  write_dark_style(filesystem_dark_css_asset, state);
 }
 
 void html::write_media_style(const WritingState &state) {
@@ -1200,6 +1347,10 @@ void html::write_media_style(const WritingState &state) {
 
 void html::write_search_style(const WritingState &state) {
   write_style(search_css_asset, state);
+}
+
+void html::write_search_dark_style(const WritingState &state) {
+  write_dark_style(search_dark_css_asset, state);
 }
 
 void html::write_document_script(const WritingState &state) {
@@ -1221,13 +1372,15 @@ void html::write_text_script(const WritingState &state) {
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset, search_css_asset,
                                      search_js_asset, text_js_asset};
-  return locate_all(assets, config);
+  static constexpr std::array dark{text_dark_css_asset, search_dark_css_asset};
+  return locate_all(assets, dark, config);
 }
 
 HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
   static constexpr std::array assets{xml_css_asset, search_css_asset,
                                      search_js_asset};
-  return locate_all(assets, config);
+  static constexpr std::array dark{xml_dark_css_asset, search_dark_css_asset};
+  return locate_all(assets, dark, config);
 }
 
 HtmlResources html::locate_search_resources(const HtmlConfig &config) {

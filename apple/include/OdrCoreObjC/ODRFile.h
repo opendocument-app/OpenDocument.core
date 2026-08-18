@@ -129,6 +129,8 @@ NS_SWIFT_NAME(FileTypeCapabilities)
 @property(nonatomic, readonly) BOOL decrypt;
 /// `ODRHtml` produces output for it.
 @property(nonatomic, readonly) BOOL translateHtml;
+/// The view it renders as honors `ODRHtmlConfig.colorScheme`.
+@property(nonatomic, readonly) BOOL colorScheme;
 @property(nonatomic, readonly) BOOL edit;
 @property(nonatomic, readonly) BOOL save;
 /// Saving with a password is supported.

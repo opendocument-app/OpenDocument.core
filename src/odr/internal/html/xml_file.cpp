@@ -261,7 +261,9 @@ public:
     write_viewport_meta(out, config(), false);
 
     write_xml_style(state);
+    write_xml_dark_style(state);
     write_search_style(state);
+    write_search_dark_style(state);
 
     out.write_header_end();
 

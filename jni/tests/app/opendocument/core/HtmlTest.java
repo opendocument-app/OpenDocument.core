@@ -80,6 +80,22 @@ class HtmlTest {
     assertTrue(renderOdt(raw).contains("<meta name=\"viewport\" content=\"width=420\"/>"));
   }
 
+  /** The C++ suite covers what the scheme paints; this only proves it crosses JNI. */
+  @Test
+  void colorSchemeReachesTheHtml() throws IOException {
+    assertEquals(HtmlColorScheme.LIGHT, new HtmlConfig().colorScheme);
+    assertTrue(!renderOdt(new HtmlConfig()).contains("prefers-color-scheme"));
+
+    HtmlConfig system = new HtmlConfig();
+    system.colorScheme = HtmlColorScheme.SYSTEM;
+    assertTrue(renderOdt(system).contains("media=\"(prefers-color-scheme: dark)\""));
+
+    Path cache = Files.createDirectories(tempDir.resolve("scheme"));
+    DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+    HtmlConfig readBack = Html.translate(file, cache.toString(), system).config();
+    assertEquals(HtmlColorScheme.SYSTEM, readBack.colorScheme);
+  }
+
   @Test
   void translateText() throws IOException {
     Html html = translateOffline(TestFiles.txtFile(tempDir));

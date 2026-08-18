@@ -103,6 +103,10 @@ emscripten::val enum_tables() {
              table(entry("none", HtmlTableGridlines::none),
                    entry("soft", HtmlTableGridlines::soft),
                    entry("hard", HtmlTableGridlines::hard)));
+  result.set("HtmlColorScheme",
+             table(entry("light", HtmlColorScheme::light),
+                   entry("dark", HtmlColorScheme::dark),
+                   entry("system", HtmlColorScheme::system)));
   result.set("HtmlViewportMode",
              table(entry("automatic", HtmlViewportMode::automatic),
                    entry("fit_width", HtmlViewportMode::fit_width),

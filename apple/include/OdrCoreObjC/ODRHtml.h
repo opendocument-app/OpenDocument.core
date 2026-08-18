@@ -26,6 +26,17 @@ typedef NS_ENUM(NSInteger, ODRHtmlTableGridlines) {
   ODRHtmlTableGridlinesHard,
 } NS_SWIFT_NAME(HtmlTableGridlines);
 
+/// The colors the emitted HTML renders against. `ODRFileTypeCapabilities`
+/// says which views honor it.
+typedef NS_ENUM(NSInteger, ODRHtmlColorScheme) {
+  /// A white page, carrying the colors the document gives its content.
+  ODRHtmlColorSchemeLight = 0,
+  /// A dark page, which the document's own text and fill colors give way to.
+  ODRHtmlColorSchemeDark,
+  /// Light or dark, by the reader's `prefers-color-scheme`.
+  ODRHtmlColorSchemeSystem,
+} NS_SWIFT_NAME(HtmlColorScheme);
+
 /// Initial zoom of the emitted HTML on mobile (the viewport meta tag). Desktop
 /// browsers ignore it entirely.
 typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
@@ -70,6 +81,8 @@ NS_SWIFT_NAME(HtmlConfig)
 
 @property(nonatomic) BOOL editable;
 @property(nonatomic) BOOL textDocumentMargin;
+
+@property(nonatomic) ODRHtmlColorScheme colorScheme;
 
 /// `nil` for no limit.
 @property(nonatomic, strong, nullable) NSValue *spreadsheetLimit;

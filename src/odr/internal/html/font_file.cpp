@@ -9,6 +9,7 @@
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -121,6 +122,15 @@ public:
         << ".glyph{font-family:'odr-specimen';font-size:2em;line-height:1;}";
     out.out() << ".gid{font-size:.6em;color:#888;}";
     out.out() << "</style>";
+
+    if (writes_dark_style(config())) {
+      out.write_header_style_begin(dark_style_media(config()));
+      out.out() << ":root{color-scheme:dark}";
+      out.out() << "body{background:#0d1117;color:#e6edf3;}";
+      out.out() << ".cell{border-color:#30363d;}";
+      out.out() << ".gid{color:#8b949e;}";
+      out.write_header_style_end();
+    }
 
     out.out() << "<h1>" << escape_text(font->name()) << "</h1>";
     out.out() << "<p>glyphs: " << font->glyph_count()

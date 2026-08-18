@@ -18,6 +18,7 @@ const pinned = {
     font: 4,
     media: 5,
   },
+  HtmlColorScheme: { light: 0, dark: 1, system: 2 },
   HtmlTableGridlines: { none: 0, soft: 1, hard: 2 },
   HtmlViewportMode: {
     automatic: 0,

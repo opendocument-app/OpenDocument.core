@@ -96,6 +96,7 @@ def test_capabilities_by_file_type():
     odt = pyodr.capabilities_by_file_type(pyodr.FileType.opendocument_text)
     assert odt.open
     assert odt.translate_html
+    assert odt.color_scheme
     assert odt.edit
 
     # detected and named, but there is no decoder behind it
@@ -108,6 +109,11 @@ def test_capabilities_by_file_type():
     assert not pyodr.capabilities_by_file_type(
         pyodr.FileType.opendocument_spreadsheet
     ).edit
+
+    # a pdf renders, but paints its own page backgrounds
+    pdf = pyodr.capabilities_by_file_type(pyodr.FileType.portable_document_format)
+    assert pdf.translate_html
+    assert not pdf.color_scheme
 
 
 def test_decoded_file_capabilities(odt_path):

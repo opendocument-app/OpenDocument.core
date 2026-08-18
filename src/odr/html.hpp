@@ -73,6 +73,14 @@ enum class HtmlTableGridlines {
   hard,
 };
 
+/// @brief The colors the emitted HTML renders against. @ref
+/// FileTypeCapabilities::color_scheme says which views honor it.
+enum class HtmlColorScheme {
+  light,  ///< a white page, carrying the colors the document gives its content
+  dark,   ///< a dark page, which the document's own colors give way to
+  system, ///< `light` or `dark`, by the reader's `prefers-color-scheme`
+};
+
 /// @brief Initial zoom of the emitted HTML on mobile (viewport meta tag).
 /// Desktop browsers ignore the tag entirely.
 enum class HtmlViewportMode {
@@ -123,6 +131,9 @@ struct HtmlConfig {
 
   // text document margin
   bool text_document_margin{false};
+
+  // colors the output renders against
+  HtmlColorScheme color_scheme{HtmlColorScheme::light};
 
   // spreadsheet table limit
   std::optional<TableDimensions> spreadsheet_limit{TableDimensions(10000, 500)};
