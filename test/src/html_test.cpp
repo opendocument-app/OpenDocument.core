@@ -143,13 +143,16 @@ TEST(html, archive_listing) {
 
 namespace {
 
-std::string render_odt(const HtmlConfig &config) {
-  const DecodedFile file(TestData::test_file_path("odr-public/odt/about.odt"),
-                         Logger::null());
+std::string render(const std::string &path, const HtmlConfig &config) {
+  const DecodedFile file(TestData::test_file_path(path), Logger::null());
 
   std::ostringstream out;
   html::translate(file, config).list_views().at(0).write_html(out);
   return out.str();
+}
+
+std::string render_odt(const HtmlConfig &config) {
+  return render("odr-public/odt/about.odt", config);
 }
 
 } // namespace
@@ -202,12 +205,43 @@ TEST(html, linked_dark_style_is_served) {
 
   EXPECT_NE(
       out.str().find(
-          R"html(<link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)"/>)html"),
+          R"html(<link rel="stylesheet" href="document-dark.css" media="(prefers-color-scheme: dark)"/>)html"),
       std::string::npos);
   EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &entry) {
-    return entry.second.has_value() && *entry.second == "dark.css";
+    return entry.second.has_value() && *entry.second == "document-dark.css";
   }));
-  EXPECT_TRUE(service.exists("dark.css"));
+  EXPECT_TRUE(service.exists("document-dark.css"));
+}
+
+// Every view but the pdf one has a dark palette of its own: those are ours
+// rather than the file's, so the dark sheet only restates their tokens.
+TEST(html, color_scheme_reaches_every_view) {
+  HtmlConfig config;
+  config.color_scheme = HtmlColorScheme::dark;
+
+  // a text file, and the gutter it numbers its lines in
+  const std::string text = render("odr-public/txt/lorem ipsum.txt", config);
+  EXPECT_NE(text.find("--odr-text-gutter:#161b22"), std::string::npos);
+
+  // a source view
+  const DecodedFile xml_file(File::from_memory("<a><b>c</b></a>"),
+                             FileType::xml);
+  std::ostringstream xml;
+  html::translate(xml_file, config).list_views().at(0).write_html(xml);
+  EXPECT_NE(xml.str().find("--odr-xml-name:#7ee787"), std::string::npos);
+
+  // a file listing: the archive view of a zip
+  const DecodedFile archive(
+      TestData::test_file_path("odr-public/odt/about.odt"), FileType::zip,
+      Logger::null());
+  std::ostringstream listing;
+  html::translate(archive, config).list_views().at(0).write_html(listing);
+  EXPECT_NE(listing.str().find("--odr-files-link:#6cb6ff"), std::string::npos);
+
+  // the search mark turns its text over wherever a view paints one
+  EXPECT_NE(text.find("mark{color:#0d1117!important}"), std::string::npos);
+  EXPECT_NE(listing.str().find("mark{color:#0d1117!important}"),
+            std::string::npos);
 }
 
 TEST(html, views) {

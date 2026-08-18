@@ -54,11 +54,13 @@ void front(const Document &document, const WritingState &state,
                           : std::nullopt);
 
   write_document_style(state);
+  write_document_dark_style(state);
   write_search_style(state);
+  write_search_dark_style(state);
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_style(state);
+    write_spreadsheet_dark_style(state);
   }
-  write_color_scheme_style(state);
 
   out.write_header_end();
 

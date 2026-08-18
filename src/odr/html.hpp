@@ -73,9 +73,9 @@ enum class HtmlTableGridlines {
   hard,
 };
 
-/// @brief The colors the emitted HTML renders a document against. Only the
-/// document views honor it; a pdf, a source view or a file listing brings its
-/// own.
+/// @brief The colors the emitted HTML renders against. Every view honors it but
+/// the pdf one, which paints its page backgrounds itself; a media view is black
+/// in any scheme.
 enum class HtmlColorScheme {
   light, ///< a white page, carrying the colors the document gives its content
   dark,  ///< a dark page, which the document's own text and fill colors give
@@ -135,7 +135,7 @@ struct HtmlConfig {
   // text document margin
   bool text_document_margin{false};
 
-  // colors the document renders against
+  // colors the output renders against
   HtmlColorScheme color_scheme{HtmlColorScheme::light};
 
   // spreadsheet table limit

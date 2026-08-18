@@ -189,7 +189,9 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
     write_filesystem_style(state);
+    write_filesystem_dark_style(state);
     write_search_style(state);
+    write_search_dark_style(state);
     out.write_header_end();
 
     out.write_body_begin();

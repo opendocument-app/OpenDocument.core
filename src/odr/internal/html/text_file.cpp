@@ -101,7 +101,9 @@ public:
     write_viewport_meta(out, config(), false);
 
     write_text_style(state);
+    write_text_dark_style(state);
     write_search_style(state);
+    write_search_dark_style(state);
 
     out.write_header_end();
 
