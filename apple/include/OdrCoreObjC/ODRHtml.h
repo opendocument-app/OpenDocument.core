@@ -26,8 +26,8 @@ typedef NS_ENUM(NSInteger, ODRHtmlTableGridlines) {
   ODRHtmlTableGridlinesHard,
 } NS_SWIFT_NAME(HtmlTableGridlines);
 
-/// The colors the emitted HTML renders a document against. Only the document
-/// views honor it; a pdf, a source view or a file listing brings its own.
+/// The colors the emitted HTML renders against. `ODRFileTypeCapabilities`
+/// says which views honor it.
 typedef NS_ENUM(NSInteger, ODRHtmlColorScheme) {
   /// A white page, carrying the colors the document gives its content.
   ODRHtmlColorSchemeLight = 0,

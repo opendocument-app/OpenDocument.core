@@ -163,9 +163,7 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
   }
 }
 
-/// The anti-drift check behind `color_scheme`: the declaration names the views
-/// that turn over, so it is held against what the renderer emits. A scheme
-/// other than light either changes the html or the type does not claim it.
+/// Holds the declared `color_scheme` against what the renderer emits.
 TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
   const auto &logger = Logger::null();
 

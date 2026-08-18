@@ -172,7 +172,7 @@ FileTypeCapabilities DecodedFile::capabilities() const {
   // an encrypted file has to be decrypted before it renders
   result.translate_html =
       result.translate_html && encryption_state() != EncryptionState::encrypted;
-  // a scheme only reaches html there is
+  // there is no scheme without html
   result.color_scheme = result.color_scheme && result.translate_html;
 
   // `edit`/`save`/`encrypt` stay as declared — resolving them would mean

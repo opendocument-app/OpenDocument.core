@@ -157,8 +157,7 @@ std::string render_odt(const HtmlConfig &config) {
 
 } // namespace
 
-// Reflowed to the viewport a text document has no page box to inset it, and the
-// body carries no margin of its own.
+// Reflowed to the viewport there is no page box to inset the text.
 TEST(html, flowing_text_is_inset_from_the_screen_edge) {
   HtmlConfig config;
   config.text_document_margin = false;
@@ -169,9 +168,8 @@ TEST(html, flowing_text_is_inset_from_the_screen_edge) {
   EXPECT_NE(page.find(".odr-text-flow{padding:"), std::string::npos);
 }
 
-// The colors a document sets are inline, out of reach of a media query, so the
-// dark scheme is a stylesheet that overrides them — and for `system` it is the
-// element carrying that stylesheet which is gated, not a rule inside it.
+// For `system` it is the element carrying the dark style that is gated, not a
+// rule inside it.
 TEST(html, color_scheme_writes_the_dark_style) {
   HtmlConfig config;
 
@@ -213,8 +211,7 @@ TEST(html, linked_dark_style_is_served) {
   EXPECT_TRUE(service.exists("document-dark.css"));
 }
 
-// Every view but the pdf one has a dark palette of its own: those are ours
-// rather than the file's, so the dark sheet only restates their tokens.
+// Every view but the pdf one turns over.
 TEST(html, color_scheme_reaches_every_view) {
   HtmlConfig config;
   config.color_scheme = HtmlColorScheme::dark;

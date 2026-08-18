@@ -35,10 +35,8 @@ x-s{display:inline}
    Not a negative `z-index`, which is one too but takes the page out of reach of
    hit testing. */
 .odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
-/* Reflowed to the viewport there is no page box to inset the text, and the body
-   has no margin of its own, so it would begin at the screen edge. A page's own
-   margin is a physical measure, and so is this one, rather than a `ch` of
-   whatever font the browser happens to default to. */
+/* Reflowed to the viewport there is no page box to inset the text. A physical
+   measure, like the page margin it stands in for. */
 .odr-text-flow{padding:3mm}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
@@ -46,29 +44,19 @@ x-s{display:inline}
 .odr-list-marker{display:inline-block;min-width:2em;margin-left:-2em;white-space:pre}
 )css";
 
-/// The dark counterpart of the style above. Every view but the pdf one has one,
-/// written straight after the sheet it restates, and — for @ref
-/// odr::HtmlColorScheme::system — carried by an element whose `media` attribute
-/// gates it. That is what lets a rule in here be plain: none of them could sit
-/// inside a query and still reach a color the document sets inline.
+/// Dark counterpart of the style above. The `media` attribute of the element
+/// carrying it gates it — a rule inside a query cannot beat an inline color.
 constexpr std::string_view document_dark_css = R"css(
 :root{color-scheme:dark}
 body{background:#0d1117;color:#e6edf3}
-/* The backdrop stays darker than the page, as it is lighter than it in light:
-   what makes a page read as a sheet is the step between them. */
+/* The step to the page is what makes it read as a sheet. */
 .odr-background{background:#010409}
 .odr-page-outer{background-color:#161b22!important;box-shadow:0 1px 4px rgba(0,0,0,.8)}
-/* The colors the file authored are inline, and no media query reaches an inline
-   style — so they are overridden here rather than dropped as the file is read.
-   Every fill gives way to the page and every run of text to one legible against
-   it, which costs a slide its own fills and is what keeps its text readable.
+/* Fills give way to the page, text to one legible against it.
    `background-image` is left alone: a page printed on a picture keeps it. */
 div,table,tr,td,x-p,x-s{background-color:transparent!important}
-/* A shape's fill is not a background: `translate_drawing_style` writes it as the
-   svg `fill` that the rect or circle we draw inside it inherits. It gives way
-   like one, or a light box would keep its fill and lose its text to the ink
-   above. The stroke is left as the file set it: it is the shape's line, not its
-   ground. */
+/* A shape's fill is an svg `fill` (`translate_drawing_style`), not a
+   background, and gives way like one. The stroke stays: it is the line. */
 svg,svg *{fill:transparent!important}
 td,x-p,x-s{color:#e6edf3!important}
 a,a x-p,a x-s{color:#6cb6ff!important}
@@ -121,7 +109,6 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-sort-asc::after{content:"\25B4"}
 )css";
 
-/// The sheet is a surface like a page, and reads against a canvas the same way.
 constexpr std::string_view spreadsheet_dark_css = R"css(
 :root{
 --odr-sheet-line:#30363d;
@@ -164,8 +151,7 @@ body{margin:0;background:#fff}
 [contenteditable]:focus{outline:none}
 )css";
 
-/// The gutter is a surface beside the page, so it steps the other way in dark:
-/// lighter than the text it numbers, where in light it is darker.
+/// The gutter steps the other way in dark: lighter than the ground.
 constexpr std::string_view text_dark_css = R"css(
 :root{
 color-scheme:dark;
@@ -213,8 +199,6 @@ body{margin:0;background:#fff}
 .odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}
 )css";
 
-/// The same six parts of a document, in the cuts of them that carry on a dark
-/// ground.
 constexpr std::string_view xml_dark_css = R"css(
 :root{
 color-scheme:dark;
@@ -252,8 +236,7 @@ body{margin:0;background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files-action a:hover{background:rgba(0,0,0,.07);color:var(--odr-files-link)}
 )css";
 
-/// The washes are lightened rather than darkened: on a dark row a black one
-/// paints nothing.
+/// The washes lighten rather than darken: a black one paints nothing here.
 constexpr std::string_view filesystem_dark_css = R"css(
 :root{
 color-scheme:dark;
@@ -279,8 +262,7 @@ mark{background:#ff0}
 mark.current{background:orange}
 )css";
 
-/// The mark is ours rather than the file's and keeps its yellow, the one light
-/// thing left on the page; only the text on it turns over.
+/// The mark keeps its yellow; only the text on it turns over.
 constexpr std::string_view search_dark_css = R"css(
 mark{color:#0d1117!important}
 )css";
@@ -1256,8 +1238,7 @@ HtmlResources locate_all(const std::span<const Asset> assets,
   return resources;
 }
 
-/// Adds the dark sheets where the config asks for them: a view has to answer
-/// for what its markup links, and it links those only then.
+/// Adds the dark sheets where the config asks for them.
 HtmlResources locate_all(const std::span<const Asset> assets,
                          const std::span<const Asset> dark,
                          const HtmlConfig &config) {
@@ -1285,8 +1266,6 @@ void write_style(const Asset &asset, const WritingState &state,
   state.out().write_header_style_end();
 }
 
-/// Writes @p asset where the config asks for a dark scheme, gated on the
-/// reader's preference where it asks to follow it.
 void write_dark_style(const Asset &asset, const WritingState &state) {
   if (writes_dark_style(state.config())) {
     write_style(asset, state, dark_style_media(state.config()));

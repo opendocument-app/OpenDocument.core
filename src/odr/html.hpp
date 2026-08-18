@@ -73,14 +73,11 @@ enum class HtmlTableGridlines {
   hard,
 };
 
-/// @brief The colors the emitted HTML renders against. Every view honors it but
-/// the pdf one, which paints its page backgrounds itself; a media view is black
-/// in any scheme.
+/// @brief The colors the emitted HTML renders against. @ref
+/// FileTypeCapabilities::color_scheme says which views honor it.
 enum class HtmlColorScheme {
-  light, ///< a white page, carrying the colors the document gives its content
-  dark,  ///< a dark page, which the document's own text and fill colors give
-         ///< way to — no media query reaches an inline style, so they lose to
-         ///< `!important` rather than being dropped as the file is read
+  light,  ///< a white page, carrying the colors the document gives its content
+  dark,   ///< a dark page, which the document's own colors give way to
   system, ///< `light` or `dark`, by the reader's `prefers-color-scheme`
 };
 

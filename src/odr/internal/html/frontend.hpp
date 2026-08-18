@@ -12,9 +12,7 @@ struct WritingState;
 /// as a shipped @ref odr::HtmlResource when the config asks for that.
 
 /// Each `write_*_dark_style` follows the style it restates and writes nothing
-/// unless the config asks for a scheme other than
-/// @ref odr::HtmlColorScheme::light. The pdf view has none: it paints its page
-/// backgrounds itself.
+/// for @ref odr::HtmlColorScheme::light.
 
 void write_document_style(const WritingState &state);
 void write_document_dark_style(const WritingState &state);
@@ -27,15 +25,14 @@ void write_xml_style(const WritingState &state);
 void write_xml_dark_style(const WritingState &state);
 void write_filesystem_style(const WritingState &state);
 void write_filesystem_dark_style(const WritingState &state);
-/// The media view is black in every scheme, and has no dark style.
+/// Black in every scheme, so no dark style.
 void write_media_style(const WritingState &state);
 /// Written by every view that writes the search script.
 void write_search_style(const WritingState &state);
 void write_search_dark_style(const WritingState &state);
 
-/// For a view writing its style inline rather than as a shipped asset: whether
-/// to write a dark one at all, and the `media` gating it — empty where the
-/// config asks for dark outright.
+/// For a view writing its style inline: whether to write a dark one, and the
+/// `media` gating it — empty for @ref odr::HtmlColorScheme::dark.
 bool writes_dark_style(const HtmlConfig &config);
 std::string_view dark_style_media(const HtmlConfig &config);
 
