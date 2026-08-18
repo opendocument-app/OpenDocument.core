@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.8.0 - 2026-08-18
+
 - A file can be read in the dark: `HtmlConfig::color_scheme` is `light`, `dark`
   or `system`, following the reader's `prefers-color-scheme`. Every view honors
   it but the pdf one, and the colors the file authored give way to it. Bound in
