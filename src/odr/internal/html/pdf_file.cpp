@@ -1488,7 +1488,9 @@ public:
 
           std::string run_text;
           if (font != 0) {
-            run_text = escape_text(glyph_run_str(*text.font, text.codes));
+            // Not `escape_text`: its `&nbsp;` is a different character, which
+            // `word-spacing` does not move.
+            run_text = escape_markup(glyph_run_str(*text.font, text.codes));
           } else {
             // `margin-left` already spans the word break; rendering it too
             // shifts the glyphs by a space, once per run.
@@ -1499,10 +1501,9 @@ public:
               cs_pt != 0) {
             add_class(run_classes, "s", pt_decl("letter-spacing", cs_pt));
           }
-          // CSS `word-spacing` only affects real U+0020, so it is inert on PUA
-          // glyph runs — fallback path only. Composite fonts are skipped: PDF
-          // Tw applies to single-byte code 32 alone.
-          if (font == 0 && !(text.font != nullptr && text.font->composite)) {
+          // Tw applies to single-byte code 32 alone (9.3.3), which only a
+          // simple font's run keeps as a real U+0020 (`space_glyph`).
+          if (!(text.font != nullptr && text.font->composite)) {
             if (const double ws_pt = round2(text.word_spacing * scale);
                 ws_pt != 0) {
               add_class(run_classes, "ws", pt_decl("word-spacing", ws_pt));
@@ -2342,10 +2343,16 @@ public:
         std::min(page_box[0].as_real(), page_box[2].as_real());
     const double box_y0 =
         std::min(page_box[1].as_real(), page_box[3].as_real());
-    const double width =
+    const double box_width =
         std::max(page_box[0].as_real(), page_box[2].as_real()) - box_x0;
-    const double height =
+    const double box_height =
         std::max(page_box[1].as_real(), page_box[3].as_real()) - box_y0;
+
+    // `/Rotate` turns the page clockwise as displayed (7.7.3.3), so a quarter
+    // turn swaps what the reader sees as its width and height.
+    const bool quarter_turn = page.rotate == 90 || page.rotate == 270;
+    const double width = quarter_turn ? box_height : box_width;
+    const double height = quarter_turn ? box_width : box_height;
 
     std::string classes = "p";
     {
@@ -2357,9 +2364,25 @@ public:
       add_class(classes, "y", std::move(h).str());
     }
 
+    // Onto the displayed box: 90° sends the top-left corner to the top-right,
+    // 270° to the bottom-left.
+    const util::math::Transform2D rotation = [&]() -> util::math::Transform2D {
+      switch (page.rotate) {
+      case 90:
+        return {0, 1, -1, 0, box_height, 0};
+      case 180:
+        return {-1, 0, 0, -1, box_width, box_height};
+      case 270:
+        return {0, -1, 1, 0, 0, box_width};
+      default:
+        return {};
+      }
+    }();
+
     const util::math::Transform2D to_box =
         util::math::Transform2D::translation(-box_x0, -box_y0) *
-        util::math::Transform2D::scaling_translation(1, -1, 0, height);
+        util::math::Transform2D::scaling_translation(1, -1, 0, box_height) *
+        rotation;
 
     return {width, height, to_box, std::move(classes)};
   }
@@ -2554,11 +2577,14 @@ public:
   /// Re-encodes `font`'s embedded program, folding `extra_unicode`'s cmap
   /// entries in alongside the PUA range, and appends its `@font-face` plus the
   /// `.fvN`/`.fnN` rules `class_used` says are needed.
-  static void
-  write_font_face(const pdf::Font &font, const std::uint32_t index,
-                  const std::map<char32_t, std::uint16_t> &extra_unicode,
-                  const std::array<bool, 2> &class_used,
-                  std::string &font_faces, std::string &font_styles) {
+  static void write_font_face(const pdf::Font &font, const std::uint32_t index,
+                              std::map<char32_t, std::uint16_t> extra_unicode,
+                              const std::array<bool, 2> &class_used,
+                              std::string &font_faces,
+                              std::string &font_styles) {
+    if (const std::uint16_t space = space_glyph(font); space != 0) {
+      extra_unicode.emplace(U' ', space);
+    }
     std::string reencoded;
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
@@ -2612,10 +2638,26 @@ public:
     return std::clamp(em, 0.5, 1.0);
   }
 
+  /// The glyph a simple font paints for byte 32, 0 when it has none. That byte
+  /// keeps a real U+0020 for CSS `word-spacing` to move, and `write_font_face`
+  /// maps U+0020 onto this glyph so the painted shape is unchanged.
+  static std::uint16_t space_glyph(const pdf::Font &font) {
+    if (font.composite || font.embedded_font == nullptr) {
+      return 0;
+    }
+    const std::uint16_t glyph = font.glyph_for_code(' ');
+    return glyph < font.embedded_font->glyph_count() ? glyph : 0;
+  }
+
   static std::string glyph_run_str(const pdf::Font &font,
                                    const std::string &codes) {
+    const std::uint16_t space = space_glyph(font);
     std::string s;
     for (const std::uint32_t code : font.codes(codes)) {
+      if (code == ' ' && space != 0) {
+        s += ' ';
+        continue;
+      }
       util::string::append_c32(font::pua_code_point(font.glyph_for_code(code)),
                                s);
     }

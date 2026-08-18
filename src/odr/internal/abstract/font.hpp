@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr::internal::abstract {
 
@@ -44,6 +45,12 @@ public:
   /// Recovers Unicode for a font without usable `/ToUnicode` or `/Encoding`.
   [[nodiscard]] virtual std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const = 0;
+
+  /// The glyph a PostScript glyph name selects, 0 when the font names none —
+  /// including every format that carries no glyph names (ISO 32000-1 9.6.6.2).
+  [[nodiscard]] virtual std::uint16_t glyph_for_name(std::string_view) const {
+    return 0;
+  }
 };
 
 } // namespace odr::internal::abstract

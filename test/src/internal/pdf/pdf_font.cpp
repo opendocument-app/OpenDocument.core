@@ -1,4 +1,6 @@
 #include <odr/internal/abstract/font.hpp>
+#include <odr/internal/font/cff_builder.hpp>
+#include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/pdf/pdf_afm.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -189,6 +191,27 @@ TEST(PdfFont, simple_font_glyph_for_code_via_cmap) {
 
   EXPECT_EQ(font.glyph_for_code('A'), 1);
   EXPECT_EQ(font.glyph_for_code('C'), 3);
+}
+
+TEST(PdfFont, simple_font_glyph_for_code_via_font_charset) {
+  // A subset producer names its glyphs `gidNNNNN`: only the font program's
+  // own charset reaches them (ISO 32000-1 9.6.6.2).
+  const std::string endchar("\x0e", 1);
+  Font font;
+  font.embedded_font =
+      std::make_shared<font::cff::CffFont>(font::cff::build_cff(
+          "Subset",
+          {{".notdef", endchar}, {"gid00046", endchar}, {"gid00133", endchar}},
+          /*default_width=*/0, /*nominal_width=*/0,
+          odr::FontBBox{0, -200, 600, 800}));
+
+  font.encoding.emplace(pdf::BaseEncoding::standard);
+  font.encoding->set_difference(30, "gid00133");
+
+  EXPECT_EQ(font.glyph_for_code(30), 2);
+  // `A` in StandardEncoding, which the font does not carry: the code-as-GID
+  // fallback stands.
+  EXPECT_EQ(font.glyph_for_code(65), 65);
 }
 
 TEST(PdfFont, no_font_yields_no_glyph) {

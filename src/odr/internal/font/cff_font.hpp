@@ -41,6 +41,8 @@ public:
   glyph_for_code_point(char32_t code_point) const override;
   [[nodiscard]] std::optional<char32_t>
   code_point_for_glyph(std::uint16_t glyph) const override;
+  [[nodiscard]] std::uint16_t
+  glyph_for_name(std::string_view name) const override;
 
   // --- CFF-specific facts, for the OTF wrap and PDF wiring ---
 
@@ -98,6 +100,9 @@ private:
                                               std::uint32_t &end) const;
   /// Resolve a string SID to its text (standard strings or the String INDEX).
   [[nodiscard]] std::string string_for_sid(std::uint16_t sid) const;
+  /// The inverse, `nullopt` when the font never names @p string.
+  [[nodiscard]] std::optional<std::uint16_t>
+  sid_for_string(std::string_view string) const;
   /// Extract the optional leading width from glyph @p glyph's Type2 charstring,
   /// in design units; `nullopt` when the charstring carries no explicit width.
   [[nodiscard]] std::optional<std::int32_t>

@@ -292,9 +292,22 @@ std::size_t util::padding(const std::string_view input) {
   return inflator.GetPadding();
 }
 
+namespace {
+/// Drops the ADLER32 check (RFC 1950 2.2), which real producers truncate, and
+/// clears the queue so trailing bytes stay out of the output.
+class UncheckedZlibDecompressor final : public CryptoPP::ZlibDecompressor {
+public:
+  explicit UncheckedZlibDecompressor(BufferedTransformation *attachment)
+      : ZlibDecompressor(attachment) {}
+
+protected:
+  void ProcessPoststreamTail() override { m_inQueue.Clear(); }
+};
+} // namespace
+
 std::string util::zlib_inflate(const std::string_view input) {
   std::string result;
-  CryptoPP::ZlibDecompressor inflator(new CryptoPP::StringSink(result));
+  UncheckedZlibDecompressor inflator(new CryptoPP::StringSink(result));
   inflator.Put(reinterpret_cast<const byte *>(input.data()), input.size());
   inflator.MessageEnd();
   return result;

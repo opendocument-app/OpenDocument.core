@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Justified pdf text is spaced as the file asks: word spacing (`Tw`) applies to
+  runs painted with an embedded font, which had rendered short.
+- A pdf page is turned as its `/Rotate` says.
+- A pdf whose subset font names its glyphs `gidNNNNN` reads correctly, and a
+  named glyph variant such as `hyphen.case` is the one painted: a simple font's
+  `/Encoding` names select through the font program's charset.
+- A pdf whose Flate streams omit the ADLER32 trailer opens.
+
 ## v6.8.0 - 2026-08-18
 
 - A file can be read in the dark: `HtmlConfig::color_scheme` is `light`, `dark`

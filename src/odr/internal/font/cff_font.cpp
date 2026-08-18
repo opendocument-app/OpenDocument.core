@@ -488,6 +488,26 @@ std::string CffFont::string_for_sid(const std::uint16_t sid) const {
       d.substr(m_strings[index].offset, m_strings[index].length));
 }
 
+std::optional<std::uint16_t>
+CffFont::sid_for_string(const std::string_view string) const {
+  for (std::uint16_t sid = 0; sid < cff_standard_strings_size; ++sid) {
+    if (cff_standard_strings[sid] == string) {
+      return sid;
+    }
+  }
+  const std::string_view d{m_data};
+  for (std::size_t index = 0; index < m_strings.size(); ++index) {
+    const std::size_t sid = cff_standard_strings_size + index;
+    if (sid > 0xffff) {
+      break;
+    }
+    if (d.substr(m_strings[index].offset, m_strings[index].length) == string) {
+      return static_cast<std::uint16_t>(sid);
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<std::int32_t>
 CffFont::charstring_width(const std::uint16_t glyph) const {
   if (glyph >= m_charstrings.size()) {
@@ -632,6 +652,23 @@ std::string CffFont::glyph_name(const std::uint16_t glyph) const {
     return {};
   }
   return string_for_sid(m_charset[glyph]);
+}
+
+std::uint16_t CffFont::glyph_for_name(const std::string_view name) const {
+  // The charset is glyph -> CID in a CID-keyed font, so it names nothing.
+  if (m_cid_keyed || name.empty()) {
+    return 0;
+  }
+  const std::optional<std::uint16_t> sid = sid_for_string(name);
+  if (!sid.has_value()) {
+    return 0;
+  }
+  for (std::size_t glyph = 1; glyph < m_charset.size(); ++glyph) {
+    if (m_charset[glyph] == *sid) {
+      return static_cast<std::uint16_t>(glyph);
+    }
+  }
+  return 0;
 }
 
 std::uint16_t CffFont::cid_for_glyph(const std::uint16_t glyph) const {
