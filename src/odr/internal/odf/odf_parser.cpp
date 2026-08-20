@@ -2,6 +2,7 @@
 
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
+#include <odr/internal/odf/odf_table.hpp>
 
 #include <algorithm>
 #include <unordered_map>
@@ -117,7 +118,7 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
 
   // TODO inflate table first?
 
-  for (const pugi::xml_node column_node : node.children("table:table-column")) {
+  for (const pugi::xml_node column_node : table_columns(node)) {
     const std::uint32_t repeat =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
     for (std::uint32_t i = 0; i < repeat; ++i) {
@@ -127,7 +128,7 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
     }
   }
 
-  for (const pugi::xml_node row_node : node.children("table:table-row")) {
+  for (const pugi::xml_node row_node : table_rows(node)) {
     // TODO log warning if repeated
     auto [row_id, _] = parse_any_element_tree(registry, row_node);
     registry.append_child(element_id, row_id);
@@ -153,7 +154,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
 
   TableCursor cursor;
 
-  for (const pugi::xml_node column_node : node.children("table:table-column")) {
+  for (const pugi::xml_node column_node : table_columns(node)) {
     const std::uint32_t columns_repeated =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
 
@@ -165,7 +166,7 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   sheet.dimensions.columns = cursor.column();
   cursor = {};
 
-  for (const pugi::xml_node row_node : node.children("table:table-row")) {
+  for (const pugi::xml_node row_node : table_rows(node)) {
     const std::uint32_t rows_repeated =
         row_node.attribute("table:number-rows-repeated").as_uint(1);
 

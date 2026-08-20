@@ -32,6 +32,11 @@ The release run heads these entries with the version and opens a fresh
 - `wasm/README.md` says what Content-Security-Policy the rendered output needs,
   and what each directive is for. The failures are quiet: a pdf whose `data:`
   fonts are blocked renders as tofu rather than falling back.
+- An odf table keeps the rows a grouping element holds: rows and columns wrapped
+  in `<table:table-header-rows>`, `<table:table-rows>`,
+  `<table:table-row-group>` and their column counterparts were dropped from the
+  output entirely. Any table LibreOffice gave a repeating header row lost it,
+  in both text documents and spreadsheets.
 
 ## v6.9.0 - 2026-08-18
 
