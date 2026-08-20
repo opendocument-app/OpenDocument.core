@@ -71,6 +71,14 @@ target_link_options(odr_wasm PRIVATE
         # failure at 64 KB does not look like a stack overflow.
         -sSTACK_SIZE=8388608
         -sFILESYSTEM=1
+        # embind builds its invokers with `new Function`, which a
+        # Content-Security-Policy treats as eval - so loading the module needed
+        # `script-src 'unsafe-eval'`, the one thing a page embedding a local
+        # document renderer would rather not grant. This picks embind's
+        # closure-based path instead, leaving `'wasm-unsafe-eval'` enough.
+        # Nothing here calls `emscripten_run_script`, `dlopen`, `ccall` or
+        # `cwrap`, which is what it costs.
+        -sDYNAMIC_EXECUTION=0
 )
 
 # The hand-written half of the package sits beside the generated glue, so the

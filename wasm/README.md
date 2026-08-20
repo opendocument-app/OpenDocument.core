@@ -76,6 +76,9 @@ where `Symbol.dispose` is supported.
 ## Hosting
 
 - Serve `.wasm` as `application/wasm`, or the browser cannot stream-compile it.
+- `script-src 'self' 'wasm-unsafe-eval'` is enough to load the module. It is
+  linked with `-sDYNAMIC_EXECUTION=0`, so embind builds its invokers without
+  `new Function` and no `'unsafe-eval'` is needed.
 - **Enable brotli.** It takes the module from 2.9 M to about 830 K — worth more
   than every code-size flag put together. Hosts that only gzip land at ~1.2 M.
 - No COOP/COEP headers needed. The build is deliberately single-threaded so

@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 // `ODR_WASM_DIST` is set by ctest; the fallback is where a by-hand cmake build
 // puts it.
-const dist = process.env.ODR_WASM_DIST ?? join(here, '..', '..', 'dist');
+export const dist = process.env.ODR_WASM_DIST ?? join(here, '..', '..', 'dist');
 
 // A static `export ... from` needs a literal specifier, and the package's
 // location is only known at run time, so the module is loaded once up front.
