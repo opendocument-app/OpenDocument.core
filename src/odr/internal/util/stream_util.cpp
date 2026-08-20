@@ -115,13 +115,41 @@ namespace odr::internal::util::stream {
 namespace {
 
 /// Read-only stream buffer over an existing `string_view`, which must outlive
-/// it. No seeking.
+/// it.
 class ViewStreamBuf : public std::streambuf {
 public:
   explicit ViewStreamBuf(std::string_view view) {
     // the get area is never written through
     auto *begin = const_cast<char *>(view.data());
     setg(begin, begin, begin + view.size());
+  }
+
+protected:
+  pos_type seekoff(const off_type off, const std::ios_base::seekdir dir,
+                   const std::ios_base::openmode which) override {
+    if ((which & std::ios_base::in) == 0) {
+      return pos_type(off_type(-1));
+    }
+
+    off_type position = off;
+    if (dir == std::ios_base::cur) {
+      position += gptr() - eback();
+    } else if (dir == std::ios_base::end) {
+      position += egptr() - eback();
+    } else if (dir != std::ios_base::beg) {
+      return pos_type(off_type(-1));
+    }
+
+    if (position < 0 || position > egptr() - eback()) {
+      return pos_type(off_type(-1));
+    }
+    setg(eback(), eback() + position, egptr());
+    return position;
+  }
+
+  pos_type seekpos(const pos_type pos,
+                   const std::ios_base::openmode which) override {
+    return seekoff(pos, std::ios_base::beg, which);
   }
 };
 

@@ -242,6 +242,18 @@ TEST(PdfObjectParser, standard_string_literal_escapes) {
   EXPECT_EQ(read_standard_string("(a\\qb)"), "aqb");
 }
 
+// 7.3.4.2: a balanced pair of parentheses needs no escaping, so only the `)`
+// closing the outermost pair ends the string. `cairo` writes its `/Producer`
+// this way.
+TEST(PdfObjectParser, standard_string_balanced_parentheses) {
+  EXPECT_EQ(read_standard_string("(a (b) c)"), "a (b) c");
+  EXPECT_EQ(read_standard_string("(a (b (c)) d)"), "a (b (c)) d");
+  EXPECT_EQ(read_standard_string("(cairo 1.18.4 (https://cairographics.org))"),
+            "cairo 1.18.4 (https://cairographics.org)");
+  // an escaped parenthesis does not open or close a pair
+  EXPECT_EQ(read_standard_string("(a \\(b (c) d)"), "a (b (c) d");
+}
+
 // 7.3.4.2: a `\ddd` octal escape (1-3 digits) is the byte of that value.
 TEST(PdfObjectParser, standard_string_octal_escape) {
   EXPECT_EQ(read_standard_string("(\\101)"), "A");

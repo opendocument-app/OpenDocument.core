@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A pdf that nests parentheses inside a string opens, and keeps its document
+  metadata — `cairo` and `pdfTeX` write their `/Producer` that way.
+
 ## v6.9.0 - 2026-08-18
 
 - A filled pdf form shows what was filled in, and a marked-up one its markup:

@@ -101,6 +101,7 @@ add_executable(odr_test
 
         "src/internal/util/map_util_test.cpp"
         "src/internal/util/number_util_test.cpp"
+        "src/internal/util/stream_util_test.cpp"
         "src/internal/util/string_util_test.cpp"
         "src/internal/util/xml_util_test.cpp"
 

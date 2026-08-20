@@ -3,6 +3,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cmath>
+#include <cstdint>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -393,6 +394,10 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
   char_type c = bumpc();
 
   if (c == '(') {
+    // 7.3.4.2: a balanced pair of parentheses inside a literal string needs no
+    // escaping, so only the `)` closing the outermost pair ends the string.
+    std::uint32_t depth = 1;
+
     while (true) {
       c = bumpc();
 
@@ -436,8 +441,13 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
         }
         continue;
       }
-      if (c == ')') {
-        return StandardString(std::move(string));
+      if (c == '(') {
+        ++depth;
+      } else if (c == ')') {
+        --depth;
+        if (depth == 0) {
+          return StandardString(std::move(string));
+        }
       }
 
       string += c;
