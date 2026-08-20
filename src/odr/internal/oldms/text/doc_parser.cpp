@@ -253,4 +253,21 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
+bool text::password_encrypted(const abstract::ReadableFilesystem &files) {
+  const std::shared_ptr<abstract::File> file =
+      files.open(AbsPath("/WordDocument"));
+  if (file == nullptr) {
+    return false;
+  }
+
+  const std::unique_ptr<std::istream> stream = file->stream();
+  FibBase base{};
+  stream->read(reinterpret_cast<char *>(&base), sizeof(base));
+  if (stream->gcount() != sizeof(base) || base.wIdent != fib_wIdent) {
+    return false;
+  }
+
+  return base.fEncrypted != 0;
+}
+
 } // namespace odr::internal::oldms

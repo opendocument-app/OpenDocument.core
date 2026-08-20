@@ -131,13 +131,13 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  // TODO oldms decryption
+  EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
+
+  // TODO oldms decryption — detected, but odrcore cannot open it
   if (test_file.password.has_value() &&
       test_file.type == FileType::legacy_word_document) {
     GTEST_SKIP();
   }
-
-  EXPECT_EQ(test_file.password.has_value(), file.password_encrypted());
 
   if (test_file.password.has_value()) {
     file = file.decrypt(test_file.password.value());

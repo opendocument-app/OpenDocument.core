@@ -40,6 +40,7 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
   FileMeta m_file_meta;
+  EncryptionState m_encryption_state{EncryptionState::unknown};
 };
 
 } // namespace odr::internal::oldms

@@ -14,6 +14,7 @@ namespace odr::internal::oldms::spreadsheet {
 enum BiffRecordType : std::uint16_t {
   biff_formula = 0x0006,    //< [MS-XLS] 2.4.127
   biff_eof = 0x000A,        //< [MS-XLS] 2.4.103
+  biff_filepass = 0x002F,   //< [MS-XLS] 2.4.117
   biff_font = 0x0031,       //< [MS-XLS] 2.4.122
   biff_continue = 0x003C,   //< [MS-XLS] 2.4.58
   biff_boundsheet = 0x0085, //< [MS-XLS] 2.4.28 BoundSheet8

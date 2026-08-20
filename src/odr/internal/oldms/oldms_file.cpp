@@ -4,8 +4,11 @@
 
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/presentation/ppt_document.hpp>
+#include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_document.hpp>
+#include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
 #include <odr/internal/oldms/text/doc_document.hpp>
+#include <odr/internal/oldms/text/doc_parser.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -13,6 +16,22 @@
 namespace odr::internal::oldms {
 
 namespace {
+/// Each format keeps the bytes that say so in the clear, so this is readable
+/// without the password. Detection only — odrcore cannot decrypt any of them.
+bool parse_password_encrypted(const FileType type,
+                              const abstract::ReadableFilesystem &files) {
+  switch (type) {
+  case FileType::legacy_word_document:
+    return text::password_encrypted(files);
+  case FileType::legacy_powerpoint_presentation:
+    return presentation::password_encrypted(files);
+  case FileType::legacy_excel_worksheets:
+    return spreadsheet::password_encrypted(files);
+  default:
+    return false;
+  }
+}
+
 FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
   struct Variant {
     FileType type{FileType::unknown};
@@ -53,6 +72,8 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
     throw UnknownFileType();
   }
 
+  result.password_encrypted = parse_password_encrypted(result.type, files);
+
   return result;
 }
 } // namespace
@@ -61,6 +82,10 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
     std::shared_ptr<abstract::ReadableFilesystem> files)
     : m_files{std::move(files)} {
   m_file_meta = parse_meta(*m_files);
+
+  m_encryption_state = m_file_meta.password_encrypted
+                           ? EncryptionState::encrypted
+                           : EncryptionState::not_encrypted;
 }
 
 std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
@@ -86,7 +111,7 @@ bool LegacyMicrosoftFile::password_encrypted() const noexcept {
 }
 
 EncryptionState LegacyMicrosoftFile::encryption_state() const noexcept {
-  return EncryptionState::unknown;
+  return m_encryption_state;
 }
 
 std::shared_ptr<abstract::DecodedFile> LegacyMicrosoftFile::decrypt(
@@ -98,6 +123,12 @@ std::shared_ptr<abstract::DecodedFile> LegacyMicrosoftFile::decrypt(
 bool LegacyMicrosoftFile::is_decodable() const noexcept { return false; }
 
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
+  // otherwise the encrypted bytes get read as structure, and the caller sees a
+  // parse error where a password prompt belongs
+  if (m_encryption_state == EncryptionState::encrypted) {
+    throw FileEncryptedError();
+  }
+
   switch (file_type()) {
   case FileType::legacy_word_document:
     return std::make_shared<text::Document>(m_files);

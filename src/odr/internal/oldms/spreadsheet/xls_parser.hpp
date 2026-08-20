@@ -18,4 +18,12 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
                              StyleRegistry &style_registry,
                              const abstract::ReadableFilesystem &files);
 
+/// Whether the workbook is encrypted, i.e. whether the globals substream
+/// carries a FilePass record ([MS-XLS] 2.4.117). Record headers stay in the
+/// clear, which is what makes this readable at all. A `/Workbook` stream that
+/// is missing or malformed reads as not encrypted — parsing then fails on its
+/// own.
+[[nodiscard]] bool
+password_encrypted(const abstract::ReadableFilesystem &files);
+
 } // namespace odr::internal::oldms::spreadsheet

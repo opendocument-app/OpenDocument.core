@@ -17,4 +17,11 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
                              StyleRegistry &style_registry,
                              const abstract::ReadableFilesystem &files);
 
+/// Whether the document is encrypted or obfuscated, from `FibBase.fEncrypted`
+/// ([MS-DOC] 2.5.2). The FIB itself stays in the clear, which is what makes
+/// this readable at all. A `/WordDocument` stream that is missing or too short
+/// reads as not encrypted — parsing then fails on its own.
+[[nodiscard]] bool
+password_encrypted(const abstract::ReadableFilesystem &files);
+
 } // namespace odr::internal::oldms::text

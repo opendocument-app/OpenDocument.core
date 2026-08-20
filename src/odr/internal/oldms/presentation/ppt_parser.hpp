@@ -16,4 +16,10 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
                              StyleRegistry &style_registry,
                              const abstract::ReadableFilesystem &files);
 
+/// Whether the presentation is encrypted, from `CurrentUserAtom.headerToken`
+/// ([MS-PPT] 2.3.2). A `/Current User` stream that is missing or too short
+/// reads as not encrypted — parsing then fails on its own.
+[[nodiscard]] bool
+password_encrypted(const abstract::ReadableFilesystem &files);
+
 } // namespace odr::internal::oldms::presentation

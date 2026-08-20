@@ -12,6 +12,9 @@ namespace odr::internal::oldms::text {
 // Filled by copying file bytes straight in (see doc_io): little-endian,
 // LSB-first hosts only — see oldms/AGENTS.md.
 
+/// FibBase.wIdent of every word binary document ([MS-DOC] 2.5.2).
+constexpr std::uint16_t fib_wIdent = 0xA5EC;
+
 enum NFibValues : std::uint16_t {
   nFib97 = 0x00C1,
   nFib2000 = 0x00D9,

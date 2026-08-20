@@ -9,6 +9,11 @@ namespace odr::internal::oldms::presentation {
 // LSB-first hosts only — see oldms/AGENTS.md.
 
 /// Record types relevant to text extraction. See [MS-PPT] 2.13.24 RecordType.
+/// CurrentUserAtom.headerToken ([MS-PPT] 2.3.2); the file is encrypted when it
+/// carries the second one.
+constexpr std::uint32_t current_user_token_plain = 0xE391C05F;
+constexpr std::uint32_t current_user_token_encrypted = 0xF3D1C4DF;
+
 enum RecordType : std::uint16_t {
   RT_DocumentContainer = 0x03E8,  //< top-level document
   RT_DocumentAtom = 0x03E9,       //< slide size etc. [MS-PPT] 2.4.2
