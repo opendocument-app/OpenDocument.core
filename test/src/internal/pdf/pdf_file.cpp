@@ -194,13 +194,10 @@ TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
   EXPECT_TRUE(contains(spaced, R"(<span class="sg)"));
 }
 
-// Runs one CSS matrix can place flow inside a single selection block, measured
-// in that block's own frame. A line laid out glyph by glyph is one block
-// carrying the PDF's advances as widths — not a stranded box per glyph, each
-// shrink-wrapped around the half-size fallback font and so adrift of the
-// glyphs it is meant to cover. A whitespace-only run has no `.sr` to carry its
-// advance, so the spacer span takes it, or the line ends up short by a space
-// per word.
+// Runs one CSS matrix can place share a selection block and carry the PDF's
+// advances as widths, rather than each getting a box shrink-wrapped around the
+// fallback font. A whitespace-only run has no `.sr`, so the spacer takes its
+// advance.
 TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm "
