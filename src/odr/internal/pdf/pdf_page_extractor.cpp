@@ -114,11 +114,14 @@ SegmentAdvances segment_advances(const GraphicsState::Text &text,
 /// inter-word spaces PDFs routinely omit. `position` is the segment
 /// origin *after* its advance; `direction`/`em` give the writing line and scale
 /// the gap threshold; `trailing_space` suppresses a doubled space.
+/// `pending_space` carries a break a segment with nothing extractable could
+/// not.
 struct Pen {
   std::array<double, 2> position{0, 0};
   std::array<double, 2> direction{1, 0};
   double em{0};
   bool trailing_space{false};
+  bool pending_space{false};
 };
 
 /// Whether a space should be inferred before a segment starting at `start`
@@ -183,8 +186,10 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
   const std::array<double, 2> direction =
       basis > 0 ? std::array<double, 2>{m.a / basis, m.b / basis}
                 : std::array<double, 2>{1, 0};
-  if (!element.text.empty() && element.text.front() != ' ' && pen.has_value() &&
-      infer_space(*pen, start)) {
+  // Nothing extractable can carry no break, so hold it on the pen.
+  const bool break_here =
+      pen.has_value() && (infer_space(*pen, start) || pen->pending_space);
+  if (!element.text.empty() && element.text.front() != ' ' && break_here) {
     element.text.insert(element.text.begin(), ' ');
     element.leading_space_inferred = true;
   }
@@ -197,13 +202,18 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
                                   : element.text.back() == ' ';
 
   const double advance = element.width;
+  const bool element_text_empty = element.text.empty();
   out.push_back(std::move(element));
   state.advance_text(advance, 0);
 
   // Record the pen at the true post-advance origin (so `TJ` adjustments and any
   // explicit repositioning before the next segment fold into the next gap).
   const util::math::Transform2D after = state.text_placement_transform();
-  pen = Pen{{after.e, after.f}, direction, text.size * basis, trailing_space};
+  pen = Pen{{after.e, after.f},
+            direction,
+            text.size * basis,
+            trailing_space,
+            element_text_empty && break_here};
 }
 
 /// Resolve a colour-space operator (`cs`/`CS`): set the active colour space on

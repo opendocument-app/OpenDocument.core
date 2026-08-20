@@ -36,6 +36,8 @@ The release run heads these entries with the version and opens a fresh
   `<table:table-header-rows>` LibreOffice writes for a repeating header row.
   They were dropped from the output entirely, in text documents and
   spreadsheets alike.
+- Text copied out of a pdf laid out glyph by glyph reads as words, not as
+  `L a g e`. A word break also survives a run with nothing extractable in it.
 
 ## v6.9.0 - 2026-08-18
 

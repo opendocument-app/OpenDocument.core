@@ -86,6 +86,20 @@ std::string info_mini_pdf() {
   return builder.trailer("/Root 1 0 R /Info 5 0 R").build_classic();
 }
 
+/// A one-page mini-PDF drawing `content` with a non-embedded Helvetica as
+/// `/F1`, whose standard-14 metrics give the glyph advances without a font
+/// program.
+std::string text_mini_pdf(const std::string &content) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+              "/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>")
+      .stream_object("", content)
+      .object("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  return builder.trailer("/Root 1 0 R").build_classic();
+}
+
 } // namespace
 
 // `/Info` document-information strings and the page count surface through
@@ -152,6 +166,23 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
     EXPECT_FALSE(contains(html, "javascript:alert"))
         << "mode " << static_cast<int>(mode);
   }
+}
+
+// A `Tm` scaling x and y differently takes the CSS matrix path: glyphs shown
+// one `Tj` at a time read as one word, and a real gap keeps its space.
+TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
+  const std::string tight = render_html(
+      text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm (H) Tj (i) Tj ET"),
+      PdfTextMode::dual_layer);
+  EXPECT_TRUE(contains(tight, ">H</span>"));
+  EXPECT_TRUE(contains(tight, ">i</span>"));
+  EXPECT_FALSE(contains(tight, R"(<span class="sg)"));
+
+  const std::string spaced =
+      render_html(text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm (H) Tj (i) "
+                                "Tj 0.9 0 0 1 200 700 Tm (t) Tj (o) Tj ET"),
+                  PdfTextMode::dual_layer);
+  EXPECT_TRUE(contains(spaced, R"(<span class="sg)"));
 }
 
 // A standalone page view (`page{index}.html`) resolves internal links to the

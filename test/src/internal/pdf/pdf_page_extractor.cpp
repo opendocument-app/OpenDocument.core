@@ -463,6 +463,27 @@ TEST(PdfPageExtractor, no_unicode_marks_composite_without_tounicode) {
   EXPECT_EQ(texts[0].codes, std::string("\x00\x01", 2));
 }
 
+// The pen holds a break a `no_unicode` run cannot carry.
+TEST(PdfPageExtractor, break_survives_a_segment_with_no_text) {
+  Font simple = simple_font(0x41, {500, 500}); // A, B = 0.5 em
+  Font opaque;
+  opaque.composite = true; // no cmap, no encoding: no recoverable Unicode
+  Resources res;
+  res.font["F1"] = &simple;
+  res.font["F2"] = &opaque;
+
+  // `A` at 0, the opaque glyph a wide gap later, then `B` right behind it.
+  const auto texts = run("BT /F1 10 Tf 1 0 0 1 0 0 Tm (A) Tj "
+                         "1 0 0 1 40 0 Tm /F2 10 Tf <0001> Tj "
+                         "/F1 10 Tf (B) Tj ET",
+                         res);
+  ASSERT_EQ(texts.size(), 3);
+  EXPECT_EQ(texts[0].text, "A");
+  EXPECT_TRUE(texts[1].text.empty());
+  EXPECT_EQ(texts[2].text, " B");
+  EXPECT_TRUE(texts[2].leading_space_inferred);
+}
+
 // `/ActualText` on a marked-content sequence overrides the per-glyph text for
 // extraction (ligatures, reordered glyphs); a literal string is taken as-is.
 TEST(PdfPageExtractor, actual_text_overrides_segment) {
