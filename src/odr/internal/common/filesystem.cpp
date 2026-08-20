@@ -147,14 +147,6 @@ bool SystemFilesystem::move(const AbsPath &from, const AbsPath &to) {
 }
 
 namespace {
-/// Component-wise, so that a subtree is contiguous and can be skipped by
-/// walking it. By string it is not: "/a" < "/a-b" < "/a/b".
-struct DepthFirstLess {
-  [[nodiscard]] bool operator()(const AbsPath &lhs, const AbsPath &rhs) const {
-    return std::ranges::lexicographical_compare(lhs, rhs);
-  }
-};
-
 class VirtualFileWalker final : public abstract::FileWalker {
 public:
   using Files = std::map<AbsPath, std::shared_ptr<abstract::File>>;
@@ -221,9 +213,15 @@ public:
   void flat_next() override { skip_subtree_(m_iterator->first); }
 
 private:
+  /// Ordered component-wise, so that a subtree is contiguous and can be
+  /// skipped by walking it. By string it is not: "/a" < "/a-b" < "/a/b".
+  using DepthFirstFiles =
+      std::map<AbsPath, std::shared_ptr<abstract::File>,
+               decltype(std::ranges::lexicographical_compare)>;
+
   AbsPath m_root;
-  std::map<AbsPath, std::shared_ptr<abstract::File>, DepthFirstLess> m_files;
-  decltype(m_files)::iterator m_iterator;
+  DepthFirstFiles m_files;
+  DepthFirstFiles::iterator m_iterator;
 
   void skip_subtree_(const AbsPath &path) {
     do {
