@@ -89,6 +89,8 @@ export interface HtmlConfig {
   viewportMode?: number;
   /** The width the output is shown at, in css pixels; fits paged content to it. */
   viewportWidth?: number;
+  /** The zoom the view opens at, 1 being actual size; unset follows the fit. */
+  initialZoom?: number;
   pdfTextMode?: number;
 }
 

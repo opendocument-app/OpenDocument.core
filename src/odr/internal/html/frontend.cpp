@@ -322,18 +322,36 @@ constexpr std::string_view document_js = R"js(
 })();
 )js";
 
-/// The load-time half of fitting the page column to the viewport, for output
-/// whose width was not known when it was written.
+/// The zoom api, and the fit where the css could not state it.
 constexpr std::string_view viewport_js = R"js(
 (function () {
   "use strict";
 
+  var odr = (window.odr = window.odr || {});
+
   var root = document.documentElement;
   var body = document.body;
 
-  // Only a frame is scaled here: the viewport meta tag covers the top-level
+  var minZoom = 0.1;
+  var maxZoom = 10;
+
+  // Only a frame is fitted here: the viewport meta tag covers the top-level
   // document but is inert in a frame.
   var framed = window.top !== window.self;
+
+  function declared(name) {
+    return getComputedStyle(root).getPropertyValue(name).trim();
+  }
+
+  // `auto` where only we can measure the fit; a number where the css states it.
+  var measures = declared("--odr-fit") === "auto";
+  var fit = measures ? 1 : parseFloat(declared("--odr-fit")) || 1;
+
+  // `null` while the view follows the fit.
+  var pinned = parseFloat(declared("--odr-zoom"));
+  if (!isFinite(pinned)) {
+    pinned = null;
+  }
 
   // The width the anchor below was taken at: a scroll arriving after the
   // viewport changed is the browser's doing, not the reader's.
@@ -346,43 +364,62 @@ constexpr std::string_view viewport_js = R"js(
   // Identifies the settling run below, so a newer one - or the reader - ends it.
   var settling = 0;
 
+  function applied() {
+    return pinned !== null ? pinned : fit;
+  }
+
   // The natural width of what the body holds, measured unscaled.
   function contentWidth() {
     var zoom = body.style.zoom;
-    body.style.zoom = "";
+    // `1`, not empty: a stylesheet may carry a zoom of its own to fall back to.
+    body.style.zoom = "1";
     var natural = body.scrollWidth;
     body.style.zoom = zoom;
     return natural;
   }
 
-  function fit() {
+  function measureFit() {
     var available = root.clientWidth;
-    if (!available) {
-      return;
-    }
-    width = available;
-
-    if (!framed) {
-      return;
+    if (!available || !framed) {
+      // Out of a frame the viewport meta tag has already fitted the document.
+      return available ? 1 : fit;
     }
     var content = contentWidth();
     if (!content) {
-      return;
+      return fit;
     }
     // Only ever down: a page narrower than the viewport is shown at its size.
-    body.style.zoom = content > available ? available / content : "";
+    return content > available ? available / content : 1;
   }
 
-  // The element against the top of the viewport, and how far into it that top
-  // sits. A fraction of the scroll height cannot stand in: the height itself
-  // changes with the scale.
-  function anchor() {
-    var element = document.elementFromPoint(Math.floor(root.clientWidth / 2), 1);
+  // The element under @p point, and how far into it that point sits - a
+  // fraction of the scroll height cannot stand in, the height scales too. Only
+  // a given point pins x; the page column centres itself.
+  function anchor(point) {
+    var x = point ? point.x : Math.floor(root.clientWidth / 2);
+    var y = point ? point.y : 1;
+    var element = document.elementFromPoint(x, y);
     if (!element) {
       return null;
     }
     var box = element.getBoundingClientRect();
-    return { element: element, into: box.height ? -box.top / box.height : 0 };
+    return {
+      element: element,
+      x: point ? x : null,
+      y: y,
+      intoX: box.width ? (x - box.left) / box.width : 0,
+      intoY: box.height ? (y - box.top) / box.height : 0,
+    };
+  }
+
+  // `{x, y}`, or the `clientX`/`clientY` of a mouse or touch event.
+  function point(value) {
+    if (!value) {
+      return null;
+    }
+    var x = value.x !== undefined ? value.x : value.clientX;
+    var y = value.y !== undefined ? value.y : value.clientY;
+    return isFinite(x) && isFinite(y) ? { x: x, y: y } : null;
   }
 
   function remember() {
@@ -403,27 +440,30 @@ constexpr std::string_view viewport_js = R"js(
       return;
     }
     var box = target.element.getBoundingClientRect();
-    var delta = box.top + target.into * box.height;
-    if (delta) {
-      window.scrollBy(0, delta);
+    var deltaY = box.top + target.intoY * box.height - target.y;
+    var deltaX =
+      target.x === null ? 0 : box.left + target.intoX * box.width - target.x;
+    if (deltaX || deltaY) {
+      window.scrollBy(deltaX, deltaY);
     }
   }
 
-  function resized() {
-    if (root.clientWidth === width) {
-      // Nothing that changes the scale: a height-only change, or a pinch,
-      // where restoring would fight the reader.
-      return;
+  function notify() {
+    if (typeof odr.onZoomChange === "function") {
+      odr.onZoomChange(applied(), pinned === null);
     }
+  }
 
-    var target = held;
+  // The browser applies a scroll offset of its own a few frames later, so
+  // @p target is re-asserted until it settles.
+  function apply(target) {
+    var zoom = applied();
+    body.style.zoom = zoom;
+    root.style.setProperty("--odr-zoom", zoom);
 
-    fit();
     restoring = true;
     restore(target);
 
-    // The browser applies a scroll offset of its own a few frames later, so
-    // the position is re-asserted until it settles.
     var token = ++settling;
     var frames = 30;
     (function again() {
@@ -435,6 +475,28 @@ constexpr std::string_view viewport_js = R"js(
       restore(target);
       requestAnimationFrame(again);
     })();
+
+    notify();
+  }
+
+  function resized() {
+    if (root.clientWidth === width) {
+      // Nothing that changes the scale: a height-only change, or a pinch,
+      // where restoring would fight the reader.
+      return;
+    }
+
+    var target = held;
+    width = root.clientWidth;
+
+    if (pinned !== null || !measures) {
+      // the scale does not follow the viewport
+      remember();
+      return;
+    }
+
+    fit = measureFit();
+    apply(target);
   }
 
   function taken() {
@@ -442,7 +504,48 @@ constexpr std::string_view viewport_js = R"js(
     restoring = false;
   }
 
-  fit();
+  // `1` is actual size. Excludes the browser's own page and pinch zoom.
+  odr.getZoom = function () {
+    return applied();
+  };
+
+  odr.isZoomFitted = function () {
+    return pinned === null;
+  };
+
+  // @p focus, a pinch's midpoint, is the point that stays put across the
+  // change; the top of the viewport where none is given.
+  odr.setZoom = function (value, focus) {
+    var next = Number(value);
+    if (!isFinite(next)) {
+      return applied();
+    }
+    pinned = Math.min(maxZoom, Math.max(minZoom, next));
+    // read now, unlike a resize, which arrives relaid out
+    apply(anchor(point(focus)));
+    return applied();
+  };
+
+  odr.adjustZoom = function (factor, focus) {
+    return odr.setZoom(applied() * Number(factor), focus);
+  };
+
+  odr.resetZoom = function (focus) {
+    pinned = null;
+    var target = anchor(point(focus));
+    if (measures) {
+      fit = measureFit();
+    }
+    apply(target);
+    return applied();
+  };
+
+  width = root.clientWidth;
+  if (measures && pinned === null) {
+    fit = measureFit();
+    body.style.zoom = fit;
+    root.style.setProperty("--odr-zoom", fit);
+  }
   remember();
 
   window.addEventListener("scroll", remember, { passive: true });
@@ -1512,14 +1615,15 @@ void html::write_viewport_script(const WritingState &state) {
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset, search_css_asset,
-                                     search_js_asset, text_js_asset};
+                                     search_js_asset, text_js_asset,
+                                     viewport_js_asset};
   static constexpr std::array dark{text_dark_css_asset, search_dark_css_asset};
   return locate_all(assets, dark, config);
 }
 
 HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
   static constexpr std::array assets{xml_css_asset, search_css_asset,
-                                     search_js_asset};
+                                     search_js_asset, viewport_js_asset};
   static constexpr std::array dark{xml_dark_css_asset, search_dark_css_asset};
   return locate_all(assets, dark, config);
 }

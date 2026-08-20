@@ -99,6 +99,7 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
+    write_zoom_style(out, config(), false, {});
 
     write_text_style(state);
     write_text_dark_style(state);
@@ -156,6 +157,7 @@ public:
 
     write_search_script(state);
     write_text_script(state);
+    write_viewport_script(state);
 
     out.write_body_end();
 

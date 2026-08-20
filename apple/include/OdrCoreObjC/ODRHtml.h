@@ -96,6 +96,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, copy, nullable) NSString *viewportContent;
 /// The width the output is shown at, in css pixels; fits paged content to it.
 @property(nonatomic, strong, nullable) NSNumber *viewportWidth;
+/// The zoom the view opens at, 1 being actual size; `nil` follows the fit.
+@property(nonatomic, strong, nullable) NSNumber *initialZoom;
 
 @property(nonatomic) BOOL formatHtml;
 /// Repeated `htmlIndentString` per nesting level; 0 disables indentation.

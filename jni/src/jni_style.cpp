@@ -370,6 +370,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              make_string_opt(env, config.viewport_content));
   set_object("viewportWidth", "Ljava/lang/Integer;",
              box_integer(env, config.viewport_width));
+  set_object("initialZoom", "Ljava/lang/Double;",
+             box_double(env, config.initial_zoom));
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
@@ -522,6 +524,19 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       env->DeleteLocalRef(integer_cls);
     }
     env->DeleteLocalRef(width);
+  }
+  {
+    jobject zoom = get_object("initialZoom", "Ljava/lang/Double;");
+    if (zoom == nullptr) {
+      result.initial_zoom = std::nullopt;
+    } else {
+      jclass double_cls = env->GetObjectClass(zoom);
+      jmethodID double_value =
+          env->GetMethodID(double_cls, "doubleValue", "()D");
+      result.initial_zoom = env->CallDoubleMethod(zoom, double_value);
+      env->DeleteLocalRef(double_cls);
+    }
+    env->DeleteLocalRef(zoom);
   }
   result.format_html = get_boolean("formatHtml");
   result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));

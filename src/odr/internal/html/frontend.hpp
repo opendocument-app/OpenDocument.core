@@ -45,9 +45,9 @@ void write_text_script(const WritingState &state);
 /// rest of that object, for every view rendering text, whatever the format.
 void write_search_script(const WritingState &state);
 
-/// Fits the page column to the viewport at load and on every resize, holding
-/// the reading position across the change. For output whose width was not known
-/// when it was written; @ref odr::HtmlConfig::viewport_width covers the rest.
+/// `odr.getZoom()`, `setZoom(value, focus)`, `adjustZoom(factor, focus)`,
+/// `resetZoom(focus)`, `isZoomFitted()`, `onZoomChange`, plus the fit @ref
+/// write_zoom_style left to be measured. Holds the reading position.
 void write_viewport_script(const WritingState &state);
 
 /// What the corresponding `write_*` calls would link, without writing anything:

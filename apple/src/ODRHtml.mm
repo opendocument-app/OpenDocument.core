@@ -109,6 +109,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _viewportWidth = config.viewport_width.has_value()
                        ? @(static_cast<unsigned int>(*config.viewport_width))
                        : nil;
+  _initialZoom =
+      config.initial_zoom.has_value() ? @(*config.initial_zoom) : nil;
   _formatHtml = config.format_html ? YES : NO;
   _htmlIndent = config.html_indent;
   _htmlIndentString = to_nsstring(config.html_indent_string);
@@ -177,6 +179,11 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
         static_cast<std::uint32_t>(_viewportWidth.unsignedIntValue);
   } else {
     config.viewport_width.reset();
+  }
+  if (_initialZoom != nil) {
+    config.initial_zoom = _initialZoom.doubleValue;
+  } else {
+    config.initial_zoom.reset();
   }
   config.format_html = _formatHtml == YES;
   config.html_indent = _htmlIndent;

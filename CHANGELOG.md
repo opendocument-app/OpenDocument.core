@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Html views take a zoom from their host: `odr.getZoom()`, `setZoom(value,
+  focus)`, `adjustZoom()`, `resetZoom()`, `isZoomFitted()`, `onZoomChange`.
+  `HtmlConfig::initial_zoom` sets what they open at, script or no script.
 - A pdf that nests parentheses inside a string opens, and keeps its document
   metadata — `cairo` and `pdfTeX` write their `/Producer` that way.
 - A jni build without a JDK fails instead of shipping a package missing

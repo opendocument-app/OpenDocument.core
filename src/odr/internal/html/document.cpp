@@ -96,17 +96,6 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
              : std::nullopt;
 }
 
-/// True where the view should fit but no css factor could be written.
-bool fits_at_load_time(const Document &document, const HtmlConfig &config,
-                       const bool paged_content,
-                       const std::optional<double> content_pixels) {
-  if (!paged_content || !fits_width(config, paged_content,
-                                    viewport_mode_override(document, config))) {
-    return false;
-  }
-  return !config.viewport_width.has_value() || !content_pixels.has_value();
-}
-
 /// @p name titles the view; empty when the whole document is written as one
 /// file, which no one view names.
 void front(const Document &document, const WritingState &state,
@@ -127,12 +116,10 @@ void front(const Document &document, const WritingState &state,
   const std::optional<HtmlViewportMode> mode_override =
       viewport_mode_override(document, state.config());
   write_viewport_meta(out, state.config(), paged_content, mode_override);
-  if (paged_content) {
-    write_viewport_fit_style(
-        out, state.config(),
-        fits_width(state.config(), paged_content, mode_override),
-        content_pixels);
-  }
+  write_zoom_style(out, state.config(),
+                   paged_content &&
+                       fits_width(state.config(), paged_content, mode_override),
+                   content_pixels);
 
   write_document_style(state);
   write_document_dark_style(state);
@@ -171,8 +158,7 @@ void front(const Document &document, const WritingState &state,
   }
 }
 
-void back(const Document &document, const WritingState &state,
-          const std::optional<double> content_pixels) {
+void back(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
   if (is_paged_content(document, state.config())) {
@@ -184,11 +170,7 @@ void back(const Document &document, const WritingState &state,
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);
   }
-  if (fits_at_load_time(document, state.config(),
-                        is_paged_content(document, state.config()),
-                        content_pixels)) {
-    write_viewport_script(state);
-  }
+  write_viewport_script(state);
 
   out.write_body_end();
   out.write_end();
@@ -216,7 +198,7 @@ public:
     const std::optional<double> content = content_pixels();
     front(m_document, state, m_name, content);
     write_fragment(out, state);
-    back(m_document, state, content);
+    back(m_document, state);
   }
 
 protected:
@@ -369,7 +351,7 @@ public:
     for (const auto &fragment : m_fragments) {
       fragment->write_fragment(out, state);
     }
-    back(m_document, state, content);
+    back(m_document, state);
 
     return resources;
   }

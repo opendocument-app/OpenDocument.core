@@ -145,6 +145,10 @@ HtmlConfig to_html_config(const emscripten::val &value) {
       !width.isUndefined() && !width.isNull()) {
     config.viewport_width = width.as<std::uint32_t>();
   }
+  if (const emscripten::val zoom = value["initialZoom"];
+      !zoom.isUndefined() && !zoom.isNull()) {
+    config.initial_zoom = zoom.as<double>();
+  }
   read_enum(value, "pdfTextMode", config.pdf_text_mode);
 
   return config;

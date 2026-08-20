@@ -149,6 +149,8 @@ struct HtmlConfig {
   std::optional<std::string> viewport_content;
   /// The width the output is shown at, in css pixels; fits paged content to it.
   std::optional<std::uint32_t> viewport_width;
+  /// The zoom the view opens at, 1 being actual size; unset follows the fit.
+  std::optional<double> initial_zoom;
 
   /// Indent and break the output into lines rather than writing one stream.
   bool format_html{false};

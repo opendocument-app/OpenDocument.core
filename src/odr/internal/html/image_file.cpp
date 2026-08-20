@@ -56,7 +56,8 @@ class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(ImageFile image_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger),
-        m_image_file{std::move(image_file)} {
+        m_image_file{std::move(image_file)},
+        m_resources{locate_viewport_resources(this->config())} {
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, "image", 0, "image.html"));
   }
@@ -66,12 +67,17 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == "image.html";
+    return path == "image.html" || resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == "image.html") {
       return "text/html";
+    }
+
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return resource->mime_type();
     }
 
     throw FileNotFound("Unknown path: " + path);
@@ -81,6 +87,12 @@ public:
     if (path == "image.html") {
       HtmlWriter writer(out, config());
       write_image(writer);
+      return;
+    }
+
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      resource->write_resource(out);
       return;
     }
 
@@ -98,6 +110,7 @@ public:
 
   HtmlResources write_image(HtmlWriter &out) const {
     HtmlResources resources;
+    const WritingState state(out, config(), resources);
 
     out.write_begin();
     out.write_header_begin();
@@ -105,12 +118,16 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
-    out.write_header_style_begin();
-    out.out() << "body{margin:0;background:#fff}";
     // An image has no layout width to preserve, so css alone fits it, framed
     // or not - no measuring and no `viewport_width`.
+    write_zoom_style(out, config(), false, {});
+    out.write_header_style_begin();
+    out.out() << "body{margin:0;background:#fff}";
     if (fits_width(config(), true)) {
-      out.out() << "img{max-width:100%;height:auto}";
+      // `100%` of a zoomed body is the viewport again, so the factor has to
+      // be put back for the image to grow with it
+      out.out() << "img{max-width:calc(100% * var(--odr-zoom, 1));"
+                   "height:auto}";
     }
     out.write_header_style_end();
     if (writes_dark_style(config())) {
@@ -133,6 +150,8 @@ public:
       out.out() << "\">";
     }
 
+    write_viewport_script(state);
+
     out.write_body_end();
     out.write_end();
 
@@ -141,6 +160,8 @@ public:
 
 protected:
   ImageFile m_image_file;
+  /// The script this view links; empty of locations when the config embeds it.
+  HtmlResources m_resources;
 
   HtmlViews m_views;
 };
