@@ -21,6 +21,10 @@ The release run heads these entries with the version and opens a fresh
 - A jni build without a JDK fails instead of shipping a package missing
   `odr-core-java.jar`. `ODR_JNI_JAR=OFF` is how the AAR build asks for the
   native half alone.
+- A `FileWalker` over a document or an archive can be steered: `flat_next()`,
+  `pop()` and `depth()` do what they say instead of nothing.
+- A directory a document or an archive only implies is one: `exists()` and
+  `is_directory()` answer for `/` and for a path that files sit under.
 
 ## v6.9.0 - 2026-08-18
 
