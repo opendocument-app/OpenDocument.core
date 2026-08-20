@@ -47,7 +47,9 @@ try {
 so it needs nothing fetched alongside it. A `blob:` iframe keeps the same
 origin, so the page can still reach `iframe.contentWindow.odr` to drive
 `search()`, `searchNext()` and `generateDiff()`, exactly as the Android and iOS
-apps do from their WebViews.
+apps do from their WebViews. The frame inherits the embedding page's
+Content-Security-Policy, so a page that ships one has to allow what the
+document carries — see [Content-Security-Policy](#content-security-policy).
 
 Multi-page formats render one view at a time:
 
@@ -85,6 +87,69 @@ where `Symbol.dispose` is supported.
   that a plain static host, GitHub Pages included, is enough.
 - Rendering is synchronous and a large PDF takes seconds, so run the module in
   a Web Worker. Pass `doc.handle` across `postMessage`, never the `Document`.
+
+## Content-Security-Policy
+
+The rendered html is self-contained, but a frame inherits the embedding page's
+policy — so the *embedder's* CSP decides what the document may load, and the
+failures are quiet. Measured across an odt, ods, docx and pdf:
+
+| Directive | What in the output needs it | Seen in |
+|---|---|---|
+| `font-src data:` | embedded subset fonts | pdf (7 of 8 `@font-face`) |
+| `img-src data:` | embedded images | odt, docx, standalone images |
+| `style-src 'unsafe-inline'` | the document's own `<style>` blocks **and** its `style` attributes | every format (2–3 blocks, and up to hundreds of attributes) |
+| `script-src 'unsafe-inline'` | the renderer's own js, written into every document | every format but a standalone image (1–3) |
+
+Nothing is fetched from another origin, so no host has to be allow-listed. A
+policy that works, for a document loaded into a frame:
+
+```
+frame-src 'self' blob:; font-src 'self' data:; img-src 'self' data:;
+style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
+```
+
+### `script-src 'unsafe-inline'` is not free
+
+It also permits **`javascript:` urls**, and a document may carry one: odrcore
+filters a pdf link action down to an allowlist of navigable schemes, but a
+hyperlink in an odt or a docx is only attribute-escaped. In a `blob:` frame —
+same origin as the embedder, which is what lets the page call
+`iframe.contentWindow.odr` — such a link runs with the embedder's origin.
+
+Fine for documents you trust. For untrusted input, sandbox the frame and give
+up the same-origin API:
+
+```html
+<iframe sandbox="allow-scripts" srcdoc="..."></iframe>
+```
+
+`allow-scripts` **without** `allow-same-origin` puts the document in an opaque
+origin: search and editing still work inside the frame, while a `javascript:`
+link can no longer reach the embedding page. Granting both together is the same
+as not sandboxing at all.
+
+Narrowing to a hash or a nonce is not possible from here: the renderer's js is
+embedded in the document, and `HtmlConfig::embed_shipped_resources` — which
+links it as files instead — is not bound in this build.
+
+Worth knowing before tightening the rest:
+
+- **`font-src data:` is the one that fails most confusingly.** A pdf's text is
+  painted with the code points its embedded subset defines, so a blocked
+  `@font-face` does not fall back to a system face — every glyph comes out as a
+  replacement box.
+- **A blocked inline script is silent.** The layout is css, so the document
+  still looks right; only search, editing and the spreadsheet and text-view
+  behaviour stop working. Refusing `script-src 'unsafe-inline'` is a real
+  option when the document only has to be *read*.
+- **`style-src` cannot be narrowed to a nonce or a hash.** Most of the styling
+  is `style` attributes, which only `'unsafe-inline'` (or `'unsafe-hashes'`)
+  covers.
+- **Audio and video stay linked resources** rather than data urls, so a media
+  file needs `media-src` pointing wherever the resource was written.
+
+Loading the module itself is a separate question — see [Hosting](#hosting).
 
 ## Building
 
