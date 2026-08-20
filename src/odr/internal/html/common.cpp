@@ -105,13 +105,16 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
     return Measure(value, DynamicUnit()).to_string();
   };
 
-  // Both default to 1, so only a factor that is not 1 has anything to say.
+  // The fit defaults to 1, so only a factor that is not 1 has anything to say.
   const bool writes_fit = !fit.has_value() || *fit != 1;
-  const bool writes_zoom = zoom.has_value() && *zoom != 1;
+  // A pin is stated because it was set, not because of what it is: `1` is the
+  // caller asking for actual size, which is not the same as asking for the fit.
+  const bool writes_pin = config.initial_zoom.has_value();
+  const bool writes_body_zoom = zoom.has_value() && *zoom != 1;
 
   out.write_header_style_begin();
 
-  if (writes_fit || writes_zoom) {
+  if (writes_fit || writes_pin) {
     out.out() << ":root{";
     if (writes_fit) {
       out.out() << "--odr-fit:";
@@ -120,17 +123,17 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
       } else {
         out.out() << "auto";
       }
-      if (writes_zoom) {
+      if (writes_pin) {
         out.out() << ";";
       }
     }
-    if (writes_zoom) {
-      out.out() << "--odr-zoom:" << number(*zoom);
+    if (writes_pin) {
+      out.out() << "--odr-zoom:" << number(*config.initial_zoom);
     }
     out.out() << "}";
   }
 
-  if (writes_zoom) {
+  if (writes_body_zoom) {
     // `zoom` scales the layout, so the page scrolls against the scaled size
     // instead of overflowing beside it
     out.out() << "body{zoom:" << number(*zoom) << "}";

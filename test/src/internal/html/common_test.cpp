@@ -126,8 +126,9 @@ TEST(html_common, the_fit_scales_the_body_to_the_configured_viewport) {
   HtmlConfig config;
   config.viewport_width = 400;
 
+  // `--odr-zoom` states a pin, and nothing pinned this one
   EXPECT_EQ(emit_zoom(config, true, 800),
-            styled(":root{--odr-fit:0.5;--odr-zoom:0.5}body{zoom:0.5}"));
+            styled(":root{--odr-fit:0.5}body{zoom:0.5}"));
 }
 
 TEST(html_common, the_fit_never_scales_up) {
@@ -165,4 +166,22 @@ TEST(html_common, a_pinned_zoom_replaces_the_fit_it_opens_at) {
             styled(":root{--odr-fit:0.5;--odr-zoom:2}body{zoom:2}"));
   EXPECT_EQ(emit_zoom(config, true, std::nullopt),
             styled(":root{--odr-fit:auto;--odr-zoom:2}body{zoom:2}"));
+}
+
+TEST(html_common, a_zoom_pinned_to_actual_size_is_still_a_pin) {
+  HtmlConfig config;
+  config.initial_zoom = 1;
+
+  // nothing to apply, but the view has to know the fit was turned down
+  EXPECT_EQ(emit_zoom(config, true, std::nullopt),
+            styled(":root{--odr-fit:auto;--odr-zoom:1}"));
+
+  config.viewport_width = 400;
+  EXPECT_EQ(emit_zoom(config, true, 800),
+            styled(":root{--odr-fit:0.5;--odr-zoom:1}"));
+
+  // and a pin that lands on the fit is a pin too: a resize leaves it alone
+  config.initial_zoom = 0.5;
+  EXPECT_EQ(emit_zoom(config, true, 800),
+            styled(":root{--odr-fit:0.5;--odr-zoom:0.5}body{zoom:0.5}"));
 }

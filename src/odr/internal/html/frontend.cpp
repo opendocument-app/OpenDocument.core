@@ -349,10 +349,10 @@ constexpr std::string_view viewport_js = R"js(
   var measures = declared("--odr-fit") === "auto";
   var fit = measures ? 1 : parseFloat(declared("--odr-fit")) || 1;
 
-  // What the reader - or the config - pinned the zoom to, `null` while the view
-  // follows the fit. A written zoom that is just the fit again is not a pin.
+  // What the config pinned the zoom to, `null` while the view follows the fit -
+  // which is what the css states, whatever the fit turns out to be.
   var pinned = parseFloat(declared("--odr-zoom"));
-  if (!isFinite(pinned) || (!measures && pinned === fit)) {
+  if (!isFinite(pinned)) {
     pinned = null;
   }
 

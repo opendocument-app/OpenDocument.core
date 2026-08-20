@@ -61,9 +61,10 @@ constexpr double page_column_gutter_pixels = 32;
 /// Writes the zoom state the view opens at, as css the view script then reads
 /// and moves: `--odr-fit` is the factor fitting @p content_pixels into
 /// `config.viewport_width`, `auto` where only the view can measure it, and 1
-/// where @p fits is false; `--odr-zoom` and `body{zoom}` carry what is applied,
-/// which is @ref odr::HtmlConfig::initial_zoom where it is set and the fit
-/// otherwise.
+/// where @p fits is false; `--odr-zoom` states @ref
+/// odr::HtmlConfig::initial_zoom, and only that, so a pin is told apart from
+/// the fit whatever its value; `body{zoom}` applies the pin where there is one
+/// and the fit otherwise.
 void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, bool fits,
                       std::optional<double> content_pixels);
 
