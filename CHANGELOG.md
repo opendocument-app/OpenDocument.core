@@ -47,17 +47,17 @@ The release run heads these entries with the version and opens a fresh
   string, renders that text instead of dropping it.
 - An embedded font that will not re-encode says so in the log rather than being
   swapped for a substitute in silence.
-- Paged output fits the viewport itself rather than leaving it to the host. A
-  viewport meta tag is honoured for the top-level document only, so anything
-  rendering into an iframe got no fit at all and every app reimplemented the
-  same judgement. `fit_width` now scales the page column to the screen, in the
-  top-level case and the embedded one alike. Only ever down — a page narrower
-  than the viewport is shown at its size.
+- Paged output rendered **into a frame** fits the viewport itself. A viewport
+  meta tag is honoured for the top-level document only, so an embedder got no
+  fit at all and a visitor on a phone could not even pinch the document. A
+  framed `fit_width` view now scales its page column to the frame; only ever
+  down, and a top-level document is left to the meta tag exactly as before.
 - **New** `HtmlConfig::viewport_width`: the width the output will be shown at,
-  in css pixels. When set, the fit is a factor in the emitted css, so it needs
-  no script — which is what lets a page under a strict Content-Security-Policy
-  embed a fitted document. Bound in the python, wasm, jni and apple bindings as
-  `viewportWidth`.
+  in css pixels. When set, the fit is a factor in the emitted css — no script,
+  and it applies framed or not, so a host that knows its width (a web view, a
+  fixed-size frame) can stop reimplementing the fit itself. It is also what
+  lets a page under a strict Content-Security-Policy embed a fitted document.
+  Bound in the python, wasm, jni and apple bindings as `viewportWidth`.
 - Output that fits itself keeps the reader's place when the viewport changes.
   A browser answers a resize by holding what was against the top of the screen
   and gets it wrong, because the scale changes with the width — a long document

@@ -151,9 +151,13 @@ struct HtmlConfig {
   /// content wider than it is scaled to fit at render time — a plain factor in
   /// the emitted css, needing neither the viewport meta tag (which a browser
   /// honours for the top-level document only, so a frame's is inert) nor a
-  /// script. Leave it unset where the width can change — a phone that rotates,
-  /// a resizable frame: the output then measures itself at load and on every
-  /// resize, and keeps the reader's place across the change.
+  /// script. This is how a host that knows its width — a web view, a
+  /// fixed-size frame — gets the fit whatever the context.
+  ///
+  /// Left unset, a document *in a frame* measures itself at load and on every
+  /// resize, since nothing else can fit it there; a top-level document is left
+  /// to the viewport meta tag, as it always was. Either way the output keeps
+  /// the reader's place when the viewport changes under it.
   std::optional<std::uint32_t> viewport_width;
 
   // formatting

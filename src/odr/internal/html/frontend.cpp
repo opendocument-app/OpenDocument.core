@@ -333,6 +333,15 @@ constexpr std::string_view viewport_js = R"js(
   var root = document.documentElement;
   var body = document.body;
 
+  // A viewport meta tag is honoured for the top-level document only, so that is
+  // exactly where it is not this script's job to scale anything: doing it there
+  // too would shrink a wide page in a desktop window, which no reader asked
+  // for. In a frame the tag is inert and there is nothing else to fit the page.
+  // Output whose width is known when it is written says so with
+  // `HtmlConfig::viewport_width` and gets the factor in its css instead, framed
+  // or not.
+  var framed = window.top !== window.self;
+
   // The width the anchor below was taken at. A scroll event that arrives after
   // the viewport has already changed is the browser's own doing, not the
   // reader's, and must not be taken for the reading position.
@@ -357,13 +366,20 @@ constexpr std::string_view viewport_js = R"js(
 
   function fit() {
     var available = root.clientWidth;
+    if (!available) {
+      return;
+    }
+    width = available;
+
+    if (!framed) {
+      return;
+    }
     var content = contentWidth();
-    if (!available || !content) {
+    if (!content) {
       return;
     }
     // Only ever down: a page narrower than the viewport is shown at its size.
     body.style.zoom = content > available ? available / content : "";
-    width = available;
   }
 
   // What the reader is looking at: the element against the top of the viewport,
