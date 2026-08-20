@@ -48,6 +48,15 @@ bool contains(const std::string &haystack, const std::string &needle) {
   return haystack.find(needle) != std::string::npos;
 }
 
+std::size_t count(const std::string &haystack, const std::string &needle) {
+  std::size_t result = 0;
+  for (std::size_t i = haystack.find(needle); i != std::string::npos;
+       i = haystack.find(needle, i + needle.size())) {
+    ++result;
+  }
+  return result;
+}
+
 /// A three-page mini-PDF whose first page carries four `/Link` annotations: a
 /// `/URI` action, a direct `/Dest` array to page 2, a `/GoTo` action to a named
 /// destination (`chap3` → page 3, via the catalog `/Dests`), and a `/URI`
@@ -183,6 +192,29 @@ TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
                                 "Tj 0.9 0 0 1 200 700 Tm (t) Tj (o) Tj ET"),
                   PdfTextMode::dual_layer);
   EXPECT_TRUE(contains(spaced, R"(<span class="sg)"));
+}
+
+// Runs one CSS matrix can place flow inside a single selection block, measured
+// in that block's own frame. A line laid out glyph by glyph is one block
+// carrying the PDF's advances as widths — not a stranded box per glyph, each
+// shrink-wrapped around the half-size fallback font and so adrift of the
+// glyphs it is meant to cover. A whitespace-only run has no `.sr` to carry its
+// advance, so the spacer span takes it, or the line ends up short by a space
+// per word.
+TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm "
+                                "(H) Tj (i) Tj ( ) Tj (t) Tj (o) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  // `.t ... i` is the selection layer's block; the glyph layer keeps one per
+  // matrix run and is not what this asserts.
+  EXPECT_EQ(count(html, R"( i">)"), 1u);
+  EXPECT_TRUE(contains(html, ">Hi</span>"));
+  EXPECT_TRUE(contains(html, ">to</span>"));
+  // Both words and the space between them carry a PDF-derived width.
+  EXPECT_EQ(count(html, R"(<span class="sr f1 w)"), 2u);
+  EXPECT_EQ(count(html, R"(<span class="sg f1 w)"), 1u);
 }
 
 // A standalone page view (`page{index}.html`) resolves internal links to the
