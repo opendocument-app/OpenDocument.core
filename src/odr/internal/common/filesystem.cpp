@@ -286,7 +286,10 @@ VirtualFilesystem::create_file(const AbsPath & /*path*/) {
 }
 
 bool VirtualFilesystem::create_directory(const AbsPath &path) {
-  if (exists(path)) {
+  // An entry of its own, not `exists()`: a directory this filesystem merely
+  // implies still has to become one, or an archive that names `a/b.txt` before
+  // `a/` would lose `a/` from the walk.
+  if (m_files.contains(path)) {
     return false;
   }
   m_files[path] = nullptr;
@@ -309,7 +312,7 @@ bool VirtualFilesystem::copy(const AbsPath &from, const AbsPath &to) {
   if (from_it == std::end(m_files)) {
     return false;
   }
-  if (exists(to)) {
+  if (m_files.contains(to)) {
     return false;
   }
   m_files[to] = from_it->second;
@@ -325,7 +328,7 @@ VirtualFilesystem::copy(const abstract::File & /*from*/,
 std::shared_ptr<abstract::File>
 VirtualFilesystem::copy(std::shared_ptr<abstract::File> from,
                         const AbsPath &to) {
-  if (exists(to)) {
+  if (m_files.contains(to)) {
     return {};
   }
   m_files[to] = from;

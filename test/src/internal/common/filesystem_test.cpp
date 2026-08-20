@@ -128,6 +128,25 @@ TEST(VirtualFilesystem, pop_at_depth_zero_ends_the_walk) {
   EXPECT_TRUE(walker->end());
 }
 
+/// An archive names its entries in its own order, and `as_filesystem()`
+/// inserts them in it. A directory that arrives after what it holds is still an
+/// entry of its own, or the walk would not offer it to `flat_next()`.
+TEST(VirtualFilesystem,
+     a_directory_entry_survives_arriving_after_its_children) {
+  VirtualFilesystem filesystem;
+  filesystem.copy(std::make_shared<MemoryFile>(std::string()),
+                  AbsPath("/a/b.txt"));
+  EXPECT_TRUE(filesystem.create_directory(AbsPath("/a")));
+
+  EXPECT_EQ(walk(filesystem, AbsPath("/")),
+            (std::vector<std::string>{"/a", "/a/b.txt"}));
+
+  const auto walker = filesystem.file_walker(AbsPath("/"));
+  EXPECT_TRUE(walker->is_directory());
+  walker->flat_next();
+  EXPECT_TRUE(walker->end());
+}
+
 TEST(VirtualFilesystem, an_intermediate_directory_is_a_directory) {
   const VirtualFilesystem filesystem = filesystem_of({"/a/c/d.txt"});
 
