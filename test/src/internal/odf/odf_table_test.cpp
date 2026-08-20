@@ -148,6 +148,24 @@ TEST(OdfTable, row_groups_nest) {
             (std::vector<std::string>{"a", "b", "c"}));
 }
 
+TEST(OdfTable, a_collapsed_group_is_not_shown) {
+  pugi::xml_document document;
+  const pugi::xml_node table = parse_table(document, R"(
+      <table:table>
+        <table:table-row-group table:display="false">
+          <table:table-row id="hidden"/>
+          <table:table-row-group>
+            <table:table-row id="hidden-too"/>
+          </table:table-row-group>
+        </table:table-row-group>
+        <table:table-row-group table:display="true">
+          <table:table-row id="shown"/>
+        </table:table-row-group>
+      </table:table>)");
+
+  EXPECT_EQ(names_of(table_rows(table)), (std::vector<std::string>{"shown"}));
+}
+
 TEST(OdfTable, columns_inside_a_grouping_element) {
   pugi::xml_document document;
   const pugi::xml_node table = parse_table(document, R"(
