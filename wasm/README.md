@@ -101,7 +101,7 @@ rendered by this package:
 | `font-src data:` | embedded subset fonts | pdf (7 of 8 `@font-face`) |
 | `img-src data:` | embedded images | odt, docx, standalone images |
 | `style-src 'unsafe-inline'` | the document's own `<style>` blocks **and** its `style` attributes | every format (2–3 blocks, and up to hundreds of attributes) |
-| `script-src 'unsafe-inline'` | the document's own `<script>` blocks | every format but a standalone image (1–3) |
+| `script-src 'unsafe-inline'` | the renderer's own js, written into every document | every format but a standalone image (1–3) |
 
 Nothing is fetched from another origin, so no host ever has to be allow-listed.
 A policy that works, for a document loaded into a frame:
@@ -111,7 +111,34 @@ frame-src 'self' blob:; font-src 'self' data:; img-src 'self' data:;
 style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
 ```
 
-Worth knowing before tightening any of it:
+### `script-src 'unsafe-inline'` is not free
+
+It also permits **`javascript:` urls**, and a document may carry one: odrcore
+filters a pdf link action down to an allowlist of navigable schemes, but a
+hyperlink in an odt or a docx is only attribute-escaped, so a `javascript:`
+href reaches the page. In a `blob:` frame — same origin as the embedder, which
+is what lets the page call `iframe.contentWindow.odr` — such a link runs with
+the embedder's origin if the reader clicks it.
+
+That is fine for documents you trust and not for documents you do not. For
+untrusted input, sandbox the frame and give up the same-origin API:
+
+```html
+<iframe sandbox="allow-scripts" srcdoc="..."></iframe>
+```
+
+`allow-scripts` **without** `allow-same-origin` puts the document in an opaque
+origin: the renderer's own search and editing still work inside the frame, a
+`javascript:` link can no longer reach the embedding page, and
+`iframe.contentWindow` is out of reach from outside. Granting both together is
+the same as not sandboxing at all.
+
+There is no way to narrow this to hashes or a nonce from here: the package
+embeds the renderer's js in the document, and `HtmlConfig::embed_shipped_resources`
+— which links it as files instead, leaving no inline script at all — is not
+bound in this build.
+
+Worth knowing before tightening the rest:
 
 - **`font-src data:` is the one that costs the most time.** A pdf's text is
   painted with the code points its embedded subset defines, so a blocked
@@ -120,7 +147,9 @@ Worth knowing before tightening any of it:
   it easy to conclude the embed works.
 - **A blocked inline script is silent.** The layout is css, so the document
   still looks right; only what the scripts provide — search, editing, the
-  spreadsheet and text-view behaviour — stops working.
+  spreadsheet and text-view behaviour — stops working. Refusing
+  `script-src 'unsafe-inline'` outright is therefore a real option when the
+  document only has to be *read*.
 - **`style-src` cannot be narrowed to a nonce or a hash.** Most of the styling
   is `style` attributes, which only `'unsafe-inline'` (or `'unsafe-hashes'`)
   covers.
