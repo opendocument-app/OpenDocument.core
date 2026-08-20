@@ -7,6 +7,8 @@
 
 #include <odr/exceptions.hpp>
 
+#include <internal/pdf/pdf_test_file_builder.hpp>
+
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -305,4 +307,53 @@ TEST(html, paged_output_fits_the_viewport) {
     EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
     EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
   }
+}
+
+// A page turned by `/Rotate` is as wide as the reader sees it, so one document
+// can hold pages of different widths — which is how mixed widths turn up in the
+// wild. Each view is then fitted to the page it renders, not to the widest.
+TEST(html, each_view_fits_the_page_it_renders) {
+  test::pdf::PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
+      // 612pt wide as it stands
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      // 792pt tall on paper, but a quarter turn makes it 1224pt wide on screen
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 1224] "
+              "/Rotate 90 >>");
+
+  const std::string path =
+      (std::filesystem::current_path() / "mixed_rotation.pdf").string();
+  {
+    std::ofstream out(path, std::ios::binary);
+    out << builder.trailer("/Root 1 0 R").build_classic();
+  }
+
+  HtmlConfig config;
+  config.viewport_width = 400;
+
+  const DecodedFile file{path};
+  const HtmlService service = html::translate(
+      file, (std::filesystem::current_path() / "rotate").string(), config);
+
+  const auto factor_of = [&](const std::size_t view) {
+    std::ostringstream out;
+    service.list_views().at(view).write_html(out);
+    const std::string html = std::move(out).str();
+    const std::size_t at = html.find("body{zoom:");
+    EXPECT_NE(at, std::string::npos);
+    return std::stod(html.substr(at + 10));
+  };
+
+  const double document_view = factor_of(0);
+  const double narrow_page = factor_of(1);
+  const double wide_page = factor_of(2);
+
+  // the narrow page is scaled down less than the wide one
+  EXPECT_GT(narrow_page, wide_page);
+  // and the view holding both is fitted to the wide one
+  EXPECT_DOUBLE_EQ(document_view, wide_page);
+  // 400 / (612pt + 32px) and 400 / (1224pt + 32px), in css pixels
+  EXPECT_NEAR(narrow_page, 400.0 / (612 * 96.0 / 72 + 32), 1e-6);
+  EXPECT_NEAR(wide_page, 400.0 / (1224 * 96.0 / 72 + 32), 1e-6);
 }
