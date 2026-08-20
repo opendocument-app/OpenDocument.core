@@ -32,6 +32,63 @@ bool is_paged_content(const Document &document, const HtmlConfig &config) {
          document.document_type() == DocumentType::drawing;
 }
 
+/// The widest page the document lays out, in css pixels, gutters included —
+/// what fitting to the viewport has to scale down. Nothing for content that
+/// reflows, or whose page carries no absolute width.
+std::optional<double> content_pixels(const Document &document) {
+  const Element root = document.root_element();
+
+  const auto page_width = [](const auto &page_like) {
+    return css_pixels(page_like.page_layout().width);
+  };
+  const auto widest = [](const std::optional<double> lhs,
+                         const std::optional<double> rhs) {
+    if (!lhs.has_value()) {
+      return rhs;
+    }
+    return rhs.has_value() ? std::optional(std::max(*lhs, *rhs)) : lhs;
+  };
+
+  std::optional<double> result;
+  switch (document.document_type()) {
+  case DocumentType::text:
+    result = page_width(root.as_text_root());
+    break;
+  case DocumentType::presentation:
+    for (const Element child : root.children()) {
+      result = widest(result, page_width(child.as_slide()));
+    }
+    break;
+  case DocumentType::drawing:
+    for (const Element child : root.children()) {
+      result = widest(result, page_width(child.as_page()));
+    }
+    break;
+  default:
+    break;
+  }
+
+  if (!result.has_value()) {
+    return {};
+  }
+  return *result + page_column_gutter_pixels;
+}
+
+/// Whether the view has to measure itself at load time to fit the viewport —
+/// true where it should fit but the css could not be given the factor.
+bool fits_at_load_time(const Document &document, const HtmlConfig &config,
+                       const bool paged_content) {
+  if (!paged_content ||
+      !fits_width(config, paged_content,
+                  document.document_type() == DocumentType::spreadsheet
+                      ? config.spreadsheet_viewport_mode
+                      : std::nullopt)) {
+    return false;
+  }
+  return !config.viewport_width.has_value() ||
+         !content_pixels(document).has_value();
+}
+
 /// @p name titles the view; empty when the whole document is written as one
 /// file, which no one view names.
 void front(const Document &document, const WritingState &state,
@@ -48,10 +105,17 @@ void front(const Document &document, const WritingState &state,
       document.document_type() == DocumentType::spreadsheet && !name.empty()
           ? escape_text(name)
           : "odr");
-  write_viewport_meta(out, state.config(), paged_content,
-                      document.document_type() == DocumentType::spreadsheet
-                          ? state.config().spreadsheet_viewport_mode
-                          : std::nullopt);
+  const std::optional<HtmlViewportMode> mode_override =
+      document.document_type() == DocumentType::spreadsheet
+          ? state.config().spreadsheet_viewport_mode
+          : std::nullopt;
+  write_viewport_meta(out, state.config(), paged_content, mode_override);
+  if (paged_content) {
+    write_viewport_fit_style(
+        out, state.config(),
+        fits_width(state.config(), paged_content, mode_override),
+        content_pixels(document));
+  }
 
   write_document_style(state);
   write_document_dark_style(state);
@@ -101,6 +165,10 @@ void back(const Document &document, const WritingState &state) {
   write_document_script(state);
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);
+  }
+  if (fits_at_load_time(document, state.config(),
+                        is_paged_content(document, state.config()))) {
+    write_viewport_script(state);
   }
 
   out.write_body_end();

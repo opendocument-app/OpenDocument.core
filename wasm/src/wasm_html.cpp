@@ -141,6 +141,10 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   read_enum(value, "colorScheme", config.color_scheme);
   read_enum(value, "spreadsheetGridlines", config.spreadsheet_gridlines);
   read_enum(value, "viewportMode", config.viewport_mode);
+  if (const emscripten::val width = value["viewportWidth"];
+      !width.isUndefined() && !width.isNull()) {
+    config.viewport_width = width.as<std::uint32_t>();
+  }
   read_enum(value, "pdfTextMode", config.pdf_text_mode);
 
   return config;

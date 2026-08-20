@@ -106,6 +106,9 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _viewportContent = config.viewport_content.has_value()
                          ? to_nsstring(*config.viewport_content)
                          : nil;
+  _viewportWidth = config.viewport_width.has_value()
+                       ? @(static_cast<unsigned int>(*config.viewport_width))
+                       : nil;
   _formatHtml = config.format_html ? YES : NO;
   _htmlIndent = config.html_indent;
   _htmlIndentString = to_nsstring(config.html_indent_string);
@@ -168,6 +171,12 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     config.viewport_content = to_string(_viewportContent);
   } else {
     config.viewport_content.reset();
+  }
+  if (_viewportWidth != nil) {
+    config.viewport_width =
+        static_cast<std::uint32_t>(_viewportWidth.unsignedIntValue);
+  } else {
+    config.viewport_width.reset();
   }
   config.format_html = _formatHtml == YES;
   config.html_indent = _htmlIndent;

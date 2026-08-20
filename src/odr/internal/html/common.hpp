@@ -7,6 +7,7 @@
 
 #include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
+#include <odr/quantity.hpp>
 
 namespace odr {
 struct Color;
@@ -44,6 +45,29 @@ private:
 void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
                          std::optional<HtmlViewportMode> mode_override = {});
+
+/// Whether the output is meant to fit its width to the viewport — the same
+/// question @ref write_viewport_meta answers with a meta tag, which a browser
+/// honours for the top-level document only.
+[[nodiscard]] bool
+fits_width(const HtmlConfig &config, bool fit_width_by_default,
+           std::optional<HtmlViewportMode> mode_override = {});
+
+/// @p measure in css pixels (96 per inch), or nothing where it carries no
+/// absolute unit.
+[[nodiscard]] std::optional<double>
+css_pixels(const std::optional<Measure> &measure);
+
+/// The side gutters the page column puts around its widest page, in css
+/// pixels — part of the width to fit, and the same in both renderers.
+constexpr double page_column_gutter_pixels = 32;
+
+/// Scales the body so that @p content_pixels of content fits
+/// `config.viewport_width`. Writes nothing, and returns false, unless the
+/// output fits its width and both widths are known — the load-time script is
+/// what covers the rest.
+bool write_viewport_fit_style(HtmlWriter &out, const HtmlConfig &config,
+                              bool fits, std::optional<double> content_pixels);
 
 std::string escape_text(std::string text);
 

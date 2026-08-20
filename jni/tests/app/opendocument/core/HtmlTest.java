@@ -38,6 +38,7 @@ class HtmlTest {
     assertEquals(HtmlViewportMode.AUTOMATIC, config.viewportMode);
     assertNull(config.spreadsheetViewportMode);
     assertNull(config.viewportContent);
+    assertNull(config.viewportWidth);
   }
 
   @Test
@@ -46,6 +47,7 @@ class HtmlTest {
     config.viewportMode = HtmlViewportMode.FIT_WIDTH;
     config.spreadsheetViewportMode = HtmlViewportMode.ACTUAL_SIZE;
     config.viewportContent = "width=420";
+    config.viewportWidth = 420;
 
     Path cache = Files.createDirectories(tempDir.resolve("cache"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
@@ -54,6 +56,7 @@ class HtmlTest {
     assertEquals(HtmlViewportMode.FIT_WIDTH, readBack.viewportMode);
     assertEquals(HtmlViewportMode.ACTUAL_SIZE, readBack.spreadsheetViewportMode);
     assertEquals("width=420", readBack.viewportContent);
+    assertEquals(Integer.valueOf(420), readBack.viewportWidth);
   }
 
   /** The C++ suite covers the mode matrix; this only proves the config crosses JNI. */

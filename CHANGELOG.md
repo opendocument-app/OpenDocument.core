@@ -47,6 +47,21 @@ The release run heads these entries with the version and opens a fresh
   string, renders that text instead of dropping it.
 - An embedded font that will not re-encode says so in the log rather than being
   swapped for a substitute in silence.
+- Paged output fits the viewport itself rather than leaving it to the host. A
+  viewport meta tag is honoured for the top-level document only, so anything
+  rendering into an iframe got no fit at all and every app reimplemented the
+  same judgement. `fit_width` now scales the page column to the screen, in the
+  top-level case and the embedded one alike. Only ever down — a page narrower
+  than the viewport is shown at its size.
+- **New** `HtmlConfig::viewport_width`: the width the output will be shown at,
+  in css pixels. When set, the fit is a factor in the emitted css, so it needs
+  no script — which is what lets a page under a strict Content-Security-Policy
+  embed a fitted document. Bound in the python, wasm, jni and apple bindings as
+  `viewportWidth`.
+- Output that fits itself keeps the reader's place when the viewport changes.
+  A browser answers a resize by holding what was against the top of the screen
+  and gets it wrong, because the scale changes with the width — a long document
+  came back a page or more from where it was.
 
 ## v6.9.0 - 2026-08-18
 

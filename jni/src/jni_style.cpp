@@ -368,6 +368,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
                          : -1));
   set_object("viewportContent", "Ljava/lang/String;",
              make_string_opt(env, config.viewport_content));
+  set_object("viewportWidth", "Ljava/lang/Integer;",
+             box_integer(env, config.viewport_width));
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
@@ -508,6 +510,19 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
                  : std::make_optional(static_cast<odr::HtmlViewportMode>(code));
   }
   result.viewport_content = get_string_opt("viewportContent");
+  {
+    jobject width = get_object("viewportWidth", "Ljava/lang/Integer;");
+    if (width == nullptr) {
+      result.viewport_width = std::nullopt;
+    } else {
+      jclass integer_cls = env->GetObjectClass(width);
+      jmethodID int_value = env->GetMethodID(integer_cls, "intValue", "()I");
+      result.viewport_width =
+          static_cast<std::uint32_t>(env->CallIntMethod(width, int_value));
+      env->DeleteLocalRef(integer_cls);
+    }
+    env->DeleteLocalRef(width);
+  }
   result.format_html = get_boolean("formatHtml");
   result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));
   result.html_indent_string = get_string("htmlIndentString");

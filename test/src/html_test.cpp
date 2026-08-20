@@ -261,3 +261,48 @@ TEST(html, views) {
   EXPECT_EQ(views.at(1).name(), "Foglio1");
   EXPECT_EQ(views.at(2).name(), "Foglio2");
 }
+
+// #708: a viewport meta tag is honoured for the top-level document only, so an
+// embedder rendering into a frame got no fit at all. #706: and whatever fits
+// has to hold the reader's place when the viewport changes under it.
+TEST(html, paged_output_fits_the_viewport) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DecodedFile file(
+      TestData::test_file_path("odr-public/odp/style-various-1.odp"), logger);
+
+  const auto render = [&](const HtmlConfig &config) {
+    const std::string cache =
+        (std::filesystem::current_path() / "fit").string();
+    std::ostringstream out;
+    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  {
+    // Nothing said how wide the output will be shown, so it measures itself.
+    const std::string html = render(HtmlConfig());
+    EXPECT_NE(html.find("body.style.zoom"), std::string::npos);
+    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
+  }
+
+  {
+    // A slide is 28cm wide here, well over the 400 css pixels configured.
+    HtmlConfig config;
+    config.viewport_width = 400;
+    const std::string html = render(config);
+    EXPECT_NE(html.find("body{zoom:0."), std::string::npos);
+    // no script: the factor is in the css, which is the point of configuring it
+    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+  }
+
+  {
+    // Told not to fit, neither half applies.
+    HtmlConfig config;
+    config.viewport_mode = HtmlViewportMode::actual_size;
+    config.viewport_width = 400;
+    const std::string html = render(config);
+    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
+    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+  }
+}

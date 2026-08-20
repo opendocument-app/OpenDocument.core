@@ -37,6 +37,12 @@ public final class HtmlConfig {
   public HtmlViewportMode spreadsheetViewportMode;
   /** Raw {@code content} for the viewport meta tag; overrides the modes above when set. */
   public String viewportContent;
+  /**
+   * The width the output will be shown at, in css pixels. When set, paged content wider than it is
+   * scaled to fit at render time, needing neither the viewport meta tag nor a script; {@code null}
+   * makes the output measure itself at load and on every resize instead.
+   */
+  public Integer viewportWidth;
 
   public boolean formatHtml = false;
   public int htmlIndent = 1;
