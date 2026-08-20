@@ -243,11 +243,11 @@ spreadsheet::parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
-bool spreadsheet::password_encrypted(
-    const abstract::ReadableFilesystem &files) {
+std::optional<bool>
+spreadsheet::password_encrypted(const abstract::ReadableFilesystem &files) {
   const std::shared_ptr<abstract::File> file = files.open(AbsPath("/Workbook"));
   if (file == nullptr) {
-    return false;
+    return {};
   }
 
   const std::unique_ptr<std::istream> stream = file->stream();
@@ -259,7 +259,7 @@ bool spreadsheet::password_encrypted(
   // the BOF of the first sheet, ends the search.
   try {
     if (!reader.next_record() || reader.record_type() != biff_bof) {
-      return false;
+      return {};
     }
     while (reader.next_record()) {
       switch (reader.record_type()) {
@@ -273,10 +273,12 @@ bool spreadsheet::password_encrypted(
       }
     }
   } catch (const std::exception &) {
-    // a stream that cannot be walked cannot say it is encrypted
+    // a stream that cannot be walked cannot answer either way
+    return {};
   }
 
-  return false;
+  // the records ran out before the globals substream ended
+  return {};
 }
 
 } // namespace odr::internal::oldms

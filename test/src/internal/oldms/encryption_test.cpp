@@ -6,6 +6,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
@@ -90,41 +91,67 @@ std::string workbook_stream(const bool encrypted) {
 } // namespace
 
 TEST(OldMsEncryption, doc_reports_the_encrypted_flag) {
-  EXPECT_TRUE(text::password_encrypted(
-      filesystem_of("/WordDocument", word_document_stream(true))));
-  EXPECT_FALSE(text::password_encrypted(
-      filesystem_of("/WordDocument", word_document_stream(false))));
+  EXPECT_EQ(text::password_encrypted(
+                filesystem_of("/WordDocument", word_document_stream(true))),
+            true);
+  EXPECT_EQ(text::password_encrypted(
+                filesystem_of("/WordDocument", word_document_stream(false))),
+            false);
 }
 
 TEST(OldMsEncryption, ppt_reports_the_header_token) {
-  EXPECT_TRUE(presentation::password_encrypted(
-      filesystem_of("/Current User", current_user_stream(true))));
-  EXPECT_FALSE(presentation::password_encrypted(
-      filesystem_of("/Current User", current_user_stream(false))));
+  EXPECT_EQ(presentation::password_encrypted(
+                filesystem_of("/Current User", current_user_stream(true))),
+            true);
+  EXPECT_EQ(presentation::password_encrypted(
+                filesystem_of("/Current User", current_user_stream(false))),
+            false);
 }
 
 TEST(OldMsEncryption, xls_reports_a_file_pass_record) {
-  EXPECT_TRUE(spreadsheet::password_encrypted(
-      filesystem_of("/Workbook", workbook_stream(true))));
-  EXPECT_FALSE(spreadsheet::password_encrypted(
-      filesystem_of("/Workbook", workbook_stream(false))));
+  EXPECT_EQ(spreadsheet::password_encrypted(
+                filesystem_of("/Workbook", workbook_stream(true))),
+            true);
+  EXPECT_EQ(spreadsheet::password_encrypted(
+                filesystem_of("/Workbook", workbook_stream(false))),
+            false);
 }
 
-TEST(OldMsEncryption, a_missing_stream_is_not_encrypted) {
+/// Not an answer either way — saying "not encrypted" would be claiming one.
+TEST(OldMsEncryption, a_missing_stream_answers_nothing) {
   const VirtualFilesystem empty;
 
-  EXPECT_FALSE(text::password_encrypted(empty));
-  EXPECT_FALSE(presentation::password_encrypted(empty));
-  EXPECT_FALSE(spreadsheet::password_encrypted(empty));
+  EXPECT_FALSE(text::password_encrypted(empty).has_value());
+  EXPECT_FALSE(presentation::password_encrypted(empty).has_value());
+  EXPECT_FALSE(spreadsheet::password_encrypted(empty).has_value());
 }
 
-TEST(OldMsEncryption, a_truncated_stream_is_not_encrypted) {
+TEST(OldMsEncryption, a_truncated_stream_answers_nothing) {
   EXPECT_FALSE(text::password_encrypted(
-      filesystem_of("/WordDocument", word_document_stream(true).substr(0, 8))));
+                   filesystem_of("/WordDocument",
+                                 word_document_stream(true).substr(0, 8)))
+                   .has_value());
   EXPECT_FALSE(presentation::password_encrypted(
-      filesystem_of("/Current User", current_user_stream(true).substr(0, 8))));
-  EXPECT_FALSE(spreadsheet::password_encrypted(
-      filesystem_of("/Workbook", workbook_stream(true).substr(0, 3))));
+                   filesystem_of("/Current User",
+                                 current_user_stream(true).substr(0, 8)))
+                   .has_value());
+  EXPECT_FALSE(
+      spreadsheet::password_encrypted(
+          filesystem_of("/Workbook", workbook_stream(true).substr(0, 3)))
+          .has_value());
+}
+
+/// A file whose stream says nothing readable keeps `unknown`, which is what the
+/// state meant before any of this: the parser then fails on its own terms.
+TEST(OldMsEncryption, an_unreadable_stream_leaves_the_state_unknown) {
+  const auto files = std::make_shared<VirtualFilesystem>(
+      filesystem_of("/WordDocument", "too short"));
+
+  const LegacyMicrosoftFile file(files);
+
+  EXPECT_EQ(file.file_type(), FileType::legacy_word_document);
+  EXPECT_FALSE(file.password_encrypted());
+  EXPECT_EQ(file.encryption_state(), EncryptionState::unknown);
 }
 
 /// The file that reported the issue: it threw

@@ -11,6 +11,7 @@
 #include <odr/internal/oldms/text/doc_parser.hpp>
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 namespace odr::internal::oldms {
@@ -18,8 +19,10 @@ namespace odr::internal::oldms {
 namespace {
 /// Each format keeps the bytes that say so in the clear, so this is readable
 /// without the password. Detection only — odrcore cannot decrypt any of them.
-bool parse_password_encrypted(const FileType type,
-                              const abstract::ReadableFilesystem &files) {
+/// Nothing where the format's own probe could not read the signal.
+std::optional<bool>
+parse_password_encrypted(const FileType type,
+                         const abstract::ReadableFilesystem &files) {
   switch (type) {
   case FileType::legacy_word_document:
     return text::password_encrypted(files);
@@ -28,7 +31,7 @@ bool parse_password_encrypted(const FileType type,
   case FileType::legacy_excel_worksheets:
     return spreadsheet::password_encrypted(files);
   default:
-    return false;
+    return {};
   }
 }
 
@@ -72,8 +75,6 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
     throw UnknownFileType();
   }
 
-  result.password_encrypted = parse_password_encrypted(result.type, files);
-
   return result;
 }
 } // namespace
@@ -83,9 +84,15 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
     : m_files{std::move(files)} {
   m_file_meta = parse_meta(*m_files);
 
-  m_encryption_state = m_file_meta.password_encrypted
-                           ? EncryptionState::encrypted
-                           : EncryptionState::not_encrypted;
+  // `EncryptionState::unknown` where the probe could not read the signal: a
+  // stream that cannot be inspected is not a document that said it is in the
+  // clear, and `FileMeta` has only the boolean to carry it.
+  const std::optional<bool> encrypted =
+      parse_password_encrypted(m_file_meta.type, *m_files);
+  m_file_meta.password_encrypted = encrypted.value_or(false);
+  m_encryption_state = !encrypted.has_value() ? EncryptionState::unknown
+                       : *encrypted           ? EncryptionState::encrypted
+                                              : EncryptionState::not_encrypted;
 }
 
 std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {

@@ -919,12 +919,12 @@ presentation::parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
-bool presentation::password_encrypted(
-    const abstract::ReadableFilesystem &files) {
+std::optional<bool>
+presentation::password_encrypted(const abstract::ReadableFilesystem &files) {
   const std::shared_ptr<abstract::File> file =
       files.open(AbsPath("/Current User"));
   if (file == nullptr) {
-    return false;
+    return {};
   }
 
   const std::unique_ptr<std::istream> stream = file->stream();
@@ -932,7 +932,7 @@ bool presentation::password_encrypted(
   stream->read(reinterpret_cast<char *>(&head), sizeof(head));
   if (stream->gcount() != sizeof(head) ||
       head.rh.recType != RT_CurrentUserAtom) {
-    return false;
+    return {};
   }
 
   return head.headerToken == current_user_token_encrypted;

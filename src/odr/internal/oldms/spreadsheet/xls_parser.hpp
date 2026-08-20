@@ -2,6 +2,8 @@
 
 #include <odr/definitions.hpp>
 
+#include <optional>
+
 namespace odr::internal::abstract {
 class ReadableFilesystem;
 } // namespace odr::internal::abstract
@@ -20,10 +22,10 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
 
 /// Whether the workbook is encrypted, i.e. whether the globals substream
 /// carries a FilePass record ([MS-XLS] 2.4.117). Record headers stay in the
-/// clear, which is what makes this readable at all. A `/Workbook` stream that
-/// is missing or malformed reads as not encrypted — parsing then fails on its
-/// own.
-[[nodiscard]] bool
+/// clear, which is what makes this readable at all. Nothing where the
+/// `/Workbook` stream is missing, or where the record walk does not reach the
+/// end of the globals substream: that is not an answer.
+[[nodiscard]] std::optional<bool>
 password_encrypted(const abstract::ReadableFilesystem &files);
 
 } // namespace odr::internal::oldms::spreadsheet
