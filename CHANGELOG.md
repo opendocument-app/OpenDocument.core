@@ -28,8 +28,7 @@ The release run heads these entries with the version and opens a fresh
 - `Odr.load()` works under a Content-Security-Policy without `'unsafe-eval'`:
   the wasm module is linked with `-sDYNAMIC_EXECUTION=0`, so embind builds its
   invokers without `new Function`. `script-src 'self' 'wasm-unsafe-eval'` is
-  now enough — which is the policy a page processing documents locally would
-  want to be able to ship.
+  now enough.
 
 ## v6.9.0 - 2026-08-18
 

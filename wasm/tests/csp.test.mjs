@@ -6,11 +6,9 @@ import { describe, it } from 'node:test';
 
 import { dist } from './helper.mjs';
 
-// A page embedding a local document renderer wants `script-src 'self'
-// 'wasm-unsafe-eval'`, which allows `WebAssembly.instantiate` but not
-// `new Function`. embind builds its invokers with the latter unless the module
-// is linked with `-sDYNAMIC_EXECUTION=0`, so `Odr.load()` threw an `EvalError`
-// under any such policy.
+// `wasm-unsafe-eval` allows `WebAssembly.instantiate` but not `new Function`,
+// which embind uses for its invokers unless linked with
+// `-sDYNAMIC_EXECUTION=0`.
 describe('content security policy', () => {
   it('loads where dynamic code construction is blocked', () => {
     // A child process, because the stand-in below replaces a global the test
