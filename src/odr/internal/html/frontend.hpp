@@ -45,12 +45,10 @@ void write_text_script(const WritingState &state);
 /// rest of that object, for every view rendering text, whatever the format.
 void write_search_script(const WritingState &state);
 
-/// The zoom half of the `odr` object — `getZoom()`, `setZoom(value, focus)`,
-/// `adjustZoom(factor, focus)`, `resetZoom(focus)`, `isZoomFitted()`,
-/// `onZoomChange` — and, where
-/// @ref odr::HtmlConfig::viewport_width left the fit to be measured, the fit
-/// itself: at load and on every resize, holding the reading position across the
-/// change. A view writing it writes @ref write_zoom_style with it.
+/// `odr.getZoom()`, `setZoom(value, focus)`, `adjustZoom(factor, focus)`,
+/// `resetZoom(focus)`, `isZoomFitted()`, `onZoomChange` — and the fit itself
+/// where @ref write_zoom_style left it to be measured. Holds the reading
+/// position across every change. Written by every view writing that style.
 void write_viewport_script(const WritingState &state);
 
 /// What the corresponding `write_*` calls would link, without writing anything:

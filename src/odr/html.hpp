@@ -150,7 +150,6 @@ struct HtmlConfig {
   /// The width the output is shown at, in css pixels; fits paged content to it.
   std::optional<std::uint32_t> viewport_width;
   /// The zoom the view opens at, 1 being actual size; unset follows the fit.
-  /// `odr.setZoom` moves it afterwards.
   std::optional<double> initial_zoom;
 
   /// Indent and break the output into lines rather than writing one stream.

@@ -119,14 +119,13 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
     // An image has no layout width to preserve, so css alone fits it, framed
-    // or not - no measuring and no `viewport_width`, and the zoom the reader
-    // sets rides on top of that fit rather than replacing it.
+    // or not - no measuring and no `viewport_width`.
     write_zoom_style(out, config(), false, {});
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#fff}";
     if (fits_width(config(), true)) {
-      // `100%` of a zoomed body is the viewport again, whatever the zoom, so
-      // the factor has to be put back for the image to grow with it.
+      // `100%` of a zoomed body is the viewport again, so the factor has to
+      // be put back for the image to grow with it
       out.out() << "img{max-width:calc(100% * var(--odr-zoom, 1));"
                    "height:auto}";
     }

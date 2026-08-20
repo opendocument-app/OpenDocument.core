@@ -16,13 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- Every html view exposes a zoom the host drives: `odr.getZoom()`,
-  `setZoom(value, focus)`, `adjustZoom(factor, focus)`, `resetZoom(focus)`,
-  `isZoomFitted()` and an `odr.onZoomChange` hook. `1` is actual size, `focus`
-  is the point the zoom is centred on — a pinch's midpoint — and the reading
-  position is held across the change. `HtmlConfig::initial_zoom` sets what the
-  view opens at, script or no script. A view that fits keeps following the
-  viewport until a zoom is set, and `resetZoom()` puts it back on the fit.
+- Html views take a zoom from their host: `odr.getZoom()`, `setZoom(value,
+  focus)`, `adjustZoom(factor, focus)`, `resetZoom(focus)`, `isZoomFitted()`
+  and an `onZoomChange` hook, holding the reading position across the change.
+  `HtmlConfig::initial_zoom` sets what the view opens at, script or no script.
 - A pdf that nests parentheses inside a string opens, and keeps its document
   metadata — `cairo` and `pdfTeX` write their `/Producer` that way.
 - A jni build without a JDK fails instead of shipping a package missing

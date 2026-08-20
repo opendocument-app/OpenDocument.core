@@ -84,7 +84,6 @@ std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
 void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
                             const bool fits,
                             const std::optional<double> content_pixels) {
-  // Nothing shown here, so the factor is 1 unless the fit says otherwise.
   std::optional<double> fit = 1;
   if (fits) {
     if (config.viewport_width.has_value() && content_pixels.has_value()) {
@@ -105,10 +104,8 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
     return Measure(value, DynamicUnit()).to_string();
   };
 
-  // The fit defaults to 1, so only a factor that is not 1 has anything to say.
   const bool writes_fit = !fit.has_value() || *fit != 1;
-  // A pin is stated because it was set, not because of what it is: `1` is the
-  // caller asking for actual size, which is not the same as asking for the fit.
+  // stated because it was set: `1` is actual size asked for, not the fit
   const bool writes_pin = config.initial_zoom.has_value();
   const bool writes_body_zoom = zoom.has_value() && *zoom != 1;
 
@@ -139,8 +136,7 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
     out.out() << "body{zoom:" << number(*zoom) << "}";
   }
 
-  // Paper has its own geometry: whatever the reader is zoomed to, print the
-  // view at its size. Beats the inline zoom the view script writes.
+  // paper has its own geometry; beats the script's inline zoom
   out.out() << "@media print{:root{--odr-zoom:1!important}"
                "body{zoom:1!important}}";
 

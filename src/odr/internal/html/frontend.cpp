@@ -322,8 +322,7 @@ constexpr std::string_view document_js = R"js(
 })();
 )js";
 
-/// Owns the zoom every view opens at: the fit the css could not state, and
-/// `odr.setZoom()` and friends on top of it.
+/// The zoom api, and the fit where the css could not state it.
 constexpr std::string_view viewport_js = R"js(
 (function () {
   "use strict";
@@ -344,13 +343,11 @@ constexpr std::string_view viewport_js = R"js(
     return getComputedStyle(root).getPropertyValue(name).trim();
   }
 
-  // `auto` where the renderer could not state the fit, so only we can measure
-  // it; a number, defaulting to 1, where it could.
+  // `auto` where only we can measure the fit; a number where the css states it.
   var measures = declared("--odr-fit") === "auto";
   var fit = measures ? 1 : parseFloat(declared("--odr-fit")) || 1;
 
-  // What the config pinned the zoom to, `null` while the view follows the fit -
-  // which is what the css states, whatever the fit turns out to be.
+  // `null` while the view follows the fit.
   var pinned = parseFloat(declared("--odr-zoom"));
   if (!isFinite(pinned)) {
     pinned = null;
@@ -397,10 +394,8 @@ constexpr std::string_view viewport_js = R"js(
 
   // The element under @p point - the top of the viewport where none is given -
   // and how far into it the point sits. A fraction of the scroll height cannot
-  // stand in: the height itself changes with the scale.
-  //
-  // Only a point given by the caller pins the horizontal too: without one the
-  // page column centres itself, and holding x would fight that.
+  // stand in: the height itself changes with the scale. Only a given point
+  // pins x too, where the page column would otherwise centre itself.
   function anchor(point) {
     var x = point ? point.x : Math.floor(root.clientWidth / 2);
     var y = point ? point.y : 1;
@@ -418,8 +413,7 @@ constexpr std::string_view viewport_js = R"js(
     };
   }
 
-  // `{x, y}` in viewport coordinates, which a mouse or touch event carries as
-  // `clientX`/`clientY`, so either can be handed straight to the zoom calls.
+  // `{x, y}`, or the `clientX`/`clientY` of a mouse or touch event.
   function point(value) {
     if (!value) {
       return null;
@@ -461,9 +455,8 @@ constexpr std::string_view viewport_js = R"js(
     }
   }
 
-  // Writes the zoom out and holds @p target under the top of the viewport. The
-  // browser applies a scroll offset of its own a few frames later, so the
-  // position is re-asserted until it settles.
+  // The browser applies a scroll offset of its own a few frames later, so
+  // @p target is re-asserted until it settles.
   function apply(target) {
     var zoom = applied();
     body.style.zoom = zoom;
@@ -498,7 +491,7 @@ constexpr std::string_view viewport_js = R"js(
     width = root.clientWidth;
 
     if (pinned !== null || !measures) {
-      // The scale does not follow the viewport, so nothing to re-apply.
+      // the scale does not follow the viewport
       remember();
       return;
     }
@@ -512,28 +505,24 @@ constexpr std::string_view viewport_js = R"js(
     restoring = false;
   }
 
-  // `1` is actual size, whatever the fit made of it. The value excludes the
-  // browser's own page and pinch zoom, which no page can read or set.
+  // `1` is actual size. Excludes the browser's own page and pinch zoom.
   odr.getZoom = function () {
     return applied();
   };
 
-  // Whether the view still follows the fit rather than a pinned zoom.
   odr.isZoomFitted = function () {
     return pinned === null;
   };
 
-  // @p focus, where given, is the point the zoom is centred on - a pinch's
-  // midpoint - and stays put across the change. Without one the top of the
-  // viewport does.
+  // @p focus, a pinch's midpoint, is the point that stays put across the
+  // change; the top of the viewport where none is given.
   odr.setZoom = function (value, focus) {
     var next = Number(value);
     if (!isFinite(next)) {
       return applied();
     }
     pinned = Math.min(maxZoom, Math.max(minZoom, next));
-    // Read the anchor now rather than trusting the held one: a call is a
-    // moment we are told about, unlike a resize, which arrives relaid out.
+    // read now, unlike a resize, which arrives relaid out
     apply(anchor(point(focus)));
     return applied();
   };
@@ -542,7 +531,6 @@ constexpr std::string_view viewport_js = R"js(
     return odr.setZoom(applied() * Number(factor), focus);
   };
 
-  // Back to following the fit, which a resize then keeps up to date again.
   odr.resetZoom = function (focus) {
     pinned = null;
     var target = anchor(point(focus));
