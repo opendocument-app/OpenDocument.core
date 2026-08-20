@@ -1133,8 +1133,7 @@ public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
         m_resources{locate_search_resources(this->config())} {
-    // declared before any page is parsed, so before it is known which views
-    // write it
+    // declared before any page is parsed, so before the views are known
     if (fits_width(this->config(), true)) {
       for (auto &&resource : locate_viewport_resources(this->config())) {
         m_resources.push_back(std::move(resource));
@@ -2576,8 +2575,7 @@ public:
     return widest * pt_to_in * 96.0 + page_column_gutter_pixels;
   }
 
-  /// Whether the view has to measure itself at load: it should fit, but no css
-  /// factor could be written for it.
+  /// True where the view should fit but no css factor could be written.
   bool fits_at_load_time(const std::optional<double> content) const {
     return fits_width(config(), true) &&
            (!config().viewport_width.has_value() || !content.has_value());

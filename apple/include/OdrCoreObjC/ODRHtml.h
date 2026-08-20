@@ -94,9 +94,7 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, strong, nullable) NSNumber *spreadsheetViewportMode;
 /// Raw `content` for the viewport meta tag; overrides the modes above.
 @property(nonatomic, copy, nullable) NSString *viewportContent;
-/// The width the output will be shown at, in css pixels. Paged content wider
-/// than it is scaled down at render time; `nil` makes the output measure itself
-/// at load instead.
+/// The width the output is shown at, in css pixels; fits paged content to it.
 @property(nonatomic, strong, nullable) NSNumber *viewportWidth;
 
 @property(nonatomic) BOOL formatHtml;

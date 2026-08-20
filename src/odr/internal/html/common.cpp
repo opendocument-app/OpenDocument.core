@@ -96,9 +96,8 @@ bool html::write_viewport_fit_style(
   }
 
   out.write_header_style_begin();
-  // `zoom` rather than `transform: scale()`: it scales the layout, so the page
-  // scrolls against the scaled size instead of overflowing beside it.
-  // `Measure` with no unit renders the bare number, never in exponent form.
+  // `zoom` scales the layout, so the page scrolls against the scaled size
+  // instead of overflowing beside it; `Measure` renders no exponent form
   out.out() << "body{zoom:" << Measure(factor, DynamicUnit()).to_string()
             << "}";
   out.write_header_style_end();

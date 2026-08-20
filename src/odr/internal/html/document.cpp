@@ -96,8 +96,7 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
              : std::nullopt;
 }
 
-/// Whether the view has to measure itself at load: it should fit, but no css
-/// factor could be written for it.
+/// True where the view should fit but no css factor could be written.
 bool fits_at_load_time(const Document &document, const HtmlConfig &config,
                        const bool paged_content,
                        const std::optional<double> content_pixels) {

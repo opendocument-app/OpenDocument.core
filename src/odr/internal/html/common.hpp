@@ -46,23 +46,20 @@ void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
                          std::optional<HtmlViewportMode> mode_override = {});
 
-/// Whether the output is meant to fit its width to the viewport — the question
-/// @ref write_viewport_meta answers with a meta tag.
+/// Whether the output is meant to fit its width to the viewport.
 [[nodiscard]] bool
 fits_width(const HtmlConfig &config, bool fit_width_by_default,
            std::optional<HtmlViewportMode> mode_override = {});
 
-/// @p measure in css pixels (96 per inch), or nothing where it carries no
-/// absolute unit.
+/// @p measure in css pixels, or nothing without an absolute unit.
 [[nodiscard]] std::optional<double>
 css_pixels(const std::optional<Measure> &measure);
 
 /// The side gutters the page column puts around its pages, in css pixels.
 constexpr double page_column_gutter_pixels = 32;
 
-/// Scales the body so @p content_pixels of content fits
-/// `config.viewport_width`. Writes nothing and returns false unless @p fits and
-/// both widths are known; the load-time script covers the rest.
+/// Scales the body so @p content_pixels fits `config.viewport_width`. Writes
+/// nothing unless @p fits and both widths are known.
 bool write_viewport_fit_style(HtmlWriter &out, const HtmlConfig &config,
                               bool fits, std::optional<double> content_pixels);
 

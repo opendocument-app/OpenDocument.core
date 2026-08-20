@@ -87,11 +87,7 @@ export interface HtmlConfig {
   colorScheme?: number;
   spreadsheetGridlines?: number;
   viewportMode?: number;
-  /**
-   * The width the output will be shown at, in css pixels. Paged content wider
-   * than it is scaled down at render time; leave it out where the width can
-   * change and the output measures itself at load instead.
-   */
+  /** The width the output is shown at, in css pixels; fits paged content to it. */
   viewportWidth?: number;
   pdfTextMode?: number;
 }
