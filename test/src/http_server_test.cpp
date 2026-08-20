@@ -1,6 +1,8 @@
 #include <odr/exceptions.hpp>
 #include <odr/http_server.hpp>
 
+#include <httplib/httplib.h>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -149,4 +151,34 @@ TEST(HttpServer, listen_after_stop_returns) {
   // a listen thread that starts late finds the server stopped; there is nothing
   // to serve, but nothing went wrong either
   EXPECT_NO_THROW(server.listen());
+}
+
+/// A kept-alive connection used to hold the accept loop until it idled out, so
+/// stop() spanned cpp-httplib's 5 s keep-alive timeout - the whole of it, on
+/// the path every consumer takes (#641). Fixed upstream in 0.47.0, where the
+/// keep-alive wait watches the listening socket; this is what says so.
+TEST(HttpServer, stop_is_prompt_after_serving_a_kept_alive_request) {
+  const HttpServer server;
+
+  const std::uint32_t port = server.bind("127.0.0.1", 0);
+  std::thread thread{[&server] { server.listen(); }};
+  wait_until_running(server);
+
+  // alive across the stop() below, so the connection it holds is open there
+  httplib::Client client{"127.0.0.1", static_cast<int>(port)};
+  client.set_keep_alive(true);
+  const httplib::Result response = client.Get("/");
+  ASSERT_TRUE(response);
+  EXPECT_EQ(response->status, 200);
+
+  const auto before = std::chrono::steady_clock::now();
+  server.stop();
+  const auto elapsed = std::chrono::steady_clock::now() - before;
+
+  thread.join();
+
+  EXPECT_LT(elapsed, 2s)
+      << "stop() took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
+      << " ms";
 }

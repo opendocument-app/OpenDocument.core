@@ -112,6 +112,9 @@ if (ODR_WITH_HTTP_SERVER)
             PRIVATE
             "src/http_server_test.cpp"
     )
+    # a client to make a request with, so the server can be tested serving one
+    find_package(httplib REQUIRED)
+    target_link_libraries(odr_test PRIVATE httplib::httplib)
 endif ()
 target_include_directories(odr_test
         PRIVATE
