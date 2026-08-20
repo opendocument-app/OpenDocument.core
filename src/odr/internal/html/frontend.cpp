@@ -405,6 +405,13 @@ constexpr std::string_view viewport_js = R"js(
   }
 
   function resized() {
+    if (root.clientWidth === width) {
+      // Nothing that changes the scale: a height-only change, or a pinch,
+      // which moves the visual viewport and fires here without touching the
+      // layout width. Restoring through a gesture would fight the reader.
+      return;
+    }
+
     var target = held;
 
     fit();
