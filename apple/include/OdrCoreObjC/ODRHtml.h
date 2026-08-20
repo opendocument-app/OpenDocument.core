@@ -94,6 +94,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, strong, nullable) NSNumber *spreadsheetViewportMode;
 /// Raw `content` for the viewport meta tag; overrides the modes above.
 @property(nonatomic, copy, nullable) NSString *viewportContent;
+/// The width the output is shown at, in css pixels; fits paged content to it.
+@property(nonatomic, strong, nullable) NSNumber *viewportWidth;
 
 @property(nonatomic) BOOL formatHtml;
 /// Repeated `htmlIndentString` per nesting level; 0 disables indentation.

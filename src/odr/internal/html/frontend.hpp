@@ -45,6 +45,11 @@ void write_text_script(const WritingState &state);
 /// rest of that object, for every view rendering text, whatever the format.
 void write_search_script(const WritingState &state);
 
+/// Fits the page column to the viewport at load and on every resize, holding
+/// the reading position across the change. For output whose width was not known
+/// when it was written; @ref odr::HtmlConfig::viewport_width covers the rest.
+void write_viewport_script(const WritingState &state);
+
 /// What the corresponding `write_*` calls would link, without writing anything:
 /// a service has to answer for these paths as well as for its views. Every
 /// entry is located `nullopt` when the config embeds them.
@@ -52,5 +57,6 @@ HtmlResources locate_text_resources(const HtmlConfig &config);
 HtmlResources locate_xml_resources(const HtmlConfig &config);
 HtmlResources locate_media_resources(const HtmlConfig &config);
 HtmlResources locate_search_resources(const HtmlConfig &config);
+HtmlResources locate_viewport_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html

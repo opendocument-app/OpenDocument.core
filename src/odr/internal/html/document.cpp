@@ -32,10 +32,86 @@ bool is_paged_content(const Document &document, const HtmlConfig &config) {
          document.document_type() == DocumentType::drawing;
 }
 
+/// A page box plus the gutters the column puts around it, in css pixels.
+std::optional<double> page_content_pixels(const PageLayout &page_layout) {
+  const std::optional<double> width = css_pixels(page_layout.width);
+  if (!width.has_value()) {
+    return {};
+  }
+  return *width + page_column_gutter_pixels;
+}
+
+/// Per view, so slides of differing width are each fitted to their own page.
+std::optional<double> fragment_content_pixels(const TextRoot &element) {
+  return page_content_pixels(element.page_layout());
+}
+std::optional<double> fragment_content_pixels(const Slide &element) {
+  return page_content_pixels(element.page_layout());
+}
+std::optional<double> fragment_content_pixels(const Page &element) {
+  return page_content_pixels(element.page_layout());
+}
+/// A sheet reflows; there is no page box to fit.
+std::optional<double> fragment_content_pixels(const Sheet &) { return {}; }
+
+/// The widest of them, for the view that writes every page into one file.
+std::optional<double> document_content_pixels(const Document &document) {
+  const Element root = document.root_element();
+
+  const auto widest = [](const std::optional<double> lhs,
+                         const std::optional<double> rhs) {
+    if (!lhs.has_value()) {
+      return rhs;
+    }
+    return rhs.has_value() ? std::optional(std::max(*lhs, *rhs)) : lhs;
+  };
+
+  std::optional<double> result;
+  switch (document.document_type()) {
+  case DocumentType::text:
+    result = fragment_content_pixels(root.as_text_root());
+    break;
+  case DocumentType::presentation:
+    for (const Element child : root.children()) {
+      result = widest(result, fragment_content_pixels(child.as_slide()));
+    }
+    break;
+  case DocumentType::drawing:
+    for (const Element child : root.children()) {
+      result = widest(result, fragment_content_pixels(child.as_page()));
+    }
+    break;
+  default:
+    break;
+  }
+
+  return result;
+}
+
+/// A spreadsheet answers the viewport question with its own mode.
+std::optional<HtmlViewportMode>
+viewport_mode_override(const Document &document, const HtmlConfig &config) {
+  return document.document_type() == DocumentType::spreadsheet
+             ? config.spreadsheet_viewport_mode
+             : std::nullopt;
+}
+
+/// True where the view should fit but no css factor could be written.
+bool fits_at_load_time(const Document &document, const HtmlConfig &config,
+                       const bool paged_content,
+                       const std::optional<double> content_pixels) {
+  if (!paged_content || !fits_width(config, paged_content,
+                                    viewport_mode_override(document, config))) {
+    return false;
+  }
+  return !config.viewport_width.has_value() || !content_pixels.has_value();
+}
+
 /// @p name titles the view; empty when the whole document is written as one
 /// file, which no one view names.
 void front(const Document &document, const WritingState &state,
-           const std::string &name) {
+           const std::string &name,
+           const std::optional<double> content_pixels) {
   HtmlWriter &out = state.out();
 
   const bool paged_content = is_paged_content(document, state.config());
@@ -48,10 +124,15 @@ void front(const Document &document, const WritingState &state,
       document.document_type() == DocumentType::spreadsheet && !name.empty()
           ? escape_text(name)
           : "odr");
-  write_viewport_meta(out, state.config(), paged_content,
-                      document.document_type() == DocumentType::spreadsheet
-                          ? state.config().spreadsheet_viewport_mode
-                          : std::nullopt);
+  const std::optional<HtmlViewportMode> mode_override =
+      viewport_mode_override(document, state.config());
+  write_viewport_meta(out, state.config(), paged_content, mode_override);
+  if (paged_content) {
+    write_viewport_fit_style(
+        out, state.config(),
+        fits_width(state.config(), paged_content, mode_override),
+        content_pixels);
+  }
 
   write_document_style(state);
   write_document_dark_style(state);
@@ -90,7 +171,8 @@ void front(const Document &document, const WritingState &state,
   }
 }
 
-void back(const Document &document, const WritingState &state) {
+void back(const Document &document, const WritingState &state,
+          const std::optional<double> content_pixels) {
   HtmlWriter &out = state.out();
 
   if (is_paged_content(document, state.config())) {
@@ -101,6 +183,11 @@ void back(const Document &document, const WritingState &state) {
   write_document_script(state);
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);
+  }
+  if (fits_at_load_time(document, state.config(),
+                        is_paged_content(document, state.config()),
+                        content_pixels)) {
+    write_viewport_script(state);
   }
 
   out.write_body_end();
@@ -122,10 +209,14 @@ public:
 
   virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
 
+  /// The width this one view lays out, which is what it is fitted against.
+  [[nodiscard]] virtual std::optional<double> content_pixels() const = 0;
+
   void write_document(HtmlWriter &out, WritingState &state) const {
-    front(m_document, state, m_name);
+    const std::optional<double> content = content_pixels();
+    front(m_document, state, m_name, content);
     write_fragment(out, state);
-    back(m_document, state);
+    back(m_document, state, content);
   }
 
 protected:
@@ -271,11 +362,14 @@ public:
 
     WritingState state(out, config(), resources);
 
-    front(m_document, state, "");
+    // every page in one file, so the column is as wide as the widest of them
+    const std::optional<double> content = document_content_pixels(m_document);
+
+    front(m_document, state, "", content);
     for (const auto &fragment : m_fragments) {
       fragment->write_fragment(out, state);
     }
-    back(m_document, state);
+    back(m_document, state, content);
 
     return resources;
   }
@@ -297,6 +391,10 @@ public:
                             std::string path, Document document)
       : HtmlFragmentBase(std::move(name), index, std::move(path),
                          std::move(document)) {}
+
+  [[nodiscard]] std::optional<double> content_pixels() const override {
+    return fragment_content_pixels(m_document.root_element().as_text_root());
+  }
 
   void write_fragment(HtmlWriter &out, WritingState &state) const override {
     const Element root = m_document.root_element();
@@ -340,6 +438,10 @@ public:
       : HtmlFragmentBase(std::move(name), index, std::move(path),
                          std::move(document)),
         m_element{element} {}
+
+  [[nodiscard]] std::optional<double> content_pixels() const override {
+    return fragment_content_pixels(m_element);
+  }
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
     Translate(m_element, state);

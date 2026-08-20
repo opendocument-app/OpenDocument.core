@@ -87,6 +87,8 @@ export interface HtmlConfig {
   colorScheme?: number;
   spreadsheetGridlines?: number;
   viewportMode?: number;
+  /** The width the output is shown at, in css pixels; fits paged content to it. */
+  viewportWidth?: number;
   pdfTextMode?: number;
 }
 

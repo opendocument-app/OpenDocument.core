@@ -7,6 +7,8 @@
 
 #include <odr/exceptions.hpp>
 
+#include <internal/pdf/pdf_test_file_builder.hpp>
+
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -260,4 +262,119 @@ TEST(html, views) {
   EXPECT_EQ(views.at(0).name(), "document");
   EXPECT_EQ(views.at(1).name(), "Foglio1");
   EXPECT_EQ(views.at(2).name(), "Foglio2");
+}
+
+// #708 (a meta tag does not fit a framed document) and #706 (the fit has to
+// hold the reading position).
+TEST(html, paged_output_fits_the_viewport) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DecodedFile file(
+      TestData::test_file_path("odr-public/odp/style-various-1.odp"), logger);
+
+  const auto render = [&](const HtmlConfig &config) {
+    const std::string cache =
+        (std::filesystem::current_path() / "fit").string();
+    std::ostringstream out;
+    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  {
+    // Nothing said how wide the output will be shown, so it measures itself.
+    const std::string html = render(HtmlConfig());
+    EXPECT_NE(html.find("body.style.zoom"), std::string::npos);
+    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
+  }
+
+  {
+    // A slide is 28cm wide here, well over the 400 css pixels configured.
+    HtmlConfig config;
+    config.viewport_width = 400;
+    const std::string html = render(config);
+    EXPECT_NE(html.find("body{zoom:0."), std::string::npos);
+    // no script: the factor is in the css, which is the point of configuring it
+    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+  }
+
+  {
+    // Told not to fit, neither half applies.
+    HtmlConfig config;
+    config.viewport_mode = HtmlViewportMode::actual_size;
+    config.viewport_width = 400;
+    const std::string html = render(config);
+    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
+    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+  }
+}
+
+// `/Rotate` is how one document comes to hold pages of differing width.
+TEST(html, each_view_fits_the_page_it_renders) {
+  test::pdf::PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
+      // 612pt wide as it stands
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      // a quarter turn makes this 1224pt wide on screen
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 1224] "
+              "/Rotate 90 >>");
+
+  const std::string path =
+      (std::filesystem::current_path() / "mixed_rotation.pdf").string();
+  {
+    std::ofstream out(path, std::ios::binary);
+    out << builder.trailer("/Root 1 0 R").build_classic();
+  }
+
+  HtmlConfig config;
+  config.viewport_width = 400;
+
+  const DecodedFile file{path};
+  const HtmlService service = html::translate(
+      file, (std::filesystem::current_path() / "rotate").string(), config);
+
+  const auto factor_of = [&](const std::size_t view) {
+    std::ostringstream out;
+    service.list_views().at(view).write_html(out);
+    const std::string html = std::move(out).str();
+    const std::size_t at = html.find("body{zoom:");
+    EXPECT_NE(at, std::string::npos);
+    return std::stod(html.substr(at + 10));
+  };
+
+  const double document_view = factor_of(0);
+  const double narrow_page = factor_of(1);
+  const double wide_page = factor_of(2);
+
+  // the narrow page is scaled down less than the wide one
+  EXPECT_GT(narrow_page, wide_page);
+  // and the view holding both is fitted to the wide one
+  EXPECT_DOUBLE_EQ(document_view, wide_page);
+  // 400 / (612pt + 32px) and 400 / (1224pt + 32px), in css pixels
+  EXPECT_NEAR(narrow_page, 400.0 / (612 * 96.0 / 72 + 32), 1e-6);
+  EXPECT_NEAR(wide_page, 400.0 / (1224 * 96.0 / 72 + 32), 1e-6);
+}
+
+// An image overflowed its frame the same way a page did, and needs no script:
+// it has no layout width to preserve.
+TEST(html, an_image_fits_the_viewport) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DecodedFile file(
+      TestData::test_file_path("odr-public/png/tango-example-icons.png"),
+      logger);
+
+  const auto render = [&](const HtmlConfig &config) {
+    const std::string cache =
+        (std::filesystem::current_path() / "image_fit").string();
+    std::ostringstream out;
+    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  EXPECT_NE(render(HtmlConfig()).find("img{max-width:100%"), std::string::npos);
+
+  HtmlConfig actual_size;
+  actual_size.viewport_mode = HtmlViewportMode::actual_size;
+  EXPECT_EQ(render(actual_size).find("img{max-width:100%"), std::string::npos);
 }

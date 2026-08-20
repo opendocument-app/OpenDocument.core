@@ -322,6 +322,141 @@ constexpr std::string_view document_js = R"js(
 })();
 )js";
 
+/// The load-time half of fitting the page column to the viewport, for output
+/// whose width was not known when it was written.
+constexpr std::string_view viewport_js = R"js(
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var body = document.body;
+
+  // Only a frame is scaled here: the viewport meta tag covers the top-level
+  // document but is inert in a frame.
+  var framed = window.top !== window.self;
+
+  // The width the anchor below was taken at: a scroll arriving after the
+  // viewport changed is the browser's doing, not the reader's.
+  var width = 0;
+  // Where the reader is, kept current: by the time a resize arrives the browser
+  // has relaid out and moved the scroll.
+  var held = null;
+  // Our own scrolling, which must not be mistaken for the reader's.
+  var restoring = false;
+  // Identifies the settling run below, so a newer one - or the reader - ends it.
+  var settling = 0;
+
+  // The natural width of what the body holds, measured unscaled.
+  function contentWidth() {
+    var zoom = body.style.zoom;
+    body.style.zoom = "";
+    var natural = body.scrollWidth;
+    body.style.zoom = zoom;
+    return natural;
+  }
+
+  function fit() {
+    var available = root.clientWidth;
+    if (!available) {
+      return;
+    }
+    width = available;
+
+    if (!framed) {
+      return;
+    }
+    var content = contentWidth();
+    if (!content) {
+      return;
+    }
+    // Only ever down: a page narrower than the viewport is shown at its size.
+    body.style.zoom = content > available ? available / content : "";
+  }
+
+  // The element against the top of the viewport, and how far into it that top
+  // sits. A fraction of the scroll height cannot stand in: the height itself
+  // changes with the scale.
+  function anchor() {
+    var element = document.elementFromPoint(Math.floor(root.clientWidth / 2), 1);
+    if (!element) {
+      return null;
+    }
+    var box = element.getBoundingClientRect();
+    return { element: element, into: box.height ? -box.top / box.height : 0 };
+  }
+
+  function remember() {
+    if (restoring) {
+      return;
+    }
+    if (root.clientWidth !== width) {
+      // The viewport changed without a resize event. What is on screen is the
+      // browser's guess, not the reader's position, so fit from here instead.
+      resized();
+      return;
+    }
+    held = anchor();
+  }
+
+  function restore(target) {
+    if (!target || !target.element.isConnected) {
+      return;
+    }
+    var box = target.element.getBoundingClientRect();
+    var delta = box.top + target.into * box.height;
+    if (delta) {
+      window.scrollBy(0, delta);
+    }
+  }
+
+  function resized() {
+    if (root.clientWidth === width) {
+      // Nothing that changes the scale: a height-only change, or a pinch,
+      // where restoring would fight the reader.
+      return;
+    }
+
+    var target = held;
+
+    fit();
+    restoring = true;
+    restore(target);
+
+    // The browser applies a scroll offset of its own a few frames later, so
+    // the position is re-asserted until it settles.
+    var token = ++settling;
+    var frames = 30;
+    (function again() {
+      if (token !== settling || frames-- <= 0) {
+        restoring = false;
+        remember();
+        return;
+      }
+      restore(target);
+      requestAnimationFrame(again);
+    })();
+  }
+
+  function taken() {
+    ++settling;
+    restoring = false;
+  }
+
+  fit();
+  remember();
+
+  window.addEventListener("scroll", remember, { passive: true });
+  window.addEventListener("resize", resized);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", resized);
+  }
+  // Anything the reader does ends the re-assertion above.
+  window.addEventListener("wheel", taken, { passive: true });
+  window.addEventListener("touchstart", taken, { passive: true });
+  window.addEventListener("keydown", taken);
+})();
+)js";
+
 /// Text search over the rendered page, format-agnostic: it walks text nodes.
 constexpr std::string_view search_js = R"js(
 (function () {
@@ -1216,6 +1351,8 @@ constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
                                      "spreadsheet.js", spreadsheet_js};
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
                               "text.js", text_js};
+constexpr Asset viewport_js_asset{HtmlResourceType::js, "text/javascript",
+                                  "viewport.js", viewport_js};
 
 /// Appends @p asset to @p resources; `nullopt` to embed it.
 HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
@@ -1369,6 +1506,10 @@ void html::write_text_script(const WritingState &state) {
   write_script(text_js_asset, state);
 }
 
+void html::write_viewport_script(const WritingState &state) {
+  write_script(viewport_js_asset, state);
+}
+
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset, search_css_asset,
                                      search_js_asset, text_js_asset};
@@ -1385,6 +1526,11 @@ HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
 
 HtmlResources html::locate_search_resources(const HtmlConfig &config) {
   static constexpr std::array assets{search_css_asset, search_js_asset};
+  return locate_all(assets, config);
+}
+
+HtmlResources html::locate_viewport_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{viewport_js_asset};
   return locate_all(assets, config);
 }
 

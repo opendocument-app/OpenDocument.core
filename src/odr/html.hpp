@@ -104,21 +104,20 @@ enum class PdfTextMode {
 
 /// @brief HTML configuration.
 struct HtmlConfig {
-  // document output file names
+  /// File name for the view that writes the whole document.
   std::string document_output_file_name{"document.html"};
 
-  // document element output file names
+  // per-element view file names; `{index}` is the element's 0-based number
   std::string slide_output_file_name{"slide{index}.html"};
   std::string sheet_output_file_name{"sheet{index}.html"};
   std::string page_output_file_name{"page{index}.html"};
 
-  // embedding
+  /// Embed images as data urls rather than writing them beside the document.
   bool embed_images{true};
   /// Write the renderer's own css and js into every document rather than beside
   /// it as one shared file the documents link.
   bool embed_shipped_resources{true};
 
-  // resources
   /// Where linked shipped resources go, relative to the output path unless
   /// named absolutely. Empty puts them beside the document.
   std::string resource_path;
@@ -126,32 +125,34 @@ struct HtmlConfig {
   /// output stays movable.
   bool relative_resource_paths{true};
 
-  // create editable output
+  /// Write `contenteditable` output, which back-translation reads edits from.
   bool editable{false};
 
-  // text document margin
+  /// Render a text document as fixed-size pages rather than reflowing text.
   bool text_document_margin{false};
 
-  // colors the output renders against
+  /// The colors the output renders against.
   HtmlColorScheme color_scheme{HtmlColorScheme::light};
 
-  // spreadsheet table limit
+  /// Largest sheet region written; cells past it are dropped.
   std::optional<TableDimensions> spreadsheet_limit{TableDimensions(10000, 500)};
+  /// Trim a sheet to the cells it uses before @ref spreadsheet_limit applies.
   bool spreadsheet_limit_by_content{true};
-  // spreadsheet gridlines
+  /// Which gridlines a sheet paints.
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
 
-  // initial zoom on mobile
+  /// Initial zoom on mobile; see @ref HtmlViewportMode.
   HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};
-  // overrides `viewport_mode` for spreadsheet content when set
+  /// Overrides @ref viewport_mode for spreadsheet content when set.
   std::optional<HtmlViewportMode> spreadsheet_viewport_mode;
-  // raw `content` for the viewport meta tag; overrides the modes above
+  /// Raw `content` for the viewport meta tag; overrides the modes above.
   std::optional<std::string> viewport_content;
+  /// The width the output is shown at, in css pixels; fits paged content to it.
+  std::optional<std::uint32_t> viewport_width;
 
-  // formatting
+  /// Indent and break the output into lines rather than writing one stream.
   bool format_html{false};
-  // Indentation when `format_html` is set: `html_indent_string` is repeated
-  // `html_indent` times per nesting level (0 disables indentation entirely).
+  /// Repeated @ref html_indent_string per nesting level; 0 disables indenting.
   std::uint8_t html_indent{1};
   std::string html_indent_string{"\t"};
 
@@ -160,22 +161,20 @@ struct HtmlConfig {
   /// @deprecated See @ref background_image_format.
   double background_image_dpi{144.0};
 
-  // Paged-document page range (currently honored by the PDF pipeline): render
-  // only pages with 0-based index in `[page_range_begin, page_range_end)`.
-  // Page views and `#pN` anchors keep their document-global page numbers.
+  /// Renders only the pages with 0-based index in `[page_range_begin,
+  /// page_range_end)`; page views and `#pN` anchors keep their document-global
+  /// numbers. Honored by the pdf pipeline.
   std::uint32_t page_range_begin{0};
   std::optional<std::uint32_t> page_range_end;
 
-  // PDF text mode
+  /// How pdf text is written; see @ref PdfTextMode.
   PdfTextMode pdf_text_mode{PdfTextMode::dual_layer};
-  // `dual_layer` renders its invisible selection layer in a local system font
-  // (first of these that resolves), whose natural width rarely matches the
-  // PDF-derived box CSS justify has to fill — and justify can only add spacing.
-  // The size-adjust (0-1, written as the @font-face percent) shrinks the
-  // fallback's metrics toward the PDF's to close that gap. Safe to
-  // underestimate, not to overestimate: the excess is clipped, not shrunk.
+  /// System fonts `dual_layer` sets its selection layer in, first that
+  /// resolves.
   std::vector<std::string> pdf_dual_layer_fallback_fonts{
       "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Nimbus Sans"};
+  /// Shrinks the fallback's metrics toward the pdf's (0-1) so css justify can
+  /// fill the box. Safe to underestimate: the excess is clipped, not shrunk.
   double pdf_dual_layer_fallback_font_size_adjust{0.5};
 
   /// @deprecated Inert: no output carries a restriction to lift.

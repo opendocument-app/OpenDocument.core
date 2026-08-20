@@ -1132,7 +1132,14 @@ class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
-        m_resources{locate_search_resources(this->config())} {}
+        m_resources{locate_search_resources(this->config())} {
+    // declared before any page is parsed, so before the views are known
+    if (fits_width(this->config(), true)) {
+      for (auto &&resource : locate_viewport_resources(this->config())) {
+        m_resources.push_back(std::move(resource));
+      }
+    }
+  }
 
   /// Parses once, applies the `[page_range_begin, page_range_end)` range and
   /// builds the views: the combined document plus one per rendered page. The
@@ -1713,7 +1720,8 @@ public:
     }
     substitute_faces.append_faces(font_faces);
 
-    write_header_common(state, font_faces, font_styles, styles, [&] {
+    const std::optional<double> content = content_pixels(pages_out);
+    write_header_common(state, font_faces, font_styles, styles, content, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
@@ -1824,6 +1832,9 @@ public:
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
+    if (fits_at_load_time(content)) {
+      write_viewport_script(state);
+    }
     out.write_body_end();
     out.write_end();
 
@@ -2187,7 +2198,8 @@ public:
     substitute_faces.append_faces(font_faces);
 
     // ---- Pass 2: write HTML ---------------------------------------------
-    write_header_common(state, font_faces, font_styles, styles, [&] {
+    const std::optional<double> content = content_pixels(pages_out);
+    write_header_common(state, font_faces, font_styles, styles, content, [&] {
       // Invisible text render modes (Tr 3/7).
       out.out() << ".i{color:transparent}";
       // Unclean glyphs via generated content, out of the DOM text stream.
@@ -2298,6 +2310,9 @@ public:
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
+    if (fits_at_load_time(content)) {
+      write_viewport_script(state);
+    }
     out.write_body_end();
     out.write_end();
 
@@ -2546,6 +2561,26 @@ public:
     close_svg();
   }
 
+  /// The widest page a view holds, in css pixels, with `.d`'s side gutters.
+  template <typename PageOut>
+  static std::optional<double>
+  content_pixels(const std::vector<PageOut> &pages) {
+    double widest = 0;
+    for (const PageOut &page : pages) {
+      widest = std::max(widest, page.width);
+    }
+    if (widest <= 0) {
+      return {};
+    }
+    return widest * pt_to_in * 96.0 + page_column_gutter_pixels;
+  }
+
+  /// True where the view should fit but no css factor could be written.
+  bool fits_at_load_time(const std::optional<double> content) const {
+    return fits_width(config(), true) &&
+           (!config().viewport_width.has_value() || !content.has_value());
+  }
+
   /// The document/head prologue shared by both modes, with `write_mode_css()`
   /// slotted between the constant rules. Leaves the writer after `</head>`.
   template <typename WriteModeCss>
@@ -2553,6 +2588,7 @@ public:
                            const std::string &font_faces,
                            const std::string &font_styles,
                            const AtomicStyles &styles,
+                           const std::optional<double> content,
                            WriteModeCss &&write_mode_css) const {
     HtmlWriter &out = state.out();
 
@@ -2562,6 +2598,8 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
+    write_viewport_fit_style(out, config(), fits_width(config(), true),
+                             content);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     // `.d`: the page column, sized to the widest page so pages of differing

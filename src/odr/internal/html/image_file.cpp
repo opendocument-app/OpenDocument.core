@@ -107,6 +107,11 @@ public:
     write_viewport_meta(out, config(), true);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#fff}";
+    // An image has no layout width to preserve, so css alone fits it, framed
+    // or not - no measuring and no `viewport_width`.
+    if (fits_width(config(), true)) {
+      out.out() << "img{max-width:100%;height:auto}";
+    }
     out.write_header_style_end();
     if (writes_dark_style(config())) {
       out.write_header_style_begin(dark_style_media(config()));

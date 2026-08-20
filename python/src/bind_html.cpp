@@ -90,6 +90,7 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("spreadsheet_viewport_mode",
                      &odr::HtmlConfig::spreadsheet_viewport_mode)
       .def_readwrite("viewport_content", &odr::HtmlConfig::viewport_content)
+      .def_readwrite("viewport_width", &odr::HtmlConfig::viewport_width)
       .def_readwrite("format_html", &odr::HtmlConfig::format_html)
       .def_readwrite("html_indent", &odr::HtmlConfig::html_indent)
       .def_readwrite("html_indent_string", &odr::HtmlConfig::html_indent_string)
