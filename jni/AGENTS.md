@@ -8,7 +8,7 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
 
 | Path | What |
 |------|------|
-| `CMakeLists.txt` | Builds `libodr_jni` + `odr-core-java.jar`; included from the root build via `ODR_JNI`, or standalone against an installed `odrcore`. |
+| `CMakeLists.txt` | Builds `libodr_jni` + `odr-core-java.jar`; included from the root build via `ODR_JNI`, or standalone against an installed `odrcore`. `ODR_JNI_JAR=OFF` builds the native half alone — what `../android` does, and the only build needing no JDK. |
 | `pom.xml` | Maven distribution of the Java classes only (`app.opendocument:odr-core-java`); published to Maven Central (the `central` profile) and GitHub Packages on release via `.github/workflows/maven.yml`. Keep `--release`/`-Xlint` in sync with `CMAKE_JAVA_COMPILE_FLAGS`. |
 | `src/` | JNI sources, one `jni_*` unit per public-API area; `odr_jni.hpp` (strings, exceptions, handles) and `jni_convert.hpp` (struct/POJO marshalling) are the helpers. |
 | `java/app/opendocument/core/` | Java API: enums, POJOs (styles, metas, `HtmlConfig`), and handle-backed wrappers extending `NativeResource`. Also compiled as-is into the AAR (`../android`) — which is kotlin, but this stays java: `add_jar` below has no kotlin toolchain. |

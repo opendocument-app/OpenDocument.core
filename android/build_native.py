@@ -93,6 +93,8 @@ def build(architecture: str, conan: str, build_profile: str, output: Path) -> No
          # rather than shipped as a second .so the app would have to load
          "-DBUILD_SHARED_LIBS=OFF",
          "-DODR_JNI=ON",
+         # the AAR compiles `jni/java/` itself, so no jar and no JDK here
+         "-DODR_JNI_JAR=OFF",
          "-DODR_CLI=OFF",
          "-DODR_TEST=OFF",
          "-DODR_WITH_HTTP_SERVER=ON"])
