@@ -43,6 +43,10 @@ The release run heads these entries with the version and opens a fresh
   password. Decrypting them is still out of reach.
 - Marking text in a rendered pdf highlights the words rather than a trail of
   narrow boxes beside them.
+- A pdf that writes `Tm(text)Tj`, with nothing between the operator and the
+  string, renders that text instead of dropping it.
+- An embedded font that will not re-encode says so in the log rather than being
+  swapped for a substitute in silence.
 
 ## v6.9.0 - 2026-08-18
 

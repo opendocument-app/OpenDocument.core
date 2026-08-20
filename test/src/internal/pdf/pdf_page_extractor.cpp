@@ -144,6 +144,25 @@ TEST(PdfPageExtractor, comment_directly_after_operator) {
   EXPECT_EQ(texts[0].codes, "Hi");
 }
 
+// A closing delimiter opens no token, so an unmatched one has to be eaten or
+// the operator loop makes no progress.
+TEST(PdfPageExtractor, stray_closing_delimiter_does_not_stall) {
+  const auto texts = run("BT /F1 12 Tf 1 0 0 1 5 5 Tm ) ] > } (Hi) Tj ET");
+  ASSERT_EQ(texts.size(), 1);
+  EXPECT_EQ(texts[0].codes, "Hi");
+}
+
+// Nothing need separate an operator from the token after it (7.2.2). Without
+// `(` ending the name, it ran on and swallowed the string behind it.
+TEST(PdfPageExtractor, operator_directly_followed_by_a_string) {
+  const auto texts = run("BT /F1 12 Tf 1 0 0 1 100 700 Tm(Hi)Tj(there)Tj ET");
+  ASSERT_EQ(texts.size(), 2);
+  EXPECT_DOUBLE_EQ(texts[0].transform.e, 100);
+  EXPECT_DOUBLE_EQ(texts[0].transform.f, 700);
+  EXPECT_EQ(texts[0].codes, "Hi");
+  EXPECT_EQ(texts[1].codes, "there");
+}
+
 // `Tm` sets the text matrix outright, scaling and all.
 TEST(PdfPageExtractor, tm_scaling) {
   const auto texts = run("BT /F1 10 Tf 2 0 0 2 50 60 Tm (X) Tj ET");

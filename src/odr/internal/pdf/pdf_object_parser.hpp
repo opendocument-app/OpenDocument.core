@@ -42,6 +42,8 @@ public:
                                        char_type third);
 
   static bool is_whitespace(char c);
+  /// The delimiters of 7.2.2, each of which opens a token of its own.
+  static bool is_delimiter(char c);
   [[nodiscard]] bool peek_whitespace();
   void skip_whitespace();
   /// White space plus the comments (`%` to the end of the line, 7.2.4) it may
