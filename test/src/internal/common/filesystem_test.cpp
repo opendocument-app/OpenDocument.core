@@ -79,8 +79,7 @@ TEST(VirtualFilesystem, flat_next_skips_the_subtree_and_terminates) {
   EXPECT_TRUE(walker->end());
 }
 
-/// The loop flat_next() exists for; it never terminated while flat_next() did
-/// not advance.
+/// The loop flat_next() exists for; it never terminated before.
 TEST(VirtualFilesystem, flat_next_over_a_directory_skips_what_is_under_it) {
   const VirtualFilesystem filesystem =
       filesystem_of({"/a/b.txt", "/a/c.txt", "/e.txt"}, {"/a"});
@@ -93,8 +92,7 @@ TEST(VirtualFilesystem, flat_next_over_a_directory_skips_what_is_under_it) {
   EXPECT_EQ(walker->path().string(), "/e.txt");
 }
 
-/// "/a-b" sorts between "/a" and "/a/b" by string, so a subtree is only
-/// contiguous in a component-wise order.
+/// "/a-b" sorts between "/a" and "/a/b" by string.
 TEST(VirtualFilesystem, flat_next_skips_a_subtree_a_sibling_sorts_into) {
   const VirtualFilesystem filesystem =
       filesystem_of({"/a/b.txt", "/a-b.txt", "/e.txt"}, {"/a"});
@@ -128,9 +126,8 @@ TEST(VirtualFilesystem, pop_at_depth_zero_ends_the_walk) {
   EXPECT_TRUE(walker->end());
 }
 
-/// An archive names its entries in its own order, and `as_filesystem()`
-/// inserts them in it. A directory that arrives after what it holds is still an
-/// entry of its own, or the walk would not offer it to `flat_next()`.
+/// An archive names its entries in its own order. A directory arriving after
+/// what it holds is still an entry of its own, or `flat_next()` never sees it.
 TEST(VirtualFilesystem,
      a_directory_entry_survives_arriving_after_its_children) {
   VirtualFilesystem filesystem;

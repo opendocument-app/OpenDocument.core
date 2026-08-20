@@ -147,10 +147,8 @@ bool SystemFilesystem::move(const AbsPath &from, const AbsPath &to) {
 }
 
 namespace {
-/// Component-wise, so that a path's descendants follow it with nothing in
-/// between. Ordering the strings alone does not: any character below the
-/// separator sorts a sibling into the middle of a subtree - "/a" < "/a-b" <
-/// "/a/b" - and pop() and flat_next() below skip a subtree by walking it.
+/// Component-wise, so that a subtree is contiguous and can be skipped by
+/// walking it. By string it is not: "/a" < "/a-b" < "/a/b".
 struct DepthFirstLess {
   [[nodiscard]] bool operator()(const AbsPath &lhs, const AbsPath &rhs) const {
     return std::ranges::lexicographical_compare(lhs, rhs);
@@ -200,8 +198,7 @@ public:
     return m_iterator == std::end(m_files);
   }
 
-  /// 0 for an entry sitting directly in the walked root, as with
-  /// `std::filesystem::recursive_directory_iterator`.
+  /// 0 directly in the walked root, as `recursive_directory_iterator`.
   [[nodiscard]] std::uint32_t depth() const override {
     const RelPath relative = m_iterator->first.rebase(m_root);
     return static_cast<std::uint32_t>(std::ranges::distance(relative)) - 1;
@@ -215,8 +212,7 @@ public:
 
   [[nodiscard]] bool is_directory() const override { return !is_file(); }
 
-  /// Leaves the directory the current entry sits in, landing on whatever
-  /// follows it. At depth 0 that is the end - the parent is the walked root.
+  /// At depth 0 this ends the walk - the parent is the walked root.
   void pop() override { skip_subtree_(m_iterator->first.parent()); }
 
   void next() override { ++m_iterator; }
@@ -259,8 +255,7 @@ bool VirtualFilesystem::is_directory(const AbsPath &path) const {
     return !static_cast<bool>(file_it->second);
   }
   // An intermediate directory need not be an entry of its own - a zip may name
-  // only its files - so what something else sits under is a directory too,
-  // which is what the walker reports for it as well.
+  // only its files.
   return std::ranges::any_of(m_files, [&path](const auto &entry) {
     return entry.first.descendant_of(path);
   });
@@ -286,9 +281,8 @@ VirtualFilesystem::create_file(const AbsPath & /*path*/) {
 }
 
 bool VirtualFilesystem::create_directory(const AbsPath &path) {
-  // An entry of its own, not `exists()`: a directory this filesystem merely
-  // implies still has to become one, or an archive that names `a/b.txt` before
-  // `a/` would lose `a/` from the walk.
+  // Not `exists()`: a merely implied directory still has to become an entry,
+  // or an archive naming `a/b.txt` before `a/` would lose `a/` from the walk.
   if (m_files.contains(path)) {
     return false;
   }
