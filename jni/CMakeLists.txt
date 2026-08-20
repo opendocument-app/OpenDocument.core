@@ -26,12 +26,10 @@ if (NOT ANDROID)
     find_package(JNI REQUIRED)
 endif ()
 
-# The jar is not an android-vs-not question: the android odrcore package ships
-# `odr-core-java.jar` next to `libodr_jni.so` and OpenDocument.droid takes both
-# out of it. Only `android/` (the AAR) wants the native half alone, with the
-# android toolchain compiling `java/` itself, and says so — so a missing JDK
-# fails the build that asked for a jar instead of quietly shipping half a
-# package.
+# Android is no reason to skip the jar — the android odrcore package ships it
+# next to `libodr_jni.so` for OpenDocument.droid. Only the AAR build wants the
+# native half alone, and asks for it, so a missing JDK fails rather than
+# quietly shipping half a package.
 option(ODR_JNI_JAR "Build the java half, `odr-core-java.jar`" ON)
 if (ODR_JNI_JAR)
     find_package(Java 11 REQUIRED COMPONENTS Development)

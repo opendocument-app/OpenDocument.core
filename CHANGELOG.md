@@ -18,9 +18,9 @@ The release run heads these entries with the version and opens a fresh
 
 - A pdf that nests parentheses inside a string opens, and keeps its document
   metadata — `cairo` and `pdfTeX` write their `/Producer` that way.
-- A jni build that cannot find a JDK fails instead of shipping a package without
-  `odr-core-java.jar` in it. The new `ODR_JNI_JAR` (default `ON`) is what says
-  whether the jar is wanted; the AAR build turns it off and needs no JDK.
+- A jni build without a JDK fails instead of shipping a package missing
+  `odr-core-java.jar`. `ODR_JNI_JAR=OFF` is how the AAR build asks for the
+  native half alone.
 
 ## v6.9.0 - 2026-08-18
 
