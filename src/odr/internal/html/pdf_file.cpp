@@ -1428,6 +1428,9 @@ public:
       /// the open block's transform: its linear part identifies runs one CSS
       /// matrix can place, its origin anchors the frame they flow in
       util::math::Transform2D sel_block;
+      /// advance owed to the next run: whitespace no span could carry, plus a
+      /// gap no spacer took
+      double sel_pending_space = 0;
 
       for (const pdf::PageElement &element :
            page_elements(*page, stream, m_logger)) {
@@ -1585,9 +1588,18 @@ public:
                                 sel_prev_end, sel_prev_font_pt);
             sel_gap = sel_ox - sel_prev_end > 0.25 * sel_prev_font_pt;
           }
+          // A block anchors its runs to one baseline, so a run a rise lifts
+          // off it — a superscript — needs its own, though it breaks nothing.
+          const bool baseline_shift =
+              is_matrix && sel_frame_kept && !new_sel_line &&
+              sel_prev_font_pt > 0 &&
+              std::abs(sel_baseline - sel_prev_baseline) >
+                  0.02 * sel_prev_font_pt;
+          new_sel_line = new_sel_line || baseline_shift;
           // The extractor's leading space is the break; a block opened because
           // the frames are not comparable is not.
-          const bool break_space = sel_frame_kept || starts_space;
+          const bool break_space =
+              (sel_frame_kept && !baseline_shift) || starts_space;
 
           if (new_sel_line) {
             // The block starts here, so this run sits at its origin.
@@ -1610,6 +1622,11 @@ public:
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
+            // The block starts at this run, so nothing is owed — unless the run
+            // is whitespace, which emits no span: then its advance is owed to
+            // whatever comes next, or that lands at the block's origin instead
+            // of behind the space.
+            sel_pending_space = core.empty() ? sel_extent : 0;
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
@@ -1623,15 +1640,19 @@ public:
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
+            // The gap before this run, plus its own advance when it is only
+            // whitespace and so emits no `.sr` of its own. Either way the
+            // advance has to be represented, or the line comes up short —
+            // invisible while a whole line arrives as one `Tj`, plain once it
+            // arrives word by word.
+            sel_pending_space += gap_pt + (core.empty() ? sel_extent : 0);
+            // One space character per run of whitespace: a second would be read
+            // and copied as a second space. Where one is already there the
+            // advance waits for the next `.sr` instead.
             if (!sel_prev_ends_space && !runs.empty()) {
               std::string gap_cls = "sg";
               add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
-              // A run that is only whitespace emits no `.sr`, so its advance
-              // has to ride the spacer or the line comes up short — invisible
-              // while a whole line arrives as one `Tj`, plain once it arrives
-              // word by word.
-              const double rounded_gap =
-                  round2(gap_pt + (core.empty() ? sel_extent : 0));
+              const double rounded_gap = round2(sel_pending_space);
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", pt_decl("width", rounded_gap));
                 // Only a gap that still reads as a word space: a column of
@@ -1641,10 +1662,15 @@ public:
                 }
               }
               runs.push_back(SelRunOut{std::move(gap_cls), " "});
+              sel_pending_space = 0;
             }
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              if (const double owed = round2(sel_pending_space); owed > 0) {
+                add_class(cls, "ml", pt_decl("margin-left", owed));
+              }
+              sel_pending_space = 0;
               if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
