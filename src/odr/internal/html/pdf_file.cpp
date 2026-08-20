@@ -1411,7 +1411,8 @@ public:
       std::string vis_cur_flow_key;
       const auto vis_close_line = [&] { vis_cur_line = -1; };
 
-      // Selection layer state: content-stream (reading) order grouping.
+      // Selection layer state: content-stream (reading) order grouping, in the
+      // open block's flow frame (see the layer below).
       bool sel_have_prev = false;
       double sel_prev_baseline = 0;
       double sel_prev_end = 0;
@@ -1420,10 +1421,13 @@ public:
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
-      /// `ox` where the open `.sr` run starts, to recompute its width on merge
+      /// origin the open `.sr` run starts at, to recompute its width on merge
       double sel_cur_run_start_ox = 0;
       /// font-size of the previous element, for its line's trailing space
       double sel_prev_font_size_pt = 0;
+      /// the open block's transform: its linear part identifies runs one CSS
+      /// matrix can place, its origin anchors the frame they flow in
+      util::math::Transform2D sel_block;
 
       for (const pdf::PageElement &element :
            page_elements(*page, stream, m_logger)) {
@@ -1537,28 +1541,59 @@ public:
         }
 
         // --- Selection layer -----------------------------------------------
-        // Matrix runs get their own single-run line block.
+        // Runs flow inside a line block, so they are measured in the frame that
+        // block lays out in: page space for an axis-aligned block, the block's
+        // own space for a matrix one — where the CSS matrix, not the page,
+        // relates the runs to each other. Both frames put x along the writing
+        // line and carry the run's font size as their unit of height, so one
+        // set of gap and line tests serves both.
         if (!text.text.empty()) {
-          const double width_pt = round2(extent);
-          const double gap_pt = std::max(0.0, ox - sel_prev_end);
           const bool starts_space = text.text.front() == ' ';
           // A leading inferred space is dropped: the gap between runs is
           // covered by the spacer span, not by the run text.
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
-          const bool matrix_break = is_matrix || sel_prev_was_matrix;
-          bool new_sel_line = !sel_have_prev || matrix_break;
-          bool sel_gap = false;
-          if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
-            new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
-                                           sel_prev_end, sel_prev_font_pt);
-            sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          const double tz = text.horizontal_scaling / 100.0;
+          // In the block's frame the unit is text space: `text.width` carries
+          // the horizontal scaling the CSS matrix applies again.
+          const double local_extent = tz != 0 ? text.width / tz : 0;
+          double sel_ox = is_matrix ? 0 : ox;
+          double sel_baseline = is_matrix ? 0 : baseline;
+          const double sel_extent = is_matrix ? local_extent : extent;
+          const double sel_font_pt = is_matrix ? text.size : font_pt;
+
+          bool sel_frame_kept =
+              sel_have_prev && !is_matrix && !sel_prev_was_matrix;
+          if (is_matrix && sel_cur_line >= 0 && sel_prev_was_matrix &&
+              same_linear(sel_block, m)) {
+            if (const std::optional<std::array<double, 2>> local =
+                    local_origin(sel_block, m)) {
+              sel_ox = (*local)[0];
+              sel_baseline = (*local)[1];
+              sel_frame_kept = true;
+            }
           }
-          // The extractor's leading space is the break; a block the matrix
-          // path opens is not.
-          const bool break_space = !matrix_break || starts_space;
+
+          const double width_pt = round2(sel_extent);
+          const double gap_pt = std::max(0.0, sel_ox - sel_prev_end);
+
+          bool new_sel_line = !sel_frame_kept;
+          bool sel_gap = false;
+          if (sel_frame_kept && sel_prev_font_pt > 0) {
+            new_sel_line =
+                starts_new_line(sel_baseline, sel_prev_baseline, sel_ox,
+                                sel_prev_end, sel_prev_font_pt);
+            sel_gap = sel_ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          }
+          // The extractor's leading space is the break; a block opened because
+          // the frames are not comparable is not.
+          const bool break_space = sel_frame_kept || starts_space;
 
           if (new_sel_line) {
+            // The block starts here, so this run sits at its origin.
+            sel_ox = is_matrix ? 0 : ox;
+            sel_baseline = is_matrix ? 0 : baseline;
+            sel_block = m;
             // Close the previous line with a trailing space. `sg`, not `sr`:
             // it carries no PDF-derived width, just the space.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space &&
@@ -1578,12 +1613,12 @@ public:
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
-              if (width_pt > 0 && !is_matrix) {
+              if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
-              sel_cur_run_start_ox = ox;
+              sel_cur_run_start_ox = sel_ox;
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             std::vector<SelRunOut> &runs =
@@ -1591,7 +1626,12 @@ public:
             if (!sel_prev_ends_space && !runs.empty()) {
               std::string gap_cls = "sg";
               add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
-              const double rounded_gap = round2(gap_pt);
+              // A run that is only whitespace emits no `.sr`, so its advance
+              // has to ride the spacer or the line comes up short — invisible
+              // while a whole line arrives as one `Tj`, plain once it arrives
+              // word by word.
+              const double rounded_gap =
+                  round2(gap_pt + (core.empty() ? sel_extent : 0));
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", pt_decl("width", rounded_gap));
                 // Only a gap that still reads as a word space: a column of
@@ -1605,12 +1645,12 @@ public:
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
-              if (width_pt > 0 && !is_matrix) {
+              if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
-              sel_cur_run_start_ox = ox;
+              sel_cur_run_start_ox = sel_ox;
             }
           } else {
             // Tight continuation on the same baseline: merge into the previous
@@ -1621,21 +1661,19 @@ public:
                 page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
               runs.back().text += escape_markup(text.text);
-              if (!is_matrix) {
-                strip_width_class(runs.back().classes);
-                const double merged_width_pt =
-                    round2(ox + extent - sel_cur_run_start_ox);
-                if (merged_width_pt > 0) {
-                  add_class(runs.back().classes, "w",
-                            pt_decl("width", merged_width_pt));
-                }
+              strip_width_class(runs.back().classes);
+              const double merged_width_pt =
+                  round2(sel_ox + sel_extent - sel_cur_run_start_ox);
+              if (merged_width_pt > 0) {
+                add_class(runs.back().classes, "w",
+                          pt_decl("width", merged_width_pt));
               }
             }
           }
 
-          sel_prev_baseline = baseline;
-          sel_prev_end = ox + extent;
-          sel_prev_font_pt = font_pt;
+          sel_prev_baseline = sel_baseline;
+          sel_prev_end = sel_ox + sel_extent;
+          sel_prev_font_pt = sel_font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
           sel_prev_font_size_pt = font_size_pt;
@@ -2263,6 +2301,29 @@ public:
                               const double prev_font_pt) {
     return std::abs(baseline - prev_baseline) > 0.6 * prev_font_pt ||
            ox < prev_end - 0.5 * prev_font_pt;
+  }
+
+  /// Whether two runs share a linear part, so one line block's CSS matrix
+  /// places both.
+  static bool same_linear(const util::math::Transform2D &l,
+                          const util::math::Transform2D &r) {
+    return l.a == r.a && l.b == r.b && l.c == r.c && l.d == r.d;
+  }
+
+  /// `m`'s origin in `block`'s own frame: the offset between the two origins
+  /// resolved along `block`'s axes, x along the writing line. Empty for a
+  /// singular linear part, which spans no frame to measure in.
+  static std::optional<std::array<double, 2>>
+  local_origin(const util::math::Transform2D &block,
+               const util::math::Transform2D &m) {
+    const double det = block.a * block.d - block.b * block.c;
+    if (det == 0) {
+      return std::nullopt;
+    }
+    const double dx = m.e - block.e;
+    const double dy = m.f - block.f;
+    return std::array<double, 2>{(dx * block.d - dy * block.c) / det,
+                                 (-dx * block.b + dy * block.a) / det};
   }
 
   /// Per-run geometry from a `TextElement` and the page's `to_box`. Identical

@@ -37,10 +37,14 @@ The release run heads these entries with the version and opens a fresh
   They were dropped from the output entirely, in text documents and
   spreadsheets alike.
 - Text copied out of a pdf laid out glyph by glyph reads as words, not as
-  `L a g e`. A word break also survives a run with nothing extractable in it.
+  `L o r e m`. A word break also survives a run with nothing extractable in it.
 - An encrypted `.doc`, `.ppt` or `.xls` reports itself encrypted and raises
   `FileEncrypted` instead of a parse error, so a reader can prompt for the
   password. Decrypting them is still out of reach.
+- Marking text in a rendered pdf highlights the words rather than a trail of
+  narrow boxes beside them. Runs one CSS transform can place share a selection
+  block and carry the PDF's advances, and a whitespace-only run hands its
+  advance on instead of dropping it — a space per word short on every line.
 
 ## v6.9.0 - 2026-08-18
 
