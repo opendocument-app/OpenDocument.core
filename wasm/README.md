@@ -47,10 +47,9 @@ try {
 so it needs nothing fetched alongside it. A `blob:` iframe keeps the same
 origin, so the page can still reach `iframe.contentWindow.odr` to drive
 `search()`, `searchNext()` and `generateDiff()`, exactly as the Android and iOS
-apps do from their WebViews. Inline is not the same as unconditional: the frame
-inherits the embedding page's Content-Security-Policy, so a page that ships one
-has to allow what the document carries — see
-[Content-Security-Policy](#content-security-policy).
+apps do from their WebViews. The frame inherits the embedding page's
+Content-Security-Policy, so a page that ships one has to allow what the
+document carries — see [Content-Security-Policy](#content-security-policy).
 
 Multi-page formats render one view at a time:
 
@@ -91,10 +90,9 @@ where `Symbol.dispose` is supported.
 
 ## Content-Security-Policy
 
-The rendered html is self-contained, but a frame created from an embedding page
-inherits that page's policy — so the *embedder's* CSP decides what the document
-may load, and the failures are quiet. Measured across an odt, ods, docx and pdf
-rendered by this package:
+The rendered html is self-contained, but a frame inherits the embedding page's
+policy — so the *embedder's* CSP decides what the document may load, and the
+failures are quiet. Measured across an odt, ods, docx and pdf:
 
 | Directive | What in the output needs it | Seen in |
 |---|---|---|
@@ -103,8 +101,8 @@ rendered by this package:
 | `style-src 'unsafe-inline'` | the document's own `<style>` blocks **and** its `style` attributes | every format (2–3 blocks, and up to hundreds of attributes) |
 | `script-src 'unsafe-inline'` | the renderer's own js, written into every document | every format but a standalone image (1–3) |
 
-Nothing is fetched from another origin, so no host ever has to be allow-listed.
-A policy that works, for a document loaded into a frame:
+Nothing is fetched from another origin, so no host has to be allow-listed. A
+policy that works, for a document loaded into a frame:
 
 ```
 frame-src 'self' blob:; font-src 'self' data:; img-src 'self' data:;
@@ -115,41 +113,36 @@ style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
 
 It also permits **`javascript:` urls**, and a document may carry one: odrcore
 filters a pdf link action down to an allowlist of navigable schemes, but a
-hyperlink in an odt or a docx is only attribute-escaped, so a `javascript:`
-href reaches the page. In a `blob:` frame — same origin as the embedder, which
-is what lets the page call `iframe.contentWindow.odr` — such a link runs with
-the embedder's origin if the reader clicks it.
+hyperlink in an odt or a docx is only attribute-escaped. In a `blob:` frame —
+same origin as the embedder, which is what lets the page call
+`iframe.contentWindow.odr` — such a link runs with the embedder's origin.
 
-That is fine for documents you trust and not for documents you do not. For
-untrusted input, sandbox the frame and give up the same-origin API:
+Fine for documents you trust. For untrusted input, sandbox the frame and give
+up the same-origin API:
 
 ```html
 <iframe sandbox="allow-scripts" srcdoc="..."></iframe>
 ```
 
 `allow-scripts` **without** `allow-same-origin` puts the document in an opaque
-origin: the renderer's own search and editing still work inside the frame, a
-`javascript:` link can no longer reach the embedding page, and
-`iframe.contentWindow` is out of reach from outside. Granting both together is
-the same as not sandboxing at all.
+origin: search and editing still work inside the frame, while a `javascript:`
+link can no longer reach the embedding page. Granting both together is the same
+as not sandboxing at all.
 
-There is no way to narrow this to hashes or a nonce from here: the package
-embeds the renderer's js in the document, and `HtmlConfig::embed_shipped_resources`
-— which links it as files instead, leaving no inline script at all — is not
-bound in this build.
+Narrowing to a hash or a nonce is not possible from here: the renderer's js is
+embedded in the document, and `HtmlConfig::embed_shipped_resources` — which
+links it as files instead — is not bound in this build.
 
 Worth knowing before tightening the rest:
 
-- **`font-src data:` is the one that costs the most time.** A pdf's text is
+- **`font-src data:` is the one that fails most confusingly.** A pdf's text is
   painted with the code points its embedded subset defines, so a blocked
   `@font-face` does not fall back to a system face — every glyph comes out as a
-  replacement box. Office formats embed images rather than fonts, which makes
-  it easy to conclude the embed works.
+  replacement box.
 - **A blocked inline script is silent.** The layout is css, so the document
-  still looks right; only what the scripts provide — search, editing, the
-  spreadsheet and text-view behaviour — stops working. Refusing
-  `script-src 'unsafe-inline'` outright is therefore a real option when the
-  document only has to be *read*.
+  still looks right; only search, editing and the spreadsheet and text-view
+  behaviour stop working. Refusing `script-src 'unsafe-inline'` is a real
+  option when the document only has to be *read*.
 - **`style-src` cannot be narrowed to a nonce or a hash.** Most of the styling
   is `style` attributes, which only `'unsafe-inline'` (or `'unsafe-hashes'`)
   covers.
