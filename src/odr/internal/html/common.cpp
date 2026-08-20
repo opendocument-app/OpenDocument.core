@@ -10,6 +10,7 @@
 #include <odr/quantity.hpp>
 #include <odr/style.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -80,29 +81,67 @@ std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
   return pixels > 0 ? std::optional(pixels) : std::nullopt;
 }
 
-bool html::write_viewport_fit_style(
-    HtmlWriter &out, const HtmlConfig &config, const bool fits,
-    const std::optional<double> content_pixels) {
-  if (!fits || !config.viewport_width.has_value() ||
-      !content_pixels.has_value()) {
-    return false;
+void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
+                            const bool fits,
+                            const std::optional<double> content_pixels) {
+  // Nothing shown here, so the factor is 1 unless the fit says otherwise.
+  std::optional<double> fit = 1;
+  if (fits) {
+    if (config.viewport_width.has_value() && content_pixels.has_value()) {
+      // only ever down: a page narrower than the viewport is shown at its size
+      fit = std::min(1.0, static_cast<double>(config.viewport_width.value()) /
+                              *content_pixels);
+    } else {
+      // only the view can measure this one
+      fit.reset();
+    }
   }
 
-  const double factor =
-      static_cast<double>(config.viewport_width.value()) / *content_pixels;
-  // only ever down: a page narrower than the viewport is shown at its size
-  if (factor >= 1) {
-    return true;
-  }
+  const std::optional<double> zoom =
+      config.initial_zoom.has_value() ? config.initial_zoom : fit;
+
+  const auto number = [](const double value) {
+    // `Measure` renders no exponent form
+    return Measure(value, DynamicUnit()).to_string();
+  };
+
+  // Both default to 1, so only a factor that is not 1 has anything to say.
+  const bool writes_fit = !fit.has_value() || *fit != 1;
+  const bool writes_zoom = zoom.has_value() && *zoom != 1;
 
   out.write_header_style_begin();
-  // `zoom` scales the layout, so the page scrolls against the scaled size
-  // instead of overflowing beside it; `Measure` renders no exponent form
-  out.out() << "body{zoom:" << Measure(factor, DynamicUnit()).to_string()
-            << "}";
-  out.write_header_style_end();
 
-  return true;
+  if (writes_fit || writes_zoom) {
+    out.out() << ":root{";
+    if (writes_fit) {
+      out.out() << "--odr-fit:";
+      if (fit.has_value()) {
+        out.out() << number(*fit);
+      } else {
+        out.out() << "auto";
+      }
+      if (writes_zoom) {
+        out.out() << ";";
+      }
+    }
+    if (writes_zoom) {
+      out.out() << "--odr-zoom:" << number(*zoom);
+    }
+    out.out() << "}";
+  }
+
+  if (writes_zoom) {
+    // `zoom` scales the layout, so the page scrolls against the scaled size
+    // instead of overflowing beside it
+    out.out() << "body{zoom:" << number(*zoom) << "}";
+  }
+
+  // Paper has its own geometry: whatever the reader is zoomed to, print the
+  // view at its size. Beats the inline zoom the view script writes.
+  out.out() << "@media print{:root{--odr-zoom:1!important}"
+               "body{zoom:1!important}}";
+
+  out.write_header_style_end();
 }
 
 std::string html::escape_text(std::string text) {

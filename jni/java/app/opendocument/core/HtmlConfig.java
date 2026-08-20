@@ -39,6 +39,8 @@ public final class HtmlConfig {
   public String viewportContent;
   /** The width the output is shown at, in css pixels; fits paged content to it. */
   public Integer viewportWidth;
+  /** The zoom the view opens at, 1 being actual size; {@code null} follows the fit. */
+  public Double initialZoom;
 
   public boolean formatHtml = false;
   public int htmlIndent = 1;

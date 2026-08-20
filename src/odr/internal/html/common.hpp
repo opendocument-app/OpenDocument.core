@@ -58,10 +58,14 @@ css_pixels(const std::optional<Measure> &measure);
 /// The side gutters the page column puts around its pages, in css pixels.
 constexpr double page_column_gutter_pixels = 32;
 
-/// Scales the body so @p content_pixels fits `config.viewport_width`. Writes
-/// nothing unless @p fits and both widths are known.
-bool write_viewport_fit_style(HtmlWriter &out, const HtmlConfig &config,
-                              bool fits, std::optional<double> content_pixels);
+/// Writes the zoom state the view opens at, as css the view script then reads
+/// and moves: `--odr-fit` is the factor fitting @p content_pixels into
+/// `config.viewport_width`, `auto` where only the view can measure it, and 1
+/// where @p fits is false; `--odr-zoom` and `body{zoom}` carry what is applied,
+/// which is @ref odr::HtmlConfig::initial_zoom where it is set and the fit
+/// otherwise.
+void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, bool fits,
+                      std::optional<double> content_pixels);
 
 std::string escape_text(std::string text);
 

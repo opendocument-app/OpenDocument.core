@@ -283,8 +283,9 @@ TEST(html, paged_output_fits_the_viewport) {
   {
     // Nothing said how wide the output will be shown, so it measures itself.
     const std::string html = render(HtmlConfig());
-    EXPECT_NE(html.find("body.style.zoom"), std::string::npos);
-    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
+    EXPECT_NE(html.find("--odr-fit:auto"), std::string::npos);
+    // nothing to apply yet: the view measures the fit and applies it itself
+    EXPECT_EQ(html.find("--odr-zoom:0"), std::string::npos);
   }
 
   {
@@ -292,9 +293,11 @@ TEST(html, paged_output_fits_the_viewport) {
     HtmlConfig config;
     config.viewport_width = 400;
     const std::string html = render(config);
+    EXPECT_NE(html.find("--odr-fit:0."), std::string::npos);
     EXPECT_NE(html.find("body{zoom:0."), std::string::npos);
-    // no script: the factor is in the css, which is the point of configuring it
-    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+    // the factor is in the css, which is the point of configuring the width;
+    // the script is written for the zoom api, not to measure anything
+    EXPECT_EQ(html.find("--odr-fit:auto"), std::string::npos);
   }
 
   {
@@ -303,8 +306,20 @@ TEST(html, paged_output_fits_the_viewport) {
     config.viewport_mode = HtmlViewportMode::actual_size;
     config.viewport_width = 400;
     const std::string html = render(config);
-    EXPECT_EQ(html.find("body{zoom:"), std::string::npos);
-    EXPECT_EQ(html.find("body.style.zoom"), std::string::npos);
+    // no fit stated at all, and so nothing but the print rule to apply
+    EXPECT_EQ(html.find("--odr-fit:"), std::string::npos);
+    EXPECT_EQ(html.find("body{zoom:0."), std::string::npos);
+  }
+
+  {
+    // A pinned zoom is what the view opens at, fit or no fit.
+    HtmlConfig config;
+    config.initial_zoom = 2;
+    const std::string html = render(config);
+    EXPECT_NE(html.find("--odr-zoom:2"), std::string::npos);
+    EXPECT_NE(html.find("body{zoom:2}"), std::string::npos);
+    // still measured, so `resetZoom()` has a fit to go back to
+    EXPECT_NE(html.find("--odr-fit:auto"), std::string::npos);
   }
 }
 
@@ -355,8 +370,8 @@ TEST(html, each_view_fits_the_page_it_renders) {
   EXPECT_NEAR(wide_page, 400.0 / (1224 * 96.0 / 72 + 32), 1e-6);
 }
 
-// An image overflowed its frame the same way a page did, and needs no script:
-// it has no layout width to preserve.
+// An image overflowed its frame the same way a page did. Css alone fits it —
+// it has no layout width to preserve — and the reader's zoom rides on top.
 TEST(html, an_image_fits_the_viewport) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -372,9 +387,10 @@ TEST(html, an_image_fits_the_viewport) {
     return std::move(out).str();
   };
 
-  EXPECT_NE(render(HtmlConfig()).find("img{max-width:100%"), std::string::npos);
+  EXPECT_NE(render(HtmlConfig()).find("img{max-width:calc(100% *"),
+            std::string::npos);
 
   HtmlConfig actual_size;
   actual_size.viewport_mode = HtmlViewportMode::actual_size;
-  EXPECT_EQ(render(actual_size).find("img{max-width:100%"), std::string::npos);
+  EXPECT_EQ(render(actual_size).find("img{max-width:"), std::string::npos);
 }

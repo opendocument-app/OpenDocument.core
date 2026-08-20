@@ -1134,10 +1134,8 @@ public:
       : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
         m_resources{locate_search_resources(this->config())} {
     // declared before any page is parsed, so before the views are known
-    if (fits_width(this->config(), true)) {
-      for (auto &&resource : locate_viewport_resources(this->config())) {
-        m_resources.push_back(std::move(resource));
-      }
+    for (auto &&resource : locate_viewport_resources(this->config())) {
+      m_resources.push_back(std::move(resource));
     }
   }
 
@@ -1832,9 +1830,7 @@ public:
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
-    if (fits_at_load_time(content)) {
-      write_viewport_script(state);
-    }
+    write_viewport_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -2310,9 +2306,7 @@ public:
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
-    if (fits_at_load_time(content)) {
-      write_viewport_script(state);
-    }
+    write_viewport_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -2575,12 +2569,6 @@ public:
     return widest * pt_to_in * 96.0 + page_column_gutter_pixels;
   }
 
-  /// True where the view should fit but no css factor could be written.
-  bool fits_at_load_time(const std::optional<double> content) const {
-    return fits_width(config(), true) &&
-           (!config().viewport_width.has_value() || !content.has_value());
-  }
-
   /// The document/head prologue shared by both modes, with `write_mode_css()`
   /// slotted between the constant rules. Leaves the writer after `</head>`.
   template <typename WriteModeCss>
@@ -2598,8 +2586,7 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
-    write_viewport_fit_style(out, config(), fits_width(config(), true),
-                             content);
+    write_zoom_style(out, config(), fits_width(config(), true), content);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     // `.d`: the page column, sized to the widest page so pages of differing
