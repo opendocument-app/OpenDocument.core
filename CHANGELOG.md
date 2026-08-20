@@ -25,6 +25,10 @@ The release run heads these entries with the version and opens a fresh
   `pop()` and `depth()` do what they say instead of nothing.
 - A directory a document or an archive only implies is one: `exists()` and
   `is_directory()` answer for `/` and for a path that files sit under.
+- `Odr.load()` works under a Content-Security-Policy without `'unsafe-eval'`:
+  the wasm module is linked with `-sDYNAMIC_EXECUTION=0`, so embind builds its
+  invokers without `new Function`. `script-src 'self' 'wasm-unsafe-eval'` is
+  now enough.
 
 ## v6.9.0 - 2026-08-18
 

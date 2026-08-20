@@ -71,6 +71,11 @@ target_link_options(odr_wasm PRIVATE
         # failure at 64 KB does not look like a stack overflow.
         -sSTACK_SIZE=8388608
         -sFILESYSTEM=1
+        # embind otherwise builds its invokers with `new Function`, which CSP
+        # treats as eval, so loading needed `script-src 'unsafe-eval'`. The
+        # closure-based path costs `emscripten_run_script`, `dlopen`, `ccall`
+        # and `cwrap`, none of which this uses.
+        -sDYNAMIC_EXECUTION=0
 )
 
 # The hand-written half of the package sits beside the generated glue, so the
