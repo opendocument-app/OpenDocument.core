@@ -22,6 +22,31 @@ void wait_until_running(const HttpServer &server) {
   }
 }
 
+/// Stops the server and joins the thread however the test leaves - a fatal
+/// assertion returns, and a joinable `std::thread` destructor would take the
+/// whole test binary down with `std::terminate` instead of reporting it.
+class ListenGuard {
+public:
+  ListenGuard(const HttpServer &server, std::thread thread)
+      : m_server{&server}, m_thread{std::move(thread)} {}
+
+  ~ListenGuard() {
+    m_server->stop();
+    if (m_thread.joinable()) {
+      m_thread.join();
+    }
+  }
+
+  ListenGuard(const ListenGuard &) = delete;
+  ListenGuard &operator=(const ListenGuard &) = delete;
+  ListenGuard(ListenGuard &&) = delete;
+  ListenGuard &operator=(ListenGuard &&) = delete;
+
+private:
+  const HttpServer *m_server;
+  std::thread m_thread;
+};
+
 } // namespace
 
 TEST(HttpServer, bind_reports_the_port_it_got) {
@@ -161,7 +186,8 @@ TEST(HttpServer, stop_is_prompt_after_serving_a_kept_alive_request) {
   const HttpServer server;
 
   const std::uint32_t port = server.bind("127.0.0.1", 0);
-  std::thread thread{[&server] { server.listen(); }};
+  // stops and joins whatever happens below, including a fatal assertion
+  const ListenGuard guard{server, std::thread{[&server] { server.listen(); }}};
   wait_until_running(server);
 
   // alive across the stop() below, so the connection it holds is open there
@@ -174,8 +200,6 @@ TEST(HttpServer, stop_is_prompt_after_serving_a_kept_alive_request) {
   const auto before = std::chrono::steady_clock::now();
   server.stop();
   const auto elapsed = std::chrono::steady_clock::now() - before;
-
-  thread.join();
 
   EXPECT_LT(elapsed, 2s)
       << "stop() took "
