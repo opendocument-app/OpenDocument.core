@@ -47,7 +47,10 @@ try {
 so it needs nothing fetched alongside it. A `blob:` iframe keeps the same
 origin, so the page can still reach `iframe.contentWindow.odr` to drive
 `search()`, `searchNext()` and `generateDiff()`, exactly as the Android and iOS
-apps do from their WebViews.
+apps do from their WebViews. Inline is not the same as unconditional: the frame
+inherits the embedding page's Content-Security-Policy, so a page that ships one
+has to allow what the document carries — see
+[Content-Security-Policy](#content-security-policy).
 
 Multi-page formats render one view at a time:
 
@@ -85,6 +88,46 @@ where `Symbol.dispose` is supported.
   that a plain static host, GitHub Pages included, is enough.
 - Rendering is synchronous and a large PDF takes seconds, so run the module in
   a Web Worker. Pass `doc.handle` across `postMessage`, never the `Document`.
+
+## Content-Security-Policy
+
+The rendered html is self-contained, but a frame created from an embedding page
+inherits that page's policy — so the *embedder's* CSP decides what the document
+may load, and the failures are quiet. Measured across an odt, ods, docx and pdf
+rendered by this package:
+
+| Directive | What in the output needs it | Seen in |
+|---|---|---|
+| `font-src data:` | embedded subset fonts | pdf (7 of 8 `@font-face`) |
+| `img-src data:` | embedded images | odt, docx, standalone images |
+| `style-src 'unsafe-inline'` | the document's own `<style>` blocks **and** its `style` attributes | every format (2–3 blocks, and up to hundreds of attributes) |
+| `script-src 'unsafe-inline'` | the document's own `<script>` blocks | every format but a standalone image (1–3) |
+
+Nothing is fetched from another origin, so no host ever has to be allow-listed.
+A policy that works, for a document loaded into a frame:
+
+```
+frame-src 'self' blob:; font-src 'self' data:; img-src 'self' data:;
+style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
+```
+
+Worth knowing before tightening any of it:
+
+- **`font-src data:` is the one that costs the most time.** A pdf's text is
+  painted with the code points its embedded subset defines, so a blocked
+  `@font-face` does not fall back to a system face — every glyph comes out as a
+  replacement box. Office formats embed images rather than fonts, which makes
+  it easy to conclude the embed works.
+- **A blocked inline script is silent.** The layout is css, so the document
+  still looks right; only what the scripts provide — search, editing, the
+  spreadsheet and text-view behaviour — stops working.
+- **`style-src` cannot be narrowed to a nonce or a hash.** Most of the styling
+  is `style` attributes, which only `'unsafe-inline'` (or `'unsafe-hashes'`)
+  covers.
+- **Audio and video stay linked resources** rather than data urls, so a media
+  file needs `media-src` pointing wherever the resource was written.
+
+Loading the module itself is a separate question — see [Hosting](#hosting).
 
 ## Building
 

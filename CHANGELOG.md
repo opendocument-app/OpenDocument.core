@@ -29,6 +29,10 @@ The release run heads these entries with the version and opens a fresh
   the wasm module is linked with `-sDYNAMIC_EXECUTION=0`, so embind builds its
   invokers without `new Function`. `script-src 'self' 'wasm-unsafe-eval'` is
   now enough.
+- `wasm/README.md` says what Content-Security-Policy the rendered output needs,
+  and what each directive is for. An embedder inherits its own policy into the
+  frame, and the failures are quiet — a pdf whose `data:` fonts are blocked
+  renders as tofu rather than falling back.
 
 ## v6.9.0 - 2026-08-18
 
