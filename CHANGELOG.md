@@ -36,11 +36,8 @@ The release run heads these entries with the version and opens a fresh
   `<table:table-header-rows>` LibreOffice writes for a repeating header row.
   They were dropped from the output entirely, in text documents and
   spreadsheets alike.
-- Text selected or copied out of a rendered pdf reads as words again where the
-  producer scales a line's x and y differently to fit an exact width. Such a
-  line goes down the CSS matrix path, which used to start a fresh selection
-  block — and a space — for every run, so a page laid out glyph by glyph came
-  out as `L a g e`.
+- Text copied out of a pdf laid out glyph by glyph reads as words, not as
+  `L a g e`. A word break also survives a run with nothing extractable in it.
 
 ## v6.9.0 - 2026-08-18
 

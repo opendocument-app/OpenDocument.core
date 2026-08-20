@@ -168,12 +168,8 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
   }
 }
 
-// A `Tm` that scales x and y differently — what a producer writes to fit a line
-// to an exact width — puts every run on the CSS matrix path, where the
-// page-space origin cannot say whether two runs share a line. The selection
-// layer must not read that as a break: the extractor's pen already inferred the
-// spaces along each run's own writing line, so glyphs shown one `Tj` at a time
-// still read as one word, while a real gap keeps its space.
+// A `Tm` scaling x and y differently takes the CSS matrix path: glyphs shown
+// one `Tj` at a time read as one word, and a real gap keeps its space.
 TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
   const std::string tight = render_html(
       text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm (H) Tj (i) Tj ET"),

@@ -1554,13 +1554,8 @@ public:
                                            sel_prev_end, sel_prev_font_pt);
             sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
           }
-          // A block opened only because the two transforms are not comparable
-          // says nothing about a break: `ox`/`baseline` live in page space, so
-          // a matrix run gets its own block even mid-word. The extractor's pen
-          // already inferred the break along the run's own writing line, so the
-          // leading space it left is the evidence — closing the line on the
-          // matrix path alone puts a space between every glyph of a word laid
-          // out glyph by glyph (a `Tm` that scales x and y differently).
+          // The extractor's leading space is the break; a block the matrix
+          // path opens is not.
           const bool break_space = !matrix_break || starts_space;
 
           if (new_sel_line) {
