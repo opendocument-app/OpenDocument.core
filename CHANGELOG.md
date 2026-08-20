@@ -53,6 +53,8 @@ The release run heads these entries with the version and opens a fresh
 - **New** `HtmlConfig::viewport_width`: the width the output will be shown at,
   in css pixels. The fit is then a factor in the emitted css — no script, framed
   or not. Bound in the python, wasm, jni and apple bindings as `viewportWidth`.
+- An image view fits the viewport too: `img{max-width:100%}`, so a scan wider
+  than the frame stops overflowing. `actual_size` still shows it 1:1.
 - Output that fits itself keeps the reader's place when the viewport changes.
   The browser's own guess is wrong here because the scale changes with the
   width, and a long document came back a page or more from where it was.

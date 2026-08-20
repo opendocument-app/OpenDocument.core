@@ -354,3 +354,27 @@ TEST(html, each_view_fits_the_page_it_renders) {
   EXPECT_NEAR(narrow_page, 400.0 / (612 * 96.0 / 72 + 32), 1e-6);
   EXPECT_NEAR(wide_page, 400.0 / (1224 * 96.0 / 72 + 32), 1e-6);
 }
+
+// An image overflowed its frame the same way a page did, and needs no script:
+// it has no layout width to preserve.
+TEST(html, an_image_fits_the_viewport) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DecodedFile file(
+      TestData::test_file_path("odr-public/png/tango-example-icons.png"),
+      logger);
+
+  const auto render = [&](const HtmlConfig &config) {
+    const std::string cache =
+        (std::filesystem::current_path() / "image_fit").string();
+    std::ostringstream out;
+    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  EXPECT_NE(render(HtmlConfig()).find("img{max-width:100%"), std::string::npos);
+
+  HtmlConfig actual_size;
+  actual_size.viewport_mode = HtmlViewportMode::actual_size;
+  EXPECT_EQ(render(actual_size).find("img{max-width:100%"), std::string::npos);
+}
