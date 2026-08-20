@@ -1133,9 +1133,8 @@ public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
         m_resources{locate_search_resources(this->config())} {
-    // Declared whether or not a given view ends up writing it — a page is
-    // parsed long after this, and answering for a path nothing links costs
-    // nothing.
+    // declared before any page is parsed, so before it is known which views
+    // write it
     if (fits_width(this->config(), true)) {
       for (auto &&resource : locate_viewport_resources(this->config())) {
         m_resources.push_back(std::move(resource));
@@ -2563,10 +2562,7 @@ public:
     close_svg();
   }
 
-  /// The document/head prologue shared by both modes, with `write_mode_css()`
-  /// slotted between the constant rules. Leaves the writer after `</head>`.
-  /// The widest page a view holds, in css pixels and with `.d`'s side gutters
-  /// included — what fitting to the viewport has to scale down.
+  /// The widest page a view holds, in css pixels, with `.d`'s side gutters.
   template <typename PageOut>
   static std::optional<double>
   content_pixels(const std::vector<PageOut> &pages) {
@@ -2580,13 +2576,15 @@ public:
     return widest * pt_to_in * 96.0 + page_column_gutter_pixels;
   }
 
-  /// Whether the view has to measure itself at load time to fit the viewport —
-  /// true where it should fit but the css could not be given the factor.
+  /// Whether the view has to measure itself at load: it should fit, but no css
+  /// factor could be written for it.
   bool fits_at_load_time(const std::optional<double> content) const {
     return fits_width(config(), true) &&
            (!config().viewport_width.has_value() || !content.has_value());
   }
 
+  /// The document/head prologue shared by both modes, with `write_mode_css()`
+  /// slotted between the constant rules. Leaves the writer after `</head>`.
   template <typename WriteModeCss>
   void write_header_common(const WritingState &state,
                            const std::string &font_faces,

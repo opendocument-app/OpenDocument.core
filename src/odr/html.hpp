@@ -147,17 +147,10 @@ struct HtmlConfig {
   std::optional<HtmlViewportMode> spreadsheet_viewport_mode;
   // raw `content` for the viewport meta tag; overrides the modes above
   std::optional<std::string> viewport_content;
-  /// The width the output will be shown at, in css pixels. When set, paged
-  /// content wider than it is scaled to fit at render time — a plain factor in
-  /// the emitted css, needing neither the viewport meta tag (which a browser
-  /// honours for the top-level document only, so a frame's is inert) nor a
-  /// script. This is how a host that knows its width — a web view, a
-  /// fixed-size frame — gets the fit whatever the context.
-  ///
-  /// Left unset, a document *in a frame* measures itself at load and on every
-  /// resize, since nothing else can fit it there; a top-level document is left
-  /// to the viewport meta tag, as it always was. Either way the output keeps
-  /// the reader's place when the viewport changes under it.
+  /// The width the output will be shown at, in css pixels. Paged content wider
+  /// than it is scaled down at render time, as a factor in the emitted css —
+  /// no meta tag, which a browser honours for the top-level document only, and
+  /// no script. Unset, a framed document measures itself at load instead.
   std::optional<std::uint32_t> viewport_width;
 
   // formatting

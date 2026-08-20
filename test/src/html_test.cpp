@@ -264,9 +264,8 @@ TEST(html, views) {
   EXPECT_EQ(views.at(2).name(), "Foglio2");
 }
 
-// #708: a viewport meta tag is honoured for the top-level document only, so an
-// embedder rendering into a frame got no fit at all. #706: and whatever fits
-// has to hold the reader's place when the viewport changes under it.
+// #708 (a meta tag does not fit a framed document) and #706 (the fit has to
+// hold the reading position).
 TEST(html, paged_output_fits_the_viewport) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -309,16 +308,14 @@ TEST(html, paged_output_fits_the_viewport) {
   }
 }
 
-// A page turned by `/Rotate` is as wide as the reader sees it, so one document
-// can hold pages of different widths — which is how mixed widths turn up in the
-// wild. Each view is then fitted to the page it renders, not to the widest.
+// `/Rotate` is how one document comes to hold pages of differing width.
 TEST(html, each_view_fits_the_page_it_renders) {
   test::pdf::PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
       // 612pt wide as it stands
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
-      // 792pt tall on paper, but a quarter turn makes it 1224pt wide on screen
+      // a quarter turn makes this 1224pt wide on screen
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 1224] "
               "/Rotate 90 >>");
 

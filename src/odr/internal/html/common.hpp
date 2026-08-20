@@ -46,9 +46,8 @@ void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
                          std::optional<HtmlViewportMode> mode_override = {});
 
-/// Whether the output is meant to fit its width to the viewport — the same
-/// question @ref write_viewport_meta answers with a meta tag, which a browser
-/// honours for the top-level document only.
+/// Whether the output is meant to fit its width to the viewport — the question
+/// @ref write_viewport_meta answers with a meta tag.
 [[nodiscard]] bool
 fits_width(const HtmlConfig &config, bool fit_width_by_default,
            std::optional<HtmlViewportMode> mode_override = {});
@@ -58,14 +57,12 @@ fits_width(const HtmlConfig &config, bool fit_width_by_default,
 [[nodiscard]] std::optional<double>
 css_pixels(const std::optional<Measure> &measure);
 
-/// The side gutters the page column puts around its widest page, in css
-/// pixels — part of the width to fit, and the same in both renderers.
+/// The side gutters the page column puts around its pages, in css pixels.
 constexpr double page_column_gutter_pixels = 32;
 
-/// Scales the body so that @p content_pixels of content fits
-/// `config.viewport_width`. Writes nothing, and returns false, unless the
-/// output fits its width and both widths are known — the load-time script is
-/// what covers the rest.
+/// Scales the body so @p content_pixels of content fits
+/// `config.viewport_width`. Writes nothing and returns false unless @p fits and
+/// both widths are known; the load-time script covers the rest.
 bool write_viewport_fit_style(HtmlWriter &out, const HtmlConfig &config,
                               bool fits, std::optional<double> content_pixels);
 

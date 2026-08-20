@@ -323,9 +323,7 @@ constexpr std::string_view document_js = R"js(
 )js";
 
 /// The load-time half of fitting the page column to the viewport, for output
-/// whose viewport width was not known when it was written. A viewport meta tag
-/// cannot do this job: a browser honours only the top-level document's, so a
-/// document in a frame is left overflowing.
+/// whose width was not known when it was written.
 constexpr std::string_view viewport_js = R"js(
 (function () {
   "use strict";
@@ -333,22 +331,15 @@ constexpr std::string_view viewport_js = R"js(
   var root = document.documentElement;
   var body = document.body;
 
-  // A viewport meta tag is honoured for the top-level document only, so that is
-  // exactly where it is not this script's job to scale anything: doing it there
-  // too would shrink a wide page in a desktop window, which no reader asked
-  // for. In a frame the tag is inert and there is nothing else to fit the page.
-  // Output whose width is known when it is written says so with
-  // `HtmlConfig::viewport_width` and gets the factor in its css instead, framed
-  // or not.
+  // Only a frame is scaled here: the viewport meta tag covers the top-level
+  // document but is inert in a frame.
   var framed = window.top !== window.self;
 
-  // The width the anchor below was taken at. A scroll event that arrives after
-  // the viewport has already changed is the browser's own doing, not the
-  // reader's, and must not be taken for the reading position.
+  // The width the anchor below was taken at: a scroll arriving after the
+  // viewport changed is the browser's doing, not the reader's.
   var width = 0;
-  // Where the reader is, kept current rather than read when a resize arrives:
-  // by then the browser has already relaid out and moved the scroll, and what
-  // was against the top of the screen is gone.
+  // Where the reader is, kept current: by the time a resize arrives the browser
+  // has relaid out and moved the scroll.
   var held = null;
   // Our own scrolling, which must not be mistaken for the reader's.
   var restoring = false;
@@ -382,10 +373,9 @@ constexpr std::string_view viewport_js = R"js(
     body.style.zoom = content > available ? available / content : "";
   }
 
-  // What the reader is looking at: the element against the top of the viewport,
-  // and how far into it that top sits. A fraction of the scroll height cannot
-  // stand in for this - the height changes with the scale, which is exactly
-  // what the browser's own guess gets wrong.
+  // The element against the top of the viewport, and how far into it that top
+  // sits. A fraction of the scroll height cannot stand in: the height itself
+  // changes with the scale.
   function anchor() {
     var element = document.elementFromPoint(Math.floor(root.clientWidth / 2), 1);
     if (!element) {
@@ -400,9 +390,8 @@ constexpr std::string_view viewport_js = R"js(
       return;
     }
     if (root.clientWidth !== width) {
-      // The viewport changed and the resize event has not arrived - or never
-      // will, which happens. What is on screen now is the browser's guess, not
-      // the reader's position, so take neither and fit from here.
+      // The viewport changed without a resize event. What is on screen is the
+      // browser's guess, not the reader's position, so fit from here instead.
       resized();
       return;
     }
@@ -423,8 +412,7 @@ constexpr std::string_view viewport_js = R"js(
   function resized() {
     if (root.clientWidth === width) {
       // Nothing that changes the scale: a height-only change, or a pinch,
-      // which moves the visual viewport and fires here without touching the
-      // layout width. Restoring through a gesture would fight the reader.
+      // where restoring would fight the reader.
       return;
     }
 
@@ -434,9 +422,8 @@ constexpr std::string_view viewport_js = R"js(
     restoring = true;
     restore(target);
 
-    // The browser answers a resize with a scroll offset of its own, a few
-    // frames later, so the position is re-asserted until it stops moving - and
-    // dropped the moment the reader takes over.
+    // The browser applies a scroll offset of its own a few frames later, so
+    // the position is re-asserted until it settles.
     var token = ++settling;
     var frames = 30;
     (function again() {

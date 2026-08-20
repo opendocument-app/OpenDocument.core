@@ -49,19 +49,13 @@ The release run heads these entries with the version and opens a fresh
   swapped for a substitute in silence.
 - Paged output rendered **into a frame** fits the viewport itself. A viewport
   meta tag is honoured for the top-level document only, so an embedder got no
-  fit at all and a visitor on a phone could not even pinch the document. A
-  framed `fit_width` view now scales its page column to the frame; only ever
-  down, and a top-level document is left to the meta tag exactly as before.
+  fit at all. Only ever down, and a top-level document is left to the meta tag.
 - **New** `HtmlConfig::viewport_width`: the width the output will be shown at,
-  in css pixels. When set, the fit is a factor in the emitted css — no script,
-  and it applies framed or not, so a host that knows its width (a web view, a
-  fixed-size frame) can stop reimplementing the fit itself. It is also what
-  lets a page under a strict Content-Security-Policy embed a fitted document.
-  Bound in the python, wasm, jni and apple bindings as `viewportWidth`.
+  in css pixels. The fit is then a factor in the emitted css — no script, framed
+  or not. Bound in the python, wasm, jni and apple bindings as `viewportWidth`.
 - Output that fits itself keeps the reader's place when the viewport changes.
-  A browser answers a resize by holding what was against the top of the screen
-  and gets it wrong, because the scale changes with the width — a long document
-  came back a page or more from where it was.
+  The browser's own guess is wrong here because the scale changes with the
+  width, and a long document came back a page or more from where it was.
 
 ## v6.9.0 - 2026-08-18
 

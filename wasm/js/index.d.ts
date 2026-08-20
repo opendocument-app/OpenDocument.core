@@ -88,10 +88,9 @@ export interface HtmlConfig {
   spreadsheetGridlines?: number;
   viewportMode?: number;
   /**
-   * The width the output will be shown at, in css pixels. When set, paged
-   * content wider than it is scaled to fit at render time — no viewport meta
-   * tag (inert in a frame) and no script needed. Leave it out where the width
-   * can change: the output then measures itself at load and on every resize.
+   * The width the output will be shown at, in css pixels. Paged content wider
+   * than it is scaled down at render time; leave it out where the width can
+   * change and the output measures itself at load instead.
    */
   viewportWidth?: number;
   pdfTextMode?: number;

@@ -38,9 +38,8 @@ public final class HtmlConfig {
   /** Raw {@code content} for the viewport meta tag; overrides the modes above when set. */
   public String viewportContent;
   /**
-   * The width the output will be shown at, in css pixels. When set, paged content wider than it is
-   * scaled to fit at render time, needing neither the viewport meta tag nor a script; {@code null}
-   * makes the output measure itself at load and on every resize instead.
+   * The width the output will be shown at, in css pixels. Paged content wider than it is scaled
+   * down at render time; {@code null} makes the output measure itself at load instead.
    */
   public Integer viewportWidth;
 

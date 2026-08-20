@@ -90,18 +90,15 @@ bool html::write_viewport_fit_style(
 
   const double factor =
       static_cast<double>(config.viewport_width.value()) / *content_pixels;
-  // Only ever down: a page narrower than the viewport is shown at its size,
-  // which is what every reader expects of "fit width".
+  // only ever down: a page narrower than the viewport is shown at its size
   if (factor >= 1) {
     return true;
   }
 
   out.write_header_style_begin();
   // `zoom` rather than `transform: scale()`: it scales the layout, so the page
-  // column ends up exactly as wide as the viewport and the document scrolls
-  // and reflows against the scaled size rather than overflowing beside it.
-  // `Measure` with no unit renders the bare number, positional and never in
-  // exponent form, which is what css takes.
+  // scrolls against the scaled size instead of overflowing beside it.
+  // `Measure` with no unit renders the bare number, never in exponent form.
   out.out() << "body{zoom:" << Measure(factor, DynamicUnit()).to_string()
             << "}";
   out.write_header_style_end();

@@ -32,8 +32,7 @@ bool is_paged_content(const Document &document, const HtmlConfig &config) {
          document.document_type() == DocumentType::drawing;
 }
 
-/// A page box plus the gutters the column puts around it, in css pixels —
-/// what fitting to the viewport has to scale down.
+/// A page box plus the gutters the column puts around it, in css pixels.
 std::optional<double> page_content_pixels(const PageLayout &page_layout) {
   const std::optional<double> width = css_pixels(page_layout.width);
   if (!width.has_value()) {
@@ -42,8 +41,7 @@ std::optional<double> page_content_pixels(const PageLayout &page_layout) {
   return *width + page_column_gutter_pixels;
 }
 
-/// Per view, so a deck whose master pages differ in width fits each slide to
-/// the viewport rather than all of them to the widest.
+/// Per view, so slides of differing width are each fitted to their own page.
 std::optional<double> fragment_content_pixels(const TextRoot &element) {
   return page_content_pixels(element.page_layout());
 }
@@ -98,8 +96,8 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
              : std::nullopt;
 }
 
-/// Whether the view has to measure itself at load time to fit the viewport —
-/// true where it should fit but the css could not be given the factor.
+/// Whether the view has to measure itself at load: it should fit, but no css
+/// factor could be written for it.
 bool fits_at_load_time(const Document &document, const HtmlConfig &config,
                        const bool paged_content,
                        const std::optional<double> content_pixels) {
