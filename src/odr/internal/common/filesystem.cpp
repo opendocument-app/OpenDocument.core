@@ -7,9 +7,11 @@
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <ranges>
 #include <system_error>
 
 namespace odr::internal {
@@ -145,13 +147,24 @@ bool SystemFilesystem::move(const AbsPath &from, const AbsPath &to) {
 }
 
 namespace {
+/// Component-wise, so that a path's descendants follow it with nothing in
+/// between. Ordering the strings alone does not: any character below the
+/// separator sorts a sibling into the middle of a subtree - "/a" < "/a-b" <
+/// "/a/b" - and pop() and flat_next() below skip a subtree by walking it.
+struct DepthFirstLess {
+  [[nodiscard]] bool operator()(const AbsPath &lhs, const AbsPath &rhs) const {
+    return std::ranges::lexicographical_compare(lhs, rhs);
+  }
+};
+
 class VirtualFileWalker final : public abstract::FileWalker {
 public:
   using Files = std::map<AbsPath, std::shared_ptr<abstract::File>>;
 
-  VirtualFileWalker(const AbsPath &root, const Files &files) {
+  VirtualFileWalker(AbsPath root, const Files &files)
+      : m_root{std::move(root)} {
     for (const auto &[path, file] : files) {
-      if (path.descendant_of(root)) {
+      if (path.descendant_of(m_root)) {
         m_files[path] = file;
       }
     }
@@ -160,7 +173,8 @@ public:
   }
 
   /// The iterator has to be re-seated into the copied map.
-  VirtualFileWalker(const VirtualFileWalker &other) : m_files{other.m_files} {
+  VirtualFileWalker(const VirtualFileWalker &other)
+      : m_root{other.m_root}, m_files{other.m_files} {
     m_iterator = other.m_iterator == std::end(other.m_files)
                      ? std::end(m_files)
                      : m_files.find(other.m_iterator->first);
@@ -186,8 +200,11 @@ public:
     return m_iterator == std::end(m_files);
   }
 
+  /// 0 for an entry sitting directly in the walked root, as with
+  /// `std::filesystem::recursive_directory_iterator`.
   [[nodiscard]] std::uint32_t depth() const override {
-    return 0; // TODO
+    const RelPath relative = m_iterator->first.rebase(m_root);
+    return static_cast<std::uint32_t>(std::ranges::distance(relative)) - 1;
   }
 
   [[nodiscard]] AbsPath path() const override { return m_iterator->first; }
@@ -198,24 +215,31 @@ public:
 
   [[nodiscard]] bool is_directory() const override { return !is_file(); }
 
-  void pop() override {
-    // TODO
-  }
+  /// Leaves the directory the current entry sits in, landing on whatever
+  /// follows it. At depth 0 that is the end - the parent is the walked root.
+  void pop() override { skip_subtree_(m_iterator->first.parent()); }
 
   void next() override { ++m_iterator; }
 
-  void flat_next() override {
-    // TODO
-  }
+  /// The next entry that is not under the current one.
+  void flat_next() override { skip_subtree_(m_iterator->first); }
 
 private:
-  Files m_files;
-  Files::iterator m_iterator;
+  AbsPath m_root;
+  std::map<AbsPath, std::shared_ptr<abstract::File>, DepthFirstLess> m_files;
+  decltype(m_files)::iterator m_iterator;
+
+  void skip_subtree_(const AbsPath &path) {
+    do {
+      ++m_iterator;
+    } while (m_iterator != std::end(m_files) &&
+             m_iterator->first.descendant_of(path));
+  }
 };
 } // namespace
 
 bool VirtualFilesystem::exists(const AbsPath &path) const {
-  return m_files.contains(path);
+  return is_file(path) || is_directory(path);
 }
 
 bool VirtualFilesystem::is_file(const AbsPath &path) const {
@@ -227,11 +251,19 @@ bool VirtualFilesystem::is_file(const AbsPath &path) const {
 }
 
 bool VirtualFilesystem::is_directory(const AbsPath &path) const {
-  const auto file_it = m_files.find(path);
-  if (file_it == std::end(m_files)) {
-    return false;
+  if (path.root()) {
+    return true;
   }
-  return !static_cast<bool>(file_it->second);
+  const auto file_it = m_files.find(path);
+  if (file_it != std::end(m_files)) {
+    return !static_cast<bool>(file_it->second);
+  }
+  // An intermediate directory need not be an entry of its own - a zip may name
+  // only its files - so what something else sits under is a directory too,
+  // which is what the walker reports for it as well.
+  return std::ranges::any_of(m_files, [&path](const auto &entry) {
+    return entry.first.descendant_of(path);
+  });
 }
 
 std::unique_ptr<abstract::FileWalker>
