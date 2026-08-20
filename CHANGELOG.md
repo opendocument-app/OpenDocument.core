@@ -45,6 +45,10 @@ The release run heads these entries with the version and opens a fresh
   narrow boxes beside them. Runs one CSS transform can place share a selection
   block and carry the PDF's advances, and a whitespace-only run hands its
   advance on instead of dropping it — a space per word short on every line.
+- A pdf that writes `Tm(text)Tj`, with nothing between an operator and the
+  string after it, renders that text instead of dropping it.
+- An embedded font that will not re-encode says so in the log rather than being
+  swapped for a substitute in silence.
 
 ## v6.9.0 - 2026-08-18
 

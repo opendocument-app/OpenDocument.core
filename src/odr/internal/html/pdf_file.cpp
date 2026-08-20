@@ -1348,10 +1348,11 @@ public:
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
     const auto font_family = [&](const pdf::Font *font) {
-      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
-        accepted_fonts.push_back(font);
-        font_class_used.push_back({false, false});
-      });
+      return intern_font(family_index, family_count, font, m_logger,
+                         [&](std::uint32_t) {
+                           accepted_fonts.push_back(font);
+                           font_class_used.push_back({false, false});
+                         });
     };
 
     const auto add_class = [&styles](std::string &classes,
@@ -1921,12 +1922,13 @@ public:
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
     const auto font_family = [&](pdf::Font *font) {
-      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
-        accepted_fonts.push_back(font);
-        glyph_freq.emplace_back();
-        used_unicode.emplace_back();
-        font_class_used.push_back({false, false});
-      });
+      return intern_font(family_index, family_count, font, m_logger,
+                         [&](std::uint32_t) {
+                           accepted_fonts.push_back(font);
+                           glyph_freq.emplace_back();
+                           used_unicode.emplace_back();
+                           font_class_used.push_back({false, false});
+                         });
     };
 
     AtomicStyles styles;
@@ -2500,13 +2502,13 @@ public:
   template <typename OnAccept>
   static std::uint32_t intern_font(
       std::unordered_map<const pdf::Font *, std::uint32_t> &family_index,
-      std::uint32_t &family_count, const pdf::Font *font,
+      std::uint32_t &family_count, const pdf::Font *font, const Logger &logger,
       OnAccept &&on_accept) {
     const auto [it, inserted] = family_index.try_emplace(font, 0);
     if (!inserted) {
       return it->second;
     }
-    if (!font_is_usable(*font)) {
+    if (!font_is_usable(*font, logger)) {
       return 0;
     }
     const std::uint32_t index = ++family_count;
@@ -2649,15 +2651,26 @@ public:
   }
 
   /// Whether `font`'s embedded program re-encodes without throwing. Probes the
-  /// real encode path so failures surface here, not in the post-pass.
-  static bool font_is_usable(const pdf::Font &font) {
+  /// real encode path so failures surface here, not in the post-pass. Failing
+  /// swaps in a substitute, which the page shows, so say so.
+  static bool font_is_usable(const pdf::Font &font, const Logger &logger) {
+    const auto dropped = [&](const std::string &why) {
+      ODR_WARNING(logger, "pdf: rendering '"
+                              << font.embedded_font->name()
+                              << "' with a substitute, its embedded program "
+                                 "does not re-encode: "
+                              << why);
+      return false;
+    };
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
       try {
         (void)write_sfnt_pua(*sfnt, {});
         return true;
+      } catch (const std::exception &e) {
+        return dropped(e.what());
       } catch (...) {
-        return false;
+        return dropped("sfnt re-encode failed");
       }
     }
     if (const auto cff =
@@ -2665,8 +2678,10 @@ public:
       try {
         (void)font::cff::wrap_to_otf(*cff);
         return true;
+      } catch (const std::exception &e) {
+        return dropped(e.what());
       } catch (...) {
-        return false;
+        return dropped("cff wrap failed");
       }
     }
     return false;

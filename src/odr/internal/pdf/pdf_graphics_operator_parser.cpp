@@ -209,11 +209,10 @@ std::string GraphicsOperatorParser::read_operator_name() {
     if (c == eof) {
       return result;
     }
-    // Any white-space (7.2.2, incl. `\r` in CRLF streams) or the start of a
-    // following token ends the bareword. `%` is a delimiter too (7.2.2), so a
-    // comment may follow an operator with nothing in between.
-    if (ObjectParser::is_whitespace(static_cast<char_type>(c)) || c == '/' ||
-        c == '<' || c == '[' || c == '%') {
+    // White space or a delimiter ends the bareword (7.2.2): producers write
+    // `Tm(text)Tj` with nothing in between.
+    if (ObjectParser::is_whitespace(static_cast<char_type>(c)) ||
+        ObjectParser::is_delimiter(static_cast<char_type>(c))) {
       return result;
     }
 
@@ -252,6 +251,22 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
       } else if (operator_name == "false") {
         result.arguments.emplace_back(Boolean(false));
       } else {
+        // A closing delimiter opens nothing, so no reader above consumes it and
+        // an unmatched one would stall the caller's loop. Eat it and go on.
+        if (operator_name.empty()) {
+          if (const int_type c = m_parser.geti();
+              c != eof &&
+              ObjectParser::is_delimiter(static_cast<char_type>(c)) &&
+              !m_parser.peek_name() && !m_parser.peek_string() &&
+              !m_parser.peek_array() && !m_parser.peek_dictionary()) {
+            ODR_DEBUG(m_logger, "pdf: skipping stray delimiter '" +
+                                    std::string(1, static_cast<char_type>(c)) +
+                                    "' in a content stream");
+            m_parser.bumpc();
+            m_parser.skip_whitespace_and_comments();
+            continue;
+          }
+        }
         break;
       }
     }
