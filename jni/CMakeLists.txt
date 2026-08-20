@@ -21,18 +21,20 @@ else ()
 endif ()
 
 # On android the NDK sysroot ships `jni.h` and the JNI symbols come from the
-# runtime, so there is nothing to find or link against. A JDK stays optional
-# there rather than unused: the android odrcore package ships
-# `odr-core-java.jar` next to `libodr_jni.so` and OpenDocument.droid takes both
-# out of it, while `android/` (the AAR) builds the native half alone, with the
-# android toolchain compiling `java/` itself.
-if (ANDROID)
-    find_package(Java 11 COMPONENTS Development)
-else ()
-    find_package(Java 11 REQUIRED COMPONENTS Development)
+# runtime, so there is nothing to find or link against.
+if (NOT ANDROID)
     find_package(JNI REQUIRED)
 endif ()
-if (Java_FOUND)
+
+# The jar is not an android-vs-not question: the android odrcore package ships
+# `odr-core-java.jar` next to `libodr_jni.so` and OpenDocument.droid takes both
+# out of it. Only `android/` (the AAR) wants the native half alone, with the
+# android toolchain compiling `java/` itself, and says so — so a missing JDK
+# fails the build that asked for a jar instead of quietly shipping half a
+# package.
+option(ODR_JNI_JAR "Build the java half, `odr-core-java.jar`" ON)
+if (ODR_JNI_JAR)
+    find_package(Java 11 REQUIRED COMPONENTS Development)
     include(UseJava)
 endif ()
 
@@ -56,7 +58,7 @@ endif ()
 
 install(TARGETS odr_jni LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT jni)
 
-if (NOT Java_FOUND)
+if (NOT ODR_JNI_JAR)
     return()
 endif ()
 

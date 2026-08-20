@@ -71,6 +71,12 @@ This produces `build/jni/libodr_jni.dylib` (or `.so`) and
 `build/jni/odr-core-java.jar`. `jni/CMakeLists.txt` can also be configured
 standalone against an installed `odrcore` package.
 
+`ODR_JNI_JAR=OFF` builds the native library alone and needs no JDK. That is what
+the AAR build (`android/build_native.py`) asks for, since it compiles
+`jni/java/` with the android toolchain instead. With it on — the default — a
+missing JDK fails the configure step rather than producing a package without the
+jar in it.
+
 ## Runtime data
 
 There is none. The renderer's CSS/JS are part of the library and detection needs
