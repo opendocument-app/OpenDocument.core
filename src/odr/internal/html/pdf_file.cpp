@@ -1546,19 +1546,28 @@ public:
           // covered by the spacer span, not by the run text.
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
-          bool new_sel_line =
-              !sel_have_prev || is_matrix || sel_prev_was_matrix;
+          const bool matrix_break = is_matrix || sel_prev_was_matrix;
+          bool new_sel_line = !sel_have_prev || matrix_break;
           bool sel_gap = false;
           if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
             new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
                                            sel_prev_end, sel_prev_font_pt);
             sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
           }
+          // A block opened only because the two transforms are not comparable
+          // says nothing about a break: `ox`/`baseline` live in page space, so
+          // a matrix run gets its own block even mid-word. The extractor's pen
+          // already inferred the break along the run's own writing line, so the
+          // leading space it left is the evidence — closing the line on the
+          // matrix path alone puts a space between every glyph of a word laid
+          // out glyph by glyph (a `Tm` that scales x and y differently).
+          const bool break_space = !matrix_break || starts_space;
 
           if (new_sel_line) {
             // Close the previous line with a trailing space. `sg`, not `sr`:
             // it carries no PDF-derived width, just the space.
-            if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space) {
+            if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space &&
+                break_space) {
               std::string space_cls = "sg";
               add_class(space_cls, "f",
                         pt_decl("font-size", sel_prev_font_size_pt));
