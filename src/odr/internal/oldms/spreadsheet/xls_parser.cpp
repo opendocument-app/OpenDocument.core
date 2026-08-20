@@ -243,4 +243,42 @@ spreadsheet::parse_tree(ElementRegistry &registry,
   return root_id;
 }
 
+std::optional<bool>
+spreadsheet::password_encrypted(const abstract::ReadableFilesystem &files) {
+  const std::shared_ptr<abstract::File> file = files.open(AbsPath("/Workbook"));
+  if (file == nullptr) {
+    return {};
+  }
+
+  const std::unique_ptr<std::istream> stream = file->stream();
+  BiffReader reader{*stream};
+
+  // FilePass sits at the head of the globals substream, right after BOF and an
+  // optional WriteProtect ([MS-XLS] 2.1.7.20.1). Record headers are not
+  // encrypted, so they can be walked either way; the substream's own EOF, or
+  // the BOF of the first sheet, ends the search.
+  try {
+    if (!reader.next_record() || reader.record_type() != biff_bof) {
+      return {};
+    }
+    while (reader.next_record()) {
+      switch (reader.record_type()) {
+      case biff_filepass:
+        return true;
+      case biff_bof:
+      case biff_eof:
+        return false;
+      default:
+        break;
+      }
+    }
+  } catch (const std::exception &) {
+    // a stream that cannot be walked cannot answer either way
+    return {};
+  }
+
+  // the records ran out before the globals substream ended
+  return {};
+}
+
 } // namespace odr::internal::oldms

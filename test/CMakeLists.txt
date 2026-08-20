@@ -62,6 +62,7 @@ add_executable(odr_test
         "src/internal/odf/odf_table_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
+        "src/internal/oldms/encryption_test.cpp"
         "src/internal/oldms/ppt_test.cpp"
         "src/internal/oldms/xls_test.cpp"
 

@@ -144,9 +144,10 @@ ignore their format codes. Fix by following the format chain:
 - **Hidden rows/columns** (`Row.fDyZero`, `ColInfo.fHidden`).
 - **Typed cell values**: expose numeric/bool/date `ValueType`s instead of
   pre-rendered strings.
-- **Encrypted workbooks**: a `FilePass` (0x002F) in globals means the rest is
-  encrypted ([MS-OFFCRYPTO]); currently parses as garbage or throws — should report
-  password-protected.
+- **Encrypted workbooks**: a `FilePass` (0x002F) in globals is what
+  `password_encrypted()` reports, so the file surfaces as encrypted rather than
+  parsing as garbage; reading one still needs a `decrypt` that throws
+  ([MS-OFFCRYPTO]).
 - **BIFF5/BIFF7** (`vers != 0x0600`): currently throws; older files exist in the
   wild (no SST — `Label` records carry strings inline).
 - **Drawings/charts/images** — likely never worth it for text extraction.

@@ -200,8 +200,9 @@ WordDocument stream
   margins, §2.6.4) are unparsed.
 - **Images / OLE / drawn objects** — anchor chars dropped; would need `PlcfSpa` /
   Office Art (`dggInfo`).
-- **Encrypted / obfuscated** — `fEncrypted`/`fObfuscated` parsed but not acted on;
-  `decrypt` throws.
+- **Encrypted / obfuscated** — `fEncrypted` is what `password_encrypted()`
+  reports, so the file surfaces as encrypted rather than throwing a parse error;
+  reading one still needs a `decrypt` that throws ([MS-OFFCRYPTO]).
 
 ## 3. Smaller shortcomings
 
