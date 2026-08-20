@@ -10,6 +10,7 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -448,7 +449,7 @@ public:
     TableDimensions result;
 
     TableCursor cursor;
-    for (auto row : node.children("table:table-row")) {
+    for (const pugi::xml_node row : table_rows(node)) {
       const auto rows_repeated =
           row.attribute("table:number-rows-repeated").as_uint(1);
       cursor.add_row(rows_repeated);
@@ -710,7 +711,7 @@ public:
     TableDimensions result;
     TableCursor cursor;
 
-    for (auto column : node.children("table:table-column")) {
+    for (const pugi::xml_node column : table_columns(node)) {
       const auto columns_repeated =
           column.attribute("table:number-columns-repeated").as_uint(1);
       cursor.add_column(columns_repeated);
@@ -719,7 +720,7 @@ public:
     result.columns = cursor.column();
     cursor = {};
 
-    for (auto row : node.children("table:table-row")) {
+    for (const pugi::xml_node row : table_rows(node)) {
       const auto rows_repeated =
           row.attribute("table:number-rows-repeated").as_uint(1);
       cursor.add_row(rows_repeated);
