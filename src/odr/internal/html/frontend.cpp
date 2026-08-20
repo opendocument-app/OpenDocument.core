@@ -392,10 +392,9 @@ constexpr std::string_view viewport_js = R"js(
     return content > available ? available / content : 1;
   }
 
-  // The element under @p point - the top of the viewport where none is given -
-  // and how far into it the point sits. A fraction of the scroll height cannot
-  // stand in: the height itself changes with the scale. Only a given point
-  // pins x too, where the page column would otherwise centre itself.
+  // The element under @p point, and how far into it that point sits - a
+  // fraction of the scroll height cannot stand in, the height scales too. Only
+  // a given point pins x; the page column centres itself.
   function anchor(point) {
     var x = point ? point.x : Math.floor(root.clientWidth / 2);
     var y = point ? point.y : 1;

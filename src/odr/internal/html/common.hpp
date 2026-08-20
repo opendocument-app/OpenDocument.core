@@ -58,11 +58,9 @@ css_pixels(const std::optional<Measure> &measure);
 /// The side gutters the page column puts around its pages, in css pixels.
 constexpr double page_column_gutter_pixels = 32;
 
-/// Writes the zoom the view opens at, which the view script reads and moves:
-/// `--odr-fit` the factor fitting @p content_pixels into
-/// `config.viewport_width`, `auto` where only the view can measure it;
-/// `--odr-zoom` @ref odr::HtmlConfig::initial_zoom; `body{zoom}` the one that
-/// wins.
+/// The zoom the view opens at: `--odr-fit` fits @p content_pixels into
+/// `config.viewport_width` (`auto` where only the view can measure it),
+/// `--odr-zoom` pins it, `body{zoom}` applies the winner.
 void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, bool fits,
                       std::optional<double> content_pixels);
 
