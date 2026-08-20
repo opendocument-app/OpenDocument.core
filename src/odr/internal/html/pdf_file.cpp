@@ -1348,10 +1348,11 @@ public:
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
     const auto font_family = [&](const pdf::Font *font) {
-      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
-        accepted_fonts.push_back(font);
-        font_class_used.push_back({false, false});
-      });
+      return intern_font(family_index, family_count, font, m_logger,
+                         [&](std::uint32_t) {
+                           accepted_fonts.push_back(font);
+                           font_class_used.push_back({false, false});
+                         });
     };
 
     const auto add_class = [&styles](std::string &classes,
@@ -1411,7 +1412,8 @@ public:
       std::string vis_cur_flow_key;
       const auto vis_close_line = [&] { vis_cur_line = -1; };
 
-      // Selection layer state: content-stream (reading) order grouping.
+      // Selection layer state: reading-order grouping, in the open block's
+      // frame.
       bool sel_have_prev = false;
       double sel_prev_baseline = 0;
       double sel_prev_end = 0;
@@ -1420,10 +1422,16 @@ public:
       bool sel_prev_ends_space = false;
       bool sel_prev_was_matrix = false;
       std::int32_t sel_cur_line = -1;
-      /// `ox` where the open `.sr` run starts, to recompute its width on merge
+      /// origin the open `.sr` run starts at, to recompute its width on merge
       double sel_cur_run_start_ox = 0;
       /// font-size of the previous element, for its line's trailing space
       double sel_prev_font_size_pt = 0;
+      /// the open block's transform: its linear part identifies runs one CSS
+      /// matrix can place, its origin anchors the frame they flow in
+      util::math::Transform2D sel_block;
+      /// advance owed to the next run: whitespace no span could carry, plus a
+      /// gap no spacer took
+      double sel_pending_space = 0;
 
       for (const pdf::PageElement &element :
            page_elements(*page, stream, m_logger)) {
@@ -1537,28 +1545,65 @@ public:
         }
 
         // --- Selection layer -----------------------------------------------
-        // Matrix runs get their own single-run line block.
+        // A run is measured in the frame its block lays out in: page space for
+        // an axis-aligned block, the block's own space for a matrix one. Both
+        // put x along the writing line, so one set of tests serves both.
         if (!text.text.empty()) {
-          const double width_pt = round2(extent);
-          const double gap_pt = std::max(0.0, ox - sel_prev_end);
           const bool starts_space = text.text.front() == ' ';
           // A leading inferred space is dropped: the gap between runs is
           // covered by the spacer span, not by the run text.
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
-          const bool matrix_break = is_matrix || sel_prev_was_matrix;
-          bool new_sel_line = !sel_have_prev || matrix_break;
-          bool sel_gap = false;
-          if (sel_have_prev && sel_prev_font_pt > 0 && !new_sel_line) {
-            new_sel_line = starts_new_line(baseline, sel_prev_baseline, ox,
-                                           sel_prev_end, sel_prev_font_pt);
-            sel_gap = ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          const double tz = text.horizontal_scaling / 100.0;
+          // In the block's frame the unit is text space: `text.width` carries
+          // the horizontal scaling the CSS matrix applies again.
+          const double local_extent = tz != 0 ? text.width / tz : 0;
+          double sel_ox = is_matrix ? 0 : ox;
+          double sel_baseline = is_matrix ? 0 : baseline;
+          const double sel_extent = is_matrix ? local_extent : extent;
+          const double sel_font_pt = is_matrix ? text.size : font_pt;
+
+          bool sel_frame_kept =
+              sel_have_prev && !is_matrix && !sel_prev_was_matrix;
+          if (is_matrix && sel_cur_line >= 0 && sel_prev_was_matrix &&
+              same_linear(sel_block, m)) {
+            if (const std::optional<std::array<double, 2>> local =
+                    local_origin(sel_block, m)) {
+              sel_ox = (*local)[0];
+              sel_baseline = (*local)[1];
+              sel_frame_kept = true;
+            }
           }
-          // The extractor's leading space is the break; a block the matrix
-          // path opens is not.
-          const bool break_space = !matrix_break || starts_space;
+
+          const double width_pt = round2(sel_extent);
+          const double gap_pt = std::max(0.0, sel_ox - sel_prev_end);
+
+          bool new_sel_line = !sel_frame_kept;
+          bool sel_gap = false;
+          if (sel_frame_kept && sel_prev_font_pt > 0) {
+            new_sel_line =
+                starts_new_line(sel_baseline, sel_prev_baseline, sel_ox,
+                                sel_prev_end, sel_prev_font_pt);
+            sel_gap = sel_ox - sel_prev_end > 0.25 * sel_prev_font_pt;
+          }
+          // A block anchors its runs to one baseline, so a run a rise lifts
+          // off it — a superscript — needs its own, though it breaks nothing.
+          const bool baseline_shift =
+              is_matrix && sel_frame_kept && !new_sel_line &&
+              sel_prev_font_pt > 0 &&
+              std::abs(sel_baseline - sel_prev_baseline) >
+                  0.02 * sel_prev_font_pt;
+          new_sel_line = new_sel_line || baseline_shift;
+          // The extractor's leading space is the break; a block opened because
+          // the frames are not comparable is not.
+          const bool break_space =
+              (sel_frame_kept && !baseline_shift) || starts_space;
 
           if (new_sel_line) {
+            // The block starts here, so this run sits at its origin.
+            sel_ox = is_matrix ? 0 : ox;
+            sel_baseline = is_matrix ? 0 : baseline;
+            sel_block = m;
             // Close the previous line with a trailing space. `sg`, not `sr`:
             // it carries no PDF-derived width, just the space.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space &&
@@ -1575,23 +1620,31 @@ public:
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
+            // Nothing is owed at the origin — unless this run is whitespace,
+            // which emits no span to carry its advance.
+            sel_pending_space = core.empty() ? sel_extent : 0;
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
-              if (width_pt > 0 && !is_matrix) {
+              if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
-              sel_cur_run_start_ox = ox;
+              sel_cur_run_start_ox = sel_ox;
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
+            // The gap before this run, plus its own advance when it is only
+            // whitespace and emits no `.sr`. Dropping either shortens the line.
+            sel_pending_space += gap_pt + (core.empty() ? sel_extent : 0);
+            // One space character per run of whitespace; a second would be
+            // copied as one. The advance waits for the next `.sr` instead.
             if (!sel_prev_ends_space && !runs.empty()) {
               std::string gap_cls = "sg";
               add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
-              const double rounded_gap = round2(gap_pt);
+              const double rounded_gap = round2(sel_pending_space);
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", pt_decl("width", rounded_gap));
                 // Only a gap that still reads as a word space: a column of
@@ -1601,16 +1654,21 @@ public:
                 }
               }
               runs.push_back(SelRunOut{std::move(gap_cls), " "});
+              sel_pending_space = 0;
             }
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", font_size_pt));
-              if (width_pt > 0 && !is_matrix) {
+              if (const double owed = round2(sel_pending_space); owed > 0) {
+                add_class(cls, "ml", pt_decl("margin-left", owed));
+              }
+              sel_pending_space = 0;
+              if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
-              sel_cur_run_start_ox = ox;
+              sel_cur_run_start_ox = sel_ox;
             }
           } else {
             // Tight continuation on the same baseline: merge into the previous
@@ -1621,21 +1679,19 @@ public:
                 page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
               runs.back().text += escape_markup(text.text);
-              if (!is_matrix) {
-                strip_width_class(runs.back().classes);
-                const double merged_width_pt =
-                    round2(ox + extent - sel_cur_run_start_ox);
-                if (merged_width_pt > 0) {
-                  add_class(runs.back().classes, "w",
-                            pt_decl("width", merged_width_pt));
-                }
+              strip_width_class(runs.back().classes);
+              const double merged_width_pt =
+                  round2(sel_ox + sel_extent - sel_cur_run_start_ox);
+              if (merged_width_pt > 0) {
+                add_class(runs.back().classes, "w",
+                          pt_decl("width", merged_width_pt));
               }
             }
           }
 
-          sel_prev_baseline = baseline;
-          sel_prev_end = ox + extent;
-          sel_prev_font_pt = font_pt;
+          sel_prev_baseline = sel_baseline;
+          sel_prev_end = sel_ox + sel_extent;
+          sel_prev_font_pt = sel_font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
           sel_prev_font_size_pt = font_size_pt;
@@ -1857,12 +1913,13 @@ public:
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
     const auto font_family = [&](pdf::Font *font) {
-      return intern_font(family_index, family_count, font, [&](std::uint32_t) {
-        accepted_fonts.push_back(font);
-        glyph_freq.emplace_back();
-        used_unicode.emplace_back();
-        font_class_used.push_back({false, false});
-      });
+      return intern_font(family_index, family_count, font, m_logger,
+                         [&](std::uint32_t) {
+                           accepted_fonts.push_back(font);
+                           glyph_freq.emplace_back();
+                           used_unicode.emplace_back();
+                           font_class_used.push_back({false, false});
+                         });
     };
 
     AtomicStyles styles;
@@ -2265,6 +2322,28 @@ public:
            ox < prev_end - 0.5 * prev_font_pt;
   }
 
+  /// Whether two runs share a linear part, so one line block's CSS matrix
+  /// places both.
+  static bool same_linear(const util::math::Transform2D &l,
+                          const util::math::Transform2D &r) {
+    return l.a == r.a && l.b == r.b && l.c == r.c && l.d == r.d;
+  }
+
+  /// `m`'s origin along `block`'s own axes, x along the writing line. Empty
+  /// for a singular linear part, which spans no frame.
+  static std::optional<std::array<double, 2>>
+  local_origin(const util::math::Transform2D &block,
+               const util::math::Transform2D &m) {
+    const double det = block.a * block.d - block.b * block.c;
+    if (det == 0) {
+      return std::nullopt;
+    }
+    const double dx = m.e - block.e;
+    const double dy = m.f - block.f;
+    return std::array<double, 2>{(dx * block.d - dy * block.c) / det,
+                                 (-dx * block.b + dy * block.a) / det};
+  }
+
   /// Per-run geometry from a `TextElement` and the page's `to_box`. Identical
   /// in every text mode, and kept in one place so no call site can drift.
   struct RunGeometry {
@@ -2413,13 +2492,13 @@ public:
   template <typename OnAccept>
   static std::uint32_t intern_font(
       std::unordered_map<const pdf::Font *, std::uint32_t> &family_index,
-      std::uint32_t &family_count, const pdf::Font *font,
+      std::uint32_t &family_count, const pdf::Font *font, const Logger &logger,
       OnAccept &&on_accept) {
     const auto [it, inserted] = family_index.try_emplace(font, 0);
     if (!inserted) {
       return it->second;
     }
-    if (!font_is_usable(*font)) {
+    if (!font_is_usable(*font, logger)) {
       return 0;
     }
     const std::uint32_t index = ++family_count;
@@ -2562,15 +2641,26 @@ public:
   }
 
   /// Whether `font`'s embedded program re-encodes without throwing. Probes the
-  /// real encode path so failures surface here, not in the post-pass.
-  static bool font_is_usable(const pdf::Font &font) {
+  /// real encode path so failures surface here, not in the post-pass. Failing
+  /// swaps in a substitute, which the page shows, so say so.
+  static bool font_is_usable(const pdf::Font &font, const Logger &logger) {
+    const auto dropped = [&](const std::string &why) {
+      ODR_WARNING(logger, "pdf: rendering '"
+                              << font.embedded_font->name()
+                              << "' with a substitute, its embedded program "
+                                 "does not re-encode: "
+                              << why);
+      return false;
+    };
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
       try {
         (void)write_sfnt_pua(*sfnt, {});
         return true;
+      } catch (const std::exception &e) {
+        return dropped(e.what());
       } catch (...) {
-        return false;
+        return dropped("sfnt re-encode failed");
       }
     }
     if (const auto cff =
@@ -2578,8 +2668,10 @@ public:
       try {
         (void)font::cff::wrap_to_otf(*cff);
         return true;
+      } catch (const std::exception &e) {
+        return dropped(e.what());
       } catch (...) {
-        return false;
+        return dropped("cff wrap failed");
       }
     }
     return false;

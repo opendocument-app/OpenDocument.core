@@ -115,6 +115,11 @@ bool ObjectParser::is_whitespace(const char c) {
          c == ' ';
 }
 
+bool ObjectParser::is_delimiter(const char c) {
+  return c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' ||
+         c == '{' || c == '}' || c == '/' || c == '%';
+}
+
 bool ObjectParser::peek_whitespace() {
   const int_type c = geti();
   return c != eof && is_whitespace(static_cast<char_type>(c));
