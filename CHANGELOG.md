@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.10.0 - 2026-08-20
+
 - Html views take a zoom from their host: `odr.getZoom()`, `setZoom(value,
   focus)`, `adjustZoom()`, `resetZoom()`, `isZoomFitted()`, `onZoomChange`.
   `HtmlConfig::initial_zoom` sets what they open at, script or no script.
