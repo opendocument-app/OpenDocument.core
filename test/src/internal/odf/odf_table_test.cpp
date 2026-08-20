@@ -40,8 +40,8 @@ pugi::xml_node parse_table(pugi::xml_document &document,
   return document.child("table:table");
 }
 
-/// An odf package is a zip with a mimetype and a `content.xml`; nothing else is
-/// needed to open one, which keeps the input to these tests a string.
+/// An odf package is a zip with a mimetype and a `content.xml`, which keeps
+/// the input to these tests a string.
 std::string write_odf(const std::string &name, const std::string &mimetype,
                       const std::string &body) {
   const std::string content =
@@ -78,8 +78,7 @@ void collect_text(const Element element, std::vector<std::string> &out) {
   }
 }
 
-/// An `Element` points into the document rather than holding it, so the
-/// document has to outlive the walk.
+/// An `Element` points into the document, which has to outlive the walk.
 std::vector<std::string> text_of(const Document &document) {
   std::vector<std::string> result;
   collect_text(document.root_element(), result);

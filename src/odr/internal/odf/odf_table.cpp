@@ -23,8 +23,7 @@ constexpr std::array column_group_names{
     std::string_view("table:table-column-group"),
 };
 
-/// A group carries the visibility of what it holds ([ODF 1.2] 19.766); a
-/// collapsed one is not shown, and neither are the groups under it.
+/// A group carries the visibility of what it holds ([ODF 1.2] 19.766).
 bool is_displayed(const pugi::xml_node group) {
   const pugi::xml_attribute display = group.attribute("table:display");
   return !display || display.as_bool(true);
