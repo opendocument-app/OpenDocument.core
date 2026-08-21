@@ -5,6 +5,7 @@
 #include <odr/html.hpp>
 #include <odr/style.hpp>
 
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_style.hpp>
@@ -498,9 +499,11 @@ void html::translate_image(const Element &element, const WritingState &state) {
   odr::HtmlResource resource;
   HtmlResourceLocation resource_location;
   if (image.is_internal()) {
-    resource =
-        HtmlResource::create(HtmlResourceType::image, "image/jpg", image.href(),
-                             image.href(), image.file(), false, false, true);
+    // the location is resolved against the document, so an engine naming the
+    // image by its absolute path in the container has to lose the root
+    const std::string path = Path(image.href()).make_relative().string();
+    resource = HtmlResource::create(HtmlResourceType::image, "image/jpg", path,
+                                    path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
   } else {
