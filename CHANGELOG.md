@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A linked image in a docx or xlsx (`embed_images = false`) is named relative
+  to the document, like odf, so a host serving the html under a mount point
+  resolves it.
+
 ## v6.10.0 - 2026-08-20
 
 - Html views take a zoom from their host: `odr.getZoom()`, `setZoom(value,

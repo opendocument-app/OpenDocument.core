@@ -7,6 +7,8 @@
 
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/common/path.hpp>
+
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
 #include <test_util.hpp>
@@ -62,6 +64,52 @@ TEST(html, linked_resources_are_served) {
   check(
       DecodedFile(TestData::test_file_path("odr-public/pdf/empty.pdf"), logger),
       "document.html");
+}
+
+// Same for a document resource, which unlike a shipped one is named by the
+// engine: the reference output embeds every image, so nothing else renders the
+// linked form (opendocument-app/OpenDocument.droid#551).
+TEST(html, linked_images_are_served) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const std::string cache_path =
+      (std::filesystem::current_path() / "images").string();
+
+  const auto check = [&](const std::string &path) {
+    const DecodedFile file(TestData::test_file_path(path), logger);
+
+    HtmlConfig config;
+    config.embed_images = false;
+
+    const HtmlService service = html::translate(file, cache_path, config);
+
+    std::ostringstream out;
+    const HtmlResources resources = service.list_views().at(0).write_html(out);
+
+    std::size_t linked = 0;
+    for (const auto &[resource, location] : resources) {
+      if (resource.type() != HtmlResourceType::image ||
+          !resource.is_accessible()) {
+        continue;
+      }
+      ASSERT_TRUE(location.has_value()) << resource.name();
+      ++linked;
+
+      // an absolute location would resolve against the server root rather than
+      // against the document
+      EXPECT_TRUE(Path(*location).relative()) << *location;
+      EXPECT_TRUE(service.exists(*location)) << *location;
+
+      std::ostringstream served;
+      service.write(*location, served);
+      EXPECT_FALSE(served.str().empty()) << *location;
+    }
+    EXPECT_GT(linked, 0) << path;
+  };
+
+  check("odr-public/odt/image-text-wrap.odt");
+  check("odr-public/docx/file-sample_100kB.docx");
+  check("odr-public/xlsx/sample.xlsx");
 }
 
 // The one archive the reference-output suite renders has no directory in it.
