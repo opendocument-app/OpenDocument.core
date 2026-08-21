@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.10.1 - 2026-08-21
+
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative
   to the document, like odf, so a host serving the html under a mount point
   resolves it.
