@@ -960,13 +960,13 @@ public:
   }
   [[nodiscard]] std::string
   image_href(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute href = node.attribute("xlink:href")) {
-      return href.value();
-    }
     // an embedded image has no path of its own, and the renderer names the
-    // resource it writes after this
-    return "image" + std::to_string(element_id);
+    // resource it writes after this - an `xlink:href` next to the bytes does
+    // not name them, and must not reach the renderer as a path
+    if (image_data(element_id)) {
+      return "image" + std::to_string(element_id);
+    }
+    return get_node(element_id).attribute("xlink:href").value();
   }
 
 private:

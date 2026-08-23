@@ -20,6 +20,8 @@ The release run heads these entries with the version and opens a fresh
   view: `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like
   their packaged counterparts. Their images ride in the markup, and an
   `office:binary-data` image now decodes in a package too.
+- `Document::as_filesystem` answers with an empty filesystem for a document
+  that is one file rather than a package.
 
 ## v6.10.1 - 2026-08-21
 

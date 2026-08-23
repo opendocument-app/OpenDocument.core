@@ -2,13 +2,24 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
+#include <odr/html.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <memory>
+#include <sstream>
 #include <string>
+#include <vector>
 
 using namespace odr;
 
@@ -45,6 +56,28 @@ Element first_of_type(const Element root, const ElementType type) {
 constexpr const char *png_base64 =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
     "hKmMIQAAAABJRU5ErkJggg==";
+
+/// A packaged odt holding @p body, written to @p name in the working
+/// directory - the same markup a flat document carries, minus the flatness.
+std::string packaged_text(const std::string &name, const std::string &body) {
+  const std::string content =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document-content><office:body><office:text>)" +
+      body + R"(</office:text></office:body></office:document-content>)";
+
+  odr::internal::zip::ZipArchive zip;
+  zip.insert_file(std::end(zip), odr::internal::RelPath("mimetype"),
+                  std::make_shared<odr::internal::MemoryFile>(
+                      "application/vnd.oasis.opendocument.text"),
+                  0);
+  zip.insert_file(std::end(zip), odr::internal::RelPath("content.xml"),
+                  std::make_shared<odr::internal::MemoryFile>(content));
+
+  const std::string path = (std::filesystem::current_path() / name).string();
+  std::ofstream out(path, std::ios::binary);
+  zip.save(out);
+  return path;
+}
 
 } // namespace
 
@@ -194,10 +227,213 @@ TEST(FlatOpenDocumentFile, a_linked_image_is_not_internal) {
                     R"(</draw:frame></text:p>)"))
           .document();
 
-  const Image image =
-      first_of_type(document.root_element(), ElementType::image).as_image();
+  const Element element =
+      first_of_type(document.root_element(), ElementType::image);
+  ASSERT_TRUE(element);
+
+  const Image image = element.as_image();
   EXPECT_FALSE(image.is_internal());
   EXPECT_EQ(image.href(), "https://example.org/a.png");
+}
+
+/// The counts the meta block carries are what a caller reads off `file_meta`
+/// without decoding the body.
+TEST(FlatOpenDocumentFile, the_statistics_give_the_entry_count) {
+  const auto meta = [](const std::string &statistic) {
+    return "<office:meta><meta:document-statistic " + statistic +
+           "/></office:meta>";
+  };
+
+  const DecodedFile text(File::from_memory(
+      flat_document("application/vnd.oasis.opendocument.text", "<office:text/>",
+                    meta(R"(meta:page-count="7")"))));
+  EXPECT_EQ(text.file_meta().entry_count, 7);
+
+  const DecodedFile spreadsheet(File::from_memory(
+      flat_document("application/vnd.oasis.opendocument.spreadsheet",
+                    "<office:spreadsheet/>", meta(R"(meta:table-count="3")"))));
+  EXPECT_EQ(spreadsheet.file_meta().entry_count, 3);
+
+  // the statistic a text document does not count
+  const DecodedFile mismatched(File::from_memory(
+      flat_document("application/vnd.oasis.opendocument.text", "<office:text/>",
+                    meta(R"(meta:table-count="3")"))));
+  EXPECT_FALSE(mismatched.file_meta().entry_count.has_value());
+}
+
+/// `list_file_types` reports every reading of the bytes, and a flat document
+/// is well formed xml whichever way it is read.
+TEST(FlatOpenDocumentFile, it_is_listed_next_to_the_source_view) {
+  const std::vector<FileType> types = DecodedFile::list_file_types(
+      File::from_memory(flat_text("<text:p>Hello</text:p>")));
+
+  EXPECT_NE(std::ranges::find(types, FileType::xml), std::end(types));
+  EXPECT_NE(std::ranges::find(types, FileType::opendocument_text),
+            std::end(types));
+}
+
+/// There is no package behind a flat document; asking for one answers empty
+/// rather than throwing.
+TEST(FlatOpenDocumentFile, it_has_an_empty_filesystem) {
+  const Document document =
+      DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>")).document();
+
+  const Filesystem filesystem = document.as_filesystem();
+  EXPECT_FALSE(filesystem.exists("/content.xml"));
+  EXPECT_TRUE(filesystem.file_walker("/").end());
+}
+
+/// The renderer names the resource it writes after the href, so two embedded
+/// images must not answer with the same one.
+TEST(FlatOpenDocumentFile, embedded_images_get_distinct_hrefs) {
+  const std::string image = std::string("<draw:frame><draw:image>"
+                                        "<office:binary-data>") +
+                            png_base64 +
+                            "</office:binary-data></draw:image></draw:frame>";
+  const Document document =
+      DocumentFile::from_memory(
+          flat_text("<text:p>" + image + image + "</text:p>"))
+          .document();
+
+  std::vector<std::string> hrefs;
+  for (const Element child :
+       first_of_type(document.root_element(), ElementType::paragraph)
+           .children()) {
+    if (const Element image_element =
+            first_of_type(child, ElementType::image)) {
+      hrefs.push_back(image_element.as_image().href());
+    }
+  }
+
+  ASSERT_EQ(hrefs.size(), 2);
+  EXPECT_NE(hrefs[0], hrefs[1]);
+}
+
+/// The bytes are in the markup, so an `xlink:href` beside them names no file
+/// of ours - and must not reach the renderer, which writes a resource to the
+/// path it gets.
+TEST(FlatOpenDocumentFile,
+     an_embedded_image_does_not_take_its_href_from_the_markup) {
+  const Document document =
+      DocumentFile::from_memory(
+          flat_text(std::string(R"(<text:p><draw:frame>)")
+                        .append(R"(<draw:image xlink:href="../../evil.html">)")
+                        .append("<office:binary-data>")
+                        .append(png_base64)
+                        .append("</office:binary-data></draw:image>")
+                        .append("</draw:frame></text:p>")))
+          .document();
+
+  const Element element =
+      first_of_type(document.root_element(), ElementType::image);
+  ASSERT_TRUE(element);
+
+  const Image image = element.as_image();
+  EXPECT_TRUE(image.is_internal());
+  EXPECT_EQ(image.href().find(".."), std::string::npos);
+  EXPECT_TRUE(internal::Path(image.href()).relative());
+}
+
+/// `office:binary-data` is legal in a package too, and is read there now.
+TEST(FlatOpenDocumentFile, a_packaged_embedded_image_decodes_as_well) {
+  const std::string path = packaged_text(
+      "packaged_binary_data.odt",
+      std::string("<text:p><draw:frame><draw:image><office:binary-data>")
+          .append(png_base64)
+          .append("</office:binary-data></draw:image></draw:frame></text:p>"));
+
+  const Document document = DocumentFile(path).document();
+
+  const Element element =
+      first_of_type(document.root_element(), ElementType::image);
+  ASSERT_TRUE(element);
+
+  const Image image = element.as_image();
+  EXPECT_TRUE(image.is_internal());
+
+  const std::optional<File> file = image.file();
+  ASSERT_TRUE(file.has_value());
+  EXPECT_EQ(DecodedFile(*file).file_type(),
+            FileType::portable_network_graphics);
+}
+
+/// The markup bytes are the image; an `xlink:href` naming a file in the
+/// package does not override them.
+TEST(FlatOpenDocumentFile, packaged_markup_bytes_beat_the_href) {
+  const std::string path = packaged_text(
+      "packaged_binary_data_and_href.odt",
+      std::string(R"(<text:p><draw:frame>)")
+          .append(R"(<draw:image xlink:href="Pictures/absent.png">)")
+          .append("<office:binary-data>")
+          .append(png_base64)
+          .append("</office:binary-data></draw:image>")
+          .append("</draw:frame></text:p>"));
+
+  // the element holds a bare pointer into the document, so the document has
+  // to outlive it
+  const Document document = DocumentFile(path).document();
+
+  const Element element =
+      first_of_type(document.root_element(), ElementType::image);
+  ASSERT_TRUE(element);
+
+  const Image image = element.as_image();
+  EXPECT_TRUE(image.is_internal());
+  EXPECT_NE(image.href(), "Pictures/absent.png");
+  ASSERT_TRUE(image.file().has_value());
+}
+
+/// The one thing the change promises a consumer: a flat document renders.
+TEST(FlatOpenDocumentFile, it_renders_its_embedded_image_embedded_or_linked) {
+  const std::string source =
+      flat_text(std::string("<text:p><draw:frame><draw:image>"
+                            "<office:binary-data>")
+                    .append(png_base64)
+                    .append("</office:binary-data></draw:image>"
+                            "</draw:frame></text:p>"));
+
+  {
+    HtmlConfig config(
+        (std::filesystem::current_path() / "flat_embed").string());
+    config.embed_images = true;
+
+    std::ostringstream out;
+    html::translate(DecodedFile(File::from_memory(source)), config)
+        .list_views()
+        .at(0)
+        .write_html(out);
+
+    EXPECT_NE(out.str().find("data:image/png;base64,"), std::string::npos);
+  }
+
+  {
+    HtmlConfig config((std::filesystem::current_path() / "flat_link").string());
+    config.embed_images = false;
+
+    const HtmlService service =
+        html::translate(DecodedFile(File::from_memory(source)), config);
+
+    std::ostringstream out;
+    const HtmlResources resources = service.list_views().at(0).write_html(out);
+
+    std::size_t images = 0;
+    for (const auto &[resource, location] : resources) {
+      if (resource.type() != HtmlResourceType::image ||
+          !resource.is_accessible()) {
+        continue;
+      }
+      ++images;
+
+      ASSERT_TRUE(location.has_value()) << resource.name();
+      EXPECT_TRUE(internal::Path(*location).relative()) << *location;
+      EXPECT_TRUE(service.exists(*location)) << *location;
+
+      std::ostringstream served;
+      service.write(*location, served);
+      EXPECT_FALSE(served.str().empty()) << *location;
+    }
+    EXPECT_EQ(images, 1);
+  }
 }
 
 TEST(FlatOpenDocumentFile, it_saves_back_as_one_xml_file) {

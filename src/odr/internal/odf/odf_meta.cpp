@@ -89,6 +89,22 @@ std::string_view flat_mimetype(const FileType file_type) {
   }
 }
 
+/// `meta:document-statistic` counts what the document type makes countable.
+void read_entry_count(const pugi::xml_node statistics, FileMeta &result) {
+  const char *attribute = nullptr;
+  if (result.type == FileType::opendocument_text) {
+    attribute = "meta:page-count";
+  } else if (result.type == FileType::opendocument_spreadsheet) {
+    attribute = "meta:table-count";
+  } else {
+    return;
+  }
+
+  if (const pugi::xml_attribute count = statistics.attribute(attribute)) {
+    result.entry_count = count.as_uint();
+  }
+}
+
 } // namespace
 
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
@@ -132,15 +148,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
     }
   }
 
-  if (result.type == FileType::opendocument_text) {
-    result.document_type = DocumentType::text;
-  } else if (result.type == FileType::opendocument_presentation) {
-    result.document_type = DocumentType::presentation;
-  } else if (result.type == FileType::opendocument_spreadsheet) {
-    result.document_type = DocumentType::spreadsheet;
-  } else if (result.type == FileType::opendocument_graphics) {
-    result.document_type = DocumentType::drawing;
-  }
+  result.document_type = document_type_by_file_type(result.type);
 
   if (result.password_encrypted == decrypted &&
       filesystem.is_file(AbsPath("/meta.xml"))) {
@@ -151,17 +159,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                                           .child("office:meta")
                                           .child("meta:document-statistic");
 
-    if (result.type == FileType::opendocument_text) {
-      if (const pugi::xml_attribute page_count =
-              statistics.attribute("meta:page-count")) {
-        result.entry_count = page_count.as_uint();
-      }
-    } else if (result.type == FileType::opendocument_spreadsheet) {
-      if (const pugi::xml_attribute table_count =
-              statistics.attribute("meta:table-count")) {
-        result.entry_count = table_count.as_uint();
-      }
-    }
+    read_entry_count(statistics, result);
   }
 
   return result;
@@ -181,19 +179,8 @@ FileMeta parse_flat_file_meta(const pugi::xml_node root) {
   result.mimetype = flat_mimetype(result.type);
   result.document_type = document_type_by_file_type(result.type);
 
-  const pugi::xml_node statistics =
-      root.child("office:meta").child("meta:document-statistic");
-  if (result.type == FileType::opendocument_text) {
-    if (const pugi::xml_attribute page_count =
-            statistics.attribute("meta:page-count")) {
-      result.entry_count = page_count.as_uint();
-    }
-  } else if (result.type == FileType::opendocument_spreadsheet) {
-    if (const pugi::xml_attribute table_count =
-            statistics.attribute("meta:table-count")) {
-      result.entry_count = table_count.as_uint();
-    }
-  }
+  read_entry_count(root.child("office:meta").child("meta:document-statistic"),
+                   result);
 
   return result;
 }

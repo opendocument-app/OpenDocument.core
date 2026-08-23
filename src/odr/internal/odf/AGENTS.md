@@ -74,7 +74,9 @@ margins are currently **dropped** (open work).
 between them, so `Document`'s flat constructor hands that root in as *both*
 roots and everything downstream is shared. Two things follow from having no
 filesystem: images are the `office:binary-data` ones, base64 decoded lazily by
-the adapter (legal in a package too, and now read there); and `save`
+the adapter (legal in a package too, and now read there) and named after their
+element id rather than by an `xlink:href` that names no file of ours — the
+renderer writes a resource to the path it is handed; and `save`
 re-serialises the one tree instead of rebuilding a zip. Recognition needs the
 xml parse `XmlFile` already did — `office:document` plus an `office:mimetype`
 we know — so `odf_flat_file.cpp` reads the root off that tree and reparses with
