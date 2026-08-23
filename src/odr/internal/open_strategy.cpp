@@ -47,6 +47,14 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
   };
 }
 
+/// Whether @p file is the ooxml that was asked for. An encrypted one names no
+/// inner type until it is decrypted, so it answers for whichever was asked.
+bool is_the_requested_ooxml(const ooxml::OfficeOpenXmlFile &file,
+                            const FileType as) {
+  return file.file_type() == as ||
+         file.file_type() == FileType::office_open_xml_encrypted;
+}
+
 /// Decodes @p file as exactly @p as, or throws the format's "not a ..."
 /// exception (@ref UnsupportedFileType for a type we cannot decode at all).
 std::unique_ptr<abstract::DecodedFile>
@@ -60,7 +68,11 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      return std::make_unique<odf::OpenDocumentFile>(filesystem);
+      auto odf_file = std::make_unique<odf::OpenDocumentFile>(filesystem);
+      if (odf_file->file_type() == as) {
+        return odf_file;
+      }
+      ODR_VERBOSE(logger, "odf is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as odf");
     }
@@ -87,14 +99,22 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      if (is_the_requested_ooxml(*ooxml_file, as)) {
+        return ooxml_file;
+      }
+      ODR_VERBOSE(logger, "ooxml zip is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml zip");
     }
     try {
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      if (is_the_requested_ooxml(*ooxml_file, as)) {
+        return ooxml_file;
+      }
+      ODR_VERBOSE(logger, "ooxml cfb is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml cfb");
     }
@@ -108,7 +128,12 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
-      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+      auto oldms_file =
+          std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+      if (oldms_file->file_type() == as) {
+        return oldms_file;
+      }
+      ODR_VERBOSE(logger, "legacy ms is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as legacy ms");
     }

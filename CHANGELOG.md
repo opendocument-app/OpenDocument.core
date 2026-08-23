@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `open(file, as)` no longer returns a container holding another document type
+  as the type that was asked for. An encrypted ooxml still opens as whichever
+  was asked - it names no inner type until it is decrypted.
 - `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like their
   packaged counterparts instead of decoding as an xml source view. An
   `office:binary-data` image now decodes in a package too.
