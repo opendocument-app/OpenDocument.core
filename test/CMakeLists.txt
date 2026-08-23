@@ -59,6 +59,7 @@ add_executable(odr_test
         "src/internal/svg/svg_file_test.cpp"
         "src/internal/xml/xml_file_test.cpp"
 
+        "src/internal/iwork/iwork_archive_test.cpp"
         "src/internal/iwork/iwork_protobuf_test.cpp"
         "src/internal/iwork/iwork_snappy_test.cpp"
 
