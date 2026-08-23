@@ -92,6 +92,10 @@ ODR_SAME_ENUM(ODRFileTypeWindowsMetafile, odr::FileType::windows_metafile);
 ODR_SAME_ENUM(ODRFileTypeEnhancedMetafile, odr::FileType::enhanced_metafile);
 ODR_SAME_ENUM(ODRFileTypeXml, odr::FileType::xml);
 
+ODR_SAME_ENUM(ODRFileTypeIworkPages, odr::FileType::iwork_pages);
+ODR_SAME_ENUM(ODRFileTypeIworkNumbers, odr::FileType::iwork_numbers);
+ODR_SAME_ENUM(ODRFileTypeIworkKeynote, odr::FileType::iwork_keynote);
+
 ODR_SAME_ENUM(ODRFileCategoryUnknown, odr::FileCategory::unknown);
 ODR_SAME_ENUM(ODRFileCategoryText, odr::FileCategory::text);
 ODR_SAME_ENUM(ODRFileCategoryImage, odr::FileCategory::image);

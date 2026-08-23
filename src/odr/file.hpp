@@ -149,6 +149,14 @@ enum class FileType {
   // `[text_file, xml, scalable_vector_graphics]`.
   // https://en.wikipedia.org/wiki/XML
   xml,
+
+  // https://en.wikipedia.org/wiki/IWork
+  iwork_pages,
+  // Classification only - `.numbers` and `.key` sit in the same package the
+  // pages engine reads, but which app wrote one is read off its root archive
+  // and no fixture pins those two, so nothing detects or decodes them yet.
+  iwork_numbers,
+  iwork_keynote,
 };
 
 /// @brief Collection of file categories.

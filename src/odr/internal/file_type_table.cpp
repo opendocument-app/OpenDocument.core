@@ -250,6 +250,24 @@ constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
 // `decrypt` on an OOXML document type means a password-protected package,
 // detected as `office_open_xml_encrypted` and decrypting into the type named
 // here. ODF files decrypt in place and keep their type.
+constexpr std::array pages_extensions{"pages"sv};
+constexpr std::array pages_mimetypes{
+    "application/vnd.apple.pages"sv,
+    "application/x-iwork-pages-sffpages"sv,
+};
+
+constexpr std::array numbers_extensions{"numbers"sv};
+constexpr std::array numbers_mimetypes{
+    "application/vnd.apple.numbers"sv,
+    "application/x-iwork-numbers-sffnumbers"sv,
+};
+
+constexpr std::array keynote_extensions{"key"sv};
+constexpr std::array keynote_mimetypes{
+    "application/vnd.apple.keynote"sv,
+    "application/x-iwork-keynote-sffkey"sv,
+};
+
 constexpr std::array table{
     Row{FileType::unknown,
         "unknown"sv,
@@ -755,6 +773,30 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
+
+    // Classified so a caller can name the three and hand their MIME types to a
+    // file picker; no engine reads one yet.
+    Row{FileType::iwork_pages,
+        "pages"sv,
+        pages_extensions,
+        pages_mimetypes,
+        FileCategory::document,
+        DocumentType::text,
+        {}},
+    Row{FileType::iwork_numbers,
+        "numbers"sv,
+        numbers_extensions,
+        numbers_mimetypes,
+        FileCategory::document,
+        DocumentType::spreadsheet,
+        {}},
+    Row{FileType::iwork_keynote,
+        "key"sv,
+        keynote_extensions,
+        keynote_mimetypes,
+        FileCategory::document,
+        DocumentType::presentation,
+        {}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.
