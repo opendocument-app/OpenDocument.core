@@ -68,6 +68,8 @@ NoFontFile::NoFontFile() : Exception("not a font file") {}
 NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
     : Exception("not a legacy microsoft office file") {}
 
+NoIworkFile::NoIworkFile() : Exception("not an iwork file") {}
+
 NoXmlFile::NoXmlFile() : Exception("not an xml file") {}
 
 NoSvgFile::NoSvgFile() : Exception("not an svg file") {}

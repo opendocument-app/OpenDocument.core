@@ -152,6 +152,10 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/xml_file.cpp"
 
         "src/odr/internal/iwork/iwork_archive.cpp"
+        "src/odr/internal/iwork/iwork_document.cpp"
+        "src/odr/internal/iwork/iwork_element_registry.cpp"
+        "src/odr/internal/iwork/iwork_file.cpp"
+        "src/odr/internal/iwork/iwork_parser.cpp"
         "src/odr/internal/iwork/iwork_protobuf.cpp"
         "src/odr/internal/iwork/iwork_snappy.cpp"
 

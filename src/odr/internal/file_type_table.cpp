@@ -774,15 +774,18 @@ constexpr std::array table{
          .translate_html = true,
          .color_scheme = true}},
 
-    // Classified so a caller can name the three and hand their MIME types to a
-    // file picker; no engine reads one yet.
     Row{FileType::iwork_pages,
         "pages"sv,
         pages_extensions,
         pages_mimetypes,
         FileCategory::document,
         DocumentType::text,
-        {}},
+        {.detect_by_content = true,
+         .open = true,
+         .translate_html = true,
+         .color_scheme = true}},
+    // Classified so a caller can name these two and hand their MIME types to a
+    // file picker; no engine reads either yet.
     Row{FileType::iwork_numbers,
         "numbers"sv,
         numbers_extensions,

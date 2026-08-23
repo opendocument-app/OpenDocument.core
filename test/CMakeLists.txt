@@ -62,6 +62,7 @@ add_executable(odr_test
         "src/internal/iwork/iwork_archive_test.cpp"
         "src/internal/iwork/iwork_protobuf_test.cpp"
         "src/internal/iwork/iwork_snappy_test.cpp"
+        "src/internal/iwork/pages_test.cpp"
 
         "src/internal/odf/odf_table_test.cpp"
 

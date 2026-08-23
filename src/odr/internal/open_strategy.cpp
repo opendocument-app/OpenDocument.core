@@ -12,6 +12,7 @@
 #include <odr/internal/common/media_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/font/font_file.hpp>
+#include <odr/internal/iwork/iwork_file.hpp>
 #include <odr/internal/json/json_file.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
@@ -64,6 +65,18 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       ODR_VERBOSE(logger, "failed to open as odf");
     }
     throw NoOpenDocumentFile();
+  }
+
+  if (as == FileType::iwork_pages) {
+    ODR_VERBOSE(logger, "open as iwork");
+    try {
+      auto zip_file = std::make_unique<zip::ZipFile>(file);
+      auto filesystem = zip_file->archive()->as_filesystem();
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
+    }
+    throw NoIworkFile();
   }
 
   if (as == FileType::office_open_xml_document ||
@@ -258,6 +271,13 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as ooxml");
       }
+
+      try {
+        ODR_VERBOSE(logger, "try open as iwork");
+        result.push_back(iwork::IworkFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as iwork");
+      }
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as zip");
     }
@@ -365,6 +385,13 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
+    }
+
+    try {
+      ODR_VERBOSE(logger, "try open as iwork");
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
     }
 
     return zip_file;
@@ -544,6 +571,13 @@ open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
+    }
+
+    try {
+      ODR_VERBOSE(logger, "try open as iwork");
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
     }
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
