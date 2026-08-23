@@ -151,6 +151,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/text_file.cpp"
         "src/odr/internal/html/xml_file.cpp"
 
+        "src/odr/internal/iwork/iwork_protobuf.cpp"
         "src/odr/internal/iwork/iwork_snappy.cpp"
 
         "src/odr/internal/json/json_file.cpp"
