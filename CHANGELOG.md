@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Apple iWork: a `.pages` file opens as a text document and renders its body
+  text, instead of coming back as the zip it is made of. Styles, page geometry,
+  images and tables are not read yet. `.numbers` and `.key` are named —
+  `FileType::iwork_numbers`, `FileType::iwork_keynote`, their extensions and
+  MIME types — but there is no decoder behind either.
+
 ## v6.10.1 - 2026-08-21
 
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative
