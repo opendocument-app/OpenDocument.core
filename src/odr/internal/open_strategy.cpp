@@ -14,6 +14,7 @@
 #include <odr/internal/font/font_file.hpp>
 #include <odr/internal/json/json_file.hpp>
 #include <odr/internal/magic.hpp>
+#include <odr/internal/markdown/markdown_file.hpp>
 #include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
@@ -186,6 +187,13 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       ODR_VERBOSE(logger, "failed to open as json");
     }
     throw NoJsonFile();
+  }
+
+  if (as == FileType::markdown) {
+    ODR_VERBOSE(logger, "open as markdown");
+    // Nothing rejects: md4c is total, so there is no detection to fail here.
+    auto text = std::make_shared<text::TextFile>(file);
+    return std::make_unique<markdown::MarkdownFile>(std::move(text));
   }
 
   if (as == FileType::xml) {

@@ -48,7 +48,6 @@
 
 ### New format support
 
-- markdown (candidates: [md4c](https://github.com/mity/md4c), [cmark](https://github.com/commonmark/cmark))
 - xml
 - json
 - csv

@@ -13,6 +13,8 @@ C++ library to visualize files, especially documents, in HTML.
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
 - txt
 - json
+- md (Markdown — CommonMark plus the GitHub extensions; never detected from its
+  bytes, so open it as `FileType::markdown` explicitly)
 - [zip](https://github.com/opendocument-app/OpenDocument.core/issues/109)
 - [cfb](https://github.com/opendocument-app/OpenDocument.core/issues/110) (Microsoft Compound File Binary File Format)
 - ttf / otf (font specimen pages)
@@ -30,7 +32,6 @@ decoder, and opening one throws:
 
 - rtf
 - wpd (WordPerfect)
-- md (Markdown)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
 

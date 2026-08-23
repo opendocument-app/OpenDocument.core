@@ -16,6 +16,20 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `FileType::markdown` is reclassified from `FileCategory::text` to
+  `FileCategory::document` with `DocumentType::text`: `is_document_file()`
+  answers for it and `is_text_file()` no longer does, and
+  `file_category_by_file_type` says `document`. The row was
+  classification-only before, declaring no capabilities at all, so nothing
+  could hold a decoded markdown file to be broken.
+- A markdown file opens as a text document — headings, paragraphs, lists,
+  block quotes, code blocks, emphasis, links, and GFM's tables, strikethrough
+  and task lists — and renders to html like any other document. CommonMark plus
+  the GitHub extensions, parsed with md4c (a new dependency). Raw html, images
+  and horizontal rules are not modelled yet.
+  Markdown has no signature, so it is never detected by content: open it as
+  `FileType::markdown` explicitly, or a `.md` still comes back as a text file.
+
 ## v6.10.1 - 2026-08-21
 
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative

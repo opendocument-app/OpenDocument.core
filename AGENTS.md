@@ -62,6 +62,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx); see [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) + per-format docs. |
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/pdf/` | PDF (own parser). |
+| `src/odr/internal/markdown/` | Markdown (CommonMark + GFM via md4c), decoded to a text document; see [`markdown/AGENTS.md`](src/odr/internal/markdown/AGENTS.md) + [`markdown/PLAN.md`](src/odr/internal/markdown/PLAN.md). |
 | `src/odr/internal/xml/` | XML, rendered as a source view; see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
 | `src/odr/internal/svg/` | SVG, detected by reading it as xml; see [`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |
