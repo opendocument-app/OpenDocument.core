@@ -15,6 +15,7 @@
 #include <odr/internal/json/json_file.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
+#include <odr/internal/odf/odf_flat_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
@@ -62,6 +63,18 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       return std::make_unique<odf::OpenDocumentFile>(filesystem);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as odf");
+    }
+
+    try {
+      ODR_VERBOSE(logger, "try open as flat odf");
+      const xml::XmlFile xml_file(std::make_shared<text::TextFile>(file));
+      auto flat_file = std::make_unique<odf::FlatOpenDocumentFile>(xml_file);
+      if (flat_file->file_type() == as) {
+        return flat_file;
+      }
+      ODR_VERBOSE(logger, "flat odf is a different document type");
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as flat odf");
     }
     throw NoOpenDocumentFile();
   }
@@ -314,8 +327,8 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // an svg has no signature; only the xml root element tells it from plain
-      // xml, so both are reported
+      // neither an svg nor a flat odf has a signature; only the xml root
+      // element tells them from plain xml, so both readings are reported
       try {
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_shared<xml::XmlFile>(text);
@@ -324,6 +337,9 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         if (svg::is_svg_file(*xml_file)) {
           ODR_VERBOSE(logger, "open as svg");
           result.push_back(svg::SvgFile(xml_file).file_type());
+        } else if (odf::is_flat_opendocument_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as flat odf");
+          result.push_back(odf::FlatOpenDocumentFile(*xml_file).file_type());
         }
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
@@ -438,22 +454,27 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // svg is read off the parse xml already did: it is the more specific
-      // reading of the same bytes, and xml is the last resort before the line
-      // list
+      // svg and flat odf are read off the parse xml already did: they are the
+      // more specific readings of the same bytes, and xml is the last resort
+      // before the line list
       try {
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_unique<xml::XmlFile>(text);
 
-        if (!svg::is_svg_file(*xml_file)) {
-          ODR_VERBOSE(logger, "not an svg");
-          // handed on as it is, so the parse is not repeated
-          return xml_file;
+        if (svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as svg");
+          return std::make_unique<svg::SvgFile>(
+              std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
         }
 
-        ODR_VERBOSE(logger, "open as svg");
-        return std::make_unique<svg::SvgFile>(
-            std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
+        if (odf::is_flat_opendocument_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as flat odf");
+          return std::make_unique<odf::FlatOpenDocumentFile>(*xml_file);
+        }
+
+        ODR_VERBOSE(logger, "neither an svg nor a flat odf");
+        // handed on as it is, so the parse is not repeated
+        return xml_file;
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
       }
@@ -564,6 +585,15 @@ open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
+    }
+  } else if (file_type == FileType::unknown) {
+    // a flat odf carries no signature, so magic cannot name it
+    try {
+      ODR_VERBOSE(logger, "try open as flat odf");
+      const xml::XmlFile xml_file(std::make_shared<text::TextFile>(file));
+      return std::make_unique<odf::FlatOpenDocumentFile>(xml_file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as flat odf");
     }
   }
 

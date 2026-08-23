@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_cursor.hpp>
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
@@ -37,12 +38,23 @@ Document::Document(const FileType file_type, const DocumentType document_type,
     m_styles_xml = util::xml::parse(*m_files, AbsPath("/styles.xml"));
   }
 
-  m_root_element = parse_tree(
-      m_element_registry,
-      m_content_xml.document_element().child("office:body").first_child());
+  init_(m_content_xml.document_element(), m_styles_xml.document_element());
+}
 
-  m_style_registry = StyleRegistry(*this, m_content_xml.document_element(),
-                                   m_styles_xml.document_element());
+Document::Document(const FileType file_type, const DocumentType document_type,
+                   pugi::xml_document flat_xml)
+    : internal::Document(file_type, document_type, nullptr),
+      m_content_xml{std::move(flat_xml)} {
+  // both roots are the same node: indexing it twice re-reads the same styles
+  init_(m_content_xml.document_element(), m_content_xml.document_element());
+}
+
+void Document::init_(const pugi::xml_node content_root,
+                     const pugi::xml_node styles_root) {
+  m_root_element = parse_tree(m_element_registry,
+                              content_root.child("office:body").first_child());
+
+  m_style_registry = StyleRegistry(*this, content_root, styles_root);
 
   resolve_list_numbering(m_element_registry, m_style_registry, m_root_element);
 
@@ -73,6 +85,14 @@ bool Document::is_savable(const bool encrypted) const noexcept {
 }
 
 void Document::save(const Path &path) const {
+  // a flat document is the one tree, with no package to rebuild around it;
+  // `save` over `print` so the declaration the parse dropped comes back
+  if (m_files == nullptr) {
+    std::ofstream out = util::file::create(path.string());
+    m_content_xml.save(out, "", pugi::format_raw);
+    return;
+  }
+
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
@@ -913,6 +933,9 @@ public:
 
   [[nodiscard]] bool
   image_is_internal(const ElementIdentifier element_id) const override {
+    if (image_data(element_id)) {
+      return true;
+    }
     if (m_document->as_filesystem() == nullptr) {
       return false;
     }
@@ -925,6 +948,10 @@ public:
   }
   [[nodiscard]] std::optional<File>
   image_file(const ElementIdentifier element_id) const override {
+    if (const pugi::xml_node data = image_data(element_id)) {
+      return File(std::make_shared<MemoryFile>(
+          crypto::util::base64_decode(data.text().get())));
+    }
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
     }
@@ -934,7 +961,12 @@ public:
   [[nodiscard]] std::string
   image_href(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    return node.attribute("xlink:href").value();
+    if (const pugi::xml_attribute href = node.attribute("xlink:href")) {
+      return href.value();
+    }
+    // an embedded image has no path of its own, and the renderer names the
+    // resource it writes after this
+    return "image" + std::to_string(element_id);
   }
 
 private:
@@ -944,6 +976,15 @@ private:
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
     return m_registry->element_at(element_id).node;
+  }
+
+  /// The image's bytes where the markup carries them itself, base64 encoded -
+  /// the only way a flat document can hold an image, and legal in a package.
+  [[nodiscard]] pugi::xml_node
+  image_data(const ElementIdentifier element_id) const {
+    const pugi::xml_node data =
+        get_node(element_id).child("office:binary-data");
+    return data.text().empty() ? pugi::xml_node() : data;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {

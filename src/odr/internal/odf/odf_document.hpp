@@ -14,6 +14,10 @@ class Document final : public internal::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
+  /// A flat document: one tree holding both content and styles, and no
+  /// filesystem behind it.
+  Document(FileType file_type, DocumentType document_type,
+           pugi::xml_document flat_xml);
 
   ElementRegistry &element_registry();
   StyleRegistry &style_registry();
@@ -28,6 +32,8 @@ public:
   void save(const Path &path, const char *password) const override;
 
 private:
+  void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
+
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
 

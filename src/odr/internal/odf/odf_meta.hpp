@@ -18,4 +18,9 @@ namespace odr::internal::odf {
 FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
                          const pugi::xml_document *manifest, bool decrypted);
 
+/// Reads the meta of a flat xml document off its `office:document` root.
+/// @throws NoOpenDocumentFile unless @p root is one whose `office:mimetype`
+/// names a document type we decode.
+FileMeta parse_flat_file_meta(pugi::xml_node root);
+
 } // namespace odr::internal::odf

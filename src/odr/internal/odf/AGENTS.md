@@ -7,10 +7,11 @@ element-adapter pattern, build/test loop, conventions) is in the top-level
 
 **Scope.** Reading **all four ODF document
 types** — text (`.odt`), presentation (`.odp`), spreadsheet (`.ods`), graphics
-(`.odg`) — plus their template and legacy StarOffice variants, through the
-abstract model. Reader + style resolver + a **partial editor** (text-content
-edits, save). Relies on [ZIP](../zip/) (container) and [SVM](../svm/) (embedded
-StarView metafile images).
+(`.odg`) — plus their template, flat-xml (`.fodt` and friends) and legacy
+StarOffice variants, through the abstract model. Reader + style resolver + a
+**partial editor** (text-content edits, save). Relies on [ZIP](../zip/)
+(container), [XML](../xml/) (what recognises a flat document) and
+[SVM](../svm/) (embedded StarView metafile images).
 
 ## The load-bearing decision: a pugixml-node-backed registry
 
@@ -68,6 +69,17 @@ of `style:text-position`) multiplies the inherited size; percent line-height
 passes through (the HTML renderer emits it as a unitless CSS ratio); percent
 margins are currently **dropped** (open work).
 
+**A flat document is the same `Document`, minus the package.** The one
+`office:document` root carries what `content.xml` and `styles.xml` carry
+between them, so `Document`'s flat constructor hands that root in as *both*
+roots and everything downstream is shared. Two things follow from having no
+filesystem: images are the `office:binary-data` ones, base64 decoded lazily by
+the adapter (legal in a package too, and now read there); and `save`
+re-serialises the one tree instead of rebuilding a zip. Recognition needs the
+xml parse `XmlFile` already did — `office:document` plus an `office:mimetype`
+we know — so `odf_flat_file.cpp` reads the root off that tree and reparses with
+the *document* parse options, which a source view's cannot substitute for.
+
 **Decryption is manifest-driven, two layouts.** `odf_crypto.cpp` supports either
 a single `encrypted-package` blob (decrypt → inflate → new ZIP filesystem) or
 **lazy per-file** decryption (a `DecryptedFilesystem` wrapper decrypting on
@@ -87,6 +99,7 @@ are **tolerated** to keep rendering best-effort.
 | File (`odf/`) | Role |
 |---|---|
 | `odf_file.{hpp,cpp}` | `OpenDocumentFile`: entry point; type/encryption; `decrypt()`; builds `Document` per type |
+| `odf_flat_file.{hpp,cpp}` | `FlatOpenDocumentFile`: the same for a flat xml document, plus the root-element recogniser |
 | `odf_meta.cpp` | `parse_file_meta`: mimetype→FileType, doc type, page/table counts, encryption flag |
 | `odf_manifest.{hpp,cpp}` | `META-INF/manifest.xml` → per-file crypto entries, smallest-file tracking |
 | `odf_crypto.cpp` | Decryption: hashing, key derivation, cipher dispatch, package-vs-lazy filesystem |
@@ -118,5 +131,6 @@ The structural/foundational gaps, roughly by value:
    `transparent`/alpha colours → `nullopt`; the Style-vs-element cascade layering
    is provisional (`// TODO use override?`). Outline numbering is indexed but not
    applied to headings.
-7. **StarOffice/template mimetypes** are aliased onto the four base types; they
-   may deserve distinct `FileType`s (`odf_meta.cpp`).
+7. **StarOffice/template/flat mimetypes** are aliased onto the four base types;
+   they may deserve distinct `FileType`s (`odf_meta.cpp`). A flat document is
+   read twice as a result — once to recognise it, once to build the tree.

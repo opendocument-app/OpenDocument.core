@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Flat OpenDocument files decode as documents rather than as an xml source
+  view: `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like
+  their packaged counterparts. Their images ride in the markup, and an
+  `office:binary-data` image now decodes in a package too.
+
 ## v6.10.1 - 2026-08-21
 
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative
