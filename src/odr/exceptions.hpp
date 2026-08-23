@@ -152,6 +152,11 @@ struct NoSvgFile final : Exception {
   NoSvgFile();
 };
 
+/// @brief No RTF file exception
+struct NoRtfFile final : Exception {
+  NoRtfFile();
+};
+
 /// @brief Unsupported crypto algorithm exception
 struct UnsupportedCryptoAlgorithm final : Exception {
   UnsupportedCryptoAlgorithm();

@@ -5,12 +5,15 @@ it honest as stages land.
 
 ## Today
 
-Nothing decodes. `FileType::rich_text_format` exists (`file.hpp:62`, under the
-"Detection only" comment), `magic.cpp:123` matches `7B 5C 72 74 66 31`
-(`{\rtf1`), and `file_type_table.cpp:390` carries a row with `rtf` extensions,
-three mime types, `FileCategory::document`, `DocumentType::unknown` and
-`{.detect_by_content = true}`. `open_strategy::open_file` has no branch for it,
-so `odr::open` on an rtf reaches the fallthrough and throws `UnknownFileType`.
+**Stage 1 has landed.** An rtf opens as a text document and renders: the
+tokenizer, the group/destination machinery and plain text with paragraphs, line
+breaks, tabs and the full `\'hh` / `\uN` decoding. The table row now declares
+`DocumentType::text` and `{.open, .translate_html, .color_scheme}`, and
+`open_strategy` has its three branches. See [`AGENTS.md`](AGENTS.md) for what
+was built and where it deviates from what follows.
+
+Stages 2–5 below are untouched: no character or paragraph formatting, no page
+layout, no tables, no pictures.
 
 The public enum is already mirrored by the bindings (`bind_file.cpp:39`,
 `ODRFile.mm:43`), so **no binding work is needed for any stage below** — the
@@ -132,7 +135,7 @@ it rather than inventing a shared one.
 
 ---
 
-## Stage 1 — plumbing, tokenizer, plain text
+## Stage 1 — plumbing, tokenizer, plain text — **done**
 
 The narrowest thing that renders. No formatting at all beyond paragraph
 structure, so the tokenizer and the group machinery can be proven before

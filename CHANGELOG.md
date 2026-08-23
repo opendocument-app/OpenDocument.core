@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An rtf opens and renders instead of throwing `UnknownFileType`. Text, its
+  encoding (`\ansicpgN`, `\'hh`, `\uN` including emoji), paragraphs, line
+  breaks and tabs; character and paragraph formatting, tables and pictures are
+  not read yet. `FileType::rich_text_format` now reports `DocumentType::text`
+  and the `open` / `translate_html` / `color_scheme` capabilities.
+
 ## v6.10.1 - 2026-08-21
 
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative

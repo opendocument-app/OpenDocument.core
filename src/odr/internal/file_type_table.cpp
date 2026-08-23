@@ -395,7 +395,7 @@ constexpr std::array table{
          .color_scheme = true}},
 
     // Recognised by magic so a caller can name the type, but there is no
-    // decoder behind either of these.
+    // decoder behind it.
     Row{FileType::word_perfect,
         "wpd"sv,
         wpd_extensions,
@@ -403,13 +403,17 @@ constexpr std::array table{
         FileCategory::document,
         DocumentType::unknown,
         {.detect_by_content = true}},
+
     Row{FileType::rich_text_format,
         "rtf"sv,
         rtf_extensions,
         rtf_mimetypes,
         FileCategory::document,
-        DocumentType::unknown,
-        {.detect_by_content = true}},
+        DocumentType::text,
+        {.detect_by_content = true,
+         .open = true,
+         .translate_html = true,
+         .color_scheme = true}},
 
     Row{FileType::portable_document_format,
         "pdf"sv,
