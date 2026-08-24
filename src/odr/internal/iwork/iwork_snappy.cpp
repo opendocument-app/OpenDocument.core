@@ -1,5 +1,6 @@
 #include <odr/internal/iwork/iwork_snappy.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 
@@ -42,6 +43,11 @@ std::uint32_t read_uncompressed_length(const std::string_view in,
   throw std::runtime_error("iwork: snappy length varint does not terminate");
 }
 
+/// The most a block can emit per compressed byte it holds: the tag that
+/// writes the most for its size is a two-byte-offset copy, three bytes for at
+/// most 64. Generous headroom over that, so no real block trips it.
+constexpr std::size_t max_expansion = 64;
+
 } // namespace
 
 std::string iwork::snappy_decompress_block(const std::string_view compressed) {
@@ -50,7 +56,18 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
       read_uncompressed_length(compressed, position);
 
   std::string result;
-  result.reserve(uncompressed_length);
+  // the declared length is the file's word, not a fact, so the allocation is
+  // capped by what the block could hold rather than by what it claims
+  result.reserve(std::min<std::size_t>(uncompressed_length,
+                                       max_expansion * compressed.size()));
+
+  // nothing is appended before it is known to fit, so a block never
+  // materialises more than it declared
+  const auto check_fits = [&](const std::size_t length) {
+    if (length > uncompressed_length - result.size()) {
+      throw std::runtime_error("iwork: snappy block writes past its length");
+    }
+  };
 
   while (position < compressed.size()) {
     const auto tag = static_cast<std::uint8_t>(compressed[position++]);
@@ -68,6 +85,7 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
       if (position + length > compressed.size()) {
         throw std::runtime_error("iwork: snappy literal runs past the block");
       }
+      check_fits(length);
       result.append(compressed, position, length);
       position += length;
       continue;
@@ -91,6 +109,7 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
     if (offset == 0 || offset > result.size()) {
       throw std::runtime_error("iwork: snappy copy points outside the block");
     }
+    check_fits(length);
     // the copy may overlap what it writes, so it runs byte by byte
     for (std::size_t i = 0, from = result.size() - offset; i < length; ++i) {
       result.push_back(result[from + i]);

@@ -1,6 +1,8 @@
 #include <odr/internal/iwork/iwork_snappy.hpp>
 
+#include <cstddef>
 #include <string>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -86,6 +88,14 @@ TEST(SnappyDecompressBlock, literal_runs_past_the_block) {
 TEST(SnappyDecompressBlock, copy_points_outside_the_block) {
   const std::string body = literal("abc") + std::string{'\x09', '\x09'};
   EXPECT_ANY_THROW(std::ignore = snappy_decompress_block(block(9, body)));
+}
+
+// The declared length is what the file claims, not what it holds: a block
+// claiming 4 GiB and carrying one literal byte is rejected off its tags rather
+// than after allocating for the claim.
+TEST(SnappyDecompressBlock, declared_length_is_not_trusted) {
+  EXPECT_ANY_THROW(std::ignore = snappy_decompress_block(std::string{
+                       '\xff', '\xff', '\xff', '\xff', '\x0f', '\x00'}));
 }
 
 TEST(SnappyDecompressBlock, length_varint_does_not_terminate) {

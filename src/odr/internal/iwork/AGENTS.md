@@ -28,6 +28,11 @@ throw: framing that overruns the file, a Snappy block that does not fill its
 declared length, a varint that does not terminate, an identifier the package
 does not hold, and text that is not UTF-8.
 
+A declared length is the file's word rather than a fact, so nothing is
+allocated or written against one before it is known to fit:
+`snappy_decompress_block` caps its reservation at what the compressed bytes
+could expand to and checks every tag against what the block has left to give.
+
 ## No new dependencies
 
 Two pieces would normally be a conan line each, and both would be wrong.
