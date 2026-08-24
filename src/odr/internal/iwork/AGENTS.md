@@ -20,6 +20,13 @@ cited to the fixture it was read off. Read `numbers-parser`, `keynote-parser`,
 `obriensp/iWorkFileFormat` and `libetonyek` for facts; **copy code from none of
 them**.
 
+A fixture is the citation for what the format *is*; it is not the only way to
+state a test input. Shapes no fixture holds — a surrogate pair the run table
+counts across, a component the list names but the package does not carry — are
+built inline by `test/src/internal/iwork/iwork_test_util.hpp`, which assembles
+the protobuf, archive and Snappy layers a package is made of. It is a test-only
+assembler and must never grow into a writer.
+
 **Fail soft on a type id we have not mapped, fail fast on broken framing.** The
 root `AGENTS.md` says to throw where the spec dictates what to expect. Here
 there is no spec, and an unknown type id means Apple shipped a version we have

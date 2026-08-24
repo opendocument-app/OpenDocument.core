@@ -1,59 +1,22 @@
 #include <odr/internal/iwork/iwork_archive.hpp>
 
-#include <cstdint>
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+
+#include <internal/iwork/iwork_test_util.hpp>
+
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 using namespace odr::internal::iwork;
+namespace builder = odr::test::iwork;
 
-namespace {
-
-std::string varint(std::uint64_t value) {
-  std::string result;
-  for (;;) {
-    const auto byte = static_cast<char>(value & 0x7f);
-    value >>= 7;
-    result.push_back(value == 0 ? byte : static_cast<char>(byte | 0x80));
-    if (value == 0) {
-      return result;
-    }
-  }
-}
-
-std::string number_field(const std::uint32_t number,
-                         const std::uint64_t value) {
-  return varint(number << 3) + varint(value);
-}
-
-std::string message_field(const std::uint32_t number,
-                          const std::string &bytes) {
-  return varint((number << 3) | 2) + varint(bytes.size()) + bytes;
-}
-
-/// `TSP.ArchiveInfo`: an identifier and one `MessageInfo` per payload message.
-std::string archive_info(
-    const std::uint64_t identifier,
-    const std::vector<std::pair<std::uint32_t, std::size_t>> &messages) {
-  std::string result = number_field(1, identifier);
-  for (const auto &[type, length] : messages) {
-    result += message_field(2, number_field(1, type) + number_field(3, length));
-  }
-  return result;
-}
-
-std::string
-object(const std::uint64_t identifier,
-       const std::vector<std::pair<std::uint32_t, std::size_t>> &messages,
-       const std::string &payload) {
-  const std::string info = archive_info(identifier, messages);
-  return varint(info.size()) + info + payload;
-}
-
-} // namespace
+using builder::message_field;
+using builder::number_field;
+using builder::object;
 
 TEST(ReadObjects, one_object) {
   const std::string data = object(1, {{10000, 5}}, "hello");
@@ -117,4 +80,95 @@ TEST(ReadObjects, archive_info_runs_past_the_component) {
 TEST(ReadObjects, payload_runs_past_the_component) {
   const std::string data = object(1, {{10000, 500}}, "hello");
   EXPECT_ANY_THROW(std::ignore = read_objects(data));
+}
+
+TEST(ReadIwa, undoes_the_framing) {
+  const auto files =
+      builder::filesystem({{"/Index/Document.iwa", builder::iwa("hello")}});
+
+  EXPECT_EQ(read_iwa(*files, odr::internal::AbsPath("/Index/Document.iwa")),
+            "hello");
+}
+
+TEST(ReadIwa, missing_file) {
+  const auto files = builder::filesystem({});
+
+  EXPECT_ANY_THROW(std::ignore = read_iwa(
+                       *files, odr::internal::AbsPath("/Index/Document.iwa")));
+}
+
+TEST(IworkPackage, loads_a_component_by_name) {
+  const auto files =
+      builder::package({{"Document", object(1, {{10000, 5}}, "hello")}});
+
+  Package package(*files);
+  const std::vector<Object> &objects = package.component("Document").objects();
+  ASSERT_EQ(objects.size(), 1);
+  EXPECT_EQ(objects[0].payload, "hello");
+  EXPECT_EQ(package.object(1).type, 10000);
+}
+
+TEST(IworkPackage, missing_metadata) {
+  const auto files = builder::filesystem({});
+
+  EXPECT_ANY_THROW(Package{*files});
+}
+
+TEST(IworkPackage, empty_metadata) {
+  const auto files =
+      builder::filesystem({{"/Index/Metadata.iwa", builder::iwa("")}});
+
+  EXPECT_ANY_THROW(Package{*files});
+}
+
+// The component list is a repeated message; a varint where one belongs is a
+// package that cannot be read rather than an entry to skip.
+TEST(IworkPackage, malformed_component_info) {
+  const std::string list =
+      number_field(builder::package_metadata_components, 1);
+  const auto files = builder::filesystem(
+      {{"/Index/Metadata.iwa",
+        builder::iwa(object(2, {{builder::package_metadata_type, list.size()}},
+                            list))}});
+
+  EXPECT_ANY_THROW(Package{*files});
+}
+
+TEST(IworkPackage, component_without_a_name) {
+  const std::string list =
+      message_field(builder::package_metadata_components,
+                    message_field(builder::component_info_locator, "Document"));
+  const auto files = builder::filesystem(
+      {{"/Index/Metadata.iwa",
+        builder::iwa(object(2, {{builder::package_metadata_type, list.size()}},
+                            list))}});
+
+  EXPECT_ANY_THROW(Package{*files});
+}
+
+TEST(IworkPackage, no_component_of_that_name) {
+  const auto files =
+      builder::package({{"Document", object(1, {{10000, 5}}, "hello")}});
+
+  Package package(*files);
+  EXPECT_ANY_THROW(package.component("Stylesheet"));
+}
+
+TEST(IworkPackage, no_object_of_that_identifier) {
+  const auto files =
+      builder::package({{"Document", object(1, {{10000, 5}}, "hello")}});
+
+  Package package(*files);
+  EXPECT_ANY_THROW(package.object(1732514));
+}
+
+// A component the list names but the package does not hold is broken framing,
+// not a component to pass over while looking for an object elsewhere.
+TEST(IworkPackage, component_file_is_missing) {
+  const auto files = builder::filesystem(
+      {{"/Index/Metadata.iwa",
+        builder::iwa(builder::package_metadata({"Document"}))}});
+
+  Package package(*files);
+  EXPECT_ANY_THROW(package.component("Document"));
 }
