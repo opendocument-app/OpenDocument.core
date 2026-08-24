@@ -62,8 +62,8 @@ FlatOpenDocumentFile::decrypt(const std::string & /*password*/) const {
 bool FlatOpenDocumentFile::is_decodable() const noexcept { return true; }
 
 std::shared_ptr<abstract::Document> FlatOpenDocumentFile::document() const {
-  // the tree the recogniser parsed keeps what a source view needs and is a
-  // parse the document model cannot use; this one is its own
+  // the recogniser's tree is parsed for a source view; the document model
+  // needs its own parse
   return std::make_shared<Document>(m_file_meta.type, m_file_meta.document_type,
                                     util::xml::parse(m_file->text()));
 }

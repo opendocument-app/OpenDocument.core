@@ -54,8 +54,8 @@ void lookup_file_type(const std::string &mimetype_in, FileType &file_type,
        FileType::opendocument_spreadsheet},
       {"application/vnd.sun.xml.draw.template",
        FileType::opendocument_graphics},
-      // a flat document names the packaged mimetype in `office:mimetype`; the
-      // `-flat-xml` ones are what a caller handing us the file may name it
+      // a flat document's root names the packaged mimetype; `-flat-xml` is
+      // what a caller may name the file
       {"application/vnd.oasis.opendocument.text-flat-xml",
        FileType::opendocument_text},
       {"application/vnd.oasis.opendocument.presentation-flat-xml",
@@ -89,7 +89,6 @@ std::string_view flat_mimetype(const FileType file_type) {
   }
 }
 
-/// `meta:document-statistic` counts what the document type makes countable.
 void read_entry_count(const pugi::xml_node statistics, FileMeta &result) {
   const char *attribute = nullptr;
   if (result.type == FileType::opendocument_text) {

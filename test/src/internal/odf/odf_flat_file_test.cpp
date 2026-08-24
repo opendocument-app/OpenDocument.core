@@ -25,8 +25,8 @@ using namespace odr;
 
 namespace {
 
-/// A flat document needs no namespace declarations to parse - prefixes are
-/// part of the tag name and nothing resolves them.
+/// A flat document parses without namespace declarations - prefixes are part
+/// of the tag name and nothing resolves them.
 std::string flat_document(const std::string &mimetype, const std::string &body,
                           const std::string &styles = "") {
   return R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -57,8 +57,7 @@ constexpr const char *png_base64 =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
     "hKmMIQAAAABJRU5ErkJggg==";
 
-/// A packaged odt holding @p body, written to @p name in the working
-/// directory - the same markup a flat document carries, minus the flatness.
+/// A packaged odt holding @p body, written to @p name in the working directory.
 std::string packaged_text(const std::string &name, const std::string &body) {
   const std::string content =
       R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -108,8 +107,8 @@ TEST(FlatOpenDocumentFile, the_root_mimetype_names_the_document_type) {
   }
 }
 
-/// The flat mimetypes are what a caller names the file, not what the root
-/// carries - both have to open.
+/// The `-flat-xml` mimetypes are what a caller names the file, not what the
+/// root carries.
 TEST(FlatOpenDocumentFile, the_flat_mimetype_is_read_too_and_reported_back) {
   const DecodedFile file(File::from_memory(
       flat_document("application/vnd.oasis.opendocument.spreadsheet-flat-xml",
@@ -165,7 +164,7 @@ TEST(FlatOpenDocumentFile, the_body_decodes_to_the_same_tree_as_a_package) {
 }
 
 /// A package splits automatic and named styles over two files; a flat document
-/// has both under its one root, and they have to resolve just the same.
+/// has both under its one root.
 TEST(FlatOpenDocumentFile, styles_resolve_from_the_single_root) {
   const Document document =
       DocumentFile::from_memory(
@@ -217,8 +216,7 @@ TEST(FlatOpenDocumentFile, an_embedded_image_is_internal_and_decodes) {
             FileType::portable_network_graphics);
 }
 
-/// An `xlink:href` still names a file in a package - a flat document has none,
-/// so the image is external and stays a plain link.
+/// A flat document has no package, so a linked image stays a plain link.
 TEST(FlatOpenDocumentFile, a_linked_image_is_not_internal) {
   const Document document =
       DocumentFile::from_memory(
@@ -236,8 +234,6 @@ TEST(FlatOpenDocumentFile, a_linked_image_is_not_internal) {
   EXPECT_EQ(image.href(), "https://example.org/a.png");
 }
 
-/// The counts the meta block carries are what a caller reads off `file_meta`
-/// without decoding the body.
 TEST(FlatOpenDocumentFile, the_statistics_give_the_entry_count) {
   const auto meta = [](const std::string &statistic) {
     return "<office:meta><meta:document-statistic " + statistic +
@@ -261,8 +257,7 @@ TEST(FlatOpenDocumentFile, the_statistics_give_the_entry_count) {
   EXPECT_FALSE(mismatched.file_meta().entry_count.has_value());
 }
 
-/// `list_file_types` reports every reading of the bytes, and a flat document
-/// is well formed xml whichever way it is read.
+/// A flat document is well formed xml too, so both readings are reported.
 TEST(FlatOpenDocumentFile, it_is_listed_next_to_the_source_view) {
   const std::vector<FileType> types = DecodedFile::list_file_types(
       File::from_memory(flat_text("<text:p>Hello</text:p>")));
@@ -272,8 +267,7 @@ TEST(FlatOpenDocumentFile, it_is_listed_next_to_the_source_view) {
             std::end(types));
 }
 
-/// There is no package behind a flat document; asking for one answers empty
-/// rather than throwing.
+/// There is no package behind a flat document; asking for one answers empty.
 TEST(FlatOpenDocumentFile, it_has_an_empty_filesystem) {
   const Document document =
       DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>")).document();
@@ -283,8 +277,7 @@ TEST(FlatOpenDocumentFile, it_has_an_empty_filesystem) {
   EXPECT_TRUE(filesystem.file_walker("/").end());
 }
 
-/// The renderer names the resource it writes after the href, so two embedded
-/// images must not answer with the same one.
+/// The renderer names the resource it writes after the href.
 TEST(FlatOpenDocumentFile, embedded_images_get_distinct_hrefs) {
   const std::string image = std::string("<draw:frame><draw:image>"
                                         "<office:binary-data>") +
@@ -309,9 +302,8 @@ TEST(FlatOpenDocumentFile, embedded_images_get_distinct_hrefs) {
   EXPECT_NE(hrefs[0], hrefs[1]);
 }
 
-/// The bytes are in the markup, so an `xlink:href` beside them names no file
-/// of ours - and must not reach the renderer, which writes a resource to the
-/// path it gets.
+/// An `xlink:href` beside the bytes names no file of ours and must not reach
+/// the renderer as a path.
 TEST(FlatOpenDocumentFile,
      an_embedded_image_does_not_take_its_href_from_the_markup) {
   const Document document =
@@ -357,8 +349,6 @@ TEST(FlatOpenDocumentFile, a_packaged_embedded_image_decodes_as_well) {
             FileType::portable_network_graphics);
 }
 
-/// The markup bytes are the image; an `xlink:href` naming a file in the
-/// package does not override them.
 TEST(FlatOpenDocumentFile, packaged_markup_bytes_beat_the_href) {
   const std::string path = packaged_text(
       "packaged_binary_data_and_href.odt",
@@ -383,7 +373,6 @@ TEST(FlatOpenDocumentFile, packaged_markup_bytes_beat_the_href) {
   ASSERT_TRUE(image.file().has_value());
 }
 
-/// The one thing the change promises a consumer: a flat document renders.
 TEST(FlatOpenDocumentFile, it_renders_its_embedded_image_embedded_or_linked) {
   const std::string source =
       flat_text(std::string("<text:p><draw:frame><draw:image>"

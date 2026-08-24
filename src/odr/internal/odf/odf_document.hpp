@@ -14,8 +14,7 @@ class Document final : public internal::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files);
-  /// A flat document: one tree holding both content and styles, and no
-  /// filesystem behind it.
+  /// A flat document: one tree holding both content and styles, no filesystem.
   Document(FileType file_type, DocumentType document_type,
            pugi::xml_document flat_xml);
 

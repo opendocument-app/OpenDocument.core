@@ -454,9 +454,8 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // svg and flat odf are read off the parse xml already did: they are the
-      // more specific readings of the same bytes, and xml is the last resort
-      // before the line list
+      // svg and flat odf are read off the parse xml already did; xml is the
+      // last resort before the line list
       try {
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_unique<xml::XmlFile>(text);

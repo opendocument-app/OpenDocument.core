@@ -21,16 +21,14 @@ class XmlFile;
 
 namespace odr::internal::odf {
 
-/// Whether @p file is a flat OpenDocument: an `office:document` root whose
-/// `office:mimetype` names a document type we decode. Reading the root is all
-/// that tells one from any other xml - and what @ref FlatOpenDocumentFile's
-/// constructor throws on.
+/// Whether @p file has an `office:document` root whose `office:mimetype` names
+/// a document type we decode, which is all that tells a flat OpenDocument from
+/// any other xml.
 [[nodiscard]] bool is_flat_opendocument_file(const xml::XmlFile &file);
 
 /// An OpenDocument written as one xml file rather than a zip package
 /// (`.fodt`, `.fodp`, `.fods`, `.fodg`), decoding to the same @ref Document as
-/// the packaged form. Without a package there is no filesystem: images come
-/// base64 encoded in the markup, and the file is never encrypted.
+/// the packaged form. It has no filesystem and is never encrypted.
 class FlatOpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
   /// @throws NoOpenDocumentFile if @p file is not a flat OpenDocument.

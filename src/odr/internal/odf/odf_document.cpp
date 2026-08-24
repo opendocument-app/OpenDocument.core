@@ -45,7 +45,7 @@ Document::Document(const FileType file_type, const DocumentType document_type,
                    pugi::xml_document flat_xml)
     : internal::Document(file_type, document_type, nullptr),
       m_content_xml{std::move(flat_xml)} {
-  // both roots are the same node: indexing it twice re-reads the same styles
+  // content and styles live under the one root
   init_(m_content_xml.document_element(), m_content_xml.document_element());
 }
 
@@ -85,8 +85,8 @@ bool Document::is_savable(const bool encrypted) const noexcept {
 }
 
 void Document::save(const Path &path) const {
-  // a flat document is the one tree, with no package to rebuild around it;
-  // `save` over `print` so the declaration the parse dropped comes back
+  // no package to rebuild: a flat document is the one tree, and `save` puts
+  // back the declaration the parse dropped
   if (m_files == nullptr) {
     std::ofstream out = util::file::create(path.string());
     m_content_xml.save(out, "", pugi::format_raw);
@@ -961,8 +961,7 @@ public:
   [[nodiscard]] std::string
   image_href(const ElementIdentifier element_id) const override {
     // an embedded image has no path of its own, and the renderer names the
-    // resource it writes after this - an `xlink:href` next to the bytes does
-    // not name them, and must not reach the renderer as a path
+    // resource it writes after this
     if (image_data(element_id)) {
       return "image" + std::to_string(element_id);
     }
@@ -978,8 +977,7 @@ private:
     return m_registry->element_at(element_id).node;
   }
 
-  /// The image's bytes where the markup carries them itself, base64 encoded -
-  /// the only way a flat document can hold an image, and legal in a package.
+  /// The image's base64 bytes where the markup carries them itself.
   [[nodiscard]] pugi::xml_node
   image_data(const ElementIdentifier element_id) const {
     const pugi::xml_node data =

@@ -69,18 +69,17 @@ of `style:text-position`) multiplies the inherited size; percent line-height
 passes through (the HTML renderer emits it as a unitless CSS ratio); percent
 margins are currently **dropped** (open work).
 
-**A flat document is the same `Document`, minus the package.** The one
+**A flat document is the same `Document`, minus the package.** Its one
 `office:document` root carries what `content.xml` and `styles.xml` carry
-between them, so `Document`'s flat constructor hands that root in as *both*
-roots and everything downstream is shared. Two things follow from having no
-filesystem: images are the `office:binary-data` ones, base64 decoded lazily by
-the adapter (legal in a package too, and now read there) and named after their
-element id rather than by an `xlink:href` that names no file of ours — the
-renderer writes a resource to the path it is handed; and `save`
-re-serialises the one tree instead of rebuilding a zip. Recognition needs the
-xml parse `XmlFile` already did — `office:document` plus an `office:mimetype`
-we know — so `odf_flat_file.cpp` reads the root off that tree and reparses with
-the *document* parse options, which a source view's cannot substitute for.
+between them, so the flat constructor hands that root in as *both* roots.
+Having no filesystem means images are the `office:binary-data` ones — base64
+decoded lazily by the adapter (legal in a package too, and now read there) and
+named after their element id, since an `xlink:href` beside the bytes names no
+file of ours and the renderer writes a resource to the path it is handed — and
+`save` re-serialises the one tree instead of rebuilding a zip. Recognition is
+`office:document` plus an `office:mimetype` we know, read off the tree
+`XmlFile` built; `odf_flat_file.cpp` then reparses with the *document* parse
+options, which a source view's cannot substitute for.
 
 **Decryption is manifest-driven, two layouts.** `odf_crypto.cpp` supports either
 a single `encrypted-package` blob (decrypt → inflate → new ZIP filesystem) or

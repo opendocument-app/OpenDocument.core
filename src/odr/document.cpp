@@ -50,8 +50,7 @@ Filesystem Document::as_filesystem() const {
           m_impl->as_filesystem()) {
     return Filesystem(std::move(files));
   }
-  // a document that is not a package - a flat xml one - has no files of its
-  // own rather than no answer
+  // a document that is one file has no files of its own rather than no answer
   return Filesystem(std::make_shared<internal::VirtualFilesystem>());
 }
 
