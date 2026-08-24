@@ -152,6 +152,14 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/text_file.cpp"
         "src/odr/internal/html/xml_file.cpp"
 
+        "src/odr/internal/iwork/iwork_archive.cpp"
+        "src/odr/internal/iwork/iwork_document.cpp"
+        "src/odr/internal/iwork/iwork_element_registry.cpp"
+        "src/odr/internal/iwork/iwork_file.cpp"
+        "src/odr/internal/iwork/iwork_parser.cpp"
+        "src/odr/internal/iwork/iwork_protobuf.cpp"
+        "src/odr/internal/iwork/iwork_snappy.cpp"
+
         "src/odr/internal/json/json_file.cpp"
         "src/odr/internal/json/json_util.cpp"
 
@@ -165,6 +173,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element_registry.cpp"
         "src/odr/internal/odf/odf_file.cpp"
+        "src/odr/internal/odf/odf_flat_file.cpp"
         "src/odr/internal/odf/odf_list.cpp"
         "src/odr/internal/odf/odf_manifest.cpp"
         "src/odr/internal/odf/odf_meta.cpp"
@@ -245,6 +254,13 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/sfnt_font.cpp"
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
+
+        "src/odr/internal/rtf/rtf_document.cpp"
+        "src/odr/internal/rtf/rtf_element_registry.cpp"
+        "src/odr/internal/rtf/rtf_file.cpp"
+        "src/odr/internal/rtf/rtf_parser.cpp"
+        "src/odr/internal/rtf/rtf_state.cpp"
+        "src/odr/internal/rtf/rtf_tokenizer.cpp"
 
         "src/odr/internal/svg/svg_file.cpp"
 

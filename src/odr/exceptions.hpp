@@ -142,6 +142,11 @@ struct NoLegacyMicrosoftFile final : Exception {
   NoLegacyMicrosoftFile();
 };
 
+/// @brief No iWork file exception
+struct NoIworkFile final : Exception {
+  NoIworkFile();
+};
+
 /// @brief No XML file exception
 struct NoXmlFile final : Exception {
   NoXmlFile();
@@ -150,6 +155,11 @@ struct NoXmlFile final : Exception {
 /// @brief No SVG file exception
 struct NoSvgFile final : Exception {
   NoSvgFile();
+};
+
+/// @brief No RTF file exception
+struct NoRtfFile final : Exception {
+  NoRtfFile();
 };
 
 /// @brief Unsupported crypto algorithm exception

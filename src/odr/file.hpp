@@ -56,10 +56,13 @@ enum class FileType {
   legacy_powerpoint_presentation,
   legacy_excel_worksheets,
 
-  // Detection only — magic recognises these so a caller can report the type,
-  // but there is no decoder behind them and opening one throws.
+  // Detection only — magic recognises it so a caller can report the type, but
+  // there is no decoder behind it and opening one throws.
   // https://en.wikipedia.org/wiki/WordPerfect
   word_perfect,
+
+  // Read as a text document; character and paragraph formatting, tables and
+  // pictures are not decoded yet.
   // https://en.wikipedia.org/wiki/Rich_Text_Format
   rich_text_format,
 
@@ -149,6 +152,14 @@ enum class FileType {
   // `[text_file, xml, scalable_vector_graphics]`.
   // https://en.wikipedia.org/wiki/XML
   xml,
+
+  // https://en.wikipedia.org/wiki/IWork
+  iwork_pages,
+  // Classification only - `.numbers` and `.key` sit in the same package the
+  // pages engine reads, but which app wrote one is read off its root archive
+  // and no fixture pins those two, so nothing detects or decodes them yet.
+  iwork_numbers,
+  iwork_keynote,
 };
 
 /// @brief Collection of file categories.

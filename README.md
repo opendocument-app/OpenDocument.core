@@ -6,11 +6,15 @@ C++ library to visualize files, especially documents, in HTML.
 
 ## Supported files
 
-- [odt](https://github.com/opendocument-app/OpenDocument.core/issues/92), [odp](https://github.com/opendocument-app/OpenDocument.core/issues/93), [ods](https://github.com/opendocument-app/OpenDocument.core/issues/94), [odg](https://github.com/opendocument-app/OpenDocument.core/issues/96) ([OpenOffice / LibreOffice](https://github.com/opendocument-app/OpenDocument.core/issues/111))
+- [odt](https://github.com/opendocument-app/OpenDocument.core/issues/92), [odp](https://github.com/opendocument-app/OpenDocument.core/issues/93), [ods](https://github.com/opendocument-app/OpenDocument.core/issues/94), [odg](https://github.com/opendocument-app/OpenDocument.core/issues/96) ([OpenOffice / LibreOffice](https://github.com/opendocument-app/OpenDocument.core/issues/111)), including the flat xml form (fodt / fodp / fods / fodg)
 - [docx](https://github.com/opendocument-app/OpenDocument.core/issues/86), [pptx](https://github.com/opendocument-app/OpenDocument.core/issues/85), [xlsx](https://github.com/opendocument-app/OpenDocument.core/issues/87) ([Microsoft Office Open XML](https://github.com/opendocument-app/OpenDocument.core/issues/112))
 - [csv](https://github.com/opendocument-app/OpenDocument.core/issues/107)
 - [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104), [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
+- pages (Apple Pages — body text only; styles, page geometry, images and
+  tables are not read yet)
+- rtf (body text only; character and paragraph formatting, tables and pictures
+  are not read yet)
 - txt
 - json
 - md (Markdown — CommonMark plus the GitHub extensions; never detected from its
@@ -26,14 +30,15 @@ consumer never has to maintain its own copy of these tables.
 
 ## Detected but not decoded
 
-These are classified by extension and MIME type, and `rtf`/`wpd` are also
-recognised from their bytes, so a caller can report them — but there is no
-decoder, and opening one throws:
+These are classified by extension and MIME type, and `wpd` is also recognised
+from its bytes, so a caller can report them — but there is no decoder, and
+opening one throws:
 
-- rtf
 - wpd (WordPerfect)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
+- numbers (Apple Numbers)
+- key (Apple Keynote)
 
 ## Asking what is supported
 
@@ -50,7 +55,6 @@ supported for any format.
 
 ## Unsupported files
 
-- pages
 - xml
 - yaml
 

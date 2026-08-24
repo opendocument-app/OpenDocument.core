@@ -244,6 +244,24 @@ constexpr std::array avi_extensions{"avi"sv};
 constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
                                    "video/msvideo"sv};
 
+constexpr std::array pages_extensions{"pages"sv};
+constexpr std::array pages_mimetypes{
+    "application/vnd.apple.pages"sv,
+    "application/x-iwork-pages-sffpages"sv,
+};
+
+constexpr std::array numbers_extensions{"numbers"sv};
+constexpr std::array numbers_mimetypes{
+    "application/vnd.apple.numbers"sv,
+    "application/x-iwork-numbers-sffnumbers"sv,
+};
+
+constexpr std::array keynote_extensions{"key"sv};
+constexpr std::array keynote_mimetypes{
+    "application/vnd.apple.keynote"sv,
+    "application/x-iwork-keynote-sffkey"sv,
+};
+
 // The single source of truth behind every public format lookup; `odr_test`
 // asserts one row per `FileType` and capabilities that match the engines.
 //
@@ -395,7 +413,7 @@ constexpr std::array table{
          .color_scheme = true}},
 
     // Recognised by magic so a caller can name the type, but there is no
-    // decoder behind either of these.
+    // decoder behind it.
     Row{FileType::word_perfect,
         "wpd"sv,
         wpd_extensions,
@@ -403,13 +421,17 @@ constexpr std::array table{
         FileCategory::document,
         DocumentType::unknown,
         {.detect_by_content = true}},
+
     Row{FileType::rich_text_format,
         "rtf"sv,
         rtf_extensions,
         rtf_mimetypes,
         FileCategory::document,
-        DocumentType::unknown,
-        {.detect_by_content = true}},
+        DocumentType::text,
+        {.detect_by_content = true,
+         .open = true,
+         .translate_html = true,
+         .color_scheme = true}},
 
     Row{FileType::portable_document_format,
         "pdf"sv,
@@ -757,6 +779,33 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
+
+    Row{FileType::iwork_pages,
+        "pages"sv,
+        pages_extensions,
+        pages_mimetypes,
+        FileCategory::document,
+        DocumentType::text,
+        {.detect_by_content = true,
+         .open = true,
+         .translate_html = true,
+         .color_scheme = true}},
+    // Classified so a caller can name these two and hand their MIME types to a
+    // file picker; no engine reads either yet.
+    Row{FileType::iwork_numbers,
+        "numbers"sv,
+        numbers_extensions,
+        numbers_mimetypes,
+        FileCategory::document,
+        DocumentType::spreadsheet,
+        {}},
+    Row{FileType::iwork_keynote,
+        "key"sv,
+        keynote_extensions,
+        keynote_mimetypes,
+        FileCategory::document,
+        DocumentType::presentation,
+        {}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.

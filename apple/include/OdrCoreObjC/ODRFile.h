@@ -83,6 +83,10 @@ typedef NS_ENUM(NSInteger, ODRFileType) {
   ODRFileTypeEnhancedMetafile,
 
   ODRFileTypeXml,
+
+  ODRFileTypeIworkPages,
+  ODRFileTypeIworkNumbers,
+  ODRFileTypeIworkKeynote,
 } NS_SWIFT_NAME(FileType);
 
 typedef NS_ENUM(NSInteger, ODRFileCategory) {

@@ -16,19 +16,28 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `FileType::markdown` is reclassified from `FileCategory::text` to
-  `FileCategory::document` with `DocumentType::text`: `is_document_file()`
-  answers for it and `is_text_file()` no longer does, and
-  `file_category_by_file_type` says `document`. The row was
-  classification-only before, declaring no capabilities at all, so nothing
-  could hold a decoded markdown file to be broken.
-- A markdown file opens as a text document — headings, paragraphs, lists,
-  block quotes, code blocks, emphasis, links, and GFM's tables, strikethrough
-  and task lists — and renders to html like any other document. CommonMark plus
-  the GitHub extensions, parsed with md4c (a new dependency). Raw html, images
-  and horizontal rules are not modelled yet.
-  Markdown has no signature, so it is never detected by content: open it as
-  `FileType::markdown` explicitly, or a `.md` still comes back as a text file.
+- `open(file, as)` no longer returns a container holding another document type
+  as the type that was asked for. An encrypted ooxml still opens as whichever
+  was asked - it names no inner type until it is decrypted.
+- `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like their
+  packaged counterparts instead of decoding as an xml source view. An
+  `office:binary-data` image now decodes in a package too.
+- `Document::as_filesystem` answers with an empty filesystem for a document
+  that is one file rather than a package.
+- A `.pages` file opens as a text document and renders its body text instead of
+  the zip it is made of; styles, images and tables are not read yet. `.numbers`
+  and `.key` are named but have no decoder.
+- An rtf opens and renders as a text document instead of throwing
+  `UnknownFileType`. Its text, encoding, paragraphs and tabs are read;
+  formatting, tables and pictures are not yet.
+- `FileType::markdown` moves from `FileCategory::text` to
+  `FileCategory::document` with `DocumentType::text`, so `is_document_file()`
+  answers for it and `is_text_file()` no longer does. The row declared no
+  capabilities before, so no consumer could have decoded it.
+- A markdown file opens and renders as a text document — CommonMark plus GFM,
+  parsed with md4c (a new dependency); raw html, images and horizontal rules
+  are not modelled yet. Markdown has no signature, so it is only decoded when
+  `FileType::markdown` is asked for; a `.md` still comes back as a text file.
 
 ## v6.10.1 - 2026-08-21
 
