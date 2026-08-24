@@ -121,11 +121,12 @@ that number.
 
 ## Detection
 
-Xml is the **last resort** in `open_file`'s unknown-type path, after csv, json
-and svg.
+Xml is the **last resort** in `open_file`'s unknown-type path, after csv, json,
+svg and flat-xml ODF.
 
-Two consequences. A flat-xml ODF (`.fods` and friends) has no detection — the
-flat mimetypes are only aliases on the zip-backed rows — so it decodes as xml.
-Better than text, **not** flat-ODF support. Likewise `.xhtml`, `.rels`,
-`.plist` and rss feeds become source views: correct for a source viewer, and
-correct that we do not try to *render* xhtml.
+Svg and flat ODF are read off this parse — the root element is the only thing
+that tells either from any other xml, so `is_svg_file` and
+`is_flat_opendocument_file` inspect the tree `XmlFile` already built, and the
+more specific reading wins. What is left over becomes a source view: `.xhtml`,
+`.rels`, `.plist` and rss feeds, which is correct for a source viewer, and
+correct in that we do not try to *render* xhtml.

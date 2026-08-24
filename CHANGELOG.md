@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like their
+  packaged counterparts instead of decoding as an xml source view. An
+  `office:binary-data` image now decodes in a package too.
+- `Document::as_filesystem` answers with an empty filesystem for a document
+  that is one file rather than a package.
+
 ## v6.10.1 - 2026-08-21
 
 - A linked image in a docx or xlsx (`embed_images = false`) is named relative
