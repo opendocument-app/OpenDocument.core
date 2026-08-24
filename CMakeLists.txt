@@ -166,6 +166,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element_registry.cpp"
         "src/odr/internal/odf/odf_file.cpp"
+        "src/odr/internal/odf/odf_flat_file.cpp"
         "src/odr/internal/odf/odf_list.cpp"
         "src/odr/internal/odf/odf_manifest.cpp"
         "src/odr/internal/odf/odf_meta.cpp"

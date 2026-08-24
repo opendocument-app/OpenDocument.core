@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `open(file, as)` no longer returns a container holding another document type
+  as the type that was asked for. An encrypted ooxml still opens as whichever
+  was asked - it names no inner type until it is decrypted.
+- `.fodt`, `.fodp`, `.fods` and `.fodg` open, render, edit and save like their
+  packaged counterparts instead of decoding as an xml source view. An
+  `office:binary-data` image now decodes in a package too.
+- `Document::as_filesystem` answers with an empty filesystem for a document
+  that is one file rather than a package.
 - Apple iWork: a `.pages` file opens as a text document and renders its body
   text, instead of coming back as the zip it is made of. Styles, page geometry,
   images and tables are not read yet. `.numbers` and `.key` are named —
