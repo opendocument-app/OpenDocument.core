@@ -1,28 +1,24 @@
 # iWork plan
 
-Where an iwork module would go, and in what order. Written before stage 1; keep
-it honest as stages land.
+Where an iwork module goes, and in what order. Written before stage 1; kept
+honest as stages land. **Stages 1 and 2 have landed** — see
+[`AGENTS.md`](AGENTS.md) for what they decided. Stage 3 is next.
 
 ## Today
 
-Nothing decodes, and unlike rtf there is not even a `FileType` yet. A `.pages`
-is a zip, so `magic.cpp:95` reports `FileType::zip`, `list_file_types` probes
-odf then ooxml (`open_strategy.cpp:213-238`), both fail, and the caller gets
-`[zip]`. `odr::open` hands back a `zip::ZipFile` — an archive, not a document.
+A `.pages` opens as a text document and renders its body text. `.numbers` and
+`.key` have `FileType` entries and `file_type_table.cpp` rows so a caller can
+name them, but no capabilities and no engine behind them: which app wrote a
+package is read off its root archive type, and neither has a fixture to pin
+that against.
 
-Two fixtures are already committed:
+Two fixtures are committed:
 `test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, both
 written by iWork 13.2 (`Metadata/BuildVersionHistory.plist`). Neither is listed
-in `index.csv` and neither has reference output, so nothing exercises them.
-`style-various-1.pages` carries `Index/Tables/` and nine files under `Data/`,
-which is most of the surface below.
-
-New `FileType` entries append at the end of the enum — `file.hpp:98` says so —
-and **the bindings do need updating** here, unlike rtf: `python/src/bind_file.cpp`,
-`jni/java/app/opendocument/core/FileType.java`,
-`apple/include/OdrCoreObjC/ODRFile.h` + `apple/src/ODRFile.mm`. Wasm does not:
-it derives its enums from `odr::all_file_types()` at runtime
-(`wasm/src/wasm_core.cpp:35`, `:69`).
+in `index.csv` — they do not need to be, `TestData` picks up anything the file
+type table knows an extension for — and they gained reference output when stage
+2 turned `translate_html` on. `style-various-1.pages` carries `Index/Tables/`
+and nine files under `Data/`, which is most of the surface below.
 
 ## Spec
 
@@ -145,10 +141,25 @@ silently.
 
 ---
 
-## Stage 1 — detection and the container
+## Stage 1 — detection and the container *(landed)*
 
 Nothing renders yet. The point is that the bytes come apart correctly and the
 type is reported, which is also the whole of what a file picker needs.
+
+Landed as planned, with three deviations:
+
+- **Only `iwork_pages` detects and opens.** `iwork_numbers` and `iwork_keynote`
+  are classification-only rows, because the root archive type of a `.numbers`
+  or a `.key` cannot be read off a fixture that does not exist, and this module
+  does not guess.
+- **`password_encrypted()` is not answered.** `Index/Metadata.iwph` was going
+  to report it, but nothing here has ever seen an encrypted package; an
+  encrypted one is one whose `Index/Document.iwa` does not decompress, and it
+  falls back to being reported as a zip.
+- **Detection does not read `Index/Metadata.iwa`.** It reads
+  `/Index/Document.iwa` straight, since it runs on every zip a caller opens and
+  `Document` is the one component whose file name never carries a suffix. The
+  component list is read when the document is.
 
 - `iwork_snappy.{hpp,cpp}` — Apple framing plus block decompression, over the
   `std::istream *` / `std::streambuf *` shape `pdf::ObjectParser` uses
@@ -183,7 +194,7 @@ type ID that must be skipped rather than thrown on, and framing truncated
 mid-block. Only the type-reporting test needs the fixtures — the data repos are
 fetched and optional, so everything that can be inline is.
 
-## Stage 2 — Pages text
+## Stage 2 — Pages text *(landed)*
 
 - walk from the document archive to the body's text storage
   (`TSWP.StorageArchive` in the reverse-engineering literature; confirm the type
@@ -198,6 +209,13 @@ fetched and optional, so everything that can be inline is.
 - `empty.pages` is the regression that matters here: an empty document must
   produce an empty body and not an exception.
 - table row: `iwork_pages` gains `.translate_html = true`.
+
+Landed as planned. What the fixtures settled: the body storage is field 4 of
+`TP.DocumentArchive` (type 10000) and is a `TSWP.StorageArchive` (type 2001);
+its paragraph style table is field 5, a `TSWP.ObjectAttributeTable` whose
+field 1 repeats the entries — so the run tables are one level deeper than
+"repeated entries on the storage". Run-table indices count UTF-16 code units
+against UTF-8 text, which the parser translates in one pass.
 
 ## Stage 3 — Pages styles
 
@@ -286,10 +304,11 @@ without a Numbers fixture existing.
 
 ## Test data
 
-`empty.pages` and `style-various-1.pages` are already in
-`test/data/input/odr-public/pages/` but absent from `index.csv` and from
-reference output. Add them to the index in stage 1, and regenerate reference
-output when stage 2 flips `translate_html` on.
+`empty.pages` and `style-various-1.pages` are in
+`test/data/input/odr-public/pages/`. They need no `index.csv` row —
+`TestData::test_files` picks up any file whose extension the file type table
+knows — and reference output was regenerated when stage 2 flipped
+`translate_html` on.
 
 Stages 5 and 7 each need a fixture that does not exist yet — one `.key` and one
 `.numbers` in the public repo. Everything at container level stays inline, per

@@ -11,6 +11,8 @@ C++ library to visualize files, especially documents, in HTML.
 - [csv](https://github.com/opendocument-app/OpenDocument.core/issues/107)
 - [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104), [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
+- pages (Apple Pages — body text only; styles, page geometry, images and
+  tables are not read yet)
 - txt
 - json
 - [zip](https://github.com/opendocument-app/OpenDocument.core/issues/109)
@@ -33,6 +35,8 @@ decoder, and opening one throws:
 - md (Markdown)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
+- numbers (Apple Numbers)
+- key (Apple Keynote)
 
 ## Asking what is supported
 
@@ -49,7 +53,6 @@ supported for any format.
 
 ## Unsupported files
 
-- pages
 - xml
 - yaml
 

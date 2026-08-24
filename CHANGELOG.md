@@ -24,6 +24,11 @@ The release run heads these entries with the version and opens a fresh
   `office:binary-data` image now decodes in a package too.
 - `Document::as_filesystem` answers with an empty filesystem for a document
   that is one file rather than a package.
+- Apple iWork: a `.pages` file opens as a text document and renders its body
+  text, instead of coming back as the zip it is made of. Styles, page geometry,
+  images and tables are not read yet. `.numbers` and `.key` are named —
+  `FileType::iwork_numbers`, `FileType::iwork_keynote`, their extensions and
+  MIME types — but there is no decoder behind either.
 
 ## v6.10.1 - 2026-08-21
 

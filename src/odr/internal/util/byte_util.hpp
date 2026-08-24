@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <ranges>
 #include <string>
@@ -54,6 +55,19 @@ template <typename O, std::ranges::random_access_range I>
 O from_little_endian(const I &in) {
   O out{};
   from_little_endian(in, out);
+  return out;
+}
+
+/// Reads @p size bytes rather than `sizeof(O)`, for a field narrower than the
+/// type it is read into — a 24-bit length, a one-byte offset.
+template <typename O, std::ranges::random_access_range I>
+O from_little_endian(const I &in, const std::size_t size) {
+  assert(size <= sizeof(O) && "output type too small for input size");
+  assert(std::ranges::size(in) >= size && "input range too small");
+  O out{};
+  for (std::size_t i = 0; i < size; ++i) {
+    out |= (static_cast<O>(in[i]) & 0xff) << (i * 8);
+  }
   return out;
 }
 
