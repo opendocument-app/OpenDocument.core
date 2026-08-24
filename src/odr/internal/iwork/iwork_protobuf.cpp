@@ -1,5 +1,7 @@
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 
+#include <odr/internal/util/byte_util.hpp>
+
 #include <stdexcept>
 
 namespace odr::internal {
@@ -11,13 +13,8 @@ std::uint64_t read_fixed(const std::string_view in, std::size_t &position,
   if (position + size > in.size()) {
     throw std::runtime_error("iwork: protobuf fixed field is cut off");
   }
-
-  std::uint64_t result = 0;
-  for (std::size_t i = 0; i < size; ++i) {
-    result |=
-        static_cast<std::uint64_t>(static_cast<std::uint8_t>(in[position + i]))
-        << (8 * i);
-  }
+  const std::uint64_t result =
+      util::byte::from_little_endian<std::uint64_t>(in.substr(position), size);
   position += size;
   return result;
 }

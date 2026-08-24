@@ -52,8 +52,7 @@ std::vector<std::string> paragraphs(const Element root) {
   return result;
 }
 
-/// The document a synthetic one-component package decodes to, so a shape the
-/// fixtures do not hold can be stated inline.
+/// The document a synthetic package decodes to.
 Document pages_document(
     const std::string &text,
     const std::optional<std::vector<std::uint64_t>> &paragraph_indices) {
@@ -142,9 +141,8 @@ TEST(Iwork, package_resolves_across_components) {
   EXPECT_EQ(package.object(1732940).identifier, 1732940);
 }
 
-// Run tables count in UTF-16 code units while the text is UTF-8. A character
-// outside the basic multilingual plane is two units but four bytes, so a
-// paragraph starting after one lands mid-text if the two are conflated.
+// Run tables count UTF-16 code units over UTF-8 text: a character outside the
+// basic multilingual plane is two units but four bytes.
 TEST(Iwork, pages_paragraph_starts_after_a_surrogate_pair) {
   const Document document =
       pages_document("a\xf0\x9f\x98\x80\nbcd\n", {{0, 4}});
@@ -165,8 +163,7 @@ TEST(Iwork, pages_text_is_not_utf8) {
   EXPECT_ANY_THROW(std::ignore = pages_document("\x80x", {{0, 1}}));
 }
 
-// `U+2028` breaks a line inside a paragraph rather than starting a new one —
-// the run table is what says where a paragraph begins.
+// `U+2028` breaks a line inside a paragraph rather than starting a new one.
 TEST(Iwork, pages_line_separator_breaks_a_line_inside_a_paragraph) {
   const Document document = pages_document("one\xe2\x80\xa8two\n", {{0}});
 
@@ -197,9 +194,8 @@ TEST(Iwork, pages_with_an_empty_paragraph_style_table) {
             (std::vector<std::string>{"only"}));
 }
 
-// Which app wrote a package comes off its root archive type, and only
-// `.pages` is mapped: a `.numbers` or a `.key` falls back to being reported as
-// the zip it is rather than guessed at from its extension.
+// Only `.pages` is mapped, so a `.numbers` or `.key` falls back to the zip it
+// is rather than being guessed at from its extension.
 TEST(Iwork, unmapped_root_archive_is_not_an_iwork_file) {
   const auto files =
       builder::pages_package(builder::text_storage("", std::nullopt), 10001);

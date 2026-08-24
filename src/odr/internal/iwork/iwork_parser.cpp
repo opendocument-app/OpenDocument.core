@@ -24,58 +24,6 @@ constexpr std::string_view line_separator = "\xe2\x80\xa8";
 /// rendered as a glyph.
 constexpr std::string_view object_replacement = "\xef\xbf\xbc";
 
-/// The byte length of the UTF-8 sequence @p lead starts.
-std::size_t utf8_length(const std::uint8_t lead) {
-  if (lead < 0x80) {
-    return 1;
-  }
-  if ((lead & 0xe0) == 0xc0) {
-    return 2;
-  }
-  if ((lead & 0xf0) == 0xe0) {
-    return 3;
-  }
-  if ((lead & 0xf8) == 0xf0) {
-    return 4;
-  }
-  throw std::runtime_error("iwork: text is not utf-8");
-}
-
-/// Translates the ascending UTF-16 code unit @p indices a storage's run tables
-/// count in into byte offsets into @p text.
-std::vector<std::size_t>
-utf16_offsets(const std::string_view text,
-              const std::vector<std::uint64_t> &indices) {
-  std::vector<std::size_t> result;
-  result.reserve(indices.size());
-
-  std::size_t offset = 0;
-  std::uint64_t unit = 0;
-  auto next = indices.begin();
-
-  for (;;) {
-    while (next != indices.end() && *next == unit) {
-      result.push_back(offset);
-      ++next;
-    }
-    if (next == indices.end()) {
-      return result;
-    }
-    if (offset >= text.size()) {
-      throw std::runtime_error("iwork: run table points past the text");
-    }
-
-    const std::size_t length =
-        utf8_length(static_cast<std::uint8_t>(text[offset]));
-    if (offset + length > text.size()) {
-      throw std::runtime_error("iwork: text ends mid-character");
-    }
-    offset += length;
-    // everything outside the basic multilingual plane is a surrogate pair
-    unit += length == 4 ? 2 : 1;
-  }
-}
-
 /// The character index each paragraph of @p storage starts at. Paragraph
 /// boundaries are the run table's rather than every `\n` in the text — the two
 /// agree today, but the table is what says so.
@@ -97,8 +45,8 @@ std::vector<std::uint64_t> paragraph_starts(const iwork::Message &storage) {
     }
   }
 
-  // no table at all, or an empty one as an empty document carries: either way
-  // the body starts at its first character
+  // no table, or an empty one: either way the body starts at its first
+  // character
   if (result.empty() || result.front() != 0) {
     result.insert(result.begin(), 0);
   }
@@ -175,7 +123,7 @@ iwork::parse_pages_tree(ElementRegistry &registry,
   }
 
   const std::vector<std::size_t> starts =
-      utf16_offsets(text, paragraph_starts(storage));
+      util::string::utf16_offsets(text, paragraph_starts(storage));
 
   auto [root_id, root] = registry.create_element(ElementType::root);
 

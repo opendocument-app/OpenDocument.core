@@ -121,8 +121,7 @@ TEST(IworkPackage, empty_metadata) {
   EXPECT_ANY_THROW(Package{*files});
 }
 
-// The component list is a repeated message; a varint where one belongs is a
-// package that cannot be read rather than an entry to skip.
+// A varint where a component info belongs is a package we cannot read.
 TEST(IworkPackage, malformed_component_info) {
   const std::string list =
       number_field(builder::package_metadata_components, 1);
@@ -162,8 +161,7 @@ TEST(IworkPackage, no_object_of_that_identifier) {
   EXPECT_ANY_THROW(package.object(1732514));
 }
 
-// A component the list names but the package does not hold is broken framing,
-// not a component to pass over while looking for an object elsewhere.
+// A component the list names but the package does not hold is broken framing.
 TEST(IworkPackage, component_file_is_missing) {
   const auto files = builder::filesystem(
       {{"/Index/Metadata.iwa",

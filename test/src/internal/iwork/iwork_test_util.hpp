@@ -14,17 +14,12 @@
 #include <utility>
 #include <vector>
 
-/// Test-only assembler for the layers an iWork package is made of: protobuf
-/// fields, `TSP.ArchiveInfo` framing, a Snappy block, and the component list
-/// that names the files. The engine has no writer and is not getting one —
-/// this exists so a parser test can state its input inline rather than needing
-/// a fixture for every shape, and must never grow into a writer API.
-///
-/// Field numbers are the ones `iwork_archive.cpp` reads, cited there to
-/// `empty.pages Index/Metadata.iwa`.
+/// Test-only assembler for the layers an iWork package is made of, so a test
+/// can state its input inline instead of needing a fixture. Field numbers are
+/// the ones `iwork_archive.cpp` reads. Must never grow into a writer API.
 namespace odr::test::iwork {
 
-/// `TSP.PackageMetadata`, the object the component list lives in.
+/// The object the component list lives in.
 constexpr std::uint32_t package_metadata_type = 11006;
 constexpr std::uint32_t package_metadata_components = 3;
 constexpr std::uint32_t component_info_preferred_locator = 2;
@@ -72,16 +67,14 @@ object(const std::uint64_t identifier,
   return varint(info.size()) + info + payload;
 }
 
-/// One Snappy block holding @p data as a single literal — the compressor the
-/// engine never needs, in the shape `snappy_decompress_block` reads.
+/// One Snappy block holding @p data as a single literal.
 inline std::string snappy_block(const std::string &data) {
   std::string result = varint(data.size());
   if (data.empty()) {
     return result;
   }
 
-  // a literal tag carries its length inline up to 60 bytes, in the bytes
-  // after it beyond that
+  // a literal tag carries its length inline up to 60 bytes
   const std::size_t length = data.size() - 1;
   if (length < 60) {
     result.push_back(static_cast<char>(length << 2));
@@ -117,9 +110,8 @@ filesystem(const std::vector<std::pair<std::string, std::string>> &files) {
   return result;
 }
 
-/// The component list `Index/Metadata.iwa` carries, naming @p locators. A
-/// component's name is its locator here — the fixtures are where the two
-/// differ.
+/// The component list `Index/Metadata.iwa` carries. A component's name is its
+/// locator here; the fixtures are where the two differ.
 inline std::string package_metadata(const std::vector<std::string> &locators) {
   std::string list;
   for (const std::string &locator : locators) {
@@ -131,8 +123,7 @@ inline std::string package_metadata(const std::vector<std::string> &locators) {
   return object(2, {{package_metadata_type, list.size()}}, list);
 }
 
-/// A package: one `/Index/<locator>.iwa` per component of @p components, plus
-/// the `Index/Metadata.iwa` naming them.
+/// One `/Index/<locator>.iwa` per component, plus the metadata naming them.
 inline std::shared_ptr<internal::abstract::ReadableFilesystem>
 package(const std::vector<std::pair<std::string, std::string>> &components) {
   std::vector<std::string> locators;
@@ -154,9 +145,9 @@ inline std::string document_archive(const std::uint64_t body_identifier) {
                    body_identifier));
 }
 
-/// A `TSWP.StorageArchive` holding @p text, with a paragraph style run table
-/// over the UTF-16 code unit indices @p paragraphs. `std::nullopt` writes no
-/// table at all, which is not the same as an empty one.
+/// A `TSWP.StorageArchive`: @p text and a paragraph style run table over the
+/// UTF-16 code unit indices @p paragraphs. `std::nullopt` writes no table,
+/// which is not an empty one.
 inline std::string
 text_storage(const std::string &text,
              const std::optional<std::vector<std::uint64_t>> &paragraphs) {
@@ -175,11 +166,11 @@ text_storage(const std::string &text,
   return result;
 }
 
-/// The object a synthetic package's body storage is filed under.
+/// The identifier a synthetic body storage is filed under.
 constexpr std::uint64_t body_identifier = 5;
 
-/// The one-component package a `.pages` is: a root archive of @p root_type
-/// whose body storage is @p storage.
+/// A one-component package: a root archive of @p root_type whose body is
+/// @p storage.
 inline std::shared_ptr<internal::abstract::ReadableFilesystem>
 pages_package(const std::string &storage,
               const std::uint32_t root_type =

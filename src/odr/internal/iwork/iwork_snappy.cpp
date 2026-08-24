@@ -1,5 +1,7 @@
 #include <odr/internal/iwork/iwork_snappy.hpp>
 
+#include <odr/internal/util/byte_util.hpp>
+
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
@@ -15,14 +17,8 @@ std::uint32_t read_little_endian(const std::string_view in,
   if (position + size > in.size()) {
     throw std::runtime_error("iwork: snappy block ends mid-tag");
   }
-
-  std::uint32_t result = 0;
-  for (std::size_t i = 0; i < size; ++i) {
-    result |=
-        static_cast<std::uint32_t>(static_cast<std::uint8_t>(in[position + i]))
-        << (8 * i);
-  }
-  return result;
+  return util::byte::from_little_endian<std::uint32_t>(in.substr(position),
+                                                       size);
 }
 
 /// Reads the block's uncompressed length and advances @p position past it.
@@ -43,9 +39,7 @@ std::uint32_t read_uncompressed_length(const std::string_view in,
   throw std::runtime_error("iwork: snappy length varint does not terminate");
 }
 
-/// The most a block can emit per compressed byte it holds: the tag that
-/// writes the most for its size is a two-byte-offset copy, three bytes for at
-/// most 64. Generous headroom over that, so no real block trips it.
+/// Headroom over the real ceiling of a three-byte copy tag for 64 bytes.
 constexpr std::size_t max_expansion = 64;
 
 } // namespace
@@ -55,14 +49,12 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
   const std::uint32_t uncompressed_length =
       read_uncompressed_length(compressed, position);
 
+  // the declared length is the file's word, so the allocation is capped by
+  // what the block could hold rather than by what it claims
   std::string result;
-  // the declared length is the file's word, not a fact, so the allocation is
-  // capped by what the block could hold rather than by what it claims
   result.reserve(std::min<std::size_t>(uncompressed_length,
                                        max_expansion * compressed.size()));
 
-  // nothing is appended before it is known to fit, so a block never
-  // materialises more than it declared
   const auto check_fits = [&](const std::size_t length) {
     if (length > uncompressed_length - result.size()) {
       throw std::runtime_error("iwork: snappy block writes past its length");

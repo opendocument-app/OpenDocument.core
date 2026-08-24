@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -65,6 +66,13 @@ std::vector<std::string> split(const std::string &string,
 std::string to_string(double d, int precision);
 
 std::size_t utf8_length(const std::string &string);
+
+/// The byte offsets into @p string of the ascending UTF-16 code unit
+/// @p indices — the indexing a format that counts UTF-16 uses over UTF-8 text.
+/// Throws when @p string is not UTF-8 or an index is past its end.
+std::vector<std::size_t>
+utf16_offsets(std::string_view string,
+              const std::vector<std::uint64_t> &indices);
 
 /// A surrogate completing no pair becomes U+FFFD rather than throwing.
 std::string u16string_to_string(const std::u16string &string);

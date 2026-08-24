@@ -20,12 +20,10 @@ cited to the fixture it was read off. Read `numbers-parser`, `keynote-parser`,
 `obriensp/iWorkFileFormat` and `libetonyek` for facts; **copy code from none of
 them**.
 
-A fixture is the citation for what the format *is*; it is not the only way to
-state a test input. Shapes no fixture holds — a surrogate pair the run table
-counts across, a component the list names but the package does not carry — are
-built inline by `test/src/internal/iwork/iwork_test_util.hpp`, which assembles
-the protobuf, archive and Snappy layers a package is made of. It is a test-only
-assembler and must never grow into a writer.
+A fixture is the citation for what the format *is*, not the only way to state
+a test input. Shapes no fixture holds are built inline by
+`test/src/internal/iwork/iwork_test_util.hpp`, which assembles the protobuf,
+archive and Snappy layers. It is test-only and must never grow into a writer.
 
 **Fail soft on a type id we have not mapped, fail fast on broken framing.** The
 root `AGENTS.md` says to throw where the spec dictates what to expect. Here
@@ -35,10 +33,10 @@ throw: framing that overruns the file, a Snappy block that does not fill its
 declared length, a varint that does not terminate, an identifier the package
 does not hold, and text that is not UTF-8.
 
-A declared length is the file's word rather than a fact, so nothing is
-allocated or written against one before it is known to fit:
-`snappy_decompress_block` caps its reservation at what the compressed bytes
-could expand to and checks every tag against what the block has left to give.
+A declared length is the file's word, so nothing is allocated or written
+against one before it is known to fit: `snappy_decompress_block` caps its
+reservation at what the compressed bytes could expand to and checks every tag
+against what the block has left.
 
 ## No new dependencies
 
@@ -102,9 +100,9 @@ every `\n` in the text. The two agree on both fixtures, but the table is what
 says so, and `U+2028` is a line break *inside* a paragraph rather than a
 paragraph boundary.
 
-Run tables count in **UTF-16 code units** while the text is UTF-8, so
-`iwork_parser.cpp` translates the indices in one pass over the text. An index
-that lands mid-character is an error, not a rounding.
+Run tables count in **UTF-16 code units** while the text is UTF-8;
+`util::string::utf16_offsets` translates the indices in one pass. An index that
+lands mid-character is an error, not a rounding.
 
 `U+FFFC` is where a drawable is anchored. Nothing reads drawables yet, so the
 anchor is dropped rather than rendered as a glyph — see stage 4.
