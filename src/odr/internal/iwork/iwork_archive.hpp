@@ -69,12 +69,10 @@ public:
   const Object &object(std::uint64_t identifier);
 
 private:
-  /// One entry of `TSP.PackageMetadata`'s component list: the identifier of
-  /// the component's root object, the name it is known by, and the file it
-  /// lives in — which carries an identifier suffix often enough that the file
-  /// name is not a way to find it.
+  /// One entry of `TSP.PackageMetadata`'s component list: the name a component
+  /// is known by, and the file it lives in — which carries an identifier
+  /// suffix often enough that the file name is not a way to find it.
   struct ComponentInfo final {
-    std::uint64_t identifier{};
     std::string name;
     std::string locator;
   };

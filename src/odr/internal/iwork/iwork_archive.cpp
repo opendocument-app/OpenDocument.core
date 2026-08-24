@@ -19,7 +19,6 @@ namespace {
 /// Field numbers of `TSP.PackageMetadata` and the `ComponentInfo` it repeats,
 /// read off `empty.pages Index/Metadata.iwa` (object 2, type 11006).
 constexpr std::uint32_t package_metadata_components = 3;
-constexpr std::uint32_t component_info_identifier = 1;
 constexpr std::uint32_t component_info_preferred_locator = 2;
 constexpr std::uint32_t component_info_locator = 3;
 
@@ -123,8 +122,6 @@ iwork::Package::Package(const abstract::ReadableFilesystem &filesystem)
     const Message info(component.bytes);
 
     ComponentInfo result;
-    result.identifier =
-        info.number_field(component_info_identifier).value_or(0);
     result.name = std::string(info.bytes_field(component_info_preferred_locator)
                                   .value_or(std::string_view()));
     result.locator = std::string(

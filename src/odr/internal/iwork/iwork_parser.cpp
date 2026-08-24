@@ -4,6 +4,7 @@
 #include <odr/internal/iwork/iwork_element_registry.hpp>
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 #include <odr/internal/iwork/iwork_types.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -81,44 +82,25 @@ utf16_offsets(const std::string_view text,
 std::vector<std::uint64_t> paragraph_starts(const iwork::Message &storage) {
   std::vector<std::uint64_t> result;
 
-  const std::optional<std::string_view> table =
-      storage.bytes_field(iwork::text_storage::paragraph_styles);
-  if (!table.has_value()) {
-    return {0};
-  }
-
-  for (const iwork::Field &entry :
-       iwork::Message(*table).repeated_field(iwork::attribute_table::entries)) {
-    if (entry.type != iwork::WireType::length_delimited) {
-      throw std::runtime_error("iwork: malformed paragraph style table");
+  if (const std::optional<std::string_view> table =
+          storage.bytes_field(iwork::text_storage::paragraph_styles);
+      table.has_value()) {
+    for (const iwork::Field &entry : iwork::Message(*table).repeated_field(
+             iwork::attribute_table::entries)) {
+      if (entry.type != iwork::WireType::length_delimited) {
+        throw std::runtime_error("iwork: malformed paragraph style table");
+      }
+      const iwork::Message run(entry.bytes);
+      result.push_back(
+          run.number_field(iwork::attribute_table_entry::character_index)
+              .value_or(0));
     }
-    const iwork::Message run(entry.bytes);
-    result.push_back(
-        run.number_field(iwork::attribute_table_entry::character_index)
-            .value_or(0));
   }
 
-  // an empty document carries an empty table; either way the body starts at
-  // its first character
+  // no table at all, or an empty one as an empty document carries: either way
+  // the body starts at its first character
   if (result.empty() || result.front() != 0) {
     result.insert(result.begin(), 0);
-  }
-  return result;
-}
-
-/// @p text without the drawable anchors it holds.
-std::string without_anchors(const std::string_view text) {
-  std::string result;
-  result.reserve(text.size());
-
-  for (std::size_t position = 0; position < text.size();) {
-    const std::size_t anchor = text.find(object_replacement, position);
-    if (anchor == std::string_view::npos) {
-      result += text.substr(position);
-      break;
-    }
-    result += text.substr(position, anchor - position);
-    position = anchor + object_replacement.size();
   }
   return result;
 }
@@ -129,7 +111,8 @@ void parse_paragraph(iwork::ElementRegistry &registry,
                      const ElementIdentifier paragraph_id,
                      std::string_view content) {
   const auto append_text = [&](const std::string_view part) {
-    std::string text = without_anchors(part);
+    std::string text(part);
+    util::string::replace_all(text, std::string(object_replacement), "");
     if (text.empty()) {
       return;
     }

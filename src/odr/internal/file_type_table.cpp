@@ -244,12 +244,6 @@ constexpr std::array avi_extensions{"avi"sv};
 constexpr std::array avi_mimetypes{"video/x-msvideo"sv, "video/avi"sv,
                                    "video/msvideo"sv};
 
-// The single source of truth behind every public format lookup; `odr_test`
-// asserts one row per `FileType` and capabilities that match the engines.
-//
-// `decrypt` on an OOXML document type means a password-protected package,
-// detected as `office_open_xml_encrypted` and decrypting into the type named
-// here. ODF files decrypt in place and keep their type.
 constexpr std::array pages_extensions{"pages"sv};
 constexpr std::array pages_mimetypes{
     "application/vnd.apple.pages"sv,
@@ -268,6 +262,12 @@ constexpr std::array keynote_mimetypes{
     "application/x-iwork-keynote-sffkey"sv,
 };
 
+// The single source of truth behind every public format lookup; `odr_test`
+// asserts one row per `FileType` and capabilities that match the engines.
+//
+// `decrypt` on an OOXML document type means a password-protected package,
+// detected as `office_open_xml_encrypted` and decrypting into the type named
+// here. ODF files decrypt in place and keep their type.
 constexpr std::array table{
     Row{FileType::unknown,
         "unknown"sv,
