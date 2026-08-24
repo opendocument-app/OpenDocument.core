@@ -74,6 +74,8 @@ NoXmlFile::NoXmlFile() : Exception("not an xml file") {}
 
 NoSvgFile::NoSvgFile() : Exception("not an svg file") {}
 
+NoRtfFile::NoRtfFile() : Exception("not an rtf file") {}
+
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
     : Exception("unsupported crypto algorithm") {}
 

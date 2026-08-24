@@ -13,6 +13,8 @@ C++ library to visualize files, especially documents, in HTML.
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
 - pages (Apple Pages — body text only; styles, page geometry, images and
   tables are not read yet)
+- rtf (body text only; character and paragraph formatting, tables and pictures
+  are not read yet)
 - txt
 - json
 - [zip](https://github.com/opendocument-app/OpenDocument.core/issues/109)
@@ -26,11 +28,10 @@ consumer never has to maintain its own copy of these tables.
 
 ## Detected but not decoded
 
-These are classified by extension and MIME type, and `rtf`/`wpd` are also
-recognised from their bytes, so a caller can report them — but there is no
-decoder, and opening one throws:
+These are classified by extension and MIME type, and `wpd` is also recognised
+from its bytes, so a caller can report them — but there is no decoder, and
+opening one throws:
 
-- rtf
 - wpd (WordPerfect)
 - md (Markdown)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are

@@ -56,10 +56,13 @@ enum class FileType {
   legacy_powerpoint_presentation,
   legacy_excel_worksheets,
 
-  // Detection only — magic recognises these so a caller can report the type,
-  // but there is no decoder behind them and opening one throws.
+  // Detection only — magic recognises it so a caller can report the type, but
+  // there is no decoder behind it and opening one throws.
   // https://en.wikipedia.org/wiki/WordPerfect
   word_perfect,
+
+  // Read as a text document; character and paragraph formatting, tables and
+  // pictures are not decoded yet.
   // https://en.wikipedia.org/wiki/Rich_Text_Format
   rich_text_format,
 

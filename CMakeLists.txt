@@ -248,6 +248,13 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/font/sfnt_transform.cpp"
         "src/odr/internal/font/font_file.cpp"
 
+        "src/odr/internal/rtf/rtf_document.cpp"
+        "src/odr/internal/rtf/rtf_element_registry.cpp"
+        "src/odr/internal/rtf/rtf_file.cpp"
+        "src/odr/internal/rtf/rtf_parser.cpp"
+        "src/odr/internal/rtf/rtf_state.cpp"
+        "src/odr/internal/rtf/rtf_tokenizer.cpp"
+
         "src/odr/internal/svg/svg_file.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"

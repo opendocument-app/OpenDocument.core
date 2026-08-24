@@ -63,6 +63,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/iwork/` | Apple iWork (`.pages` today); see [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md) + [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md). |
 | `src/odr/internal/pdf/` | PDF (own parser). |
+| `src/odr/internal/rtf/` | RTF, read as a text document; see [`rtf/AGENTS.md`](src/odr/internal/rtf/AGENTS.md) + [`rtf/PLAN.md`](src/odr/internal/rtf/PLAN.md). |
 | `src/odr/internal/xml/` | XML, rendered as a source view; see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
 | `src/odr/internal/svg/` | SVG, detected by reading it as xml; see [`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md). |
 | `src/odr/internal/{csv,json,text,svm}/` | Smaller formats. |

@@ -20,6 +20,7 @@
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
+#include <odr/internal/rtf/rtf_file.hpp>
 #include <odr/internal/svg/svg_file.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/xml/xml_file.hpp>
@@ -161,6 +162,16 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       ODR_VERBOSE(logger, "failed to open as pdf");
     }
     throw NoPdfFile();
+  }
+
+  if (as == FileType::rich_text_format) {
+    ODR_VERBOSE(logger, "open as rtf");
+    try {
+      return std::make_unique<rtf::RtfFile>(file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as rtf");
+    }
+    throw NoRtfFile();
   }
 
   if (as == FileType::starview_metafile) {
@@ -464,6 +475,10 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
     ODR_VERBOSE(logger, "open as pdf");
     return std::make_unique<pdf::PdfFile>(file);
   }
+  if (file_type == FileType::rich_text_format) {
+    ODR_VERBOSE(logger, "open as rtf");
+    return std::make_unique<rtf::RtfFile>(file);
+  }
   if (file_type == FileType::starview_metafile) {
     ODR_VERBOSE(logger, "open as svm");
     return std::make_unique<svm::SvmFile>(file);
@@ -644,6 +659,9 @@ open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
     }
+  } else if (file_type == FileType::rich_text_format) {
+    ODR_VERBOSE(logger, "open as rtf");
+    return std::make_unique<rtf::RtfFile>(file);
   } else if (file_type == FileType::unknown) {
     // a flat odf carries no signature, so magic cannot name it
     try {
