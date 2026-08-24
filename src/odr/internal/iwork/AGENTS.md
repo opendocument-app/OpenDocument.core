@@ -55,7 +55,7 @@ one user has not earned a package.
 
 ## `Message` views the buffer it was read from
 
-`iwork::Message` parses one level eagerly and leaves nested messages, strings
+`Message` parses one level eagerly and leaves nested messages, strings
 and packed fields as `std::string_view`s into the bytes it was handed. So the
 buffer has to outlive it — `Component` owns its decompressed data behind a
 `unique_ptr` for exactly that reason, and a `Message(some_temporary())` is a

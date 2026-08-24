@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 using namespace odr::internal::iwork;
+using odr::internal::AbsPath;
 namespace builder = odr::test::iwork;
 
 using builder::message_field;
@@ -86,15 +87,14 @@ TEST(ReadIwa, undoes_the_framing) {
   const auto files =
       builder::filesystem({{"/Index/Document.iwa", builder::iwa("hello")}});
 
-  EXPECT_EQ(read_iwa(*files, odr::internal::AbsPath("/Index/Document.iwa")),
-            "hello");
+  EXPECT_EQ(read_iwa(*files, AbsPath("/Index/Document.iwa")), "hello");
 }
 
 TEST(ReadIwa, missing_file) {
   const auto files = builder::filesystem({});
 
-  EXPECT_ANY_THROW(std::ignore = read_iwa(
-                       *files, odr::internal::AbsPath("/Index/Document.iwa")));
+  EXPECT_ANY_THROW(std::ignore =
+                       read_iwa(*files, AbsPath("/Index/Document.iwa")));
 }
 
 TEST(IworkPackage, loads_a_component_by_name) {

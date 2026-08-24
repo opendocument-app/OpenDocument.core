@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace odr::internal {
+namespace odr::internal::iwork {
 
 namespace {
 
@@ -21,23 +21,7 @@ std::uint64_t read_fixed(const std::string_view in, std::size_t &position,
 
 } // namespace
 
-std::uint64_t iwork::read_varint(const std::string_view in,
-                                 std::size_t &position) {
-  std::uint64_t result = 0;
-  for (std::uint32_t shift = 0; shift <= 63; shift += 7) {
-    if (position >= in.size()) {
-      throw std::runtime_error("iwork: protobuf varint does not terminate");
-    }
-    const auto byte = static_cast<std::uint8_t>(in[position++]);
-    result |= static_cast<std::uint64_t>(byte & 0x7f) << shift;
-    if ((byte & 0x80) == 0) {
-      return result;
-    }
-  }
-  throw std::runtime_error("iwork: protobuf varint does not terminate");
-}
-
-iwork::Message::Message(const std::string_view bytes) {
+Message::Message(const std::string_view bytes) {
   std::size_t position = 0;
 
   while (position < bytes.size()) {
@@ -79,12 +63,9 @@ iwork::Message::Message(const std::string_view bytes) {
   }
 }
 
-const std::vector<iwork::Field> &iwork::Message::fields() const noexcept {
-  return m_fields;
-}
+const std::vector<Field> &Message::fields() const noexcept { return m_fields; }
 
-std::optional<iwork::Field>
-iwork::Message::field(const std::uint32_t number) const {
+std::optional<Field> Message::field(const std::uint32_t number) const {
   std::optional<Field> result;
   for (const Field &field : m_fields) {
     if (field.number == number) {
@@ -94,8 +75,7 @@ iwork::Message::field(const std::uint32_t number) const {
   return result;
 }
 
-std::vector<iwork::Field>
-iwork::Message::repeated_field(const std::uint32_t number) const {
+std::vector<Field> Message::repeated_field(const std::uint32_t number) const {
   std::vector<Field> result;
   for (const Field &field : m_fields) {
     if (field.number == number) {
@@ -106,7 +86,7 @@ iwork::Message::repeated_field(const std::uint32_t number) const {
 }
 
 std::optional<std::uint64_t>
-iwork::Message::number_field(const std::uint32_t number) const {
+Message::number_field(const std::uint32_t number) const {
   const std::optional<Field> field = this->field(number);
   if (!field.has_value() || field->type == WireType::length_delimited) {
     return {};
@@ -115,12 +95,32 @@ iwork::Message::number_field(const std::uint32_t number) const {
 }
 
 std::optional<std::string_view>
-iwork::Message::bytes_field(const std::uint32_t number) const {
+Message::bytes_field(const std::uint32_t number) const {
   const std::optional<Field> field = this->field(number);
   if (!field.has_value() || field->type != WireType::length_delimited) {
     return {};
   }
   return field->bytes;
+}
+
+} // namespace odr::internal::iwork
+
+namespace odr::internal {
+
+std::uint64_t iwork::read_varint(const std::string_view in,
+                                 std::size_t &position) {
+  std::uint64_t result = 0;
+  for (std::uint32_t shift = 0; shift <= 63; shift += 7) {
+    if (position >= in.size()) {
+      throw std::runtime_error("iwork: protobuf varint does not terminate");
+    }
+    const auto byte = static_cast<std::uint8_t>(in[position++]);
+    result |= static_cast<std::uint64_t>(byte & 0x7f) << shift;
+    if ((byte & 0x80) == 0) {
+      return result;
+    }
+  }
+  throw std::runtime_error("iwork: protobuf varint does not terminate");
 }
 
 } // namespace odr::internal

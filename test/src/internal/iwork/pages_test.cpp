@@ -28,6 +28,7 @@
 using namespace odr;
 using odr::test::TestData;
 namespace builder = odr::test::iwork;
+namespace iwork = odr::internal::iwork;
 
 namespace {
 
@@ -56,7 +57,7 @@ std::vector<std::string> paragraphs(const Element root) {
 Document pages_document(
     const std::string &text,
     const std::optional<std::vector<std::uint64_t>> &paragraph_indices) {
-  return Document(std::make_shared<internal::iwork::Document>(
+  return Document(std::make_shared<iwork::Document>(
       builder::pages_package(builder::text_storage(text, paragraph_indices))));
 }
 
@@ -124,15 +125,12 @@ TEST(Iwork, pages_body_text) {
 // the name hands back the wrong file and leaves the rest never loaded, which
 // shows up as an object nothing can resolve.
 TEST(Iwork, package_resolves_across_components) {
-  using odr::internal::iwork::Package;
-
-  const auto file =
-      std::make_shared<odr::internal::DiskFile>(odr::internal::AbsPath(
-          TestData::test_file_path("odr-public/pages/style-various-1.pages")));
+  const auto file = std::make_shared<internal::DiskFile>(internal::AbsPath(
+      TestData::test_file_path("odr-public/pages/style-various-1.pages")));
   const auto filesystem =
-      odr::internal::zip::ZipFile(file).archive()->as_filesystem();
+      internal::zip::ZipFile(file).archive()->as_filesystem();
 
-  Package package(*filesystem);
+  iwork::Package package(*filesystem);
 
   EXPECT_EQ(package.component("Document").objects().front().identifier, 1);
   // the stylesheet, which is a component of its own
@@ -200,11 +198,11 @@ TEST(Iwork, unmapped_root_archive_is_not_an_iwork_file) {
   const auto files =
       builder::pages_package(builder::text_storage("", std::nullopt), 10001);
 
-  EXPECT_THROW(internal::iwork::IworkFile{files}, NoIworkFile);
+  EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
 }
 
 TEST(Iwork, package_without_a_document_component_is_not_an_iwork_file) {
   const auto files = builder::filesystem({});
 
-  EXPECT_THROW(internal::iwork::IworkFile{files}, NoIworkFile);
+  EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
 }

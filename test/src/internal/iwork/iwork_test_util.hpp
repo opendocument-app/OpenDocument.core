@@ -19,6 +19,9 @@
 /// the ones `iwork_archive.cpp` reads. Must never grow into a writer API.
 namespace odr::test::iwork {
 
+/// The engine's field numbers and archive types, which this namespace shadows.
+namespace types = internal::iwork;
+
 /// The object the component list lives in.
 constexpr std::uint32_t package_metadata_type = 11006;
 constexpr std::uint32_t package_metadata_components = 3;
@@ -140,9 +143,8 @@ package(const std::vector<std::pair<std::string, std::string>> &components) {
 /// A `TP.DocumentArchive` whose body is the object @p body_identifier.
 inline std::string document_archive(const std::uint64_t body_identifier) {
   return message_field(
-      ::odr::internal::iwork::document_archive::body_storage,
-      number_field(::odr::internal::iwork::reference::identifier,
-                   body_identifier));
+      types::document_archive::body_storage,
+      number_field(types::reference::identifier, body_identifier));
 }
 
 /// A `TSWP.StorageArchive`: @p text and a paragraph style run table over the
@@ -151,8 +153,6 @@ inline std::string document_archive(const std::uint64_t body_identifier) {
 inline std::string
 text_storage(const std::string &text,
              const std::optional<std::vector<std::uint64_t>> &paragraphs) {
-  namespace types = ::odr::internal::iwork;
-
   std::string result = message_field(types::text_storage::text, text);
   if (paragraphs.has_value()) {
     std::string table;
@@ -171,17 +171,14 @@ constexpr std::uint64_t body_identifier = 5;
 
 /// A one-component package: a root archive of @p root_type whose body is
 /// @p storage.
-inline std::shared_ptr<internal::abstract::ReadableFilesystem>
-pages_package(const std::string &storage,
-              const std::uint32_t root_type =
-                  ::odr::internal::iwork::archive_type::pages_document) {
+inline std::shared_ptr<internal::abstract::ReadableFilesystem> pages_package(
+    const std::string &storage,
+    const std::uint32_t root_type = types::archive_type::pages_document) {
   const std::string root = document_archive(body_identifier);
   const std::string document =
       object(1, {{root_type, root.size()}}, root) +
       object(body_identifier,
-             {{::odr::internal::iwork::archive_type::text_storage,
-               storage.size()}},
-             storage);
+             {{types::archive_type::text_storage, storage.size()}}, storage);
   return package({{"Document", document}});
 }
 

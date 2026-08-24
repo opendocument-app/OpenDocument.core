@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-namespace odr::internal {
+namespace odr::internal::iwork {
 
 namespace {
 
@@ -22,7 +22,7 @@ namespace {
 /// theirs off, and the extension is not an answer.
 FileType file_type_by_archive_type(const std::uint32_t type) {
   switch (type) {
-  case iwork::archive_type::pages_document:
+  case archive_type::pages_document:
     return FileType::iwork_pages;
   default:
     return FileType::unknown;
@@ -34,9 +34,8 @@ FileType file_type_by_archive_type(const std::uint32_t type) {
 /// caller opens, and the `Document` component is the one whose file name never
 /// carries an identifier suffix.
 FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
-  const std::string data =
-      iwork::read_iwa(filesystem, AbsPath("/Index/Document.iwa"));
-  const std::vector<iwork::Object> objects = iwork::read_objects(data);
+  const std::string data = read_iwa(filesystem, AbsPath("/Index/Document.iwa"));
+  const std::vector<Object> objects = read_objects(data);
   if (objects.empty()) {
     throw NoIworkFile();
   }
@@ -50,8 +49,7 @@ FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
 
 } // namespace
 
-iwork::IworkFile::IworkFile(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
+IworkFile::IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
     : m_filesystem{std::move(filesystem)} {
   if (!m_filesystem->is_file(AbsPath("/Index/Document.iwa"))) {
     throw NoIworkFile();
@@ -62,27 +60,23 @@ iwork::IworkFile::IworkFile(
   m_file_meta.document_type = document_type_by_file_type(m_file_meta.type);
 }
 
-std::shared_ptr<abstract::File> iwork::IworkFile::file() const noexcept {
-  return {};
-}
+std::shared_ptr<abstract::File> IworkFile::file() const noexcept { return {}; }
 
-FileType iwork::IworkFile::file_type() const noexcept {
-  return m_file_meta.type;
-}
+FileType IworkFile::file_type() const noexcept { return m_file_meta.type; }
 
-std::string_view iwork::IworkFile::mimetype() const noexcept {
+std::string_view IworkFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
 
-FileMeta iwork::IworkFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta IworkFile::file_meta() const noexcept { return m_file_meta; }
 
-DocumentType iwork::IworkFile::document_type() const {
+DocumentType IworkFile::document_type() const {
   return m_file_meta.document_type;
 }
 
-bool iwork::IworkFile::is_decodable() const noexcept { return true; }
+bool IworkFile::is_decodable() const noexcept { return true; }
 
-std::shared_ptr<abstract::Document> iwork::IworkFile::document() const {
+std::shared_ptr<abstract::Document> IworkFile::document() const {
   switch (file_type()) {
   case FileType::iwork_pages:
     return std::make_shared<Document>(m_filesystem);
@@ -91,4 +85,4 @@ std::shared_ptr<abstract::Document> iwork::IworkFile::document() const {
   }
 }
 
-} // namespace odr::internal
+} // namespace odr::internal::iwork

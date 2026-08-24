@@ -13,7 +13,7 @@
 #include <string_view>
 #include <vector>
 
-namespace odr::internal {
+namespace odr::internal::iwork {
 
 namespace {
 
@@ -27,21 +27,20 @@ constexpr std::string_view object_replacement = "\xef\xbf\xbc";
 /// The character index each paragraph of @p storage starts at. Paragraph
 /// boundaries are the run table's rather than every `\n` in the text — the two
 /// agree today, but the table is what says so.
-std::vector<std::uint64_t> paragraph_starts(const iwork::Message &storage) {
+std::vector<std::uint64_t> paragraph_starts(const Message &storage) {
   std::vector<std::uint64_t> result;
 
   if (const std::optional<std::string_view> table =
-          storage.bytes_field(iwork::text_storage::paragraph_styles);
+          storage.bytes_field(text_storage::paragraph_styles);
       table.has_value()) {
-    for (const iwork::Field &entry : iwork::Message(*table).repeated_field(
-             iwork::attribute_table::entries)) {
-      if (entry.type != iwork::WireType::length_delimited) {
+    for (const Field &entry :
+         Message(*table).repeated_field(attribute_table::entries)) {
+      if (entry.type != WireType::length_delimited) {
         throw std::runtime_error("iwork: malformed paragraph style table");
       }
-      const iwork::Message run(entry.bytes);
+      const Message run(entry.bytes);
       result.push_back(
-          run.number_field(iwork::attribute_table_entry::character_index)
-              .value_or(0));
+          run.number_field(attribute_table_entry::character_index).value_or(0));
     }
   }
 
@@ -55,7 +54,7 @@ std::vector<std::uint64_t> paragraph_starts(const iwork::Message &storage) {
 
 /// Fills @p paragraph_id with the text of one paragraph, breaking it at the
 /// line separators it holds.
-void parse_paragraph(iwork::ElementRegistry &registry,
+void parse_paragraph(ElementRegistry &registry,
                      const ElementIdentifier paragraph_id,
                      std::string_view content) {
   const auto append_text = [&](const std::string_view part) {
@@ -83,6 +82,10 @@ void parse_paragraph(iwork::ElementRegistry &registry,
 }
 
 } // namespace
+
+} // namespace odr::internal::iwork
+
+namespace odr::internal {
 
 ElementIdentifier
 iwork::parse_pages_tree(ElementRegistry &registry,
