@@ -162,9 +162,10 @@ anything is layered on them.
   dropped; `\~` non-breaking space, `\_` non-breaking hyphen, `\-` optional
   hyphen dropped. (`oldms/text`'s `TextCleaner` is the same job with different
   spellings.)
-- fields need no code: `\fldinst` is `\*`-marked, so the ignorable-destination
-  rule hides the instruction and leaves `\fldrslt`'s text flowing — the same
-  "cached result only" position `.doc` takes.
+- fields keep the cached result only, the position `.doc` takes: the
+  ignorable-destination rule hides `{\*\fldinst}` and leaves `\fldrslt`'s text
+  flowing. *(Landed with `fldinst` in the discard table as well — not every
+  writer marks it.)*
 - `rtf_file.{hpp,cpp}` — `RtfFile : abstract::DocumentFile` over a plain
   `abstract::File`, shaped like `pdf::PdfFile` (`pdf_file.hpp:16`); a branch in
   both `open_strategy::open_file` and `open_document_file`; `types_by_content`

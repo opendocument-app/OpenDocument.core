@@ -115,6 +115,17 @@ TEST(RtfTokenizer, negative_parameter) {
             (std::vector<std::string>{"\\u(-4064)", "[?]"}));
 }
 
+TEST(RtfTokenizer, a_parameter_is_capped_at_ten_digits) {
+  // the eleventh digit is not consumed, so it comes back out as text
+  EXPECT_EQ(tokens("\\fs12345678901 x"),
+            (std::vector<std::string>{"\\fs(1234567890)", "[1 x]"}));
+  // and a value that ten digits still overflow clamps into `std::int32_t`
+  EXPECT_EQ(tokens("\\u9999999999 "),
+            (std::vector<std::string>{"\\u(2147483647)"}));
+  EXPECT_EQ(tokens("\\u-9999999999 "),
+            (std::vector<std::string>{"\\u(-2147483648)"}));
+}
+
 TEST(RtfTokenizer, a_bare_line_break_is_not_text) {
   EXPECT_EQ(tokens("a\r\nb"), (std::vector<std::string>{"[ab]"}));
 }
@@ -131,6 +142,12 @@ TEST(RtfTokenizer, binary_without_a_parameter_is_empty) {
 
 TEST(RtfTokenizer, a_binary_payload_running_past_the_end_throws) {
   EXPECT_THROW(tokens("\\bin9 ab"), std::runtime_error);
+}
+
+TEST(RtfTokenizer, a_binary_length_is_not_allocated_before_it_is_read) {
+  // the payload is read in chunks, so this throws on the bytes the stream
+  // cannot supply instead of asking for the two gigabytes the file claims
+  EXPECT_THROW(tokens("\\bin2147483647 ab"), std::runtime_error);
 }
 
 TEST(RtfTokenizer, a_trailing_backslash_throws) {

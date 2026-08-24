@@ -1,5 +1,7 @@
 #include <odr/internal/rtf/rtf_tokenizer.hpp>
 
+#include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -15,6 +17,24 @@ bool is_letter(const char c) {
 }
 
 bool is_digit(const char c) { return c >= '0' && c <= '9'; }
+
+std::uint8_t hex_char_to_int(const char c) {
+  if (c >= '0' && c <= '9') {
+    return static_cast<std::uint8_t>(c - '0');
+  }
+  if (c >= 'a' && c <= 'f') {
+    return static_cast<std::uint8_t>(c - 'a' + 10);
+  }
+  if (c >= 'A' && c <= 'F') {
+    return static_cast<std::uint8_t>(c - 'A' + 10);
+  }
+  throw std::runtime_error("invalid hex digit");
+}
+
+char two_hex_to_char(const char first, const char second) {
+  return static_cast<char>((hex_char_to_int(first) << 4) |
+                           hex_char_to_int(second));
+}
 
 } // namespace
 
@@ -43,32 +63,23 @@ Tokenizer::char_type Tokenizer::bumpc() {
 }
 
 std::string Tokenizer::bumpnc(const std::size_t n) {
-  std::string result(n, '\0');
-  if (const auto m = static_cast<std::streamsize>(n);
-      m_sb->sgetn(result.data(), m) != m) {
-    m_in->setstate(std::ios::eofbit);
-    throw std::runtime_error("unexpected stream exhaust");
+  // In chunks, because `\binN` takes @p n from the file: allocating it up front
+  // lets a 22-byte rtf demand the two gigabytes its parameter claims, where
+  // growing with what the stream actually delivers throws after one chunk.
+  static constexpr std::size_t chunk_size = 4096;
+
+  std::string result;
+  while (result.size() < n) {
+    const std::size_t offset = result.size();
+    const auto m =
+        static_cast<std::streamsize>(std::min(chunk_size, n - offset));
+    result.resize(offset + static_cast<std::size_t>(m));
+    if (m_sb->sgetn(result.data() + offset, m) != m) {
+      m_in->setstate(std::ios::eofbit);
+      throw std::runtime_error("unexpected stream exhaust");
+    }
   }
   return result;
-}
-
-std::uint8_t Tokenizer::hex_char_to_int(const char_type c) {
-  if (c >= '0' && c <= '9') {
-    return static_cast<std::uint8_t>(c - '0');
-  }
-  if (c >= 'a' && c <= 'f') {
-    return static_cast<std::uint8_t>(c - 'a' + 10);
-  }
-  if (c >= 'A' && c <= 'F') {
-    return static_cast<std::uint8_t>(c - 'A' + 10);
-  }
-  throw std::runtime_error("invalid hex digit");
-}
-
-Tokenizer::char_type Tokenizer::two_hex_to_char(const char_type first,
-                                                const char_type second) {
-  return static_cast<char_type>((hex_char_to_int(first) << 4) |
-                                hex_char_to_int(second));
 }
 
 Token Tokenizer::read_token() {

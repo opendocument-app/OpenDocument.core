@@ -21,7 +21,7 @@ bytes ─▶ Tokenizer ─▶ TreeBuilder ─▶ ElementRegistry ─▶ Document
 | `rtf_token.hpp` | The `Token` variant the tokenizer yields. |
 | `rtf_tokenizer.*` | Bytes → tokens. Knows nothing about groups or destinations. |
 | `rtf_state.*` | The group stack: `{` saves, `}` restores. |
-| `rtf_parser.*` | `parse_tree` — tokens → `root → paragraph → (text \| line break)`. |
+| `rtf_parser.*` | `parse_tree` — tokens → `root → (paragraph \| page break) → (text \| line break)`. |
 | `rtf_element_registry.*` | The flat registry, copied from `oldms/text` minus its style index. |
 | `rtf_document.*` | `internal::Document` + the element adapter. |
 | `rtf_file.*` | `abstract::DocumentFile`; validates the magic, hands out the document. |
@@ -60,16 +60,22 @@ pictures and lists are stages 2–5 in `PLAN.md`.
 - **`\uN` is a UTF-16 code unit, signed.** `U+F020` arrives as `\u-4064` (fold
   with `+ 65536` *before* the surrogate test), and anything above the BMP
   arrives as a surrogate pair across two `\uN`. A high surrogate is held pending
-  and combined with the low one; unpaired, it becomes U+FFFD.
+  and combined with the low one; unpaired, it becomes U+FFFD. `\u0` is dropped
+  rather than emitted — a parameterless `\u` folds to it, and a NUL byte would
+  travel into the html verbatim.
 - **`\ucN` counts control words and symbols as one character each**, strictly,
   a `\binN` and its payload included. Real writers always emit the fallback, so
   the strict reading costs nothing and is what the spec says. A group boundary
   cancels a pending skip.
 - **A `{\*`-marked destination needs no entry in the discard table**; the `\*`
-  control symbol discards whatever follows it. The table in `rtf_parser.cpp` is
-  only for destinations that are *not* marked — `\fonttbl`, `\colortbl`,
-  `\info`, `\pict`, and notably `\nonshppict`, the unmarked twin of
-  `{\*\shppict}` that would otherwise emit every image a second time.
+  control symbol discards whatever follows it. What the table in
+  `rtf_parser.cpp` is *for* are the destinations writers leave unmarked —
+  `\fonttbl`, `\colortbl`, `\info`, `\pict`, and notably `\nonshppict`, the
+  unmarked twin of `{\*\shppict}` that would otherwise emit every image a second
+  time. It also lists destinations that are conventionally marked (`\listtable`,
+  `\bkmkstart`, `\panose`, …): belt and braces, because a writer that omits the
+  `\*` is exactly the case the table has to catch — `\fldinst` is the one that
+  does happen in the wild.
 
 ## Deviations from `PLAN.md`
 
@@ -77,7 +83,10 @@ pictures and lists are stages 2–5 in `PLAN.md`.
   had no place to put the decoded byte of a `\'hh`, and `\ucN` counts an escape
   as one character where a text run counts bytes.
 - **`\page` emits `ElementType::page_break`** (a child of root, as `oldms/text`
-  does) even though the html renderer ignores that type today.
+  does) even though the html renderer ignores that type today. It closes an open
+  paragraph without opening one, as `\sect` and the end of the file do: writers
+  emit `\par\page`, so manufacturing one there would blank-line every page
+  break. Only `\par` itself (and `\row`) materialises an empty paragraph.
 - **`\cell` renders as a tab and `\row` as a paragraph end.** The plan defers
   tables to stage 4; until then this keeps table text readable rather than
   running it together.

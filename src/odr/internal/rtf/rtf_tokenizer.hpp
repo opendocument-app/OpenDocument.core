@@ -3,7 +3,6 @@
 #include <odr/internal/rtf/rtf_token.hpp>
 
 #include <cstddef>
-#include <cstdint>
 #include <istream>
 #include <string>
 
@@ -22,9 +21,6 @@ public:
 
   /// The next token; `End` once the stream is exhausted.
   [[nodiscard]] Token read_token();
-
-  static std::uint8_t hex_char_to_int(char_type c);
-  static char_type two_hex_to_char(char_type first, char_type second);
 
 private:
   /// *Control Word*: at most 10 digits, which also bounds the value the clamp

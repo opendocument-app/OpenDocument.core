@@ -23,11 +23,9 @@
 #include <utility>
 #include <variant>
 
-namespace odr::internal {
+namespace odr::internal::rtf {
 
 namespace {
-
-using namespace rtf;
 
 constexpr char32_t replacement_character = 0xfffd;
 
@@ -212,9 +210,12 @@ private:
   void ensure_paragraph();
   void flush_text();
   void end_paragraph();
+  /// Ends the paragraph only if one is open. Paragraphs open lazily, so a
+  /// `\page`, a `\sect` or the end of the file — all of which follow a `\par`
+  /// in what writers emit — must not manufacture an empty one.
+  void end_paragraph_if_open();
   void line_break();
   void page_break();
-  void finish();
 };
 
 ElementIdentifier TreeBuilder::parse() {
@@ -272,7 +273,7 @@ ElementIdentifier TreeBuilder::parse() {
     }
   }
 
-  finish();
+  end_paragraph_if_open();
   return m_root;
 }
 
@@ -326,8 +327,12 @@ void TreeBuilder::handle_control_word(const ControlWord &word) {
     return;
   }
 
-  if (name == "par" || name == "sect") {
+  if (name == "par") {
     end_paragraph();
+    return;
+  }
+  if (name == "sect") {
+    end_paragraph_if_open();
     return;
   }
   if (name == "page") {
@@ -435,6 +440,13 @@ void TreeBuilder::unicode_character(const std::int32_t value) {
 
   const auto unit = static_cast<char16_t>(value_folded);
 
+  // U+0000 is never real content — a parameterless `\u` folds to it too — and a
+  // NUL byte would travel into the html verbatim
+  if (unit == 0) {
+    resolve_surrogate();
+    return;
+  }
+
   if (m_high_surrogate != 0) {
     if (is_low_surrogate(unit)) {
       const auto character = static_cast<char32_t>(
@@ -533,6 +545,14 @@ void TreeBuilder::end_paragraph() {
   m_paragraph = null_element_id;
 }
 
+void TreeBuilder::end_paragraph_if_open() {
+  flush_run();
+  if (m_paragraph == null_element_id && m_text.empty()) {
+    return;
+  }
+  end_paragraph();
+}
+
 void TreeBuilder::line_break() {
   flush_run();
   ensure_paragraph();
@@ -542,22 +562,16 @@ void TreeBuilder::line_break() {
 }
 
 void TreeBuilder::page_break() {
-  end_paragraph();
+  end_paragraph_if_open();
   auto [id, _] = m_registry->create_element(ElementType::page_break);
   m_registry->append_child(m_root, id);
 }
 
-void TreeBuilder::finish() {
-  flush_run();
-  // paragraphs open lazily, so the trailing `\par` adds no empty one
-  if (m_paragraph == null_element_id && m_text.empty()) {
-    return;
-  }
-  ensure_paragraph();
-  flush_text();
-}
-
 } // namespace
+
+} // namespace odr::internal::rtf
+
+namespace odr::internal {
 
 ElementIdentifier rtf::parse_tree(ElementRegistry &registry, std::istream &in) {
   return TreeBuilder(registry, in).parse();

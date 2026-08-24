@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <gtest/gtest.h>
 
@@ -84,8 +85,22 @@ TEST(RtfDocument, line_break_tab_and_page_break) {
   EXPECT_EQ(flatten(R"({\rtf1\ansi a\page b\par})"), "P(a)PBP(b)");
 }
 
+TEST(RtfDocument,
+     a_page_or_section_break_ends_a_paragraph_without_opening_one) {
+  // `\par\page` is what a writer emits, and the page break must not blank-line
+  // the document by fabricating a paragraph the paragraph mark already closed
+  EXPECT_EQ(flatten(R"({\rtf1\ansi a\par\page b\par})"), "P(a)PBP(b)");
+  EXPECT_EQ(flatten(R"({\rtf1\ansi\page a\par})"), "PBP(a)");
+  EXPECT_EQ(flatten(R"({\rtf1\ansi a\par\sect b\par})"), "P(a)P(b)");
+}
+
 TEST(RtfDocument, a_line_break_control_symbol_is_a_paragraph) {
   EXPECT_EQ(flatten("{\\rtf1\\ansi a\\\nb}"), "P(a)P(b)");
+}
+
+TEST(RtfDocument, a_document_with_no_body_is_empty) {
+  EXPECT_EQ(flatten(R"({\rtf1\ansi})"), "");
+  EXPECT_EQ(flatten(R"({\rtf1\ansi{\fonttbl{\f0\fnil Arial;}}})"), "");
 }
 
 TEST(RtfDocument, character_control_words) {
@@ -137,6 +152,22 @@ TEST(RtfDocument, hex_escapes_use_the_run_encoding) {
   EXPECT_EQ(flatten(R"({\rtf1\ansi\ansicpg1251 \'e4\par})"), "P(\xd0\xb4)");
 }
 
+TEST(RtfDocument, the_other_encoding_selectors) {
+  // `\pc` and `\pca` are IBM 437 / 850, which `internal/encoding` has no row
+  // for, so they fall back to windows-1252 — as does an unknown code page
+  EXPECT_EQ(flatten(R"({\rtf1\pc \'e4\par})"), "P(\xc3\xa4)");
+  EXPECT_EQ(flatten(R"({\rtf1\ansi\ansicpg1 \'e4\par})"), "P(\xc3\xa4)");
+  EXPECT_EQ(flatten(R"({\rtf1\mac \'d5\par})"), "P(\xe2\x80\x99)");
+}
+
+TEST(RtfDocument, an_undecodable_encoding_degrades_per_byte) {
+  // shift_jis is named but not decoded, so the ascii skeleton survives and
+  // only the bytes of the cjk character become U+FFFD
+  EXPECT_EQ(flatten(R"({\rtf1\ansi\ansicpg932 a\'82\'a0b\par})"),
+            "P(a\xef\xbf\xbd\xef\xbf\xbd"
+            "b)");
+}
+
 TEST(RtfDocument, unicode_escapes) {
   // the parameter is signed, so U+F020 arrives as -4064
   EXPECT_EQ(flatten(R"({\rtf1\ansi\uc1 \u-4064 ?\par})"), "P(\xef\x80\xa0)");
@@ -148,8 +179,17 @@ TEST(RtfDocument, unicode_escapes) {
                                                             "A)");
 }
 
+TEST(RtfDocument, a_zero_code_point_is_dropped_rather_than_written) {
+  // a NUL byte would travel into the html verbatim; the parameterless `\u`
+  // folds to 0 as well, and its fallback character is still skipped
+  EXPECT_EQ(flatten(R"({\rtf1\ansi\uc0\u0 A\par})"), "P(A)");
+  EXPECT_EQ(flatten(R"({\rtf1\ansi\u X\par})"), "P()");
+}
+
 TEST(RtfDocument, uc_skips_a_control_word_as_one_character) {
   EXPECT_EQ(flatten(R"({\rtf1\ansi\uc1 \u65 \tab X\par})"), "P(AX)");
+  // a `\binN` and its payload count as one character together
+  EXPECT_EQ(flatten("{\\rtf1\\ansi\\uc1 \\u65 \\bin2 xyZ\\par}"), "P(AZ)");
   EXPECT_EQ(flatten(R"({\rtf1\ansi\uc2 \u65 ??X\par})"), "P(AX)");
   // `\ucN` is a character property, so a group restores it
   EXPECT_EQ(flatten(R"({\rtf1\ansi\uc1 {\uc0 \u65 }\u66 ?X\par})"), "P(ABX)");
@@ -180,6 +220,42 @@ TEST(RtfDocument, something_else_is_no_rtf_file) {
   EXPECT_THROW(rtf::RtfFile(memory_file("Hello, World!")), NoRtfFile);
 }
 
+TEST(RtfDocument, the_open_strategy_opens_an_rtf) {
+  const File file(memory_file(R"({\rtf1\ansi Hello\par})"));
+
+  // magic names the type and the strategy decodes it
+  const DecodedFile detected(file);
+  EXPECT_EQ(detected.file_type(), FileType::rich_text_format);
+  EXPECT_TRUE(detected.is_document_file());
+
+  // as does asking for the type outright
+  EXPECT_EQ(DecodedFile(file, FileType::rich_text_format).file_type(),
+            FileType::rich_text_format);
+  // the branch's `NoRtfFile` is what `open_file` catches to move on to the
+  // next candidate type, so a caller asking for an rtf that is not one sees
+  // the strategy's own answer
+  EXPECT_THROW(DecodedFile(File(memory_file("Hello, World!")),
+                           FileType::rich_text_format),
+               UnknownFileType);
+
+  // and the document-file path, which a caller reaches through `DocumentFile`
+  const DocumentFile document_file(file);
+  EXPECT_EQ(document_file.file_type(), FileType::rich_text_format);
+  EXPECT_EQ(document_file.document_type(), DocumentType::text);
+}
+
+TEST(RtfDocument, the_file_type_table_reports_a_text_document) {
+  EXPECT_EQ(document_type_by_file_type(FileType::rich_text_format),
+            DocumentType::text);
+
+  const FileTypeCapabilities capabilities =
+      capabilities_by_file_type(FileType::rich_text_format);
+  EXPECT_TRUE(capabilities.detect_by_content);
+  EXPECT_TRUE(capabilities.open);
+  EXPECT_TRUE(capabilities.translate_html);
+  EXPECT_TRUE(capabilities.color_scheme);
+}
+
 TEST(RtfDocument, translates_to_html) {
   const auto file = std::make_shared<rtf::RtfFile>(
       memory_file(R"({\rtf1\ansi Hello, World!\par})"));
@@ -188,4 +264,15 @@ TEST(RtfDocument, translates_to_html) {
   html::translate(DecodedFile(file), {}).list_views().at(0).write_html(out);
 
   EXPECT_NE(out.str().find("Hello, World!"), std::string::npos);
+}
+
+TEST(RtfDocument, an_empty_document_renders) {
+  const auto file =
+      std::make_shared<rtf::RtfFile>(memory_file(R"({\rtf1\ansi})"));
+
+  std::ostringstream out;
+  EXPECT_NO_THROW(html::translate(DecodedFile(file), {})
+                      .list_views()
+                      .at(0)
+                      .write_html(out));
 }
