@@ -142,6 +142,11 @@ struct NoLegacyMicrosoftFile final : Exception {
   NoLegacyMicrosoftFile();
 };
 
+/// @brief No iWork file exception
+struct NoIworkFile final : Exception {
+  NoIworkFile();
+};
+
 /// @brief No XML file exception
 struct NoXmlFile final : Exception {
   NoXmlFile();

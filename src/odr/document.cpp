@@ -6,7 +6,10 @@
 #include <odr/filesystem.hpp>
 
 #include <odr/internal/abstract/document.hpp>
+#include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
+
+#include <memory>
 
 namespace odr {
 
@@ -43,7 +46,12 @@ Element Document::root_element() const {
 }
 
 Filesystem Document::as_filesystem() const {
-  return Filesystem(m_impl->as_filesystem());
+  if (std::shared_ptr<internal::abstract::ReadableFilesystem> files =
+          m_impl->as_filesystem()) {
+    return Filesystem(std::move(files));
+  }
+  // a document that is one file has no files of its own rather than no answer
+  return Filesystem(std::make_shared<internal::VirtualFilesystem>());
 }
 
 } // namespace odr

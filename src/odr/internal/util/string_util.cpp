@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include <utf8/unchecked.h>
+#include <utf8cpp/utf8/checked.h>
 #include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal::util {
@@ -173,6 +174,34 @@ std::string string::to_string(const double d, const int precision) {
 
 std::size_t string::utf8_length(const std::string &string) {
   return utf8::unchecked::distance(string.begin(), string.end());
+}
+
+std::vector<std::size_t>
+string::utf16_offsets(const std::string_view string,
+                      const std::span<const std::uint64_t> indices) {
+  std::vector<std::size_t> result;
+  result.reserve(indices.size());
+
+  const char *const begin = string.data();
+  const char *const end = begin + string.size();
+  const char *position = begin;
+  std::uint64_t unit = 0;
+  auto next = indices.begin();
+
+  for (;;) {
+    while (next != indices.end() && *next == unit) {
+      result.push_back(static_cast<std::size_t>(position - begin));
+      ++next;
+    }
+    if (next == indices.end()) {
+      return result;
+    }
+    if (position == end) {
+      throw std::runtime_error("utf-16 index past the end of the string");
+    }
+    // everything outside the basic multilingual plane is a surrogate pair
+    unit += utf8::next(position, end) >= 0x10000 ? 2 : 1;
+  }
 }
 
 std::string string::u16string_to_string(const std::u16string &string) {

@@ -28,6 +28,62 @@ TEST(File, from_disk_matches_the_path_constructor) {
   EXPECT_EQ(file.size(), File(path).size());
 }
 
+/// `open(file, as)` decodes as exactly what it is asked for. A container
+/// names its own document type, and `as` is a claim about what is inside it -
+/// so a claim the container contradicts is no reading of the file at all.
+TEST(File, opening_as_the_wrong_document_type_throws) {
+  const struct {
+    const char *path;
+    FileType is;
+    FileType is_not;
+  } cases[]{
+      {"odr-public/odt/about.odt", FileType::opendocument_text,
+       FileType::opendocument_graphics},
+      {"odr-public/docx/file-sample_100kB.docx",
+       FileType::office_open_xml_document,
+       FileType::office_open_xml_presentation},
+      {"odr-public/doc/file-sample_100kB.doc", FileType::legacy_word_document,
+       FileType::legacy_excel_worksheets},
+  };
+
+  for (const auto &[path, is, is_not] : cases) {
+    const std::string file_path = TestData::test_file_path(path);
+
+    EXPECT_EQ(DecodedFile(file_path, is).file_type(), is) << path;
+    EXPECT_THROW(std::ignore = DecodedFile(file_path, is_not), UnknownFileType)
+        << path;
+  }
+}
+
+/// The one reading that is not its own container's: an encrypted ooxml names
+/// no inner type until it is decrypted, so it stands in for the one asked for.
+TEST(File, an_encrypted_ooxml_opens_as_the_type_asked_for) {
+  const DecodedFile file(
+      TestData::test_file_path("odr-public/docx/encrypted.docx"),
+      FileType::office_open_xml_document);
+
+  EXPECT_EQ(file.file_type(), FileType::office_open_xml_encrypted);
+  EXPECT_TRUE(file.password_encrypted());
+}
+
+/// The same claim about the same document in its other encoding answers the
+/// same way - which is what this fix is about.
+TEST(File, a_flat_document_and_a_package_answer_a_wrong_type_alike) {
+  const std::string flat =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.text">)"
+      R"(<office:body><office:text/></office:body></office:document>)";
+
+  EXPECT_THROW(std::ignore = DecodedFile(File::from_memory(flat),
+                                         FileType::opendocument_graphics),
+               UnknownFileType);
+  EXPECT_THROW(std::ignore = DecodedFile(
+                   TestData::test_file_path("odr-public/odt/about.odt"),
+                   FileType::opendocument_graphics),
+               UnknownFileType);
+}
+
 TEST(File, from_memory_holds_its_bytes) {
   const File file = File::from_memory("hello");
 

@@ -61,6 +61,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
 | `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx); see [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) + per-format docs. |
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
+| `src/odr/internal/iwork/` | Apple iWork (`.pages` today); see [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md) + [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md). |
 | `src/odr/internal/pdf/` | PDF (own parser). |
 | `src/odr/internal/rtf/` | RTF, read as a text document; see [`rtf/AGENTS.md`](src/odr/internal/rtf/AGENTS.md) + [`rtf/PLAN.md`](src/odr/internal/rtf/PLAN.md). |
 | `src/odr/internal/xml/` | XML, rendered as a source view; see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
@@ -218,6 +219,15 @@ Dispatch `release.yml` against main, publish the draft that appears —
    renderer then works for free**.
 4. Register the factory (e.g. `oldms_file.cpp::document()` switches on
    `file_type()`), add sources to `CMakeLists.txt`, add a GoogleTest.
+
+## Apple iWork (`iwork`)
+
+`.pages` opens as a text document and renders its body text; `.numbers` and
+`.key` are named but not decoded. There is no spec — the module cites fixtures
+instead, keeps its own Snappy and protobuf readers, and fails soft on archive
+types it has not mapped. Read [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md)
+before touching it, and [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md) for
+what comes next.
 
 ## Legacy Microsoft binary formats (`oldms`)
 

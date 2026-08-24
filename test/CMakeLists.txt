@@ -59,9 +59,15 @@ add_executable(odr_test
         "src/internal/svg/svg_file_test.cpp"
         "src/internal/xml/xml_file_test.cpp"
 
+        "src/internal/iwork/iwork_archive_test.cpp"
+        "src/internal/iwork/iwork_protobuf_test.cpp"
+        "src/internal/iwork/iwork_snappy_test.cpp"
+        "src/internal/iwork/pages_test.cpp"
+
         "src/internal/rtf/rtf_document_test.cpp"
         "src/internal/rtf/rtf_tokenizer_test.cpp"
 
+        "src/internal/odf/odf_flat_file_test.cpp"
         "src/internal/odf/odf_table_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"

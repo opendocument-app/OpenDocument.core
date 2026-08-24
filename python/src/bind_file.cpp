@@ -83,7 +83,10 @@ void odr_python::bind_file(py::module_ &m) {
       .value("photoshop_document", odr::FileType::photoshop_document)
       .value("windows_metafile", odr::FileType::windows_metafile)
       .value("enhanced_metafile", odr::FileType::enhanced_metafile)
-      .value("xml", odr::FileType::xml);
+      .value("xml", odr::FileType::xml)
+      .value("iwork_pages", odr::FileType::iwork_pages)
+      .value("iwork_numbers", odr::FileType::iwork_numbers)
+      .value("iwork_keynote", odr::FileType::iwork_keynote);
 
   py::enum_<odr::FileCategory>(m, "FileCategory")
       .value("unknown", odr::FileCategory::unknown)

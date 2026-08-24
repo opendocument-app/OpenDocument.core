@@ -12,9 +12,11 @@
 #include <odr/internal/common/media_file.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/font/font_file.hpp>
+#include <odr/internal/iwork/iwork_file.hpp>
 #include <odr/internal/json/json_file.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_file.hpp>
+#include <odr/internal/odf/odf_flat_file.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/ooxml/ooxml_file.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
@@ -47,6 +49,14 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
   };
 }
 
+/// Whether @p file is the ooxml that was asked for. An encrypted one names no
+/// inner type until it is decrypted, so it answers for whichever was asked.
+bool is_the_requested_ooxml(const ooxml::OfficeOpenXmlFile &file,
+                            const FileType as) {
+  return file.file_type() == as ||
+         file.file_type() == FileType::office_open_xml_encrypted;
+}
+
 /// Decodes @p file as exactly @p as, or throws the format's "not a ..."
 /// exception (@ref UnsupportedFileType for a type we cannot decode at all).
 std::unique_ptr<abstract::DecodedFile>
@@ -60,11 +70,39 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      return std::make_unique<odf::OpenDocumentFile>(filesystem);
+      auto odf_file = std::make_unique<odf::OpenDocumentFile>(filesystem);
+      if (odf_file->file_type() == as) {
+        return odf_file;
+      }
+      ODR_VERBOSE(logger, "odf is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as odf");
     }
+
+    try {
+      ODR_VERBOSE(logger, "try open as flat odf");
+      const xml::XmlFile xml_file(std::make_shared<text::TextFile>(file));
+      auto flat_file = std::make_unique<odf::FlatOpenDocumentFile>(xml_file);
+      if (flat_file->file_type() == as) {
+        return flat_file;
+      }
+      ODR_VERBOSE(logger, "flat odf is a different document type");
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as flat odf");
+    }
     throw NoOpenDocumentFile();
+  }
+
+  if (as == FileType::iwork_pages) {
+    ODR_VERBOSE(logger, "open as iwork");
+    try {
+      auto zip_file = std::make_unique<zip::ZipFile>(file);
+      auto filesystem = zip_file->archive()->as_filesystem();
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
+    }
+    throw NoIworkFile();
   }
 
   if (as == FileType::office_open_xml_document ||
@@ -75,14 +113,22 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      if (is_the_requested_ooxml(*ooxml_file, as)) {
+        return ooxml_file;
+      }
+      ODR_VERBOSE(logger, "ooxml zip is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml zip");
     }
     try {
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      if (is_the_requested_ooxml(*ooxml_file, as)) {
+        return ooxml_file;
+      }
+      ODR_VERBOSE(logger, "ooxml cfb is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml cfb");
     }
@@ -96,7 +142,12 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
-      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+      auto oldms_file =
+          std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+      if (oldms_file->file_type() == as) {
+        return oldms_file;
+      }
+      ODR_VERBOSE(logger, "legacy ms is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as legacy ms");
     }
@@ -269,6 +320,13 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as ooxml");
       }
+
+      try {
+        ODR_VERBOSE(logger, "try open as iwork");
+        result.push_back(iwork::IworkFile(filesystem).file_type());
+      } catch (...) {
+        ODR_VERBOSE(logger, "failed to open as iwork");
+      }
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as zip");
     }
@@ -325,8 +383,8 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // an svg has no signature; only the xml root element tells it from plain
-      // xml, so both are reported
+      // neither an svg nor a flat odf has a signature; only the xml root
+      // element tells them from plain xml, so both readings are reported
       try {
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_shared<xml::XmlFile>(text);
@@ -335,6 +393,9 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
         if (svg::is_svg_file(*xml_file)) {
           ODR_VERBOSE(logger, "open as svg");
           result.push_back(svg::SvgFile(xml_file).file_type());
+        } else if (odf::is_flat_opendocument_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as flat odf");
+          result.push_back(odf::FlatOpenDocumentFile(*xml_file).file_type());
         }
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
@@ -376,6 +437,13 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
+    }
+
+    try {
+      ODR_VERBOSE(logger, "try open as iwork");
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
     }
 
     return zip_file;
@@ -453,22 +521,26 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as json");
       }
 
-      // svg is read off the parse xml already did: it is the more specific
-      // reading of the same bytes, and xml is the last resort before the line
-      // list
+      // svg and flat odf are read off the parse xml already did; xml is the
+      // last resort before the line list
       try {
         ODR_VERBOSE(logger, "try open as xml");
         auto xml_file = std::make_unique<xml::XmlFile>(text);
 
-        if (!svg::is_svg_file(*xml_file)) {
-          ODR_VERBOSE(logger, "not an svg");
-          // handed on as it is, so the parse is not repeated
-          return xml_file;
+        if (svg::is_svg_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as svg");
+          return std::make_unique<svg::SvgFile>(
+              std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
         }
 
-        ODR_VERBOSE(logger, "open as svg");
-        return std::make_unique<svg::SvgFile>(
-            std::shared_ptr<xml::XmlFile>(std::move(xml_file)));
+        if (odf::is_flat_opendocument_file(*xml_file)) {
+          ODR_VERBOSE(logger, "open as flat odf");
+          return std::make_unique<odf::FlatOpenDocumentFile>(*xml_file);
+        }
+
+        ODR_VERBOSE(logger, "neither an svg nor a flat odf");
+        // handed on as it is, so the parse is not repeated
+        return xml_file;
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
       }
@@ -560,6 +632,13 @@ open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
     }
+
+    try {
+      ODR_VERBOSE(logger, "try open as iwork");
+      return std::make_unique<iwork::IworkFile>(filesystem);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as iwork");
+    }
   } else if (file_type == FileType::compound_file_binary_format) {
     ODR_VERBOSE(logger, "open as cbf");
 
@@ -583,6 +662,15 @@ open_strategy::open_document_file(const std::shared_ptr<abstract::File> &file,
   } else if (file_type == FileType::rich_text_format) {
     ODR_VERBOSE(logger, "open as rtf");
     return std::make_unique<rtf::RtfFile>(file);
+  } else if (file_type == FileType::unknown) {
+    // a flat odf carries no signature, so magic cannot name it
+    try {
+      ODR_VERBOSE(logger, "try open as flat odf");
+      const xml::XmlFile xml_file(std::make_shared<text::TextFile>(file));
+      return std::make_unique<odf::FlatOpenDocumentFile>(xml_file);
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as flat odf");
+    }
   }
 
   ODR_ERROR(logger, "unsupported file type for document file "

@@ -30,6 +30,8 @@ public:
 
   [[nodiscard]] Element root_element() const;
 
+  /// The files the document is packaged from; empty for a document that is
+  /// one file.
   [[nodiscard]] Filesystem as_filesystem() const;
 
 private:
