@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -177,23 +179,34 @@ TEST(string_util, find_ignore_case) {
   EXPECT_EQ(find_ignore_case("abc", "a", 99), std::string_view::npos);
 }
 
+namespace {
+
+/// `utf16_offsets` over a braced index list, which its `std::span` does not
+/// take.
+std::vector<std::size_t> offsets(const std::string_view string,
+                                 const std::vector<std::uint64_t> &indices) {
+  return utf16_offsets(string, indices);
+}
+
+} // namespace
+
 TEST(string_util, utf16_offsets) {
   // a character outside the basic multilingual plane is two units, four bytes
-  EXPECT_EQ(utf16_offsets("a\xf0\x9f\x98\x80z", {0, 1, 3, 4}),
+  EXPECT_EQ(offsets("a\xf0\x9f\x98\x80z", {0, 1, 3, 4}),
             (std::vector<std::size_t>{0, 1, 5, 6}));
   // and one inside it is one unit, up to three bytes
-  EXPECT_EQ(utf16_offsets("\xe2\x80\xa8"
-                          "b",
-                          {1}),
+  EXPECT_EQ(offsets("\xe2\x80\xa8"
+                    "b",
+                    {1}),
             (std::vector<std::size_t>{3}));
-  EXPECT_EQ(utf16_offsets("abc", {}), (std::vector<std::size_t>{}));
-  EXPECT_EQ(utf16_offsets("", {0}), (std::vector<std::size_t>{0}));
+  EXPECT_EQ(offsets("abc", {}), (std::vector<std::size_t>{}));
+  EXPECT_EQ(offsets("", {0}), (std::vector<std::size_t>{0}));
 
-  EXPECT_ANY_THROW(std::ignore = utf16_offsets("abc", {4}));
-  EXPECT_ANY_THROW(std::ignore = utf16_offsets("\x80", {1}));
-  EXPECT_ANY_THROW(std::ignore = utf16_offsets("a\xe2\x80", {2}));
+  EXPECT_ANY_THROW(std::ignore = offsets("abc", {4}));
+  EXPECT_ANY_THROW(std::ignore = offsets("\x80", {1}));
+  EXPECT_ANY_THROW(std::ignore = offsets("a\xe2\x80", {2}));
   // an index landing inside a character is never reached
-  EXPECT_ANY_THROW(std::ignore = utf16_offsets("\xf0\x9f\x98\x80", {1}));
+  EXPECT_ANY_THROW(std::ignore = offsets("\xf0\x9f\x98\x80", {1}));
 }
 
 TEST(string_util, u16string_to_string) {

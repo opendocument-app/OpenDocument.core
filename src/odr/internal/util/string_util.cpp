@@ -178,7 +178,7 @@ std::size_t string::utf8_length(const std::string &string) {
 
 std::vector<std::size_t>
 string::utf16_offsets(const std::string_view string,
-                      const std::vector<std::uint64_t> &indices) {
+                      const std::span<const std::uint64_t> indices) {
   std::vector<std::size_t> result;
   result.reserve(indices.size());
 
