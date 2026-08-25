@@ -7,6 +7,7 @@
 #include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <string>
 #include <utility>
 
 namespace odr::internal::text {
@@ -14,10 +15,13 @@ namespace odr::internal::text {
 TextFile::TextFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   const std::unique_ptr<std::istream> in = m_file->stream();
-  // nothing here rejects: text is the fallback for bytes nothing else claims,
-  // so a viewer handed a random binary shows junk rather than an error, and
-  // bytes we cannot name are `TextEncoding::unknown`
-  m_encoding = encoding::detect(encoding::read_probe(*in));
+  const std::string probe = encoding::read_probe(*in);
+  m_encoding = encoding::detect(probe);
+  // text is the fallback, so it is the only place that can call a file
+  // unreadable
+  if (!encoding::is_text(probe, m_encoding)) {
+    throw NoTextFile();
+  }
 }
 
 TextFile::TextFile(std::shared_ptr<abstract::File> file,

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking** Bytes that do not read as text no longer come back as
+  `text_file` and render as nonsense - `decode` throws `UnknownFileType` and
+  `list_file_types` comes back empty. A file is text when it is empty, or its
+  encoding can be named and it carries no NUL outside utf-16 and utf-32.
 - `open(file, as)` no longer returns a container holding another document type
   as the type that was asked for. An encrypted ooxml still opens as whichever
   was asked - it names no inner type until it is decrypted.

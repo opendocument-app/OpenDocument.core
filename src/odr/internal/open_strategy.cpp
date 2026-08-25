@@ -258,9 +258,14 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
 
   if (as == FileType::markdown) {
     ODR_VERBOSE(logger, "open as markdown");
-    // Nothing rejects: md4c is total, so there is no detection to fail here.
-    auto text = std::make_shared<text::TextFile>(file);
-    return std::make_unique<markdown::MarkdownFile>(std::move(text));
+    // md4c is total, so only the text reading can fail here
+    try {
+      auto text = std::make_shared<text::TextFile>(file);
+      return std::make_unique<markdown::MarkdownFile>(std::move(text));
+    } catch (...) {
+      ODR_VERBOSE(logger, "failed to open as markdown");
+    }
+    throw NoMarkdownFile();
   }
 
   if (as == FileType::xml) {
