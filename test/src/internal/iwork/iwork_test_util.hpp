@@ -411,23 +411,23 @@ inline std::string string_entry(const std::uint64_t key,
 /// What a synthetic table is made of. The extent is what the model *declares*,
 /// which the tiles need not fill — that is the shape the budget guards.
 struct TableSpec final {
-  std::string name;
+  std::string name{};
   std::uint32_t rows{};
   std::uint32_t columns{};
   /// Rows already built by @ref tile_row, all in one tile.
-  std::vector<std::string> tile_rows;
+  std::vector<std::string> tile_rows{};
   /// Entries already built by @ref string_entry.
-  std::vector<std::string> strings;
+  std::vector<std::string> strings{};
   /// How many times the tile list names the one tile.
   std::size_t tile_repeats{1};
   /// When set, a rich text list holding one entry under key 1, whose payload
   /// names this storage — which a `rich_text` cell reaches by that key.
-  std::optional<std::uint64_t> rich_text_storage;
+  std::optional<std::uint64_t> rich_text_storage{};
   /// When set, the tile's payload verbatim, in place of @ref tile_rows.
-  std::optional<std::string> raw_tile;
+  std::optional<std::string> raw_tile{};
   /// When set, the tile storage's tile list verbatim, in place of the entries
   /// @ref tile_repeats would write.
-  std::optional<std::string> raw_tile_list;
+  std::optional<std::string> raw_tile_list{};
 };
 
 /// The identifiers a synthetic table's objects are filed under.
