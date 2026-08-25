@@ -223,8 +223,8 @@ struct SlideBox final {
 
 /// The size of a synthetic deck's slides, in points.
 struct SlideSize final {
-  float width{1024.0F};
-  float height{768.0F};
+  float width{1024};
+  float height{768};
 };
 
 /// A `.key` package: a root archive holding a show, whose slide tree names one

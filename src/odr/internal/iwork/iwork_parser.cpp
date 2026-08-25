@@ -253,10 +253,10 @@ std::optional<ElementRegistry::Rect> shape_rect(const Message &shape) {
           read_point(geometry_message, geometry_archive::size);
       size.has_value()) {
     // a zero side is a box that grows with its text, not a box of zero extent
-    if (size->x != 0.0F) {
+    if (size->x != 0) {
       rect.width = size->x;
     }
-    if (size->y != 0.0F) {
+    if (size->y != 0) {
       rect.height = size->y;
     }
   }

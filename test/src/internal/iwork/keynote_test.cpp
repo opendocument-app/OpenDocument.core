@@ -172,10 +172,10 @@ TEST(IworkKeynote, a_text_box_is_a_frame_where_the_geometry_puts_it) {
   const Document document = keynote_document(
       {{builder::SlideBox{.text = "boxed\r",
                           .paragraphs = std::vector<std::uint64_t>{0},
-                          .x = 100.0F,
-                          .y = 129.0F,
-                          .width = 824.0F,
-                          .height = 260.0F}}});
+                          .x = 100,
+                          .y = 129,
+                          .width = 824,
+                          .height = 260}}});
 
   const Element slide = *document.root_element().children().begin();
   const Frame frame = (*slide.children().begin()).as_frame();
@@ -197,10 +197,10 @@ TEST(IworkKeynote, a_text_box_against_the_slide_edge_is_at_zero) {
   const Document document = keynote_document(
       {{builder::SlideBox{.text = "flush",
                           .paragraphs = std::vector<std::uint64_t>{0},
-                          .x = 0.0F,
-                          .y = 0.0F,
-                          .width = 824.0F,
-                          .height = 260.0F}}});
+                          .x = 0,
+                          .y = 0,
+                          .width = 824,
+                          .height = 260}}});
 
   const Element slide = *document.root_element().children().begin();
   const Frame frame = (*slide.children().begin()).as_frame();
@@ -215,7 +215,7 @@ TEST(IworkKeynote, a_text_box_against_the_slide_edge_is_at_zero) {
 // a box of zero height — report no measure and let the content decide.
 TEST(IworkKeynote, a_text_box_that_autosizes_reports_no_size) {
   const Document document = keynote_document({{builder::SlideBox{
-      .text = "grows", .paragraphs = std::nullopt, .x = 478.0F, .y = 384.0F}}});
+      .text = "grows", .paragraphs = std::nullopt, .x = 478, .y = 384}}});
 
   const Element slide = *document.root_element().children().begin();
   const Frame frame = (*slide.children().begin()).as_frame();

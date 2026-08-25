@@ -74,7 +74,7 @@ TEST(ProtobufMessage, float_field) {
                            std::string{'\x00', '\x00', '\x80', '\xbf'} +
                            key(2, WireType::varint) + varint(1);
   const Message message(data);
-  EXPECT_EQ(message.float_field(1), -1.0F);
+  EXPECT_EQ(message.float_field(1), -1);
   EXPECT_FALSE(message.float_field(2).has_value());
   EXPECT_FALSE(message.float_field(3).has_value());
 }
