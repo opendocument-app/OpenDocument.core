@@ -19,11 +19,13 @@ public:
     float height{};
   };
 
+  /// A drawable's rectangle, in points. A side of the extent is absent for a
+  /// box that grows with its text rather than one of zero extent.
   struct Rect final {
     float x{};
     float y{};
-    float width{};
-    float height{};
+    std::optional<float> width;
+    std::optional<float> height;
   };
 
   struct Element final {

@@ -191,13 +191,15 @@ public:
   }
   [[nodiscard]] std::optional<Measure>
   frame_x(const ElementIdentifier element_id) const override {
-    return rect_measure(element_id,
-                        [](const ElementRegistry::Rect &r) { return r.x; });
+    return rect_measure(element_id, [](const ElementRegistry::Rect &r) {
+      return std::optional(r.x);
+    });
   }
   [[nodiscard]] std::optional<Measure>
   frame_y(const ElementIdentifier element_id) const override {
-    return rect_measure(element_id,
-                        [](const ElementRegistry::Rect &r) { return r.y; });
+    return rect_measure(element_id, [](const ElementRegistry::Rect &r) {
+      return std::optional(r.y);
+    });
   }
   [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
@@ -251,10 +253,9 @@ private:
     return Measure(value, DynamicUnit("pt"));
   }
 
-  /// One side of a frame's rectangle, or nothing where the geometry is missing
-  /// or zero — a Keynote text box sized to its text stores a zero size, and
-  /// the renderer does better letting the content decide than with a `0pt`
-  /// box.
+  /// One side of a frame's rectangle, or nothing where the frame has no
+  /// geometry or the side itself is absent — which only an extent is, for a
+  /// box that grows with its text.
   template <typename Selector>
   [[nodiscard]] std::optional<Measure>
   rect_measure(const ElementIdentifier element_id,
@@ -264,11 +265,11 @@ private:
     if (!rect.has_value()) {
       return std::nullopt;
     }
-    const float value = select(*rect);
-    if (value == 0.0F) {
+    const std::optional<float> value = select(*rect);
+    if (!value.has_value()) {
       return std::nullopt;
     }
-    return points(value);
+    return points(*value);
   }
 
   ElementRegistry *m_registry{nullptr};

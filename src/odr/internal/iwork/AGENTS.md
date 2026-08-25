@@ -128,8 +128,10 @@ Every other drawable kind is skipped: `style-various-1.key` slide 4 carries a
 Geometry is `shape → TSD.ShapeArchive → TSD.DrawableArchive → geometry`, with
 position in field 1 and size in field 2, both `TSP.Point`s of `float` points.
 **A size of zero is a box that grows with its text**, not a box of zero height
-— the free text box on slide 4 stores `(0, 0)` — so the adapter reports no
-measure for it and lets the content decide.
+— the free text box on slide 4 stores `(0, 0)` — so `shape_rect` leaves that
+side of the `Rect` unset and the content decides. A *position* of zero is a
+box against the slide's edge and is reported as the `0pt` it says: only the
+extent is optional.
 
 Slides carry no name in the archive, so they are numbered in presentation
 order the way `oldms/presentation` numbers `.ppt` slides. The slide size is the

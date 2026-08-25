@@ -206,16 +206,25 @@ std::optional<ElementRegistry::Rect> shape_rect(const Message &shape) {
   }
   const Message geometry_message(*geometry);
 
-  const std::optional<ElementRegistry::Size> position =
-      read_size(geometry_message, geometry_archive::position);
-  const std::optional<ElementRegistry::Size> size =
-      read_size(geometry_message, geometry_archive::size);
+  const std::optional<Point> position =
+      read_point(geometry_message, geometry_archive::position);
   if (!position.has_value()) {
     return {};
   }
-  return ElementRegistry::Rect{position->width, position->height,
-                               size.has_value() ? size->width : 0.0F,
-                               size.has_value() ? size->height : 0.0F};
+
+  ElementRegistry::Rect rect{.x = position->x, .y = position->y};
+  if (const std::optional<Point> size =
+          read_point(geometry_message, geometry_archive::size);
+      size.has_value()) {
+    // a zero side is a box that grows with its text, not a box of zero extent
+    if (size->x != 0.0F) {
+      rect.width = size->x;
+    }
+    if (size->y != 0.0F) {
+      rect.height = size->y;
+    }
+  }
+  return rect;
 }
 
 /// The `TSWP.ShapeArchive` a drawable holds, or nothing when it is a kind we

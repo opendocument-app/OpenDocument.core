@@ -16,8 +16,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace odr;
@@ -177,10 +181,33 @@ TEST(IworkKeynote, a_text_box_is_a_frame_where_the_geometry_puts_it) {
 
   EXPECT_EQ(frame.anchor_type(), AnchorType::at_page);
   ASSERT_TRUE(frame.x().has_value());
+  ASSERT_TRUE(frame.y().has_value());
+  ASSERT_TRUE(frame.width().has_value());
+  ASSERT_TRUE(frame.height().has_value());
   EXPECT_EQ(frame.x()->to_string(), "100pt");
   EXPECT_EQ(frame.y()->to_string(), "129pt");
   EXPECT_EQ(frame.width()->to_string(), "824pt");
   EXPECT_EQ(frame.height()->to_string(), "260pt");
+}
+
+// A box flush against the left or top edge states an offset of zero, which is
+// not the absent measure an unsized box reports.
+TEST(IworkKeynote, a_text_box_against_the_slide_edge_is_at_zero) {
+  const Document document = keynote_document(
+      {{builder::SlideBox{.text = "flush",
+                          .paragraphs = std::vector<std::uint64_t>{0},
+                          .x = 0.0F,
+                          .y = 0.0F,
+                          .width = 824.0F,
+                          .height = 260.0F}}});
+
+  const Element slide = *document.root_element().children().begin();
+  const Frame frame = (*slide.children().begin()).as_frame();
+
+  ASSERT_TRUE(frame.x().has_value());
+  ASSERT_TRUE(frame.y().has_value());
+  EXPECT_EQ(frame.x()->to_string(), "0pt");
+  EXPECT_EQ(frame.y()->to_string(), "0pt");
 }
 
 // Keynote stores a zero size for a box that grows with its text, which is not
