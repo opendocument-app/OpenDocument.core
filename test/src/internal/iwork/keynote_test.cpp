@@ -199,8 +199,12 @@ TEST(IworkKeynote, a_text_box_that_autosizes_reports_no_size) {
 
 // A placeholder wraps the same shape a free text box is, one level deeper.
 TEST(IworkKeynote, a_placeholder_reads_like_a_text_box) {
-  const Document document = keynote_document(
-      {{builder::SlideBox{.text = "titled", .placeholder = true}}});
+  // assigned rather than designated: gcc rejects an initializer that steps
+  // over the geometry to reach the flag behind it
+  builder::SlideBox box{.text = "titled"};
+  box.placeholder = true;
+
+  const Document document = keynote_document({{box}});
 
   EXPECT_EQ(slides(document.root_element()),
             (std::vector<std::vector<std::string>>{{"titled"}}));
