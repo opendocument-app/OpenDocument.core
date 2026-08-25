@@ -2,10 +2,12 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <tuple>
 
 #include <odr/html.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
 
@@ -441,4 +443,26 @@ TEST(html, an_image_fits_the_viewport) {
   HtmlConfig actual_size;
   actual_size.viewport_mode = HtmlViewportMode::actual_size;
   EXPECT_EQ(render(actual_size).find("img{max-width:"), std::string::npos);
+}
+
+// A page whose `<img>` no browser decodes is blank with nothing to report, so
+// the table declares none and `translate` holds to it.
+TEST(html, an_image_no_browser_decodes_is_not_translated) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  for (const FileType type :
+       {FileType::jpeg_2000, FileType::photoshop_document,
+        FileType::windows_metafile, FileType::enhanced_metafile}) {
+    const FileTypeCapabilities capabilities = capabilities_by_file_type(type);
+    EXPECT_TRUE(capabilities.open) << file_type_to_string(type);
+    EXPECT_FALSE(capabilities.translate_html) << file_type_to_string(type);
+
+    // nothing decodes the bytes, so any will do
+    const DecodedFile file =
+        open(File::from_memory("image bytes"), type, logger);
+    ASSERT_TRUE(file.is_image_file()) << file_type_to_string(type);
+    EXPECT_THROW(std::ignore = html::translate(file, HtmlConfig()),
+                 UnsupportedFileType)
+        << file_type_to_string(type);
+  }
 }

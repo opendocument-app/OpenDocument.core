@@ -43,6 +43,9 @@ The release run heads these entries with the version and opens a fresh
   `as_markdown_file()`.
 - Markdown has no signature, so it decodes only when `FileType::markdown` is
   asked for — a `.md` still comes back as a text file.
+- `psd`, `jp2`, `wmf` and `emf` no longer declare `translate_html` — no browser
+  paints them, and `html::translate` throws `UnsupportedFileType` instead of
+  writing a blank page. They are still detected and still open.
 
 ## v6.10.1 - 2026-08-21
 
