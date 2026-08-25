@@ -44,6 +44,12 @@ TEST(File, opening_as_the_wrong_document_type_throws) {
        FileType::office_open_xml_presentation},
       {"odr-public/doc/file-sample_100kB.doc", FileType::legacy_word_document,
        FileType::legacy_excel_worksheets},
+      // an iwork package names its own app, so asking for the other one is a
+      // claim it must refuse rather than answer with what it happens to be
+      {"odr-public/pages/empty.pages", FileType::iwork_pages,
+       FileType::iwork_keynote},
+      {"odr-public/key/empty.key", FileType::iwork_keynote,
+       FileType::iwork_pages},
   };
 
   for (const auto &[path, is, is_not] : cases) {

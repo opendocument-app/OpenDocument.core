@@ -7,6 +7,8 @@ namespace odr::internal::iwork {
 void ElementRegistry::clear() noexcept {
   m_elements.clear();
   m_texts.clear();
+  m_frames.clear();
+  m_slides.clear();
 }
 
 [[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
@@ -29,6 +31,22 @@ ElementRegistry::create_text_element() {
   return {element_id, element, it->second};
 }
 
+std::tuple<ElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Frame &>
+ElementRegistry::create_frame_element() {
+  const auto &[element_id, element] = create_element(ElementType::frame);
+  auto [it, success] = m_frames.emplace(element_id, Frame{});
+  return {element_id, element, it->second};
+}
+
+std::tuple<ElementIdentifier, ElementRegistry::Element &,
+           ElementRegistry::Slide &>
+ElementRegistry::create_slide_element() {
+  const auto &[element_id, element] = create_element(ElementType::slide);
+  auto [it, success] = m_slides.emplace(element_id, Slide{});
+  return {element_id, element, it->second};
+}
+
 ElementRegistry::Element &
 ElementRegistry::element_at(const ElementIdentifier id) {
   check_element_id(id);
@@ -41,6 +59,18 @@ ElementRegistry::text_element_at(const ElementIdentifier id) {
   return m_texts.at(id);
 }
 
+ElementRegistry::Frame &
+ElementRegistry::frame_element_at(const ElementIdentifier id) {
+  check_frame_id(id);
+  return m_frames.at(id);
+}
+
+ElementRegistry::Slide &
+ElementRegistry::slide_element_at(const ElementIdentifier id) {
+  check_slide_id(id);
+  return m_slides.at(id);
+}
+
 const ElementRegistry::Element &
 ElementRegistry::element_at(const ElementIdentifier id) const {
   check_element_id(id);
@@ -51,6 +81,18 @@ const ElementRegistry::Text &
 ElementRegistry::text_element_at(const ElementIdentifier id) const {
   check_text_id(id);
   return m_texts.at(id);
+}
+
+const ElementRegistry::Frame &
+ElementRegistry::frame_element_at(const ElementIdentifier id) const {
+  check_frame_id(id);
+  return m_frames.at(id);
+}
+
+const ElementRegistry::Slide &
+ElementRegistry::slide_element_at(const ElementIdentifier id) const {
+  check_slide_id(id);
+  return m_slides.at(id);
 }
 
 void ElementRegistry::append_child(const ElementIdentifier parent_id,
@@ -89,6 +131,20 @@ void ElementRegistry::check_element_id(const ElementIdentifier id) const {
 void ElementRegistry::check_text_id(const ElementIdentifier id) const {
   check_element_id(id);
   if (!m_texts.contains(id)) {
+    throw std::out_of_range("ElementRegistry::check_id: identifier not found");
+  }
+}
+
+void ElementRegistry::check_frame_id(const ElementIdentifier id) const {
+  check_element_id(id);
+  if (!m_frames.contains(id)) {
+    throw std::out_of_range("ElementRegistry::check_id: identifier not found");
+  }
+}
+
+void ElementRegistry::check_slide_id(const ElementIdentifier id) const {
+  check_element_id(id);
+  if (!m_slides.contains(id)) {
     throw std::out_of_range("ElementRegistry::check_id: identifier not found");
   }
 }

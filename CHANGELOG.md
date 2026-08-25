@@ -26,7 +26,10 @@ The release run heads these entries with the version and opens a fresh
   that is one file rather than a package.
 - A `.pages` file opens as a text document and renders its body text instead of
   the zip it is made of; styles, images and tables are not read yet. `.numbers`
-  and `.key` are named but have no decoder.
+  is named but has no decoder.
+- A `.key` file opens as a presentation and renders the text of each slide in
+  boxes where the file positions them, instead of the zip it is made of; slide
+  masters, styles, images, tables and presenter notes are not read yet.
 - An rtf opens and renders as a text document instead of throwing
   `UnknownFileType`. Its text, encoding, paragraphs and tabs are read;
   formatting, tables and pictures are not yet.

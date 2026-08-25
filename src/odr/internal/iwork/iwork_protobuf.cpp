@@ -2,6 +2,7 @@
 
 #include <odr/internal/util/byte_util.hpp>
 
+#include <bit>
 #include <stdexcept>
 
 namespace odr::internal::iwork {
@@ -101,6 +102,14 @@ Message::bytes_field(const std::uint32_t number) const {
     return {};
   }
   return field->bytes;
+}
+
+std::optional<float> Message::float_field(const std::uint32_t number) const {
+  const std::optional<Field> field = this->field(number);
+  if (!field.has_value() || field->type != WireType::fixed32) {
+    return {};
+  }
+  return std::bit_cast<float>(static_cast<std::uint32_t>(field->number_value));
 }
 
 } // namespace odr::internal::iwork

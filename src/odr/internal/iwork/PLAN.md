@@ -1,24 +1,30 @@
 # iWork plan
 
 Where an iwork module goes, and in what order. Written before stage 1; kept
-honest as stages land. **Stages 1 and 2 have landed** — see
-[`AGENTS.md`](AGENTS.md) for what they decided. Stage 3 is next.
+honest as stages land. **Stages 1, 2 and 5 have landed** — see
+[`AGENTS.md`](AGENTS.md) for what they decided. Stage 5 was pulled ahead of 3
+and 4 because it needed neither: a slide is a container above the text storage
+stage 2 already read. Stage 6 is next.
 
 ## Today
 
-A `.pages` opens as a text document and renders its body text. `.numbers` and
-`.key` have `FileType` entries and `file_type_table.cpp` rows so a caller can
-name them, but no capabilities and no engine behind them: which app wrote a
-package is read off its root archive type, and neither has a fixture to pin
-that against.
+A `.pages` opens as a text document and renders its body text; a `.key` opens
+as a presentation and renders each slide's text boxes as positioned frames.
+`.numbers` has a `FileType` entry and a `file_type_table.cpp` row so a caller
+can name it, but no capabilities and no engine behind it.
 
-Two fixtures are committed:
-`test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, both
-written by iWork 13.2 (`Metadata/BuildVersionHistory.plist`). Neither is listed
-in `index.csv` — they do not need to be, `TestData` picks up anything the file
-type table knows an extension for — and they gained reference output when stage
-2 turned `translate_html` on. `style-various-1.pages` carries `Index/Tables/`
-and nine files under `Data/`, which is most of the surface below.
+Six fixtures are committed:
+`test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, written
+by iWork 13.2, and `test/data/input/odr-public/{key/{empty.key,
+style-various-1.key},numbers/{empty.numbers,style-various-1.numbers}}`, written
+by iWork 14.4 (`Metadata/BuildVersionHistory.plist`). None is listed in
+`index.csv` — they do not need to be, `TestData` picks up anything the file
+type table knows an extension for — and each gained reference output when its
+format turned `translate_html` on. Nothing decodes the `.numbers` pair yet;
+they are what pins the Keynote-versus-Numbers detection rule.
+`style-various-1.pages` carries `Index/Tables/` and nine files under `Data/`,
+and `style-various-1.key` a table on its last slide, which is most of the
+surface below.
 
 ## Spec
 
@@ -61,6 +67,35 @@ Namespace `odr::internal::iwork`.
 type, exactly as `odf::OpenDocumentFile` (`odf_file.hpp:21`) does for the four
 opendocument types — same constructor over an
 `abstract::ReadableFilesystem`, same `document()` dispatch.
+
+**And the files split by framework, not by app.** `ooxml/` gives each format a
+directory because Microsoft factored by app: WordprocessingML and SpreadsheetML
+share nothing below the package, so `text/`, `presentation/` and `spreadsheet/`
+each carry their own parser, registry and document. Apple factored by
+*framework* instead — `TSWP` text, `TSD` drawables, `TST` tables, `TSS` styles
+mean the same thing in all three apps, and only the spine above them
+(`TP.DocumentArchive` → body, `KN.ShowArchive` → slides, `TN.DocumentArchive` →
+sheets) is per-app. So `iwork/` stays flat, with **one** `ElementRegistry`, one
+`Document` and one `IworkFile`, and splits its parsing along Apple's seams:
+
+| File | Framework |
+|---|---|
+| `iwork_text.cpp` | `TSWP` storage → paragraphs *(landed)* |
+| `iwork_drawable.cpp` | `TSD` geometry, shapes, images *(stage 4)* |
+| `iwork_table.cpp` | `TST` tiles → table, row, cell *(stage 6)* |
+| `iwork_style.cpp` | `TSS` property-set inheritance *(stage 3)* |
+| `iwork_parser.cpp` | the three spines, calling the above |
+
+The evidence is stage 6: the tile reader is written for **Pages** tables, a
+`.key` slide carries a `TST.TableInfoArchive` too, and stage 7 puts Numbers on
+top of the same reader. The most expensive component still ahead is shared by
+all three apps, which an app-shaped split would either duplicate or push into a
+`common/` holding most of the module.
+
+Only `iwork_text.cpp` and the `Budget` it spends against are split out today —
+the rest follows the stage that writes it. Merging three registries later is
+not mechanical; splitting one is, so the unified side is the cheap side to be
+wrong on.
 
 **No new dependencies.** Two pieces would normally be a conan line each, and
 both are wrong here:
@@ -240,7 +275,7 @@ against UTF-8 text, which the parser translates in one pass.
   body flow, so once frames exist it is a different root assembly, not new
   parsing.
 
-## Stage 5 — Keynote
+## Stage 5 — Keynote *(landed)*
 
 Cheaper than it looks, and therefore before Numbers: slides are a container
 above the *same* text storage stage 2 and 3 already read.
@@ -250,6 +285,22 @@ above the *same* text storage stage 2 and 3 already read.
 - notes, builds and transitions are out (see Deferred).
 - `iwork_keynote` gains `.translate_html = true`; needs a `.key` fixture in the
   public data repo first.
+
+Landed with three deviations:
+
+- **The root archive does not say which app wrote the package.** The plan
+  assumed it did, as it does for Pages. `KN.DocumentArchive` and
+  `TN.DocumentArchive` are both type 1 — ids are namespaced per app — so
+  Keynote is told from Numbers by the `Slide` components a deck holds. See
+  `AGENTS.md`.
+- **Masters are not read.** `slide_master_page` is null; the
+  `Index/TemplateSlide-*.iwa` components are there and unopened, which costs
+  the theme background and nothing a reader misses in text.
+- **Frames arrived here rather than in stage 4.** A slide is drawables on a
+  canvas, so there was no "text and nothing else" shape to land first. The
+  geometry the drawable already carries is read, which is the piece stage 4
+  needs for Pages; what stage 4 still owes is images, shapes and the anchoring
+  a Pages text flow does.
 
 ## Stage 6 — the tile reader
 
@@ -261,7 +312,7 @@ have not mapped must degrade to an empty cell rather than a wrong one.
 
 Do this for **Pages tables first** (`Table`, `TableRow`, `TableCell`), because
 `style-various-1.pages` already carries `Index/Tables/` and exercises the reader
-without a Numbers fixture existing.
+without any Numbers archive being mapped.
 
 ## Stage 7 — Numbers
 
@@ -310,6 +361,13 @@ without a Numbers fixture existing.
 knows — and reference output was regenerated when stage 2 flipped
 `translate_html` on.
 
-Stages 5 and 7 each need a fixture that does not exist yet — one `.key` and one
-`.numbers` in the public repo. Everything at container level stays inline, per
-stage 1.
+`empty.numbers` and `style-various-1.numbers` are in
+`test/data/input/odr-public/numbers/`. Stage 7 is what will decode them; today
+they are the negative that pins detection
+(`IworkKeynote.a_numbers_package_is_not_keynote`). Everything at container
+level stays inline, per stage 1.
+
+The `.key` fixtures were authored on macOS with Keynote 14.4 rather than found:
+there is no spec, so a file the app wrote is the only citation available, and
+one written to order can carry exactly the shapes a stage needs — a title
+slide, a bulleted body, an empty placeholder, a free text box and a table.

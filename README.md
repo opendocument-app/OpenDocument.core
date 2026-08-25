@@ -13,6 +13,8 @@ C++ library to visualize files, especially documents, in HTML.
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
 - pages (Apple Pages — body text only; styles, page geometry, images and
   tables are not read yet)
+- key (Apple Keynote — the text of each slide, in boxes where the file puts
+  them; styles, masters, images, tables and presenter notes are not read yet)
 - rtf (body text only; character and paragraph formatting, tables and pictures
   are not read yet)
 - txt
@@ -39,7 +41,6 @@ opening one throws:
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
 - numbers (Apple Numbers)
-- key (Apple Keynote)
 
 ## Asking what is supported
 

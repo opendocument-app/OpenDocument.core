@@ -94,12 +94,16 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     throw NoOpenDocumentFile();
   }
 
-  if (as == FileType::iwork_pages) {
+  if (as == FileType::iwork_pages || as == FileType::iwork_keynote) {
     ODR_VERBOSE(logger, "open as iwork");
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      return std::make_unique<iwork::IworkFile>(filesystem);
+      auto iwork_file = std::make_unique<iwork::IworkFile>(filesystem);
+      if (iwork_file->file_type() == as) {
+        return iwork_file;
+      }
+      ODR_VERBOSE(logger, "iwork is a different document type");
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as iwork");
     }

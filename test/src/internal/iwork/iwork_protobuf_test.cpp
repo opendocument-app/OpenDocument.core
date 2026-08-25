@@ -67,6 +67,18 @@ TEST(ProtobufMessage, fixed_fields) {
   EXPECT_EQ(message.number_field(2), 0x0102030405060708);
 }
 
+// A geometry's `float`s are `fixed32`; a field of any other wire type is not
+// one, which matters where a field number was guessed rather than read.
+TEST(ProtobufMessage, float_field) {
+  const std::string data = key(1, WireType::fixed32) +
+                           std::string{'\x00', '\x00', '\x80', '\xbf'} +
+                           key(2, WireType::varint) + varint(1);
+  const Message message(data);
+  EXPECT_EQ(message.float_field(1), -1);
+  EXPECT_FALSE(message.float_field(2).has_value());
+  EXPECT_FALSE(message.float_field(3).has_value());
+}
+
 TEST(ProtobufMessage, bytes_field) {
   const std::string data = length_delimited(3, "Table of Contents");
   const Message message(data);

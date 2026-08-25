@@ -49,6 +49,8 @@ public:
   number_field(std::uint32_t number) const;
   [[nodiscard]] std::optional<std::string_view>
   bytes_field(std::uint32_t number) const;
+  /// A `fixed32` field read as the `float` iWork stores geometry in.
+  [[nodiscard]] std::optional<float> float_field(std::uint32_t number) const;
 
 private:
   std::vector<Field> m_fields;

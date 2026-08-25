@@ -10,6 +10,7 @@
 #include <odr/internal/iwork/iwork_types.hpp>
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -17,22 +18,27 @@ namespace odr::internal::iwork {
 
 namespace {
 
-/// The type of the root archive says which app wrote the package. Only
-/// `.pages` is pinned — a `.numbers` or `.key` fixture would be needed to read
-/// theirs off, and the extension is not an answer.
-FileType file_type_by_archive_type(const std::uint32_t type) {
-  switch (type) {
-  case archive_type::pages_document:
-    return FileType::iwork_pages;
-  default:
-    return FileType::unknown;
+/// The component Keynote writes one of per slide. A `.numbers` and a `.pages`
+/// package hold none — `empty.key` against `empty.numbers` and both `.pages`
+/// fixtures (iWork 14.4 / 13.2).
+constexpr std::string_view slide_component = "Slide";
+
+/// Which app wrote a package whose root archive is @ref
+/// archive_type::app_document. Pages has a type id of its own, but Keynote and
+/// Numbers both number their root archive 1 — the id space is per app — so the
+/// two are told apart by the components the package holds.
+FileType app_by_components(const abstract::ReadableFilesystem &filesystem) {
+  Package package(filesystem);
+  if (package.has_component(slide_component)) {
+    return FileType::iwork_keynote;
   }
+  return FileType::unknown;
 }
 
 /// Reads the root archive of the package's `Document` component. The component
-/// list in `Index/Metadata.iwa` is not consulted: this runs on every zip a
-/// caller opens, and the `Document` component is the one whose file name never
-/// carries an identifier suffix.
+/// list in `Index/Metadata.iwa` is not consulted for the root archive itself:
+/// this runs on every zip a caller opens, and the `Document` component is the
+/// one whose file name never carries an identifier suffix.
 FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
   const std::string data = read_iwa(filesystem, AbsPath("/Index/Document.iwa"));
   const std::vector<Object> objects = read_objects(data);
@@ -40,7 +46,18 @@ FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
     throw NoIworkFile();
   }
 
-  const FileType file_type = file_type_by_archive_type(objects.front().type);
+  FileType file_type = FileType::unknown;
+  switch (objects.front().type) {
+  case archive_type::pages_document:
+    file_type = FileType::iwork_pages;
+    break;
+  case archive_type::app_document:
+    file_type = app_by_components(filesystem);
+    break;
+  default:
+    break;
+  }
+
   if (file_type == FileType::unknown) {
     throw NoIworkFile();
   }
@@ -79,7 +96,8 @@ bool IworkFile::is_decodable() const noexcept { return true; }
 std::shared_ptr<abstract::Document> IworkFile::document() const {
   switch (file_type()) {
   case FileType::iwork_pages:
-    return std::make_shared<Document>(m_filesystem);
+  case FileType::iwork_keynote:
+    return std::make_shared<Document>(file_type(), m_filesystem);
   default:
     throw UnsupportedFileType(file_type());
   }

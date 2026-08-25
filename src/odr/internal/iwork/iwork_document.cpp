@@ -2,25 +2,43 @@
 
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/odr.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/iwork/iwork_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 
+#include <optional>
 #include <utility>
 
 namespace odr::internal::iwork {
 
 namespace {
+
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(ElementRegistry &registry);
+
+ElementIdentifier parse_tree(ElementRegistry &registry,
+                             const FileType file_type,
+                             const abstract::ReadableFilesystem &files) {
+  switch (file_type) {
+  case FileType::iwork_pages:
+    return parse_pages_tree(registry, files);
+  case FileType::iwork_keynote:
+    return parse_keynote_tree(registry, files);
+  default:
+    throw UnsupportedFileType(file_type);
+  }
 }
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
-    : internal::Document(FileType::iwork_pages, DocumentType::text,
+} // namespace
+
+Document::Document(const FileType file_type,
+                   std::shared_ptr<abstract::ReadableFilesystem> files)
+    : internal::Document(file_type, document_type_by_file_type(file_type),
                          std::move(files)) {
-  m_root_element = parse_pages_tree(m_element_registry, *m_files);
+  m_root_element = parse_tree(m_element_registry, file_type, *m_files);
 
   m_element_adapter = create_element_adapter(m_element_registry);
 }
@@ -51,6 +69,8 @@ namespace {
 
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextRootAdapter,
+                             public abstract::SlideAdapter,
+                             public abstract::FrameAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
                              public abstract::TextAdapter {
@@ -83,19 +103,16 @@ public:
     return m_registry->element_at(element_id).next_sibling_id;
   }
 
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_unique(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_self_locatable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
   }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] bool element_is_editable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return false;
   }
   [[nodiscard]] DocumentPath
@@ -112,6 +129,14 @@ public:
   text_root_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::root ? this : nullptr;
   }
+  [[nodiscard]] const SlideAdapter *
+  slide_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::slide ? this : nullptr;
+  }
+  [[nodiscard]] const FrameAdapter *
+  frame_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::frame ? this : nullptr;
+  }
   [[nodiscard]] const LineBreakAdapter *
   line_break_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::line_break ? this : nullptr;
@@ -127,31 +152,85 @@ public:
 
   // The page geometry sits in the document archive and the styles in
   // `Index/DocumentStylesheet.iwa`; neither is read yet.
-  [[nodiscard]] PageLayout
-  text_root_page_layout(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] PageLayout text_root_page_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
-      const ElementIdentifier element_id) const override {
-    (void)element_id;
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
-  [[nodiscard]] TextStyle
-  line_break_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] std::string
+  slide_name(const ElementIdentifier element_id) const override {
+    return m_registry->slide_element_at(element_id).name;
+  }
+  [[nodiscard]] PageLayout
+  slide_page_layout(const ElementIdentifier element_id) const override {
+    const std::optional<ElementRegistry::Size> &size =
+        m_registry->slide_element_at(element_id).size;
+    if (!size.has_value()) {
+      return {};
+    }
+    return {
+        .width = points(size->width),
+        .height = points(size->height),
+        .print_orientation = {},
+        .margin = {},
+    };
+  }
+  [[nodiscard]] ElementIdentifier slide_master_page(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    // `Index/TemplateSlide-*.iwa` holds the masters; nothing reads them yet.
+    return null_element_id;
+  }
+
+  [[nodiscard]] AnchorType frame_anchor_type(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return AnchorType::at_page;
+  }
+  [[nodiscard]] std::optional<Measure>
+  frame_x(const ElementIdentifier element_id) const override {
+    return rect_measure(element_id, [](const ElementRegistry::Rect &r) {
+      return std::optional(r.x);
+    });
+  }
+  [[nodiscard]] std::optional<Measure>
+  frame_y(const ElementIdentifier element_id) const override {
+    return rect_measure(element_id, [](const ElementRegistry::Rect &r) {
+      return std::optional(r.y);
+    });
+  }
+  [[nodiscard]] std::optional<Measure>
+  frame_width(const ElementIdentifier element_id) const override {
+    return rect_measure(element_id,
+                        [](const ElementRegistry::Rect &r) { return r.width; });
+  }
+  [[nodiscard]] std::optional<Measure>
+  frame_height(const ElementIdentifier element_id) const override {
+    return rect_measure(
+        element_id, [](const ElementRegistry::Rect &r) { return r.height; });
+  }
+  [[nodiscard]] std::optional<std::int32_t> frame_z_index(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return std::nullopt;
+  }
+  [[nodiscard]] GraphicStyle frame_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
-  [[nodiscard]] ParagraphStyle
-  paragraph_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] TextStyle line_break_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
-  [[nodiscard]] TextStyle
-  paragraph_text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+
+  [[nodiscard]] ParagraphStyle paragraph_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+  [[nodiscard]] TextStyle paragraph_text_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
@@ -159,19 +238,40 @@ public:
   text_content(const ElementIdentifier element_id) const override {
     return m_registry->text_element_at(element_id).text;
   }
-  void text_set_content(const ElementIdentifier element_id,
-                        const std::string &text) const override {
-    (void)element_id;
-    (void)text;
+  void
+  text_set_content([[maybe_unused]] const ElementIdentifier element_id,
+                   [[maybe_unused]] const std::string &text) const override {
     throw UnsupportedOperation();
   }
-  [[nodiscard]] TextStyle
-  text_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
+  [[nodiscard]] TextStyle text_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
   }
 
 private:
+  static Measure points(const float value) {
+    return Measure(value, DynamicUnit("pt"));
+  }
+
+  /// One side of a frame's rectangle, or nothing where the frame has no
+  /// geometry or the side itself is absent — which only an extent is, for a
+  /// box that grows with its text.
+  template <typename Selector>
+  [[nodiscard]] std::optional<Measure>
+  rect_measure(const ElementIdentifier element_id,
+               const Selector &select) const {
+    const std::optional<ElementRegistry::Rect> &rect =
+        m_registry->frame_element_at(element_id).rect;
+    if (!rect.has_value()) {
+      return std::nullopt;
+    }
+    const std::optional<float> value = select(*rect);
+    if (!value.has_value()) {
+      return std::nullopt;
+    }
+    return points(*value);
+  }
+
   ElementRegistry *m_registry{nullptr};
 };
 

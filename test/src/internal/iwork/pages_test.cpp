@@ -58,6 +58,7 @@ Document pages_document(
     const std::string &text,
     const std::optional<std::vector<std::uint64_t>> &paragraph_indices) {
   return Document(std::make_shared<iwork::Document>(
+      FileType::iwork_pages,
       builder::pages_package(builder::text_storage(text, paragraph_indices))));
 }
 
@@ -192,8 +193,8 @@ TEST(Iwork, pages_with_an_empty_paragraph_style_table) {
             (std::vector<std::string>{"only"}));
 }
 
-// Only `.pages` is mapped, so a `.numbers` or `.key` falls back to the zip it
-// is rather than being guessed at from its extension.
+// A root archive type nothing maps falls back to the zip the package is,
+// rather than being guessed at from the extension.
 TEST(Iwork, unmapped_root_archive_is_not_an_iwork_file) {
   const auto files =
       builder::pages_package(builder::text_storage("", std::nullopt), 10001);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/file.hpp>
+
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/iwork/iwork_element_registry.hpp>
 
@@ -7,10 +9,12 @@
 
 namespace odr::internal::iwork {
 
-/// A `.pages` package, read as a text document.
+/// An iWork package, read as the kind of document the app that wrote it
+/// makes: a `.pages` as text, a `.key` as a presentation.
 class Document final : public internal::Document {
 public:
-  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
+  Document(FileType file_type,
+           std::shared_ptr<abstract::ReadableFilesystem> files);
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
