@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // Query: webkit=1, fit=<number>|auto, zoom=<number>, content=page|prose
+      var q = new URLSearchParams(location.search);
+      window.__q = q;
+    </script>
+    <style id="odr-style"></style>
+    <style>
+      /* Chromium anchors scrolls on its own; webkit does not. */
+      body {
+        overflow-anchor: none;
+        margin: 0;
+      }
+      .odr-page {
+        width: 826px;
+        margin: 0 auto;
+        padding: 32px 0;
+        background: #fff;
+      }
+      .line {
+        font: 16px/1.5 monospace;
+        height: 24px;
+      }
+      /* No gap between them: a point at the top of the viewport must land in a
+         paragraph, not in a margin the body owns. */
+      .prose {
+        font: 16px/1.5 monospace;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var q = window.__q;
+
+        // The css `write_zoom_style` would have written.
+        var fit = q.get("fit");
+        var zoom = q.get("zoom");
+        var css = "";
+        var applied = 1;
+        if (fit || zoom) {
+          css += ":root{";
+          if (fit) {
+            css += "--odr-fit:" + fit + (zoom ? ";" : "");
+          }
+          if (zoom) {
+            css += "--odr-zoom:" + zoom;
+          }
+          css += "}";
+          applied = parseFloat(zoom || fit);
+          if (isFinite(applied) && applied !== 1) {
+            css += "body{zoom:" + applied + "}";
+          }
+        }
+        document.getElementById("odr-style").textContent = css;
+
+        var host = document.body;
+        if (q.get("content") === "prose") {
+          // Reflows with the viewport, so a width change moves the reader.
+          for (var i = 0; i < 400; ++i) {
+            var p = document.createElement("p");
+            p.className = "prose";
+            p.id = "p" + i;
+            p.textContent =
+              "paragraph " +
+              i +
+              " " +
+              "lorem ipsum dolor sit amet consectetur adipiscing elit sed do ".repeat(
+                3,
+              );
+            host.appendChild(p);
+          }
+        } else {
+          var page = document.createElement("div");
+          page.className = "odr-page";
+          for (var j = 0; j < 400; ++j) {
+            var line = document.createElement("div");
+            line.className = "line";
+            line.id = "l" + j;
+            line.textContent = "line " + j + " of the document";
+            page.appendChild(line);
+          }
+          host.appendChild(page);
+        }
+
+        // Webkit reports rects in layout coordinates while an applied `zoom`
+        // scales the viewport; dividing it back out reproduces that.
+        if (q.get("webkit") === "1") {
+          var native = Element.prototype.getBoundingClientRect;
+          Element.prototype.getBoundingClientRect = function () {
+            var box = native.call(this);
+            var z = parseFloat(getComputedStyle(document.body).zoom);
+            if (!isFinite(z) || z <= 0 || z === 1) {
+              return box;
+            }
+            return {
+              x: box.x / z,
+              y: box.y / z,
+              left: box.left / z,
+              top: box.top / z,
+              right: box.right / z,
+              bottom: box.bottom / z,
+              width: box.width / z,
+              height: box.height / z,
+            };
+          };
+        }
+
+        var script = document.createElement("script");
+        script.src = "viewport.js";
+        script.onload = function () {
+          window.__ready = true;
+        };
+        document.head.appendChild(script);
+      })();
+    </script>
+  </body>
+</html>

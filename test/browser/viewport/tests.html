@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>viewport.js checks</title>
+    <style>
+      body {
+        font: 14px/1.6 monospace;
+        margin: 16px;
+      }
+      #frame {
+        border: 1px solid #999;
+      }
+      #out b {
+        color: #b00;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="out">running…</pre>
+    <iframe id="frame" width="900" height="600"></iframe>
+    <script>
+      var out = document.getElementById("out");
+      var frame = document.getElementById("frame");
+      var lines = [];
+      var failed = 0;
+
+      function say(text) {
+        lines.push(text);
+        out.innerHTML = lines.join("\n");
+      }
+
+      function check(name, ok, detail) {
+        if (!ok) {
+          ++failed;
+        }
+        var head = ok ? "PASS  " : "<b>FAIL</b>  ";
+        say(head + name + (detail ? "   " + detail : ""));
+      }
+
+      function wait(ms) {
+        return new Promise(function (resolve) {
+          setTimeout(resolve, ms);
+        });
+      }
+
+      function load(query, width) {
+        frame.width = width || 900;
+        return new Promise(function (resolve) {
+          frame.onload = function () {
+            (function poll() {
+              if (frame.contentWindow.__ready && frame.contentWindow.odr) {
+                setTimeout(function () {
+                  resolve(frame.contentWindow);
+                }, 60);
+              } else {
+                setTimeout(poll, 20);
+              }
+            })();
+          };
+          frame.src = "page.html?" + query;
+        });
+      }
+
+      // A window that is not on screen has its scroll and resize events
+      // throttled away, so the harness dispatches them.
+      function scrollTo(win, y) {
+        win.scrollTo(0, y);
+        win.dispatchEvent(new win.Event("scroll"));
+      }
+
+      function resizeTo(win, frame, width) {
+        frame.width = width;
+        void frame.contentDocument.documentElement.clientWidth;
+        win.dispatchEvent(new win.Event("resize"));
+      }
+
+      // The first identified thing at the top of the viewport; a point can land
+      // in a margin, which belongs to the body.
+      function topId(win) {
+        var doc = win.document;
+        var cx = Math.floor(doc.documentElement.clientWidth / 2);
+        for (var y = 1; y <= 24; ++y) {
+          var at = doc.elementFromPoint(cx, y);
+          var owner = at && at.closest ? at.closest("[id]") : null;
+          if (owner) {
+            return owner.id;
+          }
+        }
+        return "(none)";
+      }
+
+      // The document position under viewport row `y`, in the document's own
+      // unzoomed coordinates - read without the script's own helpers.
+      function docAt(win, y) {
+        var zoom = parseFloat(getComputedStyle(win.document.body).zoom);
+        return (win.scrollY + y) / (isFinite(zoom) && zoom > 0 ? zoom : 1);
+      }
+
+      function near(a, b, tolerance) {
+        return Math.abs(a - b) <= tolerance;
+      }
+
+      // Webkit does not carry an applied `body{zoom}` in a rect, so what a host
+      // reads off one is not what `elementFromPoint` takes.
+      async function rectTest(label, webkit, expectRawHit) {
+        var win = await load(
+          "content=page&zoom=0.472155&webkit=" + (webkit ? 1 : 0),
+        );
+        var doc = win.document;
+        scrollTo(win, 2000);
+        await wait(60);
+
+        // Whatever is on screen, the way a host picks an element.
+        var cx = Math.floor(doc.documentElement.clientWidth / 2);
+        var element = doc.elementFromPoint(cx, 200);
+        var raw = element.getBoundingClientRect();
+        var view = win.odr.getViewportRect(element);
+
+        var rawHit = doc.elementFromPoint(
+          raw.left + raw.width / 2,
+          raw.top + raw.height / 2,
+        );
+        var viewHit = doc.elementFromPoint(
+          view.left + view.width / 2,
+          view.top + view.height / 2,
+        );
+
+        check(
+          label + ": a raw rect centre hits the element",
+          (rawHit === element) === expectRawHit,
+          "expected " + (expectRawHit ? "a hit" : "a miss") + ", got " +
+            (rawHit ? rawHit.id || rawHit.tagName : "none"),
+        );
+        check(
+          label + ": getViewportRect centre hits the element",
+          viewHit === element,
+          element.id + " -> " +
+            (viewHit ? viewHit.id || viewHit.tagName : "none"),
+        );
+        check(
+          label + ": rect factor",
+          near(view.width / raw.width, webkit ? 0.472155 : 1, 1e-6),
+          "view/raw=" + (view.width / raw.width).toFixed(6),
+        );
+      }
+
+      // A pinch hands `setZoom` its midpoint, which must stay put. The top of
+      // the viewport is where the settling loop converges either way.
+      async function pinchTest(label, webkit, focusY) {
+        var win = await load("content=page&zoom=0.5&webkit=" + (webkit ? 1 : 0));
+        scrollTo(win, 2500);
+        await wait(80);
+
+        var cx = Math.floor(win.document.documentElement.clientWidth / 2);
+        var before = docAt(win, focusY);
+        win.odr.setZoom(0.8, { x: cx, y: focusY });
+        await wait(200);
+        var after = docAt(win, focusY);
+
+        check(
+          label + ": the point under the pinch stays put (y=" + focusY + ")",
+          near(after, before, 24),
+          before.toFixed(1) + " -> " + after.toFixed(1) + ", off by " +
+            (after - before).toFixed(1) + "px of document",
+        );
+      }
+
+      // A stated fit does not follow the viewport; the reader's place does.
+      async function resizeHoldTest(label) {
+        var win = await load("content=prose&fit=0.5", 900);
+        scrollTo(win, 4000);
+        await wait(120);
+        var before = topId(win);
+
+        resizeTo(win, frame, 400);
+        await wait(150);
+        var after = topId(win);
+
+        check(
+          label + ": the paragraph at the top survives a width change",
+          before === after,
+          before + " -> " + after,
+        );
+      }
+
+      (async function () {
+        say("--- rect space against viewport space ---");
+        await rectTest("chromium", false, true);
+        await rectTest("webkit-simulated", true, false);
+
+        say("");
+        say("--- the pinch focus holds ---");
+        await pinchTest("chromium", false, 400);
+        await pinchTest("webkit-simulated", true, 400);
+
+        say("");
+        say("--- a stated fit holds the reading position ---");
+        await resizeHoldTest("resize");
+
+        say("");
+        say(failed ? "<b>" + failed + " failed</b>" : "all passed");
+      })();
+    </script>
+  </body>
+</html>

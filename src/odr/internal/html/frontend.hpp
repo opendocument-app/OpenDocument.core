@@ -46,8 +46,9 @@ void write_text_script(const WritingState &state);
 void write_search_script(const WritingState &state);
 
 /// `odr.getZoom()`, `setZoom(value, focus)`, `adjustZoom(factor, focus)`,
-/// `resetZoom(focus)`, `isZoomFitted()`, `onZoomChange`, plus the fit @ref
-/// write_zoom_style left to be measured. Holds the reading position.
+/// `resetZoom(focus)`, `isZoomFitted()`, `getViewportRect(element)`,
+/// `onZoomChange`, plus the fit @ref write_zoom_style left to be measured.
+/// Holds the reading position.
 void write_viewport_script(const WritingState &state);
 
 /// What the corresponding `write_*` calls would link, without writing anything:

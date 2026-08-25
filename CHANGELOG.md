@@ -50,6 +50,13 @@ The release run heads these entries with the version and opens a fresh
 - `psd`, `jp2`, `wmf` and `emf` no longer declare `translate_html` — no browser
   paints them, and `html::translate` throws `UnsupportedFileType` instead of
   writing a blank page. They are still detected and still open.
+- `odr.setZoom(value, focus)` holds the point the pinch is centred on. Webkit
+  does not carry an applied `body{zoom}` in `getBoundingClientRect`, so the
+  focus moved with the zoom.
+- New `odr.getViewportRect(element)`: the element's box in the coordinates
+  `elementFromPoint` takes, for a host hit-testing while a zoom is applied.
+- A view whose zoom does not follow the viewport — `viewport_width`,
+  `initial_zoom`, a sheet — keeps the reader's place across a width change.
 
 ## v6.10.1 - 2026-08-21
 
