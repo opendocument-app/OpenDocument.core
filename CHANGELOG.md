@@ -24,12 +24,16 @@ The release run heads these entries with the version and opens a fresh
   `office:binary-data` image now decodes in a package too.
 - `Document::as_filesystem` answers with an empty filesystem for a document
   that is one file rather than a package.
-- A `.pages` file opens as a text document and renders its body text instead of
-  the zip it is made of; styles, images and tables are not read yet. `.numbers`
-  is named but has no decoder.
+- A `.pages` file opens as a text document and renders its body text and the
+  tables it anchors, instead of the zip it is made of; styles and images are not
+  read yet.
 - A `.key` file opens as a presentation and renders the text of each slide in
   boxes where the file positions them, instead of the zip it is made of; slide
   masters, styles, images, tables and presenter notes are not read yet.
+- A `.numbers` file opens as a spreadsheet instead of the zip it is made of,
+  with one sheet per Numbers table named `<sheet> – <table>`. Cells show the
+  values the app last computed; number formats, merged ranges, charts and
+  formulas are not read yet.
 - An rtf opens and renders as a text document instead of throwing
   `UnknownFileType`. Its text, encoding, paragraphs and tabs are read;
   formatting, tables and pictures are not yet.

@@ -4,11 +4,15 @@
 #include <odr/exceptions.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
+#include <odr/table_dimension.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/iwork/iwork_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 
+#include <algorithm>
+#include <cstdint>
 #include <optional>
 #include <utility>
 
@@ -27,6 +31,8 @@ ElementIdentifier parse_tree(ElementRegistry &registry,
     return parse_pages_tree(registry, files);
   case FileType::iwork_keynote:
     return parse_keynote_tree(registry, files);
+  case FileType::iwork_numbers:
+    return parse_numbers_tree(registry, files);
   default:
     throw UnsupportedFileType(file_type);
   }
@@ -70,6 +76,12 @@ namespace {
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextRootAdapter,
                              public abstract::SlideAdapter,
+                             public abstract::SheetAdapter,
+                             public abstract::SheetCellAdapter,
+                             public abstract::TableAdapter,
+                             public abstract::TableColumnAdapter,
+                             public abstract::TableRowAdapter,
+                             public abstract::TableCellAdapter,
                              public abstract::FrameAdapter,
                              public abstract::LineBreakAdapter,
                              public abstract::ParagraphAdapter,
@@ -133,6 +145,31 @@ public:
   slide_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::slide ? this : nullptr;
   }
+  [[nodiscard]] const SheetAdapter *
+  sheet_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::sheet ? this : nullptr;
+  }
+  [[nodiscard]] const SheetCellAdapter *
+  sheet_cell_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::sheet_cell ? this : nullptr;
+  }
+  [[nodiscard]] const TableAdapter *
+  table_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::table ? this : nullptr;
+  }
+  [[nodiscard]] const TableColumnAdapter *
+  table_column_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::table_column ? this
+                                                                 : nullptr;
+  }
+  [[nodiscard]] const TableRowAdapter *
+  table_row_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::table_row ? this : nullptr;
+  }
+  [[nodiscard]] const TableCellAdapter *
+  table_cell_adapter(const ElementIdentifier element_id) const override {
+    return element_type(element_id) == ElementType::table_cell ? this : nullptr;
+  }
   [[nodiscard]] const FrameAdapter *
   frame_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::frame ? this : nullptr;
@@ -183,6 +220,121 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     // `Index/TemplateSlide-*.iwa` holds the masters; nothing reads them yet.
     return null_element_id;
+  }
+
+  [[nodiscard]] std::string
+  sheet_name(const ElementIdentifier element_id) const override {
+    return m_registry->sheet_element_at(element_id).name;
+  }
+  [[nodiscard]] TableDimensions
+  sheet_dimensions(const ElementIdentifier element_id) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    return {sheet.rows, sheet.columns};
+  }
+  [[nodiscard]] TableDimensions
+  sheet_content(const ElementIdentifier element_id,
+                const std::optional<TableDimensions> range) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    if (!range.has_value()) {
+      return {sheet.content_rows, sheet.content_columns};
+    }
+    return {std::min(sheet.content_rows, range->rows),
+            std::min(sheet.content_columns, range->columns)};
+  }
+  [[nodiscard]] ElementIdentifier
+  sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
+             const std::uint32_t row) const override {
+    return m_registry->sheet_element_at(element_id).cell(column, row);
+  }
+  [[nodiscard]] ElementIdentifier sheet_first_shape(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    // a chart or a text box on the sheet; none read yet
+    return null_element_id;
+  }
+  [[nodiscard]] TableStyle sheet_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+  [[nodiscard]] TableColumnStyle sheet_column_style(
+      [[maybe_unused]] const ElementIdentifier element_id,
+      [[maybe_unused]] const std::uint32_t column) const override {
+    return {};
+  }
+  [[nodiscard]] TableRowStyle
+  sheet_row_style([[maybe_unused]] const ElementIdentifier element_id,
+                  [[maybe_unused]] const std::uint32_t row) const override {
+    return {};
+  }
+  [[nodiscard]] TableCellStyle
+  sheet_cell_style([[maybe_unused]] const ElementIdentifier element_id,
+                   [[maybe_unused]] const std::uint32_t column,
+                   [[maybe_unused]] const std::uint32_t row) const override {
+    return {};
+  }
+
+  [[nodiscard]] TablePosition
+  sheet_cell_position(const ElementIdentifier element_id) const override {
+    const ElementRegistry::Cell &cell = m_registry->cell_element_at(element_id);
+    // `TablePosition` is (column, row); `TableDimensions` is (rows, columns)
+    return TablePosition(cell.column, cell.row);
+  }
+  [[nodiscard]] bool sheet_cell_is_covered(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return false;
+  }
+  [[nodiscard]] TableDimensions sheet_cell_span(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    // merged ranges are recorded outside the tiles and are not read yet
+    return {1, 1};
+  }
+  [[nodiscard]] ValueType
+  sheet_cell_value_type(const ElementIdentifier element_id) const override {
+    return m_registry->cell_element_at(element_id).value_type;
+  }
+
+  [[nodiscard]] TableDimensions
+  table_dimensions(const ElementIdentifier element_id) const override {
+    const ElementRegistry::Table &table =
+        m_registry->table_element_at(element_id);
+    return {table.rows, table.columns};
+  }
+  [[nodiscard]] ElementIdentifier
+  table_first_column(const ElementIdentifier element_id) const override {
+    return m_registry->table_element_at(element_id).first_column_id;
+  }
+  [[nodiscard]] ElementIdentifier
+  table_first_row(const ElementIdentifier element_id) const override {
+    return element_first_child(element_id);
+  }
+  [[nodiscard]] TableStyle table_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+  [[nodiscard]] TableColumnStyle table_column_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+  [[nodiscard]] TableRowStyle table_row_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
+  [[nodiscard]] bool table_cell_is_covered(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return false;
+  }
+  [[nodiscard]] TableDimensions table_cell_span(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {1, 1};
+  }
+  [[nodiscard]] ValueType
+  table_cell_value_type(const ElementIdentifier element_id) const override {
+    return m_registry->cell_element_at(element_id).value_type;
+  }
+  [[nodiscard]] TableCellStyle table_cell_style(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
   }
 
   [[nodiscard]] AnchorType frame_anchor_type(

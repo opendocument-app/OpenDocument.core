@@ -32,7 +32,7 @@ FileType app_by_components(const abstract::ReadableFilesystem &filesystem) {
   if (package.has_component(slide_component)) {
     return FileType::iwork_keynote;
   }
-  return FileType::unknown;
+  return FileType::iwork_numbers;
 }
 
 /// Reads the root archive of the package's `Document` component. The component
@@ -97,6 +97,7 @@ std::shared_ptr<abstract::Document> IworkFile::document() const {
   switch (file_type()) {
   case FileType::iwork_pages:
   case FileType::iwork_keynote:
+  case FileType::iwork_numbers:
     return std::make_shared<Document>(file_type(), m_filesystem);
   default:
     throw UnsupportedFileType(file_type());

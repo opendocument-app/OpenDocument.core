@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -17,6 +18,7 @@ class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal::iwork {
+class Message;
 
 /// One object of an `.iwa`, per `TSP.ArchiveInfo`. Where it holds more than
 /// one message, only the first is modelled.
@@ -87,5 +89,13 @@ std::string read_iwa(const abstract::ReadableFilesystem &filesystem,
 
 /// Splits a decompressed `.iwa` into its objects, viewing @p data.
 std::vector<Object> read_objects(std::string_view data);
+
+/// The object the `TSP.Reference` in field @p number names.
+std::optional<std::uint64_t> reference_identifier(const Message &message,
+                                                  std::uint32_t number);
+
+/// The objects the repeated `TSP.Reference` field @p number names, in order.
+std::vector<std::uint64_t> reference_identifiers(const Message &message,
+                                                 std::uint32_t number);
 
 } // namespace odr::internal::iwork

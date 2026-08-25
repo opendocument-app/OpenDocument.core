@@ -10,6 +10,7 @@
 #include <odr/internal/iwork/iwork_document.hpp>
 #include <odr/internal/iwork/iwork_file.hpp>
 
+#include <internal/iwork/iwork_element_util.hpp>
 #include <internal/iwork/iwork_test_util.hpp>
 #include <test_util.hpp>
 
@@ -31,24 +32,13 @@ namespace iwork = odr::internal::iwork;
 
 namespace {
 
-/// The text of one frame, a line break reading as a newline and a paragraph
-/// boundary as well.
+/// The text of one frame. Every child of a frame is a paragraph, which the
+/// shared reader does not assert, so state it here.
 std::string frame_text(const Element frame) {
-  std::string result;
   for (const Element paragraph : frame.children()) {
     EXPECT_EQ(paragraph.type(), ElementType::paragraph);
-    if (!result.empty()) {
-      result += '\n';
-    }
-    for (const Element child : paragraph.children()) {
-      if (child.type() == ElementType::line_break) {
-        result += '\n';
-      } else {
-        result += child.as_text().content();
-      }
-    }
   }
-  return result;
+  return builder::element_text(frame);
 }
 
 /// The text of every frame of every slide, one vector per slide.
@@ -269,13 +259,14 @@ TEST(IworkKeynote, a_deck_without_slides_has_an_empty_root) {
 }
 
 // A package whose root archive is type 1 is a Keynote one only when it holds
-// slide components — Numbers numbers its root archive the same.
-TEST(IworkKeynote, a_root_archive_without_slide_components_is_not_keynote) {
+// slide components — Numbers numbers its root archive the same, so one
+// without them reads as a `.numbers`.
+TEST(IworkKeynote, a_root_archive_without_slide_components_is_numbers) {
   const auto files =
       builder::pages_package(builder::text_storage("", std::nullopt),
                              builder::types::archive_type::app_document);
 
-  EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
+  EXPECT_EQ(iwork::IworkFile{files}.file_type(), FileType::iwork_numbers);
 }
 
 // A drawable list may name the same object any number of times, and every

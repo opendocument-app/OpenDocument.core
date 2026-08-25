@@ -1,19 +1,27 @@
 #pragma once
 
 #include <cstddef>
+#include <stdexcept>
 
 namespace odr::internal::iwork {
 
-/// What one parse may expand to. An `.iwa` is an object graph, so a reference
-/// list may name the same object any number of times and `Package::object`
-/// hands every repeat back from its cache — a few kilobytes of references
-/// would otherwise build elements and copy text without bound. Spending
-/// against a budget keeps such a package the thrown error every caller already
-/// handles rather than an allocation the process dies on.
+/// What one parse may expand to. A reference list may name the same object any
+/// number of times, so what a walk builds is spent against a limit rather than
+/// left to grow with what a few bytes of references ask for.
 class Budget final {
 public:
-  void spend_element();
-  void spend_text(std::size_t bytes);
+  void spend_element() {
+    if (++m_elements > element_limit) {
+      throw std::runtime_error("iwork: document holds too many elements");
+    }
+  }
+
+  void spend_text(const std::size_t bytes) {
+    m_text += bytes;
+    if (m_text > text_limit) {
+      throw std::runtime_error("iwork: document holds too much text");
+    }
+  }
 
 private:
   /// Far above what an authored document reaches, and far below what the

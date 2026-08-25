@@ -4,6 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
@@ -13,6 +14,7 @@
 #include <odr/internal/iwork/iwork_file.hpp>
 #include <odr/internal/zip/zip_file.hpp>
 
+#include <internal/iwork/iwork_element_util.hpp>
 #include <internal/iwork/iwork_test_util.hpp>
 #include <test_util.hpp>
 
@@ -32,12 +34,15 @@ namespace iwork = odr::internal::iwork;
 
 namespace {
 
-/// The paragraphs of a text root, a line break reading as a newline.
+/// The paragraphs of a text root, a line break reading as a newline. A body
+/// also holds the tables its text anchors, which this passes over.
 std::vector<std::string> paragraphs(const Element root) {
   std::vector<std::string> result;
 
   for (const Element paragraph : root.children()) {
-    EXPECT_EQ(paragraph.type(), ElementType::paragraph);
+    if (paragraph.type() != ElementType::paragraph) {
+      continue;
+    }
 
     std::string text;
     for (const Element child : paragraph.children()) {
@@ -110,7 +115,8 @@ TEST(Iwork, pages_body_text) {
   // separate its sections
   ASSERT_EQ(text.size(), 54);
   EXPECT_EQ(text[0], "Table of Contents");
-  // the anchor of a drawable is dropped: nothing reads drawables yet
+  // the anchor of a drawable is dropped from the text; a table anchored there
+  // becomes an element of its own, and an image is still not read
   EXPECT_EQ(text[1], "");
   EXPECT_EQ(text[4], "Headline");
   EXPECT_EQ(text[5], "Nested Headline");
@@ -119,6 +125,52 @@ TEST(Iwork, pages_body_text) {
   EXPECT_EQ(text[11], "Default");
   EXPECT_EQ(text[12], "Bold");
   EXPECT_EQ(text.back(), "image");
+}
+
+// A `U+FFFC` in the body anchors a drawable, which the attachment run table
+// names. The one that is a table becomes a `Table` after the paragraph its
+// anchor sits in; its cells hold rich text, one storage each.
+TEST(Iwork, pages_table) {
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/pages/style-various-1.pages"),
+      Logger::null());
+  const Document document = document_file.document();
+
+  std::vector<Element> tables;
+  for (const Element child : document.root_element().children()) {
+    if (child.type() == ElementType::table) {
+      tables.push_back(child);
+    }
+  }
+  ASSERT_EQ(tables.size(), 1);
+
+  // the rule the reader decided: a table is a sibling after the paragraph its
+  // anchor sits in, not a child of it and not appended to the body. The anchor
+  // paragraph carries nothing but the `U+FFFC` itself, so it reads empty, and
+  // the body continues after the table rather than ending there.
+  const Element anchor = tables.front().previous_sibling();
+  ASSERT_TRUE(anchor);
+  EXPECT_EQ(anchor.type(), ElementType::paragraph);
+  EXPECT_EQ(builder::element_text(anchor), "");
+  EXPECT_TRUE(tables.front().next_sibling());
+
+  const Table table = tables.front().as_table();
+  EXPECT_EQ(table.dimensions().rows, 2);
+  EXPECT_EQ(table.dimensions().columns, 2);
+
+  std::vector<std::vector<std::string>> cells;
+  for (const Element row : table.rows()) {
+    std::vector<std::string> texts;
+    for (const Element cell : row.children()) {
+      texts.push_back(builder::element_text(cell));
+    }
+    cells.push_back(std::move(texts));
+  }
+
+  EXPECT_EQ(cells, (std::vector<std::vector<std::string>>{
+                       {"A1", "B1\nasdf"},
+                       {"A2", "B2\n\n"},
+                   }));
 }
 
 // Components share names — `style-various-1.pages` holds two dozen called
@@ -206,4 +258,41 @@ TEST(Iwork, package_without_a_document_component_is_not_an_iwork_file) {
   const auto files = builder::filesystem({});
 
   EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
+}
+
+// A model's extent is two varints, so a grid of millions is a few bytes on the
+// wire. A Pages table is walked densely — its rows are children — so the
+// budget is what stands between that and the memory it asks for.
+TEST(Iwork, a_declared_table_extent_is_capped_by_the_elements_it_builds) {
+  EXPECT_THAT(
+      [] {
+        std::ignore = Document(std::make_shared<iwork::Document>(
+            FileType::iwork_pages,
+            builder::pages_table_package(
+                {.rows = 1'000'000, .columns = 1'000'000})));
+      },
+      testing::ThrowsMessage<std::runtime_error>(
+          testing::HasSubstr("too many elements")));
+}
+
+// A cell's rich text is an ordinary storage, which may anchor a table again.
+// The budget counts what a walk builds, not how deep it goes, so the depth
+// bound is the only thing that ends a storage that reaches itself.
+TEST(Iwork, a_storage_that_reaches_itself_is_bounded_by_its_depth) {
+  EXPECT_THAT(
+      [] {
+        const std::string record = builder::cell_record(
+            iwork::cell::type::rich_text, iwork::cell::flag::rich_text_key,
+            std::string("\x01\x00\x00\x00", 4));
+        std::ignore = Document(std::make_shared<iwork::Document>(
+            FileType::iwork_pages,
+            builder::pages_table_package(
+                {.rows = 1,
+                 .columns = 1,
+                 .tile_rows = {builder::tile_row(0, {record})},
+                 // the cell's rich text is the body storage that anchors it
+                 .rich_text_storage = builder::body_identifier})));
+      },
+      testing::ThrowsMessage<std::runtime_error>(
+          testing::HasSubstr("nest too deeply")));
 }

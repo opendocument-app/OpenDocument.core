@@ -11,10 +11,12 @@ C++ library to visualize files, especially documents, in HTML.
 - [csv](https://github.com/opendocument-app/OpenDocument.core/issues/107)
 - [doc](https://github.com/opendocument-app/OpenDocument.core/issues/104), [ppt](https://github.com/opendocument-app/OpenDocument.core/issues/106), [xls](https://github.com/opendocument-app/OpenDocument.core/issues/105)
 - [pdf](https://github.com/opendocument-app/OpenDocument.core/issues/108)
-- pages (Apple Pages — body text only; styles, page geometry, images and
-  tables are not read yet)
+- pages (Apple Pages — body text and the tables it anchors; styles, page
+  geometry and images are not read yet)
 - key (Apple Keynote — the text of each slide, in boxes where the file puts
   them; styles, masters, images, tables and presenter notes are not read yet)
+- numbers (Apple Numbers — one sheet per table, showing the values the app last
+  computed; number formats, merged cells, charts and formulas are not read yet)
 - rtf (body text only; character and paragraph formatting, tables and pictures
   are not read yet)
 - txt
@@ -40,7 +42,6 @@ opening one throws:
 - wpd (WordPerfect)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
-- numbers (Apple Numbers)
 
 ## Asking what is supported
 
