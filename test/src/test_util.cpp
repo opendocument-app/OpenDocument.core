@@ -113,6 +113,12 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
     if (p.path().filename().string().starts_with(".")) {
       continue;
     }
+    // the data repository's own documentation, not a fixture: it is markdown,
+    // so it would otherwise render into the snapshot suite and move with every
+    // edit to it
+    if (p.path().filename() == "README.md") {
+      continue;
+    }
     if (const auto it = std::ranges::find_if(
             result, [&](auto &&file) { return file.absolute_path == path; });
         it != std::end(result)) {

@@ -54,6 +54,7 @@ endif ()
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 find_package(pugixml REQUIRED)
+find_package(md4c REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -161,6 +162,12 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/json/json_file.cpp"
         "src/odr/internal/json/json_util.cpp"
+
+        "src/odr/internal/markdown/markdown_document.cpp"
+        "src/odr/internal/markdown/markdown_element_registry.cpp"
+        "src/odr/internal/markdown/markdown_file.cpp"
+        "src/odr/internal/markdown/markdown_parser.cpp"
+        "src/odr/internal/markdown/markdown_style.cpp"
 
         "src/odr/internal/odf/odf_crypto.cpp"
         "src/odr/internal/odf/odf_document.cpp"
@@ -293,6 +300,7 @@ target_include_directories(odr
 target_link_libraries(odr
         PRIVATE
         pugixml::pugixml
+        md4c::md4c
         miniz::miniz
         cryptopp::cryptopp
         nlohmann_json::nlohmann_json

@@ -474,14 +474,16 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
-    // Classified for callers that route files by type; there is no decoder.
+    // A document rather than a text file: it decodes to a `TextRoot`. Not
+    // `detect_by_content` — markdown has no signature, and a content probe for
+    // it is a probe for prose, so the caller routes on the file name.
     Row{FileType::markdown,
         "md"sv,
         markdown_extensions,
         markdown_mimetypes,
-        FileCategory::text,
-        DocumentType::unknown,
-        {}},
+        FileCategory::document,
+        DocumentType::text,
+        {.open = true, .translate_html = true, .color_scheme = true}},
 
     Row{FileType::zip,
         "zip"sv,

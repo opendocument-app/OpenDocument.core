@@ -30,6 +30,14 @@ The release run heads these entries with the version and opens a fresh
 - An rtf opens and renders as a text document instead of throwing
   `UnknownFileType`. Its text, encoding, paragraphs and tabs are read;
   formatting, tables and pictures are not yet.
+- `FileType::markdown` moves from `FileCategory::text` to
+  `FileCategory::document` with `DocumentType::text`, so `is_document_file()`
+  answers for it and `is_text_file()` no longer does. The row declared no
+  capabilities before, so no consumer could have decoded it.
+- A markdown file opens and renders as a text document — CommonMark plus GFM,
+  parsed with md4c (a new dependency); raw html, images and horizontal rules
+  are not modelled yet. Markdown has no signature, so it is only decoded when
+  `FileType::markdown` is asked for; a `.md` still comes back as a text file.
 
 ## v6.10.1 - 2026-08-21
 

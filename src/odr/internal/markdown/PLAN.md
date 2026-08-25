@@ -3,7 +3,11 @@
 Where markdown support is going, and in what order. Written before stage 1;
 keep it honest as stages land.
 
-## Today
+**Stages 1 to 3 have landed.** What the module does and why is in
+[`AGENTS.md`](AGENTS.md); what follows is the original plan, with the
+after-the-fact corrections marked. Stages 4 and 5 are still open.
+
+## Today (before stage 1)
 
 `FileType::markdown` exists (`file.hpp:73`) and has a table row with extensions
 and mime types (`file_type_table.cpp:431`), declared classification-only:
@@ -163,6 +167,14 @@ ordered list renders as bullets; and `ElementType::group` renders as its
 children with no wrapper (`:72`), so a blockquote's structure survives only in
 the margins its paragraphs carry.
 
+> Corrected while landing stage 1. The list gap is gone — the renderer now
+> writes `div`s with `role="list"` and takes the label from
+> `list_item_marker`, so an ordered list numbers itself. The group gap stands.
+> Three further corrections, all in [`AGENTS.md`](AGENTS.md): a heading also
+> needs a bold `span` (a paragraph's text style contributes only family and
+> size); a code block becomes one paragraph *per line*, not one paragraph; and
+> a tight list item needs a paragraph opened for it or its marker is dropped.
+
 ## Module layout
 
 Mirrors `oldms/text`, which is the reference the root `AGENTS.md` points at.
@@ -180,7 +192,7 @@ Every `.cpp` goes into `ODR_SOURCE_FILES` (`CMakeLists.txt:86`).
 
 ---
 
-## Stage 1 — blocks
+## Stage 1 — blocks — **landed**
 
 The skeleton, end to end, with the least that is worth rendering.
 
@@ -199,7 +211,10 @@ The skeleton, end to end, with the least that is worth rendering.
 engines do not exceed the row, so a handful of `.md` samples go into the
 test-data repo alongside this stage.
 
-## Stage 2 — inlines and styles
+`odr-public` already carries one `.md`, so that assertion has a file without
+anything being added to the test-data repo.
+
+## Stage 2 — inlines and styles — **landed**
 
 - `SpanAdapter`, `LinkAdapter`; emphasis, strong, inline code, links.
 - `markdown_style`: one `StyleRegistry` handing out the heading scale, the
@@ -208,7 +223,14 @@ test-data repo alongside this stage.
 - entity and soft-break handling per the table; the `entity_lookup` question
   above resolves here.
 
-## Stage 3 — GFM
+> The `entity_lookup` question resolved *against* it. The conan package does
+> export the `md4c-html` component and the symbol is in the archive, but not
+> `entity.h` — so using it means declaring md4c's private `MD_ENTITY` layout
+> ourselves, which corrupts silently if it ever changes. Left out: numeric
+> references, the five predefined XML entities and `&nbsp;` resolve, everything
+> else stays literal. Revisit before claiming CommonMark conformance.
+
+## Stage 3 — GFM — **landed**
 
 `MD_DIALECT_GITHUB`: tables, strikethrough, task lists, permissive autolinks.
 Tables are the substantial one — `TableAdapter` plus row/column/cell — and the
@@ -217,9 +239,19 @@ reason to do it before images: it is what people actually put in readmes.
 Task list items have no checkbox in the model. Render the box as text (`☐`/`☑`)
 in the item's first text element rather than inventing an element type for it.
 
+> Landed as the item's *marker* rather than its first text element — that is
+> what a marker is, and it keeps the box out of the item's reading text.
+
 ## Stage 4 — images and frontmatter
 
+Until this lands, `MD_SPAN_IMG` is transparent: the alt text flows through as
+text, which is at least something to read.
+
 - `FrameAdapter` + `ImageAdapter`, external hrefs per the decision above.
+  Watch the sizing: `html::translate_image` writes an `<img>` at
+  `width:100%;height:100%` absolutely positioned inside the frame's `div`, so a
+  frame with no width and height renders nothing at all. Markdown carries no
+  dimensions, so that path needs an answer before a frame is worth creating.
 - YAML/TOML frontmatter: md4c does not know it, so strip a leading `---` fence
   before parsing and expose what it holds through `FileMeta`. Parse only the
   flat scalars we have somewhere to put (`title`, `author`, `date`); do not

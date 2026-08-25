@@ -86,7 +86,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   ODR_INFO(logger, "Testing file: " << test_file.short_path
                                     << " output to: " << output_path);
 
-  // formats we cannot decode at all (wpd, md, …) plus the odd file we
+  // formats we cannot decode at all (wpd, …) plus the odd file we
   // classify but do not handle
   if (util::string::ends_with(test_file.short_path, ".sxw") ||
       test_file.type == FileType::starview_metafile ||
