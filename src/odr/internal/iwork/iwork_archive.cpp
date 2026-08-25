@@ -73,18 +73,21 @@ Package::Package(const abstract::ReadableFilesystem &filesystem)
   }
 }
 
-bool Package::has_component(const std::string &name) const noexcept {
-  return std::ranges::find(m_component_infos, name, &ComponentInfo::name) !=
-         std::ranges::end(m_component_infos);
+bool Package::has_component(const std::string_view name) const noexcept {
+  return find_(name) != std::ranges::end(m_component_infos);
 }
 
-const Component &Package::component(const std::string &name) {
-  const auto it =
-      std::ranges::find(m_component_infos, name, &ComponentInfo::name);
+const Component &Package::component(const std::string_view name) {
+  const auto it = find_(name);
   if (it == std::ranges::end(m_component_infos)) {
-    throw std::runtime_error("iwork: no component named " + name);
+    throw std::runtime_error("iwork: no component named " + std::string(name));
   }
   return load_(*it);
+}
+
+std::vector<Package::ComponentInfo>::const_iterator
+Package::find_(const std::string_view name) const noexcept {
+  return std::ranges::find(m_component_infos, name, &ComponentInfo::name);
 }
 
 const Object &Package::object(const std::uint64_t identifier) {

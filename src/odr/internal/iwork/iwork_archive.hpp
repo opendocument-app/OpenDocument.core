@@ -52,11 +52,11 @@ public:
 
   /// Whether the package's component list holds one named @p name. Reads the
   /// list only — nothing is decompressed.
-  [[nodiscard]] bool has_component(const std::string &name) const noexcept;
+  [[nodiscard]] bool has_component(std::string_view name) const noexcept;
 
   /// The first component named @p name — a name is not unique. Throws when
   /// the package holds none.
-  const Component &component(const std::string &name);
+  const Component &component(std::string_view name);
 
   /// The object @p identifier names, loading components until it turns up.
   const Object &object(std::uint64_t identifier);
@@ -73,6 +73,10 @@ private:
   std::vector<ComponentInfo> m_component_infos;
   std::deque<Component> m_components;
   std::unordered_map<std::uint64_t, const Object *> m_objects;
+
+  /// The first component list entry named @p name, or `end()`.
+  [[nodiscard]] std::vector<ComponentInfo>::const_iterator
+  find_(std::string_view name) const noexcept;
 
   const Component &load_(const ComponentInfo &info);
 };

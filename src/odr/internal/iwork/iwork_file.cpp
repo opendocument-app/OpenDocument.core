@@ -29,7 +29,7 @@ constexpr std::string_view slide_component = "Slide";
 /// two are told apart by the components the package holds.
 FileType app_by_components(const abstract::ReadableFilesystem &filesystem) {
   Package package(filesystem);
-  if (package.has_component(std::string(slide_component))) {
+  if (package.has_component(slide_component)) {
     return FileType::iwork_keynote;
   }
   return FileType::unknown;
