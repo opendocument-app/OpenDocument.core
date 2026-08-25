@@ -1,30 +1,28 @@
 # iWork plan
 
 Where an iwork module goes, and in what order. Written before stage 1; kept
-honest as stages land. **Stages 1, 2 and 5 have landed** — see
+honest as stages land. **Stages 1, 2 and 5 through 7 have landed** — see
 [`AGENTS.md`](AGENTS.md) for what they decided. Stage 5 was pulled ahead of 3
 and 4 because it needed neither: a slide is a container above the text storage
-stage 2 already read. Stage 6 is next.
+stage 2 already read. Stages 3 and 4 are what is left.
 
 ## Today
 
-A `.pages` opens as a text document and renders its body text; a `.key` opens
-as a presentation and renders each slide's text boxes as positioned frames.
-`.numbers` has a `FileType` entry and a `file_type_table.cpp` row so a caller
-can name it, but no capabilities and no engine behind it.
+All three formats decode. A `.pages` opens as a text document and renders its
+body text and the tables its text anchors; a `.key` opens as a presentation and
+renders each slide's text boxes as positioned frames; a `.numbers` opens as a
+spreadsheet, one odr sheet per Numbers table, showing the values the app last
+computed.
 
 Six fixtures are committed:
 `test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, written
-by iWork 13.2, and `test/data/input/odr-public/{key/{empty.key,
-style-various-1.key},numbers/{empty.numbers,style-various-1.numbers}}`, written
-by iWork 14.4 (`Metadata/BuildVersionHistory.plist`). None is listed in
-`index.csv` — they do not need to be, `TestData` picks up anything the file
-type table knows an extension for — and each gained reference output when its
-format turned `translate_html` on. Nothing decodes the `.numbers` pair yet;
-they are what pins the Keynote-versus-Numbers detection rule.
-`style-various-1.pages` carries `Index/Tables/` and nine files under `Data/`,
-and `style-various-1.key` a table on its last slide, which is most of the
-surface below.
+by iWork 13.2, and `key/{empty.key,style-various-1.key}` plus
+`numbers/{empty.numbers,style-various-1.numbers}`, written by iWork 14.4
+(`Metadata/BuildVersionHistory.plist`). None is listed in `index.csv` — they do
+not need to be, `TestData` picks up anything the file type table knows an
+extension for — and each gained reference output when its format turned
+`translate_html` on. What is left below is styles and drawables, which none of
+them is blocked on.
 
 ## Spec
 
@@ -82,20 +80,22 @@ sheets) is per-app. So `iwork/` stays flat, with **one** `ElementRegistry`, one
 |---|---|
 | `iwork_text.cpp` | `TSWP` storage → paragraphs *(landed)* |
 | `iwork_drawable.cpp` | `TSD` geometry, shapes, images *(stage 4)* |
-| `iwork_table.cpp` | `TST` tiles → table, row, cell *(stage 6)* |
+| `iwork_table.cpp` | `TST` tiles → a `TableModel` *(landed)* |
 | `iwork_style.cpp` | `TSS` property-set inheritance *(stage 3)* |
 | `iwork_parser.cpp` | the three spines, calling the above |
 
-The evidence is stage 6: the tile reader is written for **Pages** tables, a
-`.key` slide carries a `TST.TableInfoArchive` too, and stage 7 puts Numbers on
-top of the same reader. The most expensive component still ahead is shared by
-all three apps, which an app-shaped split would either duplicate or push into a
-`common/` holding most of the module.
+Stage 6 is what proved it: the tile reader was written for **Pages** tables, a
+`.key` slide carries a `TST.TableInfoArchive` too, and stage 7 put Numbers on
+top of the same reader without touching it. The most expensive component in the
+module is shared by all three apps, which an app-shaped split would either have
+duplicated or pushed into a `common/` holding most of the module.
 
-Only `iwork_text.cpp` and the `Budget` it spends against are split out today —
-the rest follows the stage that writes it. Merging three registries later is
-not mechanical; splitting one is, so the unified side is the cheap side to be
-wrong on.
+`iwork_table.cpp` reads bytes and returns a `TableModel` — no registry, no
+elements — so what turns a model into elements sits in `iwork_text.cpp` beside
+the storage walk that a cell recurses into. `iwork_drawable.cpp` and
+`iwork_style.cpp` follow the stage that writes them. Merging three registries
+later is not mechanical; splitting one is, so the unified side is the cheap
+side to be wrong on.
 
 **No new dependencies.** Two pieces would normally be a conan line each, and
 both are wrong here:
@@ -302,7 +302,7 @@ Landed with three deviations:
   needs for Pages; what stage 4 still owes is images, shapes and the anchoring
   a Pages text flow does.
 
-## Stage 6 — the tile reader
+## Stage 6 — the tile reader *(landed)*
 
 Tables in iWork are stored as **tiles** — row ranges holding packed cell
 records — with strings, formats and formulas kept in side "data lists" that
@@ -314,13 +314,30 @@ Do this for **Pages tables first** (`Table`, `TableRow`, `TableCell`), because
 `style-various-1.pages` already carries `Index/Tables/` and exercises the reader
 without any Numbers archive being mapped.
 
-## Stage 7 — Numbers
+Landed as planned, with two things the fixtures settled:
+
+- **One record layout, not several.** iWork 13.2 and 14.4 both write version 5,
+  and both keep an older encoding of the same cells in two further fields of
+  the row. The version byte on the record is what decides, and anything else
+  reads as an empty cell.
+- **A Pages table cell is rich text and a Numbers one usually is not.** The
+  same reader covers both because the cell record only carries a key; what it
+  keys into is a string in one case and a storage in the other.
+
+A number is decoded as the IEEE 754 decimal128 it is stored as, exactly, rather
+than through a `double` — see `AGENTS.md`.
+
+## Stage 7 — Numbers *(landed)*
 
 - sheets → one odr `Sheet` per table (see decisions), on top of stage 6.
 - cached values only. `CalculationEngine.iwa` holds the formula graph and is not
   read; a cell shows what Numbers last computed, which is the position `.xls`
   takes.
 - `iwork_numbers` gains `.translate_html = true`.
+
+Landed as planned. Number formats are not applied — a cell Numbers shows as
+`7.5%` renders `0.075` — and merged ranges are recorded outside the tiles, so a
+merge renders as separate cells.
 
 ---
 
@@ -361,13 +378,13 @@ without any Numbers archive being mapped.
 knows — and reference output was regenerated when stage 2 flipped
 `translate_html` on.
 
-`empty.numbers` and `style-various-1.numbers` are in
-`test/data/input/odr-public/numbers/`. Stage 7 is what will decode them; today
-they are the negative that pins detection
-(`IworkKeynote.a_numbers_package_is_not_keynote`). Everything at container
-level stays inline, per stage 1.
+Every stage that has landed has a fixture. Everything at container level stays
+inline, per stage 1.
 
-The `.key` fixtures were authored on macOS with Keynote 14.4 rather than found:
-there is no spec, so a file the app wrote is the only citation available, and
-one written to order can carry exactly the shapes a stage needs — a title
-slide, a bulleted body, an empty placeholder, a free text box and a table.
+The `.key` and `.numbers` fixtures were authored on macOS with iWork 14.4
+rather than found: there is no spec, so a file the app wrote is the only
+citation available, and one written to order can carry exactly the shapes a
+stage needs. `style-various-1.numbers` is built around that — a table wider
+than it is tall so rows and columns cannot be confused, one cell of every type
+the reader maps, a row the tiles skip entirely, and two formula cells whose
+cached values are what a reader sees.

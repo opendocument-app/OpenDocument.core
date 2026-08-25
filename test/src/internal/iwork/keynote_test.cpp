@@ -269,13 +269,14 @@ TEST(IworkKeynote, a_deck_without_slides_has_an_empty_root) {
 }
 
 // A package whose root archive is type 1 is a Keynote one only when it holds
-// slide components — Numbers numbers its root archive the same.
-TEST(IworkKeynote, a_root_archive_without_slide_components_is_not_keynote) {
+// slide components — Numbers numbers its root archive the same, so one
+// without them reads as a `.numbers`.
+TEST(IworkKeynote, a_root_archive_without_slide_components_is_numbers) {
   const auto files =
       builder::pages_package(builder::text_storage("", std::nullopt),
                              builder::types::archive_type::app_document);
 
-  EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
+  EXPECT_EQ(iwork::IworkFile{files}.file_type(), FileType::iwork_numbers);
 }
 
 // A drawable list may name the same object any number of times, and every

@@ -10,7 +10,8 @@
 namespace odr::internal::iwork {
 
 /// An iWork package, read as the kind of document the app that wrote it
-/// makes: a `.pages` as text, a `.key` as a presentation.
+/// makes: a `.pages` as text, a `.key` as a presentation, a `.numbers` as a
+/// spreadsheet.
 class Document final : public internal::Document {
 public:
   Document(FileType file_type,

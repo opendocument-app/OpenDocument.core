@@ -5,6 +5,7 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 #include <odr/internal/iwork/iwork_snappy.hpp>
+#include <odr/internal/iwork/iwork_types.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
@@ -181,6 +182,33 @@ std::vector<iwork::Object> iwork::read_objects(const std::string_view data) {
     result.push_back(object);
   }
 
+  return result;
+}
+
+std::optional<std::uint64_t>
+iwork::reference_identifier(const Message &message,
+                            const std::uint32_t number) {
+  const std::optional<std::string_view> bytes = message.bytes_field(number);
+  if (!bytes.has_value()) {
+    return {};
+  }
+  return Message(*bytes).number_field(reference::identifier);
+}
+
+std::vector<std::uint64_t>
+iwork::reference_identifiers(const Message &message,
+                             const std::uint32_t number) {
+  std::vector<std::uint64_t> result;
+  for (const Field &field : message.repeated_field(number)) {
+    if (field.type != WireType::length_delimited) {
+      throw std::runtime_error("iwork: malformed reference");
+    }
+    if (const std::optional<std::uint64_t> identifier =
+            Message(field.bytes).number_field(reference::identifier);
+        identifier.has_value()) {
+      result.push_back(*identifier);
+    }
+  }
   return result;
 }
 

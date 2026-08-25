@@ -4,6 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/archive.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
@@ -32,12 +33,15 @@ namespace iwork = odr::internal::iwork;
 
 namespace {
 
-/// The paragraphs of a text root, a line break reading as a newline.
+/// The paragraphs of a text root, a line break reading as a newline. A body
+/// also holds the tables its text anchors, which this passes over.
 std::vector<std::string> paragraphs(const Element root) {
   std::vector<std::string> result;
 
   for (const Element paragraph : root.children()) {
-    EXPECT_EQ(paragraph.type(), ElementType::paragraph);
+    if (paragraph.type() != ElementType::paragraph) {
+      continue;
+    }
 
     std::string text;
     for (const Element child : paragraph.children()) {
@@ -110,7 +114,8 @@ TEST(Iwork, pages_body_text) {
   // separate its sections
   ASSERT_EQ(text.size(), 54);
   EXPECT_EQ(text[0], "Table of Contents");
-  // the anchor of a drawable is dropped: nothing reads drawables yet
+  // the anchor of a drawable is dropped from the text; a table anchored there
+  // becomes an element of its own, and an image is still not read
   EXPECT_EQ(text[1], "");
   EXPECT_EQ(text[4], "Headline");
   EXPECT_EQ(text[5], "Nested Headline");
@@ -125,6 +130,53 @@ TEST(Iwork, pages_body_text) {
 // `Tables/DataList` — so the package has to load them by locator. Keying on
 // the name hands back the wrong file and leaves the rest never loaded, which
 // shows up as an object nothing can resolve.
+// A `U+FFFC` in the body anchors a drawable, which the attachment run table
+// names. The one that is a table becomes a `Table` after the paragraph its
+// anchor sits in; its cells hold rich text, one storage each.
+TEST(Iwork, pages_table) {
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/pages/style-various-1.pages"),
+      Logger::null());
+  const Document document = document_file.document();
+
+  std::vector<Element> tables;
+  for (const Element child : document.root_element().children()) {
+    if (child.type() == ElementType::table) {
+      tables.push_back(child);
+    }
+  }
+  ASSERT_EQ(tables.size(), 1);
+
+  const Table table = tables.front().as_table();
+  EXPECT_EQ(table.dimensions().rows, 2);
+  EXPECT_EQ(table.dimensions().columns, 2);
+
+  std::vector<std::vector<std::string>> cells;
+  for (const Element row : table.rows()) {
+    std::vector<std::string> texts;
+    for (const Element cell : row.children()) {
+      std::string text;
+      for (const Element paragraph : cell.children()) {
+        if (!text.empty()) {
+          text += '\n';
+        }
+        for (const Element child : paragraph.children()) {
+          if (child.type() != ElementType::line_break) {
+            text += child.as_text().content();
+          }
+        }
+      }
+      texts.push_back(std::move(text));
+    }
+    cells.push_back(std::move(texts));
+  }
+
+  EXPECT_EQ(cells, (std::vector<std::vector<std::string>>{
+                       {"A1", "B1\nasdf"},
+                       {"A2", "B2\n\n"},
+                   }));
+}
+
 TEST(Iwork, package_resolves_across_components) {
   const auto file = std::make_shared<internal::DiskFile>(internal::AbsPath(
       TestData::test_file_path("odr-public/pages/style-various-1.pages")));

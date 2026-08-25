@@ -4,9 +4,11 @@
 #include <odr/internal/iwork/iwork_budget.hpp>
 #include <odr/internal/iwork/iwork_element_registry.hpp>
 #include <odr/internal/iwork/iwork_protobuf.hpp>
+#include <odr/internal/iwork/iwork_table.hpp>
 #include <odr/internal/iwork/iwork_text.hpp>
 #include <odr/internal/iwork/iwork_types.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -18,33 +20,6 @@
 namespace odr::internal::iwork {
 
 namespace {
-
-/// The object a `TSP.Reference` in field @p number names.
-std::optional<std::uint64_t> reference_identifier(const Message &message,
-                                                  const std::uint32_t number) {
-  const std::optional<std::string_view> bytes = message.bytes_field(number);
-  if (!bytes.has_value()) {
-    return {};
-  }
-  return Message(*bytes).number_field(reference::identifier);
-}
-
-/// The objects the repeated `TSP.Reference` field @p number names, in order.
-std::vector<std::uint64_t> reference_identifiers(const Message &message,
-                                                 const std::uint32_t number) {
-  std::vector<std::uint64_t> result;
-  for (const Field &field : message.repeated_field(number)) {
-    if (field.type != WireType::length_delimited) {
-      throw std::runtime_error("iwork: malformed reference");
-    }
-    if (const std::optional<std::uint64_t> identifier =
-            Message(field.bytes).number_field(reference::identifier);
-        identifier.has_value()) {
-      result.push_back(*identifier);
-    }
-  }
-  return result;
-}
 
 /// The root archive of the package's `Document` component, checked against the
 /// type the app is expected to write.
@@ -147,8 +122,10 @@ std::optional<Message> text_shape_of(const Object &drawable) {
 }
 
 /// Appends one slide's text boxes to @p slide_id as frames.
-void parse_slide(ElementRegistry &registry, Budget &budget, Package &package,
-                 const ElementIdentifier slide_id, const Object &slide) {
+void parse_slide(const Context &context, const ElementIdentifier slide_id,
+                 const Object &slide) {
+  ElementRegistry &registry = *context.registry;
+  Package &package = *context.package;
   const Message slide_message(slide.payload);
 
   for (const std::uint64_t identifier :
@@ -169,7 +146,7 @@ void parse_slide(ElementRegistry &registry, Budget &budget, Package &package,
       continue;
     }
 
-    budget.spend_element();
+    context.budget->spend_element();
     auto [frame_id, frame, payload] = registry.create_frame_element();
     if (const std::optional<std::string_view> inner =
             shape->bytes_field(text_shape::shape);
@@ -178,7 +155,53 @@ void parse_slide(ElementRegistry &registry, Budget &budget, Package &package,
     }
     registry.append_child(slide_id, frame_id);
 
-    parse_storage(registry, budget, frame_id, Message(storage.payload));
+    parse_storage(context, frame_id, Message(storage.payload));
+  }
+}
+
+/// One Numbers sheet holds many tables and our `Sheet` is one grid, so each
+/// table becomes an odr sheet of its own — taking only the first would drop
+/// data with nothing to show for it.
+void parse_sheet(const Context &context, const ElementIdentifier root_id,
+                 const Object &sheet) {
+  ElementRegistry &registry = *context.registry;
+  Budget &budget = *context.budget;
+  const Message sheet_message(sheet.payload);
+  const std::string name =
+      std::string(sheet_message.bytes_field(sheet_archive::name)
+                      .value_or(std::string_view()));
+
+  for (const std::uint64_t identifier :
+       reference_identifiers(sheet_message, sheet_archive::drawables)) {
+    const Object &drawable = context.package->object(identifier);
+    if (drawable.type != archive_type::table_info) {
+      // a chart, a text box or an image on the sheet; none read yet
+      continue;
+    }
+    const TableModel model = read_table(*context.package, identifier);
+
+    budget.spend_element();
+    auto [sheet_id, element, payload] = registry.create_sheet_element();
+    payload.name = model.name.empty() ? name : name + " – " + model.name;
+    payload.rows = model.rows;
+    payload.columns = model.columns;
+    registry.append_child(root_id, sheet_id);
+
+    for (const TableModel::Cell &cell : model.cells) {
+      budget.spend_element();
+      auto [cell_id, cell_element, entry] =
+          registry.create_cell_element(ElementType::sheet_cell);
+      entry.row = cell.row;
+      entry.column = cell.column;
+      entry.value_type = cell.value_type;
+      registry.append_sheet_cell(sheet_id, cell_id);
+
+      fill_cell(context, cell_id, cell);
+
+      payload.content_rows = std::max(payload.content_rows, cell.row + 1);
+      payload.content_columns =
+          std::max(payload.content_columns, cell.column + 1);
+    }
   }
 }
 
@@ -208,7 +231,8 @@ iwork::parse_pages_tree(ElementRegistry &registry,
 
   Budget budget;
   auto [root_id, root] = registry.create_element(ElementType::root);
-  parse_storage(registry, budget, root_id, Message(body_object.payload));
+  parse_storage({&registry, &package, &budget, 0}, root_id,
+                Message(body_object.payload));
   return root_id;
 }
 
@@ -264,7 +288,30 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
     payload.size = slide_size;
     registry.append_child(root_id, slide_id);
 
-    parse_slide(registry, budget, package, slide_id, slide);
+    parse_slide({&registry, &package, &budget, 0}, slide_id, slide);
+  }
+
+  return root_id;
+}
+
+ElementIdentifier
+iwork::parse_numbers_tree(ElementRegistry &registry,
+                          const abstract::ReadableFilesystem &files) {
+  Package package(files);
+
+  const Message document(
+      root_archive(package, archive_type::app_document).payload);
+
+  Budget budget;
+  auto [root_id, root] = registry.create_element(ElementType::root);
+
+  for (const std::uint64_t identifier :
+       reference_identifiers(document, document_archive::sheets)) {
+    const Object &sheet = package.object(identifier);
+    if (sheet.type != archive_type::numbers_sheet) {
+      continue;
+    }
+    parse_sheet({&registry, &package, &budget, 0}, root_id, sheet);
   }
 
   return root_id;
