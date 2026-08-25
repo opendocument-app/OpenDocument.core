@@ -66,6 +66,15 @@ throw: framing that overruns the file, a Snappy block that does not fill its
 declared length, a varint that does not terminate, an identifier the package
 does not hold, and text that is not UTF-8.
 
+**A tile is spent as it is decoded, not once it is a model.** `read_table`
+takes the `Budget` and spends per cell and per byte of cell text as `read_tile`
+produces them, because a tile list may name one tile any number of times and
+`Package::object` hands every repeat back from its cache — a model built first
+and metered afterwards is a gigabyte from a package of a few kilobytes. What a
+repeat costs a second time is nothing: `TableCache` reads each table once per
+parse, so a drawable list naming one table a million times spends a million
+elements rather than re-decoding a million tiles.
+
 A declared length is the file's word, so nothing is allocated or written
 against one before it is known to fit: `snappy_decompress_block` caps its
 reservation at what the compressed bytes could expand to and checks every tag
@@ -201,14 +210,21 @@ and the reader gets its extent from the offsets rather than from a count.
 
 A cell record is a twelve-byte header — a version byte, a type byte, six bytes
 nothing reads, then a flags word — followed by the optional fields the flags
-name, **in ascending bit order**. The four low bits are the value: a decimal128,
+name, **in ascending bit order**. The five low bits are the value: a decimal128,
 a double, a date's seconds, a string key, a rich text key. The rest name styles
 and formats, so the walk stops at the value and never needs their widths.
 
 `TST.TileRowInfo` also carries the same cells in an older encoding in two other
 fields. The version byte says which to read; a record that declares a version
 we have not seen reads as an **empty** cell rather than a wrong one, which is
-the whole point of the pinned table.
+the whole point of the pinned table. The same holds one level up: a drawable
+whose archive is not a table info, or a table info naming no model, costs the
+table rather than the file — `read_table` is a per-drawable reader, where a
+skip loses one table and a throw loses the document. (The spine entry points
+do throw on a wrong root type, because there a mismatch leaves nothing to
+render either way.) `IworkNumbers.a_record_we_have_not_mapped_is_an_empty_cell`
+pins the version and the type byte; the framing below them —
+`a_row_that_contradicts_its_own_offsets_throws` — still fails fast.
 
 **A number is a decimal, and stays one.** Apple stores cell values as IEEE 754
 decimal128 precisely so `0.1 + 0.2` is `0.3`; converting through a `double` on

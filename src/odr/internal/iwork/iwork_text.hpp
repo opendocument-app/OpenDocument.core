@@ -22,13 +22,14 @@ struct Context final {
   ElementRegistry *registry{nullptr};
   Package *package{nullptr};
   Budget *budget{nullptr};
+  TableCache *tables{nullptr};
   std::uint32_t depth{};
 
   [[nodiscard]] Context deeper() const {
     if (depth + 1 >= max_depth) {
       throw std::runtime_error("iwork: storages nest too deeply");
     }
-    return {registry, package, budget, depth + 1};
+    return {registry, package, budget, tables, depth + 1};
   }
 };
 

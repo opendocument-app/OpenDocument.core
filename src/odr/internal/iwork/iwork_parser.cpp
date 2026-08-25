@@ -178,11 +178,16 @@ void parse_sheet(const Context &context, const ElementIdentifier root_id,
       // a chart, a text box or an image on the sheet; none read yet
       continue;
     }
-    const TableModel model = read_table(*context.package, identifier);
+    const TableModel &model =
+        context.tables->table(*context.package, *context.budget, identifier);
 
     budget.spend_element();
     auto [sheet_id, element, payload] = registry.create_sheet_element();
-    payload.name = model.name.empty() ? name : name + " – " + model.name;
+    // `<sheet> – <table>`, less whichever half the archive leaves empty
+    payload.name = name;
+    if (!model.name.empty()) {
+      payload.name += payload.name.empty() ? model.name : " – " + model.name;
+    }
     payload.rows = model.rows;
     payload.columns = model.columns;
     registry.append_child(root_id, sheet_id);
@@ -230,8 +235,9 @@ iwork::parse_pages_tree(ElementRegistry &registry,
   }
 
   Budget budget;
+  TableCache tables;
   auto [root_id, root] = registry.create_element(ElementType::root);
-  parse_storage({&registry, &package, &budget, 0}, root_id,
+  parse_storage({&registry, &package, &budget, &tables, 0}, root_id,
                 Message(body_object.payload));
   return root_id;
 }
@@ -258,6 +264,7 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
       read_size(show, show_archive::size);
 
   Budget budget;
+  TableCache tables;
   auto [root_id, root] = registry.create_element(ElementType::root);
 
   // a show that carries no slide tree is a deck with no slides
@@ -288,7 +295,7 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
     payload.size = slide_size;
     registry.append_child(root_id, slide_id);
 
-    parse_slide({&registry, &package, &budget, 0}, slide_id, slide);
+    parse_slide({&registry, &package, &budget, &tables, 0}, slide_id, slide);
   }
 
   return root_id;
@@ -303,6 +310,7 @@ iwork::parse_numbers_tree(ElementRegistry &registry,
       root_archive(package, archive_type::app_document).payload);
 
   Budget budget;
+  TableCache tables;
   auto [root_id, root] = registry.create_element(ElementType::root);
 
   for (const std::uint64_t identifier :
@@ -311,7 +319,7 @@ iwork::parse_numbers_tree(ElementRegistry &registry,
     if (sheet.type != archive_type::numbers_sheet) {
       continue;
     }
-    parse_sheet({&registry, &package, &budget, 0}, root_id, sheet);
+    parse_sheet({&registry, &package, &budget, &tables, 0}, root_id, sheet);
   }
 
   return root_id;

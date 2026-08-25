@@ -163,7 +163,8 @@ void parse_table(const Context &context, const ElementIdentifier parent_id,
                  const std::uint64_t identifier) {
   ElementRegistry &registry = *context.registry;
   Budget &budget = *context.budget;
-  const TableModel model = read_table(*context.package, identifier);
+  const TableModel &model =
+      context.tables->table(*context.package, *context.budget, identifier);
 
   budget.spend_element();
   auto [table_id, element, payload] = registry.create_table_element();

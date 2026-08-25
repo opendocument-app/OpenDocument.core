@@ -145,7 +145,6 @@ constexpr std::uint32_t y = 2;
 
 /// `TST.TableInfoArchive` — where a table sits, and the model behind it.
 namespace table_info {
-constexpr std::uint32_t drawable = 1;
 constexpr std::uint32_t model = 2;
 } // namespace table_info
 
@@ -187,7 +186,6 @@ constexpr std::uint32_t rows = 5;
 /// encoding of the same cells, which @ref cell::version says not to read.
 namespace tile_row {
 constexpr std::uint32_t index = 1;
-constexpr std::uint32_t cell_count = 2;
 constexpr std::uint32_t storage = 6;
 /// `std::int16_t` per column, the offset of that column's cell into
 /// @ref storage, or `-1` where the row holds no cell there.
@@ -236,7 +234,7 @@ constexpr std::uint8_t rich_text = 9; ///< a key into the rich text list
 
 /// The flag bits that name a value, with the width each one occupies. The
 /// higher bits name styles and formats, which nothing reads — a value is
-/// always in one of these four, so the walk stops after the last of them.
+/// always in one of these five, so the walk stops after the last of them.
 namespace flag {
 constexpr std::uint32_t decimal = 1U << 0;       ///< 16 bytes, IEEE decimal128
 constexpr std::uint32_t number = 1U << 1;        ///< 8 bytes, IEEE double

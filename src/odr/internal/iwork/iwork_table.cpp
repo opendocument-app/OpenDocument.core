@@ -1,6 +1,7 @@
 #include <odr/internal/iwork/iwork_table.hpp>
 
 #include <odr/internal/iwork/iwork_archive.hpp>
+#include <odr/internal/iwork/iwork_budget.hpp>
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 #include <odr/internal/iwork/iwork_types.hpp>
 #include <odr/internal/util/byte_util.hpp>
@@ -100,6 +101,12 @@ constexpr std::array<Value, 5> value_layout{{
     {cell::flag::string_key, 4},
     {cell::flag::rich_text_key, 4},
 }};
+
+/// The largest instant either formatter reads, in seconds. `std::chrono::year`
+/// runs to ±32767, so a second beyond this names no date a calendar has —
+/// and the `std::int64_t` the seconds are cast to holds this with room to
+/// spare, which is what keeps the cast defined.
+constexpr double max_instant = 1e12;
 
 /// The offset of the value @p flag names within @p record, or nothing when the
 /// flags do not carry it or it would run past the record.
@@ -227,7 +234,7 @@ read_cell(const std::string_view record, const std::uint32_t row,
 
 /// Reads the cells of one `TST.Tile`, whose row indices are relative to the
 /// tile's own start.
-void read_tile(Package &package, const std::uint64_t identifier,
+void read_tile(Package &package, Budget &budget, const std::uint64_t identifier,
                const std::uint32_t first_row,
                const std::unordered_map<std::uint64_t, Message> &strings,
                const std::unordered_map<std::uint64_t, Message> &rich_texts,
@@ -279,6 +286,10 @@ void read_tile(Package &package, const std::uint64_t identifier,
       TableModel::Cell cell = read_cell(storage.substr(begin, end - begin),
                                         index, column, strings, rich_texts);
       if (cell.value_type != ValueType::unknown) {
+        // a tile list may name one tile any number of times, so a cell is
+        // spent as it is produced rather than once the model is complete
+        budget.spend_element();
+        budget.spend_text(cell.text.size());
         out.push_back(std::move(cell));
       }
     }
@@ -335,9 +346,6 @@ std::string iwork::decimal128_to_string(const std::string_view bytes) {
   }
   digits.erase(0, significant);
   std::ranges::reverse(digits);
-  if (digits.empty()) {
-    return "0";
-  }
 
   std::string result;
   if (exponent >= 0) {
@@ -356,7 +364,10 @@ std::string iwork::decimal128_to_string(const std::string_view bytes) {
 }
 
 std::string iwork::date_to_string(const double seconds) {
-  if (!std::isfinite(seconds)) {
+  // an instant is cast to `std::int64_t` below, which is undefined for a value
+  // the type cannot hold, and no `std::chrono::year` can name one this far out
+  // anyway — so a value beyond the calendar is read as no date at all
+  if (!std::isfinite(seconds) || std::abs(seconds) > max_instant) {
     return {};
   }
 
@@ -391,7 +402,7 @@ std::string iwork::date_to_string(const double seconds) {
 }
 
 std::string iwork::duration_to_string(const double seconds) {
-  if (!std::isfinite(seconds)) {
+  if (!std::isfinite(seconds) || std::abs(seconds) > max_instant) {
     return {};
   }
 
@@ -420,23 +431,25 @@ std::string iwork::duration_to_string(const double seconds) {
   return negative ? "-" + result : result;
 }
 
-iwork::TableModel iwork::read_table(Package &package,
+iwork::TableModel iwork::read_table(Package &package, Budget &budget,
                                     const std::uint64_t identifier) {
   TableModel result;
 
+  // a drawable we have not mapped is a shape Apple ships and we have not seen,
+  // so it costs the table it names rather than the file it sits in
   const Object &info_object = package.object(identifier);
   if (info_object.type != archive_type::table_info) {
-    throw std::runtime_error("iwork: not a table info archive");
+    return result;
   }
   const std::optional<std::uint64_t> model_identifier =
       reference_identifier(Message(info_object.payload), table_info::model);
   if (!model_identifier.has_value()) {
-    throw std::runtime_error("iwork: table info names no model");
+    return result;
   }
 
   const Object &model_object = package.object(*model_identifier);
   if (model_object.type != archive_type::table_model) {
-    throw std::runtime_error("iwork: table info is not backed by a model");
+    return result;
   }
   const Message model(model_object.payload);
 
@@ -480,11 +493,22 @@ iwork::TableModel iwork::read_table(Package &package,
     if (!tile_identifier.has_value()) {
       continue;
     }
-    read_tile(package, *tile_identifier, index * rows_per_tile, strings,
+    read_tile(package, budget, *tile_identifier, index * rows_per_tile, strings,
               rich_texts, result.cells);
   }
 
   return result;
+}
+
+const iwork::TableModel &
+iwork::TableCache::table(Package &package, Budget &budget,
+                         const std::uint64_t identifier) {
+  const auto it = m_tables.find(identifier);
+  if (it != m_tables.end()) {
+    return it->second;
+  }
+  return m_tables.emplace(identifier, read_table(package, budget, identifier))
+      .first->second;
 }
 
 } // namespace odr::internal

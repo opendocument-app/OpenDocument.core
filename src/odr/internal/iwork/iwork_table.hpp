@@ -6,9 +6,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal::iwork {
+class Budget;
 class Package;
 
 /// A `TST.TableModelArchive`: its name, the extent it declares, and the cells
@@ -32,8 +34,25 @@ struct TableModel final {
   std::vector<Cell> cells;
 };
 
-/// Reads the table the `TST.TableInfoArchive` @p identifier names.
-TableModel read_table(Package &package, std::uint64_t identifier);
+/// Reads the table the `TST.TableInfoArchive` @p identifier names, spending
+/// what it decodes against @p budget. A drawable kind we have not mapped comes
+/// back as an empty table rather than throwing, as every other per-drawable
+/// reader does.
+TableModel read_table(Package &package, Budget &budget,
+                      std::uint64_t identifier);
+
+/// Every table one parse reads, by identifier. A reference list may name one
+/// table any number of times, and `Package::object` memoises the archive but
+/// not the tiles below it — so a repeat that decoded them again would spend
+/// the bytes without building an element the budget could count.
+class TableCache final {
+public:
+  const TableModel &table(Package &package, Budget &budget,
+                          std::uint64_t identifier);
+
+private:
+  std::unordered_map<std::uint64_t, TableModel> m_tables;
+};
 
 /// An IEEE 754 decimal128, in the binary integer form Apple writes, as an
 /// exact decimal string. Exposed for its tests.
