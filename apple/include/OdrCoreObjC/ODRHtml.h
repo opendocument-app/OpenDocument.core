@@ -37,8 +37,8 @@ typedef NS_ENUM(NSInteger, ODRHtmlColorScheme) {
   ODRHtmlColorSchemeSystem,
 } NS_SWIFT_NAME(HtmlColorScheme);
 
-/// Initial zoom of the emitted HTML on mobile (the viewport meta tag). Desktop
-/// browsers ignore it entirely.
+/// The zoom a view opens at, and who fits it: the browser through the viewport
+/// meta tag, which desktop browsers ignore, or the view itself.
 typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
   /// Fixed-size paged content fits the width; reflowing content is actual size.
   ODRHtmlViewportModeAutomatic = 0,
@@ -46,6 +46,8 @@ typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
   ODRHtmlViewportModeActualSize,
   /// No viewport meta tag at all.
   ODRHtmlViewportModeNone,
+  /// The view measures and applies the fit itself, and keeps it current.
+  ODRHtmlViewportModeFitWidthByView,
 } NS_SWIFT_NAME(HtmlViewportMode);
 
 /// How text is emitted in PDF→HTML output.

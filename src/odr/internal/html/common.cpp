@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace odr::internal {
@@ -39,6 +40,8 @@ void html::write_viewport_meta(
     out.write_header_viewport("width=device-width,user-scalable=yes");
     break;
   case HtmlViewportMode::actual_size:
+  // A stated scale is what turns the browser's own fitting off.
+  case HtmlViewportMode::fit_width_by_view:
     out.write_header_viewport(
         "width=device-width,initial-scale=1.0,user-scalable=yes");
     break;
@@ -48,18 +51,25 @@ void html::write_viewport_meta(
   }
 }
 
-bool html::fits_width(const HtmlConfig &config, const bool fit_width_by_default,
-                      const std::optional<HtmlViewportMode> mode_override) {
+html::WidthFit
+html::width_fit(const HtmlConfig &config, const bool fit_width_by_default,
+                const std::optional<HtmlViewportMode> mode_override) {
   // A raw `viewport_content` is the caller taking the question over.
   if (config.viewport_content.has_value()) {
-    return false;
+    return WidthFit::none;
   }
 
   const HtmlViewportMode mode = mode_override.value_or(config.viewport_mode);
-  if (mode == HtmlViewportMode::automatic) {
-    return fit_width_by_default;
+  switch (mode) {
+  case HtmlViewportMode::automatic:
+    return fit_width_by_default ? WidthFit::browser : WidthFit::none;
+  case HtmlViewportMode::fit_width:
+    return WidthFit::browser;
+  case HtmlViewportMode::fit_width_by_view:
+    return WidthFit::view;
+  default:
+    return WidthFit::none;
   }
-  return mode == HtmlViewportMode::fit_width;
 }
 
 std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
@@ -82,18 +92,28 @@ std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
 }
 
 void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
-                            const bool fits,
+                            const WidthFit fits,
                             const std::optional<double> content_pixels) {
+  // The factor, or who measures it where the css cannot state it.
   std::optional<double> fit = 1;
-  if (fits) {
+  std::string_view measures;
+  switch (fits) {
+  case WidthFit::none:
+    break;
+  case WidthFit::browser:
     if (config.viewport_width.has_value() && content_pixels.has_value()) {
       // only ever down: a page narrower than the viewport is shown at its size
       fit = std::min(1.0, static_cast<double>(config.viewport_width.value()) /
                               *content_pixels);
     } else {
-      // only the view can measure this one
       fit.reset();
+      measures = "auto";
     }
+    break;
+  case WidthFit::view:
+    fit.reset();
+    measures = "view";
+    break;
   }
 
   const std::optional<double> zoom =
@@ -118,7 +138,7 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
       if (fit.has_value()) {
         out.out() << number(*fit);
       } else {
-        out.out() << "auto";
+        out.out() << measures;
       }
       if (writes_pin) {
         out.out() << ";";

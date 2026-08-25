@@ -46,10 +46,16 @@ void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
                          std::optional<HtmlViewportMode> mode_override = {});
 
-/// Whether the output is meant to fit its width to the viewport.
-[[nodiscard]] bool
-fits_width(const HtmlConfig &config, bool fit_width_by_default,
-           std::optional<HtmlViewportMode> mode_override = {});
+/// Who fits the output's width to the viewport.
+enum class WidthFit {
+  none,    ///< nobody: it is shown at its size
+  browser, ///< the browser, steered by the viewport meta tag
+  view,    ///< the view itself, measured and kept current
+};
+
+[[nodiscard]] WidthFit
+width_fit(const HtmlConfig &config, bool fit_width_by_default,
+          std::optional<HtmlViewportMode> mode_override = {});
 
 /// @p measure in css pixels, or nothing without an absolute unit.
 [[nodiscard]] std::optional<double>
@@ -59,9 +65,9 @@ css_pixels(const std::optional<Measure> &measure);
 constexpr double page_column_gutter_pixels = 32;
 
 /// The zoom the view opens at: `--odr-fit` fits @p content_pixels into
-/// `config.viewport_width` (`auto` where only the view can measure it),
-/// `--odr-zoom` pins it, `body{zoom}` applies the winner.
-void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, bool fits,
+/// `config.viewport_width`, or names who measures it instead, `--odr-zoom` pins
+/// it, `body{zoom}` applies the winner.
+void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, WidthFit fits,
                       std::optional<double> content_pixels);
 
 std::string escape_text(std::string text);

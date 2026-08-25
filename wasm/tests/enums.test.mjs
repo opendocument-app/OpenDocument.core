@@ -25,6 +25,7 @@ const pinned = {
     fit_width: 1,
     actual_size: 2,
     none: 3,
+    fit_width_by_view: 4,
   },
   PdfTextMode: { dual_layer: 0, single_layer: 1 },
   EncryptionState: {

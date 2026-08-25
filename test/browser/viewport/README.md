@@ -29,5 +29,10 @@ Why the harness is shaped this way:
 - **Positions are read as `(scrollY + y) / zoom`**, never through the script's
   helpers, so a wrong answer cannot agree with itself.
 
-Keep the tab on screen: the browser throttles `resize` and
-`requestAnimationFrame` in a window that is not.
+Who fits the width is the one thing a frame cannot check: `--odr-fit` `auto` and
+`view` both measure in one. `tests.html` links the two top-level pages that can,
+each printing its own verdict.
+
+Keep the tab on screen: the browser throttles `requestAnimationFrame` in a
+window that is not. The harness dispatches the scroll and resize events itself,
+but not the settling frames that follow them.

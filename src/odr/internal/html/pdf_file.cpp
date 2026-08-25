@@ -2586,7 +2586,7 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
-    write_zoom_style(out, config(), fits_width(config(), true), content);
+    write_zoom_style(out, config(), width_fit(config(), true), content);
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     // `.d`: the page column, sized to the widest page so pages of differing

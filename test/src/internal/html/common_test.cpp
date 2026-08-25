@@ -44,6 +44,14 @@ TEST(html_common, viewport_mode_beats_automatic_default) {
   EXPECT_EQ(emit_viewport(config, false), fit_width);
 }
 
+TEST(html_common, fit_width_by_view_pins_the_scale_the_browser_would_fit) {
+  HtmlConfig config;
+  config.viewport_mode = HtmlViewportMode::fit_width_by_view;
+  // the view fits it, so the browser is told not to
+  EXPECT_EQ(emit_viewport(config, true), actual_size);
+  EXPECT_EQ(emit_viewport(config, false), actual_size);
+}
+
 TEST(html_common, viewport_mode_none_writes_nothing) {
   HtmlConfig config;
   config.viewport_mode = HtmlViewportMode::none;
@@ -71,7 +79,7 @@ TEST(html_common, viewport_content_beats_modes_and_is_escaped) {
 
 namespace {
 
-std::string emit_zoom(const HtmlConfig &config, const bool fits,
+std::string emit_zoom(const HtmlConfig &config, const ihtml::WidthFit fits,
                       const std::optional<double> content_pixels) {
   std::ostringstream out;
   ihtml::HtmlWriter writer(out, false, "");
@@ -89,25 +97,34 @@ std::string styled(const std::string &css) {
 
 } // namespace
 
-TEST(html_common, fits_width_follows_the_resolved_mode) {
+TEST(html_common, width_fit_follows_the_resolved_mode) {
+  using ihtml::WidthFit;
   HtmlConfig config;
 
-  EXPECT_TRUE(ihtml::fits_width(config, true));
-  EXPECT_FALSE(ihtml::fits_width(config, false));
+  EXPECT_EQ(ihtml::width_fit(config, true), WidthFit::browser);
+  EXPECT_EQ(ihtml::width_fit(config, false), WidthFit::none);
 
   config.viewport_mode = HtmlViewportMode::fit_width;
-  EXPECT_TRUE(ihtml::fits_width(config, false));
+  EXPECT_EQ(ihtml::width_fit(config, false), WidthFit::browser);
 
   config.viewport_mode = HtmlViewportMode::actual_size;
-  EXPECT_FALSE(ihtml::fits_width(config, true));
+  EXPECT_EQ(ihtml::width_fit(config, true), WidthFit::none);
+
+  config.viewport_mode = HtmlViewportMode::fit_width_by_view;
+  EXPECT_EQ(ihtml::width_fit(config, false), WidthFit::view);
 
   config.viewport_mode = HtmlViewportMode::automatic;
-  EXPECT_TRUE(ihtml::fits_width(config, true, HtmlViewportMode::fit_width));
-  EXPECT_FALSE(ihtml::fits_width(config, true, HtmlViewportMode::none));
+  EXPECT_EQ(ihtml::width_fit(config, true, HtmlViewportMode::fit_width),
+            WidthFit::browser);
+  EXPECT_EQ(ihtml::width_fit(config, true, HtmlViewportMode::none),
+            WidthFit::none);
+  EXPECT_EQ(
+      ihtml::width_fit(config, false, HtmlViewportMode::fit_width_by_view),
+      WidthFit::view);
 
   // the caller took the question over
   config.viewport_content = "width=420";
-  EXPECT_FALSE(ihtml::fits_width(config, true));
+  EXPECT_EQ(ihtml::width_fit(config, true), WidthFit::none);
 }
 
 TEST(html_common, css_pixels_converts_the_absolute_units) {
@@ -127,7 +144,7 @@ TEST(html_common, the_fit_scales_the_body_to_the_configured_viewport) {
   config.viewport_width = 400;
 
   // `--odr-zoom` states a pin, and nothing pinned this one
-  EXPECT_EQ(emit_zoom(config, true, 800),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5}body{zoom:0.5}"));
 }
 
@@ -135,21 +152,34 @@ TEST(html_common, the_fit_never_scales_up) {
   HtmlConfig config;
   config.viewport_width = 1200;
 
-  EXPECT_EQ(emit_zoom(config, true, 800), styled(""));
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800), styled(""));
 }
 
 TEST(html_common, the_fit_is_left_to_the_view_where_a_width_is_missing) {
   HtmlConfig config;
 
   // no viewport width configured — the view measures itself instead
-  EXPECT_EQ(emit_zoom(config, true, 800), styled(":root{--odr-fit:auto}"));
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
+            styled(":root{--odr-fit:auto}"));
 
   config.viewport_width = 400;
-  EXPECT_EQ(emit_zoom(config, true, std::nullopt),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, std::nullopt),
             styled(":root{--odr-fit:auto}"));
 
   // nothing to fit: the view opens at actual size
-  EXPECT_EQ(emit_zoom(config, false, 800), styled(""));
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::none, 800), styled(""));
+}
+
+TEST(html_common, the_view_measures_the_fit_where_it_was_asked_to) {
+  HtmlConfig config;
+
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::view, 800),
+            styled(":root{--odr-fit:view}"));
+
+  // a stated width does not turn it back into a factor the css writes
+  config.viewport_width = 400;
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::view, 800),
+            styled(":root{--odr-fit:view}"));
 }
 
 TEST(html_common, a_pinned_zoom_replaces_the_fit_it_opens_at) {
@@ -157,14 +187,14 @@ TEST(html_common, a_pinned_zoom_replaces_the_fit_it_opens_at) {
   config.initial_zoom = 2;
 
   // nothing is fitted, so the pinned zoom stands alone
-  EXPECT_EQ(emit_zoom(config, false, 800),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::none, 800),
             styled(":root{--odr-zoom:2}body{zoom:2}"));
 
   // the fit is still stated, so `resetZoom()` has one to go back to
   config.viewport_width = 400;
-  EXPECT_EQ(emit_zoom(config, true, 800),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5;--odr-zoom:2}body{zoom:2}"));
-  EXPECT_EQ(emit_zoom(config, true, std::nullopt),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, std::nullopt),
             styled(":root{--odr-fit:auto;--odr-zoom:2}body{zoom:2}"));
 }
 
@@ -173,15 +203,15 @@ TEST(html_common, a_zoom_pinned_to_actual_size_is_still_a_pin) {
   config.initial_zoom = 1;
 
   // nothing to apply, but the view has to know the fit was turned down
-  EXPECT_EQ(emit_zoom(config, true, std::nullopt),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, std::nullopt),
             styled(":root{--odr-fit:auto;--odr-zoom:1}"));
 
   config.viewport_width = 400;
-  EXPECT_EQ(emit_zoom(config, true, 800),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5;--odr-zoom:1}"));
 
   // and a pin that lands on the fit is a pin too: a resize leaves it alone
   config.initial_zoom = 0.5;
-  EXPECT_EQ(emit_zoom(config, true, 800),
+  EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5;--odr-zoom:0.5}body{zoom:0.5}"));
 }

@@ -337,17 +337,17 @@ constexpr std::string_view viewport_js = R"js(
   var minZoom = 0.1;
   var maxZoom = 10;
 
-  // Only a frame is fitted here: the viewport meta tag covers the top-level
-  // document but is inert in a frame.
   var framed = window.top !== window.self;
 
   function declared(name) {
     return getComputedStyle(root).getPropertyValue(name).trim();
   }
 
-  // `auto` where only we can measure the fit; a number where the css states it.
-  var measures = declared("--odr-fit") === "auto";
-  var fit = measures ? 1 : parseFloat(declared("--odr-fit")) || 1;
+  // A number is the css stating the fit; `view` and `auto` ask us to measure
+  // it. `auto` only in a frame, where the viewport meta tag is inert.
+  var stated = declared("--odr-fit");
+  var measures = stated === "view" || (stated === "auto" && framed);
+  var fit = measures ? 1 : parseFloat(stated) || 1;
 
   // `null` while the view follows the fit.
   var pinned = parseFloat(declared("--odr-zoom"));
@@ -382,9 +382,8 @@ constexpr std::string_view viewport_js = R"js(
 
   function measureFit() {
     var available = root.clientWidth;
-    if (!available || !framed) {
-      // Out of a frame the viewport meta tag has already fitted the document.
-      return available ? 1 : fit;
+    if (!available) {
+      return fit;
     }
     var content = contentWidth();
     if (!content) {

@@ -107,11 +107,13 @@ emscripten::val enum_tables() {
              table(entry("light", HtmlColorScheme::light),
                    entry("dark", HtmlColorScheme::dark),
                    entry("system", HtmlColorScheme::system)));
-  result.set("HtmlViewportMode",
-             table(entry("automatic", HtmlViewportMode::automatic),
-                   entry("fit_width", HtmlViewportMode::fit_width),
-                   entry("actual_size", HtmlViewportMode::actual_size),
-                   entry("none", HtmlViewportMode::none)));
+  result.set(
+      "HtmlViewportMode",
+      table(entry("automatic", HtmlViewportMode::automatic),
+            entry("fit_width", HtmlViewportMode::fit_width),
+            entry("actual_size", HtmlViewportMode::actual_size),
+            entry("none", HtmlViewportMode::none),
+            entry("fit_width_by_view", HtmlViewportMode::fit_width_by_view)));
   result.set("PdfTextMode",
              table(entry("dual_layer", PdfTextMode::dual_layer),
                    entry("single_layer", PdfTextMode::single_layer)));

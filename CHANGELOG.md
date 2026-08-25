@@ -57,6 +57,9 @@ The release run heads these entries with the version and opens a fresh
   `elementFromPoint` takes, for a host hit-testing while a zoom is applied.
 - A view whose zoom does not follow the viewport — `viewport_width`,
   `initial_zoom`, a sheet — keeps the reader's place across a width change.
+- New `HtmlViewportMode::fit_width_by_view`: the view measures the fit and keeps
+  it current, so a rotation refits instead of holding what it opened at. For a
+  host whose web view does not fit a top-level document itself.
 
 ## v6.10.1 - 2026-08-21
 

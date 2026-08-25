@@ -36,6 +36,8 @@ ODR_SAME_ENUM(ODRHtmlViewportModeFitWidth, odr::HtmlViewportMode::fit_width);
 ODR_SAME_ENUM(ODRHtmlViewportModeActualSize,
               odr::HtmlViewportMode::actual_size);
 ODR_SAME_ENUM(ODRHtmlViewportModeNone, odr::HtmlViewportMode::none);
+ODR_SAME_ENUM(ODRHtmlViewportModeFitWidthByView,
+              odr::HtmlViewportMode::fit_width_by_view);
 
 ODR_SAME_ENUM(ODRPdfTextModeDualLayer, odr::PdfTextMode::dual_layer);
 ODR_SAME_ENUM(ODRPdfTextModeSingleLayer, odr::PdfTextMode::single_layer);

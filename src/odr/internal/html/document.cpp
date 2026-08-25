@@ -117,8 +117,9 @@ void front(const Document &document, const WritingState &state,
       viewport_mode_override(document, state.config());
   write_viewport_meta(out, state.config(), paged_content, mode_override);
   write_zoom_style(out, state.config(),
-                   paged_content &&
-                       fits_width(state.config(), paged_content, mode_override),
+                   paged_content
+                       ? width_fit(state.config(), paged_content, mode_override)
+                       : WidthFit::none,
                    content_pixels);
 
   write_document_style(state);
