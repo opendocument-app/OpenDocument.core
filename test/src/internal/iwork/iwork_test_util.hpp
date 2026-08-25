@@ -165,9 +165,8 @@ package(const std::vector<std::pair<std::string, std::string>> &components) {
 
 /// A `TP.DocumentArchive` whose body is the object @p body_identifier.
 inline std::string document_archive(const std::uint64_t body_identifier) {
-  return message_field(
-      types::document_archive::body_storage,
-      number_field(types::reference::identifier, body_identifier));
+  return reference_field(types::document_archive::body_storage,
+                         body_identifier);
 }
 
 /// A `TSWP.StorageArchive`: @p text and a paragraph style run table over the
@@ -222,13 +221,19 @@ struct SlideBox final {
   std::size_t repeats{1};
 };
 
+/// The size of a synthetic deck's slides, in points.
+struct SlideSize final {
+  float width{1024.0F};
+  float height{768.0F};
+};
+
 /// A `.key` package: a root archive holding a show, whose slide tree names one
-/// `KN.SlideNodeArchive` per slide. Carries a `Slide` component, which is what
-/// tells a Keynote package from a Numbers one.
+/// `KN.SlideNodeArchive` per slide. `std::nullopt` writes a show with no size
+/// at all, which is not one of zero size. Carries a `Slide` component, which
+/// is what tells a Keynote package from a Numbers one.
 inline std::shared_ptr<internal::abstract::ReadableFilesystem>
 keynote_package(const std::vector<std::vector<SlideBox>> &slides,
-                const float slide_width = 1024.0F,
-                const float slide_height = 768.0F) {
+                const std::optional<SlideSize> &slide_size = SlideSize{}) {
   constexpr std::uint64_t show_identifier = 2;
   // identifiers are handed out in blocks so a slide's objects never collide
   constexpr std::uint64_t slide_block = 100;
@@ -286,10 +291,11 @@ keynote_package(const std::vector<std::vector<SlideBox>> &slides,
         drawables;
   }
 
-  const std::string show =
-      message_field(types::show_archive::slide_tree, tree) +
-      message_field(types::show_archive::size,
-                    point(slide_width, slide_height));
+  std::string show = message_field(types::show_archive::slide_tree, tree);
+  if (slide_size.has_value()) {
+    show += message_field(types::show_archive::size,
+                          point(slide_size->width, slide_size->height));
+  }
   const std::string root =
       reference_field(types::document_archive::show, show_identifier);
 

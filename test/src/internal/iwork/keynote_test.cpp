@@ -69,10 +69,11 @@ std::vector<std::vector<std::string>> slides(const Element root) {
   return result;
 }
 
-Document
-keynote_document(const std::vector<std::vector<builder::SlideBox>> &boxes) {
+Document keynote_document(
+    const std::vector<std::vector<builder::SlideBox>> &boxes,
+    const std::optional<builder::SlideSize> &size = builder::SlideSize{}) {
   return Document(std::make_shared<iwork::Document>(
-      FileType::iwork_keynote, builder::keynote_package(boxes)));
+      FileType::iwork_keynote, builder::keynote_package(boxes, size)));
 }
 
 } // namespace
@@ -222,6 +223,19 @@ TEST(IworkKeynote, a_text_box_that_autosizes_reports_no_size) {
   EXPECT_TRUE(frame.x().has_value());
   EXPECT_FALSE(frame.width().has_value());
   EXPECT_FALSE(frame.height().has_value());
+}
+
+// The size is the show's, and a show that carries none leaves the layout to
+// the renderer rather than laying a slide out at zero.
+TEST(IworkKeynote, a_show_without_a_size_has_no_page_layout) {
+  const Document document =
+      keynote_document({{builder::SlideBox{.text = "sizeless"}}}, std::nullopt);
+
+  const Slide slide = (*document.root_element().children().begin()).as_slide();
+  const PageLayout layout = slide.page_layout();
+
+  EXPECT_FALSE(layout.width.has_value());
+  EXPECT_FALSE(layout.height.has_value());
 }
 
 // A placeholder wraps the same shape a free text box is, one level deeper.
