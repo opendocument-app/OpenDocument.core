@@ -5,6 +5,7 @@
 #include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/path.hpp>
@@ -290,6 +291,10 @@ HtmlService html::translate(const TextFile &text_file, const HtmlConfig &config,
 
 HtmlService html::translate(const ImageFile &image_file,
                             const HtmlConfig &config, const Logger &logger) {
+  // refusing says what a blank `<img>` cannot
+  if (!capabilities_by_file_type(image_file.file_type()).translate_html) {
+    throw UnsupportedFileType(image_file.file_type());
+  }
   return internal::html::create_image_service(image_file, config, logger);
 }
 
