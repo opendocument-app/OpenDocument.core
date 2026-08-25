@@ -24,8 +24,8 @@ public:
   struct Rect final {
     float x{};
     float y{};
-    std::optional<float> width;
-    std::optional<float> height;
+    std::optional<float> width{};
+    std::optional<float> height{};
   };
 
   struct Element final {

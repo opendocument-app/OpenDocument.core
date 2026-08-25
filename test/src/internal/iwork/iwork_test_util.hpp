@@ -208,7 +208,7 @@ inline std::string text_shape(const std::uint64_t storage_identifier,
 /// box sits.
 struct SlideBox final {
   std::string text;
-  std::optional<std::vector<std::uint64_t>> paragraphs;
+  std::optional<std::vector<std::uint64_t>> paragraphs{};
   float x{};
   float y{};
   float width{};
