@@ -14,9 +14,9 @@ namespace odr::internal::iwork {
 ///
 /// Type ids are namespaced per app: `TP.*` (Pages) starts at 10000 while
 /// `KN.*` (Keynote) and `TN.*` (Numbers) both start at 1, so a `.key` and a
-/// `.numbers` share every low id — see `which_app` in `iwork_file.cpp`. Only
-/// the `TS*` frameworks (text storage, drawables, tables) mean the same thing
-/// in all three.
+/// `.numbers` share every low id — see `app_by_components` in
+/// `iwork_file.cpp`. Only the `TS*` frameworks (text storage, drawables,
+/// tables) mean the same thing in all three.
 namespace archive_type {
 /// `TP.DocumentArchive`, the root of a `.pages` package.
 /// `empty.pages Index/Document.iwa` object 1 (iWork 13.2).

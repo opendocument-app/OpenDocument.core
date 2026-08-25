@@ -159,20 +159,36 @@ const Object &root_archive(Package &package, const std::uint32_t type) {
   return objects.front();
 }
 
-/// A `TSP.Point`, which iWork writes as two `float`s in points.
-std::optional<ElementRegistry::Size> read_size(const Message &message,
-                                               const std::uint32_t number) {
+/// A `TSP.Point`: two `float`s in points, which is how iWork writes a size
+/// too.
+struct Point final {
+  float x{};
+  float y{};
+};
+
+std::optional<Point> read_point(const Message &message,
+                                const std::uint32_t number) {
   const std::optional<std::string_view> bytes = message.bytes_field(number);
   if (!bytes.has_value()) {
     return {};
   }
-  const Message size(*bytes);
-  const std::optional<float> width = size.float_field(point::x);
-  const std::optional<float> height = size.float_field(point::y);
-  if (!width.has_value() || !height.has_value()) {
+  const Message point_message(*bytes);
+  const std::optional<float> x = point_message.float_field(point::x);
+  const std::optional<float> y = point_message.float_field(point::y);
+  if (!x.has_value() || !y.has_value()) {
     return {};
   }
-  return ElementRegistry::Size{*width, *height};
+  return Point{*x, *y};
+}
+
+/// The `TSP.Point` in field @p number, read as the size it stands for.
+std::optional<ElementRegistry::Size> read_size(const Message &message,
+                                               const std::uint32_t number) {
+  const std::optional<Point> size = read_point(message, number);
+  if (!size.has_value()) {
+    return {};
+  }
+  return ElementRegistry::Size{size->x, size->y};
 }
 
 /// Where a `TSD.ShapeArchive` sits on its page, in points.
