@@ -191,6 +191,11 @@ bool DecodedFile::is_csv_file() const {
          nullptr;
 }
 
+bool DecodedFile::is_markdown_file() const {
+  return std::dynamic_pointer_cast<internal::abstract::MarkdownFile>(m_impl) !=
+         nullptr;
+}
+
 bool DecodedFile::is_image_file() const {
   return std::dynamic_pointer_cast<internal::abstract::ImageFile>(m_impl) !=
          nullptr;
@@ -232,6 +237,15 @@ CsvFile DecodedFile::as_csv_file() const {
     return CsvFile(csv_file);
   }
   throw NoCsvFile();
+}
+
+MarkdownFile DecodedFile::as_markdown_file() const {
+  if (const std::shared_ptr markdown_file =
+          std::dynamic_pointer_cast<internal::abstract::MarkdownFile>(m_impl);
+      markdown_file != nullptr) {
+    return MarkdownFile(markdown_file);
+  }
+  throw NoMarkdownFile();
 }
 
 ImageFile DecodedFile::as_image_file() const {
@@ -330,6 +344,16 @@ CsvFile CsvFile::with_options(const CsvOptions &options) const {
 }
 
 std::shared_ptr<internal::abstract::CsvFile> CsvFile::impl() const {
+  return m_impl;
+}
+
+MarkdownFile::MarkdownFile(
+    std::shared_ptr<internal::abstract::MarkdownFile> impl)
+    : DecodedFile(impl), m_impl{std::move(impl)} {}
+
+Document MarkdownFile::document() const { return Document(m_impl->document()); }
+
+std::shared_ptr<internal::abstract::MarkdownFile> MarkdownFile::impl() const {
   return m_impl;
 }
 

@@ -4,19 +4,19 @@ Read the root [`AGENTS.md`](../../../../AGENTS.md) first, and
 [`PLAN.md`](PLAN.md) for where this is going. This file covers what markdown
 does differently, and why.
 
-## A document, not a text file
+## A text file that also loads as a document
 
-`FileCategory::document` / `DocumentType::text`: a markdown file decodes to a
-`TextRoot`, so the generic HTML renderer and every binding get it without
-format-specific code. That is the whole argument for a decoder rather than a
-markdown→HTML renderer next to `html/text_file.cpp` — the latter would produce
+`FileCategory::text` / `DocumentType::text` — the shape `abstract::CsvFile`
+already has. Markdown is plain text by construction, so the file stays text and
+the document is the other view of the same bytes: `as_text_file().text()` is
+the source, `as_markdown_file().document()` the prose. `html::translate` takes
+the document view, as it does for a csv.
+
+Decoding to a `TextRoot` is the whole argument for a decoder rather than a
+markdown→HTML renderer next to `html/text_file.cpp`: the latter would produce
 html only, with no element api and nothing for JNI/embind/pybind/ObjC.
 
-Unlike csv, markdown is *not* an `abstract::TextFile` that also loads as a
-document. `abstract::TextFile` fixes `file_category()` to `text`, and there is
-no reason to read markdown as a line list once it parses as prose.
-
-## Nothing detects it, and nothing rejects it
+## Nothing detects it, and decoding never rejects
 
 `detect_by_content` is **false**. Markdown has no signature, and a content probe
 for it is a probe for "prose with occasional punctuation" — every plain text
@@ -26,11 +26,12 @@ matches and be confidently wrong. The only way in is
 is what they already have. **A `.md` still opens as `text_file` by default**,
 and that is correct for a format that is by construction valid plain text.
 
-There is no `NoMarkdownFile` either. Every other format's exception exists
-because detection rejects; nothing rejects here — md4c is total, any UTF-8 byte
-sequence is some markdown document. The only failure is an encoding
-`internal/encoding` cannot decode, which throws `UnsupportedTextEncoding`:
-`Text::content()` is UTF-8 to every binding, so legacy bytes have no document.
+`NoMarkdownFile` exists only for the `as_markdown_file()` cast: every other
+format's `No*File` is also what detection throws, and nothing rejects here —
+md4c is total, any UTF-8 byte sequence is some markdown document. The one
+failure is an encoding `internal/encoding` cannot decode, which throws
+`UnsupportedTextEncoding`: `Text::content()` is UTF-8 to every binding, so
+legacy bytes have no document.
 
 ## md4c, not a hand-rolled parser
 

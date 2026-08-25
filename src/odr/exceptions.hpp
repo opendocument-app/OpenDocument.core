@@ -90,6 +90,11 @@ struct NoCsvFile final : Exception {
   NoCsvFile();
 };
 
+/// @brief No markdown file exception
+struct NoMarkdownFile final : Exception {
+  NoMarkdownFile();
+};
+
 /// @brief No json file exception
 struct NoJsonFile final : Exception {
   NoJsonFile();

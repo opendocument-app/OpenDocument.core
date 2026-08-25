@@ -474,14 +474,14 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
-    // A document rather than a text file: it decodes to a `TextRoot`. Not
-    // `detect_by_content` — markdown has no signature, and a content probe for
-    // it is a probe for prose, so the caller routes on the file name.
+    // Text that also loads as a document, like csv. Not `detect_by_content` —
+    // markdown has no signature, and a content probe for it is a probe for
+    // prose, so the caller routes on the file name.
     Row{FileType::markdown,
         "md"sv,
         markdown_extensions,
         markdown_mimetypes,
-        FileCategory::document,
+        FileCategory::text,
         DocumentType::text,
         {.open = true, .translate_html = true, .color_scheme = true}},
 

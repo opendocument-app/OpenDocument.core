@@ -9,7 +9,7 @@
 
 namespace odr::internal::markdown {
 
-class MarkdownFile final : public abstract::DocumentFile {
+class MarkdownFile final : public abstract::MarkdownFile {
 public:
   explicit MarkdownFile(std::shared_ptr<text::TextFile> file);
 
@@ -19,15 +19,12 @@ public:
   [[nodiscard]] std::string_view mimetype() const noexcept override;
   [[nodiscard]] FileMeta file_meta() const noexcept override;
 
-  [[nodiscard]] DocumentType document_type() const override;
-
   [[nodiscard]] bool is_decodable() const noexcept override;
 
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
-  /// The encoding the bytes were detected as.
-  [[nodiscard]] TextEncoding encoding() const noexcept;
+  [[nodiscard]] TextEncoding encoding() const noexcept override;
 
 private:
   std::shared_ptr<text::TextFile> m_file;

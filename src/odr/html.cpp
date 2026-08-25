@@ -216,6 +216,10 @@ HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
   if (file.is_csv_file()) {
     return translate(file.as_csv_file().document(), config, logger);
   }
+  // markdown too — its point is the prose it parses to
+  if (file.is_markdown_file()) {
+    return translate(file.as_markdown_file().document(), config, logger);
+  }
   // and before it for the same reason. Translating it as a text file by hand
   // still writes the line list.
   if (file.file_type() == FileType::xml) {

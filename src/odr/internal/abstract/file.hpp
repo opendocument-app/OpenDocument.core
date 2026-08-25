@@ -112,6 +112,15 @@ public:
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 
+/// A markdown file is a text file that can also be loaded as a document — its
+/// prose, parsed. Like @ref CsvFile it stays in @ref FileCategory::text; @ref
+/// document is the other view of the same bytes.
+class MarkdownFile : public TextFile {
+public:
+  /// The markdown as a text document.
+  [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
+};
+
 class PdfFile : public DecodedFile {
 public:
   [[nodiscard]] FileType file_type() const noexcept final {

@@ -45,6 +45,8 @@ NoTextFile::NoTextFile() : Exception("not a text file") {}
 
 NoCsvFile::NoCsvFile() : Exception("not a csv file") {}
 
+NoMarkdownFile::NoMarkdownFile() : Exception("not a markdown file") {}
+
 NoJsonFile::NoJsonFile() : Exception("not a json file") {}
 
 UnknownCharset::UnknownCharset() : Exception("unknown charset") {}

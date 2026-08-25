@@ -2,6 +2,7 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
@@ -13,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -27,7 +29,7 @@ namespace {
 /// document to a local before walking it.
 Document document(const std::string &markdown) {
   const DecodedFile file(File::from_memory(markdown), FileType::markdown);
-  return file.as_document_file().document();
+  return file.as_markdown_file().document();
 }
 
 Element root(const Document &document) { return document.root_element(); }
@@ -82,18 +84,35 @@ std::vector<ElementType> types_of(const std::vector<Element> &elements) {
 
 } // namespace
 
-TEST(MarkdownFile, a_markdown_file_is_a_text_document) {
+/// Like a csv, markdown stays a text file — the document is the other view of
+/// the same bytes.
+TEST(MarkdownFile, a_markdown_file_is_a_text_file_that_loads_as_a_document) {
   const DecodedFile file(File::from_memory("# hello"), FileType::markdown);
   const Document md = document("# hello");
 
   EXPECT_EQ(file.file_type(), FileType::markdown);
-  EXPECT_EQ(file.file_category(), FileCategory::document);
-  EXPECT_TRUE(file.is_document_file());
-  EXPECT_FALSE(file.is_text_file());
+  EXPECT_EQ(file.file_category(), FileCategory::text);
+  EXPECT_TRUE(file.is_text_file());
+  EXPECT_TRUE(file.is_markdown_file());
+  EXPECT_FALSE(file.is_document_file());
   EXPECT_EQ(file.file_meta().mimetype, "text/markdown");
-  EXPECT_EQ(file.as_document_file().document_type(), DocumentType::text);
+  EXPECT_EQ(file.as_text_file().text(), "# hello");
   EXPECT_EQ(md.document_type(), DocumentType::text);
   EXPECT_EQ(root(md).type(), ElementType::root);
+}
+
+/// The whole point: a markdown file handed to the renderer comes out as prose,
+/// not as the line list a text file renders to.
+TEST(MarkdownFile, translating_the_decoded_file_yields_the_document) {
+  const DecodedFile file(File::from_memory("# hello\n\ntext\n"),
+                         FileType::markdown);
+
+  const HtmlService service = html::translate(file, HtmlConfig());
+  std::ostringstream out;
+  service.list_views().back().write_html(out);
+
+  EXPECT_THAT(out.str(), testing::HasSubstr("hello"));
+  EXPECT_THAT(out.str(), testing::HasSubstr("font-size:2em"));
 }
 
 /// Markdown has no signature, and a content probe for it is a probe for prose,

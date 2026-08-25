@@ -13,6 +13,7 @@ class File;
 class DecodedFile;
 class TextFile;
 class CsvFile;
+class MarkdownFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
@@ -23,6 +24,7 @@ class FontFile;
 namespace odr {
 class TextFile;
 class CsvFile;
+class MarkdownFile;
 class ImageFile;
 class ArchiveFile;
 class DocumentFile;
@@ -384,6 +386,7 @@ public:
 
   [[nodiscard]] bool is_text_file() const;
   [[nodiscard]] bool is_csv_file() const;
+  [[nodiscard]] bool is_markdown_file() const;
   [[nodiscard]] bool is_image_file() const;
   [[nodiscard]] bool is_archive_file() const;
   [[nodiscard]] bool is_document_file() const;
@@ -392,6 +395,7 @@ public:
 
   [[nodiscard]] TextFile as_text_file() const;
   [[nodiscard]] CsvFile as_csv_file() const;
+  [[nodiscard]] MarkdownFile as_markdown_file() const;
   [[nodiscard]] ImageFile as_image_file() const;
   [[nodiscard]] ArchiveFile as_archive_file() const;
   [[nodiscard]] DocumentFile as_document_file() const;
@@ -465,6 +469,22 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::CsvFile> m_impl;
+};
+
+/// @brief Represents a markdown file.
+class MarkdownFile final : public DecodedFile {
+public:
+  explicit MarkdownFile(std::shared_ptr<internal::abstract::MarkdownFile>);
+
+  /// @brief The markdown as a text document. The other view of the same bytes —
+  /// markdown stays a text file, so @ref TextFile::text still works.
+  /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
+  [[nodiscard]] Document document() const;
+
+  [[nodiscard]] std::shared_ptr<internal::abstract::MarkdownFile> impl() const;
+
+private:
+  std::shared_ptr<internal::abstract::MarkdownFile> m_impl;
 };
 
 /// @brief Represents an image file.

@@ -31,8 +31,6 @@ FileMeta MarkdownFile::file_meta() const noexcept {
   return result;
 }
 
-DocumentType MarkdownFile::document_type() const { return DocumentType::text; }
-
 bool MarkdownFile::is_decodable() const noexcept {
   return text_encoding_is_decodable(encoding());
 }
