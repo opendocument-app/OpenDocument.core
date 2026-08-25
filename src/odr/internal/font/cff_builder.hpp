@@ -2,9 +2,9 @@
 
 #include <odr/font.hpp>
 
+#include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace odr::internal::font::cff {
 
@@ -28,7 +28,7 @@ struct BuilderGlyph {
 /// default); a non-default matrix is a follow-up. Top DICT offsets use the
 /// fixed-width 5-byte integer form so the layout resolves in a single pass.
 [[nodiscard]] std::string build_cff(std::string_view name,
-                                    const std::vector<BuilderGlyph> &glyphs,
+                                    std::span<const BuilderGlyph> glyphs,
                                     double default_width, double nominal_width,
                                     FontBBox bbox);
 

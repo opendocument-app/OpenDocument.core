@@ -297,7 +297,7 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
 }
 
 Dictionary GraphicsOperatorParser::read_inline_image_dictionary(
-    const std::vector<Object> &arguments) {
+    const std::span<const Object> arguments) {
   // The inline dictionary is a flat run of name/value pairs (8.9.7).
   // Abbreviated keys are normalized to their long forms downstream.
   Dictionary dictionary;

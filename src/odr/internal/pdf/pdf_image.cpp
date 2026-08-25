@@ -91,12 +91,12 @@ void unpremultiply(std::string &samples, const std::int32_t components,
 /// A decoded JPEG 2000 raster as a PNG, through the image's own colour space
 /// when the count matches and a device space of its component count otherwise
 /// (ISO 32000-1 8.9.5.1: `/ColorSpace` is optional for `JPXDecode`).
-std::optional<EncodedImage> encode_jpx(const std::string &data,
-                                       const ColorSpaceDef *color_space,
-                                       const std::vector<double> &decode_array,
-                                       const std::vector<std::uint8_t> &alpha,
-                                       const std::vector<double> &color_key,
-                                       const std::int32_t smask_in_data) {
+std::optional<EncodedImage>
+encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
+           const std::span<const double> decode_array,
+           const std::span<const std::uint8_t> alpha,
+           const std::span<const double> color_key,
+           const std::int32_t smask_in_data) {
   std::optional<JpxImage> image = decode_jpx(data);
   if (!image.has_value()) {
     return std::nullopt;
@@ -131,7 +131,8 @@ std::optional<EncodedImage> encode_jpx(const std::string &data,
 
   const std::string png = encode_image_png(
       image->samples, image->width, image->height, 8, space, decode_array,
-      alpha.empty() ? image->alpha : alpha, color_key);
+      alpha.empty() ? std::span<const std::uint8_t>{image->alpha} : alpha,
+      color_key);
   if (png.empty()) {
     return std::nullopt;
   }
@@ -190,9 +191,9 @@ std::string pdf::encode_image_png(const std::string &samples,
                                   const std::int32_t height,
                                   const std::int32_t bits_per_component,
                                   const ColorSpaceDef &color_space,
-                                  const std::vector<double> &decode,
-                                  const std::vector<std::uint8_t> &alpha,
-                                  const std::vector<double> &color_key) {
+                                  const std::span<const double> decode,
+                                  const std::span<const std::uint8_t> alpha,
+                                  const std::span<const double> color_key) {
   const std::int32_t components = color_space.components;
   if (width <= 0 || height <= 0 || components <= 0 || bits_per_component <= 0 ||
       bits_per_component > 16) {
@@ -275,7 +276,7 @@ std::string pdf::encode_image_png(const std::string &samples,
 std::vector<std::uint8_t> pdf::decode_mask_alpha(
     const std::string &samples, const std::int32_t width,
     const std::int32_t height, const std::int32_t bits_per_component,
-    const std::vector<double> &decode, const bool stencil,
+    const std::span<const double> decode, const bool stencil,
     const std::int32_t base_width, const std::int32_t base_height) {
   if (width <= 0 || height <= 0 || base_width <= 0 || base_height <= 0 ||
       bits_per_component <= 0 || bits_per_component > 16) {
@@ -333,7 +334,7 @@ std::string pdf::encode_stencil_png(const std::string &samples,
                                     const std::int32_t width,
                                     const std::int32_t height,
                                     const std::array<double, 3> &color,
-                                    const std::vector<double> &decode) {
+                                    const std::span<const double> decode) {
   if (width <= 0 || height <= 0) {
     return {};
   }
@@ -369,9 +370,9 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     std::string raw, const Object &filter, const Object &decode_parms,
     const std::int32_t width, const std::int32_t height,
     const std::int32_t bits_per_component, const ColorSpaceDef *color_space,
-    const std::vector<double> &decode_array,
-    const std::vector<std::uint8_t> &alpha,
-    const std::vector<double> &color_key, const std::int32_t smask_in_data,
+    const std::span<const double> decode_array,
+    const std::span<const std::uint8_t> alpha,
+    const std::span<const double> color_key, const std::int32_t smask_in_data,
     const DecodeOptions &options) {
   const std::optional<std::string> terminal = terminal_image_codec(filter);
 

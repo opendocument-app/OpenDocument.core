@@ -4,8 +4,8 @@
 
 #include <odr/logger.hpp>
 
+#include <span>
 #include <string>
-#include <vector>
 
 namespace odr::internal::pdf {
 
@@ -29,7 +29,7 @@ private:
   // Fold an inline image's flat name/value argument run into a dictionary
   // (8.9.7); abbreviated keys are normalized to long forms downstream.
   [[nodiscard]] static Dictionary
-  read_inline_image_dictionary(const std::vector<Object> &arguments);
+  read_inline_image_dictionary(std::span<const Object> arguments);
 
   // Read the binary image data of an inline image, from just after the `ID`
   // keyword up to (excluding) its `EI` terminator (8.9.7), leaving the cursor

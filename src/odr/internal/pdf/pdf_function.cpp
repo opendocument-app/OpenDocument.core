@@ -53,7 +53,7 @@ public:
         m_c1{std::move(c1)}, m_n{n} {}
 
 protected:
-  std::vector<double> compute(const std::vector<double> &in) const override {
+  std::vector<double> compute(const std::span<const double> in) const override {
     const double x = in.empty() ? 0.0 : in[0];
     const double xn = std::pow(x, m_n);
     // `/C0` and `/C1` must be equally long; a malformed file may disagree.
@@ -83,7 +83,7 @@ public:
         m_encode{std::move(encode)} {}
 
 protected:
-  std::vector<double> compute(const std::vector<double> &in) const override {
+  std::vector<double> compute(const std::span<const double> in) const override {
     if (m_functions.empty()) {
       return {};
     }
@@ -132,7 +132,7 @@ public:
         m_decode{std::move(decode)}, m_samples{std::move(samples)} {}
 
 protected:
-  std::vector<double> compute(const std::vector<double> &in) const override {
+  std::vector<double> compute(const std::span<const double> in) const override {
     const std::size_t m = m_size.size();
     const std::size_t n = output_arity();
     if (m == 0 || n == 0) {
@@ -267,7 +267,7 @@ public:
         m_program{std::move(program)} {}
 
 protected:
-  std::vector<double> compute(const std::vector<double> &in) const override {
+  std::vector<double> compute(const std::span<const double> in) const override {
     std::vector<Item> stack;
     stack.reserve(in.size());
     for (const double x : in) {

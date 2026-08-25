@@ -82,7 +82,7 @@ std::shared_ptr<ColorSpaceDef> space_from_name(const std::string &name,
 } // namespace
 
 std::array<double, 3>
-ColorSpaceDef::to_rgb(const std::vector<double> &c) const {
+ColorSpaceDef::to_rgb(const std::span<const double> c) const {
   const auto at = [&](const std::size_t i) {
     return i < c.size() ? c[i] : 0.0;
   };
@@ -141,7 +141,7 @@ ColorSpaceDef::to_rgb(const std::vector<double> &c) const {
       const double v = clamp01(1 - at(0));
       return {v, v, v};
     }
-    return alternate->to_rgb(tint->eval(c));
+    return alternate->to_rgb(tint->eval({c.begin(), c.end()}));
   }
   case ColorSpaceKind::pattern:
     // An uncoloured pattern (`/PaintType 2`) carries its colour in the Pattern

@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -227,8 +228,9 @@ TEST(PdfImage, encode_gray_4bpc) {
 TEST(PdfImage, encode_honours_decode_array) {
   // DeviceGray with /Decode [1 0] inverts: sample 0 -> white, 255 -> black.
   const std::string samples = bytes({0, 255});
+  const std::array<double, 2> decode = {1.0, 0.0};
   const DecodedPng png =
-      decode_png(encode_image_png(samples, 2, 1, 8, device_gray(), {1.0, 0.0}));
+      decode_png(encode_image_png(samples, 2, 1, 8, device_gray(), decode));
   EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({255, 255, 255}));
   EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({0, 0, 0}));
 }
@@ -283,8 +285,9 @@ TEST(PdfImage, encode_stencil_paints_fill_colour_through_mask) {
 TEST(PdfImage, encode_stencil_decode_inverts) {
   // /Decode [1 0] swaps which sample paints: now the 1 paints, the 0 is clear.
   const std::string samples = bytes({0b01000000});
+  const std::array<double, 2> decode = {1.0, 0.0};
   const DecodedPngRgba png = decode_png_rgba(
-      encode_stencil_png(samples, 2, 1, {0.0, 0.0, 1.0}, {1.0, 0.0}));
+      encode_stencil_png(samples, 2, 1, {0.0, 0.0, 1.0}, decode));
   EXPECT_EQ(static_cast<std::uint8_t>(rgba_pixel(png.rgba, 2, 0, 0)[3]), 0);
   EXPECT_EQ(rgba_pixel(png.rgba, 2, 1, 0), bytes({0, 0, 255, 255}));
 }

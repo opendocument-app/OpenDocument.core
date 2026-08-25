@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -81,7 +82,8 @@ TEST(Type1CharstringTest, FlattensCallSubr) {
   op(t1, 10); // callsubr 0
   op(t1, 14); // endchar
 
-  const Type2Charstring out = to_type2(t1, {subr0});
+  const std::array<std::string, 1> subrs = {subr0};
+  const Type2Charstring out = to_type2(t1, subrs);
 
   // The subr's rlineto is inlined; expect width(0) rmoveto, then rlineto, then
   // endchar.

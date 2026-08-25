@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -34,9 +35,9 @@ std::optional<EncodedImage>
 encode_image(std::string raw, const Object &filter, const Object &decode_parms,
              std::int32_t width, std::int32_t height,
              std::int32_t bits_per_component, const ColorSpaceDef *color_space,
-             const std::vector<double> &decode,
-             const std::vector<std::uint8_t> &alpha = {},
-             const std::vector<double> &color_key = {},
+             std::span<const double> decode,
+             std::span<const std::uint8_t> alpha = {},
+             std::span<const double> color_key = {},
              std::int32_t smask_in_data = 0, const DecodeOptions &options = {});
 
 /// Assemble decoded image samples (ISO 32000-1 8.9.5: MSB-first, rows padded
@@ -50,9 +51,9 @@ std::string encode_image_png(const std::string &samples, std::int32_t width,
                              std::int32_t height,
                              std::int32_t bits_per_component,
                              const ColorSpaceDef &color_space,
-                             const std::vector<double> &decode,
-                             const std::vector<std::uint8_t> &alpha = {},
-                             const std::vector<double> &color_key = {});
+                             std::span<const double> decode,
+                             std::span<const std::uint8_t> alpha = {},
+                             std::span<const double> color_key = {});
 
 /// Resolve a `/SMask` or stencil `/Mask` sub-image into a coverage plane sized
 /// to the *base* image, nearest-neighbour resampled — the two resolutions need
@@ -62,7 +63,7 @@ std::string encode_image_png(const std::string &samples, std::int32_t width,
 std::vector<std::uint8_t>
 decode_mask_alpha(const std::string &samples, std::int32_t width,
                   std::int32_t height, std::int32_t bits_per_component,
-                  const std::vector<double> &decode, bool stencil,
+                  std::span<const double> decode, bool stencil,
                   std::int32_t base_width, std::int32_t base_height);
 
 /// Wrap 8-bit pixels (row-major, unpadded) into a PNG: single `IDAT`, no
@@ -77,6 +78,6 @@ std::string write_png(const std::string &pixels, std::int32_t width,
 std::string encode_stencil_png(const std::string &samples, std::int32_t width,
                                std::int32_t height,
                                const std::array<double, 3> &color,
-                               const std::vector<double> &decode);
+                               std::span<const double> decode);
 
 } // namespace odr::internal::pdf
