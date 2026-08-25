@@ -6,6 +6,7 @@
 #include <odr/internal/iwork/iwork_types.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -28,6 +29,37 @@ constexpr std::string_view object_replacement = "\xef\xbf\xbc";
 /// Keynote `\r` — the run table is what says where a paragraph starts either
 /// way, so this only decides whether the mark is part of the text.
 bool is_paragraph_mark(const char c) { return c == '\n' || c == '\r'; }
+
+/// What one parse may expand to. An `.iwa` is an object graph, so a reference
+/// list may name the same object any number of times and `Package::object`
+/// hands every repeat back from its cache — a few kilobytes of references
+/// would otherwise build elements and copy text without bound. Spending
+/// against a budget keeps such a package the thrown error every caller already
+/// handles rather than an allocation the process dies on.
+class Budget final {
+public:
+  void spend_element() {
+    if (++m_elements > element_limit) {
+      throw std::runtime_error("iwork: document holds too many elements");
+    }
+  }
+
+  void spend_text(const std::size_t bytes) {
+    m_text += bytes;
+    if (m_text > text_limit) {
+      throw std::runtime_error("iwork: document holds too much text");
+    }
+  }
+
+private:
+  /// Far above what an authored document reaches, and far below what the
+  /// process cannot hold.
+  static constexpr std::size_t element_limit = 1'000'000;
+  static constexpr std::size_t text_limit = std::size_t{64} * 1024 * 1024;
+
+  std::size_t m_elements{};
+  std::size_t m_text{};
+};
 
 /// The object a `TSP.Reference` in field @p number names.
 std::optional<std::uint64_t> reference_identifier(const Message &message,
@@ -86,7 +118,7 @@ std::vector<std::uint64_t> paragraph_starts(const Message &storage) {
 
 /// Fills @p paragraph_id with the text of one paragraph, breaking it at the
 /// line separators it holds.
-void parse_paragraph(ElementRegistry &registry,
+void parse_paragraph(ElementRegistry &registry, Budget &budget,
                      const ElementIdentifier paragraph_id,
                      std::string_view content) {
   const auto append_text = [&](const std::string_view part) {
@@ -95,6 +127,8 @@ void parse_paragraph(ElementRegistry &registry,
     if (text.empty()) {
       return;
     }
+    budget.spend_element();
+    budget.spend_text(text.size());
     auto [text_id, element, payload] = registry.create_text_element();
     payload.text = std::move(text);
     registry.append_child(paragraph_id, text_id);
@@ -105,6 +139,7 @@ void parse_paragraph(ElementRegistry &registry,
        position = content.find(line_separator)) {
     append_text(content.substr(0, position));
 
+    budget.spend_element();
     auto [break_id, element] = registry.create_element(ElementType::line_break);
     registry.append_child(paragraph_id, break_id);
 
@@ -114,9 +149,9 @@ void parse_paragraph(ElementRegistry &registry,
 }
 
 /// Appends the paragraphs of a `TSWP.StorageArchive` to @p parent_id. Shared
-/// by every place text lives: a Pages body, a Keynote text box, a table cell.
-void parse_storage(ElementRegistry &registry, const ElementIdentifier parent_id,
-                   const Message &storage) {
+/// by every place text lives: a Pages body and a Keynote text box.
+void parse_storage(ElementRegistry &registry, Budget &budget,
+                   const ElementIdentifier parent_id, const Message &storage) {
   // the text arrives as a small number of large strings; the run tables index
   // it as one
   std::string text;
@@ -142,10 +177,11 @@ void parse_storage(ElementRegistry &registry, const ElementIdentifier parent_id,
       content.remove_suffix(1);
     }
 
+    budget.spend_element();
     auto [paragraph_id, paragraph] =
         registry.create_element(ElementType::paragraph);
     registry.append_child(parent_id, paragraph_id);
-    parse_paragraph(registry, paragraph_id, content);
+    parse_paragraph(registry, budget, paragraph_id, content);
   }
 }
 
@@ -250,7 +286,7 @@ std::optional<Message> text_shape_of(const Object &drawable) {
 }
 
 /// Appends one slide's text boxes to @p slide_id as frames.
-void parse_slide(ElementRegistry &registry, Package &package,
+void parse_slide(ElementRegistry &registry, Budget &budget, Package &package,
                  const ElementIdentifier slide_id, const Object &slide) {
   const Message slide_message(slide.payload);
 
@@ -272,6 +308,7 @@ void parse_slide(ElementRegistry &registry, Package &package,
       continue;
     }
 
+    budget.spend_element();
     auto [frame_id, frame, payload] = registry.create_frame_element();
     if (const std::optional<std::string_view> inner =
             shape->bytes_field(text_shape::shape);
@@ -280,7 +317,7 @@ void parse_slide(ElementRegistry &registry, Package &package,
     }
     registry.append_child(slide_id, frame_id);
 
-    parse_storage(registry, frame_id, Message(storage.payload));
+    parse_storage(registry, budget, frame_id, Message(storage.payload));
   }
 }
 
@@ -308,8 +345,9 @@ iwork::parse_pages_tree(ElementRegistry &registry,
     throw std::runtime_error("iwork: body is not a text storage");
   }
 
+  Budget budget;
   auto [root_id, root] = registry.create_element(ElementType::root);
-  parse_storage(registry, root_id, Message(body_object.payload));
+  parse_storage(registry, budget, root_id, Message(body_object.payload));
   return root_id;
 }
 
@@ -334,6 +372,7 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
   const std::optional<ElementRegistry::Size> slide_size =
       read_size(show, show_archive::size);
 
+  Budget budget;
   auto [root_id, root] = registry.create_element(ElementType::root);
 
   // a show that carries no slide tree is a deck with no slides
@@ -357,13 +396,14 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
       continue;
     }
 
+    budget.spend_element();
     auto [slide_id, element, payload] = registry.create_slide_element();
     // slides carry no name in the archive; number them in presentation order
     payload.name = "Slide " + std::to_string(++number);
     payload.size = slide_size;
     registry.append_child(root_id, slide_id);
 
-    parse_slide(registry, package, slide_id, slide);
+    parse_slide(registry, budget, package, slide_id, slide);
   }
 
   return root_id;

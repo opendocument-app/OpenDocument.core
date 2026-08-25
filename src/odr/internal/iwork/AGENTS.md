@@ -40,6 +40,16 @@ against one before it is known to fit: `snappy_decompress_block` caps its
 reservation at what the compressed bytes could expand to and checks every tag
 against what the block has left.
 
+**A reference list is the file's word too.** Because the graph is walked by
+identifier and `Package::object` memoises, a `TSP.Reference` list that names
+one object a million times costs four bytes a repeat on the wire and a fresh
+subtree — elements plus a copy of the storage's text — every time it is
+resolved. The repeats are siblings rather than ancestors, so no cycle check
+sees them. `parse_pages_tree` and `parse_keynote_tree` therefore spend every
+element and every byte of text against a `Budget` set far above what an
+authored document reaches, which keeps a package built to expand a thrown
+`std::runtime_error` rather than an allocation the process dies on.
+
 ## No new dependencies
 
 Two pieces would normally be a conan line each, and both would be wrong.

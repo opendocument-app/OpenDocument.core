@@ -216,6 +216,10 @@ struct SlideBox final {
   float height{};
   /// Wrapped in a `KN.PlaceholderArchive` rather than standing on its own.
   bool placeholder{};
+  /// How many times the slide's drawable list names this box. A deck Keynote
+  /// wrote names each of its drawables once; a hand-built one may repeat a
+  /// reference to make the parse expand what a few bytes name.
+  std::size_t repeats{1};
 };
 
 /// A `.key` package: a root archive holding a show, whose slide tree names one
@@ -253,8 +257,10 @@ keynote_package(const std::vector<std::vector<SlideBox>> &slides,
       const std::uint64_t drawable_identifier = box_identifier++;
       const std::uint64_t storage_identifier = box_identifier++;
 
-      slide +=
-          reference_field(types::slide_archive::drawables, drawable_identifier);
+      for (std::size_t repeat = 0; repeat < box.repeats; ++repeat) {
+        slide += reference_field(types::slide_archive::drawables,
+                                 drawable_identifier);
+      }
 
       const std::string shape =
           text_shape(storage_identifier, box.x, box.y, box.width, box.height);

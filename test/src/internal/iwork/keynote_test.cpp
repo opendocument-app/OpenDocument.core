@@ -263,3 +263,39 @@ TEST(IworkKeynote, a_root_archive_without_slide_components_is_not_keynote) {
 
   EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
 }
+
+// A drawable list may name the same object any number of times, and every
+// repeat expands into fresh elements holding a fresh copy of its text — a few
+// kilobytes of references would otherwise expand without bound. The parse
+// throws what every caller already handles instead.
+TEST(IworkKeynote, a_repeated_drawable_is_capped_by_the_text_it_copies) {
+  builder::SlideBox box{.text = std::string(1u << 20, 'a'),
+                        .paragraphs = std::vector<std::uint64_t>{0}};
+  box.repeats = 128;
+
+  EXPECT_THAT([&] { keynote_document({{box}}); },
+              testing::ThrowsMessage<std::runtime_error>(
+                  testing::HasSubstr("too much text")));
+}
+
+TEST(IworkKeynote, a_repeated_drawable_is_capped_by_the_elements_it_builds) {
+  builder::SlideBox box{.text = "short",
+                        .paragraphs = std::vector<std::uint64_t>{0}};
+  box.repeats = 600'000;
+
+  EXPECT_THAT([&] { keynote_document({{box}}); },
+              testing::ThrowsMessage<std::runtime_error>(
+                  testing::HasSubstr("too many elements")));
+}
+
+// The cap is far above what a deck reaches, so a list that does name one
+// drawable more than once is still read as it is written.
+TEST(IworkKeynote, a_drawable_named_more_than_once_is_read_every_time) {
+  builder::SlideBox box{.text = "again",
+                        .paragraphs = std::vector<std::uint64_t>{0}};
+  box.repeats = 3;
+
+  EXPECT_EQ(
+      slides(keynote_document({{box}}).root_element()),
+      (std::vector<std::vector<std::string>>{{"again", "again", "again"}}));
+}
