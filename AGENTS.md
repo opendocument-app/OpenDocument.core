@@ -181,6 +181,11 @@ Dispatch `release.yml` against main, publish the draft that appears —
   drifts from the header fails at **compile** time instead of becoming an obscure
   linker error. (The `util` helpers use the `struct string { static … }` idiom for
   exactly this.) Keep translation-unit-local helpers in an **anonymous namespace**.
+- **A source-only class defines its members inline**: a class declared in a
+  `.cpp` — an anonymous-namespace helper, an `ElementAdapter` — has no header to
+  keep honest, so put every body in the class body. The declare-then-define
+  split buys nothing there and doubles what a reader has to line up. A class
+  with a header keeps the usual split.
 - **The input file never authors the output markup**: we interpret a file and
   emit our own html — text through `escape_text`, images as an `<img>` we
   construct. Nothing is passed through as live markup, which is why an svg goes

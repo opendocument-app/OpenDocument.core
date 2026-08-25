@@ -27,10 +27,9 @@ namespace {
 /// U+FFFD, the replacement CommonMark prescribes for a NULL character.
 constexpr std::string_view replacement_character = "�";
 
-/// Resolves a numeric character reference, or the five predefined XML entities
-/// plus `&nbsp;`. md4c matches anything shaped like a named entity without
-/// knowing the list and the package exports no lookup table, so everything
-/// else stays literal — which is what a reader of the source sees too.
+/// A numeric character reference, or the five predefined XML entities plus
+/// `&nbsp;`. md4c matches anything entity-shaped and exports no lookup table,
+/// so everything else stays literal.
 std::string resolve_entity(const std::string_view entity) {
   if (entity.size() < 3 || entity.front() != '&' || entity.back() != ';') {
     return std::string(entity);
@@ -120,9 +119,8 @@ std::optional<HorizontalAlign> horizontal_align(const MD_ALIGN align) {
   }
 }
 
-/// md4c's callbacks against one element stack: every block and span that has an
-/// element pushes it, and its `leave` pops it again. See `AGENTS.md` for what
-/// is deliberately mapped to nothing.
+/// md4c's callbacks against one element stack: a block or span that has an
+/// element pushes it, and its `leave` pops it again.
 class Parser final {
 public:
   Parser(ElementRegistry &registry, StyleRegistry &style_registry)
@@ -130,11 +128,238 @@ public:
 
   [[nodiscard]] ElementIdentifier root() const noexcept { return m_root; }
 
-  void enter_block(MD_BLOCKTYPE type, const void *detail);
-  void leave_block(MD_BLOCKTYPE type);
-  void enter_span(MD_SPANTYPE type, const void *detail);
-  void leave_span(MD_SPANTYPE type);
-  void text(MD_TEXTTYPE type, std::string_view text);
+  void enter_block(const MD_BLOCKTYPE type, const void *detail) {
+    close_implicit_paragraph_();
+    const std::size_t depth = m_stack.size();
+
+    switch (type) {
+    case MD_BLOCK_DOC: {
+      const auto &[element_id, element] =
+          m_registry->create_element(ElementType::root);
+      m_root = element_id;
+      push_(element_id);
+    } break;
+    case MD_BLOCK_QUOTE: {
+      const auto &[element_id, element] =
+          m_registry->create_element(ElementType::group);
+      push_(element_id);
+      ++m_quote_depth;
+    } break;
+    case MD_BLOCK_UL: {
+      auto [element_id, element, list] = m_registry->create_list_element();
+      list.type = ListType::unordered;
+      push_(element_id);
+      m_lists.push_back({});
+    } break;
+    case MD_BLOCK_OL: {
+      const auto *ol = static_cast<const MD_BLOCK_OL_DETAIL *>(detail);
+      auto [element_id, element, list] = m_registry->create_list_element();
+      list.type = ListType::ordered;
+      push_(element_id);
+      m_lists.push_back({ListType::ordered, ol->start,
+                         static_cast<char>(ol->mark_delimiter)});
+    } break;
+    case MD_BLOCK_LI: {
+      const auto *li = static_cast<const MD_BLOCK_LI_DETAIL *>(detail);
+      if (m_lists.empty()) {
+        throw std::runtime_error("markdown: list item outside a list");
+      }
+      ListState &list = m_lists.back();
+
+      auto [element_id, element, item] = m_registry->create_list_item_element();
+      if (list.type == ListType::ordered) {
+        // the ordinal is the element api's own, independent of the marker
+        item.number = list.next_number;
+        item.marker = std::to_string(list.next_number) + list.delimiter;
+        ++list.next_number;
+      } else {
+        item.marker = "•";
+      }
+      if (li->is_task != 0) {
+        // The model has no checkbox, so the box replaces the item's marker.
+        item.marker = li->task_mark == 'x' || li->task_mark == 'X' ? "☑" : "☐";
+      }
+      push_(element_id);
+    } break;
+    case MD_BLOCK_HR:
+      break; // nothing in the model
+    case MD_BLOCK_H: {
+      const auto *heading = static_cast<const MD_BLOCK_H_DETAIL *>(detail);
+      push_paragraph_(m_style_registry->heading_style(heading->level));
+      // The renderer takes only font family and size from a paragraph's text
+      // style, so the weight has to ride on a span — and only the weight: the
+      // heading's `em` size is already the span's font size to be relative to.
+      push_span_(m_style_registry->strong_style());
+    } break;
+    case MD_BLOCK_CODE: {
+      const auto &[element_id, element] =
+          m_registry->create_element(ElementType::group);
+      push_(element_id);
+      m_in_code_block = true;
+      m_code.clear();
+    } break;
+    case MD_BLOCK_HTML:
+      m_in_html_block = true;
+      break; // dropped, see `AGENTS.md`
+    case MD_BLOCK_P:
+      push_paragraph_(0);
+      break;
+    case MD_BLOCK_TABLE: {
+      const auto *table_detail =
+          static_cast<const MD_BLOCK_TABLE_DETAIL *>(detail);
+      auto [element_id, element, table] = m_registry->create_table_element();
+      table.dimensions = TableDimensions(table_detail->head_row_count +
+                                             table_detail->body_row_count,
+                                         table_detail->col_count);
+      push_(element_id);
+
+      for (unsigned i = 0; i < table_detail->col_count; ++i) {
+        const auto &[column_id, column] =
+            m_registry->create_element(ElementType::table_column);
+        m_registry->append_column(element_id, column_id);
+      }
+    } break;
+    case MD_BLOCK_THEAD:
+    case MD_BLOCK_TBODY:
+      break; // the rows hang off the table itself
+    case MD_BLOCK_TR: {
+      const auto &[element_id, element] =
+          m_registry->create_element(ElementType::table_row);
+      push_(element_id);
+    } break;
+    case MD_BLOCK_TH:
+    case MD_BLOCK_TD: {
+      const auto *cell_detail = static_cast<const MD_BLOCK_TD_DETAIL *>(detail);
+      auto [element_id, element, cell] =
+          m_registry->create_table_cell_element();
+      cell.horizontal_align = horizontal_align(cell_detail->align);
+      push_(element_id);
+      // A cell holds blocks; md4c hands its content over as inline text.
+      push_paragraph_(0);
+      if (type == MD_BLOCK_TH) {
+        push_span_(m_style_registry->strong_style());
+      }
+    } break;
+    }
+
+    m_block_pushes.push_back(m_stack.size() - depth);
+  }
+
+  void leave_block(const MD_BLOCKTYPE type) {
+    close_implicit_paragraph_();
+
+    switch (type) {
+    case MD_BLOCK_QUOTE:
+      --m_quote_depth;
+      break;
+    case MD_BLOCK_UL:
+    case MD_BLOCK_OL:
+      m_lists.pop_back();
+      break;
+    case MD_BLOCK_CODE:
+      m_in_code_block = false;
+      flush_code_();
+      break;
+    case MD_BLOCK_HTML:
+      m_in_html_block = false;
+      break;
+    default:
+      break;
+    }
+
+    if (m_block_pushes.empty()) {
+      throw std::runtime_error("markdown: unbalanced md4c callbacks");
+    }
+    for (std::size_t i = 0; i < m_block_pushes.back(); ++i) {
+      pop_();
+    }
+    m_block_pushes.pop_back();
+  }
+
+  void enter_span(const MD_SPANTYPE type, const void *detail) {
+    switch (type) {
+    case MD_SPAN_EM:
+      push_span_(m_style_registry->emphasis_style());
+      break;
+    case MD_SPAN_STRONG:
+      push_span_(m_style_registry->strong_style());
+      break;
+    case MD_SPAN_DEL:
+      push_span_(m_style_registry->strikethrough_style());
+      break;
+    case MD_SPAN_CODE:
+      push_span_(m_style_registry->monospace_style());
+      break;
+    case MD_SPAN_A: {
+      const auto *link_detail = static_cast<const MD_SPAN_A_DETAIL *>(detail);
+      open_implicit_paragraph_();
+      auto [element_id, element, link] = m_registry->create_link_element();
+      link.href = attribute_to_string(link_detail->href);
+      push_(element_id);
+    } break;
+    default:
+      break; // an image's alt text passes through as text, see `AGENTS.md`
+    }
+  }
+
+  void leave_span(const MD_SPANTYPE type) {
+    switch (type) {
+    case MD_SPAN_EM:
+    case MD_SPAN_STRONG:
+    case MD_SPAN_DEL:
+    case MD_SPAN_CODE:
+    case MD_SPAN_A:
+      pop_();
+      break;
+    default:
+      break;
+    }
+  }
+
+  void text(const MD_TEXTTYPE type, const std::string_view text) {
+    switch (type) {
+    case MD_TEXT_NULLCHAR:
+      // md4c reports a NUL out of a verbatim block too, so it goes where that
+      // block's own text goes rather than straight into the tree
+      if (m_in_code_block) {
+        m_code.append(replacement_character);
+      } else if (!m_in_html_block) {
+        append_text_(replacement_character);
+      }
+      break;
+    case MD_TEXT_BR: {
+      open_implicit_paragraph_();
+      const auto &[element_id, element] =
+          m_registry->create_element(ElementType::line_break);
+      m_registry->append_child(current_(), element_id);
+      m_open_text = null_element_id;
+    } break;
+    case MD_TEXT_SOFTBR:
+      append_text_(" ");
+      break;
+    case MD_TEXT_ENTITY:
+      append_text_(resolve_entity(text));
+      break;
+    case MD_TEXT_CODE:
+      if (m_in_code_block) {
+        // md4c reports a NUL in a verbatim block as `MD_TEXT_NULLCHAR` and then
+        // re-sends the byte itself at the head of the next chunk
+        for (const char character : text) {
+          if (character != '\0') {
+            m_code.push_back(character);
+          }
+        }
+      } else {
+        append_text_(text);
+      }
+      break;
+    case MD_TEXT_HTML:
+      break; // dropped, see `AGENTS.md`
+    default:
+      append_text_(text);
+      break;
+    }
+  }
 
   /// A callback cannot throw through md4c's C frames, so the exception is
   /// parked here and rethrown once `md_parse` has returned.
@@ -163,366 +388,119 @@ private:
   std::vector<ListState> m_lists;
   /// How many elements each open block pushed, so its `leave` pops as many.
   std::vector<std::size_t> m_block_pushes;
-  /// A tight list item holds its text without an `MD_BLOCK_P` around it; the
-  /// renderer writes the item's marker into its first paragraph, so one is
-  /// opened for the inline content and closed by the next block.
+  /// A tight list item holds its text with no `MD_BLOCK_P` around it, but the
+  /// renderer writes the marker into the item's first paragraph — so open one.
   ElementIdentifier m_implicit_paragraph{null_element_id};
 
   std::uint32_t m_quote_depth{0};
-  /// Set between `MD_BLOCK_CODE`'s enter and leave; its text is buffered
-  /// because a code block becomes one paragraph per line.
+  /// A code block becomes one paragraph per line, so its text is buffered.
   bool m_in_code_block{false};
   std::string m_code;
-  /// Set between `MD_BLOCK_HTML`'s enter and leave, so the NUL bytes md4c
-  /// reports out of a dropped block are dropped with it.
+  /// So the NUL bytes md4c reports out of a dropped html block go with it.
   bool m_in_html_block{false};
 
   std::exception_ptr m_error;
 
-  /// md4c bounds container nesting nowhere, so a file of `>` characters is one
-  /// tree level per byte — and `html::translate_element` walks the tree
-  /// recursively. Same order as `rtf::State::max_depth`.
+  /// md4c bounds nesting nowhere and `html::translate_element` recurses. Same
+  /// order as `rtf::State::max_depth`.
   static constexpr std::size_t max_depth = 1024;
 
-  [[nodiscard]] ElementIdentifier current_() const;
-  void push_(ElementIdentifier element_id);
-  void pop_();
-
-  void push_paragraph_(std::uint32_t text_style_index);
-  void push_span_(std::uint32_t text_style_index);
-  void open_implicit_paragraph_();
-  void close_implicit_paragraph_();
-  void append_text_(std::string_view text);
-  void flush_code_();
-};
-
-ElementIdentifier Parser::current_() const {
-  if (m_stack.empty()) {
-    throw std::runtime_error("markdown: content outside the document block");
-  }
-  return m_stack.back();
-}
-
-void Parser::push_(const ElementIdentifier element_id) {
-  if (m_stack.size() >= max_depth) {
-    throw std::runtime_error("markdown: block nesting too deep");
-  }
-  if (!m_stack.empty()) {
-    m_registry->append_child(m_stack.back(), element_id);
-  }
-  m_stack.push_back(element_id);
-  m_open_text = null_element_id;
-}
-
-void Parser::pop_() {
-  if (m_stack.empty()) {
-    throw std::runtime_error("markdown: unbalanced md4c callbacks");
-  }
-  m_stack.pop_back();
-  m_open_text = null_element_id;
-}
-
-void Parser::push_paragraph_(const std::uint32_t text_style_index) {
-  const auto &[element_id, element] =
-      m_registry->create_element(ElementType::paragraph);
-  if (text_style_index != 0) {
-    m_registry->set_element_text_style_index(element_id, text_style_index);
-  }
-  if (const std::uint32_t paragraph_style_index =
-          m_style_registry->quote_style(m_quote_depth);
-      paragraph_style_index != 0) {
-    m_registry->set_element_paragraph_style_index(element_id,
-                                                  paragraph_style_index);
-  }
-  push_(element_id);
-}
-
-void Parser::push_span_(const std::uint32_t text_style_index) {
-  open_implicit_paragraph_();
-  const auto &[element_id, element] =
-      m_registry->create_element(ElementType::span);
-  m_registry->set_element_text_style_index(element_id, text_style_index);
-  push_(element_id);
-}
-
-void Parser::open_implicit_paragraph_() {
-  if (m_registry->element_at(current_()).type != ElementType::list_item) {
-    return;
-  }
-  push_paragraph_(0);
-  m_implicit_paragraph = m_stack.back();
-}
-
-void Parser::close_implicit_paragraph_() {
-  if (m_implicit_paragraph == null_element_id || m_stack.empty() ||
-      m_stack.back() != m_implicit_paragraph) {
-    return;
-  }
-  pop_();
-  m_implicit_paragraph = null_element_id;
-}
-
-void Parser::append_text_(const std::string_view text) {
-  if (text.empty()) {
-    return;
-  }
-  open_implicit_paragraph_();
-  if (m_open_text == null_element_id) {
-    auto [element_id, element, payload] = m_registry->create_text_element();
-    m_registry->append_child(current_(), element_id);
-    m_open_text = element_id;
-    payload.text.append(text);
-    return;
-  }
-  m_registry->text_element_at(m_open_text).text.append(text);
-}
-
-void Parser::flush_code_() {
-  // md4c terminates every code line with '\n', the last one included
-  if (m_code.ends_with('\n')) {
-    m_code.pop_back();
-  }
-
-  util::string::split(m_code, "\n", [this](const std::string &line) {
-    push_paragraph_(m_style_registry->monospace_style());
-    append_text_(line);
-    pop_();
-  });
-
-  m_code.clear();
-}
-
-void Parser::enter_block(const MD_BLOCKTYPE type, const void *detail) {
-  close_implicit_paragraph_();
-  const std::size_t depth = m_stack.size();
-
-  switch (type) {
-  case MD_BLOCK_DOC: {
-    const auto &[element_id, element] =
-        m_registry->create_element(ElementType::root);
-    m_root = element_id;
-    push_(element_id);
-  } break;
-  case MD_BLOCK_QUOTE: {
-    const auto &[element_id, element] =
-        m_registry->create_element(ElementType::group);
-    push_(element_id);
-    ++m_quote_depth;
-  } break;
-  case MD_BLOCK_UL: {
-    auto [element_id, element, list] = m_registry->create_list_element();
-    list.type = ListType::unordered;
-    push_(element_id);
-    m_lists.push_back({});
-  } break;
-  case MD_BLOCK_OL: {
-    const auto *ol = static_cast<const MD_BLOCK_OL_DETAIL *>(detail);
-    auto [element_id, element, list] = m_registry->create_list_element();
-    list.type = ListType::ordered;
-    push_(element_id);
-    m_lists.push_back(
-        {ListType::ordered, ol->start, static_cast<char>(ol->mark_delimiter)});
-  } break;
-  case MD_BLOCK_LI: {
-    const auto *li = static_cast<const MD_BLOCK_LI_DETAIL *>(detail);
-    if (m_lists.empty()) {
-      throw std::runtime_error("markdown: list item outside a list");
+  [[nodiscard]] ElementIdentifier current_() const {
+    if (m_stack.empty()) {
+      throw std::runtime_error("markdown: content outside the document block");
     }
-    ListState &list = m_lists.back();
+    return m_stack.back();
+  }
 
-    auto [element_id, element, item] = m_registry->create_list_item_element();
-    if (list.type == ListType::ordered) {
-      // the ordinal is the element api's own, independent of the marker
-      item.number = list.next_number;
-      item.marker = std::to_string(list.next_number) + list.delimiter;
-      ++list.next_number;
-    } else {
-      item.marker = "•";
+  void push_(const ElementIdentifier element_id) {
+    if (m_stack.size() >= max_depth) {
+      throw std::runtime_error("markdown: block nesting too deep");
     }
-    if (li->is_task != 0) {
-      // The model has no checkbox, so the box replaces the item's marker.
-      item.marker = li->task_mark == 'x' || li->task_mark == 'X' ? "☑" : "☐";
+    if (!m_stack.empty()) {
+      m_registry->append_child(m_stack.back(), element_id);
     }
-    push_(element_id);
-  } break;
-  case MD_BLOCK_HR:
-    break; // nothing in the model
-  case MD_BLOCK_H: {
-    const auto *heading = static_cast<const MD_BLOCK_H_DETAIL *>(detail);
-    push_paragraph_(m_style_registry->heading_style(heading->level));
-    // The renderer takes only font family and size from a paragraph's text
-    // style, so the weight has to ride on a span — and only the weight: the
-    // heading's `em` size is already the span's font size to be relative to.
-    push_span_(m_style_registry->strong_style());
-  } break;
-  case MD_BLOCK_CODE: {
-    const auto &[element_id, element] =
-        m_registry->create_element(ElementType::group);
-    push_(element_id);
-    m_in_code_block = true;
-    m_code.clear();
-  } break;
-  case MD_BLOCK_HTML:
-    m_in_html_block = true;
-    break; // dropped, see `AGENTS.md`
-  case MD_BLOCK_P:
-    push_paragraph_(0);
-    break;
-  case MD_BLOCK_TABLE: {
-    const auto *table_detail =
-        static_cast<const MD_BLOCK_TABLE_DETAIL *>(detail);
-    auto [element_id, element, table] = m_registry->create_table_element();
-    table.dimensions = TableDimensions(table_detail->head_row_count +
-                                           table_detail->body_row_count,
-                                       table_detail->col_count);
-    push_(element_id);
-
-    for (unsigned i = 0; i < table_detail->col_count; ++i) {
-      const auto &[column_id, column] =
-          m_registry->create_element(ElementType::table_column);
-      m_registry->append_column(element_id, column_id);
-    }
-  } break;
-  case MD_BLOCK_THEAD:
-  case MD_BLOCK_TBODY:
-    break; // the rows hang off the table itself
-  case MD_BLOCK_TR: {
-    const auto &[element_id, element] =
-        m_registry->create_element(ElementType::table_row);
-    push_(element_id);
-  } break;
-  case MD_BLOCK_TH:
-  case MD_BLOCK_TD: {
-    const auto *cell_detail = static_cast<const MD_BLOCK_TD_DETAIL *>(detail);
-    auto [element_id, element, cell] = m_registry->create_table_cell_element();
-    cell.horizontal_align = horizontal_align(cell_detail->align);
-    push_(element_id);
-    // A cell holds blocks; md4c hands its content over as inline text.
-    push_paragraph_(0);
-    if (type == MD_BLOCK_TH) {
-      push_span_(m_style_registry->strong_style());
-    }
-  } break;
-  }
-
-  m_block_pushes.push_back(m_stack.size() - depth);
-}
-
-void Parser::leave_block(const MD_BLOCKTYPE type) {
-  close_implicit_paragraph_();
-
-  switch (type) {
-  case MD_BLOCK_QUOTE:
-    --m_quote_depth;
-    break;
-  case MD_BLOCK_UL:
-  case MD_BLOCK_OL:
-    m_lists.pop_back();
-    break;
-  case MD_BLOCK_CODE:
-    m_in_code_block = false;
-    flush_code_();
-    break;
-  case MD_BLOCK_HTML:
-    m_in_html_block = false;
-    break;
-  default:
-    break;
-  }
-
-  if (m_block_pushes.empty()) {
-    throw std::runtime_error("markdown: unbalanced md4c callbacks");
-  }
-  for (std::size_t i = 0; i < m_block_pushes.back(); ++i) {
-    pop_();
-  }
-  m_block_pushes.pop_back();
-}
-
-void Parser::enter_span(const MD_SPANTYPE type, const void *detail) {
-  switch (type) {
-  case MD_SPAN_EM:
-    push_span_(m_style_registry->emphasis_style());
-    break;
-  case MD_SPAN_STRONG:
-    push_span_(m_style_registry->strong_style());
-    break;
-  case MD_SPAN_DEL:
-    push_span_(m_style_registry->strikethrough_style());
-    break;
-  case MD_SPAN_CODE:
-    push_span_(m_style_registry->monospace_style());
-    break;
-  case MD_SPAN_A: {
-    const auto *link_detail = static_cast<const MD_SPAN_A_DETAIL *>(detail);
-    open_implicit_paragraph_();
-    auto [element_id, element, link] = m_registry->create_link_element();
-    link.href = attribute_to_string(link_detail->href);
-    push_(element_id);
-  } break;
-  default:
-    break; // an image's alt text passes through as text, see `AGENTS.md`
-  }
-}
-
-void Parser::leave_span(const MD_SPANTYPE type) {
-  switch (type) {
-  case MD_SPAN_EM:
-  case MD_SPAN_STRONG:
-  case MD_SPAN_DEL:
-  case MD_SPAN_CODE:
-  case MD_SPAN_A:
-    pop_();
-    break;
-  default:
-    break;
-  }
-}
-
-void Parser::text(const MD_TEXTTYPE type, const std::string_view text) {
-  switch (type) {
-  case MD_TEXT_NULLCHAR:
-    // md4c reports a NUL out of a verbatim block too, so it goes where that
-    // block's own text goes rather than straight into the tree
-    if (m_in_code_block) {
-      m_code.append(replacement_character);
-    } else if (!m_in_html_block) {
-      append_text_(replacement_character);
-    }
-    break;
-  case MD_TEXT_BR: {
-    open_implicit_paragraph_();
-    const auto &[element_id, element] =
-        m_registry->create_element(ElementType::line_break);
-    m_registry->append_child(current_(), element_id);
+    m_stack.push_back(element_id);
     m_open_text = null_element_id;
-  } break;
-  case MD_TEXT_SOFTBR:
-    append_text_(" ");
-    break;
-  case MD_TEXT_ENTITY:
-    append_text_(resolve_entity(text));
-    break;
-  case MD_TEXT_CODE:
-    if (m_in_code_block) {
-      // md4c reports a NUL in a verbatim block as `MD_TEXT_NULLCHAR` and then
-      // re-sends the byte itself at the head of the next chunk
-      for (const char character : text) {
-        if (character != '\0') {
-          m_code.push_back(character);
-        }
-      }
-    } else {
-      append_text_(text);
-    }
-    break;
-  case MD_TEXT_HTML:
-    break; // dropped, see `AGENTS.md`
-  default:
-    append_text_(text);
-    break;
   }
-}
+
+  void pop_() {
+    if (m_stack.empty()) {
+      throw std::runtime_error("markdown: unbalanced md4c callbacks");
+    }
+    m_stack.pop_back();
+    m_open_text = null_element_id;
+  }
+
+  void push_paragraph_(const std::uint32_t text_style_index) {
+    const auto &[element_id, element] =
+        m_registry->create_element(ElementType::paragraph);
+    if (text_style_index != 0) {
+      m_registry->set_element_text_style_index(element_id, text_style_index);
+    }
+    if (const std::uint32_t paragraph_style_index =
+            m_style_registry->quote_style(m_quote_depth);
+        paragraph_style_index != 0) {
+      m_registry->set_element_paragraph_style_index(element_id,
+                                                    paragraph_style_index);
+    }
+    push_(element_id);
+  }
+
+  void push_span_(const std::uint32_t text_style_index) {
+    open_implicit_paragraph_();
+    const auto &[element_id, element] =
+        m_registry->create_element(ElementType::span);
+    m_registry->set_element_text_style_index(element_id, text_style_index);
+    push_(element_id);
+  }
+
+  void open_implicit_paragraph_() {
+    if (m_registry->element_at(current_()).type != ElementType::list_item) {
+      return;
+    }
+    push_paragraph_(0);
+    m_implicit_paragraph = m_stack.back();
+  }
+
+  void close_implicit_paragraph_() {
+    if (m_implicit_paragraph == null_element_id || m_stack.empty() ||
+        m_stack.back() != m_implicit_paragraph) {
+      return;
+    }
+    pop_();
+    m_implicit_paragraph = null_element_id;
+  }
+
+  void append_text_(const std::string_view text) {
+    if (text.empty()) {
+      return;
+    }
+    open_implicit_paragraph_();
+    if (m_open_text == null_element_id) {
+      auto [element_id, element, payload] = m_registry->create_text_element();
+      m_registry->append_child(current_(), element_id);
+      m_open_text = element_id;
+      payload.text.append(text);
+      return;
+    }
+    m_registry->text_element_at(m_open_text).text.append(text);
+  }
+
+  void flush_code_() {
+    // md4c terminates every code line with '\n', the last one included
+    if (m_code.ends_with('\n')) {
+      m_code.pop_back();
+    }
+
+    util::string::split(m_code, "\n", [this](const std::string &line) {
+      push_paragraph_(m_style_registry->monospace_style());
+      append_text_(line);
+      pop_();
+    });
+
+    m_code.clear();
+  }
+};
 
 /// Runs one callback body, parking anything it throws: an exception must not
 /// unwind through md4c's C frames.

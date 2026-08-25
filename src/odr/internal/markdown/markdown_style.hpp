@@ -7,11 +7,9 @@
 
 namespace odr::internal::markdown {
 
-/// Owns the document's styles, indexed by the style index stored on elements;
-/// 0 is the default style in both sets. Markdown carries no style information
-/// of its own, so the set is a fixed rendering convention: a heading scale, a
-/// monospace face for code, the three emphasis marks, and one left margin per
-/// block-quote nesting depth.
+/// The document's styles, indexed by the index stored on elements; 0 is the
+/// default in both sets. Markdown carries no styling of its own, so these are
+/// a fixed rendering convention.
 class StyleRegistry final {
 public:
   StyleRegistry();

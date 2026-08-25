@@ -8,16 +8,15 @@ namespace odr::internal::markdown {
 
 namespace {
 
-/// The browsers' default heading scale, in `em` so it composes with whatever
-/// font size the viewer sets.
+/// The browsers' own heading scale, in `em` so it composes with the viewer's
+/// font size.
 constexpr std::array heading_font_sizes{2.0, 1.5, 1.17, 1.0, 0.83, 0.67};
 
 /// One `<blockquote>` worth of indent, per nesting level.
 constexpr double quote_margin = 2.5;
 
-/// A generic family rather than a face: nothing in a markdown file names one,
-/// and the viewer's monospace font is the closest thing to an author's intent.
-/// Static storage, so `TextStyle::font_name` may point at it.
+/// Nothing in a markdown file names a face. Static storage, so
+/// `TextStyle::font_name` may point at it.
 constexpr std::string_view monospace_font_name = "monospace";
 
 constexpr std::uint32_t default_style_index = 0;
