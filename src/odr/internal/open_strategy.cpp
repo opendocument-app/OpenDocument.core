@@ -94,7 +94,7 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     throw NoOpenDocumentFile();
   }
 
-  if (as == FileType::iwork_pages) {
+  if (as == FileType::iwork_pages || as == FileType::iwork_keynote) {
     ODR_VERBOSE(logger, "open as iwork");
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);

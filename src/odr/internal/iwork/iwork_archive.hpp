@@ -50,6 +50,10 @@ class Package final {
 public:
   explicit Package(const abstract::ReadableFilesystem &filesystem);
 
+  /// Whether the package's component list holds one named @p name. Reads the
+  /// list only — nothing is decompressed.
+  [[nodiscard]] bool has_component(const std::string &name) const noexcept;
+
   /// The first component named @p name — a name is not unique. Throws when
   /// the package holds none.
   const Component &component(const std::string &name);

@@ -15,4 +15,10 @@ class ElementRegistry;
 ElementIdentifier parse_pages_tree(ElementRegistry &registry,
                                    const abstract::ReadableFilesystem &files);
 
+/// Parses the slides of a `.key` package into root → slide → frame →
+/// paragraph → text elements.
+/// \return the root element id.
+ElementIdentifier parse_keynote_tree(ElementRegistry &registry,
+                                     const abstract::ReadableFilesystem &files);
+
 } // namespace odr::internal::iwork

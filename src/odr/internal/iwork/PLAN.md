@@ -1,24 +1,28 @@
 # iWork plan
 
 Where an iwork module goes, and in what order. Written before stage 1; kept
-honest as stages land. **Stages 1 and 2 have landed** — see
-[`AGENTS.md`](AGENTS.md) for what they decided. Stage 3 is next.
+honest as stages land. **Stages 1, 2 and 5 have landed** — see
+[`AGENTS.md`](AGENTS.md) for what they decided. Stage 5 was pulled ahead of 3
+and 4 because it needed neither: a slide is a container above the text storage
+stage 2 already read. Stage 6 is next.
 
 ## Today
 
-A `.pages` opens as a text document and renders its body text. `.numbers` and
-`.key` have `FileType` entries and `file_type_table.cpp` rows so a caller can
-name them, but no capabilities and no engine behind them: which app wrote a
-package is read off its root archive type, and neither has a fixture to pin
-that against.
+A `.pages` opens as a text document and renders its body text; a `.key` opens
+as a presentation and renders each slide's text boxes as positioned frames.
+`.numbers` has a `FileType` entry and a `file_type_table.cpp` row so a caller
+can name it, but no capabilities and no engine behind it.
 
-Two fixtures are committed:
-`test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, both
-written by iWork 13.2 (`Metadata/BuildVersionHistory.plist`). Neither is listed
-in `index.csv` — they do not need to be, `TestData` picks up anything the file
-type table knows an extension for — and they gained reference output when stage
-2 turned `translate_html` on. `style-various-1.pages` carries `Index/Tables/`
-and nine files under `Data/`, which is most of the surface below.
+Four fixtures are committed:
+`test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, written
+by iWork 13.2, and `test/data/input/odr-public/key/{empty.key,
+style-various-1.key}`, written by iWork 14.4
+(`Metadata/BuildVersionHistory.plist`). None is listed in `index.csv` — they do
+not need to be, `TestData` picks up anything the file type table knows an
+extension for — and each gained reference output when its format turned
+`translate_html` on. `style-various-1.pages` carries `Index/Tables/` and nine
+files under `Data/`, and `style-various-1.key` a table on its last slide, which
+is most of the surface below.
 
 ## Spec
 
@@ -240,7 +244,7 @@ against UTF-8 text, which the parser translates in one pass.
   body flow, so once frames exist it is a different root assembly, not new
   parsing.
 
-## Stage 5 — Keynote
+## Stage 5 — Keynote *(landed)*
 
 Cheaper than it looks, and therefore before Numbers: slides are a container
 above the *same* text storage stage 2 and 3 already read.
@@ -250,6 +254,22 @@ above the *same* text storage stage 2 and 3 already read.
 - notes, builds and transitions are out (see Deferred).
 - `iwork_keynote` gains `.translate_html = true`; needs a `.key` fixture in the
   public data repo first.
+
+Landed with three deviations:
+
+- **The root archive does not say which app wrote the package.** The plan
+  assumed it did, as it does for Pages. `KN.DocumentArchive` and
+  `TN.DocumentArchive` are both type 1 — ids are namespaced per app — so
+  Keynote is told from Numbers by the `Slide` components a deck holds. See
+  `AGENTS.md`.
+- **Masters are not read.** `slide_master_page` is null; the
+  `Index/TemplateSlide-*.iwa` components are there and unopened, which costs
+  the theme background and nothing a reader misses in text.
+- **Frames arrived here rather than in stage 4.** A slide is drawables on a
+  canvas, so there was no "text and nothing else" shape to land first. The
+  geometry the drawable already carries is read, which is the piece stage 4
+  needs for Pages; what stage 4 still owes is images, shapes and the anchoring
+  a Pages text flow does.
 
 ## Stage 6 — the tile reader
 
@@ -310,6 +330,10 @@ without a Numbers fixture existing.
 knows — and reference output was regenerated when stage 2 flipped
 `translate_html` on.
 
-Stages 5 and 7 each need a fixture that does not exist yet — one `.key` and one
-`.numbers` in the public repo. Everything at container level stays inline, per
-stage 1.
+Stage 7 needs a `.numbers` fixture that does not exist yet. Everything at
+container level stays inline, per stage 1.
+
+The `.key` fixtures were authored on macOS with Keynote 14.4 rather than found:
+there is no spec, so a file the app wrote is the only citation available, and
+one written to order can carry exactly the shapes a stage needs — a title
+slide, a bulleted body, an empty placeholder, a free text box and a table.

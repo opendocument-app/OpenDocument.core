@@ -790,8 +790,8 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
-    // Classified so a caller can name these two and hand their MIME types to a
-    // file picker; no engine reads either yet.
+    // Classified so a caller can name it and hand its MIME types to a file
+    // picker; no engine reads one yet.
     Row{FileType::iwork_numbers,
         "numbers"sv,
         numbers_extensions,
@@ -805,7 +805,10 @@ constexpr std::array table{
         keynote_mimetypes,
         FileCategory::document,
         DocumentType::presentation,
-        {}},
+        {.detect_by_content = true,
+         .open = true,
+         .translate_html = true,
+         .color_scheme = true}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.

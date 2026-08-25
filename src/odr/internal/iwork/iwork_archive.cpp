@@ -73,6 +73,11 @@ Package::Package(const abstract::ReadableFilesystem &filesystem)
   }
 }
 
+bool Package::has_component(const std::string &name) const noexcept {
+  return std::ranges::find(m_component_infos, name, &ComponentInfo::name) !=
+         std::ranges::end(m_component_infos);
+}
+
 const Component &Package::component(const std::string &name) {
   const auto it =
       std::ranges::find(m_component_infos, name, &ComponentInfo::name);
