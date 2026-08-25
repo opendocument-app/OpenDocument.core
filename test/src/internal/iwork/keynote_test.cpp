@@ -313,3 +313,18 @@ TEST(IworkKeynote, a_drawable_named_more_than_once_is_read_every_time) {
       slides(keynote_document({{box}}).root_element()),
       (std::vector<std::vector<std::string>>{{"again", "again", "again"}}));
 }
+
+// `KN.DocumentArchive` and `TN.DocumentArchive` are both type 1, so the real
+// `.numbers` fixtures are what pins the component list telling the two apart.
+TEST(IworkKeynote, a_numbers_package_is_not_keynote) {
+  for (const char *name : {"empty.numbers", "style-various-1.numbers"}) {
+    const std::string path =
+        TestData::test_file_path(std::string("odr-public/numbers/") + name);
+
+    EXPECT_THAT(list_file_types(path, Logger::null()),
+                testing::Not(testing::Contains(FileType::iwork_keynote)));
+    EXPECT_THROW(std::ignore =
+                     open(path, FileType::iwork_keynote, Logger::null()),
+                 UnknownFileType);
+  }
+}

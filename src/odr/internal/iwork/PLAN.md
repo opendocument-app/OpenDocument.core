@@ -13,16 +13,18 @@ as a presentation and renders each slide's text boxes as positioned frames.
 `.numbers` has a `FileType` entry and a `file_type_table.cpp` row so a caller
 can name it, but no capabilities and no engine behind it.
 
-Four fixtures are committed:
+Six fixtures are committed:
 `test/data/input/odr-public/pages/{empty.pages,style-various-1.pages}`, written
-by iWork 13.2, and `test/data/input/odr-public/key/{empty.key,
-style-various-1.key}`, written by iWork 14.4
-(`Metadata/BuildVersionHistory.plist`). None is listed in `index.csv` — they do
-not need to be, `TestData` picks up anything the file type table knows an
-extension for — and each gained reference output when its format turned
-`translate_html` on. `style-various-1.pages` carries `Index/Tables/` and nine
-files under `Data/`, and `style-various-1.key` a table on its last slide, which
-is most of the surface below.
+by iWork 13.2, and `test/data/input/odr-public/{key/{empty.key,
+style-various-1.key},numbers/{empty.numbers,style-various-1.numbers}}`, written
+by iWork 14.4 (`Metadata/BuildVersionHistory.plist`). None is listed in
+`index.csv` — they do not need to be, `TestData` picks up anything the file
+type table knows an extension for — and each gained reference output when its
+format turned `translate_html` on. Nothing decodes the `.numbers` pair yet;
+they are what pins the Keynote-versus-Numbers detection rule.
+`style-various-1.pages` carries `Index/Tables/` and nine files under `Data/`,
+and `style-various-1.key` a table on its last slide, which is most of the
+surface below.
 
 ## Spec
 
@@ -281,7 +283,7 @@ have not mapped must degrade to an empty cell rather than a wrong one.
 
 Do this for **Pages tables first** (`Table`, `TableRow`, `TableCell`), because
 `style-various-1.pages` already carries `Index/Tables/` and exercises the reader
-without a Numbers fixture existing.
+without any Numbers archive being mapped.
 
 ## Stage 7 — Numbers
 
@@ -330,8 +332,11 @@ without a Numbers fixture existing.
 knows — and reference output was regenerated when stage 2 flipped
 `translate_html` on.
 
-Stage 7 needs a `.numbers` fixture that does not exist yet. Everything at
-container level stays inline, per stage 1.
+`empty.numbers` and `style-various-1.numbers` are in
+`test/data/input/odr-public/numbers/`. Stage 7 is what will decode them; today
+they are the negative that pins detection
+(`IworkKeynote.a_numbers_package_is_not_keynote`). Everything at container
+level stays inline, per stage 1.
 
 The `.key` fixtures were authored on macOS with Keynote 14.4 rather than found:
 there is no spec, so a file the app wrote is the only citation available, and

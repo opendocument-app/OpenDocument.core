@@ -108,9 +108,10 @@ once you already know the app. Only the `TS*` frameworks — `TSWP` text storage
 
 What does tell them apart is the **component list**: Keynote writes one `Slide`
 component per slide and neither Numbers nor Pages writes any. Checked against
-all six fixtures. That costs `Index/Metadata.iwa`, which detection otherwise
-avoids reading, so it is only reached once the root archive has already come
-back as type 1.
+all six fixtures, and pinned by the negative the rule rests on —
+`IworkKeynote.a_numbers_package_is_not_keynote` opens both `.numbers` files.
+That costs `Index/Metadata.iwa`, which detection otherwise avoids reading, so
+it is only reached once the root archive has already come back as type 1.
 
 `iwork_numbers` still has a `file_type_table.cpp` row with no capabilities so a
 caller can name it and hand a file picker its MIME types; nothing decodes one
