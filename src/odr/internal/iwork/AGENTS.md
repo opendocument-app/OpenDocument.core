@@ -10,6 +10,21 @@ renders its paragraphs; a `.key` opens as a presentation and renders each
 slide's text boxes as frames where the geometry puts them. Everything else in
 `PLAN.md` is still ahead.
 
+## The files split by framework, not by app
+
+`iwork/` is flat, and one `ElementRegistry`, one `Document` and one `IworkFile`
+serve all three apps. That is `odf/`'s shape rather than `ooxml/`'s, for a
+reason the two analogies do not quite carry: Apple factored the format by
+**framework**, so `TSWP` text, `TSD` drawables, `TST` tables and `TSS` styles
+mean the same thing in a `.pages`, a `.key` and a `.numbers`, and only the
+spine above them is per-app. Parsing splits along those seams — `iwork_text.cpp`
+is the `TSWP` layer, `iwork_parser.cpp` the three spines that call it — never
+along app lines. `PLAN.md` carries the argument and the files each stage adds.
+
+`Budget` has its own header because it is a parse-wide meter, not a text one:
+the spines spend for slides and frames as the text layer spends for paragraphs
+and runs.
+
 ## There is no spec, so a fixture is the citation
 
 Apple has never published the `.proto` schemas and nothing is vendored under

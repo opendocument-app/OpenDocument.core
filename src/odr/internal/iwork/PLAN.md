@@ -68,6 +68,35 @@ type, exactly as `odf::OpenDocumentFile` (`odf_file.hpp:21`) does for the four
 opendocument types — same constructor over an
 `abstract::ReadableFilesystem`, same `document()` dispatch.
 
+**And the files split by framework, not by app.** `ooxml/` gives each format a
+directory because Microsoft factored by app: WordprocessingML and SpreadsheetML
+share nothing below the package, so `text/`, `presentation/` and `spreadsheet/`
+each carry their own parser, registry and document. Apple factored by
+*framework* instead — `TSWP` text, `TSD` drawables, `TST` tables, `TSS` styles
+mean the same thing in all three apps, and only the spine above them
+(`TP.DocumentArchive` → body, `KN.ShowArchive` → slides, `TN.DocumentArchive` →
+sheets) is per-app. So `iwork/` stays flat, with **one** `ElementRegistry`, one
+`Document` and one `IworkFile`, and splits its parsing along Apple's seams:
+
+| File | Framework |
+|---|---|
+| `iwork_text.cpp` | `TSWP` storage → paragraphs *(landed)* |
+| `iwork_drawable.cpp` | `TSD` geometry, shapes, images *(stage 4)* |
+| `iwork_table.cpp` | `TST` tiles → table, row, cell *(stage 6)* |
+| `iwork_style.cpp` | `TSS` property-set inheritance *(stage 3)* |
+| `iwork_parser.cpp` | the three spines, calling the above |
+
+The evidence is stage 6: the tile reader is written for **Pages** tables, a
+`.key` slide carries a `TST.TableInfoArchive` too, and stage 7 puts Numbers on
+top of the same reader. The most expensive component still ahead is shared by
+all three apps, which an app-shaped split would either duplicate or push into a
+`common/` holding most of the module.
+
+Only `iwork_text.cpp` and the `Budget` it spends against are split out today —
+the rest follows the stage that writes it. Merging three registries later is
+not mechanical; splitting one is, so the unified side is the cheap side to be
+wrong on.
+
 **No new dependencies.** Two pieces would normally be a conan line each, and
 both are wrong here:
 
