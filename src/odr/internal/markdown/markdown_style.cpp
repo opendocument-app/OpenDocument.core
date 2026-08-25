@@ -22,10 +22,13 @@ constexpr std::string_view monospace_font_name = "monospace";
 
 constexpr std::uint32_t default_style_index = 0;
 constexpr std::uint32_t first_heading_style_index = 1;
-constexpr std::uint32_t monospace_style_index = 7;
-constexpr std::uint32_t emphasis_style_index = 8;
-constexpr std::uint32_t strong_style_index = 9;
-constexpr std::uint32_t strikethrough_style_index = 10;
+/// Derived, so a seventh heading size moves these rather than landing on one.
+constexpr std::uint32_t monospace_style_index =
+    first_heading_style_index +
+    static_cast<std::uint32_t>(heading_font_sizes.size());
+constexpr std::uint32_t emphasis_style_index = monospace_style_index + 1;
+constexpr std::uint32_t strong_style_index = emphasis_style_index + 1;
+constexpr std::uint32_t strikethrough_style_index = strong_style_index + 1;
 
 } // namespace
 

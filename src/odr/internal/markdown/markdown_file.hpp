@@ -9,10 +9,6 @@
 
 namespace odr::internal::markdown {
 
-/// Markdown is a document, not a text file: it decodes to a `TextRoot`, so
-/// `FileCategory::document` and `DocumentType::text`. Nothing here rejects —
-/// any UTF-8 byte sequence is some markdown — so there is no `NoMarkdownFile`;
-/// only an undecodable encoding stops it. See `AGENTS.md`.
 class MarkdownFile final : public abstract::DocumentFile {
 public:
   explicit MarkdownFile(std::shared_ptr<text::TextFile> file);

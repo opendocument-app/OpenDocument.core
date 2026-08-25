@@ -71,7 +71,7 @@ Two things the C boundary imposes:
 | `MD_SPAN_A` | `link` |
 | `MD_SPAN_IMG` | — (transparent; the alt text flows through as text) |
 | `MD_TEXT_BR` | `line_break`; `SOFTBR` is a space |
-| `MD_TEXT_NULLCHAR` | U+FFFD |
+| `MD_TEXT_NULLCHAR` | U+FFFD, taking the route the enclosing block's text takes |
 
 ### Why a heading also gets a span
 
@@ -108,10 +108,30 @@ columns, so `Table` keeps `first_column_id`/`last_column_id` and
 this wrong is not a compile error: the renderer walks `table_first_column`'s
 siblings and happily writes a `<col>` for every row it runs into.
 
+### Why a NUL byte follows the block it is in
+
+md4c reports a NUL as `MD_TEXT_NULLCHAR` from a *verbatim* block too, not only
+from prose — `md_process_verbatim_block_contents` splits the line on it — and
+then re-sends the byte itself at the head of the next `MD_TEXT_CODE` /
+`MD_TEXT_HTML` chunk. So the U+FFFD has to be buffered into `m_code` like the
+rest of a code block, and dropped like the rest of a raw html block, or it
+lands beside the block instead of in it; and the re-sent byte is skipped where
+the code text is buffered.
+
+### Nesting is bounded
+
+CommonMark opens one block quote per `>`, and md4c caps container nesting
+nowhere, so a file of `>` bytes is one tree level per input byte. Parsing
+survives that — `m_stack` is a vector and the block handling is iterative — but
+`html::translate_element` walks the tree recursively with no depth guard, so
+rendering it overflows the stack. `Parser::push_` therefore refuses past
+`max_depth`, the same order as `rtf::State::max_depth`.
+
 ### Task lists
 
 The model has no checkbox, so the box (`☐` / `☑`) *replaces* the item's
-marker rather than being invented as an element type.
+marker rather than being invented as an element type. Only the marker: an
+ordered item keeps the `number()` the element api reports, box or no box.
 
 ## Known gaps
 

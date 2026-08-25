@@ -173,8 +173,16 @@ private:
   /// because a code block becomes one paragraph per line.
   bool m_in_code_block{false};
   std::string m_code;
+  /// Set between `MD_BLOCK_HTML`'s enter and leave, so the NUL bytes md4c
+  /// reports out of a dropped block are dropped with it.
+  bool m_in_html_block{false};
 
   std::exception_ptr m_error;
+
+  /// md4c bounds container nesting nowhere, so a file of `>` characters is one
+  /// tree level per byte — and `html::translate_element` walks the tree
+  /// recursively. Same order as `rtf::State::max_depth`.
+  static constexpr std::size_t max_depth = 1024;
 
   [[nodiscard]] ElementIdentifier current_() const;
   void push_(ElementIdentifier element_id);
@@ -196,6 +204,9 @@ ElementIdentifier Parser::current_() const {
 }
 
 void Parser::push_(const ElementIdentifier element_id) {
+  if (m_stack.size() >= max_depth) {
+    throw std::runtime_error("markdown: block nesting too deep");
+  }
   if (!m_stack.empty()) {
     m_registry->append_child(m_stack.back(), element_id);
   }
@@ -267,25 +278,16 @@ void Parser::append_text_(const std::string_view text) {
 }
 
 void Parser::flush_code_() {
-  std::string_view remainder = m_code;
   // md4c terminates every code line with '\n', the last one included
-  if (remainder.ends_with('\n')) {
-    remainder.remove_suffix(1);
+  if (m_code.ends_with('\n')) {
+    m_code.pop_back();
   }
 
-  while (true) {
-    const std::size_t line_end = remainder.find('\n');
-    const std::string_view line = remainder.substr(0, line_end);
-
+  util::string::split(m_code, "\n", [this](const std::string &line) {
     push_paragraph_(m_style_registry->monospace_style());
     append_text_(line);
     pop_();
-
-    if (line_end == std::string_view::npos) {
-      break;
-    }
-    remainder.remove_prefix(line_end + 1);
-  }
+  });
 
   m_code.clear();
 }
@@ -329,17 +331,17 @@ void Parser::enter_block(const MD_BLOCKTYPE type, const void *detail) {
     ListState &list = m_lists.back();
 
     auto [element_id, element, item] = m_registry->create_list_item_element();
-    if (li->is_task != 0) {
-      // The model has no checkbox, so the box replaces the item's marker.
-      item.marker = li->task_mark == 'x' || li->task_mark == 'X' ? "☑" : "☐";
-    } else if (list.type == ListType::ordered) {
+    if (list.type == ListType::ordered) {
+      // the ordinal is the element api's own, independent of the marker
       item.number = list.next_number;
       item.marker = std::to_string(list.next_number) + list.delimiter;
+      ++list.next_number;
     } else {
       item.marker = "•";
     }
-    if (list.type == ListType::ordered) {
-      ++list.next_number;
+    if (li->is_task != 0) {
+      // The model has no checkbox, so the box replaces the item's marker.
+      item.marker = li->task_mark == 'x' || li->task_mark == 'X' ? "☑" : "☐";
     }
     push_(element_id);
   } break;
@@ -361,6 +363,7 @@ void Parser::enter_block(const MD_BLOCKTYPE type, const void *detail) {
     m_code.clear();
   } break;
   case MD_BLOCK_HTML:
+    m_in_html_block = true;
     break; // dropped, see `AGENTS.md`
   case MD_BLOCK_P:
     push_paragraph_(0);
@@ -420,6 +423,9 @@ void Parser::leave_block(const MD_BLOCKTYPE type) {
     m_in_code_block = false;
     flush_code_();
     break;
+  case MD_BLOCK_HTML:
+    m_in_html_block = false;
+    break;
   default:
     break;
   }
@@ -476,7 +482,13 @@ void Parser::leave_span(const MD_SPANTYPE type) {
 void Parser::text(const MD_TEXTTYPE type, const std::string_view text) {
   switch (type) {
   case MD_TEXT_NULLCHAR:
-    append_text_(replacement_character);
+    // md4c reports a NUL out of a verbatim block too, so it goes where that
+    // block's own text goes rather than straight into the tree
+    if (m_in_code_block) {
+      m_code.append(replacement_character);
+    } else if (!m_in_html_block) {
+      append_text_(replacement_character);
+    }
     break;
   case MD_TEXT_BR: {
     open_implicit_paragraph_();
@@ -493,7 +505,13 @@ void Parser::text(const MD_TEXTTYPE type, const std::string_view text) {
     break;
   case MD_TEXT_CODE:
     if (m_in_code_block) {
-      m_code.append(text);
+      // md4c reports a NUL in a verbatim block as `MD_TEXT_NULLCHAR` and then
+      // re-sends the byte itself at the head of the next chunk
+      for (const char character : text) {
+        if (character != '\0') {
+          m_code.push_back(character);
+        }
+      }
     } else {
       append_text_(text);
     }
