@@ -26,13 +26,16 @@ describe('smoke', () => {
     assert.equal(mimeType, 'application/vnd.oasis.opendocument.text');
   });
 
-  // Pinned because "unrecognised input throws" is the natural assumption: text
-  // is the fallback, so a viewer handed a random binary shows junk not an error.
-  it('falls back to text for bytes nothing recognises', () => {
-    const junk = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]);
-    assert.equal(odr.detect(junk).mimeType, 'text/plain');
+  // Text is the fallback, but only for bytes that read as text.
+  it('opens bytes that read as text and refuses the rest', () => {
+    const junk = new Uint8Array(512);
+    assert.throws(() => odr.detect(junk), OdrError);
+    assert.throws(() => odr.open(junk), OdrError);
 
-    const doc = odr.open(junk);
+    const text = new TextEncoder().encode('lorem ipsum dolor sit amet');
+    assert.equal(odr.detect(text).mimeType, 'text/plain');
+
+    const doc = odr.open(text);
     try {
       assert.equal(doc.fileType, odr.enums.FileType.txt);
     } finally {

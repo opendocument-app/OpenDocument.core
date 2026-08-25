@@ -38,6 +38,13 @@ TextEncoding encoding_by_bom(const std::string_view probe) {
   return TextEncoding::unknown;
 }
 
+/// Whether NUL bytes are ordinary characters in @p encoding.
+bool encoding_holds_nul(const TextEncoding encoding) {
+  return encoding == TextEncoding::utf16le ||
+         encoding == TextEncoding::utf16be ||
+         encoding == TextEncoding::utf32le || encoding == TextEncoding::utf32be;
+}
+
 } // namespace
 
 std::string encoding::read_probe(std::istream &in,
@@ -62,6 +69,20 @@ TextEncoding encoding::detect(const std::string_view probe) {
 
   const auto *row = text_encoding_table::find_by_name(name);
   return row == nullptr ? TextEncoding::unknown : row->encoding;
+}
+
+bool encoding::is_text(const std::string_view probe,
+                       const TextEncoding encoding) {
+  // an empty file is an empty text file
+  if (probe.empty()) {
+    return true;
+  }
+  if (encoding == TextEncoding::unknown) {
+    return false;
+  }
+  // uchardet names nul padding utf-8, so the encoding alone does not decide
+  return encoding_holds_nul(encoding) ||
+         probe.find('\0') == std::string_view::npos;
 }
 
 } // namespace odr::internal

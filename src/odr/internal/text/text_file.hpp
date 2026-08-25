@@ -10,7 +10,9 @@ namespace odr::internal::text {
 
 class TextFile final : public abstract::TextFile {
 public:
+  /// @throws NoTextFile if the bytes do not read as text.
   explicit TextFile(std::shared_ptr<abstract::File> file);
+  /// Reads @p file in @p encoding as given, rejecting nothing.
   TextFile(std::shared_ptr<abstract::File> file, TextEncoding encoding);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;

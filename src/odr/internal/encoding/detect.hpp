@@ -22,4 +22,8 @@ read_probe(std::istream &in, std::size_t max_bytes = default_probe_size);
 /// only, so an encoding invisible in an ASCII prefix is missed.
 [[nodiscard]] TextEncoding detect(std::string_view probe);
 
+/// Whether @p probe, detected as @p encoding, reads as text: named, and no NUL
+/// outside utf-16 and utf-32 — the test `file(1)` and git use. Empty is text.
+[[nodiscard]] bool is_text(std::string_view probe, TextEncoding encoding);
+
 } // namespace odr::internal::encoding
