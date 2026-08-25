@@ -35,25 +35,32 @@ ColorSpaceDef device(const ColorSpaceKind kind, const int components) {
   return def;
 }
 
+/// `ColorSpaceDef::to_rgb` over a braced component list, which its `std::span`
+/// does not take.
+std::array<double, 3> to_rgb(const ColorSpaceDef &def,
+                             const std::vector<double> &components) {
+  return def.to_rgb(components);
+}
+
 } // namespace
 
 // The device spaces convert as expected. CMYK follows Adobe's transform, so no
 // ink is white, full key is a dark neutral rather than `#000`, and full cyan is
 // a process cyan.
 TEST(PdfColor, device_spaces) {
-  EXPECT_EQ(device(ColorSpaceKind::device_gray, 1).to_rgb({0.5}),
+  EXPECT_EQ(to_rgb(device(ColorSpaceKind::device_gray, 1), {0.5}),
             (std::array<double, 3>{0.5, 0.5, 0.5}));
-  EXPECT_EQ(device(ColorSpaceKind::device_rgb, 3).to_rgb({0.2, 0.4, 0.6}),
+  EXPECT_EQ(to_rgb(device(ColorSpaceKind::device_rgb, 3), {0.2, 0.4, 0.6}),
             (std::array<double, 3>{0.2, 0.4, 0.6}));
-  EXPECT_EQ(device(ColorSpaceKind::device_cmyk, 4).to_rgb({0, 0, 0, 0}),
+  EXPECT_EQ(to_rgb(device(ColorSpaceKind::device_cmyk, 4), {0, 0, 0, 0}),
             (std::array<double, 3>{1, 1, 1}));
   const std::array<double, 3> key =
-      device(ColorSpaceKind::device_cmyk, 4).to_rgb({0, 0, 0, 1});
+      to_rgb(device(ColorSpaceKind::device_cmyk, 4), {0, 0, 0, 1});
   EXPECT_NEAR(key[0], 0.17, 0.01);
   EXPECT_NEAR(key[1], 0.18, 0.01);
   EXPECT_NEAR(key[2], 0.21, 0.01);
   const std::array<double, 3> cyan =
-      device(ColorSpaceKind::device_cmyk, 4).to_rgb({1, 0, 0, 0});
+      to_rgb(device(ColorSpaceKind::device_cmyk, 4), {1, 0, 0, 0});
   EXPECT_NEAR(cyan[0], 0.0, 0.01);
   EXPECT_NEAR(cyan[1], 0.72, 0.01);
   EXPECT_NEAR(cyan[2], 0.95, 0.01);
@@ -63,11 +70,11 @@ TEST(PdfColor, device_spaces) {
 // (D65) white point.
 TEST(PdfColor, lab_extremes) {
   ColorSpaceDef lab = device(ColorSpaceKind::lab, 3);
-  const std::array<double, 3> white = lab.to_rgb({100, 0, 0});
+  const std::array<double, 3> white = to_rgb(lab, {100, 0, 0});
   EXPECT_NEAR(white[0], 1.0, 0.02);
   EXPECT_NEAR(white[1], 1.0, 0.02);
   EXPECT_NEAR(white[2], 1.0, 0.02);
-  const std::array<double, 3> black = lab.to_rgb({0, 0, 0});
+  const std::array<double, 3> black = to_rgb(lab, {0, 0, 0});
   EXPECT_NEAR(black[0], 0.0, 0.02);
   EXPECT_NEAR(black[1], 0.0, 0.02);
   EXPECT_NEAR(black[2], 0.0, 0.02);
@@ -85,7 +92,7 @@ TEST(PdfColor, iccbased_by_component_count) {
   ASSERT_NE(def, nullptr);
   EXPECT_EQ(def->kind, ColorSpaceKind::icc_based);
   EXPECT_EQ(def->components, 3);
-  EXPECT_EQ(def->to_rgb({0.2, 0.4, 0.6}),
+  EXPECT_EQ(to_rgb(*def, {0.2, 0.4, 0.6}),
             (std::array<double, 3>{0.2, 0.4, 0.6}));
 }
 
@@ -101,8 +108,8 @@ TEST(PdfColor, indexed_palette) {
       parse_color_space(Object(Array(std::move(array))), context());
   ASSERT_NE(def, nullptr);
   EXPECT_EQ(def->kind, ColorSpaceKind::indexed);
-  EXPECT_EQ(def->to_rgb({0}), (std::array<double, 3>{1, 0, 0}));
-  EXPECT_EQ(def->to_rgb({1}), (std::array<double, 3>{0, 1, 0}));
+  EXPECT_EQ(to_rgb(*def, {0}), (std::array<double, 3>{1, 0, 0}));
+  EXPECT_EQ(to_rgb(*def, {1}), (std::array<double, 3>{0, 1, 0}));
 }
 
 // Separation samples its tint transform, then converts through the alternate.
@@ -124,9 +131,9 @@ TEST(PdfColor, separation_tint_transform) {
   EXPECT_EQ(def->kind, ColorSpaceKind::separation);
   EXPECT_EQ(def->components, 1);
   // full tint -> C1 = red
-  EXPECT_EQ(def->to_rgb({1.0}), (std::array<double, 3>{1, 0, 0}));
+  EXPECT_EQ(to_rgb(*def, {1.0}), (std::array<double, 3>{1, 0, 0}));
   // half tint -> (1, 0.5, 0.5)
-  const std::array<double, 3> half = def->to_rgb({0.5});
+  const std::array<double, 3> half = to_rgb(*def, {0.5});
   EXPECT_NEAR(half[0], 1.0, 1e-9);
   EXPECT_NEAR(half[1], 0.5, 1e-9);
   EXPECT_NEAR(half[2], 0.5, 1e-9);

@@ -90,7 +90,8 @@ void emit_num(std::string &out, const double v) {
 /// `callsubr`), emitting a Type2 charstring.
 class Translator {
 public:
-  explicit Translator(const std::vector<std::string> &subrs) : m_subrs(subrs) {}
+  explicit Translator(const std::span<const std::string> subrs)
+      : m_subrs(subrs) {}
 
   Type2Charstring run(const std::string_view charstring) {
     execute(charstring, 0);
@@ -411,7 +412,7 @@ private:
     double y;
   };
 
-  const std::vector<std::string> &m_subrs;
+  std::span<const std::string> m_subrs;
   std::string m_out;
   std::vector<double> m_stack;
   std::vector<double> m_ps_stack;
@@ -433,8 +434,9 @@ private:
 
 namespace odr::internal::font {
 
-type1::Type2Charstring type1::to_type2(const std::string_view type1,
-                                       const std::vector<std::string> &subrs) {
+type1::Type2Charstring
+type1::to_type2(const std::string_view type1,
+                const std::span<const std::string> subrs) {
   return Translator(subrs).run(type1);
 }
 

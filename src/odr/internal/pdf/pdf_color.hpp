@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,7 @@ struct ColorSpaceDef {
   /// Convert `components` of this space to sRGB in [0, 1]. A short/empty input
   /// yields the space's default colour.
   [[nodiscard]] std::array<double, 3>
-  to_rgb(const std::vector<double> &components) const;
+  to_rgb(std::span<const double> components) const;
 
   /// The initial colour value of the space (ISO 32000-1 8.6.3): all-zero
   /// components, except Indexed (index 0) and Separation/DeviceN (tint 1.0).

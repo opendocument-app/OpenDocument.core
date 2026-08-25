@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -35,7 +36,7 @@ protected:
       : m_domain{std::move(domain)}, m_range{std::move(range)} {}
 
   [[nodiscard]] virtual std::vector<double>
-  compute(const std::vector<double> &in) const = 0;
+  compute(std::span<const double> in) const = 0;
 
   std::vector<double> m_domain; // [min0 max0 min1 max1 ...]
   std::vector<double> m_range;  // [min0 max0 ...], possibly empty

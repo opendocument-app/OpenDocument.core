@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace odr::internal::font::type1 {
 
@@ -27,6 +27,6 @@ struct Type2Charstring {
 /// quality, not glyph shape), and unknown operators are skipped. Throws
 /// `std::runtime_error` on a charstring that ends mid-operand.
 [[nodiscard]] Type2Charstring to_type2(std::string_view type1,
-                                       const std::vector<std::string> &subrs);
+                                       std::span<const std::string> subrs);
 
 } // namespace odr::internal::font::type1

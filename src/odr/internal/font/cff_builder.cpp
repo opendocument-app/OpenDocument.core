@@ -94,7 +94,7 @@ std::string build_index(const std::vector<std::string> &members) {
 namespace odr::internal::font {
 
 std::string cff::build_cff(const std::string_view name,
-                           const std::vector<BuilderGlyph> &glyphs,
+                           const std::span<const BuilderGlyph> glyphs,
                            const double default_width,
                            const double nominal_width, const FontBBox bbox) {
   // CharStrings INDEX (one Type2 charstring per glyph).

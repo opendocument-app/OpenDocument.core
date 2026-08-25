@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -197,12 +198,14 @@ TEST(PdfFont, simple_font_glyph_for_code_via_font_charset) {
   // A subset producer names its glyphs `gidNNNNN`: only the font program's
   // own charset reaches them (ISO 32000-1 9.6.6.2).
   const std::string endchar("\x0e", 1);
+  const std::array<font::cff::BuilderGlyph, 3> glyphs = {
+      font::cff::BuilderGlyph{".notdef", endchar},
+      font::cff::BuilderGlyph{"gid00046", endchar},
+      font::cff::BuilderGlyph{"gid00133", endchar}};
   Font font;
   font.embedded_font =
       std::make_shared<font::cff::CffFont>(font::cff::build_cff(
-          "Subset",
-          {{".notdef", endchar}, {"gid00046", endchar}, {"gid00133", endchar}},
-          /*default_width=*/0, /*nominal_width=*/0,
+          "Subset", glyphs, /*default_width=*/0, /*nominal_width=*/0,
           odr::FontBBox{0, -200, 600, 800}));
 
   font.encoding.emplace(pdf::BaseEncoding::standard);
