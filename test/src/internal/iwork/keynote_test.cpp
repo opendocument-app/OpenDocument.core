@@ -10,6 +10,7 @@
 #include <odr/internal/iwork/iwork_document.hpp>
 #include <odr/internal/iwork/iwork_file.hpp>
 
+#include <internal/iwork/iwork_element_util.hpp>
 #include <internal/iwork/iwork_test_util.hpp>
 #include <test_util.hpp>
 
@@ -31,24 +32,13 @@ namespace iwork = odr::internal::iwork;
 
 namespace {
 
-/// The text of one frame, a line break reading as a newline and a paragraph
-/// boundary as well.
+/// The text of one frame. Every child of a frame is a paragraph, which the
+/// shared reader does not assert, so state it here.
 std::string frame_text(const Element frame) {
-  std::string result;
   for (const Element paragraph : frame.children()) {
     EXPECT_EQ(paragraph.type(), ElementType::paragraph);
-    if (!result.empty()) {
-      result += '\n';
-    }
-    for (const Element child : paragraph.children()) {
-      if (child.type() == ElementType::line_break) {
-        result += '\n';
-      } else {
-        result += child.as_text().content();
-      }
-    }
   }
-  return result;
+  return builder::element_text(frame);
 }
 
 /// The text of every frame of every slide, one vector per slide.

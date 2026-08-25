@@ -324,4 +324,244 @@ inline std::shared_ptr<internal::abstract::ReadableFilesystem> pages_package(
   return package({{"Document", document}});
 }
 
+/// One packed cell record: the twelve-byte header, then the value the flags
+/// name. @p version and @p type are taken as given so a test can state a
+/// record the reader has not mapped.
+inline std::string
+cell_record(const std::uint8_t type, const std::uint32_t flags,
+            const std::string &value,
+            const std::uint8_t version = types::cell::version) {
+  std::string result(types::cell::header_size, '\0');
+  result[types::cell::version_offset] = static_cast<char>(version);
+  result[types::cell::type_offset] = static_cast<char>(type);
+  for (std::size_t i = 0; i < 4; ++i) {
+    result[types::cell::flags_offset + i] =
+        static_cast<char>((flags >> (i * 8)) & 0xff);
+  }
+  return result + value;
+}
+
+/// A cell holding a `double` in the field @p flag names.
+inline std::string number_cell(const std::uint8_t type,
+                               const std::uint32_t flag, const double value) {
+  const auto bits = std::bit_cast<std::uint64_t>(value);
+  std::string bytes;
+  for (std::uint32_t shift = 0; shift < 64; shift += 8) {
+    bytes.push_back(static_cast<char>((bits >> shift) & 0xff));
+  }
+  return cell_record(type, flag, bytes);
+}
+
+/// One row of a tile: @p cells packed back to back, and the offsets table that
+/// says where each column's record starts. An empty entry writes `-1`, the
+/// column the row holds no cell for.
+inline std::string tile_row(const std::uint32_t index,
+                            const std::vector<std::string> &cells) {
+  std::string storage;
+  std::string offsets;
+  for (const std::string &cell : cells) {
+    const auto offset = cell.empty()
+                            ? static_cast<std::int16_t>(-1)
+                            : static_cast<std::int16_t>(storage.size());
+    const auto bits = static_cast<std::uint16_t>(offset);
+    offsets.push_back(static_cast<char>(bits & 0xff));
+    offsets.push_back(static_cast<char>((bits >> 8) & 0xff));
+    storage += cell;
+  }
+
+  return number_field(types::tile_row::index, index) +
+         message_field(types::tile_row::storage, storage) +
+         message_field(types::tile_row::offsets, offsets);
+}
+
+/// One row of a tile, stated as the bytes it carries rather than as its cells,
+/// so a test can write an offsets table the storage does not back.
+inline std::string tile_row_bytes(const std::uint32_t index,
+                                  const std::string &storage,
+                                  const std::vector<std::int16_t> &offsets) {
+  std::string table;
+  for (const std::int16_t offset : offsets) {
+    const auto bits = static_cast<std::uint16_t>(offset);
+    table.push_back(static_cast<char>(bits & 0xff));
+    table.push_back(static_cast<char>((bits >> 8) & 0xff));
+  }
+
+  return number_field(types::tile_row::index, index) +
+         message_field(types::tile_row::storage, storage) +
+         message_field(types::tile_row::offsets, table);
+}
+
+/// A `TST.Tile` holding @p rows, each already built by @ref tile_row.
+inline std::string tile(const std::vector<std::string> &rows) {
+  std::string result;
+  for (const std::string &row : rows) {
+    result += message_field(types::tile::rows, row);
+  }
+  return result;
+}
+
+/// One entry of a `TST.DataList`: a key and the string it stands for.
+inline std::string string_entry(const std::uint64_t key,
+                                const std::string &text) {
+  return message_field(types::data_list::entries,
+                       number_field(types::data_list_entry::key, key) +
+                           message_field(types::data_list_entry::string, text));
+}
+
+/// What a synthetic table is made of. The extent is what the model *declares*,
+/// which the tiles need not fill — that is the shape the budget guards.
+struct TableSpec final {
+  std::string name;
+  std::uint32_t rows{};
+  std::uint32_t columns{};
+  /// Rows already built by @ref tile_row, all in one tile.
+  std::vector<std::string> tile_rows;
+  /// Entries already built by @ref string_entry.
+  std::vector<std::string> strings;
+  /// How many times the tile list names the one tile.
+  std::size_t tile_repeats{1};
+  /// When set, a rich text list holding one entry under key 1, whose payload
+  /// names this storage — which a `rich_text` cell reaches by that key.
+  std::optional<std::uint64_t> rich_text_storage;
+  /// When set, the tile's payload verbatim, in place of @ref tile_rows.
+  std::optional<std::string> raw_tile;
+  /// When set, the tile storage's tile list verbatim, in place of the entries
+  /// @ref tile_repeats would write.
+  std::optional<std::string> raw_tile_list;
+};
+
+/// The identifiers a synthetic table's objects are filed under.
+constexpr std::uint64_t table_info_identifier = 20;
+constexpr std::uint64_t table_model_identifier = 21;
+constexpr std::uint64_t table_tile_identifier = 22;
+constexpr std::uint64_t table_strings_identifier = 23;
+constexpr std::uint64_t table_rich_texts_identifier = 25;
+constexpr std::uint64_t rich_text_payload_identifier = 26;
+
+/// The objects a table is made of: a `TST.TableInfoArchive`, the model behind
+/// it, its tile and its string list.
+inline std::string table_objects(const TableSpec &spec) {
+  std::string entries;
+  for (const std::string &entry : spec.strings) {
+    entries += entry;
+  }
+
+  std::string tiles = spec.raw_tile_list.value_or(std::string());
+  for (std::size_t repeat = 0;
+       !spec.raw_tile_list.has_value() && repeat < spec.tile_repeats;
+       ++repeat) {
+    tiles += message_field(types::tile_storage::tiles,
+                           number_field(types::tile_storage_entry::index, 0) +
+                               reference_field(types::tile_storage_entry::tile,
+                                               table_tile_identifier));
+  }
+
+  std::string store =
+      message_field(types::data_store::tiles, tiles) +
+      reference_field(types::data_store::string_list, table_strings_identifier);
+  std::string rich_text_objects;
+  if (spec.rich_text_storage.has_value()) {
+    store += reference_field(types::data_store::rich_text_list,
+                             table_rich_texts_identifier);
+
+    const std::string payload = reference_field(
+        types::rich_text_payload::storage, *spec.rich_text_storage);
+    const std::string list =
+        message_field(types::data_list::entries,
+                      number_field(types::data_list_entry::key, 1) +
+                          reference_field(types::data_list_entry::rich_text,
+                                          rich_text_payload_identifier));
+
+    rich_text_objects =
+        object(table_rich_texts_identifier,
+               {{types::archive_type::data_list, list.size()}}, list) +
+        object(rich_text_payload_identifier,
+               {{types::archive_type::rich_text_payload, payload.size()}},
+               payload);
+  }
+
+  const std::string model =
+      message_field(types::table_model::data_store, store) +
+      number_field(types::table_model::rows, spec.rows) +
+      number_field(types::table_model::columns, spec.columns) +
+      message_field(types::table_model::name, spec.name);
+  const std::string info =
+      reference_field(types::table_info::model, table_model_identifier);
+  const std::string tile_payload = spec.raw_tile.value_or(tile(spec.tile_rows));
+
+  return object(table_info_identifier,
+                {{types::archive_type::table_info, info.size()}}, info) +
+         object(table_model_identifier,
+                {{types::archive_type::table_model, model.size()}}, model) +
+         object(table_tile_identifier,
+                {{types::archive_type::tile, tile_payload.size()}},
+                tile_payload) +
+         object(table_strings_identifier,
+                {{types::archive_type::data_list, entries.size()}}, entries) +
+         rich_text_objects;
+}
+
+/// The identifier a synthetic attachment is filed under.
+constexpr std::uint64_t attachment_identifier = 24;
+
+/// A `.pages` package whose body anchors @p spec as a table: the body text
+/// carries a `U+FFFC` at @p anchor_index, the attachment run table names the
+/// `TSWP.DrawableAttachmentArchive` there, and that names the table.
+inline std::shared_ptr<internal::abstract::ReadableFilesystem>
+pages_table_package(const TableSpec &spec,
+                    const std::string &text = "\xef\xbf\xbc",
+                    const std::uint64_t anchor_index = 0) {
+  const std::string storage =
+      message_field(types::text_storage::text, text) +
+      message_field(
+          types::text_storage::attachments,
+          message_field(
+              types::attribute_table::entries,
+              number_field(types::attribute_table_entry::character_index,
+                           anchor_index) +
+                  reference_field(types::attribute_table_entry::object,
+                                  attachment_identifier)));
+
+  const std::string attachment = reference_field(
+      types::attachment_archive::drawable, table_info_identifier);
+
+  const std::string root = document_archive(body_identifier);
+  const std::string document =
+      object(1, {{types::archive_type::pages_document, root.size()}}, root) +
+      object(body_identifier,
+             {{types::archive_type::text_storage, storage.size()}}, storage) +
+      object(attachment_identifier,
+             {{types::archive_type::drawable_attachment, attachment.size()}},
+             attachment) +
+      table_objects(spec);
+
+  return package({{"Document", document}});
+}
+
+/// A `.numbers` package: a root archive naming one sheet, which names @p spec
+/// as its only drawable. @p table_repeats is how many times the sheet's
+/// drawable list names that one table.
+inline std::shared_ptr<internal::abstract::ReadableFilesystem>
+numbers_package(const TableSpec &spec, const std::string &sheet_name = "Sheet",
+                const std::size_t table_repeats = 1) {
+  constexpr std::uint64_t sheet_identifier = 2;
+
+  const std::string root =
+      reference_field(types::document_archive::sheets, sheet_identifier);
+
+  std::string sheet = message_field(types::sheet_archive::name, sheet_name);
+  for (std::size_t repeat = 0; repeat < table_repeats; ++repeat) {
+    sheet +=
+        reference_field(types::sheet_archive::drawables, table_info_identifier);
+  }
+
+  const std::string document =
+      object(1, {{types::archive_type::app_document, root.size()}}, root) +
+      object(sheet_identifier,
+             {{types::archive_type::numbers_sheet, sheet.size()}}, sheet) +
+      table_objects(spec);
+
+  return package({{"Document", document}});
+}
+
 } // namespace odr::test::iwork
