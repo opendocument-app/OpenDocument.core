@@ -327,15 +327,13 @@ iwork::parse_keynote_tree(ElementRegistry &registry,
 
   auto [root_id, root] = registry.create_element(ElementType::root);
 
-  const std::optional<std::string_view> tree =
-      show.bytes_field(show_archive::slide_tree);
-  if (!tree.has_value()) {
-    return root_id;
-  }
+  // a show that carries no slide tree is a deck with no slides
+  const Message tree(
+      show.bytes_field(show_archive::slide_tree).value_or(std::string_view()));
 
   std::size_t number = 0;
   for (const std::uint64_t identifier :
-       reference_identifiers(Message(*tree), slide_tree::nodes)) {
+       reference_identifiers(tree, slide_tree::nodes)) {
     const Object &node = package.object(identifier);
     if (node.type != archive_type::keynote_slide_node) {
       continue;
