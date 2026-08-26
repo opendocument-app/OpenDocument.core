@@ -84,6 +84,9 @@ The release run heads these entries with the version and opens a fresh
 - Text in a pdf can be selected, searched and copied where it came out as CJK
   before. A simple font's codes are one byte each, whatever codespace its
   `ToUnicode` map declares, and producers routinely declare two.
+- A pdf page that is off screen is no longer laid out or painted. On a drawing-
+  heavy file this halves the time to open and takes a zoom step from ~340ms to
+  ~50ms.
 
 ## v6.10.1 - 2026-08-21
 
