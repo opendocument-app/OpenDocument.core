@@ -323,6 +323,8 @@ constexpr std::string_view document_js = R"js(
 )js";
 
 /// The zoom api, and the fit where the css could not state it.
+/// `test/browser/viewport/serve` lifts the script out by this declaration read
+/// verbatim, so renaming it breaks the browser checks.
 constexpr std::string_view viewport_js = R"js(
 (function () {
   "use strict";
@@ -392,6 +394,52 @@ constexpr std::string_view viewport_js = R"js(
     return content > available ? available / content : 1;
   }
 
+  // Whether `getBoundingClientRect` carries the zoom applied to the body;
+  // webkit does not. Only decidable while a zoom is applied.
+  var rectsZoomed = null;
+
+  // Rect coordinates times this are viewport coordinates.
+  function rectFactor() {
+    var zoom = parseFloat(getComputedStyle(body).zoom);
+    if (!isFinite(zoom) || zoom <= 0 || zoom === 1) {
+      return 1;
+    }
+    if (rectsZoomed === null) {
+      var probe = document.createElement("div");
+      probe.style.cssText =
+        "position:absolute;top:0;left:0;width:100px;height:100px;" +
+        "box-sizing:content-box;margin:0;padding:0;border:0";
+      body.appendChild(probe);
+      var measured = probe.getBoundingClientRect().width;
+      body.removeChild(probe);
+      if (!measured) {
+        return 1;
+      }
+      rectsZoomed = Math.abs(measured - 100 * zoom) < Math.abs(measured - 100);
+    }
+    return rectsZoomed ? 1 : zoom;
+  }
+
+  // @p element's box in viewport coordinates, shaped like a `DOMRect`.
+  function boxOf(element) {
+    var box = element.getBoundingClientRect();
+    var factor = rectFactor();
+    var left = box.left * factor;
+    var top = box.top * factor;
+    var width = box.width * factor;
+    var height = box.height * factor;
+    return {
+      x: left,
+      y: top,
+      left: left,
+      top: top,
+      right: left + width,
+      bottom: top + height,
+      width: width,
+      height: height,
+    };
+  }
+
   // The element under @p point, and how far into it that point sits - a
   // fraction of the scroll height cannot stand in, the height scales too. Only
   // a given point pins x; the page column centres itself.
@@ -402,7 +450,7 @@ constexpr std::string_view viewport_js = R"js(
     if (!element) {
       return null;
     }
-    var box = element.getBoundingClientRect();
+    var box = boxOf(element);
     return {
       element: element,
       x: point ? x : null,
@@ -439,7 +487,7 @@ constexpr std::string_view viewport_js = R"js(
     if (!target || !target.element.isConnected) {
       return;
     }
-    var box = target.element.getBoundingClientRect();
+    var box = boxOf(target.element);
     var deltaY = box.top + target.intoY * box.height - target.y;
     var deltaX =
       target.x === null ? 0 : box.left + target.intoX * box.width - target.x;
@@ -456,18 +504,18 @@ constexpr std::string_view viewport_js = R"js(
 
   // The browser applies a scroll offset of its own a few frames later, so
   // @p target is re-asserted until it settles.
-  function apply(target) {
-    var zoom = applied();
-    body.style.zoom = zoom;
-    root.style.setProperty("--odr-zoom", zoom);
-
+  function settle(target) {
     restoring = true;
     restore(target);
 
     var token = ++settling;
     var frames = 30;
     (function again() {
-      if (token !== settling || frames-- <= 0) {
+      if (token !== settling) {
+        // A newer run - or the reader - owns the state below now.
+        return;
+      }
+      if (frames-- <= 0) {
         restoring = false;
         remember();
         return;
@@ -475,7 +523,14 @@ constexpr std::string_view viewport_js = R"js(
       restore(target);
       requestAnimationFrame(again);
     })();
+  }
 
+  function apply(target) {
+    var zoom = applied();
+    body.style.zoom = zoom;
+    root.style.setProperty("--odr-zoom", zoom);
+
+    settle(target);
     notify();
   }
 
@@ -490,8 +545,8 @@ constexpr std::string_view viewport_js = R"js(
     width = root.clientWidth;
 
     if (pinned !== null || !measures) {
-      // the scale does not follow the viewport
-      remember();
+      // The scale does not follow the viewport; the reader's place still does.
+      settle(target);
       return;
     }
 
@@ -511,6 +566,14 @@ constexpr std::string_view viewport_js = R"js(
 
   odr.isZoomFitted = function () {
     return pinned === null;
+  };
+
+  // @p element's box in the coordinates `elementFromPoint` takes, for a host
+  // hit-testing while a zoom is applied.
+  odr.getViewportRect = function (element) {
+    return element && typeof element.getBoundingClientRect === "function"
+      ? boxOf(element)
+      : null;
   };
 
   // @p focus, a pinch's midpoint, is the point that stays put across the

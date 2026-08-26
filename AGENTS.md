@@ -76,6 +76,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `wasm/` | WebAssembly bindings (embind), packaged as the npm package `@opendocument/odr-core`; see [`wasm/AGENTS.md`](wasm/AGENTS.md). |
 | `tools/pdf/` | Dev tooling (not built): PDF encoding-data generators, see `tools/pdf/README.md`. |
 | `test/src/` | GoogleTest suites; data fetched into `test/data` (see `cmake/test_data.cmake`). |
+| `test/browser/` | Checks for the emitted scripts, run by hand in a browser — what they do is not visible to `odr_test`; see [`viewport/README.md`](test/browser/viewport/README.md). |
 | `offline/documentation/MS-*/` | Vendored Microsoft spec text (see [Specs](#specs)). |
 | `docs/design/README.md` | High-level design rationale. |
 

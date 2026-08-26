@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Extracts the emitted zoom script and serves the checks beside it."""
+
+import functools
+import http.server
+import pathlib
+import socketserver
+
+PORT = 8731
+
+HERE = pathlib.Path(__file__).resolve().parent
+SOURCE = HERE.parents[2] / "src" / "odr" / "internal" / "html" / "frontend.cpp"
+BEGIN = 'constexpr std::string_view viewport_js = R"js('
+END = ')js";'
+
+
+def extract() -> str:
+    source = SOURCE.read_text()
+    begin = source.index(BEGIN)
+    return source[begin + len(BEGIN) : source.index(END, begin)]
+
+
+def main() -> None:
+    target = HERE / "viewport.js"
+    target.write_text(extract())
+    print(f"{SOURCE.name} -> {target.name}")
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(HERE))
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("127.0.0.1", PORT), handler) as server:
+        print(f"http://localhost:{PORT}/tests.html")
+        server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
