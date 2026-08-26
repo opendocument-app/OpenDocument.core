@@ -3,10 +3,13 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/font.hpp>
+#include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
@@ -616,6 +619,61 @@ std::string svg_path_fragment(const pdf::PathElement &path,
   return std::move(f).str();
 }
 
+/// One resource per distinct image: every placement of it gets the same url.
+/// The name is a digest of the bytes, so the views of one document agree on it
+/// and a host may render them into one directory.
+class ImageRegistry {
+public:
+  ImageRegistry(const HtmlConfig &config, HtmlResources &resources)
+      : m_config{&config}, m_resources{&resources} {}
+
+  std::string url(const pdf::ImageElement &image) {
+    if (image.source != nullptr) {
+      if (const auto it = m_url_by_source.find(image.source);
+          it != std::end(m_url_by_source)) {
+        return it->second;
+      }
+    }
+
+    const std::string name =
+        "image" +
+        crypto::util::hex_encode(crypto::util::sha256(image.data))
+            .substr(0, 16) +
+        extension(image.mime);
+    // a stencil and an inline image carry no object to key on, so identical
+    // bytes reach us as separate elements
+    const auto [it, fresh] = m_url_by_name.try_emplace(name);
+    if (fresh) {
+      odr::HtmlResource resource = HtmlResource::create(
+          HtmlResourceType::image, image.mime, name, name,
+          File(std::make_shared<MemoryFile>(image.data)), false, false, true);
+      HtmlResourceLocation location =
+          m_config->resource_locator(resource, *m_config);
+      it->second = location.value_or(file_to_url(image.data, image.mime));
+      m_resources->emplace_back(std::move(resource), std::move(location));
+    }
+
+    if (image.source != nullptr) {
+      m_url_by_source.emplace(image.source, it->second);
+    }
+    return it->second;
+  }
+
+private:
+  static std::string extension(const std::string &mime) {
+    const FileType type = file_type_by_mimetype(mime);
+    if (type == FileType::unknown) {
+      return {};
+    }
+    return "." + std::string(file_extension_by_file_type(type));
+  }
+
+  const HtmlConfig *m_config{nullptr};
+  HtmlResources *m_resources{nullptr};
+  std::unordered_map<const pdf::XObject *, std::string> m_url_by_source;
+  std::unordered_map<std::string, std::string> m_url_by_name;
+};
+
 /// An image XObject as an SVG `<image>` fragment in the page viewBox, or ""
 /// when it carries no pass-through bytes. The image fills the unit square in
 /// user space (ISO 32000-1 8.10.5), flipped vertically because its first row is
@@ -624,7 +682,8 @@ std::string svg_path_fragment(const pdf::PathElement &path,
 /// would resolve in the image's post-transform unit-square space instead.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
-                               const std::string &clip_id) {
+                               const std::string &clip_id,
+                               ImageRegistry &images) {
   if (image.data.empty()) {
     return {};
   }
@@ -645,7 +704,7 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
       !blend.empty()) {
     f << " style=\"mix-blend-mode:" << blend << '"';
   }
-  f << " href=\"" << file_to_url(image.data, image.mime) << "\"/>";
+  f << " href=\"" << escape_attribute(images.url(image)) << "\"/>";
   if (!clip_id.empty()) {
     f << "</g>";
   }
@@ -812,7 +871,7 @@ public:
   std::string register_pattern(const pdf::Pattern &pattern,
                                const util::math::Transform2D &m,
                                const pdf::GraphicsState::Color &fill_color,
-                               const Logger &logger) {
+                               ImageRegistry &images, const Logger &logger) {
     if (pattern.resources == nullptr || pattern.content.empty() ||
         pattern.x_step == 0 || pattern.y_step == 0) {
       return {};
@@ -842,7 +901,8 @@ public:
         }
         tile << svg_path_fragment(painted, util::math::Transform2D(), "", "");
       } else if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-        tile << svg_image_fragment(*image, util::math::Transform2D(), "");
+        tile << svg_image_fragment(*image, util::math::Transform2D(), "",
+                                   images);
       }
     }
 
@@ -877,13 +937,11 @@ class MaskRegistry;
 /// element or one that paints nothing. A `GroupElement`'s children are wrapped
 /// in a single `<g>` so the group composites as a unit before its
 /// opacity/blend/mask apply.
-std::string render_graphic_fragment(const pdf::PageElement &element,
-                                    const util::math::Transform2D &to_box,
-                                    double width, double height,
-                                    ClipRegistry &clips,
-                                    GradientRegistry &gradients,
-                                    PatternRegistry &patterns,
-                                    MaskRegistry &masks, const Logger &logger);
+std::string render_graphic_fragment(
+    const pdf::PageElement &element, const util::math::Transform2D &to_box,
+    double width, double height, ClipRegistry &clips,
+    GradientRegistry &gradients, PatternRegistry &patterns, MaskRegistry &masks,
+    ImageRegistry &images, const Logger &logger);
 
 /// A page's soft masks (`/SMask`, ISO 32000-1 11.6.5.2) as `<mask>` defs
 /// (`m<page>_<n>`). The extractor has already rendered each mask's transparency
@@ -897,13 +955,15 @@ public:
                             const util::math::Transform2D &to_box,
                             const double width, const double height,
                             ClipRegistry &clips, GradientRegistry &gradients,
-                            PatternRegistry &patterns, const Logger &logger) {
+                            PatternRegistry &patterns, ImageRegistry &images,
+                            const Logger &logger) {
     // A fresh `SoftMask` is built for every `gs`, but many are identical (one
     // drop-shadow across a run of glyphs); dedupe on the rendered body.
     std::ostringstream body;
     for (const pdf::PageElement &element : mask.group) {
       body << render_graphic_fragment(element, to_box, width, height, clips,
-                                      gradients, patterns, *this, logger);
+                                      gradients, patterns, *this, images,
+                                      logger);
     }
     std::string signature = mask.type == pdf::SoftMask::Type::alpha ? "A" : "L";
     if (mask.backdrop.has_value()) {
@@ -944,14 +1004,14 @@ std::string wrap_effects(std::string fragment, const double alpha,
                          const double width, const double height,
                          ClipRegistry &clips, GradientRegistry &gradients,
                          PatternRegistry &patterns, MaskRegistry &masks,
-                         const Logger &logger) {
+                         ImageRegistry &images, const Logger &logger) {
   if (fragment.empty()) {
     return fragment;
   }
   std::string mask_id;
   if (soft_mask != nullptr) {
     mask_id = masks.register_mask(*soft_mask, to_box, width, height, clips,
-                                  gradients, patterns, logger);
+                                  gradients, patterns, images, logger);
   }
   const std::string blend = blend_mode_to_css(blend_mode);
   if (alpha >= 1 && mask_id.empty() && blend.empty()) {
@@ -972,19 +1032,17 @@ std::string wrap_effects(std::string fragment, const double alpha,
   return std::move(g).str();
 }
 
-std::string render_graphic_fragment(const pdf::PageElement &element,
-                                    const util::math::Transform2D &to_box,
-                                    const double width, const double height,
-                                    ClipRegistry &clips,
-                                    GradientRegistry &gradients,
-                                    PatternRegistry &patterns,
-                                    MaskRegistry &masks, const Logger &logger) {
+std::string render_graphic_fragment(
+    const pdf::PageElement &element, const util::math::Transform2D &to_box,
+    const double width, const double height, ClipRegistry &clips,
+    GradientRegistry &gradients, PatternRegistry &patterns, MaskRegistry &masks,
+    ImageRegistry &images, const Logger &logger) {
   const auto wrap_mask =
       [&](std::string fragment,
           const std::shared_ptr<const pdf::SoftMask> &soft_mask) {
         return wrap_effects(std::move(fragment), 1.0, soft_mask, "", to_box,
                             width, height, clips, gradients, patterns, masks,
-                            logger);
+                            images, logger);
       };
   if (const auto *path = std::get_if<pdf::PathElement>(&element)) {
     const std::string clip_id = clips.register_clip(path->clip, to_box);
@@ -995,7 +1053,7 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
     } else if (path->fill_pattern != nullptr) {
       fill_url_id = patterns.register_pattern(*path->fill_pattern,
                                               path->pattern_transform * to_box,
-                                              path->fill_color, logger);
+                                              path->fill_color, images, logger);
     }
     return wrap_mask(svg_path_fragment(*path, to_box, clip_id, fill_url_id),
                      path->soft_mask);
@@ -1013,7 +1071,7 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
   }
   if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
     const std::string clip_id = clips.register_clip(image->clip, to_box);
-    return wrap_mask(svg_image_fragment(*image, to_box, clip_id),
+    return wrap_mask(svg_image_fragment(*image, to_box, clip_id, images),
                      image->soft_mask);
   }
   if (const auto *group = std::get_if<pdf::GroupElement>(&element)) {
@@ -1022,12 +1080,13 @@ std::string render_graphic_fragment(const pdf::PageElement &element,
     }
     std::string inner;
     for (const pdf::PageElement &child : group->children->elements) {
-      inner += render_graphic_fragment(child, to_box, width, height, clips,
-                                       gradients, patterns, masks, logger);
+      inner +=
+          render_graphic_fragment(child, to_box, width, height, clips,
+                                  gradients, patterns, masks, images, logger);
     }
     return wrap_effects(std::move(inner), group->alpha, group->soft_mask,
                         group->blend_mode, to_box, width, height, clips,
-                        gradients, patterns, masks, logger);
+                        gradients, patterns, masks, images, logger);
   }
   return {};
 }
@@ -1223,14 +1282,28 @@ public:
     // serialized.
     std::lock_guard lock(m_mutex);
     if (path == config().document_output_file_name) {
-      return write_document(out);
+      return remember_linked(write_document(out));
     }
     for (std::size_t i = 0; i < m_pages.size(); ++i) {
       if (path == m_views[i + 1].path()) {
-        return write_page(i, out);
+        return remember_linked(write_page(i, out));
       }
     }
     throw FileNotFound("Unknown path: " + path);
+  }
+
+  /// Keeps a render's linked resources so `exists`/`mimetype`/`write` can serve
+  /// what the markup points at. A view has to be rendered before its images can
+  /// be asked for, so collecting them here is enough; pre-rendering every view
+  /// to fill the list up front is not worth what it costs on a pdf.
+  HtmlResources remember_linked(HtmlResources resources) const {
+    for (const auto &entry : resources) {
+      if (entry.second.has_value() &&
+          resource_at(m_resources, *entry.second) == nullptr) {
+        m_resources.push_back(entry);
+      }
+    }
+    return resources;
   }
 
   /// Whether the 0-based page index falls inside the rendered page range.
@@ -1333,6 +1406,7 @@ public:
                                        const std::size_t first_page_number,
                                        const PageHref &page_href) const {
     HtmlResources resources;
+    ImageRegistry images(config(), resources);
     const WritingState state(out, config(), resources);
 
     pdf::DocumentParser &parser = *m_parser;
@@ -1442,7 +1516,7 @@ public:
            page_elements(*page, stream, m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                masks, m_logger, [&] { vis_close_line(); },
+                masks, images, m_logger, [&] { vis_close_line(); },
                 [&](std::string frag) {
                   page_out.vis_items.push_back(PathOut{std::move(frag)});
                 })) {
@@ -1886,6 +1960,7 @@ public:
       HtmlWriter &out, const std::span<pdf::Page *const> pages,
       const std::size_t first_page_number, const PageHref &page_href) const {
     HtmlResources resources;
+    ImageRegistry images(config(), resources);
     const WritingState state(out, config(), resources);
 
     pdf::DocumentParser &parser = *m_parser;
@@ -2033,7 +2108,7 @@ public:
            page_elements(page, page_streams[pi], m_logger)) {
         if (handle_graphic_element(
                 element, to_box, width, height, clips, gradients, patterns,
-                masks, m_logger, [&] { close_line(); },
+                masks, images, m_logger, [&] { close_line(); },
                 [&](std::string frag) {
                   page_out.items.push_back(SinglePathOut{std::move(frag)});
                 })) {
@@ -2835,20 +2910,19 @@ public:
   /// Handles the non-text elements common to both modes, calling `close_line`
   /// and `push_svg` for a non-empty fragment. Returns false for a text element.
   template <typename CloseLine, typename PushSvg>
-  static bool
-  handle_graphic_element(const pdf::PageElement &element,
-                         const util::math::Transform2D &to_box, double width,
-                         double height, ClipRegistry &clips,
-                         GradientRegistry &gradients, PatternRegistry &patterns,
-                         MaskRegistry &masks, const Logger &logger,
-                         CloseLine &&close_line, PushSvg &&push_svg) {
+  static bool handle_graphic_element(
+      const pdf::PageElement &element, const util::math::Transform2D &to_box,
+      double width, double height, ClipRegistry &clips,
+      GradientRegistry &gradients, PatternRegistry &patterns,
+      MaskRegistry &masks, ImageRegistry &images, const Logger &logger,
+      CloseLine &&close_line, PushSvg &&push_svg) {
     // Text is handled by the caller; every other element kind is a graphic.
     if (std::holds_alternative<pdf::TextElement>(element)) {
       return false;
     }
     std::string frag =
         render_graphic_fragment(element, to_box, width, height, clips,
-                                gradients, patterns, masks, logger);
+                                gradients, patterns, masks, images, logger);
     if (!frag.empty()) {
       close_line();
       push_svg(std::move(frag));
@@ -2860,7 +2934,7 @@ protected:
   PdfFile m_pdf_file;
   /// The search css and js every view links; empty of locations when the config
   /// embeds them.
-  HtmlResources m_resources;
+  mutable HtmlResources m_resources;
 
   // Lazily initialized by `warmup()` (all guarded by `m_mutex`): one parse
   // shared by the combined-document and per-page renders.

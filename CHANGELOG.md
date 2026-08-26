@@ -87,6 +87,8 @@ The release run heads these entries with the version and opens a fresh
 - A pdf page that is off screen is no longer laid out or painted. On a drawing-
   heavy file this halves the time to open and takes a zoom step from ~340ms to
   ~50ms.
+- A pdf image placed on several pages is one image, and the pdf view honors
+  `HtmlConfig::embed_images`, which it used to ignore.
 
 ## v6.10.1 - 2026-08-21
 
