@@ -246,6 +246,7 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_height = box(handle.height);
   result->_printOrientation = box_enum(handle.print_orientation);
   result->_margin = [ODRDirectionalMeasure directionalWithHandle:handle.margin];
+  result->_backgroundColor = box(handle.background_color);
   return result;
 }
 

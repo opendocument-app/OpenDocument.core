@@ -184,5 +184,6 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("width", &odr::PageLayout::width)
       .def_readwrite("height", &odr::PageLayout::height)
       .def_readwrite("print_orientation", &odr::PageLayout::print_orientation)
-      .def_readwrite("margin", &odr::PageLayout::margin);
+      .def_readwrite("margin", &odr::PageLayout::margin)
+      .def_readwrite("background_color", &odr::PageLayout::background_color);
 }

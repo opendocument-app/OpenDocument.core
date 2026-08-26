@@ -213,6 +213,8 @@ struct PageLayout final {
   std::optional<Measure> height;
   std::optional<PrintOrientation> print_orientation;
   DirectionalStyle<Measure> margin;
+  /// The ground the page is painted on; unset leaves it to the viewer.
+  std::optional<Color> background_color;
 };
 
 } // namespace odr

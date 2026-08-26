@@ -20,7 +20,8 @@ Roughly ordered by importance.
 - [x] slides
   - [x] shapes (`p:sp`), text bodies
   - [x] slide size (`p:sldSz`) and slide names
-  - [ ] slide master / layout inheritance
+  - [x] slide background (`p:bg`, inherited from layout / master)
+  - [ ] slide master / layout inheritance (beyond theme colors + background)
 - [x] text extraction
 - [ ] edit
 - [ ] save
@@ -42,13 +43,15 @@ Roughly ordered by importance.
   - [x] size
   - [x] italic, bold
   - [x] underline, strike through
-  - [ ] color, background (highlight) — waits on background fill, see
-        [`AGENTS.md`](AGENTS.md)
+  - [x] color, background (highlight), incl. theme colors (`a:schemeClr`; no
+        `a:lumMod` / `a:tint` / `a:shade` transforms)
   - [x] shadow
-  - [ ] superscript, subscript
+  - [x] superscript, subscript (`@baseline`)
 - [x] paragraph
   - [x] alignment (`a:pPr/@algn`)
   - [x] indentation / left & right margins (`@marL` / `@marR`)
+  - [x] line height (`a:lnSpc`), space before / after (`a:spcPts` only)
+- [x] shape fill (`p:spPr/a:solidFill`) and text anchor (`a:bodyPr/@anchor`)
 - [x] tables (column widths, row heights; no `a:tcPr` cell styles)
 - [x] page layout (slide size)
 - [ ] graphic / drawing styles

@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -46,6 +47,8 @@ std::optional<FontStyle> read_font_style_attribute(pugi::xml_node);
 std::optional<TextAlign> read_text_align_attribute(pugi::xml_attribute);
 std::optional<TextAlign> read_drawing_text_align_attribute(pugi::xml_attribute);
 std::optional<VerticalAlign> read_vertical_align_attribute(pugi::xml_attribute);
+std::optional<VerticalAlign>
+    read_drawing_vertical_align_attribute(pugi::xml_attribute);
 std::optional<std::string> read_border_node(pugi::xml_node);
 
 using Relations = std::unordered_map<std::string, std::string>;
@@ -58,5 +61,8 @@ parse_relationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>
 parse_relationships(const abstract::ReadableFilesystem &filesystem,
                     const AbsPath &path);
+std::optional<AbsPath>
+parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
+                          const AbsPath &path, std::string_view type);
 
 } // namespace odr::internal::ooxml

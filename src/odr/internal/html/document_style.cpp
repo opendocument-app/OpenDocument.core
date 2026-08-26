@@ -94,6 +94,13 @@ std::string html::translate_outer_page_style(const PageLayout &page_layout) {
       height.has_value()) {
     result.append("height:").append(height->to_string()).append(";");
   }
+  if (const std::optional<Color> background_color =
+          page_layout.background_color;
+      background_color.has_value()) {
+    result.append("background-color:")
+        .append(color(*background_color))
+        .append(";");
+  }
   return result;
 }
 

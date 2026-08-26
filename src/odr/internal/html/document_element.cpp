@@ -537,9 +537,16 @@ void html::translate_frame(const Element &element, const WritingState &state) {
   const Frame frame = element.as_frame();
   const GraphicStyle style = frame.style();
 
+  // A frame is a plain box, so its fill has to be a background - the `fill`
+  // that `translate_drawing_style` writes only reaches the svg a shape carries.
+  std::string background;
+  if (style.fill_color.has_value() && style.fill_color->alpha != 0) {
+    background = "background-color:" + color(*style.fill_color) + ";";
+  }
   state.out().write_element_begin(
       "div", HtmlElementOptions().set_style(translate_frame_properties(frame) +
-                                            translate_drawing_style(style)));
+                                            translate_drawing_style(style) +
+                                            background));
   translate_children(frame.children(), state);
   state.out().write_element_end("div");
 }

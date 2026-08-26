@@ -54,8 +54,10 @@ std::optional<Color> read_color(const pugi::xml_node node) {
   if (const pugi::xml_attribute rgb = node.attribute("rgb")) {
     const char *value = rgb.value();
     if (std::strlen(value) == 8) {
+      // the alpha byte is not one: excel ignores it and producers routinely
+      // write `00`, which would paint nothing at all
       const std::uint32_t color = std::strtoull(value, nullptr, 16);
-      return Color::from_argb(color);
+      return Color::from_rgb(color);
     }
     if (std::strlen(value) == 6) {
       const std::uint32_t color = std::strtoull(value, nullptr, 16);

@@ -10,6 +10,7 @@
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
+#include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 
@@ -20,7 +21,8 @@ namespace odr::internal::ooxml::presentation {
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(const Document &document, ElementRegistry &registry);
-}
+
+} // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_presentation,
@@ -31,12 +33,14 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   // all to the presentation, and a Google Slides export relates a protobuf.
   const Relations relations =
       parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"));
+  std::vector<AbsPath> slides;
   for (const pugi::xml_node slide_id : m_document_xml.document_element()
                                            .child("p:sldIdLst")
                                            .children("p:sldId")) {
     const std::string id = slide_id.attribute("r:id").value();
-    m_slides_xml[id] = util::xml::parse(
-        *m_files, AbsPath("/ppt").join(RelPath(relations.at(id))));
+    AbsPath slide_path = AbsPath("/ppt").join(RelPath(relations.at(id)));
+    m_slides_xml[id] = util::xml::parse(*m_files, slide_path);
+    slides.push_back(std::move(slide_path));
   }
 
   // ECMA-376 default slide size when p:sldSz is absent.
@@ -58,10 +62,77 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, parse_context,
                               m_document_xml.document_element());
 
+  load_slide_styles_(slides);
+
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
 
-const PageLayout &Document::slide_layout() const { return m_slide_layout; }
+/// slide → layout → master → theme; the master's `p:clrMap` says which slot
+/// each name stands for. Layouts are shared, so a layout, its master and its
+/// theme are read once rather than once per slide.
+void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
+  if (m_root_element == null_element_id) {
+    return;
+  }
+
+  std::unordered_map<std::string, LayoutStyle> by_layout;
+
+  // `parse_presentation_children` appends one slide per `p:sldId`, so the
+  // root's children carry the same order `slides` was built in.
+  ElementIdentifier slide_id =
+      m_element_registry.element_at(m_root_element).first_child_id;
+  for (const AbsPath &slide_path : slides) {
+    if (slide_id == null_element_id) {
+      break;
+    }
+    const ElementIdentifier current_id = slide_id;
+    const pugi::xml_node slide_node =
+        m_element_registry.element_at(current_id).node;
+    slide_id = m_element_registry.element_at(current_id).next_sibling_id;
+
+    const std::optional<AbsPath> layout_path =
+        parse_relationship_target(*m_files, slide_path, "slideLayout");
+    if (!layout_path.has_value()) {
+      continue;
+    }
+    const auto [layout_it, inserted] =
+        by_layout.try_emplace(layout_path->string());
+    if (inserted) {
+      layout_it->second =
+          load_layout_style(*m_files, *layout_path, m_color_schemes);
+    }
+    const LayoutStyle &layout_style = layout_it->second;
+
+    if (layout_style.color_scheme != nullptr) {
+      m_slide_color_schemes[current_id] = layout_style.color_scheme;
+    }
+
+    std::optional<Color> background = layout_style.background;
+    if (const std::optional<std::optional<Color>> stated =
+            read_background_color(slide_node, layout_style.color_scheme)) {
+      background = *stated;
+    }
+    if (background.has_value()) {
+      m_slide_backgrounds[current_id] = *background;
+    }
+  }
+}
+
+const ColorScheme *
+Document::slide_color_scheme(const ElementIdentifier element_id) const {
+  const auto it = m_slide_color_schemes.find(element_id);
+  return it == std::end(m_slide_color_schemes) ? nullptr : it->second;
+}
+
+PageLayout
+Document::slide_page_layout(const ElementIdentifier element_id) const {
+  PageLayout result = m_slide_layout;
+  if (const auto it = m_slide_backgrounds.find(element_id);
+      it != std::end(m_slide_backgrounds)) {
+    result.background_color = it->second;
+  }
+  return result;
+}
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
@@ -82,60 +153,6 @@ void Document::save(const Path & /*path*/, const char * /*password*/) const {
 }
 
 namespace {
-
-void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
-  const pugi::xml_node run_properties = node.child("a:rPr");
-
-  if (const pugi::xml_attribute font_name =
-          run_properties.child("a:latin").attribute("typeface")) {
-    result.font_name = font_name.value();
-  }
-  if (const std::optional<Measure> font_size =
-          read_hundredth_point_attribute(run_properties.attribute("sz"))) {
-    result.font_size = font_size;
-  }
-  if (const std::optional<FontWeight> font_weight =
-          read_font_weight_attribute(run_properties.attribute("b"))) {
-    result.font_weight = font_weight;
-  }
-  if (const std::optional<FontStyle> font_style =
-          read_font_style_attribute(run_properties.attribute("i"))) {
-    result.font_style = font_style;
-  }
-  if (const bool font_underline =
-          read_line_attribute(run_properties.attribute("u"))) {
-    result.font_underline = font_underline;
-  }
-  if (const bool font_line_through =
-          read_line_attribute(run_properties.attribute("strike"))) {
-    result.font_line_through = font_line_through;
-  }
-  if (const std::optional<std::string> font_shadow =
-          read_shadow_attribute(run_properties.attribute("shadow"))) {
-    result.font_shadow = font_shadow;
-  }
-  // `a:solidFill` colour is left unread on purpose until backgrounds are
-  // painted — see AGENTS.md.
-}
-
-void resolve_paragraph_style_(const pugi::xml_node node,
-                              ParagraphStyle &result) {
-  const pugi::xml_node paragraph_properties = node.child("a:pPr");
-
-  if (const std::optional<TextAlign> text_align =
-          read_drawing_text_align_attribute(
-              paragraph_properties.attribute("algn"))) {
-    result.text_align = text_align;
-  }
-  if (const std::optional<Measure> margin_left =
-          read_emus_attribute(paragraph_properties.attribute("marL"))) {
-    result.margin.left = margin_left;
-  }
-  if (const std::optional<Measure> margin_right =
-          read_emus_attribute(paragraph_properties.attribute("marR"))) {
-    result.margin.right = margin_right;
-  }
-}
 
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::SlideAdapter,
@@ -259,9 +276,9 @@ public:
     return element_type(element_id) == ElementType::image ? this : nullptr;
   }
 
-  [[nodiscard]] PageLayout slide_page_layout(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return m_document->slide_layout();
+  [[nodiscard]] PageLayout
+  slide_page_layout(const ElementIdentifier element_id) const override {
+    return m_document->slide_page_layout(element_id);
   }
   [[nodiscard]] ElementIdentifier slide_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -479,9 +496,25 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] GraphicStyle frame_style(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {};
+  [[nodiscard]] GraphicStyle
+  frame_style(const ElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+    const pugi::xml_node shape_properties = node.child("p:spPr");
+
+    GraphicStyle result;
+    if (shape_properties.child("a:noFill")) {
+      result.fill_color = Color(0, 0, 0, 0);
+    } else if (const std::optional<Color> fill_color =
+                   read_drawing_color(shape_properties.child("a:solidFill"),
+                                      get_color_scheme(element_id))) {
+      result.fill_color = fill_color;
+    }
+    if (const std::optional<VerticalAlign> vertical_align =
+            read_drawing_vertical_align_attribute(
+                node.child("p:txBody").child("a:bodyPr").attribute("anchor"))) {
+      result.vertical_align = vertical_align;
+    }
+    return result;
   }
 
   [[nodiscard]] bool
@@ -510,6 +543,18 @@ private:
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
     return m_registry->element_at(element_id).node;
+  }
+
+  /// The scheme of the slide the element sits on.
+  [[nodiscard]] const ColorScheme *
+  get_color_scheme(const ElementIdentifier element_id) const {
+    for (ElementIdentifier id = element_id; id != null_element_id;
+         id = element_parent(id)) {
+      if (element_type(id) == ElementType::slide) {
+        return m_document->slide_color_scheme(id);
+      }
+    }
+    return nullptr;
   }
 
   /// `p:sp` carries its transform in `p:spPr/a:xfrm`, `p:graphicFrame` in
@@ -542,13 +587,15 @@ private:
         m_registry->element_at(element_id);
     if (element.type == ElementType::paragraph) {
       ResolvedStyle result;
-      resolve_text_style_(element.node, result.text_style);
-      resolve_paragraph_style_(element.node, result.paragraph_style);
+      resolve_text_style(element.node, get_color_scheme(element_id),
+                         result.text_style);
+      resolve_paragraph_style(element.node, result.paragraph_style);
       return result;
     }
     if (element.type == ElementType::span) {
       ResolvedStyle result;
-      resolve_text_style_(element.node, result.text_style);
+      resolve_text_style(element.node, get_color_scheme(element_id),
+                         result.text_style);
       return result;
     }
     return {};

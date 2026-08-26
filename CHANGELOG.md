@@ -67,6 +67,16 @@ The release run heads these entries with the version and opens a fresh
   around it, and a run's font, a paragraph's alignment and its left and right
   margins arrive: they were read from the wordprocessingml attributes, which a
   pptx never carries.
+- New `PageLayout::background_color`, the ground a page is painted on. A `.pptx`
+  slide takes it from the slide, its layout or its master; nothing else sets it
+  yet.
+- A `.pptx` renders in colour: text, highlights and shape fills, including the
+  ones its theme names. Line height, space before and after, sub/superscript and
+  vertical text alignment arrive with them. Tinted and shaded theme colours
+  still come out at full strength, and shapes a master or layout draws are still
+  missing.
+- An odf shape or frame that is not filled no longer paints the colour of one
+  that was.
 
 ## v6.10.1 - 2026-08-21
 

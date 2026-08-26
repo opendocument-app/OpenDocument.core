@@ -11,6 +11,7 @@
 #include <odr/style.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -204,6 +205,14 @@ html::fill_path_variables(const std::string &path,
 }
 
 std::string html::color(const Color &color) {
+  if (color.alpha != 255) {
+    std::stringstream ss;
+    ss << "rgba(" << static_cast<std::uint32_t>(color.red) << ","
+       << static_cast<std::uint32_t>(color.green) << ","
+       << static_cast<std::uint32_t>(color.blue) << ","
+       << (static_cast<double>(color.alpha) / 255.0) << ")";
+    return ss.str();
+  }
   std::stringstream ss;
   ss << "#";
   ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();

@@ -519,9 +519,20 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
           read_color(graphic_properties.attribute("svg:stroke-color"))) {
     result.stroke_color = stroke_color;
   }
+  // `draw:fill` and `draw:fill-color` cascade independently, so the fill state
+  // rides in the alpha — see AGENTS.md
+  if (const pugi::xml_attribute fill =
+          graphic_properties.attribute("draw:fill")) {
+    const Color previous = result.fill_color.value_or(Color());
+    result.fill_color =
+        Color(previous.red, previous.green, previous.blue,
+              std::strcmp("solid", fill.value()) == 0 ? 255 : 0);
+  }
   if (const std::optional<Color> fill_color =
           read_color(graphic_properties.attribute("draw:fill-color"))) {
-    result.fill_color = fill_color;
+    result.fill_color =
+        Color(fill_color->red, fill_color->green, fill_color->blue,
+              result.fill_color.has_value() ? result.fill_color->alpha : 0);
   }
   if (const std::optional<VerticalAlign> vertical_align = read_vertical_align(
           graphic_properties.attribute("draw:textarea-vertical-align"))) {

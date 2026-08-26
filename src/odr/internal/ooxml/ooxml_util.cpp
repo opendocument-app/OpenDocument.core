@@ -7,6 +7,7 @@
 #include <odr/internal/util/xml_util.hpp>
 
 #include <cstring>
+#include <stdexcept>
 
 namespace odr::internal {
 
@@ -285,6 +286,23 @@ ooxml::read_vertical_align_attribute(const pugi::xml_attribute attribute) {
   return {};
 }
 
+/// [ECMA-376] 20.1.10.60 ST_TextAnchoringType — drawingml spells the same
+/// values differently than wordprocessingml does.
+std::optional<VerticalAlign> ooxml::read_drawing_vertical_align_attribute(
+    const pugi::xml_attribute attribute) {
+  const char *val = attribute.value();
+  if (std::strcmp("t", val) == 0) {
+    return VerticalAlign::top;
+  }
+  if (std::strcmp("ctr", val) == 0) {
+    return VerticalAlign::middle;
+  }
+  if (std::strcmp("b", val) == 0) {
+    return VerticalAlign::bottom;
+  }
+  return {};
+}
+
 std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
   if (!node) {
     return {};
@@ -319,12 +337,38 @@ ooxml::parse_relationships(const pugi::xml_document &relations) {
   return result;
 }
 
+namespace {
+
+AbsPath relationships_path(const AbsPath &path) {
+  return path.parent()
+      .join(RelPath("_rels"))
+      .join(RelPath(path.basename() + ".rels"));
+}
+
+/// [ECMA-376] 15.2.4: a target is relative to the part that states it, unless
+/// it names a part from the package root. One that is empty, or that climbs out
+/// of the package, names nothing.
+std::optional<AbsPath> resolve_relationship_target(const AbsPath &path,
+                                                   const char *target) {
+  if (target == nullptr || *target == '\0') {
+    return {};
+  }
+  if (*target == '/') {
+    return AbsPath(target);
+  }
+  try {
+    return path.parent().join(RelPath(target));
+  } catch (const std::invalid_argument &) {
+    return {};
+  }
+}
+
+} // namespace
+
 std::unordered_map<std::string, std::string>
 ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
                            const AbsPath &path) {
-  const AbsPath rel_path = path.parent()
-                               .join(RelPath("_rels"))
-                               .join(RelPath(path.basename() + ".rels"));
+  const AbsPath rel_path = relationships_path(path);
   if (!filesystem.is_file(rel_path)) {
     return {};
   }
@@ -332,6 +376,34 @@ ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
   const pugi::xml_document relationships =
       util::xml::parse(filesystem, rel_path);
   return parse_relationships(relationships);
+}
+
+/// The target of the first relationship whose type ends in @p type
+/// (`slideLayout`, `slideMaster`, `theme`, …), resolved against the part.
+std::optional<AbsPath>
+ooxml::parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
+                                 const AbsPath &path,
+                                 const std::string_view type) {
+  const AbsPath rel_path = relationships_path(path);
+  if (!filesystem.is_file(rel_path)) {
+    return {};
+  }
+
+  const pugi::xml_document relationships =
+      util::xml::parse(filesystem, rel_path);
+  for (const pugi::xpath_node e :
+       relationships.select_nodes("//Relationship")) {
+    // the type is a uri, so `type` has to match a whole trailing segment
+    const std::string_view relation_type =
+        e.node().attribute("Type").as_string();
+    if (!relation_type.ends_with(type) || relation_type.size() == type.size() ||
+        relation_type[relation_type.size() - type.size() - 1] != '/') {
+      continue;
+    }
+    return resolve_relationship_target(
+        path, e.node().attribute("Target").as_string());
+  }
+  return {};
 }
 
 } // namespace odr::internal
