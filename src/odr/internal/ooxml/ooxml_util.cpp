@@ -250,6 +250,26 @@ ooxml::read_text_align_attribute(const pugi::xml_attribute attribute) {
   return {};
 }
 
+/// [ECMA-376] 20.1.10.59 ST_TextAlignType — drawingml spells the same values
+/// differently than wordprocessingml does.
+std::optional<TextAlign>
+ooxml::read_drawing_text_align_attribute(const pugi::xml_attribute attribute) {
+  const char *val = attribute.value();
+  if (std::strcmp("l", val) == 0) {
+    return TextAlign::left;
+  }
+  if (std::strcmp("r", val) == 0) {
+    return TextAlign::right;
+  }
+  if (std::strcmp("ctr", val) == 0) {
+    return TextAlign::center;
+  }
+  if (std::strcmp("just", val) == 0) {
+    return TextAlign::justify;
+  }
+  return {};
+}
+
 std::optional<VerticalAlign>
 ooxml::read_vertical_align_attribute(const pugi::xml_attribute attribute) {
   const char *val = attribute.value();

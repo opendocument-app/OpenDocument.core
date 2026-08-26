@@ -60,6 +60,13 @@ The release run heads these entries with the version and opens a fresh
 - New `HtmlViewportMode::fit_width_by_view`: the view measures the fit and keeps
   it current, so a rotation refits instead of holding what it opened at. For a
   host whose web view does not fit a top-level document itself.
+- A `.pptx` whose package relates a part that is not xml — a Google Slides
+  export relates a protobuf — opens instead of throwing `NoXmlFile`. Only the
+  slides `p:sldIdLst` names are read.
+- A `.pptx` line break (`a:br`) renders as one instead of joining the runs
+  around it, and a run's font, a paragraph's alignment and its left and right
+  margins arrive: they were read from the wordprocessingml attributes, which a
+  pptx never carries.
 
 ## v6.10.1 - 2026-08-21
 

@@ -10,21 +10,32 @@ runs, tables, inline text styling.
 
 ## Design decisions
 
-**Parsing follows the slide-id list.** The `Document` ctor loads every
-relationship target of `presentation.xml` into an `rId → xml` map (masters,
-layouts, theme included — only slides are actually walked). Slide **order = the
-document order of `p:sldId` in `p:sldIdLst`** (not filename/rId order); each
-slide's `r:id` looks up its part, and parsing descends `p:cSld/p:spTree`.
-Dispatch table: `p:sp`→**frame** (shapes are frames), `p:graphicFrame`→frame
-(descends `a:graphic/a:graphicData`), `p:txBody`→group, `a:p`→paragraph,
-`a:r`→span, `a:t`→text, `a:tbl`→table (columns from `a:tblGrid/a:gridCol` via
-`append_column`, rows/cells from `a:tr`/`a:tc`; spans from
-`gridSpan`/`rowSpan`, covered cells from `hMerge`/`vMerge`).
+**Parsing follows the slide-id list.** Slide **order = the document order of
+`p:sldId` in `p:sldIdLst`** (not filename/rId order), and that list is also what
+the `Document` ctor loads: each `p:sldId`'s `r:id` resolves through
+`presentation.xml`'s relationships into the `rId → xml` map, and nothing else
+does. Loading *every* relationship target instead is what broke a Google Slides
+export — it relates a protobuf blob (`ppt/metadata`) to the presentation, and
+parsing that as xml threw `NoXmlFile` before a single slide was read. A package
+may relate anything at all; only slides are xml we can use. Parsing then
+descends `p:cSld/p:spTree`. Dispatch table: `p:sp`→**frame** (shapes are
+frames), `p:graphicFrame`→frame (descends `a:graphic/a:graphicData`),
+`p:txBody`→group, `a:p`→paragraph, `a:r`→span, `a:t`→text, `a:br`→line break,
+`a:tbl`→table (columns from `a:tblGrid/a:gridCol` via `append_column`,
+rows/cells from `a:tr`/`a:tc`; spans from `gridSpan`/`rowSpan`, covered cells
+from `hMerge`/`vMerge`).
 
 **Styles are resolved inline — there is no `StyleRegistry`.** Free functions in
-the document read `a:rPr` / `a:pPr` attributes directly (font, size in
-hundredth-points, bold/italic/underline/strike/shadow/colour/highlight; align,
-`a:ind` margins in twips). The element-parent cascade
+the document read `a:rPr` / `a:pPr` directly: font from `a:latin/@typeface`,
+size in hundredth-points, bold/italic/underline/strike/shadow; align from
+`@algn` ([ECMA-376] 20.1.10.59 `ST_TextAlignType`, which spells the values
+differently than wordprocessingml does), `@marL`/`@marR` margins in EMUs. **Read
+them where drawingml puts them, not where wordprocessingml does** — these were
+`rFonts@ascii`, `@jc` and `a:ind` for a while, none of which a pptx ever
+carries, so the properties simply never arrived. Run **colour is still unread**
+on purpose: it lives in `a:solidFill`, but nothing paints a shape or slide
+background yet, so honouring a white run would put white text on white — it
+lands with background fill, not before. The element-parent cascade
 (`get_intermediate_style` → `.override()`) is the same shape as ODF/docx but
 computed on-demand from the XML with no cached or master/default-style
 contribution.
