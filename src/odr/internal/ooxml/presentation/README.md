@@ -4,10 +4,10 @@ Reader for presentation documents (`.pptx`).
 
 This implementation relies on [OOXML](../README.md).
 
-The presentation is parsed from `ppt/presentation.xml`, with each slide pulled in
-via relationships and its shape tree (`p:cSld` / `p:spTree`) walked for content
-(see `ooxml_presentation_parser.cpp`). Text and paragraph styles are resolved
-inline from the run / paragraph properties (see
+The presentation is parsed from `ppt/presentation.xml`, with each slide named by
+`p:sldIdLst` pulled in via relationships and its shape tree (`p:cSld` /
+`p:spTree`) walked for content (see `ooxml_presentation_parser.cpp`). Text and
+paragraph styles are resolved inline from the run / paragraph properties (see
 `ooxml_presentation_document.cpp`).
 
 ## Features
@@ -38,16 +38,17 @@ Roughly ordered by importance.
 ### Styles
 
 - [x] font
-  - [x] family (`rFonts`)
+  - [x] family (`a:latin`)
   - [x] size
   - [x] italic, bold
   - [x] underline, strike through
-  - [x] color, background (highlight)
+  - [ ] color, background (highlight) — waits on background fill, see
+        [`AGENTS.md`](AGENTS.md)
   - [x] shadow
   - [ ] superscript, subscript
 - [x] paragraph
-  - [x] alignment
-  - [x] indentation / left & right margins
+  - [x] alignment (`a:pPr/@algn`)
+  - [x] indentation / left & right margins (`@marL` / `@marR`)
 - [x] tables (column widths, row heights; no `a:tcPr` cell styles)
 - [x] page layout (slide size)
 - [ ] graphic / drawing styles

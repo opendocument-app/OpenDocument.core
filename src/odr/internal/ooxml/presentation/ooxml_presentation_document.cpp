@@ -27,10 +27,16 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
                          DocumentType::presentation, std::move(files)) {
   m_document_xml = util::xml::parse(*m_files, AbsPath("/ppt/presentation.xml"));
 
-  for (const auto &[id, target] :
-       parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"))) {
-    m_slides_xml[id] =
-        util::xml::parse(*m_files, AbsPath("/ppt").join(RelPath(target)));
+  // Only the parts the slide-id list names: a package may relate anything at
+  // all to the presentation, and a Google Slides export relates a protobuf.
+  const Relations relations =
+      parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"));
+  for (const pugi::xml_node slide_id : m_document_xml.document_element()
+                                           .child("p:sldIdLst")
+                                           .children("p:sldId")) {
+    const std::string id = slide_id.attribute("r:id").value();
+    m_slides_xml[id] = util::xml::parse(
+        *m_files, AbsPath("/ppt").join(RelPath(relations.at(id))));
   }
 
   // ECMA-376 default slide size when p:sldSz is absent.
@@ -81,7 +87,7 @@ void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
   const pugi::xml_node run_properties = node.child("a:rPr");
 
   if (const pugi::xml_attribute font_name =
-          run_properties.child("rFonts").attribute("ascii")) {
+          run_properties.child("a:latin").attribute("typeface")) {
     result.font_name = font_name.value();
   }
   if (const std::optional<Measure> font_size =
@@ -108,14 +114,8 @@ void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
           read_shadow_attribute(run_properties.attribute("shadow"))) {
     result.font_shadow = font_shadow;
   }
-  if (const std::optional<Color> font_color =
-          read_color_attribute(run_properties.attribute("color"))) {
-    result.font_color = font_color;
-  }
-  if (const std::optional<Color> background_color =
-          read_color_attribute(run_properties.attribute("highlight"))) {
-    result.background_color = background_color;
-  }
+  // `a:solidFill` colour is left unread on purpose until backgrounds are
+  // painted — see AGENTS.md.
 }
 
 void resolve_paragraph_style_(const pugi::xml_node node,
@@ -123,23 +123,16 @@ void resolve_paragraph_style_(const pugi::xml_node node,
   const pugi::xml_node paragraph_properties = node.child("a:pPr");
 
   if (const std::optional<TextAlign> text_align =
-          read_text_align_attribute(paragraph_properties.attribute("jc"))) {
+          read_drawing_text_align_attribute(
+              paragraph_properties.attribute("algn"))) {
     result.text_align = text_align;
   }
-  if (const std::optional<Measure> margin_left = read_twips_attribute(
-          paragraph_properties.child("ind").attribute("left"))) {
+  if (const std::optional<Measure> margin_left =
+          read_emus_attribute(paragraph_properties.attribute("marL"))) {
     result.margin.left = margin_left;
   }
-  if (const std::optional<Measure> margin_left = read_twips_attribute(
-          paragraph_properties.child("ind").attribute("start"))) {
-    result.margin.left = margin_left;
-  }
-  if (const std::optional<Measure> margin_right = read_twips_attribute(
-          paragraph_properties.child("ind").attribute("right"))) {
-    result.margin.right = margin_right;
-  }
-  if (const std::optional<Measure> margin_right = read_twips_attribute(
-          paragraph_properties.child("ind").attribute("end"))) {
+  if (const std::optional<Measure> margin_right =
+          read_emus_attribute(paragraph_properties.attribute("marR"))) {
     result.margin.right = margin_right;
   }
 }
