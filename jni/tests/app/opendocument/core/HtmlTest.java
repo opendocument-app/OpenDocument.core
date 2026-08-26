@@ -81,6 +81,12 @@ class HtmlTest {
             .contains(
                 "<meta name=\"viewport\" content=\"width=device-width,user-scalable=yes\"/>"));
 
+    // only paged content has a width to fit, hence the margins
+    HtmlConfig byView = new HtmlConfig();
+    byView.viewportMode = HtmlViewportMode.FIT_WIDTH_BY_VIEW;
+    byView.textDocumentMargin = true;
+    assertTrue(renderOdt(byView).contains("--odr-fit:view"));
+
     HtmlConfig raw = new HtmlConfig();
     raw.viewportContent = "width=420";
     assertTrue(renderOdt(raw).contains("<meta name=\"viewport\" content=\"width=420\"/>"));

@@ -79,6 +79,12 @@ def test_viewport_mode_reaches_the_html(odt_path, tmp_path):
         in render("fit_width", fit_width)
     )
 
+    # only paged content has a width to fit, hence the margins
+    by_view = pyodr.HtmlConfig()
+    by_view.viewport_mode = pyodr.HtmlViewportMode.fit_width_by_view
+    by_view.text_document_margin = True
+    assert "--odr-fit:view" in render("by_view", by_view)
+
     raw = pyodr.HtmlConfig()
     raw.viewport_content = "width=420"
     assert '<meta name="viewport" content="width=420"/>' in render("raw", raw)

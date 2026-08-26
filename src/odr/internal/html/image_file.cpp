@@ -120,10 +120,10 @@ public:
     write_viewport_meta(out, config(), true);
     // An image has no layout width to preserve, so css alone fits it, framed
     // or not - no measuring and no `viewport_width`.
-    write_zoom_style(out, config(), false, {});
+    write_zoom_style(out, config(), WidthFit::none, {});
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#fff}";
-    if (fits_width(config(), true)) {
+    if (width_fit(config(), true) != WidthFit::none) {
       // `100%` of a zoomed body is the viewport again, so the factor has to
       // be put back for the image to grow with it
       out.out() << "img{max-width:calc(100% * var(--odr-zoom, 1));"

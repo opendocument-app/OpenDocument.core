@@ -39,7 +39,8 @@ void odr_python::bind_html(py::module_ &m) {
       .value("automatic", odr::HtmlViewportMode::automatic)
       .value("fit_width", odr::HtmlViewportMode::fit_width)
       .value("actual_size", odr::HtmlViewportMode::actual_size)
-      .value("none", odr::HtmlViewportMode::none);
+      .value("none", odr::HtmlViewportMode::none)
+      .value("fit_width_by_view", odr::HtmlViewportMode::fit_width_by_view);
 
   py::enum_<odr::PdfTextMode>(m, "PdfTextMode")
       .value("dual_layer", odr::PdfTextMode::dual_layer)

@@ -81,8 +81,8 @@ enum class HtmlColorScheme {
   system, ///< `light` or `dark`, by the reader's `prefers-color-scheme`
 };
 
-/// @brief Initial zoom of the emitted HTML on mobile (viewport meta tag).
-/// Desktop browsers ignore the tag entirely.
+/// @brief The zoom a view opens at, and who fits it: the browser through the
+/// viewport meta tag, which desktop browsers ignore, or the view itself.
 enum class HtmlViewportMode {
   automatic,   ///< `fit_width` for fixed-size paged content (PDF pages, slides,
                ///< drawings, images, text documents with page margins),
@@ -90,6 +90,10 @@ enum class HtmlViewportMode {
   fit_width,   ///< initial zoom fits the content's full width on screen
   actual_size, ///< initial zoom locked to 100% (`initial-scale=1.0`)
   none,        ///< no viewport meta tag at all
+  /// Like @ref fit_width, but measured by the view and kept current, so a
+  /// rotation refits. Needs the script. Last because the bindings map this
+  /// enum by ordinal.
+  fit_width_by_view,
 };
 
 /// @brief How text is emitted in PDF→HTML output. Neither mode needs
@@ -141,7 +145,7 @@ struct HtmlConfig {
   /// Which gridlines a sheet paints.
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
 
-  /// Initial zoom on mobile; see @ref HtmlViewportMode.
+  /// The zoom the view opens at; see @ref HtmlViewportMode.
   HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};
   /// Overrides @ref viewport_mode for spreadsheet content when set.
   std::optional<HtmlViewportMode> spreadsheet_viewport_mode;

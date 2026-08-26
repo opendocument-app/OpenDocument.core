@@ -184,6 +184,29 @@
         );
       }
 
+      // `auto` is measured in a frame only; `view` wherever the view is. A frame
+      // cannot tell the two apart, so the top-level half is linked below.
+      async function framedFitTest(label, fit) {
+        var page = 2400;
+        var win = await load("content=page&width=" + page + "&fit=" + fit, 600);
+        var doc = win.document;
+
+        async function fits(what) {
+          await wait(200);
+          var zoom = parseFloat(getComputedStyle(doc.body).zoom) || 1;
+          var want = doc.documentElement.clientWidth / page;
+          check(
+            label + ": " + what,
+            near(zoom, want, 0.01),
+            "zoom " + zoom.toFixed(4) + ", want " + want.toFixed(4),
+          );
+        }
+
+        await fits("a frame fits the page it holds");
+        resizeTo(win, frame, 300);
+        await fits("and refits it when the frame narrows");
+      }
+
       // A stated fit does not follow the viewport; the reader's place does.
       async function resizeHoldTest(label) {
         var win = await load("content=prose&fit=0.5", 900);
@@ -217,7 +240,25 @@
         await resizeHoldTest("resize");
 
         say("");
+        say("--- who measures the fit ---");
+        await framedFitTest("--odr-fit:auto", "auto");
+        await framedFitTest("--odr-fit:view", "view");
+
+        say("");
         say(failed ? "<b>" + failed + " failed</b>" : "all passed");
+        say("");
+        say("At the top level, where a frame cannot stand in - open each and");
+        say("read the banner:");
+        // Wider than the window it opens in, or neither banner says anything.
+        var wide = "content=page&width=" + Math.ceil(window.innerWidth * 2);
+        say(
+          '  <a href="page.html?' + wide + '&fit=view&expect=fit">' +
+            "--odr-fit:view fits itself</a>",
+        );
+        say(
+          '  <a href="page.html?' + wide + '&fit=auto&expect=nofit">' +
+            "--odr-fit:auto leaves it to the browser</a>",
+        );
       })();
     </script>
   </body>

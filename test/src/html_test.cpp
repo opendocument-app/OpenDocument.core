@@ -362,6 +362,18 @@ TEST(html, paged_output_fits_the_viewport) {
   }
 
   {
+    // The meta tag pins the scale so the browser does not fit it as well.
+    HtmlConfig config;
+    config.viewport_mode = HtmlViewportMode::fit_width_by_view;
+    config.viewport_width = 400;
+    const std::string html = render(config);
+    EXPECT_NE(html.find("--odr-fit:view"), std::string::npos);
+    EXPECT_NE(html.find("initial-scale=1.0"), std::string::npos);
+    // nothing to open at: the view measures and applies it
+    EXPECT_EQ(html.find("body{zoom:0."), std::string::npos);
+  }
+
+  {
     // A pinned zoom is what the view opens at, fit or no fit.
     HtmlConfig config;
     config.initial_zoom = 2;
