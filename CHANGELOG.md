@@ -77,6 +77,9 @@ The release run heads these entries with the version and opens a fresh
   missing.
 - An odf shape or frame that is not filled no longer paints the colour of one
   that was.
+- Text in a pdf can be selected, searched and copied where it came out as CJK
+  before. A simple font's codes are one byte each, whatever codespace its
+  `ToUnicode` map declares, and producers routinely declare two.
 
 ## v6.10.1 - 2026-08-21
 

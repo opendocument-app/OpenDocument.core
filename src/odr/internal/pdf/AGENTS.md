@@ -53,7 +53,13 @@ directly; legacy CJK CMaps via `pdf_cid`/`pdf_cid_data`: code → CID → Unicod
 `/CIDSystemInfo` collection for `Identity-H`/embedded-CMap → embedded-font reverse
 map (code → glyph → `code_point_for_glyph`). Only a genuinely unmapped code yields
 "no Unicode" — never byte-garbage. The point of the chain is that each link
-recovers a class of real-world PDF the previous one misses.
+recovers a class of real-world PDF the previous one misses. A **simple font's
+codes are one byte** (9.10.3), so `to_unicode` imposes that width rather than
+read it off the `/ToUnicode` codespace — producers write the two-byte
+`<0000> <FFFF>` boilerplate there regardless, and splitting by it pairs the
+bytes into CJK. The entries themselves are keyed either way, so an imposed
+one-byte code is also looked up zero-padded. Composite codes keep splitting by
+the codespace, as `Font::codes` splits them.
 
 **`std::any`-based object model.** `Object` holds its value in `std::any` with
 typed `is_*`/`as_*` accessors (mirrors `oldms/`'s `Entry`). Pro: one value type

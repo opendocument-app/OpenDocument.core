@@ -161,8 +161,12 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
 }
 
 std::string Font::to_unicode(const std::string &codes) const {
+  // A simple font's codes are one byte each (ISO 32000-1 9.10.3); its
+  // `ToUnicode` codespace is not to be trusted, producers writing the
+  // two-byte `<0000> <FFFF>` boilerplate there regardless.
   if (!cmap.empty()) {
-    return cmap.translate_string(codes);
+    return composite ? cmap.translate_string(codes)
+                     : cmap.translate_string(codes, 1);
   }
   if (composite) {
     // A composite (Type0) font with no `ToUnicode` CMap. A predefined
@@ -210,7 +214,7 @@ std::string Font::to_unicode(const std::string &codes) const {
       !unicode.empty()) {
     return unicode;
   }
-  return cmap.translate_string(codes);
+  return cmap.translate_string(codes, 1);
 }
 
 } // namespace odr::internal::pdf
