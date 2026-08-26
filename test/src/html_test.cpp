@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
+#include <string>
 #include <tuple>
 
 #include <odr/html.hpp>
@@ -218,6 +220,76 @@ TEST(html, flowing_text_is_inset_from_the_screen_edge) {
 
   EXPECT_NE(page.find(R"(<div class="odr-text-flow">)"), std::string::npos);
   EXPECT_NE(page.find(".odr-text-flow{padding:"), std::string::npos);
+}
+
+// Unset it writes nothing at all, which is what keeps the shipped stylesheets
+// independent of the config.
+TEST(html, min_content_margin_is_written_only_where_it_is_set) {
+  HtmlConfig config;
+  config.text_document_margin = false;
+
+  // the stylesheets name the variables either way; nobody declares one
+  EXPECT_EQ(render_odt(config).find(":root{--odr-min-margin"),
+            std::string::npos);
+
+  config.min_content_margin.top = Measure("12px");
+  config.min_content_margin.left = Measure("1cm");
+  const std::string page = render_odt(config);
+
+  EXPECT_NE(page.find(":root{--odr-min-margin-top:12px;--odr-min-margin-left:"
+                      "1cm;}"),
+            std::string::npos);
+  EXPECT_EQ(page.find("--odr-min-margin-right:"), std::string::npos);
+}
+
+// The value reaches the page a host would host, so a unit css cannot read is
+// dropped rather than written into the style element.
+TEST(html, min_content_margin_drops_a_unit_css_cannot_read) {
+  HtmlConfig config;
+  config.min_content_margin.top =
+      Measure("1px;}</style><script>alert(1)</script>");
+
+  const std::string page = render_odt(config);
+
+  EXPECT_EQ(page.find(":root{--odr-min-margin"), std::string::npos);
+  EXPECT_EQ(page.find("<script>alert"), std::string::npos);
+}
+
+namespace {
+
+/// The `--odr-fit` @p page states, or nothing where it follows its own size.
+std::optional<double> fit_of(const std::string &page) {
+  const std::size_t begin = page.find("--odr-fit:");
+  if (begin == std::string::npos) {
+    return {};
+  }
+  return std::stod(page.substr(begin + std::string("--odr-fit:").length()));
+}
+
+} // namespace
+
+// The gutter around the page column is part of the width the view is fitted
+// to, so raising it fits the pages smaller.
+TEST(html, min_content_margin_widens_the_page_column_fit) {
+  HtmlConfig config;
+  config.text_document_margin = true;
+  config.viewport_width = 400;
+
+  const std::optional<double> narrow = fit_of(render_odt(config));
+  ASSERT_TRUE(narrow.has_value());
+
+  config.min_content_margin.left = Measure("100px");
+  config.min_content_margin.right = Measure("100px");
+  const std::optional<double> wide = fit_of(render_odt(config));
+  ASSERT_TRUE(wide.has_value());
+
+  EXPECT_LT(*wide, *narrow);
+
+  // A unit the fit cannot convert leaves it where it was; the css still
+  // applies the margin.
+  config.min_content_margin.left = Measure("100em");
+  config.min_content_margin.right = Measure("100em");
+  EXPECT_EQ(fit_of(render_odt(config)), narrow);
 }
 
 // For `system` it is the element carrying the dark style that is gated, not a

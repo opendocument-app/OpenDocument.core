@@ -77,6 +77,7 @@ public:
     out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
+    write_content_margin_style(out, config());
     out.write_header_end();
 
     out.write_body_begin();
@@ -112,7 +113,10 @@ public:
     out.out() << "@font-face{font-family:'odr-specimen';src:url(" << url
               << ");}";
     // The page's own margin, so it does not depend on the browser's.
-    out.out() << "body{margin:0;padding:8px;background:#fff;"
+    out.out() << "body{margin:0;padding:max(8px,var(--odr-min-margin-top,0px)) "
+                 "max(8px,var(--odr-min-margin-right,0px)) "
+                 "max(8px,var(--odr-min-margin-bottom,0px)) "
+                 "max(8px,var(--odr-min-margin-left,0px));background:#fff;"
                  "font-family:sans-serif;}";
     out.out() << ".grid{display:flex;flex-wrap:wrap;}";
     out.out() << ".cell{width:4em;height:4em;border:1px solid #ddd;margin:2px;"

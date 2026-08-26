@@ -11,6 +11,8 @@
 #include <odr/style.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
@@ -18,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 namespace odr::internal {
 
@@ -90,6 +93,70 @@ std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
   }
   const double pixels = measure->magnitude() * it->second;
   return pixels > 0 ? std::optional(pixels) : std::nullopt;
+}
+
+namespace {
+
+/// Whether @p name is a unit css could read: letters, or a percent sign. Also
+/// what keeps a hosted value from closing the `<style>` element it is written
+/// into.
+bool is_css_unit(const std::string_view name) {
+  if (name.empty()) {
+    return false;
+  }
+  if (name == "%") {
+    return true;
+  }
+  return std::ranges::all_of(name, [](const char c) {
+    return std::isalpha(static_cast<unsigned char>(c)) != 0;
+  });
+}
+
+/// The margin a side states, where css can read it.
+std::optional<Measure> css_margin(const std::optional<Measure> &measure) {
+  if (!measure.has_value() || !is_css_unit(measure->unit().name())) {
+    return {};
+  }
+  return measure;
+}
+
+} // namespace
+
+double html::page_column_gutter_pixels(const HtmlConfig &config) {
+  const auto side = [](const std::optional<Measure> &measure) {
+    return std::max(page_column_side_gutter_pixels,
+                    css_pixels(css_margin(measure)).value_or(0.0));
+  };
+  return side(config.min_content_margin.left) +
+         side(config.min_content_margin.right);
+}
+
+void html::write_content_margin_style(HtmlWriter &out,
+                                      const HtmlConfig &config) {
+  const DirectionalStyle<Measure> &margin = config.min_content_margin;
+
+  const std::array sides{
+      std::pair{std::string_view("top"), css_margin(margin.top)},
+      std::pair{std::string_view("right"), css_margin(margin.right)},
+      std::pair{std::string_view("bottom"), css_margin(margin.bottom)},
+      std::pair{std::string_view("left"), css_margin(margin.left)},
+  };
+
+  if (std::ranges::none_of(
+          sides, [](const auto &side) { return side.second.has_value(); })) {
+    return;
+  }
+
+  out.write_header_style_begin();
+  out.out() << ":root{";
+  for (const auto &[name, measure] : sides) {
+    if (measure.has_value()) {
+      out.out() << "--odr-min-margin-" << name << ":" << measure->to_string()
+                << ";";
+    }
+  }
+  out.out() << "}";
+  out.write_header_style_end();
 }
 
 void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,

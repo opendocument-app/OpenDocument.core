@@ -6,6 +6,7 @@
 
 #include <emscripten/bind.h>
 
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -32,6 +33,16 @@ void read_enum(const emscripten::val &value, const char *key, T &target) {
     return;
   }
   target = static_cast<T>(field.as<int>());
+}
+
+/// A css length a caller states as a string, e.g. `"3mm"`.
+void read_measure(const emscripten::val &value, const char *key,
+                  std::optional<Measure> &target) {
+  const emscripten::val field = value[key];
+  if (field.isUndefined() || field.isNull()) {
+    return;
+  }
+  target = Measure(field.as<std::string>());
 }
 
 /// Translates on first use, so a caller that only wants metadata does not pay
@@ -150,6 +161,14 @@ HtmlConfig to_html_config(const emscripten::val &value) {
     config.initial_zoom = zoom.as<double>();
   }
   read_enum(value, "pdfTextMode", config.pdf_text_mode);
+
+  if (const emscripten::val margin = value["minContentMargin"];
+      !margin.isUndefined() && !margin.isNull()) {
+    read_measure(margin, "top", config.min_content_margin.top);
+    read_measure(margin, "right", config.min_content_margin.right);
+    read_measure(margin, "bottom", config.min_content_margin.bottom);
+    read_measure(margin, "left", config.min_content_margin.left);
+  }
 
   return config;
 }

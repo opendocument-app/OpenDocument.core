@@ -42,6 +42,13 @@ public final class HtmlConfig {
   /** The zoom the view opens at, 1 being actual size; {@code null} follows the fit. */
   public Double initialZoom;
 
+  /**
+   * The least distance the generated content keeps from the view's border. A {@code null} side
+   * keeps the inset the view already has; a set side raises it, never lowers it.
+   */
+  public DirectionalMeasure minContentMargin =
+      new DirectionalMeasure(null, null, null, null);
+
   public boolean formatHtml = false;
   public int htmlIndent = 1;
   public String htmlIndentString = "\t";

@@ -121,8 +121,13 @@ public:
     // An image has no layout width to preserve, so css alone fits it, framed
     // or not - no measuring and no `viewport_width`.
     write_zoom_style(out, config(), WidthFit::none, {});
+    write_content_margin_style(out, config());
     out.write_header_style_begin();
-    out.out() << "body{margin:0;background:#fff}";
+    // The picture runs to the border unless the config puts a floor under it.
+    out.out() << "body{margin:0;padding:var(--odr-min-margin-top,0px) "
+                 "var(--odr-min-margin-right,0px) "
+                 "var(--odr-min-margin-bottom,0px) "
+                 "var(--odr-min-margin-left,0px);background:#fff}";
     if (width_fit(config(), true) != WidthFit::none) {
       // `100%` of a zoomed body is the viewport again, so the factor has to
       // be put back for the image to grow with it

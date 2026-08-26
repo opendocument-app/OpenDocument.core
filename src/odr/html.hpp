@@ -3,6 +3,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
+#include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <functional>
@@ -155,6 +156,14 @@ struct HtmlConfig {
   std::optional<std::uint32_t> viewport_width;
   /// The zoom the view opens at, 1 being actual size; unset follows the fit.
   std::optional<double> initial_zoom;
+
+  /// The least distance the generated content keeps from the view's border. A
+  /// side left unset keeps the inset the view already has — `3mm` for a
+  /// reflowed text document, `16px` for the page column and the source views,
+  /// `8px` for a font specimen, none for an image or a file listing. A set
+  /// side raises that inset, never lowers it. A sheet and the media view are
+  /// not inset: the one meets the edge by design, the other is full-bleed.
+  DirectionalStyle<Measure> min_content_margin;
 
   /// Indent and break the output into lines rather than writing one stream.
   bool format_html{false};

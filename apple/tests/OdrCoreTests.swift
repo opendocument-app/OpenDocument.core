@@ -119,6 +119,26 @@ final class HtmlTests: XCTestCase {
     XCTAssertTrue(html.contains("<style"), "the html has no stylesheet")
   }
 
+  /// The C++ suite covers where the floor lands; this only proves the margin
+  /// crosses the binding, `nil` sides and all.
+  func testMinContentMarginReachesTheHtml() throws {
+    let config = HtmlConfig()
+    config.minContentMargin = DirectionalMeasure(
+      right: nil, top: Measure(string: "12px"), left: Measure(string: "1cm"),
+      bottom: nil)
+
+    let file = try DecodedFile.decode(path: try Fixture.odt())
+    let service = try HtmlTranslator.translate(
+      file: file, cachePath: try temporaryDirectory(), config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+
+    XCTAssertTrue(
+      html.contains(":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}"),
+      "the margin did not reach the html")
+    XCTAssertFalse(html.contains("--odr-min-margin-right:"), "an unset side was written")
+  }
+
   /// A view's impl points into its service without owning it, so the view has
   /// to keep the service alive itself — the analogue of
   /// `ElementTreeTests.testElementsKeepTheirDocumentAlive`. Rendering off a

@@ -62,6 +62,26 @@ class HtmlTest {
     assertEquals(Double.valueOf(1.5), readBack.initialZoom);
   }
 
+  /** The C++ suite covers where the floor lands; this only proves it crosses JNI. */
+  @Test
+  void minContentMarginReachesTheHtml() throws IOException {
+    assertNull(new HtmlConfig().minContentMargin.top);
+    assertTrue(!renderOdt(new HtmlConfig()).contains(":root{--odr-min-margin"));
+
+    HtmlConfig config = new HtmlConfig();
+    config.minContentMargin =
+        new DirectionalMeasure(null, new Measure(12, "px"), new Measure(1, "cm"), null);
+    assertTrue(
+        renderOdt(config).contains(":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}"));
+
+    Path cache = Files.createDirectories(tempDir.resolve("margin"));
+    DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+    HtmlConfig readBack = Html.translate(file, cache.toString(), config).config();
+    assertEquals(new Measure(12, "px"), readBack.minContentMargin.top);
+    assertEquals(new Measure(1, "cm"), readBack.minContentMargin.left);
+    assertNull(readBack.minContentMargin.right);
+  }
+
   /** The C++ suite covers the mode matrix; this only proves the config crosses JNI. */
   @Test
   void viewportModeReachesTheHtml() throws IOException {

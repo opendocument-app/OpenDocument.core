@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `HtmlConfig::min_content_margin` puts a floor under the distance the
+  generated content keeps from the view's border, per side. Unset, every view
+  keeps the inset it has today; a set side raises it - in a reflowed text
+  document, the page column of a text, presentation, drawing or pdf view, the
+  text and xml source views, the file listing, the image view and the font
+  specimen. A sheet and the media view are not inset. Bound in python, jni,
+  wasm (`minContentMargin`, css lengths as strings) and apple.
 - **Breaking** Bytes that do not read as text no longer come back as
   `text_file` and render as nonsense - `decode` throws `UnknownFileType` and
   `list_file_types` comes back empty. A file is text when it is empty, or its

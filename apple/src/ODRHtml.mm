@@ -108,6 +108,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _viewportContent = config.viewport_content.has_value()
                          ? to_nsstring(*config.viewport_content)
                          : nil;
+  _minContentMargin =
+      [ODRDirectionalMeasure directionalWithHandle:config.min_content_margin];
   _viewportWidth = config.viewport_width.has_value()
                        ? @(static_cast<unsigned int>(*config.viewport_width))
                        : nil;
@@ -186,6 +188,11 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     config.initial_zoom = _initialZoom.doubleValue;
   } else {
     config.initial_zoom.reset();
+  }
+  if (_minContentMargin != nil) {
+    config.min_content_margin = _minContentMargin.handle;
+  } else {
+    config.min_content_margin = odr::DirectionalStyle<odr::Measure>();
   }
   config.format_html = _formatHtml == YES;
   config.html_indent = _htmlIndent;

@@ -61,14 +61,25 @@ width_fit(const HtmlConfig &config, bool fit_width_by_default,
 [[nodiscard]] std::optional<double>
 css_pixels(const std::optional<Measure> &measure);
 
-/// The side gutters the page column puts around its pages, in css pixels.
-constexpr double page_column_gutter_pixels = 32;
+/// One side gutter the page column puts around its pages, in css pixels — what
+/// `.odr-page-outer` and the pdf view's `.p` state as their side margin.
+constexpr double page_column_side_gutter_pixels = 16;
+
+/// Both of them, raised where `config.min_content_margin` asks for more. A side
+/// whose unit does not convert to pixels keeps the built-in gutter: the css
+/// still applies it, only the fit below cannot count it.
+[[nodiscard]] double page_column_gutter_pixels(const HtmlConfig &config);
 
 /// The zoom the view opens at: `--odr-fit` fits @p content_pixels into
 /// `config.viewport_width`, or names who measures it instead, `--odr-zoom` pins
 /// it, `body{zoom}` applies the winner.
 void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, WidthFit fits,
                       std::optional<double> content_pixels);
+
+/// `config.min_content_margin` as the `--odr-min-margin-*` the stylesheets
+/// raise their own insets against; nothing at all where no side is set, which
+/// is what keeps the shipped stylesheets independent of the config.
+void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 
 std::string escape_text(std::string text);
 
