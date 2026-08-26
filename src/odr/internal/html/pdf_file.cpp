@@ -1533,6 +1533,9 @@ public:
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
                     font_pt, font_size_pt] = run_geometry(text, to_box);
+        // `add_position_classes` divides through the matrix, which carries
+        // `scale`; the uniform branch multiplies by `m.a`.
+        const double ascent_pt = asc * text.size * (is_matrix ? scale : 1.0);
         const std::string color_suffix = color_class(text, invisible, styles);
 
         // --- Visual layer ---------------------------------------------------
@@ -1564,7 +1567,7 @@ public:
           if (new_vis_line) {
             std::string line_base = "t";
             add_position_classes(line_base, add_class, m, is_matrix, ox,
-                                 baseline, asc * text.size);
+                                 baseline, ascent_pt);
             VisLineOut line_out;
             line_out.classes = std::move(line_base);
             page_out.vis_items.push_back(std::move(line_out));
@@ -1636,11 +1639,11 @@ public:
           const double tz = text.horizontal_scaling / 100.0;
           // In the block's frame the unit is text space: `text.width` carries
           // the horizontal scaling the CSS matrix applies again.
-          const double local_extent = tz != 0 ? text.width / tz : 0;
+          const double local_extent = tz != 0 ? text.width * scale / tz : 0;
           double sel_ox = is_matrix ? 0 : ox;
           double sel_baseline = is_matrix ? 0 : baseline;
           const double sel_extent = is_matrix ? local_extent : extent;
-          const double sel_font_pt = is_matrix ? text.size : font_pt;
+          const double sel_font_pt = is_matrix ? text.size * scale : font_pt;
 
           bool sel_frame_kept =
               sel_have_prev && !is_matrix && !sel_prev_was_matrix;
@@ -1695,7 +1698,7 @@ public:
             }
             std::string sel_base = "t";
             add_position_classes(sel_base, add_class, m, is_matrix, ox,
-                                 baseline, asc * text.size);
+                                 baseline, ascent_pt);
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
@@ -2125,6 +2128,9 @@ public:
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
                     font_pt, font_size_pt] = run_geometry(text, to_box);
+        // `add_position_classes` divides through the matrix, which carries
+        // `scale`; the uniform branch multiplies by `m.a`.
+        const double ascent_pt = asc * text.size * (is_matrix ? scale : 1.0);
         const double cs_pt = round2(text.char_spacing * scale);
         const double ws_pt = round2(text.word_spacing * scale);
         const std::string color_suffix = color_class(text, invisible, styles);
@@ -2207,7 +2213,7 @@ public:
         if (new_line) {
           std::string base = "t";
           add_position_classes(base, add_class, m, is_matrix, ox, baseline,
-                               asc * text.size);
+                               ascent_pt);
           add_class(base, "f", pt_decl("font-size", font_size_pt));
           const bool spacing_one_to_one =
               font != 0 ||
@@ -2443,6 +2449,12 @@ public:
     double font_size_pt;       ///< CSS font-size in px
   };
 
+  /// A matrix run's font size is the PDF's `Tf`, routinely `1`, which a
+  /// browser's minimum font size clamps up before the matrix multiplies it.
+  /// Laying out this much larger and dividing the matrix by it keeps clear of
+  /// the clamp. Constant, not per run: one block's runs share the space.
+  static constexpr double matrix_local_scale = 48;
+
   static RunGeometry run_geometry(const pdf::TextElement &text,
                                   const util::math::Transform2D &to_box) {
     constexpr util::math::Transform2D flip_glyph =
@@ -2455,18 +2467,24 @@ public:
     // fast path, where it would feed a negative `m.a` into the placement math.
     const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
     const double tz = text.horizontal_scaling / 100.0;
+    // off the original matrix: `extent`/`font_pt` stay page space
     const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
+    const double scale = is_matrix ? matrix_local_scale : m.a;
+    const util::math::Transform2D placed =
+        is_matrix ? util::math::Transform2D(m.a / scale, m.b / scale,
+                                            m.c / scale, m.d / scale, m.e, m.f)
+                  : m;
     return RunGeometry{
-        .m = m,
+        .m = placed,
         .invisible = invisible,
         .is_matrix = is_matrix,
         .asc = ascent_em(text.font),
-        .scale = is_matrix ? 1.0 : m.a,
-        .ox = m.e,
-        .baseline = m.f,
+        .scale = scale,
+        .ox = placed.e,
+        .baseline = placed.f,
         .extent = text.width * axis,
         .font_pt = text.size * axis,
-        .font_size_pt = round2(is_matrix ? text.size : m.a * text.size),
+        .font_size_pt = round2(text.size * scale),
     };
   }
 
