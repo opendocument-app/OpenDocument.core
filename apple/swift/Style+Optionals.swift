@@ -63,6 +63,7 @@ extension PageLayout {
   public var orientation: PrintOrientation? {
     printOrientation?.asEnum(PrintOrientation.self)
   }
+  public var background: Color? { backgroundColor?.asColor }
 }
 
 extension Frame {

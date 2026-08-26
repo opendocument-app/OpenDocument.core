@@ -24,9 +24,23 @@ TEST(html_document_style, outer_page_style_fixes_both_dimensions) {
             "width:21cm;height:29.7cm;");
 }
 
+TEST(html_document_style, outer_page_style_paints_the_ground) {
+  PageLayout page_layout = a4_page_layout();
+  page_layout.background_color = Color(0x12, 0x34, 0x56);
+  EXPECT_EQ(ihtml::translate_outer_page_style(page_layout),
+            "width:21cm;height:29.7cm;background-color:#123456;");
+}
+
 TEST(html_document_style, outer_flowing_page_style_floors_the_height) {
   EXPECT_EQ(ihtml::translate_outer_flowing_page_style(a4_page_layout()),
             "width:21cm;min-height:29.7cm;");
+}
+
+TEST(html_document_style, outer_flowing_page_style_paints_the_ground) {
+  PageLayout page_layout = a4_page_layout();
+  page_layout.background_color = Color(0x12, 0x34, 0x56);
+  EXPECT_EQ(ihtml::translate_outer_flowing_page_style(page_layout),
+            "width:21cm;background-color:#123456;min-height:29.7cm;");
 }
 
 TEST(html_document_style, outer_flowing_page_style_without_height) {

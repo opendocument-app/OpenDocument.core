@@ -26,7 +26,7 @@ rows/cells from `a:tr`/`a:tc`; spans from `gridSpan`/`rowSpan`, covered cells
 from `hMerge`/`vMerge`).
 
 **Styles are resolved inline — there is no `StyleRegistry`.** Free functions in
-the document read `a:rPr` / `a:pPr` directly: font from `a:latin/@typeface`,
+`ooxml_presentation_style` read `a:rPr` / `a:pPr` directly: font from `a:latin/@typeface`,
 size in hundredth-points, bold/italic/underline/strike/shadow, sub/superscript
 from `@baseline`; align from `@algn` ([ECMA-376] 20.1.10.59 `ST_TextAlignType`,
 which spells the values differently than wordprocessingml does), `@marL`/`@marR`
@@ -42,24 +42,23 @@ contribution.
 
 **Colour goes through the theme, and never lands without a ground.** A pptx
 states most of its colour as `a:schemeClr`, a *slot* name — `tx1`, `bg1`,
-`accent1` — so reading only the literal `a:srgbClr` sees almost nothing: the file
-that motivated this work carries 1066 scheme references and not one literal. A
-slot resolves along **slide → layout → master → theme**: the theme's
-`a:clrScheme` holds the colours, the master's `p:clrMap` says which slot each
-name stands for, and `ColorScheme` is the two folded together. Masters are
-shared, so one is read once rather than once per slide.
+`accent1` — so reading only the literal `a:srgbClr` sees almost nothing. A slot
+resolves along **slide → layout → master → theme**: the theme's `a:clrScheme`
+holds the colours, the master's `p:clrMap` says which slot each name stands for,
+and `ColorScheme` is the two folded together. Layouts are shared, so a layout,
+its master and its theme are read once rather than once per slide. Colour
+*transforms* — `a:lumMod`, `a:lumOff`, `a:tint`, `a:shade`, `a:alpha`
+([ECMA-376] 20.1.2.3) — are dropped, so a tinted slot renders at full strength.
 
-The reason colour waited for this: **a run colour is only safe once something
-paints behind it.** Text a deck puts on a coloured master is white, and on our
-white page it simply vanished — 36 runs in `tuesday_d6.pptx`, every footer in the
-Google Slides export. So the ground is read too: `p:bg` from the slide, else its
+**A run colour is only safe once something paints behind it**, which is why it
+lands with the ground and not before: white text on a coloured master would
+otherwise vanish on our white page. So `p:bg` is read from the slide, else its
 layout, else its master, onto `PageLayout::background_color`, and a shape's own
-`p:spPr/a:solidFill` onto the frame. What is still missing is a master's or
-layout's **shapes** — `tuesday_d6.pptx` puts its white titles on a gradient-filled
-`custGeom` banner living in the master, and neither custom geometry nor gradients
-nor master shape trees are modelled, so those titles stay invisible. That is the
-same gap as (1) below, and the last thing standing between this deck and a
-correct render.
+`p:spPr/a:solidFill` onto the frame. A `p:bg` we do not model — `p:bgRef`,
+`a:gradFill`, `a:blipFill` — ends that walk rather than falling through to the
+part behind it. Master and layout **shapes** are still not drawn (gap (1)
+below), so text a deck puts on one stays unreadable where that shape was its
+only ground.
 
 **Frame positioning is EMU-based.** `p:spPr/a:xfrm/a:off` + `a:ext` (`p:xfrm`
 for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
@@ -70,7 +69,8 @@ for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
 
 | File (`presentation/`) | Role |
 |---|---|
-| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads XML + relationships) + `ColorScheme` (theme × `p:clrMap`) + `ElementAdapter`; inline style resolution |
+| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads XML + relationships) + `ElementAdapter` |
+| `ooxml_presentation_style.{hpp,cpp}` | `ColorScheme` (theme × `p:clrMap`), the layout/master walk, and the `a:rPr`/`a:pPr` resolution |
 | `ooxml_presentation_parser.{hpp,cpp}` | `ParseContext` (slides map) + tag dispatch; presentation.xml → slides → spTree |
 | `ooxml_presentation_element_registry.{hpp,cpp}` | Flat element store + Table/Text side maps |
 

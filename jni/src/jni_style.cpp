@@ -256,10 +256,12 @@ jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {
   return new_object(
       env, "app/opendocument/core/PageLayout",
       "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;I"
-      "Lapp/opendocument/core/DirectionalMeasure;)V",
+      "Lapp/opendocument/core/DirectionalMeasure;"
+      "Lapp/opendocument/core/Color;)V",
       make_measure(env, layout.width), make_measure(env, layout.height),
       enum_code(layout.print_orientation),
-      make_directional_measure(env, layout.margin));
+      make_directional_measure(env, layout.margin),
+      make_color(env, layout.background_color));
 }
 
 jobject make_table_dimensions(JNIEnv *env,

@@ -519,11 +519,8 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
           read_color(graphic_properties.attribute("svg:stroke-color"))) {
     result.stroke_color = stroke_color;
   }
-  // `draw:fill` and `draw:fill-color` cascade independently, and the colour
-  // outlives the fill it belonged to: a frame that is not filled keeps the
-  // colour of one that was. Carry the fill state in the alpha channel so the
-  // two resolve together — `draw:fill` defaults to none, so a colour alone
-  // paints nothing.
+  // `draw:fill` and `draw:fill-color` cascade independently, so the fill state
+  // rides in the alpha — see AGENTS.md
   if (const pugi::xml_attribute fill =
           graphic_properties.attribute("draw:fill")) {
     const Color previous = result.fill_color.value_or(Color());

@@ -223,6 +223,8 @@ NS_SWIFT_NAME(PageLayout)
 /// `ODRPrintOrientation`, boxed.
 @property(nonatomic, readonly, nullable) NSNumber *printOrientation;
 @property(nonatomic, readonly) ODRDirectionalMeasure *margin;
+/// `ODRColor`, boxed in an `NSValue`.
+@property(nonatomic, readonly, nullable) NSValue *backgroundColor;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

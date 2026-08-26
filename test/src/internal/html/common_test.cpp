@@ -1,4 +1,5 @@
 #include <odr/html.hpp>
+#include <odr/style.hpp>
 
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_writer.hpp>
@@ -214,4 +215,16 @@ TEST(html_common, a_zoom_pinned_to_actual_size_is_still_a_pin) {
   config.initial_zoom = 0.5;
   EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5;--odr-zoom:0.5}body{zoom:0.5}"));
+}
+
+TEST(html_common, an_opaque_color_is_a_hex_triplet) {
+  EXPECT_EQ(ihtml::color(Color(1, 2, 3)), "#010203");
+  EXPECT_EQ(ihtml::color(Color(1, 2, 3, 255)), "#010203");
+  EXPECT_EQ(ihtml::color(Color(0xff, 0xff, 0xff)), "#ffffff");
+}
+
+TEST(html_common, a_color_that_does_not_fully_cover_states_its_alpha) {
+  EXPECT_EQ(ihtml::color(Color(1, 2, 3, 0)), "rgba(1,2,3,0)");
+  EXPECT_EQ(ihtml::color(Color(1, 2, 3, 128)), "rgba(1,2,3,0.501961)");
+  EXPECT_EQ(ihtml::color(Color(1, 2, 3, 1)), "rgba(1,2,3,0.00392157)");
 }

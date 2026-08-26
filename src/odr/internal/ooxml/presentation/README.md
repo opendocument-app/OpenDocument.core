@@ -43,7 +43,8 @@ Roughly ordered by importance.
   - [x] size
   - [x] italic, bold
   - [x] underline, strike through
-  - [x] color, background (highlight), incl. theme colors (`a:schemeClr`)
+  - [x] color, background (highlight), incl. theme colors (`a:schemeClr`; no
+        `a:lumMod` / `a:tint` / `a:shade` transforms)
   - [x] shadow
   - [x] superscript, subscript (`@baseline`)
 - [x] paragraph

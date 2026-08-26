@@ -67,18 +67,16 @@ The release run heads these entries with the version and opens a fresh
   around it, and a run's font, a paragraph's alignment and its left and right
   margins arrive: they were read from the wordprocessingml attributes, which a
   pptx never carries.
-- New `PageLayout::background_color`, the ground a page or slide is painted on.
-  A `.pptx` slide fills it from `p:bg`, taken from the slide, its layout or its
-  master; nothing else sets it yet.
-- A `.pptx` renders its colour: runs and highlights resolve `a:schemeClr`
-  through the slide's theme and its master's `p:clrMap`, a shape paints its
-  `a:solidFill`, and a text body honours its `a:bodyPr` anchor. Line height
-  (`a:lnSpc`), space before and after (`a:spcPts`) and sub/superscript arrive
-  with them. Master and layout **shapes** are still not drawn, so text a deck
-  puts on one stays unreadable where that shape was its only ground.
-- An odf shape or frame no longer paints a `draw:fill-color` that `draw:fill`
-  does not call for — ODF leaves the colour behind on a box it stopped filling,
-  and boxes the file leaves blank were coming out coloured.
+- New `PageLayout::background_color`, the ground a page is painted on. A `.pptx`
+  slide takes it from the slide, its layout or its master; nothing else sets it
+  yet.
+- A `.pptx` renders in colour: text, highlights and shape fills, including the
+  ones its theme names. Line height, space before and after, sub/superscript and
+  vertical text alignment arrive with them. Tinted and shaded theme colours
+  still come out at full strength, and shapes a master or layout draws are still
+  missing.
+- An odf shape or frame that is not filled no longer paints the colour of one
+  that was.
 
 ## v6.10.1 - 2026-08-21
 
