@@ -214,6 +214,7 @@ public:
         .height = points(size->height),
         .print_orientation = {},
         .margin = {},
+        .background_color = {},
     };
   }
   [[nodiscard]] ElementIdentifier slide_master_page(

@@ -164,6 +164,7 @@ public:
               Measure(size->second / master_units_per_inch, DynamicUnit("in")),
           .print_orientation = {},
           .margin = {},
+          .background_color = {},
       };
     }
     return {
@@ -171,6 +172,7 @@ public:
         .height = Measure("7.5in"),
         .print_orientation = {},
         .margin = {},
+        .background_color = {},
     };
   }
   [[nodiscard]] ElementIdentifier slide_master_page(
