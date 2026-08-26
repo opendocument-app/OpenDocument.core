@@ -106,7 +106,7 @@
 
       // Webkit does not carry an applied `body{zoom}` in a rect, so what a host
       // reads off one is not what `elementFromPoint` takes.
-      async function rectTest(label, webkit, expectRawHit) {
+      async function rectTest(label, webkit) {
         var win = await load(
           "content=page&zoom=0.472155&webkit=" + (webkit ? 1 : 0),
         );
@@ -131,8 +131,8 @@
 
         check(
           label + ": a raw rect centre hits the element",
-          (rawHit === element) === expectRawHit,
-          "expected " + (expectRawHit ? "a hit" : "a miss") + ", got " +
+          (rawHit === element) === !webkit,
+          "expected " + (webkit ? "a miss" : "a hit") + ", got " +
             (rawHit ? rawHit.id || rawHit.tagName : "none"),
         );
         check(
@@ -145,6 +145,11 @@
           label + ": rect factor",
           near(view.width / raw.width, webkit ? 0.472155 : 1, 1e-6),
           "view/raw=" + (view.width / raw.width).toFixed(6),
+        );
+        check(
+          label + ": a non-element gives null",
+          win.odr.getViewportRect(null) === null &&
+            win.odr.getViewportRect({}) === null,
         );
       }
 
@@ -161,6 +166,16 @@
         await wait(200);
         var after = docAt(win, focusY);
 
+        // Read off the body, not `odr.getZoom()`: that answers with what was
+        // asked for, whether or not it was ever applied - and a zoom that
+        // never lands moves nothing, which the check below cannot tell from a
+        // held point.
+        var applied = parseFloat(getComputedStyle(win.document.body).zoom);
+        check(
+          label + ": the zoom applied",
+          near(applied, 0.8, 1e-6),
+          "body zoom=" + applied,
+        );
         check(
           label + ": the point under the pinch stays put (y=" + focusY + ")",
           near(after, before, 24),
@@ -189,8 +204,8 @@
 
       (async function () {
         say("--- rect space against viewport space ---");
-        await rectTest("chromium", false, true);
-        await rectTest("webkit-simulated", true, false);
+        await rectTest("chromium", false);
+        await rectTest("webkit-simulated", true);
 
         say("");
         say("--- the pinch focus holds ---");

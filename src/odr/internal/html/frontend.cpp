@@ -323,6 +323,8 @@ constexpr std::string_view document_js = R"js(
 )js";
 
 /// The zoom api, and the fit where the css could not state it.
+/// `test/browser/viewport/serve` lifts the script out by this declaration read
+/// verbatim, so renaming it breaks the browser checks.
 constexpr std::string_view viewport_js = R"js(
 (function () {
   "use strict";
@@ -418,15 +420,23 @@ constexpr std::string_view viewport_js = R"js(
     return rectsZoomed ? 1 : zoom;
   }
 
-  // @p element's box in viewport coordinates.
+  // @p element's box in viewport coordinates, shaped like a `DOMRect`.
   function boxOf(element) {
     var box = element.getBoundingClientRect();
     var factor = rectFactor();
+    var left = box.left * factor;
+    var top = box.top * factor;
+    var width = box.width * factor;
+    var height = box.height * factor;
     return {
-      left: box.left * factor,
-      top: box.top * factor,
-      width: box.width * factor,
-      height: box.height * factor,
+      x: left,
+      y: top,
+      left: left,
+      top: top,
+      right: left + width,
+      bottom: top + height,
+      width: width,
+      height: height,
     };
   }
 
@@ -501,7 +511,11 @@ constexpr std::string_view viewport_js = R"js(
     var token = ++settling;
     var frames = 30;
     (function again() {
-      if (token !== settling || frames-- <= 0) {
+      if (token !== settling) {
+        // A newer run - or the reader - owns the state below now.
+        return;
+      }
+      if (frames-- <= 0) {
         restoring = false;
         remember();
         return;
@@ -557,20 +571,9 @@ constexpr std::string_view viewport_js = R"js(
   // @p element's box in the coordinates `elementFromPoint` takes, for a host
   // hit-testing while a zoom is applied.
   odr.getViewportRect = function (element) {
-    if (!element || typeof element.getBoundingClientRect !== "function") {
-      return null;
-    }
-    var box = boxOf(element);
-    return {
-      x: box.left,
-      y: box.top,
-      left: box.left,
-      top: box.top,
-      right: box.left + box.width,
-      bottom: box.top + box.height,
-      width: box.width,
-      height: box.height,
-    };
+    return element && typeof element.getBoundingClientRect === "function"
+      ? boxOf(element)
+      : null;
   };
 
   // @p focus, a pinch's midpoint, is the point that stays put across the
