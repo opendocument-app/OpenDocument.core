@@ -69,6 +69,15 @@ of `style:text-position`) multiplies the inherited size; percent line-height
 passes through (the HTML renderer emits it as a unitless CSS ratio); percent
 margins are currently **dropped** (open work).
 
+**`draw:fill` decides whether `draw:fill-color` is paint.** The two cascade
+independently, and the colour outlives the fill it belonged to — a frame that is
+not filled keeps the colour of one that was, and LibreOffice writes exactly that
+(`<style:graphic-properties draw:fill-color="#729fcf" …/>` with no `draw:fill`
+in sight). Reading the colour on its own painted boxes the file leaves blank, so
+the fill state rides in the resolved colour's **alpha**: `draw:fill` sets it,
+`draw:fill-color` sets the rgb and keeps it, and `draw:fill` defaults to none, so
+a colour with no fill anywhere in the chain paints nothing.
+
 **A flat document is the same `Document`, minus the package.** Its one
 `office:document` root carries what `content.xml` and `styles.xml` carry
 between them, so the flat constructor hands that root in as *both* roots.

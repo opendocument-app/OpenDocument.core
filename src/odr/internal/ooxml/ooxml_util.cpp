@@ -334,4 +334,34 @@ ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
   return parse_relationships(relationships);
 }
 
+/// The target of the first relationship whose type ends in @p type
+/// (`slideLayout`, `slideMaster`, `theme`, …), resolved against the directory
+/// the part itself lives in.
+std::optional<AbsPath>
+ooxml::parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
+                                 const AbsPath &path,
+                                 const std::string_view type) {
+  const AbsPath rel_path = path.parent()
+                               .join(RelPath("_rels"))
+                               .join(RelPath(path.basename() + ".rels"));
+  if (!filesystem.is_file(rel_path)) {
+    return {};
+  }
+
+  const pugi::xml_document relationships =
+      util::xml::parse(filesystem, rel_path);
+  for (const pugi::xpath_node e :
+       relationships.select_nodes("//Relationship")) {
+    const std::string_view relation_type =
+        e.node().attribute("Type").as_string();
+    if (!relation_type.ends_with(type) || relation_type.size() == type.size() ||
+        relation_type[relation_type.size() - type.size() - 1] != '/') {
+      continue;
+    }
+    return path.parent().join(
+        RelPath(e.node().attribute("Target").as_string()));
+  }
+  return {};
+}
+
 } // namespace odr::internal

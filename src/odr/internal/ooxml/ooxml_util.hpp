@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -58,5 +59,8 @@ parse_relationships(const pugi::xml_document &relations);
 std::unordered_map<std::string, std::string>
 parse_relationships(const abstract::ReadableFilesystem &filesystem,
                     const AbsPath &path);
+std::optional<AbsPath>
+parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
+                          const AbsPath &path, std::string_view type);
 
 } // namespace odr::internal::ooxml

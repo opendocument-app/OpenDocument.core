@@ -27,18 +27,39 @@ from `hMerge`/`vMerge`).
 
 **Styles are resolved inline — there is no `StyleRegistry`.** Free functions in
 the document read `a:rPr` / `a:pPr` directly: font from `a:latin/@typeface`,
-size in hundredth-points, bold/italic/underline/strike/shadow; align from
-`@algn` ([ECMA-376] 20.1.10.59 `ST_TextAlignType`, which spells the values
-differently than wordprocessingml does), `@marL`/`@marR` margins in EMUs. **Read
-them where drawingml puts them, not where wordprocessingml does** — these were
-`rFonts@ascii`, `@jc` and `a:ind` for a while, none of which a pptx ever
-carries, so the properties simply never arrived. Run **colour is still unread**
-on purpose: it lives in `a:solidFill`, but nothing paints a shape or slide
-background yet, so honouring a white run would put white text on white — it
-lands with background fill, not before. The element-parent cascade
-(`get_intermediate_style` → `.override()`) is the same shape as ODF/docx but
-computed on-demand from the XML with no cached or master/default-style
+size in hundredth-points, bold/italic/underline/strike/shadow, sub/superscript
+from `@baseline`; align from `@algn` ([ECMA-376] 20.1.10.59 `ST_TextAlignType`,
+which spells the values differently than wordprocessingml does), `@marL`/`@marR`
+margins in EMUs, `a:lnSpc` line height, `a:spcBef`/`a:spcAft` as top and bottom
+margins. **Read them where drawingml puts them, not where wordprocessingml
+does** — these were `rFonts@ascii`, `@jc` and `a:ind` for a while, none of which
+a pptx ever carries, so the properties simply never arrived. `a:spcBef`/`a:spcAft`
+are taken only in their absolute `a:spcPts` form: the percent form is of the text
+size, which css would resolve against the width instead. The element-parent
+cascade (`get_intermediate_style` → `.override()`) is the same shape as ODF/docx
+but computed on-demand from the XML with no cached or master/default-style
 contribution.
+
+**Colour goes through the theme, and never lands without a ground.** A pptx
+states most of its colour as `a:schemeClr`, a *slot* name — `tx1`, `bg1`,
+`accent1` — so reading only the literal `a:srgbClr` sees almost nothing: the file
+that motivated this work carries 1066 scheme references and not one literal. A
+slot resolves along **slide → layout → master → theme**: the theme's
+`a:clrScheme` holds the colours, the master's `p:clrMap` says which slot each
+name stands for, and `ColorScheme` is the two folded together. Masters are
+shared, so one is read once rather than once per slide.
+
+The reason colour waited for this: **a run colour is only safe once something
+paints behind it.** Text a deck puts on a coloured master is white, and on our
+white page it simply vanished — 36 runs in `tuesday_d6.pptx`, every footer in the
+Google Slides export. So the ground is read too: `p:bg` from the slide, else its
+layout, else its master, onto `PageLayout::background_color`, and a shape's own
+`p:spPr/a:solidFill` onto the frame. What is still missing is a master's or
+layout's **shapes** — `tuesday_d6.pptx` puts its white titles on a gradient-filled
+`custGeom` banner living in the master, and neither custom geometry nor gradients
+nor master shape trees are modelled, so those titles stay invisible. That is the
+same gap as (1) below, and the last thing standing between this deck and a
+correct render.
 
 **Frame positioning is EMU-based.** `p:spPr/a:xfrm/a:off` + `a:ext` (`p:xfrm`
 for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
@@ -49,7 +70,7 @@ for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
 
 | File (`presentation/`) | Role |
 |---|---|
-| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads XML + relationships) + `ElementAdapter`; inline style resolution |
+| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads XML + relationships) + `ColorScheme` (theme × `p:clrMap`) + `ElementAdapter`; inline style resolution |
 | `ooxml_presentation_parser.{hpp,cpp}` | `ParseContext` (slides map) + tag dispatch; presentation.xml → slides → spTree |
 | `ooxml_presentation_element_registry.{hpp,cpp}` | Flat element store + Table/Text side maps |
 
@@ -59,9 +80,13 @@ for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
 
 Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 
-1. **No master/layout inheritance.** `slide_master_page` returns empty; master
-   and layout parts are loaded into the relationship map but never consulted
-   (no inherited placeholders, backgrounds, or styles).
+1. **No master/layout inheritance beyond colour.** `slide_master_page` returns
+   empty and neither shape tree is walked, so a placeholder's font, size and
+   position, and every shape a master or layout draws — banners, logos, rules —
+   are missing. The chain *is* walked now, but only for the theme's colours and
+   the background fill. Custom geometry (`a:custGeom`) and gradients
+   (`a:gradFill`) are unmodelled, so some grounds cannot be painted even once
+   the trees are walked.
 2. **Images not modelled** — no `p:pic`/`a:blip` parser entry; `image_href`
    reads ODF-style `xlink:href` (wrong for pptx `r:embed`).
 3. **Table cell styles unresolved.** Tables are wired (grid, spans, covered
