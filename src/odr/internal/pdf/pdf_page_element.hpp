@@ -14,6 +14,7 @@ namespace odr::internal::pdf {
 
 struct Font;
 struct Shading;
+struct XObject;
 struct Pattern;
 struct SoftMask;
 
@@ -107,6 +108,8 @@ struct ImageElement {
   std::vector<ClipPath> clip;
   std::string data;
   std::string mime; // e.g. "image/jpeg"
+  /// Null for an inline (`BI`) image and for a stencil.
+  const XObject *source{nullptr};
   /// `/ExtGState` `ca` (the nonstroking alpha applies to images) and `/BM`.
   double alpha{1};
   std::string blend_mode;

@@ -9,9 +9,12 @@
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
+#include <cstddef>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -107,6 +110,47 @@ std::string text_mini_pdf(const std::string &content) {
       .stream_object("", content)
       .object("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   return builder.trailer("/Root 1 0 R").build_classic();
+}
+
+std::string shared_image_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>");               // 1
+  builder.object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>"); // 2
+  const std::string page = "<< /Type /Page /Parent 2 0 R "
+                           "/MediaBox [0 0 200 200] "
+                           "/Resources << /XObject << /Im0 5 0 R >> >> "
+                           "/Contents 6 0 R >>";
+  builder.object(page); // 3
+  builder.object(page); // 4
+  // pass through undecoded, so the payload only has to be distinguishable
+  builder.stream_object("/Type /XObject /Subtype /Image /Width 1 /Height 1 "
+                        "/ColorSpace /DeviceRGB /BitsPerComponent 8 "
+                        "/Filter /DCTDecode",
+                        "\xff\xd8\xff\xd9-not-really-a-jpeg");   // 5
+  builder.stream_object("", "q 100 0 0 100 10 10 cm /Im0 Do Q"); // 6
+  builder.trailer("/Root 1 0 R");
+  return builder.build_classic();
+}
+
+std::string two_image_mini_pdf() {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>");               // 1
+  builder.object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>"); // 2
+  const auto page = [](const std::string &image, const std::string &content) {
+    return "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] "
+           "/Resources << /XObject << /Im0 " +
+           image + " >> >> /Contents " + content + " >>";
+  };
+  builder.object(page("5 0 R", "7 0 R")); // 3
+  builder.object(page("6 0 R", "7 0 R")); // 4
+  const std::string image = "/Type /XObject /Subtype /Image /Width 1 /Height 1 "
+                            "/ColorSpace /DeviceRGB /BitsPerComponent 8 "
+                            "/Filter /DCTDecode";
+  builder.stream_object(image, "\xff\xd8\xff\xd9-first");        // 5
+  builder.stream_object(image, "\xff\xd8\xff\xd9-second");       // 6
+  builder.stream_object("", "q 100 0 0 100 10 10 cm /Im0 Do Q"); // 7
+  builder.trailer("/Root 1 0 R");
+  return builder.build_classic();
 }
 
 } // namespace
@@ -315,4 +359,108 @@ TEST(PdfFile, page_range_begin_keeps_global_numbering) {
   EXPECT_TRUE(contains(html, R"(id="p3")"));
 
   EXPECT_THROW(render_path(service, "page0.html"), FileNotFound);
+}
+
+TEST(PdfFile, one_image_on_two_pages_is_one_resource) {
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    HtmlConfig config;
+    config.pdf_text_mode = mode;
+    config.embed_images = false;
+
+    const HtmlService service = make_service(shared_image_mini_pdf(), config);
+    std::ostringstream out;
+    const HtmlResources resources = service.write_html("document.html", out);
+
+    std::vector<std::string> images;
+    for (const auto &[resource, location] : resources) {
+      if (resource.type() == HtmlResourceType::image) {
+        images.push_back(resource.path());
+        EXPECT_TRUE(location.has_value()) << "mode " << static_cast<int>(mode);
+      }
+    }
+    ASSERT_EQ(images.size(), 1) << "mode " << static_cast<int>(mode);
+
+    const std::string html = std::move(out).str();
+    EXPECT_EQ(count(html, images.front()), 2)
+        << "mode " << static_cast<int>(mode);
+    EXPECT_EQ(count(html, "data:image"), 0)
+        << "mode " << static_cast<int>(mode);
+  }
+}
+
+TEST(PdfFile, embedded_images_stay_inline) {
+  HtmlConfig config;
+  config.embed_images = true;
+
+  const HtmlService service = make_service(shared_image_mini_pdf(), config);
+  std::ostringstream out;
+  const HtmlResources resources = service.write_html("document.html", out);
+
+  std::size_t images = 0;
+  for (const auto &[resource, location] : resources) {
+    if (resource.type() == HtmlResourceType::image) {
+      ++images;
+      EXPECT_FALSE(location.has_value());
+    }
+  }
+  ASSERT_EQ(images, 1);
+
+  const std::string html = std::move(out).str();
+  EXPECT_EQ(count(html, "data:image/jpeg;base64,"), 2);
+}
+
+// A linked image is served back by the service, which is how the http server
+// hands it to a browser.
+TEST(PdfFile, linked_image_is_served_by_the_service) {
+  HtmlConfig config;
+  config.embed_images = false;
+
+  const HtmlService service = make_service(shared_image_mini_pdf(), config);
+  std::ostringstream out;
+  const HtmlResources resources = service.write_html("document.html", out);
+
+  std::string location;
+  for (const auto &[resource, resource_location] : resources) {
+    if (resource.type() == HtmlResourceType::image) {
+      ASSERT_TRUE(resource_location.has_value());
+      location = *resource_location;
+    }
+  }
+  ASSERT_FALSE(location.empty());
+
+  EXPECT_TRUE(service.exists(location));
+  EXPECT_EQ(service.mimetype(location), "image/jpeg");
+  EXPECT_EQ(render_path(service, location),
+            "\xff\xd8\xff\xd9-not-really-a-jpeg");
+}
+
+// Every view names an image the same, so a host rendering them into one
+// directory does not have one view's image overwrite another's.
+TEST(PdfFile, views_agree_on_an_image_name) {
+  HtmlConfig config;
+  config.embed_images = false;
+
+  const HtmlService service = make_service(two_image_mini_pdf(), config);
+
+  // path -> the bytes served under it, across every view
+  std::map<std::string, std::string> bytes_by_path;
+  for (const std::string &view :
+       {"document.html", "page0.html", "page1.html"}) {
+    std::ostringstream out;
+    for (const auto &[resource, location] : service.write_html(view, out)) {
+      if (resource.type() != HtmlResourceType::image) {
+        continue;
+      }
+      ASSERT_TRUE(location.has_value()) << view;
+      std::ostringstream bytes;
+      resource.write_resource(bytes);
+      const auto [it, fresh] =
+          bytes_by_path.try_emplace(*location, bytes.str());
+      EXPECT_EQ(it->second, bytes.str())
+          << "path " << *location << " means two images, seen in " << view;
+    }
+  }
+
+  EXPECT_EQ(bytes_by_path.size(), 2);
 }
