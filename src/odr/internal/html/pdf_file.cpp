@@ -1508,6 +1508,8 @@ public:
       /// the open block's transform: its linear part identifies runs one CSS
       /// matrix can place, its origin anchors the frame they flow in
       util::math::Transform2D sel_block;
+      /// the open block's `local_scale`, which every run in it is measured in
+      double sel_cur_local = 1;
       /// advance owed to the next run: whitespace no span could carry, plus a
       /// gap no spacer took
       double sel_pending_space = 0;
@@ -1533,9 +1535,7 @@ public:
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
                     font_pt, font_size_pt] = run_geometry(text, to_box);
-        // `add_position_classes` divides through the matrix, which carries
-        // `scale`; the uniform branch multiplies by `m.a`.
-        const double ascent_pt = asc * text.size * (is_matrix ? scale : 1.0);
+        const double ascent_pt = asc * text.size;
         const std::string color_suffix = color_class(text, invisible, styles);
 
         // --- Visual layer ---------------------------------------------------
@@ -1543,7 +1543,9 @@ public:
         // procs, so both contribute to the selection layer only.
         if (!invisible && !text.render_as_graphics) {
           // A block carries its first run's placement and the rest flow off it,
-          // so another font, size or ascent needs a block of its own.
+          // so another font, size or ascent needs a block of its own — size is
+          // in the key, so `vis_local` is the block's.
+          const double vis_local = local_scale(font_size_pt);
           std::ostringstream key;
           key << font << '|' << font_size_pt << '|' << round2(asc * text.size);
           if (font == 0 && text.font != nullptr && text.font->substitute) {
@@ -1560,14 +1562,14 @@ public:
                                 vis_prev_font_pt)) {
               new_vis_line = true;
             } else {
-              vis_margin_pt = round2(ox - vis_prev_end);
+              vis_margin_pt = round2((ox - vis_prev_end) * vis_local);
             }
           }
 
           if (new_vis_line) {
             std::string line_base = "t";
-            add_position_classes(line_base, add_class, m, is_matrix, ox,
-                                 baseline, ascent_pt);
+            add_position_classes(line_base, add_class, m, is_matrix, vis_local,
+                                 ox, baseline, ascent_pt);
             VisLineOut line_out;
             line_out.classes = std::move(line_base);
             page_out.vis_items.push_back(std::move(line_out));
@@ -1576,7 +1578,8 @@ public:
           }
 
           std::string run_classes = "g"; // user-select:none
-          add_class(run_classes, "f", pt_decl("font-size", font_size_pt));
+          add_class(run_classes, "f",
+                    pt_decl("font-size", round2(font_size_pt * vis_local)));
           if (font != 0) {
             run_classes += ' ';
             run_classes += font_class(font_class_used, font, invisible);
@@ -1603,14 +1606,16 @@ public:
             run_text = escape_text(core_text(text));
           }
 
-          if (const double cs_pt = round2(text.char_spacing * scale);
+          if (const double cs_pt =
+                  round2(text.char_spacing * scale * vis_local);
               cs_pt != 0) {
             add_class(run_classes, "s", pt_decl("letter-spacing", cs_pt));
           }
           // Tw applies to single-byte code 32 alone (9.3.3), which only a
           // simple font's run keeps as a real U+0020 (`space_glyph`).
           if (!(text.font != nullptr && text.font->composite)) {
-            if (const double ws_pt = round2(text.word_spacing * scale);
+            if (const double ws_pt =
+                    round2(text.word_spacing * scale * vis_local);
                 ws_pt != 0) {
               add_class(run_classes, "ws", pt_decl("word-spacing", ws_pt));
             }
@@ -1636,28 +1641,38 @@ public:
           // covered by the spacer span, not by the run text.
           std::string core = starts_space ? text.text.substr(1) : text.text;
 
-          const double tz = text.horizontal_scaling / 100.0;
-          // In the block's frame the unit is text space: `text.width` carries
-          // the horizontal scaling the CSS matrix applies again.
-          const double local_extent = tz != 0 ? text.width * scale / tz : 0;
-          double sel_ox = is_matrix ? 0 : ox;
-          double sel_baseline = is_matrix ? 0 : baseline;
-          const double sel_extent = is_matrix ? local_extent : extent;
-          const double sel_font_pt = is_matrix ? text.size * scale : font_pt;
-
+          // Settled before the run is measured: it is measured in the scale of
+          // the block it joins.
           bool sel_frame_kept =
               sel_have_prev && !is_matrix && !sel_prev_was_matrix;
+          std::optional<std::array<double, 2>> sel_matrix_origin;
           if (is_matrix && sel_cur_line >= 0 && sel_prev_was_matrix &&
               same_linear(sel_block, m)) {
-            if (const std::optional<std::array<double, 2>> local =
-                    local_origin(sel_block, m)) {
-              sel_ox = (*local)[0];
-              sel_baseline = (*local)[1];
-              sel_frame_kept = true;
-            }
+            sel_matrix_origin = local_origin(sel_block, m);
+            sel_frame_kept = sel_frame_kept || sel_matrix_origin.has_value();
           }
-
-          const double width_pt = round2(sel_extent);
+          const double tz = text.horizontal_scaling / 100.0;
+          // at scale 1, and linear in the block's; `text.width` carries the
+          // horizontal scaling the CSS matrix applies again
+          const double unit_extent =
+              is_matrix ? (tz != 0 ? text.width * scale / tz : 0) : extent;
+          const double unit_font_pt = is_matrix ? text.size * scale : font_pt;
+          double unit_ox = is_matrix ? 0 : ox;
+          double unit_baseline = is_matrix ? 0 : baseline;
+          if (sel_matrix_origin) {
+            unit_ox = (*sel_matrix_origin)[0];
+            unit_baseline = (*sel_matrix_origin)[1];
+          }
+          // A block keeps the scale it opened with: splitting would break a
+          // copied line at every superscript, and this layer is transparent.
+          double sel_local =
+              sel_frame_kept ? sel_cur_local : local_scale(font_size_pt);
+          double sel_font_size_pt = round2(font_size_pt * sel_local);
+          double sel_ox = unit_ox * sel_local;
+          double sel_baseline = unit_baseline * sel_local;
+          double sel_extent = unit_extent * sel_local;
+          double sel_font_pt = unit_font_pt * sel_local;
+          double width_pt = round2(sel_extent);
           const double gap_pt = std::max(0.0, sel_ox - sel_prev_end);
 
           bool new_sel_line = !sel_frame_kept;
@@ -1682,10 +1697,17 @@ public:
               (sel_frame_kept && !baseline_shift) || starts_space;
 
           if (new_sel_line) {
-            // The block starts here, so this run sits at its origin.
-            sel_ox = is_matrix ? 0 : ox;
-            sel_baseline = is_matrix ? 0 : baseline;
+            // A block starting here has its own scale, and this run sits at
+            // its origin.
+            sel_local = local_scale(font_size_pt);
+            sel_font_size_pt = round2(font_size_pt * sel_local);
+            sel_extent = unit_extent * sel_local;
+            sel_font_pt = unit_font_pt * sel_local;
+            width_pt = round2(sel_extent);
+            sel_ox = is_matrix ? 0 : ox * sel_local;
+            sel_baseline = is_matrix ? 0 : baseline * sel_local;
             sel_block = m;
+            sel_cur_local = sel_local;
             // Close the previous line with a trailing space. `sg`, not `sr`:
             // it carries no PDF-derived width, just the space.
             if (sel_cur_line >= 0 && sel_have_prev && !sel_prev_ends_space &&
@@ -1697,8 +1719,8 @@ public:
                   SelRunOut{std::move(space_cls), " "});
             }
             std::string sel_base = "t";
-            add_position_classes(sel_base, add_class, m, is_matrix, ox,
-                                 baseline, ascent_pt);
+            add_position_classes(sel_base, add_class, m, is_matrix, sel_local,
+                                 ox, baseline, ascent_pt);
             sel_base += " i"; // transparent
             page_out.sel_lines.push_back(SelLineOut{std::move(sel_base), {}});
             sel_cur_line = static_cast<int>(page_out.sel_lines.size()) - 1;
@@ -1707,7 +1729,7 @@ public:
             sel_pending_space = core.empty() ? sel_extent : 0;
             if (!core.empty()) {
               std::string cls = "sr";
-              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              add_class(cls, "f", pt_decl("font-size", sel_font_size_pt));
               if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
@@ -1725,13 +1747,13 @@ public:
             // copied as one. The advance waits for the next `.sr` instead.
             if (!sel_prev_ends_space && !runs.empty()) {
               std::string gap_cls = "sg";
-              add_class(gap_cls, "f", pt_decl("font-size", font_size_pt));
+              add_class(gap_cls, "f", pt_decl("font-size", sel_font_size_pt));
               const double rounded_gap = round2(sel_pending_space);
               if (rounded_gap > 0) {
                 add_class(gap_cls, "w", pt_decl("width", rounded_gap));
                 // Only a gap that still reads as a word space: a column of
                 // white painted solid is worse than the sliver.
-                if (rounded_gap <= font_size_pt) {
+                if (rounded_gap <= sel_font_size_pt) {
                   gap_cls += " sw";
                 }
               }
@@ -1740,7 +1762,7 @@ public:
             }
             if (!core.empty()) {
               std::string cls = "sr";
-              add_class(cls, "f", pt_decl("font-size", font_size_pt));
+              add_class(cls, "f", pt_decl("font-size", sel_font_size_pt));
               if (const double owed = round2(sel_pending_space); owed > 0) {
                 add_class(cls, "ml", pt_decl("margin-left", owed));
               }
@@ -1776,7 +1798,7 @@ public:
           sel_prev_font_pt = sel_font_pt;
           sel_prev_ends_space = !text.text.empty() && text.text.back() == ' ';
           sel_prev_was_matrix = is_matrix;
-          sel_prev_font_size_pt = font_size_pt;
+          sel_prev_font_size_pt = sel_font_size_pt;
           sel_have_prev = true;
         }
       }
@@ -2128,11 +2150,11 @@ public:
 
         const auto [m, invisible, is_matrix, asc, scale, ox, baseline, extent,
                     font_pt, font_size_pt] = run_geometry(text, to_box);
-        // `add_position_classes` divides through the matrix, which carries
-        // `scale`; the uniform branch multiplies by `m.a`.
-        const double ascent_pt = asc * text.size * (is_matrix ? scale : 1.0);
+        const double ascent_pt = asc * text.size;
         const double cs_pt = round2(text.char_spacing * scale);
         const double ws_pt = round2(text.word_spacing * scale);
+        // Size is in the flow key below, so this is the block's.
+        const double line_local = local_scale(font_size_pt);
         const std::string color_suffix = color_class(text, invisible, styles);
 
         SingleRunOut run;
@@ -2206,26 +2228,29 @@ public:
                               prev_font_pt)) {
             new_line = true;
           } else {
-            margin_pt = round2(ox - prev_end);
+            margin_pt = round2((ox - prev_end) * line_local);
           }
         }
 
         if (new_line) {
           std::string base = "t";
-          add_position_classes(base, add_class, m, is_matrix, ox, baseline,
-                               ascent_pt);
-          add_class(base, "f", pt_decl("font-size", font_size_pt));
+          add_position_classes(base, add_class, m, is_matrix, line_local, ox,
+                               baseline, ascent_pt);
+          add_class(base, "f",
+                    pt_decl("font-size", round2(font_size_pt * line_local)));
           const bool spacing_one_to_one =
               font != 0 ||
               (text.font != nullptr &&
                util::string::utf8_length(text.text) == text.advances.size());
           if (text.char_spacing != 0 && spacing_one_to_one) {
-            add_class(base, "s", pt_decl("letter-spacing", cs_pt));
+            add_class(base, "s",
+                      pt_decl("letter-spacing", round2(cs_pt * line_local)));
           }
           if (text.word_spacing != 0 && spacing_one_to_one &&
               !(text.font != nullptr && text.font->composite)) {
             // `ws` = word-spacing everywhere (`w` is width in the dual layer).
-            add_class(base, "ws", pt_decl("word-spacing", ws_pt));
+            add_class(base, "ws",
+                      pt_decl("word-spacing", round2(ws_pt * line_local)));
           }
           // Invisible (Tr 3/7) and Type3 (painted by char procs) runs stay in
           // the DOM for selection but render transparent.
@@ -2446,14 +2471,21 @@ public:
     double baseline;           ///< origin y (baseline) in pt
     double extent;             ///< advance width in pt
     double font_pt;            ///< font size along the advance axis in pt
-    double font_size_pt;       ///< CSS font-size in px
+    double font_size_pt;       ///< the CSS font-size the run asks for, in pt
   };
 
-  /// A matrix run's font size is the PDF's `Tf`, routinely `1`, which a
-  /// browser's minimum font size clamps up before the matrix multiplies it.
-  /// Laying out this much larger and dividing the matrix by it keeps clear of
-  /// the clamp. Constant, not per run: one block's runs share the space.
-  static constexpr double matrix_local_scale = 48;
+  /// 24px, the largest minimum font size a chrome user can set; an android
+  /// webview defaults to 8px.
+  static constexpr double text_floor_pt = 18;
+
+  /// How much larger a block holding `font_size_pt` lays out to clear a
+  /// browser's minimum font size; the block scales it back out. The clamp reads
+  /// the specified size, so zoom does not move the floor.
+  static double local_scale(const double font_size_pt) {
+    return font_size_pt > 0 && font_size_pt < text_floor_pt
+               ? text_floor_pt / font_size_pt
+               : 1.0;
+  }
 
   static RunGeometry run_geometry(const pdf::TextElement &text,
                                   const util::math::Transform2D &to_box) {
@@ -2467,21 +2499,16 @@ public:
     // fast path, where it would feed a negative `m.a` into the placement math.
     const bool is_matrix = !(m.b == 0 && m.c == 0 && m.a == m.d && m.a > 0);
     const double tz = text.horizontal_scaling / 100.0;
-    // off the original matrix: `extent`/`font_pt` stay page space
     const double axis = tz != 0 ? std::hypot(m.a, m.b) / tz : 0;
-    const double scale = is_matrix ? matrix_local_scale : m.a;
-    const util::math::Transform2D placed =
-        is_matrix ? util::math::Transform2D(m.a / scale, m.b / scale,
-                                            m.c / scale, m.d / scale, m.e, m.f)
-                  : m;
+    const double scale = is_matrix ? 1.0 : m.a;
     return RunGeometry{
-        .m = placed,
+        .m = m,
         .invisible = invisible,
         .is_matrix = is_matrix,
         .asc = ascent_em(text.font),
         .scale = scale,
-        .ox = placed.e,
-        .baseline = placed.f,
+        .ox = m.e,
+        .baseline = m.f,
         .extent = text.width * axis,
         .font_pt = text.size * axis,
         .font_size_pt = round2(text.size * scale),
@@ -2721,19 +2748,25 @@ public:
     out.write_header_end();
   }
 
-  /// Appends a line block's placement classes: `l`/`t` (left/top in pt) for an
-  /// axis-aligned run, `m` (a transform re-anchored to the baseline by
-  /// `ascent_pt`) for a rotated or skewed one. Shared by all three layers.
+  /// Appends a line block's placement classes: `l`/`t` plus `z` taking `local`
+  /// back out for an axis-aligned run, `m` carrying it for a rotated one.
+  /// `ox`/`baseline`/`ascent_pt` are page space: `local` grows what the box
+  /// holds, not where it sits.
   template <typename AddClass>
   static void add_position_classes(std::string &classes, AddClass &&add_class,
                                    const util::math::Transform2D &m,
-                                   const bool is_matrix, const double ox,
-                                   const double baseline,
+                                   const bool is_matrix, const double local,
+                                   const double ox, const double baseline,
                                    const double ascent_pt) {
     if (!is_matrix) {
       add_class(classes, "l", pt_decl("left", round2(ox)));
       add_class(classes, "t",
                 pt_decl("top", round2(baseline - ascent_pt * m.a)));
+      if (local != 1) {
+        std::ostringstream z;
+        z << "transform:scale(" << 1 / local << ')';
+        add_class(classes, "z", std::move(z).str());
+      }
       return;
     }
     // A CSS `matrix()` translation is intrinsically px; `translate()` takes pt
@@ -2742,8 +2775,8 @@ public:
     const double ty = m.f - m.d * ascent_pt;
     std::ostringstream t;
     t << "transform:translate(" << round2(tx) << "pt," << round2(ty)
-      << "pt) matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d
-      << ",0,0)";
+      << "pt) matrix(" << m.a / local << ',' << m.b / local << ','
+      << m.c / local << ',' << m.d / local << ",0,0)";
     add_class(classes, "m", std::move(t).str());
   }
 

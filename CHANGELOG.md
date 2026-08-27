@@ -90,8 +90,8 @@ The release run heads these entries with the version and opens a fresh
 - A pdf image placed on several pages is one image, and the pdf view honors
   `HtmlConfig::embed_images`, which it used to ignore.
 - Text in a pdf no longer comes out in giant overlapping type on a browser with
-  a minimum font size, android's 8px included. Such a run is also placed more
-  accurately.
+  a minimum font size. A line block one would clamp is laid out at 24px and
+  scaled back down. Such a run is also placed more accurately.
 
 ## v6.10.1 - 2026-08-21
 
