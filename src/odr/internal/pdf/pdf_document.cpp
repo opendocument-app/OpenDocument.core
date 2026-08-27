@@ -165,8 +165,7 @@ std::string Font::to_unicode(const std::string &codes) const {
   // `ToUnicode` codespace is not to be trusted, producers writing the
   // two-byte `<0000> <FFFF>` boilerplate there regardless.
   if (!cmap.empty()) {
-    return composite ? cmap.translate_string(codes)
-                     : cmap.translate_string(codes, 1);
+    return cmap.translate_string(codes, /*single_byte_codes=*/!composite);
   }
   if (composite) {
     // A composite (Type0) font with no `ToUnicode` CMap. A predefined
@@ -214,7 +213,7 @@ std::string Font::to_unicode(const std::string &codes) const {
       !unicode.empty()) {
     return unicode;
   }
-  return cmap.translate_string(codes, 1);
+  return cmap.translate_string(codes, /*single_byte_codes=*/true);
 }
 
 } // namespace odr::internal::pdf

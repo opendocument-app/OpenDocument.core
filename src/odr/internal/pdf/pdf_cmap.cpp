@@ -63,15 +63,16 @@ std::size_t CMap::code_length(const std::string &codes,
   return code_width(static_cast<std::uint8_t>(codes[pos]));
 }
 
-std::string
-CMap::translate_string(const std::string &codes,
-                       const std::optional<std::size_t> code_width) const {
+std::string CMap::translate_string(const std::string &codes,
+                                   const bool single_byte_codes) const {
   std::u16string result;
 
   std::size_t pos = 0;
   while (pos < codes.size()) {
-    const std::size_t width = std::min(
-        code_width.value_or(code_length(codes, pos)), codes.size() - pos);
+    const std::size_t width =
+        single_byte_codes
+            ? 1
+            : std::min(code_length(codes, pos), codes.size() - pos);
     const std::string code = codes.substr(pos, width);
     pos += width;
 
@@ -82,7 +83,7 @@ CMap::translate_string(const std::string &codes,
 
     // Only for an imposed width — a declared mixed codespace keeps `<20>` and
     // `<0020>` distinct.
-    if (code_width.has_value() && code.size() == 1) {
+    if (single_byte_codes) {
       if (const auto it = m_map.find(std::string(1, '\0') + code);
           it != m_map.end()) {
         result += it->second;
