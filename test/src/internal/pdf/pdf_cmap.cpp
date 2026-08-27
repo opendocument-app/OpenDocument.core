@@ -199,3 +199,46 @@ TEST(PdfCMap, usecmap_disables_local_codespace_authority) {
   EXPECT_TRUE(cmap.has_cid_map());
   EXPECT_EQ(cmap.cid_for_code(std::string_view("\x20", 1)), 1u);
 }
+
+TEST(PdfCMap, imposed_code_width_overrides_codespace) {
+  // A simple font's `ToUnicode` CMap carrying the two-byte `<0000> <FFFF>`
+  // boilerplate over one-byte entries; splitting by it pairs the codes up.
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfchar\n"
+                    "<41> <0041>\n"
+                    "<42> <0042>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string("\x41\x42"), "\xe4\x85\x82"); // U+4142
+  EXPECT_EQ(cmap.translate_string("\x41\x42", true), "AB");
+}
+
+TEST(PdfCMap, imposed_code_width_falls_back_to_a_padded_entry) {
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfchar\n"
+                    "<0041> <0041>\n"
+                    "<0042> <0042>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string("\x41\x42", true), "AB");
+}
+
+TEST(PdfCMap, imposed_code_width_keeps_a_mixed_codespace_distinct) {
+  // Padding is only for an imposed width; a declared mixed codespace keeps
+  // `<20>` and `<2120>` apart.
+  CMap cmap = parse("2 begincodespacerange\n"
+                    "<00> <20>\n"
+                    "<2100> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfchar\n"
+                    "<20> <0041>\n"
+                    "<2120> <0042>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string("\x20"), "A");
+  EXPECT_EQ(cmap.translate_string("\x21\x20"), "B");
+}

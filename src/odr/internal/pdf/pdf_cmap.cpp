@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 
 namespace odr::internal::pdf {
 
@@ -62,19 +63,32 @@ std::size_t CMap::code_length(const std::string &codes,
   return code_width(static_cast<std::uint8_t>(codes[pos]));
 }
 
-std::string CMap::translate_string(const std::string &codes) const {
+std::string CMap::translate_string(const std::string &codes,
+                                   const bool single_byte_codes) const {
   std::u16string result;
 
   std::size_t pos = 0;
   while (pos < codes.size()) {
     const std::size_t width =
-        std::min(code_length(codes, pos), codes.size() - pos);
+        single_byte_codes
+            ? 1
+            : std::min(code_length(codes, pos), codes.size() - pos);
     const std::string code = codes.substr(pos, width);
     pos += width;
 
     if (const auto it = m_map.find(code); it != m_map.end()) {
       result += it->second;
       continue;
+    }
+
+    // Only for an imposed width — a declared mixed codespace keeps `<20>` and
+    // `<0020>` distinct.
+    if (single_byte_codes) {
+      if (const auto it = m_map.find(std::string(1, '\0') + code);
+          it != m_map.end()) {
+        result += it->second;
+        continue;
+      }
     }
 
     // Unknown code: fall back to its numeric value as a single UTF-16 unit

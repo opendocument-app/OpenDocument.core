@@ -56,7 +56,12 @@ public:
   /// does, keeping a mixed 1-/2-byte codespace aligned across both.
   [[nodiscard]] std::size_t code_width(std::uint8_t first) const;
 
-  [[nodiscard]] std::string translate_string(const std::string &codes) const;
+  /// `single_byte_codes` overrides the codespace ranges. An imposed
+  /// single-byte code is also looked up zero-padded to two bytes, producers
+  /// keying the entries either way.
+  [[nodiscard]] std::string
+  translate_string(const std::string &codes,
+                   bool single_byte_codes = false) const;
 
   /// True when at least one `cidchar`/`cidrange` mapping was parsed (an
   /// embedded CID `/Encoding` CMap). When false the composite code -> CID is
