@@ -9,6 +9,7 @@
 #include <odr/internal/zip/zip_util.hpp>
 
 #include <algorithm>
+#include <ostream>
 #include <string>
 
 #include <miniz/miniz.h>
@@ -72,20 +73,38 @@ std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
   return filesystem;
 }
 
+namespace {
+
+struct WriteSink {
+  std::ostream *out{};
+  std::streamoff base{};
+};
+
+} // namespace
+
 void ZipArchive::save(std::ostream &out) const {
   bool state{};
   const auto time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
+  // miniz addresses the output by absolute offset and rewrites local headers.
+  WriteSink sink{&out, static_cast<std::streamoff>(out.tellp())};
+
   mz_zip_archive archive{};
-  archive.m_pIO_opaque = &out;
-  archive.m_pWrite = [](void *opaque, std::uint64_t /*offset*/,
+  archive.m_pIO_opaque = &sink;
+  archive.m_pWrite = [](void *opaque, const std::uint64_t offset,
                         const void *buffer, const std::size_t size) {
-    const auto o = static_cast<std::ostream *>(opaque);
-    o->write(static_cast<const char *>(buffer),
-             static_cast<std::streamsize>(size));
+    const auto s = static_cast<WriteSink *>(opaque);
+    std::ostream &o = *s->out;
+    const std::streamoff position =
+        s->base + static_cast<std::streamoff>(offset);
+    if (static_cast<std::streamoff>(o.tellp()) != position) {
+      o.seekp(position);
+    }
+    o.write(static_cast<const char *>(buffer),
+            static_cast<std::streamsize>(size));
     // A short write has to surface, or the archive is silently truncated.
-    return o->good() ? size : std::size_t{0};
+    return o.good() ? size : std::size_t{0};
   };
   state = mz_zip_writer_init(&archive, 0);
   if (!state) {

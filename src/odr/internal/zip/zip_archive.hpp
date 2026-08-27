@@ -24,6 +24,7 @@ public:
   [[nodiscard]] std::shared_ptr<abstract::Filesystem>
   as_filesystem() const override;
 
+  /// `out` has to be seekable — local headers are rewritten with the size.
   void save(std::ostream &out) const override;
 
   class Entry;
