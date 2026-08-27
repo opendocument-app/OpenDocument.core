@@ -2599,7 +2599,9 @@ public:
                  "width:max-content;min-width:100%}";
     // `overflow:hidden` clips to the crop box, as a viewer does: content may
     // sit outside it (a bleed, or an InDesign spread's other page).
-    out.out() << ".p{position:relative;"
+    // `content-visibility` skips an off-screen page; the box states its own
+    // size, so no `contain-intrinsic-size` and no scroll geometry change.
+    out.out() << ".p{content-visibility:auto;position:relative;"
                  "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
                  "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
