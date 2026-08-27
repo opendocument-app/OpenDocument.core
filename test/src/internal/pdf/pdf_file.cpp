@@ -472,17 +472,30 @@ TEST(PdfFile, matrix_run_font_size_clears_a_minimum_font_size) {
                   PdfTextMode::dual_layer);
 
   EXPECT_FALSE(contains(html, "font-size:1pt"));
-  EXPECT_TRUE(contains(html, "font-size:48pt"));
-  // 10/48 and 20/48: the size the file asks for survives the blow-up.
-  EXPECT_TRUE(contains(html, "matrix(0.208333,0,0,0.416667,0,0)"));
+  EXPECT_TRUE(contains(html, "font-size:18pt"));
+  // 10/18 and 20/18: the size the file asks for survives the blow-up.
+  EXPECT_TRUE(contains(html, "matrix(0.555556,0,0,1.11111,0,0)"));
 }
 
-// The uniform branch states the real size and needs no such treatment.
-TEST(PdfFile, uniform_run_keeps_its_own_font_size) {
+// A uniform run states its own size, and a small one is clamped just the same,
+// so its block is laid out at the floor and scaled back by `.t`'s transform.
+TEST(PdfFile, small_uniform_run_is_laid_out_at_the_floor_and_scaled_back) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 1 0 0 1 72 700 Tm (Hi) Tj ET"),
                   PdfTextMode::dual_layer);
 
-  EXPECT_TRUE(contains(html, "font-size:12pt"));
-  EXPECT_FALSE(contains(html, "font-size:48pt"));
+  EXPECT_FALSE(contains(html, "font-size:12pt"));
+  EXPECT_TRUE(contains(html, "font-size:18pt"));
+  EXPECT_TRUE(contains(html, "transform:scale(0.666667)"));
+}
+
+// At the floor no browser clamps it, so the run is laid out and placed exactly
+// as it asks to be — the blow-up is what a run needs, not what every run pays.
+TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 24 Tf 1 0 0 1 72 700 Tm (Hi) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, "font-size:24pt"));
+  EXPECT_FALSE(contains(html, "transform:scale("));
 }
