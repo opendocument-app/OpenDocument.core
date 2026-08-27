@@ -11,6 +11,8 @@
 #include <odr/style.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
@@ -18,6 +20,8 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace odr::internal {
 
@@ -73,23 +77,105 @@ html::width_fit(const HtmlConfig &config, const bool fit_width_by_default,
   }
 }
 
+namespace {
+
+/// css absolute lengths, all defined against the inch (css values 3, 5.2).
+const std::unordered_map<std::string, double> &css_absolute_units() {
+  static const std::unordered_map<std::string, double> units{
+      {"px", 1.0},         {"in", 96.0},        {"pt", 96.0 / 72.0},
+      {"pc", 96.0 / 6},    {"cm", 96.0 / 2.54}, {"mm", 96.0 / 25.4},
+      {"q", 96.0 / 101.6},
+  };
+  return units;
+}
+
+/// Whether css reads @p name as a length: an absolute one, one it resolves
+/// against the font, the line or the viewport, or `%` against the containing
+/// block.
+bool is_css_length_unit(const std::string &name) {
+  static const std::unordered_set<std::string> relative{
+      "em", "rem", "ex", "ch", "ic",   "cap",  "lh", "rlh",
+      "vw", "vh",  "vi", "vb", "vmin", "vmax", "%",
+  };
+  return css_absolute_units().contains(name) || relative.contains(name);
+}
+
+/// Unit identifiers are case-insensitive in css, and a host writes the name.
+std::string unit_name(const Measure &measure) {
+  return util::string::to_lower(measure.unit().name());
+}
+
+/// One side gutter the page column puts around its pages, in css pixels — what
+/// `.odr-page-outer` and the pdf view's `.p` state as their side margin.
+constexpr double page_column_side_gutter_pixels = 16;
+
+/// The margin a side states, where css can read it as a length. Anything else
+/// keeps the built-in inset: every rule floors its own against a `max()`, and a
+/// `var()` css cannot resolve voids the whole shorthand rather than the side.
+std::optional<Measure> css_margin(const std::optional<Measure> &measure) {
+  if (!measure.has_value()) {
+    return {};
+  }
+  const double magnitude = measure->magnitude();
+  if (!std::isfinite(magnitude) || magnitude <= 0) {
+    return {};
+  }
+  return is_css_length_unit(unit_name(*measure)) ? measure : std::nullopt;
+}
+
+} // namespace
+
 std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
   if (!measure.has_value()) {
     return {};
   }
 
-  // css absolute lengths, all defined against the inch (css values 3, 5.2).
-  static const std::unordered_map<std::string, double> per_unit{
-      {"px", 1.0},      {"in", 96.0},        {"pt", 96.0 / 72.0},
-      {"pc", 96.0 / 6}, {"cm", 96.0 / 2.54}, {"mm", 96.0 / 25.4},
-  };
-
-  const auto it = per_unit.find(std::string(measure->unit().name()));
-  if (it == std::end(per_unit)) {
+  const auto &units = css_absolute_units();
+  const auto it = units.find(unit_name(*measure));
+  if (it == std::end(units)) {
     return {};
   }
   const double pixels = measure->magnitude() * it->second;
-  return pixels > 0 ? std::optional(pixels) : std::nullopt;
+  return std::isfinite(pixels) && pixels > 0 ? std::optional(pixels)
+                                             : std::nullopt;
+}
+
+double html::page_column_gutter_pixels(const HtmlConfig &config) {
+  // Whatever `css_margin` drops, `css_pixels` drops too, so it need not run.
+  const auto side = [](const std::optional<Measure> &measure) {
+    return std::max(page_column_side_gutter_pixels,
+                    css_pixels(measure).value_or(0.0));
+  };
+  return side(config.min_content_margin.left) +
+         side(config.min_content_margin.right);
+}
+
+void html::write_content_margin_style(HtmlWriter &out,
+                                      const HtmlConfig &config) {
+  const DirectionalStyle<Measure> &margin = config.min_content_margin;
+
+  const std::array sides{
+      std::pair{std::string_view("top"), css_margin(margin.top)},
+      std::pair{std::string_view("right"), css_margin(margin.right)},
+      std::pair{std::string_view("bottom"), css_margin(margin.bottom)},
+      std::pair{std::string_view("left"), css_margin(margin.left)},
+  };
+
+  if (std::ranges::none_of(
+          sides, [](const auto &side) { return side.second.has_value(); })) {
+    return;
+  }
+
+  out.write_header_style_begin();
+  out.out() << ":root{";
+  for (const auto &[name, measure] : sides) {
+    if (measure.has_value()) {
+      out.out() << "--odr-min-margin-" << name << ":" << measure->to_string()
+                << ";";
+    }
+  }
+  out.out() << "}";
+  out.write_header_style_end();
 }
 
 void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,

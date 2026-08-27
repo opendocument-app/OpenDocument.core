@@ -17,6 +17,8 @@
 #include <odr/logger.hpp>
 #include <odr/style.hpp>
 
+#include <optional>
+
 /// Cross-translation-unit access to the C++ value each wrapper owns.
 ///
 /// Each `@implementation` holds its handle as an ivar, destroyed by ARC's
@@ -85,11 +87,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ODRMeasure (Private)
 + (instancetype)measureWithHandle:(const odr::Measure &)handle;
+- (const std::optional<odr::Measure> &)handle;
 @end
 
 @interface ODRDirectionalMeasure (Private)
 + (instancetype)directionalWithHandle:
     (const odr::DirectionalStyle<odr::Measure> &)handle;
+- (odr::DirectionalStyle<odr::Measure>)handle;
 @end
 
 @interface ODRDirectionalString (Private)

@@ -173,6 +173,44 @@ make_directional_measure(JNIEnv *env,
       make_measure(env, style.left), make_measure(env, style.bottom));
 }
 
+std::optional<odr::Measure> measure_from_java(JNIEnv *env, jobject value) {
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+  jclass cls = env->GetObjectClass(value);
+  const double magnitude =
+      env->GetDoubleField(value, env->GetFieldID(cls, "magnitude", "D"));
+  auto unit = static_cast<jstring>(env->GetObjectField(
+      value, env->GetFieldID(cls, "unit", "Ljava/lang/String;")));
+  const odr::Measure result(magnitude, odr::DynamicUnit(to_string(env, unit)));
+  env->DeleteLocalRef(unit);
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
+odr::DirectionalStyle<odr::Measure>
+directional_measure_from_java(JNIEnv *env, jobject value) {
+  odr::DirectionalStyle<odr::Measure> result;
+  if (value == nullptr) {
+    return result;
+  }
+
+  jclass cls = env->GetObjectClass(value);
+  const auto side = [&](const char *name) {
+    jobject measure = env->GetObjectField(
+        value, env->GetFieldID(cls, name, "Lapp/opendocument/core/Measure;"));
+    std::optional<odr::Measure> parsed = measure_from_java(env, measure);
+    env->DeleteLocalRef(measure);
+    return parsed;
+  };
+  result.right = side("right");
+  result.top = side("top");
+  result.left = side("left");
+  result.bottom = side("bottom");
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
 jobject
 make_directional_string(JNIEnv *env,
                         const odr::DirectionalStyle<std::string> &style) {
@@ -374,6 +412,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              box_integer(env, config.viewport_width));
   set_object("initialZoom", "Ljava/lang/Double;",
              box_double(env, config.initial_zoom));
+  set_object("minContentMargin", "Lapp/opendocument/core/DirectionalMeasure;",
+             make_directional_measure(env, config.min_content_margin));
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
@@ -539,6 +579,12 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       env->DeleteLocalRef(double_cls);
     }
     env->DeleteLocalRef(zoom);
+  }
+  {
+    jobject margin = get_object("minContentMargin",
+                                "Lapp/opendocument/core/DirectionalMeasure;");
+    result.min_content_margin = directional_measure_from_java(env, margin);
+    env->DeleteLocalRef(margin);
   }
   result.format_html = get_boolean("formatHtml");
   result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));

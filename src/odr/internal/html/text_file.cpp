@@ -100,6 +100,7 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), false);
     write_zoom_style(out, config(), WidthFit::none, {});
+    write_content_margin_style(out, config());
 
     write_text_style(state);
     write_text_dark_style(state);

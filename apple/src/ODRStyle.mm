@@ -9,6 +9,7 @@
 
 using odr::apple::guarded_value;
 using odr::apple::to_nsstring;
+using odr::apple::to_string;
 
 ODR_SAME_ENUM(ODRFontWeightNormal, odr::FontWeight::normal);
 ODR_SAME_ENUM(ODRFontWeightBold, odr::FontWeight::bold);
@@ -107,6 +108,26 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   return guarded_value([&] { return to_nsstring(_handle->to_string()); }, @"");
 }
 
+- (instancetype)initWithString:(NSString *)string {
+  if ((self = [super init]) == nil) {
+    return nil;
+  }
+  _handle = odr::Measure(to_string(string));
+  return self;
+}
+
+- (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit {
+  if ((self = [super init]) == nil) {
+    return nil;
+  }
+  _handle = odr::Measure(magnitude, odr::DynamicUnit(to_string(unit)));
+  return self;
+}
+
+- (const std::optional<odr::Measure> &)handle {
+  return _handle;
+}
+
 - (NSString *)description {
   return self.stringValue;
 }
@@ -124,6 +145,29 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_top = box(handle.top);
   result->_left = box(handle.left);
   result->_bottom = box(handle.bottom);
+  return result;
+}
+
+- (instancetype)initWithRight:(ODRMeasure *)right
+                          top:(ODRMeasure *)top
+                         left:(ODRMeasure *)left
+                       bottom:(ODRMeasure *)bottom {
+  if ((self = [super init]) == nil) {
+    return nil;
+  }
+  _right = right;
+  _top = top;
+  _left = left;
+  _bottom = bottom;
+  return self;
+}
+
+- (odr::DirectionalStyle<odr::Measure>)handle {
+  odr::DirectionalStyle<odr::Measure> result;
+  result.right = _right != nil ? _right.handle : std::nullopt;
+  result.top = _top != nil ? _top.handle : std::nullopt;
+  result.left = _left != nil ? _left.handle : std::nullopt;
+  result.bottom = _bottom != nil ? _bottom.handle : std::nullopt;
   return result;
 }
 

@@ -3,6 +3,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
+#include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <functional>
@@ -155,6 +156,11 @@ struct HtmlConfig {
   std::optional<std::uint32_t> viewport_width;
   /// The zoom the view opens at, 1 being actual size; unset follows the fit.
   std::optional<double> initial_zoom;
+
+  /// The least distance the generated content keeps from the view's border. A
+  /// set side raises the inset the view already has, never lowers it; a unit
+  /// css cannot read as a length is ignored. A sheet is never inset.
+  DirectionalStyle<Measure> min_content_margin;
 
   /// Indent and break the output into lines rather than writing one stream.
   bool format_html{false};

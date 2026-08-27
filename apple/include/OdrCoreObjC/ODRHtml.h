@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 
 #import <OdrCoreObjC/ODRFilesystem.h>
+#import <OdrCoreObjC/ODRStyle.h>
 #import <OdrCoreObjC/ODRTable.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -100,6 +101,10 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, strong, nullable) NSNumber *viewportWidth;
 /// The zoom the view opens at, 1 being actual size; `nil` follows the fit.
 @property(nonatomic, strong, nullable) NSNumber *initialZoom;
+
+/// The least distance the generated content keeps from the view's border. A
+/// set side raises the inset the view already has, never lowers it.
+@property(nonatomic, strong) ODRDirectionalMeasure *minContentMargin;
 
 @property(nonatomic) BOOL formatHtml;
 /// Repeated `htmlIndentString` per nesting level; 0 disables indentation.

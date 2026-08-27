@@ -30,14 +30,15 @@ x-s{display:inline}
    against each other, not against the viewport. The page's side margin is part
    of that width, so fitting the document to a phone screen leaves a gutter
    instead of going edge to edge. */
-.odr-pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px 0;width:max-content;min-width:100%}
+.odr-pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:max(16px,var(--odr-min-margin-top,0px)) 0 max(16px,var(--odr-min-margin-bottom,0px));width:max-content;min-width:100%}
 /* A stacking context, for the shape backgrounds a page holds at `z-index:-1`.
    Not a negative `z-index`, which is one too but takes the page out of reach of
    hit testing. */
-.odr-page-outer{display:flex;margin:0 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
+.odr-page-outer{display:flex;margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 max(16px,var(--odr-min-margin-left,0px));background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
 /* Reflowed to the viewport there is no page box to inset the text. A physical
-   measure, like the page margin it stands in for. */
-.odr-text-flow{padding:3mm}
+   measure, like the page margin it stands in for; `--odr-min-margin-*` is the
+   floor the config puts under it, and is unset by default. */
+.odr-text-flow{padding:max(3mm,var(--odr-min-margin-top,0px)) max(3mm,var(--odr-min-margin-right,0px)) max(3mm,var(--odr-min-margin-bottom,0px)) max(3mm,var(--odr-min-margin-left,0px))}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
@@ -140,8 +141,8 @@ body{margin:0;background:#fff}
 .odr-text{display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4}
 /* The numbers are ours, not the file's, so the gutter stays out of a selection
    of the page. */
-.odr-text-nr{display:flex;flex-direction:column;flex:none;padding:16px 12px 16px 16px;text-align:right;color:var(--odr-text-muted);background:var(--odr-text-gutter);border-right:1px solid var(--odr-text-line);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
-.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:16px;white-space:pre}
+.odr-text-nr{display:flex;flex-direction:column;flex:none;padding:max(16px,var(--odr-min-margin-top,0px)) 12px max(16px,var(--odr-min-margin-bottom,0px)) max(16px,var(--odr-min-margin-left,0px));text-align:right;color:var(--odr-text-muted);background:var(--odr-text-gutter);border-right:1px solid var(--odr-text-line);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 16px;white-space:pre}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
 /* A hovered line reaches its number, which is in the other column, by beginning
    a viewport to the left of it; the padding puts the text back where it was.
@@ -178,7 +179,7 @@ constexpr std::string_view xml_css = R"css(
 --odr-xml-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 body{margin:0;background:#fff}
-.odr-xml{padding:16px;color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
+.odr-xml{padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) max(16px,var(--odr-min-margin-left,0px));color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
 .odr-xml-line,.odr-xml summary{padding-left:1.5em}
 .odr-xml summary{display:block;position:relative;list-style:none;cursor:pointer}
 .odr-xml summary::-webkit-details-marker{display:none}
@@ -222,7 +223,7 @@ constexpr std::string_view filesystem_css = R"css(
 --odr-files-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 --odr-files-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-body{margin:0;background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
+body{margin:0;padding:var(--odr-min-margin-top,0px) var(--odr-min-margin-right,0px) var(--odr-min-margin-bottom,0px) var(--odr-min-margin-left,0px);background:#fff;color:#1f2328;font:13px/1.5 var(--odr-files-font)}
 .odr-files{border-collapse:collapse;width:100%}
 .odr-files td{padding:5px 12px;border-top:1px solid var(--odr-files-line)}
 .odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04))}

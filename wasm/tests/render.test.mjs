@@ -76,6 +76,26 @@ describe('render', () => {
     }
   });
 
+  // The C++ suite covers where the floor lands; this only proves the sides
+  // cross the binding as css lengths, omitted ones staying omitted.
+  it('honours a minimum content margin', () => {
+    const plain = odr.open(fixture('mixed-layout.odt'));
+    const inset = odr.open(fixture('mixed-layout.odt'), {
+      minContentMargin: { top: '12px', left: '1cm' },
+    });
+    try {
+      assert.ok(!plain.render(0).html.includes(':root{--odr-min-margin'));
+      const html = inset.render(0).html;
+      assert.ok(
+        html.includes(':root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}'),
+      );
+      assert.ok(!html.includes('--odr-min-margin-right:'));
+    } finally {
+      plain.close();
+      inset.close();
+    }
+  });
+
   it('honours a config passed at open', () => {
     const plain = odr.open(fixture('mixed-layout.odt'));
     const editable = odr.open(fixture('mixed-layout.odt'), { editable: true });
