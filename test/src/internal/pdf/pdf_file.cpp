@@ -445,8 +445,7 @@ TEST(PdfFile, views_agree_on_an_image_name) {
 
   // path -> the bytes served under it, across every view
   std::map<std::string, std::string> bytes_by_path;
-  for (const std::string &view :
-       {"document.html", "page0.html", "page1.html"}) {
+  for (const auto *const view : {"document.html", "page0.html", "page1.html"}) {
     std::ostringstream out;
     for (const auto &[resource, location] : service.write_html(view, out)) {
       if (resource.type() != HtmlResourceType::image) {
@@ -463,4 +462,27 @@ TEST(PdfFile, views_agree_on_an_image_name) {
   }
 
   EXPECT_EQ(bytes_by_path.size(), 2);
+}
+
+// A `1 Tf` run with its size in `Tm` must not come out at `font-size:1pt`,
+// which a browser's minimum font size would clamp up.
+TEST(PdfFile, matrix_run_font_size_clears_a_minimum_font_size) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 1 Tf 10 0 0 20 50 700 Tm (Hi) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  EXPECT_FALSE(contains(html, "font-size:1pt"));
+  EXPECT_TRUE(contains(html, "font-size:48pt"));
+  // 10/48 and 20/48: the size the file asks for survives the blow-up.
+  EXPECT_TRUE(contains(html, "matrix(0.208333,0,0,0.416667,0,0)"));
+}
+
+// The uniform branch states the real size and needs no such treatment.
+TEST(PdfFile, uniform_run_keeps_its_own_font_size) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 12 Tf 1 0 0 1 72 700 Tm (Hi) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, "font-size:12pt"));
+  EXPECT_FALSE(contains(html, "font-size:48pt"));
 }
