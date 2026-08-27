@@ -185,9 +185,6 @@ TEST(PdfFont, to_unicode_prefers_cmap_over_reverse_map) {
 }
 
 TEST(PdfFont, simple_font_to_unicode_ignores_cmap_codespace) {
-  // A simple font whose `ToUnicode` CMap declares the two-byte
-  // `<0000> <FFFF>` boilerplate: the codes still split one byte each
-  // (splitting by the codespace would pair them into U+4142).
   Font font;
   font.cmap.add_codespace_range(codes2({0}), codes2({0xffff}));
   font.cmap.map_single("\x41", u"A");
@@ -197,8 +194,6 @@ TEST(PdfFont, simple_font_to_unicode_ignores_cmap_codespace) {
 }
 
 TEST(PdfFont, composite_to_unicode_splits_by_cmap_codespace) {
-  // The same codespace on a composite font stays authoritative: the two
-  // bytes form one code.
   Font font;
   font.composite = true;
   font.cmap.add_codespace_range(codes2({0}), codes2({0xffff}));

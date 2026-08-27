@@ -56,8 +56,7 @@ public:
   /// does, keeping a mixed 1-/2-byte codespace aligned across both.
   [[nodiscard]] std::size_t code_width(std::uint8_t first) const;
 
-  /// `single_byte_codes` overrides the codespace ranges and splits the codes
-  /// one byte each (a simple font's width, ISO 32000-1 9.10.3). An imposed
+  /// `single_byte_codes` overrides the codespace ranges. An imposed
   /// single-byte code is also looked up zero-padded to two bytes, producers
   /// keying the entries either way.
   [[nodiscard]] std::string
