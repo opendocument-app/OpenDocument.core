@@ -103,8 +103,7 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, strong, nullable) NSNumber *initialZoom;
 
 /// The least distance the generated content keeps from the view's border. A
-/// `nil` side keeps the inset the view already has; a set side raises it,
-/// never lowers it.
+/// set side raises the inset the view already has, never lowers it.
 @property(nonatomic, strong) ODRDirectionalMeasure *minContentMargin;
 
 @property(nonatomic) BOOL formatHtml;

@@ -43,8 +43,8 @@ public final class HtmlConfig {
   public Double initialZoom;
 
   /**
-   * The least distance the generated content keeps from the view's border. A {@code null} side
-   * keeps the inset the view already has; a set side raises it, never lowers it.
+   * The least distance the generated content keeps from the view's border. A set side raises the
+   * inset the view already has, never lowers it.
    */
   public DirectionalMeasure minContentMargin =
       new DirectionalMeasure(null, null, null, null);

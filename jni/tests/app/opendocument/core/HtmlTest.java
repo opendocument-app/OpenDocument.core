@@ -68,6 +68,11 @@ class HtmlTest {
     assertNull(new HtmlConfig().minContentMargin.top);
     assertTrue(!renderOdt(new HtmlConfig()).contains(":root{--odr-min-margin"));
 
+    // the field is the host's to null, and reading one is not a crash
+    HtmlConfig cleared = new HtmlConfig();
+    cleared.minContentMargin = null;
+    assertTrue(!renderOdt(cleared).contains(":root{--odr-min-margin"));
+
     HtmlConfig config = new HtmlConfig();
     config.minContentMargin =
         new DirectionalMeasure(null, new Measure(12, "px"), new Measure(1, "cm"), null);

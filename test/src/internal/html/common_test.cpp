@@ -6,8 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <optional>
 #include <sstream>
+#include <string>
 
 using namespace odr;
 namespace ihtml = odr::internal::html;
@@ -215,6 +217,87 @@ TEST(html_common, a_zoom_pinned_to_actual_size_is_still_a_pin) {
   config.initial_zoom = 0.5;
   EXPECT_EQ(emit_zoom(config, ihtml::WidthFit::browser, 800),
             styled(":root{--odr-fit:0.5;--odr-zoom:0.5}body{zoom:0.5}"));
+}
+
+namespace {
+
+std::string emit_margin(const HtmlConfig &config) {
+  std::ostringstream out;
+  ihtml::HtmlWriter writer(out, false, "");
+  ihtml::write_content_margin_style(writer, config);
+  return out.str();
+}
+
+} // namespace
+
+TEST(html_common, the_content_margin_states_the_sides_that_are_set) {
+  HtmlConfig config;
+
+  // unset it declares nothing, which leaves the shipped insets as they are
+  EXPECT_EQ(emit_margin(config), "");
+
+  config.min_content_margin.top = Measure("12px");
+  config.min_content_margin.left = Measure("1cm");
+  EXPECT_EQ(emit_margin(config), "<style>:root{--odr-min-margin-top:12px;"
+                                 "--odr-min-margin-left:1cm;}</style>");
+}
+
+// The stylesheets floor their insets with `max(16px,var(--odr-min-margin-*))`,
+// so a value css cannot resolve voids the whole shorthand rather than one side
+// — it has to be dropped here instead.
+TEST(html_common, the_content_margin_drops_what_css_cannot_read_as_a_length) {
+  HtmlConfig config;
+
+  const auto emit = [&](const Measure &measure) {
+    config.min_content_margin = {};
+    config.min_content_margin.top = measure;
+    return emit_margin(config);
+  };
+
+  // a unit that is neither a css length nor closes the style element
+  EXPECT_EQ(emit(Measure("1foo")), "");
+  EXPECT_EQ(emit(Measure("1px;}</style><script>alert(1)</script>")), "");
+  EXPECT_EQ(emit(Measure(1, DynamicUnit())), "");
+
+  // a magnitude that renders no length
+  EXPECT_EQ(emit(Measure(-1, DynamicUnit("px"))), "");
+  EXPECT_EQ(emit(Measure(0, DynamicUnit("px"))), "");
+  EXPECT_EQ(
+      emit(Measure(std::numeric_limits<double>::infinity(), DynamicUnit("px"))),
+      "");
+  EXPECT_EQ(emit(Measure(std::numeric_limits<double>::quiet_NaN(),
+                         DynamicUnit("px"))),
+            "");
+
+  // what css does read is written verbatim, unit case and all
+  EXPECT_NE(emit(Measure("2EM")).find("--odr-min-margin-top:2EM;"),
+            std::string::npos);
+  EXPECT_NE(emit(Measure("50%")).find("--odr-min-margin-top:50%;"),
+            std::string::npos);
+}
+
+TEST(html_common, the_page_column_gutter_is_raised_but_never_lowered) {
+  HtmlConfig config;
+
+  // the 16px per side the stylesheets state
+  EXPECT_EQ(ihtml::page_column_gutter_pixels(config), 32);
+
+  config.min_content_margin.left = Measure("100px");
+  EXPECT_EQ(ihtml::page_column_gutter_pixels(config), 116);
+
+  config.min_content_margin.right = Measure("100PX");
+  EXPECT_EQ(ihtml::page_column_gutter_pixels(config), 200);
+
+  // a smaller floor changes nothing, and the top and bottom are no gutter
+  config.min_content_margin.left = Measure("1px");
+  config.min_content_margin.right = Measure("1px");
+  config.min_content_margin.top = Measure("100px");
+  EXPECT_EQ(ihtml::page_column_gutter_pixels(config), 32);
+
+  // css applies these, the fit cannot count them
+  config.min_content_margin.left = Measure("100em");
+  config.min_content_margin.right = Measure("50%");
+  EXPECT_EQ(ihtml::page_column_gutter_pixels(config), 32);
 }
 
 TEST(html_common, an_opaque_color_is_a_hex_triplet) {

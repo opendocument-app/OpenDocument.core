@@ -1,9 +1,12 @@
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 
 #include <odr/html.hpp>
@@ -222,48 +225,70 @@ TEST(html, flowing_text_is_inset_from_the_screen_edge) {
   EXPECT_NE(page.find(".odr-text-flow{padding:"), std::string::npos);
 }
 
-// Unset it writes nothing at all, which is what keeps the shipped stylesheets
-// independent of the config.
-TEST(html, min_content_margin_is_written_only_where_it_is_set) {
+// Every view that insets its content declares the floor it was given; unset it
+// declares nothing, which leaves the shipped stylesheets alone.
+TEST(html, min_content_margin_reaches_every_view) {
   HtmlConfig config;
-  config.text_document_margin = false;
 
-  // the stylesheets name the variables either way; nobody declares one
-  EXPECT_EQ(render_odt(config).find(":root{--odr-min-margin"),
-            std::string::npos);
+  const auto render_as = [&](const std::string &path, const FileType as) {
+    const DecodedFile file(TestData::test_file_path(path), as, Logger::null());
+    std::ostringstream out;
+    html::translate(file, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
 
-  config.min_content_margin.top = Measure("12px");
-  config.min_content_margin.left = Measure("1cm");
-  const std::string page = render_odt(config);
+  const auto xml = [&] {
+    const DecodedFile file(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+    std::ostringstream out;
+    html::translate(file, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
 
-  EXPECT_NE(page.find(":root{--odr-min-margin-top:12px;--odr-min-margin-left:"
-                      "1cm;}"),
-            std::string::npos);
-  EXPECT_EQ(page.find("--odr-min-margin-right:"), std::string::npos);
-}
+  const auto every_view = [&] {
+    return std::array{
+        // a document, and the page column it stacks
+        render_odt(config),
+        render("odr-public/txt/lorem ipsum.txt", config),
+        xml(),
+        // a file listing: the archive view of a zip
+        render_as("odr-public/odt/about.odt", FileType::zip),
+        render_as("odr-public/png/tango-example-icons.png",
+                  FileType::portable_network_graphics),
+        render_as("odr-public/pdf/empty.pdf",
+                  FileType::portable_document_format),
+        render_as("odr-private/otf/OpenSans-Regular.otf",
+                  FileType::opentype_font),
+    };
+  };
 
-// The value reaches the page a host would host, so a unit css cannot read is
-// dropped rather than written into the style element.
-TEST(html, min_content_margin_drops_a_unit_css_cannot_read) {
-  HtmlConfig config;
-  config.min_content_margin.top =
-      Measure("1px;}</style><script>alert(1)</script>");
+  for (const std::string &page : every_view()) {
+    EXPECT_EQ(page.find("--odr-min-margin-left:"), std::string::npos);
+  }
 
-  const std::string page = render_odt(config);
-
-  EXPECT_EQ(page.find(":root{--odr-min-margin"), std::string::npos);
-  EXPECT_EQ(page.find("<script>alert"), std::string::npos);
+  config.min_content_margin.left = Measure("7px");
+  for (const std::string &page : every_view()) {
+    EXPECT_NE(page.find(":root{--odr-min-margin-left:7px;}"),
+              std::string::npos);
+  }
 }
 
 namespace {
 
-/// The `--odr-fit` @p page states, or nothing where it follows its own size.
+/// The `--odr-fit` @p page states as a factor, or nothing where it names who
+/// measures it instead.
 std::optional<double> fit_of(const std::string &page) {
-  const std::size_t begin = page.find("--odr-fit:");
-  if (begin == std::string::npos) {
+  constexpr std::string_view key = "--odr-fit:";
+  const std::size_t at = page.find(key);
+  if (at == std::string::npos) {
     return {};
   }
-  return std::stod(page.substr(begin + std::string("--odr-fit:").length()));
+  // `auto` and `view` name a measurer rather than stating a factor
+  const std::size_t begin = at + key.length();
+  if (begin >= page.length() ||
+      std::isdigit(static_cast<unsigned char>(page[begin])) == 0) {
+    return {};
+  }
+  return std::stod(page.substr(begin));
 }
 
 } // namespace

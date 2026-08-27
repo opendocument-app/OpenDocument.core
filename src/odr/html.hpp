@@ -158,11 +158,8 @@ struct HtmlConfig {
   std::optional<double> initial_zoom;
 
   /// The least distance the generated content keeps from the view's border. A
-  /// side left unset keeps the inset the view already has — `3mm` for a
-  /// reflowed text document, `16px` for the page column and the source views,
-  /// `8px` for a font specimen, none for an image or a file listing. A set
-  /// side raises that inset, never lowers it. A sheet and the media view are
-  /// not inset: the one meets the edge by design, the other is full-bleed.
+  /// set side raises the inset the view already has, never lowers it; a unit
+  /// css cannot read as a length is ignored. A sheet is never inset.
   DirectionalStyle<Measure> min_content_margin;
 
   /// Indent and break the output into lines rather than writing one stream.

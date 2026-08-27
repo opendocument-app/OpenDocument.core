@@ -93,8 +93,8 @@ export interface HtmlConfig {
   initialZoom?: number;
   /**
    * The least distance the generated content keeps from the view's border, per
-   * side, as a css length (e.g. `"3mm"`). An omitted side keeps the inset the
-   * view already has; a given side raises it, never lowers it.
+   * side, as a css length (e.g. `"3mm"`). A given side raises the inset the
+   * view already has, never lowers it.
    */
   minContentMargin?: {
     top?: string;

@@ -97,8 +97,7 @@ NS_SWIFT_NAME(DirectionalMeasure)
 @property(nonatomic, readonly, nullable) ODRMeasure *left;
 @property(nonatomic, readonly, nullable) ODRMeasure *bottom;
 
-/// For the sides a caller states itself, e.g.
-/// @ref ODRHtmlConfig.minContentMargin.
+/// For the sides a caller states itself, e.g. `ODRHtmlConfig.minContentMargin`.
 - (instancetype)initWithRight:(nullable ODRMeasure *)right
                           top:(nullable ODRMeasure *)top
                          left:(nullable ODRMeasure *)left

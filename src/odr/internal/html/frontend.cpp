@@ -36,8 +36,8 @@ x-s{display:inline}
    hit testing. */
 .odr-page-outer{display:flex;margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 max(16px,var(--odr-min-margin-left,0px));background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
 /* Reflowed to the viewport there is no page box to inset the text. A physical
-   measure, like the page margin it stands in for. `--odr-min-margin-*` is the
-   floor the config puts under it, unset and so inert by default. */
+   measure, like the page margin it stands in for; `--odr-min-margin-*` is the
+   floor the config puts under it, and is unset by default. */
 .odr-text-flow{padding:max(3mm,var(--odr-min-margin-top,0px)) max(3mm,var(--odr-min-margin-right,0px)) max(3mm,var(--odr-min-margin-bottom,0px)) max(3mm,var(--odr-min-margin-left,0px))}
 /* The label is text rather than a `::marker`, which no selection would copy.
    It hangs into the item's padding so wrapped lines align under the text. */
