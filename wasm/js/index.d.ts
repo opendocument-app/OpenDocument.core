@@ -91,6 +91,17 @@ export interface HtmlConfig {
   viewportWidth?: number;
   /** The zoom the view opens at, 1 being actual size; unset follows the fit. */
   initialZoom?: number;
+  /**
+   * The least distance the generated content keeps from the view's border, per
+   * side, as a css length (e.g. `"3mm"`). A given side raises the inset the
+   * view already has, never lowers it.
+   */
+  minContentMargin?: {
+    top?: string;
+    right?: string;
+    bottom?: string;
+    left?: string;
+  };
   pdfTextMode?: number;
 }
 

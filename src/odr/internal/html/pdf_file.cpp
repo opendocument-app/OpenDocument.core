@@ -1718,7 +1718,7 @@ public:
     }
     substitute_faces.append_faces(font_faces);
 
-    const std::optional<double> content = content_pixels(pages_out);
+    const std::optional<double> content = content_pixels(pages_out, config());
     write_header_common(state, font_faces, font_styles, styles, content, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
@@ -2194,7 +2194,7 @@ public:
     substitute_faces.append_faces(font_faces);
 
     // ---- Pass 2: write HTML ---------------------------------------------
-    const std::optional<double> content = content_pixels(pages_out);
+    const std::optional<double> content = content_pixels(pages_out, config());
     write_header_common(state, font_faces, font_styles, styles, content, [&] {
       // Invisible text render modes (Tr 3/7).
       out.out() << ".i{color:transparent}";
@@ -2557,8 +2557,8 @@ public:
 
   /// The widest page a view holds, in css pixels, with `.d`'s side gutters.
   template <typename PageOut>
-  static std::optional<double>
-  content_pixels(const std::vector<PageOut> &pages) {
+  static std::optional<double> content_pixels(const std::vector<PageOut> &pages,
+                                              const HtmlConfig &config) {
     double widest = 0;
     for (const PageOut &page : pages) {
       widest = std::max(widest, page.width);
@@ -2566,7 +2566,7 @@ public:
     if (widest <= 0) {
       return {};
     }
-    return widest * pt_to_in * 96.0 + page_column_gutter_pixels;
+    return widest * pt_to_in * 96.0 + page_column_gutter_pixels(config);
   }
 
   /// The document/head prologue shared by both modes, with `write_mode_css()`
@@ -2587,16 +2587,21 @@ public:
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
     write_zoom_style(out, config(), width_fit(config(), true), content);
+    write_content_margin_style(out, config());
     out.write_header_style_begin();
     out.out() << "body{margin:0;background:#525659}";
     // `.d`: the page column, sized to the widest page so pages of differing
     // width centre against each other rather than against the viewport. Their
     // side margin is part of that width, so a phone screen keeps a gutter.
     out.out() << ".d{display:flex;flex-direction:column;align-items:center;"
-                 "gap:16px;padding:16px 0;width:max-content;min-width:100%}";
+                 "gap:16px;padding:max(16px,var(--odr-min-margin-top,0px)) 0 "
+                 "max(16px,var(--odr-min-margin-bottom,0px));"
+                 "width:max-content;min-width:100%}";
     // `overflow:hidden` clips to the crop box, as a viewer does: content may
     // sit outside it (a bleed, or an InDesign spread's other page).
-    out.out() << ".p{position:relative;margin:0 16px;background:#fff;"
+    out.out() << ".p{position:relative;"
+                 "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
+                 "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
     // `.t`: shared base for all absolutely-positioned line blocks.
     // `font-size:0` collapses its strut, which outranks the run it holds and

@@ -90,6 +90,29 @@ def test_viewport_mode_reaches_the_html(odt_path, tmp_path):
     assert '<meta name="viewport" content="width=420"/>' in render("raw", raw)
 
 
+def test_min_content_margin_reaches_the_html(odt_path, tmp_path):
+    # The C++ suite covers where the floor lands; this only proves it crosses
+    # the binding, unset sides and all.
+    def render(name, config):
+        cache = tmp_path / name
+        cache.mkdir()
+        file = pyodr.open(str(odt_path))
+        service = pyodr.html.translate(file, str(cache), config)
+        content, _ = service.list_views()[0].write_html()
+        return content
+
+    default = pyodr.HtmlConfig()
+    assert default.min_content_margin.top is None
+    assert ":root{--odr-min-margin" not in render("default", default)
+
+    config = pyodr.HtmlConfig()
+    config.min_content_margin.top = pyodr.Measure("12px")
+    config.min_content_margin.left = pyodr.Measure("1cm")
+    html = render("margin", config)
+    assert ":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}" in html
+    assert "--odr-min-margin-right:" not in html
+
+
 def test_translate_text(txt_path, tmp_path):
     html = translate_offline(txt_path, tmp_path)
     pages = html.pages()

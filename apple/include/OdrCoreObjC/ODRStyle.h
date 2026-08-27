@@ -79,6 +79,11 @@ NS_SWIFT_NAME(Measure)
 /// Magnitude and unit as odrcore writes them, e.g. `12pt`.
 @property(nonatomic, readonly, copy) NSString *stringValue;
 
+/// A css length as odrcore writes one, e.g. `3mm`. A magnitude with no unit
+/// reads as unitless.
+- (instancetype)initWithString:(NSString *)string;
+- (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit;
+
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 @end
@@ -91,6 +96,12 @@ NS_SWIFT_NAME(DirectionalMeasure)
 @property(nonatomic, readonly, nullable) ODRMeasure *top;
 @property(nonatomic, readonly, nullable) ODRMeasure *left;
 @property(nonatomic, readonly, nullable) ODRMeasure *bottom;
+
+/// For the sides a caller states itself, e.g. `ODRHtmlConfig.minContentMargin`.
+- (instancetype)initWithRight:(nullable ODRMeasure *)right
+                          top:(nullable ODRMeasure *)top
+                         left:(nullable ODRMeasure *)left
+                       bottom:(nullable ODRMeasure *)bottom;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

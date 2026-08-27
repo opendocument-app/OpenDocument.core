@@ -33,29 +33,37 @@ bool is_paged_content(const Document &document, const HtmlConfig &config) {
 }
 
 /// A page box plus the gutters the column puts around it, in css pixels.
-std::optional<double> page_content_pixels(const PageLayout &page_layout) {
+std::optional<double> page_content_pixels(const PageLayout &page_layout,
+                                          const HtmlConfig &config) {
   const std::optional<double> width = css_pixels(page_layout.width);
   if (!width.has_value()) {
     return {};
   }
-  return *width + page_column_gutter_pixels;
+  return *width + page_column_gutter_pixels(config);
 }
 
 /// Per view, so slides of differing width are each fitted to their own page.
-std::optional<double> fragment_content_pixels(const TextRoot &element) {
-  return page_content_pixels(element.page_layout());
+std::optional<double> fragment_content_pixels(const TextRoot &element,
+                                              const HtmlConfig &config) {
+  return page_content_pixels(element.page_layout(), config);
 }
-std::optional<double> fragment_content_pixels(const Slide &element) {
-  return page_content_pixels(element.page_layout());
+std::optional<double> fragment_content_pixels(const Slide &element,
+                                              const HtmlConfig &config) {
+  return page_content_pixels(element.page_layout(), config);
 }
-std::optional<double> fragment_content_pixels(const Page &element) {
-  return page_content_pixels(element.page_layout());
+std::optional<double> fragment_content_pixels(const Page &element,
+                                              const HtmlConfig &config) {
+  return page_content_pixels(element.page_layout(), config);
 }
 /// A sheet reflows; there is no page box to fit.
-std::optional<double> fragment_content_pixels(const Sheet &) { return {}; }
+std::optional<double> fragment_content_pixels(const Sheet &,
+                                              const HtmlConfig &) {
+  return {};
+}
 
 /// The widest of them, for the view that writes every page into one file.
-std::optional<double> document_content_pixels(const Document &document) {
+std::optional<double> document_content_pixels(const Document &document,
+                                              const HtmlConfig &config) {
   const Element root = document.root_element();
 
   const auto widest = [](const std::optional<double> lhs,
@@ -69,16 +77,17 @@ std::optional<double> document_content_pixels(const Document &document) {
   std::optional<double> result;
   switch (document.document_type()) {
   case DocumentType::text:
-    result = fragment_content_pixels(root.as_text_root());
+    result = fragment_content_pixels(root.as_text_root(), config);
     break;
   case DocumentType::presentation:
     for (const Element child : root.children()) {
-      result = widest(result, fragment_content_pixels(child.as_slide()));
+      result =
+          widest(result, fragment_content_pixels(child.as_slide(), config));
     }
     break;
   case DocumentType::drawing:
     for (const Element child : root.children()) {
-      result = widest(result, fragment_content_pixels(child.as_page()));
+      result = widest(result, fragment_content_pixels(child.as_page(), config));
     }
     break;
   default:
@@ -121,6 +130,7 @@ void front(const Document &document, const WritingState &state,
                        ? width_fit(state.config(), paged_content, mode_override)
                        : WidthFit::none,
                    content_pixels);
+  write_content_margin_style(out, state.config());
 
   write_document_style(state);
   write_document_dark_style(state);
@@ -193,10 +203,11 @@ public:
   virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
 
   /// The width this one view lays out, which is what it is fitted against.
-  [[nodiscard]] virtual std::optional<double> content_pixels() const = 0;
+  [[nodiscard]] virtual std::optional<double>
+  content_pixels(const HtmlConfig &config) const = 0;
 
   void write_document(HtmlWriter &out, WritingState &state) const {
-    const std::optional<double> content = content_pixels();
+    const std::optional<double> content = content_pixels(state.config());
     front(m_document, state, m_name, content);
     write_fragment(out, state);
     back(m_document, state);
@@ -346,7 +357,8 @@ public:
     WritingState state(out, config(), resources);
 
     // every page in one file, so the column is as wide as the widest of them
-    const std::optional<double> content = document_content_pixels(m_document);
+    const std::optional<double> content =
+        document_content_pixels(m_document, config());
 
     front(m_document, state, "", content);
     for (const auto &fragment : m_fragments) {
@@ -375,8 +387,10 @@ public:
       : HtmlFragmentBase(std::move(name), index, std::move(path),
                          std::move(document)) {}
 
-  [[nodiscard]] std::optional<double> content_pixels() const override {
-    return fragment_content_pixels(m_document.root_element().as_text_root());
+  [[nodiscard]] std::optional<double>
+  content_pixels(const HtmlConfig &config) const override {
+    return fragment_content_pixels(m_document.root_element().as_text_root(),
+                                   config);
   }
 
   void write_fragment(HtmlWriter &out, WritingState &state) const override {
@@ -422,8 +436,9 @@ public:
                          std::move(document)),
         m_element{element} {}
 
-  [[nodiscard]] std::optional<double> content_pixels() const override {
-    return fragment_content_pixels(m_element);
+  [[nodiscard]] std::optional<double>
+  content_pixels(const HtmlConfig &config) const override {
+    return fragment_content_pixels(m_element, config);
   }
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {

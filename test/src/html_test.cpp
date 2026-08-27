@@ -1,7 +1,12 @@
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
+#include <string>
+#include <string_view>
 #include <tuple>
 
 #include <odr/html.hpp>
@@ -218,6 +223,98 @@ TEST(html, flowing_text_is_inset_from_the_screen_edge) {
 
   EXPECT_NE(page.find(R"(<div class="odr-text-flow">)"), std::string::npos);
   EXPECT_NE(page.find(".odr-text-flow{padding:"), std::string::npos);
+}
+
+// Every view that insets its content declares the floor it was given; unset it
+// declares nothing, which leaves the shipped stylesheets alone.
+TEST(html, min_content_margin_reaches_every_view) {
+  HtmlConfig config;
+
+  const auto render_as = [&](const std::string &path, const FileType as) {
+    const DecodedFile file(TestData::test_file_path(path), as, Logger::null());
+    std::ostringstream out;
+    html::translate(file, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  const auto xml = [&] {
+    const DecodedFile file(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+    std::ostringstream out;
+    html::translate(file, config).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  const auto every_view = [&] {
+    return std::array{
+        // a document, and the page column it stacks
+        render_odt(config),
+        render("odr-public/txt/lorem ipsum.txt", config),
+        xml(),
+        // a file listing: the archive view of a zip
+        render_as("odr-public/odt/about.odt", FileType::zip),
+        render_as("odr-public/png/tango-example-icons.png",
+                  FileType::portable_network_graphics),
+        render_as("odr-public/pdf/empty.pdf",
+                  FileType::portable_document_format),
+        render_as("odr-private/otf/OpenSans-Regular.otf",
+                  FileType::opentype_font),
+    };
+  };
+
+  for (const std::string &page : every_view()) {
+    EXPECT_EQ(page.find("--odr-min-margin-left:"), std::string::npos);
+  }
+
+  config.min_content_margin.left = Measure("7px");
+  for (const std::string &page : every_view()) {
+    EXPECT_NE(page.find(":root{--odr-min-margin-left:7px;}"),
+              std::string::npos);
+  }
+}
+
+namespace {
+
+/// The `--odr-fit` @p page states as a factor, or nothing where it names who
+/// measures it instead.
+std::optional<double> fit_of(const std::string &page) {
+  constexpr std::string_view key = "--odr-fit:";
+  const std::size_t at = page.find(key);
+  if (at == std::string::npos) {
+    return {};
+  }
+  // `auto` and `view` name a measurer rather than stating a factor
+  const std::size_t begin = at + key.length();
+  if (begin >= page.length() ||
+      std::isdigit(static_cast<unsigned char>(page[begin])) == 0) {
+    return {};
+  }
+  return std::stod(page.substr(begin));
+}
+
+} // namespace
+
+// The gutter around the page column is part of the width the view is fitted
+// to, so raising it fits the pages smaller.
+TEST(html, min_content_margin_widens_the_page_column_fit) {
+  HtmlConfig config;
+  config.text_document_margin = true;
+  config.viewport_width = 400;
+
+  const std::optional<double> narrow = fit_of(render_odt(config));
+  ASSERT_TRUE(narrow.has_value());
+
+  config.min_content_margin.left = Measure("100px");
+  config.min_content_margin.right = Measure("100px");
+  const std::optional<double> wide = fit_of(render_odt(config));
+  ASSERT_TRUE(wide.has_value());
+
+  EXPECT_LT(*wide, *narrow);
+
+  // A unit the fit cannot convert leaves it where it was; the css still
+  // applies the margin.
+  config.min_content_margin.left = Measure("100em");
+  config.min_content_margin.right = Measure("100em");
+  EXPECT_EQ(fit_of(render_odt(config)), narrow);
 }
 
 // For `system` it is the element carrying the dark style that is gated, not a
