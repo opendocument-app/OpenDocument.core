@@ -445,8 +445,7 @@ TEST(PdfFile, views_agree_on_an_image_name) {
 
   // path -> the bytes served under it, across every view
   std::map<std::string, std::string> bytes_by_path;
-  for (const std::string &view :
-       {"document.html", "page0.html", "page1.html"}) {
+  for (const auto *const view : {"document.html", "page0.html", "page1.html"}) {
     std::ostringstream out;
     for (const auto &[resource, location] : service.write_html(view, out)) {
       if (resource.type() != HtmlResourceType::image) {
