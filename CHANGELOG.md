@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A saved document opens in LibreOffice again: every zip entry's size goes into
+  its local header instead of a trailing data descriptor, which LibreOffice
+  rejects on a stored entry — an odf package always stores `mimetype`.
 - `HtmlConfig::min_content_margin` puts a floor under the distance the
   generated content keeps from the view's border, per side. A set side raises
   the inset a view already has, never lowers it; a sheet is never inset. Bound

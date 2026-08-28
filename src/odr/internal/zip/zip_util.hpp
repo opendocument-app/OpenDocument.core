@@ -110,6 +110,8 @@ private:
 void open_from_file(mz_zip_archive &archive, const abstract::File &file,
                     std::istream &stream);
 
+/// `archive`'s write callback has to honour the offset it is given — local
+/// headers are rewritten with the entry size.
 bool append_file(mz_zip_archive &archive, const std::string &path,
                  std::istream &istream, std::size_t size,
                  const std::time_t &time, const std::string &comment,

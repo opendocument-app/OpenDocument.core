@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -51,7 +52,7 @@ TEST(ZipArchive, create_and_save) {
                   std::make_shared<MemoryFile>("hello world!"));
   zip.insert_directory(std::end(zip), RelPath("b"));
 
-  std::ofstream out("test.zip");
+  std::ofstream out("test.zip", std::ios::binary);
   zip.save(out);
 }
 
@@ -76,7 +77,7 @@ TEST(ZipArchive, create) {
     zip.insert_file(std::end(zip), RelPath("./notempty/four.txt"),
                     std::make_shared<MemoryFile>("1234"));
 
-    std::ofstream out(path);
+    std::ofstream out(path, std::ios::binary);
     zip.save(out);
   }
 
@@ -113,7 +114,7 @@ TEST(ZipArchive, create_order) {
                       std::make_shared<MemoryFile>(""));
     }
 
-    std::ofstream out(path);
+    std::ofstream out(path, std::ios::binary);
     zip.save(out);
   }
 
@@ -126,4 +127,64 @@ TEST(ZipArchive, create_order) {
     }
     EXPECT_EQ(actual, entries);
   }
+}
+
+namespace {
+
+std::uint32_t read_le(const std::string &data, const std::size_t offset,
+                      const std::size_t size) {
+  std::uint32_t value = 0;
+  for (std::size_t i = 0; i < size; ++i) {
+    value |=
+        static_cast<std::uint32_t>(static_cast<std::uint8_t>(data[offset + i]))
+        << (8 * i);
+  }
+  return value;
+}
+
+} // namespace
+
+/// Walking the local headers by the sizes they carry only terminates if they
+/// carry them.
+TEST(ZipArchive, save_sizes_local_headers) {
+  const std::string path =
+      (std::filesystem::current_path() / "local_headers.zip").string();
+
+  {
+    ZipArchive zip;
+
+    zip.insert_file(std::end(zip), RelPath("stored"),
+                    std::make_shared<MemoryFile>("stored, like a mimetype"), 0);
+    zip.insert_file(std::end(zip), RelPath("deflated"),
+                    std::make_shared<MemoryFile>(std::string(1000, 'x')));
+    zip.insert_directory(std::end(zip), RelPath("dir"));
+
+    std::ofstream out(path, std::ios::binary);
+    zip.save(out);
+  }
+
+  std::ifstream in(path, std::ios::binary);
+  const std::string data{std::istreambuf_iterator<char>(in),
+                         std::istreambuf_iterator<char>()};
+
+  std::size_t offset = 0;
+  std::size_t entries = 0;
+  while (data.compare(offset, 4, "PK\x03\x04") == 0) {
+    const std::uint32_t flag = read_le(data, offset + 6, 2);
+    const std::uint32_t crc = read_le(data, offset + 14, 4);
+    const std::uint32_t compressed_size = read_le(data, offset + 18, 4);
+    const std::uint32_t path_size = read_le(data, offset + 26, 2);
+    const std::uint32_t extra_size = read_le(data, offset + 28, 2);
+
+    EXPECT_EQ(0, flag & 0x08);
+    if (data.compare(offset + 30, path_size, "dir/") != 0) {
+      EXPECT_NE(0, crc);
+      EXPECT_NE(0, compressed_size);
+    }
+
+    offset += 30 + path_size + extra_size + compressed_size;
+    ++entries;
+  }
+
+  EXPECT_EQ(3, entries);
 }

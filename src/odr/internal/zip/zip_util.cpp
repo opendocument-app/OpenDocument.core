@@ -229,9 +229,12 @@ bool util::append_file(mz_zip_archive &archive, const std::string &path,
     return in->gcount();
   };
 
+  // Without the flag the size only lands in a trailing data descriptor, which
+  // LibreOffice rejects on a stored entry.
   return mz_zip_writer_add_read_buf_callback(
       &archive, path.c_str(), read_callback, &istream, size, &time,
-      comment.c_str(), comment.size(), level_and_flags, "", 0, "", 0);
+      comment.c_str(), comment.size(),
+      level_and_flags | MZ_ZIP_FLAG_WRITE_HEADER_SET_SIZE, "", 0, "", 0);
 }
 
 } // namespace odr::internal::zip
