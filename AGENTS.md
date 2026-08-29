@@ -192,10 +192,11 @@ Dispatch `release.yml` against main, publish the draft that appears —
   construct. Nothing is passed through as live markup, which is why an svg goes
   out as a data url rather than inlined ([`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md))
   and why the rendered page needs no sanitiser. A link target goes through one
-  allowlist, `html::is_safe_uri` in `html/common.cpp`, called by both a PDF
-  `/URI` action and `html/document_element.cpp::translate_link`; a refused
-  target loses its `href` and keeps its text. A third writer of an `href` calls
-  it too.
+  classifier, `html::uri_kind` in `html/common.cpp`, called by both a PDF
+  `/URI` action and `html/document_element.cpp::translate_link`: a refused
+  target loses its `href` and keeps its text, an external one gets
+  `target="_blank"`, a relative one no target. No view declares a document-wide
+  `<base target>`. A third writer of an `href` calls it too.
 - **Public API**: value semantics; immutable handles; iterators only for immutable
   traversal (`docs/design/README.md`).
 - **Byte parsing**: read POD structs via `util::byte_stream::read`; assumes host

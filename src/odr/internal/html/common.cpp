@@ -282,19 +282,21 @@ std::string html::escape_attribute(std::string value) {
   return value;
 }
 
-bool html::is_safe_uri(const std::string_view uri) {
+html::UriKind html::uri_kind(const std::string_view uri) {
   std::string scheme;
   for (const char ch : uri) {
     const auto c = static_cast<unsigned char>(ch);
     if (ch == ':') {
       static constexpr std::array<std::string_view, 6> allowed = {
           "http", "https", "mailto", "ftp", "ftps", "tel"};
-      return std::ranges::any_of(allowed, [&scheme](const std::string_view s) {
-        return util::string::equals_ignore_case(scheme, s);
-      });
+      const bool navigable =
+          std::ranges::any_of(allowed, [&scheme](const std::string_view s) {
+            return util::string::equals_ignore_case(scheme, s);
+          });
+      return navigable ? UriKind::external : UriKind::refused;
     }
     if (ch == '/' || ch == '?' || ch == '#') {
-      return true; // path/query/fragment reached first -> relative reference
+      return UriKind::relative; // a path/query/fragment came first
     }
     if (c <= 0x20) {
       continue; // browsers strip embedded whitespace/control bytes
@@ -303,9 +305,15 @@ bool html::is_safe_uri(const std::string_view uri) {
       scheme.push_back(ch);
       continue;
     }
-    return true; // not a valid scheme character -> relative reference
+    return UriKind::relative; // not a scheme character
   }
-  return true; // no ':' -> relative reference
+  return UriKind::relative; // no ':'
+}
+
+std::string_view html::link_target_attributes(const UriKind kind) {
+  return kind == UriKind::external
+             ? R"(target="_blank" rel="noopener noreferrer")"
+             : std::string_view();
 }
 
 std::string

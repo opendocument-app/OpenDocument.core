@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- No view declares `<base target="_blank">` any more. A link back into what
+  serves the page — an archive entry, a PDF `#pN` anchor, a relative hyperlink —
+  navigates in place; only a link that leaves the page carries
+  `target="_blank" rel="noopener noreferrer"`.
+
 - A document hyperlink renders without an `href` unless its target is `http`,
   `https`, `mailto`, `ftp`, `ftps`, `tel` or a relative reference — the
   allowlist a PDF `/URI` action already went through. `Link::href()` is
