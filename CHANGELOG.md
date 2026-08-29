@@ -22,6 +22,10 @@ The release run heads these entries with the version and opens a fresh
 - The zip backend is `miniz/3.1.1`, up from `3.0.2`. Rendered output is
   unchanged.
 
+- New `FileType::hypertext_markup_language` for `html`, `htm`, `xhtml`,
+  `text/html` and `application/xhtml+xml`. Classification only: no `open`, no
+  `translate_html`, and never detected from its bytes.
+
 ## v6.11.0 - 2026-08-29
 
 - No view declares `<base target="_blank">` any more. A link back into what

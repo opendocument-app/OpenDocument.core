@@ -87,6 +87,8 @@ typedef NS_ENUM(NSInteger, ODRFileType) {
   ODRFileTypeIworkPages,
   ODRFileTypeIworkNumbers,
   ODRFileTypeIworkKeynote,
+
+  ODRFileTypeHypertextMarkupLanguage,
 } NS_SWIFT_NAME(FileType);
 
 typedef NS_ENUM(NSInteger, ODRFileCategory) {

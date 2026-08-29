@@ -262,6 +262,9 @@ constexpr std::array keynote_mimetypes{
     "application/x-iwork-keynote-sffkey"sv,
 };
 
+constexpr std::array html_extensions{"html"sv, "htm"sv, "xhtml"sv};
+constexpr std::array html_mimetypes{"text/html"sv, "application/xhtml+xml"sv};
+
 // The single source of truth behind every public format lookup; `odr_test`
 // asserts one row per `FileType` and capabilities that match the engines.
 //
@@ -798,6 +801,16 @@ constexpr std::array table{
          .open = true,
          .translate_html = true,
          .color_scheme = true}},
+
+    // Named but not decoded. Not `detect_by_content` - html has no dependable
+    // signature, so the caller routes on the file name.
+    Row{FileType::hypertext_markup_language,
+        "html"sv,
+        html_extensions,
+        html_mimetypes,
+        FileCategory::text,
+        DocumentType::unknown,
+        {}},
 };
 
 /// Finds the row whose list, selected by @p list, contains @p needle.
