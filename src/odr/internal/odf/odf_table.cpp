@@ -29,17 +29,17 @@ bool is_displayed(const pugi::xml_node group) {
   return !display || display.as_bool(true);
 }
 
-void collect(const pugi::xml_node parent, const std::string_view name,
-             const std::span<const std::string_view> group_names,
-             std::vector<pugi::xml_node> &out) {
+void walk(const pugi::xml_node parent, const std::string_view name,
+          const std::span<const std::string_view> group_names,
+          const TableNodeVisitor &visit) {
   for (const pugi::xml_node child : parent.children()) {
     const std::string_view child_name = child.name();
     if (child_name == name) {
-      out.push_back(child);
+      visit(child);
     } else if (std::ranges::find(group_names, child_name) !=
                    std::end(group_names) &&
                is_displayed(child)) {
-      collect(child, name, group_names, out);
+      walk(child, name, group_names, visit);
     }
   }
 }
@@ -50,16 +50,14 @@ void collect(const pugi::xml_node parent, const std::string_view name,
 
 namespace odr::internal {
 
-std::vector<pugi::xml_node> odf::table_rows(const pugi::xml_node table) {
-  std::vector<pugi::xml_node> result;
-  collect(table, "table:table-row", row_group_names, result);
-  return result;
+void odf::for_each_table_row(const pugi::xml_node table,
+                             const TableNodeVisitor &visit) {
+  walk(table, "table:table-row", row_group_names, visit);
 }
 
-std::vector<pugi::xml_node> odf::table_columns(const pugi::xml_node table) {
-  std::vector<pugi::xml_node> result;
-  collect(table, "table:table-column", column_group_names, result);
-  return result;
+void odf::for_each_table_column(const pugi::xml_node table,
+                                const TableNodeVisitor &visit) {
+  walk(table, "table:table-column", column_group_names, visit);
 }
 
 } // namespace odr::internal
