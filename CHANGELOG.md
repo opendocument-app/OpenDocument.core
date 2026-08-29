@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The zip backend is `miniz/3.1.1`, up from `3.0.2`. Rendered output is
+  unchanged.
+
 ## v6.11.0 - 2026-08-29
 
 - No view declares `<base target="_blank">` any more. A link back into what
