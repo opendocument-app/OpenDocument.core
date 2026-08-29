@@ -97,6 +97,10 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     _spreadsheetLimit = [NSValue valueWithBytes:&limit
                                        objCType:@encode(ODRTableDimensions)];
   }
+  _spreadsheetCellLimit =
+      config.spreadsheet_cell_limit.has_value()
+          ? @(static_cast<unsigned long long>(*config.spreadsheet_cell_limit))
+          : nil;
   _spreadsheetLimitByContent = config.spreadsheet_limit_by_content ? YES : NO;
   _spreadsheetGridlines =
       static_cast<ODRHtmlTableGridlines>(config.spreadsheet_gridlines);
@@ -162,6 +166,12 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     config.spreadsheet_limit = odr::TableDimensions(limit.rows, limit.columns);
   } else {
     config.spreadsheet_limit.reset();
+  }
+  if (_spreadsheetCellLimit != nil) {
+    config.spreadsheet_cell_limit =
+        static_cast<std::uint64_t>(_spreadsheetCellLimit.unsignedLongLongValue);
+  } else {
+    config.spreadsheet_cell_limit.reset();
   }
   config.spreadsheet_limit_by_content = _spreadsheetLimitByContent == YES;
   config.spreadsheet_gridlines =
@@ -336,6 +346,19 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 
 } // namespace
 
+@implementation ODRHtmlSheetCut
+
++ (instancetype)cutWithHandle:(const odr::HtmlSheetCut &)handle {
+  ODRHtmlSheetCut *const result = [[ODRHtmlSheetCut alloc] init];
+  result->_content =
+      ODRTableDimensionsMake(handle.content.rows, handle.content.columns);
+  result->_rendered =
+      ODRTableDimensionsMake(handle.rendered.rows, handle.rendered.columns);
+  return result;
+}
+
+@end
+
 @implementation ODRHtmlView {
   std::optional<odr::HtmlView> _handle;
   // The view's impl holds a bare pointer to its service, so the view has to
@@ -365,6 +388,15 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 
 - (NSString *)path {
   return guarded_value([&] { return to_nsstring(_handle->path()); }, @"");
+}
+
+- (ODRHtmlSheetCut *)sheetCut {
+  return guarded_value(
+      [&]() -> ODRHtmlSheetCut * {
+        const std::optional<odr::HtmlSheetCut> &cut = _handle->sheet_cut();
+        return cut.has_value() ? [ODRHtmlSheetCut cutWithHandle:*cut] : nil;
+      },
+      static_cast<ODRHtmlSheetCut *>(nil));
 }
 
 - (nullable NSString *)writeHtmlWithResources:

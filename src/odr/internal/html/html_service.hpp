@@ -29,6 +29,7 @@ public:
   [[nodiscard]] std::size_t index() const override;
   [[nodiscard]] const std::string &path() const override;
   [[nodiscard]] const HtmlConfig &config() const override;
+  [[nodiscard]] const std::optional<HtmlSheetCut> &sheet_cut() const override;
   [[nodiscard]] const abstract::HtmlService &service() const;
 
   HtmlResources write_html(HtmlWriter &out) const override;

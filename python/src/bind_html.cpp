@@ -83,6 +83,8 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::text_document_margin)
       .def_readwrite("color_scheme", &odr::HtmlConfig::color_scheme)
       .def_readwrite("spreadsheet_limit", &odr::HtmlConfig::spreadsheet_limit)
+      .def_readwrite("spreadsheet_cell_limit",
+                     &odr::HtmlConfig::spreadsheet_cell_limit)
       .def_readwrite("spreadsheet_limit_by_content",
                      &odr::HtmlConfig::spreadsheet_limit_by_content)
       .def_readwrite("spreadsheet_gridlines",
@@ -117,6 +119,10 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("output_path", &odr::HtmlConfig::output_path)
       .def_readwrite("resource_locator", &odr::HtmlConfig::resource_locator);
 
+  py::class_<odr::HtmlSheetCut>(m, "HtmlSheetCut")
+      .def_readonly("content", &odr::HtmlSheetCut::content)
+      .def_readonly("rendered", &odr::HtmlSheetCut::rendered);
+
   py::class_<odr::HtmlPage>(m, "HtmlPage")
       .def_readonly("name", &odr::HtmlPage::name)
       .def_readonly("path", &odr::HtmlPage::path)
@@ -135,6 +141,10 @@ void odr_python::bind_html(py::module_ &m) {
       .def("index", &odr::HtmlView::index)
       .def("path", &odr::HtmlView::path)
       .def("config", &odr::HtmlView::config)
+      .def(
+          "sheet_cut",
+          [](const odr::HtmlView &view) { return view.sheet_cut(); },
+          "The sheet this view cut down to the spreadsheet limits, or None.")
       .def(
           "write_html",
           [](const odr::HtmlView &view) {

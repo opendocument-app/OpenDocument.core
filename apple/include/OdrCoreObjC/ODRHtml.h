@@ -89,6 +89,9 @@ NS_SWIFT_NAME(HtmlConfig)
 
 /// `nil` for no limit.
 @property(nonatomic, strong, nullable) NSValue *spreadsheetLimit;
+/// Most cells written for one sheet; bounds the rows by the sheet's width.
+/// `nil` for no budget.
+@property(nonatomic, strong, nullable) NSNumber *spreadsheetCellLimit;
 @property(nonatomic) BOOL spreadsheetLimitByContent;
 @property(nonatomic) ODRHtmlTableGridlines spreadsheetGridlines;
 
@@ -175,6 +178,18 @@ NS_SWIFT_NAME(Html)
 + (instancetype)new NS_UNAVAILABLE;
 @end
 
+/// What a view leaves out of the sheet it renders. `odr::HtmlSheetCut`.
+NS_SWIFT_NAME(HtmlSheetCut)
+@interface ODRHtmlSheetCut : NSObject
+/// The extent the sheet's cells span.
+@property(nonatomic, readonly) ODRTableDimensions content;
+/// The extent the markup carries.
+@property(nonatomic, readonly) ODRTableDimensions rendered;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// One renderable view of a document — a slide, a sheet, a page, or the whole
 /// thing. `odr::HtmlView`.
 NS_SWIFT_NAME(HtmlView)
@@ -183,6 +198,10 @@ NS_SWIFT_NAME(HtmlView)
 @property(nonatomic, readonly) NSUInteger index;
 /// The path this view is served at.
 @property(nonatomic, readonly, copy) NSString *path;
+
+/// The sheet this view cuts down to `spreadsheetLimit` and
+/// `spreadsheetCellLimit`, or `nil` where it writes every cell.
+@property(nonatomic, readonly, nullable) ODRHtmlSheetCut *sheetCut;
 
 /// Renders the view. The resources it refers to come back alongside it.
 - (nullable NSString *)writeHtmlWithResources:

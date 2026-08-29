@@ -80,6 +80,14 @@ jobject box_integer(JNIEnv *env, const std::optional<std::uint32_t> &value) {
                             static_cast<jint>(*value));
 }
 
+jobject box_long(JNIEnv *env, const std::optional<std::uint64_t> &value) {
+  if (!value.has_value()) {
+    return nullptr;
+  }
+  return call_static_object(env, "java/lang/Long", "valueOf",
+                            "(J)Ljava/lang/Long;", static_cast<jlong>(*value));
+}
+
 /// Looks up an enum constant by its C++ code (= Java ordinal).
 jobject enum_from_code(JNIEnv *env, const char *class_name, const jint code) {
   if (code < 0) {
@@ -309,6 +317,18 @@ jobject make_table_dimensions(JNIEnv *env,
                     static_cast<jint>(dimensions.columns));
 }
 
+jobject make_html_sheet_cut(JNIEnv *env,
+                            const std::optional<odr::HtmlSheetCut> &cut) {
+  if (!cut.has_value()) {
+    return nullptr;
+  }
+  return new_object(env, "app/opendocument/core/HtmlSheetCut",
+                    "(Lapp/opendocument/core/TableDimensions;Lapp/opendocument/"
+                    "core/TableDimensions;)V",
+                    make_table_dimensions(env, cut->content),
+                    make_table_dimensions(env, cut->rendered));
+}
+
 jobject make_table_position(JNIEnv *env, const odr::TablePosition &position) {
   return new_object(env, "app/opendocument/core/TablePosition", "(II)V",
                     static_cast<jint>(position.column),
@@ -392,6 +412,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              config.spreadsheet_limit.has_value()
                  ? make_table_dimensions(env, *config.spreadsheet_limit)
                  : nullptr);
+  set_object("spreadsheetCellLimit", "Ljava/lang/Long;",
+             box_long(env, config.spreadsheet_cell_limit));
   set_boolean("spreadsheetLimitByContent", config.spreadsheet_limit_by_content);
   set_object("spreadsheetGridlines",
              "Lapp/opendocument/core/HtmlTableGridlines;",
@@ -525,6 +547,18 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
           odr::TableDimensions(static_cast<std::uint32_t>(rows),
                                static_cast<std::uint32_t>(columns));
       env->DeleteLocalRef(dimensions_cls);
+    }
+  }
+  {
+    jobject cell_limit = get_object("spreadsheetCellLimit", "Ljava/lang/Long;");
+    if (cell_limit == nullptr) {
+      result.spreadsheet_cell_limit = std::nullopt;
+    } else {
+      jclass long_cls = env->GetObjectClass(cell_limit);
+      jmethodID long_value = env->GetMethodID(long_cls, "longValue", "()J");
+      result.spreadsheet_cell_limit = static_cast<std::uint64_t>(
+          env->CallLongMethod(cell_limit, long_value));
+      env->DeleteLocalRef(long_cls);
     }
   }
   result.spreadsheet_limit_by_content =

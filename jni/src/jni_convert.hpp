@@ -38,6 +38,9 @@ jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout);
 jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions);
 jobject make_table_position(JNIEnv *env, const odr::TablePosition &position);
+/// `nullptr` where nothing was cut.
+jobject make_html_sheet_cut(JNIEnv *env,
+                            const std::optional<odr::HtmlSheetCut> &cut);
 jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta);
 jobject make_file_type_capabilities(JNIEnv *env,
                                     const odr::FileTypeCapabilities &);

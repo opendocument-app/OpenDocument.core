@@ -1,6 +1,7 @@
 package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -158,6 +159,33 @@ class HtmlTest {
     assertEquals(1, html.pages().size());
     String content = Files.readString(Path.of(html.pages().get(0).path));
     assertTrue(content.contains(TestFiles.ODT_WORD));
+  }
+
+  /** The C++ suite covers where the limits land; this proves the pair crosses JNI. */
+  @Test
+  void spreadsheetCutReachesTheView() throws IOException {
+    assertEquals(Long.valueOf(500000L), new HtmlConfig().spreadsheetCellLimit);
+
+    Path cache = Files.createDirectories(tempDir.resolve("cache"));
+    DecodedFile file = Odr.open(TestFiles.csvFile(tempDir).toString());
+
+    HtmlConfig full = new HtmlConfig();
+    for (HtmlView view : Html.translate(file, cache.toString(), full).listViews()) {
+      assertNull(view.sheetCut());
+    }
+
+    HtmlConfig cut = new HtmlConfig();
+    cut.spreadsheetLimit = new TableDimensions(2, 1);
+    cut.spreadsheetCellLimit = null;
+    HtmlService service = Html.translate(file, cache.toString(), cut);
+
+    assertNull(service.config().spreadsheetCellLimit);
+    HtmlSheetCut sheetCut = service.listViews().get(1).sheetCut();
+    assertNotNull(sheetCut);
+    assertEquals(3, sheetCut.content.rows);
+    assertEquals(2, sheetCut.content.columns);
+    assertEquals(2, sheetCut.rendered.rows);
+    assertEquals(1, sheetCut.rendered.columns);
   }
 
   @Test

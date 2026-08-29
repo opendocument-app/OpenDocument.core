@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/html.hpp>
+
 #include <string>
 
 namespace odr {
@@ -20,6 +22,15 @@ void translate_element(const Element &element, const WritingState &state);
 
 void translate_slide(const Slide &slide, const WritingState &state);
 void translate_sheet(const Sheet &sheet, const WritingState &state);
+
+/// The extent `translate_sheet` writes @p sheet at, once the limits in
+/// @p config have applied.
+[[nodiscard]] TableDimensions sheet_rendered_extent(const Sheet &sheet,
+                                                    const HtmlConfig &config);
+
+/// Costs a pass over the cells, so measure it once.
+[[nodiscard]] std::optional<HtmlSheetCut> sheet_cut(const Sheet &sheet,
+                                                    const HtmlConfig &config);
 void translate_page(const Page &page, const WritingState &state);
 
 void translate_master_page(const MasterPage &masterPage,

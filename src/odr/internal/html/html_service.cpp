@@ -24,6 +24,12 @@ const std::string &HtmlView::path() const { return m_path; }
 
 const HtmlConfig &HtmlView::config() const { return m_service->config(); }
 
+/// Only a sheet cuts anything, and only `html/document.cpp` renders one.
+const std::optional<HtmlSheetCut> &HtmlView::sheet_cut() const {
+  static const std::optional<HtmlSheetCut> none;
+  return none;
+}
+
 const abstract::HtmlService &HtmlView::service() const { return *m_service; }
 
 HtmlResources HtmlView::write_html(HtmlWriter &out) const {

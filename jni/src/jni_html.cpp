@@ -342,6 +342,14 @@ Java_app_opendocument_core_HtmlView_configNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_HtmlView_sheetCutNative(JNIEnv *env, jobject,
+                                                   jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_html_sheet_cut(env, view(handle).sheet_cut());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_HtmlView_writeHtmlNative(JNIEnv *env, jobject,
                                                     jlong handle) {
   return guarded(env, [&] {

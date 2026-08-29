@@ -25,6 +25,28 @@ def test_html_config_defaults():
     assert config.editable
     assert config.spreadsheet_limit.rows == 100
 
+    assert config.spreadsheet_cell_limit == 500000
+    config.spreadsheet_cell_limit = None
+    assert config.spreadsheet_cell_limit is None
+
+
+def test_html_view_sheet_cut(csv_path, tmp_path):
+    cache = tmp_path / "cache"
+    file = pyodr.open(str(csv_path))
+
+    config = pyodr.HtmlConfig()
+    service = pyodr.html.translate(file, str(cache), config)
+    assert all(view.sheet_cut() is None for view in service.list_views())
+
+    config.spreadsheet_limit = pyodr.TableDimensions(2, 1)
+    config.spreadsheet_cell_limit = None
+    service = pyodr.html.translate(file, str(cache), config)
+
+    cut = service.list_views()[1].sheet_cut()
+    assert cut is not None
+    assert (cut.content.rows, cut.content.columns) == (3, 2)
+    assert (cut.rendered.rows, cut.rendered.columns) == (2, 1)
+
 
 def test_html_config_color_scheme_defaults():
     config = pyodr.HtmlConfig()

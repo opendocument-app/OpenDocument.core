@@ -22,6 +22,14 @@ public final class HtmlView extends NativeResource {
     return configNative(handle());
   }
 
+  /**
+   * The sheet this view cuts down to {@link HtmlConfig#spreadsheetLimit} and {@link
+   * HtmlConfig#spreadsheetCellLimit}, or {@code null} where it writes every cell.
+   */
+  public HtmlSheetCut sheetCut() {
+    return sheetCutNative(handle());
+  }
+
   /** Renders this view; returns the HTML and its resources. */
   public Html.Content writeHtml() {
     return writeHtmlNative(handle());
@@ -41,6 +49,8 @@ public final class HtmlView extends NativeResource {
   private native String pathNative(long handle);
 
   private native HtmlConfig configNative(long handle);
+
+  private native HtmlSheetCut sheetCutNative(long handle);
 
   private native Html.Content writeHtmlNative(long handle);
 

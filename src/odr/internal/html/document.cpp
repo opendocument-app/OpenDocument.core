@@ -61,6 +61,20 @@ std::optional<double> fragment_content_pixels(const Sheet &,
   return {};
 }
 
+/// Only a sheet has cells a limit can cut.
+std::optional<HtmlSheetCut> fragment_sheet_cut(const Sheet &sheet,
+                                               const HtmlConfig &config) {
+  return sheet_cut(sheet, config);
+}
+std::optional<HtmlSheetCut> fragment_sheet_cut(const Slide &,
+                                               const HtmlConfig &) {
+  return {};
+}
+std::optional<HtmlSheetCut> fragment_sheet_cut(const Page &,
+                                               const HtmlConfig &) {
+  return {};
+}
+
 /// The widest of them, for the view that writes every page into one file.
 std::optional<double> document_content_pixels(const Document &document,
                                               const HtmlConfig &config) {
@@ -206,6 +220,17 @@ public:
   [[nodiscard]] virtual std::optional<double>
   content_pixels(const HtmlConfig &config) const = 0;
 
+  /// Measured on demand: a walk over the cells, and most hosts never ask.
+  [[nodiscard]] const std::optional<HtmlSheetCut> &
+  sheet_cut(const HtmlConfig &config) const {
+    std::lock_guard lock(m_cut_mutex);
+    if (!m_cut_measured) {
+      m_cut = measure_sheet_cut(config);
+      m_cut_measured = true;
+    }
+    return m_cut;
+  }
+
   void write_document(HtmlWriter &out, WritingState &state) const {
     const std::optional<double> content = content_pixels(state.config());
     front(m_document, state, m_name, content);
@@ -214,10 +239,18 @@ public:
   }
 
 protected:
+  [[nodiscard]] virtual std::optional<HtmlSheetCut>
+  measure_sheet_cut(const HtmlConfig &config) const = 0;
+
   std::string m_name;
   std::size_t m_index = 0;
   std::string m_path;
   Document m_document;
+
+private:
+  mutable std::mutex m_cut_mutex;
+  mutable std::optional<HtmlSheetCut> m_cut;
+  mutable bool m_cut_measured = false;
 };
 
 class HtmlFragmentView final : public abstract::HtmlView {
@@ -238,6 +271,9 @@ public:
   [[nodiscard]] const HtmlConfig &config() const override {
     return m_service->config();
   }
+  [[nodiscard]] const std::optional<HtmlSheetCut> &sheet_cut() const override {
+    return m_fragment->sheet_cut(config());
+  }
   [[nodiscard]] const abstract::HtmlService &service() const {
     return *m_service;
   }
@@ -254,6 +290,32 @@ private:
   std::shared_ptr<HtmlFragmentBase> m_fragment;
 };
 
+/// The view that writes every fragment into one file; for a workbook that is
+/// every sheet, so it answers for the first one it cut.
+class HtmlDocumentView final : public HtmlView {
+public:
+  HtmlDocumentView(
+      const abstract::HtmlService &service, std::string name,
+      const std::size_t index, std::string path,
+      const std::vector<std::shared_ptr<HtmlFragmentBase>> &fragments)
+      : HtmlView(service, std::move(name), index, std::move(path)),
+        m_fragments{&fragments} {}
+
+  [[nodiscard]] const std::optional<HtmlSheetCut> &sheet_cut() const override {
+    for (const auto &fragment : *m_fragments) {
+      if (const std::optional<HtmlSheetCut> &cut =
+              fragment->sheet_cut(config());
+          cut.has_value()) {
+        return cut;
+      }
+    }
+    return HtmlView::sheet_cut();
+  }
+
+private:
+  const std::vector<std::shared_ptr<HtmlFragmentBase>> *m_fragments{nullptr};
+};
+
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(Document document,
@@ -261,8 +323,8 @@ public:
                   HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger), m_document{std::move(document)},
         m_fragments{std::move(fragments)} {
-    m_views.emplace_back(
-        std::make_shared<HtmlView>(*this, "document", 0, "document.html"));
+    m_views.emplace_back(std::make_shared<HtmlDocumentView>(
+        *this, "document", 0, "document.html", m_fragments));
     for (const auto &fragment : m_fragments) {
       if (fragment->name() == "document") {
         continue;
@@ -421,6 +483,13 @@ public:
       out.write_element_end("div");
     }
   }
+
+protected:
+  /// A text document has no sheet to cut.
+  [[nodiscard]] std::optional<HtmlSheetCut>
+  measure_sheet_cut(const HtmlConfig &) const override {
+    return {};
+  }
 };
 
 /// A fragment rendering one top-level element handle (slide, sheet, page)
@@ -443,6 +512,12 @@ public:
 
   void write_fragment(HtmlWriter &, WritingState &state) const override {
     Translate(m_element, state);
+  }
+
+protected:
+  [[nodiscard]] std::optional<HtmlSheetCut>
+  measure_sheet_cut(const HtmlConfig &config) const override {
+    return fragment_sheet_cut(m_element, config);
   }
 
 private:
