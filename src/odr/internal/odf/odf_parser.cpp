@@ -4,7 +4,6 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 
-#include <algorithm>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -118,7 +117,7 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
 
   // TODO inflate table first?
 
-  for (const pugi::xml_node column_node : table_columns(node)) {
+  for_each_table_column(node, [&](const pugi::xml_node column_node) {
     const std::uint32_t repeat =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
     for (std::uint32_t i = 0; i < repeat; ++i) {
@@ -126,13 +125,13 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
       auto [column_id, _] = parse_any_element_tree(registry, column_node);
       registry.append_column(element_id, column_id);
     }
-  }
+  });
 
-  for (const pugi::xml_node row_node : table_rows(node)) {
+  for_each_table_row(node, [&](const pugi::xml_node row_node) {
     // TODO log warning if repeated
     auto [row_id, _] = parse_any_element_tree(registry, row_node);
     registry.append_child(element_id, row_id);
-  }
+  });
 
   return {element_id, node.next_sibling()};
 }
@@ -154,89 +153,55 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
 
   TableCursor cursor;
 
-  for (const pugi::xml_node column_node : table_columns(node)) {
+  for_each_table_column(node, [&](const pugi::xml_node column_node) {
     const std::uint32_t columns_repeated =
         column_node.attribute("table:number-columns-repeated").as_uint(1);
 
     sheet.register_column(cursor.column(), columns_repeated, column_node);
 
     cursor.add_column(columns_repeated);
-  }
+  });
 
   sheet.dimensions.columns = cursor.column();
   cursor = {};
 
-  for (const pugi::xml_node row_node : table_rows(node)) {
+  for_each_table_row(node, [&](const pugi::xml_node row_node) {
     const std::uint32_t rows_repeated =
         row_node.attribute("table:number-rows-repeated").as_uint(1);
 
     sheet.register_row(cursor.row(), rows_repeated, row_node);
 
     // TODO covered cells
-    const bool row_empty = std::ranges::all_of(
-        row_node.children("table:table-cell"), is_cell_empty);
+    for (const pugi::xml_node cell_node :
+         row_node.children("table:table-cell")) {
+      const std::uint32_t columns_repeated =
+          cell_node.attribute("table:number-columns-repeated").as_uint(1);
+      const std::uint32_t colspan =
+          cell_node.attribute("table:number-columns-spanned").as_uint(1);
+      const std::uint32_t rowspan =
+          cell_node.attribute("table:number-rows-spanned").as_uint(1);
+      const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
 
-    if (row_empty) {
-      // TODO covered cells
-      for (const pugi::xml_node cell_node :
-           row_node.children("table:table-cell")) {
-        const std::uint32_t columns_repeated =
-            cell_node.attribute("table:number-columns-repeated").as_uint(1);
-        const std::uint32_t colspan =
-            cell_node.attribute("table:number-columns-spanned").as_uint(1);
-        const std::uint32_t rowspan =
-            cell_node.attribute("table:number-rows-spanned").as_uint(1);
-
-        sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
-                            rows_repeated, cell_node, null_element_id);
-
-        cursor.add_cell(colspan, rowspan, columns_repeated);
+      ElementIdentifier cell_id = null_element_id;
+      if (!is_cell_empty(cell_node)) {
+        const auto &[id, unused1, unused2] = registry.create_sheet_cell_element(
+            cell_node, cursor.position(), is_repeated);
+        cell_id = id;
+        registry.append_sheet_cell(element_id, cell_id);
       }
 
-      cursor.add_row(rows_repeated);
-      continue;
-    }
+      sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
+                          rows_repeated, cell_node, cell_id);
 
-    for (std::uint32_t row_repeat = 0; row_repeat < rows_repeated;
-         ++row_repeat) {
-      sheet.register_row(cursor.row(), 1, row_node);
-
-      // TODO covered cells
-      for (const pugi::xml_node cell_node :
-           row_node.children("table:table-cell")) {
-        const std::uint32_t columns_repeated =
-            cell_node.attribute("table:number-columns-repeated").as_uint(1);
-        const std::uint32_t colspan =
-            cell_node.attribute("table:number-columns-spanned").as_uint(1);
-        const std::uint32_t rowspan =
-            cell_node.attribute("table:number-rows-spanned").as_uint(1);
-        const bool is_repeated = columns_repeated > 1 || rows_repeated > 1;
-
-        if (is_cell_empty(cell_node)) {
-          sheet.register_cell(cursor.column(), cursor.row(), columns_repeated,
-                              1, cell_node, null_element_id);
-
-          cursor.add_cell(colspan, rowspan, columns_repeated);
-          continue;
-        }
-
-        for (std::uint32_t column_repeat = 0; column_repeat < columns_repeated;
-             ++column_repeat) {
-          const auto &[cell_id, unused1, unused2] =
-              registry.create_sheet_cell_element(cell_node, cursor.position(),
-                                                 is_repeated);
-          registry.append_sheet_cell(element_id, cell_id);
-          sheet.register_cell(cursor.column(), cursor.row(), 1, 1, cell_node,
-                              cell_id);
-          parse_any_element_children(registry, cell_id, cell_node);
-
-          cursor.add_cell(colspan, rowspan, 1);
-        }
+      if (cell_id != null_element_id) {
+        parse_any_element_children(registry, cell_id, cell_node);
       }
 
-      cursor.add_row(1);
+      cursor.add_cell(colspan, rowspan, columns_repeated);
     }
-  }
+
+    cursor.add_row(rows_repeated);
+  });
 
   sheet.dimensions.rows = cursor.row();
 
