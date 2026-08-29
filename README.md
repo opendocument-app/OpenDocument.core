@@ -42,6 +42,7 @@ opening one throws:
 - wpd (WordPerfect)
 - xlsb (Excel binary workbook — an OOXML package whose workbook parts are
   binary rather than spreadsheetml)
+- html / htm / xhtml (route to a web view; not detected from its bytes)
 
 ## Asking what is supported
 

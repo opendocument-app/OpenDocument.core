@@ -162,6 +162,10 @@ enum class FileType {
   // and no fixture pins those two, so nothing detects or decodes them yet.
   iwork_numbers,
   iwork_keynote,
+
+  // Classification only - never detected from its bytes.
+  // https://en.wikipedia.org/wiki/HTML
+  hypertext_markup_language,
 };
 
 /// @brief Collection of file categories.

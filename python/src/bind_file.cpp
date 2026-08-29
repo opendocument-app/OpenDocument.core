@@ -86,7 +86,9 @@ void odr_python::bind_file(py::module_ &m) {
       .value("xml", odr::FileType::xml)
       .value("iwork_pages", odr::FileType::iwork_pages)
       .value("iwork_numbers", odr::FileType::iwork_numbers)
-      .value("iwork_keynote", odr::FileType::iwork_keynote);
+      .value("iwork_keynote", odr::FileType::iwork_keynote)
+      .value("hypertext_markup_language",
+             odr::FileType::hypertext_markup_language);
 
   py::enum_<odr::FileCategory>(m, "FileCategory")
       .value("unknown", odr::FileCategory::unknown)

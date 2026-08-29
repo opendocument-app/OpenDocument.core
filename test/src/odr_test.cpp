@@ -27,7 +27,8 @@ namespace {
 std::vector<FileType> every_file_type() {
   std::vector<FileType> result;
   for (auto i = static_cast<std::size_t>(FileType::unknown);
-       i <= static_cast<std::size_t>(FileType::iwork_keynote); ++i) {
+       i <= static_cast<std::size_t>(FileType::hypertext_markup_language);
+       ++i) {
     result.push_back(static_cast<FileType>(i));
   }
   return result;
@@ -127,6 +128,28 @@ TEST(FileTypeTable, canonical_alias_is_the_first_one) {
       EXPECT_EQ(mimetype_by_file_type(type), mimetypes.front());
     }
   }
+}
+
+/// Without the row an `.html` decodes as xml and shows its own source.
+TEST(FileTypeTable, html_is_named_but_not_decoded) {
+  const FileType html = FileType::hypertext_markup_language;
+
+  EXPECT_EQ(file_type_by_file_extension("html"), html);
+  EXPECT_EQ(file_type_by_file_extension("htm"), html);
+  EXPECT_EQ(file_type_by_file_extension("xhtml"), html);
+  EXPECT_EQ(file_type_by_mimetype("text/html"), html);
+  EXPECT_EQ(mimetype_by_file_type(html), "text/html");
+  EXPECT_EQ(file_category_by_file_type(html), FileCategory::text);
+
+  const FileTypeCapabilities capabilities = capabilities_by_file_type(html);
+  EXPECT_FALSE(capabilities.detect_by_content);
+  EXPECT_FALSE(capabilities.open);
+  EXPECT_FALSE(capabilities.translate_html);
+
+  const std::string page = "<!DOCTYPE html><html><body><p>hi</p></body></html>";
+  EXPECT_THROW(std::ignore =
+                   open(File::from_memory(page), html, Logger::null()),
+               UnknownFileType);
 }
 
 /// `FileType::unknown` is the only type we refuse to name a MIME type for.
