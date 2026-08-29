@@ -191,11 +191,11 @@ Dispatch `release.yml` against main, publish the draft that appears —
   emit our own html — text through `escape_text`, images as an `<img>` we
   construct. Nothing is passed through as live markup, which is why an svg goes
   out as a data url rather than inlined ([`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md))
-  and why the rendered page needs no sanitiser. What is *not* consistent today
-  is link targets: `html/pdf_file.cpp` filters a PDF `/URI` action down to an
-  allowlist of navigable schemes, while a document hyperlink
-  (`html/document_element.cpp`) is only `escape_attribute`d, so a `javascript:`
-  href in an odt reaches the page. Pick one policy before adding a third.
+  and why the rendered page needs no sanitiser. A link target goes through one
+  allowlist, `html::is_safe_uri` in `html/common.cpp`, called by both a PDF
+  `/URI` action and `html/document_element.cpp::translate_link`; a refused
+  target loses its `href` and keeps its text. A third writer of an `href` calls
+  it too.
 - **Public API**: value semantics; immutable handles; iterators only for immutable
   traversal (`docs/design/README.md`).
 - **Byte parsing**: read POD structs via `util::byte_stream::read`; assumes host

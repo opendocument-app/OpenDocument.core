@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A document hyperlink renders without an `href` unless its target is `http`,
+  `https`, `mailto`, `ftp`, `ftps`, `tel` or a relative reference — the
+  allowlist a PDF `/URI` action already went through. `Link::href()` is
+  unchanged.
 - A saved document opens in LibreOffice again: every zip entry's size goes into
   its local header instead of a trailing data descriptor, which LibreOffice
   rejects on a stored entry — an odf package always stores `mimetype`.

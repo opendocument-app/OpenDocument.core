@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -279,6 +280,32 @@ std::string html::escape_attribute(std::string value) {
   util::string::replace_all(value, "<", "&lt;");
   util::string::replace_all(value, ">", "&gt;");
   return value;
+}
+
+bool html::is_safe_uri(const std::string_view uri) {
+  std::string scheme;
+  for (const char ch : uri) {
+    const auto c = static_cast<unsigned char>(ch);
+    if (ch == ':') {
+      static constexpr std::array<std::string_view, 6> allowed = {
+          "http", "https", "mailto", "ftp", "ftps", "tel"};
+      return std::ranges::any_of(allowed, [&scheme](const std::string_view s) {
+        return util::string::equals_ignore_case(scheme, s);
+      });
+    }
+    if (ch == '/' || ch == '?' || ch == '#') {
+      return true; // path/query/fragment reached first -> relative reference
+    }
+    if (c <= 0x20) {
+      continue; // browsers strip embedded whitespace/control bytes
+    }
+    if (std::isalnum(c) != 0 || ch == '+' || ch == '-' || ch == '.') {
+      scheme.push_back(ch);
+      continue;
+    }
+    return true; // not a valid scheme character -> relative reference
+  }
+  return true; // no ':' -> relative reference
 }
 
 std::string
