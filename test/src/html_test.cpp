@@ -575,3 +575,46 @@ TEST(html, an_image_no_browser_decodes_is_not_translated) {
         << file_type_to_string(type);
   }
 }
+
+namespace {
+
+std::string render_markdown(const std::string &markdown) {
+  const DecodedFile file(File::from_memory(markdown), FileType::markdown);
+  std::ostringstream out;
+  html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
+  return std::move(out).str();
+}
+
+} // namespace
+
+// #737. The entity forms are resolved before the href is stored, so the filter
+// has to run after that resolution.
+TEST(html, a_link_the_page_must_not_navigate_to_loses_its_href) {
+  for (const std::string_view target :
+       {"javascript:alert(document.cookie)", "&#106;avascript:alert(1)",
+        "&#x6a;avascript:alert(1)", "JAVASCRIPT:alert(1)",
+        "data:text/html,<script>alert(1)</script>", "vbscript:msgbox(1)",
+        "file:///etc/passwd"}) {
+    const std::string page =
+        render_markdown("[click me](" + std::string(target) + ")\n");
+
+    EXPECT_NE(page.find("<a><x-s>click me</x-s></a>"), std::string::npos)
+        << target;
+    EXPECT_EQ(page.find("alert"), std::string::npos) << target;
+    EXPECT_EQ(page.find("msgbox"), std::string::npos) << target;
+    EXPECT_EQ(page.find("passwd"), std::string::npos) << target;
+  }
+}
+
+TEST(html, a_link_that_is_navigable_keeps_its_href) {
+  EXPECT_NE(
+      render_markdown("[a](https://x.example/?u=1&amp;v=2)\n")
+          .find(R"(<a href="https://x.example/?u=1&amp;v=2"><x-s>a</x-s></a>)"),
+      std::string::npos);
+  EXPECT_NE(render_markdown("[a](mailto:someone@x.example)\n")
+                .find(R"(<a href="mailto:someone@x.example"><x-s>a</x-s></a>)"),
+            std::string::npos);
+  EXPECT_NE(render_markdown("[a](#bookmark)\n")
+                .find(R"(<a href="#bookmark"><x-s>a</x-s></a>)"),
+            std::string::npos);
+}

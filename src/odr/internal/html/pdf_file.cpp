@@ -181,37 +181,6 @@ LinkResolver build_link_resolver(pdf::DocumentParser &parser,
   return resolver;
 }
 
-/// Whether a `/URI` action target is safe to emit as an `href`: only the
-/// navigable schemes plus scheme-less (relative) references, so `javascript:`
-/// and friends cannot become a clickable link. Embedded whitespace/control
-/// bytes are ignored while reading the scheme, as browsers strip them before
-/// dispatch (`java\tscript:` must not slip through).
-bool is_safe_uri(std::string_view uri) {
-  std::string scheme;
-  for (const char ch : uri) {
-    const auto c = static_cast<unsigned char>(ch);
-    if (ch == ':') {
-      static constexpr std::array<std::string_view, 6> allowed = {
-          "http", "https", "mailto", "ftp", "ftps", "tel"};
-      return std::ranges::any_of(allowed, [&scheme](const std::string_view s) {
-        return util::string::equals_ignore_case(scheme, s);
-      });
-    }
-    if (ch == '/' || ch == '?' || ch == '#') {
-      return true; // path/query/fragment reached first -> relative reference
-    }
-    if (c <= 0x20) {
-      continue; // browsers strip embedded whitespace/control bytes
-    }
-    if (std::isalnum(c) != 0 || ch == '+' || ch == '-' || ch == '.') {
-      scheme.push_back(ch);
-      continue;
-    }
-    return true; // not a valid scheme character -> relative reference
-  }
-  return true; // no ':' -> relative reference
-}
-
 /// A page's `/Link` annotations (ISO 32000-1 12.5.6.5) as positioned overlays.
 /// `to_box` maps PDF user space to the page box (points, y-down).
 std::vector<LinkOut> collect_page_links(const pdf::Page &page,

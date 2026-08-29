@@ -311,3 +311,45 @@ TEST(html_common, a_color_that_does_not_fully_cover_states_its_alpha) {
   EXPECT_EQ(ihtml::color(Color(1, 2, 3, 128)), "rgba(1,2,3,0.501961)");
   EXPECT_EQ(ihtml::color(Color(1, 2, 3, 1)), "rgba(1,2,3,0.00392157)");
 }
+
+TEST(html_common, the_navigable_schemes_are_safe) {
+  EXPECT_TRUE(ihtml::is_safe_uri("http://example.com/a?b#c"));
+  EXPECT_TRUE(ihtml::is_safe_uri("https://example.com"));
+  EXPECT_TRUE(ihtml::is_safe_uri("mailto:someone@example.com"));
+  EXPECT_TRUE(ihtml::is_safe_uri("ftp://example.com"));
+  EXPECT_TRUE(ihtml::is_safe_uri("ftps://example.com"));
+  EXPECT_TRUE(ihtml::is_safe_uri("tel:+123456789"));
+  EXPECT_TRUE(ihtml::is_safe_uri("HTTPS://example.com"));
+}
+
+TEST(html_common, a_reference_without_a_scheme_is_safe) {
+  EXPECT_TRUE(ihtml::is_safe_uri(""));
+  EXPECT_TRUE(ihtml::is_safe_uri("#bookmark"));
+  EXPECT_TRUE(ihtml::is_safe_uri("page1.html"));
+  EXPECT_TRUE(ihtml::is_safe_uri("../other/page1.html#top"));
+  EXPECT_TRUE(ihtml::is_safe_uri("/absolute/path"));
+  EXPECT_TRUE(ihtml::is_safe_uri("?query=1"));
+  // the colon is past a path separator, so it never named a scheme
+  EXPECT_TRUE(ihtml::is_safe_uri("path/to:file"));
+  // `_` is no scheme character, so what precedes the colon is no scheme
+  EXPECT_TRUE(ihtml::is_safe_uri("a_b:c"));
+}
+
+TEST(html_common, a_scheme_that_is_not_navigable_is_refused) {
+  EXPECT_FALSE(ihtml::is_safe_uri("javascript:alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("JavaScript:alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("data:text/html,<script>alert(1)</script>"));
+  EXPECT_FALSE(ihtml::is_safe_uri("vbscript:msgbox(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("file:///etc/passwd"));
+  EXPECT_FALSE(ihtml::is_safe_uri("blob:https://example.com/uuid"));
+}
+
+TEST(html_common, whitespace_inside_a_scheme_does_not_hide_it) {
+  EXPECT_FALSE(ihtml::is_safe_uri("java\tscript:alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("java\nscript:alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("java\rscript:alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri(" javascript:alert(1)"));
+  EXPECT_FALSE(
+      ihtml::is_safe_uri(std::string("javascript") + '\0' + ":alert(1)"));
+  EXPECT_FALSE(ihtml::is_safe_uri("\x01javascript:alert(1)"));
+}

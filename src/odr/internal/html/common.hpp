@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
@@ -82,6 +83,11 @@ std::string escape_text(std::string text);
 /// Escape a string for use as an HTML double-quoted attribute value (`&`, `"`,
 /// `<`, `>`). Unlike `escape_text`, it leaves leading/trailing spaces intact.
 std::string escape_attribute(std::string value);
+
+/// Whether a target is safe to emit as an `href`: the navigable schemes plus
+/// scheme-less (relative) references. Embedded whitespace and control bytes are
+/// skipped while reading the scheme, as browsers strip them before dispatch.
+[[nodiscard]] bool is_safe_uri(std::string_view uri);
 
 std::string color(const Color &color);
 

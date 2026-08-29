@@ -377,10 +377,16 @@ void html::translate_span(const Element &element, const WritingState &state) {
 
 void html::translate_link(const Element &element, const WritingState &state) {
   const Link link = element.as_link();
+  const std::string href = link.href();
+
+  HtmlAttributesVector attributes;
+  if (is_safe_uri(href)) {
+    attributes.emplace_back("href", escape_attribute(href));
+  }
 
   state.out().write_element_begin(
       "a", HtmlElementOptions().set_inline(true).set_attributes(
-               HtmlAttributesVector{{"href", escape_attribute(link.href())}}));
+               std::move(attributes)));
   translate_children(link.children(), state);
   state.out().write_element_end("a");
 }
