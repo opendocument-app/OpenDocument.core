@@ -38,6 +38,9 @@ class OpenDocumentCoreConan(ConanFile):
         "with_apple": False,
         "with_wasm": False,
         "bundle_assets": False,
+        # paired with PUGIXML_COMPACT in CMakeLists.txt: the define changes the
+        # node layout, so there must be no prebuilt library to mismatch against
+        "pugixml/*:header_only": True,
     }
 
     exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
