@@ -408,15 +408,23 @@ void html::translate_span(const Element &element, const WritingState &state) {
 void html::translate_link(const Element &element, const WritingState &state) {
   const Link link = element.as_link();
   const std::string href = link.href();
+  const UriKind kind = uri_kind(href);
 
+  // A refused target loses the attribute, not the element.
   HtmlAttributesVector attributes;
-  if (is_safe_uri(href)) {
+  if (kind != UriKind::refused) {
     attributes.emplace_back("href", escape_attribute(href));
   }
 
-  state.out().write_element_begin(
-      "a", HtmlElementOptions().set_inline(true).set_attributes(
-               std::move(attributes)));
+  HtmlElementOptions options =
+      HtmlElementOptions().set_inline(true).set_attributes(
+          std::move(attributes));
+  if (const std::string_view target = link_target_attributes(kind);
+      !target.empty()) {
+    options.set_extra(std::string(target));
+  }
+
+  state.out().write_element_begin("a", options);
   translate_children(link.children(), state);
   state.out().write_element_end("a");
 }

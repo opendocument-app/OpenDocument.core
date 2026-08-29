@@ -628,17 +628,51 @@ TEST(html, a_link_the_page_must_not_navigate_to_loses_its_href) {
   }
 }
 
+// #730
 TEST(html, a_link_that_is_navigable_keeps_its_href) {
-  EXPECT_NE(
-      render_markdown("[a](https://x.example/?u=1&amp;v=2)\n")
-          .find(R"(<a href="https://x.example/?u=1&amp;v=2"><x-s>a</x-s></a>)"),
-      std::string::npos);
+  const std::string away = R"( target="_blank" rel="noopener noreferrer")";
+
+  EXPECT_NE(render_markdown("[a](https://x.example/?u=1&amp;v=2)\n")
+                .find(R"(<a href="https://x.example/?u=1&amp;v=2")" + away +
+                      "><x-s>a</x-s></a>"),
+            std::string::npos);
   EXPECT_NE(render_markdown("[a](mailto:someone@x.example)\n")
-                .find(R"(<a href="mailto:someone@x.example"><x-s>a</x-s></a>)"),
+                .find(R"(<a href="mailto:someone@x.example")" + away +
+                      "><x-s>a</x-s></a>"),
             std::string::npos);
-  EXPECT_NE(render_markdown("[a](#bookmark)\n")
-                .find(R"(<a href="#bookmark"><x-s>a</x-s></a>)"),
-            std::string::npos);
+
+  for (const std::string_view target :
+       {"#bookmark", "other.html", "a/b.html"}) {
+    const std::string page =
+        render_markdown("[a](" + std::string(target) + ")\n");
+    EXPECT_NE(page.find(R"(<a href=")" + std::string(target) +
+                        R"("><x-s>a</x-s></a>)"),
+              std::string::npos)
+        << target;
+    EXPECT_EQ(page.find("_blank"), std::string::npos) << target;
+  }
+}
+
+// #730
+TEST(html, no_view_declares_a_document_wide_link_target) {
+  const auto render = [](const DecodedFile &file) {
+    std::ostringstream out;
+    html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
+    return std::move(out).str();
+  };
+
+  const std::array views{
+      render(DecodedFile(File::from_memory("a,b\n1,2\n"),
+                         FileType::comma_separated_values)),
+      render(DecodedFile(File::from_memory("<a><b>c</b></a>"), FileType::xml)),
+      render(DecodedFile(File::from_memory("plain text"), FileType::text_file)),
+      render(DecodedFile(File::from_memory("[a](https://x.example)\n"),
+                         FileType::markdown)),
+  };
+
+  for (const std::string &view : views) {
+    EXPECT_EQ(view.find("<base"), std::string::npos);
+  }
 }
 
 // #740: a sheet that ran into a limit used to end without saying so.

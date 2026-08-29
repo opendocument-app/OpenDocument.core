@@ -84,10 +84,24 @@ std::string escape_text(std::string text);
 /// `<`, `>`). Unlike `escape_text`, it leaves leading/trailing spaces intact.
 std::string escape_attribute(std::string value);
 
-/// Whether a target is safe to emit as an `href`: the navigable schemes plus
-/// scheme-less (relative) references. Embedded whitespace and control bytes are
-/// skipped while reading the scheme, as browsers strip them before dispatch.
-[[nodiscard]] bool is_safe_uri(std::string_view uri);
+/// What a target is, as an `href` would be dispatched. Whitespace and control
+/// bytes are skipped while reading the scheme, as browsers strip them first.
+enum class UriKind {
+  relative, ///< no scheme
+  external, ///< a navigable scheme
+  refused,  ///< `javascript:` and kin
+};
+
+[[nodiscard]] UriKind uri_kind(std::string_view uri);
+
+/// Safe to emit as an `href`.
+[[nodiscard]] inline bool is_safe_uri(const std::string_view uri) {
+  return uri_kind(uri) != UriKind::refused;
+}
+
+/// The `<a>` attributes for @p kind, unprefixed; empty but for
+/// @ref UriKind::external.
+[[nodiscard]] std::string_view link_target_attributes(UriKind kind);
 
 std::string color(const Color &color);
 

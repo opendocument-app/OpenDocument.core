@@ -115,7 +115,6 @@ public:
     out.write_begin();
     out.write_header_begin();
     out.write_header_charset("UTF-8");
-    out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
     // An image has no layout width to preserve, so css alone fits it, framed

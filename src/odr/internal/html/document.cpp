@@ -131,7 +131,6 @@ void front(const Document &document, const WritingState &state,
   out.write_begin();
   out.write_header_begin();
   out.write_header_charset("UTF-8");
-  out.write_header_target("_blank");
   out.write_header_title(
       document.document_type() == DocumentType::spreadsheet && !name.empty()
           ? escape_text(name)

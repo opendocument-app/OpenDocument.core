@@ -176,14 +176,6 @@ void HtmlWriter::write_header_viewport(const std::string &viewport) {
   write_header_meta("viewport", viewport);
 }
 
-void HtmlWriter::write_header_target(const std::string &target) {
-  write_new_line();
-
-  out() << "<base target=\"";
-  out() << target;
-  out() << "\"/>";
-}
-
 void HtmlWriter::write_header_charset(const std::string &charset) {
   write_new_line();
 

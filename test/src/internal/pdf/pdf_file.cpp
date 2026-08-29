@@ -195,11 +195,10 @@ TEST(PdfFile, file_meta_without_info) {
   EXPECT_FALSE(meta.author.has_value());
 }
 
-// `/Link` annotations render as `<a>` overlays: a `/URI` action → external href
-// (with `&` attr-escaped), a direct `/Dest` and a named `/GoTo` → internal
-// `#pN` anchors that carry `target="_self"` (overriding `<base
-// target="_blank">`); each page div carries a matching `id`. An active-scheme
-// `/URI` is dropped.
+// `/Link` annotations render as `<a>` overlays: a `/URI` action → an external
+// href (`&` attr-escaped, opening away from the page), a direct `/Dest` and a
+// named `/GoTo` → internal `#pN` anchors with a matching page div `id`. An
+// active-scheme `/URI` is dropped.
 TEST(PdfFile, link_annotations_render_as_anchors) {
   const std::string pdf = link_annotations_mini_pdf();
   for (const PdfTextMode mode :
@@ -209,11 +208,13 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
         << "mode " << static_cast<int>(mode);
     EXPECT_TRUE(contains(html, R"(id="p3")"))
         << "mode " << static_cast<int>(mode);
-    EXPECT_TRUE(contains(html, R"(href="http://example.com/?a=1&amp;b=2")"))
+    EXPECT_TRUE(contains(
+        html,
+        R"(href="http://example.com/?a=1&amp;b=2" target="_blank" rel="noopener noreferrer")"))
         << "mode " << static_cast<int>(mode);
-    EXPECT_TRUE(contains(html, R"(href="#p2" target="_self")"))
+    EXPECT_TRUE(contains(html, R"(href="#p2" style=)"))
         << "mode " << static_cast<int>(mode);
-    EXPECT_TRUE(contains(html, R"(href="#p3" target="_self")"))
+    EXPECT_TRUE(contains(html, R"(href="#p3" style=)"))
         << "mode " << static_cast<int>(mode);
     // The `javascript:` action is not emitted as a link.
     EXPECT_FALSE(contains(html, "javascript:alert"))
@@ -267,8 +268,8 @@ TEST(PdfFile, page_views_link_between_page_files) {
                                        /*path=*/"page0.html");
   EXPECT_TRUE(contains(html, R"(id="p1")"));
   EXPECT_FALSE(contains(html, R"(id="p2")"));
-  EXPECT_TRUE(contains(html, R"(href="page1.html" target="_self")"));
-  EXPECT_TRUE(contains(html, R"(href="page2.html" target="_self")"));
+  EXPECT_TRUE(contains(html, R"(href="page1.html" style=)"));
+  EXPECT_TRUE(contains(html, R"(href="page2.html" style=)"));
 
   const std::string page3 = render_html(pdf, PdfTextMode::dual_layer,
                                         /*path=*/"page2.html");
@@ -303,7 +304,7 @@ TEST(PdfFile, page_views_nested_output_pattern_links_relatively) {
     const HtmlService service = make_service(pdf, config);
     EXPECT_EQ(service.list_views().at(1).path(), "pages/page0.html");
     const std::string html = render_path(service, "pages/page0.html");
-    EXPECT_TRUE(contains(html, R"(href="page1.html" target="_self")"));
+    EXPECT_TRUE(contains(html, R"(href="page1.html" style=)"));
     EXPECT_FALSE(contains(html, R"(href="pages/page1.html")"));
   }
 
@@ -313,8 +314,8 @@ TEST(PdfFile, page_views_nested_output_pattern_links_relatively) {
     config.page_output_file_name = "p{index}/index.html";
     const HtmlService service = make_service(pdf, config);
     const std::string html = render_path(service, "p0/index.html");
-    EXPECT_TRUE(contains(html, R"(href="../p1/index.html" target="_self")"));
-    EXPECT_TRUE(contains(html, R"(href="../p2/index.html" target="_self")"));
+    EXPECT_TRUE(contains(html, R"(href="../p1/index.html" style=)"));
+    EXPECT_TRUE(contains(html, R"(href="../p2/index.html" style=)"));
   }
 }
 

@@ -257,11 +257,12 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
 void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
   for (const LinkOut &link : links) {
     std::ostringstream a;
-    // Internal `#pN` links must override the document's `<base
-    // target="_blank">` or they open a new copy instead of scrolling.
-    a << "<a class=\"lk\" href=\"" << link.href << '"'
-      << (link.internal ? " target=\"_self\"" : "")
-      << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
+    // A `#pN` link scrolls this page; a `/URI` action leaves it.
+    a << "<a class=\"lk\" href=\"" << link.href << '"';
+    if (!link.internal) {
+      a << ' ' << link_target_attributes(UriKind::external);
+    }
+    a << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
       << "pt;width:" << round2(link.width)
       << "pt;height:" << round2(link.height) << "pt\"></a>";
     out.write_raw(std::move(a).str());
@@ -2672,7 +2673,6 @@ public:
     out.write_begin();
     out.write_header_begin();
     out.write_header_charset("UTF-8");
-    out.write_header_target("_blank");
     out.write_header_title("odr");
     write_viewport_meta(out, config(), true);
     write_zoom_style(out, config(), width_fit(config(), true), content);
