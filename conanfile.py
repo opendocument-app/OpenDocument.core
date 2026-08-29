@@ -51,7 +51,7 @@ class OpenDocumentCoreConan(ConanFile):
         self.requires("pugixml/1.15")
         self.requires("cryptopp/8.9.0")
         self.requires("md4c/0.5.2")
-        self.requires("miniz/3.0.2")
+        self.requires("miniz/3.1.1")
         self.requires("nlohmann_json/3.12.0")
         self.requires("openjpeg/2.5.4")
         self.requires("uchardet/0.0.8")
