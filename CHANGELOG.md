@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.11.0 - 2026-08-29
+
 - No view declares `<base target="_blank">` any more. A link back into what
   serves the page — an archive entry, a PDF `#pN` anchor, a relative hyperlink —
   navigates in place; only a link that leaves the page carries
