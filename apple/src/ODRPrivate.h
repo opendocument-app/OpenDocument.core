@@ -157,6 +157,10 @@ ODRMeasure *_Nullable box(const std::optional<odr::Measure> &measure);
 + (instancetype)htmlWithHandle:(const odr::Html &)handle;
 @end
 
+@interface ODRHtmlSheetCut (Private)
++ (instancetype)cutWithHandle:(const odr::HtmlSheetCut &)handle;
+@end
+
 @interface ODRHtmlView (Private)
 + (instancetype)viewWithHandle:(odr::HtmlView)handle owner:(id)owner;
 - (const odr::HtmlView &)handle;

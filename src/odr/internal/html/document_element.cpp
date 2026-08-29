@@ -79,26 +79,56 @@ void html::translate_element(const Element &element,
   }
 }
 
+TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
+                                            const HtmlConfig &config) {
+  const TableDimensions dimensions = sheet.dimensions();
+
+  std::uint32_t end_column = dimensions.columns;
+  std::uint32_t end_row = dimensions.rows;
+  if (config.spreadsheet_limit_by_content) {
+    // Not the sheet's own extent clamped: a cell past the window does not
+    // stretch what precedes it.
+    const TableDimensions content = sheet.content(config.spreadsheet_limit);
+    end_column = content.columns;
+    end_row = content.rows;
+  }
+  if (config.spreadsheet_limit) {
+    end_column = std::min(end_column, config.spreadsheet_limit->columns);
+    end_row = std::min(end_row, config.spreadsheet_limit->rows);
+  }
+  end_column = std::max(1u, end_column);
+  if (config.spreadsheet_cell_limit) {
+    const std::uint64_t rows = *config.spreadsheet_cell_limit / end_column;
+    end_row = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(end_row, std::max<std::uint64_t>(1, rows)));
+  }
+  end_row = std::max(1u, end_row);
+
+  return {end_row, end_column};
+}
+
+std::optional<HtmlSheetCut> html::sheet_cut(const Sheet &sheet,
+                                            const HtmlConfig &config) {
+  const TableDimensions rendered = sheet_rendered_extent(sheet, config);
+  // Against the whole sheet, not the window: what dropping the limits would
+  // render.
+  const TableDimensions content = config.spreadsheet_limit_by_content
+                                      ? sheet.content(std::nullopt)
+                                      : sheet.dimensions();
+
+  if (rendered.rows >= content.rows && rendered.columns >= content.columns) {
+    return {};
+  }
+  return HtmlSheetCut{content, rendered};
+}
+
 void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   state.out().write_element_begin("table",
                                   HtmlElementOptions().set_class("odr-sheet"));
 
-  const TableDimensions dimensions = sheet.dimensions();
-  std::uint32_t end_column = dimensions.columns;
-  std::uint32_t end_row = dimensions.rows;
-  if (state.config().spreadsheet_limit_by_content) {
-    const TableDimensions content =
-        sheet.content(state.config().spreadsheet_limit);
-    end_column = content.columns;
-    end_row = content.rows;
-  }
-  if (state.config().spreadsheet_limit) {
-    end_column =
-        std::min(end_column, state.config().spreadsheet_limit->columns);
-    end_row = std::min(end_row, state.config().spreadsheet_limit->rows);
-  }
-  end_column = std::max(1u, end_column);
-  end_row = std::max(1u, end_row);
+  const TableDimensions rendered = sheet_rendered_extent(sheet, state.config());
+  const std::uint32_t end_column = rendered.columns;
+  const std::uint32_t end_row = rendered.rows;
 
   state.out().write_element_begin("col",
                                   HtmlElementOptions()

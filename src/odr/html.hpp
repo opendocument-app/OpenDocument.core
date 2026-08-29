@@ -139,9 +139,12 @@ struct HtmlConfig {
   /// The colors the output renders against.
   HtmlColorScheme color_scheme{HtmlColorScheme::light};
 
-  /// Largest sheet region written; cells past it are dropped.
-  std::optional<TableDimensions> spreadsheet_limit{TableDimensions(10000, 500)};
-  /// Trim a sheet to the cells it uses before @ref spreadsheet_limit applies.
+  /// Largest sheet region written, per axis; cells past it are dropped.
+  std::optional<TableDimensions> spreadsheet_limit{
+      TableDimensions(100000, 500)};
+  /// Most cells written for one sheet; bounds the rows by the sheet's width.
+  std::optional<std::uint64_t> spreadsheet_cell_limit{500000};
+  /// Trim a sheet to the cells it uses before the limits above apply.
   bool spreadsheet_limit_by_content{true};
   /// Which gridlines a sheet paints.
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
@@ -230,6 +233,15 @@ struct HtmlPage final {
   HtmlPage(std::string name, std::string path);
 };
 
+/// What a view leaves out of the sheet it renders. See @ref
+/// HtmlView::sheet_cut.
+struct HtmlSheetCut final {
+  /// The extent the sheet's cells span.
+  TableDimensions content;
+  /// The extent the markup carries.
+  TableDimensions rendered;
+};
+
 class HtmlView final {
 public:
   HtmlView();
@@ -239,6 +251,10 @@ public:
   [[nodiscard]] std::size_t index() const;
   [[nodiscard]] const std::string &path() const;
   [[nodiscard]] const HtmlConfig &config() const;
+
+  /// What the spreadsheet limits cut from this view's sheet, or nothing where
+  /// they cut nothing. A view of several sheets answers for the first it cut.
+  [[nodiscard]] const std::optional<HtmlSheetCut> &sheet_cut() const;
 
   HtmlResources write_html(std::ostream &out) const;
 

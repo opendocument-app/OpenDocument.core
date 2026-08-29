@@ -20,6 +20,12 @@ The release run heads these entries with the version and opens a fresh
   `https`, `mailto`, `ftp`, `ftps`, `tel` or a relative reference — the
   allowlist a PDF `/URI` action already went through. `Link::href()` is
   unchanged.
+- `HtmlView::sheet_cut` reports the extent a sheet's cells span against the
+  extent the rendered markup carries, or nothing where the limits cut nothing.
+  Bound in python, jni, wasm and apple as `sheet_cut` / `sheetCut`.
+- New `HtmlConfig::spreadsheet_cell_limit`, 500000 cells for one sheet, bounds
+  the rows a sheet keeps by its width; `spreadsheet_limit` rises from 10000 to
+  100000 rows. wasm gains both.
 - A saved document opens in LibreOffice again: every zip entry's size goes into
   its local header instead of a trailing data descriptor, which LibreOffice
   rejects on a stored entry — an odf package always stores `mimetype`.

@@ -43,10 +43,22 @@ export interface Detection {
   mimeType: string;
 }
 
+/** What a view leaves out of the sheet it renders. */
+export interface SheetCut {
+  /** The extent the sheet's cells span. */
+  contentRows: number;
+  contentColumns: number;
+  /** The extent the markup carries. */
+  renderedRows: number;
+  renderedColumns: number;
+}
+
 export interface View {
   name: string;
   index: number;
   path: string;
+  /** Set where `spreadsheetLimit` or `spreadsheetCellLimit` cut this view's sheet. */
+  sheetCut?: SheetCut;
 }
 
 /** A resource the markup links to rather than inlining. Fetch with
@@ -85,6 +97,10 @@ export interface HtmlConfig {
   pageRangeBegin?: number;
   pageRangeEnd?: number;
   colorScheme?: number;
+  /** Largest sheet region written, per axis; `null` drops the cap. */
+  spreadsheetLimit?: { rows: number; columns: number } | null;
+  /** Most cells written for one sheet; `null` drops the budget. */
+  spreadsheetCellLimit?: number | null;
   spreadsheetGridlines?: number;
   viewportMode?: number;
   /** The width the output is shown at, in css pixels; fits paged content to it. */

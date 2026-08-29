@@ -6,6 +6,7 @@
 
 #include <emscripten/bind.h>
 
+#include <cstdint>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -66,6 +67,15 @@ emscripten::val list_views(const Handle handle) {
       entry.set("name", view.name());
       entry.set("index", static_cast<double>(view.index()));
       entry.set("path", view.path());
+      if (const std::optional<HtmlSheetCut> &cut = view.sheet_cut();
+          cut.has_value()) {
+        emscripten::val sheet_cut = emscripten::val::object();
+        sheet_cut.set("contentRows", cut->content.rows);
+        sheet_cut.set("contentColumns", cut->content.columns);
+        sheet_cut.set("renderedRows", cut->rendered.rows);
+        sheet_cut.set("renderedColumns", cut->rendered.columns);
+        entry.set("sheetCut", sheet_cut);
+      }
       result.call<void>("push", entry);
     }
     return ok(result);
@@ -151,6 +161,24 @@ HtmlConfig to_html_config(const emscripten::val &value) {
 
   read_enum(value, "colorScheme", config.color_scheme);
   read_enum(value, "spreadsheetGridlines", config.spreadsheet_gridlines);
+  // `null` drops a limit, which is how a host renders a cut sheet in full;
+  // absent leaves the default in place.
+  if (const emscripten::val limit = value["spreadsheetLimit"];
+      !limit.isUndefined()) {
+    config.spreadsheet_limit = limit.isNull()
+                                   ? std::optional<TableDimensions>()
+                                   : std::optional(TableDimensions(
+                                         limit["rows"].as<std::uint32_t>(),
+                                         limit["columns"].as<std::uint32_t>()));
+  }
+  if (const emscripten::val limit = value["spreadsheetCellLimit"];
+      !limit.isUndefined()) {
+    // as a `number`, not a BigInt - a cell budget is nowhere near 2^53
+    config.spreadsheet_cell_limit =
+        limit.isNull()
+            ? std::optional<std::uint64_t>()
+            : std::optional(static_cast<std::uint64_t>(limit.as<double>()));
+  }
   read_enum(value, "viewportMode", config.viewport_mode);
   if (const emscripten::val width = value["viewportWidth"];
       !width.isUndefined() && !width.isNull()) {

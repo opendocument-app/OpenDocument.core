@@ -27,7 +27,14 @@ public final class HtmlConfig {
   public HtmlColorScheme colorScheme = HtmlColorScheme.LIGHT;
 
   /** {@code null} disables the spreadsheet limit. */
-  public TableDimensions spreadsheetLimit = new TableDimensions(10000, 500);
+  public TableDimensions spreadsheetLimit = new TableDimensions(100000, 500);
+
+  /**
+   * Most cells written for one sheet; bounds the rows by the sheet's width. {@code null} disables
+   * the budget.
+   */
+  public Long spreadsheetCellLimit = 500000L;
+
   public boolean spreadsheetLimitByContent = true;
   public HtmlTableGridlines spreadsheetGridlines = HtmlTableGridlines.SOFT;
 

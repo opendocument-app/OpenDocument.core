@@ -40,6 +40,8 @@ public:
   [[nodiscard]] virtual std::size_t index() const = 0;
   [[nodiscard]] virtual const std::string &path() const = 0;
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
+  [[nodiscard]] virtual const std::optional<HtmlSheetCut> &
+  sheet_cut() const = 0;
 
   virtual HtmlResources write_html(html::HtmlWriter &out) const = 0;
 };

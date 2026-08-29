@@ -111,6 +111,7 @@ add_jar(odr_java
         "java/app/opendocument/core/HtmlResource.java"
         "java/app/opendocument/core/HtmlResourceType.java"
         "java/app/opendocument/core/HtmlService.java"
+        "java/app/opendocument/core/HtmlSheetCut.java"
         "java/app/opendocument/core/HtmlTableGridlines.java"
         "java/app/opendocument/core/HtmlView.java"
         "java/app/opendocument/core/HtmlViewportMode.java"

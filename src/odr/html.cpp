@@ -158,6 +158,10 @@ const std::string &HtmlView::path() const { return m_impl->path(); }
 
 const HtmlConfig &HtmlView::config() const { return m_impl->config(); }
 
+const std::optional<HtmlSheetCut> &HtmlView::sheet_cut() const {
+  return m_impl->sheet_cut();
+}
+
 HtmlResources HtmlView::write_html(std::ostream &out) const {
   internal::html::HtmlWriter writer(out, config());
   return m_impl->write_html(writer);

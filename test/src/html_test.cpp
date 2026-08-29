@@ -585,6 +585,28 @@ std::string render_markdown(const std::string &markdown) {
   return std::move(out).str();
 }
 
+/// A sheet of exactly @p rows by @p columns, with no trailing empty cells.
+DecodedFile csv_file(const std::uint32_t rows, const std::uint32_t columns) {
+  std::string csv;
+  for (std::uint32_t row = 0; row < rows; ++row) {
+    for (std::uint32_t column = 0; column < columns; ++column) {
+      csv += (column == 0 ? "" : ",") + std::to_string(row * columns + column);
+    }
+    csv += "\n";
+  }
+  return DecodedFile(File::from_memory(csv), FileType::comma_separated_values);
+}
+
+const HtmlView &view_at(const HtmlService &service,
+                        const std::string_view path) {
+  const auto it =
+      std::ranges::find_if(service.list_views(), [path](const HtmlView &view) {
+        return view.path() == path;
+      });
+  EXPECT_NE(it, service.list_views().end()) << path;
+  return *it;
+}
+
 } // namespace
 
 // #737. The entity forms are resolved before the href is stored, so the filter
@@ -617,4 +639,64 @@ TEST(html, a_link_that_is_navigable_keeps_its_href) {
   EXPECT_NE(render_markdown("[a](#bookmark)\n")
                 .find(R"(<a href="#bookmark"><x-s>a</x-s></a>)"),
             std::string::npos);
+}
+
+// #740: a sheet that ran into a limit used to end without saying so.
+TEST(html, a_sheet_written_in_full_reports_no_cut) {
+  HtmlConfig config;
+  config.spreadsheet_limit = TableDimensions(100, 100);
+  config.spreadsheet_cell_limit = 10000;
+
+  const HtmlService service = html::translate(csv_file(4, 5), config);
+
+  EXPECT_FALSE(view_at(service, "sheet0.html").sheet_cut().has_value());
+  EXPECT_FALSE(view_at(service, "document.html").sheet_cut().has_value());
+}
+
+TEST(html, a_sheet_cut_by_the_rectangle_reports_what_it_left_out) {
+  HtmlConfig config;
+  config.spreadsheet_limit = TableDimensions(3, 4);
+  config.spreadsheet_cell_limit = std::nullopt;
+
+  const HtmlService service = html::translate(csv_file(10, 6), config);
+
+  const std::optional<HtmlSheetCut> &cut =
+      view_at(service, "sheet0.html").sheet_cut();
+  ASSERT_TRUE(cut.has_value());
+  EXPECT_EQ(cut->content.rows, 10);
+  EXPECT_EQ(cut->content.columns, 6);
+  EXPECT_EQ(cut->rendered.rows, 3);
+  EXPECT_EQ(cut->rendered.columns, 4);
+}
+
+// The rows a sheet keeps follow how wide it turns out to be.
+TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
+  HtmlConfig config;
+  config.spreadsheet_limit = TableDimensions(1000, 1000);
+  config.spreadsheet_cell_limit = 60;
+
+  const auto rendered = [&config](const std::uint32_t rows,
+                                  const std::uint32_t columns) {
+    const HtmlService service =
+        html::translate(csv_file(rows, columns), config);
+    const std::optional<HtmlSheetCut> &cut =
+        view_at(service, "sheet0.html").sheet_cut();
+    return cut.has_value() ? cut->rendered : TableDimensions(rows, columns);
+  };
+
+  // 3 wide: 20 rows fit the budget, and 30 do not
+  EXPECT_EQ(rendered(20, 3).rows, 20);
+  EXPECT_EQ(rendered(30, 3).rows, 20);
+  // 6 wide: the same budget is half the rows
+  EXPECT_EQ(rendered(30, 6).rows, 10);
+  // the rectangle still caps a sheet the budget would let through
+  config.spreadsheet_limit = TableDimensions(5, 1000);
+  EXPECT_EQ(rendered(30, 3).rows, 5);
+}
+
+TEST(html, a_view_that_renders_no_sheet_has_no_cut) {
+  const DecodedFile file(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+  const HtmlService service = html::translate(file, HtmlConfig());
+
+  EXPECT_FALSE(service.list_views().at(0).sheet_cut().has_value());
 }
