@@ -14,6 +14,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace odr;
@@ -126,6 +127,55 @@ TEST(ZipArchive, create_order) {
       actual.push_back(e.path().string());
     }
     EXPECT_EQ(actual, entries);
+  }
+}
+
+/// The read callback has to be re-entrant, for a memory and a stream source.
+TEST(ZipArchive, concurrent_entry_reads) {
+  const std::string path =
+      (std::filesystem::current_path() / "concurrent.zip").string();
+  constexpr std::size_t entry_count = 8;
+
+  std::vector<std::string> expected;
+  expected.reserve(entry_count);
+  for (std::size_t i = 0; i < entry_count; ++i) {
+    // large enough that a single entry spans many reads
+    expected.emplace_back(64 * 1024, static_cast<char>('a' + i));
+  }
+
+  {
+    ZipArchive zip;
+    for (std::size_t i = 0; i < entry_count; ++i) {
+      zip.insert_file(std::end(zip), RelPath("entry" + std::to_string(i)),
+                      std::make_shared<MemoryFile>(expected[i]));
+    }
+    std::ofstream out(path, std::ios::binary);
+    zip.save(out);
+  }
+
+  const std::vector<std::shared_ptr<abstract::File>> sources{
+      std::make_shared<DiskFile>(path),
+      std::make_shared<MemoryFile>(DiskFile(path))};
+
+  for (const auto &source : sources) {
+    const auto zip = std::make_shared<util::Archive>(source);
+
+    std::vector<std::string> actual(entry_count);
+    std::vector<std::thread> threads;
+    threads.reserve(entry_count);
+    for (std::size_t i = 0; i < entry_count; ++i) {
+      threads.emplace_back([&zip, &actual, i] {
+        const auto entry = zip->find(RelPath("entry" + std::to_string(i)));
+        const auto stream = entry->file()->stream();
+        actual[i] = std::string(std::istreambuf_iterator<char>(*stream),
+                                std::istreambuf_iterator<char>());
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+
+    EXPECT_EQ(expected, actual);
   }
 }
 
