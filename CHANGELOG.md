@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Two entries of the same zip document can be read at once; nothing serialises
+  on a single lock any more.
+
 - The zip backend is `miniz/3.1.1`, up from `3.0.2`. Rendered output is
   unchanged.
 

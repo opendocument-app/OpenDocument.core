@@ -6,7 +6,10 @@
 #include <istream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include <miniz/miniz.h>
 #include <miniz/miniz_zip.h>
@@ -23,12 +26,30 @@ enum class Method {
   DEFLATED,
 };
 
+/// Re-entrant source for `mz_zip_archive::m_pRead`, which reads by absolute
+/// offset. The lock covers the stream free list, never a read.
+class ReadSource final {
+public:
+  explicit ReadSource(std::shared_ptr<abstract::File> file);
+
+  [[nodiscard]] std::size_t read(std::uint64_t offset, void *buffer,
+                                 std::size_t size) const;
+
+private:
+  std::shared_ptr<abstract::File> m_file;
+  std::optional<std::string_view> m_memory;
+
+  mutable std::mutex m_mutex;
+  mutable std::vector<std::unique_ptr<std::istream>> m_streams;
+};
+
+/// Entries can be read concurrently. `mz_zip_archive::m_last_error` cannot, and
+/// is never read.
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(std::shared_ptr<abstract::File> file);
   ~Archive();
 
-  [[nodiscard]] std::mutex &mutex() const;
   [[nodiscard]] mz_zip_archive *zip() const;
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept;
@@ -101,14 +122,13 @@ public:
 
 private:
   std::shared_ptr<abstract::File> m_file;
-  std::unique_ptr<std::istream> m_stream;
+  std::unique_ptr<ReadSource> m_source;
 
-  mutable std::mutex m_mutex;
   mutable mz_zip_archive m_zip{};
 };
 
 void open_from_file(mz_zip_archive &archive, const abstract::File &file,
-                    std::istream &stream);
+                    ReadSource &source);
 
 /// `archive`'s write callback has to honour the offset it is given — local
 /// headers are rewritten with the entry size.

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstring>
 
 namespace odr::internal::zip::util {
 
@@ -32,8 +33,6 @@ protected:
     if (m_remaining <= 0) {
       return traits_type::eof();
     }
-
-    std::lock_guard lock(m_archive->mutex());
 
     const std::uint64_t amount =
         std::min<std::uint64_t>(m_remaining, m_buffer.size());
@@ -83,7 +82,6 @@ public:
     return m_archive->file()->location();
   }
   [[nodiscard]] std::size_t size() const override {
-    std::lock_guard lock(m_archive->mutex());
     mz_zip_archive_file_stat stat{};
     mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
     return stat.m_uncomp_size;
@@ -97,7 +95,6 @@ public:
   }
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const override {
-    std::lock_guard lock(m_archive->mutex());
     if (mz_zip_reader_is_file_encrypted(m_archive->zip(), m_index)) {
       throw UnsupportedOperation("cannot read encrypted zip entry");
     }
@@ -120,17 +117,14 @@ private:
 } // namespace
 
 bool Archive::Entry::is_file() const {
-  std::lock_guard lock(m_archive->mutex());
   return !mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
 bool Archive::Entry::is_directory() const {
-  std::lock_guard lock(m_archive->mutex());
   return mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
 }
 
 RelPath Archive::Entry::path() const {
-  std::lock_guard lock(m_archive->mutex());
   std::array<char, MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE> filename{};
   mz_zip_reader_get_filename(m_archive->zip(), m_index, filename.data(),
                              static_cast<mz_uint>(filename.size()));
@@ -138,7 +132,6 @@ RelPath Archive::Entry::path() const {
 }
 
 Method Archive::Entry::method() const {
-  std::lock_guard lock(m_archive->mutex());
   mz_zip_archive_file_stat stat{};
   mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
   switch (stat.m_method) {
@@ -158,21 +151,63 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index);
 }
 
+ReadSource::ReadSource(std::shared_ptr<abstract::File> file)
+    : m_file{std::move(file)} {
+  if (m_file == nullptr) {
+    throw NullPointerError("ReadSource: file is nullptr");
+  }
+  m_memory = m_file->memory_data();
+}
+
+std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
+                             const std::size_t size) const {
+  if (m_memory.has_value()) {
+    if (offset >= m_memory->size()) {
+      return 0;
+    }
+    const std::size_t amount =
+        std::min<std::size_t>(size, m_memory->size() - offset);
+    std::memcpy(buffer, m_memory->data() + offset, amount);
+    return amount;
+  }
+
+  std::unique_ptr<std::istream> stream;
+  {
+    std::lock_guard lock(m_mutex);
+    if (!m_streams.empty()) {
+      stream = std::move(m_streams.back());
+      m_streams.pop_back();
+    }
+  }
+  if (stream == nullptr) {
+    stream = m_file->stream();
+  }
+
+  // A short read has to surface as one. Clear first so an earlier read past the
+  // end does not poison every later seek.
+  stream->clear();
+  stream->seekg(static_cast<std::streamoff>(offset));
+  stream->read(static_cast<char *>(buffer), static_cast<std::streamsize>(size));
+  const auto result = static_cast<std::size_t>(stream->gcount());
+
+  {
+    std::lock_guard lock(m_mutex);
+    m_streams.push_back(std::move(stream));
+  }
+
+  return result;
+}
+
 Archive::Archive(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   if (m_file == nullptr) {
     throw NullPointerError("Archive: file is nullptr");
   }
-  m_stream = m_file->stream();
-  open_from_file(m_zip, *m_file, *m_stream);
+  m_source = std::make_unique<ReadSource>(m_file);
+  open_from_file(m_zip, *m_file, *m_source);
 }
 
-Archive::~Archive() {
-  std::lock_guard lock(m_mutex);
-  mz_zip_end(&m_zip);
-}
-
-std::mutex &Archive::mutex() const { return m_mutex; }
+Archive::~Archive() { mz_zip_end(&m_zip); }
 
 mz_zip_archive *Archive::zip() const { return &m_zip; }
 
@@ -183,7 +218,6 @@ std::shared_ptr<abstract::File> Archive::file() const noexcept {
 Archive::Iterator Archive::begin() const { return {*this, 0}; }
 
 Archive::Iterator Archive::end() const {
-  std::lock_guard lock(m_mutex);
   return {*this, mz_zip_reader_get_num_files(&m_zip)};
 }
 
@@ -198,18 +232,11 @@ Archive::Iterator Archive::find(const RelPath &path) const {
 namespace odr::internal::zip {
 
 void util::open_from_file(mz_zip_archive &archive, const abstract::File &file,
-                          std::istream &stream) {
-  archive.m_pIO_opaque = &stream;
+                          ReadSource &source) {
+  archive.m_pIO_opaque = &source;
   archive.m_pRead = [](void *opaque, const std::uint64_t offset, void *buffer,
                        const std::size_t size) {
-    const auto in = static_cast<std::istream *>(opaque);
-    // Reporting `size` regardless would hand miniz whatever was already in the
-    // buffer; a short read has to surface as one. Clear first so an earlier
-    // read past the end does not poison every later seek.
-    in->clear();
-    in->seekg(static_cast<std::streamsize>(offset));
-    in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(size));
-    return static_cast<std::size_t>(in->gcount());
+    return static_cast<const ReadSource *>(opaque)->read(offset, buffer, size);
   };
   const bool state = mz_zip_reader_init(
       &archive, file.size(), MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
