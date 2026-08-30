@@ -6,6 +6,7 @@
 #include <istream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // https://github.com/LibreOffice/core/blob/master/include/vcl/metaact.hxx
@@ -267,6 +268,17 @@ struct TextRectangleAction final {
   std::uint16_t style{};
 };
 
+/// A clip region. Its bands cover it as a union of rectangles; where the
+/// file also kept the shape those were rasterised from, @ref polygons is it
+/// and is the better outline.
+struct Region final {
+  /// `REGION_NULL`: no clipping at all, as against a region that covers
+  /// nothing and clips everything away.
+  bool null{};
+  std::vector<Rectangle> rectangles;
+  std::vector<std::vector<IntPair>> polygons;
+};
+
 /// A dib as something a browser reads. A metafile stores a dib *with* its
 /// `BITMAPFILEHEADER`, so its bytes already are a `.bmp` file; they are only
 /// unpacked where a png would be smaller, which for a chart is by fifty.
@@ -354,6 +366,11 @@ TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 /// The `TextAlign` of a `TEXTALIGN`.
 std::uint16_t read_text_align_action(std::istream &in);
+/// A region, as `ReadRegion` reads one: a band list, and from version 2 the
+/// poly-polygon it came from.
+Region read_region(std::istream &in);
+/// A `CLIPREGION`: the region, and whether it clips at all.
+std::pair<Region, bool> read_clip_region_action(std::istream &in);
 /// A dib with its file header, as `ReadDIB(…, bFileHeader=true)` reads one.
 /// @p limit is what the enclosing action declared, so a length field cannot
 /// ask for more than the file holds.

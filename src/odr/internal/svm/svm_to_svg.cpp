@@ -43,6 +43,9 @@ struct GraphicsState final {
   std::uint32_t over_line_rgb{};
   /// vcl's default, and what a file that never says otherwise draws with.
   std::uint16_t text_align{ALIGN_TOP};
+  /// What the drawing is clipped to, as path data, one entry per region the
+  /// file intersected in. Nesting a group per entry is what intersects them.
+  std::vector<std::string> clip;
 };
 
 struct SavedState final {
@@ -61,6 +64,10 @@ struct Context final {
   /// Names the masks and clip paths apart.
   std::uint32_t element_count{};
   bool inverter_written{};
+
+  /// The clip the open groups already apply - a prefix of the state's clip
+  /// once @ref ensure_clip has run.
+  std::vector<std::string> written_clip;
 };
 
 double scale(const IntPair fraction) {
@@ -300,6 +307,76 @@ get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
   }
 
   return result;
+}
+
+/// The rectangle as the four points that outline it.
+std::vector<IntPair> get_rectangle_polygon(const Rectangle &rect) {
+  return {{rect.left, rect.top},
+          {rect.right, rect.top},
+          {rect.right, rect.bottom},
+          {rect.left, rect.bottom}};
+}
+
+/// The region's outline: the shape it came from where the file kept one, and
+/// the union its bands cover where it did not.
+std::string get_region_path_data(const Region &region, const Context &context) {
+  if (!region.polygons.empty()) {
+    return get_path_data_string(region.polygons, true, context);
+  }
+
+  std::vector<std::vector<IntPair>> polygons;
+  polygons.reserve(region.rectangles.size());
+  for (const Rectangle &rect : region.rectangles) {
+    polygons.push_back(get_rectangle_polygon(rect));
+  }
+  return get_path_data_string(polygons, true, context);
+}
+
+/// Intersecting a clip with the shape it already has is a group that clips
+/// nothing, and a file does that: it sets the drawing area, then intersects
+/// the region of the same rectangle.
+void intersect_clip(std::string path_data, GraphicsState &state) {
+  if (!state.clip.empty() && state.clip.back() == path_data) {
+    return;
+  }
+  state.clip.push_back(std::move(path_data));
+}
+
+/// Opens the groups the state's clip asks for and closes the ones it no
+/// longer does, keeping what the two have in common. Every drawing action
+/// goes through here first, so what it writes lands inside them.
+void ensure_clip(Context &context) {
+  svg::SvgWriter &out = *context.out;
+  const std::vector<std::string> &clip = context.state.clip;
+
+  std::size_t common = 0;
+  while (common < context.written_clip.size() && common < clip.size() &&
+         context.written_clip[common] == clip[common]) {
+    ++common;
+  }
+
+  while (context.written_clip.size() > common) {
+    out.write_element_end();
+    context.written_clip.pop_back();
+  }
+
+  for (std::size_t i = common; i < clip.size(); ++i) {
+    const std::string id =
+        "odr-clip-" + std::to_string(++context.element_count);
+
+    out.write_element_begin("clipPath");
+    out.write_attribute("id", id);
+    out.write_element_begin("path");
+    out.write_attribute("d", clip[i]);
+    // sub-polygons of one region are its holes, as they are in a shape
+    out.write_attribute("clip-rule", "evenodd");
+    out.write_element_end();
+    out.write_element_end();
+
+    out.write_element_begin("g");
+    out.write_attribute("clip-path", "url(#" + id + ")");
+    context.written_clip.push_back(clip[i]);
+  }
 }
 
 /// One path for all of them: the fill rule only cuts holes within a path.
@@ -560,6 +637,9 @@ void pop_state(Context &context) {
     state.text_fill_rgb = saved.state.text_fill_rgb;
     state.text_fill_rgb_set = saved.state.text_fill_rgb_set;
   }
+  if (saved.flags & PUSH_CLIPREGION) {
+    state.clip = saved.state.clip;
+  }
   if (saved.flags & PUSH_TEXTALIGN) {
     state.text_align = saved.state.text_align;
   }
@@ -606,19 +686,23 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     break;
   case META_RECT_ACTION: {
     const Rectangle action = read_rectangle(in);
+    ensure_clip(context);
     write_rectangle(action, context);
   } break;
   case META_POLYLINE_ACTION: {
     const auto [points, line_info] =
         read_poly_line_action(in, action_header.vl);
+    ensure_clip(context);
     write_path({&points, 1}, false, &line_info, context);
   } break;
   case META_POLYGON_ACTION: {
     const auto [points] = read_polygon_action(in, action_header.vl);
+    ensure_clip(context);
     write_path({&points, 1}, true, nullptr, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
     const auto [polygons] = read_poly_polygon_action(in, action_header.vl);
+    ensure_clip(context);
     write_path(polygons, true, nullptr, context);
   } break;
   case META_BMP_ACTION:
@@ -629,7 +713,27 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_BMPEXSCALEPART_ACTION: {
     const BitmapAction action =
         read_bitmap_action(in, action_header.type, action_header.vl);
+    ensure_clip(context);
     write_bitmap(action, context);
+  } break;
+  case META_CLIPREGION_ACTION: {
+    auto [region, clip] = read_clip_region_action(in);
+    state.clip.clear();
+    if (clip && !region.null) {
+      intersect_clip(get_region_path_data(region, context), state);
+    }
+  } break;
+  case META_ISECTRECTCLIPREGION_ACTION: {
+    const Rectangle action = read_rectangle(in);
+    intersect_clip(
+        get_path_data_string({get_rectangle_polygon(action)}, true, context),
+        state);
+  } break;
+  case META_ISECTREGIONCLIPREGION_ACTION: {
+    const Region region = read_region(in);
+    if (!region.null) {
+      intersect_clip(get_region_path_data(region, context), state);
+    }
   } break;
   case META_TEXTALIGN_ACTION:
     state.text_align = read_text_align_action(in);
@@ -637,16 +741,19 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_TEXT_ACTION: {
     const TextAction action =
         read_text_action(in, action_header.vl, state.encoding);
+    ensure_clip(context);
     write_text(action.point, action.text, {}, 0, context);
   } break;
   case META_TEXTARRAY_ACTION: {
     const TextArrayAction action =
         read_text_array_action(in, action_header.vl, state.encoding);
+    ensure_clip(context);
     write_text(action.point, action.text, action.dx_array, 0, context);
   } break;
   case META_STRETCHTEXT_ACTION: {
     const StretchTextAction action =
         read_stretch_text_action(in, action_header.vl, state.encoding);
+    ensure_clip(context);
     write_text(action.point, action.text, {}, action.width, context);
   } break;
   default:
@@ -705,6 +812,10 @@ void svm::translate_to_svg(const SvmFile &file, std::ostream &out,
   if (!context.stack.empty()) {
     ODR_WARNING(logger, context.stack.size() << " pushes were never popped");
   }
+
+  // whatever the last clip left open
+  context.state.clip.clear();
+  ensure_clip(context);
 
   writer.write_element_end();
 }
