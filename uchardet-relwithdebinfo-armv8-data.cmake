@@ -1,0 +1,49 @@
+########### AGGREGATED COMPONENTS AND DEPENDENCIES FOR THE MULTI CONFIG #####################
+#############################################################################################
+
+set(uchardet_COMPONENT_NAMES "")
+if(DEFINED uchardet_FIND_DEPENDENCY_NAMES)
+  list(APPEND uchardet_FIND_DEPENDENCY_NAMES )
+  list(REMOVE_DUPLICATES uchardet_FIND_DEPENDENCY_NAMES)
+else()
+  set(uchardet_FIND_DEPENDENCY_NAMES )
+endif()
+
+########### VARIABLES #######################################################################
+#############################################################################################
+set(uchardet_PACKAGE_FOLDER_RELWITHDEBINFO "/Users/andreas/.conan2/p/b/uchar435bc08c03cd6/p")
+set(uchardet_BUILD_MODULES_PATHS_RELWITHDEBINFO )
+
+
+set(uchardet_INCLUDE_DIRS_RELWITHDEBINFO "${uchardet_PACKAGE_FOLDER_RELWITHDEBINFO}/include")
+set(uchardet_RES_DIRS_RELWITHDEBINFO )
+set(uchardet_DEFINITIONS_RELWITHDEBINFO )
+set(uchardet_SHARED_LINK_FLAGS_RELWITHDEBINFO )
+set(uchardet_EXE_LINK_FLAGS_RELWITHDEBINFO )
+set(uchardet_OBJECTS_RELWITHDEBINFO )
+set(uchardet_COMPILE_DEFINITIONS_RELWITHDEBINFO )
+set(uchardet_COMPILE_OPTIONS_C_RELWITHDEBINFO )
+set(uchardet_COMPILE_OPTIONS_CXX_RELWITHDEBINFO )
+set(uchardet_LIB_DIRS_RELWITHDEBINFO "${uchardet_PACKAGE_FOLDER_RELWITHDEBINFO}/lib")
+set(uchardet_BIN_DIRS_RELWITHDEBINFO )
+set(uchardet_LIBRARY_TYPE_RELWITHDEBINFO STATIC)
+set(uchardet_IS_HOST_WINDOWS_RELWITHDEBINFO 0)
+set(uchardet_LIBS_RELWITHDEBINFO uchardet)
+set(uchardet_SYSTEM_LIBS_RELWITHDEBINFO )
+set(uchardet_FRAMEWORK_DIRS_RELWITHDEBINFO )
+set(uchardet_FRAMEWORKS_RELWITHDEBINFO )
+set(uchardet_BUILD_DIRS_RELWITHDEBINFO )
+set(uchardet_NO_SONAME_MODE_RELWITHDEBINFO FALSE)
+
+
+# COMPOUND VARIABLES
+set(uchardet_COMPILE_OPTIONS_RELWITHDEBINFO
+    "$<$<COMPILE_LANGUAGE:CXX>:${uchardet_COMPILE_OPTIONS_CXX_RELWITHDEBINFO}>"
+    "$<$<COMPILE_LANGUAGE:C>:${uchardet_COMPILE_OPTIONS_C_RELWITHDEBINFO}>")
+set(uchardet_LINKER_FLAGS_RELWITHDEBINFO
+    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${uchardet_SHARED_LINK_FLAGS_RELWITHDEBINFO}>"
+    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,MODULE_LIBRARY>:${uchardet_SHARED_LINK_FLAGS_RELWITHDEBINFO}>"
+    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${uchardet_EXE_LINK_FLAGS_RELWITHDEBINFO}>")
+
+
+set(uchardet_COMPONENTS_RELWITHDEBINFO )

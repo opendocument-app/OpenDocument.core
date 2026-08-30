@@ -1,6 +1,7 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 namespace odr::internal::odf {
@@ -22,6 +23,11 @@ void ElementRegistry::clear() noexcept {
 std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
+  if (m_elements.size() >= std::numeric_limits<StoredId>::max()) {
+    throw std::overflow_error(
+        "ElementRegistry::create_element: out of identifiers");
+  }
+
   Element &element = m_elements.emplace_back();
   const ElementIdentifier element_id = m_elements.size();
   element.type = type;
@@ -134,18 +140,17 @@ ElementRegistry::sheet_cell_element(const ElementIdentifier id) const {
 
 void ElementRegistry::link_child(const ElementIdentifier parent_id,
                                  const ElementIdentifier child_id,
-                                 ElementIdentifier &first_id,
-                                 ElementIdentifier &last_id) {
+                                 StoredId &first_id, StoredId &last_id) {
   Element &child = element_at(child_id);
-  child.parent_id = parent_id;
+  child.parent_id = static_cast<StoredId>(parent_id);
   child.previous_sibling_id = last_id;
 
   if (first_id == null_element_id) {
-    first_id = child_id;
+    first_id = static_cast<StoredId>(child_id);
   } else {
-    element_at(last_id).next_sibling_id = child_id;
+    element_at(last_id).next_sibling_id = static_cast<StoredId>(child_id);
   }
-  last_id = child_id;
+  last_id = static_cast<StoredId>(child_id);
 }
 
 void ElementRegistry::append_child(const ElementIdentifier parent_id,
@@ -196,7 +201,7 @@ void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
                                 "child already has a parent");
   }
 
-  element_at(cell_id).parent_id = sheet_id;
+  element_at(cell_id).parent_id = static_cast<StoredId>(sheet_id);
 }
 
 void ElementRegistry::check_element_id(const ElementIdentifier id) const {
@@ -281,10 +286,14 @@ void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
 
   const std::uint32_t end = column + columns_repeated;
   if (cells.size() > rows.back().first_cell && cells.back().end >= end) {
-    cells.back() = {.end = end, .node = element, .element_id = element_id};
+    cells.back() = {.end = end,
+                    .element_id = static_cast<StoredId>(element_id),
+                    .node = element};
     return;
   }
-  cells.push_back({.end = end, .node = element, .element_id = element_id});
+  cells.push_back({.end = end,
+                   .element_id = static_cast<StoredId>(element_id),
+                   .node = element});
 }
 
 namespace {

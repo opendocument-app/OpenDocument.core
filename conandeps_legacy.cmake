@@ -1,0 +1,15 @@
+message(STATUS "Conan: Using CMakeDeps conandeps_legacy.cmake aggregator via include()")
+message(STATUS "Conan: It is recommended to use explicit find_package() per dependency instead")
+
+find_package(pugixml)
+find_package(cryptopp)
+find_package(md4c)
+find_package(miniz)
+find_package(nlohmann_json)
+find_package(OpenJPEG)
+find_package(uchardet)
+find_package(utf8cpp)
+find_package(httplib)
+find_package(GTest)
+
+set(CONANDEPS_LEGACY  pugixml::pugixml  cryptopp::cryptopp  md4c::md4c-html  miniz::miniz  nlohmann_json::nlohmann_json  openjp2  uchardet::uchardet  utf8cpp::utf8cpp  httplib::httplib  gtest::gtest )

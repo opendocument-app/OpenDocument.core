@@ -1,0 +1,1 @@
+. "/private/tmp/claude-501/-Users-andreas-odr-OpenDocument-core/50040636-38e1-4d0f-90ae-6ed308703180/scratchpad/wt776/deactivate_conanrunenv-relwithdebinfo-armv8.sh"

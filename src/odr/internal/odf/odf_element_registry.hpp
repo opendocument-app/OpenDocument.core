@@ -7,6 +7,7 @@
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <cstdint>
 #include <deque>
 #include <map>
 #include <span>
@@ -19,19 +20,23 @@ namespace odr::internal::odf {
 
 class ElementRegistry final {
 public:
+  /// An element is five ids, so the width is most of what one costs. Widened
+  /// back at every boundary; an id past @ref check_element_id fits.
+  using StoredId = std::uint32_t;
+
   struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
+    StoredId parent_id{null_element_id};
+    StoredId first_child_id{null_element_id};
+    StoredId last_child_id{null_element_id};
+    StoredId previous_sibling_id{null_element_id};
+    StoredId next_sibling_id{null_element_id};
     ElementType type{ElementType::none};
     pugi::xml_node node;
   };
 
   struct Table final {
-    ElementIdentifier first_column_id{null_element_id};
-    ElementIdentifier last_column_id{null_element_id};
+    StoredId first_column_id{null_element_id};
+    StoredId last_column_id{null_element_id};
   };
 
   struct Text final {
@@ -50,8 +55,8 @@ public:
 
     struct Cell final {
       std::uint32_t end{0};
+      StoredId element_id{null_element_id};
       pugi::xml_node node;
-      ElementIdentifier element_id{null_element_id};
     };
 
     struct Row final {
@@ -66,8 +71,8 @@ public:
     std::vector<Row> rows;
     std::vector<Cell> cells;
 
-    ElementIdentifier first_shape_id{null_element_id};
-    ElementIdentifier last_shape_id{null_element_id};
+    StoredId first_shape_id{null_element_id};
+    StoredId last_shape_id{null_element_id};
 
     void register_column(std::uint32_t column, std::uint32_t repeated,
                          pugi::xml_node element);
@@ -153,7 +158,7 @@ private:
 
   /// Links `child_id` as the last child of the chain `first_id`/`last_id`.
   void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,
-                  ElementIdentifier &first_id, ElementIdentifier &last_id);
+                  StoredId &first_id, StoredId &last_id);
 
   void check_element_id(ElementIdentifier id) const;
   void check_text_id(ElementIdentifier id) const;
