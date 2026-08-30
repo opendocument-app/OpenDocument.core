@@ -18,6 +18,47 @@ enum TextEncoding {
   RTL_TEXTENCODING_UCS2 = 0xFFFF,
 };
 
+/// `TextAlign`: which edge of the text the draw point names. Vertical only -
+/// vcl has no horizontal text alignment, a run always starts at the point.
+enum MetaTextAlign {
+  ALIGN_TOP = 0,
+  ALIGN_BASELINE = 1,
+  ALIGN_BOTTOM = 2,
+};
+
+/// `FontWeight`.
+enum MetaFontWeight {
+  WEIGHT_DONTKNOW = 0,
+  WEIGHT_THIN = 1,
+  WEIGHT_ULTRALIGHT = 2,
+  WEIGHT_LIGHT = 3,
+  WEIGHT_SEMILIGHT = 4,
+  WEIGHT_NORMAL = 5,
+  WEIGHT_MEDIUM = 6,
+  WEIGHT_SEMIBOLD = 7,
+  WEIGHT_BOLD = 8,
+  WEIGHT_ULTRABOLD = 9,
+  WEIGHT_BLACK = 10,
+};
+
+/// `FontItalic`.
+enum MetaFontItalic {
+  ITALIC_NONE = 0,
+  ITALIC_OBLIQUE = 1,
+  ITALIC_NORMAL = 2,
+  ITALIC_DONTKNOW = 3,
+};
+
+/// `FontLineStyle`, the underline; anything but `NONE` underlines.
+enum MetaFontLineStyle {
+  LINESTYLE_NONE = 0,
+};
+
+/// `FontStrikeout`; anything but `NONE` strikes through.
+enum MetaFontStrikeout {
+  STRIKEOUT_NONE = 0,
+};
+
 /// `LineStyle`, what a `LineInfo` draws with.
 enum MetaLineStyle {
   LINE_NONE = 0,
@@ -250,6 +291,7 @@ std::string read_utf16_string(std::istream &in, std::uint32_t length);
 std::string read_uint16_prefixed_ascii_string(std::istream &in);
 std::string read_uint32_prefixed_utf16_string(std::istream &in);
 std::string read_uint16_prefixed_utf16_string(std::istream &in);
+std::u16string read_uint16_prefixed_u16string(std::istream &in);
 std::string read_string_with_encoding(std::istream &in, TextEncoding encoding);
 
 VersionLength read_version_length(std::istream &in);
@@ -281,5 +323,7 @@ TextRectangleAction read_text_rectangle_action(std::istream &in,
 TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 /// The `PushFlags` of a `PUSH`. A version that carries none saves everything.
 std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
+/// The `TextAlign` of a `TEXTALIGN`.
+std::uint16_t read_text_align_action(std::istream &in);
 
 } // namespace odr::internal::svm

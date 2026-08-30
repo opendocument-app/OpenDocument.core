@@ -22,6 +22,39 @@ std::string read_bytes(std::istream &in, const std::uint64_t size) {
   }
 }
 
+/// `DrawText(…, index, len)`: a text action names the run of its string that
+/// it draws, and a length past the end means the rest of it.
+template <typename String>
+String select_run(const String &text, const std::uint16_t offset,
+                  const std::uint16_t length) {
+  if (offset >= text.size()) {
+    return {};
+  }
+  return text.substr(offset, length);
+}
+
+/// @ref select_run in the units the run is measured in - utf-16 code units for
+/// `UCS2`, bytes otherwise. @p text has already been decoded to utf-8, where a
+/// `UCS2` offset addresses nothing and a `substr` splits a character.
+std::string select_run_with_encoding(const std::string &text,
+                                     const svm::TextEncoding encoding,
+                                     const std::uint16_t offset,
+                                     const std::uint16_t length) {
+  if (encoding != svm::RTL_TEXTENCODING_UCS2) {
+    return select_run(text, offset, length);
+  }
+  return util::string::u16string_to_string(
+      select_run(util::string::string_to_u16string(text), offset, length));
+}
+
+std::u16string read_u16string(std::istream &in, const std::uint32_t length) {
+  const std::string bytes =
+      read_bytes(in, static_cast<std::uint64_t>(length) * 2);
+  std::u16string result(length, u' ');
+  std::memcpy(result.data(), bytes.data(), bytes.size());
+  return result;
+}
+
 } // namespace
 
 std::string svm::read_ascii_string(std::istream &in,
@@ -31,11 +64,7 @@ std::string svm::read_ascii_string(std::istream &in,
 
 std::string svm::read_utf16_string(std::istream &in,
                                    const std::uint32_t length) {
-  const std::string bytes =
-      read_bytes(in, static_cast<std::uint64_t>(length) * 2);
-  std::u16string result_u16(length, u' ');
-  std::memcpy(result_u16.data(), bytes.data(), bytes.size());
-  return util::string::u16string_to_string(result_u16);
+  return util::string::u16string_to_string(read_u16string(in, length));
 }
 
 std::string svm::read_uint16_prefixed_ascii_string(std::istream &in) {
@@ -54,6 +83,12 @@ std::string svm::read_uint16_prefixed_utf16_string(std::istream &in) {
   std::uint16_t length;
   read_primitive(in, length);
   return read_utf16_string(in, length);
+}
+
+std::u16string svm::read_uint16_prefixed_u16string(std::istream &in) {
+  std::uint16_t length;
+  read_primitive(in, length);
+  return read_u16string(in, length);
 }
 
 std::string svm::read_string_with_encoding(std::istream &in,
@@ -426,7 +461,11 @@ svm::TextAction svm::read_text_action(std::istream &in, const VersionLength &vl,
   read_primitive(in, result.length);
 
   if (vl.version >= 2) {
-    result.text = read_uint16_prefixed_utf16_string(in);
+    result.text = util::string::u16string_to_string(select_run(
+        read_uint16_prefixed_u16string(in), result.offset, result.length));
+  } else {
+    result.text = select_run_with_encoding(result.text, encoding, result.offset,
+                                           result.length);
   }
 
   return result;
@@ -452,7 +491,11 @@ svm::TextArrayAction svm::read_text_array_action(std::istream &in,
   }
 
   if (vl.version >= 2) {
-    result.text = read_uint16_prefixed_utf16_string(in);
+    result.text = util::string::u16string_to_string(select_run(
+        read_uint16_prefixed_u16string(in), result.offset, result.length));
+  } else {
+    result.text = select_run_with_encoding(result.text, encoding, result.offset,
+                                           result.length);
   }
 
   return result;
@@ -470,7 +513,11 @@ svm::read_stretch_text_action(std::istream &in, const VersionLength &vl,
   read_primitive(in, result.length);
 
   if (vl.version >= 2) {
-    result.text = read_uint16_prefixed_utf16_string(in);
+    result.text = util::string::u16string_to_string(select_run(
+        read_uint16_prefixed_u16string(in), result.offset, result.length));
+  } else {
+    result.text = select_run_with_encoding(result.text, encoding, result.offset,
+                                           result.length);
   }
 
   return result;
@@ -489,6 +536,12 @@ svm::read_text_rectangle_action(std::istream &in, const VersionLength &vl,
     result.text = read_uint16_prefixed_utf16_string(in);
   }
 
+  return result;
+}
+
+std::uint16_t svm::read_text_align_action(std::istream &in) {
+  std::uint16_t result;
+  read_primitive(in, result);
   return result;
 }
 
