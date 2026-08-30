@@ -37,8 +37,11 @@ Each stage is one pull request, stacked on the one before it.
    `TRANSPARENT` are done. `WALLPAPER` and `FLOATTRANSPARENT` are not: the
    first has a format of its own, the second nests a whole metafile.
 8. **The map mode** (#772 defect 6) - done.
-9. **Stretch.** Bézier flags (#772 defect 4), the `EPS` substitute metafile,
-   and version-1 (pre-`VCLMTF`) files via `SvmConverter.cxx`.
+9. **Stretch.** Bézier flags (#772 defect 4) are done. Left: `WALLPAPER`,
+   `FLOATTRANSPARENT` and `EPS`, which all nest something of their own; the
+   `MASK` family; `MOVECLIPREGION`; `ZCOMPRESS`ed bitmaps; and version-1
+   (pre-`VCLMTF`) files via `SvmConverter.cxx`. None of them occurs in the
+   corpus.
 
 The order follows what files actually contain, not the action list. Over 1125
 metafiles harvested from the `odt`/`ods` fixtures:
@@ -122,9 +125,10 @@ are worth writing down:
   What is left: `ZCOMPRESS`, a LibreOffice-only compression whose zlib stream
   would have to be inflated (miniz is already a dependency) before any of the
   above, and the `MASK` family, which stencils one colour through a bitmap.
-- **Béziers are cheap once the flags are read.** A polygon flag of
-  `PolyFlags::Control` marks a control point, so a flagged polygon maps onto an
-  SVG path's `C` segments directly. The reader is the part that is missing.
+- **Béziers were cheap once the flags were read** - this one is taken. A
+  polygon that carries curves is written *twice*, the second time with one
+  `PolyFlags` per point, and two control points between two corners are an
+  svg `C`.
 - **Gradients, hatches and dashes are declarative in SVG** —
   `<linearGradient>`, `<radialGradient>`, `<pattern>`, `stroke-dasharray`. No
   rasterising, no tiling by hand.

@@ -60,6 +60,31 @@ public:
     return *this;
   }
 
+  /// `Polygon::Read`: the polygon again, with what each of its points is.
+  SvmBuilder &flagged_polygon(
+      const std::vector<std::pair<std::int32_t, std::int32_t>> &points,
+      const std::vector<std::uint8_t> &flags) {
+    begin().polygon(points).u8(1);
+    for (const std::uint8_t flag : flags) {
+      u8(flag);
+    }
+    return end();
+  }
+
+  /// A default `LineInfo`, which a version 2 polyline carries.
+  SvmBuilder &line_info() {
+    return begin(3)
+        .u16(1) // solid
+        .i32(0) // width
+        .u16(0) // dash count
+        .i32(0) // dash length
+        .u16(0) // dot count
+        .i32(0) // dot length
+        .i32(0) // distance
+        .u16(0) // join
+        .end();
+  }
+
   /// The font the text actions below draw with, at @p size.
   SvmBuilder &
   font(const std::string &family, const std::int32_t size,
@@ -1061,4 +1086,60 @@ TEST(SvmToSvg, a_pop_restores_the_map_mode) {
                                         .file());
 
   EXPECT_NE(std::string::npos, svg.find("width=\"100\" height=\"100\""));
+}
+
+/// Two control points between two corners are a bezier segment, which is a
+/// `C` - the same path LibreOffice writes for the same polygon.
+TEST(SvmToSvg, a_polyline_with_flags_curves) {
+  const std::vector<std::pair<std::int32_t, std::int32_t>> points = {
+      {100, 700}, {300, 100}, {700, 100}, {900, 700}};
+
+  const std::string svg = translate(
+      SvmBuilder()
+          .action(svm::META_POLYLINE_ACTION, 3)
+          .polygon(points)
+          .line_info()
+          .u8(1) // the flagged polygon follows
+          .flagged_polygon(points, {svm::POLY_NORMAL, svm::POLY_CONTROL,
+                                    svm::POLY_CONTROL, svm::POLY_NORMAL})
+          .end()
+          .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 100,700 C 300,100 700,100 900,700\""));
+}
+
+/// Without them the same points are a line through what were the curve's
+/// control points.
+TEST(SvmToSvg, a_polyline_without_flags_is_lines) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_POLYLINE_ACTION, 3)
+                    .polygon({{100, 700}, {300, 100}, {700, 100}, {900, 700}})
+                    .line_info()
+                    .u8(0)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 100,700 L 300,100 700,100 900,700\""));
+}
+
+/// A poly-polygon names the polygons it wants replaced by the same shape with
+/// its curves.
+TEST(SvmToSvg, a_complex_poly_polygon_replaces_its_polygon) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_POLYPOLYGON_ACTION, 2)
+                    .u16(1) // polygons
+                    .polygon({{0, 0}, {10, 0}, {10, 10}, {0, 10}})
+                    .u16(1) // complex polygons
+                    .u16(0) // the index of the one to replace
+                    .flagged_polygon({{0, 0}, {5, 0}, {5, 5}, {0, 5}},
+                                     {svm::POLY_NORMAL, svm::POLY_CONTROL,
+                                      svm::POLY_CONTROL, svm::POLY_NORMAL})
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("d=\"M 0,0 C 5,0 5,5 0,5 Z\""));
 }
