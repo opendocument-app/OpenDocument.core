@@ -26,14 +26,29 @@ namespace {
 /// Beyond this the nesting is a broken file, not a drawing.
 constexpr std::size_t max_push_depth = 1024;
 
+/// Nothing in the file says how big a pixel is; this is what a bitmap with no
+/// size of its own is drawn at, and what `MapUnit::MapPixel` resolves against.
+constexpr double assumed_dpi = 96;
+/// The unit the header of every metafile in the wild uses.
+constexpr double hundredth_mm_per_inch = 2540;
+
 std::string action_name(const ActionHeader &action_header) {
   return std::string(action_type_name(action_header.type)) + "(" +
          std::to_string(action_header.type) + ")";
 }
 
+/// What a coordinate goes through to become a drawing one: the origin it is
+/// offset by, in its own units, and the scale that takes it to the header's.
+struct Mapping final {
+  double origin_x{};
+  double origin_y{};
+  double scale_x{1};
+  double scale_y{1};
+};
+
 /// What an action reads and a `PUSH` saves, grouped by `PushFlags` bit.
 struct GraphicsState final {
-  MapMode map_mode;
+  Mapping mapping;
   Font font;
   TextEncoding encoding{RTL_TEXTENCODING_ASCII_US};
   std::uint32_t line_rgb{};
@@ -71,31 +86,96 @@ struct Context final {
   /// The clip the open groups already apply - a prefix of the state's clip
   /// once @ref ensure_clip has run.
   std::vector<std::string> written_clip;
+
+  /// What the header's unit is worth - the drawing is measured in it.
+  double header_unit_length{1};
 };
 
 double scale(const IntPair fraction) {
   return static_cast<double>(fraction.x) / fraction.y;
 }
 
+/// `ImplMapRes::CalcMapResolution`: one unit of @p unit, in 100th mm. A pixel
+/// and the two font units are device-dependent and a metafile has no device,
+/// so all three resolve at @ref assumed_dpi.
+double get_unit_length(const std::uint16_t unit, const Logger &logger) {
+  switch (unit) {
+  case MAP_100TH_MM:
+    return 1;
+  case MAP_10TH_MM:
+    return 10;
+  case MAP_MM:
+    return 100;
+  case MAP_CM:
+    return 1000;
+  case MAP_1000TH_INCH:
+    return hundredth_mm_per_inch / 1000;
+  case MAP_100TH_INCH:
+    return hundredth_mm_per_inch / 100;
+  case MAP_10TH_INCH:
+    return hundredth_mm_per_inch / 10;
+  case MAP_INCH:
+    return hundredth_mm_per_inch;
+  case MAP_POINT:
+    return hundredth_mm_per_inch / 72;
+  case MAP_TWIP:
+    return hundredth_mm_per_inch / 1440;
+  case MAP_PIXEL:
+    return hundredth_mm_per_inch / assumed_dpi;
+  default:
+    ODR_DEBUG(logger, "map unit " << unit << " has no length of its own, "
+                                  << "taking it for a pixel");
+    return hundredth_mm_per_inch / assumed_dpi;
+  }
+}
+
+/// `OutputDevice::SetMapMode`: a map mode replaces the one before it - except
+/// a relative one, whose scales multiply the current and whose origin offsets
+/// it (`ImplMapRes::CalcMapResolution`).
+Mapping compose_mapping(const Mapping &current, const MapMode &map_mode,
+                        const double header_unit_length, const Logger &logger) {
+  const double relative_x = scale(map_mode.scale_x);
+  const double relative_y = scale(map_mode.scale_y);
+
+  if (map_mode.unit == MAP_RELATIVE) {
+    if (relative_x == 0 || relative_y == 0) {
+      ODR_WARNING(logger, "relative map mode with a zero scale, keeping the "
+                              << "mapping it would have composed with");
+      return current;
+    }
+    return {map_mode.origin.x + current.origin_x / relative_x,
+            map_mode.origin.y + current.origin_y / relative_y,
+            current.scale_x * relative_x, current.scale_y * relative_y};
+  }
+
+  // the drawing is measured in the header's unit, so a map mode in another
+  // one scales by what the two are worth
+  const double unit =
+      get_unit_length(map_mode.unit, logger) / header_unit_length;
+  return {static_cast<double>(map_mode.origin.x),
+          static_cast<double>(map_mode.origin.y), relative_x * unit,
+          relative_y * unit};
+}
+
 double transform_x(const std::int32_t x, const Context &context) {
-  const MapMode &map_mode = context.state.map_mode;
-  return (map_mode.origin.x + x) * scale(map_mode.scale_x);
+  const Mapping &mapping = context.state.mapping;
+  return (mapping.origin_x + x) * mapping.scale_x;
 }
 
 double transform_y(const std::int32_t y, const Context &context) {
-  const MapMode &map_mode = context.state.map_mode;
-  return (map_mode.origin.y + y) * scale(map_mode.scale_y);
+  const Mapping &mapping = context.state.mapping;
+  return (mapping.origin_y + y) * mapping.scale_y;
 }
 
 /// A length carries no origin, only the scale. The x scale even for a stroke
 /// width or a dash, which lie along no axis: `svgwriter.cxx` maps those
 /// through `ImplMap(sal_Int32)`, which takes the `Width()` of a square.
 double transform_width(const std::int32_t width, const Context &context) {
-  return width * scale(context.state.map_mode.scale_x);
+  return width * context.state.mapping.scale_x;
 }
 
 double transform_height(const std::int32_t height, const Context &context) {
-  return height * scale(context.state.map_mode.scale_y);
+  return height * context.state.mapping.scale_y;
 }
 
 std::string get_svg_color_string(const std::uint32_t color) {
@@ -672,12 +752,6 @@ std::string get_x_list_string(const IntPair &point,
 
 /// @p dx_array places the characters one by one where the file measured them;
 /// @p width, from a stretch text, is the advance the whole run has to fill.
-/// Nothing in the file says how big a pixel is; this is what
-/// `MapUnit::MapPixel` would resolve against a device.
-constexpr double assumed_dpi = 96;
-/// The unit the header of every metafile in the wild uses.
-constexpr double hundredth_mm_per_inch = 2540;
-
 /// A metafile's mask is white where the bitmap does not show; an svg mask
 /// keeps what is white.
 void write_inverter(const Context &context) {
@@ -1003,7 +1077,7 @@ void pop_state(Context &context) {
     state.text_rgb = saved.state.text_rgb;
   }
   if (saved.flags & PUSH_MAPMODE) {
-    state.map_mode = saved.state.map_mode;
+    state.mapping = saved.state.mapping;
   }
   if (saved.flags & PUSH_TEXTFILLCOLOR) {
     state.text_fill_rgb = saved.state.text_fill_rgb;
@@ -1053,9 +1127,11 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     state.font = read_font(in);
     state.encoding = static_cast<TextEncoding>(state.font.charset);
     break;
-  case META_MAPMODE_ACTION:
-    state.map_mode = read_map_mode(in);
-    break;
+  case META_MAPMODE_ACTION: {
+    const MapMode map_mode = read_map_mode(in);
+    state.mapping = compose_mapping(
+        state.mapping, map_mode, context.header_unit_length, *context.logger);
+  } break;
   case META_PIXEL_ACTION: {
     const PixelAction action = read_pixel_action(in);
     ensure_clip(context);
@@ -1218,7 +1294,9 @@ void svm::translate_to_svg(const SvmFile &file, std::ostream &out,
 
   const Header header = read_header(in);
 
-  context.state.map_mode = header.map_mode;
+  context.header_unit_length = get_unit_length(header.map_mode.unit, logger);
+  context.state.mapping = compose_mapping(Mapping(), header.map_mode,
+                                          context.header_unit_length, logger);
 
   writer.write_element_begin("svg");
   writer.write_attribute("xmlns", "http://www.w3.org/2000/svg");
