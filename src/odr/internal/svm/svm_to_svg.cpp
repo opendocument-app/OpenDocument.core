@@ -309,7 +309,6 @@ get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
   return result;
 }
 
-/// The rectangle as the four points that outline it.
 std::vector<IntPair> get_rectangle_polygon(const Rectangle &rect) {
   return {{rect.left, rect.top},
           {rect.right, rect.top},
@@ -332,9 +331,8 @@ std::string get_region_path_data(const Region &region, const Context &context) {
   return get_path_data_string(polygons, true, context);
 }
 
-/// Intersecting a clip with the shape it already has is a group that clips
-/// nothing, and a file does that: it sets the drawing area, then intersects
-/// the region of the same rectangle.
+/// A file that sets the drawing area and then intersects the same rectangle
+/// asks for a group that clips nothing; that one is dropped.
 void intersect_clip(std::string path_data, GraphicsState &state) {
   if (!state.clip.empty() && state.clip.back() == path_data) {
     return;
@@ -342,9 +340,8 @@ void intersect_clip(std::string path_data, GraphicsState &state) {
   state.clip.push_back(std::move(path_data));
 }
 
-/// Opens the groups the state's clip asks for and closes the ones it no
-/// longer does, keeping what the two have in common. Every drawing action
-/// goes through here first, so what it writes lands inside them.
+/// Reconciles the open groups with the state's clip, keeping the prefix they
+/// share. Every drawing action goes through here first.
 void ensure_clip(Context &context) {
   svg::SvgWriter &out = *context.out;
   const std::vector<std::string> &clip = context.state.clip;
@@ -368,7 +365,8 @@ void ensure_clip(Context &context) {
     out.write_attribute("id", id);
     out.write_element_begin("path");
     out.write_attribute("d", clip[i]);
-    // sub-polygons of one region are its holes, as they are in a shape
+    // holes, where the region kept the shape it was rasterised from; its
+    // bands never overlap, so they union under the same rule
     out.write_attribute("clip-rule", "evenodd");
     out.write_element_end();
     out.write_element_end();
@@ -725,9 +723,8 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   } break;
   case META_ISECTRECTCLIPREGION_ACTION: {
     const Rectangle action = read_rectangle(in);
-    intersect_clip(
-        get_path_data_string({get_rectangle_polygon(action)}, true, context),
-        state);
+    const std::vector<IntPair> polygon = get_rectangle_polygon(action);
+    intersect_clip(get_path_data_string({&polygon, 1}, true, context), state);
   } break;
   case META_ISECTREGIONCLIPREGION_ACTION: {
     const Region region = read_region(in);

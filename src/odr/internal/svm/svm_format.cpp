@@ -803,8 +803,7 @@ svm::Region svm::read_region(std::istream &in) {
     return result;
   }
 
-  // the bands: a run of horizontal strips, each with the spans that are in
-  // the region, and together the union that covers it
+  // horizontal strips, each with the spans inside the region
   std::int32_t top{};
   std::int32_t bottom{};
   while (true) {

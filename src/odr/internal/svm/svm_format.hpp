@@ -268,9 +268,8 @@ struct TextRectangleAction final {
   std::uint16_t style{};
 };
 
-/// A clip region. Its bands cover it as a union of rectangles; where the
-/// file also kept the shape those were rasterised from, @ref polygons is it
-/// and is the better outline.
+/// A clip region: bands covering it as a union of rectangles, and from
+/// version 2 the poly-polygon those were rasterised from.
 struct Region final {
   /// `REGION_NULL`: no clipping at all, as against a region that covers
   /// nothing and clips everything away.
