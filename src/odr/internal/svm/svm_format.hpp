@@ -61,6 +61,15 @@ enum MetaFontStrikeout {
   STRIKEOUT_NONE = 0,
 };
 
+/// `PolyFlags`: what a polygon's point is. Two `CONTROL` points between two
+/// corners are a bezier segment; everything else is a line.
+enum MetaPolyFlags {
+  POLY_NORMAL = 0,
+  POLY_SMOOTH = 1,
+  POLY_CONTROL = 2,
+  POLY_SYMMETRIC = 3,
+};
+
 /// `MapUnit`, the unit a map mode's coordinates are in. `MAP_RELATIVE` has
 /// none of its own: it composes with the map mode before it.
 enum MetaMapUnit {
@@ -288,17 +297,24 @@ struct ArcAction final {
   IntPair end;
 };
 
-struct PolyLineAction final {
+/// A polygon, and - where the file carried them - what its points are.
+struct Polygon final {
   std::vector<IntPair> points;
+  /// One `PolyFlags` per point, or empty where every point is a corner.
+  std::vector<std::uint8_t> flags;
+};
+
+struct PolyLineAction final {
+  Polygon polygon;
   LineInfo line_info;
 };
 
 struct PolygonAction final {
-  std::vector<IntPair> points;
+  Polygon polygon;
 };
 
 struct PolyPolygonAction final {
-  std::vector<std::vector<IntPair>> polygons;
+  std::vector<Polygon> polygons;
 };
 
 struct TextAction final {
@@ -363,7 +379,7 @@ struct Hatch final {
 /// clip at all, is no region and reads as `std::nullopt`.
 struct Region final {
   std::vector<Rectangle> rectangles;
-  std::vector<std::vector<IntPair>> polygons;
+  std::vector<Polygon> polygons;
 };
 
 /// A dib as something a browser reads. A metafile stores a dib *with* its
@@ -425,8 +441,11 @@ std::string read_string_with_encoding(std::istream &in, TextEncoding encoding);
 VersionLength read_version_length(std::istream &in);
 IntPair read_int_pair(std::istream &in);
 Rectangle read_rectangle(std::istream &in);
-std::vector<IntPair> read_polygon(std::istream &in);
-std::vector<std::vector<IntPair>> read_poly_polygon(std::istream &in);
+Polygon read_polygon(std::istream &in);
+/// `Polygon::Read`: the points again, and the flags behind them - what a
+/// polygon carrying curves is written as.
+Polygon read_flagged_polygon(std::istream &in);
+std::vector<Polygon> read_poly_polygon(std::istream &in);
 
 Header read_header(std::istream &in);
 ActionHeader read_action_header(std::istream &in);

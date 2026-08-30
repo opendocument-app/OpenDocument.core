@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A curve in a StarView metafile is drawn as a curve. The polygon flags that
+  say which of its points are bezier control points were read and dropped, so
+  every curve came out as a line through them.
+
 - A StarView metafile's map mode is read in full: its unit, so a drawing that
   switches to twips or points is no longer off by the factor between them, and
   the relative map mode, which composes with the one before it rather than

@@ -362,23 +362,39 @@ svm::Rectangle svm::read_rectangle(std::istream &in) {
   return result;
 }
 
-std::vector<svm::IntPair> svm::read_polygon(std::istream &in) {
-  std::vector<IntPair> result;
+svm::Polygon svm::read_polygon(std::istream &in) {
+  Polygon result;
 
   std::uint16_t size;
   read_primitive(in, size);
 
-  result.resize(size);
-  for (auto &&p : result) {
+  result.points.resize(size);
+  for (auto &&p : result.points) {
     p = read_int_pair(in);
   }
 
   return result;
 }
 
-std::vector<std::vector<svm::IntPair>>
-svm::read_poly_polygon(std::istream &in) {
-  std::vector<std::vector<IntPair>> result;
+svm::Polygon svm::read_flagged_polygon(std::istream &in) {
+  read_version_length(in);
+
+  Polygon result = read_polygon(in);
+
+  bool has_flags{};
+  read_primitive(in, has_flags);
+  if (has_flags) {
+    result.flags.resize(result.points.size());
+    for (auto &&flag : result.flags) {
+      read_primitive(in, flag);
+    }
+  }
+
+  return result;
+}
+
+std::vector<svm::Polygon> svm::read_poly_polygon(std::istream &in) {
+  std::vector<Polygon> result;
 
   std::uint16_t size;
   read_primitive(in, size);
@@ -562,18 +578,20 @@ svm::PolyLineAction svm::read_poly_line_action(std::istream &in,
                                                const VersionLength &vl) {
   PolyLineAction result;
 
-  result.points = read_polygon(in);
+  result.polygon = read_polygon(in);
 
   if (vl.version >= 2) {
     result.line_info = read_line_info(in);
   }
 
   if (vl.version >= 3) {
-    bool has_flags;
+    bool has_flags{};
     read_primitive(in, has_flags);
 
+    // the same polygon again, with what each point is; it replaces the
+    // corners-only one read above
     if (has_flags) {
-      // TODO flags not implemented
+      result.polygon = read_flagged_polygon(in);
     }
   }
 
@@ -584,14 +602,14 @@ svm::PolygonAction svm::read_polygon_action(std::istream &in,
                                             const VersionLength &vl) {
   PolygonAction result;
 
-  result.points = read_polygon(in);
+  result.polygon = read_polygon(in);
 
-  if (vl.version >= 3) {
-    bool has_flags;
+  if (vl.version >= 2) {
+    bool has_flags{};
     read_primitive(in, has_flags);
 
     if (has_flags) {
-      // TODO flags not implemented
+      result.polygon = read_flagged_polygon(in);
     }
   }
 
@@ -605,11 +623,18 @@ svm::PolyPolygonAction svm::read_poly_polygon_action(std::istream &in,
   result.polygons = read_poly_polygon(in);
 
   if (vl.version >= 2) {
-    std::uint16_t complex_polygons;
+    std::uint16_t complex_polygons{};
     read_primitive(in, complex_polygons);
 
-    if (complex_polygons > 0) {
-      // TODO complex not implemented
+    // each names one of the polygons above and replaces it with the same
+    // shape, curves included
+    for (std::uint16_t i = 0; i < complex_polygons; ++i) {
+      std::uint16_t index{};
+      read_primitive(in, index);
+      Polygon polygon = read_flagged_polygon(in);
+      if (index < result.polygons.size()) {
+        result.polygons[index] = std::move(polygon);
+      }
     }
   }
 

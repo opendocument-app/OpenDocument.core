@@ -367,10 +367,10 @@ void write_rectangle(const Rectangle &rect, const Context &context,
   out.write_element_end();
 }
 
-/// `svgwriter.cxx`'s `GetPathString`: one `M`, one `L` run, `Z` where closed.
-std::string
-get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
-                     const bool close, const Context &context) {
+/// `svgwriter.cxx`'s `GetPathString`: one `M`, then runs of `L` and `C` -
+/// three control points in a row are one bezier segment - `Z` where closed.
+std::string get_path_data_string(const std::span<const Polygon> polygons,
+                                 const bool close, const Context &context) {
   std::string result;
 
   const auto append_point = [&](const IntPair point) {
@@ -380,7 +380,8 @@ get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
   };
 
   for (const auto &polygon : polygons) {
-    if (polygon.size() < 2) {
+    const std::vector<IntPair> &points = polygon.points;
+    if (points.size() < 2) {
       continue;
     }
 
@@ -388,15 +389,28 @@ get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
       result += " ";
     }
     result += "M ";
-    append_point(polygon.front());
-    result += " L";
-    for (const IntPair point : polygon | std::views::drop(1)) {
-      result += " ";
-      append_point(point);
+    append_point(points.front());
+
+    char mode = 0;
+    for (std::size_t i = 1; i < points.size();) {
+      // `GetPathString`'s test: two control points between two corners
+      const bool curve = i + 2 < polygon.flags.size() &&
+                         polygon.flags[i] == POLY_CONTROL &&
+                         polygon.flags[i + 1] == POLY_CONTROL &&
+                         polygon.flags[i + 2] != POLY_CONTROL;
+      if (mode != (curve ? 'C' : 'L')) {
+        mode = curve ? 'C' : 'L';
+        result += curve ? " C" : " L";
+      }
+      for (std::size_t n = 0; n < (curve ? 3U : 1U); ++n, ++i) {
+        result += " ";
+        append_point(points[i]);
+      }
     }
+
     // a polyline that ends where it began is closed
-    if (close || (polygon.front().x == polygon.back().x &&
-                  polygon.front().y == polygon.back().y)) {
+    if (close || (points.front().x == points.back().x &&
+                  points.front().y == points.back().y)) {
       result += " Z";
     }
   }
@@ -404,11 +418,12 @@ get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
   return result;
 }
 
-std::vector<IntPair> get_rectangle_polygon(const Rectangle &rect) {
-  return {{rect.left, rect.top},
-          {rect.right, rect.top},
-          {rect.right, rect.bottom},
-          {rect.left, rect.bottom}};
+Polygon get_rectangle_polygon(const Rectangle &rect) {
+  return {{{rect.left, rect.top},
+           {rect.right, rect.top},
+           {rect.right, rect.bottom},
+           {rect.left, rect.bottom}},
+          {}};
 }
 
 /// The region's outline: the shape it came from where the file kept one, and
@@ -418,7 +433,7 @@ std::string get_region_path_data(const Region &region, const Context &context) {
     return get_path_data_string(region.polygons, true, context);
   }
 
-  std::vector<std::vector<IntPair>> polygons;
+  std::vector<Polygon> polygons;
   polygons.reserve(region.rectangles.size());
   for (const Rectangle &rect : region.rectangles) {
     polygons.push_back(get_rectangle_polygon(rect));
@@ -490,7 +505,7 @@ struct Bounds final {
   [[nodiscard]] double center_y() const { return (top + bottom) / 2; }
 };
 
-Bounds get_bounds(const std::span<const std::vector<IntPair>> polygons,
+Bounds get_bounds(const std::span<const Polygon> polygons,
                   const Context &context) {
   Bounds result{std::numeric_limits<double>::max(),
                 std::numeric_limits<double>::max(),
@@ -498,7 +513,7 @@ Bounds get_bounds(const std::span<const std::vector<IntPair>> polygons,
                 std::numeric_limits<double>::lowest()};
 
   for (const auto &polygon : polygons) {
-    for (const IntPair point : polygon) {
+    for (const IntPair point : polygon.points) {
       const double x = transform_x(point.x, context);
       const double y = transform_y(point.y, context);
       result.left = std::min(result.left, x);
@@ -660,7 +675,7 @@ void write_hatch_pattern(const std::string &id, const Hatch &hatch,
 }
 
 /// Fills the shape with the paint @p fill names, which is written above it.
-void write_filled_path(const std::span<const std::vector<IntPair>> polygons,
+void write_filled_path(const std::span<const Polygon> polygons,
                        const std::string &fill, const Context &context) {
   svg::SvgWriter &out = *context.out;
 
@@ -672,7 +687,7 @@ void write_filled_path(const std::span<const std::vector<IntPair>> polygons,
   out.write_element_end();
 }
 
-void write_gradient(const std::span<const std::vector<IntPair>> polygons,
+void write_gradient(const std::span<const Polygon> polygons,
                     const Gradient &gradient, Context &context) {
   const Bounds bounds = get_bounds(polygons, context);
   if (bounds.left > bounds.right) {
@@ -689,8 +704,8 @@ void write_gradient(const std::span<const std::vector<IntPair>> polygons,
   write_filled_path(polygons, "url(#" + id + ")", context);
 }
 
-void write_hatch(const std::span<const std::vector<IntPair>> polygons,
-                 const Hatch &hatch, Context &context) {
+void write_hatch(const std::span<const Polygon> polygons, const Hatch &hatch,
+                 Context &context) {
   const std::string id = "odr-hatch-" + std::to_string(++context.element_count);
 
   write_hatch_pattern(id, hatch, context);
@@ -699,7 +714,7 @@ void write_hatch(const std::span<const std::vector<IntPair>> polygons,
 
 /// The state's own colours, drawn through: `DrawTransparent` is the fill and
 /// the pen at a transparency, not a colour of its own.
-void write_transparent(const std::span<const std::vector<IntPair>> polygons,
+void write_transparent(const std::span<const Polygon> polygons,
                        const std::uint16_t transparence,
                        const Context &context) {
   svg::SvgWriter &out = *context.out;
@@ -713,9 +728,8 @@ void write_transparent(const std::span<const std::vector<IntPair>> polygons,
 }
 
 /// One path for all of them: the fill rule only cuts holes within a path.
-void write_path(const std::span<const std::vector<IntPair>> polygons,
-                const bool fill, const LineInfo *line_info,
-                const Context &context) {
+void write_path(const std::span<const Polygon> polygons, const bool fill,
+                const LineInfo *line_info, const Context &context) {
   svg::SvgWriter &out = *context.out;
 
   out.write_element_begin("path");
@@ -1149,9 +1163,9 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   } break;
   case META_LINE_ACTION: {
     const LineAction action = read_line_action(in, action_header.vl);
-    const std::vector<IntPair> points{action.start, action.end};
+    const Polygon polygon{{action.start, action.end}, {}};
     ensure_clip(context);
-    write_path({&points, 1}, false, &action.line_info, context);
+    write_path({&polygon, 1}, false, &action.line_info, context);
   } break;
   case META_ROUNDRECT_ACTION: {
     const RoundRectangleAction action = read_round_rectangle_action(in);
@@ -1174,24 +1188,24 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_GRADIENT_ACTION: {
     const Rectangle rect = read_rectangle(in);
     const Gradient gradient = read_gradient(in);
-    const std::vector<IntPair> polygon = get_rectangle_polygon(rect);
+    const Polygon polygon = get_rectangle_polygon(rect);
     ensure_clip(context);
     write_gradient({&polygon, 1}, gradient, context);
   } break;
   case META_GRADIENTEX_ACTION: {
-    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    const std::vector<Polygon> polygons = read_poly_polygon(in);
     const Gradient gradient = read_gradient(in);
     ensure_clip(context);
     write_gradient(polygons, gradient, context);
   } break;
   case META_HATCH_ACTION: {
-    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    const std::vector<Polygon> polygons = read_poly_polygon(in);
     const Hatch hatch = read_hatch(in);
     ensure_clip(context);
     write_hatch(polygons, hatch, context);
   } break;
   case META_TRANSPARENT_ACTION: {
-    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    const std::vector<Polygon> polygons = read_poly_polygon(in);
     std::uint16_t transparence{};
     read_primitive(in, transparence);
     ensure_clip(context);
@@ -1203,15 +1217,15 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     write_rectangle(action, context);
   } break;
   case META_POLYLINE_ACTION: {
-    const auto [points, line_info] =
+    const auto [polygon, line_info] =
         read_poly_line_action(in, action_header.vl);
     ensure_clip(context);
-    write_path({&points, 1}, false, &line_info, context);
+    write_path({&polygon, 1}, false, &line_info, context);
   } break;
   case META_POLYGON_ACTION: {
-    const auto [points] = read_polygon_action(in, action_header.vl);
+    const auto [polygon] = read_polygon_action(in, action_header.vl);
     ensure_clip(context);
-    write_path({&points, 1}, true, nullptr, context);
+    write_path({&polygon, 1}, true, nullptr, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
     const auto [polygons] = read_poly_polygon_action(in, action_header.vl);
@@ -1238,7 +1252,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   } break;
   case META_ISECTRECTCLIPREGION_ACTION: {
     const Rectangle action = read_rectangle(in);
-    const std::vector<IntPair> polygon = get_rectangle_polygon(action);
+    const Polygon polygon = get_rectangle_polygon(action);
     intersect_clip(get_path_data_string({&polygon, 1}, true, context), state);
   } break;
   case META_ISECTREGIONCLIPREGION_ACTION: {
