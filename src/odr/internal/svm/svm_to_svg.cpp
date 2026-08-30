@@ -20,7 +20,6 @@ enum class StyleKind {
   text, ///< the text colour as fill, plus the font
 };
 
-/// The action type's name with its number, for a log line.
 std::string action_name(const ActionHeader &action_header) {
   return std::string(action_type_name(action_header.type)) + "(" +
          std::to_string(action_header.type) + ")";
@@ -65,7 +64,7 @@ std::string get_svg_color_string(const std::uint32_t color) {
          std::to_string(blue) + ")";
 }
 
-/// The colour, or the property turned off where the state does not set one.
+/// The colour, or `<property>-opacity:0` where the state sets none.
 void write_color_style(svg::SvgWriter &out, const std::string &property,
                        const std::uint32_t color, const bool set) {
   if (set) {
@@ -99,7 +98,7 @@ void write_style(svg::SvgWriter &out, const Context &context,
     write_line_style(out, context);
     break;
   case StyleKind::fill:
-    // TODO the fill kills the stroke the line style just wrote
+    // TODO the fill overrides the stroke just written
     write_line_style(out, context);
     write_fill_style(out, context);
     break;
@@ -221,7 +220,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     ODR_DEBUG(*context.logger,
               "unhandled action " << action_name(action_header) << ", skipping "
                                   << action_header.vl.length << " bytes");
-    in.ignore(action_header.vl.length);
+    in.ignore(static_cast<std::streamsize>(action_header.vl.length));
     break;
   }
 }

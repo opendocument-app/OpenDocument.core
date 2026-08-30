@@ -41,8 +41,9 @@ void write_image_src(const ImageFile &image_file, std::ostream &out,
       out << file_to_url(svg_out.str(), "image/svg+xml");
       return;
     } catch (const std::exception &e) {
-      // the raw bytes below render as nothing, so say why
       ODR_WARNING(logger, "svm translation failed: " << e.what());
+    } catch (...) {
+      ODR_WARNING(logger, "svm translation failed");
     }
   }
 
