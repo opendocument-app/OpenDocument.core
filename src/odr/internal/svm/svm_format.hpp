@@ -61,6 +61,23 @@ enum MetaFontStrikeout {
   STRIKEOUT_NONE = 0,
 };
 
+/// `awt::GradientStyle`.
+enum MetaGradientStyle {
+  GRADIENT_LINEAR = 0,
+  GRADIENT_AXIAL = 1,
+  GRADIENT_RADIAL = 2,
+  GRADIENT_ELLIPTICAL = 3,
+  GRADIENT_SQUARE = 4,
+  GRADIENT_RECT = 5,
+};
+
+/// `HatchStyle`: one set of lines, two crossing, or three.
+enum MetaHatchStyle {
+  HATCH_SINGLE = 0,
+  HATCH_DOUBLE = 1,
+  HATCH_TRIPLE = 2,
+};
+
 /// `LineStyle`, what a `LineInfo` draws with.
 enum MetaLineStyle {
   LINE_NONE = 0,
@@ -294,6 +311,33 @@ struct TextRectangleAction final {
   std::uint16_t style{};
 };
 
+/// `Gradient`: the two colours, which way the ramp runs, and where it sits.
+struct Gradient final {
+  std::uint16_t style{};
+  std::uint32_t start_color{};
+  std::uint32_t end_color{};
+  /// Tenths of a degree, counter-clockwise.
+  std::uint16_t angle{};
+  /// Percent of the ramp the start colour holds before it ramps.
+  std::uint16_t border{};
+  /// Percent of the bounds, where a complex gradient's centre sits.
+  std::uint16_t offset_x{};
+  std::uint16_t offset_y{};
+  /// Percent, what the colours are scaled by.
+  std::uint16_t start_intensity{100};
+  std::uint16_t end_intensity{100};
+  std::uint16_t step_count{};
+};
+
+/// `Hatch`: the lines drawn across a shape.
+struct Hatch final {
+  std::uint16_t style{};
+  std::uint32_t color{};
+  std::int32_t distance{};
+  /// Tenths of a degree, counter-clockwise.
+  std::uint16_t angle{};
+};
+
 /// A clip region: bands covering it as a union of rectangles, and from
 /// version 2 the poly-polygon those were rasterised from. An *empty* region
 /// covers nothing and so clips everything away; `REGION_NULL`, which does not
@@ -394,6 +438,12 @@ TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 /// The `TextAlign` of a `TEXTALIGN`.
 std::uint16_t read_text_align_action(std::istream &in);
+/// A colour *inside* an object, which is not the plain `uint32` an action's
+/// own colour is: `GenericTypeSerializer::readColor` reads a name id, and only
+/// the user one carries three 16-bit channels behind it.
+std::uint32_t read_object_color(std::istream &in);
+Gradient read_gradient(std::istream &in);
+Hatch read_hatch(std::istream &in);
 /// A region, as `ReadRegion` reads one: a band list, and from version 2 the
 /// poly-polygon it came from. `std::nullopt` where it does not clip at all.
 std::optional<Region> read_region(std::istream &in);

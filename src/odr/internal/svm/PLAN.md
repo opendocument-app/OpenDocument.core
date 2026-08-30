@@ -33,8 +33,9 @@ Each stage is one pull request, stacked on the one before it.
    which stencils one colour through a bitmap, and `ZCOMPRESS`, which needs
    inflating first, are still open. See the shortcut below.
 6. **Primitives** - done.
-7. **Fills and transparency.** `GRADIENT`, `GRADIENTEX`, `HATCH`,
-   `WALLPAPER`, `TRANSPARENT`, `FLOATTRANSPARENT`.
+7. **Fills and transparency** - `GRADIENT`, `GRADIENTEX`, `HATCH` and
+   `TRANSPARENT` are done. `WALLPAPER` and `FLOATTRANSPARENT` are not: the
+   first has a format of its own, the second nests a whole metafile.
 8. **The map mode's unit** (#772 defect 6), see below.
 9. **Stretch.** Bézier flags (#772 defect 4), the `EPS` substitute metafile,
    and version-1 (pre-`VCLMTF`) files via `SvmConverter.cxx`.

@@ -110,6 +110,36 @@ public:
         .end();
   }
 
+  /// A colour *inside* an object, which is not the plain `uint32` an action's
+  /// own colour is: a name id, and three 16-bit channels behind the user one.
+  SvmBuilder &object_color(const std::uint32_t rgb) {
+    return u16(0x8000)
+        .u16(static_cast<std::uint16_t>((rgb >> 16 & 0xff) << 8))
+        .u16(static_cast<std::uint16_t>((rgb >> 8 & 0xff) << 8))
+        .u16(static_cast<std::uint16_t>((rgb & 0xff) << 8));
+  }
+
+  SvmBuilder &gradient(const std::uint16_t style, const std::uint32_t start,
+                       const std::uint32_t end, const std::uint16_t angle = 0) {
+    begin().u16(style).object_color(start).object_color(end);
+    return u16(angle)
+        .u16(0)   // border
+        .u16(50)  // offset x
+        .u16(50)  // offset y
+        .u16(100) // start intensity
+        .u16(100) // end intensity
+        .u16(0)   // step count
+        .end();
+  }
+
+  /// A poly-polygon of one rectangle.
+  SvmBuilder &poly_rectangle(const std::int32_t left, const std::int32_t top,
+                             const std::int32_t right,
+                             const std::int32_t bottom) {
+    return u16(1).polygon(
+        {{left, top}, {right, top}, {right, bottom}, {left, bottom}});
+  }
+
   /// A region of one band, the shape `ReadRegion` reads a rectangle as.
   SvmBuilder &region(const std::int32_t left, const std::int32_t top,
                      const std::int32_t right, const std::int32_t bottom) {
@@ -828,4 +858,130 @@ TEST(SvmToSvg, a_point_and_a_pixel_are_dots) {
   EXPECT_NE(std::string::npos,
             svg.find("d=\"M 5,6 Z\" style=\"stroke-linecap:round;"
                      "stroke:rgb(0,0,255)"));
+}
+
+/// The ramp runs from the top of the bounds to the bottom, turned about the
+/// centre - the same vector LibreOffice's own export writes.
+TEST(SvmToSvg, linear_gradient) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_GRADIENT_ACTION)
+                    .rectangle(100, 100, 400, 400)
+                    .gradient(svm::GRADIENT_LINEAR, 0xff0000, 0x0000ff)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<linearGradient id=\"odr-gradient-1\""
+                     " gradientUnits=\"userSpaceOnUse\""
+                     " x1=\"250\" y1=\"100\" x2=\"250\" y2=\"400\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("<stop offset=\"0\" stop-color=\"rgb(255,0,0)\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("<stop offset=\"1\" stop-color=\"rgb(0,0,255)\""));
+  EXPECT_NE(std::string::npos, svg.find("fill:url(#odr-gradient-1)"));
+}
+
+/// At 45 degrees the ramp grows to cover the corners it now runs into:
+/// LibreOffice puts it from (450,100) to (750,400), and so do we.
+TEST(SvmToSvg, a_turned_gradient_covers_the_corners) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_GRADIENT_ACTION)
+                    .rectangle(450, 100, 750, 400)
+                    .gradient(svm::GRADIENT_LINEAR, 0xff0000, 0x0000ff, 450)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("x1=\"450\" y1=\"100\" x2=\"750\" y2=\"400\""));
+}
+
+/// `DrawLinearGradient` swaps the colours of an axial ramp: the end colour is
+/// at both ends of the axis and the start colour in the middle.
+TEST(SvmToSvg, an_axial_gradient_has_its_colours_the_other_way_round) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_GRADIENT_ACTION)
+                    .rectangle(100, 100, 400, 400)
+                    .gradient(svm::GRADIENT_AXIAL, 0xff0000, 0x0000ff)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<stop offset=\"0\" stop-color=\"rgb(0,0,255)\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("<stop offset=\"0.5\" stop-color=\"rgb(255,0,0)\""));
+}
+
+/// The other complex styles are an ellipse: `r` is the circle the transform
+/// stretches sideways, so it is the *smaller* radius, never the larger.
+TEST(SvmToSvg, an_elliptical_gradient_is_a_stretched_circle) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_GRADIENT_ACTION)
+                    .rectangle(0, 0, 400, 200)
+                    .gradient(svm::GRADIENT_ELLIPTICAL, 0xff0000, 0x0000ff)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("cx=\"200\" cy=\"100\" r=\"141.421\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("gradientTransform=\"matrix(2 0 0 1 -200 0)\""));
+}
+
+/// vcl draws a radial ramp as rings shrinking inwards from the start colour,
+/// so the end colour is the one in the middle.
+TEST(SvmToSvg, a_radial_gradient_ends_in_the_middle) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_GRADIENT_ACTION)
+                    .rectangle(0, 0, 300, 400)
+                    .gradient(svm::GRADIENT_RADIAL, 0xff0000, 0x0000ff)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("<radialGradient"));
+  EXPECT_NE(std::string::npos, svg.find("cx=\"150\" cy=\"200\" r=\"250\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("<stop offset=\"0\" stop-color=\"rgb(0,0,255)\""));
+}
+
+TEST(SvmToSvg, hatch) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_HATCH_ACTION)
+                                        .poly_rectangle(0, 0, 300, 300)
+                                        .begin()
+                                        .u16(svm::HATCH_DOUBLE)
+                                        .object_color(0x008000)
+                                        .i32(100)
+                                        .u16(450)
+                                        .end()
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(
+      std::string::npos,
+      svg.find("<pattern id=\"odr-hatch-1\" patternUnits=\"userSpaceOnUse\""
+               " width=\"100\" height=\"100\""
+               " patternTransform=\"rotate(-45)\""));
+  EXPECT_EQ(2, count_of(svg, "stroke:rgb(0,128,0)"));
+  EXPECT_NE(std::string::npos, svg.find("fill:url(#odr-hatch-1)"));
+}
+
+/// The state's own colours at a transparency, and the shape as a whole.
+TEST(SvmToSvg, transparent) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_FILLCOLOR_ACTION)
+                                        .u32(0x0000ff)
+                                        .u8(1)
+                                        .end()
+                                        .action(svm::META_TRANSPARENT_ACTION)
+                                        .poly_rectangle(0, 0, 100, 100)
+                                        .u16(60)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("fill:rgb(0,0,255)"));
+  EXPECT_NE(std::string::npos, svg.find("opacity:0.4"));
 }

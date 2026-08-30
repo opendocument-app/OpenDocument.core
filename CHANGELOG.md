@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A StarView metafile draws its gradients, hatches and transparent shapes:
+  `GRADIENT`, `GRADIENTEX`, `HATCH` and `TRANSPARENT`.
+
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
