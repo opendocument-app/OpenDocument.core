@@ -1,53 +1,61 @@
 # SVM implementation
 
 StarView Metafile → SVG. See [`AGENTS.md`](AGENTS.md) for how the module is
-built and [`PLAN.md`](PLAN.md) for the order the gaps below get closed in.
+built, what it does differently, and what the corpus actually contains.
 
 ## Features
 
+38 of the 54 action types we name are drawn.
+
 - [x] shapes
-  - [x] rectangle
-  - [x] polyline, polygon, poly-polygon
-  - [ ] fill rule of a poly-polygon (holes are painted over)
-  - [ ] pixel, point, line, rounded rectangle, ellipse, arc, pie, chord
-  - [ ] bézier segments (the polygon flags are not read)
+  - [x] rectangle, rounded rectangle
+  - [x] polyline, polygon, poly-polygon, with the fill rule that cuts its holes
+  - [x] pixel, point, line, ellipse, arc, pie, chord
+  - [x] bézier segments
 - [x] colour
   - [x] line, fill, text
-  - [ ] `LineInfo` (width, dash, join, cap)
+  - [x] `LineInfo` (width, dash, join)
   - [ ] text fill, overline (read into the state, never drawn)
-- [ ] font
-  - [x] size (in map-mode units, which the transform does not apply)
-  - [ ] italic, bold
-  - [ ] alignment
-  - [ ] underline, strike through
-  - [x] colour
-  - [x] family
+- [x] font
+  - [x] family, size, colour
+  - [x] italic, bold, underline, strike through, rotation
+  - [x] alignment — `TextAlign` is vertical only, a run always starts at the
+        point
 - [x] text
-  - [x] `TEXT`, `TEXTARRAY`, `STRETCHTEXT` as plain text at a point
-  - [ ] the `TEXTARRAY` dx array, `STRETCHTEXT` width, `TEXTRECT`
-  - [ ] non-`UCS2` encodings (the bytes go out undecoded, see below)
-- [ ] transform (e.g. flip, rotate)
-  - [x] map mode origin and scale
-  - [ ] map mode unit
-- [ ] images (`BMP`, `BMPEX`, `MASK` and their scale/part variants)
-- [ ] gradient, hatch, wallpaper
-- [ ] clipping regions
-- [ ] transparency (`TRANSPARENT`, `FLOATTRANSPARENT`)
-- [ ] graphics state stack (`PUSH`/`POP`)
+  - [x] `TEXT`, `TEXTARRAY`, `STRETCHTEXT`, and the run each of them names
+  - [x] the `TEXTARRAY` dx array and the `STRETCHTEXT` width
+  - [x] non-`UCS2` encodings, decoded to utf-8
+  - [ ] `TEXTRECT`, `TEXTLINE` — the reader has both, nothing draws them
+- [x] map mode
+  - [x] origin, scale, unit
+  - [x] the relative map mode, which composes with the one before it
+- [x] images
+  - [x] `BMP`, `BMPEX` and their scale and part variants, transparency mask
+        included
+  - [ ] the `MASK` family, which stencils one colour through a bitmap
+  - [ ] `ZCOMPRESS`ed dibs, whose zlib stream would have to be inflated first
+- [x] gradient, hatch, transparency
+  - [x] `GRADIENT`, `GRADIENTEX`, `HATCH`, `TRANSPARENT`
+  - [ ] `WALLPAPER`, which has a format of its own
+  - [ ] `FLOATTRANSPARENT`, which nests a whole metafile
+- [x] clipping
+  - [x] `CLIPREGION`, `ISECTRECTCLIPREGION`, `ISECTREGIONCLIPREGION`
+  - [ ] `MOVECLIPREGION`, which would have to move path data already written
+- [x] graphics state stack (`PUSH`/`POP`), restoring only what the push named
 - [ ] `EPS` substitute metafile
-- [ ] version 1 (pre-`VCLMTF`) files
-- [x] output is escaped, so a `&` in a label cannot cost the whole image
+- [ ] version 1 (pre-`VCLMTF`) files, via `SvmConverter.cxx`
+- [x] output is escaped and decoded, so no label can cost the whole image
 - [x] every action we skip is logged by name
 
-Anything not implemented is skipped by the action's own length, so the actions
-after it still read.
+Anything unimplemented is skipped by the action's own length, so the actions
+after it still read. None of it occurs in the corpus.
 
-### Known defect
+### Where the drawing is approximate
 
-Text in a non-`UCS2` encoding is passed through as the bytes the file holds
-(`read_ascii_string`). A latin-1 label therefore emits invalid utf-8, and an
-xml parser refuses that exactly as hard as an unescaped `&`. Escaping alone
-does not make every label safe.
+- A `SQUARE` or `RECT` gradient shrinks a rectangle rather than an ellipse,
+  which svg has no gradient for; it comes out as the ellipse closest to it.
+- A triple hatch's third line set runs corner to corner of the pattern tile,
+  so those lines sit `distance / √2` apart rather than `distance`.
 
 ## References
 
@@ -61,6 +69,8 @@ does not make every label safe.
 - [`svgwriter.cxx`](https://github.com/LibreOffice/core/blob/master/filter/source/svg/svgwriter.cxx)
   — LibreOffice's own metafile → svg export, i.e. our problem already solved.
   The reference for mapping decisions.
+- [`textenc.h`](https://github.com/LibreOffice/core/blob/master/include/rtl/textenc.h)
+  — the `rtl_TextEncoding` numbers a font's charset is one of.
 - [`SPEC`](https://github.com/ONLYOFFICE/core/blob/master/DesktopEditor/raster/Metafile/StarView/SPEC)
   — ONLYOFFICE's prose write-up, modelled on [MS-WMF]. Cheap to read, but
   incomplete: several FIXMEs, `Color` and the polygon flags unfinished.

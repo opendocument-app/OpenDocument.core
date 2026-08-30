@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/png/png_util.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -155,18 +156,93 @@ String select_run(const String &text, const std::uint16_t offset,
   return text.substr(offset, length);
 }
 
-/// @ref select_run in the units the run is measured in - utf-16 code units for
-/// `UCS2`, bytes otherwise. @p text has already been decoded to utf-8, where a
-/// `UCS2` offset addresses nothing and a `substr` splits a character.
-std::string select_run_with_encoding(const std::string &text,
-                                     const svm::TextEncoding encoding,
-                                     const std::uint16_t offset,
-                                     const std::uint16_t length) {
-  if (encoding != svm::RTL_TEXTENCODING_UCS2) {
-    return select_run(text, offset, length);
-  }
+/// @ref select_run in the units the offsets are measured in: vcl decodes the
+/// string before it indexes it, so they count utf-16 code units whatever the
+/// file's encoding is - a utf-8 `substr` would split a character.
+std::string select_run_utf16(const std::string &text,
+                             const std::uint16_t offset,
+                             const std::uint16_t length) {
   return util::string::u16string_to_string(
       select_run(util::string::string_to_u16string(text), offset, length));
+}
+
+/// The decoder for an `rtl_TextEncoding`, `unknown` where we have none.
+odr::TextEncoding get_decoder(const svm::TextEncoding encoding) {
+  switch (encoding) {
+  // every byte below 0x80 is the character it is; a stray one above reads as
+  // latin-1 rather than as the invalid utf-8 it would otherwise emit
+  case svm::RTL_TEXTENCODING_ASCII_US:
+  case svm::RTL_TEXTENCODING_ISO_8859_1:
+    return odr::TextEncoding::iso_8859_1;
+  case svm::RTL_TEXTENCODING_MS_1252:
+    return odr::TextEncoding::windows_1252;
+  case svm::RTL_TEXTENCODING_APPLE_ROMAN:
+    return odr::TextEncoding::macintosh;
+  case svm::RTL_TEXTENCODING_ISO_8859_2:
+    return odr::TextEncoding::iso_8859_2;
+  case svm::RTL_TEXTENCODING_ISO_8859_3:
+    return odr::TextEncoding::iso_8859_3;
+  case svm::RTL_TEXTENCODING_ISO_8859_4:
+    return odr::TextEncoding::iso_8859_4;
+  case svm::RTL_TEXTENCODING_ISO_8859_5:
+    return odr::TextEncoding::iso_8859_5;
+  case svm::RTL_TEXTENCODING_ISO_8859_6:
+    return odr::TextEncoding::iso_8859_6;
+  case svm::RTL_TEXTENCODING_ISO_8859_7:
+    return odr::TextEncoding::iso_8859_7;
+  case svm::RTL_TEXTENCODING_ISO_8859_8:
+    return odr::TextEncoding::iso_8859_8;
+  case svm::RTL_TEXTENCODING_ISO_8859_10:
+    return odr::TextEncoding::iso_8859_10;
+  case svm::RTL_TEXTENCODING_ISO_8859_13:
+    return odr::TextEncoding::iso_8859_13;
+  case svm::RTL_TEXTENCODING_ISO_8859_14:
+    return odr::TextEncoding::iso_8859_14;
+  case svm::RTL_TEXTENCODING_ISO_8859_15:
+    return odr::TextEncoding::iso_8859_15;
+  case svm::RTL_TEXTENCODING_IBM_866:
+    return odr::TextEncoding::ibm866;
+  case svm::RTL_TEXTENCODING_MS_874:
+    return odr::TextEncoding::windows_874;
+  case svm::RTL_TEXTENCODING_MS_1250:
+    return odr::TextEncoding::windows_1250;
+  case svm::RTL_TEXTENCODING_MS_1251:
+    return odr::TextEncoding::windows_1251;
+  case svm::RTL_TEXTENCODING_MS_1253:
+    return odr::TextEncoding::windows_1253;
+  case svm::RTL_TEXTENCODING_MS_1254:
+    return odr::TextEncoding::windows_1254;
+  case svm::RTL_TEXTENCODING_MS_1255:
+    return odr::TextEncoding::windows_1255;
+  case svm::RTL_TEXTENCODING_MS_1256:
+    return odr::TextEncoding::windows_1256;
+  case svm::RTL_TEXTENCODING_MS_1257:
+    return odr::TextEncoding::windows_1257;
+  case svm::RTL_TEXTENCODING_MS_1258:
+    return odr::TextEncoding::windows_1258;
+  case svm::RTL_TEXTENCODING_APPLE_CYRILLIC:
+    return odr::TextEncoding::x_mac_cyrillic;
+  case svm::RTL_TEXTENCODING_KOI8_R:
+    return odr::TextEncoding::koi8_r;
+  case svm::RTL_TEXTENCODING_KOI8_U:
+    return odr::TextEncoding::koi8_u;
+  case svm::RTL_TEXTENCODING_UTF8:
+    return odr::TextEncoding::utf8;
+  default:
+    return odr::TextEncoding::unknown;
+  }
+}
+
+/// @p bytes as utf-8. An encoding we have no decoder for is taken for
+/// `MS_1252`, which is what a file of this age most likely means and what
+/// vcl falls back to on Windows: a label in the wrong characters still draws,
+/// where passing the bytes through emits invalid utf-8 and an xml parser
+/// refuses that exactly as hard as an unescaped `&`.
+std::string decode(const std::string &bytes, const svm::TextEncoding encoding) {
+  const odr::TextEncoding decoder = get_decoder(encoding);
+  return encoding::to_utf8(bytes, decoder == odr::TextEncoding::unknown
+                                      ? odr::TextEncoding::windows_1252
+                                      : decoder);
 }
 
 std::u16string read_u16string(std::istream &in, const std::uint32_t length) {
@@ -218,7 +294,7 @@ std::string svm::read_string_with_encoding(std::istream &in,
   if (encoding == RTL_TEXTENCODING_UCS2) {
     return read_uint32_prefixed_utf16_string(in);
   }
-  return read_uint16_prefixed_ascii_string(in);
+  return decode(read_uint16_prefixed_ascii_string(in), encoding);
 }
 
 std::string_view svm::action_type_name(const std::uint16_t type) {
@@ -499,10 +575,18 @@ svm::Font svm::read_font(std::istream &in) {
   Font result;
 
   result.vl = read_version_length(in);
-  result.family_name = read_uint16_prefixed_ascii_string(in);
-  result.style_name = read_uint16_prefixed_ascii_string(in);
+  const std::string family_name = read_uint16_prefixed_ascii_string(in);
+  const std::string style_name = read_uint16_prefixed_ascii_string(in);
   result.size = read_int_pair(in);
   read_primitive(in, result.charset);
+
+  // the names are bytes, and the only charset the action carries is the one
+  // it reads next; vcl decodes them with the stream's instead, which a
+  // metafile never sets
+  result.family_name =
+      decode(family_name, static_cast<TextEncoding>(result.charset));
+  result.style_name =
+      decode(style_name, static_cast<TextEncoding>(result.charset));
   read_primitive(in, result.family);
   read_primitive(in, result.pitch);
   read_primitive(in, result.weight);
@@ -654,8 +738,7 @@ svm::TextAction svm::read_text_action(std::istream &in, const VersionLength &vl,
     result.text = util::string::u16string_to_string(select_run(
         read_uint16_prefixed_u16string(in), result.offset, result.length));
   } else {
-    result.text = select_run_with_encoding(result.text, encoding, result.offset,
-                                           result.length);
+    result.text = select_run_utf16(result.text, result.offset, result.length);
   }
 
   return result;
@@ -684,8 +767,7 @@ svm::TextArrayAction svm::read_text_array_action(std::istream &in,
     result.text = util::string::u16string_to_string(select_run(
         read_uint16_prefixed_u16string(in), result.offset, result.length));
   } else {
-    result.text = select_run_with_encoding(result.text, encoding, result.offset,
-                                           result.length);
+    result.text = select_run_utf16(result.text, result.offset, result.length);
   }
 
   return result;
@@ -706,8 +788,7 @@ svm::read_stretch_text_action(std::istream &in, const VersionLength &vl,
     result.text = util::string::u16string_to_string(select_run(
         read_uint16_prefixed_u16string(in), result.offset, result.length));
   } else {
-    result.text = select_run_with_encoding(result.text, encoding, result.offset,
-                                           result.length);
+    result.text = select_run_utf16(result.text, result.offset, result.length);
   }
 
   return result;

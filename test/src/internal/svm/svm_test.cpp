@@ -12,6 +12,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -304,6 +305,29 @@ std::size_t count_of(const std::string &haystack, const std::string &needle) {
     ++result;
   }
   return result;
+}
+
+/// Hand-rolled because pugixml accepts invalid utf-8 and a browser does not.
+bool is_utf8(const std::string_view text) {
+  for (std::size_t i = 0; i < text.size();) {
+    const auto lead = static_cast<unsigned char>(text[i]);
+    const std::size_t length = lead < 0x80   ? 1
+                               : lead < 0xc2 ? 0
+                               : lead < 0xe0 ? 2
+                               : lead < 0xf0 ? 3
+                               : lead < 0xf5 ? 4
+                                             : 0;
+    if (length == 0 || i + length > text.size()) {
+      return false;
+    }
+    for (std::size_t n = 1; n < length; ++n) {
+      if ((static_cast<unsigned char>(text[i + n]) & 0xc0) != 0x80) {
+        return false;
+      }
+    }
+    i += length;
+  }
+  return true;
 }
 
 std::string translate(const std::string &data) {
@@ -1090,6 +1114,46 @@ TEST(SvmToSvg, a_pop_restores_the_map_mode) {
 
 /// Two control points between two corners are a bezier segment, which is a
 /// `C` - the same path LibreOffice writes for the same polygon.
+/// 0x92 is a curly apostrophe in `MS_1252` and a control character in latin-1.
+TEST(SvmToSvg, text_is_decoded_by_the_font_charset) {
+  const auto translate_in = [](const std::uint16_t charset) {
+    return translate(SvmBuilder()
+                         .font("Arial", 10, 0, 0, 0, 0, 0, charset)
+                         .text(0, 0, "it\x92s")
+                         .file());
+  };
+
+  EXPECT_NE(std::string::npos,
+            translate_in(svm::RTL_TEXTENCODING_MS_1252).find("it\u2019s"));
+  EXPECT_NE(std::string::npos,
+            translate_in(svm::RTL_TEXTENCODING_ISO_8859_1).find("it\u0092s"));
+}
+
+/// An encoding we have no decoder for is taken for `MS_1252`.
+TEST(SvmToSvg, an_unknown_encoding_still_decodes) {
+  const std::string svg = translate(SvmBuilder()
+                                        .font("Arial", 10, 0, 0, 0, 0, 0, 0x63)
+                                        .text(0, 0, "\xe4\x92")
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("\u00e4\u2019"));
+  EXPECT_TRUE(is_utf8(svg));
+}
+
+/// vcl indexes the decoded string, so an offset counts utf-16 code units.
+TEST(SvmToSvg, a_run_offset_counts_characters_not_utf8_bytes) {
+  const std::string svg = translate(
+      SvmBuilder()
+          .font("Arial", 10, 0, 0, 0, 0, 0, svm::RTL_TEXTENCODING_MS_1252)
+          .text(0, 0,
+                "\x92\x92"
+                "ab",
+                2, 2)
+          .file());
+
+  EXPECT_NE(std::string::npos, svg.find(">ab<"));
+}
+
 TEST(SvmToSvg, a_polyline_with_flags_curves) {
   const std::vector<std::pair<std::int32_t, std::int32_t>> points = {
       {100, 700}, {300, 100}, {700, 100}, {900, 700}};
