@@ -28,7 +28,7 @@ engines throw away the source, so their models are read-only.
 
 Everything else follows the shared registry/adapter pattern: a flat element
 store, id = index + 1, `null_element_id == 0`, parent/child/
-sibling ids, per-subtype side maps (`m_texts`, `m_tables`, `m_sheets`,
+sibling ids, per-subtype payload tables (`m_texts`, `m_tables`, `m_sheets`,
 `m_sheet_cells`). One mega `ElementAdapter` multiply-inherits every abstract
 per-type adapter and dispatches by returning `this`/`nullptr` on `element_type`.
 
@@ -66,7 +66,16 @@ where its own run starts, so a sheet is two allocations rather than one per row.
 
 The elements themselves are a `std::deque`: `create_element` hands back a
 reference the parser holds on to, and a vector both invalidates it and peaks
-holding two copies.
+holding two copies. `parse_sheet` counts the row and cell nodes first, so the
+arrays are allocated once at the size they end at — a repeat collapses onto one
+entry, so the count is an upper bound, and one bounded by the dom.
+
+**Ids are stored narrow, payloads in sorted arrays.** `StoredId` is 32 bits and
+every boundary widens back to the public `ElementIdentifier`, which stays 64 —
+`csv` packs coordinates into it. The payload tables are written in id order as
+elements are created, so a binary search replaces a hash map; `m_list_types` and
+`m_list_markers` stay hash maps, written when a list is resolved rather than
+parsed.
 
 **Styles resolve to a flattened `ResolvedStyle`, eagerly.** `StyleRegistry`
 first builds name→node indices from *both* files (automatic and named styles land
@@ -128,7 +137,7 @@ are **tolerated** to keep rendering best-effort.
 | `odf_meta.cpp` | `parse_file_meta`: mimetype→FileType, doc type, page/table counts, encryption flag |
 | `odf_manifest.{hpp,cpp}` | `META-INF/manifest.xml` → per-file crypto entries, smallest-file tracking |
 | `odf_crypto.cpp` | Decryption: hashing, key derivation, cipher dispatch, package-vs-lazy filesystem |
-| `odf_element_registry.{hpp,cpp}` | Flat element store + Text/Table/Sheet/SheetCell side maps; sparse repeated-range maps |
+| `odf_element_registry.{hpp,cpp}` | Flat element store + Text/Table/Sheet/SheetCell payload tables; sparse repeated-range index |
 | `odf_parser.{hpp,cpp}` | `content.xml` → registry: name dispatch table, text-run coalescing, sheet cursor |
 | `odf_document.{hpp,cpp}` | `Document` (owns DOMs + registries + adapter); the mega `ElementAdapter`; edit + `save` |
 | `odf_style.{hpp,cpp}` | `StyleRegistry` + `Style`: indices, eager parent/family flatten, master pages, `ResolvedStyle` readers |

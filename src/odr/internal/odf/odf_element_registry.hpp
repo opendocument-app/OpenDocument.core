@@ -7,10 +7,13 @@
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <algorithm>
+#include <cstdint>
 #include <deque>
-#include <map>
 #include <span>
+#include <stdexcept>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <pugixml.hpp>
@@ -19,19 +22,23 @@ namespace odr::internal::odf {
 
 class ElementRegistry final {
 public:
+  /// An element is five ids, so the width is most of what one costs. Widened
+  /// back at every boundary; an id past @ref check_element_id fits.
+  using StoredId = std::uint32_t;
+
   struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
+    StoredId parent_id{null_element_id};
+    StoredId first_child_id{null_element_id};
+    StoredId last_child_id{null_element_id};
+    StoredId previous_sibling_id{null_element_id};
+    StoredId next_sibling_id{null_element_id};
     ElementType type{ElementType::none};
     pugi::xml_node node;
   };
 
   struct Table final {
-    ElementIdentifier first_column_id{null_element_id};
-    ElementIdentifier last_column_id{null_element_id};
+    StoredId first_column_id{null_element_id};
+    StoredId last_column_id{null_element_id};
   };
 
   struct Text final {
@@ -50,8 +57,8 @@ public:
 
     struct Cell final {
       std::uint32_t end{0};
+      StoredId element_id{null_element_id};
       pugi::xml_node node;
-      ElementIdentifier element_id{null_element_id};
     };
 
     struct Row final {
@@ -66,8 +73,8 @@ public:
     std::vector<Row> rows;
     std::vector<Cell> cells;
 
-    ElementIdentifier first_shape_id{null_element_id};
-    ElementIdentifier last_shape_id{null_element_id};
+    StoredId first_shape_id{null_element_id};
+    StoredId last_shape_id{null_element_id};
 
     void register_column(std::uint32_t column, std::uint32_t repeated,
                          pugi::xml_node element);
@@ -96,6 +103,64 @@ public:
   struct SheetCell final {
     TablePosition position;
     bool is_repeated{false};
+  };
+
+  /// Payloads keyed by element id and written in id order, so a lookup is a
+  /// binary search. A deque: `create_*_element` hands out a reference.
+  template <typename T> class SideTable final {
+  public:
+    T &emplace(const ElementIdentifier id, T value) {
+      if (!m_entries.empty() && m_entries.back().first >= id) {
+        throw std::invalid_argument(
+            "ElementRegistry::SideTable::emplace: identifier out of order");
+      }
+      return m_entries.emplace_back(static_cast<StoredId>(id), std::move(value))
+          .second;
+    }
+
+    [[nodiscard]] T *find(const ElementIdentifier id) {
+      const auto it =
+          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
+      return it != std::end(m_entries) && it->first == id ? &it->second
+                                                          : nullptr;
+    }
+
+    [[nodiscard]] const T *find(const ElementIdentifier id) const {
+      const auto it =
+          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
+      return it != std::end(m_entries) && it->first == id ? &it->second
+                                                          : nullptr;
+    }
+
+    [[nodiscard]] T &at(const ElementIdentifier id) {
+      T *entry = find(id);
+      if (entry == nullptr) {
+        throw std::out_of_range(
+            "ElementRegistry::SideTable::at: identifier not found");
+      }
+      return *entry;
+    }
+
+    [[nodiscard]] const T &at(const ElementIdentifier id) const {
+      const T *entry = find(id);
+      if (entry == nullptr) {
+        throw std::out_of_range(
+            "ElementRegistry::SideTable::at: identifier not found");
+      }
+      return *entry;
+    }
+
+    void clear() noexcept { m_entries.clear(); }
+
+    [[nodiscard]] auto begin() const noexcept { return m_entries.begin(); }
+    [[nodiscard]] auto end() const noexcept { return m_entries.end(); }
+    [[nodiscard]] auto begin() noexcept { return m_entries.begin(); }
+    [[nodiscard]] auto end() noexcept { return m_entries.end(); }
+
+  private:
+    using Entry = std::pair<StoredId, T>;
+
+    std::deque<Entry> m_entries;
   };
 
   void clear() noexcept;
@@ -144,22 +209,20 @@ private:
   /// holds on to, and a vector both invalidates it and peaks holding two
   /// copies.
   std::deque<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
-  std::unordered_map<ElementIdentifier, Sheet> m_sheets;
-  std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
+  SideTable<Text> m_texts;
+  SideTable<Table> m_tables;
+  SideTable<Sheet> m_sheets;
+  SideTable<SheetCell> m_sheet_cells;
+  // out of id order: written when a list is resolved, not when it is parsed
   std::unordered_map<ElementIdentifier, ListType> m_list_types;
   std::unordered_map<ElementIdentifier, ListMarker> m_list_markers;
 
   /// Links `child_id` as the last child of the chain `first_id`/`last_id`.
   void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,
-                  ElementIdentifier &first_id, ElementIdentifier &last_id);
+                  StoredId &first_id, StoredId &last_id);
 
   void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
   void check_sheet_id(ElementIdentifier id) const;
-  void check_sheet_cell_id(ElementIdentifier id) const;
 };
 
 } // namespace odr::internal::odf
