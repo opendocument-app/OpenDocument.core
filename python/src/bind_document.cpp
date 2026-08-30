@@ -277,6 +277,14 @@ void odr_python::bind_document(py::module_ &m) {
       .def("value_type", &odr::TableCell::value_type)
       .def("style", &odr::TableCell::style);
 
+  py::class_<odr::DrawingPath>(m, "DrawingPath")
+      .def(py::init<>())
+      .def_readwrite("data", &odr::DrawingPath::data)
+      .def_readwrite("x", &odr::DrawingPath::x)
+      .def_readwrite("y", &odr::DrawingPath::y)
+      .def_readwrite("width", &odr::DrawingPath::width)
+      .def_readwrite("height", &odr::DrawingPath::height);
+
   py::class_<odr::DrawingTransform>(m, "DrawingTransform")
       .def(py::init<>())
       .def_readwrite("a", &odr::DrawingTransform::a)
@@ -326,6 +334,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("width", &odr::CustomShape::width)
       .def("height", &odr::CustomShape::height)
       .def("transform", &odr::CustomShape::transform)
+      .def("path", &odr::CustomShape::path)
       .def("style", &odr::CustomShape::style);
 
   bind_element<odr::Image>(m, "Image")

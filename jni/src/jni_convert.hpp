@@ -38,6 +38,8 @@ jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style);
 jobject
 make_drawing_transform(JNIEnv *env,
                        const std::optional<odr::DrawingTransform> &transform);
+jobject make_drawing_path(JNIEnv *env,
+                          const std::optional<odr::DrawingPath> &path);
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout);
 jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions);

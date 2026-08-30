@@ -26,6 +26,10 @@ public final class CustomShape extends Element {
     return transformNative(handle());
   }
 
+  public DrawingPath path() {
+    return pathNative(handle());
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
@@ -39,6 +43,8 @@ public final class CustomShape extends Element {
   private native Measure heightNative(long handle);
 
   private native DrawingTransform transformNative(long handle);
+
+  private native DrawingPath pathNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

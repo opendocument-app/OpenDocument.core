@@ -29,6 +29,7 @@ struct TextStyle;
 struct ParagraphStyle;
 struct GraphicStyle;
 struct DrawingTransform;
+struct DrawingPath;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -515,6 +516,8 @@ public:
   custom_shape_height(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual std::optional<DrawingTransform>
   custom_shape_transform(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingPath>
+  custom_shape_path(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   custom_shape_style(ElementIdentifier element_id) const = 0;

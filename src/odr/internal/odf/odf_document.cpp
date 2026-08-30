@@ -165,6 +165,19 @@ Measure read_measure_or_zero(const pugi::xml_attribute attribute) {
   return read_measure(attribute).value_or(Measure(0, DynamicUnit()));
 }
 
+/// The unit an `svg:d` with no view box is written in (19.180).
+Measure hundredth_millimetres(const double value) {
+  return Measure(value / 100.0, DynamicUnit("mm"));
+}
+
+/// A `draw:connector` states no box of its own, so its path is what places it.
+std::optional<DrawingPath> connector_box(const pugi::xml_node node) {
+  if (std::strcmp(node.name(), "draw:connector") != 0) {
+    return {};
+  }
+  return read_path(node);
+}
+
 class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TextRootAdapter,
                              public abstract::SlideAdapter,
@@ -925,19 +938,53 @@ public:
 
   [[nodiscard]] std::optional<Measure>
   custom_shape_x(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:x"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:x"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->x);
+    }
+    return {};
   }
   [[nodiscard]] std::optional<Measure>
   custom_shape_y(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:y"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:y"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->y);
+    }
+    return {};
   }
   [[nodiscard]] Measure
   custom_shape_width(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:width")) {
+      return read_measure_or_zero(attribute);
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->width);
+    }
+    return Measure(0, DynamicUnit());
   }
   [[nodiscard]] Measure
   custom_shape_height(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const pugi::xml_attribute attribute = node.attribute("svg:height")) {
+      return read_measure_or_zero(attribute);
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->height);
+    }
+    return Measure(0, DynamicUnit());
+  }
+  [[nodiscard]] std::optional<DrawingPath>
+  custom_shape_path(const ElementIdentifier element_id) const override {
+    return read_path(get_node(element_id));
   }
   [[nodiscard]] std::optional<DrawingTransform>
   custom_shape_transform(const ElementIdentifier element_id) const override {

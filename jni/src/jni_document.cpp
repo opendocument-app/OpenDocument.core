@@ -1039,6 +1039,15 @@ Java_app_opendocument_core_CustomShape_transformNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_CustomShape_pathNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_path(env,
+                                      element(handle).as_custom_shape().path());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_CustomShape_styleNative(JNIEnv *env, jobject,
                                                    jlong handle) {
   return guarded(env, [&] {

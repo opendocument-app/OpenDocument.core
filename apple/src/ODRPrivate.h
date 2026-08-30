@@ -125,6 +125,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)styleWithHandle:(const odr::TableCellStyle &)handle;
 @end
 
+@interface ODRDrawingPath (Private)
++ (nullable instancetype)pathWithHandle:
+    (const std::optional<odr::DrawingPath> &)handle;
+@end
+
 @interface ODRDrawingTransform (Private)
 + (nullable instancetype)transformWithHandle:
     (const std::optional<odr::DrawingTransform> &)handle;

@@ -4,6 +4,7 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 
+#include <string_view>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -236,6 +237,17 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
+/// `draw:circle` / `draw:ellipse`: a full one is the box, one that
+/// `draw:kind` (19.212) cuts needs the path its arc traces.
+std::tuple<ElementIdentifier, pugi::xml_node>
+parse_elliptical_element(ElementRegistry &registry, const pugi::xml_node node) {
+  const std::string_view kind = node.attribute("draw:kind").value();
+  const ElementType type = (kind == "arc" || kind == "cut" || kind == "section")
+                               ? ElementType::custom_shape
+                               : ElementType::circle;
+  return parse_element_tree(registry, type, node, parse_any_element_children);
+}
+
 void parse_presentation_children(ElementRegistry &registry,
                                  const ElementIdentifier root_id,
                                  const pugi::xml_node node) {
@@ -304,6 +316,8 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"text:illustration-index",
        create_default_tree_parser(ElementType::group)},
       {"text:index-body", create_default_tree_parser(ElementType::group)},
+      // A `draw:measure` writes its label as `text:measure` runs.
+      {"text:measure", create_default_tree_parser(ElementType::group)},
       {"text:soft-page-break",
        create_default_tree_parser(ElementType::page_break)},
       {"text:date", create_default_tree_parser(ElementType::group)},
@@ -322,9 +336,19 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"draw:image", create_default_tree_parser(ElementType::image)},
       {"draw:rect", create_default_tree_parser(ElementType::rect)},
       {"draw:line", create_default_tree_parser(ElementType::line)},
-      {"draw:circle", create_default_tree_parser(ElementType::circle)},
+      {"draw:circle", parse_elliptical_element},
       {"draw:custom-shape",
        create_default_tree_parser(ElementType::custom_shape)},
+      // A shape whose geometry is given rather than named is a custom shape.
+      {"draw:path", create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:polygon", create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:polyline", create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:regular-polygon",
+       create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:connector", create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:caption", create_default_tree_parser(ElementType::rect)},
+      {"draw:measure", create_default_tree_parser(ElementType::line)},
+      {"draw:ellipse", parse_elliptical_element},
       {"draw:text-box", create_default_tree_parser(ElementType::group)},
       {"draw:g", create_default_tree_parser(ElementType::frame)},
       {"draw:a", create_default_tree_parser(ElementType::link)},

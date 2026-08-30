@@ -686,6 +686,11 @@ std::optional<DrawingTransform> CustomShape::transform() const {
                    : std::optional<DrawingTransform>();
 }
 
+std::optional<DrawingPath> CustomShape::path() const {
+  return exists_() ? m_adapter2->custom_shape_path(m_identifier)
+                   : std::optional<DrawingPath>();
+}
+
 GraphicStyle CustomShape::style() const {
   return exists_() ? m_adapter2->custom_shape_style(m_identifier)
                    : GraphicStyle();

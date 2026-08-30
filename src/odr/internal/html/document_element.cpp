@@ -12,7 +12,10 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+
+#include <algorithm>
 
 namespace odr::internal {
 
@@ -635,6 +638,21 @@ void html::translate_line(const Element &element, const WritingState &state) {
                                                {"y2", line.y2().to_string()}}));
 
   state.out().write_element_end("svg");
+
+  // A line's own text sits at its middle; most carry an empty paragraph and
+  // want no box at all.
+  if (std::ranges::any_of(line.children(), [](const Element &child) {
+        return has_content(child.children());
+      })) {
+    const std::string middle =
+        "position:absolute;left:calc((" + line.x1().to_string() + " + " +
+        line.x2().to_string() + ")/2);top:calc((" + line.y1().to_string() +
+        " + " + line.y2().to_string() + ")/2);transform:translate(-50%,-100%);";
+    state.out().write_element_begin("div",
+                                    HtmlElementOptions().set_style(middle));
+    translate_children(line.children(), state);
+    state.out().write_element_end("div");
+  }
 }
 
 void html::translate_circle(const Element &element, const WritingState &state) {
@@ -648,7 +666,7 @@ void html::translate_circle(const Element &element, const WritingState &state) {
   state.out().write_new_line();
   translate_children(circle.children(), state);
   state.out().write_raw(
-      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><circle cx="50%" cy="50%" r="50%" /></svg>)");
+      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><ellipse cx="50%" cy="50%" rx="50%" ry="50%" /></svg>)");
   state.out().write_element_end("div");
 }
 
@@ -662,7 +680,42 @@ void html::translate_custom_shape(const Element &element,
                  translate_custom_shape_properties(custom_shape) +
                  translate_drawing_style(style)));
   translate_children(custom_shape.children(), state);
-  // TODO draw shape in svg
+
+  if (const std::optional<DrawingPath> path = custom_shape.path();
+      path.has_value()) {
+    const auto number = [](const double value) {
+      return util::number::to_string_significant(value, 7);
+    };
+    state.out().write_new_line();
+    state.out().write_element_begin(
+        "svg",
+        HtmlElementOptions()
+            .set_attributes(HtmlAttributesVector{
+                {"xmlns", "http://www.w3.org/2000/svg"},
+                {"version", "1.1"},
+                {"overflow", "visible"},
+                {"preserveAspectRatio", "none"},
+                {"viewBox", number(path->x) + " " + number(path->y) + " " +
+                                number(path->width) + " " +
+                                number(path->height)}})
+            .set_style("z-index:-1;width:inherit;height:inherit;position:"
+                       "absolute;top:0;left:0;padding:inherit;"));
+    HtmlAttributesVector attributes{
+        {"d", path->data},
+        // The view box scales, and not evenly; the stroke must not.
+        {"vector-effect", "non-scaling-stroke"}};
+    // An outline that never closes is a line, which svg would else fill as if
+    // it did.
+    if (path->data.find_first_of("Zz") == std::string::npos) {
+      attributes.emplace_back("fill", "none");
+    }
+    state.out().write_element_begin("path",
+                                    HtmlElementOptions()
+                                        .set_close_type(HtmlCloseType::trailing)
+                                        .set_attributes(std::move(attributes)));
+    state.out().write_element_end("svg");
+  }
+
   state.out().write_element_end("div");
 }
 
