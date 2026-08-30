@@ -22,10 +22,11 @@ Each stage is one pull request, stacked on the one before it.
    the fill that killed the stroke, the poly-polygon fill rule, the font size
    in the transform, `LineInfo`. #772 defects 2, 3, 5, 8.
 3. **Text.** `TEXTALIGN`, the `TEXTARRAY` dx array, the `STRETCHTEXT` width,
-   `TEXTRECT`, the #95 font attributes (bold, italic, underline, strikeout,
-   family), and decoding a non-`UCS2` string instead of passing its bytes
-   through — until then a latin-1 label emits invalid utf-8, which costs the
-   image exactly as an unescaped `&` did.
+   the run a text action names, and the #95 font attributes (bold, italic,
+   underline, strikeout, rotation). `TEXTRECT` is still open - it occurs
+   nowhere in the corpus - and so is decoding a non-`UCS2` string instead of
+   passing its bytes through: until then a latin-1 label emits invalid utf-8,
+   which costs the image exactly as an unescaped `&` did.
 4. **Clipping.** `CLIPREGION`, `ISECTRECTCLIPREGION`,
    `ISECTREGIONCLIPREGION`, `MOVECLIPREGION`.
 5. **Bitmaps** (#194). See the shortcut below.
@@ -72,6 +73,24 @@ factor of 1.76.
 It is rare — 4 `MAPMODE` actions in 1125 files, one of them relative — and
 getting it right means following `vcl/source/outdev/map.cxx` rather than
 guessing, so it is its own stage.
+
+## Text is where the corpus lives
+
+Two thirds of every action in the corpus is text, and three things about it
+are worth writing down:
+
+- **`TextAlign` is vertical only.** It says whether the draw point is the top,
+  the baseline or the bottom of the run; vcl has no horizontal text alignment,
+  a run always starts at the point. Its default is `ALIGN_TOP`, which is not
+  what an svg `<text>` does, so it has to be written out. `svgwriter.cxx`
+  shifts the point by the font's ascent because it has the metrics; we name
+  `dominant-baseline` and let the browser do it.
+- **A text action names a run**, `(index, length)`, of the string it carries -
+  and the string is the whole paragraph. Drawing the string rather than the run
+  overprints the sentence at every run's position.
+- **The dx array and the stretch width are the file's own measurements**, and
+  they are what keeps a formula together when the viewer's font is not the
+  author's. They map onto an `x` list and `textLength` respectively.
 
 ## Shortcuts worth taking
 

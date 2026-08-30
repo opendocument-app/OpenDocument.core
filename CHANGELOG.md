@@ -19,6 +19,16 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- A text action in a StarView metafile draws the run of its string that it
+  names, not the whole string. A document whose text is drawn in runs - any
+  bidirectional one, and every formula - used to have the full sentence stamped
+  at every run's position, overprinting itself into an unreadable smear.
+
+- StarView metafile text keeps its font: italic, bold, underline, strikeout,
+  rotation, the alignment that decides which edge the draw point names, the
+  per-character positions the file measured, and the width a stretched run has
+  to fill (#95).
+
 - A StarView metafile draws through a graphics state stack, so a colour, font
   or map mode set inside a `PUSH` no longer leaks out of it and contaminates
   the rest of the drawing. Nearly every metafile a document carries uses one.

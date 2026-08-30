@@ -7,6 +7,7 @@
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_format.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <ranges>
 #include <span>
@@ -39,6 +40,8 @@ struct GraphicsState final {
   std::uint32_t text_fill_rgb{};
   bool text_fill_rgb_set{};
   std::uint32_t over_line_rgb{};
+  /// vcl's default, and what a file that never says otherwise draws with.
+  std::uint16_t text_align{ALIGN_TOP};
 };
 
 struct SavedState final {
@@ -166,13 +169,71 @@ void write_fill_style(svg::SvgWriter &out, const Context &context) {
   out.write_style("fill-rule", "evenodd");
 }
 
+/// `SVGAttributeWriter::SetFontAttr`'s mapping of `FontWeight`.
+std::uint16_t get_font_weight(const std::uint16_t weight) {
+  switch (weight) {
+  case WEIGHT_THIN:
+    return 100;
+  case WEIGHT_ULTRALIGHT:
+    return 200;
+  case WEIGHT_LIGHT:
+    return 300;
+  case WEIGHT_MEDIUM:
+    return 500;
+  case WEIGHT_SEMIBOLD:
+    return 600;
+  case WEIGHT_BOLD:
+    return 700;
+  case WEIGHT_ULTRABOLD:
+    return 800;
+  case WEIGHT_BLACK:
+    return 900;
+  default:
+    return 400;
+  }
+}
+
+/// Which edge of the text the draw point names. The browser knows the font's
+/// metrics and we do not, so the baseline is named rather than computed -
+/// `svgwriter.cxx` shifts the point by the ascent instead, having them.
+std::string_view get_dominant_baseline(const std::uint16_t text_align) {
+  switch (text_align) {
+  case ALIGN_TOP:
+    return "text-before-edge";
+  case ALIGN_BOTTOM:
+    return "text-after-edge";
+  default:
+    return "alphabetic";
+  }
+}
+
 void write_text_style(svg::SvgWriter &out, const Context &context) {
   const GraphicsState &state = context.state;
+  const Font &font = state.font;
+
   write_color_style(out, "fill", state.text_rgb, true);
   out.write_style("stroke", "none");
-  out.write_style("font-family", state.font.family_name);
+  out.write_style("font-family", font.family_name);
   out.write_style("font-size",
-                  std::abs(transform_height(state.font.size.y, context)));
+                  std::abs(transform_height(font.size.y, context)));
+  out.write_style("dominant-baseline", get_dominant_baseline(state.text_align));
+
+  if (font.italic == ITALIC_OBLIQUE) {
+    out.write_style("font-style", "oblique");
+  } else if (font.italic == ITALIC_NORMAL) {
+    out.write_style("font-style", "italic");
+  }
+  if (const std::uint16_t weight = get_font_weight(font.weight);
+      weight != 400) {
+    out.write_style("font-weight", std::to_string(weight));
+  }
+  if (font.underline != LINESTYLE_NONE && font.strikeout != STRIKEOUT_NONE) {
+    out.write_style("text-decoration", "underline line-through");
+  } else if (font.underline != LINESTYLE_NONE) {
+    out.write_style("text-decoration", "underline");
+  } else if (font.strikeout != STRIKEOUT_NONE) {
+    out.write_style("text-decoration", "line-through");
+  }
 }
 
 void write_shape_style(svg::SvgWriter &out, const Context &context,
@@ -248,13 +309,70 @@ void write_path(const std::span<const std::vector<IntPair>> polygons,
   out.write_element_end();
 }
 
+/// The number of characters svg will place, which is what an `x` list has to
+/// match one for one.
+std::size_t count_characters(const std::string_view text) {
+  return std::ranges::count_if(text, [](const char c) {
+    return (static_cast<unsigned char>(c) & 0xc0) != 0x80;
+  });
+}
+
+/// The dx array holds the advance from the run's start to the end of each
+/// character, so character *i* starts where character *i-1* ended.
+std::string get_x_list_string(const IntPair &point,
+                              const std::vector<std::uint32_t> &dx_array,
+                              const Context &context) {
+  std::string result = svg::format_number(transform_x(point.x, context));
+  for (const std::uint32_t dx :
+       dx_array | std::views::take(dx_array.size() - 1)) {
+    result += " ";
+    result += svg::format_number(
+        transform_x(point.x + static_cast<std::int32_t>(dx), context));
+  }
+  return result;
+}
+
+/// @p dx_array places the characters one by one where the file measured them;
+/// @p width, from a stretch text, is the advance the whole run has to fill.
 void write_text(const IntPair &point, const std::string &text,
-                const Context &context) {
+                const std::vector<std::uint32_t> &dx_array,
+                const std::uint32_t width, const Context &context) {
   svg::SvgWriter &out = *context.out;
+  const Font &font = context.state.font;
 
   out.write_element_begin("text");
-  out.write_attribute("x", transform_x(point.x, context));
+
+  if (!dx_array.empty() && dx_array.size() == count_characters(text)) {
+    out.write_attribute("x", get_x_list_string(point, dx_array, context));
+  } else {
+    if (!dx_array.empty()) {
+      ODR_DEBUG(*context.logger, "dropping a dx array of "
+                                     << dx_array.size() << " for "
+                                     << count_characters(text)
+                                     << " characters");
+    }
+    out.write_attribute("x", transform_x(point.x, context));
+  }
   out.write_attribute("y", transform_y(point.y, context));
+
+  if (width > 0) {
+    // the run is drawn to fill this advance, however wide the font we get is
+    out.write_attribute(
+        "textLength",
+        transform_width(static_cast<std::int32_t>(width), context));
+    out.write_attribute("lengthAdjust", "spacingAndGlyphs");
+  }
+
+  // the orientation turns the text about its own start, in tenths of a degree
+  // counter-clockwise, where svg turns clockwise
+  if (font.orientation != 0) {
+    out.write_attribute(
+        "transform",
+        "rotate(" + svg::format_number(font.orientation * -0.1) + " " +
+            svg::format_number(transform_x(point.x, context)) + " " +
+            svg::format_number(transform_y(point.y, context)) + ")");
+  }
+
   write_text_style(out, context);
   out.write_text(text);
   out.write_element_end();
@@ -299,6 +417,9 @@ void pop_state(Context &context) {
   if (saved.flags & PUSH_TEXTFILLCOLOR) {
     state.text_fill_rgb = saved.state.text_fill_rgb;
     state.text_fill_rgb_set = saved.state.text_fill_rgb_set;
+  }
+  if (saved.flags & PUSH_TEXTALIGN) {
+    state.text_align = saved.state.text_align;
   }
   if (saved.flags & PUSH_OVERLINECOLOR) {
     state.over_line_rgb = saved.state.over_line_rgb;
@@ -358,20 +479,23 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     const auto [polygons] = read_poly_polygon_action(in, action_header.vl);
     write_path(polygons, true, nullptr, context);
   } break;
+  case META_TEXTALIGN_ACTION:
+    state.text_align = read_text_align_action(in);
+    break;
   case META_TEXT_ACTION: {
     const TextAction action =
         read_text_action(in, action_header.vl, state.encoding);
-    write_text(action.point, action.text, context);
+    write_text(action.point, action.text, {}, 0, context);
   } break;
   case META_TEXTARRAY_ACTION: {
     const TextArrayAction action =
         read_text_array_action(in, action_header.vl, state.encoding);
-    write_text(action.point, action.text, context);
+    write_text(action.point, action.text, action.dx_array, 0, context);
   } break;
   case META_STRETCHTEXT_ACTION: {
     const StretchTextAction action =
         read_stretch_text_action(in, action_header.vl, state.encoding);
-    write_text(action.point, action.text, context);
+    write_text(action.point, action.text, {}, action.width, context);
   } break;
   default:
     ODR_DEBUG(*context.logger,
