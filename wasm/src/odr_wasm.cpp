@@ -38,6 +38,13 @@ Session &session(const Handle handle) {
   return it->second;
 }
 
+Document &document_of(Session &session) {
+  if (!session.document.has_value()) {
+    session.document = session.file.as_document_file().document();
+  }
+  return *session.document;
+}
+
 Handle add_session(Session session) {
   const Handle handle = next_handle()++;
   sessions().emplace(handle, std::move(session));

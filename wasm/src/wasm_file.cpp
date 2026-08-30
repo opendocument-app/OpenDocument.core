@@ -23,6 +23,7 @@ emscripten::val opened(DecodedFile file, const emscripten::val &config) {
   Session s{.file = std::move(file),
             .logger = default_logger(),
             .config = to_html_config(config),
+            .document = {},
             .service = {},
             .views = {}};
   return ok(emscripten::val(add_session(std::move(s))));
@@ -87,7 +88,8 @@ emscripten::val decrypt(const Handle handle, const std::string &password) {
   return guarded([&] {
     Session &s = session(handle);
     s.file = s.file.decrypt(password);
-    // whatever was translated came from the encrypted file
+    // whatever was decoded or translated came from the encrypted file
+    s.document.reset();
     s.service.reset();
     s.views.clear();
     return ok();

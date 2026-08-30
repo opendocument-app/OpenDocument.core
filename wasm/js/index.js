@@ -71,6 +71,28 @@ export class Document {
     return unwrap(this.#core.readPath(this.#handle, path));
   }
 
+  // `capabilities()` narrowed to this document.
+  isEditable() {
+    return unwrap(this.#core.isEditable(this.#handle));
+  }
+
+  isSavable(encrypted = false) {
+    return unwrap(this.#core.isSavable(this.#handle, encrypted));
+  }
+
+  // Applies what the rendered page's `odr.generateDiff()` collected.
+  edit(diff) {
+    unwrap(this.#core.edit(this.#handle, diff));
+    return this;
+  }
+
+  // The document's bytes, not the rendered html.
+  save(password) {
+    return password === undefined
+      ? unwrap(this.#core.save(this.#handle))
+      : unwrap(this.#core.saveEncrypted(this.#handle, password));
+  }
+
   close() {
     return unwrap(this.#core.close(this.#handle));
   }

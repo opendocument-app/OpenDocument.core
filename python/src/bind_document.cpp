@@ -11,6 +11,7 @@
 
 #include <pybind11/stl.h>
 
+#include <sstream>
 #include <string>
 
 namespace py = pybind11;
@@ -333,6 +334,29 @@ void odr_python::bind_document(py::module_ &m) {
                &odr::Document::save, py::const_),
            py::arg("path"), py::arg("password"),
            py::call_guard<py::gil_scoped_release>())
+      .def(
+          "save_to_memory",
+          [](const odr::Document &document) {
+            std::ostringstream out;
+            {
+              py::gil_scoped_release release;
+              document.save(out);
+            }
+            return py::bytes(out.str());
+          },
+          "Save the document and return its bytes.")
+      .def(
+          "save_to_memory",
+          [](const odr::Document &document, const std::string &password) {
+            std::ostringstream out;
+            {
+              py::gil_scoped_release release;
+              document.save(out, password);
+            }
+            return py::bytes(out.str());
+          },
+          py::arg("password"),
+          "Save the document encrypted and return its bytes.")
       .def("file_type", &odr::Document::file_type)
       .def("document_type", &odr::Document::document_type)
       .def("root_element", &odr::Document::root_element, keep_self_alive)

@@ -4,6 +4,7 @@
 #include <odr/quantity.hpp>
 
 #include <cstdint>
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,10 +29,6 @@ struct TextStyle;
 struct ParagraphStyle;
 struct GraphicStyle;
 } // namespace odr
-
-namespace odr::internal {
-class Path;
-} // namespace odr::internal
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -71,8 +68,8 @@ public:
   /// Savable, @p encrypted to ask for an encrypted save.
   [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
-  virtual void save(const Path &path) const = 0;
-  virtual void save(const Path &path, const char *password) const = 0;
+  virtual void save(std::ostream &out) const = 0;
+  virtual void save(std::ostream &out, const char *password) const = 0;
 
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;

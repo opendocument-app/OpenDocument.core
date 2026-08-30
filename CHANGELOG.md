@@ -16,6 +16,17 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- New `Document::save(std::ostream &)` and `Document::save_to_memory()`, which
+  returns the saved document as an in-memory `File`. The path overloads are
+  unchanged.
+
+- The wasm binding gained `edit(diff)`, `save()`, `isEditable()` and
+  `isSavable()`, so a browser can save an edit back.
+
+- Memory saves in the other bindings: `save_to_memory()` returns `bytes` in
+  python, `saveToMemory()` `byte[]` in java, `-saveToMemoryWithError:` `NSData`
+  in Objective-C.
+
 - Two entries of the same zip document can be read at once; nothing serialises
   on a single lock any more.
 

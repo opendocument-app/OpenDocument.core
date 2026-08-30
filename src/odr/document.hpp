@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iosfwd>
 #include <memory>
 #include <string>
 
@@ -12,6 +13,7 @@ enum class FileType;
 enum class DocumentType;
 class DocumentFile;
 class Element;
+class File;
 class Filesystem;
 
 /// @brief Represents a document.
@@ -24,6 +26,13 @@ public:
 
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
+
+  void save(std::ostream &out) const;
+  void save(std::ostream &out, const std::string &password) const;
+
+  /// @brief The saved document as a file in memory.
+  [[nodiscard]] File save_to_memory() const;
+  [[nodiscard]] File save_to_memory(const std::string &password) const;
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] DocumentType document_type() const noexcept;

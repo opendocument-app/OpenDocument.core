@@ -39,7 +39,10 @@ Worker**, where every value that crosses is structured-cloned.
   view an index within its session. This also dissolves the keep-alive problem
   the other bindings hand-built: `HtmlView` holds a bare pointer into its
   service and `Element` into the document adapter, and here neither is handed
-  out — `Session` owns file, service and views together. Handle `0` is never
+  out — `Session` owns file, document, service and views together. The
+  document is the *one* tree the render, the edit and the save all go through:
+  `DocumentFile::document()` decodes a fresh one per call, so a `save` that
+  opened its own would write the document nobody edited. Handle `0` is never
   issued, so a zeroed handle is always invalid.
 - **Config crosses as a plain object.** `to_html_config` reads known keys and
   leaves the rest defaulted. Never bind a mutable config: it could not cross

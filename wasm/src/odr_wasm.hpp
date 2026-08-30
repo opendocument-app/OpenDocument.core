@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
@@ -24,6 +25,9 @@ struct Session final {
   DecodedFile file;
   Logger logger;
   HtmlConfig config;
+  /// The one tree render, edit and save share; `DocumentFile::document()`
+  /// decodes a fresh one per call.
+  std::optional<Document> document;
   std::optional<HtmlService> service;
   HtmlViews views;
 };
@@ -32,6 +36,8 @@ Logger &default_logger();
 
 /// @throws std::out_of_range if @p handle is unknown.
 Session &session(Handle handle);
+/// @throws NoDocumentFile if the session's file is not a document.
+Document &document_of(Session &session);
 Handle add_session(Session session);
 bool remove_session(Handle handle) noexcept;
 void clear_sessions() noexcept;

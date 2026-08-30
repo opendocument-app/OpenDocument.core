@@ -59,6 +59,22 @@ for (const view of doc.listViews()) {
 }
 ```
 
+Editing is a round trip through the rendered page:
+
+```js
+const doc = odr.open(bytes, { editable: true });
+const { html } = doc.render(0);
+// ... the reader edits the page in the iframe ...
+doc.edit(JSON.stringify(iframe.contentWindow.odr.generateDiff()));
+
+const saved = doc.save();   // the document, not the html
+download(new Blob([saved]));
+```
+
+`isEditable()` and `isSavable()` answer for this document, where
+`capabilities()` answers for the format. Only ODF and docx can be saved so far;
+anything else throws `UnsupportedOperation`.
+
 Encrypted documents:
 
 ```js

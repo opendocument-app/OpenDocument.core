@@ -1,6 +1,8 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
+#include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/style.hpp>
 
@@ -10,6 +12,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <sstream>
 #include <string>
 
 using namespace odr;
@@ -326,4 +329,61 @@ TEST(Document, edit_docx_diff) {
   expect_text_at(document, "/child:24/child:0/child:0",
                  "Colorasdfasdfasdfed Line");
   expect_text_at(document, "/child:6/child:0/child:0", "Text hello world!");
+}
+
+namespace {
+
+/// The one document `save` writes as xml rather than as a zip.
+constexpr const char *flat_odt =
+    R"(<?xml version="1.0" encoding="UTF-8"?>)"
+    R"(<office:document office:mimetype=")"
+    R"(application/vnd.oasis.opendocument.text">)"
+    R"(<office:body><office:text><text:p>hello</text:p></office:text>)"
+    R"(</office:body></office:document>)";
+
+} // namespace
+
+TEST(Document, save_to_memory_round_trips_a_flat_document) {
+  const Document document = DocumentFile::from_memory(flat_odt).document();
+
+  set_every_text(document.root_element(), "hello world!");
+
+  const File saved = document.save_to_memory();
+  EXPECT_EQ(FileLocation::memory, saved.location());
+
+  const Document reloaded = DocumentFile(saved).document();
+  expect_every_text(reloaded.root_element(), "hello world!");
+}
+
+TEST(Document, save_to_a_stream_writes_what_save_to_memory_holds) {
+  const Document document = DocumentFile::from_memory(flat_odt).document();
+
+  std::ostringstream out;
+  document.save(out);
+
+  EXPECT_EQ(out.str(), document.save_to_memory().memory_data().value());
+}
+
+TEST(Document, save_to_memory_round_trips_a_package) {
+  const Document document =
+      DocumentFile(TestData::test_file_path("odr-public/odt/about.odt"))
+          .document();
+
+  set_every_text(document.root_element(), "hello world!");
+
+  const Document reloaded = DocumentFile(document.save_to_memory()).document();
+  expect_every_text(reloaded.root_element(), "hello world!");
+}
+
+TEST(Document, saving_an_unsavable_format_leaves_no_file) {
+  const Document document =
+      DocumentFile(
+          TestData::test_file_path("odr-public/pptx/style-various-1.pptx"))
+          .document();
+  ASSERT_FALSE(document.is_savable());
+
+  const std::string path =
+      (std::filesystem::current_path() / "unsavable_save.pptx").string();
+  EXPECT_THROW(document.save(path), UnsupportedOperation);
+  EXPECT_FALSE(std::filesystem::exists(path));
 }

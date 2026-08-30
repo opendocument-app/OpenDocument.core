@@ -27,8 +27,8 @@ public:
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
-  void save(const Path &path) const override;
-  void save(const Path &path, const char *password) const override;
+  void save(std::ostream &out) const override;
+  void save(std::ostream &out, const char *password) const override;
 
 private:
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);

@@ -7,9 +7,12 @@
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
-#include <odr/internal/common/path.hpp>
+#include <odr/internal/util/file_util.hpp>
 
+#include <fstream>
 #include <memory>
+#include <sstream>
+#include <utility>
 
 namespace odr {
 
@@ -26,13 +29,40 @@ bool Document::is_savable(const bool encrypted) const noexcept {
   return m_impl->is_savable(encrypted);
 }
 
+// Checked here so an unsavable format leaves no empty file behind.
 void Document::save(const std::string &path) const {
-  m_impl->save(internal::Path(path));
+  if (!m_impl->is_savable(false)) {
+    throw UnsupportedOperation();
+  }
+  std::ofstream out = internal::util::file::create(path);
+  m_impl->save(out);
 }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  m_impl->save(internal::Path(path), password.c_str());
+  if (!m_impl->is_savable(true)) {
+    throw UnsupportedOperation();
+  }
+  std::ofstream out = internal::util::file::create(path);
+  m_impl->save(out, password.c_str());
+}
+
+void Document::save(std::ostream &out) const { m_impl->save(out); }
+
+void Document::save(std::ostream &out, const std::string &password) const {
+  m_impl->save(out, password.c_str());
+}
+
+File Document::save_to_memory() const {
+  std::ostringstream out;
+  m_impl->save(out);
+  return File::from_memory(std::move(out).str());
+}
+
+File Document::save_to_memory(const std::string &password) const {
+  std::ostringstream out;
+  m_impl->save(out, password.c_str());
+  return File::from_memory(std::move(out).str());
 }
 
 FileType Document::file_type() const noexcept { return m_impl->file_type(); }

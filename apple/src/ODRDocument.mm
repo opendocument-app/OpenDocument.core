@@ -6,6 +6,8 @@
 #include <odr/document.hpp>
 
 #include <optional>
+#include <sstream>
+#include <string>
 
 using odr::apple::guarded;
 using odr::apple::guarded_value;
@@ -60,6 +62,25 @@ using odr::apple::to_string;
   return guarded(error, [&] {
     _handle->save(to_string(path), to_string(password));
     return YES;
+  });
+}
+
+- (nullable NSData *)saveToMemoryWithError:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    _handle->save(out);
+    const std::string bytes = out.str();
+    return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  });
+}
+
+- (nullable NSData *)saveToMemoryWithPassword:(NSString *)password
+                                        error:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    _handle->save(out, to_string(password));
+    const std::string bytes = out.str();
+    return [NSData dataWithBytes:bytes.data() length:bytes.size()];
   });
 }
 

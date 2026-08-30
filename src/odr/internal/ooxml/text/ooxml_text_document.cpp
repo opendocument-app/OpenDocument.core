@@ -9,13 +9,12 @@
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
-#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <cstring>
-#include <fstream>
 #include <iterator>
+#include <ostream>
 #include <sstream>
 
 namespace odr::internal::ooxml::text {
@@ -117,7 +116,7 @@ bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
-void Document::save(const Path &path) const {
+void Document::save(std::ostream &out) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
@@ -131,20 +130,19 @@ void Document::save(const Path &path) const {
     }
     if (abs_path == AbsPath("/word/document.xml")) {
       // TODO stream
-      std::stringstream out;
-      m_document_xml.print(out, "", pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(out.str());
+      std::stringstream content;
+      m_document_xml.print(content, "", pugi::format_raw);
+      auto tmp = std::make_shared<MemoryFile>(content.str());
       archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
     archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
   }
 
-  std::ofstream ostream = util::file::create(path.string());
-  archive.save(ostream);
+  archive.save(out);
 }
 
-void Document::save(const Path & /*path*/, const char * /*password*/) const {
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 

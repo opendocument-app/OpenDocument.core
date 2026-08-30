@@ -51,7 +51,10 @@ void read_measure(const emscripten::val &value, const char *key,
 Session &warm(const Handle handle) {
   Session &s = session(handle);
   if (!s.service.has_value()) {
-    s.service = html::translate(s.file, s.config, s.logger);
+    // from the session's tree, not the file, which would decode a second one
+    s.service = s.file.is_document_file()
+                    ? html::translate(document_of(s), s.config, s.logger)
+                    : html::translate(s.file, s.config, s.logger);
     s.views = s.service->list_views();
   }
   return s;
@@ -135,6 +138,15 @@ emscripten::val read_path(const Handle handle, const std::string &path) {
   });
 }
 
+/// Applies what the rendered page's `odr.generateDiff()` collected.
+emscripten::val edit(const Handle handle, const std::string &diff) {
+  return guarded([&] {
+    Session &s = session(handle);
+    html::edit(document_of(s), diff, s.logger);
+    return ok();
+  });
+}
+
 } // namespace
 
 HtmlConfig to_html_config(const emscripten::val &value) {
@@ -207,4 +219,5 @@ EMSCRIPTEN_BINDINGS(odr_html) {
   emscripten::function("listViews", &odr::wasm::list_views);
   emscripten::function("renderView", &odr::wasm::render_view);
   emscripten::function("readPath", &odr::wasm::read_path);
+  emscripten::function("edit", &odr::wasm::edit);
 }

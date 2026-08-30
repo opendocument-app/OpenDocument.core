@@ -13,13 +13,12 @@
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/document_util.hpp>
-#include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <cstring>
-#include <fstream>
+#include <ostream>
 #include <sstream>
 
 namespace odr::internal::odf {
@@ -84,11 +83,10 @@ bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted;
 }
 
-void Document::save(const Path &path) const {
+void Document::save(std::ostream &out) const {
   // no package to rebuild: a flat document is the one tree, and `save` puts
   // back the declaration the parse dropped
   if (m_files == nullptr) {
-    std::ofstream out = util::file::create(path.string());
     m_content_xml.save(out, "", pugi::format_raw);
     return;
   }
@@ -115,9 +113,9 @@ void Document::save(const Path &path) const {
     }
     if (abs_path == Path("/content.xml")) {
       // TODO stream
-      std::stringstream out;
-      m_content_xml.print(out, "", pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(out.str());
+      std::stringstream content;
+      m_content_xml.print(content, "", pugi::format_raw);
+      auto tmp = std::make_shared<MemoryFile>(content.str());
       archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
@@ -130,9 +128,9 @@ void Document::save(const Path &path) const {
         node.node().parent().remove_child(node.node());
       }
 
-      std::stringstream out;
-      manifest.print(out, "", pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(out.str());
+      std::stringstream content;
+      manifest.print(content, "", pugi::format_raw);
+      auto tmp = std::make_shared<MemoryFile>(content.str());
       archive.insert_file(std::end(archive), rel_path, tmp);
 
       continue;
@@ -140,11 +138,10 @@ void Document::save(const Path &path) const {
     archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
   }
 
-  std::ofstream ostream = util::file::create(path.string());
-  archive.save(ostream);
+  archive.save(out);
 }
 
-void Document::save(const Path & /*path*/, const char * /*password*/) const {
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
   // TODO throw if not savable
   throw UnsupportedOperation();
 }
