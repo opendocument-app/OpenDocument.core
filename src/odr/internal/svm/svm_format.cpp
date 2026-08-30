@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/png_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <array>
@@ -20,6 +21,117 @@ std::string read_bytes(std::istream &in, const std::uint64_t size) {
   } catch (const std::runtime_error &) {
     throw MalformedSvmFile();
   }
+}
+
+/// A `.bmp` starts with `"BM"`; `"BA"`, an os/2 bitmap array, does not.
+constexpr std::uint16_t bmp_magic = 0x4d42;
+constexpr std::uint32_t bmp_file_header_size = 14;
+constexpr std::uint32_t dib_core_header_size = 12;
+/// `ZCOMPRESS` - LibreOffice's own, a zlib stream where the pixels go.
+constexpr std::uint32_t dib_zcompress = ('S' | ('D' << 8)) | 0x01000000;
+/// `ReadDIBBitmapEx`: what marks the transparency data behind a dib.
+constexpr std::uint32_t bitmap_ex_magic_1 = 0x25091962;
+constexpr std::uint32_t bitmap_ex_magic_2 = 0xacb20201;
+/// `TransparentType::Bitmap`, the only one that carries a second dib.
+constexpr std::uint8_t bitmap_ex_mask = 2;
+
+std::uint16_t read_u16(const std::string &bytes, const std::size_t offset) {
+  std::uint16_t result{};
+  std::memcpy(&result, bytes.data() + offset, sizeof(result));
+  return result;
+}
+
+std::uint32_t read_u32(const std::string &bytes, const std::size_t offset) {
+  std::uint32_t result{};
+  std::memcpy(&result, bytes.data() + offset, sizeof(result));
+  return result;
+}
+
+/// As much of a dib's header as unpacking its pixels needs.
+struct DibLayout final {
+  std::uint32_t off_bits{};
+  std::uint32_t header_size{};
+  std::int32_t width{};
+  /// As the header states it: negative for a top-down dib.
+  std::int32_t height{};
+  std::uint32_t bit_count{};
+  std::uint32_t compression{};
+};
+
+/// The dib's pixels as 8-bit rgb rows, top to bottom - a png's layout. Empty
+/// where the dib is compressed, bit-fielded, or 16 bits a pixel.
+std::string get_rgb_rows(const std::string &bmp, const DibLayout &layout) {
+  if (layout.compression != 0 || layout.width <= 0 || layout.height == 0) {
+    return {};
+  }
+  if (layout.bit_count != 32 && layout.bit_count != 24 &&
+      layout.bit_count != 8 && layout.bit_count != 4 && layout.bit_count != 1) {
+    return {};
+  }
+
+  const auto width = static_cast<std::size_t>(layout.width);
+  const auto height = static_cast<std::size_t>(std::abs(layout.height));
+  const std::size_t stride = ((width * layout.bit_count + 31) / 32) * 4;
+  if (bmp.size() < layout.off_bits + stride * height) {
+    return {};
+  }
+
+  // a palette sits between the header and the pixels, three bytes an entry in
+  // the core header's dib and four in every later one
+  const std::size_t entry_size =
+      layout.header_size == dib_core_header_size ? 3 : sizeof(std::uint32_t);
+  const std::size_t palette_offset = bmp_file_header_size + layout.header_size;
+  const std::size_t palette_entries =
+      layout.off_bits > palette_offset
+          ? (layout.off_bits - palette_offset) / entry_size
+          : 0;
+  if (layout.bit_count <= 8 && palette_entries == 0) {
+    return {};
+  }
+
+  std::string rows(width * height * 3, '\0');
+  for (std::size_t y = 0; y < height; ++y) {
+    // rows run bottom-up unless the height says otherwise
+    const std::size_t source = layout.height < 0 ? y : height - 1 - y;
+    const char *pixels = bmp.data() + layout.off_bits + source * stride;
+    char *target = rows.data() + y * width * 3;
+
+    for (std::size_t x = 0; x < width; ++x) {
+      const auto *bgr = reinterpret_cast<const std::uint8_t *>(pixels);
+      std::size_t index = 0;
+
+      switch (layout.bit_count) {
+      case 32:
+      case 24: {
+        const std::size_t at = x * (layout.bit_count / 8);
+        target[x * 3 + 0] = static_cast<char>(bgr[at + 2]);
+        target[x * 3 + 1] = static_cast<char>(bgr[at + 1]);
+        target[x * 3 + 2] = static_cast<char>(bgr[at + 0]);
+        continue;
+      }
+      case 8:
+        index = bgr[x];
+        break;
+      case 4:
+        index = (bgr[x / 2] >> (x % 2 == 0 ? 4 : 0)) & 0x0f;
+        break;
+      default:
+        index = (bgr[x / 8] >> (7 - x % 8)) & 0x01;
+        break;
+      }
+
+      if (index >= palette_entries) {
+        return {};
+      }
+      const auto *entry = reinterpret_cast<const std::uint8_t *>(
+          bmp.data() + palette_offset + index * entry_size);
+      target[x * 3 + 0] = static_cast<char>(entry[2]);
+      target[x * 3 + 1] = static_cast<char>(entry[1]);
+      target[x * 3 + 2] = static_cast<char>(entry[0]);
+    }
+  }
+
+  return rows;
 }
 
 /// `DrawText(…, index, len)`: a text action names the run of its string that
@@ -534,6 +646,132 @@ svm::read_text_rectangle_action(std::istream &in, const VersionLength &vl,
 
   if (vl.version >= 2) {
     result.text = read_uint16_prefixed_utf16_string(in);
+  }
+
+  return result;
+}
+
+svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
+  Image result;
+  DibLayout layout;
+
+  std::string bytes = read_bytes(in, bmp_file_header_size);
+  if (read_u16(bytes, 0) != bmp_magic) {
+    throw MalformedSvmFile();
+  }
+  layout.off_bits = read_u32(bytes, 10);
+
+  bytes += read_bytes(in, sizeof(std::uint32_t));
+  layout.header_size = read_u32(bytes, bmp_file_header_size);
+  if (layout.header_size < dib_core_header_size || layout.header_size > limit) {
+    throw MalformedSvmFile();
+  }
+  bytes += read_bytes(in, layout.header_size - sizeof(std::uint32_t));
+
+  std::uint32_t size_image{};
+  if (layout.header_size == dib_core_header_size) {
+    layout.width = read_u16(bytes, 18);
+    layout.height = read_u16(bytes, 20);
+    layout.bit_count = read_u16(bytes, 24);
+  } else {
+    layout.width = static_cast<std::int32_t>(read_u32(bytes, 18));
+    layout.height = static_cast<std::int32_t>(read_u32(bytes, 22));
+    layout.bit_count = read_u16(bytes, 28);
+    layout.compression = read_u32(bytes, 30);
+    size_image = read_u32(bytes, 34);
+  }
+  // a negative height is a top-down dib; it is still that many rows
+  result.size_pixel = {layout.width, std::abs(layout.height)};
+
+  if (layout.compression == dib_zcompress) {
+    // the palette and the pixels are inside the stream, so nothing but its
+    // length can be read without inflating it
+    const std::string prefix = read_bytes(in, 3 * sizeof(std::uint32_t));
+    read_bytes(in, read_u32(prefix, 0));
+    return result;
+  }
+
+  if (layout.off_bits < bytes.size() || layout.off_bits > limit) {
+    throw MalformedSvmFile();
+  }
+  // the palette, and any gap the writer left before the pixels
+  bytes += read_bytes(in, layout.off_bits - bytes.size());
+
+  // `bfSize` is written from the uncompressed size, so it says nothing about a
+  // compressed dib; the header's own numbers do
+  const auto stride =
+      ((static_cast<std::uint64_t>(result.size_pixel.x) * layout.bit_count +
+        31) /
+       32) *
+      4;
+  const std::uint64_t pixels = layout.compression == 0
+                                   ? stride * result.size_pixel.y
+                                   : static_cast<std::uint64_t>(size_image);
+  if (pixels == 0 || pixels > limit) {
+    throw MalformedSvmFile();
+  }
+  bytes += read_bytes(in, pixels);
+
+  if (const std::string rows = get_rgb_rows(bytes, layout); !rows.empty()) {
+    result.data =
+        util::png::write(rows, result.size_pixel.x, result.size_pixel.y, 3);
+    result.mime_type = "image/png";
+  }
+  if (result.data.empty()) {
+    result.data = std::move(bytes);
+    result.mime_type = "image/bmp";
+  }
+  return result;
+}
+
+svm::Bitmap svm::read_dib_bitmap_ex(std::istream &in,
+                                    const std::uint32_t limit) {
+  Bitmap result;
+  result.image = read_dib(in, limit);
+
+  // the transparency data is optional, so what is not it is put back
+  const std::istream::pos_type position = in.tellg();
+  std::uint32_t magic_1{};
+  std::uint32_t magic_2{};
+  read_primitive(in, magic_1);
+  read_primitive(in, magic_2);
+  if (magic_1 != bitmap_ex_magic_1 || magic_2 != bitmap_ex_magic_2) {
+    in.seekg(position);
+    return result;
+  }
+
+  std::uint8_t type{};
+  read_primitive(in, type);
+  if (type == bitmap_ex_mask) {
+    result.mask = read_dib(in, limit);
+  }
+
+  return result;
+}
+
+svm::BitmapAction svm::read_bitmap_action(std::istream &in,
+                                          const std::uint16_t type,
+                                          const VersionLength &vl) {
+  BitmapAction result;
+
+  const bool with_mask = type == META_BMPEX_ACTION ||
+                         type == META_BMPEXSCALE_ACTION ||
+                         type == META_BMPEXSCALEPART_ACTION;
+  if (with_mask) {
+    result.bitmap = read_dib_bitmap_ex(in, vl.length);
+  } else {
+    result.bitmap.image = read_dib(in, vl.length);
+  }
+
+  result.point = read_int_pair(in);
+
+  if (type == META_BMPSCALE_ACTION || type == META_BMPEXSCALE_ACTION) {
+    result.size = read_int_pair(in);
+  } else if (type == META_BMPSCALEPART_ACTION ||
+             type == META_BMPEXSCALEPART_ACTION) {
+    result.size = read_int_pair(in);
+    result.source_point = read_int_pair(in);
+    result.source_size = read_int_pair(in);
   }
 
   return result;

@@ -2,6 +2,7 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
+#include <odr/internal/util/png_util.hpp>
 
 #include <array>
 #include <cstdint>
@@ -146,21 +147,6 @@ std::string bytes(std::initializer_list<int> values) {
 
 } // namespace
 
-TEST(PdfImage, write_png_rgb_round_trip) {
-  // 2x2: red, green / blue, white.
-  const std::string rgb =
-      bytes({255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255});
-  const DecodedPng png = decode_png(write_png(rgb, 2, 2, 3));
-  EXPECT_EQ(png.width, 2);
-  EXPECT_EQ(png.height, 2);
-  EXPECT_EQ(png.rgb, rgb);
-}
-
-TEST(PdfImage, write_png_rgb_rejects_short_buffer) {
-  EXPECT_TRUE(write_png(bytes({255, 0, 0}), 2, 2, 3).empty());
-  EXPECT_TRUE(write_png("", 0, 0, 3).empty());
-}
-
 TEST(PdfImage, encode_rgb_8bpc) {
   const std::string samples =
       bytes({10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120});
@@ -243,10 +229,11 @@ TEST(PdfImage, encode_rejects_bad_parameters) {
   EXPECT_TRUE(encode_image_png("", 1, 1, 8, zero, {}).empty());
 }
 
-TEST(PdfImage, write_png_rgba_round_trip) {
+TEST(PdfImage, png_rgba_round_trip) {
   // 2x1: opaque red, half-transparent green.
   const std::string rgba = bytes({255, 0, 0, 255, 0, 255, 0, 128});
-  const DecodedPngRgba png = decode_png_rgba(write_png(rgba, 2, 1, 4));
+  const DecodedPngRgba png =
+      decode_png_rgba(odr::internal::util::png::write(rgba, 2, 1, 4));
   EXPECT_EQ(png.width, 2);
   EXPECT_EQ(png.height, 1);
   EXPECT_EQ(png.rgba, rgba);

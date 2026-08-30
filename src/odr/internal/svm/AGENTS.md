@@ -66,6 +66,20 @@ The format is not specified anywhere. The references, best first:
   file's own bytes for every encoding but `UCS2`, so a latin-1 label emits
   invalid utf-8 and the parser refuses the document all the same.
 
+## Bitmaps do not go through a decoder
+
+A dib in a metafile carries its own `BITMAPFILEHEADER`, so it *is* a `.bmp`
+file — no pixel decoding is needed to show one, only its length, which the
+header's `biSizeImage` gives and whose `bfSize` does not (that one is written
+from the uncompressed size). Where the pixels are plain enough to copy out row
+by row they are re-packed as a png, which for a chart is fifty times smaller;
+anything compressed goes out as the bmp it is.
+
+A `BMPEX` may carry a transparency mask: a second dib, white where the bitmap
+does *not* show. An svg `<mask>` keeps what is white, so the mask image goes
+through an inverting `feColorMatrix` — `filter="url(#odr-invert)"`, written
+once per document.
+
 ## Testing
 
 `svm_test.cpp` builds its input as bytes inline through `SvmBuilder`, so an
