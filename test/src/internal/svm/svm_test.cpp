@@ -253,7 +253,6 @@ TEST(SvmToSvg, string) {
   EXPECT_LT(0, out.str().size());
 }
 
-/// The pen outlines what the brush fills - a shape that sets both draws both.
 TEST(SvmToSvg, a_shape_is_stroked_and_filled) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_LINECOLOR_ACTION)
@@ -273,7 +272,6 @@ TEST(SvmToSvg, a_shape_is_stroked_and_filled) {
   EXPECT_NE(std::string::npos, svg.find("fill:rgb(0,0,255)"));
 }
 
-/// A colour the state does not set is not drawn at all.
 TEST(SvmToSvg, an_unset_colour_draws_nothing) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_LINECOLOR_ACTION)
@@ -288,7 +286,6 @@ TEST(SvmToSvg, an_unset_colour_draws_nothing) {
   EXPECT_NE(std::string::npos, svg.find("stroke:none"));
 }
 
-/// A pop restores the state the push saved.
 TEST(SvmToSvg, pop_restores_what_the_push_saved) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_FILLCOLOR_ACTION)
@@ -312,9 +309,6 @@ TEST(SvmToSvg, pop_restores_what_the_push_saved) {
   EXPECT_NE(std::string::npos, svg.find("fill:rgb(255,0,0)"));
 }
 
-/// ...and only that: what the flags do not name outlives the pop. Every
-/// second push in the corpus saves this subset, so restoring everything would
-/// be wrong far more often than not.
 TEST(SvmToSvg, pop_keeps_what_the_push_did_not_save) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_PUSH_ACTION)
@@ -334,8 +328,6 @@ TEST(SvmToSvg, pop_keeps_what_the_push_did_not_save) {
   EXPECT_NE(std::string::npos, svg.find("fill:rgb(0,0,255)"));
 }
 
-/// One shape, one path: a second polygon is a hole in the first, and only the
-/// fill rule over a single path cuts it out.
 TEST(SvmToSvg, a_poly_polygon_is_one_path) {
   const std::string svg =
       translate(SvmBuilder()
@@ -353,7 +345,6 @@ TEST(SvmToSvg, a_poly_polygon_is_one_path) {
   EXPECT_NE(std::string::npos, svg.find("fill-rule:evenodd"));
 }
 
-/// A polyline carries its own pen, and its width is a length in the drawing.
 TEST(SvmToSvg, a_poly_line_takes_its_line_info) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_POLYLINE_ACTION, 2)
@@ -376,8 +367,6 @@ TEST(SvmToSvg, a_poly_line_takes_its_line_info) {
   EXPECT_NE(std::string::npos, svg.find("stroke-dasharray:6,3"));
 }
 
-/// The font size is a length in the drawing, so the map mode scales it like
-/// every coordinate.
 TEST(SvmToSvg, the_font_size_is_scaled) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_MAPMODE_ACTION)

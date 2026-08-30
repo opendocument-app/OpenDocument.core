@@ -287,7 +287,7 @@ svm::MapMode svm::read_map_mode(std::istream &in) {
   result.scale_y = read_int_pair(in);
   read_primitive(in, result.simple);
 
-  // the scales are fractions, and every coordinate goes through them
+  // every coordinate divides by these
   if (result.scale_x.y == 0 || result.scale_y.y == 0) {
     throw MalformedSvmFile();
   }

@@ -25,8 +25,8 @@ enum MetaLineStyle {
   LINE_DASH = 2,
 };
 
-/// `vcl::PushFlags`: what a `PUSH` saves and its `POP` restores. Anything not
-/// named survives the pop.
+/// `vcl::PushFlags`: what a `PUSH` saves; anything not named survives the
+/// `POP`.
 enum PushFlags : std::uint16_t {
   PUSH_LINECOLOR = 0x0001,
   PUSH_FILLCOLOR = 0x0002,

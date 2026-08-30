@@ -17,7 +17,7 @@ namespace odr::internal::svm {
 
 namespace {
 
-/// A file nests three or four deep; a thousand is a broken file, not a drawing.
+/// Beyond this the nesting is a broken file, not a drawing.
 constexpr std::size_t max_push_depth = 1024;
 
 std::string action_name(const ActionHeader &action_header) {
@@ -25,8 +25,7 @@ std::string action_name(const ActionHeader &action_header) {
          std::to_string(action_header.type) + ")";
 }
 
-/// The drawing state an action reads and a `PUSH` saves, one field group per
-/// `PushFlags` bit we model.
+/// What an action reads and a `PUSH` saves, grouped by `PushFlags` bit.
 struct GraphicsState final {
   MapMode map_mode;
   Font font;
@@ -43,7 +42,7 @@ struct GraphicsState final {
 
 struct SavedState final {
   GraphicsState state;
-  /// What the `PUSH` asked to have restored; the rest survives its `POP`.
+  /// What the `PUSH` named for restoring.
   std::uint16_t flags{};
 };
 
@@ -132,15 +131,15 @@ std::string_view get_line_join_string(const std::uint16_t line_join) {
   }
 }
 
-/// The pen: the state's line colour, and the width, join and dashing of the
-/// action's own `LineInfo` where it carries one.
+/// The state's line colour, plus the width, join and dashing of the action's
+/// own `LineInfo` where it carries one.
 void write_stroke_style(svg::SvgWriter &out, const Context &context,
                         const LineInfo *line_info) {
   const GraphicsState &state = context.state;
   write_color_style(out, "stroke", state.line_rgb, state.line_rgb_set);
 
   if (line_info == nullptr || is_default(*line_info)) {
-    // a hairline is one device pixel wide however far the drawing is scaled
+    // one device pixel wide however far the drawing is scaled
     out.write_style("vector-effect", "non-scaling-stroke");
     return;
   }
@@ -157,8 +156,7 @@ void write_stroke_style(svg::SvgWriter &out, const Context &context,
   }
 }
 
-/// The brush. Sub-polygons of one shape are holes in it, which is what
-/// `evenodd` cuts out.
+/// `evenodd` is what cuts a shape's sub-polygons out as holes.
 void write_fill_style(svg::SvgWriter &out, const Context &context) {
   write_color_style(out, "fill", context.state.fill_rgb,
                     context.state.fill_rgb_set);
@@ -170,13 +168,10 @@ void write_text_style(svg::SvgWriter &out, const Context &context) {
   write_color_style(out, "fill", state.text_rgb, true);
   out.write_style("stroke", "none");
   out.write_style("font-family", state.font.family_name);
-  // the size is a length in the drawing and scales with it
   out.write_style("font-size",
                   std::abs(transform_height(state.font.size.y, context)));
 }
 
-/// A shape is outlined by the pen and filled by the brush; a line is only
-/// drawn.
 void write_shape_style(svg::SvgWriter &out, const Context &context,
                        const bool fill, const LineInfo *line_info = nullptr) {
   write_stroke_style(out, context, line_info);
@@ -201,8 +196,7 @@ void write_rectangle(const Rectangle &rect, const Context &context) {
   out.write_element_end();
 }
 
-/// `svgwriter.cxx`'s `GetPathString`: one `M`, the rest of the points as one
-/// `L` run, closed with `Z` where the shape is closed.
+/// `svgwriter.cxx`'s `GetPathString`: one `M`, one `L` run, `Z` where closed.
 std::string
 get_path_data_string(const std::vector<std::vector<IntPair>> &polygons,
                      const bool close, const Context &context) {
@@ -229,7 +223,7 @@ get_path_data_string(const std::vector<std::vector<IntPair>> &polygons,
       result += " ";
       append_point(point);
     }
-    // a polyline that ends where it began is a closed shape after all
+    // a polyline that ends where it began is closed
     if (close || (polygon.front().x == polygon.back().x &&
                   polygon.front().y == polygon.back().y)) {
       result += " Z";
@@ -239,8 +233,7 @@ get_path_data_string(const std::vector<std::vector<IntPair>> &polygons,
   return result;
 }
 
-/// Every polygon of a poly-polygon goes into **one** path: they are one shape,
-/// and only then does the fill rule cut its holes out.
+/// One path for all of them: the fill rule only cuts holes within a path.
 void write_path(const std::vector<std::vector<IntPair>> &polygons,
                 const bool fill, const LineInfo *line_info,
                 const Context &context) {
@@ -271,8 +264,7 @@ void push_state(const std::uint16_t flags, Context &context) {
   context.stack.push_back({context.state, flags});
 }
 
-/// Restores what the matching `PUSH` asked for, and leaves the rest as the
-/// actions inside it left it.
+/// Restores only what the matching `PUSH` named.
 void pop_state(Context &context) {
   if (context.stack.empty()) {
     ODR_WARNING(*context.logger, "pop without a push, ignoring");
