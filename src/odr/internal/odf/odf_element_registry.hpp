@@ -7,7 +7,9 @@
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <deque>
 #include <map>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -36,25 +38,33 @@ public:
     pugi::xml_node last;
   };
 
+  /// Columns, rows and cells keyed by the *end* of the range they repeat over
+  /// and resolved with an upper bound, so a run of 5000 is one entry. Sorted
+  /// vectors, not maps: parsing appends in document order. The cells of every
+  /// row live in one array per sheet, each row holding where its run starts.
   struct Sheet final {
     struct Column final {
+      std::uint32_t end{0};
       pugi::xml_node node;
     };
 
     struct Cell final {
+      std::uint32_t end{0};
       pugi::xml_node node;
       ElementIdentifier element_id{null_element_id};
     };
 
     struct Row final {
+      std::uint32_t end{0};
+      std::uint32_t first_cell{0};
       pugi::xml_node node;
-      std::map<std::uint32_t, Cell> cells;
     };
 
     TableDimensions dimensions;
 
-    std::map<std::uint32_t, Column> columns;
-    std::map<std::uint32_t, Row> rows;
+    std::vector<Column> columns;
+    std::vector<Row> rows;
+    std::vector<Cell> cells;
 
     ElementIdentifier first_shape_id{null_element_id};
     ElementIdentifier last_shape_id{null_element_id};
@@ -63,6 +73,7 @@ public:
                          pugi::xml_node element);
     void register_row(std::uint32_t row, std::uint32_t repeated,
                       pugi::xml_node element);
+    /// Has to follow the @ref register_row of the row it belongs to.
     void register_cell(std::uint32_t column, std::uint32_t row,
                        std::uint32_t columns_repeated,
                        std::uint32_t rows_repeated, pugi::xml_node element,
@@ -72,6 +83,9 @@ public:
     [[nodiscard]] const Row *row(std::uint32_t row) const;
     [[nodiscard]] const Cell *cell(std::uint32_t column,
                                    std::uint32_t row) const;
+
+    /// The cells of @p row - one of this sheet's `rows` - in column order.
+    [[nodiscard]] std::span<const Cell> row_cells(const Row &row) const;
 
     [[nodiscard]] pugi::xml_node column_node(std::uint32_t column) const;
     [[nodiscard]] pugi::xml_node row_node(std::uint32_t row) const;
@@ -126,7 +140,10 @@ public:
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
-  std::vector<Element> m_elements;
+  /// A deque, not a vector: `create_element` hands back a reference the parser
+  /// holds on to, and a vector both invalidates it and peaks holding two
+  /// copies.
+  std::deque<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Table> m_tables;
   std::unordered_map<ElementIdentifier, Sheet> m_sheets;

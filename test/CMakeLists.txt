@@ -72,6 +72,7 @@ add_executable(odr_test
         "src/internal/rtf/rtf_tokenizer_test.cpp"
 
         "src/internal/odf/odf_flat_file_test.cpp"
+        "src/internal/odf/odf_sheet_repeat_test.cpp"
         "src/internal/odf/odf_table_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
@@ -81,6 +82,7 @@ add_executable(odr_test
 
         "src/internal/ooxml/ooxml_crypto_test.cpp"
         "src/internal/ooxml/ooxml_text_style_test.cpp"
+        "src/internal/ooxml/ooxml_spreadsheet_merge_test.cpp"
         "src/internal/ooxml/ooxml_util_test.cpp"
         "src/internal/ooxml/ooxml_presentation_style_test.cpp"
 

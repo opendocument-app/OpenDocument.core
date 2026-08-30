@@ -469,7 +469,7 @@ public:
     TableDimensions result;
 
     TableCursor cursor;
-    for (const pugi::xml_node row : table_rows(node)) {
+    for_each_table_row(node, [&](const pugi::xml_node row) {
       const auto rows_repeated =
           row.attribute("table:number-rows-repeated").as_uint(1);
       cursor.add_row(rows_repeated);
@@ -492,7 +492,7 @@ public:
           result.columns = new_cols;
         }
       }
-    }
+    });
 
     return result;
   }
@@ -731,20 +731,20 @@ public:
     TableDimensions result;
     TableCursor cursor;
 
-    for (const pugi::xml_node column : table_columns(node)) {
+    for_each_table_column(node, [&](const pugi::xml_node column) {
       const auto columns_repeated =
           column.attribute("table:number-columns-repeated").as_uint(1);
       cursor.add_column(columns_repeated);
-    }
+    });
 
     result.columns = cursor.column();
     cursor = {};
 
-    for (const pugi::xml_node row : table_rows(node)) {
+    for_each_table_row(node, [&](const pugi::xml_node row) {
       const auto rows_repeated =
           row.attribute("table:number-rows-repeated").as_uint(1);
       cursor.add_row(rows_repeated);
-    }
+    });
 
     result.rows = cursor.row();
 

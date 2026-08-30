@@ -17,6 +17,11 @@
 
 namespace odr::internal::util {
 
+// `PUGIXML_COMPACT` (CMakeLists.txt) changes the size of every node, and a
+// translation unit that misses it links fine and then reads the wrong layout.
+static_assert(sizeof(pugi::xml_node_struct) == 12);
+static_assert(sizeof(pugi::xml_attribute_struct) == 8);
+
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
   if (const auto success = result.load_string(in.c_str()); !success) {

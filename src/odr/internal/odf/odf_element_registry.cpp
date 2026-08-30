@@ -1,7 +1,6 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 
-#include <odr/internal/util/map_util.hpp>
-
+#include <algorithm>
 #include <stdexcept>
 
 namespace odr::internal::odf {
@@ -246,13 +245,26 @@ void ElementRegistry::check_sheet_cell_id(const ElementIdentifier id) const {
 void ElementRegistry::Sheet::register_column(const std::uint32_t column,
                                              const std::uint32_t repeated,
                                              const pugi::xml_node element) {
-  columns[column + repeated] = {.node = element};
+  const std::uint32_t end = column + repeated;
+  if (!columns.empty() && columns.back().end >= end) {
+    columns.back() = {.end = end, .node = element};
+    return;
+  }
+  columns.push_back({.end = end, .node = element});
 }
 
 void ElementRegistry::Sheet::register_row(const std::uint32_t row,
                                           const std::uint32_t repeated,
                                           const pugi::xml_node element) {
-  rows[row + repeated].node = element;
+  const std::uint32_t end = row + repeated;
+  if (!rows.empty() && rows.back().end >= end) {
+    rows.back().end = end;
+    rows.back().node = element;
+    return;
+  }
+  rows.push_back({.end = end,
+                  .first_cell = static_cast<std::uint32_t>(cells.size()),
+                  .node = element});
 }
 
 void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
@@ -261,40 +273,56 @@ void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
                                            const std::uint32_t rows_repeated,
                                            const pugi::xml_node element,
                                            const ElementIdentifier element_id) {
-  Cell &cell = rows[row + rows_repeated].cells[column + columns_repeated];
-  cell.node = element;
-  cell.element_id = element_id;
+  const std::uint32_t row_end = row + rows_repeated;
+  if (rows.empty() || rows.back().end != row_end) {
+    throw std::invalid_argument(
+        "ElementRegistry::Sheet::register_cell: no row to hold the cell");
+  }
+
+  const std::uint32_t end = column + columns_repeated;
+  if (cells.size() > rows.back().first_cell && cells.back().end >= end) {
+    cells.back() = {.end = end, .node = element, .element_id = element_id};
+    return;
+  }
+  cells.push_back({.end = end, .node = element, .element_id = element_id});
 }
+
+namespace {
+
+/// The entry whose range covers @p at, i.e. the first one ending past it.
+template <typename Entry>
+const Entry *lookup(const std::span<const Entry> entries,
+                    const std::uint32_t at) {
+  const auto it = std::ranges::upper_bound(entries, at, {}, &Entry::end);
+  return it != std::end(entries) ? &*it : nullptr;
+}
+
+} // namespace
 
 const ElementRegistry::Sheet::Column *
 ElementRegistry::Sheet::column(const std::uint32_t column) const {
-  if (const auto it = util::map::lookup_greater_than(columns, column);
-      it != std::end(columns)) {
-    return &it->second;
-  }
-  return nullptr;
+  return lookup<Column>(columns, column);
 }
 
 const ElementRegistry::Sheet::Row *
 ElementRegistry::Sheet::row(const std::uint32_t row) const {
-  if (const auto it = util::map::lookup_greater_than(rows, row);
-      it != std::end(rows)) {
-    return &it->second;
-  }
-  return nullptr;
+  return lookup<Row>(rows, row);
 }
 
 const ElementRegistry::Sheet::Cell *
 ElementRegistry::Sheet::cell(const std::uint32_t column,
                              const std::uint32_t row) const {
-  if (const Row *row_entry = this->row(row); row_entry != nullptr) {
-    const auto &cells = row_entry->cells;
-    if (const auto cell_it = util::map::lookup_greater_than(cells, column);
-        cell_it != std::end(cells)) {
-      return &cell_it->second;
-    }
-  }
-  return nullptr;
+  const Row *row_entry = this->row(row);
+  return row_entry != nullptr ? lookup<Cell>(row_cells(*row_entry), column)
+                              : nullptr;
+}
+
+std::span<const ElementRegistry::Sheet::Cell>
+ElementRegistry::Sheet::row_cells(const Row &row) const {
+  const auto next = &row + 1;
+  const std::size_t end =
+      next != rows.data() + rows.size() ? next->first_cell : cells.size();
+  return {cells.data() + row.first_cell, end - row.first_cell};
 }
 
 [[nodiscard]] pugi::xml_node

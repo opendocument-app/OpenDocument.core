@@ -38,6 +38,9 @@ class OpenDocumentCoreConan(ConanFile):
         "with_apple": False,
         "with_wasm": False,
         "bundle_assets": False,
+        # paired with PUGIXML_COMPACT in CMakeLists.txt: no prebuilt library
+        # to mismatch against the node layout the define changes
+        "pugixml/*:header_only": True,
     }
 
     exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
@@ -103,3 +106,6 @@ class OpenDocumentCoreConan(ConanFile):
 
     def package_info(self):
         self.cpp_info.libs = ["odr"]
+        # the installed internal headers expose pugixml types, whose layout
+        # PUGIXML_COMPACT changes
+        self.cpp_info.defines = ["PUGIXML_COMPACT"]

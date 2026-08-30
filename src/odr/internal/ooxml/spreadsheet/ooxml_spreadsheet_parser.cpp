@@ -149,6 +149,21 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
         TableDimensions(range.to().row - range.from().row + 1,
                         range.to().column - range.from().column + 1);
 
+    // A `ref` may name the whole grid, 17 billion positions - so past the
+    // point where the range is bigger than the sheet has cells, walk the cells.
+    const std::uint64_t area =
+        static_cast<std::uint64_t>(range.to().row - range.from().row + 1) *
+        (range.to().column - range.from().column + 1);
+
+    if (area > sheet.cells.size()) {
+      for (const auto &[position, cell] : sheet.cells) {
+        if (position != range.from() && range.contains(position)) {
+          registry.sheet_cell_element_at(cell.element_id).is_covered = true;
+        }
+      }
+      continue;
+    }
+
     for (std::uint32_t row = range.from().row; row <= range.to().row; ++row) {
       for (std::uint32_t column = range.from().column;
            column <= range.to().column; ++column) {

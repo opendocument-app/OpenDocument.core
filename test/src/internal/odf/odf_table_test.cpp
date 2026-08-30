@@ -26,6 +26,20 @@ using namespace odr::internal::odf;
 
 namespace {
 
+std::vector<pugi::xml_node> rows_of(const pugi::xml_node table) {
+  std::vector<pugi::xml_node> result;
+  for_each_table_row(table,
+                     [&](const pugi::xml_node row) { result.push_back(row); });
+  return result;
+}
+
+std::vector<pugi::xml_node> columns_of(const pugi::xml_node table) {
+  std::vector<pugi::xml_node> result;
+  for_each_table_column(
+      table, [&](const pugi::xml_node column) { result.push_back(column); });
+  return result;
+}
+
 std::vector<std::string> names_of(const std::vector<pugi::xml_node> &nodes) {
   std::vector<std::string> result;
   for (const pugi::xml_node node : nodes) {
@@ -109,7 +123,7 @@ TEST(OdfTable, rows_directly_under_the_table) {
         <table:table-row id="b"/>
       </table:table>)");
 
-  EXPECT_EQ(names_of(table_rows(table)), (std::vector<std::string>{"a", "b"}));
+  EXPECT_EQ(names_of(rows_of(table)), (std::vector<std::string>{"a", "b"}));
 }
 
 TEST(OdfTable, rows_inside_a_grouping_element) {
@@ -124,7 +138,7 @@ TEST(OdfTable, rows_inside_a_grouping_element) {
         </table:table-rows>
       </table:table>)");
 
-  EXPECT_EQ(names_of(table_rows(table)),
+  EXPECT_EQ(names_of(rows_of(table)),
             (std::vector<std::string>{"header", "body"}));
 }
 
@@ -143,7 +157,7 @@ TEST(OdfTable, row_groups_nest) {
         <table:table-row id="c"/>
       </table:table>)");
 
-  EXPECT_EQ(names_of(table_rows(table)),
+  EXPECT_EQ(names_of(rows_of(table)),
             (std::vector<std::string>{"a", "b", "c"}));
 }
 
@@ -162,7 +176,7 @@ TEST(OdfTable, a_collapsed_group_is_not_shown) {
         </table:table-row-group>
       </table:table>)");
 
-  EXPECT_EQ(names_of(table_rows(table)), (std::vector<std::string>{"shown"}));
+  EXPECT_EQ(names_of(rows_of(table)), (std::vector<std::string>{"shown"}));
 }
 
 TEST(OdfTable, columns_inside_a_grouping_element) {
@@ -178,7 +192,7 @@ TEST(OdfTable, columns_inside_a_grouping_element) {
         <table:table-column id="c"/>
       </table:table>)");
 
-  EXPECT_EQ(names_of(table_columns(table)),
+  EXPECT_EQ(names_of(columns_of(table)),
             (std::vector<std::string>{"a", "b", "c"}));
 }
 
