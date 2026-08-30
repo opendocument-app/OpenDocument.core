@@ -17,11 +17,8 @@
 
 namespace odr::internal::util {
 
-// `PUGIXML_COMPACT` is set on the imported target in CMakeLists.txt and changes
-// the size of every node. A translation unit that misses it links fine and then
-// reads the tree through the wrong layout, so assert what this one compiled
-// against - it will not catch a *new* target that forgets the define, only the
-// define going away.
+// `PUGIXML_COMPACT` (CMakeLists.txt) changes the size of every node, and a
+// translation unit that misses it links fine and then reads the wrong layout.
 static_assert(sizeof(pugi::xml_node_struct) == 12);
 static_assert(sizeof(pugi::xml_attribute_struct) == 8);
 

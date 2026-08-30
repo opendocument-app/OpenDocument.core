@@ -50,25 +50,23 @@ element and breaks the run. Reading expands `text:s`→N spaces (via `text:c`),
 **Sheets are modelled sparsely, off-tree.** A `Sheet` side-struct holds
 `columns`/`rows`/`cells` keyed by position rather than a child chain. Repeated
 columns/rows/cells are stored **once**, at the *end* of the range they repeat
-over, and resolved with an upper bound — so a 5000-row
-`number-columns-repeated` costs one entry, whether or not the cell has content.
-That last part is load-bearing: expanding a repeat per position let a
-400-byte document ask for a `1048576 × 1024` grid of elements, both counts being
-legal repeats. Only non-empty cells get a real `sheet_cell` Element; empty ones
-are recorded as ranges alone. Cells carry a `TablePosition` (the anchor of the
+over, and resolved with an upper bound — whether or not the cell has content.
+That last part is load-bearing: expanding a repeat per position let a 400-byte
+document ask for a `1048576 × 1024` grid of elements, both counts being legal
+repeats. Only non-empty cells get a real `sheet_cell` Element; empty ones are
+recorded as ranges alone. Cells carry a `TablePosition` (the anchor of the
 range, not each position it covers) + `is_repeated` flag.
 
 The three containers are **sorted vectors, not maps**: parsing appends in
 document order, so the keys only grow, and a rb-tree node costs more than the 12
-bytes of payload it carries — on a million-row sheet the index alone was 275 MB
-of maps against 89 MB of vectors. The cells of every row live in one array per
-sheet, each row recording where its own run starts, so a sheet is two
-allocations rather than one per row. `register_cell` therefore has to follow the
-`register_row` of the row it belongs to, and says so.
+bytes it carries — on a million-row sheet, 275 MB of maps against 89 MB of
+vectors. The cells of every row live in one array per sheet, each row recording
+where its own run starts, so a sheet is two allocations rather than one per row.
+`register_cell` therefore has to follow its row's `register_row`.
 
 The elements themselves are a `std::deque`: `create_element` hands back a
-reference and the parser keeps parsing, and a vector both reallocates under that
-reference and peaks holding two copies.
+reference the parser holds on to, and a vector both invalidates it and peaks
+holding two copies.
 
 **Styles resolve to a flattened `ResolvedStyle`, eagerly.** `StyleRegistry`
 first builds name→node indices from *both* files (automatic and named styles land

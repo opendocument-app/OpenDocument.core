@@ -55,9 +55,8 @@ std::shared_ptr<abstract::Document> document_of(const std::string &source) {
 
 } // namespace
 
-/// A repeat is a range in the index, not a run of elements: both counts here
-/// are legal, and expanding them would ask for three billion elements from a
-/// document of four hundred bytes.
+/// Both repeats are legal, and expanding them would ask for three billion
+/// elements from four hundred bytes.
 TEST(OdfSheetRepeat, a_repeated_cell_is_one_element) {
   const std::string source = flat_sheet(repeated_rows(1048576, 1024));
   const std::shared_ptr<abstract::Document> held = document_of(source);

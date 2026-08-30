@@ -93,9 +93,8 @@ TEST(OoxmlSpreadsheetMerge, a_merge_covers_the_cells_it_spans) {
   EXPECT_TRUE(sheet.cell(1, 0).is_covered());
 }
 
-/// A `ref` may name any range the grid allows, and the whole grid is 17 billion
-/// positions - so the covered cells have to be found by walking what was read,
-/// not by visiting every position the range names.
+/// The whole grid is 17 billion positions, so the covered cells have to be
+/// found by walking what was read.
 TEST(OoxmlSpreadsheetMerge,
      a_merge_over_the_whole_grid_is_bounded_by_the_file) {
   const Document document = decode(

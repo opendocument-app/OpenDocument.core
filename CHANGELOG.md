@@ -26,6 +26,20 @@ The release run heads these entries with the version and opens a fresh
   `text/html` and `application/xhtml+xml`. Classification only: no `open`, no
   `translate_html`, and never detected from its bytes.
 
+- **Breaking** An ods sheet stores a repeated cell once, at the range it
+  covers, rather than once per position: `SheetCell::position()` reports the
+  anchor of that range instead of the position the cell was looked up at, and
+  `Sheet::cell()` hands back the same element everywhere in it.
+- An ods `table:number-columns-repeated` beside a `table:number-rows-repeated`
+  no longer inflates — the grid's own `1048576 × 1024` asked for three billion
+  elements out of four hundred bytes.
+- An xlsx `<mergeCell>` whose `ref` names more positions than the sheet has
+  cells opens again; `ref="A1:XFD1048576"` used to visit all 17 billion.
+- Decoding a spreadsheet costs about half the memory it did — pugixml is built
+  in compact mode and the ods sheet index is sorted vectors rather than maps.
+  A consumer that includes an internal header now needs `PUGIXML_COMPACT`, and
+  the conan package declares it.
+
 ## v6.11.0 - 2026-08-29
 
 - No view declares `<base target="_blank">` any more. A link back into what

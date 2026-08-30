@@ -149,10 +149,8 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
         TableDimensions(range.to().row - range.from().row + 1,
                         range.to().column - range.from().column + 1);
 
-    // A `ref` may name any range the grid allows, and "A1:XFD1048576" is 17
-    // billion positions in a file of a few hundred bytes - so once the range
-    // is wider than the sheet has cells, walk the cells instead, which bounds
-    // the work by what was actually read.
+    // A `ref` may name the whole grid, 17 billion positions - so past the
+    // point where the range is bigger than the sheet has cells, walk the cells.
     const std::uint64_t area =
         static_cast<std::uint64_t>(range.to().row - range.from().row + 1) *
         (range.to().column - range.from().column + 1);

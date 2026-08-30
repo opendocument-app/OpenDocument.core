@@ -38,12 +38,10 @@ public:
     pugi::xml_node last;
   };
 
-  /// Columns, rows and cells at the *end* of the range they repeat over,
-  /// sorted and resolved with an upper bound - a run of 5000 identical rows is
-  /// one entry, not 5000. Sorted vectors rather than maps: parsing appends in
-  /// document order, so the keys only ever grow, and a rb-tree node costs more
-  /// than the 12 bytes of payload it carries. The cells of every row live in
-  /// one array per sheet, each row holding where its own run starts.
+  /// Columns, rows and cells keyed by the *end* of the range they repeat over
+  /// and resolved with an upper bound, so a run of 5000 is one entry. Sorted
+  /// vectors, not maps: parsing appends in document order. The cells of every
+  /// row live in one array per sheet, each row holding where its run starts.
   struct Sheet final {
     struct Column final {
       std::uint32_t end{0};
@@ -86,7 +84,7 @@ public:
     [[nodiscard]] const Cell *cell(std::uint32_t column,
                                    std::uint32_t row) const;
 
-    /// The cells of @p row, in column order.
+    /// The cells of @p row - one of this sheet's `rows` - in column order.
     [[nodiscard]] std::span<const Cell> row_cells(const Row &row) const;
 
     [[nodiscard]] pugi::xml_node column_node(std::uint32_t column) const;
@@ -142,11 +140,9 @@ public:
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
-  /// A deque, not a vector: `create_element` hands back a reference and the
-  /// parser keeps parsing, a million more elements deep. It also spares the
-  /// document the doubling - at three million elements a vector holds a third
-  /// more memory than it has elements, and reaches the peak holding both
-  /// halves.
+  /// A deque, not a vector: `create_element` hands back a reference the parser
+  /// holds on to, and a vector both invalidates it and peaks holding two
+  /// copies.
   std::deque<Element> m_elements;
   std::unordered_map<ElementIdentifier, Text> m_texts;
   std::unordered_map<ElementIdentifier, Table> m_tables;
