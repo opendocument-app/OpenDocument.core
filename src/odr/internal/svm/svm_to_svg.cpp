@@ -379,9 +379,13 @@ BitmapBox get_bitmap_box(const BitmapAction &action, const Context &context) {
 
   IntPair size = action.size;
   if (size.x == 0 || size.y == 0) {
-    const auto per_pixel =
-        static_cast<std::int32_t>(hundredth_mm_per_inch / assumed_dpi);
-    size = {size_pixel.x * per_pixel, size_pixel.y * per_pixel};
+    // the pixel count multiplies before the division truncates: `2540 / 96`
+    // is 26.458, and rounding that off per pixel loses 1.7% of the size
+    const auto scale_pixel = [](const std::int32_t pixels) {
+      return static_cast<std::int32_t>(pixels * hundredth_mm_per_inch /
+                                       assumed_dpi);
+    };
+    size = {scale_pixel(size_pixel.x), scale_pixel(size_pixel.y)};
   }
 
   BitmapBox box{transform_x(action.point.x, context),

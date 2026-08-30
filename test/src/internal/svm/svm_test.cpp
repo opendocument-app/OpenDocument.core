@@ -587,6 +587,19 @@ TEST(SvmToSvg, a_bitmap_is_drawn_where_the_action_puts_it) {
 
 /// The mask says where the bitmap does *not* show, in white - and an svg mask
 /// keeps what is white, so it goes through a filter that inverts it.
+TEST(SvmToSvg, an_unsized_bitmap_is_drawn_at_its_pixel_size) {
+  // 16 pixels at 96 dpi is 16 * 2540 / 96 = 423 hundredths of a millimetre;
+  // truncating the per-pixel 26.458 to 26 first would say 416
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_BMP_ACTION)
+                                        .dib(16, 1, std::string(48, '\x7f'))
+                                        .point(0, 0)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("width=\"423\" height=\"26\""));
+}
+
 TEST(SvmToSvg, a_bitmap_mask_is_inverted) {
   const std::string pixels(2 * 2 * 3, '\x40');
   const std::string svg =
