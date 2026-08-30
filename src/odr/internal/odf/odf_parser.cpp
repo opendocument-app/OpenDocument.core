@@ -143,6 +143,22 @@ bool is_cell_empty(const pugi::xml_node cell_node) {
          cell_node.attribute("table:number-rows-spanned").as_uint(1) <= 1;
 }
 
+/// One entry per row and per cell node at most - repeats collapse onto one.
+void reserve_sheet(ElementRegistry::Sheet &sheet, const pugi::xml_node node) {
+  std::size_t rows = 0;
+  std::size_t cells = 0;
+  for_each_table_row(node, [&](const pugi::xml_node row_node) {
+    ++rows;
+    for ([[maybe_unused]] const pugi::xml_node cell_node :
+         row_node.children("table:table-cell")) {
+      ++cells;
+    }
+  });
+
+  sheet.rows.reserve(rows);
+  sheet.cells.reserve(cells);
+}
+
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   if (!node) {
@@ -150,6 +166,8 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   }
 
   const auto &[element_id, _, sheet] = registry.create_sheet_element(node);
+
+  reserve_sheet(sheet, node);
 
   TableCursor cursor;
 

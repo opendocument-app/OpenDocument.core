@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
+  297 MB `content.xml`. Rendered output is unchanged.
+
 ## v6.12.0 - 2026-08-30
 
 - New `Document::save(std::ostream &)` and `Document::save_to_memory()`, which

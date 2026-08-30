@@ -1,0 +1,41 @@
+{
+    "version": 3,
+    "vendor": {
+        "conan": {}
+    },
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 15,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "conan-relwithdebinfo",
+            "displayName": "'conan-relwithdebinfo' config",
+            "description": "'conan-relwithdebinfo' configure using 'Unix Makefiles' generator",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_POLICY_DEFAULT_CMP0091": "NEW",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            },
+            "toolchainFile": "conan_toolchain.cmake",
+            "binaryDir": "/private/tmp/claude-501/-Users-andreas-odr-OpenDocument-core/50040636-38e1-4d0f-90ae-6ed308703180/scratchpad/wt776"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "conan-relwithdebinfo",
+            "configurePreset": "conan-relwithdebinfo",
+            "jobs": 12
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "conan-relwithdebinfo",
+            "configurePreset": "conan-relwithdebinfo",
+            "execution": {
+                "jobs": 12
+            }
+        }
+    ]
+}

@@ -38,6 +38,10 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
   `type`, plus side maps for per-type payloads. Builders: `create_element` /
   `create_*_element` / `append_child`. Minimal example:
   `oldms/presentation/ppt_element_registry.*`.
+- An **`ElementIdentifier` is opaque, and 64 bits wide**: registry engines use it
+  as index + 1, `csv` packs a kind, a row and a column into its bits. An engine
+  wanting a narrower id narrows it inside its own store (`odf`'s
+  `ElementRegistry::StoredId`) and widens at the boundary.
 - An **`ElementAdapter`**: one class implementing `abstract::ElementAdapter` (tree
   navigation by id) and, via multiple inheritance, the per-type adapters it
   supports (`SlideAdapter`, `ParagraphAdapter`, …). Each `*_adapter(id)` returns
