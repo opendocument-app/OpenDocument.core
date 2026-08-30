@@ -2,6 +2,7 @@
 
 #include <odr/document_element.hpp>
 
+#include <odr/internal/odf/odf_scanner.hpp>
 #include <odr/internal/util/math_util.hpp>
 #include <odr/internal/util/number_util.hpp>
 
@@ -46,96 +47,6 @@ double centimetres_per(const std::string_view unit) {
   }
   return 0.0;
 }
-
-/// A cursor over the input every reader here shares. Reads are bounded by what
-/// remains, which carries no terminator.
-class Scanner {
-public:
-  explicit Scanner(const std::string_view input) : m_rest{input} {}
-
-  [[nodiscard]] bool empty() const { return m_rest.empty(); }
-
-  /// The next character, or `\0` where the input ended.
-  [[nodiscard]] char peek() const {
-    return m_rest.empty() ? '\0' : m_rest.front();
-  }
-
-  /// The next character, consumed.
-  char take() {
-    const char c = peek();
-    if (!m_rest.empty()) {
-      m_rest.remove_prefix(1);
-    }
-    return c;
-  }
-
-  void skip_separators() {
-    while (is_separator(peek())) {
-      m_rest.remove_prefix(1);
-    }
-  }
-
-  [[nodiscard]] bool consume(const char c) {
-    skip_separators();
-    if (peek() != c) {
-      return false;
-    }
-    m_rest.remove_prefix(1);
-    return true;
-  }
-
-  /// The leading run of characters @p accept admits, left in place.
-  [[nodiscard]] std::string_view peek_while(bool (*accept)(char)) const {
-    std::size_t length = 0;
-    while (length < m_rest.size() && accept(m_rest[length])) {
-      ++length;
-    }
-    return m_rest.substr(0, length);
-  }
-
-  /// The same run, consumed.
-  [[nodiscard]] std::string_view take_while(bool (*accept)(char)) {
-    const std::string_view taken = peek_while(accept);
-    m_rest.remove_prefix(taken.size());
-    return taken;
-  }
-
-  /// `std::strtod` wants a terminator, which the view does not promise, so the
-  /// run it bounds is copied out.
-  [[nodiscard]] std::optional<double> read_number() {
-    skip_separators();
-    const std::string number(peek_while(is_number_char));
-    char *end = nullptr;
-    const double value = std::strtod(number.c_str(), &end);
-    if (end == number.c_str()) {
-      return {};
-    }
-    // `strtod` may stop short of the run, on a trailing `e` say
-    m_rest.remove_prefix(static_cast<std::size_t>(end - number.c_str()));
-    return value;
-  }
-
-  [[nodiscard]] bool starts_number() const {
-    const char c = peek();
-    return c == '-' || c == '+' || c == '.' || (c >= '0' && c <= '9');
-  }
-
-  static bool is_letter(const char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-  }
-
-private:
-  static bool is_separator(const char c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == ',';
-  }
-  /// A superset of a number's characters, to bound the run `std::strtod` reads.
-  static bool is_number_char(const char c) {
-    return (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.' ||
-           c == 'e' || c == 'E';
-  }
-
-  std::string_view m_rest;
-};
 
 /// Composes the operation list, holding the translation in centimetres.
 class TransformParser : private Scanner {

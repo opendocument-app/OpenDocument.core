@@ -180,6 +180,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_crypto.cpp"
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element_registry.cpp"
+        "src/odr/internal/odf/odf_enhanced_geometry.cpp"
         "src/odr/internal/odf/odf_file.cpp"
         "src/odr/internal/odf/odf_flat_file.cpp"
         "src/odr/internal/odf/odf_geometry.cpp"

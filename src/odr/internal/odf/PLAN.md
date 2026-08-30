@@ -120,13 +120,18 @@ label comes out empty.
 `vector-effect="non-scaling-stroke"` on the path: the view box scales, and with
 `preserveAspectRatio="none"` unevenly, which the stroke must not follow.
 
-### 3 — `draw:enhanced-path` and `draw:equation`, parser only
+### 3 — `draw:enhanced-path` and `draw:equation`, parser only — landed
 
-The formula mini-language (`$N` modifiers, `?fN` references, the eleven
-functions the corpus uses plus the rest of 20.36) and the path grammar
-(`M L C Z N U X Y` plus the commands 19.145 defines and the corpus does not
-use). Pure functions over strings, unit-tested from string literals, no
-rendering and no element-model change. The largest single piece.
+`odf_enhanced_geometry.cpp`: the formula language of 20.36 (`$N` modifiers,
+`?name` references, the named view-box values, `abs sqrt sin cos tan atan min
+max atan2 if`) and every command of 19.145, converted to an svg `d`. Pure
+functions over strings, unit-tested from string literals.
+
+Decisions worth knowing: `sin`/`cos` take radians, which the corpus confirms by
+writing `sin(105*(pi/180))`; an arc is emitted in segments of at most a half
+turn, so the large-arc flag is never needed and a full `U … 0 360` — which one
+svg `A` cannot express — still draws; `F` and `S` are read and dropped, since
+painting one subpath differently is more than one `d` can say.
 
 ### 4 — enhanced geometry, rendered
 
