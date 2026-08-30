@@ -628,6 +628,25 @@ std::optional<DrawingPath> odf::parse_path_data(const std::string_view data) {
   return odf::PathParser(data).parse();
 }
 
+std::optional<double>
+odf::read_hundredth_millimetres(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  odf::ValueCursor in(attribute.value());
+  const std::optional<double> value = in.read_number();
+  if (!value.has_value()) {
+    return {};
+  }
+  in.skip_space();
+  const double scale =
+      odf::centimetres_per(in.take_while(odf::ValueCursor::is_letter));
+  if (scale == 0) {
+    return {};
+  }
+  return *value * scale * 1000;
+}
+
 std::optional<DrawingPath> odf::read_path(const pugi::xml_node node) {
   const std::string_view name = node.name();
 

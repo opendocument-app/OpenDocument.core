@@ -177,6 +177,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/markdown/markdown_parser.cpp"
         "src/odr/internal/markdown/markdown_style.cpp"
 
+        "src/odr/internal/odf/odf_chart.cpp"
         "src/odr/internal/odf/odf_crypto.cpp"
         "src/odr/internal/odf/odf_document.cpp"
         "src/odr/internal/odf/odf_element_registry.cpp"

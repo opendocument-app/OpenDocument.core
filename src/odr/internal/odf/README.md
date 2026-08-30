@@ -55,6 +55,13 @@ Roughly ordered by importance.
 - [x] images
   - [x] internal and external references
   - [x] svm
+- [x] embedded objects (`draw:object`)
+  - [x] charts (`chart:bar`, `line`, `area`, `scatter`, `circle`, `ring`),
+    drawn from the chart part's own `local-table` #179
+  - [ ] stacked and percentage plots, secondary axes, trend lines, data labels
+  - [ ] the axis number format (a date axis shows its serial number)
+  - [ ] `draw:object-ole` (an OLE blob, not ODF markup)
+  - [x] anything else falls back to the `draw:image` replacement
 - [x] tables
   - [x] column width, row height, table width
   - [x] cell vertical alignment, background, padding, borders
