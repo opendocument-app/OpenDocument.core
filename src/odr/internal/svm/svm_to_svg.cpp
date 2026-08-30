@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <optional>
 #include <ranges>
@@ -389,6 +390,246 @@ void ensure_clip(Context &context) {
     out.write_attribute("clip-path", "url(#" + id + ")");
     context.written_clip.push_back(clip[i]);
   }
+}
+
+/// A percent out of the file, clamped: it is drawn with, not validated.
+double percent(const std::uint16_t value) {
+  return std::min<std::uint16_t>(value, 100) / 100.0;
+}
+
+/// The bounds of what is about to be filled, in the drawing's own coordinates.
+struct Bounds final {
+  double left{};
+  double top{};
+  double right{};
+  double bottom{};
+
+  [[nodiscard]] double width() const { return right - left; }
+  [[nodiscard]] double height() const { return bottom - top; }
+  [[nodiscard]] double center_x() const { return (left + right) / 2; }
+  [[nodiscard]] double center_y() const { return (top + bottom) / 2; }
+};
+
+Bounds get_bounds(const std::span<const std::vector<IntPair>> polygons,
+                  const Context &context) {
+  Bounds result{std::numeric_limits<double>::max(),
+                std::numeric_limits<double>::max(),
+                std::numeric_limits<double>::lowest(),
+                std::numeric_limits<double>::lowest()};
+
+  for (const auto &polygon : polygons) {
+    for (const IntPair point : polygon) {
+      const double x = transform_x(point.x, context);
+      const double y = transform_y(point.y, context);
+      result.left = std::min(result.left, x);
+      result.top = std::min(result.top, y);
+      result.right = std::max(result.right, x);
+      result.bottom = std::max(result.bottom, y);
+    }
+  }
+
+  return result;
+}
+
+/// A gradient end's colour, scaled by the intensity the file gives it.
+std::string get_gradient_color_string(const std::uint32_t color,
+                                      const std::uint16_t intensity) {
+  const auto scale = [&](const std::uint32_t shift) {
+    return static_cast<std::uint32_t>((color >> shift & 0xff) *
+                                      percent(intensity));
+  };
+  return get_svg_color_string(scale(16) << 16 | scale(8) << 8 | scale(0));
+}
+
+void write_gradient_stop(svg::SvgWriter &out, const double offset,
+                         const std::string &color) {
+  out.write_element_begin("stop");
+  out.write_attribute("offset", offset);
+  out.write_attribute("stop-color", color);
+  out.write_element_end();
+}
+
+/// `Gradient::GetBoundRect`: a linear ramp runs across the bounds grown so
+/// that turning it still covers them, from the top of that to the bottom,
+/// turned about the centre - which is `(sin, cos)` of the angle.
+void write_linear_gradient(const std::string &id, const Gradient &gradient,
+                           const Bounds &bounds, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  const double angle = gradient.angle % 3600 * std::numbers::pi / 1800;
+  const double grown = bounds.height() * std::abs(std::cos(angle)) +
+                       bounds.width() * std::abs(std::sin(angle));
+  const double x = std::sin(angle) * grown / 2;
+  const double y = std::cos(angle) * grown / 2;
+
+  out.write_element_begin("linearGradient");
+  out.write_attribute("id", id);
+  out.write_attribute("gradientUnits", "userSpaceOnUse");
+  out.write_attribute("x1", bounds.center_x() - x);
+  out.write_attribute("y1", bounds.center_y() - y);
+  out.write_attribute("x2", bounds.center_x() + x);
+  out.write_attribute("y2", bounds.center_y() + y);
+
+  const std::string start =
+      get_gradient_color_string(gradient.start_color, gradient.start_intensity);
+  const std::string end =
+      get_gradient_color_string(gradient.end_color, gradient.end_intensity);
+  const double border = percent(gradient.border);
+
+  if (gradient.style == GRADIENT_AXIAL) {
+    // `DrawLinearGradient` swaps the two for an axial ramp: the end colour is
+    // what both ends of the axis get, and the start colour the middle
+    write_gradient_stop(out, 0, end);
+    if (border > 0) {
+      write_gradient_stop(out, border / 2, end);
+    }
+    write_gradient_stop(out, 0.5, start);
+    if (border > 0) {
+      write_gradient_stop(out, 1 - border / 2, end);
+    }
+    write_gradient_stop(out, 1, end);
+  } else {
+    write_gradient_stop(out, 0, start);
+    if (border > 0) {
+      write_gradient_stop(out, border, start);
+    }
+    write_gradient_stop(out, 1, end);
+  }
+
+  out.write_element_end();
+}
+
+/// The complex styles, which vcl draws as rings shrinking towards the centre:
+/// the start colour is the outside and the end colour the middle. `SQUARE`
+/// and `RECT` shrink a rectangle rather than an ellipse, which svg has no
+/// gradient for - they come out as the ellipse they are closest to.
+void write_radial_gradient(const std::string &id, const Gradient &gradient,
+                           const Bounds &bounds, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  const bool round = gradient.style == GRADIENT_RADIAL;
+  const double radius_x = round
+                              ? std::hypot(bounds.width(), bounds.height()) / 2
+                              : bounds.width() * std::numbers::sqrt2 / 2;
+  const double radius_y =
+      round ? radius_x : bounds.height() * std::numbers::sqrt2 / 2;
+
+  out.write_element_begin("radialGradient");
+  out.write_attribute("id", id);
+  out.write_attribute("gradientUnits", "userSpaceOnUse");
+  out.write_attribute("cx", bounds.left +
+                                bounds.width() * percent(gradient.offset_x));
+  out.write_attribute("cy", bounds.top +
+                                bounds.height() * percent(gradient.offset_y));
+  // the circle the transform below stretches to @ref radius_x
+  out.write_attribute("r", radius_y * (1 - percent(gradient.border)));
+  if (radius_x != radius_y) {
+    out.write_attribute(
+        "gradientTransform",
+        "matrix(" + svg::format_number(radius_x / radius_y) + " 0 0 1 " +
+            svg::format_number(bounds.center_x() * (1 - radius_x / radius_y)) +
+            " 0)");
+  }
+
+  write_gradient_stop(
+      out, 0,
+      get_gradient_color_string(gradient.end_color, gradient.end_intensity));
+  write_gradient_stop(out, 1,
+                      get_gradient_color_string(gradient.start_color,
+                                                gradient.start_intensity));
+  out.write_element_end();
+}
+
+/// The hatch lines, as a tile the fill repeats. vcl turns them
+/// counter-clockwise, svg clockwise.
+void write_hatch_pattern(const std::string &id, const Hatch &hatch,
+                         const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  const double distance =
+      std::max(transform_width(hatch.distance, context), 1.0);
+
+  out.write_element_begin("pattern");
+  out.write_attribute("id", id);
+  out.write_attribute("patternUnits", "userSpaceOnUse");
+  out.write_attribute("width", distance);
+  out.write_attribute("height", distance);
+  out.write_attribute("patternTransform",
+                      "rotate(" + svg::format_number(hatch.angle / -10.0) +
+                          ")");
+
+  const auto line = [&](const std::string &path_data) {
+    out.write_element_begin("path");
+    out.write_attribute("d", path_data);
+    out.write_style("stroke", get_svg_color_string(hatch.color));
+    out.write_style("vector-effect", "non-scaling-stroke");
+    out.write_style("fill", "none");
+    out.write_element_end();
+  };
+
+  const std::string size = svg::format_number(distance);
+  line("M 0,0 L " + size + ",0");
+  if (hatch.style == HATCH_DOUBLE || hatch.style == HATCH_TRIPLE) {
+    line("M 0,0 L 0," + size);
+  }
+  if (hatch.style == HATCH_TRIPLE) {
+    line("M 0,0 L " + size + "," + size);
+  }
+
+  out.write_element_end();
+}
+
+/// Fills the shape with the paint @p fill names, which is written above it.
+void write_filled_path(const std::span<const std::vector<IntPair>> polygons,
+                       const std::string &fill, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("path");
+  out.write_attribute("d", get_path_data_string(polygons, true, context));
+  out.write_style("fill", fill);
+  out.write_style("fill-rule", "evenodd");
+  out.write_style("stroke", "none");
+  out.write_element_end();
+}
+
+void write_gradient(const std::span<const std::vector<IntPair>> polygons,
+                    const Gradient &gradient, Context &context) {
+  const Bounds bounds = get_bounds(polygons, context);
+  if (bounds.left > bounds.right) {
+    return;
+  }
+
+  const std::string id =
+      "odr-gradient-" + std::to_string(++context.element_count);
+  if (gradient.style == GRADIENT_LINEAR || gradient.style == GRADIENT_AXIAL) {
+    write_linear_gradient(id, gradient, bounds, context);
+  } else {
+    write_radial_gradient(id, gradient, bounds, context);
+  }
+  write_filled_path(polygons, "url(#" + id + ")", context);
+}
+
+void write_hatch(const std::span<const std::vector<IntPair>> polygons,
+                 const Hatch &hatch, Context &context) {
+  const std::string id = "odr-hatch-" + std::to_string(++context.element_count);
+
+  write_hatch_pattern(id, hatch, context);
+  write_filled_path(polygons, "url(#" + id + ")", context);
+}
+
+/// The state's own colours, drawn through: `DrawTransparent` is the fill and
+/// the pen at a transparency, not a colour of its own.
+void write_transparent(const std::span<const std::vector<IntPair>> polygons,
+                       const std::uint16_t transparence,
+                       const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("path");
+  out.write_attribute("d", get_path_data_string(polygons, true, context));
+  write_shape_style(out, context, true);
+  // the shape as a whole, not its fill and its stroke separately
+  out.write_style("opacity", 1 - percent(transparence));
+  out.write_element_end();
 }
 
 /// One path for all of them: the fill rule only cuts holes within a path.
@@ -853,6 +1094,32 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     const ArcAction action = read_arc_action(in);
     ensure_clip(context);
     write_arc(action, get_arc_kind(action_header.type), context);
+  } break;
+  case META_GRADIENT_ACTION: {
+    const Rectangle rect = read_rectangle(in);
+    const Gradient gradient = read_gradient(in);
+    const std::vector<IntPair> polygon = get_rectangle_polygon(rect);
+    ensure_clip(context);
+    write_gradient({&polygon, 1}, gradient, context);
+  } break;
+  case META_GRADIENTEX_ACTION: {
+    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    const Gradient gradient = read_gradient(in);
+    ensure_clip(context);
+    write_gradient(polygons, gradient, context);
+  } break;
+  case META_HATCH_ACTION: {
+    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    const Hatch hatch = read_hatch(in);
+    ensure_clip(context);
+    write_hatch(polygons, hatch, context);
+  } break;
+  case META_TRANSPARENT_ACTION: {
+    const std::vector<std::vector<IntPair>> polygons = read_poly_polygon(in);
+    std::uint16_t transparence{};
+    read_primitive(in, transparence);
+    ensure_clip(context);
+    write_transparent(polygons, transparence, context);
   } break;
   case META_RECT_ACTION: {
     const Rectangle action = read_rectangle(in);

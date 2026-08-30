@@ -830,6 +830,66 @@ svm::BitmapAction svm::read_bitmap_action(std::istream &in,
   return result;
 }
 
+std::uint32_t svm::read_object_color(std::istream &in) {
+  // `COL_NAME_USER`: the id that means three channels follow
+  constexpr std::uint16_t color_name_user = 0x8000;
+  // the palette `GenericTypeSerializer::readColor` indexes, its system colours
+  // resolved as it resolves them
+  static constexpr std::array<std::uint32_t, 31> palette = {
+      0x000000, 0x000080, 0x008000, 0x008080, 0x800000, 0x800080, 0x808000,
+      0x808080, 0xc0c0c0, 0x0000ff, 0x00ff00, 0x00ffff, 0xff0000, 0xff00ff,
+      0xffff00, 0xffffff, 0xffffff, 0x000000, 0xffffff, 0x000000, 0x000000,
+      0xffffff, 0x000000, 0xffffff, 0x000000, 0xc0c0c0, 0xffffff, 0x808080,
+      0xc0c0c0, 0xffffff, 0x000000};
+
+  std::uint16_t name{};
+  read_primitive(in, name);
+
+  if ((name & color_name_user) == 0) {
+    return name < palette.size() ? palette[name] : 0;
+  }
+
+  std::uint16_t red{};
+  std::uint16_t green{};
+  std::uint16_t blue{};
+  read_primitive(in, red);
+  read_primitive(in, green);
+  read_primitive(in, blue);
+  return static_cast<std::uint32_t>(red >> 8) << 16 |
+         static_cast<std::uint32_t>(green >> 8) << 8 |
+         static_cast<std::uint32_t>(blue >> 8);
+}
+
+svm::Gradient svm::read_gradient(std::istream &in) {
+  Gradient result;
+
+  read_version_length(in);
+  read_primitive(in, result.style);
+  result.start_color = read_object_color(in);
+  result.end_color = read_object_color(in);
+  read_primitive(in, result.angle);
+  read_primitive(in, result.border);
+  read_primitive(in, result.offset_x);
+  read_primitive(in, result.offset_y);
+  read_primitive(in, result.start_intensity);
+  read_primitive(in, result.end_intensity);
+  read_primitive(in, result.step_count);
+
+  return result;
+}
+
+svm::Hatch svm::read_hatch(std::istream &in) {
+  Hatch result;
+
+  read_version_length(in);
+  read_primitive(in, result.style);
+  result.color = read_object_color(in);
+  read_primitive(in, result.distance);
+  read_primitive(in, result.angle);
+
+  return result;
+}
+
 std::optional<svm::Region> svm::read_region(std::istream &in) {
   const VersionLength vl = read_version_length(in);
   std::uint16_t content_version{};
