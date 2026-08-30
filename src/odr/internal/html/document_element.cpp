@@ -570,7 +570,8 @@ void html::translate_image(const Element &element, const WritingState &state) {
               clb("src", [&](std::ostream &o) {
                 // reached only for internal images, which have a file
                 // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-                translate_image_src(image.file().value(), o, state.config());
+                translate_image_src(image.file().value(), o, state.config(),
+                                    state.logger());
               });
             }
           })

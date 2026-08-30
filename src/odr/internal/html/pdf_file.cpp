@@ -1377,7 +1377,7 @@ public:
                                        const PageHref &page_href) const {
     HtmlResources resources;
     ImageRegistry images(config(), resources);
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
@@ -1956,7 +1956,7 @@ public:
       const std::size_t first_page_number, const PageHref &page_href) const {
     HtmlResources resources;
     ImageRegistry images(config(), resources);
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;

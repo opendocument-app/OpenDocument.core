@@ -19,6 +19,15 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- Text in a StarView metafile (the picture odf and ooxml packages carry for a
+  chart or an OLE object) is escaped on its way into the svg we generate from
+  it. An `&`, `<` or `>` in a label used to make the svg malformed, which costs
+  the whole image rather than the one label.
+
+- What a StarView metafile translation drops is logged: every action we do not
+  implement, and the failure that used to fall back to emitting the raw `.svm`
+  bytes as a data url no browser renders.
+
 ## v6.12.0 - 2026-08-30
 
 - New `Document::save(std::ostream &)` and `Document::save_to_memory()`, which

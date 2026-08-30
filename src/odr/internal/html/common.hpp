@@ -14,6 +14,7 @@ namespace odr {
 struct Color;
 struct HtmlConfig;
 class Html;
+class Logger;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -24,17 +25,20 @@ namespace odr::internal::html {
 
 struct WritingState {
   WritingState(HtmlWriter &out, const HtmlConfig &config,
-               HtmlResources &resources)
-      : m_out{&out}, m_config{&config}, m_resources(&resources) {}
+               HtmlResources &resources, const Logger &logger)
+      : m_out{&out}, m_config{&config}, m_resources(&resources),
+        m_logger{&logger} {}
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
+  [[nodiscard]] const Logger &logger() const { return *m_logger; }
 
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
   HtmlResources *m_resources;
+  const Logger *m_logger;
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,

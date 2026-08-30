@@ -177,7 +177,7 @@ public:
 
   HtmlResources write_filesystem(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     const FileWalker file_walker = m_filesystem.file_walker("/");
 

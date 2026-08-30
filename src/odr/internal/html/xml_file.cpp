@@ -247,7 +247,7 @@ public:
 
   HtmlResources write_xml(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     const pugi::xml_document &document = m_xml_file->document();
 

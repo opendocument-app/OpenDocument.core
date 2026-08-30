@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <istream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // https://github.com/LibreOffice/core/blob/master/include/vcl/metaact.hxx
@@ -205,6 +206,10 @@ struct TextLineAction final {
   std::uint32_t underline{};
   std::uint32_t overline{};
 };
+
+/// The action type's name, as `metaact.hxx` spells it, or `"UNKNOWN"`. For
+/// logging what we skipped.
+[[nodiscard]] std::string_view action_type_name(std::uint16_t type);
 
 /// Reads a fixed-size field. A short read leaves the destination untouched, so
 /// the stream ending mid-field is malformed input rather than a stale value.

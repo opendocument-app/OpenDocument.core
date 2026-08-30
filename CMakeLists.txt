@@ -272,6 +272,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/rtf/rtf_tokenizer.cpp"
 
         "src/odr/internal/svg/svg_file.cpp"
+        "src/odr/internal/svg/svg_writer.cpp"
 
         "src/odr/internal/svm/svm_file.cpp"
         "src/odr/internal/svm/svm_format.cpp"

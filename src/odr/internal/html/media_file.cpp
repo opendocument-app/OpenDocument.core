@@ -151,7 +151,7 @@ public:
 
   HtmlResources write_media(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     // The media stays a resource rather than a data URI: a video is regularly
     // larger than everything else we emit put together, and base64 in the
