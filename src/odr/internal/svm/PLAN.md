@@ -32,8 +32,7 @@ Each stage is one pull request, stacked on the one before it.
 5. **Bitmaps** (#194) - done for the `BMP` and `BMPEX` families; `MASK`,
    which stencils one colour through a bitmap, and `ZCOMPRESS`, which needs
    inflating first, are still open. See the shortcut below.
-6. **Primitives.** `PIXEL`, `POINT`, `LINE`, `ROUNDRECT`, `ELLIPSE`, `ARC`,
-   `PIE`, `CHORD` — one `svgwriter.cxx` case each.
+6. **Primitives** - done.
 7. **Fills and transparency.** `GRADIENT`, `GRADIENTEX`, `HATCH`,
    `WALLPAPER`, `TRANSPARENT`, `FLOATTRANSPARENT`.
 8. **The map mode's unit** (#772 defect 6), see below.

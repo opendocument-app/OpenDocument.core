@@ -227,6 +227,31 @@ struct ActionHeader final {
   VersionLength vl;
 };
 
+struct PixelAction final {
+  IntPair point;
+  std::uint32_t color{};
+};
+
+struct LineAction final {
+  IntPair start;
+  IntPair end;
+  LineInfo line_info;
+};
+
+struct RoundRectangleAction final {
+  Rectangle rectangle;
+  /// The corner ellipse's radii.
+  std::uint32_t horizontal_round{};
+  std::uint32_t vertical_round{};
+};
+
+/// `ARC`, `PIE` and `CHORD`: the ellipse, and the two rays that cut it.
+struct ArcAction final {
+  Rectangle rectangle;
+  IntPair start;
+  IntPair end;
+};
+
 struct PolyLineAction final {
   std::vector<IntPair> points;
   LineInfo line_info;
@@ -345,6 +370,10 @@ ActionHeader read_action_header(std::istream &in);
 MapMode read_map_mode(std::istream &in);
 LineInfo read_line_info(std::istream &in);
 Font read_font(std::istream &in);
+PixelAction read_pixel_action(std::istream &in);
+LineAction read_line_action(std::istream &in, const VersionLength &vl);
+RoundRectangleAction read_round_rectangle_action(std::istream &in);
+ArcAction read_arc_action(std::istream &in);
 PolyLineAction read_poly_line_action(std::istream &in, const VersionLength &vl);
 PolygonAction read_polygon_action(std::istream &in, const VersionLength &vl);
 PolyPolygonAction read_poly_polygon_action(std::istream &in,
