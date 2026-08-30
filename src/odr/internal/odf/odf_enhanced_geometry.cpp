@@ -301,11 +301,25 @@ private:
     m_out += util::number::to_string_significant(value == 0 ? 0 : value, 7);
   }
 
+  /// The pen tracks the unmirrored geometry; only what is written is
+  /// reflected, so the angles and radii above are computed once.
   void write_point(const double x, const double y) {
-    write(x);
-    write(y);
+    write(m_context->mirror_horizontal ? m_context->left + m_context->right - x
+                                       : x);
+    write(m_context->mirror_vertical ? m_context->top + m_context->bottom - y
+                                     : y);
     m_x = x;
     m_y = y;
+  }
+
+  /// A reflection in one axis reverses the way an arc turns; in both, it does
+  /// not.
+  void write_sweep(const bool clockwise) {
+    m_out += " 0 0 ";
+    m_out += (clockwise !=
+              (m_context->mirror_horizontal != m_context->mirror_vertical))
+                 ? '1'
+                 : '0';
   }
 
   /// An elliptical arc from @p from to @p to degrees, in segments of at most
@@ -326,8 +340,7 @@ private:
       write('A');
       write(rx);
       write(ry);
-      m_out += " 0 0 ";
-      m_out += swept < 0 ? '0' : '1';
+      write_sweep(swept >= 0);
       write_point(end[0], end[1]);
     }
   }
@@ -413,8 +426,7 @@ private:
     write('A');
     write(rx);
     write(ry);
-    m_out += " 0 0 ";
-    m_out += (descending == x_first) ? '1' : '0';
+    write_sweep(descending == x_first);
     write_point(*x, *y);
     return true;
   }

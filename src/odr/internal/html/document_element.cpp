@@ -702,6 +702,8 @@ void html::translate_custom_shape(const Element &element,
                        "absolute;top:0;left:0;padding:inherit;"));
     HtmlAttributesVector attributes{
         {"d", path->data},
+        // A ring is two subpaths, and only even-odd leaves its hole.
+        {"fill-rule", "evenodd"},
         // The view box scales, and not evenly; the stroke must not.
         {"vector-effect", "non-scaling-stroke"}};
     // An outline that never closes is a line, which svg would else fill as if

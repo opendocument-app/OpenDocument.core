@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An ODF custom shape is drawn as the shape its `draw:enhanced-geometry`
+  describes rather than as its bounding box: `draw:enhanced-path`,
+  `draw:equation`, `draw:modifiers` and the two mirror attributes. Closes #159.
+
 - ODF draws the shape elements it used to drop whole: `draw:path`,
   `draw:polygon`, `draw:polyline`, `draw:regular-polygon`, `draw:connector`,
   `draw:ellipse`, `draw:measure` and `draw:caption`. New `path()` on

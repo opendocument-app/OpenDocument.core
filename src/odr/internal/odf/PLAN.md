@@ -133,11 +133,20 @@ turn, so the large-arc flag is never needed and a full `U … 0 360` — which o
 svg `A` cannot express — still draws; `F` and `S` are read and dropped, since
 painting one subpath differently is more than one `d` can say.
 
-### 4 — enhanced geometry, rendered
+### 4 — enhanced geometry, rendered — landed
 
-Stage 3 wired into `CustomShape::path()`: `svg:viewBox`, `draw:modifiers`,
-`draw:mirror-vertical` / `-horizontal`, `draw:text-areas` for where the shape's
-text goes. Closes #159. This is the stage that regenerates reference output.
+Stage 3 wired into `CustomShape::path()`: `svg:viewBox`, `draw:modifiers`, the
+`draw:equation` children resolved on demand and memoised, and
+`draw:mirror-horizontal` / `-vertical` folded into the coordinates as they are
+written. Closes #159.
+
+Still open, and deliberately: `draw:text-areas`, so a shape's text is laid out
+in the whole box rather than the region the geometry reserves for it;
+`draw:handle`, which only matters to an editor; and `F`/`S`, which want one
+subpath painted differently from the rest.
+
+`hasstroke` and `hasfill` are always true — the geometry reader has no style
+in hand — and no corpus formula reads them.
 
 ### 5 — `draw:object` charts
 
@@ -155,3 +164,7 @@ nothing with stages 1–4 but the `draw:frame` it hangs off.
   written by the producer, and drawing that is the whole win. Re-routing a
   connector between the shapes it names is layout, not decoding.
 - **Editing any of this.** The editor is text-content only (`AGENTS.md`).
+- **`draw:type`'s preset shapes.** A named type with no `draw:enhanced-path`
+  would need libreoffice's preset table; all 350 in the corpus write the path.
+- **`draw:marker`** (28 in the corpus): the arrowheads a stroke ends with, an
+  svg `marker` and a separate piece of style work.
