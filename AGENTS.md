@@ -72,7 +72,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/markdown/` | Markdown (CommonMark + GFM via md4c), decoded to a text document; see [`markdown/AGENTS.md`](src/odr/internal/markdown/AGENTS.md) + [`markdown/PLAN.md`](src/odr/internal/markdown/PLAN.md). |
 | `src/odr/internal/xml/` | XML: the pugixml parse and the escaping every xml-writing engine shares (`xml_util`), plus the source view (`xml_file`); see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
 | `src/odr/internal/svg/` | SVG, detected by reading it as xml; see [`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md). |
-| `src/odr/internal/svm/` | StarView metafile, the vector image odf/ooxml packages carry for charts and OLE objects; translated to svg. See [`svm/AGENTS.md`](src/odr/internal/svm/AGENTS.md) + [`svm/PLAN.md`](src/odr/internal/svm/PLAN.md). |
+| `src/odr/internal/svm/` | StarView metafile, the vector image odf/ooxml packages carry for charts and OLE objects; translated to svg. See [`svm/AGENTS.md`](src/odr/internal/svm/AGENTS.md). |
 | `src/odr/internal/{csv,json,text}/` | Smaller formats. |
 | `cli/src/` | CLI tools: `translate`, `back_translate`, `meta`, `server`. |
 | `python/` | Python bindings (`pyodr`, pybind11); see [`python/AGENTS.md`](python/AGENTS.md). |

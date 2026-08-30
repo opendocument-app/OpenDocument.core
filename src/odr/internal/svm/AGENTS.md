@@ -2,7 +2,7 @@
 
 Read the root [`AGENTS.md`](../../../../AGENTS.md) first. This file covers what
 svm does differently, and why. [`README.md`](README.md) has the feature matrix
-and the references, [`PLAN.md`](PLAN.md) the roadmap.
+and the references.
 
 ## What it is
 
@@ -62,9 +62,44 @@ The format is not specified anywhere. The references, best first:
   unescaped `&` costs the whole image, not one label. Note that
   `html::escape_text` is the *wrong* escape here — it emits `&nbsp;`, which no
   xml parser knows.
-- **Escaping is not yet enough.** `read_string_with_encoding` hands back the
-  file's own bytes for every encoding but `UCS2`, so a latin-1 label emits
-  invalid utf-8 and the parser refuses the document all the same.
+- **Decoding is the other half of escaping.** A byte string is decoded by the
+  charset the last `FONT` action named, because handing the bytes through
+  emits invalid utf-8 for anything but ascii and an xml parser refuses that
+  exactly as hard as an unescaped `&`. An encoding we have no decoder for is
+  taken for `MS_1252` rather than passed through.
+
+## What the corpus holds
+
+Over 1125 metafiles harvested from the `odt`/`ods` fixtures, which is what
+every "occurs nowhere" in this module is measured against:
+
+| action | occurrences | files (of 1125) |
+| --- | --- | --- |
+| `PUSH` / `POP` | 22317 each | 1124 |
+| `TEXTALIGN` | 21534 | 1117 |
+| `STRETCHTEXT` | 20335 | 1097 |
+| `ISECTRECTCLIPREGION` | 1124 | 1123 |
+| `RECT` | 845 | 324 |
+| `TEXTARRAY` | 764 | 20 |
+| `POLYLINE` | 477 | 13 |
+| `POLYPOLYGON` | 247 | 14 |
+| `LINE` | 47 | 2 |
+| `BMPEXSCALE` | 1 | 1 |
+
+Two thirds of every action is text, and half of that text is italic — all of
+it a formula variable. `ELLIPSE`, `ARC`, `PIE`, `CHORD`, `ROUNDRECT`, `POINT`,
+`PIXEL`, `GRADIENT`, `HATCH`, `TRANSPARENT` and `EPS` do not occur at all, nor
+does a polygon flag or a complex poly-polygon. The one real bitmap is the
+whole data area of `odr-private/svm/Vyplaty.svm` — 1.59 MB of `BMPEXSCALE` in
+a 1.63 MB file.
+
+So a change here is proved by `svm_test.cpp` and by LibreOffice, not by the
+reference output: most of what the module now draws, no fixture exercises.
+
+## `FLOATTRANSPARENT` nests a whole metafile
+
+The one unimplemented action whose shape is already worked out: translate the
+nested metafile into a `<g>` and put the gradient on that group's `mask`.
 
 ## Bitmaps do not go through a decoder
 

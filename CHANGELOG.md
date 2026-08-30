@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A StarView metafile's text is decoded by the charset it names. Every
+  encoding but `UCS2` used to emit the file's own bytes, and the invalid utf-8
+  a non-ascii label made of that cost the whole image.
+
 - A curve in a StarView metafile is drawn as a curve. The polygon flags that
   say which of its points are bezier control points were read and dropped, so
   every curve came out as a line through them.
