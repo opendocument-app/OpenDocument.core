@@ -32,7 +32,6 @@ public:
   [[nodiscard]] const HtmlConfig &config() const override;
   [[nodiscard]] const std::optional<HtmlSheetCut> &sheet_cut() const override;
   [[nodiscard]] const abstract::HtmlService &service() const;
-  /// The service's sink.
   [[nodiscard]] const Logger &logger() const;
 
   HtmlResources write_html(HtmlWriter &out) const override;

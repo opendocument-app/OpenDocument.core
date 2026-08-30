@@ -1,7 +1,8 @@
 # AGENTS.md — `internal/svm`
 
 Read the root [`AGENTS.md`](../../../../AGENTS.md) first. This file covers what
-svm does differently, and why. [`PLAN.md`](PLAN.md) has the roadmap.
+svm does differently, and why. [`README.md`](README.md) has the feature matrix
+and the references, [`PLAN.md`](PLAN.md) the roadmap.
 
 ## What it is
 
@@ -58,6 +59,9 @@ The format is not specified anywhere. The references, best first:
   unescaped `&` costs the whole image, not one label. Note that
   `html::escape_text` is the *wrong* escape here — it emits `&nbsp;`, which no
   xml parser knows.
+- **Escaping is not yet enough.** `read_string_with_encoding` hands back the
+  file's own bytes for every encoding but `UCS2`, so a latin-1 label emits
+  invalid utf-8 and the parser refuses the document all the same.
 
 ## Testing
 

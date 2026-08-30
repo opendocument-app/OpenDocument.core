@@ -21,7 +21,6 @@ public:
   virtual ~HtmlService() = default;
 
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
-  /// The sink everything written through this service logs to.
   [[nodiscard]] virtual const Logger &logger() const = 0;
   [[nodiscard]] virtual const HtmlViews &list_views() const = 0;
 

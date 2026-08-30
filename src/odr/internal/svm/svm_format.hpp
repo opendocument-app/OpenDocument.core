@@ -207,8 +207,7 @@ struct TextLineAction final {
   std::uint32_t overline{};
 };
 
-/// The action type's name, as `metaact.hxx` spells it, or `"UNKNOWN"`. For
-/// logging what we skipped.
+/// The action type's name as `metaact.hxx` spells it, or `"UNKNOWN"`.
 [[nodiscard]] std::string_view action_type_name(std::uint16_t type);
 
 /// Reads a fixed-size field. A short read leaves the destination untouched, so

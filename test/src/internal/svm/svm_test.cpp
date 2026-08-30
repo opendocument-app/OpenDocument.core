@@ -21,8 +21,7 @@ using namespace odr::test;
 
 namespace {
 
-/// Builds a metafile byte by byte, so an action can be tested without a
-/// fixture. Mirrors what `SvmReader` expects to read back.
+/// Builds a metafile byte by byte, as `SvmReader` reads it back.
 class SvmBuilder final {
 public:
   SvmBuilder &u8(const std::uint8_t value) {
@@ -167,8 +166,6 @@ TEST(SvmToSvg, text) {
   EXPECT_NE(std::string::npos, svg.find(">hello</text>"));
 }
 
-/// Unescaped, the markup below is not a document and the browser draws
-/// nothing.
 TEST(SvmToSvg, text_is_escaped) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_TEXT_ACTION)
@@ -182,8 +179,6 @@ TEST(SvmToSvg, text_is_escaped) {
   EXPECT_NE(std::string::npos, svg.find(">a &amp; b &lt;c&gt;</text>"));
 }
 
-/// A font family is written into an attribute, and a quote in it would end
-/// that attribute.
 TEST(SvmToSvg, font_family_is_escaped) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_FONT_ACTION)
@@ -218,8 +213,6 @@ TEST(SvmToSvg, font_family_is_escaped) {
   EXPECT_NE(std::string::npos, svg.find("font-family:a&quot;b"));
 }
 
-/// An action we do not implement is skipped by its own length, so the ones
-/// after it still read.
 TEST(SvmToSvg, unhandled_action_is_skipped) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_ELLIPSE_ACTION)
