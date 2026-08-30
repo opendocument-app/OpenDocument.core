@@ -65,7 +65,9 @@ Editing is a round trip through the rendered page:
 const doc = odr.open(bytes, { editable: true });
 const { html } = doc.render(0);
 // ... the reader edits the page in the iframe ...
-doc.edit(JSON.stringify(iframe.contentWindow.odr.generateDiff()));
+// `generateDiff()` returns the json already; stringifying it again is a string
+// where `edit` wants an object, and it throws.
+doc.edit(iframe.contentWindow.odr.generateDiff());
 
 const saved = doc.save();   // the document, not the html
 download(new Blob([saved]));
