@@ -287,6 +287,11 @@ svm::MapMode svm::read_map_mode(std::istream &in) {
   result.scale_y = read_int_pair(in);
   read_primitive(in, result.simple);
 
+  // the scales are fractions, and every coordinate goes through them
+  if (result.scale_x.y == 0 || result.scale_y.y == 0) {
+    throw MalformedSvmFile();
+  }
+
   return result;
 }
 
@@ -484,6 +489,16 @@ svm::read_text_rectangle_action(std::istream &in, const VersionLength &vl,
     result.text = read_uint16_prefixed_utf16_string(in);
   }
 
+  return result;
+}
+
+std::uint16_t svm::read_push_action(std::istream &in, const VersionLength &vl) {
+  if (vl.length < sizeof(std::uint16_t)) {
+    return PUSH_ALL;
+  }
+
+  std::uint16_t result;
+  read_primitive(in, result);
   return result;
 }
 

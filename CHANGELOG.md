@@ -19,6 +19,14 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- A StarView metafile draws through a graphics state stack, so a colour, font
+  or map mode set inside a `PUSH` no longer leaks out of it and contaminates
+  the rest of the drawing. Nearly every metafile a document carries uses one.
+
+- A filled shape in a StarView metafile keeps its outline, its poly-polygons
+  cut their holes out, a line takes the width, dashing and join it carries, and
+  the font size scales with the drawing.
+
 - Text in a StarView metafile is escaped into the svg it renders as. An `&`,
   `<` or `>` in a label made the svg malformed, and a malformed svg renders as
   nothing.
