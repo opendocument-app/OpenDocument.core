@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <locale>
 #include <sstream>
 
 namespace odr::internal::util {
@@ -11,6 +12,7 @@ std::string number::to_string_significant(const double value,
                                           const int significant_digits) {
   if (!std::isfinite(value)) {
     std::ostringstream ss;
+    ss.imbue(std::locale::classic());
     ss << value;
     return ss.str();
   }
@@ -25,6 +27,7 @@ std::string number::to_string_significant(const double value,
   const int decimals = std::clamp(significant_digits - integer_digits, 0, 15);
 
   std::ostringstream ss;
+  ss.imbue(std::locale::classic());
   ss << std::fixed << std::setprecision(decimals) << value;
   std::string result = ss.str();
 

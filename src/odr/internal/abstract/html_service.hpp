@@ -7,7 +7,8 @@
 
 namespace odr {
 class File;
-}
+class Logger;
+} // namespace odr
 
 namespace odr::internal::html {
 class HtmlWriter;
@@ -20,6 +21,7 @@ public:
   virtual ~HtmlService() = default;
 
   [[nodiscard]] virtual const HtmlConfig &config() const = 0;
+  [[nodiscard]] virtual const Logger &logger() const = 0;
   [[nodiscard]] virtual const HtmlViews &list_views() const = 0;
 
   virtual void warmup() const = 0;

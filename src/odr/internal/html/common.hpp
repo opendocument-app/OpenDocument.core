@@ -14,6 +14,7 @@ namespace odr {
 struct Color;
 struct HtmlConfig;
 class Html;
+class Logger;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -24,17 +25,20 @@ namespace odr::internal::html {
 
 struct WritingState {
   WritingState(HtmlWriter &out, const HtmlConfig &config,
-               HtmlResources &resources)
-      : m_out{&out}, m_config{&config}, m_resources(&resources) {}
+               HtmlResources &resources, const Logger &logger)
+      : m_out{&out}, m_config{&config}, m_resources(&resources),
+        m_logger{&logger} {}
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
+  [[nodiscard]] const Logger &logger() const { return *m_logger; }
 
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
   HtmlResources *m_resources;
+  const Logger *m_logger;
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,
@@ -78,11 +82,10 @@ void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, WidthFit fits,
 /// length, which leaves those insets as shipped.
 void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 
+/// @ref util::xml::escape_text, plus the `&nbsp;` and `&emsp;` that keep html
+/// from collapsing the run's own whitespace. An attribute value wants
+/// @ref util::xml::escape_attribute instead, which leaves spaces intact.
 std::string escape_text(std::string text);
-
-/// Escape a string for use as an HTML double-quoted attribute value (`&`, `"`,
-/// `<`, `>`). Unlike `escape_text`, it leaves leading/trailing spaces intact.
-std::string escape_attribute(std::string value);
 
 /// What a target is, as an `href` would be dispatched. Whitespace and control
 /// bytes are skipped while reading the scheme, as browsers strip them first.

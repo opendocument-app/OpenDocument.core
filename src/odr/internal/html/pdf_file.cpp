@@ -25,6 +25,7 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_page_extractor.hpp>
 #include <odr/internal/util/string_util.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <utf8cpp/utf8/unchecked.h>
 
@@ -245,7 +246,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     link.top = std::min(p0[1], p1[1]);
     link.width = std::abs(p1[0] - p0[0]);
     link.height = std::abs(p1[1] - p0[1]);
-    link.href = escape_attribute(std::move(href));
+    link.href = util::xml::escape_attribute(std::move(href));
     link.internal = internal;
     links.push_back(std::move(link));
   }
@@ -674,7 +675,7 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
       !blend.empty()) {
     f << " style=\"mix-blend-mode:" << blend << '"';
   }
-  f << " href=\"" << escape_attribute(images.url(image)) << "\"/>";
+  f << " href=\"" << util::xml::escape_attribute(images.url(image)) << "\"/>";
   if (!clip_id.empty()) {
     f << "</g>";
   }
@@ -1377,7 +1378,7 @@ public:
                                        const PageHref &page_href) const {
     HtmlResources resources;
     ImageRegistry images(config(), resources);
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
@@ -1956,7 +1957,7 @@ public:
       const std::size_t first_page_number, const PageHref &page_href) const {
     HtmlResources resources;
     ImageRegistry images(config(), resources);
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;

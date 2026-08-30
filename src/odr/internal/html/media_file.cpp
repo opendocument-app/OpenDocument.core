@@ -11,6 +11,7 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/string_util.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -151,7 +152,7 @@ public:
 
   HtmlResources write_media(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     // The media stays a resource rather than a data URI: a video is regularly
     // larger than everything else we emit put together, and base64 in the
@@ -181,7 +182,7 @@ public:
                            : "controls preload=\"metadata\"")
             .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
               if (location.has_value()) {
-                clb("src", escape_attribute(*location));
+                clb("src", util::xml::escape_attribute(*location));
               } else {
                 clb("src", [&](std::ostream &o) {
                   o << file_to_url(*m_media_file.file().impl(), m_mime_type);

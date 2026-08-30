@@ -3,8 +3,22 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 
 using namespace odr::internal::util::xml;
+
+TEST(xml_util, escape_text) {
+  EXPECT_EQ("a &amp; b &lt;c&gt; \"d\"", escape_text("a & b <c> \"d\""));
+}
+
+TEST(xml_util, escape_attribute) {
+  EXPECT_EQ("a&quot;b &amp; c", escape_attribute("a\"b & c"));
+}
+
+TEST(xml_util, escape_drops_control_characters) {
+  EXPECT_EQ("ab\tc", escape_text(std::string("a\x01"
+                                             "b\tc")));
+}
 
 TEST(xml_util, tokenize_text) {
   auto example1 = tokenize_text("hello world!");

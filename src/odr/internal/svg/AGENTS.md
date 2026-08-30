@@ -68,6 +68,27 @@ If scalable, selectable svg is wanted later, isolation beats modification:
 serve the file as its own resource in a sandboxed iframe, where the browser
 contains it and the file stays intact.
 
+## Writing svg is this module's other half
+
+`svg_writer.*` is the counterpart to `html/html_writer.*`: elements,
+attributes, style declarations and text, escaped, for code that *generates*
+svg. Today that is `svm/svm_to_svg.cpp`, translating a StarView metafile.
+
+Two things it does that a raw `operator<<` does not:
+
+- **It escapes**, through `util::xml::escape` — the same single pass
+  `html::escape_attribute` uses, asked to drop the control characters xml
+  forbids as well. svg is xml, so an unescaped `&` in a chart label does not
+  spoil one label, it costs the whole image: an xml parse error renders nothing
+  at all. `html::escape_text` is the wrong tool for it — that one emits
+  `&nbsp;`, an html entity undefined in xml.
+- **It formats numbers through `util::number::to_string_significant`**, not
+  through the stream. A stream imbued with a german locale would otherwise
+  write `1,5` into a coordinate, and a `style` declaration is css, where
+  `1.2e+3` is not a length. `format_number` adds only svg's own answer for a
+  value that is not finite: `0`, because `nan` in an attribute drops the
+  element.
+
 ## The xml layer is not free
 
 `XmlFile` holds the parsed tree for as long as the file is open, and pugixml's

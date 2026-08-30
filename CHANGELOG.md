@@ -19,6 +19,16 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- Text in a StarView metafile is escaped into the svg it renders as. An `&`,
+  `<` or `>` in a label made the svg malformed, and a malformed svg renders as
+  nothing.
+
+- A StarView metafile translation logs what it drops: the actions it does not
+  implement, and a translation failure it used to fall back from silently.
+
+- An html attribute value drops the control characters xml forbids, rather
+  than carrying them through. One escaper writes both html and svg now.
+
 ## v6.12.0 - 2026-08-30
 
 - New `Document::save(std::ostream &)` and `Document::save_to_memory()`, which

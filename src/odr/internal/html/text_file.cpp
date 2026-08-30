@@ -87,7 +87,7 @@ public:
 
   HtmlResources write_text(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     const auto [text, charset] = body_and_charset();
 

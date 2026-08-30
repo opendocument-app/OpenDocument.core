@@ -12,6 +12,7 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <array>
 #include <iomanip>
@@ -177,7 +178,7 @@ public:
 
   HtmlResources write_filesystem(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     const FileWalker file_walker = m_filesystem.file_walker("/");
 
@@ -226,8 +227,9 @@ public:
       if (location.has_value()) {
         out.write_element_begin(
             "a", HtmlElementOptions().set_inline(true).set_attributes(
-                     HtmlAttributesVector{{"href", escape_attribute(*location)},
-                                          {"title", escape_attribute(name)}}));
+                     HtmlAttributesVector{
+                         {"href", util::xml::escape_attribute(*location)},
+                         {"title", util::xml::escape_attribute(name)}}));
         out.write_raw(escape_text(file_path.string()));
         out.write_element_end("a");
       } else {
@@ -248,14 +250,15 @@ public:
           HtmlElementOptions().set_inline(true).set_class("odr-files-action"));
       if (const std::optional<std::string> href =
               location.has_value()
-                  ? std::optional(escape_attribute(*location))
+                  ? std::optional(util::xml::escape_attribute(*location))
                   : entry_data_url(file, mime_type_of(file_path));
           href.has_value()) {
         out.write_element_begin(
             "a", HtmlElementOptions().set_inline(true).set_attributes(
-                     HtmlAttributesVector{{"href", *href},
-                                          {"download", escape_attribute(name)},
-                                          {"title", escape_attribute(name)}}));
+                     HtmlAttributesVector{
+                         {"href", *href},
+                         {"download", util::xml::escape_attribute(name)},
+                         {"title", util::xml::escape_attribute(name)}}));
         out.write_raw("\u2193");
         out.write_element_end("a");
       }

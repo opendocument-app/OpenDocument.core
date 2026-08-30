@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
@@ -23,25 +24,31 @@ namespace {
 /// A starview metafile is converted to svg; anything else goes out as its own
 /// bytes labelled @p mime_type.
 void write_image_src(const ImageFile &image_file, std::ostream &out,
-                     const std::string &mime_type) {
-  // try svm
-  try {
-    // TODO `image_file` is already an `SvmFile`
-    // TODO `impl()` might be a bit dirty
-    const std::shared_ptr<abstract::File> image_file_impl =
-        image_file.file().impl();
-    // TODO memory file might not be necessary; other istreams didn't support
-    // `tellg`
-    const svm::SvmFile svm_file(std::make_shared<MemoryFile>(*image_file_impl));
-    std::ostringstream svg_out;
-    svm::Translator::svg(svm_file, svg_out);
-    // TODO use stream
-    out << file_to_url(svg_out.str(), "image/svg+xml");
-  } catch (...) {
-    // else it is a usual image and goes out as it came in
-    // TODO use stream
-    out << file_to_url(*image_file.stream(), mime_type);
+                     const std::string &mime_type, const Logger &logger) {
+  if (image_file.file_type() == FileType::starview_metafile) {
+    try {
+      // TODO `image_file` is already an `SvmFile`
+      // TODO `impl()` might be a bit dirty
+      const std::shared_ptr<abstract::File> image_file_impl =
+          image_file.file().impl();
+      // TODO memory file might not be necessary; other istreams didn't support
+      // `tellg`
+      const svm::SvmFile svm_file(
+          std::make_shared<MemoryFile>(*image_file_impl));
+      std::ostringstream svg_out;
+      svm::translate_to_svg(svm_file, svg_out, logger);
+      // TODO use stream
+      out << file_to_url(svg_out.str(), "image/svg+xml");
+      return;
+    } catch (const std::exception &e) {
+      ODR_WARNING(logger, "svm translation failed: " << e.what());
+    } catch (...) {
+      ODR_WARNING(logger, "svm translation failed");
+    }
   }
+
+  // TODO use stream
+  out << file_to_url(*image_file.stream(), mime_type);
 }
 
 /// An image file knows exactly which format it is holding, so the data url
@@ -110,7 +117,7 @@ public:
 
   HtmlResources write_image(HtmlWriter &out) const {
     HtmlResources resources;
-    const WritingState state(out, config(), resources);
+    const WritingState state(out, config(), resources, logger());
 
     out.write_begin();
     out.write_header_begin();
@@ -149,7 +156,8 @@ public:
       out.out() << " alt=\"Error: image not found or unsupported\"";
       out.out() << " src=\"";
 
-      write_image_src(m_image_file, out.out(), image_mime_type(m_image_file));
+      write_image_src(m_image_file, out.out(), image_mime_type(m_image_file),
+                      logger());
 
       out.out() << "\">";
     }
@@ -176,9 +184,9 @@ protected:
 namespace odr::internal {
 
 void html::translate_image_src(const File &file, std::ostream &out,
-                               const HtmlConfig &config) {
+                               const HtmlConfig &config, const Logger &logger) {
   try {
-    translate_image_src(DecodedFile(file).as_image_file(), out, config);
+    translate_image_src(DecodedFile(file).as_image_file(), out, config, logger);
   } catch (...) {
     // nothing named it, so the label is a guess - browsers sniff `<img>` and
     // `image/jpg` is what they have been handed here for years
@@ -188,8 +196,9 @@ void html::translate_image_src(const File &file, std::ostream &out,
 }
 
 void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
-                               const HtmlConfig & /*config*/) {
-  write_image_src(image_file, out, image_mime_type(image_file));
+                               const HtmlConfig & /*config*/,
+                               const Logger &logger) {
+  write_image_src(image_file, out, image_mime_type(image_file), logger);
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,

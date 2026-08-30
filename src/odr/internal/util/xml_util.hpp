@@ -2,6 +2,7 @@
 
 #include <iosfwd>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace pugi {
@@ -18,6 +19,12 @@ class AbsPath;
 }
 
 namespace odr::internal::util::xml {
+
+/// Escapes `&`, `<` and `>` for element content, and drops the control
+/// characters xml 1.0 cannot carry at all.
+[[nodiscard]] std::string escape_text(std::string_view text);
+/// As @ref escape_text, plus the `"` that would end an attribute value.
+[[nodiscard]] std::string escape_attribute(std::string_view value);
 
 pugi::xml_document parse(const std::string &);
 /// Buffers @p in twice on the way in; prefer the @ref abstract::File overload,

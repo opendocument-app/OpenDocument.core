@@ -1,7 +1,9 @@
 #include <odr/internal/svm/svm_to_svg.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/logger.hpp>
 
+#include <odr/internal/svg/svg_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_format.hpp>
 
@@ -10,10 +12,22 @@
 namespace odr::internal::svm {
 
 namespace {
+
+/// Which of the graphics state's colours a shape draws with.
+enum class StyleKind {
+  line, ///< stroke, no fill
+  fill, ///< fill, no stroke
+  text, ///< the text colour as fill, plus the font
+};
+
+std::string action_name(const ActionHeader &action_header) {
+  return std::string(action_type_name(action_header.type)) + "(" +
+         std::to_string(action_header.type) + ")";
+}
+
 struct Context final {
-  std::istream *in{};
-  std::ostream *out{};
-  const ActionHeader *action{};
+  svg::SvgWriter *out{};
+  const Logger *logger{};
 
   MapMode map_mode;
   TextEncoding encoding{};
@@ -50,102 +64,96 @@ std::string get_svg_color_string(const std::uint32_t color) {
          std::to_string(blue) + ")";
 }
 
-void write_color_style(std::ostream &out, const std::string &prefix,
+/// The colour, or `<property>-opacity:0` where the state sets none.
+void write_color_style(svg::SvgWriter &out, const std::string &property,
                        const std::uint32_t color, const bool set) {
   if (set) {
-    out << prefix << ":" << get_svg_color_string(color);
+    out.write_style(property, get_svg_color_string(color));
   } else {
-    out << prefix << "-opacity:0";
+    out.write_style(property + "-opacity", "0");
   }
-  out << ";";
 }
 
-void write_line_style(std::ostream &out, const Context &context) {
+void write_line_style(svg::SvgWriter &out, const Context &context) {
   write_color_style(out, "stroke", context.line_rgb, context.line_rgb_set);
-  out << "vector-effect:non-scaling-stroke;";
-  out << "fill:none;";
+  out.write_style("vector-effect", "non-scaling-stroke");
+  out.write_style("fill", "none");
 }
 
-void write_fill_style(std::ostream &out, const Context &context) {
+void write_fill_style(svg::SvgWriter &out, const Context &context) {
   write_color_style(out, "fill", context.fill_rgb, context.fill_rgb_set);
-  out << "stroke:none;";
+  out.write_style("stroke", "none");
 }
 
-void write_text_style(std::ostream &out, const Context &context) {
+void write_text_style(svg::SvgWriter &out, const Context &context) {
   write_color_style(out, "fill", context.text_rgb, true);
-  out << "font-family:" << context.font.family_name << ";";
-  out << "font-size:" << context.font.size.y << ";";
+  out.write_style("font-family", context.font.family_name);
+  out.write_style("font-size", context.font.size.y);
 }
 
-void write_style(std::ostream &out, const Context &context, const int styles) {
-  out << " style=\"";
-  switch (styles) {
-  case 0:
+void write_style(svg::SvgWriter &out, const Context &context,
+                 const StyleKind kind) {
+  switch (kind) {
+  case StyleKind::line:
     write_line_style(out, context);
     break;
-  case 1:
+  case StyleKind::fill:
+    // TODO the fill overrides the stroke just written
     write_line_style(out, context);
     write_fill_style(out, context);
     break;
-  case 2:
+  case StyleKind::text:
     write_text_style(out, context);
     break;
-  default:
-      // TODO log or throw
-      ;
   }
-  out << "\"";
 }
 
-void write_rectangle(std::ostream &out, const Rectangle &rect,
-                     const Context &context) {
-  out << "<rect";
-  out << " x=\"" << transform_x(rect.left, context) << "\"";
-  out << " y=\"" << transform_y(rect.top, context) << "\"";
-  out << " width=\""
-      << (transform_x(rect.right, context) - transform_x(rect.left, context))
-      << "\"";
-  out << " height=\""
-      << (transform_y(rect.bottom, context) - transform_y(rect.top, context))
-      << "\"";
-  write_style(out, context, 1);
-  out << " />";
+void write_rectangle(const Rectangle &rect, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("rect");
+  out.write_attribute("x", transform_x(rect.left, context));
+  out.write_attribute("y", transform_y(rect.top, context));
+  out.write_attribute("width", transform_x(rect.right, context) -
+                                   transform_x(rect.left, context));
+  out.write_attribute("height", transform_y(rect.bottom, context) -
+                                    transform_y(rect.top, context));
+  write_style(out, context, StyleKind::fill);
+  out.write_element_end();
 }
 
-void write_polygon(std::ostream &out, const std::string &tag,
-                   const std::vector<IntPair> &points, const bool fill,
-                   const Context &context) {
-  out << "<" << tag;
+void write_polygon(const std::string &tag, const std::vector<IntPair> &points,
+                   const bool fill, const Context &context) {
+  svg::SvgWriter &out = *context.out;
 
-  out << " points=\"";
-  for (auto [x, y] : points) {
-    out << transform_x(x, context) << "," << transform_y(y, context);
-    out << " ";
-  }
-  out << "\"";
-
-  if (fill) {
-    write_style(out, context, 1);
-  } else {
-    write_style(out, context, 0);
+  std::string points_attribute;
+  for (const auto [x, y] : points) {
+    points_attribute += svg::format_number(transform_x(x, context));
+    points_attribute += ",";
+    points_attribute += svg::format_number(transform_y(y, context));
+    points_attribute += " ";
   }
 
-  out << " />";
+  out.write_element_begin(tag);
+  out.write_attribute("points", points_attribute);
+  write_style(out, context, fill ? StyleKind::fill : StyleKind::line);
+  out.write_element_end();
 }
 
-void write_text(std::ostream &out, const IntPair &point,
-                const std::string &text, const Context &context) {
-  out << "<text";
-  out << " x=\"" << transform_x(point.x, context) << "\"";
-  out << " y=\"" << transform_y(point.y, context) << "\"";
-  write_style(out, context, 2);
-  out << ">";
-  out << text;
-  out << "</text>";
+void write_text(const IntPair &point, const std::string &text,
+                const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("text");
+  out.write_attribute("x", transform_x(point.x, context));
+  out.write_attribute("y", transform_y(point.y, context));
+  write_style(out, context, StyleKind::text);
+  out.write_text(text);
+  out.write_element_end();
 }
 
 void translate_action(const ActionHeader &action_header, std::istream &in,
-                      std::ostream &out, Context &context) {
+                      Context &context) {
   switch (action_header.type) {
   case META_FILLCOLOR_ACTION:
     read_primitive(in, context.fill_rgb);
@@ -173,95 +181,96 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     context.text_line = read_text_line_action(in, action_header.vl);
     break;
   case META_RECT_ACTION: {
-    Rectangle action = read_rectangle(in);
-    write_rectangle(out, action, context);
+    const Rectangle action = read_rectangle(in);
+    write_rectangle(action, context);
   } break;
   case META_MAPMODE_ACTION: {
     context.map_mode = read_map_mode(in);
   } break;
   case META_POLYLINE_ACTION: {
     auto [points, line_info] = read_poly_line_action(in, action_header.vl);
-    write_polygon(out, "polyline", points, false, context);
+    write_polygon("polyline", points, false, context);
   } break;
   case META_POLYGON_ACTION: {
     auto [points] = read_polygon_action(in, action_header.vl);
-    write_polygon(out, "polygon", points, true, context);
+    write_polygon("polygon", points, true, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
     auto [polygons] = read_poly_polygon_action(in, action_header.vl);
     for (const auto &p : polygons) {
-      write_polygon(out, "polygon", p, true, context);
+      write_polygon("polygon", p, true, context);
     }
   } break;
   case META_TEXT_ACTION: {
-    TextAction action =
+    const TextAction action =
         read_text_action(in, action_header.vl, context.encoding);
-    write_text(out, action.point, action.text, context);
+    write_text(action.point, action.text, context);
   } break;
   case META_TEXTARRAY_ACTION: {
-    TextArrayAction action =
+    const TextArrayAction action =
         read_text_array_action(in, action_header.vl, context.encoding);
-    write_text(out, action.point, action.text, context);
+    write_text(action.point, action.text, context);
   } break;
   case META_STRETCHTEXT_ACTION: {
-    StretchTextAction action =
+    const StretchTextAction action =
         read_stretch_text_action(in, action_header.vl, context.encoding);
-    write_text(out, action.point, action.text, context);
+    write_text(action.point, action.text, context);
   } break;
-  case META_TEXTRECT_ACTION:
-    // TODO read_text_rectangle_action; the caller skips the body meanwhile
-    break;
-  case META_NULL_ACTION:
-  case META_PUSH_ACTION:
-  case META_POP_ACTION:
-  case META_TEXTLANGUAGE_ACTION:
-  case META_COMMENT_ACTION:
-    // TODO implement
   default:
-    // TODO log unhandled action
-    in.ignore(action_header.vl.length);
+    ODR_DEBUG(*context.logger,
+              "unhandled action " << action_name(action_header) << ", skipping "
+                                  << action_header.vl.length << " bytes");
+    in.ignore(static_cast<std::streamsize>(action_header.vl.length));
     break;
   }
 }
-} // namespace
 
-void Translator::svg(const SvmFile &file, std::ostream &out) {
+} // namespace
+} // namespace odr::internal::svm
+
+namespace odr::internal {
+
+void svm::translate_to_svg(const SvmFile &file, std::ostream &out,
+                           const Logger &logger) {
   const auto istream = file.file()->stream();
   auto &in = *istream;
 
+  svg::SvgWriter writer(out);
+
   Context context;
-  context.in = &in;
-  context.out = &out;
+  context.out = &writer;
+  context.logger = &logger;
 
   const Header header = read_header(in);
 
   context.encoding = RTL_TEXTENCODING_ASCII_US;
   context.map_mode = header.map_mode;
 
-  out << "<svg";
-  out << " xmlns=\"http://www.w3.org/2000/svg\"";
-  out << " version=\"1.1\"";
-  out << " viewBox=\"0 0 " << header.size.x << " " << header.size.y << "\"";
-  out << ">";
+  writer.write_element_begin("svg");
+  writer.write_attribute("xmlns", "http://www.w3.org/2000/svg");
+  writer.write_attribute("version", "1.1");
+  writer.write_attribute("viewBox", "0 0 " + std::to_string(header.size.x) +
+                                        " " + std::to_string(header.size.y));
 
   while (in.peek() != -1) {
     // TODO check length fields should never exceed file size (limited istream?)
-    ActionHeader action_header = read_action_header(in);
+    const ActionHeader action_header = read_action_header(in);
     const std::int64_t start = in.tellg();
 
-    translate_action(action_header, in, out, context);
+    translate_action(action_header, in, context);
 
     const std::int64_t left = action_header.vl.length -
                               (static_cast<std::int64_t>(in.tellg()) - start);
     if (left > 0) {
-      // TODO log skipping
-      in.ignore(left);
+      ODR_DEBUG(logger, "action " << action_name(action_header) << " skipping "
+                                  << left << " trailing bytes");
+      in.ignore(static_cast<std::streamsize>(left));
     } else if (left < 0) {
       throw MalformedSvmFile();
     }
   }
 
-  out << "</svg>";
+  writer.write_element_end();
 }
 
-} // namespace odr::internal::svm
+} // namespace odr::internal

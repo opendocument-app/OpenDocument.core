@@ -11,6 +11,8 @@ HtmlService::HtmlService(HtmlConfig config, const Logger &logger)
 
 const HtmlConfig &HtmlService::config() const { return m_config; }
 
+const Logger &HtmlService::logger() const { return m_logger; }
+
 HtmlView::HtmlView(const abstract::HtmlService &service, std::string name,
                    std::size_t index, std::string path)
     : m_service{&service}, m_name{std::move(name)}, m_index{index},
@@ -31,6 +33,8 @@ const std::optional<HtmlSheetCut> &HtmlView::sheet_cut() const {
 }
 
 const abstract::HtmlService &HtmlView::service() const { return *m_service; }
+
+const Logger &HtmlView::logger() const { return m_service->logger(); }
 
 HtmlResources HtmlView::write_html(HtmlWriter &out) const {
   return m_service->write_html(path(), out);

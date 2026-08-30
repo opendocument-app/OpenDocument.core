@@ -279,7 +279,7 @@ public:
 
   HtmlResources write_html(HtmlWriter &out) const override {
     HtmlResources resources;
-    WritingState state(out, service().config(), resources);
+    WritingState state(out, service().config(), resources, service().logger());
     m_fragment->write_document(out, state);
     return resources;
   }
@@ -415,7 +415,7 @@ public:
   HtmlResources write_document(HtmlWriter &out) const {
     HtmlResources resources;
 
-    WritingState state(out, config(), resources);
+    WritingState state(out, config(), resources, logger());
 
     // every page in one file, so the column is as wide as the widest of them
     const std::optional<double> content =

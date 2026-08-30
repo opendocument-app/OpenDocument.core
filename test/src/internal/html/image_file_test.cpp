@@ -49,7 +49,7 @@ std::string write_path(const HtmlService &service, const std::string &path) {
 std::string image_src(const File &file) {
   std::ostringstream out;
   internal::html::translate_image_src(DecodedFile(file).as_image_file(), out,
-                                      HtmlConfig());
+                                      HtmlConfig(), Logger::null());
   return out.str();
 }
 
@@ -165,7 +165,7 @@ TEST(image_file, an_embedded_image_is_named_by_its_own_mime_type) {
 TEST(image_file, an_unrecognised_image_falls_back_to_a_guess) {
   std::ostringstream out;
   internal::html::translate_image_src(image_file("not an image at all"), out,
-                                      HtmlConfig());
+                                      HtmlConfig(), Logger::null());
 
   EXPECT_NE(out.str().find("data:image/jpg;base64,"), std::string::npos);
 }
