@@ -58,8 +58,7 @@ struct Context final {
   GraphicsState state;
   std::vector<SavedState> stack;
 
-  /// Names the masks and clip paths apart, and says whether the filter the
-  /// masks share is written.
+  /// Names the masks and clip paths apart.
   std::uint32_t element_count{};
   bool inverter_written{};
 };
@@ -343,15 +342,14 @@ std::string get_x_list_string(const IntPair &point,
 
 /// @p dx_array places the characters one by one where the file measured them;
 /// @p width, from a stretch text, is the advance the whole run has to fill.
-/// A bitmap with no size of its own is drawn at its pixel size, and the
-/// map mode says how big a pixel is. Nothing in the file does, so this is the
-/// assumption `MapUnit::MapPixel` would resolve against a device.
+/// Nothing in the file says how big a pixel is; this is what
+/// `MapUnit::MapPixel` would resolve against a device.
 constexpr double assumed_dpi = 96;
 /// The unit the header of every metafile in the wild uses.
 constexpr double hundredth_mm_per_inch = 2540;
 
-/// Inverts what a mask image shows: a metafile's mask is white where the
-/// bitmap does *not* show, and an svg mask keeps what is white.
+/// A metafile's mask is white where the bitmap does not show; an svg mask
+/// keeps what is white.
 void write_inverter(const Context &context) {
   svg::SvgWriter &out = *context.out;
 
@@ -365,8 +363,7 @@ void write_inverter(const Context &context) {
   out.write_element_end();
 }
 
-/// Where the bitmap goes, and how big: `x`, `y`, `width`, `height` in the
-/// drawing's own coordinates.
+/// In the drawing's own coordinates.
 struct BitmapBox final {
   double x{};
   double y{};
@@ -374,15 +371,14 @@ struct BitmapBox final {
   double height{};
 };
 
-/// The box the whole bitmap covers. For a part action that is bigger than
-/// what is drawn: the source rectangle is scaled onto the destination one and
-/// the rest is clipped away.
+/// The box the whole bitmap covers - for a part action, bigger than what is
+/// drawn: the source rectangle scales onto the destination and the rest is
+/// clipped.
 BitmapBox get_bitmap_box(const BitmapAction &action, const Context &context) {
   const IntPair &size_pixel = action.bitmap.image.size_pixel;
 
   IntPair size = action.size;
   if (size.x == 0 || size.y == 0) {
-    // no size of its own: a pixel is a pixel at the assumed resolution
     const auto per_pixel =
         static_cast<std::int32_t>(hundredth_mm_per_inch / assumed_dpi);
     size = {size_pixel.x * per_pixel, size_pixel.y * per_pixel};

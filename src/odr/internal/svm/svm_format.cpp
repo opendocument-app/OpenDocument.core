@@ -47,7 +47,7 @@ std::uint32_t read_u32(const std::string &bytes, const std::size_t offset) {
   return result;
 }
 
-/// What a dib's pixels look like, as far as unpacking them needs to know.
+/// As much of a dib's header as unpacking its pixels needs.
 struct DibLayout final {
   std::uint32_t off_bits{};
   std::uint32_t header_size{};
@@ -59,8 +59,7 @@ struct DibLayout final {
 };
 
 /// The dib's pixels as 8-bit rgb rows, top to bottom - a png's layout. Empty
-/// where the dib is not one to copy out row by row: compressed, bit-fielded,
-/// or 16 bits a pixel.
+/// where the dib is compressed, bit-fielded, or 16 bits a pixel.
 std::string get_rgb_rows(const std::string &bmp, const DibLayout &layout) {
   if (layout.compression != 0 || layout.width <= 0 || layout.height == 0) {
     return {};
