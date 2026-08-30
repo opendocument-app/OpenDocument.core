@@ -54,16 +54,10 @@ endif ()
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 find_package(pugixml REQUIRED)
-# A `xml_node_struct` costs 64 bytes by default and 12 in compact mode, which is
-# what a document made of markup is mostly made of - the odf/ooxml models keep
-# the dom resident and read attributes off it. Measured on a 297 MB content.xml:
-# 594 MB of structure becomes 116 MB, and parsing is no slower.
-#
-# The define is ABI affecting and mixing a compact translation unit with a
-# non-compact one is silent corruption, not a link error, so it goes on the
-# imported target: `odr` links pugixml PRIVATE and `odr_test` links it again on
-# its own, and both compile the headers themselves. `header_only=True` in
-# `conanfile.py` is the other half - there is no prebuilt library to mismatch.
+# A compact `xml_node_struct` is 12 bytes rather than 64, and the engines keep
+# the dom resident as their backing store. The define is ABI affecting and a
+# mismatch is silent, so it rides on the imported target and is paired with
+# `header_only` in conanfile.py. See AGENTS.md.
 set_property(TARGET pugixml::pugixml APPEND PROPERTY
         INTERFACE_COMPILE_DEFINITIONS PUGIXML_COMPACT)
 find_package(md4c REQUIRED)
@@ -323,6 +317,10 @@ target_link_libraries(odr
         uchardet::uchardet
         utf8::cpp
 )
+# pugixml is linked PRIVATE, but the installed internal headers expose its
+# types - so a consumer of those needs the same layout. `cpp_info.defines` in
+# conanfile.py is the same thing for the conan package.
+target_compile_definitions(odr INTERFACE PUGIXML_COMPACT)
 
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)

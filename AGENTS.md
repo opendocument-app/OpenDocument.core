@@ -109,14 +109,14 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
 - **pugixml is built in compact mode** (`PUGIXML_COMPACT`, set on the imported
   target in `CMakeLists.txt`, paired with `pugixml/*:header_only` in
   `conanfile.py`). The odf/ooxml/svg/xml engines keep the parsed DOM resident as
-  their backing store, so its size *is* the document's: a 12-byte node instead of
-  64 took a 297 MB `content.xml` from 594 MB of structure to 116 MB, and parsed
-  no slower. The define is ABI affecting and mixing it across translation units
-  is silent corruption, not a link error — which is why it rides on the imported
-  target (`odr` links pugixml PRIVATE, `odr_test` links it again) and why there
-  must be no prebuilt library to mismatch against. A new target that includes
-  `pugixml.hpp` has to get it too; `util/xml_util.cpp` asserts the layout it
-  compiled against.
+  their backing store, so its size *is* the document's: a 12-byte node instead
+  of 64 took a 297 MB `content.xml` from 594 MB to 116 MB. The define is ABI
+  affecting and mixing it across translation units is silent corruption, not a
+  link error — hence the imported target, and no prebuilt library to mismatch
+  against. A new target that includes `pugixml.hpp` has to get it too, and the
+  installed internal headers expose pugixml types, so `odr` carries the define
+  INTERFACE and `package_info` declares it. `util/xml_util.cpp` asserts the
+  layout it compiled against.
 
 ## Releasing
 
