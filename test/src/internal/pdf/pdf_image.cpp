@@ -2,7 +2,7 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
-#include <odr/internal/util/png_util.hpp>
+#include <odr/internal/png/png_util.hpp>
 
 #include <array>
 #include <cstdint>
@@ -233,7 +233,7 @@ TEST(PdfImage, png_rgba_round_trip) {
   // 2x1: opaque red, half-transparent green.
   const std::string rgba = bytes({255, 0, 0, 255, 0, 255, 0, 128});
   const DecodedPngRgba png =
-      decode_png_rgba(odr::internal::util::png::write(rgba, 2, 1, 4));
+      decode_png_rgba(odr::internal::png::write(rgba, 2, 1, 4));
   EXPECT_EQ(png.width, 2);
   EXPECT_EQ(png.height, 1);
   EXPECT_EQ(png.rgba, rgba);

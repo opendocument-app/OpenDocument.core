@@ -76,7 +76,7 @@ svg. Today that is `svm/svm_to_svg.cpp`, translating a StarView metafile.
 
 Two things it does that a raw `operator<<` does not:
 
-- **It escapes**, through `util::xml::escape` — the same single pass
+- **It escapes**, through `xml::escape_attribute` — the same single pass
   `html::escape_attribute` uses, asked to drop the control characters xml
   forbids as well. svg is xml, so an unescaped `&` in a chart label does not
   spoil one label, it costs the whole image: an xml parse error renders nothing

@@ -3,6 +3,15 @@
 Read the root [`AGENTS.md`](../../../../AGENTS.md) first. This file covers what
 xml does differently, and why. What is not built yet is in [`PLAN.md`](PLAN.md).
 
+## Two things live here
+
+`xml_util` is the shared plumbing — `parse`, `escape_text` /
+`escape_attribute`, `read_declared_encoding`, `tokenize_text` — that odf,
+ooxml, svg and the html writer all go through; it depends on no other engine,
+and every other engine depends on it. `xml_file` is the format: xml opened as
+a file of its own and rendered as a source view. The rest of this file is
+about the latter.
+
 ## A source view, not a document
 
 Xml has no document semantics: no paragraph, no page, no sheet, only nesting.
@@ -42,7 +51,7 @@ is most wanted.
 ## The parse flags, and where they live
 
 `parse_source` (`xml_file.cpp`, file-local) is the only place they are written,
-and `XmlFile`'s constructor is its only caller. Not `util::xml::parse`, whose
+and `XmlFile`'s constructor is its only caller. Not `xml::parse`, whose
 every other caller wants pugixml's defaults.
 
 - `parse_full` adds the four node kinds `parse_default` drops — comments,
@@ -62,7 +71,7 @@ pugixml's `encoding_auto` resolves UTF-8/16/32 from a BOM or the `<?xml` byte
 pattern only, so `encoding="ISO-8859-1"` is read as UTF-8 and yields invalid
 UTF-8 in the node strings, silently.
 
-`util::xml::read_declared_encoding` reads the pseudo-attribute off the head of
+`read_declared_encoding` (`xml_util`) reads the pseudo-attribute off the head of
 the file, `text_encoding_by_name` maps it, and the bytes are transcoded before
 pugixml sees them. Precedence: declaration, BOM, detected guess. The sniff is
 ascii-only, which loses nothing — utf-16 and utf-32 are named by their BOM.

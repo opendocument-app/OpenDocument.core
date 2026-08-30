@@ -9,7 +9,7 @@
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <cstring>
@@ -64,13 +64,12 @@ PageLayout read_page_layout(const pugi::xml_node body) {
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_document, DocumentType::text,
                          std::move(files)) {
-  m_document_xml = util::xml::parse(*m_files, AbsPath("/word/document.xml"));
-  m_styles_xml = util::xml::parse(*m_files, AbsPath("/word/styles.xml"));
+  m_document_xml = xml::parse(*m_files, AbsPath("/word/document.xml"));
+  m_styles_xml = xml::parse(*m_files, AbsPath("/word/styles.xml"));
 
   // Optional: a document without a single list carries no numbering part.
   if (m_files->exists(AbsPath("/word/numbering.xml"))) {
-    m_numbering_xml =
-        util::xml::parse(*m_files, AbsPath("/word/numbering.xml"));
+    m_numbering_xml = xml::parse(*m_files, AbsPath("/word/numbering.xml"));
   }
 
   m_document_relations =
@@ -348,24 +347,24 @@ public:
       return new_node;
     };
 
-    for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
+    for (const xml::StringToken &token : xml::tokenize_text(text)) {
       switch (token.type) {
-      case util::xml::StringToken::Type::none:
+      case xml::StringToken::Type::none:
         break;
-      case util::xml::StringToken::Type::string: {
+      case xml::StringToken::Type::string: {
         auto text_node = insert_node("w:t");
         text_node.append_child(pugi::xml_node_type::node_pcdata)
             .text()
             .set(token.string.c_str());
       } break;
-      case util::xml::StringToken::Type::spaces: {
+      case xml::StringToken::Type::spaces: {
         auto text_node = insert_node("w:t");
         text_node.append_attribute("xml:space").set_value("preserve");
         text_node.append_child(pugi::xml_node_type::node_pcdata)
             .text()
             .set(token.string.c_str());
       } break;
-      case util::xml::StringToken::Type::tabs: {
+      case xml::StringToken::Type::tabs: {
         for (std::size_t i = 0; i < token.string.size(); ++i) {
           insert_node("w:tab");
         }

@@ -1,4 +1,4 @@
-#include <odr/internal/util/png_util.hpp>
+#include <odr/internal/png/png_util.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
 
@@ -32,7 +32,7 @@ struct DecodedPng final {
   std::string rgb;
 };
 
-/// Reads back what @ref util::png::write wrote: the chunks, then the one
+/// Reads back what @ref png::write wrote: the chunks, then the one
 /// zlib stream their `IDAT` holds, minus the filter byte per row.
 DecodedPng decode_png(const std::string &png) {
   DecodedPng result;
@@ -74,7 +74,7 @@ TEST(PngUtil, rgb_round_trip) {
   const std::string rgb =
       bytes({255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255});
 
-  const DecodedPng png = decode_png(util::png::write(rgb, 2, 2, 3));
+  const DecodedPng png = decode_png(png::write(rgb, 2, 2, 3));
 
   EXPECT_EQ(2, png.width);
   EXPECT_EQ(2, png.height);
@@ -82,13 +82,13 @@ TEST(PngUtil, rgb_round_trip) {
 }
 
 TEST(PngUtil, a_buffer_too_short_for_the_size_is_refused) {
-  EXPECT_TRUE(util::png::write(bytes({255, 0, 0}), 2, 2, 3).empty());
-  EXPECT_TRUE(util::png::write("", 0, 0, 3).empty());
+  EXPECT_TRUE(png::write(bytes({255, 0, 0}), 2, 2, 3).empty());
+  EXPECT_TRUE(png::write("", 0, 0, 3).empty());
 }
 
 TEST(PngUtil, only_three_or_four_channels) {
   const std::string pixels(2 * 2 * 4, '\0');
-  EXPECT_TRUE(util::png::write(pixels, 2, 2, 1).empty());
-  EXPECT_TRUE(util::png::write(pixels, 2, 2, 2).empty());
-  EXPECT_FALSE(util::png::write(pixels, 2, 2, 4).empty());
+  EXPECT_TRUE(png::write(pixels, 2, 2, 1).empty());
+  EXPECT_TRUE(png::write(pixels, 2, 2, 2).empty());
+  EXPECT_FALSE(png::write(pixels, 2, 2, 4).empty());
 }

@@ -6,7 +6,7 @@
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <array>
 #include <span>
@@ -1561,8 +1561,7 @@ void write_style(const Asset &asset, const WritingState &state,
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
       location.has_value()) {
-    state.out().write_header_style(util::xml::escape_attribute(*location),
-                                   media);
+    state.out().write_header_style(xml::escape_attribute(*location), media);
     return;
   }
 
@@ -1581,7 +1580,7 @@ void write_script(const Asset &asset, const WritingState &state) {
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
       location.has_value()) {
-    state.out().write_script(util::xml::escape_attribute(*location));
+    state.out().write_script(xml::escape_attribute(*location));
     return;
   }
 

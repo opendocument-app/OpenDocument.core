@@ -5,8 +5,8 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 #include <odr/internal/pdf/pdf_jpx.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/png/png_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
-#include <odr/internal/util/png_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -218,7 +218,7 @@ std::string pdf::encode_image_png(const std::string &samples,
     }
   }
 
-  return util::png::write(out, width, height, has_alpha ? 4 : 3);
+  return png::write(out, width, height, has_alpha ? 4 : 3);
 }
 
 std::vector<std::uint8_t> pdf::decode_mask_alpha(
@@ -311,7 +311,7 @@ std::string pdf::encode_stencil_png(const std::string &samples,
       rgba[out_index++] = static_cast<char>(paint ? 0xFF : 0x00);
     }
   }
-  return util::png::write(rgba, width, height, 4);
+  return png::write(rgba, width, height, 4);
 }
 
 std::optional<pdf::EncodedImage> pdf::encode_image(

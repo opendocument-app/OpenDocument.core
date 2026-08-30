@@ -8,7 +8,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/util/stream_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <string_view>
 #include <unordered_map>
@@ -127,8 +127,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   pugi::xml_document manifest_xml;
   if (manifest == nullptr &&
       filesystem.is_file(AbsPath("/META-INF/manifest.xml"))) {
-    manifest_xml =
-        util::xml::parse(filesystem, AbsPath("/META-INF/manifest.xml"));
+    manifest_xml = xml::parse(filesystem, AbsPath("/META-INF/manifest.xml"));
     manifest = &manifest_xml;
   }
 
@@ -152,7 +151,7 @@ FileMeta parse_file_meta(const abstract::ReadableFilesystem &filesystem,
   if (result.password_encrypted == decrypted &&
       filesystem.is_file(AbsPath("/meta.xml"))) {
     const pugi::xml_document meta_xml =
-        util::xml::parse(filesystem, AbsPath("/meta.xml"));
+        xml::parse(filesystem, AbsPath("/meta.xml"));
 
     const pugi::xml_node statistics = meta_xml.child("office:document-meta")
                                           .child("office:meta")

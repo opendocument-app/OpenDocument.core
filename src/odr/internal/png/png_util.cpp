@@ -1,4 +1,4 @@
-#include <odr/internal/util/png_util.hpp>
+#include <odr/internal/png/png_util.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
@@ -23,10 +23,8 @@ void write_chunk(std::string &out, const std::string_view type,
 
 } // namespace
 
-std::string util::png::write(const std::string &pixels,
-                             const std::int32_t width,
-                             const std::int32_t height,
-                             const std::int32_t channels) {
+std::string png::write(const std::string &pixels, const std::int32_t width,
+                       const std::int32_t height, const std::int32_t channels) {
   if (width <= 0 || height <= 0 || (channels != 3 && channels != 4)) {
     return {};
   }

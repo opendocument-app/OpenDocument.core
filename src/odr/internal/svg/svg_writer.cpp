@@ -1,7 +1,7 @@
 #include <odr/internal/svg/svg_writer.hpp>
 
 #include <odr/internal/util/number_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <cmath>
 #include <ostream>
@@ -59,7 +59,7 @@ void svg::SvgWriter::write_attribute(const std::string_view name,
   if (!m_tag_open) {
     throw std::runtime_error("no open tag to write an attribute to");
   }
-  *m_out << " " << name << "=\"" << util::xml::escape_attribute(value) << "\"";
+  *m_out << " " << name << "=\"" << xml::escape_attribute(value) << "\"";
 }
 
 void svg::SvgWriter::write_attribute(const std::string_view name,
@@ -72,13 +72,13 @@ void svg::SvgWriter::write_style(const std::string_view property,
   if (!m_tag_open) {
     throw std::runtime_error("no open tag to write a style to");
   }
-  m_style += util::xml::escape_attribute(property);
+  m_style += xml::escape_attribute(property);
   m_style += ":";
   // a `;` the file wrote would open a declaration of its own; dropped before
   // escaping, which writes `;` of its own
   std::string sanitized(value);
   std::erase(sanitized, ';');
-  m_style += util::xml::escape_attribute(sanitized);
+  m_style += xml::escape_attribute(sanitized);
   m_style += ";";
 }
 
@@ -89,7 +89,7 @@ void svg::SvgWriter::write_style(const std::string_view property,
 
 void svg::SvgWriter::write_text(const std::string_view text) {
   close_tag(true);
-  *m_out << util::xml::escape_text(text);
+  *m_out << xml::escape_text(text);
 }
 
 } // namespace odr::internal

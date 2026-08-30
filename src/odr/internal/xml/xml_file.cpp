@@ -5,7 +5,7 @@
 
 #include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/util/stream_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <pugixml.hpp>
 
@@ -21,7 +21,7 @@ namespace {
 /// leaves the guess in place.
 TextEncoding resolve_encoding(const text::TextFile &file) {
   const std::unique_ptr<std::istream> in = file.file()->stream();
-  const std::string declared = util::xml::read_declared_encoding(*in);
+  const std::string declared = xml::read_declared_encoding(*in);
 
   if (const TextEncoding encoding = text_encoding_by_name(declared);
       encoding != TextEncoding::unknown) {

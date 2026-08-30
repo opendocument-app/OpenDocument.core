@@ -18,7 +18,7 @@ namespace odr::internal {
 class AbsPath;
 }
 
-namespace odr::internal::util::xml {
+namespace odr::internal::xml {
 
 /// Escapes `&`, `<` and `>` for element content, and drops the control
 /// characters xml 1.0 cannot carry at all.
@@ -57,4 +57,4 @@ struct StringToken {
 
 std::vector<StringToken> tokenize_text(const std::string &text);
 
-} // namespace odr::internal::util::xml
+} // namespace odr::internal::xml

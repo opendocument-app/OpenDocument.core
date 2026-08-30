@@ -1,11 +1,11 @@
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 
-using namespace odr::internal::util::xml;
+using namespace odr::internal::xml;
 
 TEST(xml_util, escape_text) {
   EXPECT_EQ("a &amp; b &lt;c&gt; \"d\"", escape_text("a & b <c> \"d\""));
