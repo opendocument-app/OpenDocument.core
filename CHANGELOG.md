@@ -19,6 +19,11 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- A StarView metafile draws its remaining primitives: `LINE`, `ELLIPSE`,
+  `ROUNDRECT`, `ARC`, `PIE`, `CHORD`, `POINT` and `PIXEL`. The lines are what
+  rules a table drawn as a metafile, which used to come out as floating
+  numbers.
+
 - A StarView metafile clips what it says it clips: `CLIPREGION` and the two
   that intersect one into it. A drawing that ran outside the clip used to be
   shown in full.

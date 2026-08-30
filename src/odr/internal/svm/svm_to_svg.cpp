@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <optional>
 #include <ranges>
 #include <span>
@@ -259,7 +260,9 @@ void write_shape_style(svg::SvgWriter &out, const Context &context,
   }
 }
 
-void write_rectangle(const Rectangle &rect, const Context &context) {
+void write_rectangle(const Rectangle &rect, const Context &context,
+                     const std::uint32_t horizontal_round = 0,
+                     const std::uint32_t vertical_round = 0) {
   svg::SvgWriter &out = *context.out;
 
   out.write_element_begin("rect");
@@ -269,6 +272,16 @@ void write_rectangle(const Rectangle &rect, const Context &context) {
                                    transform_x(rect.left, context));
   out.write_attribute("height", transform_y(rect.bottom, context) -
                                     transform_y(rect.top, context));
+  if (horizontal_round != 0) {
+    out.write_attribute(
+        "rx",
+        transform_width(static_cast<std::int32_t>(horizontal_round), context));
+  }
+  if (vertical_round != 0) {
+    out.write_attribute(
+        "ry",
+        transform_height(static_cast<std::int32_t>(vertical_round), context));
+  }
   write_shape_style(out, context, true);
   out.write_element_end();
 }
@@ -552,6 +565,125 @@ void write_bitmap(const BitmapAction &action, Context &context) {
   out.write_element_end();
 }
 
+void write_ellipse(const Rectangle &rect, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  const double left = transform_x(rect.left, context);
+  const double top = transform_y(rect.top, context);
+  const double right = transform_x(rect.right, context);
+  const double bottom = transform_y(rect.bottom, context);
+
+  out.write_element_begin("ellipse");
+  out.write_attribute("cx", (left + right) / 2);
+  out.write_attribute("cy", (top + bottom) / 2);
+  out.write_attribute("rx", std::abs(right - left) / 2);
+  out.write_attribute("ry", std::abs(bottom - top) / 2);
+  write_shape_style(out, context, true);
+  out.write_element_end();
+}
+
+/// What an arc draws between its two rays.
+enum class ArcKind {
+  arc,   ///< the curve alone
+  pie,   ///< closed through the centre
+  chord, ///< closed straight from end to start
+};
+
+ArcKind get_arc_kind(const std::uint16_t action_type) {
+  switch (action_type) {
+  case META_PIE_ACTION:
+    return ArcKind::pie;
+  case META_CHORD_ACTION:
+    return ArcKind::chord;
+  default:
+    return ArcKind::arc;
+  }
+}
+
+/// `ImplGetParameter`: the ellipse parameter of the ray through @p point, in
+/// vcl's y-up angles.
+double get_arc_parameter(const IntPair &point, const double center_x,
+                         const double center_y, const double radius_x,
+                         const double radius_y) {
+  const double angle = std::atan2(center_y - point.y, point.x - center_x);
+  return std::atan2(radius_x * std::sin(angle), radius_y * std::cos(angle));
+}
+
+/// vcl sweeps counter-clockwise on screen, which is svg's sweep flag 0.
+void write_arc(const ArcAction &action, const ArcKind kind,
+               const Context &context) {
+  svg::SvgWriter &out = *context.out;
+  const Rectangle &rect = action.rectangle;
+
+  const double center_x = (rect.left + rect.right) / 2.0;
+  const double center_y = (rect.top + rect.bottom) / 2.0;
+  const double radius_x = std::abs(rect.right - rect.left) / 2.0;
+  const double radius_y = std::abs(rect.bottom - rect.top) / 2.0;
+  if (radius_x == 0 || radius_y == 0) {
+    return;
+  }
+
+  const double start =
+      get_arc_parameter(action.start, center_x, center_y, radius_x, radius_y);
+  const double end =
+      get_arc_parameter(action.end, center_x, center_y, radius_x, radius_y);
+  // the same ray twice is the whole ellipse, not nothing
+  double sweep = end - start;
+  if (sweep <= 0) {
+    sweep += 2 * std::numbers::pi;
+  }
+
+  const auto point = [&](const double x, const double y) {
+    return svg::format_number(transform_x(
+               static_cast<std::int32_t>(std::lround(x)), context)) +
+           "," +
+           svg::format_number(
+               transform_y(static_cast<std::int32_t>(std::lround(y)), context));
+  };
+  const auto at = [&](const double parameter) {
+    return point(center_x + radius_x * std::cos(parameter),
+                 center_y - radius_y * std::sin(parameter));
+  };
+  const std::string radii =
+      " A " +
+      svg::format_number(transform_width(
+          static_cast<std::int32_t>(std::lround(radius_x)), context)) +
+      "," +
+      svg::format_number(transform_height(
+          static_cast<std::int32_t>(std::lround(radius_y)), context)) +
+      " 0 0 0 ";
+
+  std::string path = "M ";
+  if (kind == ArcKind::pie) {
+    path += point(center_x, center_y) + " L ";
+  }
+  // svg draws nothing where an arc ends where it began, so a full ellipse is
+  // written as its two halves
+  path += at(start) + radii + at(start + sweep / 2) + radii + at(end);
+  if (kind != ArcKind::arc) {
+    path += " Z";
+  }
+
+  out.write_element_begin("path");
+  out.write_attribute("d", path);
+  // an arc is drawn, not filled; a pie and a chord are shapes
+  write_shape_style(out, context, kind != ArcKind::arc);
+  out.write_element_end();
+}
+
+/// A dot of the stroke's own width - a hairline is one device pixel.
+void write_point(const IntPair &point, const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("path");
+  out.write_attribute(
+      "d", "M " + svg::format_number(transform_x(point.x, context)) + "," +
+               svg::format_number(transform_y(point.y, context)) + " Z");
+  out.write_style("stroke-linecap", "round");
+  write_shape_style(out, context, false);
+  out.write_element_end();
+}
+
 void write_text(const IntPair &point, const std::string &text,
                 const std::vector<std::uint32_t> &dx_array,
                 const std::uint32_t width, const Context &context) {
@@ -683,6 +815,45 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_MAPMODE_ACTION:
     state.map_mode = read_map_mode(in);
     break;
+  case META_PIXEL_ACTION: {
+    const PixelAction action = read_pixel_action(in);
+    ensure_clip(context);
+    // the action carries its own colour, and nothing else draws with it
+    const std::uint32_t line_rgb = std::exchange(state.line_rgb, action.color);
+    const bool line_rgb_set = std::exchange(state.line_rgb_set, true);
+    write_point(action.point, context);
+    state.line_rgb = line_rgb;
+    state.line_rgb_set = line_rgb_set;
+  } break;
+  case META_POINT_ACTION: {
+    const IntPair action = read_int_pair(in);
+    ensure_clip(context);
+    write_point(action, context);
+  } break;
+  case META_LINE_ACTION: {
+    const LineAction action = read_line_action(in, action_header.vl);
+    const std::vector<IntPair> points{action.start, action.end};
+    ensure_clip(context);
+    write_path({&points, 1}, false, &action.line_info, context);
+  } break;
+  case META_ROUNDRECT_ACTION: {
+    const RoundRectangleAction action = read_round_rectangle_action(in);
+    ensure_clip(context);
+    write_rectangle(action.rectangle, context, action.horizontal_round,
+                    action.vertical_round);
+  } break;
+  case META_ELLIPSE_ACTION: {
+    const Rectangle action = read_rectangle(in);
+    ensure_clip(context);
+    write_ellipse(action, context);
+  } break;
+  case META_ARC_ACTION:
+  case META_PIE_ACTION:
+  case META_CHORD_ACTION: {
+    const ArcAction action = read_arc_action(in);
+    ensure_clip(context);
+    write_arc(action, get_arc_kind(action_header.type), context);
+  } break;
   case META_RECT_ACTION: {
     const Rectangle action = read_rectangle(in);
     ensure_clip(context);

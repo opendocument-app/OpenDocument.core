@@ -721,3 +721,111 @@ TEST(SvmToSvg, the_same_clip_twice_is_one_group) {
 
   EXPECT_EQ(1, count_of(svg, "<clipPath"));
 }
+
+TEST(SvmToSvg, ellipse) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_ELLIPSE_ACTION)
+                                        .rectangle(100, 100, 500, 400)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<ellipse cx=\"300\" cy=\"250\" rx=\"200\" ry=\"150\""));
+}
+
+TEST(SvmToSvg, round_rectangle) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_ROUNDRECT_ACTION)
+                                        .rectangle(600, 100, 1000, 400)
+                                        .u32(60)
+                                        .u32(40)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<rect x=\"600\" y=\"100\" width=\"400\" height=\"300\""
+                     " rx=\"60\" ry=\"40\""));
+}
+
+/// The same geometry LibreOffice was asked to draw: it puts the arc's ends at
+/// (441,544) and (100,650).
+TEST(SvmToSvg, arc) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_ARC_ACTION)
+                                        .rectangle(100, 500, 500, 800)
+                                        .point(500, 500)
+                                        .point(100, 650)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("d=\"M 441,544 A 200,150 0 0 0 223,511"
+                                        " A 200,150 0 0 0 100,650\""));
+  EXPECT_NE(std::string::npos, svg.find("fill:none"));
+}
+
+/// A pie closes through the centre of its ellipse, a chord straight back.
+TEST(SvmToSvg, pie_and_chord_are_closed) {
+  const std::string pie = translate(SvmBuilder()
+                                        .action(svm::META_PIE_ACTION)
+                                        .rectangle(100, 500, 500, 800)
+                                        .point(500, 500)
+                                        .point(100, 650)
+                                        .end()
+                                        .file());
+  const std::string chord = translate(SvmBuilder()
+                                          .action(svm::META_CHORD_ACTION)
+                                          .rectangle(100, 500, 500, 800)
+                                          .point(500, 500)
+                                          .point(100, 650)
+                                          .end()
+                                          .file());
+
+  EXPECT_NE(std::string::npos, pie.find("d=\"M 300,650 L 441,544 A"));
+  EXPECT_NE(std::string::npos, pie.find("100,650 Z\""));
+  EXPECT_NE(std::string::npos, chord.find("d=\"M 441,544 A"));
+  EXPECT_NE(std::string::npos, chord.find("100,650 Z\""));
+}
+
+TEST(SvmToSvg, line) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_LINE_ACTION)
+                                        .point(1, 2)
+                                        .point(3, 4)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("d=\"M 1,2 L 3,4\""));
+}
+
+/// A dot is a zero-length path with a round cap, which a browser draws and a
+/// zero-length `<line>` does not. A `PIXEL` brings its own colour and leaves
+/// the state's alone.
+TEST(SvmToSvg, a_point_and_a_pixel_are_dots) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_LINECOLOR_ACTION)
+                                        .u32(0x0000ff)
+                                        .u8(1)
+                                        .end()
+                                        .action(svm::META_POINT_ACTION)
+                                        .point(1, 2)
+                                        .end()
+                                        .action(svm::META_PIXEL_ACTION)
+                                        .point(3, 4)
+                                        .u32(0x00ff00)
+                                        .end()
+                                        .action(svm::META_POINT_ACTION)
+                                        .point(5, 6)
+                                        .end()
+                                        .file());
+
+  EXPECT_EQ(3, count_of(svg, "stroke-linecap:round"));
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 1,2 Z\" style=\"stroke-linecap:round;"
+                     "stroke:rgb(0,0,255)"));
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 3,4 Z\" style=\"stroke-linecap:round;"
+                     "stroke:rgb(0,255,0)"));
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 5,6 Z\" style=\"stroke-linecap:round;"
+                     "stroke:rgb(0,0,255)"));
+}

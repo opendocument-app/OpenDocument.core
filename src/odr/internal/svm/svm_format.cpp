@@ -515,6 +515,49 @@ svm::Font svm::read_font(std::istream &in) {
   return result;
 }
 
+svm::PixelAction svm::read_pixel_action(std::istream &in) {
+  PixelAction result;
+
+  result.point = read_int_pair(in);
+  read_primitive(in, result.color);
+
+  return result;
+}
+
+svm::LineAction svm::read_line_action(std::istream &in,
+                                      const VersionLength &vl) {
+  LineAction result;
+
+  result.start = read_int_pair(in);
+  result.end = read_int_pair(in);
+
+  if (vl.version >= 2) {
+    result.line_info = read_line_info(in);
+  }
+
+  return result;
+}
+
+svm::RoundRectangleAction svm::read_round_rectangle_action(std::istream &in) {
+  RoundRectangleAction result;
+
+  result.rectangle = read_rectangle(in);
+  read_primitive(in, result.horizontal_round);
+  read_primitive(in, result.vertical_round);
+
+  return result;
+}
+
+svm::ArcAction svm::read_arc_action(std::istream &in) {
+  ArcAction result;
+
+  result.rectangle = read_rectangle(in);
+  result.start = read_int_pair(in);
+  result.end = read_int_pair(in);
+
+  return result;
+}
+
 svm::PolyLineAction svm::read_poly_line_action(std::istream &in,
                                                const VersionLength &vl) {
   PolyLineAction result;
