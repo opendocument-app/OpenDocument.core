@@ -831,6 +831,15 @@ Java_app_opendocument_core_Frame_zIndexNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Frame_transformNative(JNIEnv *env, jobject,
+                                                 jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_transform(
+        env, element(handle).as_frame().transform());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_styleNative(JNIEnv *env, jobject,
                                              jlong handle) {
   return guarded(env, [&] {
@@ -867,6 +876,15 @@ Java_app_opendocument_core_Rect_heightNative(JNIEnv *env, jobject,
                                              jlong handle) {
   return guarded(env, [&] {
     return odr_jni::make_measure(env, element(handle).as_rect().height());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Rect_transformNative(JNIEnv *env, jobject,
+                                                jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_transform(
+        env, element(handle).as_rect().transform());
   });
 }
 
@@ -909,6 +927,15 @@ Java_app_opendocument_core_Line_y2Native(JNIEnv *env, jobject, jlong handle) {
 }
 
 extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Line_transformNative(JNIEnv *env, jobject,
+                                                jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_transform(
+        env, element(handle).as_line().transform());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Line_styleNative(JNIEnv *env, jobject,
                                             jlong handle) {
   return guarded(env, [&] {
@@ -945,6 +972,15 @@ Java_app_opendocument_core_Circle_heightNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
     return odr_jni::make_measure(env, element(handle).as_circle().height());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Circle_transformNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_transform(
+        env, element(handle).as_circle().transform());
   });
 }
 
@@ -990,6 +1026,15 @@ Java_app_opendocument_core_CustomShape_heightNative(JNIEnv *env, jobject,
   return guarded(env, [&] {
     return odr_jni::make_measure(env,
                                  element(handle).as_custom_shape().height());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_CustomShape_transformNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_drawing_transform(
+        env, element(handle).as_custom_shape().transform());
   });
 }
 

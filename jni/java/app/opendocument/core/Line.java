@@ -22,6 +22,10 @@ public final class Line extends Element {
     return y2Native(handle());
   }
 
+  public DrawingTransform transform() {
+    return transformNative(handle());
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
@@ -33,6 +37,8 @@ public final class Line extends Element {
   private native Measure x2Native(long handle);
 
   private native Measure y2Native(long handle);
+
+  private native DrawingTransform transformNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

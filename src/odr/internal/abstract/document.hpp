@@ -28,6 +28,7 @@ struct TableCellStyle;
 struct TextStyle;
 struct ParagraphStyle;
 struct GraphicStyle;
+struct DrawingTransform;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -442,6 +443,8 @@ public:
   frame_height(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual std::optional<std::int32_t>
   frame_z_index(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingTransform>
+  frame_transform(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   frame_style(ElementIdentifier element_id) const = 0;
@@ -457,6 +460,8 @@ public:
   rect_width(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual Measure
   rect_height(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingTransform>
+  rect_transform(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   rect_style(ElementIdentifier element_id) const = 0;
@@ -470,6 +475,8 @@ public:
   [[nodiscard]] virtual Measure line_y1(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual Measure line_x2(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual Measure line_y2(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingTransform>
+  line_transform(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   line_style(ElementIdentifier element_id) const = 0;
@@ -487,6 +494,8 @@ public:
   circle_width(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual Measure
   circle_height(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingTransform>
+  circle_transform(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   circle_style(ElementIdentifier element_id) const = 0;
@@ -504,6 +513,8 @@ public:
   custom_shape_width(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual Measure
   custom_shape_height(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual std::optional<DrawingTransform>
+  custom_shape_transform(ElementIdentifier element_id) const = 0;
 
   [[nodiscard]] virtual GraphicStyle
   custom_shape_style(ElementIdentifier element_id) const = 0;

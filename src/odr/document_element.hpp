@@ -482,6 +482,20 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 };
 
+/// @brief Represents the affine transform a drawing shape carries.
+///
+/// `(x, y)` maps to `(a*x + c*y + e, b*x + d*y + f)`, the lettering of
+/// `matrix(a b c d e f)`. `e` and `f` are lengths in the unit the document
+/// wrote, and unitless only where they are zero.
+struct DrawingTransform final {
+  double a{1};
+  double b{0};
+  double c{0};
+  double d{1};
+  Measure e{0, DynamicUnit()};
+  Measure f{0, DynamicUnit()};
+};
+
 /// @brief Represents a frame element in a document.
 class Frame final : public ElementBase<internal::abstract::FrameAdapter> {
 public:
@@ -493,6 +507,7 @@ public:
   [[nodiscard]] std::optional<Measure> width() const;
   [[nodiscard]] std::optional<Measure> height() const;
   [[nodiscard]] std::optional<std::int32_t> z_index() const;
+  [[nodiscard]] std::optional<DrawingTransform> transform() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -506,6 +521,7 @@ public:
   [[nodiscard]] Measure y() const;
   [[nodiscard]] Measure width() const;
   [[nodiscard]] Measure height() const;
+  [[nodiscard]] std::optional<DrawingTransform> transform() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -519,6 +535,7 @@ public:
   [[nodiscard]] Measure y1() const;
   [[nodiscard]] Measure x2() const;
   [[nodiscard]] Measure y2() const;
+  [[nodiscard]] std::optional<DrawingTransform> transform() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -532,6 +549,7 @@ public:
   [[nodiscard]] Measure y() const;
   [[nodiscard]] Measure width() const;
   [[nodiscard]] Measure height() const;
+  [[nodiscard]] std::optional<DrawingTransform> transform() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
@@ -546,6 +564,7 @@ public:
   [[nodiscard]] std::optional<Measure> y() const;
   [[nodiscard]] Measure width() const;
   [[nodiscard]] Measure height() const;
+  [[nodiscard]] std::optional<DrawingTransform> transform() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };

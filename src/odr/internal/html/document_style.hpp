@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace odr {
@@ -22,6 +23,7 @@ struct TableColumnStyle;
 struct TableRowStyle;
 struct TableCellStyle;
 struct GraphicStyle;
+struct DrawingTransform;
 struct PageLayout;
 } // namespace odr
 
@@ -47,6 +49,9 @@ translate_table_column_style(const TableColumnStyle &table_column_style);
 std::string translate_table_row_style(const TableRowStyle &table_row_style);
 std::string translate_table_cell_style(const TableCellStyle &table_cell_style);
 std::string translate_drawing_style(const GraphicStyle &graphic_style);
+/// Empty for a transform that moves nothing.
+std::string
+translate_drawing_transform(const std::optional<DrawingTransform> &transform);
 
 std::string translate_frame_properties(const Frame &frame);
 std::string translate_rect_properties(const Rect &rect);

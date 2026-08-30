@@ -622,7 +622,8 @@ void html::translate_line(const Element &element, const WritingState &state) {
                      {"version", "1.1"},
                      {"overflow", "visible"}})
                  .set_style("z-index:-1;position:absolute;top:0;left:0;" +
-                            translate_drawing_style(style)));
+                            translate_drawing_style(style) +
+                            translate_drawing_transform(line.transform())));
 
   state.out().write_element_begin(
       "line",

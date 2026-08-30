@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/style.hpp>
@@ -34,6 +35,9 @@ jobject make_table_column_style(JNIEnv *env,
 jobject make_table_row_style(JNIEnv *env, const odr::TableRowStyle &style);
 jobject make_table_cell_style(JNIEnv *env, const odr::TableCellStyle &style);
 jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style);
+jobject
+make_drawing_transform(JNIEnv *env,
+                       const std::optional<odr::DrawingTransform> &transform);
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout);
 jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions);

@@ -215,6 +215,10 @@ public:
   frame_z_index(const ElementIdentifier /*element_id*/) const override {
     return std::nullopt;
   }
+  [[nodiscard]] std::optional<DrawingTransform>
+  frame_transform(const ElementIdentifier /*element_id*/) const override {
+    return std::nullopt;
+  }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier /*element_id*/) const override {
     return {};
