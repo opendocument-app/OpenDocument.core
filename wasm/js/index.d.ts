@@ -150,6 +150,16 @@ export declare class Document {
   render(index?: number): Rendered;
   read(path: string): Content;
 
+  /** `capabilities()` narrowed to this document. */
+  isEditable(): boolean;
+  isSavable(encrypted?: boolean): boolean;
+  /** Applies what the rendered page's `odr.generateDiff()` collected.
+   * @throws OdrError `NoDocumentFile` */
+  edit(diff: string): this;
+  /** The document's bytes, not the rendered html.
+   * @throws OdrError `UnsupportedOperation` where the format cannot be saved */
+  save(password?: string): Uint8Array;
+
   /** Idempotent; returns whether it released anything. */
   close(): boolean;
   [Symbol.dispose](): void;

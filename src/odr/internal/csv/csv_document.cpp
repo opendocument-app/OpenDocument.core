@@ -313,12 +313,12 @@ bool CsvDocument::is_savable(
   return false;
 }
 
-void CsvDocument::save([[maybe_unused]] const Path &path) const {
+void CsvDocument::save(std::ostream & /*out*/) const {
   throw UnsupportedOperation();
 }
 
-void CsvDocument::save([[maybe_unused]] const Path &path,
-                       [[maybe_unused]] const char *password) const {
+void CsvDocument::save(std::ostream & /*out*/,
+                       const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 

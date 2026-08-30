@@ -26,6 +26,15 @@ public final class Document extends NativeResource {
     saveEncryptedNative(handle(), path, password);
   }
 
+  /** The saved document as bytes. */
+  public byte[] saveToMemory() {
+    return saveToMemoryNative(handle());
+  }
+
+  public byte[] saveToMemory(String password) {
+    return saveToMemoryEncryptedNative(handle(), password);
+  }
+
   public FileType fileType() {
     return FileType.fromNative(fileTypeNative(handle()));
   }
@@ -59,6 +68,10 @@ public final class Document extends NativeResource {
   private native void saveNative(long handle, String path);
 
   private native void saveEncryptedNative(long handle, String path, String password);
+
+  private native byte[] saveToMemoryNative(long handle);
+
+  private native byte[] saveToMemoryEncryptedNative(long handle, String password);
 
   private native int fileTypeNative(long handle);
 

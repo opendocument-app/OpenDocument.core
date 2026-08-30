@@ -7,6 +7,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 
+#include <sstream>
 #include <vector>
 
 namespace {
@@ -16,6 +17,7 @@ using odr_jni::from_handle;
 using odr_jni::guarded;
 using odr_jni::HandleGuard;
 using odr_jni::make_handle;
+using odr_jni::to_jbytes;
 using odr_jni::to_jstring;
 using odr_jni::to_string;
 
@@ -102,6 +104,26 @@ Java_app_opendocument_core_Document_saveEncryptedNative(JNIEnv *env, jobject,
   guarded(env, [&] {
     from_handle<odr::Document>(handle)->save(to_string(env, path),
                                              to_string(env, password));
+  });
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_app_opendocument_core_Document_saveToMemoryNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    std::ostringstream out;
+    from_handle<odr::Document>(handle)->save(out);
+    return to_jbytes(env, out.str());
+  });
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_app_opendocument_core_Document_saveToMemoryEncryptedNative(
+    JNIEnv *env, jobject, jlong handle, jstring password) {
+  return guarded(env, [&] {
+    std::ostringstream out;
+    from_handle<odr::Document>(handle)->save(out, to_string(env, password));
+    return to_jbytes(env, out.str());
   });
 }
 

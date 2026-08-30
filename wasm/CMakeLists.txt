@@ -32,6 +32,7 @@ endif ()
 add_executable(odr_wasm
         "src/odr_wasm.cpp"
         "src/wasm_core.cpp"
+        "src/wasm_document.cpp"
         "src/wasm_file.cpp"
         "src/wasm_html.cpp"
         "src/wasm_logger.cpp"

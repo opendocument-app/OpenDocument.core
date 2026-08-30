@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,5 +103,23 @@ class DocumentTest {
     Html.edit(document, "{\"modifiedText\":{\"" + text + "\":\"edited by the diff\"}}");
 
     assertTrue(walkText(document.rootElement()).contains("edited by the diff"));
+  }
+
+  @Test
+  void saveToMemoryRoundTripsAnEdit() throws IOException {
+    Document document = openDocument();
+
+    Element paragraph = document.rootElement().firstChild();
+    DocumentPath text = paragraph.firstChild().documentPath();
+    Html.edit(document, "{\"modifiedText\":{\"" + text + "\":\"saved to memory\"}}");
+
+    byte[] saved = document.saveToMemory();
+    assertTrue(saved.length > 0);
+
+    Path reloadedPath = tempDir.resolve("from-memory.odt");
+    Files.write(reloadedPath, saved);
+    Document reloaded = Odr.open(reloadedPath.toString()).asDocumentFile().document();
+
+    assertTrue(walkText(reloaded.rootElement()).contains("saved to memory"));
   }
 }

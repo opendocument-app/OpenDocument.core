@@ -117,3 +117,30 @@ def test_list_markers(odt_path):
 
     assert [item.marker() for item in items(lists[1])] == ["1.", "2."]
     assert [item.number() for item in items(lists[1])] == [1, 2]
+
+
+def test_save_to_memory_round_trips(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    assert document.is_savable()
+
+    saved = document.save_to_memory()
+    assert isinstance(saved, bytes)
+    assert saved[:2] == b"PK"
+
+    path = tmp_path / "from_memory.odt"
+    path.write_bytes(saved)
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    assert walk_text(reloaded.root_element()) == walk_text(document.root_element())
+
+
+def test_save_to_memory_carries_an_edit(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+
+    diff = '{"modifiedText":{"/child:0/child:0":"edited in python"}}'
+    pyodr.html.edit(document, diff)
+
+    path = tmp_path / "edited.odt"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+
+    assert "edited in python" in walk_text(reloaded.root_element())

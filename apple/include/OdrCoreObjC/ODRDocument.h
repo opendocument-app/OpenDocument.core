@@ -28,6 +28,13 @@ NS_SWIFT_NAME(Document)
       password:(NSString *)password
          error:(NSError **)error;
 
+/// The saved document as bytes.
+- (nullable NSData *)saveToMemoryWithError:(NSError **)error
+    NS_SWIFT_NAME(saveToMemory());
+- (nullable NSData *)saveToMemoryWithPassword:(NSString *)password
+                                        error:(NSError **)error
+    NS_SWIFT_NAME(saveToMemory(password:));
+
 /// The document's parts as a filesystem.
 - (nullable ODRFilesystem *)filesystemWithError:(NSError **)error
     NS_SWIFT_NAME(filesystem());

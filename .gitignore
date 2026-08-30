@@ -36,6 +36,7 @@
 
 ## OpenDocument.core
 build/
+build-wasm/
 cmake-build-*/
 jni/target/
 jni/.flattened-pom.xml

@@ -247,6 +247,35 @@ final class ElementTreeTests: XCTestCase {
   }
 }
 
+final class DocumentSaveTests: XCTestCase {
+  private func document() throws -> Document {
+    try DecodedFile.decode(path: try Fixture.odt())
+      .asDocumentFile().document()
+  }
+
+  func testSaveToMemoryCarriesAnEdit() throws {
+    let document = try self.document()
+    XCTAssertTrue(document.isSavable)
+
+    let root = try XCTUnwrap(try document.rootElement())
+    let text = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+    try text.setContent("saved to memory")
+
+    let saved = try XCTUnwrap(try document.saveToMemory())
+    XCTAssertFalse(saved.isEmpty)
+
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("from-memory.odt")
+    try saved.write(to: path)
+
+    let reloaded = try DecodedFile.decode(path: path.path)
+      .asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    XCTAssertTrue(
+      reloadedRoot.descendants(ofType: Text.self).contains { $0.content == "saved to memory" })
+  }
+}
+
 final class TableAddressTests: XCTestCase {
   func testRoundTrips() throws {
     XCTAssertEqual(TableAddress.columnNumber(from: "C"), 2)

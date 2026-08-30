@@ -144,11 +144,11 @@ bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
 }
 
-void Document::save(const Path & /*path*/) const {
+void Document::save(std::ostream & /*out*/) const {
   throw UnsupportedOperation();
 }
 
-void Document::save(const Path & /*path*/, const char * /*password*/) const {
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
   throw UnsupportedOperation();
 }
 
