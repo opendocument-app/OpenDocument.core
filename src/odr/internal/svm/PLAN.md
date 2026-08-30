@@ -27,8 +27,8 @@ Each stage is one pull request, stacked on the one before it.
    nowhere in the corpus - and so is decoding a non-`UCS2` string instead of
    passing its bytes through: until then a latin-1 label emits invalid utf-8,
    which costs the image exactly as an unescaped `&` did.
-4. **Clipping.** `CLIPREGION`, `ISECTRECTCLIPREGION`,
-   `ISECTREGIONCLIPREGION`, `MOVECLIPREGION`.
+4. **Clipping** - done but for `MOVECLIPREGION`, which occurs nowhere and
+   would have to move path data that is already written out.
 5. **Bitmaps** (#194) - done for the `BMP` and `BMPEX` families; `MASK`,
    which stencils one colour through a bitmap, and `ZCOMPRESS`, which needs
    inflating first, are still open. See the shortcut below.
@@ -78,6 +78,25 @@ factor of 1.76.
 It is rare — 4 `MAPMODE` actions in 1125 files, one of them relative — and
 getting it right means following `vcl/source/outdev/map.cxx` rather than
 guessing, so it is its own stage.
+
+## Clipping is nested groups
+
+An svg `clip-path` names one shape, and `ISECT…` intersects. Two clips
+therefore become two groups, one inside the other, and the state's clip is a
+*stack* of shapes rather than one: `ensure_clip` keeps the groups that the
+next drawing action still wants, closes the ones it does not, and opens what
+is missing. A `POP` that restores the clip is then nothing special - the next
+action closes what it has to.
+
+A region streams as a band list, which is a union of rectangles, and from
+version 2 also as the poly-polygon those were rasterised from. The polygons
+are the better outline where they are there. Both go into one `<path>` -
+disjoint bands make union and even-odd the same thing, and a poly-polygon
+wants even-odd anyway, so `clip-rule="evenodd"` covers both.
+
+vcl does *not* re-scale a clip when the map mode changes (`SetMapMode`:
+"clip regions are not re-scaled"), so the shape is transformed once, when the
+action sets it.
 
 ## Text is where the corpus lives
 

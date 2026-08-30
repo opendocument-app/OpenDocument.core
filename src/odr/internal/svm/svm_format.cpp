@@ -9,7 +9,9 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
+#include <utility>
 
 namespace odr::internal {
 
@@ -22,6 +24,14 @@ std::string read_bytes(std::istream &in, const std::uint64_t size) {
     throw MalformedSvmFile();
   }
 }
+
+/// `RegionType`, what shape the region was streamed as.
+constexpr std::uint16_t region_null = 0;
+constexpr std::uint16_t region_empty = 1;
+/// `StreamEntryType`, what the band list holds.
+constexpr std::uint16_t band_header = 0;
+constexpr std::uint16_t band_separation = 1;
+constexpr std::uint16_t band_end = 2;
 
 /// A `.bmp` starts with `"BM"`; `"BA"`, an os/2 bitmap array, does not.
 constexpr std::uint16_t bmp_magic = 0x4d42;
@@ -775,6 +785,66 @@ svm::BitmapAction svm::read_bitmap_action(std::istream &in,
   }
 
   return result;
+}
+
+std::optional<svm::Region> svm::read_region(std::istream &in) {
+  const VersionLength vl = read_version_length(in);
+  std::uint16_t content_version{};
+  std::uint16_t type{};
+  read_primitive(in, content_version);
+  read_primitive(in, type);
+
+  if (type == region_null) {
+    return std::nullopt;
+  }
+
+  Region result;
+  if (type == region_empty) {
+    return result;
+  }
+
+  // horizontal strips, each with the spans inside the region
+  std::int32_t top{};
+  std::int32_t bottom{};
+  while (true) {
+    std::uint16_t entry{};
+    read_primitive(in, entry);
+    if (entry == band_end) {
+      break;
+    }
+
+    std::int32_t first{};
+    std::int32_t second{};
+    read_primitive(in, first);
+    read_primitive(in, second);
+
+    if (entry == band_header) {
+      top = first;
+      bottom = second;
+    } else if (entry == band_separation) {
+      result.rectangles.push_back({first, top, second, bottom});
+    } else {
+      throw MalformedSvmFile();
+    }
+  }
+
+  if (vl.version >= 2) {
+    bool has_polygons{};
+    read_primitive(in, has_polygons);
+    if (has_polygons) {
+      result.polygons = read_poly_polygon(in);
+    }
+  }
+
+  return result;
+}
+
+std::pair<std::optional<svm::Region>, bool>
+svm::read_clip_region_action(std::istream &in) {
+  std::optional<Region> region = read_region(in);
+  bool clip{};
+  read_primitive(in, clip);
+  return {std::move(region), clip};
 }
 
 std::uint16_t svm::read_text_align_action(std::istream &in) {

@@ -19,6 +19,10 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
+- A StarView metafile clips what it says it clips: `CLIPREGION` and the two
+  that intersect one into it. A drawing that ran outside the clip used to be
+  shown in full.
+
 - A StarView metafile draws its bitmaps (#194): `BMP`, `BMPEX` and their
   scaling and part variants, transparency mask included. Such a chart used to
   render as an empty frame.

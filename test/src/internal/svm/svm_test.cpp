@@ -110,6 +110,23 @@ public:
         .end();
   }
 
+  /// A region of one band, the shape `ReadRegion` reads a rectangle as.
+  SvmBuilder &region(const std::int32_t left, const std::int32_t top,
+                     const std::int32_t right, const std::int32_t bottom) {
+    return begin(2)
+        .u16(1) // content version
+        .u16(2) // type: rectangle
+        .u16(0) // band header
+        .i32(top)
+        .i32(bottom)
+        .u16(1) // separation
+        .i32(left)
+        .i32(right)
+        .u16(2) // end
+        .u8(0)  // no poly-polygon
+        .end();
+  }
+
   /// A 24-bit uncompressed dib with the `BITMAPFILEHEADER` a metafile stores
   /// it behind. @p pixels is @p width * @p height bgr triples, top row first;
   /// the rows go out bottom-up and padded, as a dib holds them.
@@ -618,4 +635,89 @@ TEST(SvmToSvg, a_bitmap_mask_is_inverted) {
   EXPECT_NE(std::string::npos, svg.find("<mask id=\"odr-mask-1\""));
   EXPECT_NE(std::string::npos, svg.find("filter=\"url(#odr-invert)\""));
   EXPECT_NE(std::string::npos, svg.find("mask=\"url(#odr-mask-1)\""));
+}
+
+/// What a clip covers is a group around everything drawn after it.
+TEST(SvmToSvg, a_clip_region_wraps_what_follows) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_ISECTRECTCLIPREGION_ACTION)
+                    .rectangle(1, 2, 11, 22)
+                    .end()
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<clipPath id=\"odr-clip-1\">"
+                     "<path d=\"M 1,2 L 11,2 11,22 1,22 Z\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("<g clip-path=\"url(#odr-clip-1)\"><rect"));
+  EXPECT_NE(std::string::npos, svg.find("</g></svg>"));
+}
+
+/// One region intersected into another is one group inside the other, which
+/// is how svg intersects two clips.
+TEST(SvmToSvg, clips_intersect_by_nesting) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_ISECTRECTCLIPREGION_ACTION)
+                    .rectangle(0, 0, 10, 10)
+                    .end()
+                    .action(svm::META_ISECTREGIONCLIPREGION_ACTION)
+                    .region(2, 2, 8, 8)
+                    .end()
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("<g clip-path=\"url(#odr-clip-1)\">"
+                                        "<clipPath id=\"odr-clip-2\">"));
+  EXPECT_NE(std::string::npos, svg.find("M 2,2 L 8,2 8,8 2,8 Z"));
+  EXPECT_NE(std::string::npos, svg.find("</g></g></svg>"));
+}
+
+/// A pop that restores the clip closes the group the push was drawn in.
+TEST(SvmToSvg, a_pop_restores_the_clip) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_PUSH_ACTION)
+                    .u16(svm::PUSH_CLIPREGION)
+                    .end()
+                    .action(svm::META_ISECTRECTCLIPREGION_ACTION)
+                    .rectangle(1, 1, 2, 2)
+                    .end()
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .action(svm::META_POP_ACTION)
+                    .end()
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .file());
+
+  // the second rectangle is outside the group the first one is in
+  EXPECT_NE(std::string::npos, svg.find("/></g><rect"));
+}
+
+/// A file sets the drawing area and then intersects the region of the same
+/// rectangle; the second is a group that clips nothing.
+TEST(SvmToSvg, the_same_clip_twice_is_one_group) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_ISECTRECTCLIPREGION_ACTION)
+                    .rectangle(0, 0, 10, 10)
+                    .end()
+                    .action(svm::META_ISECTREGIONCLIPREGION_ACTION)
+                    .region(0, 0, 10, 10)
+                    .end()
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .file());
+
+  EXPECT_EQ(1, count_of(svg, "<clipPath"));
 }
