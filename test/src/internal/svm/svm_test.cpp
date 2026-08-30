@@ -110,6 +110,39 @@ public:
         .end();
   }
 
+  /// A 24-bit uncompressed dib with the `BITMAPFILEHEADER` a metafile stores
+  /// it behind. @p pixels is @p width * @p height bgr triples, top row first;
+  /// the rows go out bottom-up and padded, as a dib holds them.
+  SvmBuilder &dib(const std::int32_t width, const std::int32_t height,
+                  const std::string &pixels) {
+    const std::size_t stride = ((width * 24 + 31) / 32) * 4;
+    const auto image_size = static_cast<std::uint32_t>(stride * height);
+
+    u16(0x4d42);         // "BM"
+    u32(54 + image_size) // bfSize
+        .u16(0)          // reserved
+        .u16(0)          // reserved
+        .u32(54);        // bfOffBits
+    u32(40)              // header size
+        .i32(width)
+        .i32(height)
+        .u16(1)  // planes
+        .u16(24) // bit count
+        .u32(0)  // compression
+        .u32(image_size)
+        .i32(0) // pixels per metre x
+        .i32(0) // pixels per metre y
+        .u32(0) // colours used
+        .u32(0);
+    for (std::int32_t y = height - 1; y >= 0; --y) {
+      const std::string row =
+          pixels.substr(static_cast<std::size_t>(y) * width * 3, width * 3);
+      m_data += row;
+      m_data.append(stride - row.size(), '\0');
+    }
+    return *this;
+  }
+
   /// A pascal string, as `read_uint16_prefixed_ascii_string` reads it.
   SvmBuilder &ascii_string(const std::string &value) {
     u16(static_cast<std::uint16_t>(value.size()));
@@ -528,4 +561,48 @@ TEST(SvmToSvg, text_draws_the_run_it_names) {
       translate(SvmBuilder().text(0, 0, "abcdef", 2, 3).file());
 
   EXPECT_NE(std::string::npos, svg.find(">cde</text>"));
+}
+
+/// A metafile stores a dib behind its file header, so the bytes already are a
+/// bmp - and where the pixels can simply be copied out, a png instead, which
+/// is what keeps a chart from costing megabytes.
+TEST(SvmToSvg, a_bitmap_is_drawn_where_the_action_puts_it) {
+  const std::string white_black_red_blue("\xff\xff\xff"
+                                         "\x00\x00\x00"
+                                         "\x00\x00\xff"
+                                         "\xff\x00\x00",
+                                         12);
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_BMPSCALE_ACTION)
+                                        .dib(2, 2, white_black_red_blue)
+                                        .point(10, 20)
+                                        .point(30, 40)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<image x=\"10\" y=\"20\" width=\"30\" height=\"40\""));
+  EXPECT_NE(std::string::npos, svg.find("href=\"data:image/png;base64,"));
+}
+
+/// The mask says where the bitmap does *not* show, in white - and an svg mask
+/// keeps what is white, so it goes through a filter that inverts it.
+TEST(SvmToSvg, a_bitmap_mask_is_inverted) {
+  const std::string pixels(2 * 2 * 3, '\x40');
+  const std::string svg =
+      translate(SvmBuilder()
+                    .action(svm::META_BMPEXSCALE_ACTION)
+                    .dib(2, 2, pixels)
+                    .u32(0x25091962) // the transparency data behind it
+                    .u32(0xacb20201)
+                    .u8(2) // a second dib as the mask
+                    .dib(2, 2, pixels)
+                    .point(0, 0)
+                    .point(10, 10)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("<mask id=\"odr-mask-1\""));
+  EXPECT_NE(std::string::npos, svg.find("filter=\"url(#odr-invert)\""));
+  EXPECT_NE(std::string::npos, svg.find("mask=\"url(#odr-mask-1)\""));
 }

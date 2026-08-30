@@ -289,6 +289,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/number_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
         "src/odr/internal/util/stream_util.cpp"
+        "src/odr/internal/util/png_util.cpp"
         "src/odr/internal/util/string_util.cpp"
         "src/odr/internal/util/xml_util.cpp"
 

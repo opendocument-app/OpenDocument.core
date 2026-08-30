@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/logger.hpp>
 
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/svg/svg_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_format.hpp>
@@ -56,6 +57,11 @@ struct Context final {
 
   GraphicsState state;
   std::vector<SavedState> stack;
+
+  /// Names the masks and clip paths apart, and says whether the filter the
+  /// masks share is written.
+  std::uint32_t element_count{};
+  bool inverter_written{};
 };
 
 double scale(const IntPair fraction) {
@@ -337,6 +343,139 @@ std::string get_x_list_string(const IntPair &point,
 
 /// @p dx_array places the characters one by one where the file measured them;
 /// @p width, from a stretch text, is the advance the whole run has to fill.
+/// A bitmap with no size of its own is drawn at its pixel size, and the
+/// map mode says how big a pixel is. Nothing in the file does, so this is the
+/// assumption `MapUnit::MapPixel` would resolve against a device.
+constexpr double assumed_dpi = 96;
+/// The unit the header of every metafile in the wild uses.
+constexpr double hundredth_mm_per_inch = 2540;
+
+/// Inverts what a mask image shows: a metafile's mask is white where the
+/// bitmap does *not* show, and an svg mask keeps what is white.
+void write_inverter(const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("filter");
+  out.write_attribute("id", "odr-invert");
+  out.write_attribute("color-interpolation-filters", "sRGB");
+  out.write_element_begin("feColorMatrix");
+  out.write_attribute("type", "matrix");
+  out.write_attribute("values", "-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0");
+  out.write_element_end();
+  out.write_element_end();
+}
+
+/// Where the bitmap goes, and how big: `x`, `y`, `width`, `height` in the
+/// drawing's own coordinates.
+struct BitmapBox final {
+  double x{};
+  double y{};
+  double width{};
+  double height{};
+};
+
+/// The box the whole bitmap covers. For a part action that is bigger than
+/// what is drawn: the source rectangle is scaled onto the destination one and
+/// the rest is clipped away.
+BitmapBox get_bitmap_box(const BitmapAction &action, const Context &context) {
+  const IntPair &size_pixel = action.bitmap.image.size_pixel;
+
+  IntPair size = action.size;
+  if (size.x == 0 || size.y == 0) {
+    // no size of its own: a pixel is a pixel at the assumed resolution
+    const auto per_pixel =
+        static_cast<std::int32_t>(hundredth_mm_per_inch / assumed_dpi);
+    size = {size_pixel.x * per_pixel, size_pixel.y * per_pixel};
+  }
+
+  BitmapBox box{transform_x(action.point.x, context),
+                transform_y(action.point.y, context),
+                transform_width(size.x, context),
+                transform_height(size.y, context)};
+
+  if (action.source_size.x == 0 || action.source_size.y == 0) {
+    return box;
+  }
+
+  // the source rectangle, in pixels, is what fills the box, so the bitmap
+  // around it is drawn at the same scale and clipped off
+  const double scale_x = box.width / action.source_size.x;
+  const double scale_y = box.height / action.source_size.y;
+  return {box.x - action.source_point.x * scale_x,
+          box.y - action.source_point.y * scale_y, size_pixel.x * scale_x,
+          size_pixel.y * scale_y};
+}
+
+/// Opens the `<image>` and leaves it open: the caller adds the attributes
+/// that are its own and ends it.
+void write_bitmap_image(const Image &image, const BitmapBox &box,
+                        const Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  out.write_element_begin("image");
+  out.write_attribute("x", box.x);
+  out.write_attribute("y", box.y);
+  out.write_attribute("width", box.width);
+  out.write_attribute("height", box.height);
+  // the box is where the file puts it, aspect ratio included
+  out.write_attribute("preserveAspectRatio", "none");
+  out.write_attribute("href", "data:" + image.mime_type + ";base64," +
+                                  crypto::util::base64_encode(image.data));
+}
+
+void write_bitmap(const BitmapAction &action, Context &context) {
+  svg::SvgWriter &out = *context.out;
+
+  if (action.bitmap.image.data.empty()) {
+    ODR_WARNING(*context.logger, "a bitmap we cannot read, drawing nothing");
+    return;
+  }
+
+  const BitmapBox box = get_bitmap_box(action, context);
+  std::string mask_id;
+
+  if (!action.bitmap.mask.data.empty()) {
+    if (!context.inverter_written) {
+      write_inverter(context);
+      context.inverter_written = true;
+    }
+    mask_id = "odr-mask-" + std::to_string(++context.element_count);
+
+    out.write_element_begin("mask");
+    out.write_attribute("id", mask_id);
+    out.write_attribute("maskUnits", "userSpaceOnUse");
+    write_bitmap_image(action.bitmap.mask, box, context);
+    out.write_attribute("filter", "url(#odr-invert)");
+    out.write_element_end();
+    out.write_element_end();
+  }
+
+  const bool clipped = action.source_size.x != 0 && action.source_size.y != 0;
+  if (clipped) {
+    const std::string clip_id =
+        "odr-clip-" + std::to_string(++context.element_count);
+    out.write_element_begin("clipPath");
+    out.write_attribute("id", clip_id);
+    out.write_element_begin("rect");
+    out.write_attribute("x", transform_x(action.point.x, context));
+    out.write_attribute("y", transform_y(action.point.y, context));
+    out.write_attribute("width", transform_width(action.size.x, context));
+    out.write_attribute("height", transform_height(action.size.y, context));
+    out.write_element_end();
+    out.write_element_end();
+
+    write_bitmap_image(action.bitmap.image, box, context);
+    out.write_attribute("clip-path", "url(#" + clip_id + ")");
+  } else {
+    write_bitmap_image(action.bitmap.image, box, context);
+  }
+
+  if (!mask_id.empty()) {
+    out.write_attribute("mask", "url(#" + mask_id + ")");
+  }
+  out.write_element_end();
+}
+
 void write_text(const IntPair &point, const std::string &text,
                 const std::vector<std::uint32_t> &dx_array,
                 const std::uint32_t width, const Context &context) {
@@ -481,6 +620,16 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_POLYPOLYGON_ACTION: {
     const auto [polygons] = read_poly_polygon_action(in, action_header.vl);
     write_path(polygons, true, nullptr, context);
+  } break;
+  case META_BMP_ACTION:
+  case META_BMPSCALE_ACTION:
+  case META_BMPSCALEPART_ACTION:
+  case META_BMPEX_ACTION:
+  case META_BMPEXSCALE_ACTION:
+  case META_BMPEXSCALEPART_ACTION: {
+    const BitmapAction action =
+        read_bitmap_action(in, action_header.type, action_header.vl);
+    write_bitmap(action, context);
   } break;
   case META_TEXTALIGN_ACTION:
     state.text_align = read_text_align_action(in);

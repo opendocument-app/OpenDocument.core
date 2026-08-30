@@ -66,11 +66,6 @@ decode_mask_alpha(const std::string &samples, std::int32_t width,
                   std::span<const double> decode, bool stencil,
                   std::int32_t base_width, std::int32_t base_height);
 
-/// Wrap 8-bit pixels (row-major, unpadded) into a PNG: single `IDAT`, no
-/// interlacing. `channels` is 3 (RGB) or 4 (RGBA); anything else yields "".
-std::string write_png(const std::string &pixels, std::int32_t width,
-                      std::int32_t height, std::int32_t channels);
-
 /// Paint a 1-bpc stencil mask (ISO 32000-1 8.9.6.2) into an RGBA PNG: a sample
 /// decoding to 0 paints `color` (sRGB in [0, 1]) opaquely, a 1 is transparent,
 /// and a `/Decode` of `[1 0]` swaps that. `color` is the fill colour at draw

@@ -267,6 +267,35 @@ struct TextRectangleAction final {
   std::uint16_t style{};
 };
 
+/// A dib as something a browser reads. A metafile stores a dib *with* its
+/// `BITMAPFILEHEADER`, so its bytes already are a `.bmp` file; they are only
+/// unpacked where a png would be smaller, which for a chart is by fifty.
+struct Image final {
+  /// Empty where the dib is one we could not hand on, its bytes read anyway.
+  std::string data;
+  std::string mime_type;
+  IntPair size_pixel;
+};
+
+struct Bitmap final {
+  Image image;
+  /// The transparency mask, whose *white* is where @ref image does not show.
+  /// Empty where the action carried none.
+  Image mask;
+};
+
+/// The `BMP` family. @ref size is the logical size to draw at, empty for the
+/// actions that draw at the bitmap's own; @ref source_point and
+/// @ref source_size name the part to draw, in pixels, and are empty for the
+/// actions that draw all of it.
+struct BitmapAction final {
+  Bitmap bitmap;
+  IntPair point;
+  IntPair size;
+  IntPair source_point;
+  IntPair source_size;
+};
+
 struct TextLineAction final {
   IntPair position;
   std::int32_t width{};
@@ -325,5 +354,15 @@ TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 /// The `TextAlign` of a `TEXTALIGN`.
 std::uint16_t read_text_align_action(std::istream &in);
+/// A dib with its file header, as `ReadDIB(…, bFileHeader=true)` reads one.
+/// @p limit is what the enclosing action declared, so a length field cannot
+/// ask for more than the file holds.
+Image read_dib(std::istream &in, std::uint32_t limit);
+/// @ref read_dib plus the optional transparency mask behind it, as
+/// `ReadDIBBitmapEx` reads one.
+Bitmap read_dib_bitmap_ex(std::istream &in, std::uint32_t limit);
+/// One of the `BMP` family, @p type saying which.
+BitmapAction read_bitmap_action(std::istream &in, std::uint16_t type,
+                                const VersionLength &vl);
 
 } // namespace odr::internal::svm

@@ -6,6 +6,7 @@
 #include <odr/internal/pdf/pdf_jpx.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/png_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -17,17 +18,6 @@
 namespace odr::internal::pdf {
 
 namespace {
-
-/// Append a PNG chunk: length, four-byte type, data, CRC over type+data.
-void write_chunk(std::string &out, const std::string_view type,
-                 const std::string &data) {
-  util::byte_string::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
-  const std::size_t crc_start = out.size();
-  out.append(type);
-  out.append(data);
-  util::byte_string::put_u32_be(
-      out, crypto::util::crc32(std::string_view(out).substr(crc_start)));
-}
 
 /// Reads fixed-width big-endian sample values out of a byte buffer, MSB first.
 /// Constructed at a row offset; rows are byte-aligned (8.9.5.2). Reads past the
@@ -144,48 +134,6 @@ encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
 
 namespace odr::internal {
 
-std::string pdf::write_png(const std::string &pixels, const std::int32_t width,
-                           const std::int32_t height,
-                           const std::int32_t channels) {
-  if (width <= 0 || height <= 0 || (channels != 3 && channels != 4)) {
-    return {};
-  }
-  const auto stride =
-      static_cast<std::size_t>(width) * static_cast<std::size_t>(channels);
-  if (pixels.size() < stride * static_cast<std::size_t>(height)) {
-    return {};
-  }
-
-  // Filter type 0 (None) prefixes each scanline (PNG 9.2); the rows are then
-  // deflated as one zlib stream into the single IDAT.
-  std::string raw;
-  raw.reserve((stride + 1) * static_cast<std::size_t>(height));
-  for (std::int32_t y = 0; y < height; ++y) {
-    raw.push_back(0);
-    raw.append(pixels, static_cast<std::size_t>(y) * stride, stride);
-  }
-
-  static constexpr std::array<char, 8> signature = {
-      static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
-      static_cast<char>(0x1A), '\n'};
-  std::string out;
-  out.append(signature.data(), signature.size());
-
-  std::string ihdr;
-  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(width));
-  util::byte_string::put_u32_be(ihdr, static_cast<std::uint32_t>(height));
-  ihdr.push_back(8); // bit depth
-  // Colour type: 2 = truecolour (RGB), 6 = truecolour with alpha (RGBA).
-  ihdr.push_back(channels == 4 ? 6 : 2);
-  ihdr.push_back(0); // compression: deflate
-  ihdr.push_back(0); // filter method: adaptive
-  ihdr.push_back(0); // interlace: none
-  write_chunk(out, "IHDR", ihdr);
-  write_chunk(out, "IDAT", crypto::util::zlib_deflate(raw));
-  write_chunk(out, "IEND", "");
-  return out;
-}
-
 std::string pdf::encode_image_png(const std::string &samples,
                                   const std::int32_t width,
                                   const std::int32_t height,
@@ -270,7 +218,7 @@ std::string pdf::encode_image_png(const std::string &samples,
     }
   }
 
-  return write_png(out, width, height, has_alpha ? 4 : 3);
+  return util::png::write(out, width, height, has_alpha ? 4 : 3);
 }
 
 std::vector<std::uint8_t> pdf::decode_mask_alpha(
@@ -363,7 +311,7 @@ std::string pdf::encode_stencil_png(const std::string &samples,
       rgba[out_index++] = static_cast<char>(paint ? 0xFF : 0x00);
     }
   }
-  return write_png(rgba, width, height, 4);
+  return util::png::write(rgba, width, height, 4);
 }
 
 std::optional<pdf::EncodedImage> pdf::encode_image(

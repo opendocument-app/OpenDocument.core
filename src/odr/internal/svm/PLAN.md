@@ -29,7 +29,9 @@ Each stage is one pull request, stacked on the one before it.
    which costs the image exactly as an unescaped `&` did.
 4. **Clipping.** `CLIPREGION`, `ISECTRECTCLIPREGION`,
    `ISECTREGIONCLIPREGION`, `MOVECLIPREGION`.
-5. **Bitmaps** (#194). See the shortcut below.
+5. **Bitmaps** (#194) - done for the `BMP` and `BMPEX` families; `MASK`,
+   which stencils one colour through a bitmap, and `ZCOMPRESS`, which needs
+   inflating first, are still open. See the shortcut below.
 6. **Primitives.** `PIXEL`, `POINT`, `LINE`, `ROUNDRECT`, `ELLIPSE`, `ARC`,
    `PIE`, `CHORD` — one `svgwriter.cxx` case each.
 7. **Fills and transparency.** `GRADIENT`, `GRADIENTEX`, `HATCH`,
@@ -97,16 +99,24 @@ are worth writing down:
 
 ## Shortcuts worth taking
 
-- **Bitmaps are `.bmp` files already.** `SvmReader` reads them with
-  `ReadDIB(…, bFileHeader=true)`, i.e. the action body holds a DIB *with* its
-  `BITMAPFILEHEADER` — `"BM"`, `bfSize`, `bfOffBits`. So a `BMP` action needs
-  no pixel decoding at all: read the header far enough to know the byte length,
-  hand the bytes to the browser as `data:image/bmp;base64,…` inside an
-  `<image>`. Palettes, RLE4/RLE8 and bit fields are then the browser's problem,
-  not ours. Two cases still need work: `ZCOMPRESS` (a LibreOffice-only
-  compression — inflate with miniz, then rewrite the header), and the alpha
-  mask of `BMPEX` (a second DIB, `1` = transparent) which becomes an SVG
-  `<mask>` over an inverting `feColorMatrix`.
+- **Bitmaps are `.bmp` files already** — this one is taken. `SvmReader` reads
+  them with `ReadDIB(…, bFileHeader=true)`, i.e. the action body holds a dib
+  *with* its `BITMAPFILEHEADER`, so the bytes are a `.bmp` file and the browser
+  can read them as one. Only the length has to be worked out, and `bfSize` is
+  no help: it is written from the *uncompressed* size, so for a compressed dib
+  it lies. The header's own `biSizeImage` (or width, height and bit count) is
+  the answer.
+
+  The bytes then go out as a png rather than a bmp wherever the pixels can be
+  copied row by row — uncompressed, 1/4/8/24/32 bits, palette expanded. That is
+  not decoding so much as re-packing, and it is worth it: the one real bitmap
+  in the corpus is 1.59 MB as a bmp and 33 KB as a png, so the page it sits on
+  goes from 2.9 MB to 158 KB. A compressed dib (RLE, bit fields) still goes out
+  as the bmp it is; browsers read those.
+
+  What is left: `ZCOMPRESS`, a LibreOffice-only compression whose zlib stream
+  would have to be inflated (miniz is already a dependency) before any of the
+  above, and the `MASK` family, which stencils one colour through a bitmap.
 - **Béziers are cheap once the flags are read.** A polygon flag of
   `PolyFlags::Control` marks a control point, so a flagged polygon maps onto an
   SVG path's `C` segments directly. The reader is the part that is missing.
