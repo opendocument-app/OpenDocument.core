@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <ranges>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -68,7 +69,9 @@ double transform_y(const std::int32_t y, const Context &context) {
   return (map_mode.origin.y + y) * scale(map_mode.scale_y);
 }
 
-/// A length carries no origin, only the scale.
+/// A length carries no origin, only the scale. The x scale even for a stroke
+/// width or a dash, which lie along no axis: `svgwriter.cxx` maps those
+/// through `ImplMap(sal_Int32)`, which takes the `Width()` of a square.
 double transform_width(const std::int32_t width, const Context &context) {
   return width * scale(context.state.map_mode.scale_x);
 }
@@ -198,7 +201,7 @@ void write_rectangle(const Rectangle &rect, const Context &context) {
 
 /// `svgwriter.cxx`'s `GetPathString`: one `M`, one `L` run, `Z` where closed.
 std::string
-get_path_data_string(const std::vector<std::vector<IntPair>> &polygons,
+get_path_data_string(const std::span<const std::vector<IntPair>> polygons,
                      const bool close, const Context &context) {
   std::string result;
 
@@ -234,7 +237,7 @@ get_path_data_string(const std::vector<std::vector<IntPair>> &polygons,
 }
 
 /// One path for all of them: the fill rule only cuts holes within a path.
-void write_path(const std::vector<std::vector<IntPair>> &polygons,
+void write_path(const std::span<const std::vector<IntPair>> polygons,
                 const bool fill, const LineInfo *line_info,
                 const Context &context) {
   svg::SvgWriter &out = *context.out;
@@ -343,15 +346,16 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     write_rectangle(action, context);
   } break;
   case META_POLYLINE_ACTION: {
-    auto [points, line_info] = read_poly_line_action(in, action_header.vl);
-    write_path({std::move(points)}, false, &line_info, context);
+    const auto [points, line_info] =
+        read_poly_line_action(in, action_header.vl);
+    write_path({&points, 1}, false, &line_info, context);
   } break;
   case META_POLYGON_ACTION: {
-    auto [points] = read_polygon_action(in, action_header.vl);
-    write_path({std::move(points)}, true, nullptr, context);
+    const auto [points] = read_polygon_action(in, action_header.vl);
+    write_path({&points, 1}, true, nullptr, context);
   } break;
   case META_POLYPOLYGON_ACTION: {
-    auto [polygons] = read_poly_polygon_action(in, action_header.vl);
+    const auto [polygons] = read_poly_polygon_action(in, action_header.vl);
     write_path(polygons, true, nullptr, context);
   } break;
   case META_TEXT_ACTION: {
