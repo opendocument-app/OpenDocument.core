@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <istream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -269,11 +270,10 @@ struct TextRectangleAction final {
 };
 
 /// A clip region: bands covering it as a union of rectangles, and from
-/// version 2 the poly-polygon those were rasterised from.
+/// version 2 the poly-polygon those were rasterised from. An *empty* region
+/// covers nothing and so clips everything away; `REGION_NULL`, which does not
+/// clip at all, is no region and reads as `std::nullopt`.
 struct Region final {
-  /// `REGION_NULL`: no clipping at all, as against a region that covers
-  /// nothing and clips everything away.
-  bool null{};
   std::vector<Rectangle> rectangles;
   std::vector<std::vector<IntPair>> polygons;
 };
@@ -366,10 +366,11 @@ std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 /// The `TextAlign` of a `TEXTALIGN`.
 std::uint16_t read_text_align_action(std::istream &in);
 /// A region, as `ReadRegion` reads one: a band list, and from version 2 the
-/// poly-polygon it came from.
-Region read_region(std::istream &in);
+/// poly-polygon it came from. `std::nullopt` where it does not clip at all.
+std::optional<Region> read_region(std::istream &in);
 /// A `CLIPREGION`: the region, and whether it clips at all.
-std::pair<Region, bool> read_clip_region_action(std::istream &in);
+std::pair<std::optional<Region>, bool>
+read_clip_region_action(std::istream &in);
 /// A dib with its file header, as `ReadDIB(…, bFileHeader=true)` reads one.
 /// @p limit is what the enclosing action declared, so a length field cannot
 /// ask for more than the file holds.

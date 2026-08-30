@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <string>
@@ -715,10 +716,10 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     write_bitmap(action, context);
   } break;
   case META_CLIPREGION_ACTION: {
-    auto [region, clip] = read_clip_region_action(in);
+    const auto [region, clip] = read_clip_region_action(in);
     state.clip.clear();
-    if (clip && !region.null) {
-      intersect_clip(get_region_path_data(region, context), state);
+    if (clip && region) {
+      intersect_clip(get_region_path_data(*region, context), state);
     }
   } break;
   case META_ISECTRECTCLIPREGION_ACTION: {
@@ -727,9 +728,8 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     intersect_clip(get_path_data_string({&polygon, 1}, true, context), state);
   } break;
   case META_ISECTREGIONCLIPREGION_ACTION: {
-    const Region region = read_region(in);
-    if (!region.null) {
-      intersect_clip(get_region_path_data(region, context), state);
+    if (const std::optional<Region> region = read_region(in)) {
+      intersect_clip(get_region_path_data(*region, context), state);
     }
   } break;
   case META_TEXTALIGN_ACTION:

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -786,9 +787,7 @@ svm::BitmapAction svm::read_bitmap_action(std::istream &in,
   return result;
 }
 
-svm::Region svm::read_region(std::istream &in) {
-  Region result;
-
+std::optional<svm::Region> svm::read_region(std::istream &in) {
   const VersionLength vl = read_version_length(in);
   std::uint16_t content_version{};
   std::uint16_t type{};
@@ -796,9 +795,10 @@ svm::Region svm::read_region(std::istream &in) {
   read_primitive(in, type);
 
   if (type == region_null) {
-    result.null = true;
-    return result;
+    return std::nullopt;
   }
+
+  Region result;
   if (type == region_empty) {
     return result;
   }
@@ -839,8 +839,9 @@ svm::Region svm::read_region(std::istream &in) {
   return result;
 }
 
-std::pair<svm::Region, bool> svm::read_clip_region_action(std::istream &in) {
-  Region region = read_region(in);
+std::pair<std::optional<svm::Region>, bool>
+svm::read_clip_region_action(std::istream &in) {
+  std::optional<Region> region = read_region(in);
   bool clip{};
   read_primitive(in, clip);
   return {std::move(region), clip};
