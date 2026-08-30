@@ -417,8 +417,6 @@ TEST(SvmToSvg, the_font_size_is_scaled) {
   EXPECT_NE(std::string::npos, svg.find("font-size:10"));
 }
 
-/// vcl aligns text vertically at the point - there is no horizontal alignment
-/// - and the browser knows the font metrics that turn that into a baseline.
 TEST(SvmToSvg, text_align) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_TEXTALIGN_ACTION)
@@ -430,14 +428,12 @@ TEST(SvmToSvg, text_align) {
   EXPECT_NE(std::string::npos, svg.find("dominant-baseline:text-after-edge"));
 }
 
-/// vcl's default, and what a file that never sets one draws with.
 TEST(SvmToSvg, text_align_defaults_to_the_top) {
   const std::string svg = translate(SvmBuilder().text(0, 0, "x").file());
 
   EXPECT_NE(std::string::npos, svg.find("dominant-baseline:text-before-edge"));
 }
 
-/// #95: half the text in the corpus is italic, all of it a formula variable.
 TEST(SvmToSvg, font_attributes) {
   const std::string svg = translate(
       SvmBuilder()
@@ -451,8 +447,6 @@ TEST(SvmToSvg, font_attributes) {
             svg.find("text-decoration:underline line-through"));
 }
 
-/// The orientation turns the text about its own start, counter-clockwise in
-/// tenths of a degree.
 TEST(SvmToSvg, font_orientation_rotates_the_text) {
   const std::string svg = translate(
       SvmBuilder().font("Arial", 10, 0, 0, 0, 0, 900).text(5, 7, "x").file());
@@ -460,8 +454,6 @@ TEST(SvmToSvg, font_orientation_rotates_the_text) {
   EXPECT_NE(std::string::npos, svg.find("transform=\"rotate(-90 5 7)\""));
 }
 
-/// The dx array measures every character of the run, so svg can place them
-/// one by one instead of trusting whatever font the viewer has.
 TEST(SvmToSvg, text_array_places_every_character) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_TEXTARRAY_ACTION)
@@ -479,7 +471,6 @@ TEST(SvmToSvg, text_array_places_every_character) {
   EXPECT_NE(std::string::npos, svg.find("x=\"0 10 20\""));
 }
 
-/// A dx array that does not measure this text is not a placement.
 TEST(SvmToSvg, a_text_array_that_does_not_match_is_dropped) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_TEXTARRAY_ACTION)
@@ -495,8 +486,6 @@ TEST(SvmToSvg, a_text_array_that_does_not_match_is_dropped) {
   EXPECT_NE(std::string::npos, svg.find("x=\"4\""));
 }
 
-/// A stretch text names the advance the run has to fill, which is what keeps
-/// a formula together when the viewer has a different font.
 TEST(SvmToSvg, stretch_text_fills_the_width_it_names) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_STRETCHTEXT_ACTION)
@@ -512,8 +501,6 @@ TEST(SvmToSvg, stretch_text_fills_the_width_it_names) {
   EXPECT_NE(std::string::npos, svg.find("lengthAdjust=\"spacingAndGlyphs\""));
 }
 
-/// A text action draws the run its offset and length name, not the whole
-/// string it carries.
 TEST(SvmToSvg, text_draws_the_run_it_names) {
   const std::string svg =
       translate(SvmBuilder().text(0, 0, "abcdef", 2, 3).file());

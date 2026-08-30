@@ -54,6 +54,9 @@ metafiles harvested from the `odt`/`ods` fixtures:
 | `LINE` | 47 | 2 |
 | `BMPEXSCALE` | 1 | 1 |
 
+Half the text in the corpus is italic, all of it a formula variable, which is
+what puts the #95 font attributes in stage 3 rather than later.
+
 `ELLIPSE`, `ARC`, `PIE`, `CHORD`, `ROUNDRECT`, `POINT`, `PIXEL`, `GRADIENT`,
 `HATCH`, `TRANSPARENT` and `EPS` do not occur at all, which is why they come
 after clipping rather than before it. The one bitmap is the whole data area of

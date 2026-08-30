@@ -193,9 +193,9 @@ std::uint16_t get_font_weight(const std::uint16_t weight) {
   }
 }
 
-/// Which edge of the text the draw point names. The browser knows the font's
-/// metrics and we do not, so the baseline is named rather than computed -
-/// `svgwriter.cxx` shifts the point by the ascent instead, having them.
+/// Which edge of the text the draw point names. Named rather than computed:
+/// `svgwriter.cxx` shifts the point by the ascent, having the font metrics
+/// that we do not.
 std::string_view get_dominant_baseline(const std::uint16_t text_align) {
   switch (text_align) {
   case ALIGN_TOP:
@@ -309,8 +309,7 @@ void write_path(const std::span<const std::vector<IntPair>> polygons,
   out.write_element_end();
 }
 
-/// The number of characters svg will place, which is what an `x` list has to
-/// match one for one.
+/// What an `x` list has to match one for one.
 std::size_t count_characters(const std::string_view text) {
   return std::ranges::count_if(text, [](const char c) {
     return (static_cast<unsigned char>(c) & 0xc0) != 0x80;
