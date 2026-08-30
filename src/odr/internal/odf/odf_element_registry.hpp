@@ -7,11 +7,13 @@
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <deque>
-#include <map>
 #include <span>
+#include <stdexcept>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <pugixml.hpp>
@@ -103,6 +105,64 @@ public:
     bool is_repeated{false};
   };
 
+  /// Payloads keyed by element id and written in id order, so a lookup is a
+  /// binary search. A deque: `create_*_element` hands out a reference.
+  template <typename T> class SideTable final {
+  public:
+    T &emplace(const ElementIdentifier id, T value) {
+      if (!m_entries.empty() && m_entries.back().first >= id) {
+        throw std::invalid_argument(
+            "ElementRegistry::SideTable::emplace: identifier out of order");
+      }
+      return m_entries.emplace_back(static_cast<StoredId>(id), std::move(value))
+          .second;
+    }
+
+    [[nodiscard]] T *find(const ElementIdentifier id) {
+      const auto it =
+          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
+      return it != std::end(m_entries) && it->first == id ? &it->second
+                                                          : nullptr;
+    }
+
+    [[nodiscard]] const T *find(const ElementIdentifier id) const {
+      const auto it =
+          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
+      return it != std::end(m_entries) && it->first == id ? &it->second
+                                                          : nullptr;
+    }
+
+    [[nodiscard]] T &at(const ElementIdentifier id) {
+      T *entry = find(id);
+      if (entry == nullptr) {
+        throw std::out_of_range(
+            "ElementRegistry::SideTable::at: identifier not found");
+      }
+      return *entry;
+    }
+
+    [[nodiscard]] const T &at(const ElementIdentifier id) const {
+      const T *entry = find(id);
+      if (entry == nullptr) {
+        throw std::out_of_range(
+            "ElementRegistry::SideTable::at: identifier not found");
+      }
+      return *entry;
+    }
+
+    void clear() noexcept { m_entries.clear(); }
+
+    [[nodiscard]] auto begin() const noexcept { return m_entries.begin(); }
+    [[nodiscard]] auto end() const noexcept { return m_entries.end(); }
+    [[nodiscard]] auto begin() noexcept { return m_entries.begin(); }
+    [[nodiscard]] auto end() noexcept { return m_entries.end(); }
+
+  private:
+    using Entry = std::pair<StoredId, T>;
+
+    std::deque<Entry> m_entries;
+  };
+
   void clear() noexcept;
 
   [[nodiscard]] std::size_t size() const noexcept;
@@ -149,10 +209,11 @@ private:
   /// holds on to, and a vector both invalidates it and peaks holding two
   /// copies.
   std::deque<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
-  std::unordered_map<ElementIdentifier, Sheet> m_sheets;
-  std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
+  SideTable<Text> m_texts;
+  SideTable<Table> m_tables;
+  SideTable<Sheet> m_sheets;
+  SideTable<SheetCell> m_sheet_cells;
+  // out of id order: written when a list is resolved, not when it is parsed
   std::unordered_map<ElementIdentifier, ListType> m_list_types;
   std::unordered_map<ElementIdentifier, ListMarker> m_list_markers;
 
@@ -161,10 +222,7 @@ private:
                   StoredId &first_id, StoredId &last_id);
 
   void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
   void check_sheet_id(ElementIdentifier id) const;
-  void check_sheet_cell_id(ElementIdentifier id) const;
 };
 
 } // namespace odr::internal::odf
