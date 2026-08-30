@@ -12,6 +12,7 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 namespace odr::internal {
 
@@ -413,7 +414,7 @@ void html::translate_link(const Element &element, const WritingState &state) {
   // A refused target loses the attribute, not the element.
   HtmlAttributesVector attributes;
   if (kind != UriKind::refused) {
-    attributes.emplace_back("href", escape_attribute(href));
+    attributes.emplace_back("href", util::xml::escape_attribute(href));
   }
 
   HtmlElementOptions options =
@@ -435,8 +436,8 @@ void html::translate_bookmark(const Element &element,
 
   state.out().write_element_begin(
       "a",
-      HtmlElementOptions().set_inline(true).set_attributes(
-          HtmlAttributesVector{{"id", escape_attribute(bookmark.name())}}));
+      HtmlElementOptions().set_inline(true).set_attributes(HtmlAttributesVector{
+          {"id", util::xml::escape_attribute(bookmark.name())}}));
   state.out().write_element_end("a");
 }
 
@@ -565,7 +566,8 @@ void html::translate_image(const Element &element, const WritingState &state) {
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             clb("alt", "Error: image not found or unsupported");
             if (resource_location.has_value()) {
-              clb("src", escape_attribute(resource_location.value()));
+              clb("src",
+                  util::xml::escape_attribute(resource_location.value()));
             } else {
               clb("src", [&](std::ostream &o) {
                 // reached only for internal images, which have a file

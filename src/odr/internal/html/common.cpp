@@ -5,6 +5,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
+#include <odr/internal/util/xml_util.hpp>
 
 #include <odr/html.hpp>
 #include <odr/quantity.hpp>
@@ -31,7 +32,7 @@ void html::write_viewport_meta(
     const std::optional<HtmlViewportMode> mode_override) {
   if (config.viewport_content.has_value()) {
     out.write_header_viewport(
-        escape_attribute(config.viewport_content.value()));
+        util::xml::escape_attribute(config.viewport_content.value()));
     return;
   }
 
@@ -256,9 +257,7 @@ std::string html::escape_text(std::string text) {
     return text;
   }
 
-  util::string::replace_all(text, "&", "&amp;");
-  util::string::replace_all(text, "<", "&lt;");
-  util::string::replace_all(text, ">", "&gt;");
+  text = util::xml::escape_text(text);
 
   if (text.front() == ' ') {
     text = "&nbsp;" + text.substr(1);
@@ -272,14 +271,6 @@ std::string html::escape_text(std::string text) {
   util::string::replace_all(text, "\t", "&emsp;");
 
   return text;
-}
-
-std::string html::escape_attribute(std::string value) {
-  util::string::replace_all(value, "&", "&amp;");
-  util::string::replace_all(value, "\"", "&quot;");
-  util::string::replace_all(value, "<", "&lt;");
-  util::string::replace_all(value, ">", "&gt;");
-  return value;
 }
 
 html::UriKind html::uri_kind(const std::string_view uri) {

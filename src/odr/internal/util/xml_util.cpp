@@ -9,6 +9,7 @@
 #include <pugixml.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <new>
@@ -21,6 +22,54 @@ namespace odr::internal::util {
 // translation unit that misses it links fine and then reads the wrong layout.
 static_assert(sizeof(pugi::xml_node_struct) == 12);
 static_assert(sizeof(pugi::xml_attribute_struct) == 8);
+
+namespace {
+
+/// Tab, line feed and carriage return are the only sub-`0x20` characters xml
+/// 1.0 allows.
+bool is_xml_control(const char c) {
+  const auto value = static_cast<std::uint8_t>(c);
+  return value < 0x20 && c != '\t' && c != '\n' && c != '\r';
+}
+
+std::string escape(const std::string_view text, const bool attribute) {
+  std::string result;
+  result.reserve(text.size());
+
+  for (const char c : text) {
+    switch (c) {
+    case '&':
+      result += "&amp;";
+      break;
+    case '<':
+      result += "&lt;";
+      break;
+    case '>':
+      result += "&gt;";
+      break;
+    case '"':
+      result += attribute ? "&quot;" : "\"";
+      break;
+    default:
+      if (!is_xml_control(c)) {
+        result += c;
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+} // namespace
+
+std::string xml::escape_text(const std::string_view text) {
+  return escape(text, false);
+}
+
+std::string xml::escape_attribute(const std::string_view value) {
+  return escape(value, true);
+}
 
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
