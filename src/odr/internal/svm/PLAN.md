@@ -36,7 +36,7 @@ Each stage is one pull request, stacked on the one before it.
 7. **Fills and transparency** - `GRADIENT`, `GRADIENTEX`, `HATCH` and
    `TRANSPARENT` are done. `WALLPAPER` and `FLOATTRANSPARENT` are not: the
    first has a format of its own, the second nests a whole metafile.
-8. **The map mode's unit** (#772 defect 6), see below.
+8. **The map mode** (#772 defect 6) - done.
 9. **Stretch.** Bézier flags (#772 defect 4), the `EPS` substitute metafile,
    and version-1 (pre-`VCLMTF`) files via `SvmConverter.cxx`.
 
@@ -64,20 +64,6 @@ what puts the #95 font attributes in stage 3 rather than later.
 after clipping rather than before it. The one bitmap is the whole data area of
 `odr-private/svm/Vyplaty.svm` — 1.59 MB of `BMPEXSCALE` in a 1.63 MB file, and
 the reason that chart renders as an empty frame today.
-
-## The map mode
-
-Deferred, and not just an oversight — the units are one part of a bigger
-question. `MetaMapModeAction::Execute` calls `OutputDevice::SetMapMode`, which
-*replaces* the map mode, **except** where the new one's unit is
-`MapUnit::MapRelative` (13): then its scales multiply the current ones and its
-origin offsets the current one. We replace unconditionally, and we ignore the
-unit, so a `MAPMODE` action that switches from 100th mm to twips is off by a
-factor of 1.76.
-
-It is rare — 4 `MAPMODE` actions in 1125 files, one of them relative — and
-getting it right means following `vcl/source/outdev/map.cxx` rather than
-guessing, so it is its own stage.
 
 ## Clipping is nested groups
 

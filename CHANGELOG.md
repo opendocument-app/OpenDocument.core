@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A StarView metafile's map mode is read in full: its unit, so a drawing that
+  switches to twips or points is no longer off by the factor between them, and
+  the relative map mode, which composes with the one before it rather than
+  replacing it.
+
 - A StarView metafile draws its gradients, hatches and transparent shapes:
   `GRADIENT`, `GRADIENTEX`, `HATCH` and `TRANSPARENT`.
 

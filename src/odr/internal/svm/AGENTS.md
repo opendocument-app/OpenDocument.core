@@ -95,3 +95,8 @@ drawing should look like:
 /Applications/LibreOffice.app/Contents/MacOS/soffice --headless \
   --convert-to svg --outdir /tmp test/data/input/odr-public/svm/chart-1.svm
 ```
+
+Its *player* is the oracle, not that export: asked to convert a metafile that
+switches to twips and then to a relative map mode, the export drops an action
+and places another outside the box. Where the two disagree, follow the vcl
+source.

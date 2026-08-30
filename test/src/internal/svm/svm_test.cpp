@@ -110,6 +110,24 @@ public:
         .end();
   }
 
+  /// A `MAPMODE` action, @p unit saying what its coordinates are in.
+  SvmBuilder &map_mode_action(const std::uint16_t unit, const std::int32_t x,
+                              const std::int32_t y,
+                              const std::int32_t numerator = 1,
+                              const std::int32_t denominator = 1) {
+    return action(svm::META_MAPMODE_ACTION)
+        .begin()
+        .u16(unit)
+        .point(x, y)
+        .i32(numerator)
+        .i32(denominator)
+        .i32(numerator)
+        .i32(denominator)
+        .u8(0)
+        .end()
+        .end();
+  }
+
   /// A colour *inside* an object, which is not the plain `uint32` an action's
   /// own colour is: a name id, and three 16-bit channels behind the user one.
   SvmBuilder &object_color(const std::uint32_t rgb) {
@@ -984,4 +1002,63 @@ TEST(SvmToSvg, transparent) {
 
   EXPECT_NE(std::string::npos, svg.find("fill:rgb(0,0,255)"));
   EXPECT_NE(std::string::npos, svg.find("opacity:0.4"));
+}
+
+/// The drawing is measured in the header's unit, so a map mode in another one
+/// scales by what the two are worth: a twip is 2540/1440 of a 100th mm.
+TEST(SvmToSvg, a_map_mode_in_another_unit_scales) {
+  const std::string svg = translate(SvmBuilder()
+                                        .map_mode_action(svm::MAP_TWIP, 0, 0)
+                                        .action(svm::META_RECT_ACTION)
+                                        .rectangle(600, 0, 1100, 500)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos,
+            svg.find("<rect x=\"1058.33\" y=\"0\" width=\"881.944\""));
+}
+
+/// A relative map mode composes with the one before it rather than replacing
+/// it: its scales multiply and its origin offsets, so the twips above stay.
+TEST(SvmToSvg, a_relative_map_mode_composes) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .map_mode_action(svm::MAP_TWIP, 0, 0)
+                    .map_mode_action(svm::MAP_RELATIVE, 1200, 600)
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 500, 500)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("<rect x=\"2116.67\" y=\"1058.33\""
+                                        " width=\"881.944\""));
+}
+
+TEST(SvmToSvg, a_relative_map_mode_multiplies_the_scale) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .map_mode_action(svm::MAP_100TH_MM, 0, 0, 1, 2)
+                    .map_mode_action(svm::MAP_RELATIVE, 0, 0, 1, 5)
+                    .action(svm::META_RECT_ACTION)
+                    .rectangle(0, 0, 100, 100)
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find("width=\"10\" height=\"10\""));
+}
+
+TEST(SvmToSvg, a_pop_restores_the_map_mode) {
+  const std::string svg = translate(SvmBuilder()
+                                        .action(svm::META_PUSH_ACTION)
+                                        .u16(svm::PUSH_MAPMODE)
+                                        .end()
+                                        .map_mode_action(svm::MAP_TWIP, 0, 0)
+                                        .action(svm::META_POP_ACTION)
+                                        .end()
+                                        .action(svm::META_RECT_ACTION)
+                                        .rectangle(0, 0, 100, 100)
+                                        .end()
+                                        .file());
+
+  EXPECT_NE(std::string::npos, svg.find("width=\"100\" height=\"100\""));
 }

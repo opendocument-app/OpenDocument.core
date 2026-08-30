@@ -61,6 +61,25 @@ enum MetaFontStrikeout {
   STRIKEOUT_NONE = 0,
 };
 
+/// `MapUnit`, the unit a map mode's coordinates are in. `MAP_RELATIVE` has
+/// none of its own: it composes with the map mode before it.
+enum MetaMapUnit {
+  MAP_100TH_MM = 0,
+  MAP_10TH_MM = 1,
+  MAP_MM = 2,
+  MAP_CM = 3,
+  MAP_1000TH_INCH = 4,
+  MAP_100TH_INCH = 5,
+  MAP_10TH_INCH = 6,
+  MAP_INCH = 7,
+  MAP_POINT = 8,
+  MAP_TWIP = 9,
+  MAP_PIXEL = 10,
+  MAP_SYS_FONT = 11,
+  MAP_APP_FONT = 12,
+  MAP_RELATIVE = 13,
+};
+
 /// `awt::GradientStyle`.
 enum MetaGradientStyle {
   GRADIENT_LINEAR = 0,
