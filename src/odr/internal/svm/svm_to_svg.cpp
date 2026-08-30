@@ -322,6 +322,10 @@ std::string get_x_list_string(const IntPair &point,
                               const std::vector<std::uint32_t> &dx_array,
                               const Context &context) {
   std::string result = svg::format_number(transform_x(point.x, context));
+  if (dx_array.empty()) {
+    return result;
+  }
+
   for (const std::uint32_t dx :
        dx_array | std::views::take(dx_array.size() - 1)) {
     result += " ";

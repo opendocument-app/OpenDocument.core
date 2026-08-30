@@ -61,20 +61,19 @@ public:
   }
 
   /// The font the text actions below draw with, at @p size.
-  SvmBuilder &font(const std::string &family, const std::int32_t size,
-                   const std::uint16_t weight = 0,
-                   const std::uint16_t underline = 0,
-                   const std::uint16_t strikeout = 0,
-                   const std::uint16_t italic = 0,
-                   const std::uint16_t orientation = 0) {
+  SvmBuilder &
+  font(const std::string &family, const std::int32_t size,
+       const std::uint16_t weight = 0, const std::uint16_t underline = 0,
+       const std::uint16_t strikeout = 0, const std::uint16_t italic = 0,
+       const std::uint16_t orientation = 0, const std::uint16_t charset = 11) {
     return action(svm::META_FONT_ACTION)
         .begin()
         .ascii_string(family)
         .ascii_string("")
         .point(0, size)
-        .u16(11) // charset: ascii
-        .u16(0)  // family
-        .u16(0)  // pitch
+        .u16(charset)
+        .u16(0) // family
+        .u16(0) // pitch
         .u16(weight)
         .u16(underline)
         .u16(strikeout)
@@ -88,6 +87,14 @@ public:
         .u8(0) // kerning
         .end()
         .end();
+  }
+
+  SvmBuilder &ucs2_string(const std::u16string &value) {
+    u32(static_cast<std::uint32_t>(value.size()));
+    for (const char16_t c : value) {
+      u16(static_cast<std::uint16_t>(c));
+    }
+    return *this;
   }
 
   /// A `TEXT` action of @p text at @p point, drawing the run @p offset /
@@ -499,6 +506,21 @@ TEST(SvmToSvg, stretch_text_fills_the_width_it_names) {
 
   EXPECT_NE(std::string::npos, svg.find("textLength=\"120\""));
   EXPECT_NE(std::string::npos, svg.find("lengthAdjust=\"spacingAndGlyphs\""));
+}
+
+TEST(SvmToSvg, a_version_1_text_action_slices_a_ucs2_run_by_character) {
+  const std::string svg =
+      translate(SvmBuilder()
+                    .font("f", 10, 0, 0, 0, 0, 0, svm::RTL_TEXTENCODING_UCS2)
+                    .action(svm::META_TEXT_ACTION)
+                    .point(0, 0)
+                    .ucs2_string(u"\u00e4bc")
+                    .u16(1) // offset
+                    .u16(2) // length
+                    .end()
+                    .file());
+
+  EXPECT_NE(std::string::npos, svg.find(">bc</text>"));
 }
 
 TEST(SvmToSvg, text_draws_the_run_it_names) {

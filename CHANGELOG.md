@@ -19,33 +19,27 @@ The release run heads these entries with the version and opens a fresh
 - A spreadsheet decodes in less memory: 626 MB peak instead of 914 MB on a
   297 MB `content.xml`. Rendered output is unchanged.
 
-- A text action in a StarView metafile draws the run of its string that it
-  names, not the whole string. A document whose text is drawn in runs - any
-  bidirectional one, and every formula - used to have the full sentence stamped
-  at every run's position, overprinting itself into an unreadable smear.
+- A text action in a StarView metafile draws the run it names, not the whole
+  string. Text drawn in runs used to overprint itself into a smear.
 
 - StarView metafile text keeps its font: italic, bold, underline, strikeout,
-  rotation, the alignment that decides which edge the draw point names, the
-  per-character positions the file measured, and the width a stretched run has
-  to fill (#95).
+  rotation, alignment, per-character positions, and the width a stretched run
+  fills (#95).
 
-- A StarView metafile draws through a graphics state stack, so a colour, font
-  or map mode set inside a `PUSH` no longer leaks out of it and contaminates
-  the rest of the drawing. Nearly every metafile a document carries uses one.
+- A StarView metafile draws through a graphics state stack: a colour, font or
+  map mode set inside a `PUSH` no longer leaks past its `POP`.
 
-- A filled shape in a StarView metafile keeps its outline, its poly-polygons
-  cut their holes out, a line takes the width, dashing and join it carries, and
-  the font size scales with the drawing.
+- A filled StarView shape keeps its outline, a poly-polygon cuts its holes, a
+  line takes its `LineInfo`, and the font size scales with the drawing.
 
-- Text in a StarView metafile is escaped into the svg it renders as. An `&`,
-  `<` or `>` in a label made the svg malformed, and a malformed svg renders as
-  nothing.
+- Text in a StarView metafile is escaped into the svg it renders as. An `&` or
+  `<` in a label used to cost the whole image.
 
-- A StarView metafile translation logs what it drops: the actions it does not
-  implement, and a translation failure it used to fall back from silently.
+- A StarView metafile translation logs what it drops: unimplemented actions,
+  and a failure it used to fall back from silently.
 
-- An html attribute value drops the control characters xml forbids, rather
-  than carrying them through. One escaper writes both html and svg now.
+- An html attribute value drops the control characters xml forbids. One
+  escaper writes both html and svg now.
 
 ## v6.12.0 - 2026-08-30
 
