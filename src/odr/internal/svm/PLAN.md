@@ -19,20 +19,59 @@ Each stage is one pull request, stacked on the one before it.
    #772's defects 1 (escaping, but see stage 3 for the encoding half of it), 9
    (style dispatch) and 10 (silence).
 2. **Fixes to what we already emit.** The graphics state stack (`PUSH`/`POP`),
-   poly-polygon fill rule, the font size and map-mode unit in the transform,
-   `LineInfo`. #772 defects 2, 3, 5, 6, 8.
-3. **Text.** `TEXTALIGN`, the `TEXTARRAY` dx array, `TEXTRECT`, the #95 font
-   attributes (bold, italic, underline, strikeout, family), and decoding a
-   non-`UCS2` string instead of passing its bytes through — until then a
-   latin-1 label emits invalid utf-8, which costs the image exactly as an
-   unescaped `&` did.
-4. **Primitives.** `PIXEL`, `POINT`, `LINE`, `ROUNDRECT`, `ELLIPSE`, `ARC`,
-   `PIE`, `CHORD` — one `svgwriter.cxx` case each.
+   the fill that killed the stroke, the poly-polygon fill rule, the font size
+   in the transform, `LineInfo`. #772 defects 2, 3, 5, 8.
+3. **Text.** `TEXTALIGN`, the `TEXTARRAY` dx array, the `STRETCHTEXT` width,
+   `TEXTRECT`, the #95 font attributes (bold, italic, underline, strikeout,
+   family), and decoding a non-`UCS2` string instead of passing its bytes
+   through — until then a latin-1 label emits invalid utf-8, which costs the
+   image exactly as an unescaped `&` did.
+4. **Clipping.** `CLIPREGION`, `ISECTRECTCLIPREGION`,
+   `ISECTREGIONCLIPREGION`, `MOVECLIPREGION`.
 5. **Bitmaps** (#194). See the shortcut below.
-6. **Fills, clipping, transparency.** `GRADIENT`, `GRADIENTEX`, `HATCH`,
-   `WALLPAPER`, the `CLIPREGION` family, `TRANSPARENT`, `FLOATTRANSPARENT`.
-7. **Stretch.** Bézier flags (#772 defect 4), the `EPS` substitute metafile,
+6. **Primitives.** `PIXEL`, `POINT`, `LINE`, `ROUNDRECT`, `ELLIPSE`, `ARC`,
+   `PIE`, `CHORD` — one `svgwriter.cxx` case each.
+7. **Fills and transparency.** `GRADIENT`, `GRADIENTEX`, `HATCH`,
+   `WALLPAPER`, `TRANSPARENT`, `FLOATTRANSPARENT`.
+8. **The map mode's unit** (#772 defect 6), see below.
+9. **Stretch.** Bézier flags (#772 defect 4), the `EPS` substitute metafile,
    and version-1 (pre-`VCLMTF`) files via `SvmConverter.cxx`.
+
+The order follows what files actually contain, not the action list. Over 1125
+metafiles harvested from the `odt`/`ods` fixtures:
+
+| action | occurrences | files (of 1125) |
+| --- | --- | --- |
+| `PUSH` / `POP` | 22317 each | 1124 |
+| `TEXTALIGN` | 21534 | 1117 |
+| `STRETCHTEXT` | 20335 | 1097 |
+| `ISECTRECTCLIPREGION` | 1124 | 1123 |
+| `RECT` | 845 | 324 |
+| `TEXTARRAY` | 764 | 20 |
+| `POLYLINE` | 477 | 13 |
+| `POLYPOLYGON` | 247 | 14 |
+| `LINE` | 47 | 2 |
+| `BMPEXSCALE` | 1 | 1 |
+
+`ELLIPSE`, `ARC`, `PIE`, `CHORD`, `ROUNDRECT`, `POINT`, `PIXEL`, `GRADIENT`,
+`HATCH`, `TRANSPARENT` and `EPS` do not occur at all, which is why they come
+after clipping rather than before it. The one bitmap is the whole data area of
+`odr-private/svm/Vyplaty.svm` — 1.59 MB of `BMPEXSCALE` in a 1.63 MB file, and
+the reason that chart renders as an empty frame today.
+
+## The map mode
+
+Deferred, and not just an oversight — the units are one part of a bigger
+question. `MetaMapModeAction::Execute` calls `OutputDevice::SetMapMode`, which
+*replaces* the map mode, **except** where the new one's unit is
+`MapUnit::MapRelative` (13): then its scales multiply the current ones and its
+origin offsets the current one. We replace unconditionally, and we ignore the
+unit, so a `MAPMODE` action that switches from 100th mm to twips is off by a
+factor of 1.76.
+
+It is rare — 4 `MAPMODE` actions in 1125 files, one of them relative — and
+getting it right means following `vcl/source/outdev/map.cxx` rather than
+guessing, so it is its own stage.
 
 ## Shortcuts worth taking
 

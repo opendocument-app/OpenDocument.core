@@ -18,6 +18,33 @@ enum TextEncoding {
   RTL_TEXTENCODING_UCS2 = 0xFFFF,
 };
 
+/// `LineStyle`, what a `LineInfo` draws with.
+enum MetaLineStyle {
+  LINE_NONE = 0,
+  LINE_SOLID = 1,
+  LINE_DASH = 2,
+};
+
+/// `vcl::PushFlags`: what a `PUSH` saves; anything not named survives the
+/// `POP`.
+enum PushFlags : std::uint16_t {
+  PUSH_LINECOLOR = 0x0001,
+  PUSH_FILLCOLOR = 0x0002,
+  PUSH_FONT = 0x0004,
+  PUSH_TEXTCOLOR = 0x0008,
+  PUSH_MAPMODE = 0x0010,
+  PUSH_CLIPREGION = 0x0020,
+  PUSH_RASTEROP = 0x0040,
+  PUSH_TEXTFILLCOLOR = 0x0080,
+  PUSH_TEXTALIGN = 0x0100,
+  PUSH_REFPOINT = 0x0200,
+  PUSH_TEXTLINECOLOR = 0x0400,
+  PUSH_TEXTLAYOUTMODE = 0x0800,
+  PUSH_TEXTLANGUAGE = 0x1000,
+  PUSH_OVERLINECOLOR = 0x2000,
+  PUSH_ALL = 0xffff,
+};
+
 enum MetaActionType {
   META_NULL_ACTION = 0,
   META_PIXEL_ACTION = 100,
@@ -252,5 +279,7 @@ TextRectangleAction read_text_rectangle_action(std::istream &in,
                                                const VersionLength &vl,
                                                TextEncoding encoding);
 TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
+/// The `PushFlags` of a `PUSH`. A version that carries none saves everything.
+std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 
 } // namespace odr::internal::svm

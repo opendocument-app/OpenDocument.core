@@ -51,6 +51,9 @@ The format is not specified anywhere. The references, best first:
 - **An unimplemented action is skipped by its length, never guessed at.** The
   loop checks how far the reader got: short means the rest is ignored (logged),
   past the end means the file is malformed and we throw.
+- **A `POP` restores only what its `PUSH` named.** Half the pushes in the
+  corpus save a subset of `PushFlags`, so restoring the whole state would be
+  wrong more often than right.
 - **Everything unhandled is logged.** A metafile we cannot draw looks exactly
   like one we drew correctly — a blank rectangle raises no error anywhere — so
   the log is the only way to tell. Anything reached by `default:` says so.
