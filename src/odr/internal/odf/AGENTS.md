@@ -145,6 +145,8 @@ are **tolerated** to keep rendering best-effort.
 ## Status & open work
 
 Feature coverage (element/style checkboxes) is tracked in [`README.md`](README.md).
+The drawing gap — transforms, the unparsed shape elements, enhanced geometry and
+the embedded chart — has its own staged plan in [`PLAN.md`](PLAN.md) (#771).
 The structural/foundational gaps, roughly by value:
 
 1. **Editing is text-content only.** No structural edits (insert/delete/move
