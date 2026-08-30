@@ -1,4 +1,4 @@
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <odr/exceptions.hpp>
 
@@ -16,7 +16,7 @@
 #include <string_view>
 #include <tuple>
 
-namespace odr::internal::util {
+namespace odr::internal {
 
 // `PUGIXML_COMPACT` (CMakeLists.txt) changes the size of every node, and a
 // translation unit that misses it links fine and then reads the wrong layout.
@@ -210,4 +210,4 @@ std::vector<xml::StringToken> xml::tokenize_text(const std::string &text) {
   return result;
 }
 
-} // namespace odr::internal::util
+} // namespace odr::internal

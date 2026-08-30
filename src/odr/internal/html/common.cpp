@@ -5,7 +5,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <odr/html.hpp>
 #include <odr/quantity.hpp>
@@ -32,7 +32,7 @@ void html::write_viewport_meta(
     const std::optional<HtmlViewportMode> mode_override) {
   if (config.viewport_content.has_value()) {
     out.write_header_viewport(
-        util::xml::escape_attribute(config.viewport_content.value()));
+        xml::escape_attribute(config.viewport_content.value()));
     return;
   }
 
@@ -257,7 +257,7 @@ std::string html::escape_text(std::string text) {
     return text;
   }
 
-  text = util::xml::escape_text(text);
+  text = xml::escape_text(text);
 
   if (text.front() == ' ') {
     text = "&nbsp;" + text.substr(1);

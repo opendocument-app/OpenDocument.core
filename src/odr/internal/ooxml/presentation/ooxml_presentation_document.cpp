@@ -12,7 +12,7 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
 #include <odr/internal/util/document_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <iterator>
 
@@ -27,7 +27,7 @@ create_element_adapter(const Document &document, ElementRegistry &registry);
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_presentation,
                          DocumentType::presentation, std::move(files)) {
-  m_document_xml = util::xml::parse(*m_files, AbsPath("/ppt/presentation.xml"));
+  m_document_xml = xml::parse(*m_files, AbsPath("/ppt/presentation.xml"));
 
   // Only the parts the slide-id list names: a package may relate anything at
   // all to the presentation, and a Google Slides export relates a protobuf.
@@ -39,7 +39,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
                                            .children("p:sldId")) {
     const std::string id = slide_id.attribute("r:id").value();
     AbsPath slide_path = AbsPath("/ppt").join(RelPath(relations.at(id)));
-    m_slides_xml[id] = util::xml::parse(*m_files, slide_path);
+    m_slides_xml[id] = xml::parse(*m_files, slide_path);
     slides.push_back(std::move(slide_path));
   }
 
@@ -348,24 +348,24 @@ public:
       return new_node;
     };
 
-    for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
+    for (const xml::StringToken &token : xml::tokenize_text(text)) {
       switch (token.type) {
-      case util::xml::StringToken::Type::none:
+      case xml::StringToken::Type::none:
         break;
-      case util::xml::StringToken::Type::string: {
+      case xml::StringToken::Type::string: {
         auto text_node = insert_node("a:t");
         text_node.append_child(pugi::xml_node_type::node_pcdata)
             .text()
             .set(token.string.c_str());
       } break;
-      case util::xml::StringToken::Type::spaces: {
+      case xml::StringToken::Type::spaces: {
         auto text_node = insert_node("a:t");
         text_node.append_attribute("xml:space").set_value("preserve");
         text_node.append_child(pugi::xml_node_type::node_pcdata)
             .text()
             .set(token.string.c_str());
       } break;
-      case util::xml::StringToken::Type::tabs: {
+      case xml::StringToken::Type::tabs: {
         for (std::size_t i = 0; i < token.string.size(); ++i) {
           insert_node("a:tab");
         }

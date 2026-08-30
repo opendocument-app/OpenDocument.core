@@ -2,8 +2,8 @@
 
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/png/png_util.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/png_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <array>
@@ -791,8 +791,7 @@ svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
   bytes += read_bytes(in, pixels);
 
   if (const std::string rows = get_rgb_rows(bytes, layout); !rows.empty()) {
-    result.data =
-        util::png::write(rows, result.size_pixel.x, result.size_pixel.y, 3);
+    result.data = png::write(rows, result.size_pixel.x, result.size_pixel.y, 3);
     result.mime_type = "image/png";
   }
   if (result.data.empty()) {

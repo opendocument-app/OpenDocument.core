@@ -3,7 +3,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <stdexcept>
 #include <string_view>
@@ -42,7 +42,7 @@ bool parse_optional_part(const abstract::ReadableFilesystem &files,
     return false;
   }
   try {
-    result = util::xml::parse(files, path);
+    result = xml::parse(files, path);
   } catch (const std::exception &) {
     return false;
   }

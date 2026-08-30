@@ -273,7 +273,7 @@ all against an in-memory copy, writing only on full success (decision 7).
 | `toggleMark(range, bold)` | split run; assign an **automatic style** (`text:style-name`) — find or create a `<style:style>` with `fo:font-weight="bold"` | split `w:r`; set `<w:rPr><w:b/>` on the middle run |
 | `splitParagraph` | clone `<text:p>` (copy style-name), move trailing nodes into the clone | clone `<w:p>` incl. `w:pPr`, move trailing `w:r` |
 | `insertParagraph` | `insert_child_after` a fresh `<text:p>` at anchor; **append** registry entry | fresh `<w:p>`; append |
-| `insertText(range)` | reuse the `text_set_content` tokenizer (`util::xml::tokenize_text`) on a sub-range | same, `w:t` tokenizer |
+| `insertText(range)` | reuse the `text_set_content` tokenizer (`xml::tokenize_text`) on a sub-range | same, `w:t` tokenizer |
 
 Two genuinely format-specific complications, both already visible in the code:
 

@@ -4,7 +4,7 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/util/string_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <cstring>
 #include <stdexcept>
@@ -373,8 +373,7 @@ ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
     return {};
   }
 
-  const pugi::xml_document relationships =
-      util::xml::parse(filesystem, rel_path);
+  const pugi::xml_document relationships = xml::parse(filesystem, rel_path);
   return parse_relationships(relationships);
 }
 
@@ -389,8 +388,7 @@ ooxml::parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
     return {};
   }
 
-  const pugi::xml_document relationships =
-      util::xml::parse(filesystem, rel_path);
+  const pugi::xml_document relationships = xml::parse(filesystem, rel_path);
   for (const pugi::xpath_node e :
        relationships.select_nodes("//Relationship")) {
     // the type is a uri, so `type` has to match a whole trailing segment

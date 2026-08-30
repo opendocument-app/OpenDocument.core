@@ -8,7 +8,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <utility>
 
@@ -85,7 +85,7 @@ void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
 
 std::pair<pugi::xml_document &, Relations &>
 Document::parse_xml_(const AbsPath &path) {
-  pugi::xml_document document = util::xml::parse(*m_files, path);
+  pugi::xml_document document = xml::parse(*m_files, path);
   Relations relations = parse_relationships(*m_files, path);
 
   auto [it, _] = m_xml_documents_and_relations.emplace(

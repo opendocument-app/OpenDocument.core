@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-namespace odr::internal::util::png {
+namespace odr::internal::png {
 
 /// Wraps 8-bit pixels (row-major, unpadded, top to bottom) into a png: one
 /// `IDAT`, no interlacing, every scanline filtered as `None` (PNG 9.2).
@@ -11,4 +11,4 @@ namespace odr::internal::util::png {
 std::string write(const std::string &pixels, std::int32_t width,
                   std::int32_t height, std::int32_t channels);
 
-} // namespace odr::internal::util::png
+} // namespace odr::internal::png

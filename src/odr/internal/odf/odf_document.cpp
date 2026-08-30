@@ -14,7 +14,7 @@
 #include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/string_util.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <cstring>
@@ -31,10 +31,10 @@ create_element_adapter(const Document &document, ElementRegistry &registry);
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(file_type, document_type, std::move(files)) {
-  m_content_xml = util::xml::parse(*m_files, AbsPath("/content.xml"));
+  m_content_xml = xml::parse(*m_files, AbsPath("/content.xml"));
 
   if (m_files->exists(AbsPath("/styles.xml"))) {
-    m_styles_xml = util::xml::parse(*m_files, AbsPath("/styles.xml"));
+    m_styles_xml = xml::parse(*m_files, AbsPath("/styles.xml"));
   }
 
   init_(m_content_xml.document_element(), m_styles_xml.document_element());
@@ -121,8 +121,7 @@ void Document::save(std::ostream &out) const {
     }
     if (abs_path == Path("/META-INF/manifest.xml")) {
       // TODO
-      auto manifest =
-          util::xml::parse(*m_files, AbsPath("/META-INF/manifest.xml"));
+      auto manifest = xml::parse(*m_files, AbsPath("/META-INF/manifest.xml"));
 
       for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
         node.node().parent().remove_child(node.node());
@@ -651,19 +650,19 @@ public:
       return track(parent.insert_child_before(node, old_first));
     };
 
-    for (const util::xml::StringToken &token : util::xml::tokenize_text(text)) {
+    for (const xml::StringToken &token : xml::tokenize_text(text)) {
       switch (token.type) {
-      case util::xml::StringToken::Type::none:
+      case xml::StringToken::Type::none:
         break;
-      case util::xml::StringToken::Type::string: {
+      case xml::StringToken::Type::string: {
         auto text_node = insert_pcdata();
         text_node.text().set(token.string.c_str());
       } break;
-      case util::xml::StringToken::Type::spaces: {
+      case xml::StringToken::Type::spaces: {
         auto space_node = insert_node("text:s");
         space_node.prepend_attribute("text:c").set_value(token.string.size());
       } break;
-      case util::xml::StringToken::Type::tabs: {
+      case xml::StringToken::Type::tabs: {
         for (std::size_t i = 0; i < token.string.size(); ++i) {
           insert_node("text:tab");
         }

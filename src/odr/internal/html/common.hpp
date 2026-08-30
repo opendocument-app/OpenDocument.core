@@ -82,9 +82,9 @@ void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, WidthFit fits,
 /// length, which leaves those insets as shipped.
 void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 
-/// @ref util::xml::escape_text, plus the `&nbsp;` and `&emsp;` that keep html
+/// @ref xml::escape_text, plus the `&nbsp;` and `&emsp;` that keep html
 /// from collapsing the run's own whitespace. An attribute value wants
-/// @ref util::xml::escape_attribute instead, which leaves spaces intact.
+/// @ref xml::escape_attribute instead, which leaves spaces intact.
 std::string escape_text(std::string text);
 
 /// What a target is, as an `href` would be dispatched. Whitespace and control

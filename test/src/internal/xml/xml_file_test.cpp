@@ -5,8 +5,8 @@
 #include <odr/odr.hpp>
 
 #include <odr/internal/text/text_file.hpp>
-#include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/xml/xml_file.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -39,7 +39,7 @@ std::string xml_html(const std::string &content) {
 
 std::string declared_encoding(const std::string &content) {
   std::istringstream in(content);
-  return util::xml::read_declared_encoding(in);
+  return xml::read_declared_encoding(in);
 }
 
 } // namespace

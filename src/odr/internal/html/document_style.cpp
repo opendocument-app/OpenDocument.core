@@ -4,7 +4,7 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/html/common.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 namespace odr::internal {
 
@@ -151,7 +151,7 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   if (const std::optional<std::string_view> font_name = text_style.font_name;
       font_name.has_value()) {
     result.append("font-family:")
-        .append(util::xml::escape_attribute(std::string(*font_name)))
+        .append(xml::escape_attribute(std::string(*font_name)))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
@@ -179,7 +179,7 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   if (const std::optional<std::string> font_shadow = text_style.font_shadow;
       font_shadow.has_value()) {
     result.append("text-shadow:")
-        .append(util::xml::escape_attribute(*font_shadow))
+        .append(xml::escape_attribute(*font_shadow))
         .append(";");
   }
   if (const std::optional<Color> font_color = text_style.font_color;
@@ -207,7 +207,7 @@ std::string html::translate_block_font_style(const TextStyle &text_style) {
   if (const std::optional<std::string_view> font_name = text_style.font_name;
       font_name.has_value()) {
     result.append("font-family:")
-        .append(util::xml::escape_attribute(std::string(*font_name)))
+        .append(xml::escape_attribute(std::string(*font_name)))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
@@ -357,27 +357,27 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
           table_cell_style.border.right;
       border_right.has_value()) {
     result.append("border-right:")
-        .append(util::xml::escape_attribute(*border_right))
+        .append(xml::escape_attribute(*border_right))
         .append(";");
   }
   if (const std::optional<std::string> border_top = table_cell_style.border.top;
       border_top.has_value()) {
     result.append("border-top:")
-        .append(util::xml::escape_attribute(*border_top))
+        .append(xml::escape_attribute(*border_top))
         .append(";");
   }
   if (const std::optional<std::string> border_left =
           table_cell_style.border.left;
       border_left.has_value()) {
     result.append("border-left:")
-        .append(util::xml::escape_attribute(*border_left))
+        .append(xml::escape_attribute(*border_left))
         .append(";");
   }
   if (const std::optional<std::string> border_bottom =
           table_cell_style.border.bottom;
       border_bottom.has_value()) {
     result.append("border-bottom:")
-        .append(util::xml::escape_attribute(*border_bottom))
+        .append(xml::escape_attribute(*border_bottom))
         .append(";");
   }
   if (const std::optional<double> text_rotation =

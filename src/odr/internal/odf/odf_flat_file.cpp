@@ -5,8 +5,8 @@
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_meta.hpp>
 #include <odr/internal/text/text_file.hpp>
-#include <odr/internal/util/xml_util.hpp>
 #include <odr/internal/xml/xml_file.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <pugixml.hpp>
 
@@ -65,7 +65,7 @@ std::shared_ptr<abstract::Document> FlatOpenDocumentFile::document() const {
   // the recogniser's tree is parsed for a source view; the document model
   // needs its own parse
   return std::make_shared<Document>(m_file_meta.type, m_file_meta.document_type,
-                                    util::xml::parse(m_file->text()));
+                                    xml::parse(m_file->text()));
 }
 
 } // namespace odr::internal::odf

@@ -252,6 +252,8 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/pdf/pdf_page_extractor.cpp"
         "src/odr/internal/pdf/pdf_shading.cpp"
 
+        "src/odr/internal/png/png_util.cpp"
+
         "src/odr/internal/font/cff_builder.cpp"
         "src/odr/internal/font/cff_font.cpp"
         "src/odr/internal/font/cff_standard_strings.cpp"
@@ -289,11 +291,10 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/number_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
         "src/odr/internal/util/stream_util.cpp"
-        "src/odr/internal/util/png_util.cpp"
         "src/odr/internal/util/string_util.cpp"
-        "src/odr/internal/util/xml_util.cpp"
 
         "src/odr/internal/xml/xml_file.cpp"
+        "src/odr/internal/xml/xml_util.cpp"
 
         "src/odr/internal/zip/zip_archive.cpp"
         "src/odr/internal/zip/zip_exceptions.cpp"

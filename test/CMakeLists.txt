@@ -59,6 +59,7 @@ add_executable(odr_test
         "src/internal/svg/svg_file_test.cpp"
         "src/internal/svg/svg_writer_test.cpp"
         "src/internal/xml/xml_file_test.cpp"
+        "src/internal/xml/xml_util_test.cpp"
 
         "src/internal/markdown/markdown_file_test.cpp"
 
@@ -109,6 +110,8 @@ add_executable(odr_test
         "src/internal/pdf/pdf_shading.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
 
+        "src/internal/png/png_util_test.cpp"
+
         "src/internal/font/cff_font.cpp"
         "src/internal/font/type1_charstring.cpp"
         "src/internal/font/type1_crypt.cpp"
@@ -124,9 +127,7 @@ add_executable(odr_test
         "src/internal/util/map_util_test.cpp"
         "src/internal/util/number_util_test.cpp"
         "src/internal/util/stream_util_test.cpp"
-        "src/internal/util/png_util_test.cpp"
         "src/internal/util/string_util_test.cpp"
-        "src/internal/util/xml_util_test.cpp"
 
         "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"

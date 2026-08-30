@@ -5,7 +5,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/odf/odf_crypto.hpp>
 #include <odr/internal/odf/odf_document.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 namespace odr::internal::abstract {
 class Document;
@@ -19,7 +19,7 @@ OpenDocumentFile::OpenDocumentFile(
     : m_filesystem{std::move(filesystem)} {
   if (m_filesystem->exists(AbsPath("/META-INF/manifest.xml"))) {
     const pugi::xml_document manifest =
-        util::xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
+        xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
 
     m_file_meta = parse_file_meta(*m_filesystem, &manifest, false);
     m_manifest = parse_manifest(manifest);

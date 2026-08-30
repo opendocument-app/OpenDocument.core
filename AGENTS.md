@@ -57,7 +57,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/*.hpp` | **Public API**: `file`, `document`, `document_element`, `html`, `style`, `quantity` (`Measure`), `odr`. |
 | `src/odr/internal/abstract/` | Core interfaces: `File`/`DecodedFile`, `Document` + `ElementAdapter`, `Filesystem`, `Archive`, `HtmlService`. |
 | `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, filesystem, `style`, table cursor/range, temp files. |
-| `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`, `xml_util`. |
+| `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
 | `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |
 | `src/odr/internal/html/` | Generic HTML renderer. |
@@ -67,9 +67,10 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/iwork/` | Apple iWork (`.pages`, `.key`, `.numbers`); see [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md) + [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md). |
 | `src/odr/internal/pdf/` | PDF (own parser). |
+| `src/odr/internal/png/` | PNG encoder: the writer `pdf` image extraction and `svm` bitmaps hand their pixels to. |
 | `src/odr/internal/rtf/` | RTF, read as a text document; see [`rtf/AGENTS.md`](src/odr/internal/rtf/AGENTS.md) + [`rtf/PLAN.md`](src/odr/internal/rtf/PLAN.md). |
 | `src/odr/internal/markdown/` | Markdown (CommonMark + GFM via md4c), decoded to a text document; see [`markdown/AGENTS.md`](src/odr/internal/markdown/AGENTS.md) + [`markdown/PLAN.md`](src/odr/internal/markdown/PLAN.md). |
-| `src/odr/internal/xml/` | XML, rendered as a source view; see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
+| `src/odr/internal/xml/` | XML: the pugixml parse and the escaping every xml-writing engine shares (`xml_util`), plus the source view (`xml_file`); see [`xml/AGENTS.md`](src/odr/internal/xml/AGENTS.md). |
 | `src/odr/internal/svg/` | SVG, detected by reading it as xml; see [`svg/AGENTS.md`](src/odr/internal/svg/AGENTS.md). |
 | `src/odr/internal/svm/` | StarView metafile, the vector image odf/ooxml packages carry for charts and OLE objects; translated to svg. See [`svm/AGENTS.md`](src/odr/internal/svm/AGENTS.md) + [`svm/PLAN.md`](src/odr/internal/svm/PLAN.md). |
 | `src/odr/internal/{csv,json,text}/` | Smaller formats. |
@@ -120,7 +121,7 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file → HTM
   link error — hence the imported target, and no prebuilt library to mismatch
   against. A new target that includes `pugixml.hpp` has to get it too, and the
   installed internal headers expose pugixml types, so `odr` carries the define
-  INTERFACE and `package_info` declares it. `util/xml_util.cpp` asserts the
+  INTERFACE and `package_info` declares it. `xml/xml_util.cpp` asserts the
   layout it compiled against.
 
 ## Releasing

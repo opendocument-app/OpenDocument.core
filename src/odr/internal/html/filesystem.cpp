@@ -12,7 +12,7 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
-#include <odr/internal/util/xml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <array>
 #include <iomanip>
@@ -226,10 +226,10 @@ public:
           HtmlElementOptions().set_inline(true).set_class("odr-files-name"));
       if (location.has_value()) {
         out.write_element_begin(
-            "a", HtmlElementOptions().set_inline(true).set_attributes(
-                     HtmlAttributesVector{
-                         {"href", util::xml::escape_attribute(*location)},
-                         {"title", util::xml::escape_attribute(name)}}));
+            "a",
+            HtmlElementOptions().set_inline(true).set_attributes(
+                HtmlAttributesVector{{"href", xml::escape_attribute(*location)},
+                                     {"title", xml::escape_attribute(name)}}));
         out.write_raw(escape_text(file_path.string()));
         out.write_element_end("a");
       } else {
@@ -250,15 +250,15 @@ public:
           HtmlElementOptions().set_inline(true).set_class("odr-files-action"));
       if (const std::optional<std::string> href =
               location.has_value()
-                  ? std::optional(util::xml::escape_attribute(*location))
+                  ? std::optional(xml::escape_attribute(*location))
                   : entry_data_url(file, mime_type_of(file_path));
           href.has_value()) {
         out.write_element_begin(
-            "a", HtmlElementOptions().set_inline(true).set_attributes(
-                     HtmlAttributesVector{
-                         {"href", *href},
-                         {"download", util::xml::escape_attribute(name)},
-                         {"title", util::xml::escape_attribute(name)}}));
+            "a",
+            HtmlElementOptions().set_inline(true).set_attributes(
+                HtmlAttributesVector{{"href", *href},
+                                     {"download", xml::escape_attribute(name)},
+                                     {"title", xml::escape_attribute(name)}}));
         out.write_raw("\u2193");
         out.write_element_end("a");
       }
