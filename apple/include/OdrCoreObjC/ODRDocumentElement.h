@@ -249,6 +249,20 @@ NS_SWIFT_NAME(TableCell)
 @property(nonatomic, readonly) ODRTableCellStyle *style;
 @end
 
+/// `odr::DrawingTransform`.
+NS_SWIFT_NAME(DrawingTransform)
+@interface ODRDrawingTransform : NSObject
+@property(nonatomic, readonly) double a;
+@property(nonatomic, readonly) double b;
+@property(nonatomic, readonly) double c;
+@property(nonatomic, readonly) double d;
+@property(nonatomic, readonly) ODRMeasure *e;
+@property(nonatomic, readonly) ODRMeasure *f;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// `odr::Frame`.
 NS_SWIFT_NAME(Frame)
 @interface ODRFrame : ODRElement
@@ -259,6 +273,7 @@ NS_SWIFT_NAME(Frame)
 @property(nonatomic, readonly, nullable) ODRMeasure *height;
 /// `int32_t`, boxed; `nil` when the document did not set one.
 @property(nonatomic, readonly, nullable) NSNumber *zIndex;
+@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 
@@ -269,6 +284,7 @@ NS_SWIFT_NAME(Rect)
 @property(nonatomic, readonly) ODRMeasure *y;
 @property(nonatomic, readonly) ODRMeasure *width;
 @property(nonatomic, readonly) ODRMeasure *height;
+@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 
@@ -279,6 +295,7 @@ NS_SWIFT_NAME(Line)
 @property(nonatomic, readonly) ODRMeasure *y1;
 @property(nonatomic, readonly) ODRMeasure *x2;
 @property(nonatomic, readonly) ODRMeasure *y2;
+@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 
@@ -289,6 +306,7 @@ NS_SWIFT_NAME(Circle)
 @property(nonatomic, readonly) ODRMeasure *y;
 @property(nonatomic, readonly) ODRMeasure *width;
 @property(nonatomic, readonly) ODRMeasure *height;
+@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 
@@ -299,6 +317,7 @@ NS_SWIFT_NAME(CustomShape)
 @property(nonatomic, readonly, nullable) ODRMeasure *y;
 @property(nonatomic, readonly) ODRMeasure *width;
 @property(nonatomic, readonly) ODRMeasure *height;
+@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 

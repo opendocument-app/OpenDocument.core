@@ -496,6 +496,11 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
+  [[nodiscard]] std::optional<DrawingTransform> frame_transform(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    // TODO the rotation `a:xfrm` carries
+    return std::nullopt;
+  }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);

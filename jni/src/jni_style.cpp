@@ -160,6 +160,20 @@ jobject make_measure(JNIEnv *env, const std::optional<odr::Measure> &value) {
   return value.has_value() ? make_measure(env, *value) : nullptr;
 }
 
+jobject
+make_drawing_transform(JNIEnv *env,
+                       const std::optional<odr::DrawingTransform> &transform) {
+  if (!transform.has_value()) {
+    return nullptr;
+  }
+  return new_object(env, "app/opendocument/core/DrawingTransform",
+                    "(DDDDLapp/opendocument/core/Measure;"
+                    "Lapp/opendocument/core/Measure;)V",
+                    transform->a, transform->b, transform->c, transform->d,
+                    make_measure(env, transform->e),
+                    make_measure(env, transform->f));
+}
+
 jobject make_color(JNIEnv *env, const std::optional<odr::Color> &value) {
   if (!value.has_value()) {
     return nullptr;

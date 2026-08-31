@@ -547,6 +547,10 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
+  [[nodiscard]] std::optional<DrawingTransform> frame_transform(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return std::nullopt;
+  }
   [[nodiscard]] GraphicStyle frame_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};

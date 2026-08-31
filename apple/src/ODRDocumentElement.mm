@@ -733,12 +733,40 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (nullable ODRDrawingTransform *)transform {
+  return guarded_value(
+      [&]() -> ODRDrawingTransform * {
+        return [ODRDrawingTransform
+            transformWithHandle:self.handle.as_frame().transform()];
+      },
+      nil);
+}
+
 - (ODRGraphicStyle *)style {
   return guarded_value(
       [&]() -> ODRGraphicStyle * {
         return [ODRGraphicStyle styleWithHandle:self.handle.as_frame().style()];
       },
       nil);
+}
+
+@end
+
+@implementation ODRDrawingTransform
+
++ (nullable instancetype)transformWithHandle:
+    (const std::optional<odr::DrawingTransform> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRDrawingTransform *const result = [[ODRDrawingTransform alloc] init];
+  result->_a = handle->a;
+  result->_b = handle->b;
+  result->_c = handle->c;
+  result->_d = handle->d;
+  result->_e = [ODRMeasure measureWithHandle:handle->e];
+  result->_f = [ODRMeasure measureWithHandle:handle->f];
+  return result;
 }
 
 @end
@@ -769,6 +797,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   return guarded_value(
       [&] {
         return [ODRMeasure measureWithHandle:self.handle.as_rect().height()];
+      },
+      nil);
+}
+
+- (nullable ODRDrawingTransform *)transform {
+  return guarded_value(
+      [&]() -> ODRDrawingTransform * {
+        return [ODRDrawingTransform
+            transformWithHandle:self.handle.as_rect().transform()];
       },
       nil);
 }
@@ -806,6 +843,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
 - (ODRMeasure *)y2 {
   return guarded_value(
       [&] { return [ODRMeasure measureWithHandle:self.handle.as_line().y2()]; },
+      nil);
+}
+
+- (nullable ODRDrawingTransform *)transform {
+  return guarded_value(
+      [&]() -> ODRDrawingTransform * {
+        return [ODRDrawingTransform
+            transformWithHandle:self.handle.as_line().transform()];
+      },
       nil);
 }
 
@@ -853,6 +899,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (nullable ODRDrawingTransform *)transform {
+  return guarded_value(
+      [&]() -> ODRDrawingTransform * {
+        return [ODRDrawingTransform
+            transformWithHandle:self.handle.as_circle().transform()];
+      },
+      nil);
+}
+
 - (ODRGraphicStyle *)style {
   return guarded_value(
       [&]() -> ODRGraphicStyle * {
@@ -890,6 +945,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       [&] {
         return [ODRMeasure
             measureWithHandle:self.handle.as_custom_shape().height()];
+      },
+      nil);
+}
+
+- (nullable ODRDrawingTransform *)transform {
+  return guarded_value(
+      [&]() -> ODRDrawingTransform * {
+        return [ODRDrawingTransform
+            transformWithHandle:self.handle.as_custom_shape().transform()];
       },
       nil);
 }

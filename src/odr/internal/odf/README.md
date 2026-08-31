@@ -66,7 +66,8 @@ Roughly ordered by importance.
   - [x] custom shapes (bounding box, fill/stroke) #159
     - [ ] enhanced geometry / shape path rendering
   - [x] graphic style: stroke width/color, fill color, vertical align, text wrap
-  - [ ] transform (e.g. flip, rotate)
+  - [x] transform (`draw:transform`, its operation list composed to one matrix)
+  - [ ] mirror (`style:mirror`, `draw:mirror-horizontal` / `-vertical`)
 - [x] page layout (size, orientation, margins)
 - [ ] annotations (`office:annotation`)
 

@@ -277,6 +277,15 @@ void odr_python::bind_document(py::module_ &m) {
       .def("value_type", &odr::TableCell::value_type)
       .def("style", &odr::TableCell::style);
 
+  py::class_<odr::DrawingTransform>(m, "DrawingTransform")
+      .def(py::init<>())
+      .def_readwrite("a", &odr::DrawingTransform::a)
+      .def_readwrite("b", &odr::DrawingTransform::b)
+      .def_readwrite("c", &odr::DrawingTransform::c)
+      .def_readwrite("d", &odr::DrawingTransform::d)
+      .def_readwrite("e", &odr::DrawingTransform::e)
+      .def_readwrite("f", &odr::DrawingTransform::f);
+
   bind_element<odr::Frame>(m, "Frame")
       .def("anchor_type", &odr::Frame::anchor_type)
       .def("x", &odr::Frame::x)
@@ -284,6 +293,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("width", &odr::Frame::width)
       .def("height", &odr::Frame::height)
       .def("z_index", &odr::Frame::z_index)
+      .def("transform", &odr::Frame::transform)
       .def("style", &odr::Frame::style);
 
   bind_element<odr::Rect>(m, "Rect")
@@ -291,6 +301,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("y", &odr::Rect::y)
       .def("width", &odr::Rect::width)
       .def("height", &odr::Rect::height)
+      .def("transform", &odr::Rect::transform)
       .def("style", &odr::Rect::style);
 
   bind_element<odr::Line>(m, "Line")
@@ -298,6 +309,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("y1", &odr::Line::y1)
       .def("x2", &odr::Line::x2)
       .def("y2", &odr::Line::y2)
+      .def("transform", &odr::Line::transform)
       .def("style", &odr::Line::style);
 
   bind_element<odr::Circle>(m, "Circle")
@@ -305,6 +317,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("y", &odr::Circle::y)
       .def("width", &odr::Circle::width)
       .def("height", &odr::Circle::height)
+      .def("transform", &odr::Circle::transform)
       .def("style", &odr::Circle::style);
 
   bind_element<odr::CustomShape>(m, "CustomShape")
@@ -312,6 +325,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("y", &odr::CustomShape::y)
       .def("width", &odr::CustomShape::width)
       .def("height", &odr::CustomShape::height)
+      .def("transform", &odr::CustomShape::transform)
       .def("style", &odr::CustomShape::style);
 
   bind_element<odr::Image>(m, "Image")

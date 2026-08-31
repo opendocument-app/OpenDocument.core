@@ -30,6 +30,10 @@ public final class Frame extends Element {
     return zIndexNative(handle());
   }
 
+  public DrawingTransform transform() {
+    return transformNative(handle());
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
@@ -45,6 +49,8 @@ public final class Frame extends Element {
   private native Measure heightNative(long handle);
 
   private native Integer zIndexNative(long handle);
+
+  private native DrawingTransform transformNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

@@ -577,6 +577,11 @@ std::optional<std::int32_t> Frame::z_index() const {
                    : std::optional<std::int32_t>();
 }
 
+std::optional<DrawingTransform> Frame::transform() const {
+  return exists_() ? m_adapter2->frame_transform(m_identifier)
+                   : std::optional<DrawingTransform>();
+}
+
 GraphicStyle Frame::style() const {
   return exists_() ? m_adapter2->frame_style(m_identifier) : GraphicStyle();
 }
@@ -595,6 +600,11 @@ Measure Rect::width() const {
 
 Measure Rect::height() const {
   return exists_() ? m_adapter2->rect_height(m_identifier) : Measure(0, {});
+}
+
+std::optional<DrawingTransform> Rect::transform() const {
+  return exists_() ? m_adapter2->rect_transform(m_identifier)
+                   : std::optional<DrawingTransform>();
 }
 
 GraphicStyle Rect::style() const {
@@ -617,6 +627,11 @@ Measure Line::y2() const {
   return exists_() ? m_adapter2->line_y2(m_identifier) : Measure(0, {});
 }
 
+std::optional<DrawingTransform> Line::transform() const {
+  return exists_() ? m_adapter2->line_transform(m_identifier)
+                   : std::optional<DrawingTransform>();
+}
+
 GraphicStyle Line::style() const {
   return exists_() ? m_adapter2->line_style(m_identifier) : GraphicStyle();
 }
@@ -635,6 +650,11 @@ Measure Circle::width() const {
 
 Measure Circle::height() const {
   return exists_() ? m_adapter2->circle_height(m_identifier) : Measure(0, {});
+}
+
+std::optional<DrawingTransform> Circle::transform() const {
+  return exists_() ? m_adapter2->circle_transform(m_identifier)
+                   : std::optional<DrawingTransform>();
 }
 
 GraphicStyle Circle::style() const {
@@ -659,6 +679,11 @@ Measure CustomShape::width() const {
 Measure CustomShape::height() const {
   return exists_() ? m_adapter2->custom_shape_height(m_identifier)
                    : Measure(0, {});
+}
+
+std::optional<DrawingTransform> CustomShape::transform() const {
+  return exists_() ? m_adapter2->custom_shape_transform(m_identifier)
+                   : std::optional<DrawingTransform>();
 }
 
 GraphicStyle CustomShape::style() const {

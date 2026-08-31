@@ -22,6 +22,10 @@ public final class Rect extends Element {
     return heightNative(handle());
   }
 
+  public DrawingTransform transform() {
+    return transformNative(handle());
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
@@ -33,6 +37,8 @@ public final class Rect extends Element {
   private native Measure widthNative(long handle);
 
   private native Measure heightNative(long handle);
+
+  private native DrawingTransform transformNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

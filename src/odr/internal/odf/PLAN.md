@@ -94,12 +94,19 @@ leaves behind.
 
 Each stage is one pull request, stacked on the one before.
 
-### 1 — `draw:transform`
+### 1 — `draw:transform` — landed
 
 `DrawingTransform` in the public header; `transform()` on `Frame`, `Rect`,
-`Line`, `Circle` and `CustomShape`; the odf adapter reads and composes the
+`Line`, `Circle` and `CustomShape`; `odf_geometry.cpp` reads and composes the
 attribute; the renderer writes `transform` + `transform-origin:0 0`.
-Visible on 4 files. Closes the `transform` box in `README.md`.
+
+Two things the spec text does not settle, both fixed against libreoffice's own
+svg export of `style-drawing-1.odp`: the list applies to the shape **left to
+right**, so a `translate` after a `rotate` is not itself rotated, and `rotate`
+is **counter-clockwise** for a positive angle — libreoffice writes svg's
+`rotate(-19.4°)` for the file's `rotate (0.34 rad)`. Composing both readings
+and comparing against the bounding box libreoffice reports (`x=23084`, exact)
+is what decided it.
 
 ### 2 — the missing shape elements
 

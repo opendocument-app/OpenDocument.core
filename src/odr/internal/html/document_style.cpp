@@ -4,6 +4,7 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 namespace odr::internal {
@@ -416,6 +417,45 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
   return result;
 }
 
+std::string html::translate_drawing_transform(
+    const std::optional<DrawingTransform> &transform) {
+  if (!transform.has_value()) {
+    return "";
+  }
+
+  const auto number = [](const double value) {
+    return util::number::to_string_significant(value, 7);
+  };
+
+  // Css applies the list right to left, so the linear part goes last.
+  std::string result;
+  if (transform->e.magnitude() != 0 || transform->f.magnitude() != 0) {
+    result.append("translate(")
+        .append(transform->e.to_string())
+        .append(",")
+        .append(transform->f.to_string())
+        .append(")");
+  }
+  if (transform->a != 1 || transform->b != 0 || transform->c != 0 ||
+      transform->d != 1) {
+    result.append(result.empty() ? "" : " ")
+        .append("matrix(")
+        .append(number(transform->a))
+        .append(",")
+        .append(number(transform->b))
+        .append(",")
+        .append(number(transform->c))
+        .append(",")
+        .append(number(transform->d))
+        .append(",0,0)");
+  }
+  if (result.empty()) {
+    return "";
+  }
+  // Css would otherwise turn the box about its centre.
+  return "transform:" + result + ";transform-origin:0 0;";
+}
+
 std::string html::translate_frame_properties(const Frame &frame) {
   const GraphicStyle style = frame.style();
 
@@ -510,6 +550,7 @@ std::string html::translate_frame_properties(const Frame &frame) {
       z_index.has_value()) {
     result += "z-index:" + std::to_string(*z_index) + ";";
   }
+  result += translate_drawing_transform(frame.transform());
   return result;
 }
 
@@ -520,6 +561,7 @@ std::string html::translate_rect_properties(const Rect &rect) {
   result += "top:" + rect.y().to_string() + ";";
   result += "width:" + rect.width().to_string() + ";";
   result += "height:" + rect.height().to_string() + ";";
+  result += translate_drawing_transform(rect.transform());
   return result;
 }
 
@@ -530,6 +572,7 @@ std::string html::translate_circle_properties(const Circle &circle) {
   result += "top:" + circle.y().to_string() + ";";
   result += "width:" + circle.width().to_string() + ";";
   result += "height:" + circle.height().to_string() + ";";
+  result += translate_drawing_transform(circle.transform());
   return result;
 }
 
@@ -549,6 +592,7 @@ html::translate_custom_shape_properties(const CustomShape &custom_shape) {
   }
   result += "width:" + custom_shape.width().to_string() + ";";
   result += "height:" + custom_shape.height().to_string() + ";";
+  result += translate_drawing_transform(custom_shape.transform());
   return result;
 }
 

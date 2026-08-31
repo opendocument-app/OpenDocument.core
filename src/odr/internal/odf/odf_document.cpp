@@ -9,6 +9,7 @@
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
+#include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_table.hpp>
@@ -838,6 +839,10 @@ public:
     }
     return static_cast<std::int32_t>(attribute.as_int());
   }
+  [[nodiscard]] std::optional<DrawingTransform>
+  frame_transform(const ElementIdentifier element_id) const override {
+    return read_transform(get_node(element_id));
+  }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
@@ -858,6 +863,10 @@ public:
   [[nodiscard]] Measure
   rect_height(const ElementIdentifier element_id) const override {
     return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
+  }
+  [[nodiscard]] std::optional<DrawingTransform>
+  rect_transform(const ElementIdentifier element_id) const override {
+    return read_transform(get_node(element_id));
   }
   [[nodiscard]] GraphicStyle
   rect_style(const ElementIdentifier element_id) const override {
@@ -880,6 +889,10 @@ public:
   line_y2(const ElementIdentifier element_id) const override {
     return read_measure_or_zero(get_node(element_id).attribute("svg:y2"));
   }
+  [[nodiscard]] std::optional<DrawingTransform>
+  line_transform(const ElementIdentifier element_id) const override {
+    return read_transform(get_node(element_id));
+  }
   [[nodiscard]] GraphicStyle
   line_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
@@ -901,6 +914,10 @@ public:
   circle_height(const ElementIdentifier element_id) const override {
     return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
   }
+  [[nodiscard]] std::optional<DrawingTransform>
+  circle_transform(const ElementIdentifier element_id) const override {
+    return read_transform(get_node(element_id));
+  }
   [[nodiscard]] GraphicStyle
   circle_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
@@ -921,6 +938,10 @@ public:
   [[nodiscard]] Measure
   custom_shape_height(const ElementIdentifier element_id) const override {
     return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
+  }
+  [[nodiscard]] std::optional<DrawingTransform>
+  custom_shape_transform(const ElementIdentifier element_id) const override {
+    return read_transform(get_node(element_id));
   }
   [[nodiscard]] GraphicStyle
   custom_shape_style(const ElementIdentifier element_id) const override {

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An ODF drawing shape is drawn where its `draw:transform` puts it. New
+  `transform()` on `Frame`, `Rect`, `Line`, `Circle` and `CustomShape`,
+  mirrored in the JNI, Apple and Python bindings.
+
 - A StarView metafile's text is decoded by the charset it names. Every
   encoding but `UCS2` used to emit the file's own bytes, and the invalid utf-8
   a non-ascii label made of that cost the whole image.
