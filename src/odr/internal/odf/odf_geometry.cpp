@@ -3,7 +3,7 @@
 #include <odr/document_element.hpp>
 
 #include <odr/internal/odf/odf_enhanced_geometry.hpp>
-#include <odr/internal/odf/odf_scanner.hpp>
+#include <odr/internal/odf/odf_value_cursor.hpp>
 #include <odr/internal/util/math_util.hpp>
 #include <odr/internal/util/number_util.hpp>
 
@@ -53,9 +53,9 @@ double centimetres_per(const std::string_view unit) {
 }
 
 /// Composes the operation list, holding the translation in centimetres.
-class TransformParser : private Scanner {
+class TransformParser : private ValueCursor {
 public:
-  using Scanner::Scanner;
+  using ValueCursor::ValueCursor;
 
   [[nodiscard]] std::optional<DrawingTransform> parse() {
     while (true) {
@@ -189,9 +189,9 @@ private:
 
 /// Reads an svg `d` (19.180) and writes it back out, boxed by every point and
 /// control point it names. Only the numbers are re-rendered.
-class PathParser : private Scanner {
+class PathParser : private ValueCursor {
 public:
-  using Scanner::Scanner;
+  using ValueCursor::ValueCursor;
 
   [[nodiscard]] std::optional<DrawingPath> parse() {
     while (true) {
@@ -373,7 +373,7 @@ std::optional<ViewBox> read_view_box(const pugi::xml_node node) {
   if (!attribute) {
     return {};
   }
-  Scanner in(attribute.value());
+  ValueCursor in(attribute.value());
   std::array<double, 4> values{};
   for (double &value : values) {
     const std::optional<double> number = in.read_number();
@@ -396,7 +396,7 @@ std::optional<std::string> read_points(const pugi::xml_node node,
   if (!attribute) {
     return {};
   }
-  Scanner in(attribute.value());
+  ValueCursor in(attribute.value());
 
   std::string result;
   while (true) {
@@ -461,7 +461,7 @@ std::optional<DrawingPath> read_regular_polygon(const pugi::xml_node node) {
 
 /// Space-separated numbers, as `draw:modifiers` (19.214) writes them.
 std::vector<double> read_numbers(const pugi::xml_attribute attribute) {
-  Scanner in(attribute.value());
+  ValueCursor in(attribute.value());
   std::vector<double> result;
   while (true) {
     const std::optional<double> value = in.read_number();

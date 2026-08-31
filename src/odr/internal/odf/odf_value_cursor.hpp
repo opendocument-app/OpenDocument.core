@@ -8,11 +8,11 @@
 
 namespace odr::internal::odf {
 
-/// A cursor over the input every reader here shares. Reads are bounded by what
-/// remains, which carries no terminator.
-class Scanner {
+/// A cursor over one of the small languages an odf attribute is written in.
+/// Reads are bounded by what remains, which carries no terminator.
+class ValueCursor {
 public:
-  explicit Scanner(const std::string_view input) : m_rest{input} {}
+  explicit ValueCursor(const std::string_view input) : m_rest{input} {}
 
   [[nodiscard]] bool empty() const { return m_rest.empty(); }
 

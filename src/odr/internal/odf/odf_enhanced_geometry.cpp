@@ -1,6 +1,6 @@
 #include <odr/internal/odf/odf_enhanced_geometry.hpp>
 
-#include <odr/internal/odf/odf_scanner.hpp>
+#include <odr/internal/odf/odf_value_cursor.hpp>
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
@@ -17,12 +17,12 @@ namespace {
 
 /// Recursive descent over 20.36's grammar: sums of products of unary terms,
 /// with `$N` modifiers, `?name` equations, named values and functions.
-class FormulaParser : private Scanner {
+class FormulaParser : private ValueCursor {
 public:
   FormulaParser(const std::string_view formula,
                 const EnhancedGeometryContext &context,
                 const EquationResolver &equations)
-      : Scanner{formula}, m_context{&context}, m_equations{&equations} {}
+      : ValueCursor{formula}, m_context{&context}, m_equations{&equations} {}
 
   [[nodiscard]] std::optional<double> parse() {
     const std::optional<double> value = expression();
@@ -237,12 +237,12 @@ private:
 };
 
 /// Reads 19.145's commands and writes the svg `d` they trace.
-class EnhancedPathParser : private Scanner {
+class EnhancedPathParser : private ValueCursor {
 public:
   EnhancedPathParser(const std::string_view path,
                      const EnhancedGeometryContext &context,
                      const EquationResolver &equations)
-      : Scanner{path}, m_context{&context}, m_equations{&equations} {}
+      : ValueCursor{path}, m_context{&context}, m_equations{&equations} {}
 
   [[nodiscard]] std::optional<std::string> parse() {
     while (true) {
