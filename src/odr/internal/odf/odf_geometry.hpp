@@ -22,6 +22,11 @@ read_transform(pugi::xml_node node);
 [[nodiscard]] std::optional<DrawingTransform>
 parse_transform(std::string_view value);
 
+/// A length attribute in 1/100 mm, the unit ODF measures a chart and an
+/// `svg:d` with no view box in. Nothing where it is absent or not a length.
+[[nodiscard]] std::optional<double>
+read_hundredth_millimetres(pugi::xml_attribute attribute);
+
 /// The outline @p node draws: `draw:path`, `draw:polygon`, `draw:polyline`,
 /// `draw:regular-polygon`, `draw:connector`, and a `draw:circle`/`draw:ellipse`
 /// that `draw:kind` cuts. Nothing for a shape with no geometry we can read.

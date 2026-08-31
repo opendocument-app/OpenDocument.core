@@ -4,17 +4,15 @@ Closing #771: everything an ODF shape carries beyond its bounding box —
 `draw:transform`, the shape elements with no parser, `draw:enhanced-geometry`,
 and the `draw:object` chart. The module as it stands is in
 [`AGENTS.md`](AGENTS.md); the feature checklist is [`README.md`](README.md).
-Keep this file honest as stages land, and delete it when they all have.
+Keep this file honest as stages land, and delete it when nothing is left
+under *Today*.
 
 ## Today
 
-`parse_any_element_tree` (`odf_parser.cpp`) knows nine drawing tags —
-`draw:frame`, `draw:image`, `draw:rect`, `draw:line`, `draw:circle`,
-`draw:custom-shape`, `draw:text-box`, `draw:g`, `draw:a`. Everything else falls
-through its final `return {null_element_id, …}` and vanishes with its subtree.
-`draw:custom-shape` reaches `html::translate_custom_shape` as a positioned
-`<div>` with fill and stroke: the box, never the shape. `draw:transform` is not
-read, so a rotated shape draws unrotated.
+All five stages have landed. What is left is listed under each of them and in
+[`README.md`](README.md): `draw:text-areas` and `draw:handle` on an enhanced
+geometry, the arrowheads `draw:marker` names, `dr3d:scene`, and the chart
+features below stage 5.
 
 ## The corpus
 
@@ -148,12 +146,23 @@ subpath painted differently from the rest.
 `hasstroke` and `hasfill` are always true — the geometry reader has no style
 in hand — and no corpus formula reads them.
 
-### 5 — `draw:object` charts
+### 5 — `draw:object` charts — landed
 
-`<chart:chart>` in the embedded part, rendered from its series, axes and
-`table:table` of plotted data, with the SVM replacement kept as the fallback.
-Closes #179. Large enough to deserve splitting again if it grows; it shares
-nothing with stages 1–4 but the `draw:frame` it hangs off.
+`odf_chart.cpp` renders the embedded part's `<chart:chart>` to svg, and the
+object reaches the renderer as an image carrying it, so the existing image path
+writes it out. The `draw:image` beside an object is the replacement the producer
+wrote, and is skipped where the object itself draws; an object with no chart we
+can read — a formula, an ole blob — still leaves it. Closes #179.
+
+Decisions: the plotted values come from the chart's own `local-table` rather
+than the cells it names in the host document, which is the snapshot the part
+carries and the only one an embedded chart is guaranteed; the layout comes from
+`chart:plot-area` and `chartooo:coordinate-region`, so it matches what the
+producer laid out rather than something we invent.
+
+Open: stacked and percentage plots, secondary axes, trend lines, data labels,
+and the number format an axis names — a date axis shows its serial number
+today.
 
 ## Not scoped
 

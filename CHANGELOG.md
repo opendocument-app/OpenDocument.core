@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An ODF `draw:object` chart is drawn from the chart part's own markup, not
+  from the replacement image beside it: bar, line, area, scatter, pie and ring,
+  with their titles, legends, axes and series colours. An object holding no
+  chart we can read keeps the replacement. Closes #179.
+
 - An ODF custom shape is drawn as the shape its `draw:enhanced-geometry`
   describes rather than as its bounding box: `draw:enhanced-path`,
   `draw:equation`, `draw:modifiers` and the two mirror attributes. Closes #159.

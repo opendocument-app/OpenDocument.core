@@ -8,6 +8,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/odf/odf_chart.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/odf/odf_list.hpp>
@@ -19,8 +20,10 @@
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <cstring>
+#include <mutex>
 #include <ostream>
 #include <sstream>
+#include <unordered_map>
 
 namespace odr::internal::odf {
 
@@ -1003,6 +1006,9 @@ public:
     if (m_document->as_filesystem() == nullptr) {
       return false;
     }
+    if (is_object(element_id)) {
+      return object_file(element_id).has_value();
+    }
     try {
       const AbsPath path = Path(image_href(element_id)).make_absolute();
       return m_document->as_filesystem()->is_file(path);
@@ -1019,6 +1025,9 @@ public:
     if (m_document->as_filesystem() == nullptr) {
       return std::nullopt;
     }
+    if (is_object(element_id)) {
+      return object_file(element_id);
+    }
     const AbsPath path = Path(image_href(element_id)).make_absolute();
     return File(m_document->as_filesystem()->open(path));
   }
@@ -1029,12 +1038,19 @@ public:
     if (image_data(element_id)) {
       return "image" + std::to_string(element_id);
     }
-    return get_node(element_id).attribute("xlink:href").value();
+    std::string href = get_node(element_id).attribute("xlink:href").value();
+    if (is_object(element_id)) {
+      return replacement_href(element_id).value_or(href + "/chart.svg");
+    }
+    return href;
   }
 
 private:
   const Document *m_document{nullptr};
   ElementRegistry *m_registry{nullptr};
+  mutable std::mutex m_charts_mutex;
+  mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>
+      m_charts;
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -1047,6 +1063,80 @@ private:
     const pugi::xml_node data =
         get_node(element_id).child("office:binary-data");
     return data.text().empty() ? pugi::xml_node() : data;
+  }
+
+  [[nodiscard]] bool is_object(const ElementIdentifier element_id) const {
+    return std::strcmp(get_node(element_id).name(), "draw:object") == 0;
+  }
+
+  /// The `draw:image` the producer wrote beside the object (10.4.6.2), which
+  /// is what draws where the object itself cannot be read.
+  [[nodiscard]] std::optional<std::string>
+  replacement_href(const ElementIdentifier element_id) const {
+    if (chart_svg(element_id).has_value()) {
+      return {};
+    }
+    const pugi::xml_attribute href = get_node(element_id)
+                                         .parent()
+                                         .child("draw:image")
+                                         .attribute("xlink:href");
+    if (!href) {
+      return {};
+    }
+    return href.value();
+  }
+
+  [[nodiscard]] std::optional<File>
+  object_file(const ElementIdentifier element_id) const {
+    if (const std::optional<std::string> svg = chart_svg(element_id)) {
+      return File(std::make_shared<MemoryFile>(*svg));
+    }
+    const std::optional<std::string> replacement = replacement_href(element_id);
+    if (!replacement.has_value()) {
+      return std::nullopt;
+    }
+    try {
+      const AbsPath path = Path(*replacement).make_absolute();
+      return File(m_document->as_filesystem()->open(path));
+    } catch (...) { // NOLINT(bugprone-empty-catch): no replacement either
+    }
+    return std::nullopt;
+  }
+
+  [[nodiscard]] std::optional<AbsPath>
+  object_part(const ElementIdentifier element_id) const {
+    const char *href = get_node(element_id).attribute("xlink:href").value();
+    if (href[0] == '\0' || m_document->as_filesystem() == nullptr) {
+      return {};
+    }
+    try {
+      AbsPath path = Path(href).make_absolute().join(RelPath("content.xml"));
+      if (m_document->as_filesystem()->is_file(path)) {
+        return path;
+      }
+    } catch (...) { // NOLINT(bugprone-empty-catch): no part of its own
+    }
+    return {};
+  }
+
+  /// The object's own part rendered, or nothing where it holds no chart. Kept,
+  /// because `image_is_internal`, the resource and the `src` each ask for it.
+  [[nodiscard]] const std::optional<std::string> &
+  chart_svg(const ElementIdentifier element_id) const {
+    const std::lock_guard lock(m_charts_mutex);
+    if (const auto it = m_charts.find(element_id); it != m_charts.end()) {
+      return it->second;
+    }
+    std::optional<std::string> result;
+    if (const std::optional<AbsPath> path = object_part(element_id)) {
+      try {
+        const pugi::xml_document content =
+            xml::parse(*m_document->as_filesystem()->open(*path));
+        result = render_chart(content.document_element());
+      } catch (...) { // NOLINT(bugprone-empty-catch): no chart we can read
+      }
+    }
+    return m_charts.emplace(element_id, std::move(result)).first->second;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {

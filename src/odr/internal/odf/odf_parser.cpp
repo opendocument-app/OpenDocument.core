@@ -237,6 +237,17 @@ parse_sheet(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
+/// A `draw:image` beside a `draw:object` is the object's replacement
+/// (10.4.6.2); the object draws itself, and the two would else stack.
+std::tuple<ElementIdentifier, pugi::xml_node>
+parse_replaceable_image(ElementRegistry &registry, const pugi::xml_node node) {
+  if (node.parent().child("draw:object")) {
+    return {null_element_id, pugi::xml_node()};
+  }
+  return parse_element_tree(registry, ElementType::image, node,
+                            parse_any_element_children);
+}
+
 /// `draw:circle` / `draw:ellipse`: a full one is the box, one that
 /// `draw:kind` (19.212) cuts needs the path its arc traces.
 std::tuple<ElementIdentifier, pugi::xml_node>
@@ -333,7 +344,9 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"table:covered-table-cell",
        create_default_tree_parser(ElementType::table_cell)},
       {"draw:frame", create_default_tree_parser(ElementType::frame)},
-      {"draw:image", create_default_tree_parser(ElementType::image)},
+      {"draw:image", parse_replaceable_image},
+      // An embedded object renders as the image its own part is drawn to.
+      {"draw:object", create_default_tree_parser(ElementType::image)},
       {"draw:rect", create_default_tree_parser(ElementType::rect)},
       {"draw:line", create_default_tree_parser(ElementType::line)},
       {"draw:circle", parse_elliptical_element},
