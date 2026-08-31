@@ -145,8 +145,14 @@ are **tolerated** to keep rendering best-effort.
 ## Status & open work
 
 Feature coverage (element/style checkboxes) is tracked in [`README.md`](README.md).
-The drawing gap — transforms, the unparsed shape elements, enhanced geometry and
-the embedded chart — has its own staged plan in [`PLAN.md`](PLAN.md) (#771).
+The drawing gap #771 named — transforms, the unparsed shape elements, enhanced
+geometry and the embedded chart — is closed; what is left of drawings is the
+unticked boxes in [`README.md`](README.md). Two of them are deliberate rather
+than pending: a `draw:type` naming a preset shape with no `draw:enhanced-path`
+would need libreoffice's own preset table, and all 350 in the corpus write the
+path; and a `draw:connector` is drawn from the `svg:d` its producer wrote,
+since re-routing one between the shapes it names is layout rather than
+decoding.
 The structural/foundational gaps, roughly by value:
 
 1. **Editing is text-content only.** No structural edits (insert/delete/move
