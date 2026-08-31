@@ -24,6 +24,9 @@ struct EnhancedGeometryContext final {
   bool has_fill{true};
   /// `draw:modifiers`, which `$0`, `$1`, … index.
   std::vector<double> modifiers;
+  /// `draw:mirror-horizontal` / `-vertical`, reflected about the view box.
+  bool mirror_horizontal{false};
+  bool mirror_vertical{false};
 };
 
 /// Resolves a `?name` reference to the `draw:equation` it names.

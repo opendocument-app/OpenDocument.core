@@ -2,6 +2,7 @@
 
 #include <odr/document_element.hpp>
 
+#include <odr/internal/odf/odf_enhanced_geometry.hpp>
 #include <odr/internal/odf/odf_scanner.hpp>
 #include <odr/internal/util/math_util.hpp>
 #include <odr/internal/util/number_util.hpp>
@@ -12,7 +13,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <functional>
+#include <map>
 #include <numbers>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -455,6 +459,96 @@ std::optional<DrawingPath> read_regular_polygon(const pugi::xml_node node) {
                      .height = view_box_size};
 }
 
+/// Space-separated numbers, as `draw:modifiers` (19.214) writes them.
+std::vector<double> read_numbers(const pugi::xml_attribute attribute) {
+  Scanner in(attribute.value());
+  std::vector<double> result;
+  while (true) {
+    const std::optional<double> value = in.read_number();
+    if (!value.has_value()) {
+      break;
+    }
+    result.push_back(*value);
+  }
+  return result;
+}
+
+/// The `draw:equation` children by name, resolved on demand and memoised. A
+/// reference that cycles resolves to nothing rather than recursing.
+class Equations {
+public:
+  Equations(const pugi::xml_node geometry,
+            const EnhancedGeometryContext &context)
+      : m_geometry{geometry}, m_context{&context} {}
+
+  std::optional<double> operator()(const std::string_view name) {
+    const std::string key(name);
+    if (const auto it = m_resolved.find(key); it != m_resolved.end()) {
+      return it->second;
+    }
+    if (!m_resolving.insert(key).second) {
+      return {};
+    }
+    std::optional<double> value;
+    for (const pugi::xml_node equation : m_geometry.children("draw:equation")) {
+      if (key == equation.attribute("draw:name").value()) {
+        value = evaluate_formula(equation.attribute("draw:formula").value(),
+                                 *m_context, std::ref(*this));
+        break;
+      }
+    }
+    m_resolving.erase(key);
+    m_resolved.emplace(key, value);
+    return value;
+  }
+
+private:
+  pugi::xml_node m_geometry;
+  const EnhancedGeometryContext *m_context{nullptr};
+  std::map<std::string, std::optional<double>> m_resolved;
+  std::set<std::string> m_resolving;
+};
+
+/// `draw:enhanced-geometry` (10.6.1) on a `draw:custom-shape`, resolved to the
+/// outline its `draw:enhanced-path` traces.
+std::optional<DrawingPath> read_enhanced_geometry(const pugi::xml_node node) {
+  const pugi::xml_node geometry = node.child("draw:enhanced-geometry");
+  if (!geometry) {
+    return {};
+  }
+  const pugi::xml_attribute path = geometry.attribute("draw:enhanced-path");
+  if (!path) {
+    return {};
+  }
+
+  EnhancedGeometryContext context;
+  if (const std::optional<ViewBox> view_box = read_view_box(geometry)) {
+    context.left = view_box->x;
+    context.top = view_box->y;
+    context.right = view_box->x + view_box->width;
+    context.bottom = view_box->y + view_box->height;
+  }
+  context.logical_width = context.right - context.left;
+  context.logical_height = context.bottom - context.top;
+  context.modifiers = read_numbers(geometry.attribute("draw:modifiers"));
+  context.mirror_horizontal =
+      geometry.attribute("draw:mirror-horizontal").as_bool(false);
+  context.mirror_vertical =
+      geometry.attribute("draw:mirror-vertical").as_bool(false);
+
+  Equations equations(geometry, context);
+  const std::optional<std::string> data =
+      convert_enhanced_path(path.value(), context, std::ref(equations));
+  if (!data.has_value()) {
+    return {};
+  }
+  return DrawingPath{.data = *data,
+                     .x = context.left,
+                     .y = context.top,
+                     .width = context.right - context.left,
+                     .height = context.bottom - context.top};
+}
+
 /// A `draw:circle` / `draw:ellipse` that `draw:kind` (19.212) cuts.
 std::optional<DrawingPath> read_elliptical_kind(const pugi::xml_node node) {
   const std::string_view kind = node.attribute("draw:kind").value();
@@ -585,6 +679,10 @@ std::optional<DrawingPath> odf::read_path(const pugi::xml_node node) {
 
   if (name == "draw:circle" || name == "draw:ellipse") {
     return odf::read_elliptical_kind(node);
+  }
+
+  if (name == "draw:custom-shape") {
+    return odf::read_enhanced_geometry(node);
   }
 
   return {};

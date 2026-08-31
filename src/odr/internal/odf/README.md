@@ -68,13 +68,18 @@ Roughly ordered by importance.
   - [x] caption (`draw:caption`; the box, not the tail)
   - [ ] 3-D scene (`dr3d:scene`)
   - [x] custom shapes (bounding box, fill/stroke) #159
-    - [ ] enhanced geometry / shape path rendering
+    - [x] enhanced geometry (`draw:enhanced-path`, `draw:equation`,
+      `draw:modifiers`, `draw:mirror-horizontal` / `-vertical`)
+    - [ ] `draw:text-areas` (text is laid out in the whole box)
+    - [ ] `draw:handle` (the interactive control points)
+    - [ ] `F` / `S`: one subpath painted differently from the rest
   - [x] graphic style: stroke width/color, fill color, vertical align, text wrap
   - [ ] gradient and hatch fills, `draw:opacity` / `draw:opacity-name`, and the
     dash a `draw:stroke` names (a solid `draw:fill-color` and a solid line)
   - [ ] arrowheads (`draw:marker`, `draw:marker-start` / `-end`)
   - [x] transform (`draw:transform`, its operation list composed to one matrix)
-  - [ ] mirror (`style:mirror`, `draw:mirror-horizontal` / `-vertical`)
+  - [ ] mirror (`style:mirror`, and `draw:mirror-*` on a shape with no
+    enhanced geometry)
 - [x] page layout (size, orientation, margins)
 - [ ] annotations (`office:annotation`)
 
