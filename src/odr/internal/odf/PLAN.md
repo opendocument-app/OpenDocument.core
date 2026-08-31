@@ -58,9 +58,10 @@ onto the existing types:
 
 | tag | type | why |
 |---|---|---|
-| `draw:path`, `draw:polygon`, `draw:polyline`, `draw:regular-polygon`, `draw:connector`, `draw:caption` | `custom_shape` | geometry given as a path |
-| `draw:ellipse` | `circle` | `svg:x/y/width/height`, same as `draw:circle` |
+| `draw:path`, `draw:polygon`, `draw:polyline`, `draw:regular-polygon`, `draw:connector` | `custom_shape` | geometry given as a path |
+| `draw:ellipse`, and `draw:circle` `draw:kind` cuts | `circle` / `custom_shape` | box, or the arc it traces |
 | `draw:measure` | `line` | `svg:x1/y1/x2/y2`, same as `draw:line` |
+| `draw:caption` | `rect` | the box; the callout tail is dropped |
 | `dr3d:scene` | — | not modelled; a 3-D scene is not a 2-D path |
 
 **Geometry reaches the renderer as an SVG path.** `CustomShape` grows
@@ -108,12 +109,16 @@ is **counter-clockwise** for a positive angle — libreoffice writes svg's
 and comparing against the bounding box libreoffice reports (`x=23084`, exact)
 is what decided it.
 
-### 2 — the missing shape elements
+### 2 — the missing shape elements — landed
 
-The tag → type table above, the geometry conversions, `path()`/`view_box()` on
-`CustomShape`, and the renderer branch that draws a path. `translate_circle`
-becomes an `<ellipse>` while it is being touched — it writes `r="50%"` today,
-which is wrong for every non-square box.
+The tag → type table above, the geometry conversions, `DrawingPath` and
+`CustomShape::path()`, and the renderer branch that draws it into an
+`<svg viewBox>`. `translate_circle` became an `<ellipse>`; it wrote `r="50%"`,
+wrong for every non-square box. `text:measure` is parsed too, or a measure's
+label comes out empty.
+
+`vector-effect="non-scaling-stroke"` on the path: the view box scales, and with
+`preserveAspectRatio="none"` unevenly, which the stroke must not follow.
 
 ### 3 — `draw:enhanced-path` and `draw:equation`, parser only
 

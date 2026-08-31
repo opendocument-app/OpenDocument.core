@@ -79,6 +79,7 @@ add_jar(odr_java
         "java/app/opendocument/core/DocumentFile.java"
         "java/app/opendocument/core/DocumentPath.java"
         "java/app/opendocument/core/DocumentType.java"
+        "java/app/opendocument/core/DrawingPath.java"
         "java/app/opendocument/core/DrawingTransform.java"
         "java/app/opendocument/core/Element.java"
         "java/app/opendocument/core/ElementType.java"

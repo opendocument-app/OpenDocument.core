@@ -752,6 +752,24 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
 
 @end
 
+@implementation ODRDrawingPath
+
++ (nullable instancetype)pathWithHandle:
+    (const std::optional<odr::DrawingPath> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRDrawingPath *const result = [[ODRDrawingPath alloc] init];
+  result->_data = to_nsstring(handle->data);
+  result->_x = handle->x;
+  result->_y = handle->y;
+  result->_width = handle->width;
+  result->_height = handle->height;
+  return result;
+}
+
+@end
+
 @implementation ODRDrawingTransform
 
 + (nullable instancetype)transformWithHandle:
@@ -954,6 +972,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       [&]() -> ODRDrawingTransform * {
         return [ODRDrawingTransform
             transformWithHandle:self.handle.as_custom_shape().transform()];
+      },
+      nil);
+}
+
+- (nullable ODRDrawingPath *)path {
+  return guarded_value(
+      [&]() -> ODRDrawingPath * {
+        return [ODRDrawingPath
+            pathWithHandle:self.handle.as_custom_shape().path()];
       },
       nil);
 }

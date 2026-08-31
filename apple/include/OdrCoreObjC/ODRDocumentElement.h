@@ -249,6 +249,20 @@ NS_SWIFT_NAME(TableCell)
 @property(nonatomic, readonly) ODRTableCellStyle *style;
 @end
 
+/// `odr::DrawingPath`: an outline, in the user-space box `x`/`y`/`width`/
+/// `height` that the shape's own box stretches to.
+NS_SWIFT_NAME(DrawingPath)
+@interface ODRDrawingPath : NSObject
+@property(nonatomic, readonly, copy) NSString *data;
+@property(nonatomic, readonly) double x;
+@property(nonatomic, readonly) double y;
+@property(nonatomic, readonly) double width;
+@property(nonatomic, readonly) double height;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// `odr::DrawingTransform`.
 NS_SWIFT_NAME(DrawingTransform)
 @interface ODRDrawingTransform : NSObject
@@ -318,6 +332,8 @@ NS_SWIFT_NAME(CustomShape)
 @property(nonatomic, readonly) ODRMeasure *width;
 @property(nonatomic, readonly) ODRMeasure *height;
 @property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
+/// `nil` for a shape whose geometry we cannot read, leaving its box.
+@property(nonatomic, readonly, nullable) ODRDrawingPath *path;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 

@@ -62,10 +62,17 @@ Roughly ordered by importance.
   - [x] column and row spans, covered cells
 - [x] drawings / shapes
   - [x] frame, group (`draw:g`), text box
-  - [x] line, rect, circle
+  - [x] line, rect, circle, ellipse
+  - [x] path, polygon, polyline, regular polygon, connector (drawn as svg)
+  - [x] measure (`draw:measure`, with its `text:measure` label)
+  - [x] caption (`draw:caption`; the box, not the tail)
+  - [ ] 3-D scene (`dr3d:scene`)
   - [x] custom shapes (bounding box, fill/stroke) #159
     - [ ] enhanced geometry / shape path rendering
   - [x] graphic style: stroke width/color, fill color, vertical align, text wrap
+  - [ ] gradient and hatch fills, `draw:opacity` / `draw:opacity-name`, and the
+    dash a `draw:stroke` names (a solid `draw:fill-color` and a solid line)
+  - [ ] arrowheads (`draw:marker`, `draw:marker-start` / `-end`)
   - [x] transform (`draw:transform`, its operation list composed to one matrix)
   - [ ] mirror (`style:mirror`, `draw:mirror-horizontal` / `-vertical`)
 - [x] page layout (size, orientation, margins)

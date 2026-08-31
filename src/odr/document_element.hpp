@@ -482,6 +482,18 @@ public:
   [[nodiscard]] TableCellStyle style() const;
 };
 
+/// @brief Represents a drawing shape's outline, as an svg path.
+///
+/// `data` is written in the user-space box `x`, `y`, `width`, `height`, which
+/// the shape's own box stretches to, aspect ratio not preserved.
+struct DrawingPath final {
+  std::string data;
+  double x{0};
+  double y{0};
+  double width{0};
+  double height{0};
+};
+
 /// @brief Represents the affine transform a drawing shape carries.
 ///
 /// `(x, y)` maps to `(a*x + c*y + e, b*x + d*y + f)`, the lettering of
@@ -565,6 +577,8 @@ public:
   [[nodiscard]] Measure width() const;
   [[nodiscard]] Measure height() const;
   [[nodiscard]] std::optional<DrawingTransform> transform() const;
+  /// Nothing for a shape whose geometry we cannot read, leaving its box.
+  [[nodiscard]] std::optional<DrawingPath> path() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };

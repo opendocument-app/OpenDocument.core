@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF draws the shape elements it used to drop whole: `draw:path`,
+  `draw:polygon`, `draw:polyline`, `draw:regular-polygon`, `draw:connector`,
+  `draw:ellipse`, `draw:measure` and `draw:caption`. New `path()` on
+  `CustomShape`, mirrored in the JNI, Apple and Python bindings.
+
+- An ODF `draw:circle` is drawn as an ellipse rather than a circle inscribed in
+  its box.
+
 - An ODF drawing shape is drawn where its `draw:transform` puts it. New
   `transform()` on `Frame`, `Rect`, `Line`, `Circle` and `CustomShape`,
   mirrored in the JNI, Apple and Python bindings.

@@ -2,6 +2,8 @@
 
 #include <odr/document_element.hpp>
 
+#include <pugixml.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -159,4 +161,157 @@ TEST(OdfTransform, a_zero_needs_no_unit) {
       parse_transform("translate (0 0)");
   ASSERT_TRUE(transform.has_value());
   EXPECT_EQ(Measure(0, DynamicUnit()), transform->e);
+}
+
+namespace {
+
+pugi::xml_node parse_shape(pugi::xml_document &document,
+                           const std::string &xml) {
+  EXPECT_TRUE(document.load_string(xml.c_str()));
+  return document.first_child();
+}
+
+} // namespace
+
+TEST(OdfPath, commands_are_kept_and_numbers_re_rendered) {
+  const std::optional<DrawingPath> path =
+      parse_path_data("M10,20L30,40 50,60Z");
+  ASSERT_TRUE(path.has_value());
+  EXPECT_EQ("M 10 20 L 30 40 L 50 60 Z", path->data);
+}
+
+TEST(OdfPath, a_repeated_moveto_pair_is_a_lineto) {
+  const std::optional<DrawingPath> path = parse_path_data("m0 0 10 10 20 0");
+  ASSERT_TRUE(path.has_value());
+  EXPECT_EQ("m 0 0 l 10 10 l 20 0", path->data);
+}
+
+TEST(OdfPath, the_box_covers_every_point_and_control_point) {
+  const std::optional<DrawingPath> path =
+      parse_path_data("M 0 0 C 10 -20 30 40 20 0");
+  ASSERT_TRUE(path.has_value());
+  EXPECT_DOUBLE_EQ(0, path->x);
+  EXPECT_DOUBLE_EQ(-20, path->y);
+  EXPECT_DOUBLE_EQ(30, path->width);
+  EXPECT_DOUBLE_EQ(60, path->height);
+}
+
+TEST(OdfPath, a_relative_command_is_boxed_where_it_lands) {
+  const std::optional<DrawingPath> path =
+      parse_path_data("m 100 100 h 50 v 25");
+  ASSERT_TRUE(path.has_value());
+  EXPECT_DOUBLE_EQ(100, path->x);
+  EXPECT_DOUBLE_EQ(100, path->y);
+  EXPECT_DOUBLE_EQ(50, path->width);
+  EXPECT_DOUBLE_EQ(25, path->height);
+}
+
+TEST(OdfPath, an_unreadable_path_is_dropped_whole) {
+  EXPECT_FALSE(parse_path_data("").has_value());
+  EXPECT_FALSE(parse_path_data("10 20").has_value());
+  EXPECT_FALSE(parse_path_data("M 10").has_value());
+  EXPECT_FALSE(parse_path_data("M 0 0 W 1 2").has_value());
+}
+
+TEST(OdfShape, draw_path_is_written_in_its_view_box) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(parse_shape(
+      document,
+      R"(<draw:path svg:viewBox="0 0 100 200" svg:d="M0 0L100 200Z"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_EQ("M 0 0 L 100 200 Z", path->data);
+  EXPECT_DOUBLE_EQ(0, path->x);
+  EXPECT_DOUBLE_EQ(100, path->width);
+  EXPECT_DOUBLE_EQ(200, path->height);
+}
+
+TEST(OdfShape, a_polygon_closes_and_a_polyline_does_not) {
+  pugi::xml_document polygon;
+  const std::optional<DrawingPath> closed =
+      read_path(parse_shape(polygon, R"(<draw:polygon svg:viewBox="0 0 10 10" )"
+                                     R"(draw:points="0,0 10,0 10,10"/>)"));
+  ASSERT_TRUE(closed.has_value());
+  EXPECT_EQ("M 0 0 L 10 0 L 10 10 Z", closed->data);
+
+  pugi::xml_document polyline;
+  const std::optional<DrawingPath> open = read_path(
+      parse_shape(polyline, R"(<draw:polyline svg:viewBox="0 0 10 10" )"
+                            R"(draw:points="0,0 10,0 10,10"/>)"));
+  ASSERT_TRUE(open.has_value());
+  EXPECT_EQ("M 0 0 L 10 0 L 10 10", open->data);
+}
+
+TEST(OdfShape, a_regular_polygon_starts_at_the_top) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(
+      parse_shape(document, R"(<draw:regular-polygon draw:corners="4"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_EQ("M 10800 0 L 21600 10800 L 10800 21600 L 0 10800 Z", path->data);
+  EXPECT_DOUBLE_EQ(21600, path->width);
+}
+
+TEST(OdfShape, a_connector_is_boxed_by_its_own_path) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(parse_shape(
+      document, R"(<draw:connector svg:x1="4.4cm" svg:y1="11.4cm" )"
+                R"(svg:d="m4400 11400c1050 0 1575 -1666 1575 -5000"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_DOUBLE_EQ(4400, path->x);
+  EXPECT_DOUBLE_EQ(6400, path->y);
+  EXPECT_DOUBLE_EQ(1575, path->width);
+  EXPECT_DOUBLE_EQ(5000, path->height);
+}
+
+TEST(OdfShape, a_straight_connector_keeps_a_box_svg_accepts) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(parse_shape(
+      document, R"(<draw:connector svg:d="M 100 100 L 500 100"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_DOUBLE_EQ(400, path->width);
+  EXPECT_DOUBLE_EQ(1, path->height);
+}
+
+TEST(OdfShape, a_full_ellipse_has_no_path_of_its_own) {
+  pugi::xml_document document;
+  EXPECT_FALSE(
+      read_path(parse_shape(document, R"(<draw:ellipse svg:width="1cm"/>)"))
+          .has_value());
+  pugi::xml_document full;
+  EXPECT_FALSE(
+      read_path(parse_shape(full, R"(<draw:ellipse draw:kind="full"/>)"))
+          .has_value());
+}
+
+TEST(OdfShape, an_elliptical_arc_traces_its_angles_counter_clockwise) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(
+      parse_shape(document, R"(<draw:ellipse draw:kind="arc" )"
+                            R"(draw:start-angle="0" draw:end-angle="90"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_EQ("M 21600 10800 A 10800 10800 0 0 0 10800 0", path->data);
+}
+
+TEST(OdfShape, a_section_closes_through_the_centre_and_a_cut_across_it) {
+  pugi::xml_document section_document;
+  const std::optional<DrawingPath> section = read_path(parse_shape(
+      section_document, R"(<draw:circle draw:kind="section" )"
+                        R"(draw:start-angle="0" draw:end-angle="90"/>)"));
+  ASSERT_TRUE(section.has_value());
+  EXPECT_TRUE(section->data.ends_with("L 10800 10800 Z"));
+
+  pugi::xml_document cut_document;
+  const std::optional<DrawingPath> cut = read_path(parse_shape(
+      cut_document, R"(<draw:circle draw:kind="cut" )"
+                    R"(draw:start-angle="0" draw:end-angle="90"/>)"));
+  ASSERT_TRUE(cut.has_value());
+  EXPECT_TRUE(cut->data.ends_with("10800 0 Z"));
+}
+
+TEST(OdfShape, an_arc_over_half_the_ellipse_sets_the_large_arc_flag) {
+  pugi::xml_document document;
+  const std::optional<DrawingPath> path = read_path(
+      parse_shape(document, R"(<draw:ellipse draw:kind="arc" )"
+                            R"(draw:start-angle="0" draw:end-angle="270"/>)"));
+  ASSERT_TRUE(path.has_value());
+  EXPECT_NE(std::string::npos, path->data.find(" 0 1 0 "));
 }

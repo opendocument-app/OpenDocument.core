@@ -174,6 +174,16 @@ make_drawing_transform(JNIEnv *env,
                     make_measure(env, transform->f));
 }
 
+jobject make_drawing_path(JNIEnv *env,
+                          const std::optional<odr::DrawingPath> &path) {
+  if (!path.has_value()) {
+    return nullptr;
+  }
+  return new_object(env, "app/opendocument/core/DrawingPath",
+                    "(Ljava/lang/String;DDDD)V", to_jstring(env, path->data),
+                    path->x, path->y, path->width, path->height);
+}
+
 jobject make_color(JNIEnv *env, const std::optional<odr::Color> &value) {
   if (!value.has_value()) {
     return nullptr;
