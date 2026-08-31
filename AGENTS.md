@@ -62,7 +62,7 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 | `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |
 | `src/odr/internal/html/` | Generic HTML renderer. |
 | `src/odr/internal/cfb/`, `zip/` | Container formats (CFB, ZIP). |
-| `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md) + [`odf/PLAN.md`](src/odr/internal/odf/PLAN.md). |
+| `src/odr/internal/odf/` | OpenDocument (odt/ods/odp/odg); see [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
 | `src/odr/internal/ooxml/` | OOXML (docx/pptx/xlsx); see [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) + per-format docs. |
 | `src/odr/internal/oldms/` | **Legacy MS binary** (.doc/.ppt/.xls). |
 | `src/odr/internal/iwork/` | Apple iWork (`.pages`, `.key`, `.numbers`); see [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md) + [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md). |
