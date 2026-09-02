@@ -97,6 +97,17 @@ What changed per version is in [`CHANGELOG.md`](CHANGELOG.md), and in full in th
 
 ## Testing
 
+### Checking the fonts in the generated HTML
+
+Every font the output embeds has to survive [OTS](https://github.com/khaledhosny/ots),
+the sanitizer browsers put in front of `@font-face` — one it rejects is dropped
+whole and the text renders as tofu. After a test run:
+
+```bash
+pip install opentype-sanitizer
+python test/scripts/check_fonts.py build/test/output
+```
+
 ### Running the HTML Comparison Server
 
 Scripts and Docker images can be found here https://github.com/opendocument-app/compare-html

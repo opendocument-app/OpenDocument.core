@@ -274,7 +274,7 @@ jobs:
         with:
           python-version: 3.14
       - name: install python dependencies
-        run: pip install htmlcmp==2.2.0
+        run: pip install htmlcmp==2.2.0 opentype-sanitizer==9.2.0
 
       - name: download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -297,6 +297,13 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: build/test
         run: ./Release/odr_test.exe
+
+      # OTS is what every browser puts in front of an `@font-face`, and a font
+      # it rejects is dropped whole. Deterministic, needs no browser, and — the
+      # point — needs no reference output, so regenerating that cannot bury a
+      # regression here. See #765.
+      - name: check embedded fonts survive OTS
+        run: python test/scripts/check_fonts.py build/test/output
 
       - name: tidy public test outputs
         run: html-tidy --html-tidy-config test/scripts/html-tidy-config build/test/output/odr-public/output
