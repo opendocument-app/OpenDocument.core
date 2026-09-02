@@ -413,6 +413,14 @@ DocumentFile DocumentFile::decrypt(const std::string &password) const {
   return DecodedFile::decrypt(password).as_document_file();
 }
 
+std::optional<File> DocumentFile::thumbnail() const {
+  if (const std::shared_ptr<internal::abstract::File> thumbnail =
+          m_impl->thumbnail()) {
+    return File(thumbnail);
+  }
+  return {};
+}
+
 Document DocumentFile::document() const { return Document(m_impl->document()); }
 
 std::shared_ptr<internal::abstract::DocumentFile> DocumentFile::impl() const {

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- New `DocumentFile::thumbnail()`, the preview the package carries or
+  `nullopt`, mirrored in the JNI, Apple and Python bindings. Closes #21.
+
 - **Breaking** (Swift only): `HtmlConfig`'s optional settings are Swift
   optionals of the real type rather than `NSNumber`/`NSValue` boxes —
   `spreadsheetLimit` is a `TableDimensions?`, `initialZoom` a `Double?`, and so

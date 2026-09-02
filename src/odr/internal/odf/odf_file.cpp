@@ -50,6 +50,16 @@ DocumentType OpenDocumentFile::document_type() const {
   return m_file_meta.document_type;
 }
 
+std::shared_ptr<abstract::File> OpenDocumentFile::thumbnail() const {
+  // [OpenDocument] 3.9. Encrypted alongside everything else.
+  static const AbsPath path("/Thumbnails/thumbnail.png");
+  if (m_encryption_state == EncryptionState::encrypted ||
+      !m_filesystem->is_file(path)) {
+    return {};
+  }
+  return m_filesystem->open(path);
+}
+
 bool OpenDocumentFile::password_encrypted() const noexcept {
   return m_file_meta.password_encrypted;
 }

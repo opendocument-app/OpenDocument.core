@@ -339,7 +339,13 @@ ooxml::parse_relationships(const pugi::xml_document &relations) {
 
 namespace {
 
+/// The root is not a part, so it has no parent to hang `_rels` off.
+bool is_package_root(const AbsPath &path) { return path == AbsPath("/"); }
+
 AbsPath relationships_path(const AbsPath &path) {
+  if (is_package_root(path)) {
+    return AbsPath("/_rels/.rels");
+  }
   return path.parent()
       .join(RelPath("_rels"))
       .join(RelPath(path.basename() + ".rels"));
@@ -357,7 +363,8 @@ std::optional<AbsPath> resolve_relationship_target(const AbsPath &path,
     return AbsPath(target);
   }
   try {
-    return path.parent().join(RelPath(target));
+    const AbsPath base = is_package_root(path) ? path : path.parent();
+    return base.join(RelPath(target));
   } catch (const std::invalid_argument &) {
     return {};
   }

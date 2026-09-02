@@ -28,6 +28,15 @@ public final class DocumentFile extends DecodedFile {
     return new DocumentFile(decryptDocumentFileNative(handle(), password));
   }
 
+  /**
+   * The preview image the package carries, or {@code null} where it carries
+   * none or is still encrypted. Never rendered by us.
+   */
+  public File thumbnail() {
+    long handle = thumbnailNative(handle());
+    return handle == 0 ? null : new File(handle);
+  }
+
   public Document document() {
     return new Document(documentNative(handle()));
   }
@@ -41,6 +50,8 @@ public final class DocumentFile extends DecodedFile {
   private native int documentTypeNative(long handle);
 
   private native long decryptDocumentFileNative(long handle, String password);
+
+  private native long thumbnailNative(long handle);
 
   private native long documentNative(long handle);
 }

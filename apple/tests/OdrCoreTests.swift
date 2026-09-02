@@ -94,6 +94,14 @@ final class DecodeTests: XCTestCase {
   }
 }
 
+final class ThumbnailTests: XCTestCase {
+  func testDocumentFileCarriesItsThumbnail() throws {
+    let file = try DecodedFile.decode(path: try Fixture.odt()).asDocumentFile()
+    let thumbnail = try XCTUnwrap(file.thumbnail)
+    XCTAssertGreaterThan(try thumbnail.data().count, 0)
+  }
+}
+
 final class HtmlTests: XCTestCase {
   private func service() throws -> HtmlService {
     let file = try DecodedFile.decode(path: try Fixture.odt())

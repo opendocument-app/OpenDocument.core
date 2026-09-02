@@ -1,3 +1,5 @@
+import zipfile
+
 import pytest
 
 import pyodr
@@ -156,6 +158,23 @@ def test_document_file_from_disk_and_from_memory(odt_path):
     assert (
         from_memory.document().document_type() == from_disk.document().document_type()
     )
+
+
+def test_document_file_thumbnail(tmp_path, odt_path):
+    # The minimal odt the fixture builds carries none.
+    assert pyodr.DocumentFile.from_disk(str(odt_path)).thumbnail() is None
+
+    with_thumbnail = tmp_path / "with-thumbnail.odt"
+    with zipfile.ZipFile(odt_path) as source:
+        entries = {name: source.read(name) for name in source.namelist()}
+    entries["Thumbnails/thumbnail.png"] = b"not really a png"
+    with zipfile.ZipFile(with_thumbnail, "w") as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+
+    thumbnail = pyodr.DocumentFile.from_disk(str(with_thumbnail)).thumbnail()
+    assert thumbnail is not None
+    assert thumbnail.read() == b"not really a png"
 
 
 def test_document_file_from_memory_rejects_a_non_document():

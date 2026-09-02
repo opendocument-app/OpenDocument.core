@@ -7,6 +7,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/ooxml/ooxml_crypto.hpp>
 #include <odr/internal/ooxml/ooxml_meta.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
@@ -41,6 +42,20 @@ FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
   return m_file_meta.document_type;
+}
+
+std::shared_ptr<abstract::File> OfficeOpenXmlFile::thumbnail() const {
+  // [ECMA-376] 15.2.10. Named by relationship, not by convention: `.jpeg`,
+  // `.png`, `.emf` and `.wmf` all occur.
+  if (m_encryption_state == EncryptionState::encrypted) {
+    return {};
+  }
+  const std::optional<AbsPath> path =
+      parse_relationship_target(*m_files, AbsPath("/"), "thumbnail");
+  if (!path.has_value() || !m_files->is_file(*path)) {
+    return {};
+  }
+  return m_files->open(*path);
 }
 
 bool OfficeOpenXmlFile::password_encrypted() const noexcept {
