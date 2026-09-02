@@ -50,6 +50,12 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 
 `ElementType` is the shared enum in `src/odr/document_element.hpp`.
 
+A **manual page break** reaches the renderer two ways, as the formats state it
+two ways: `ParagraphStyle::break_before`/`break_after` for odf and ooxml, where
+it is a style property, and `ElementType::page_break` for rtf and `.doc`, where
+it is a node. Both split the text view's page box. The *automatic* breaks a
+producer's layout recorded — odf's `text:soft-page-break` — are not parsed.
+
 ## Directory map
 
 | Path | What |

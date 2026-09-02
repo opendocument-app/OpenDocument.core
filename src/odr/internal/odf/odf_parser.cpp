@@ -329,8 +329,9 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"text:index-body", create_default_tree_parser(ElementType::group)},
       // A `draw:measure` writes its label as `text:measure` runs.
       {"text:measure", create_default_tree_parser(ElementType::group)},
-      {"text:soft-page-break",
-       create_default_tree_parser(ElementType::page_break)},
+      // No `text:soft-page-break`: [OpenDocument] 5.1.1 records the
+      // producer's own layout there, not an authored break, which is
+      // `fo:break-before` on the paragraph style.
       {"text:date", create_default_tree_parser(ElementType::group)},
       {"text:time", create_default_tree_parser(ElementType::group)},
       {"text:section", create_default_tree_parser(ElementType::group)},

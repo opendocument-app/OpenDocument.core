@@ -51,6 +51,19 @@ const char *html::translate_vertical_align(const VerticalAlign vertical_align) {
   }
 }
 
+const char *html::translate_break(const BreakType break_type) {
+  switch (break_type) {
+  case BreakType::page:
+    return "page";
+  case BreakType::column:
+    return "column";
+  case BreakType::none:
+    // The css initial value; the model needs it only for style inheritance.
+    return nullptr;
+  }
+  return nullptr;
+}
+
 const char *html::translate_font_weight(const FontWeight font_weight) {
   switch (font_weight) {
   case FontWeight::normal:
@@ -268,6 +281,20 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
   if (const std::optional<Measure> text_indent = paragraph_style.text_indent;
       text_indent.has_value()) {
     result.append("text-indent:").append(text_indent->to_string()).append(";");
+  }
+  // Paged media only; the sheet it starts is `TextHtmlFragment`'s business.
+  if (const std::optional<BreakType> break_before =
+          paragraph_style.break_before;
+      break_before.has_value()) {
+    if (const char *value = translate_break(*break_before); value != nullptr) {
+      result.append("break-before:").append(value).append(";");
+    }
+  }
+  if (const std::optional<BreakType> break_after = paragraph_style.break_after;
+      break_after.has_value()) {
+    if (const char *value = translate_break(*break_after); value != nullptr) {
+      result.append("break-after:").append(value).append(";");
+    }
   }
   return result;
 }

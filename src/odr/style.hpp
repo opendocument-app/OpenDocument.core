@@ -51,6 +51,17 @@ enum class VerticalAlign {
   bottom,
 };
 
+/// @brief Collection of manual breaks, as a document sets them; not the
+/// automatic ones a layout engine computes.
+///
+/// @ref BreakType::none is a break turned explicitly off, which an unset
+/// @ref ParagraphStyle::break_before is not.
+enum class BreakType {
+  none,
+  page,
+  column,
+};
+
 /// @brief Collection of print orientations.
 enum class PrintOrientation {
   portrait,
@@ -157,6 +168,9 @@ struct ParagraphStyle final {
   DirectionalStyle<Measure> margin;
   std::optional<Measure> line_height;
   std::optional<Measure> text_indent;
+  /// A break the author put before or after the paragraph.
+  std::optional<BreakType> break_before;
+  std::optional<BreakType> break_after;
 
   void override(const ParagraphStyle &other);
 };

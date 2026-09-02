@@ -19,6 +19,13 @@ typedef NS_ENUM(NSInteger, ODRFontPosition) {
   ODRFontPositionSub,
 } NS_SWIFT_NAME(FontPosition);
 
+/// A manual break, `ODRBreakTypeNone` being one the document turns off.
+typedef NS_ENUM(NSInteger, ODRBreakType) {
+  ODRBreakTypeNone = 0,
+  ODRBreakTypePage,
+  ODRBreakTypeColumn,
+} NS_SWIFT_NAME(BreakType);
+
 typedef NS_ENUM(NSInteger, ODRTextAlign) {
   ODRTextAlignLeft = 0,
   ODRTextAlignRight,
@@ -157,6 +164,10 @@ NS_SWIFT_NAME(ParagraphStyle)
 @property(nonatomic, readonly) ODRDirectionalMeasure *margin;
 @property(nonatomic, readonly, nullable) ODRMeasure *lineHeight;
 @property(nonatomic, readonly, nullable) ODRMeasure *textIndent;
+/// `ODRBreakType`, boxed; `nil` where the style says nothing.
+@property(nonatomic, readonly, nullable) NSNumber *breakBefore;
+/// `ODRBreakType`, boxed; `nil` where the style says nothing.
+@property(nonatomic, readonly, nullable) NSNumber *breakAfter;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A manual page break starts a new page box, and prints as `break-before:page`.
+  New `BreakType` and `ParagraphStyle::break_before`/`break_after`, mirrored in
+  the JNI, Apple and Python bindings. Towards #174.
+
+- ODF's `text:soft-page-break` is no longer part of the element tree, so a
+  `DocumentPath` past one shifts.
+
 - New `DocumentFile::thumbnail()`, the preview the package carries or
   `nullopt`, mirrored in the JNI, Apple and Python bindings. Closes #21.
 

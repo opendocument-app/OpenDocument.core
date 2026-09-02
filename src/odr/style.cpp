@@ -66,6 +66,8 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
   margin.override(other.margin);
   override_if_set(line_height, other.line_height);
   override_if_set(text_indent, other.text_indent);
+  override_if_set(break_before, other.break_before);
+  override_if_set(break_after, other.break_after);
 }
 
 void TableStyle::override(const TableStyle &other) {

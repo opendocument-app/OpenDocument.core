@@ -18,6 +18,9 @@ ODR_SAME_ENUM(ODRFontStyleItalic, odr::FontStyle::italic);
 ODR_SAME_ENUM(ODRFontPositionNormal, odr::FontPosition::normal);
 ODR_SAME_ENUM(ODRFontPositionSuper, odr::FontPosition::super);
 ODR_SAME_ENUM(ODRFontPositionSub, odr::FontPosition::sub);
+ODR_SAME_ENUM(ODRBreakTypeNone, odr::BreakType::none);
+ODR_SAME_ENUM(ODRBreakTypePage, odr::BreakType::page);
+ODR_SAME_ENUM(ODRBreakTypeColumn, odr::BreakType::column);
 ODR_SAME_ENUM(ODRTextAlignLeft, odr::TextAlign::left);
 ODR_SAME_ENUM(ODRTextAlignRight, odr::TextAlign::right);
 ODR_SAME_ENUM(ODRTextAlignCenter, odr::TextAlign::center);
@@ -216,6 +219,8 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_margin = [ODRDirectionalMeasure directionalWithHandle:handle.margin];
   result->_lineHeight = box(handle.line_height);
   result->_textIndent = box(handle.text_indent);
+  result->_breakBefore = box_enum(handle.break_before);
+  result->_breakAfter = box_enum(handle.break_after);
   return result;
 }
 

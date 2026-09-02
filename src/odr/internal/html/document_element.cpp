@@ -141,13 +141,14 @@ void html::translate_element(const Element &element,
   case ElementType::custom_shape:
     translate_custom_shape(element, state);
     break;
+  case ElementType::page_break:
+    translate_page_break(element, state);
+    break;
   case ElementType::group:
     translate_children(element.children(), state);
     break;
   default:
-    // The element and its whole subtree are dropped. Logged rather than
-    // thrown: a renderer shows what it can, and the corpus run is what ranks
-    // the gaps by how often they actually occur.
+    // Dropped with its whole subtree; a renderer shows what it can.
     ODR_WARNING(state.logger(), "html: dropped unhandled element "
                                     << element_type_name(element.type()));
     break;
@@ -435,6 +436,15 @@ bool has_content(const ElementRange &children) {
 }
 
 } // namespace
+
+void html::translate_page_break(const Element & /*element*/,
+                                const WritingState &state) {
+  // Reached only where the page box cannot be split; `TextHtmlFragment` takes
+  // the breaks among the root's children.
+  state.out().write_element_begin(
+      "div", HtmlElementOptions().set_style("break-before:page"));
+  state.out().write_element_end("div");
+}
 
 void html::translate_paragraph(const Element &element,
                                const WritingState &state,

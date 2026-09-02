@@ -1,5 +1,7 @@
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 
+#include <odr/style.hpp>
+
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -43,6 +45,33 @@ pugi::xml_node node_of(const char *xml, pugi::xml_document &document) {
 }
 
 } // namespace
+
+/// [ECMA-376] 17.3.1.23. `w:val="0"` clears an inherited break, so off has to
+/// be told from unsaid. `sample1.docx`'s `TOCHeading` is such a style.
+TEST(ooxml_text_style,
+     page_break_before_is_inherited_until_a_style_turns_it_off) {
+  pugi::xml_document document;
+  const StyleRegistry registry = registry_of(
+      R"(<w:styles>)"
+      R"(<w:style w:styleId="head"><w:pPr><w:pageBreakBefore/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="derived"><w:basedOn w:val="head"/></w:style>)"
+      R"(<w:style w:styleId="toc"><w:basedOn w:val="head"/>)"
+      R"(<w:pPr><w:pageBreakBefore w:val="0"/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="plain"/>)"
+      R"(</w:styles>)",
+      document);
+
+  const auto break_before = [&](const char *name) {
+    const Style *style = registry.style(name);
+    EXPECT_NE(nullptr, style);
+    return style->resolved().paragraph_style.break_before;
+  };
+
+  EXPECT_EQ(BreakType::page, break_before("head"));
+  EXPECT_EQ(BreakType::page, break_before("derived"));
+  EXPECT_EQ(BreakType::none, break_before("toc"));
+  EXPECT_FALSE(break_before("plain").has_value());
+}
 
 TEST(ooxml_text_style, based_on_chain_inherits) {
   pugi::xml_document document;

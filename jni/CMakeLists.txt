@@ -68,6 +68,7 @@ add_jar(odr_java
         "java/app/opendocument/core/Archive.java"
         "java/app/opendocument/core/ArchiveFile.java"
         "java/app/opendocument/core/Bookmark.java"
+        "java/app/opendocument/core/BreakType.java"
         "java/app/opendocument/core/Circle.java"
         "java/app/opendocument/core/Color.java"
         "java/app/opendocument/core/CustomShape.java"

@@ -14,9 +14,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -190,6 +192,139 @@ TEST(FlatOpenDocumentFile, styles_resolve_from_the_single_root) {
   const TextStyle style = paragraph.as_paragraph().text_style();
   EXPECT_EQ(style.font_size, Measure("24pt"));
   EXPECT_EQ(style.font_weight, FontWeight::bold);
+}
+
+namespace {
+
+/// One paragraph per entry, the second carrying @p style_name.
+std::string three_paragraphs(const std::string &style_name,
+                             const std::string &properties) {
+  return flat_text(R"(<text:p>one</text:p>)"
+                   R"(<text:p text:style-name=")" +
+                       style_name +
+                       R"(">two</text:p>)"
+                       R"(<text:p>three</text:p>)",
+                   R"(<office:automatic-styles>)"
+                   R"(<style:style style:name=")" +
+                       style_name +
+                       R"(" style:family="paragraph">)"
+                       R"(<style:paragraph-properties )" +
+                       properties +
+                       R"(/></style:style>)"
+                       R"(</office:automatic-styles>)");
+}
+
+/// The rendered document, with the page box the margin config turns on.
+std::string render(const std::string &source) {
+  HtmlConfig config((std::filesystem::current_path() / "flat_break").string());
+  config.text_document_margin = true;
+
+  std::ostringstream out;
+  html::translate(DecodedFile(File::from_memory(source)), config)
+      .list_views()
+      .at(0)
+      .write_html(out);
+  return out.str();
+}
+
+/// `break_before` of every top-level paragraph, in document order.
+std::vector<std::optional<BreakType>>
+breaks_before_of(const std::string &source) {
+  const Document document = DocumentFile::from_memory(source).document();
+
+  std::vector<std::optional<BreakType>> result;
+  for (const Element child : document.root_element().children()) {
+    result.push_back(child.as_paragraph().style().break_before);
+  }
+  return result;
+}
+
+std::size_t count(const std::string &haystack, const std::string &needle) {
+  std::size_t result = 0;
+  for (std::size_t at = haystack.find(needle); at != std::string::npos;
+       at = haystack.find(needle, at + needle.size())) {
+    ++result;
+  }
+  return result;
+}
+
+/// Told apart from the stylesheet's own mentions of the class.
+std::size_t page_boxes(const std::string &html) {
+  return count(html, R"(class="odr-page-outer")");
+}
+
+} // namespace
+
+/// [OpenDocument] 20.86; not the `text:soft-page-break` element.
+TEST(FlatOpenDocumentFile,
+     a_manual_page_break_is_read_off_the_paragraph_style) {
+  EXPECT_EQ(
+      std::vector<std::optional<BreakType>>(
+          {std::nullopt, BreakType::page, std::nullopt}),
+      breaks_before_of(three_paragraphs("P1", R"(fo:break-before="page")")));
+}
+
+/// `auto` clears an inherited break; unset says nothing.
+TEST(FlatOpenDocumentFile, an_automatic_break_reads_as_none_rather_than_unset) {
+  EXPECT_EQ(
+      std::vector<std::optional<BreakType>>(
+          {std::nullopt, BreakType::none, std::nullopt}),
+      breaks_before_of(three_paragraphs("P1", R"(fo:break-before="auto")")));
+}
+
+/// And states itself in css for paged media.
+TEST(FlatOpenDocumentFile, a_manual_page_break_splits_the_page_box) {
+  const std::string html =
+      render(three_paragraphs("P1", R"(fo:break-before="page")"));
+
+  EXPECT_EQ(2U, page_boxes(html));
+  EXPECT_EQ(1U, count(html, "break-before:page"));
+}
+
+/// It would otherwise open a sheet the document does not have.
+TEST(FlatOpenDocumentFile, a_break_on_the_first_block_leaves_no_empty_sheet) {
+  const std::string source =
+      flat_text(R"(<text:p text:style-name="P1">one</text:p>)"
+                R"(<text:p>two</text:p>)",
+                R"(<office:automatic-styles>)"
+                R"(<style:style style:name="P1" style:family="paragraph">)"
+                R"(<style:paragraph-properties fo:break-before="page"/>)"
+                R"(</style:style></office:automatic-styles>)");
+
+  EXPECT_EQ(1U, page_boxes(render(source)));
+}
+
+/// [OpenDocument] 5.1.1: the producer's own layout, so not an element of ours.
+TEST(FlatOpenDocumentFile, a_soft_page_break_is_not_content) {
+  const std::string source =
+      flat_text(R"(<text:p>one<text:soft-page-break/>two</text:p>)");
+
+  const Document document = DocumentFile::from_memory(source).document();
+  const Element paragraph =
+      first_of_type(document.root_element(), ElementType::paragraph);
+  ASSERT_TRUE(paragraph);
+  for (const Element child : paragraph.children()) {
+    EXPECT_EQ(ElementType::text, child.type());
+  }
+
+  EXPECT_EQ(1U, page_boxes(render(source)));
+}
+
+/// Without the page box there is no sheet to split.
+TEST(FlatOpenDocumentFile, a_reflowed_document_states_the_break_in_css_only) {
+  HtmlConfig config((std::filesystem::current_path() / "flat_reflow").string());
+  config.text_document_margin = false;
+
+  std::ostringstream out;
+  html::translate(DecodedFile(File::from_memory(
+                      three_paragraphs("P1", R"(fo:break-before="page")"))),
+                  config)
+      .list_views()
+      .at(0)
+      .write_html(out);
+
+  EXPECT_EQ(0U, page_boxes(out.str()));
+  EXPECT_EQ(1U, count(out.str(), "break-before:page"));
 }
 
 /// Without a package there is nowhere to put an image but the markup.
