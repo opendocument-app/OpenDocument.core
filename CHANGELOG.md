@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A PDF `gs` applies the `/ExtGState` stroke parameters `/LW`, `/LC`, `/LJ`,
+  `/ML` and `/D`. A producer that sets the line width only there — Canva does —
+  used to have every stroke drawn at the initial width of 1.
+
 - A manual page break starts a new page box, and prints as `break-before:page`.
   New `BreakType` and `ParagraphStyle::break_before`/`break_after`, mirrored in
   the JNI, Apple and Python bindings. Towards #174.
