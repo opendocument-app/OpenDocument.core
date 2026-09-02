@@ -21,6 +21,15 @@ NS_INLINE ODRTableDimensions ODRTableDimensionsMake(uint32_t rows,
   return (ODRTableDimensions){.rows = rows, .columns = columns};
 }
 
+/// Boxing needs `@encode`, which Swift has no equivalent of.
+@interface NSValue (ODRTableDimensions)
++ (NSValue *)odr_valueWithTableDimensions:(ODRTableDimensions)dimensions
+    NS_SWIFT_NAME(value(tableDimensions:));
+/// Zeroes for a value holding anything else.
+@property(nonatomic, readonly)
+    ODRTableDimensions odr_tableDimensionsValue NS_SWIFT_NAME(tableDimensionsValue);
+@end
+
 /// A cell address — `odr::TablePosition`.
 typedef struct ODRTablePosition {
   uint32_t column;

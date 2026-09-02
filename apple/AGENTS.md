@@ -94,6 +94,11 @@ consumer, and a SwiftPM binary target gives the consumer no way to pass
   `NS_ERROR_ENUM`. The ObjC API is the API; the Swift target on top is only for
   what annotations cannot express, the same way `../android` refuses to
   reimplement the java API in kotlin.
+- **A boxed `std::optional` is `NS_REFINED_FOR_SWIFT`.** The box moves to
+  `__name` and `swift/*+Optionals.swift` carries the real optional under the
+  real name. Swift has no `@encode`, so a boxed struct is otherwise unwritable
+  from Swift; `@encode` stays in the ObjC layer (`NSValue (ODRTableDimensions)`
+  in `ODRTable.h`).
 - **Pin `os.version` in every conan profile.** An unset deployment target floats
   with the runner's SDK and would disagree with `Package.swift`'s `platforms:`;
   `CMakeLists.txt` fails the configure rather than let that ship.
