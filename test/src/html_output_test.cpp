@@ -194,7 +194,13 @@ TEST_P(HtmlOutputTests, html_meta) {
 
   const std::string output_path_tmp = output_path + "/tmp";
   fs::create_directories(output_path_tmp);
-  HtmlService service = html::translate(file, output_path_tmp, config);
+  // The renderer used to get the null logger, so nothing it reported was ever
+  // read. Warnings only: its debug output is per pdf operator and per svm
+  // action, and would bury the corpus log.
+  const Logger render_logger =
+      Logger::create_stdio("odr-test", LogLevel::warning);
+  HtmlService service =
+      html::translate(file, output_path_tmp, config, render_logger);
   Html html = service.bring_offline(output_path);
   fs::remove_all(output_path_tmp);
 
