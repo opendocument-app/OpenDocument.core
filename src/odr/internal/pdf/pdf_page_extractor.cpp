@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -335,8 +336,9 @@ build_soft_mask(const SoftMaskDef &def, const Resources &resources,
                 GraphicsState &state, const Logger &logger,
                 std::set<std::string> &warned, ActiveForms &active);
 
-/// Apply `gs` (ISO 32000-1 8.4.5): fold the named `/ExtGState`'s `ca`/`CA`,
-/// `/BM` and `/SMask` into the general state. Other entries are out of scope.
+/// Apply `gs` (ISO 32000-1 8.4.5): fold the named `/ExtGState`'s stroke
+/// parameters (`/LW`, `/LC`, `/LJ`, `/ML`, `/D`), `ca`/`CA`, `/BM` and
+/// `/SMask` into the general state. Other entries are out of scope.
 /// `/BM` may be an array — an ordered fallback list, so pick the first
 /// supported name. An absent `/SMask` leaves the mask unchanged; `/None`
 /// clears it.
@@ -349,6 +351,30 @@ void apply_ext_g_state(const std::string &name, const Resources &resources,
   }
   const Dictionary &dictionary = it->second.as_dictionary();
   GraphicsState::General &general = state.current().general;
+  // Table 58's aliases for `w`/`J`/`j`/`M`/`d`. A producer that sets the line
+  // width only here (Canva does) strokes at the initial width of 1 without
+  // them.
+  if (dictionary.has_value("LW") && dictionary.at("LW").is_real()) {
+    general.line_width = dictionary.at("LW").as_real();
+  }
+  if (dictionary.has_value("LC") && dictionary.at("LC").is_integer()) {
+    general.cap_style =
+        static_cast<std::int32_t>(dictionary.at("LC").as_integer());
+  }
+  if (dictionary.has_value("LJ") && dictionary.at("LJ").is_integer()) {
+    general.join_style =
+        static_cast<std::int32_t>(dictionary.at("LJ").as_integer());
+  }
+  if (dictionary.has_value("ML") && dictionary.at("ML").is_real()) {
+    general.miter_limit = dictionary.at("ML").as_real();
+  }
+  // `/D` is `[[array] phase]`, the two `d` operands in one array.
+  if (dictionary.has_value("D") && dictionary.at("D").is_array()) {
+    const Array &dash = dictionary.at("D").as_array();
+    if (dash.size() == 2 && dash[0].is_array() && dash[1].is_real()) {
+      general.dash = {dash[0].as_reals(), dash[1].as_real()};
+    }
+  }
   if (dictionary.has_value("ca") && dictionary.at("ca").is_real()) {
     general.fill_alpha = dictionary.at("ca").as_real();
   }

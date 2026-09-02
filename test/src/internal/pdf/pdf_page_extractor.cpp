@@ -843,6 +843,50 @@ TEST(PdfPageExtractor, gs_blend_mode_array_picks_first_supported) {
   EXPECT_EQ(path_at(page, 0).blend_mode, "Multiply");
 }
 
+// `/LW` is the `w` operator as an `/ExtGState` entry (ISO 32000-1 Table 58);
+// a producer that sets the width only there used to stroke at the initial 1.
+TEST(PdfPageExtractor, gs_line_width) {
+  Resources res;
+  Dictionary gs;
+  gs["LW"] = Object(Real{3.5});
+  res.ext_g_state["GS1"] = Object(std::move(gs));
+  const auto page =
+      extract_page("/GS1 gs 0 0 m 10 10 l S", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).line_width, 3.5);
+}
+
+// `/LC`, `/LJ` and `/ML` alias `J`, `j` and `M`.
+TEST(PdfPageExtractor, gs_line_cap_join_and_miter_limit) {
+  Resources res;
+  Dictionary gs;
+  gs["LC"] = Object(Integer{1});
+  gs["LJ"] = Object(Integer{2});
+  gs["ML"] = Object(Real{4});
+  res.ext_g_state["GS1"] = Object(std::move(gs));
+  const auto page =
+      extract_page("/GS1 gs 0 0 m 10 10 l S", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(path_at(page, 0).line_cap, 1);
+  EXPECT_EQ(path_at(page, 0).line_join, 2);
+  EXPECT_DOUBLE_EQ(path_at(page, 0).miter_limit, 4);
+}
+
+// `/D` packs both `d` operands into one array: `[[array] phase]`.
+TEST(PdfPageExtractor, gs_dash_pattern) {
+  Resources res;
+  Dictionary gs;
+  gs["D"] = Object(Array(std::vector<Object>{
+      Object(Array(std::vector<Object>{Object(Real{3}), Object(Real{2})})),
+      Object(Real{1})}));
+  res.ext_g_state["GS1"] = Object(std::move(gs));
+  const auto page =
+      extract_page("/GS1 gs 0 0 m 10 10 l S", res, Logger::null());
+  ASSERT_EQ(page.size(), 1);
+  EXPECT_EQ(path_at(page, 0).dash_array, (std::vector<double>{3, 2}));
+  EXPECT_DOUBLE_EQ(path_at(page, 0).dash_phase, 1);
+}
+
 // The constant alpha is part of the saved graphics state, so `q`/`Q` scope it.
 TEST(PdfPageExtractor, gs_alpha_scoped_by_q_Q) {
   Resources res;
