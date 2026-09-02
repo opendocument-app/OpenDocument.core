@@ -323,6 +323,9 @@ NS_SWIFT_NAME(DocumentFile)
 - (nullable instancetype)initWithPath:(NSString *)path error:(NSError **)error;
 
 @property(nonatomic, readonly) ODRDocumentType documentType;
+/// The preview image the package carries, `nil` where it carries none or is
+/// still encrypted. Never rendered by us.
+@property(nonatomic, readonly, nullable) ODRFile *thumbnail;
 - (nullable ODRDocumentFile *)decryptWithPassword:(NSString *)password
                                             error:(NSError **)error;
 /// Decodes the document. The expensive step.

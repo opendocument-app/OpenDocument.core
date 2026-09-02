@@ -4,10 +4,14 @@
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/util/file_util.hpp>
+#include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 
 #include <test_util.hpp>
 
 #include <memory>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <tuple>
 
@@ -173,6 +177,55 @@ TEST(DocumentFile, from_disk_and_from_memory_agree) {
 TEST(DocumentFile, from_memory_throws_on_a_non_document) {
   EXPECT_THROW(std::ignore = DocumentFile::from_memory("not a document"),
                NoDocumentFile);
+}
+
+TEST(DocumentFile, odf_thumbnail) {
+  const DocumentFile file(
+      TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods"));
+
+  const std::optional<File> thumbnail = file.thumbnail();
+  ASSERT_TRUE(thumbnail.has_value());
+  EXPECT_LT(0, thumbnail->size());
+  EXPECT_EQ(DecodedFile(*thumbnail).file_type(),
+            FileType::portable_network_graphics);
+}
+
+TEST(DocumentFile, thumbnail_is_absent_where_the_package_has_none) {
+  const DocumentFile file(
+      TestData::test_file_path("odr-public/docx/style-various-1.docx"));
+
+  EXPECT_FALSE(file.thumbnail().has_value());
+}
+
+/// The name is deliberately unconventional: only reading the relationship
+/// finds it.
+TEST(DocumentFile, ooxml_thumbnail_is_named_by_the_package_relationship) {
+  internal::zip::ZipArchive zip;
+  zip.insert_file(
+      std::end(zip), internal::RelPath("_rels/.rels"),
+      std::make_shared<internal::MemoryFile>(
+          R"(<?xml version="1.0"?>)"
+          R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+          R"(<Relationship Id="rId1" Target="docProps/preview.emf" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"/>)"
+          R"(</Relationships>)"));
+  zip.insert_file(std::end(zip), internal::RelPath("word/document.xml"),
+                  std::make_shared<internal::MemoryFile>(
+                      R"(<?xml version="1.0"?><w:document )"
+                      R"(xmlns:w="http://schemas.openxmlformats.org/)"
+                      R"(wordprocessingml/2006/main"><w:body/></w:document>)"));
+  zip.insert_file(std::end(zip), internal::RelPath("docProps/preview.emf"),
+                  std::make_shared<internal::MemoryFile>("not really an emf"));
+
+  std::stringstream out;
+  zip.save(out);
+
+  const DocumentFile file = DocumentFile::from_memory(out.str());
+  ASSERT_EQ(file.file_type(), FileType::office_open_xml_document);
+
+  const std::optional<File> thumbnail = file.thumbnail();
+  ASSERT_TRUE(thumbnail.has_value());
+  EXPECT_EQ(internal::util::stream::read(*thumbnail->stream()),
+            "not really an emf");
 }
 
 TEST(DecodedFile, wpd) {

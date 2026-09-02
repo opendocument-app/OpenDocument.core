@@ -282,6 +282,9 @@ void odr_python::bind_file(py::module_ &m) {
       .def("document_type", &odr::DocumentFile::document_type)
       .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"),
            py::call_guard<py::gil_scoped_release>())
+      .def("thumbnail", &odr::DocumentFile::thumbnail,
+           "The preview image the package carries, or `None` where it "
+           "carries none or is still encrypted. Never rendered by us.")
       .def("document", &odr::DocumentFile::document);
 
   py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")

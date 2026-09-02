@@ -7,6 +7,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/odr.hpp>
 
+#include <optional>
 #include <sstream>
 
 namespace {
@@ -362,6 +363,17 @@ Java_app_opendocument_core_DocumentFile_documentTypeNative(JNIEnv *env, jobject,
   return guarded(env, [&] {
     return static_cast<jint>(
         decoded(handle).as_document_file().document_type());
+  });
+}
+
+/// 0 where there is no thumbnail; `DocumentFile.thumbnail` maps that to null.
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_DocumentFile_thumbnailNative(JNIEnv *env, jobject,
+                                                        jlong handle) {
+  return guarded(env, [&]() -> jlong {
+    const std::optional<odr::File> thumbnail =
+        decoded(handle).as_document_file().thumbnail();
+    return thumbnail.has_value() ? make_handle(*thumbnail) : 0;
   });
 }
 

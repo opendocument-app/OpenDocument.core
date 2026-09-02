@@ -30,6 +30,17 @@ class FileTest {
   }
 
   @Test
+  void thumbnail() throws IOException {
+    Path odt = TestFiles.odtFile(tempDir);
+    try (DecodedFile file = Odr.open(odt.toString())) {
+      try (File thumbnail = file.asDocumentFile().thumbnail()) {
+        assertNotNull(thumbnail);
+        assertTrue(thumbnail.read().length > 0);
+      }
+    }
+  }
+
+  @Test
   void openText() throws IOException {
     Path txt = TestFiles.txtFile(tempDir);
     try (DecodedFile file = Odr.open(txt.toString())) {

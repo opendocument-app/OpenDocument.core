@@ -93,6 +93,9 @@ public:
 
   [[nodiscard]] virtual DocumentType document_type() const = 0;
 
+  /// The preview the package carries, `nullptr` where there is none.
+  [[nodiscard]] virtual std::shared_ptr<File> thumbnail() const { return {}; }
+
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 

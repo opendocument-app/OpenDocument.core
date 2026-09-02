@@ -540,6 +540,13 @@ public:
 
   [[nodiscard]] DocumentFile decrypt(const std::string &password) const;
 
+  /// @brief The preview image the package carries, if any.
+  ///
+  /// What the producing application stored — never rendered by us, so it is
+  /// only as current as the last save. Empty for a package that carries none
+  /// or is still encrypted.
+  [[nodiscard]] std::optional<File> thumbnail() const;
+
   [[nodiscard]] Document document() const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::DocumentFile> impl() const;

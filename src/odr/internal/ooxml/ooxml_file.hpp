@@ -30,6 +30,8 @@ public:
 
   [[nodiscard]] DocumentType document_type() const override;
 
+  [[nodiscard]] std::shared_ptr<abstract::File> thumbnail() const override;
+
   [[nodiscard]] bool password_encrypted() const noexcept override;
   [[nodiscard]] EncryptionState encryption_state() const noexcept override;
   [[nodiscard]] std::shared_ptr<DecodedFile>

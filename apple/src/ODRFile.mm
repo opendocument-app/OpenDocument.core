@@ -588,6 +588,17 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
       ODRDocumentTypeUnknown);
 }
 
+- (nullable ODRFile *)thumbnail {
+  return guarded_value(
+      [&]() -> ODRFile * {
+        const std::optional<odr::File> thumbnail =
+            self.documentHandle.thumbnail();
+        return thumbnail.has_value() ? [ODRFile fileWithHandle:*thumbnail]
+                                     : nil;
+      },
+      nil);
+}
+
 - (nullable ODRDocumentFile *)decryptWithPassword:(NSString *)password
                                             error:(NSError **)error {
   return guarded(error, [&]() -> ODRDocumentFile * {
