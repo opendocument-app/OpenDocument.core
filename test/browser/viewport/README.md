@@ -36,3 +36,9 @@ each printing its own verdict.
 Keep the tab on screen: the browser throttles `requestAnimationFrame` in a
 window that is not. The harness dispatches the scroll and resize events itself,
 but not the settling frames that follow them.
+
+Two webkit rules nothing here reproduces, both about type under an applied
+`zoom` (#761): it holds the text at its unscaled size unless the zoom is stated
+back as `text-size-adjust`, by a factor its cluster heuristics decide, and it
+draws no text below 9px. Neither shows on 400 identical lines — the factor needs
+the shape of a real render. The oracle is a document served to a real webkit.

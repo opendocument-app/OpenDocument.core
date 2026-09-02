@@ -92,7 +92,9 @@ std::string emit_zoom(const HtmlConfig &config, const ihtml::WidthFit fits,
 
 /// Written whatever the zoom is, so every case states it.
 constexpr const char *print =
-    "@media print{:root{--odr-zoom:1!important}body{zoom:1!important}}";
+    "@media print{:root{--odr-zoom:1!important;"
+    "-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important}"
+    "body{zoom:1!important}}";
 
 std::string styled(const std::string &css) {
   return "<style>" + css + print + "</style>";

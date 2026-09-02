@@ -372,13 +372,72 @@ constexpr std::string_view viewport_js = R"js(
     return pinned !== null ? pinned : fit;
   }
 
+  // Webkit divides a stated `text-size-adjust` by the css zoom, so restating
+  // the zoom as the percentage holds the type where its box is. Blink reads the
+  // same percentage as a plain multiplier, hence the probe below.
+  var adjustsText = false;
+  var adjusted = "";
+
+  function textAdjust(value) {
+    adjusted = value;
+    root.style.setProperty("-webkit-text-size-adjust", value);
+    root.style.setProperty("text-size-adjust", value);
+  }
+
+  // A run against a stated length, so no rect convention enters. True in webkit
+  // and in the engines that ignore the property; false where it scales the text
+  // a second time.
+  function textAdjustHolds() {
+    var ruler = document.createElement("div");
+    ruler.style.cssText =
+      "position:absolute;top:0;left:0;width:400px;height:0;overflow:hidden";
+    var run = document.createElement("span");
+    run.style.cssText = "font:100px/1 monospace;white-space:pre";
+    run.textContent = "MMMMMMMMMM";
+    ruler.appendChild(run);
+    body.appendChild(ruler);
+
+    function ratio() {
+      var length = ruler.getBoundingClientRect().width;
+      return length ? run.getBoundingClientRect().width / length : 0;
+    }
+
+    var zoom = body.style.zoom;
+    body.style.zoom = "1";
+    var unzoomed = ratio();
+    body.style.zoom = "0.5";
+    textAdjust("50%");
+    var zoomed = ratio();
+    textAdjust("");
+    body.style.zoom = zoom;
+    body.removeChild(ruler);
+
+    return unzoomed > 0 && Math.abs(zoomed - unzoomed) < unzoomed / 50;
+  }
+
+  function zoomBody(zoom) {
+    body.style.zoom = zoom;
+    root.style.setProperty("--odr-zoom", zoom);
+    if (adjustsText) {
+      textAdjust(zoom * 100 + "%");
+    }
+  }
+
   // The natural width of what the body holds, measured unscaled.
   function contentWidth() {
     var zoom = body.style.zoom;
+    var adjust = adjusted;
     // `1`, not empty: a stylesheet may carry a zoom of its own to fall back to.
     body.style.zoom = "1";
+    // the percentage compensates a zoom this measurement removes
+    if (adjust) {
+      textAdjust("100%");
+    }
     var natural = body.scrollWidth;
     body.style.zoom = zoom;
+    if (adjust) {
+      textAdjust(adjust);
+    }
     return natural;
   }
 
@@ -527,9 +586,7 @@ constexpr std::string_view viewport_js = R"js(
   }
 
   function apply(target) {
-    var zoom = applied();
-    body.style.zoom = zoom;
-    root.style.setProperty("--odr-zoom", zoom);
+    zoomBody(applied());
 
     settle(target);
     notify();
@@ -604,11 +661,15 @@ constexpr std::string_view viewport_js = R"js(
     return applied();
   };
 
+  // Before the first measurement, so every one of them reads the same state.
+  adjustsText = textAdjustHolds();
   width = root.clientWidth;
   if (measures && pinned === null) {
     fit = measureFit();
-    body.style.zoom = fit;
-    root.style.setProperty("--odr-zoom", fit);
+  }
+  // Restated inline so a css-stated zoom carries the adjustment with it.
+  if (applied() !== 1) {
+    zoomBody(applied());
   }
   remember();
 
