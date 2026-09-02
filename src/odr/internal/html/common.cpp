@@ -245,8 +245,10 @@ void html::write_zoom_style(HtmlWriter &out, const HtmlConfig &config,
     out.out() << "body{zoom:" << number(*zoom) << "}";
   }
 
-  // paper has its own geometry; beats the script's inline zoom
-  out.out() << "@media print{:root{--odr-zoom:1!important}"
+  // paper has its own geometry; beats the script's inline zoom and adjustment
+  out.out() << "@media print{:root{--odr-zoom:1!important;"
+               "-webkit-text-size-adjust:100%!important;"
+               "text-size-adjust:100%!important}"
                "body{zoom:1!important}}";
 
   out.write_header_style_end();

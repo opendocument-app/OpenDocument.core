@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A fitted or zoomed view scales its text with the page in WebKit, where the
+  type used to stay at its unscaled size. `HtmlViewportMode::fit_width_by_view`
+  is usable on iOS. Closes #761.
+
 - A PDF `gs` applies the `/ExtGState` stroke parameters `/LW`, `/LC`, `/LJ`,
   `/ML` and `/D`. A producer that sets the line width only there — Canva does —
   used to have every stroke drawn at the initial width of 1.
