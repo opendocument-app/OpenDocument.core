@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The HTML renderer warns, rather than silently dropping, when it reaches an
+  element type it has no `translate_*` for. Across the test corpus that is
+  `page_break` and nothing else. Towards #150.
+
 - An ODF `draw:object` chart is drawn from the chart part's own markup, not
   from the replacement image beside it: bar, line, area, scatter, pie and ring,
   with their titles, legends, axes and series colours. An object holding no

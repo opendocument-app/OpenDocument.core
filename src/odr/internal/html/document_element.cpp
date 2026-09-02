@@ -3,6 +3,7 @@
 #include <odr/document_element.hpp>
 #include <odr/document_path.hpp>
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/path.hpp>
@@ -18,6 +19,72 @@
 #include <algorithm>
 
 namespace odr::internal {
+
+namespace {
+
+/// Names every enumerator, with no `default`, so a type added to
+/// @ref ElementType has to be named here too.
+const char *element_type_name(const ElementType type) {
+  switch (type) {
+  case ElementType::none:
+    return "none";
+  case ElementType::root:
+    return "root";
+  case ElementType::slide:
+    return "slide";
+  case ElementType::sheet:
+    return "sheet";
+  case ElementType::page:
+    return "page";
+  case ElementType::master_page:
+    return "master_page";
+  case ElementType::sheet_cell:
+    return "sheet_cell";
+  case ElementType::text:
+    return "text";
+  case ElementType::line_break:
+    return "line_break";
+  case ElementType::page_break:
+    return "page_break";
+  case ElementType::paragraph:
+    return "paragraph";
+  case ElementType::span:
+    return "span";
+  case ElementType::link:
+    return "link";
+  case ElementType::bookmark:
+    return "bookmark";
+  case ElementType::list:
+    return "list";
+  case ElementType::list_item:
+    return "list_item";
+  case ElementType::table:
+    return "table";
+  case ElementType::table_column:
+    return "table_column";
+  case ElementType::table_row:
+    return "table_row";
+  case ElementType::table_cell:
+    return "table_cell";
+  case ElementType::frame:
+    return "frame";
+  case ElementType::image:
+    return "image";
+  case ElementType::rect:
+    return "rect";
+  case ElementType::line:
+    return "line";
+  case ElementType::circle:
+    return "circle";
+  case ElementType::custom_shape:
+    return "custom_shape";
+  case ElementType::group:
+    return "group";
+  }
+  return "?";
+}
+
+} // namespace
 
 void html::translate_children(const ElementRange &range,
                               const WritingState &state) {
@@ -78,7 +145,11 @@ void html::translate_element(const Element &element,
     translate_children(element.children(), state);
     break;
   default:
-    // TODO log
+    // The element and its whole subtree are dropped. Logged rather than
+    // thrown: a renderer shows what it can, and the corpus run is what ranks
+    // the gaps by how often they actually occur.
+    ODR_WARNING(state.logger(), "html: dropped unhandled element "
+                                    << element_type_name(element.type()));
     break;
   }
 }
