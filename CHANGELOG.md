@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking** (Swift only): `HtmlConfig`'s optional settings are Swift
+  optionals of the real type rather than `NSNumber`/`NSValue` boxes —
+  `spreadsheetLimit` is a `TableDimensions?`, `initialZoom` a `Double?`, and so
+  on. ObjC callers see the boxed properties unchanged. Closes #759.
+
 - The HTML renderer warns, rather than silently dropping, when it reaches an
   element type it has no `translate_*` for. Across the test corpus that is
   `page_break` and nothing else. Towards #150.

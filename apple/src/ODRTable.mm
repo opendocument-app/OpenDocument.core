@@ -2,6 +2,8 @@
 
 #import "ODRInternal.h"
 
+#include <cstring>
+
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
@@ -14,6 +16,23 @@ static_assert(sizeof(ODRTableDimensions) == sizeof(odr::TableDimensions),
               "ODRTableDimensions drifted from odr::TableDimensions");
 static_assert(sizeof(ODRTablePosition) == sizeof(odr::TablePosition),
               "ODRTablePosition drifted from odr::TablePosition");
+
+@implementation NSValue (ODRTableDimensions)
+
++ (NSValue *)odr_valueWithTableDimensions:(ODRTableDimensions)dimensions {
+  return [NSValue valueWithBytes:&dimensions
+                        objCType:@encode(ODRTableDimensions)];
+}
+
+- (ODRTableDimensions)odr_tableDimensionsValue {
+  ODRTableDimensions dimensions = ODRTableDimensionsMake(0, 0);
+  if (strcmp(self.objCType, @encode(ODRTableDimensions)) == 0) {
+    [self getValue:&dimensions size:sizeof(dimensions)];
+  }
+  return dimensions;
+}
+
+@end
 
 @implementation ODRTableAddress
 

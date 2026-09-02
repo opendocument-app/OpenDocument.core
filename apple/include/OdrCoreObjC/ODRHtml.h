@@ -88,22 +88,27 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) ODRHtmlColorScheme colorScheme;
 
 /// `nil` for no limit.
-@property(nonatomic, strong, nullable) NSValue *spreadsheetLimit;
+@property(nonatomic, strong, nullable)
+    NSValue *spreadsheetLimit NS_REFINED_FOR_SWIFT;
 /// Most cells written for one sheet; bounds the rows by the sheet's width.
 /// `nil` for no budget.
-@property(nonatomic, strong, nullable) NSNumber *spreadsheetCellLimit;
+@property(nonatomic, strong, nullable)
+    NSNumber *spreadsheetCellLimit NS_REFINED_FOR_SWIFT;
 @property(nonatomic) BOOL spreadsheetLimitByContent;
 @property(nonatomic) ODRHtmlTableGridlines spreadsheetGridlines;
 
 @property(nonatomic) ODRHtmlViewportMode viewportMode;
 /// Overrides `viewportMode` for spreadsheets when set.
-@property(nonatomic, strong, nullable) NSNumber *spreadsheetViewportMode;
+@property(nonatomic, strong, nullable)
+    NSNumber *spreadsheetViewportMode NS_REFINED_FOR_SWIFT;
 /// Raw `content` for the viewport meta tag; overrides the modes above.
 @property(nonatomic, copy, nullable) NSString *viewportContent;
 /// The width the output is shown at, in css pixels; fits paged content to it.
-@property(nonatomic, strong, nullable) NSNumber *viewportWidth;
+@property(nonatomic, strong, nullable)
+    NSNumber *viewportWidth NS_REFINED_FOR_SWIFT;
 /// The zoom the view opens at, 1 being actual size; `nil` follows the fit.
-@property(nonatomic, strong, nullable) NSNumber *initialZoom;
+@property(nonatomic, strong, nullable)
+    NSNumber *initialZoom NS_REFINED_FOR_SWIFT;
 
 /// The least distance the generated content keeps from the view's border. A
 /// set side raises the inset the view already has, never lowers it.
@@ -121,7 +126,8 @@ NS_SWIFT_NAME(HtmlConfig)
 
 /// Render only pages `[begin, end)`, 0-based. `nil` end means to the last page.
 @property(nonatomic) uint32_t pageRangeBegin;
-@property(nonatomic, strong, nullable) NSNumber *pageRangeEnd;
+@property(nonatomic, strong, nullable)
+    NSNumber *pageRangeEnd NS_REFINED_FOR_SWIFT;
 
 @property(nonatomic) ODRPdfTextMode pdfTextMode;
 @property(nonatomic, copy) NSArray<NSString *> *pdfDualLayerFallbackFonts;

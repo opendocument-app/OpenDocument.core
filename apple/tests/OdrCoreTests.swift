@@ -153,6 +153,57 @@ final class HtmlTests: XCTestCase {
     XCTAssertFalse(try view.writeHtml(resources: &resources).isEmpty)
   }
 
+  func testSpreadsheetLimitRoundTripsAndReachesTheHtml() throws {
+    let config = HtmlConfig()
+    config.spreadsheetLimit = TableDimensions(rows: 2, columns: 1)
+    XCTAssertEqual(config.spreadsheetLimit?.rows, 2)
+    XCTAssertEqual(config.spreadsheetLimit?.columns, 1)
+    config.spreadsheetLimitByContent = false
+
+    // A csv renders as a spreadsheet, so this needs no fixture.
+    let path = try write(
+      "alpha,beta\ngamma,delta\nepsilon,zeta\n", as: "table.csv")
+    let file = try DecodedFile.decode(path: path)
+    let service = try HtmlTranslator.translate(
+      file: file, cachePath: try temporaryDirectory(), config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+
+    XCTAssertTrue(html.contains("alpha"), "the first cell is missing")
+    XCTAssertFalse(html.contains("epsilon"), "the row limit did not apply")
+    XCTAssertFalse(html.contains("beta"), "the column limit did not apply")
+
+    config.spreadsheetLimit = nil
+    XCTAssertNil(config.spreadsheetLimit)
+  }
+
+  func testBoxedNumbersRoundTrip() throws {
+    let config = HtmlConfig()
+    config.spreadsheetCellLimit = 1234
+    config.spreadsheetViewportMode = .fitWidth
+    config.viewportWidth = 390
+    config.initialZoom = 1.5
+    config.pageRangeEnd = 7
+
+    XCTAssertEqual(config.spreadsheetCellLimit, 1234)
+    XCTAssertEqual(config.spreadsheetViewportMode, .fitWidth)
+    XCTAssertEqual(config.viewportWidth, 390)
+    XCTAssertEqual(config.initialZoom, 1.5)
+    XCTAssertEqual(config.pageRangeEnd, 7)
+
+    config.spreadsheetCellLimit = nil
+    config.spreadsheetViewportMode = nil
+    config.viewportWidth = nil
+    config.initialZoom = nil
+    config.pageRangeEnd = nil
+
+    XCTAssertNil(config.spreadsheetCellLimit)
+    XCTAssertNil(config.spreadsheetViewportMode)
+    XCTAssertNil(config.viewportWidth)
+    XCTAssertNil(config.initialZoom)
+    XCTAssertNil(config.pageRangeEnd)
+  }
+
   func testBringOfflineWritesFiles() throws {
     let output = try temporaryDirectory()
     let html = try service().bringOffline(to: output)

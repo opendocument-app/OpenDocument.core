@@ -35,6 +35,14 @@ for view in service.views {
 Nothing needs configuring first: the renderer's css and JS are part of the
 library and are written into the HTML it produces.
 
+`HtmlConfig`'s optional settings are plain Swift optionals of the right type:
+
+```swift
+config.spreadsheetLimit = TableDimensions(rows: 100_000, columns: 500)
+config.initialZoom = 1.5
+config.pageRangeEnd = nil  // to the last page
+```
+
 ## Serve it into a web view
 
 Rendering on demand and serving over loopback is what OpenDocument.ios does, and
