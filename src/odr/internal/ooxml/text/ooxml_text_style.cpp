@@ -93,6 +93,15 @@ void resolve_paragraph_style_(const pugi::xml_node node,
       result.margin.bottom = margin_bottom;
     }
   }
+  // [ECMA-376] 17.3.1.23. `w:val="0"` clears an inherited break, so off has to
+  // be told from silence.
+  if (const pugi::xml_node page_break_before =
+          paragraph_properties.child("w:pageBreakBefore")) {
+    result.break_before = read_on_off_attribute(page_break_before)
+                              ? BreakType::page
+                              : BreakType::none;
+  }
+
   if (const pugi::xml_attribute line = spacing.attribute("w:line")) {
     // [ECMA-376] 17.3.1.33: `atLeast`/`exact` measure in twips, the default
     // `auto` in 240ths of a line

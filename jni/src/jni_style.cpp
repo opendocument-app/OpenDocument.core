@@ -273,10 +273,11 @@ jobject make_paragraph_style(JNIEnv *env, const odr::ParagraphStyle &style) {
   return new_object(
       env, "app/opendocument/core/ParagraphStyle",
       "(ILapp/opendocument/core/DirectionalMeasure;"
-      "Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;)V",
+      "Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;II)V",
       enum_code(style.text_align), make_directional_measure(env, style.margin),
       make_measure(env, style.line_height),
-      make_measure(env, style.text_indent));
+      make_measure(env, style.text_indent), enum_code(style.break_before),
+      enum_code(style.break_after));
 }
 
 jobject make_table_style(JNIEnv *env, const odr::TableStyle &style) {

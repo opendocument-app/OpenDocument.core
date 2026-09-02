@@ -89,6 +89,22 @@ read_font_position(const pugi::xml_attribute attribute) {
   return FontPosition::normal;
 }
 
+/// [OpenDocument] 20.86/20.87.
+std::optional<BreakType> read_break(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  const char *value = attribute.value();
+  if (std::strcmp("page", value) == 0) {
+    return BreakType::page;
+  }
+  if (std::strcmp("column", value) == 0) {
+    return BreakType::column;
+  }
+  // `auto`: a style overriding an inherited break has to say so
+  return BreakType::none;
+}
+
 std::optional<TextAlign> read_text_align(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
@@ -416,6 +432,14 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   if (const std::optional<Measure> text_indent =
           read_measure(paragraph_properties.attribute("fo:text-indent"))) {
     result.text_indent = text_indent;
+  }
+  if (const std::optional<BreakType> break_before =
+          read_break(paragraph_properties.attribute("fo:break-before"))) {
+    result.break_before = break_before;
+  }
+  if (const std::optional<BreakType> break_after =
+          read_break(paragraph_properties.attribute("fo:break-after"))) {
+    result.break_after = break_after;
   }
 }
 

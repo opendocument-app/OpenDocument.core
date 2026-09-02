@@ -10,6 +10,7 @@ enum class VerticalAlign;
 enum class FontWeight;
 enum class FontStyle;
 enum class FontPosition;
+enum class BreakType;
 
 class Frame;
 class Rect;
@@ -29,6 +30,8 @@ struct PageLayout;
 
 namespace odr::internal::html {
 
+/// `nullptr` for a break turned off: the css default already says it.
+const char *translate_break(BreakType break_type);
 const char *translate_text_align(TextAlign text_align);
 const char *translate_horizontal_align(HorizontalAlign horizontal_align);
 const char *translate_vertical_align(VerticalAlign vertical_align);

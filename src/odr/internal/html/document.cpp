@@ -441,6 +441,22 @@ protected:
   mutable HtmlResources m_resources;
 };
 
+/// Only a paragraph carries a break: one inside a table or a frame could not
+/// split the page box.
+bool breaks_page(const std::optional<BreakType> &break_type) {
+  return break_type == BreakType::page;
+}
+
+bool breaks_page_before(const Element &element) {
+  return element.type() == ElementType::paragraph &&
+         breaks_page(element.as_paragraph().style().break_before);
+}
+
+bool breaks_page_after(const Element &element) {
+  return element.type() == ElementType::paragraph &&
+         breaks_page(element.as_paragraph().style().break_after);
+}
+
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit TextHtmlFragment(std::string name, const std::size_t index,
@@ -459,8 +475,24 @@ public:
     const TextRoot element = root.as_text_root();
 
     if (state.config().text_document_margin) {
-      const PageLayout page_layout = element.page_layout();
+      write_pages(out, state, element);
+    } else {
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class("odr-text-flow"));
+      translate_children(element.children(), state);
+      out.write_element_end("div");
+    }
+  }
 
+private:
+  /// One page box per run of content between the author's manual breaks. Not
+  /// pagination: nothing computes where a page ends, so the boxes differ in
+  /// height. `.odr-pages` stacks them.
+  static void write_pages(HtmlWriter &out, const WritingState &state,
+                          const TextRoot &element) {
+    const PageLayout page_layout = element.page_layout();
+
+    const auto begin_page = [&] {
       out.write_element_begin(
           "div",
           HtmlElementOptions()
@@ -470,17 +502,34 @@ public:
           "div", HtmlElementOptions()
                      .set_class("odr-page-inner")
                      .set_style(translate_inner_page_style(page_layout)));
+    };
+    const auto end_page = [&] {
+      out.write_element_end("div");
+      out.write_element_end("div");
+    };
 
-      translate_children(element.children(), state);
+    begin_page();
+    // Otherwise a leading or doubled break opens an empty sheet.
+    bool empty = true;
+    bool pending_break = false;
 
-      out.write_element_end("div");
-      out.write_element_end("div");
-    } else {
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_class("odr-text-flow"));
-      translate_children(element.children(), state);
-      out.write_element_end("div");
+    for (const Element child : element.children()) {
+      if (child.type() == ElementType::page_break) {
+        // The node is the break, not content.
+        pending_break = true;
+        continue;
+      }
+      if ((pending_break || breaks_page_before(child)) && !empty) {
+        end_page();
+        begin_page();
+        empty = true;
+      }
+      pending_break = breaks_page_after(child);
+      translate_element(child, state);
+      empty = false;
     }
+
+    end_page();
   }
 
 protected:

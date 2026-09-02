@@ -38,6 +38,11 @@ void odr_python::bind_style(py::module_ &m) {
       .value("super", odr::FontPosition::super)
       .value("sub", odr::FontPosition::sub);
 
+  py::enum_<odr::BreakType>(m, "BreakType")
+      .value("none", odr::BreakType::none)
+      .value("page", odr::BreakType::page)
+      .value("column", odr::BreakType::column);
+
   py::enum_<odr::TextAlign>(m, "TextAlign")
       .value("left", odr::TextAlign::left)
       .value("right", odr::TextAlign::right)
@@ -146,7 +151,9 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("text_align", &odr::ParagraphStyle::text_align)
       .def_readwrite("margin", &odr::ParagraphStyle::margin)
       .def_readwrite("line_height", &odr::ParagraphStyle::line_height)
-      .def_readwrite("text_indent", &odr::ParagraphStyle::text_indent);
+      .def_readwrite("text_indent", &odr::ParagraphStyle::text_indent)
+      .def_readwrite("break_before", &odr::ParagraphStyle::break_before)
+      .def_readwrite("break_after", &odr::ParagraphStyle::break_after);
 
   py::class_<odr::TableStyle>(m, "TableStyle")
       .def(py::init<>())

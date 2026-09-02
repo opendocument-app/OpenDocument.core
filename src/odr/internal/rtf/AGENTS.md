@@ -83,7 +83,7 @@ pictures and lists are stages 2–5 in `PLAN.md`.
   had no place to put the decoded byte of a `\'hh`, and `\ucN` counts an escape
   as one character where a text run counts bytes.
 - **`\page` emits `ElementType::page_break`** (a child of root, as `oldms/text`
-  does) even though the html renderer ignores that type today. It closes an open
+  does), which the html renderer splits the page box on. It closes an open
   paragraph without opening one, as `\sect` and the end of the file do: writers
   emit `\par\page`, so manufacturing one there would blank-line every page
   break. Only `\par` itself (and `\row`) materialises an empty paragraph.
