@@ -306,22 +306,6 @@ CsvDocument::CsvDocument(const abstract::File &file,
   m_element_adapter = std::make_unique<ElementAdapter>(*this);
 }
 
-bool CsvDocument::is_editable() const noexcept { return false; }
-
-bool CsvDocument::is_savable(
-    [[maybe_unused]] const bool encrypted) const noexcept {
-  return false;
-}
-
-void CsvDocument::save(std::ostream & /*out*/) const {
-  throw UnsupportedOperation();
-}
-
-void CsvDocument::save(std::ostream & /*out*/,
-                       const char * /*password*/) const {
-  throw UnsupportedOperation();
-}
-
 std::string_view CsvDocument::cell(const std::uint32_t column,
                                    const std::uint32_t row) const {
   if (row >= m_rows.size()) {

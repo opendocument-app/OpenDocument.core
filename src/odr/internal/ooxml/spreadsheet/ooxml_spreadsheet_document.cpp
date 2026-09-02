@@ -1,7 +1,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
 #include <odr/document_path.hpp>
-#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_position.hpp>
 
@@ -67,20 +66,6 @@ const ElementRegistry &Document::element_registry() const {
 
 const StyleRegistry &Document::style_registry() const {
   return m_style_registry;
-}
-
-bool Document::is_editable() const noexcept { return false; }
-
-bool Document::is_savable(const bool /*encrypted*/) const noexcept {
-  return false;
-}
-
-void Document::save(std::ostream & /*out*/) const {
-  throw UnsupportedOperation();
-}
-
-void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
-  throw UnsupportedOperation();
 }
 
 std::pair<pugi::xml_document &, Relations &>

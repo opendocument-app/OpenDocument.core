@@ -1,7 +1,6 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 
 #include <odr/document_path.hpp>
-#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_dimension.hpp>
 
@@ -136,20 +135,6 @@ Document::slide_page_layout(const ElementIdentifier element_id) const {
 
 const ElementRegistry &Document::element_registry() const {
   return m_element_registry;
-}
-
-bool Document::is_editable() const noexcept { return false; }
-
-bool Document::is_savable(const bool /*encrypted*/) const noexcept {
-  return false;
-}
-
-void Document::save(std::ostream & /*out*/) const {
-  throw UnsupportedOperation();
-}
-
-void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
-  throw UnsupportedOperation();
 }
 
 namespace {

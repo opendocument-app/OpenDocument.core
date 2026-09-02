@@ -21,12 +21,6 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
   [[nodiscard]] const StyleRegistry &style_registry() const;
 
-  [[nodiscard]] bool is_editable() const noexcept override;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
-
-  void save(std::ostream &out) const override;
-  void save(std::ostream &out, const char *password) const override;
-
 private:
   XmlDocumentsAndRelations m_xml_documents_and_relations;
   SharedStrings m_shared_strings;

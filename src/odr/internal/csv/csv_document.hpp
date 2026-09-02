@@ -28,12 +28,6 @@ public:
   CsvDocument(const abstract::File &file, TextEncoding encoding,
               Dialect dialect, bool skip_first_line);
 
-  [[nodiscard]] bool is_editable() const noexcept override;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
-
-  void save(std::ostream &out) const override;
-  void save(std::ostream &out, const char *password) const override;
-
   /// The cell's text, empty where a row stops short.
   [[nodiscard]] std::string_view cell(std::uint32_t column,
                                       std::uint32_t row) const;

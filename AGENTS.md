@@ -239,7 +239,9 @@ Dispatch `release.yml` against main, publish the draft that appears —
    alias is claimed twice, or if the declared capabilities exceed what the
    engines actually do.
 2. For documents: subclass `internal::Document`; in its constructor build an
-   `ElementRegistry` and an `ElementAdapter` (pattern above).
+   `ElementRegistry` and an `ElementAdapter` (pattern above). It defaults to
+   read-only — override `is_editable`/`is_savable`/`save` only for an engine
+   that can write.
 3. Implement the per-element adapters you can populate; the **generic HTML
    renderer then works for free**.
 4. Register the factory (e.g. `oldms_file.cpp::document()` switches on

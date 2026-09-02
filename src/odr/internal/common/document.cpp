@@ -1,5 +1,7 @@
 #include <odr/internal/common/document.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/abstract/filesystem.hpp>
 
 namespace odr::internal {
@@ -10,6 +12,20 @@ Document::Document(const FileType file_type, const DocumentType document_type,
       m_files{std::move(files)} {}
 
 Document::~Document() = default;
+
+bool Document::is_editable() const noexcept { return false; }
+
+bool Document::is_savable(const bool /*encrypted*/) const noexcept {
+  return false;
+}
+
+void Document::save(std::ostream & /*out*/) const {
+  throw UnsupportedOperation();
+}
+
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
+  throw UnsupportedOperation();
+}
 
 FileType Document::file_type() const noexcept { return m_file_type; }
 

@@ -28,12 +28,6 @@ public:
   [[nodiscard]] PageLayout
   slide_page_layout(ElementIdentifier element_id) const;
 
-  [[nodiscard]] bool is_editable() const noexcept override;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
-
-  void save(std::ostream &out) const override;
-  void save(std::ostream &out, const char *password) const override;
-
 private:
   pugi::xml_document m_document_xml;
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
