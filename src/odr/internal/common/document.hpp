@@ -19,6 +19,12 @@ public:
            std::shared_ptr<abstract::ReadableFilesystem> files);
   ~Document() override;
 
+  /// Read-only, which every engine but odf and ooxml text is.
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
+  void save(std::ostream &out) const override;
+  void save(std::ostream &out, const char *password) const override;
+
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
 

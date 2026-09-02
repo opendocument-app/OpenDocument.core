@@ -19,12 +19,6 @@ public:
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
-  [[nodiscard]] bool is_editable() const noexcept override;
-  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
-
-  void save(std::ostream &out) const override;
-  void save(std::ostream &out, const char *password) const override;
-
 private:
   ElementRegistry m_element_registry;
 };
