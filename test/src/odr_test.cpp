@@ -4,6 +4,8 @@
 #include <odr/html.hpp>
 #include <odr/odr.hpp>
 
+#include <odr/internal/common/path.hpp>
+
 #include <test_util.hpp>
 
 #include <algorithm>
@@ -65,6 +67,33 @@ TEST(odr, types_wpd) {
 
   // wpd has a MIME type in the table now, so both paths agree
   EXPECT_EQ(mimetype(path, logger), "application/vnd.wordperfect");
+}
+
+/// Markdown has no signature, so only the name can offer it.
+TEST(odr, types_md) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const auto path = TestData::test_file_path("odr-public/md/feature-matrix.md");
+  const auto types = list_file_types(path, logger);
+  ASSERT_FALSE(types.empty());
+  EXPECT_EQ(types.front(), FileType::text_file);
+  EXPECT_EQ(types.back(), FileType::markdown);
+
+  // the name only adds a candidate; opening by path takes it
+  EXPECT_EQ(open(path, logger).file_type(), FileType::markdown);
+  EXPECT_EQ(mimetype(path, logger), "text/markdown");
+}
+
+/// A name claims nothing on its own — the bytes still decide.
+TEST(odr, a_misnamed_file_is_what_its_bytes_are) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const auto path = TestData::test_file_path("odr-public/odt/about.odt");
+  EXPECT_EQ(open(path, logger).file_type(), FileType::opendocument_text);
+
+  // no name at all, so no hint: the same bytes come back as plain text
+  const DecodedFile from_memory(File::from_memory("# heading\n"), logger);
+  EXPECT_EQ(from_memory.file_type(), FileType::text_file);
 }
 
 TEST(FileTypeTable, covers_every_file_type_exactly_once) {
@@ -264,11 +293,15 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
         continue;
       }
 
-      // whatever detection sees, the table has to admit to
+      // whatever detection sees, the table has to admit to — from the bytes,
+      // or from the name for a type that has no signature to find
       const std::vector<FileType> detected =
           list_file_types(test_file.absolute_path, logger);
       if (std::ranges::find(detected, type) != std::ranges::end(detected)) {
-        EXPECT_TRUE(declared.detect_by_content) << test_file.short_path;
+        EXPECT_TRUE(declared.detect_by_content ||
+                    file_type_by_file_extension(
+                        Path(test_file.absolute_path).extension()) == type)
+            << test_file.short_path;
       }
 
       // an encrypted OOXML package decodes as its own file type

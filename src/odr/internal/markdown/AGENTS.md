@@ -16,15 +16,19 @@ Decoding to a `TextRoot` is the whole argument for a decoder rather than a
 markdown→HTML renderer next to `html/text_file.cpp`: the latter would produce
 html only, with no element api and nothing for JNI/embind/pybind/ObjC.
 
-## Nothing detects it, and decoding never rejects
+## The name detects it, not the content
 
 `detect_by_content` is **false**. Markdown has no signature, and a content probe
 for it is a probe for "prose with occasional punctuation" — every plain text
 file with a `#` comment or an `*` bullet in it. Sniffing would steal `text_file`
-matches and be confidently wrong. The only way in is
-`DecodedFile(file, FileType::markdown)`; callers route on the file name, which
-is what they already have. **A `.md` still opens as `text_file` by default**,
-and that is correct for a format that is by construction valid plain text.
+matches and be confidently wrong.
+
+So the file name does it instead: `open_strategy::file_type_by_name` reads the
+extension off `File::disk_path` and offers markdown once the bytes have already
+decoded as text, ahead of the csv/json/xml probes. A name only ever *adds* a
+candidate — a `.md` holding a zip is still a zip — and a file with no name on
+disk has no hint, so `File::from_memory` still needs
+`DecodedFile(file, FileType::markdown)`.
 
 `NoMarkdownFile` exists only for the `as_markdown_file()` cast: every other
 format's `No*File` is also what detection throws, and nothing rejects here —

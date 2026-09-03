@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A `.md` opened by path decodes as markdown rather than as plain text, and
+  `list_file_types` offers it. The extension only adds a candidate the bytes
+  already allow; `File::from_memory` has no name, so it still needs
+  `FileType::markdown`. Closes #760.
+
 - **Breaking**: a document decrypted from a password-protected package is no
   longer savable — every `save` overload throws `UnsupportedOperation`, where it
   used to write the content out unprotected. Towards #64.

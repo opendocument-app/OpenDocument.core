@@ -21,7 +21,9 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 1. **Detect** — `internal/magic.cpp` sniffs the head of the file;
    `internal/open_strategy.cpp` picks a `FileType` + `DecoderEngine` and builds
    the matching `abstract::DecodedFile`. `odr::mimetype` composes the two, so a
-   zip is named by what is inside it.
+   zip is named by what is inside it. Only bytes can *claim* a file; a name adds
+   a candidate the bytes already allow, which is the sole way in for a
+   signature-less format (`file_type_by_name`, markdown).
 2. **Decode** — a document file yields an `abstract::Document`.
 3. **Element tree** — a `Document` exposes a root `ElementIdentifier` plus an
    `abstract::ElementAdapter`. Public value-semantics handles (`Element`, `Slide`,
