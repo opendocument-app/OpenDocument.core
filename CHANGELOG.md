@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.13.0 - 2026-09-03
+
 - A `.md` opened by path decodes as markdown rather than as plain text, and
   `list_file_types` offers it. The extension only adds a candidate the bytes
   already allow; `File::from_memory` has no name, so it still needs
