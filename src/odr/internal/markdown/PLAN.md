@@ -78,20 +78,14 @@ rule the csv plan sets for the sheet path, and for the same reason:
 `Text::content()` is UTF-8 to every binding, so passing legacy bytes through
 and letting a browser sort it out is not available to us.
 
-**Detection is by caller, not by content.** `open_strategy` is entirely
-content-driven — magic plus speculative probes — and has no extension path
-anywhere. Markdown has no signature, and a content probe for it is a probe for
-"prose with occasional punctuation", which is every plain text file with a `#`
-comment or an `*` bullet in it. Sniffing would steal `text_file` matches and be
-confidently wrong. So: `detect_by_content` stays **false**, markdown never joins
-the speculative chain in `list_file_types` (`open_strategy.cpp:272`), and the
-only way in is `DecodedFile(file, FileType::markdown)` (`file.hpp:341`) via a
-new branch in `open_file` next to the text/csv/json ones
-(`open_strategy.cpp:146`). Callers route on the filename, which is what they
-already have.
-
-The consequence to accept: `.md` still opens as `text_file` by default. That is
-correct behaviour for a format that is, by construction, valid plain text.
+**Detection is by name, not by content.** Markdown has no signature, and a
+content probe for it is a probe for "prose with occasional punctuation", which
+is every plain text file with a `#` comment or an `*` bullet in it. Sniffing
+would steal `text_file` matches and be confidently wrong, so `detect_by_content`
+stays **false** and markdown never joins the speculative chain. The extension
+offers it instead, once the bytes have decoded as text — see
+[`AGENTS.md`](AGENTS.md) and #760. `File::from_memory` has no name, so it still
+needs `DecodedFile(file, FileType::markdown)`.
 
 **There is no `NoMarkdownFile`.** Every other format's exception exists because
 detection rejects. Nothing rejects here: md4c is total — any UTF-8 byte

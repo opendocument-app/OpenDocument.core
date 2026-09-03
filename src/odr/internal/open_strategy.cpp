@@ -10,6 +10,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/image_file.hpp>
 #include <odr/internal/common/media_file.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/font/font_file.hpp>
 #include <odr/internal/iwork/iwork_file.hpp>
@@ -29,6 +30,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 namespace odr::internal {
 
@@ -48,6 +50,19 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
     }
     return a_it < b_it;
   };
+}
+
+/// The type @p file's name claims that no content probe can produce
+/// (`detect_by_content == false`), or `unknown`. A name only ever adds a
+/// candidate the bytes already allow — it never claims them.
+FileType file_type_by_name(const abstract::File &file) {
+  const std::optional<AbsPath> path = file.disk_path();
+  if (!path.has_value()) {
+    return FileType::unknown;
+  }
+  const FileType type = file_type_by_file_extension(path->extension());
+  return capabilities_by_file_type(type).detect_by_content ? FileType::unknown
+                                                           : type;
 }
 
 /// Whether @p file is the ooxml that was asked for. An encrypted one names no
@@ -418,6 +433,16 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as xml");
       }
+
+      // last, so it outranks the probes: markdown has no signature and every
+      // text file is valid markdown, leaving the name the only thing that can
+      // say so
+      if (const FileType by_name = file_type_by_name(*file);
+          by_name != FileType::unknown) {
+        ODR_VERBOSE(logger,
+                    "name says " << file_type_to_string(by_name) << ", adding");
+        result.push_back(by_name);
+      }
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as text");
     }
@@ -524,6 +549,19 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
       ODR_VERBOSE(logger, "try open as text");
 
       auto text = std::make_shared<text::TextFile>(file);
+
+      // before the probes: a markdown file parsing as csv is still markdown,
+      // and the name is the only thing that can say so
+      if (const FileType by_name = file_type_by_name(*file);
+          by_name != FileType::unknown) {
+        ODR_VERBOSE(logger,
+                    "name says " << file_type_to_string(by_name) << ", try it");
+        try {
+          return open_file_as(file, by_name, logger);
+        } catch (...) {
+          ODR_VERBOSE(logger, "failed to open as what the name says");
+        }
+      }
 
       try {
         ODR_VERBOSE(logger, "try open as csv");
