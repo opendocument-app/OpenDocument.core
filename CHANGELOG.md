@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: a document decrypted from a password-protected package is no
+  longer savable — every `save` overload throws `UnsupportedOperation`, where it
+  used to write the content out unprotected. Towards #64.
+
 - A `.docx` `wp:anchor` drawing floats at its offset with its wrap and side,
   instead of sitting in the line. Closes #803.
 

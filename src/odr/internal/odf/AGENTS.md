@@ -160,10 +160,11 @@ The structural/foundational gaps, roughly by value:
    for one text run; that's the whole editor.
 2. **Spreadsheet editing is force-disabled** (`is_editable` hardcodes `false`
    for spreadsheets — `odf_document.cpp`, `// TODO fix spreadsheet editability`).
-3. **Save never re-encrypts.** Plain `save` strips all `manifest:encryption-data`
-   and emits an unencrypted package; `save(path, password)` throws
-   `UnsupportedOperation`. `save` also doesn't yet guard `is_savable`. Only
-   `content.xml` is re-serialised, so hypothetical style edits wouldn't persist.
+3. **Save never re-encrypts**, and refuses rather than dropping the encryption:
+   a document decrypted from a password-protected package reports
+   `is_savable(false) == false` and every `save` overload throws
+   `UnsupportedOperation`. Only `content.xml` is re-serialised, so hypothetical
+   style edits wouldn't persist.
 4. **No streaming.** Crypto and save read whole files into memory and round-trip
    the entire filesystem through a rebuilt ZIP (`// TODO stream` throughout).
 5. **Repeated / covered spreadsheet cells are heuristic.** Several

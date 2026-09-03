@@ -95,16 +95,18 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   switch (file_type()) {
   case FileType::opendocument_text:
     return std::make_shared<Document>(m_file_meta.type, DocumentType::text,
-                                      m_filesystem);
+                                      m_filesystem, m_encryption_state);
   case FileType::opendocument_presentation:
     return std::make_shared<Document>(m_file_meta.type,
-                                      DocumentType::presentation, m_filesystem);
+                                      DocumentType::presentation, m_filesystem,
+                                      m_encryption_state);
   case FileType::opendocument_spreadsheet:
     return std::make_shared<Document>(m_file_meta.type,
-                                      DocumentType::spreadsheet, m_filesystem);
+                                      DocumentType::spreadsheet, m_filesystem,
+                                      m_encryption_state);
   case FileType::opendocument_graphics:
     return std::make_shared<Document>(m_file_meta.type, DocumentType::drawing,
-                                      m_filesystem);
+                                      m_filesystem, m_encryption_state);
   default:
     throw UnsupportedFileType(file_type());
   }

@@ -33,8 +33,10 @@ create_element_adapter(const Document &document, ElementRegistry &registry);
 }
 
 Document::Document(const FileType file_type, const DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> files)
-    : internal::Document(file_type, document_type, std::move(files)) {
+                   std::shared_ptr<abstract::ReadableFilesystem> files,
+                   const EncryptionState encryption_state)
+    : internal::Document(file_type, document_type, std::move(files),
+                         encryption_state) {
   m_content_xml = xml::parse(*m_files, AbsPath("/content.xml"));
 
   if (m_files->exists(AbsPath("/styles.xml"))) {
@@ -84,10 +86,14 @@ bool Document::is_editable() const noexcept {
 }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
-  return !encrypted;
+  return !encrypted && !is_decrypted();
 }
 
 void Document::save(std::ostream &out) const {
+  if (!is_savable(false)) {
+    throw UnsupportedOperation();
+  }
+
   // no package to rebuild: a flat document is the one tree, and `save` puts
   // back the declaration the parse dropped
   if (m_files == nullptr) {
@@ -123,21 +129,6 @@ void Document::save(std::ostream &out) const {
       archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
     }
-    if (abs_path == Path("/META-INF/manifest.xml")) {
-      // TODO
-      auto manifest = xml::parse(*m_files, AbsPath("/META-INF/manifest.xml"));
-
-      for (auto &&node : manifest.select_nodes("//manifest:encryption-data")) {
-        node.node().parent().remove_child(node.node());
-      }
-
-      std::stringstream content;
-      manifest.print(content, "", pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(content.str());
-      archive.insert_file(std::end(archive), rel_path, tmp);
-
-      continue;
-    }
     archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
   }
 
@@ -145,7 +136,6 @@ void Document::save(std::ostream &out) const {
 }
 
 void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
-  // TODO throw if not savable
   throw UnsupportedOperation();
 }
 

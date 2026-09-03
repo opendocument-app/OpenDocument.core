@@ -61,9 +61,10 @@ PageLayout read_page_layout(const pugi::xml_node body) {
 }
 } // namespace
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
+                   const EncryptionState encryption_state)
     : internal::Document(FileType::office_open_xml_document, DocumentType::text,
-                         std::move(files)) {
+                         std::move(files), encryption_state) {
   m_document_xml = xml::parse(*m_files, AbsPath("/word/document.xml"));
   m_styles_xml = xml::parse(*m_files, AbsPath("/word/styles.xml"));
 
@@ -112,10 +113,14 @@ const PageLayout &Document::page_layout() const { return m_page_layout; }
 bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
-  return !encrypted;
+  return !encrypted && !is_decrypted();
 }
 
 void Document::save(std::ostream &out) const {
+  if (!is_savable(false)) {
+    throw UnsupportedOperation();
+  }
+
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 

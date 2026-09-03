@@ -16,7 +16,8 @@ namespace odr::internal {
 class Document : public abstract::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
-           std::shared_ptr<abstract::ReadableFilesystem> files);
+           std::shared_ptr<abstract::ReadableFilesystem> files,
+           EncryptionState encryption_state = EncryptionState::not_encrypted);
   ~Document() override;
 
   /// Read-only, which every engine but odf and ooxml text is.
@@ -36,9 +37,14 @@ public:
   [[nodiscard]] const abstract::ElementAdapter *
   element_adapter() const override;
 
+  /// Decoded from a package that was password-encrypted. `save` has no
+  /// encryption to put back, so a savable engine refuses one.
+  [[nodiscard]] bool is_decrypted() const noexcept;
+
 protected:
   FileType m_file_type{FileType::unknown};
   DocumentType m_document_type{DocumentType::unknown};
+  EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
 

@@ -7,9 +7,10 @@
 namespace odr::internal {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
-                   std::shared_ptr<abstract::ReadableFilesystem> files)
+                   std::shared_ptr<abstract::ReadableFilesystem> files,
+                   const EncryptionState encryption_state)
     : m_file_type{file_type}, m_document_type{document_type},
-      m_files{std::move(files)} {}
+      m_encryption_state{encryption_state}, m_files{std::move(files)} {}
 
 Document::~Document() = default;
 
@@ -42,6 +43,10 @@ ElementIdentifier Document::root_element() const { return m_root_element; }
 
 const abstract::ElementAdapter *Document::element_adapter() const {
   return m_element_adapter.get();
+}
+
+bool Document::is_decrypted() const noexcept {
+  return m_encryption_state == EncryptionState::decrypted;
 }
 
 } // namespace odr::internal
