@@ -86,6 +86,14 @@ ooxml::read_half_point_attribute(const pugi::xml_attribute attribute) {
 }
 
 std::optional<Measure>
+ooxml::read_eighth_point_attribute(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  return Measure(attribute.as_double() * 0.125, DynamicUnit("pt"));
+}
+
+std::optional<Measure>
 ooxml::read_hundredth_point_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
@@ -99,6 +107,13 @@ ooxml::read_emus_attribute(const pugi::xml_attribute attribute) {
     return {};
   }
   return Measure(attribute.as_double() / 914400.0, DynamicUnit("in"));
+}
+
+std::optional<Measure> ooxml::read_emus_text(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  return Measure(node.text().as_double() / 914400.0, DynamicUnit("in"));
 }
 
 std::optional<Measure>
@@ -308,21 +323,30 @@ std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
     return {};
   }
   const char *val = node.attribute("w:val").value();
-  if (std::strcmp("nil", val) == 0) {
-    return {};
+  if (std::strcmp("nil", val) == 0 || std::strcmp("none", val) == 0) {
+    return "0 none";
   }
   const std::optional<Measure> size =
-      read_half_point_attribute(node.attribute("w:sz"));
+      read_eighth_point_attribute(node.attribute("w:sz"));
   if (!size.has_value()) {
     return {};
   }
-  std::string result;
-  result.append(size->to_string()).append(" ");
-  result.append(std::strcmp("none", val) == 0 ? "none " : "solid ");
+  // `auto` reads as no color, which css then takes from the text
+  std::string result = size->to_string() + " solid";
   if (const std::optional<Color> color =
           read_color_attribute(node.attribute("w:color"))) {
-    result.append(html::color(*color));
+    result.append(" ").append(html::color(*color));
   }
+  return result;
+}
+
+DirectionalStyle<std::string>
+ooxml::read_borders_node(const pugi::xml_node node) {
+  DirectionalStyle<std::string> result;
+  result.right = read_border_node(node.child("w:right"));
+  result.top = read_border_node(node.child("w:top"));
+  result.left = read_border_node(node.child("w:left"));
+  result.bottom = read_border_node(node.child("w:bottom"));
   return result;
 }
 

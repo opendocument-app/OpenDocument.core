@@ -513,15 +513,18 @@ std::string html::translate_frame_properties(const Frame &frame) {
     result += "display:block;";
     result += "float:right;clear:both;";
     result += "shape-outside:content-box;";
-    if (const std::optional<Measure> x = frame.x(); x.has_value()) {
+    const std::optional<Measure> x = frame.x();
+    if (x.has_value()) {
       result += "margin-left:" + x->to_string() + ";";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
       result += "margin-top:" + y->to_string() + ";";
     }
-    if (const std::optional<Measure> width = frame.width(); width.has_value()) {
+    // holds the frame at its offset; with no offset it would pin it left
+    if (const std::optional<Measure> width = frame.width();
+        width.has_value() && x.has_value()) {
       result += "margin-right:calc(100% - ";
-      result += frame.x().value_or(Measure(0, DynamicUnit("in"))).to_string();
+      result += x->to_string();
       result += " - ";
       result += width->to_string();
       result += ");";

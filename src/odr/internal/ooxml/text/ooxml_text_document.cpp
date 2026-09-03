@@ -515,23 +515,33 @@ public:
   [[nodiscard]] TableCellStyle
   table_cell_style(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
-    return m_document->style_registry()
-        .partial_table_cell_style(node)
-        .table_cell_style;
+    const StyleRegistry &styles = m_document->style_registry();
+
+    TableCellStyle result =
+        styles.partial_table_cell_style(node).table_cell_style;
+    result.border = table_cell_border(
+        node, get_cell_above(node),
+        styles.partial_table_style(node.parent().parent()).table_style,
+        table_cell_span(element_id).rows);
+    return result;
   }
 
-  [[nodiscard]] AnchorType frame_anchor_type(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    // TODO `wp:anchor` is floating, not as_char
-    return AnchorType::as_char;
+  [[nodiscard]] AnchorType
+  frame_anchor_type(const ElementIdentifier element_id) const override {
+    // [ECMA-376] 20.4.2.8. Whatever a `wp:anchor` says it is relative to, css
+    // flows text around a box only while that box is in the flow.
+    return get_node(element_id).child("wp:anchor") ? AnchorType::at_paragraph
+                                                   : AnchorType::as_char;
   }
   [[nodiscard]] std::optional<Measure>
-  frame_x([[maybe_unused]] const ElementIdentifier element_id) const override {
-    return std::nullopt;
+  frame_x(const ElementIdentifier element_id) const override {
+    return read_frame_offset(
+        get_frame_inner_node(element_id).child("wp:positionH"));
   }
   [[nodiscard]] std::optional<Measure>
-  frame_y([[maybe_unused]] const ElementIdentifier element_id) const override {
-    return std::nullopt;
+  frame_y(const ElementIdentifier element_id) const override {
+    return read_frame_offset(
+        get_frame_inner_node(element_id).child("wp:positionV"));
   }
   [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
@@ -543,17 +553,22 @@ public:
     const pugi::xml_node inner_node = get_frame_inner_node(element_id);
     return read_emus_attribute(inner_node.child("wp:extent").attribute("cy"));
   }
-  [[nodiscard]] std::optional<std::int32_t> frame_z_index(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
+  [[nodiscard]] std::optional<std::int32_t>
+  frame_z_index(const ElementIdentifier element_id) const override {
+    // [ECMA-376] 20.4.2.3 `behindDoc`, the drawing word paints under the text.
+    if (read_on_off_attribute(
+            get_frame_inner_node(element_id).attribute("behindDoc"))) {
+      return -1;
+    }
     return std::nullopt;
   }
   [[nodiscard]] std::optional<DrawingTransform> frame_transform(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return std::nullopt;
   }
-  [[nodiscard]] GraphicStyle frame_style(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {};
+  [[nodiscard]] GraphicStyle
+  frame_style(const ElementIdentifier element_id) const override {
+    return read_frame_style(get_frame_inner_node(element_id));
   }
 
   [[nodiscard]] bool
@@ -614,6 +629,13 @@ private:
     }
     const pugi::xml_attribute val = merge.attribute("w:val");
     return !val || std::strcmp(val.value(), "continue") == 0;
+  }
+
+  /// The cell the previous row puts at this one's grid column, if any.
+  [[nodiscard]] static pugi::xml_node
+  get_cell_above(const pugi::xml_node cell_node) {
+    return get_cell_at_grid_column(cell_node.parent().previous_sibling("w:tr"),
+                                   get_grid_column(cell_node));
   }
 
   /// Grid column a `w:tc` starts at, i.e. the preceding cells' `w:gridSpan`s.

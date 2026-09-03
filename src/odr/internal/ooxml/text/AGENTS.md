@@ -59,6 +59,20 @@ A table resolves its `w:tblStyle` the same way a paragraph resolves its
 paragraph and text properties of everything inside the table, and the cascade is
 what carries them down. Its conditional formats (`w:tblStylePr`) are ignored.
 
+**A table's borders are lowered onto its cells**, because css cannot draw an
+inside rule from the `<table>`. `table_cell_border` resolves each edge as the
+cell's own `w:tcBorders`, then the neighbour's opposite edge, then the table's
+`w:tblPr/w:tblBorders` — and returns only the edges the cell *leads*: its top
+and left, plus the frame it closes on the last row and column. So a rule between
+two cells is one line, whichever of them states it, and `nil` has to read as "no
+border" rather than as silence. Word picks the heavier of two competing borders;
+here the leading cell's own wins.
+
+**A drawing anchored to the text stays in the text.** `wp:anchor` reports
+`AnchorType::at_paragraph` whatever `relativeFrom` says, because css only makes
+text flow around a box that is in the flow — hence also a dropped page-relative
+offset, and `wrapText="bothSides"`/`"largest"` taking its side from `wp:align`.
+
 **Contextual spacing is decided per paragraph, not per style.**
 `w:contextualSpacing` drops the spacing towards a neighbouring paragraph of the
 same style, which is what keeps a list tight, so it cannot live in the resolved
@@ -97,8 +111,8 @@ Style/element coverage is in [`README.md`](README.md). Foundational gaps:
 3. **Theme fonts unhandled.** `w:rFonts w:asciiTheme="minorHAnsi"` (etc.) is
    ignored — only literal `w:ascii` names are read (README example
    `Sample large docx.docx`).
-4. **Style stubs**: `resolve_graphic_style_` is empty; table cell width is
-   parsed but not applied; the `w:default="1"` style flag is ignored. Paragraph
+4. **Style stubs**: table cell width is parsed but not applied; the
+   `w:default="1"` style flag is ignored. Paragraph
    spacing reads `w:before`/`w:after`/`w:line` but not `w:beforeLines`/
    `w:afterLines`, and drops the value an autospacing flag shadows rather than
    computing what word would. `w:lineRule="atLeast"` lowers to the same fixed

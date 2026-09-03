@@ -231,6 +231,9 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
 + (instancetype)styleWithHandle:(const odr::TableStyle &)handle {
   ODRTableStyle *const result = [[ODRTableStyle alloc] init];
   result->_width = box(handle.width);
+  result->_border = [ODRDirectionalString directionalWithHandle:handle.border];
+  result->_borderInsideHorizontal = box_string(handle.border_inside_horizontal);
+  result->_borderInsideVertical = box_string(handle.border_inside_vertical);
   return result;
 }
 

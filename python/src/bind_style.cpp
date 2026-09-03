@@ -157,7 +157,12 @@ void odr_python::bind_style(py::module_ &m) {
 
   py::class_<odr::TableStyle>(m, "TableStyle")
       .def(py::init<>())
-      .def_readwrite("width", &odr::TableStyle::width);
+      .def_readwrite("width", &odr::TableStyle::width)
+      .def_readwrite("border", &odr::TableStyle::border)
+      .def_readwrite("border_inside_horizontal",
+                     &odr::TableStyle::border_inside_horizontal)
+      .def_readwrite("border_inside_vertical",
+                     &odr::TableStyle::border_inside_vertical);
 
   py::class_<odr::TableColumnStyle>(m, "TableColumnStyle")
       .def(py::init<>())

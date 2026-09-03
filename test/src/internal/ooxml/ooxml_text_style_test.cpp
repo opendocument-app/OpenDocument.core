@@ -302,3 +302,275 @@ TEST(ooxml_text_style, paragraph_contextual_spacing_through_wrappers) {
   EXPECT_EQ(Measure(240 / 1440.0, DynamicUnit("in")),
             *after_wrapper.margin.bottom);
 }
+
+/// [ECMA-376] 17.4.39; `w:sz` is in eighths of a point.
+TEST(ooxml_text_style, table_borders) {
+  pugi::xml_document document;
+  const pugi::xml_node table =
+      node_of(R"(<w:tbl><w:tblPr><w:tblBorders>)"
+              R"(<w:top w:val="single" w:sz="8" w:color="000000"/>)"
+              R"(<w:left w:val="single" w:sz="8" w:color="000000"/>)"
+              R"(<w:bottom w:val="single" w:sz="8" w:color="000000"/>)"
+              R"(<w:right w:val="single" w:sz="8" w:color="000000"/>)"
+              R"(<w:insideH w:val="single" w:sz="4" w:color="808080"/>)"
+              R"(<w:insideV w:val="single" w:sz="4" w:color="808080"/>)"
+              R"(</w:tblBorders></w:tblPr></w:tbl>)",
+              document);
+
+  const TableStyle style =
+      StyleRegistry().partial_table_style(table).table_style;
+
+  EXPECT_EQ("1pt solid #000000", style.border.top);
+  EXPECT_EQ("1pt solid #000000", style.border.left);
+  EXPECT_EQ("1pt solid #000000", style.border.bottom);
+  EXPECT_EQ("1pt solid #000000", style.border.right);
+  EXPECT_EQ("0.5pt solid #808080", style.border_inside_horizontal);
+  EXPECT_EQ("0.5pt solid #808080", style.border_inside_vertical);
+}
+
+/// A `w:tblStyle` carries the borders down as it carries the rest.
+TEST(ooxml_text_style, table_borders_through_the_style_reference) {
+  pugi::xml_document document;
+  const StyleRegistry registry = registry_of(
+      R"(<w:styles><w:style w:styleId="grid"><w:tblPr><w:tblBorders>)"
+      R"(<w:top w:val="single" w:sz="8" w:color="000000"/>)"
+      R"(<w:insideH w:val="single" w:sz="8" w:color="000000"/>)"
+      R"(</w:tblBorders></w:tblPr></w:style></w:styles>)",
+      document);
+
+  pugi::xml_document table_document;
+  const pugi::xml_node table =
+      node_of(R"(<w:tbl><w:tblPr><w:tblStyle w:val="grid"/><w:tblBorders>)"
+              R"(<w:top w:val="single" w:sz="24" w:color="FF0000"/>)"
+              R"(</w:tblBorders></w:tblPr></w:tbl>)",
+              table_document);
+
+  const TableStyle style = registry.partial_table_style(table).table_style;
+
+  // the table's own beats the style's, side by side
+  EXPECT_EQ("3pt solid #ff0000", style.border.top);
+  EXPECT_EQ("1pt solid #000000", style.border_inside_horizontal);
+}
+
+/// `nil` and `none` draw nothing, `auto` leaves the colour to the text.
+TEST(ooxml_text_style, a_cell_border_of_nil_is_not_silence) {
+  pugi::xml_document document;
+  const pugi::xml_node cell =
+      node_of(R"(<w:tc><w:tcPr><w:tcBorders>)"
+              R"(<w:top w:val="nil"/>)"
+              R"(<w:bottom w:val="none" w:sz="4"/>)"
+              R"(<w:right w:val="single" w:sz="8" w:color="auto"/>)"
+              R"(</w:tcBorders></w:tcPr></w:tc>)",
+              document);
+
+  const TableCellStyle style =
+      StyleRegistry().partial_table_cell_style(cell).table_cell_style;
+
+  EXPECT_EQ("0 none", style.border.top);
+  EXPECT_EQ("0 none", style.border.bottom);
+  EXPECT_EQ("1pt solid", style.border.right);
+  EXPECT_FALSE(style.border.left.has_value());
+}
+
+namespace {
+
+TableStyle grid_table_style() {
+  TableStyle result;
+  result.border = DirectionalStyle<std::string>(std::string("frame"));
+  result.border_inside_horizontal = "rule-h";
+  result.border_inside_vertical = "rule-v";
+  return result;
+}
+
+pugi::xml_node cell_at(const pugi::xml_node table, const std::size_t row,
+                       const std::size_t column) {
+  pugi::xml_node row_node = table.child("w:tr");
+  for (std::size_t i = 0; i < row; ++i) {
+    row_node = row_node.next_sibling("w:tr");
+  }
+  pugi::xml_node cell_node = row_node.child("w:tc");
+  for (std::size_t i = 0; i < column; ++i) {
+    cell_node = cell_node.next_sibling("w:tc");
+  }
+  return cell_node;
+}
+
+/// `table_cell_border` for a plain grid, where the cell above is one row up.
+DirectionalStyle<std::string> border_at(const pugi::xml_node table,
+                                        const std::size_t row,
+                                        const std::size_t column,
+                                        const TableStyle &table_style,
+                                        const std::uint32_t rows = 1) {
+  const pugi::xml_node above =
+      row == 0 ? pugi::xml_node() : cell_at(table, row - 1, column);
+  return table_cell_border(cell_at(table, row, column), above, table_style,
+                           rows);
+}
+
+} // namespace
+
+/// A grid line is drawn once, by the cell that leads it.
+TEST(ooxml_text_style, a_cell_draws_only_the_table_borders_it_leads) {
+  pugi::xml_document document;
+  const pugi::xml_node table = node_of(R"(<w:tbl>)"
+                                       R"(<w:tr><w:tc/><w:tc/></w:tr>)"
+                                       R"(<w:tr><w:tc/><w:tc/></w:tr>)"
+                                       R"(</w:tbl>)",
+                                       document);
+  const TableStyle table_style = grid_table_style();
+
+  const DirectionalStyle<std::string> top_left =
+      border_at(table, 0, 0, table_style);
+  EXPECT_EQ("frame", top_left.top);
+  EXPECT_EQ("frame", top_left.left);
+  EXPECT_FALSE(top_left.bottom.has_value());
+  EXPECT_FALSE(top_left.right.has_value());
+
+  const DirectionalStyle<std::string> bottom_right =
+      border_at(table, 1, 1, table_style);
+  EXPECT_EQ("rule-h", bottom_right.top);
+  EXPECT_EQ("rule-v", bottom_right.left);
+  EXPECT_EQ("frame", bottom_right.bottom);
+  EXPECT_EQ("frame", bottom_right.right);
+}
+
+/// A rule the trailing cell states is drawn by the leading one, once.
+TEST(ooxml_text_style, a_rule_the_trailing_cell_states_is_drawn_once) {
+  pugi::xml_document document;
+  const pugi::xml_node table = node_of(
+      R"(<w:tbl>)"
+      R"(<w:tr>)"
+      R"(<w:tc><w:tcPr><w:tcBorders><w:right w:val="single" w:sz="24" w:color="FF0000"/><w:bottom w:val="single" w:sz="24" w:color="00FF00"/></w:tcBorders></w:tcPr></w:tc>)"
+      R"(<w:tc/>)"
+      R"(</w:tr>)"
+      R"(<w:tr><w:tc/><w:tc/></w:tr>)"
+      R"(</w:tbl>)",
+      document);
+  const TableStyle table_style = grid_table_style();
+
+  const DirectionalStyle<std::string> stating =
+      border_at(table, 0, 0, table_style);
+  EXPECT_FALSE(stating.right.has_value());
+  EXPECT_FALSE(stating.bottom.has_value());
+  EXPECT_EQ("3pt solid #ff0000", border_at(table, 0, 1, table_style).left);
+  EXPECT_EQ("3pt solid #00ff00", border_at(table, 1, 0, table_style).top);
+}
+
+/// A cell's own border beats what the neighbour and the table say.
+TEST(ooxml_text_style, a_cell_border_beats_the_neighbours_and_the_tables) {
+  pugi::xml_document document;
+  const pugi::xml_node table = node_of(
+      R"(<w:tbl>)"
+      R"(<w:tr><w:tc/><w:tc><w:tcPr><w:tcBorders><w:left w:val="single" w:sz="24" w:color="FF0000"/></w:tcBorders></w:tcPr></w:tc></w:tr>)"
+      R"(<w:tr><w:tc><w:tcPr><w:tcBorders><w:top w:val="nil"/></w:tcBorders></w:tcPr></w:tc><w:tc/></w:tr>)"
+      R"(</w:tbl>)",
+      document);
+  const TableStyle table_style = grid_table_style();
+
+  EXPECT_EQ("3pt solid #ff0000", border_at(table, 0, 1, table_style).left);
+  EXPECT_EQ("0 none", border_at(table, 1, 0, table_style).top);
+}
+
+/// A covered cell never renders, so the cell merged over it closes the frame.
+TEST(ooxml_text_style, a_merged_cell_closes_the_frame_it_reaches) {
+  pugi::xml_document document;
+  const pugi::xml_node table = node_of(R"(<w:tbl>)"
+                                       R"(<w:tr><w:tc/></w:tr>)"
+                                       R"(<w:tr><w:tc/></w:tr>)"
+                                       R"(<w:tr><w:tc/></w:tr>)"
+                                       R"(</w:tbl>)",
+                                       document);
+  const TableStyle table_style = grid_table_style();
+
+  EXPECT_EQ("frame", border_at(table, 1, 0, table_style, 2).bottom);
+  EXPECT_FALSE(border_at(table, 1, 0, table_style, 1).bottom.has_value());
+  // a merge running past the last row still closes it
+  EXPECT_EQ("frame", border_at(table, 1, 0, table_style, 9).bottom);
+}
+
+/// The cell above sits at this one's grid column, which `w:gridSpan` moves.
+TEST(ooxml_text_style, a_spanned_cell_is_led_by_the_column_it_starts_at) {
+  pugi::xml_document document;
+  const pugi::xml_node table = node_of(
+      R"(<w:tbl>)"
+      R"(<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcBorders><w:bottom w:val="single" w:sz="24" w:color="FF0000"/></w:tcBorders></w:tcPr></w:tc><w:tc/></w:tr>)"
+      R"(<w:tr><w:tc/><w:tc/><w:tc/></w:tr>)"
+      R"(</w:tbl>)",
+      document);
+  const TableStyle table_style = grid_table_style();
+
+  // the spanning cell covers grid columns 0 and 1
+  EXPECT_EQ("3pt solid #ff0000",
+            table_cell_border(cell_at(table, 1, 0), cell_at(table, 0, 0),
+                              table_style, 1)
+                .top);
+  EXPECT_EQ("rule-h", table_cell_border(cell_at(table, 1, 2),
+                                        cell_at(table, 0, 1), table_style, 1)
+                          .top);
+  EXPECT_EQ("frame", border_at(table, 0, 1, table_style).right);
+}
+
+/// `TextWrap::before` leaves the text on the frame's left.
+TEST(ooxml_text_style, frame_wrap_takes_the_side_from_wrap_text) {
+  const auto wrap_of = [](const char *xml) {
+    pugi::xml_document document;
+    return read_frame_style(node_of(xml, document)).text_wrap;
+  };
+
+  EXPECT_EQ(
+      TextWrap::before,
+      wrap_of(R"(<wp:anchor><wp:wrapSquare wrapText="left"/></wp:anchor>)"));
+  EXPECT_EQ(
+      TextWrap::after,
+      wrap_of(R"(<wp:anchor><wp:wrapTight wrapText="right"/></wp:anchor>)"));
+  EXPECT_EQ(
+      TextWrap::before,
+      wrap_of(R"(<wp:anchor><wp:wrapThrough wrapText="left"/></wp:anchor>)"));
+  EXPECT_EQ(TextWrap::none,
+            wrap_of(R"(<wp:anchor><wp:wrapTopAndBottom/></wp:anchor>)"));
+  EXPECT_EQ(TextWrap::run_through,
+            wrap_of(R"(<wp:anchor><wp:wrapNone/></wp:anchor>)"));
+  // a `wp:inline` states no wrap at all
+  EXPECT_FALSE(wrap_of(R"(<wp:inline/>)").has_value());
+}
+
+/// Where word wraps both sides, the frame's own side picks the float's.
+TEST(ooxml_text_style, frame_wrap_on_both_sides_follows_the_frame) {
+  const auto style_of = [](const char *align, const char *wrap_text) {
+    pugi::xml_document document;
+    const std::string xml =
+        R"(<wp:anchor><wp:positionH relativeFrom="margin"><wp:align>)" +
+        std::string(align) + R"(</wp:align></wp:positionH>)" +
+        R"(<wp:wrapSquare wrapText=")" + std::string(wrap_text) +
+        R"("/></wp:anchor>)";
+    return read_frame_style(node_of(xml.c_str(), document));
+  };
+
+  EXPECT_EQ(HorizontalAlign::left,
+            style_of("left", "bothSides").horizontal_position);
+  EXPECT_EQ(TextWrap::after, style_of("left", "bothSides").text_wrap);
+  EXPECT_EQ(TextWrap::before, style_of("right", "bothSides").text_wrap);
+  EXPECT_EQ(TextWrap::none, style_of("center", "largest").text_wrap);
+  EXPECT_EQ(HorizontalAlign::center,
+            style_of("center", "largest").horizontal_position);
+}
+
+/// A page-relative offset has no meaning for a frame that stays in the flow.
+TEST(ooxml_text_style, frame_offset_is_read_where_it_flows_with_the_text) {
+  pugi::xml_document document;
+  const pugi::xml_node anchor = node_of(
+      R"(<wp:anchor>)"
+      R"(<wp:positionH relativeFrom="column"><wp:posOffset>2286000</wp:posOffset></wp:positionH>)"
+      R"(<wp:positionV relativeFrom="page"><wp:posOffset>457200</wp:posOffset></wp:positionV>)"
+      R"(<wp:simplePos><wp:posOffset>-457200</wp:posOffset></wp:simplePos>)"
+      R"(</wp:anchor>)",
+      document);
+
+  EXPECT_EQ(Measure(2.5, DynamicUnit("in")),
+            read_frame_offset(anchor.child("wp:positionH")));
+  EXPECT_FALSE(read_frame_offset(anchor.child("wp:positionV")).has_value());
+  // no `relativeFrom` is not the page
+  EXPECT_EQ(Measure(-0.5, DynamicUnit("in")),
+            read_frame_offset(anchor.child("wp:simplePos")));
+  EXPECT_FALSE(read_frame_offset(anchor.child("wp:noSuchChild")).has_value());
+}

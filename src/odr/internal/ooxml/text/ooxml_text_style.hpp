@@ -1,8 +1,13 @@
 #pragma once
 
+#include <odr/style.hpp>
+
 #include <odr/internal/common/style.hpp>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -61,5 +66,21 @@ private:
   void generate_styles_(pugi::xml_node styles_root);
   Style *generate_style_(const std::string &name, pugi::xml_node node);
 };
+
+/// Borders of a `w:tc` spanning `rows` rows under `cell_above`: its own
+/// `w:tcBorders` over the neighbour's over the table's ([ECMA-376] 17.4.39).
+/// Only the edges the cell leads, so a rule between two cells is one line.
+DirectionalStyle<std::string> table_cell_border(pugi::xml_node node,
+                                                pugi::xml_node cell_above,
+                                                const TableStyle &table_style,
+                                                std::uint32_t rows);
+
+/// The graphic style a drawing's `wp:anchor`/`wp:inline` states itself;
+/// `styles.xml` carries none.
+GraphicStyle read_frame_style(pugi::xml_node inner_node);
+
+/// [ECMA-376] 20.4.2.10/11. A page-relative offset is dropped: the frame stays
+/// in the text flow, which is not what it would measure against.
+std::optional<Measure> read_frame_offset(pugi::xml_node position);
 
 } // namespace odr::internal::ooxml::text

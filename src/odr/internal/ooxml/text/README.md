@@ -63,15 +63,27 @@ Roughly ordered by importance.
     is taller than it does not grow the way word grows it
 - [x] tables
   - [x] table width
-  - [x] cell vertical alignment, borders
+  - [x] cell vertical alignment
+  - [x] borders, on the cell (`w:tcBorders`) and on the table
+    (`w:tblPr/w:tblBorders`, frame + `w:insideH`/`w:insideV`, lowered onto the
+    cells)
+  - [ ] word's conflict resolution where two cells meet at a rule — the leading
+    cell's own border wins rather than the heavier of the two
   - [x] row height (`w:trHeight`, as a minimum — `w:hRule="exact"` is not)
-  - [x] table style reference (`w:tblStyle`, cascading its paragraph and text
-    properties into the table)
+  - [x] table style reference (`w:tblStyle`, cascading its paragraph, text and
+    border properties into the table)
   - [ ] cell width (parsed but not applied)
   - [ ] conditional table formatting (`w:tblStylePr`: banding, first row, …)
 - [x] page layout (`w:sectPr`: size, orientation, margins)
   - [ ] one layout per section; the first section's applies to the document
-- [ ] graphic / drawing styles
+- [x] graphic / drawing styles
+  - [x] floating drawings (`wp:anchor`): `wp:positionH`/`wp:positionV` offsets,
+    `wp:align` side, `wp:wrapSquare`/`Tight`/`Through`/`TopAndBottom`/`None`
+  - [x] `behindDoc`, as a negative z-index
+  - [ ] a page-relative origin, and `wp:positionV`'s `wp:align` — a frame is
+    kept in the text flow, so neither has an origin to measure against
+  - [ ] `relativeHeight` as the stacking order between two drawings
+  - [ ] fill and stroke
 
 ## References
 

@@ -72,6 +72,9 @@ void ParagraphStyle::override(const ParagraphStyle &other) {
 
 void TableStyle::override(const TableStyle &other) {
   override_if_set(width, other.width);
+  border.override(other.border);
+  override_if_set(border_inside_horizontal, other.border_inside_horizontal);
+  override_if_set(border_inside_vertical, other.border_inside_vertical);
 }
 
 void TableColumnStyle::override(const TableColumnStyle &other) {
