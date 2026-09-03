@@ -22,6 +22,9 @@ public:
   explicit Document(std::shared_ptr<internal::abstract::Document>);
 
   [[nodiscard]] bool is_editable() const noexcept;
+  /// Savable, @p encrypted to ask for an encrypted save. False for a document
+  /// decrypted from a password-protected package: saving one can only write it
+  /// out in the clear.
   [[nodiscard]] bool is_savable(bool encrypted = false) const noexcept;
 
   void save(const std::string &path) const;

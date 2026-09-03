@@ -68,14 +68,10 @@ void expect_text_at(const Document &document, const std::string &path,
 /// Applies `diff` to `path`'s document, saves to `output_name` in the working
 /// directory and reopens it, so the assertions see what was written.
 Document edit_and_reload(const std::string &path, const char *diff,
-                         const std::string &output_name,
-                         const std::optional<std::string> &password = {}) {
+                         const std::string &output_name) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  DocumentFile document_file(TestData::test_file_path(path), logger);
-  if (password.has_value()) {
-    document_file = document_file.decrypt(*password);
-  }
+  const DocumentFile document_file(TestData::test_file_path(path), logger);
   const Document document = document_file.document();
 
   html::edit(document, diff);
@@ -85,6 +81,15 @@ Document edit_and_reload(const std::string &path, const char *diff,
   document.save(output_path);
 
   return DocumentFile(output_path).document();
+}
+
+/// `pages.ods` is password-protected; every test that wants its content opens
+/// it this way.
+Document decrypted_pages_ods() {
+  const std::string path = "odr-public/ods/pages.ods";
+  return DocumentFile(TestData::test_file_path(path))
+      .decrypt(TestData::test_file(path).password.value())
+      .document();
 }
 
 } // namespace
@@ -301,13 +306,14 @@ TEST(Document, edit_odt_diff) {
   expect_text_at(document, "/child:6/child:0", "Text hello world!");
 }
 
+// Asserted in memory: `pages.ods` is password-protected, and a decrypted
+// package is not savable — see `a_decrypted_package_is_not_savable`.
 TEST(Document, edit_ods_diff) {
   const char *diff =
       R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
-  const std::string path = "odr-public/ods/pages.ods";
-  const Document document =
-      edit_and_reload(path, diff, "pages_edit_diff.ods",
-                      TestData::test_file(path).password.value());
+  const Document document = decrypted_pages_ods();
+
+  html::edit(document, diff);
 
   expect_text_at(document, "/child:0/cell:A1/child:0/child:0", "Page 1 hi");
   expect_text_at(document, "/child:1/cell:A1/child:0/child:0", "Page 2 hihi");
@@ -316,6 +322,24 @@ TEST(Document, edit_ods_diff) {
                  "Page 4 hihihihi");
   expect_text_at(document, "/child:4/cell:A1/child:0/child:0",
                  "Page 5 hihihihihi");
+}
+
+// Saving would rebuild the package from the decrypted filesystem, handing out
+// what the password protects.
+TEST(Document, a_decrypted_package_is_not_savable) {
+  const Document document = decrypted_pages_ods();
+
+  EXPECT_FALSE(document.is_savable());
+  EXPECT_FALSE(document.is_savable(true));
+
+  const std::string path =
+      (std::filesystem::current_path() / "decrypted_save.ods").string();
+  EXPECT_THROW(document.save(path), UnsupportedOperation);
+  EXPECT_FALSE(std::filesystem::exists(path));
+
+  std::ostringstream out;
+  EXPECT_THROW(document.save(out), UnsupportedOperation);
+  EXPECT_THROW((void)document.save_to_memory(), UnsupportedOperation);
 }
 
 TEST(Document, edit_docx_diff) {
@@ -386,4 +410,8 @@ TEST(Document, saving_an_unsavable_format_leaves_no_file) {
       (std::filesystem::current_path() / "unsavable_save.pptx").string();
   EXPECT_THROW(document.save(path), UnsupportedOperation);
   EXPECT_FALSE(std::filesystem::exists(path));
+
+  std::ostringstream out;
+  EXPECT_THROW(document.save(out), UnsupportedOperation);
+  EXPECT_THROW((void)document.save_to_memory(), UnsupportedOperation);
 }

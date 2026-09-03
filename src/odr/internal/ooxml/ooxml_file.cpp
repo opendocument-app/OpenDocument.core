@@ -105,7 +105,7 @@ std::shared_ptr<abstract::Document> OfficeOpenXmlFile::document() const {
 
   switch (file_type()) {
   case FileType::office_open_xml_document:
-    return std::make_shared<text::Document>(m_files);
+    return std::make_shared<text::Document>(m_files, m_encryption_state);
   case FileType::office_open_xml_presentation:
     return std::make_shared<presentation::Document>(m_files);
   case FileType::office_open_xml_workbook:

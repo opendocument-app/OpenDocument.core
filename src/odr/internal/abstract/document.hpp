@@ -67,7 +67,8 @@ public:
   /// Editable in any way.
   [[nodiscard]] virtual bool is_editable() const noexcept = 0;
 
-  /// Savable, @p encrypted to ask for an encrypted save.
+  /// Savable, @p encrypted to ask for an encrypted save. A decrypted package
+  /// is not: `save` would write it out in the clear.
   [[nodiscard]] virtual bool is_savable(bool encrypted) const noexcept = 0;
 
   virtual void save(std::ostream &out) const = 0;
