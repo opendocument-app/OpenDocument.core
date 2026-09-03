@@ -178,6 +178,12 @@ struct ParagraphStyle final {
 /// @brief Represents a style for tables.
 struct TableStyle final {
   std::optional<Measure> width;
+  /// The frame around the table, and the rules between its rows and columns.
+  /// @note What the table states; the cells are what draws it, through
+  /// @ref TableCellStyle::border.
+  DirectionalStyle<std::string> border;
+  std::optional<std::string> border_inside_horizontal;
+  std::optional<std::string> border_inside_vertical;
 
   void override(const TableStyle &other);
 };

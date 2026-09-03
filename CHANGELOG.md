@@ -16,6 +16,17 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A `.docx` `wp:anchor` drawing floats at its offset with its wrap and side,
+  instead of sitting in the line. Closes #803.
+
+- A `.docx` table's own borders (`w:tblPr/w:tblBorders`) are drawn, and no
+  longer four times too thick. New `TableStyle::border`,
+  `::border_inside_horizontal` and `::border_inside_vertical`, mirrored in the
+  JNI, Apple and Python bindings.
+
+- A table cell in a text document starts its content at the top, as word and
+  odf do.
+
 - A fitted or zoomed view scales its text with the page in WebKit, where the
   type used to stay at its unscaled size. `HtmlViewportMode::fit_width_by_view`
   is usable on iOS. Closes #761.

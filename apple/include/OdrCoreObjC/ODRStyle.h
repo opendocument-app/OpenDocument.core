@@ -177,6 +177,9 @@ NS_SWIFT_NAME(ParagraphStyle)
 NS_SWIFT_NAME(TableStyle)
 @interface ODRTableStyle : NSObject
 @property(nonatomic, readonly, nullable) ODRMeasure *width;
+@property(nonatomic, readonly) ODRDirectionalString *border;
+@property(nonatomic, readonly, nullable, copy) NSString *borderInsideHorizontal;
+@property(nonatomic, readonly, nullable, copy) NSString *borderInsideVertical;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

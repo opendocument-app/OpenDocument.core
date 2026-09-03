@@ -24,6 +24,9 @@ body{margin:0;background:#fff}
 /* What the formats anchor against: a page for shapes, a paragraph or a cell
    for frames. */
 x-p,td,.odr-page-outer{position:relative}
+/* Word and odf start a cell at its top where the browser default centres it; a
+   sheet says its own, more specifically. */
+td{vertical-align:top}
 x-p{display:block}
 x-s{display:inline}
 .odr-background{padding:0;background:#525659}

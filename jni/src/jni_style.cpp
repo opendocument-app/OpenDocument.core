@@ -282,8 +282,13 @@ jobject make_paragraph_style(JNIEnv *env, const odr::ParagraphStyle &style) {
 
 jobject make_table_style(JNIEnv *env, const odr::TableStyle &style) {
   return new_object(env, "app/opendocument/core/TableStyle",
-                    "(Lapp/opendocument/core/Measure;)V",
-                    make_measure(env, style.width));
+                    "(Lapp/opendocument/core/Measure;"
+                    "Lapp/opendocument/core/DirectionalString;"
+                    "Ljava/lang/String;Ljava/lang/String;)V",
+                    make_measure(env, style.width),
+                    make_directional_string(env, style.border),
+                    make_string_opt(env, style.border_inside_horizontal),
+                    make_string_opt(env, style.border_inside_vertical));
 }
 
 jobject make_table_column_style(JNIEnv *env,

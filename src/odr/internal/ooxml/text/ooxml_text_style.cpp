@@ -122,6 +122,18 @@ void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
           read_width_attribute(table_properties.child("w:tblW"))) {
     result.width = width;
   }
+
+  // [ECMA-376] 17.4.39
+  const pugi::xml_node borders = table_properties.child("w:tblBorders");
+  result.border.override(read_borders_node(borders));
+  if (const std::optional<std::string> inside_horizontal =
+          read_border_node(borders.child("w:insideH"))) {
+    result.border_inside_horizontal = inside_horizontal;
+  }
+  if (const std::optional<std::string> inside_vertical =
+          read_border_node(borders.child("w:insideV"))) {
+    result.border_inside_vertical = inside_vertical;
+  }
 }
 
 void resolve_table_row_style_(const pugi::xml_node node,
@@ -152,26 +164,77 @@ void resolve_table_cell_style_(const pugi::xml_node node,
               table_cell_properties.child("w:vAlign").attribute("w:val"))) {
     result.vertical_align = vertical_align;
   }
-  if (const std::optional<std::string> border_right = read_border_node(
-          table_cell_properties.child("w:tcBorders").child("w:right"))) {
-    result.border.right = border_right;
-  }
-  if (const std::optional<std::string> border_top = read_border_node(
-          table_cell_properties.child("w:tcBorders").child("w:top"))) {
-    result.border.top = border_top;
-  }
-  if (const std::optional<std::string> border_left = read_border_node(
-          table_cell_properties.child("w:tcBorders").child("w:left"))) {
-    result.border.left = border_left;
-  }
-  if (const std::optional<std::string> border_bottom = read_border_node(
-          table_cell_properties.child("w:tcBorders").child("w:bottom"))) {
-    result.border.bottom = border_bottom;
-  }
+  result.border.override(
+      read_borders_node(table_cell_properties.child("w:tcBorders")));
 }
 
-void resolve_graphic_style_(pugi::xml_node, GraphicStyle &) {
-  // TODO
+std::optional<std::string> read_cell_border(const pugi::xml_node cell,
+                                            const char *side) {
+  return read_border_node(
+      cell.child("w:tcPr").child("w:tcBorders").child(side));
+}
+
+/// A cell's edge: its own, then the neighbour's opposite edge, then the
+/// table's.
+std::optional<std::string>
+resolve_cell_border(std::optional<std::string> own,
+                    std::optional<std::string> neighbour,
+                    std::optional<std::string> table) {
+  if (own.has_value()) {
+    return own;
+  }
+  return neighbour.has_value() ? std::move(neighbour) : std::move(table);
+}
+
+/// [ECMA-376] 20.4.2.*. `wrapText` names the side the text keeps; where it
+/// names both, css has to pick one, and no float holds a centred frame.
+std::optional<TextWrap>
+read_frame_text_wrap(const pugi::xml_node anchor,
+                     const std::optional<HorizontalAlign> position) {
+  if (anchor.child("wp:wrapNone")) {
+    return TextWrap::run_through;
+  }
+  if (anchor.child("wp:wrapTopAndBottom")) {
+    return TextWrap::none;
+  }
+  for (const char *name : {"wp:wrapSquare", "wp:wrapTight", "wp:wrapThrough"}) {
+    const pugi::xml_node wrap = anchor.child(name);
+    if (!wrap) {
+      continue;
+    }
+    const char *wrap_text = wrap.attribute("wrapText").value();
+    if (std::strcmp("left", wrap_text) == 0) {
+      return TextWrap::before;
+    }
+    if (std::strcmp("right", wrap_text) == 0) {
+      return TextWrap::after;
+    }
+    if (position == HorizontalAlign::center) {
+      return TextWrap::none;
+    }
+    return position == HorizontalAlign::left ? TextWrap::after
+                                             : TextWrap::before;
+  }
+  return {};
+}
+
+/// [ECMA-376] 20.4.3.1 `wp:align`, the side a frame takes instead of an offset.
+std::optional<HorizontalAlign>
+read_frame_horizontal_position(const pugi::xml_node align) {
+  if (!align) {
+    return {};
+  }
+  const char *value = align.text().get();
+  if (std::strcmp("left", value) == 0 || std::strcmp("inside", value) == 0) {
+    return HorizontalAlign::left;
+  }
+  if (std::strcmp("center", value) == 0) {
+    return HorizontalAlign::center;
+  }
+  if (std::strcmp("right", value) == 0 || std::strcmp("outside", value) == 0) {
+    return HorizontalAlign::right;
+  }
+  return {};
 }
 
 /// A `w:sdt` and its `w:sdtContent` become a group, which the html renderer
@@ -274,7 +337,6 @@ void Style::resolve_style_() {
   resolve_table_style_(m_node, m_resolved.table_style);
   resolve_table_row_style_(m_node, m_resolved.table_row_style);
   resolve_table_cell_style_(m_node, m_resolved.table_cell_style);
-  resolve_graphic_style_(m_node, m_resolved.graphic_style);
 }
 
 void Style::resolve_default_style_() {
@@ -445,3 +507,59 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 }
 
 } // namespace odr::internal::ooxml::text
+
+namespace odr::internal::ooxml {
+
+DirectionalStyle<std::string> text::table_cell_border(
+    const pugi::xml_node node, const pugi::xml_node cell_above,
+    const TableStyle &table_style, const std::uint32_t rows) {
+  const pugi::xml_node row_node = node.parent();
+  const pugi::xml_node cell_before = node.previous_sibling("w:tc");
+
+  DirectionalStyle<std::string> result;
+  result.top = resolve_cell_border(
+      read_cell_border(node, "w:top"), read_cell_border(cell_above, "w:bottom"),
+      row_node.previous_sibling("w:tr") ? table_style.border_inside_horizontal
+                                        : table_style.border.top);
+  result.left =
+      resolve_cell_border(read_cell_border(node, "w:left"),
+                          read_cell_border(cell_before, "w:right"),
+                          cell_before ? table_style.border_inside_vertical
+                                      : table_style.border.left);
+  if (!node.next_sibling("w:tc")) {
+    result.right = resolve_cell_border(read_cell_border(node, "w:right"), {},
+                                       table_style.border.right);
+  }
+  // a merged cell reaches down to where its continuations end
+  pugi::xml_node last_row_node = row_node;
+  for (std::uint32_t row = 1; row < rows; ++row) {
+    const pugi::xml_node next_row_node = last_row_node.next_sibling("w:tr");
+    if (!next_row_node) {
+      break;
+    }
+    last_row_node = next_row_node;
+  }
+  if (!last_row_node.next_sibling("w:tr")) {
+    result.bottom = resolve_cell_border(read_cell_border(node, "w:bottom"), {},
+                                        table_style.border.bottom);
+  }
+  return result;
+}
+
+GraphicStyle text::read_frame_style(const pugi::xml_node inner_node) {
+  GraphicStyle result;
+  result.horizontal_position = read_frame_horizontal_position(
+      inner_node.child("wp:positionH").child("wp:align"));
+  result.text_wrap =
+      read_frame_text_wrap(inner_node, result.horizontal_position);
+  return result;
+}
+
+std::optional<Measure> text::read_frame_offset(const pugi::xml_node position) {
+  if (std::strcmp("page", position.attribute("relativeFrom").value()) == 0) {
+    return {};
+  }
+  return read_emus_text(position.child("wp:posOffset"));
+}
+
+} // namespace odr::internal::ooxml
