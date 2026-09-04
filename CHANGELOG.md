@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- New `File::name()`: what a file is called, without any directory — the file
+  name for one on disk, the entry name for one inside an archive, and what
+  `File::from_memory(data, name)` was given for one in memory, where the new
+  second argument defaults to no name. A named file in memory now gets the
+  same name-derived candidate a path does, so bytes called `notes.md` decode
+  as markdown.
+
 ## v6.13.0 - 2026-09-03
 
 - A `.md` opened by path decodes as markdown rather than as plain text, and

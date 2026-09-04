@@ -1,6 +1,8 @@
+#include <odr/archive.hpp>
 #include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -92,6 +94,46 @@ TEST(File, a_flat_document_and_a_package_answer_a_wrong_type_alike) {
                    TestData::test_file_path("odr-public/odt/about.odt"),
                    FileType::opendocument_graphics),
                UnknownFileType);
+}
+
+TEST(File, name_is_the_file_name_on_disk) {
+  EXPECT_EQ(
+      File::from_disk(TestData::test_file_path("odr-public/odt/about.odt"))
+          .name(),
+      "about.odt");
+}
+
+/// Bytes arrive without one, so the caller says what they were called - or
+/// nobody does.
+TEST(File, from_memory_is_unnamed_unless_told) {
+  EXPECT_EQ(File::from_memory("hello").name(), "");
+  EXPECT_EQ(File::from_memory("hello", "greeting.txt").name(), "greeting.txt");
+}
+
+/// Reading a file into memory drops its path but not what it is called.
+TEST(File, a_file_read_into_memory_keeps_its_name) {
+  const internal::DiskFile on_disk(
+      TestData::test_file_path("odr-public/odt/about.odt"));
+
+  EXPECT_EQ(File(std::make_shared<internal::MemoryFile>(on_disk)).name(),
+            "about.odt");
+}
+
+/// A file inside an archive is named by its entry, not by the archive.
+TEST(File, an_archive_entry_is_named_by_its_entry) {
+  internal::zip::ZipArchive zip;
+  zip.insert_file(std::end(zip), internal::RelPath("docProps/preview.emf"),
+                  std::make_shared<internal::MemoryFile>("not really an emf"));
+
+  std::stringstream out;
+  zip.save(out);
+
+  const Filesystem filesystem = DecodedFile(File::from_memory(out.str()))
+                                    .as_archive_file()
+                                    .archive()
+                                    .as_filesystem();
+
+  EXPECT_EQ(filesystem.open("/docProps/preview.emf").name(), "preview.emf");
 }
 
 TEST(File, from_memory_holds_its_bytes) {

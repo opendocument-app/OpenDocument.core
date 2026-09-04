@@ -56,11 +56,11 @@ template <typename T> auto priority_comparator(const std::vector<T> &priority) {
 /// (`detect_by_content == false`), or `unknown`. A name only ever adds a
 /// candidate the bytes already allow — it never claims them.
 FileType file_type_by_name(const abstract::File &file) {
-  const std::optional<AbsPath> path = file.disk_path();
-  if (!path.has_value()) {
+  const std::string name = file.name();
+  if (name.empty()) {
     return FileType::unknown;
   }
-  const FileType type = file_type_by_file_extension(path->extension());
+  const FileType type = file_type_by_file_extension(RelPath(name).extension());
   return capabilities_by_file_type(type).detect_by_content ? FileType::unknown
                                                            : type;
 }

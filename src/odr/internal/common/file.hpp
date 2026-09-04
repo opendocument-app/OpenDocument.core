@@ -22,6 +22,8 @@ public:
   [[nodiscard]] FileLocation location() const noexcept final;
   [[nodiscard]] std::size_t size() const final;
 
+  [[nodiscard]] std::string name() const final;
+
   [[nodiscard]] std::optional<AbsPath> disk_path() const final;
   [[nodiscard]] std::optional<std::string_view> memory_data() const final;
 
@@ -33,11 +35,14 @@ private:
 
 class MemoryFile final : public abstract::File {
 public:
-  explicit MemoryFile(std::string data);
+  explicit MemoryFile(std::string data, std::string name = {});
+  /// Takes @p file's bytes into memory, name and all.
   explicit MemoryFile(const File &file);
 
   [[nodiscard]] FileLocation location() const noexcept override;
   [[nodiscard]] std::size_t size() const override;
+
+  [[nodiscard]] std::string name() const override;
 
   [[nodiscard]] std::optional<AbsPath> disk_path() const override;
   [[nodiscard]] std::optional<std::string_view> memory_data() const override;
@@ -48,6 +53,7 @@ public:
 
 private:
   std::string m_data;
+  std::string m_name;
 };
 
 } // namespace odr::internal

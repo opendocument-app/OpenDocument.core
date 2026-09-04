@@ -84,8 +84,8 @@ is every plain text file with a `#` comment or an `*` bullet in it. Sniffing
 would steal `text_file` matches and be confidently wrong, so `detect_by_content`
 stays **false** and markdown never joins the speculative chain. The extension
 offers it instead, once the bytes have decoded as text — see
-[`AGENTS.md`](AGENTS.md) and #760. `File::from_memory` has no name, so it still
-needs `DecodedFile(file, FileType::markdown)`.
+[`AGENTS.md`](AGENTS.md) and #760. Bytes handed to `File::from_memory` without
+a name still need `DecodedFile(file, FileType::markdown)`.
 
 **There is no `NoMarkdownFile`.** Every other format's exception exists because
 detection rejects. Nothing rejects here: md4c is total — any UTF-8 byte

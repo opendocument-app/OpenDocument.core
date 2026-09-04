@@ -96,6 +96,22 @@ TEST(odr, a_misnamed_file_is_what_its_bytes_are) {
   EXPECT_EQ(from_memory.file_type(), FileType::text_file);
 }
 
+/// A caller who holds bytes rather than a path can still say what they were
+/// called, and that name offers the same candidate a path would have.
+TEST(odr, a_named_file_in_memory_is_offered_its_type) {
+  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const File file = File::from_memory("# heading\n", "notes.md");
+
+  const auto types = list_file_types(file, logger);
+  ASSERT_FALSE(types.empty());
+  EXPECT_EQ(types.front(), FileType::text_file);
+  EXPECT_EQ(types.back(), FileType::markdown);
+
+  EXPECT_EQ(DecodedFile(file, logger).file_type(), FileType::markdown);
+  EXPECT_EQ(mimetype(file, logger), "text/markdown");
+}
+
 TEST(FileTypeTable, covers_every_file_type_exactly_once) {
   const std::vector<FileType> expected = every_file_type();
   const std::vector<FileType> actual = all_file_types();

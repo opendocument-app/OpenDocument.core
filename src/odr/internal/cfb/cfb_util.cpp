@@ -115,6 +115,8 @@ public:
   }
   [[nodiscard]] std::size_t size() const override { return m_entry.size; }
 
+  [[nodiscard]] std::string name() const override { return m_entry.get_name(); }
+
   [[nodiscard]] std::optional<AbsPath> disk_path() const override {
     return std::nullopt;
   }
