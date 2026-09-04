@@ -72,6 +72,26 @@ class FileTest {
   }
 
   @Test
+  void fileName() throws IOException {
+    Path odt = TestFiles.odtFile(tempDir);
+    try (File file = new File(odt.toString())) {
+      assertEquals(TestFiles.ODT_RESOURCE, file.name());
+    }
+  }
+
+  /** A file inside a package is named by its entry, not by the package. */
+  @Test
+  void archiveEntryName() throws IOException {
+    Path odt = TestFiles.odtFile(tempDir);
+    try (DecodedFile file = Odr.open(odt.toString(), FileType.ZIP)) {
+      Filesystem filesystem = file.asArchiveFile().archive().asFilesystem();
+      try (File entry = filesystem.open("/content.xml")) {
+        assertEquals("content.xml", entry.name());
+      }
+    }
+  }
+
+  @Test
   void decodeAnOpenFile() throws IOException {
     Path odt = TestFiles.odtFile(tempDir);
     try (File file = new File(odt.toString());

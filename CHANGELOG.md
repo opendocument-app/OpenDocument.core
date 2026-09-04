@@ -23,6 +23,12 @@ The release run heads these entries with the version and opens a fresh
   same name-derived candidate a path does, so bytes called `notes.md` decode
   as markdown.
 
+  Mirrored in every binding: `File.name()` in JNI and `pyodr`, `File.name` in
+  the Apple bindings, and `pyodr.File.from_memory(data, name)` for naming
+  bytes. The wasm package takes the name alongside the bytes —
+  `odr.open(bytes, { name: file.name })` and `odr.detect(bytes, name)` — and
+  hands it back as `Document.fileName`.
+
 ## v6.13.0 - 2026-09-03
 
 - A `.md` opened by path decodes as markdown rather than as plain text, and

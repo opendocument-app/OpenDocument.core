@@ -78,6 +78,7 @@
         doc?.close();
         try {
           doc = odr.open(new Uint8Array(await file.arrayBuffer()), {
+            name: file.name,
             editable: true,
           });
         } catch (e) {

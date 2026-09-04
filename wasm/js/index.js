@@ -41,6 +41,11 @@ export class Document {
     return unwrap(this.#core.fileType(this.#handle));
   }
 
+  // What the bytes were called, as passed to `open`; empty where nothing was.
+  get fileName() {
+    return unwrap(this.#core.fileName(this.#handle));
+  }
+
   meta() {
     return JSON.parse(unwrap(this.#core.meta(this.#handle)));
   }
@@ -126,16 +131,20 @@ export class Odr {
     return this.#core.fileTypes();
   }
 
-  detect(bytes) {
-    return unwrap(this.#core.detect(bytes));
+  // `name` is what the upload was called. Bytes carry no name, and for a
+  // format with no signature — markdown — it is the only thing that can offer
+  // the type.
+  detect(bytes, name = '') {
+    return unwrap(this.#core.detect(bytes, name));
   }
 
-  // `fileType` forces an interpretation instead of detecting one.
-  open(bytes, { fileType, ...config } = {}) {
+  // `fileType` forces an interpretation instead of detecting one; `name` is as
+  // in `detect`.
+  open(bytes, { fileType, name = '', ...config } = {}) {
     const handle =
       fileType === undefined
-        ? unwrap(this.#core.open(bytes, config))
-        : unwrap(this.#core.openAs(bytes, fileType, config));
+        ? unwrap(this.#core.open(bytes, name, config))
+        : unwrap(this.#core.openAs(bytes, name, fileType, config));
     return new Document(this.#core, handle);
   }
 

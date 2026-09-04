@@ -124,6 +124,9 @@ export interface HtmlConfig {
 export interface OpenOptions extends HtmlConfig {
   /** Force an interpretation instead of detecting one. */
   fileType?: number;
+  /** What the upload was called. Bytes carry no name, and for a format with no
+   * signature — markdown — it is the only thing that can offer the type. */
+  name?: string;
 }
 
 /** `name` is the C++ exception type: `WrongPassword`, `UnsupportedFileType`, … */
@@ -137,6 +140,8 @@ export declare class Document {
    * is in private fields and clones away to an empty object. */
   readonly handle: number;
   readonly fileType: number;
+  /** What the bytes were called, as passed to `open`; empty where nothing was. */
+  readonly fileName: string;
 
   meta(): Record<string, unknown>;
   capabilities(): Capabilities;
@@ -177,7 +182,7 @@ export declare class Odr {
   /** Every known type, enough to populate an `<input accept>` or a PWA
    * manifest's file handlers without opening anything. */
   fileTypes(): FileTypeInfo[];
-  detect(bytes: Uint8Array): Detection;
+  detect(bytes: Uint8Array, name?: string): Detection;
   open(bytes: Uint8Array, options?: OpenOptions): Document;
   /** Applies to documents opened after the call. Null silences it again. */
   setLogger(sink: ((level: number, message: string) => void) | null, level?: number): void;

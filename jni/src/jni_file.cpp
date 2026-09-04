@@ -55,6 +55,13 @@ Java_app_opendocument_core_File_sizeNative(JNIEnv *env, jobject, jlong handle) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_File_nameNative(JNIEnv *env, jobject, jlong handle) {
+  return guarded(env, [&] {
+    return to_jstring(env, from_handle<odr::File>(handle)->name());
+  });
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_app_opendocument_core_File_diskPathNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {

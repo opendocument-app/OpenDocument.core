@@ -43,6 +43,35 @@ describe('smoke', () => {
     }
   });
 
+  // Markdown has no signature, so only the name the upload arrived under can
+  // offer it - the browser's `File.name`, which bytes alone do not carry.
+  it('takes the name of an upload and reads a type off it', () => {
+    const markdown = new TextEncoder().encode('# heading\n');
+
+    assert.equal(odr.detect(markdown).fileTypes.at(-1), odr.enums.FileType.txt);
+    assert.equal(
+      odr.detect(markdown, 'notes.md').fileTypes.at(-1),
+      odr.enums.FileType.md,
+    );
+
+    const doc = odr.open(markdown, { name: 'notes.md' });
+    try {
+      assert.equal(doc.fileType, odr.enums.FileType.md);
+      assert.equal(doc.fileName, 'notes.md');
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('leaves an unnamed upload unnamed', () => {
+    const doc = odr.open(new TextEncoder().encode('plain text'));
+    try {
+      assert.equal(doc.fileName, '');
+    } finally {
+      doc.close();
+    }
+  });
+
   it('throws a typed error for a wrong password', () => {
     const doc = odr.open(fixture('encrypted.docx'));
     try {

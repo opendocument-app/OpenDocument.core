@@ -94,6 +94,21 @@ final class DecodeTests: XCTestCase {
   }
 }
 
+final class FileNameTests: XCTestCase {
+  func testFileOnDiskIsNamedByItsPath() throws {
+    let path = try write("hello", as: "note.txt")
+    XCTAssertEqual(try File(path: path).name, "note.txt")
+  }
+
+  /// A file inside a package is named by its entry, not by the package.
+  func testArchiveEntryIsNamedByItsEntry() throws {
+    let archive = try DecodedFile.decode(path: try Fixture.odt(), as: .zip)
+      .asArchiveFile().archive()
+    let entry = try archive.filesystem.open(path: "/content.xml")
+    XCTAssertEqual(entry.name, "content.xml")
+  }
+}
+
 final class ThumbnailTests: XCTestCase {
   func testDocumentFileCarriesItsThumbnail() throws {
     let file = try DecodedFile.decode(path: try Fixture.odt()).asDocumentFile()

@@ -36,6 +36,30 @@ def test_file_from_memory_keeps_bytes_verbatim():
     assert pyodr.File.from_memory(data).read() == data
 
 
+def test_file_name(txt_path):
+    assert pyodr.File.from_disk(str(txt_path)).name() == "note.txt"
+    # bytes arrive unnamed unless the caller says otherwise
+    assert pyodr.File.from_memory(b"hello").name() == ""
+
+    named = pyodr.File.from_memory(b"hello", "greeting.txt")
+    assert named.name() == "greeting.txt"
+
+
+def test_file_name_of_an_archive_entry(odt_path):
+    file = pyodr.open(str(odt_path), pyodr.FileType.zip)
+    filesystem = file.as_archive_file().archive().as_filesystem()
+    assert filesystem.open("/META-INF/manifest.xml").name() == "manifest.xml"
+
+
+def test_named_bytes_decode_as_markdown():
+    # markdown has no signature, so only the name can offer it
+    named = pyodr.File.from_memory(b"# heading\n", "notes.md")
+    assert pyodr.DecodedFile(named).file_type() == pyodr.FileType.markdown
+
+    unnamed = pyodr.File.from_memory(b"# heading\n")
+    assert pyodr.DecodedFile(unnamed).file_type() == pyodr.FileType.text_file
+
+
 def test_open_missing_file(tmp_path):
     with pytest.raises(FileNotFoundError):
         pyodr.open(str(tmp_path / "missing.txt"))
