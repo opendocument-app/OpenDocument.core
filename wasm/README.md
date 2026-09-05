@@ -34,7 +34,10 @@ that runs against them. Unzip it where your pages are served from and import
 import { Odr } from '@opendocument/odr-core';
 
 const odr = await Odr.load();
-const doc = odr.open(new Uint8Array(await file.arrayBuffer()));
+// `name` lets a signature-less format like markdown be detected.
+const doc = odr.open(new Uint8Array(await file.arrayBuffer()), {
+  name: file.name,
+});
 try {
   const { html } = doc.render(0);
   iframe.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }));

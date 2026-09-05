@@ -162,14 +162,18 @@ void odr_python::bind_file(py::module_ &m) {
                   "A file read from `path` on disk.")
       .def_static(
           "from_memory",
-          [](const py::bytes &data) {
-            return odr::File::from_memory(std::string(data));
+          [](const py::bytes &data, std::string name) {
+            return odr::File::from_memory(std::string(data), std::move(name));
           },
-          py::arg("data"), "A file held in memory; `data` is its bytes.")
+          py::arg("data"), py::arg("name") = std::string(),
+          "A file held in memory; `data` is its bytes, `name` what it is "
+          "called, if known.")
       .def("__bool__",
            [](const odr::File &file) { return file.impl() != nullptr; })
       .def("location", &odr::File::location)
       .def("size", &odr::File::size)
+      .def("name", &odr::File::name,
+           "The file name, without any directory; empty where there is none.")
       .def("disk_path", &odr::File::disk_path)
       .def(
           "read",

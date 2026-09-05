@@ -36,8 +36,9 @@ File File::from_disk(const std::string &path) {
   return File(std::make_shared<internal::DiskFile>(path));
 }
 
-File File::from_memory(std::string data) {
-  return File(std::make_shared<internal::MemoryFile>(std::move(data)));
+File File::from_memory(std::string data, std::string name) {
+  return File(
+      std::make_shared<internal::MemoryFile>(std::move(data), std::move(name)));
 }
 
 File::File() = default;
@@ -58,6 +59,8 @@ FileLocation File::location() const noexcept {
 }
 
 std::size_t File::size() const { return deref(m_impl).size(); }
+
+std::string File::name() const { return deref(m_impl).name(); }
 
 std::optional<std::string> File::disk_path() const {
   if (const std::optional<internal::AbsPath> path = deref(m_impl).disk_path()) {

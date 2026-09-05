@@ -22,6 +22,11 @@ public final class File extends NativeResource {
     return sizeNative(handle());
   }
 
+  /** The file name, without any directory; empty where there is none. */
+  public String name() {
+    return nameNative(handle());
+  }
+
   /** Path on disk; {@code null} for in-memory files. */
   public String diskPath() {
     return diskPathNative(handle());
@@ -50,6 +55,8 @@ public final class File extends NativeResource {
   private native int locationNative(long handle);
 
   private native long sizeNative(long handle);
+
+  private native String nameNative(long handle);
 
   private native String diskPathNative(long handle);
 

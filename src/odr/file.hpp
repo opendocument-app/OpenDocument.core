@@ -313,11 +313,13 @@ class File final {
 public:
   /// @brief A file read from @p path on disk.
   [[nodiscard]] static File from_disk(const std::string &path);
-  /// @brief A file held in memory; @p data is its bytes, moved in.
+  /// @brief A file held in memory; @p data is its bytes, moved in, @p name
+  /// what it is called, if known.
   ///
   /// The only way to hand the library a file that has no path — a download, a
   /// browser upload, a decrypted payload.
-  [[nodiscard]] static File from_memory(std::string data);
+  [[nodiscard]] static File from_memory(std::string data,
+                                        std::string name = {});
 
   /// Constructs the null file — every accessor but @ref location throws @ref
   /// NullPointerError on it, so assign a real one before use.
@@ -329,6 +331,9 @@ public:
 
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
+
+  /// The file name, without any directory; empty where there is none.
+  [[nodiscard]] std::string name() const;
 
   [[nodiscard]] std::optional<std::string> disk_path() const;
   [[nodiscard]] std::optional<std::string_view> memory_data() const;

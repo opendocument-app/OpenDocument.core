@@ -41,6 +41,11 @@ export class Document {
     return unwrap(this.#core.fileType(this.#handle));
   }
 
+  // The name passed to `open`; empty where none was.
+  get fileName() {
+    return unwrap(this.#core.fileName(this.#handle));
+  }
+
   meta() {
     return JSON.parse(unwrap(this.#core.meta(this.#handle)));
   }
@@ -126,16 +131,18 @@ export class Odr {
     return this.#core.fileTypes();
   }
 
-  detect(bytes) {
-    return unwrap(this.#core.detect(bytes));
+  // `name` lets a signature-less format like markdown be detected.
+  detect(bytes, name = '') {
+    return unwrap(this.#core.detect(bytes, name));
   }
 
-  // `fileType` forces an interpretation instead of detecting one.
-  open(bytes, { fileType, ...config } = {}) {
+  // `fileType` forces an interpretation instead of detecting one; `name` is as
+  // in `detect`.
+  open(bytes, { fileType, name = '', ...config } = {}) {
     const handle =
       fileType === undefined
-        ? unwrap(this.#core.open(bytes, config))
-        : unwrap(this.#core.openAs(bytes, fileType, config));
+        ? unwrap(this.#core.open(bytes, name, config))
+        : unwrap(this.#core.openAs(bytes, name, fileType, config));
     return new Document(this.#core, handle);
   }
 

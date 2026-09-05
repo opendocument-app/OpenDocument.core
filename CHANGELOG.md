@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- New `File::name()`: the file name on disk, the entry name inside an archive,
+  or the name `File::from_memory(data, name)` was given. A named in-memory file
+  gets the same name-derived type candidate a path does, so `notes.md` bytes
+  decode as markdown. Mirrored in every binding; wasm takes it as
+  `odr.open(bytes, { name })` and `odr.detect(bytes, name)` and exposes
+  `Document.fileName`.
+
 ## v6.13.0 - 2026-09-03
 
 - A `.md` opened by path decodes as markdown rather than as plain text, and

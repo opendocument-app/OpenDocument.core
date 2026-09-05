@@ -24,10 +24,10 @@ file with a `#` comment or an `*` bullet in it. Sniffing would steal `text_file`
 matches and be confidently wrong.
 
 So the file name does it instead: `open_strategy::file_type_by_name` reads the
-extension off `File::disk_path` and offers markdown once the bytes have already
+extension off `File::name` and offers markdown once the bytes have already
 decoded as text, ahead of the csv/json/xml probes. A name only ever *adds* a
-candidate — a `.md` holding a zip is still a zip — and a file with no name on
-disk has no hint, so `File::from_memory` still needs
+candidate — a `.md` holding a zip is still a zip — and a file nobody named has
+no hint, so bytes handed to `File::from_memory` without a name still need
 `DecodedFile(file, FileType::markdown)`.
 
 `NoMarkdownFile` exists only for the `as_markdown_file()` cast: every other

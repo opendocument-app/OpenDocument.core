@@ -17,7 +17,9 @@ namespace {
 /// An embind `std::string` *parameter* takes a `Uint8Array` and copies the
 /// bytes verbatim, so this is binary-safe — unlike a `std::string` *return*,
 /// which goes through `UTF8ToString`.
-File from_bytes(const std::string &bytes) { return File::from_memory(bytes); }
+File from_bytes(const std::string &bytes, std::string name) {
+  return File::from_memory(bytes, std::move(name));
+}
 
 emscripten::val opened(DecodedFile file, const emscripten::val &config) {
   Session s{.file = std::move(file),
@@ -29,9 +31,9 @@ emscripten::val opened(DecodedFile file, const emscripten::val &config) {
   return ok(emscripten::val(add_session(std::move(s))));
 }
 
-emscripten::val detect(const std::string &bytes) {
+emscripten::val detect(const std::string &bytes, std::string name) {
   return guarded([&] {
-    const File file = from_bytes(bytes);
+    const File file = from_bytes(bytes, std::move(name));
     const Logger &logger = default_logger();
 
     emscripten::val types = emscripten::val::array();
@@ -46,17 +48,20 @@ emscripten::val detect(const std::string &bytes) {
   });
 }
 
-emscripten::val open(const std::string &bytes, const emscripten::val &config) {
+emscripten::val open(const std::string &bytes, std::string name,
+                     const emscripten::val &config) {
   return guarded([&] {
-    return opened(DecodedFile(from_bytes(bytes), default_logger()), config);
+    return opened(
+        DecodedFile(from_bytes(bytes, std::move(name)), default_logger()),
+        config);
   });
 }
 
-emscripten::val open_as(const std::string &bytes, const int as,
-                        const emscripten::val &config) {
+emscripten::val open_as(const std::string &bytes, std::string name,
+                        const int as, const emscripten::val &config) {
   return guarded([&] {
-    return opened(DecodedFile(from_bytes(bytes), static_cast<FileType>(as),
-                              default_logger()),
+    return opened(DecodedFile(from_bytes(bytes, std::move(name)),
+                              static_cast<FileType>(as), default_logger()),
                   config);
   });
 }
@@ -96,6 +101,11 @@ emscripten::val decrypt(const Handle handle, const std::string &password) {
   });
 }
 
+emscripten::val file_name(const Handle handle) {
+  return guarded(
+      [&] { return ok(emscripten::val(session(handle).file.file().name())); });
+}
+
 emscripten::val file_type(const Handle handle) {
   return guarded([&] {
     return ok(
@@ -128,6 +138,7 @@ EMSCRIPTEN_BINDINGS(odr_file) {
                        &odr::wasm::is_password_encrypted);
   emscripten::function("decrypt", &odr::wasm::decrypt);
   emscripten::function("fileType", &odr::wasm::file_type);
+  emscripten::function("fileName", &odr::wasm::file_name);
   emscripten::function("close", &odr::wasm::close);
   emscripten::function("closeAll", &odr::wasm::close_all);
 }

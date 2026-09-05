@@ -247,6 +247,10 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                        NSUInteger{0});
 }
 
+- (NSString *)name {
+  return guarded_value([&] { return to_nsstring(_handle->name()); }, @"");
+}
+
 - (nullable NSString *)diskPath {
   return guarded_value(
       [&]() -> NSString * {

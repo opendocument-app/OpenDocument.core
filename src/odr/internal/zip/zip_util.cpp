@@ -71,8 +71,9 @@ private:
 
 class FileInZip final : public abstract::File {
 public:
-  FileInZip(std::shared_ptr<const Archive> archive, const std::uint32_t index)
-      : m_archive{std::move(archive)}, m_index{index} {
+  FileInZip(std::shared_ptr<const Archive> archive, const std::uint32_t index,
+            std::string name)
+      : m_archive{std::move(archive)}, m_index{index}, m_name{std::move(name)} {
     if (m_archive == nullptr) {
       throw NullPointerError("FileInZip: archive is nullptr");
     }
@@ -86,6 +87,8 @@ public:
     mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
     return stat.m_uncomp_size;
   }
+
+  [[nodiscard]] std::string name() const override { return m_name; }
 
   [[nodiscard]] std::optional<AbsPath> disk_path() const override {
     return std::nullopt;
@@ -112,6 +115,7 @@ public:
 private:
   std::shared_ptr<const Archive> m_archive;
   std::uint32_t m_index;
+  std::string m_name;
 };
 
 } // namespace
@@ -148,7 +152,8 @@ std::shared_ptr<abstract::File> Archive::Entry::file() const {
   if (!is_file()) {
     return nullptr;
   }
-  return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index);
+  return std::make_shared<FileInZip>(m_archive->shared_from_this(), m_index,
+                                     path().basename());
 }
 
 ReadSource::ReadSource(std::shared_ptr<abstract::File> file)
