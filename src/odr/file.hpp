@@ -313,13 +313,11 @@ class File final {
 public:
   /// @brief A file read from @p path on disk.
   [[nodiscard]] static File from_disk(const std::string &path);
-  /// @brief A file held in memory; @p data is its bytes, moved in, and
-  /// @p name what it is called, where the caller knows.
+  /// @brief A file held in memory; @p data is its bytes, moved in, @p name
+  /// what it is called, if known.
   ///
   /// The only way to hand the library a file that has no path — a download, a
-  /// browser upload, a decrypted payload. Such a file has no name of its own,
-  /// so pass the one it arrived under: @ref DecodedFile reads a type off it
-  /// that no content probe can find.
+  /// browser upload, a decrypted payload.
   [[nodiscard]] static File from_memory(std::string data,
                                         std::string name = {});
 
@@ -334,11 +332,7 @@ public:
   [[nodiscard]] FileLocation location() const noexcept;
   [[nodiscard]] std::size_t size() const;
 
-  /// @brief The file's own name, without any directory.
-  ///
-  /// The file name for one on disk, the entry name for one inside an archive,
-  /// and what @ref from_memory was given for one in memory — empty where
-  /// nobody said.
+  /// The file name, without any directory; empty where there is none.
   [[nodiscard]] std::string name() const;
 
   [[nodiscard]] std::optional<std::string> disk_path() const;

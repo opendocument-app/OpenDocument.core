@@ -41,7 +41,7 @@ export class Document {
     return unwrap(this.#core.fileType(this.#handle));
   }
 
-  // What the bytes were called, as passed to `open`; empty where nothing was.
+  // The name passed to `open`; empty where none was.
   get fileName() {
     return unwrap(this.#core.fileName(this.#handle));
   }
@@ -131,9 +131,7 @@ export class Odr {
     return this.#core.fileTypes();
   }
 
-  // `name` is what the upload was called. Bytes carry no name, and for a
-  // format with no signature — markdown — it is the only thing that can offer
-  // the type.
+  // `name` lets a signature-less format like markdown be detected.
   detect(bytes, name = '') {
     return unwrap(this.#core.detect(bytes, name));
   }

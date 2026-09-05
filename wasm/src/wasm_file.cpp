@@ -17,10 +17,6 @@ namespace {
 /// An embind `std::string` *parameter* takes a `Uint8Array` and copies the
 /// bytes verbatim, so this is binary-safe — unlike a `std::string` *return*,
 /// which goes through `UTF8ToString`.
-///
-/// @p name is what the caller's upload was called, empty where it knows no
-/// name. Bytes carry no name of their own, and it is the only thing that can
-/// offer a signature-less type — see `File::name`.
 File from_bytes(const std::string &bytes, std::string name) {
   return File::from_memory(bytes, std::move(name));
 }

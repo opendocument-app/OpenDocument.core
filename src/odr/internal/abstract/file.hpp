@@ -25,7 +25,7 @@ public:
   [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
 
-  /// The file's own name, without any directory — empty where there is none.
+  /// The file name, without any directory; empty where there is none.
   [[nodiscard]] virtual std::string name() const = 0;
 
   [[nodiscard]] virtual std::optional<AbsPath> disk_path() const = 0;

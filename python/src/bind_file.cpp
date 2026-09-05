@@ -166,15 +166,14 @@ void odr_python::bind_file(py::module_ &m) {
             return odr::File::from_memory(std::string(data), std::move(name));
           },
           py::arg("data"), py::arg("name") = std::string(),
-          "A file held in memory; `data` is its bytes and `name` what it is "
-          "called, where the caller knows.")
+          "A file held in memory; `data` is its bytes, `name` what it is "
+          "called, if known.")
       .def("__bool__",
            [](const odr::File &file) { return file.impl() != nullptr; })
       .def("location", &odr::File::location)
       .def("size", &odr::File::size)
       .def("name", &odr::File::name,
-           "What the file is called, without any directory; empty where "
-           "nobody said.")
+           "The file name, without any directory; empty where there is none.")
       .def("disk_path", &odr::File::disk_path)
       .def(
           "read",

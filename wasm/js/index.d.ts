@@ -124,8 +124,8 @@ export interface HtmlConfig {
 export interface OpenOptions extends HtmlConfig {
   /** Force an interpretation instead of detecting one. */
   fileType?: number;
-  /** What the upload was called. Bytes carry no name, and for a format with no
-   * signature — markdown — it is the only thing that can offer the type. */
+  /** The upload's name; lets a signature-less format like markdown be
+   * detected. */
   name?: string;
 }
 
@@ -140,7 +140,7 @@ export declare class Document {
    * is in private fields and clones away to an empty object. */
   readonly handle: number;
   readonly fileType: number;
-  /** What the bytes were called, as passed to `open`; empty where nothing was. */
+  /** The name passed to `open`; empty where none was. */
   readonly fileName: string;
 
   meta(): Record<string, unknown>;

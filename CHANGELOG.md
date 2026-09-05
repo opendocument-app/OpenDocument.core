@@ -16,18 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- New `File::name()`: what a file is called, without any directory — the file
-  name for one on disk, the entry name for one inside an archive, and what
-  `File::from_memory(data, name)` was given for one in memory, where the new
-  second argument defaults to no name. A named file in memory now gets the
-  same name-derived candidate a path does, so bytes called `notes.md` decode
-  as markdown.
-
-  Mirrored in every binding: `File.name()` in JNI and `pyodr`, `File.name` in
-  the Apple bindings, and `pyodr.File.from_memory(data, name)` for naming
-  bytes. The wasm package takes the name alongside the bytes —
-  `odr.open(bytes, { name: file.name })` and `odr.detect(bytes, name)` — and
-  hands it back as `Document.fileName`.
+- New `File::name()`: the file name on disk, the entry name inside an archive,
+  or the name `File::from_memory(data, name)` was given. A named in-memory file
+  gets the same name-derived type candidate a path does, so `notes.md` bytes
+  decode as markdown. Mirrored in every binding; wasm takes it as
+  `odr.open(bytes, { name })` and `odr.detect(bytes, name)` and exposes
+  `Document.fileName`.
 
 ## v6.13.0 - 2026-09-03
 

@@ -22,10 +22,7 @@ public final class File extends NativeResource {
     return sizeNative(handle());
   }
 
-  /**
-   * What the file is called, without any directory - the file name for one on disk, the entry name
-   * for one inside an archive. Empty where nobody named it.
-   */
+  /** The file name, without any directory; empty where there is none. */
   public String name() {
     return nameNative(handle());
   }

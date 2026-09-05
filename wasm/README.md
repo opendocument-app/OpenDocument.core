@@ -34,8 +34,7 @@ that runs against them. Unzip it where your pages are served from and import
 import { Odr } from '@opendocument/odr-core';
 
 const odr = await Odr.load();
-// `file.name` is worth passing: bytes carry no name, and for a format with no
-// signature - markdown - it is the only thing that can offer the type.
+// `name` lets a signature-less format like markdown be detected.
 const doc = odr.open(new Uint8Array(await file.arrayBuffer()), {
   name: file.name,
 });

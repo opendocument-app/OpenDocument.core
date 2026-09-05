@@ -190,8 +190,7 @@ NS_SWIFT_NAME(File)
 
 @property(nonatomic, readonly) ODRFileLocation location;
 @property(nonatomic, readonly) NSUInteger size;
-/// What the file is called, without any directory - the file name for one on
-/// disk, the entry name for one inside an archive. Empty where nobody named it.
+/// The file name, without any directory; empty where there is none.
 @property(nonatomic, readonly, copy) NSString *name;
 /// The path, when the file is on disk.
 @property(nonatomic, readonly, nullable, copy) NSString *diskPath;
