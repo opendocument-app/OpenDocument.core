@@ -606,45 +606,31 @@ std::string html::translate_frame_properties(const Frame &frame) {
   return result;
 }
 
-std::string html::translate_rect_properties(const Rect &rect) {
+std::string html::translate_shape_properties(const Frame &frame) {
   std::string result;
   result += "position:absolute;";
-  result += "left:" + rect.x().to_string() + ";";
-  result += "top:" + rect.y().to_string() + ";";
-  result += "width:" + rect.width().to_string() + ";";
-  result += "height:" + rect.height().to_string() + ";";
-  result += translate_drawing_transform(rect.transform());
-  return result;
-}
-
-std::string html::translate_circle_properties(const Circle &circle) {
-  std::string result;
-  result += "position:absolute;";
-  result += "left:" + circle.x().to_string() + ";";
-  result += "top:" + circle.y().to_string() + ";";
-  result += "width:" + circle.width().to_string() + ";";
-  result += "height:" + circle.height().to_string() + ";";
-  result += translate_drawing_transform(circle.transform());
-  return result;
-}
-
-std::string
-html::translate_custom_shape_properties(const CustomShape &custom_shape) {
-  std::string result;
-  result += "position:absolute;";
-  if (const std::optional<Measure> x = custom_shape.x(); x.has_value()) {
+  if (const std::optional<Measure> x = frame.x(); x.has_value()) {
     result += "left:" + x->to_string() + ";";
   } else {
     result += "left:0;";
   }
-  if (const std::optional<Measure> y = custom_shape.y(); y.has_value()) {
+  if (const std::optional<Measure> y = frame.y(); y.has_value()) {
     result += "top:" + y->to_string() + ";";
   } else {
     result += "top:0;";
   }
-  result += "width:" + custom_shape.width().to_string() + ";";
-  result += "height:" + custom_shape.height().to_string() + ";";
-  result += translate_drawing_transform(custom_shape.transform());
+  if (const std::optional<Measure> width = frame.width(); width.has_value()) {
+    result += "width:" + width->to_string() + ";";
+  } else {
+    result += "width:0;";
+  }
+  if (const std::optional<Measure> height = frame.height();
+      height.has_value()) {
+    result += "height:" + height->to_string() + ";";
+  } else {
+    result += "height:0;";
+  }
+  result += translate_drawing_transform(frame.transform());
   return result;
 }
 

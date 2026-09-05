@@ -35,10 +35,11 @@ py::object make_children_iterator(const odr::Element &element) {
 
 /// `__bool__` has to come from the derived type: `Element::operator bool`
 /// ignores the typed adapter, so a failed `as_*` cast would look valid.
-template <typename T>
-py::class_<T, odr::Element> bind_element(py::module_ &m, const char *name) {
-  return py::class_<T, odr::Element>(m, name).def("__bool__",
-                                                  &T::operator bool);
+template <typename T, typename... Extra>
+py::class_<T, odr::Element> bind_element(py::module_ &m, const char *name,
+                                         const Extra &...extra) {
+  return py::class_<T, odr::Element>(m, name, extra...)
+      .def("__bool__", &T::operator bool);
 }
 
 } // namespace
@@ -67,11 +68,14 @@ void odr_python::bind_document(py::module_ &m) {
       .value("table_cell", odr::ElementType::table_cell)
       .value("frame", odr::ElementType::frame)
       .value("image", odr::ElementType::image)
-      .value("rect", odr::ElementType::rect)
-      .value("line", odr::ElementType::line)
-      .value("circle", odr::ElementType::circle)
-      .value("custom_shape", odr::ElementType::custom_shape)
       .value("group", odr::ElementType::group);
+
+  py::enum_<odr::ShapeType>(m, "ShapeType")
+      .value("none", odr::ShapeType::none)
+      .value("rect", odr::ShapeType::rect)
+      .value("ellipse", odr::ShapeType::ellipse)
+      .value("line", odr::ShapeType::line)
+      .value("custom", odr::ShapeType::custom);
 
   py::enum_<odr::AnchorType>(m, "AnchorType")
       .value("as_char", odr::AnchorType::as_char)
@@ -173,10 +177,6 @@ void odr_python::bind_document(py::module_ &m) {
       .def("as_table_row", &odr::Element::as_table_row, keep_self_alive)
       .def("as_table_cell", &odr::Element::as_table_cell, keep_self_alive)
       .def("as_frame", &odr::Element::as_frame, keep_self_alive)
-      .def("as_rect", &odr::Element::as_rect, keep_self_alive)
-      .def("as_line", &odr::Element::as_line, keep_self_alive)
-      .def("as_circle", &odr::Element::as_circle, keep_self_alive)
-      .def("as_custom_shape", &odr::Element::as_custom_shape, keep_self_alive)
       .def("as_image", &odr::Element::as_image, keep_self_alive);
 
   bind_element<odr::TextRoot>(m, "TextRoot")
@@ -296,6 +296,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def_readwrite("f", &odr::DrawingTransform::f);
 
   bind_element<odr::Frame>(m, "Frame")
+      .def("shape_type", &odr::Frame::shape_type)
       .def("anchor_type", &odr::Frame::anchor_type)
       .def("x", &odr::Frame::x)
       .def("y", &odr::Frame::y)
@@ -303,40 +304,9 @@ void odr_python::bind_document(py::module_ &m) {
       .def("height", &odr::Frame::height)
       .def("z_index", &odr::Frame::z_index)
       .def("transform", &odr::Frame::transform)
+      .def("path", &odr::Frame::path)
+      .def("line", &odr::Frame::line)
       .def("style", &odr::Frame::style);
-
-  bind_element<odr::Rect>(m, "Rect")
-      .def("x", &odr::Rect::x)
-      .def("y", &odr::Rect::y)
-      .def("width", &odr::Rect::width)
-      .def("height", &odr::Rect::height)
-      .def("transform", &odr::Rect::transform)
-      .def("style", &odr::Rect::style);
-
-  bind_element<odr::Line>(m, "Line")
-      .def("x1", &odr::Line::x1)
-      .def("y1", &odr::Line::y1)
-      .def("x2", &odr::Line::x2)
-      .def("y2", &odr::Line::y2)
-      .def("transform", &odr::Line::transform)
-      .def("style", &odr::Line::style);
-
-  bind_element<odr::Circle>(m, "Circle")
-      .def("x", &odr::Circle::x)
-      .def("y", &odr::Circle::y)
-      .def("width", &odr::Circle::width)
-      .def("height", &odr::Circle::height)
-      .def("transform", &odr::Circle::transform)
-      .def("style", &odr::Circle::style);
-
-  bind_element<odr::CustomShape>(m, "CustomShape")
-      .def("x", &odr::CustomShape::x)
-      .def("y", &odr::CustomShape::y)
-      .def("width", &odr::CustomShape::width)
-      .def("height", &odr::CustomShape::height)
-      .def("transform", &odr::CustomShape::transform)
-      .def("path", &odr::CustomShape::path)
-      .def("style", &odr::CustomShape::style);
 
   bind_element<odr::Image>(m, "Image")
       .def("is_internal", &odr::Image::is_internal)
