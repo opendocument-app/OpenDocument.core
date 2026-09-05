@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A printed sheet drops our row/column ruler and is capped to the page width
+  rather than cut off at the right edge. Print only; the on-screen view is
+  unchanged. Towards #816.
+
 - New `File::name()`: the file name on disk, the entry name inside an archive,
   or the name `File::from_memory(data, name)` was given. A named in-memory file
   gets the same name-derived type candidate a path does, so `notes.md` bytes
