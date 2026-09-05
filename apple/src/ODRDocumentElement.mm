@@ -10,6 +10,9 @@
 
 #include <optional>
 
+// The mirror has to keep serving the api it deprecates.
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 using odr::apple::box;
 using odr::apple::guarded;
 using odr::apple::guarded_value;

@@ -327,6 +327,8 @@ target_link_libraries(odr
 # types - so a consumer of those needs the same layout. `cpp_info.defines` in
 # conanfile.py is the same thing for the conan package.
 target_compile_definitions(odr INTERFACE PUGIXML_COMPACT)
+# Silences `ODR_DEPRECATED` for the library's own translation units.
+target_compile_definitions(odr PRIVATE ODR_INTERNAL_BUILD)
 
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)

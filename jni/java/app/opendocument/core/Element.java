@@ -171,21 +171,37 @@ public class Element extends NativeResource {
     return h == 0 ? null : new Frame(h, owner());
   }
 
+  /**
+   * @deprecated Merging into {@link #asFrame()}.
+   */
+  @Deprecated
   public Rect asRect() {
     long h = asRectNative(handle());
     return h == 0 ? null : new Rect(h, owner());
   }
 
+  /**
+   * @deprecated See {@link #asRect()}.
+   */
+  @Deprecated
   public Line asLine() {
     long h = asLineNative(handle());
     return h == 0 ? null : new Line(h, owner());
   }
 
+  /**
+   * @deprecated See {@link #asRect()}.
+   */
+  @Deprecated
   public Circle asCircle() {
     long h = asCircleNative(handle());
     return h == 0 ? null : new Circle(h, owner());
   }
 
+  /**
+   * @deprecated See {@link #asRect()}.
+   */
+  @Deprecated
   public CustomShape asCustomShape() {
     long h = asCustomShapeNative(handle());
     return h == 0 ? null : new CustomShape(h, owner());

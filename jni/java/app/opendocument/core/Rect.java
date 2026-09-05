@@ -1,6 +1,11 @@
 package app.opendocument.core;
 
-/** Rectangle element. Mirrors {@code odr::Rect}. */
+/**
+ * Rectangle element. Mirrors {@code odr::Rect}.
+ *
+ * @deprecated Merging into {@link Frame}, which gains a shape kind.
+ */
+@Deprecated
 public final class Rect extends Element {
   Rect(long handle, Object owner) {
     super(handle, owner);

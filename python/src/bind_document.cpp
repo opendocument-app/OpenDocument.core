@@ -35,10 +35,11 @@ py::object make_children_iterator(const odr::Element &element) {
 
 /// `__bool__` has to come from the derived type: `Element::operator bool`
 /// ignores the typed adapter, so a failed `as_*` cast would look valid.
-template <typename T>
-py::class_<T, odr::Element> bind_element(py::module_ &m, const char *name) {
-  return py::class_<T, odr::Element>(m, name).def("__bool__",
-                                                  &T::operator bool);
+template <typename T, typename... Extra>
+py::class_<T, odr::Element> bind_element(py::module_ &m, const char *name,
+                                         const Extra &...extra) {
+  return py::class_<T, odr::Element>(m, name, extra...)
+      .def("__bool__", &T::operator bool);
 }
 
 } // namespace
@@ -67,10 +68,14 @@ void odr_python::bind_document(py::module_ &m) {
       .value("table_cell", odr::ElementType::table_cell)
       .value("frame", odr::ElementType::frame)
       .value("image", odr::ElementType::image)
-      .value("rect", odr::ElementType::rect)
-      .value("line", odr::ElementType::line)
-      .value("circle", odr::ElementType::circle)
-      .value("custom_shape", odr::ElementType::custom_shape)
+      .value("rect", odr::ElementType::rect,
+             "Deprecated: merging into `frame`.")
+      .value("line", odr::ElementType::line,
+             "Deprecated: merging into `frame`.")
+      .value("circle", odr::ElementType::circle,
+             "Deprecated: merging into `frame`.")
+      .value("custom_shape", odr::ElementType::custom_shape,
+             "Deprecated: merging into `frame`.")
       .value("group", odr::ElementType::group);
 
   py::enum_<odr::AnchorType>(m, "AnchorType")
@@ -173,10 +178,14 @@ void odr_python::bind_document(py::module_ &m) {
       .def("as_table_row", &odr::Element::as_table_row, keep_self_alive)
       .def("as_table_cell", &odr::Element::as_table_cell, keep_self_alive)
       .def("as_frame", &odr::Element::as_frame, keep_self_alive)
-      .def("as_rect", &odr::Element::as_rect, keep_self_alive)
-      .def("as_line", &odr::Element::as_line, keep_self_alive)
-      .def("as_circle", &odr::Element::as_circle, keep_self_alive)
-      .def("as_custom_shape", &odr::Element::as_custom_shape, keep_self_alive)
+      .def("as_rect", &odr::Element::as_rect,
+           "Deprecated: merging into `as_frame`.", keep_self_alive)
+      .def("as_line", &odr::Element::as_line,
+           "Deprecated: merging into `as_frame`.", keep_self_alive)
+      .def("as_circle", &odr::Element::as_circle,
+           "Deprecated: merging into `as_frame`.", keep_self_alive)
+      .def("as_custom_shape", &odr::Element::as_custom_shape,
+           "Deprecated: merging into `as_frame`.", keep_self_alive)
       .def("as_image", &odr::Element::as_image, keep_self_alive);
 
   bind_element<odr::TextRoot>(m, "TextRoot")
@@ -304,7 +313,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("transform", &odr::Frame::transform)
       .def("style", &odr::Frame::style);
 
-  bind_element<odr::Rect>(m, "Rect")
+  bind_element<odr::Rect>(m, "Rect", "Deprecated: merging into `Frame`.")
       .def("x", &odr::Rect::x)
       .def("y", &odr::Rect::y)
       .def("width", &odr::Rect::width)
@@ -312,7 +321,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("transform", &odr::Rect::transform)
       .def("style", &odr::Rect::style);
 
-  bind_element<odr::Line>(m, "Line")
+  bind_element<odr::Line>(m, "Line", "Deprecated: merging into `Frame`.")
       .def("x1", &odr::Line::x1)
       .def("y1", &odr::Line::y1)
       .def("x2", &odr::Line::x2)
@@ -320,7 +329,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("transform", &odr::Line::transform)
       .def("style", &odr::Line::style);
 
-  bind_element<odr::Circle>(m, "Circle")
+  bind_element<odr::Circle>(m, "Circle", "Deprecated: merging into `Frame`.")
       .def("x", &odr::Circle::x)
       .def("y", &odr::Circle::y)
       .def("width", &odr::Circle::width)
@@ -328,7 +337,8 @@ void odr_python::bind_document(py::module_ &m) {
       .def("transform", &odr::Circle::transform)
       .def("style", &odr::Circle::style);
 
-  bind_element<odr::CustomShape>(m, "CustomShape")
+  bind_element<odr::CustomShape>(m, "CustomShape",
+                                 "Deprecated: merging into `Frame`.")
       .def("x", &odr::CustomShape::x)
       .def("y", &odr::CustomShape::y)
       .def("width", &odr::CustomShape::width)

@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The drawing elements `Rect`, `Line`, `Circle` and `CustomShape`, their
+  `ElementType` values and `Element::as_rect`/`as_line`/`as_circle`/
+  `as_custom_shape` are deprecated: they collapse into `Frame`, which gains a
+  shape kind. Mirrored in the JNI, Apple and Python bindings. Towards #773.
+
 - New `File::name()`: the file name on disk, the entry name inside an archive,
   or the name `File::from_memory(data, name)` was given. A named in-memory file
   gets the same name-derived type candidate a path does, so `notes.md` bytes

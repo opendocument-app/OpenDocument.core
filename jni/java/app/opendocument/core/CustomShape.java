@@ -1,6 +1,11 @@
 package app.opendocument.core;
 
-/** Custom shape element. Mirrors {@code odr::CustomShape}; x/y may be {@code null}. */
+/**
+ * Custom shape element. Mirrors {@code odr::CustomShape}; x/y may be {@code null}.
+ *
+ * @deprecated See {@link Rect}.
+ */
+@Deprecated
 public final class CustomShape extends Element {
   CustomShape(long handle, Object owner) {
     super(handle, owner);

@@ -116,10 +116,10 @@ enum class ElementType {
 
   frame,
   image,
-  rect,
-  line,
-  circle,
-  custom_shape,
+  rect ODR_DEPRECATED("merging into ElementType::frame"),
+  line ODR_DEPRECATED("merging into ElementType::frame"),
+  circle ODR_DEPRECATED("merging into ElementType::frame"),
+  custom_shape ODR_DEPRECATED("merging into ElementType::frame"),
 
   group,
 };
@@ -189,9 +189,13 @@ public:
   [[nodiscard]] TableRow as_table_row() const;
   [[nodiscard]] TableCell as_table_cell() const;
   [[nodiscard]] Frame as_frame() const;
+  ODR_DEPRECATED("merging into as_frame()")
   [[nodiscard]] Rect as_rect() const;
+  ODR_DEPRECATED("merging into as_frame()")
   [[nodiscard]] Line as_line() const;
+  ODR_DEPRECATED("merging into as_frame()")
   [[nodiscard]] Circle as_circle() const;
+  ODR_DEPRECATED("merging into as_frame()")
   [[nodiscard]] CustomShape as_custom_shape() const;
   [[nodiscard]] Image as_image() const;
 
@@ -525,7 +529,9 @@ public:
 };
 
 /// @brief Represents a rectangle element in a document.
-class Rect final : public ElementBase<internal::abstract::RectAdapter> {
+/// @deprecated Merging into @ref Frame, which gains a shape kind.
+class ODR_DEPRECATED("merging into Frame") Rect final
+    : public ElementBase<internal::abstract::RectAdapter> {
 public:
   using ElementBase::ElementBase;
 
@@ -539,7 +545,9 @@ public:
 };
 
 /// @brief Represents a line element in a document.
-class Line final : public ElementBase<internal::abstract::LineAdapter> {
+/// @deprecated See @ref Rect.
+class ODR_DEPRECATED("merging into Frame") Line final
+    : public ElementBase<internal::abstract::LineAdapter> {
 public:
   using ElementBase::ElementBase;
 
@@ -553,7 +561,9 @@ public:
 };
 
 /// @brief Represents a circle element in a document.
-class Circle final : public ElementBase<internal::abstract::CircleAdapter> {
+/// @deprecated See @ref Rect.
+class ODR_DEPRECATED("merging into Frame") Circle final
+    : public ElementBase<internal::abstract::CircleAdapter> {
 public:
   using ElementBase::ElementBase;
 
@@ -567,7 +577,8 @@ public:
 };
 
 /// @brief Represents a custom shape element in a document.
-class CustomShape final
+/// @deprecated See @ref Rect.
+class ODR_DEPRECATED("merging into Frame") CustomShape final
     : public ElementBase<internal::abstract::CustomShapeAdapter> {
 public:
   using ElementBase::ElementBase;

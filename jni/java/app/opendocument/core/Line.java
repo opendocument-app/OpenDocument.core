@@ -1,6 +1,11 @@
 package app.opendocument.core;
 
-/** Line element. Mirrors {@code odr::Line}. */
+/**
+ * Line element. Mirrors {@code odr::Line}.
+ *
+ * @deprecated See {@link Rect}.
+ */
+@Deprecated
 public final class Line extends Element {
   Line(long handle, Object owner) {
     super(handle, owner);

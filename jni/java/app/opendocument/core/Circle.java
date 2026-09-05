@@ -1,6 +1,11 @@
 package app.opendocument.core;
 
-/** Circle element. Mirrors {@code odr::Circle}. */
+/**
+ * Circle element. Mirrors {@code odr::Circle}.
+ *
+ * @deprecated See {@link Rect}.
+ */
+@Deprecated
 public final class Circle extends Element {
   Circle(long handle, Object owner) {
     super(handle, owner);

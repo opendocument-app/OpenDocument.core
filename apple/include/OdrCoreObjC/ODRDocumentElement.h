@@ -42,10 +42,14 @@ typedef NS_ENUM(NSInteger, ODRElementType) {
 
   ODRElementTypeFrame,
   ODRElementTypeImage,
-  ODRElementTypeRect,
-  ODRElementTypeLine,
-  ODRElementTypeCircle,
-  ODRElementTypeCustomShape,
+  ODRElementTypeRect DEPRECATED_MSG_ATTRIBUTE(
+      "merging into ODRElementTypeFrame"),
+  ODRElementTypeLine DEPRECATED_MSG_ATTRIBUTE(
+      "merging into ODRElementTypeFrame"),
+  ODRElementTypeCircle DEPRECATED_MSG_ATTRIBUTE(
+      "merging into ODRElementTypeFrame"),
+  ODRElementTypeCustomShape DEPRECATED_MSG_ATTRIBUTE(
+      "merging into ODRElementTypeFrame"),
 
   ODRElementTypeGroup,
 } NS_SWIFT_NAME(ElementType);
@@ -293,6 +297,7 @@ NS_SWIFT_NAME(Frame)
 
 /// `odr::Rect`.
 NS_SWIFT_NAME(Rect)
+DEPRECATED_MSG_ATTRIBUTE("merging into ODRFrame")
 @interface ODRRect : ODRElement
 @property(nonatomic, readonly) ODRMeasure *x;
 @property(nonatomic, readonly) ODRMeasure *y;
@@ -304,6 +309,7 @@ NS_SWIFT_NAME(Rect)
 
 /// `odr::Line`.
 NS_SWIFT_NAME(Line)
+DEPRECATED_MSG_ATTRIBUTE("merging into ODRFrame")
 @interface ODRLine : ODRElement
 @property(nonatomic, readonly) ODRMeasure *x1;
 @property(nonatomic, readonly) ODRMeasure *y1;
@@ -315,6 +321,7 @@ NS_SWIFT_NAME(Line)
 
 /// `odr::Circle`.
 NS_SWIFT_NAME(Circle)
+DEPRECATED_MSG_ATTRIBUTE("merging into ODRFrame")
 @interface ODRCircle : ODRElement
 @property(nonatomic, readonly) ODRMeasure *x;
 @property(nonatomic, readonly) ODRMeasure *y;
@@ -326,6 +333,7 @@ NS_SWIFT_NAME(Circle)
 
 /// `odr::CustomShape`.
 NS_SWIFT_NAME(CustomShape)
+DEPRECATED_MSG_ATTRIBUTE("merging into ODRFrame")
 @interface ODRCustomShape : ODRElement
 @property(nonatomic, readonly, nullable) ODRMeasure *x;
 @property(nonatomic, readonly, nullable) ODRMeasure *y;
