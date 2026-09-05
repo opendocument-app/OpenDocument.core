@@ -14,9 +14,6 @@ enum class FontPosition;
 enum class BreakType;
 
 class Frame;
-class Rect;
-class Circle;
-class CustomShape;
 
 struct TextStyle;
 struct ParagraphStyle;
@@ -61,8 +58,8 @@ std::string
 translate_drawing_transform(const std::optional<DrawingTransform> &transform);
 
 std::string translate_frame_properties(const Frame &frame);
-std::string translate_rect_properties(const Rect &rect);
-std::string translate_circle_properties(const Circle &circle);
-std::string translate_custom_shape_properties(const CustomShape &custom_shape);
+/// The absolute box a frame drawing a shape takes, rather than the placement
+/// @ref translate_frame_properties gives a plain one.
+std::string translate_shape_properties(const Frame &frame);
 
 } // namespace odr::internal::html

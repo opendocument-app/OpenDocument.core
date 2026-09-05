@@ -70,14 +70,6 @@ const char *element_type_name(const ElementType type) {
     return "frame";
   case ElementType::image:
     return "image";
-  case ElementType::rect:
-    return "rect";
-  case ElementType::line:
-    return "line";
-  case ElementType::circle:
-    return "circle";
-  case ElementType::custom_shape:
-    return "custom_shape";
   case ElementType::group:
     return "group";
   }
@@ -128,18 +120,6 @@ void html::translate_element(const Element &element,
     break;
   case ElementType::image:
     translate_image(element, state);
-    break;
-  case ElementType::rect:
-    translate_rect(element, state);
-    break;
-  case ElementType::line:
-    translate_line(element, state);
-    break;
-  case ElementType::circle:
-    translate_circle(element, state);
-    break;
-  case ElementType::custom_shape:
-    translate_custom_shape(element, state);
     break;
   case ElementType::page_break:
     translate_page_break(element, state);
@@ -710,11 +690,12 @@ void html::translate_image(const Element &element, const WritingState &state) {
           .set_style("position:absolute;left:0;top:0;width:100%;height:100%"));
 }
 
-void html::translate_frame(const Element &element, const WritingState &state) {
-  const Frame frame = element.as_frame();
-  const GraphicStyle style = frame.style();
+namespace html {
+namespace {
 
-  // A frame is a plain box, so its fill has to be a background - the `fill`
+void translate_plain_frame(const Frame &frame, const GraphicStyle &style,
+                           const WritingState &state) {
+  // A plain frame is a box, so its fill has to be a background - the `fill`
   // that `translate_drawing_style` writes only reaches the svg a shape carries.
   std::string background;
   if (style.fill_color.has_value() && style.fill_color->alpha != 0) {
@@ -728,23 +709,33 @@ void html::translate_frame(const Element &element, const WritingState &state) {
   state.out().write_element_end("div");
 }
 
-void html::translate_rect(const Element &element, const WritingState &state) {
-  const Rect rect = element.as_rect();
-  const GraphicStyle style = rect.style();
-
+void translate_rect(const Frame &frame, const GraphicStyle &style,
+                    const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(translate_rect_properties(rect) +
+      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
                                             translate_drawing_style(style)));
-  translate_children(rect.children(), state);
+  translate_children(frame.children(), state);
   state.out().write_new_line();
   state.out().write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><rect x="0" y="0" width="100%" height="100%" /></svg>)");
   state.out().write_element_end("div");
 }
 
-void html::translate_line(const Element &element, const WritingState &state) {
-  const Line line = element.as_line();
-  const GraphicStyle style = line.style();
+void translate_ellipse(const Frame &frame, const GraphicStyle &style,
+                       const WritingState &state) {
+  state.out().write_element_begin(
+      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
+                                            translate_drawing_style(style)));
+  state.out().write_new_line();
+  translate_children(frame.children(), state);
+  state.out().write_raw(
+      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><ellipse cx="50%" cy="50%" rx="50%" ry="50%" /></svg>)");
+  state.out().write_element_end("div");
+}
+
+void translate_line(const Frame &frame, const GraphicStyle &style,
+                    const WritingState &state) {
+  const DrawingLine line = frame.line().value_or(DrawingLine());
 
   state.out().write_element_begin(
       "svg", HtmlElementOptions()
@@ -754,63 +745,43 @@ void html::translate_line(const Element &element, const WritingState &state) {
                      {"overflow", "visible"}})
                  .set_style("z-index:-1;position:absolute;top:0;left:0;" +
                             translate_drawing_style(style) +
-                            translate_drawing_transform(line.transform())));
+                            translate_drawing_transform(frame.transform())));
 
   state.out().write_element_begin(
       "line",
       HtmlElementOptions()
           .set_close_type(HtmlCloseType::trailing)
-          .set_attributes(HtmlAttributesVector{{"x1", line.x1().to_string()},
-                                               {"y1", line.y1().to_string()},
-                                               {"x2", line.x2().to_string()},
-                                               {"y2", line.y2().to_string()}}));
+          .set_attributes(HtmlAttributesVector{{"x1", line.x1.to_string()},
+                                               {"y1", line.y1.to_string()},
+                                               {"x2", line.x2.to_string()},
+                                               {"y2", line.y2.to_string()}}));
 
   state.out().write_element_end("svg");
 
   // A line's own text sits at its middle; most carry an empty paragraph and
   // want no box at all.
-  if (std::ranges::any_of(line.children(), [](const Element &child) {
+  if (std::ranges::any_of(frame.children(), [](const Element &child) {
         return has_content(child.children());
       })) {
     const std::string middle =
-        "position:absolute;left:calc((" + line.x1().to_string() + " + " +
-        line.x2().to_string() + ")/2);top:calc((" + line.y1().to_string() +
-        " + " + line.y2().to_string() + ")/2);transform:translate(-50%,-100%);";
+        "position:absolute;left:calc((" + line.x1.to_string() + " + " +
+        line.x2.to_string() + ")/2);top:calc((" + line.y1.to_string() + " + " +
+        line.y2.to_string() + ")/2);transform:translate(-50%,-100%);";
     state.out().write_element_begin("div",
                                     HtmlElementOptions().set_style(middle));
-    translate_children(line.children(), state);
+    translate_children(frame.children(), state);
     state.out().write_element_end("div");
   }
 }
 
-void html::translate_circle(const Element &element, const WritingState &state) {
-  const Circle circle = element.as_circle();
-  const GraphicStyle style = circle.style();
-
+void translate_custom_shape(const Frame &frame, const GraphicStyle &style,
+                            const WritingState &state) {
   state.out().write_element_begin(
-      "div",
-      HtmlElementOptions().set_style(translate_circle_properties(circle) +
-                                     translate_drawing_style(style)));
-  state.out().write_new_line();
-  translate_children(circle.children(), state);
-  state.out().write_raw(
-      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;"><ellipse cx="50%" cy="50%" rx="50%" ry="50%" /></svg>)");
-  state.out().write_element_end("div");
-}
+      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
+                                            translate_drawing_style(style)));
+  translate_children(frame.children(), state);
 
-void html::translate_custom_shape(const Element &element,
-                                  const WritingState &state) {
-  const CustomShape custom_shape = element.as_custom_shape();
-  const GraphicStyle style = custom_shape.style();
-
-  state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(
-                 translate_custom_shape_properties(custom_shape) +
-                 translate_drawing_style(style)));
-  translate_children(custom_shape.children(), state);
-
-  if (const std::optional<DrawingPath> path = custom_shape.path();
-      path.has_value()) {
+  if (const std::optional<DrawingPath> path = frame.path(); path.has_value()) {
     const auto number = [](const double value) {
       return util::number::to_string_significant(value, 7);
     };
@@ -847,6 +818,32 @@ void html::translate_custom_shape(const Element &element,
   }
 
   state.out().write_element_end("div");
+}
+
+} // namespace
+} // namespace html
+
+void html::translate_frame(const Element &element, const WritingState &state) {
+  const Frame frame = element.as_frame();
+  const GraphicStyle style = frame.style();
+
+  switch (frame.shape_type()) {
+  case ShapeType::none:
+    translate_plain_frame(frame, style, state);
+    break;
+  case ShapeType::rect:
+    translate_rect(frame, style, state);
+    break;
+  case ShapeType::ellipse:
+    translate_ellipse(frame, style, state);
+    break;
+  case ShapeType::line:
+    translate_line(frame, style, state);
+    break;
+  case ShapeType::custom:
+    translate_custom_shape(frame, style, state);
+    break;
+  }
 }
 
 } // namespace odr::internal

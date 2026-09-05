@@ -268,7 +268,7 @@ against UTF-8 text, which the parser translates in one pass.
 ## Stage 4 — drawables, images, frames
 
 - drawable archives carry a geometry (position, size, transform) and a content
-  reference → `Frame` plus `Image`, `Rect`, `Line`, `CustomShape` as they map.
+  reference → a `Frame` naming its `ShapeType`, plus `Image` as it maps.
 - images resolve to a `Data/` entry by name; hand the zip entry through
   unchanged.
 - Pages **page-layout mode** falls out here: it is drawables on pages with no

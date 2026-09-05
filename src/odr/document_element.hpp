@@ -48,10 +48,6 @@ class TableColumnAdapter;
 class TableRowAdapter;
 class TableCellAdapter;
 class FrameAdapter;
-class RectAdapter;
-class LineAdapter;
-class CircleAdapter;
-class CustomShapeAdapter;
 class ImageAdapter;
 } // namespace odr::internal::abstract
 
@@ -79,10 +75,6 @@ class TableColumn;
 class TableRow;
 class TableCell;
 class Frame;
-class Rect;
-class Line;
-class Circle;
-class CustomShape;
 class Image;
 
 /// @brief Collection of element types.
@@ -116,12 +108,17 @@ enum class ElementType {
 
   frame,
   image,
-  rect,
-  line,
-  circle,
-  custom_shape,
 
   group,
+};
+
+/// @brief Collection of shapes a frame draws.
+enum class ShapeType {
+  none, ///< a plain box, drawing no outline of its own
+  rect,
+  ellipse,
+  line,
+  custom, ///< an outline of its own, read from @ref Frame::path
 };
 
 /// @brief Collection of anchor types.
@@ -189,10 +186,6 @@ public:
   [[nodiscard]] TableRow as_table_row() const;
   [[nodiscard]] TableCell as_table_cell() const;
   [[nodiscard]] Frame as_frame() const;
-  [[nodiscard]] Rect as_rect() const;
-  [[nodiscard]] Line as_line() const;
-  [[nodiscard]] Circle as_circle() const;
-  [[nodiscard]] CustomShape as_custom_shape() const;
   [[nodiscard]] Image as_image() const;
 
 protected:
@@ -497,6 +490,14 @@ struct DrawingPath final {
   double height{0};
 };
 
+/// @brief Represents the two ends of a line shape, in the parent's space.
+struct DrawingLine final {
+  Measure x1{0, DynamicUnit()};
+  Measure y1{0, DynamicUnit()};
+  Measure x2{0, DynamicUnit()};
+  Measure y2{0, DynamicUnit()};
+};
+
 /// @brief Represents the affine transform a drawing shape carries.
 ///
 /// `(x, y)` maps to `(a*x + c*y + e, b*x + d*y + f)`, the lettering of
@@ -516,6 +517,7 @@ class Frame final : public ElementBase<internal::abstract::FrameAdapter> {
 public:
   using ElementBase::ElementBase;
 
+  [[nodiscard]] ShapeType shape_type() const;
   [[nodiscard]] AnchorType anchor_type() const;
   [[nodiscard]] std::optional<Measure> x() const;
   [[nodiscard]] std::optional<Measure> y() const;
@@ -523,65 +525,10 @@ public:
   [[nodiscard]] std::optional<Measure> height() const;
   [[nodiscard]] std::optional<std::int32_t> z_index() const;
   [[nodiscard]] std::optional<DrawingTransform> transform() const;
-
-  [[nodiscard]] GraphicStyle style() const;
-};
-
-/// @brief Represents a rectangle element in a document.
-class Rect final : public ElementBase<internal::abstract::RectAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] Measure x() const;
-  [[nodiscard]] Measure y() const;
-  [[nodiscard]] Measure width() const;
-  [[nodiscard]] Measure height() const;
-  [[nodiscard]] std::optional<DrawingTransform> transform() const;
-
-  [[nodiscard]] GraphicStyle style() const;
-};
-
-/// @brief Represents a line element in a document.
-class Line final : public ElementBase<internal::abstract::LineAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] Measure x1() const;
-  [[nodiscard]] Measure y1() const;
-  [[nodiscard]] Measure x2() const;
-  [[nodiscard]] Measure y2() const;
-  [[nodiscard]] std::optional<DrawingTransform> transform() const;
-
-  [[nodiscard]] GraphicStyle style() const;
-};
-
-/// @brief Represents a circle element in a document.
-class Circle final : public ElementBase<internal::abstract::CircleAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] Measure x() const;
-  [[nodiscard]] Measure y() const;
-  [[nodiscard]] Measure width() const;
-  [[nodiscard]] Measure height() const;
-  [[nodiscard]] std::optional<DrawingTransform> transform() const;
-
-  [[nodiscard]] GraphicStyle style() const;
-};
-
-/// @brief Represents a custom shape element in a document.
-class CustomShape final
-    : public ElementBase<internal::abstract::CustomShapeAdapter> {
-public:
-  using ElementBase::ElementBase;
-
-  [[nodiscard]] std::optional<Measure> x() const;
-  [[nodiscard]] std::optional<Measure> y() const;
-  [[nodiscard]] Measure width() const;
-  [[nodiscard]] Measure height() const;
-  [[nodiscard]] std::optional<DrawingTransform> transform() const;
   /// Nothing for a shape whose geometry we cannot read, leaving its box.
   [[nodiscard]] std::optional<DrawingPath> path() const;
+  /// The ends of a @ref ShapeType::line, which states them instead of a box.
+  [[nodiscard]] std::optional<DrawingLine> line() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };
