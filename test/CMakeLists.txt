@@ -160,5 +160,7 @@ target_link_libraries(odr_test
 
         odr
 )
+# The tests reach into the internal headers, which serve the deprecated api.
+target_compile_definitions(odr_test PRIVATE ODR_INTERNAL_BUILD)
 
 gtest_add_tests(TARGET odr_test)

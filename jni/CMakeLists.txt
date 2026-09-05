@@ -50,6 +50,8 @@ if (NOT ANDROID)
     target_include_directories(odr_jni PRIVATE ${JNI_INCLUDE_DIRS})
 endif ()
 target_link_libraries(odr_jni PRIVATE ${ODR_JNI_ODR_TARGET})
+# The bindings mirror the deprecated api, so `ODR_DEPRECATED` is off here too.
+target_compile_definitions(odr_jni PRIVATE ODR_INTERNAL_BUILD)
 if (ODR_WITH_HTTP_SERVER)
     target_compile_definitions(odr_jni PRIVATE ODR_WITH_HTTP_SERVER)
 endif ()

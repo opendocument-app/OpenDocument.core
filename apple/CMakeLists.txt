@@ -68,6 +68,8 @@ add_library(odr_apple SHARED
 )
 target_include_directories(odr_apple PRIVATE "include" "src")
 target_link_libraries(odr_apple PRIVATE odr "-framework Foundation")
+# The bindings mirror the deprecated api, so `ODR_DEPRECATED` is off here too.
+target_compile_definitions(odr_apple PRIVATE ODR_INTERNAL_BUILD)
 target_compile_options(odr_apple PRIVATE -fobjc-arc)
 
 configure_file("Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist" @ONLY)

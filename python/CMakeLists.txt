@@ -40,6 +40,8 @@ pybind11_add_module(pyodr_core
         "src/bind_style.cpp"
 )
 target_link_libraries(pyodr_core PRIVATE ${ODR_PYTHON_ODR_TARGET})
+# The bindings mirror the deprecated api, so `ODR_DEPRECATED` is off here too.
+target_compile_definitions(pyodr_core PRIVATE ODR_INTERNAL_BUILD)
 # The `$<1:...>` genex keeps multi-config generators from appending a
 # per-config subdirectory; the module must sit inside the `pyodr` package.
 set_target_properties(pyodr_core PROPERTIES

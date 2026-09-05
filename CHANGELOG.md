@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The drawing elements `Rect`, `Line`, `Circle` and `CustomShape`, their
+  `ElementType` values and `Element::as_rect`/`as_line`/`as_circle`/
+  `as_custom_shape` are deprecated: they collapse into `Frame`, which gains a
+  shape kind. Mirrored in the JNI, Apple and Python bindings. Towards #773.
+
 - A printed sheet drops our row/column ruler and is capped to the page width
   rather than cut off at the right edge. Print only; the on-screen view is
   unchanged. Towards #816.

@@ -2,10 +2,54 @@ package app.opendocument.core;
 
 /** Mirrors {@code odr::ElementType}; constant order must match the C++ declaration. */
 public enum ElementType {
-  NONE, ROOT, SLIDE, SHEET, PAGE, MASTER_PAGE, SHEET_CELL, TEXT, LINE_BREAK,
-  PAGE_BREAK, PARAGRAPH, SPAN, LINK, BOOKMARK, LIST, LIST_ITEM, TABLE,
-  TABLE_COLUMN, TABLE_ROW, TABLE_CELL, FRAME, IMAGE, RECT, LINE, CIRCLE,
-  CUSTOM_SHAPE, GROUP;
+  NONE,
+  ROOT,
+  SLIDE,
+  SHEET,
+  PAGE,
+  MASTER_PAGE,
+  SHEET_CELL,
+  TEXT,
+  LINE_BREAK,
+  PAGE_BREAK,
+  PARAGRAPH,
+  SPAN,
+  LINK,
+  BOOKMARK,
+  LIST,
+  LIST_ITEM,
+  TABLE,
+  TABLE_COLUMN,
+  TABLE_ROW,
+  TABLE_CELL,
+  FRAME,
+  IMAGE,
+
+  /**
+   * @deprecated Merging into {@link #FRAME}, which gains a shape kind.
+   */
+  @Deprecated
+  RECT,
+
+  /**
+   * @deprecated See {@link #RECT}.
+   */
+  @Deprecated
+  LINE,
+
+  /**
+   * @deprecated See {@link #RECT}.
+   */
+  @Deprecated
+  CIRCLE,
+
+  /**
+   * @deprecated See {@link #RECT}.
+   */
+  @Deprecated
+  CUSTOM_SHAPE,
+
+  GROUP;
 
   static ElementType fromNative(int code) {
     return code < 0 ? null : values()[code];
