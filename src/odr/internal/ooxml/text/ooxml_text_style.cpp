@@ -60,6 +60,10 @@ void resolve_paragraph_style_(const pugi::xml_node node,
           paragraph_properties.child("w:jc").attribute("w:val"))) {
     result.text_align = text_align;
   }
+  if (const std::optional<TextDirection> direction =
+          read_text_direction_attribute(paragraph_properties.child("w:bidi"))) {
+    result.direction = direction;
+  }
   if (const std::optional<Measure> margin_left = read_twips_attribute(
           paragraph_properties.child("w:ind").attribute("w:left"))) {
     result.margin.left = margin_left;

@@ -555,6 +555,55 @@ TEST(ooxml_text_style, frame_wrap_on_both_sides_follows_the_frame) {
             style_of("center", "largest").horizontal_position);
 }
 
+/// [ECMA-376] 17.3.1.6. Off has to be told from unsaid.
+TEST(ooxml_text_style, bidi_is_inherited_until_a_style_turns_it_off) {
+  pugi::xml_document document;
+  const StyleRegistry registry = registry_of(
+      R"(<w:styles>)"
+      R"(<w:style w:styleId="arabic"><w:pPr><w:bidi/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="derived"><w:basedOn w:val="arabic"/></w:style>)"
+      R"(<w:style w:styleId="latin"><w:basedOn w:val="arabic"/>)"
+      R"(<w:pPr><w:bidi w:val="0"/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="plain"/>)"
+      R"(</w:styles>)",
+      document);
+
+  const auto direction = [&](const char *name) {
+    const Style *style = registry.style(name);
+    EXPECT_NE(nullptr, style);
+    return style->resolved().paragraph_style.direction;
+  };
+
+  EXPECT_EQ(TextDirection::right_to_left, direction("arabic"));
+  EXPECT_EQ(TextDirection::right_to_left, direction("derived"));
+  EXPECT_EQ(TextDirection::left_to_right, direction("latin"));
+  EXPECT_FALSE(direction("plain").has_value());
+}
+
+/// [ECMA-376] 17.18.44 ST_Jc.
+TEST(ooxml_text_style, start_and_end_alignment_stay_relative_to_the_direction) {
+  pugi::xml_document document;
+  const StyleRegistry registry = registry_of(
+      R"(<w:styles>)"
+      R"(<w:style w:styleId="s"><w:pPr><w:jc w:val="start"/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="e"><w:pPr><w:jc w:val="end"/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="l"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>)"
+      R"(<w:style w:styleId="r"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>)"
+      R"(</w:styles>)",
+      document);
+
+  const auto align_of = [&](const char *name) {
+    const Style *style = registry.style(name);
+    EXPECT_NE(nullptr, style);
+    return style->resolved().paragraph_style.text_align;
+  };
+
+  EXPECT_EQ(TextAlign::start, align_of("s"));
+  EXPECT_EQ(TextAlign::end, align_of("e"));
+  EXPECT_EQ(TextAlign::left, align_of("l"));
+  EXPECT_EQ(TextAlign::right, align_of("r"));
+}
+
 /// A page-relative offset has no meaning for a frame that stays in the flow.
 TEST(ooxml_text_style, frame_offset_is_read_where_it_flows_with_the_text) {
   pugi::xml_document document;

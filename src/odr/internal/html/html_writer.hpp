@@ -52,7 +52,7 @@ public:
              std::uint32_t current_indent = 0);
   HtmlWriter(std::ostream &out, const HtmlConfig &config);
 
-  void write_begin();
+  void write_begin(const HtmlElementOptions &options = {});
   void write_end();
 
   void write_header_begin();

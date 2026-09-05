@@ -248,14 +248,21 @@ ooxml::read_font_style_attribute(const pugi::xml_attribute attribute) {
   return font_style_from_value(attribute.value());
 }
 
+/// [ECMA-376] 17.18.44 ST_Jc. `start`/`end` are relative to the direction.
 std::optional<TextAlign>
 ooxml::read_text_align_attribute(const pugi::xml_attribute attribute) {
   const char *val = attribute.value();
-  if (std::strcmp("left", val) == 0 || std::strcmp("start", val) == 0) {
+  if (std::strcmp("left", val) == 0) {
     return TextAlign::left;
   }
-  if (std::strcmp("right", val) == 0 || std::strcmp("end", val) == 0) {
+  if (std::strcmp("right", val) == 0) {
     return TextAlign::right;
+  }
+  if (std::strcmp("start", val) == 0) {
+    return TextAlign::start;
+  }
+  if (std::strcmp("end", val) == 0) {
+    return TextAlign::end;
   }
   if (std::strcmp("center", val) == 0) {
     return TextAlign::center;
@@ -284,6 +291,24 @@ ooxml::read_drawing_text_align_attribute(const pugi::xml_attribute attribute) {
     return TextAlign::justify;
   }
   return {};
+}
+
+std::optional<TextDirection>
+ooxml::read_text_direction_attribute(const pugi::xml_node node) {
+  if (!node) {
+    return {};
+  }
+  return read_on_off_attribute(node) ? TextDirection::right_to_left
+                                     : TextDirection::left_to_right;
+}
+
+std::optional<TextDirection> ooxml::read_drawing_text_direction_attribute(
+    const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  return read_on_off_attribute(attribute) ? TextDirection::right_to_left
+                                          : TextDirection::left_to_right;
 }
 
 std::optional<VerticalAlign>

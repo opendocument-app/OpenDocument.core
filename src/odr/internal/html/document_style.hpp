@@ -5,6 +5,7 @@
 
 namespace odr {
 enum class TextAlign;
+enum class TextDirection;
 enum class HorizontalAlign;
 enum class VerticalAlign;
 enum class FontWeight;
@@ -33,6 +34,7 @@ namespace odr::internal::html {
 /// `nullptr` for a break turned off: the css default already says it.
 const char *translate_break(BreakType break_type);
 const char *translate_text_align(TextAlign text_align);
+const char *translate_text_direction(TextDirection direction);
 const char *translate_horizontal_align(HorizontalAlign horizontal_align);
 const char *translate_vertical_align(VerticalAlign vertical_align);
 const char *translate_font_weight(FontWeight font_weight);
@@ -45,7 +47,9 @@ std::string translate_inner_page_style(const PageLayout &page_layout);
 std::string translate_text_style(const TextStyle &text_style);
 /// The part of a text style a block may carry: what paints belongs on the run.
 std::string translate_block_font_style(const TextStyle &text_style);
-std::string translate_paragraph_style(const ParagraphStyle &paragraph_style);
+/// A direction equal to @p base is left unwritten.
+std::string translate_paragraph_style(const ParagraphStyle &paragraph_style,
+                                      TextDirection base);
 std::string translate_table_style(const TableStyle &table_style);
 std::string
 translate_table_column_style(const TableColumnStyle &table_column_style);

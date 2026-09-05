@@ -272,9 +272,10 @@ jobject make_text_style(JNIEnv *env, const odr::TextStyle &style) {
 jobject make_paragraph_style(JNIEnv *env, const odr::ParagraphStyle &style) {
   return new_object(
       env, "app/opendocument/core/ParagraphStyle",
-      "(ILapp/opendocument/core/DirectionalMeasure;"
+      "(IILapp/opendocument/core/DirectionalMeasure;"
       "Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;II)V",
-      enum_code(style.text_align), make_directional_measure(env, style.margin),
+      enum_code(style.text_align), enum_code(style.direction),
+      make_directional_measure(env, style.margin),
       make_measure(env, style.line_height),
       make_measure(env, style.text_indent), enum_code(style.break_before),
       enum_code(style.break_after));
@@ -333,11 +334,11 @@ jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {
       env, "app/opendocument/core/PageLayout",
       "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;I"
       "Lapp/opendocument/core/DirectionalMeasure;"
-      "Lapp/opendocument/core/Color;)V",
+      "Lapp/opendocument/core/Color;I)V",
       make_measure(env, layout.width), make_measure(env, layout.height),
       enum_code(layout.print_orientation),
       make_directional_measure(env, layout.margin),
-      make_color(env, layout.background_color));
+      make_color(env, layout.background_color), enum_code(layout.direction));
 }
 
 jobject make_table_dimensions(JNIEnv *env,

@@ -38,6 +38,9 @@ extension TextStyle {
 
 extension ParagraphStyle {
   public var alignment: TextAlign? { textAlign?.asEnum(TextAlign.self) }
+  public var baseDirection: TextDirection? {
+    direction?.asEnum(TextDirection.self)
+  }
 }
 
 extension TableCellStyle {
@@ -64,6 +67,9 @@ extension PageLayout {
     printOrientation?.asEnum(PrintOrientation.self)
   }
   public var background: Color? { backgroundColor?.asColor }
+  public var baseDirection: TextDirection? {
+    direction?.asEnum(TextDirection.self)
+  }
 }
 
 extension Frame {

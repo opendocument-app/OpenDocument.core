@@ -560,6 +560,133 @@ TEST(FlatOpenDocumentFile, it_renders_its_embedded_image_embedded_or_linked) {
   }
 }
 
+namespace {
+
+/// `direction` of every top-level paragraph, in document order.
+std::vector<std::optional<TextDirection>>
+directions_of(const std::string &source) {
+  const Document document = DocumentFile::from_memory(source).document();
+
+  std::vector<std::optional<TextDirection>> result;
+  for (const Element child : document.root_element().children()) {
+    result.push_back(child.as_paragraph().style().direction);
+  }
+  return result;
+}
+
+} // namespace
+
+/// [OpenDocument] 20.404.
+TEST(FlatOpenDocumentFile, a_right_to_left_writing_mode_reads_as_a_direction) {
+  EXPECT_EQ(
+      std::vector<std::optional<TextDirection>>(
+          {std::nullopt, TextDirection::right_to_left, std::nullopt}),
+      directions_of(three_paragraphs("P1", R"(style:writing-mode="rl-tb")")));
+}
+
+/// Neither is a left-to-right claim.
+TEST(FlatOpenDocumentFile, a_writing_mode_without_a_side_names_no_direction) {
+  for (const char *mode : {"tb-rl", "tb-lr", "tb", "page"}) {
+    EXPECT_EQ(std::vector<std::optional<TextDirection>>(
+                  {std::nullopt, std::nullopt, std::nullopt}),
+              directions_of(three_paragraphs(
+                  "P1", R"(style:writing-mode=")" + std::string(mode) + "\"")))
+        << mode;
+  }
+}
+
+/// The default paragraph style, reached through the family fallback.
+TEST(FlatOpenDocumentFile,
+     the_default_style_carries_direction_down_the_family_chain) {
+  const std::string source = flat_text(
+      R"(<text:p text:style-name="Standard">one</text:p>)"
+      R"(<text:p text:style-name="P1">two</text:p>)",
+      R"(<office:styles>)"
+      R"(<style:default-style style:family="paragraph">)"
+      R"(<style:paragraph-properties style:writing-mode="rl-tb"/>)"
+      R"(</style:default-style>)"
+      R"(<style:style style:name="Standard" style:family="paragraph"/>)"
+      R"(</office:styles>)"
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="P1" style:family="paragraph")"
+      R"( style:parent-style-name="Standard"/>)"
+      R"(</office:automatic-styles>)");
+
+  EXPECT_EQ(std::vector<std::optional<TextDirection>>(
+                {TextDirection::right_to_left, TextDirection::right_to_left}),
+            directions_of(source));
+}
+
+/// The root says it once; a paragraph repeating it stays silent.
+TEST(FlatOpenDocumentFile, a_direction_reaches_the_css_only_where_it_differs) {
+  const std::string rtl =
+      render(three_paragraphs("P1", R"(style:writing-mode="rl-tb")"));
+  EXPECT_EQ(1U, count(rtl, "direction:rtl"));
+  EXPECT_EQ(0U, count(rtl, "direction:ltr"));
+
+  const std::string ltr =
+      render(three_paragraphs("P1", R"(style:writing-mode="lr-tb")"));
+  EXPECT_EQ(0U, count(ltr, "direction:ltr"));
+}
+
+namespace {
+
+/// A page layout the master page names, carrying @p properties.
+std::string page_layout_document(const std::string &properties) {
+  return flat_text(R"(<text:p>one</text:p>)",
+                   R"(<office:automatic-styles>)"
+                   R"(<style:page-layout style:name="pm1">)"
+                   R"(<style:page-layout-properties )" +
+                       properties +
+                       R"(/></style:page-layout>)"
+                       R"(</office:automatic-styles>)"
+                       R"(<office:master-styles>)"
+                       R"(<style:master-page style:name="Standard")"
+                       R"( style:page-layout-name="pm1"/>)"
+                       R"(</office:master-styles>)");
+}
+
+} // namespace
+
+TEST(FlatOpenDocumentFile, the_page_direction_becomes_the_root_direction) {
+  EXPECT_EQ(1U,
+            count(render(page_layout_document(R"(style:writing-mode="rl-tb")")),
+                  R"(<html dir="rtl">)"));
+  EXPECT_EQ(1U,
+            count(render(page_layout_document(R"(style:writing-mode="lr-tb")")),
+                  R"(<html dir="ltr">)"));
+  EXPECT_EQ(1U, count(render(page_layout_document(R"(fo:page-width="21cm")")),
+                      R"(<html dir="ltr">)"));
+}
+
+/// Absolute here, unlike `w:jc`'s.
+TEST(FlatOpenDocumentFile, start_and_end_alignment_are_the_sides_they_name) {
+  const auto align_of = [](const char *value) {
+    const std::string properties =
+        R"(fo:text-align=")" + std::string(value) + "\"";
+    const Document document =
+        DocumentFile::from_memory(three_paragraphs("P1", properties))
+            .document();
+
+    // the middle one is the one carrying `P1`
+    std::vector<std::optional<TextAlign>> aligns;
+    for (const Element child : document.root_element().children()) {
+      aligns.push_back(child.as_paragraph().style().text_align);
+    }
+    return aligns.at(1);
+  };
+
+  EXPECT_EQ(TextAlign::left, align_of("start"));
+  EXPECT_EQ(TextAlign::right, align_of("end"));
+  EXPECT_EQ(TextAlign::left, align_of("left"));
+  EXPECT_EQ(TextAlign::right, align_of("right"));
+
+  // and a right-to-left page does not move them
+  EXPECT_EQ(1U,
+            count(render(three_paragraphs("P1", R"(fo:text-align="start")")),
+                  "text-align:left"));
+}
+
 TEST(FlatOpenDocumentFile, it_saves_back_as_one_xml_file) {
   const Document document =
       DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>")).document();
