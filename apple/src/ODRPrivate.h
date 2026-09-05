@@ -130,6 +130,11 @@ NS_ASSUME_NONNULL_BEGIN
     (const std::optional<odr::DrawingPath> &)handle;
 @end
 
+@interface ODRDrawingLine (Private)
++ (nullable instancetype)lineWithHandle:
+    (const std::optional<odr::DrawingLine> &)handle;
+@end
+
 @interface ODRDrawingTransform (Private)
 + (nullable instancetype)transformWithHandle:
     (const std::optional<odr::DrawingTransform> &)handle;

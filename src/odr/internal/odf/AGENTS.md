@@ -41,6 +41,12 @@ generic type — `text:h` → paragraph, `text:section`/`toc`/date fields → `g
 `draw:g` → frame. Container types get bespoke children-parsers
 (`parse_presentation_children` walks only `draw:page`, etc.).
 
+Every `draw:*` shape is a `frame` too, its kind recorded beside the element by
+`create_shape_element` and read back by `frame_shape_type`: `draw:rect`/
+`draw:caption` → `rect`, `draw:line`/`draw:measure` → `line`, `draw:circle`/
+`draw:ellipse` → `ellipse` unless `draw:kind` cuts it, and everything whose
+geometry is drawn rather than named → `custom`.
+
 **Text runs are coalesced.** A maximal run of consecutive text nodes
 (`node_pcdata`, `text:s`, `text:tab`) becomes **one** `text` Element spanning
 `[first, last]` (the end stored in `Text.last`); `text:line-break` is its own

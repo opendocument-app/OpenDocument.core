@@ -208,35 +208,6 @@ Frame Element::as_frame() const {
   return {m_adapter, m_identifier, m_adapter->frame_adapter(m_identifier)};
 }
 
-Rect Element::as_rect() const {
-  if (!exists_()) {
-    return {};
-  }
-  return {m_adapter, m_identifier, m_adapter->rect_adapter(m_identifier)};
-}
-
-Line Element::as_line() const {
-  if (!exists_()) {
-    return {};
-  }
-  return {m_adapter, m_identifier, m_adapter->line_adapter(m_identifier)};
-}
-
-Circle Element::as_circle() const {
-  if (!exists_()) {
-    return {};
-  }
-  return {m_adapter, m_identifier, m_adapter->circle_adapter(m_identifier)};
-}
-
-CustomShape Element::as_custom_shape() const {
-  if (!exists_()) {
-    return {};
-  }
-  return {m_adapter, m_identifier,
-          m_adapter->custom_shape_adapter(m_identifier)};
-}
-
 Image Element::as_image() const {
   if (!exists_()) {
     return {};
@@ -551,6 +522,11 @@ TableCellStyle TableCell::style() const {
                    : TableCellStyle();
 }
 
+ShapeType Frame::shape_type() const {
+  return exists_() ? m_adapter2->frame_shape_type(m_identifier)
+                   : ShapeType::none;
+}
+
 AnchorType Frame::anchor_type() const {
   return exists_() ? m_adapter2->frame_anchor_type(m_identifier)
                    : AnchorType::as_char; // TODO default?
@@ -586,118 +562,18 @@ std::optional<DrawingTransform> Frame::transform() const {
                    : std::optional<DrawingTransform>();
 }
 
-GraphicStyle Frame::style() const {
-  return exists_() ? m_adapter2->frame_style(m_identifier) : GraphicStyle();
-}
-
-Measure Rect::x() const {
-  return exists_() ? m_adapter2->rect_x(m_identifier) : Measure(0, {});
-}
-
-Measure Rect::y() const {
-  return exists_() ? m_adapter2->rect_y(m_identifier) : Measure(0, {});
-}
-
-Measure Rect::width() const {
-  return exists_() ? m_adapter2->rect_width(m_identifier) : Measure(0, {});
-}
-
-Measure Rect::height() const {
-  return exists_() ? m_adapter2->rect_height(m_identifier) : Measure(0, {});
-}
-
-std::optional<DrawingTransform> Rect::transform() const {
-  return exists_() ? m_adapter2->rect_transform(m_identifier)
-                   : std::optional<DrawingTransform>();
-}
-
-GraphicStyle Rect::style() const {
-  return exists_() ? m_adapter2->rect_style(m_identifier) : GraphicStyle();
-}
-
-Measure Line::x1() const {
-  return exists_() ? m_adapter2->line_x1(m_identifier) : Measure(0, {});
-}
-
-Measure Line::y1() const {
-  return exists_() ? m_adapter2->line_y1(m_identifier) : Measure(0, {});
-}
-
-Measure Line::x2() const {
-  return exists_() ? m_adapter2->line_x2(m_identifier) : Measure(0, {});
-}
-
-Measure Line::y2() const {
-  return exists_() ? m_adapter2->line_y2(m_identifier) : Measure(0, {});
-}
-
-std::optional<DrawingTransform> Line::transform() const {
-  return exists_() ? m_adapter2->line_transform(m_identifier)
-                   : std::optional<DrawingTransform>();
-}
-
-GraphicStyle Line::style() const {
-  return exists_() ? m_adapter2->line_style(m_identifier) : GraphicStyle();
-}
-
-Measure Circle::x() const {
-  return exists_() ? m_adapter2->circle_x(m_identifier) : Measure(0, {});
-}
-
-Measure Circle::y() const {
-  return exists_() ? m_adapter2->circle_y(m_identifier) : Measure(0, {});
-}
-
-Measure Circle::width() const {
-  return exists_() ? m_adapter2->circle_width(m_identifier) : Measure(0, {});
-}
-
-Measure Circle::height() const {
-  return exists_() ? m_adapter2->circle_height(m_identifier) : Measure(0, {});
-}
-
-std::optional<DrawingTransform> Circle::transform() const {
-  return exists_() ? m_adapter2->circle_transform(m_identifier)
-                   : std::optional<DrawingTransform>();
-}
-
-GraphicStyle Circle::style() const {
-  return exists_() ? m_adapter2->circle_style(m_identifier) : GraphicStyle();
-}
-
-std::optional<Measure> CustomShape::x() const {
-  return exists_() ? m_adapter2->custom_shape_x(m_identifier)
-                   : std::optional<Measure>();
-}
-
-std::optional<Measure> CustomShape::y() const {
-  return exists_() ? m_adapter2->custom_shape_y(m_identifier)
-                   : std::optional<Measure>();
-}
-
-Measure CustomShape::width() const {
-  return exists_() ? m_adapter2->custom_shape_width(m_identifier)
-                   : Measure(0, {});
-}
-
-Measure CustomShape::height() const {
-  return exists_() ? m_adapter2->custom_shape_height(m_identifier)
-                   : Measure(0, {});
-}
-
-std::optional<DrawingTransform> CustomShape::transform() const {
-  return exists_() ? m_adapter2->custom_shape_transform(m_identifier)
-                   : std::optional<DrawingTransform>();
-}
-
-std::optional<DrawingPath> CustomShape::path() const {
-  return exists_() ? m_adapter2->custom_shape_path(m_identifier)
+std::optional<DrawingPath> Frame::path() const {
+  return exists_() ? m_adapter2->frame_path(m_identifier)
                    : std::optional<DrawingPath>();
 }
 
-GraphicStyle CustomShape::style() const {
-  return exists_() ? m_adapter2->custom_shape_style(m_identifier)
-                   : GraphicStyle();
+std::optional<DrawingLine> Frame::line() const {
+  return exists_() ? m_adapter2->frame_line(m_identifier)
+                   : std::optional<DrawingLine>();
+}
+
+GraphicStyle Frame::style() const {
+  return exists_() ? m_adapter2->frame_style(m_identifier) : GraphicStyle();
 }
 
 bool Image::is_internal() const {

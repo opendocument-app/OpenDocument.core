@@ -50,10 +50,7 @@ void translate_list(const Element &element, const WritingState &state);
 void translate_list_item(const Element &element, const WritingState &state);
 void translate_table(const Element &element, const WritingState &state);
 void translate_image(const Element &element, const WritingState &state);
+/// Writes the box, and the svg outline of whatever shape it draws.
 void translate_frame(const Element &element, const WritingState &state);
-void translate_rect(const Element &element, const WritingState &state);
-void translate_line(const Element &element, const WritingState &state);
-void translate_circle(const Element &element, const WritingState &state);
-void translate_custom_shape(const Element &element, const WritingState &state);
 
 } // namespace odr::internal::html

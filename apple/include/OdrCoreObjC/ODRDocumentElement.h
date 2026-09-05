@@ -42,13 +42,16 @@ typedef NS_ENUM(NSInteger, ODRElementType) {
 
   ODRElementTypeFrame,
   ODRElementTypeImage,
-  ODRElementTypeRect,
-  ODRElementTypeLine,
-  ODRElementTypeCircle,
-  ODRElementTypeCustomShape,
-
   ODRElementTypeGroup,
 } NS_SWIFT_NAME(ElementType);
+
+typedef NS_ENUM(NSInteger, ODRShapeType) {
+  ODRShapeTypeNone = 0,
+  ODRShapeTypeRect,
+  ODRShapeTypeEllipse,
+  ODRShapeTypeLine,
+  ODRShapeTypeCustom,
+} NS_SWIFT_NAME(ShapeType);
 
 typedef NS_ENUM(NSInteger, ODRAnchorType) {
   ODRAnchorTypeAsChar = 0,
@@ -265,6 +268,18 @@ NS_SWIFT_NAME(DrawingPath)
 + (instancetype)new NS_UNAVAILABLE;
 @end
 
+/// `odr::DrawingLine`: the two ends of a line shape, in the parent's space.
+NS_SWIFT_NAME(DrawingLine)
+@interface ODRDrawingLine : NSObject
+@property(nonatomic, readonly) ODRMeasure *x1;
+@property(nonatomic, readonly) ODRMeasure *y1;
+@property(nonatomic, readonly) ODRMeasure *x2;
+@property(nonatomic, readonly) ODRMeasure *y2;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// `odr::DrawingTransform`.
 NS_SWIFT_NAME(DrawingTransform)
 @interface ODRDrawingTransform : NSObject
@@ -282,6 +297,7 @@ NS_SWIFT_NAME(DrawingTransform)
 /// `odr::Frame`.
 NS_SWIFT_NAME(Frame)
 @interface ODRFrame : ODRElement
+@property(nonatomic, readonly) ODRShapeType shapeType;
 @property(nonatomic, readonly) ODRAnchorType anchorType;
 @property(nonatomic, readonly, nullable) ODRMeasure *x;
 @property(nonatomic, readonly, nullable) ODRMeasure *y;
@@ -290,52 +306,10 @@ NS_SWIFT_NAME(Frame)
 /// `int32_t`, boxed; `nil` when the document did not set one.
 @property(nonatomic, readonly, nullable) NSNumber *zIndex;
 @property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
-@property(nonatomic, readonly) ODRGraphicStyle *style;
-@end
-
-/// `odr::Rect`.
-NS_SWIFT_NAME(Rect)
-@interface ODRRect : ODRElement
-@property(nonatomic, readonly) ODRMeasure *x;
-@property(nonatomic, readonly) ODRMeasure *y;
-@property(nonatomic, readonly) ODRMeasure *width;
-@property(nonatomic, readonly) ODRMeasure *height;
-@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
-@property(nonatomic, readonly) ODRGraphicStyle *style;
-@end
-
-/// `odr::Line`.
-NS_SWIFT_NAME(Line)
-@interface ODRLine : ODRElement
-@property(nonatomic, readonly) ODRMeasure *x1;
-@property(nonatomic, readonly) ODRMeasure *y1;
-@property(nonatomic, readonly) ODRMeasure *x2;
-@property(nonatomic, readonly) ODRMeasure *y2;
-@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
-@property(nonatomic, readonly) ODRGraphicStyle *style;
-@end
-
-/// `odr::Circle`.
-NS_SWIFT_NAME(Circle)
-@interface ODRCircle : ODRElement
-@property(nonatomic, readonly) ODRMeasure *x;
-@property(nonatomic, readonly) ODRMeasure *y;
-@property(nonatomic, readonly) ODRMeasure *width;
-@property(nonatomic, readonly) ODRMeasure *height;
-@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
-@property(nonatomic, readonly) ODRGraphicStyle *style;
-@end
-
-/// `odr::CustomShape`.
-NS_SWIFT_NAME(CustomShape)
-@interface ODRCustomShape : ODRElement
-@property(nonatomic, readonly, nullable) ODRMeasure *x;
-@property(nonatomic, readonly, nullable) ODRMeasure *y;
-@property(nonatomic, readonly) ODRMeasure *width;
-@property(nonatomic, readonly) ODRMeasure *height;
-@property(nonatomic, readonly, nullable) ODRDrawingTransform *transform;
 /// `nil` for a shape whose geometry we cannot read, leaving its box.
 @property(nonatomic, readonly, nullable) ODRDrawingPath *path;
+/// The ends of an `ODRShapeTypeLine`, which states them instead of a box.
+@property(nonatomic, readonly, nullable) ODRDrawingLine *line;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 

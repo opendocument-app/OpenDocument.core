@@ -191,10 +191,6 @@ class ElementAdapter final : public abstract::ElementAdapter,
                              public abstract::TableRowAdapter,
                              public abstract::TableCellAdapter,
                              public abstract::FrameAdapter,
-                             public abstract::RectAdapter,
-                             public abstract::LineAdapter,
-                             public abstract::CircleAdapter,
-                             public abstract::CustomShapeAdapter,
                              public abstract::ImageAdapter {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
@@ -335,23 +331,6 @@ public:
   [[nodiscard]] const FrameAdapter *
   frame_adapter(const ElementIdentifier element_id) const override {
     return element_type(element_id) == ElementType::frame ? this : nullptr;
-  }
-  [[nodiscard]] const RectAdapter *
-  rect_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::rect ? this : nullptr;
-  }
-  [[nodiscard]] const LineAdapter *
-  line_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::line ? this : nullptr;
-  }
-  [[nodiscard]] const CircleAdapter *
-  circle_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::circle ? this : nullptr;
-  }
-  [[nodiscard]] const CustomShapeAdapter *
-  custom_shape_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::custom_shape ? this
-                                                                 : nullptr;
   }
   [[nodiscard]] const ImageAdapter *
   image_adapter(const ElementIdentifier element_id) const override {
@@ -816,6 +795,10 @@ public:
     return get_partial_style(element_id).table_cell_style;
   }
 
+  [[nodiscard]] ShapeType
+  frame_shape_type(const ElementIdentifier element_id) const override {
+    return m_registry->shape_type(element_id);
+  }
   [[nodiscard]] AnchorType
   frame_anchor_type(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
@@ -837,19 +820,51 @@ public:
   }
   [[nodiscard]] std::optional<Measure>
   frame_x(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:x"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:x"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->x);
+    }
+    return {};
   }
   [[nodiscard]] std::optional<Measure>
   frame_y(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:y"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:y"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->y);
+    }
+    return {};
   }
   [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:width"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:width"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->width);
+    }
+    return {};
   }
   [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
-    return read_measure(get_node(element_id).attribute("svg:height"));
+    const pugi::xml_node node = get_node(element_id);
+    if (const std::optional<Measure> measure =
+            read_measure(node.attribute("svg:height"))) {
+      return measure;
+    }
+    if (const std::optional<DrawingPath> box = connector_box(node)) {
+      return hundredth_millimetres(box->height);
+    }
+    return {};
   }
   [[nodiscard]] std::optional<std::int32_t>
   frame_z_index(const ElementIdentifier element_id) const override {
@@ -864,142 +879,28 @@ public:
   frame_transform(const ElementIdentifier element_id) const override {
     return read_transform(get_node(element_id));
   }
-  [[nodiscard]] GraphicStyle
-  frame_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
-  }
-
-  [[nodiscard]] Measure
-  rect_x(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:x"));
-  }
-  [[nodiscard]] Measure
-  rect_y(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:y"));
-  }
-  [[nodiscard]] Measure
-  rect_width(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
-  }
-  [[nodiscard]] Measure
-  rect_height(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
-  }
-  [[nodiscard]] std::optional<DrawingTransform>
-  rect_transform(const ElementIdentifier element_id) const override {
-    return read_transform(get_node(element_id));
-  }
-  [[nodiscard]] GraphicStyle
-  rect_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
-  }
-
-  [[nodiscard]] Measure
-  line_x1(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:x1"));
-  }
-  [[nodiscard]] Measure
-  line_y1(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:y1"));
-  }
-  [[nodiscard]] Measure
-  line_x2(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:x2"));
-  }
-  [[nodiscard]] Measure
-  line_y2(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:y2"));
-  }
-  [[nodiscard]] std::optional<DrawingTransform>
-  line_transform(const ElementIdentifier element_id) const override {
-    return read_transform(get_node(element_id));
-  }
-  [[nodiscard]] GraphicStyle
-  line_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
-  }
-
-  [[nodiscard]] Measure
-  circle_x(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:x"));
-  }
-  [[nodiscard]] Measure
-  circle_y(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:y"));
-  }
-  [[nodiscard]] Measure
-  circle_width(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:width"));
-  }
-  [[nodiscard]] Measure
-  circle_height(const ElementIdentifier element_id) const override {
-    return read_measure_or_zero(get_node(element_id).attribute("svg:height"));
-  }
-  [[nodiscard]] std::optional<DrawingTransform>
-  circle_transform(const ElementIdentifier element_id) const override {
-    return read_transform(get_node(element_id));
-  }
-  [[nodiscard]] GraphicStyle
-  circle_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
-  }
-
-  [[nodiscard]] std::optional<Measure>
-  custom_shape_x(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:x"))) {
-      return measure;
-    }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
-      return hundredth_millimetres(box->x);
-    }
-    return {};
-  }
-  [[nodiscard]] std::optional<Measure>
-  custom_shape_y(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:y"))) {
-      return measure;
-    }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
-      return hundredth_millimetres(box->y);
-    }
-    return {};
-  }
-  [[nodiscard]] Measure
-  custom_shape_width(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:width")) {
-      return read_measure_or_zero(attribute);
-    }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
-      return hundredth_millimetres(box->width);
-    }
-    return Measure(0, DynamicUnit());
-  }
-  [[nodiscard]] Measure
-  custom_shape_height(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute attribute = node.attribute("svg:height")) {
-      return read_measure_or_zero(attribute);
-    }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
-      return hundredth_millimetres(box->height);
-    }
-    return Measure(0, DynamicUnit());
-  }
   [[nodiscard]] std::optional<DrawingPath>
-  custom_shape_path(const ElementIdentifier element_id) const override {
+  frame_path(const ElementIdentifier element_id) const override {
+    if (m_registry->shape_type(element_id) != ShapeType::custom) {
+      return {};
+    }
     return read_path(get_node(element_id));
   }
-  [[nodiscard]] std::optional<DrawingTransform>
-  custom_shape_transform(const ElementIdentifier element_id) const override {
-    return read_transform(get_node(element_id));
+  [[nodiscard]] std::optional<DrawingLine>
+  frame_line(const ElementIdentifier element_id) const override {
+    if (m_registry->shape_type(element_id) != ShapeType::line) {
+      return {};
+    }
+    const pugi::xml_node node = get_node(element_id);
+    return DrawingLine{
+        .x1 = read_measure_or_zero(node.attribute("svg:x1")),
+        .y1 = read_measure_or_zero(node.attribute("svg:y1")),
+        .x2 = read_measure_or_zero(node.attribute("svg:x2")),
+        .y2 = read_measure_or_zero(node.attribute("svg:y2")),
+    };
   }
   [[nodiscard]] GraphicStyle
-  custom_shape_style(const ElementIdentifier element_id) const override {
+  frame_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).graphic_style;
   }
 

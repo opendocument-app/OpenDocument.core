@@ -169,6 +169,9 @@ public:
 
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
                                                           pugi::xml_node node);
+  /// A `frame` drawing @p shape_type rather than being a plain box.
+  std::tuple<ElementIdentifier, Element &>
+  create_shape_element(ShapeType shape_type, pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Text &>
   create_text_element(pugi::xml_node first_node, pugi::xml_node last_node);
   std::tuple<ElementIdentifier, Element &, Table &>
@@ -193,6 +196,8 @@ public:
 
   [[nodiscard]] const SheetCell *sheet_cell_element(ElementIdentifier id) const;
 
+  [[nodiscard]] ShapeType shape_type(ElementIdentifier id) const;
+
   void set_list_type(ElementIdentifier id, ListType type);
   void set_list_marker(ElementIdentifier id, ListMarker marker);
 
@@ -213,6 +218,7 @@ private:
   SideTable<Table> m_tables;
   SideTable<Sheet> m_sheets;
   SideTable<SheetCell> m_sheet_cells;
+  SideTable<ShapeType> m_shape_types;
   // out of id order: written when a list is resolved, not when it is parsed
   std::unordered_map<ElementIdentifier, ListType> m_list_types;
   std::unordered_map<ElementIdentifier, ListMarker> m_list_markers;

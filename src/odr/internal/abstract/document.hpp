@@ -1,6 +1,9 @@
 #pragma once
 
 #include <odr/definitions.hpp>
+// for the element model itself: `FrameAdapter` defaults its shape readers, and
+// a default needs the complete type.
+#include <odr/document_element.hpp>
 #include <odr/quantity.hpp>
 
 #include <cstdint>
@@ -13,11 +16,7 @@ namespace odr {
 class File;
 enum class FileType;
 enum class DocumentType;
-enum class ElementType;
 class DocumentPath;
-enum class ValueType;
-enum class AnchorType;
-enum class ListType;
 struct PageLayout;
 struct TableDimensions;
 struct TablePosition;
@@ -28,8 +27,6 @@ struct TableCellStyle;
 struct TextStyle;
 struct ParagraphStyle;
 struct GraphicStyle;
-struct DrawingTransform;
-struct DrawingPath;
 } // namespace odr
 
 namespace odr::internal::abstract {
@@ -54,10 +51,6 @@ class TableColumnAdapter;
 class TableRowAdapter;
 class TableCellAdapter;
 class FrameAdapter;
-class RectAdapter;
-class LineAdapter;
-class CircleAdapter;
-class CustomShapeAdapter;
 class ImageAdapter;
 
 class Document {
@@ -188,22 +181,6 @@ public:
   }
   [[nodiscard]] virtual const FrameAdapter *
   frame_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
-    return nullptr;
-  }
-  [[nodiscard]] virtual const RectAdapter *
-  rect_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
-    return nullptr;
-  }
-  [[nodiscard]] virtual const LineAdapter *
-  line_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
-    return nullptr;
-  }
-  [[nodiscard]] virtual const CircleAdapter *
-  circle_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
-    return nullptr;
-  }
-  [[nodiscard]] virtual const CustomShapeAdapter *custom_shape_adapter(
-      [[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
   }
   [[nodiscard]] virtual const ImageAdapter *
@@ -437,6 +414,21 @@ class FrameAdapter {
 public:
   virtual ~FrameAdapter() = default;
 
+  /// The three shape readers default: an engine that only makes plain frames
+  /// says nothing.
+  [[nodiscard]] virtual ShapeType
+  frame_shape_type([[maybe_unused]] const ElementIdentifier element_id) const {
+    return ShapeType::none;
+  }
+  [[nodiscard]] virtual std::optional<DrawingPath>
+  frame_path([[maybe_unused]] const ElementIdentifier element_id) const {
+    return {};
+  }
+  [[nodiscard]] virtual std::optional<DrawingLine>
+  frame_line([[maybe_unused]] const ElementIdentifier element_id) const {
+    return {};
+  }
+
   [[nodiscard]] virtual AnchorType
   frame_anchor_type(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual std::optional<Measure>
@@ -454,78 +446,6 @@ public:
 
   [[nodiscard]] virtual GraphicStyle
   frame_style(ElementIdentifier element_id) const = 0;
-};
-
-class RectAdapter {
-public:
-  virtual ~RectAdapter() = default;
-
-  [[nodiscard]] virtual Measure rect_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure rect_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  rect_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  rect_height(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<DrawingTransform>
-  rect_transform(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual GraphicStyle
-  rect_style(ElementIdentifier element_id) const = 0;
-};
-
-class LineAdapter {
-public:
-  virtual ~LineAdapter() = default;
-
-  [[nodiscard]] virtual Measure line_x1(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure line_y1(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure line_x2(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure line_y2(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<DrawingTransform>
-  line_transform(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual GraphicStyle
-  line_style(ElementIdentifier element_id) const = 0;
-};
-
-class CircleAdapter {
-public:
-  virtual ~CircleAdapter() = default;
-
-  [[nodiscard]] virtual Measure
-  circle_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  circle_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  circle_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  circle_height(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<DrawingTransform>
-  circle_transform(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual GraphicStyle
-  circle_style(ElementIdentifier element_id) const = 0;
-};
-
-class CustomShapeAdapter {
-public:
-  virtual ~CustomShapeAdapter() = default;
-
-  [[nodiscard]] virtual std::optional<Measure>
-  custom_shape_x(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<Measure>
-  custom_shape_y(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  custom_shape_width(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual Measure
-  custom_shape_height(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<DrawingTransform>
-  custom_shape_transform(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual std::optional<DrawingPath>
-  custom_shape_path(ElementIdentifier element_id) const = 0;
-
-  [[nodiscard]] virtual GraphicStyle
-  custom_shape_style(ElementIdentifier element_id) const = 0;
 };
 
 class ImageAdapter {
