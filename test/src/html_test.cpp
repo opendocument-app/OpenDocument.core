@@ -741,9 +741,80 @@ TEST(html, a_printed_sheet_drops_the_ruler_and_fits_the_page) {
   EXPECT_NE(sheet.find(".odr-sheet thead{display:none}"), std::string::npos);
   EXPECT_NE(sheet.find(".odr-sheet-gutter{visibility:collapse"),
             std::string::npos);
-  EXPECT_NE(sheet.find(".odr-sheet{max-width:100%}"), std::string::npos);
+  EXPECT_NE(
+      sheet.find(".odr-sheet{zoom:var(--odr-print-fit,1);max-width:100%}"),
+      std::string::npos);
   EXPECT_NE(sheet.find(".odr-sheet col{min-width:0!important}"),
             std::string::npos);
+}
+
+namespace {
+
+/// The print fit the sheet states, or nothing where it states none.
+std::optional<double> print_fit_of(const std::string &page) {
+  constexpr std::string_view key = "--odr-print-fit:";
+  const std::size_t at = page.find(key);
+  if (at == std::string::npos) {
+    return {};
+  }
+  return std::stod(page.substr(at + key.length()));
+}
+
+} // namespace
+
+// #816
+TEST(html, a_sheet_is_fitted_to_the_paper_the_file_states) {
+  // 8 columns of 0.889in against A4 less 0.7874in margins
+  const std::optional<double> fit = print_fit_of(
+      render("odr-public/ods/file_example_ODS_100.ods", HtmlConfig()));
+  ASSERT_TRUE(fit.has_value());
+  EXPECT_NEAR((8.2681 - 2 * 0.7874) / (8 * 0.889), *fit, 1e-4);
+}
+
+// Without a stated paper there is nothing to fit against.
+TEST(html, a_sheet_that_states_no_paper_states_no_fit) {
+  EXPECT_FALSE(print_fit_of(render("odr-public/ods/file_example_ODS_10.ods",
+                                   HtmlConfig()))
+                   .has_value());
+}
+
+namespace {
+
+/// A one-column flat ods on 8.5in paper with 1in margins.
+std::string flat_ods_sheet(const std::string &width) {
+  return R"(<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">
+<office:automatic-styles>
+<style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.5in" fo:page-height="11in" fo:margin-top="1in" fo:margin-bottom="1in" fo:margin-left="1in" fo:margin-right="1in"/></style:page-layout>
+<style:style style:name="co1" style:family="table-column"><style:table-column-properties style:column-width=")" +
+         width + R"("/></style:style>
+<style:style style:name="ta1" style:family="table" style:master-page-name="Paper"/>
+</office:automatic-styles>
+<office:master-styles><style:master-page style:name="Paper" style:page-layout-name="pm1"/></office:master-styles>
+<office:body><office:spreadsheet><table:table table:name="Sheet" table:style-name="ta1">
+<table:table-column table:style-name="co1"/>
+<table:table-row><table:table-cell office:value-type="string"><text:p>a</text:p></table:table-cell></table:table-row>
+</table:table></office:spreadsheet></office:body></office:document>)";
+}
+
+std::optional<double> flat_ods_fit(const std::string &width) {
+  const DecodedFile file(File::from_memory(flat_ods_sheet(width)),
+                         FileType::opendocument_spreadsheet);
+  std::ostringstream out;
+  html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
+  return print_fit_of(std::move(out).str());
+}
+
+} // namespace
+
+// The printable width is 6.5in.
+TEST(html, a_sheet_is_only_ever_fitted_down) {
+  EXPECT_FALSE(flat_ods_fit("3in").has_value());
+  EXPECT_FALSE(flat_ods_fit("6.5in").has_value());
+
+  const std::optional<double> wide = flat_ods_fit("13in");
+  ASSERT_TRUE(wide.has_value());
+  EXPECT_NEAR(0.5, *wide, 1e-6);
 }
 
 TEST(html, a_view_that_renders_no_sheet_has_no_cut) {

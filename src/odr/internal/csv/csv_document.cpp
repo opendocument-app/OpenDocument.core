@@ -160,6 +160,10 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return "csv";
   }
+  [[nodiscard]] PageLayout sheet_page_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
   [[nodiscard]] TableDimensions sheet_dimensions(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return m_document->dimensions();

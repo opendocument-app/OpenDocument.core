@@ -136,6 +136,43 @@ TEST(Document, docx_page_layout) {
   EXPECT_EQ(Measure("1in"), page_layout.margin.left);
 }
 
+// #816
+TEST(Document, ods_sheet_page_layout) {
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/ods/file_example_ODS_100.ods"),
+      logger);
+
+  const Document document = document_file.document();
+  const PageLayout page_layout =
+      (*document.root_element().children().begin()).as_sheet().page_layout();
+  EXPECT_EQ(Measure("8.2681in"), page_layout.width);
+  EXPECT_EQ(Measure("11.6929in"), page_layout.height);
+  EXPECT_EQ(PrintOrientation::portrait, page_layout.print_orientation);
+  EXPECT_EQ(Measure("0.7874in"), page_layout.margin.top);
+  EXPECT_EQ(Measure("0.7874in"), page_layout.margin.right);
+  EXPECT_EQ(Measure("0.7874in"), page_layout.margin.bottom);
+  EXPECT_EQ(Measure("0.7874in"), page_layout.margin.left);
+}
+
+// Producers commonly state margins only and leave the paper to the printer.
+TEST(Document, ods_sheet_page_layout_without_a_paper_size) {
+  const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
+
+  const DocumentFile document_file(
+      TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods"),
+      logger);
+
+  const Document document = document_file.document();
+  const PageLayout page_layout =
+      (*document.root_element().children().begin()).as_sheet().page_layout();
+
+  EXPECT_FALSE(page_layout.width.has_value());
+  EXPECT_FALSE(page_layout.height.has_value());
+  EXPECT_EQ(Measure("0.7874in"), page_layout.margin.left);
+}
+
 TEST(Document, xlsx_sheet_names) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 

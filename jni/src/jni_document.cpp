@@ -396,6 +396,15 @@ Java_app_opendocument_core_Sheet_nameNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Sheet_pageLayoutNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_page_layout(env,
+                                     element(handle).as_sheet().page_layout());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Sheet_dimensionsNative(JNIEnv *env, jobject,
                                                   jlong handle) {
   return guarded(env, [&] {

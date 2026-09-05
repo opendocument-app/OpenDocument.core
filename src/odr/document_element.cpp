@@ -327,6 +327,10 @@ std::string Sheet::name() const {
   return exists_() ? m_adapter2->sheet_name(m_identifier) : "";
 }
 
+PageLayout Sheet::page_layout() const {
+  return exists_() ? m_adapter2->sheet_page_layout(m_identifier) : PageLayout();
+}
+
 TableDimensions Sheet::dimensions() const {
   return exists_() ? m_adapter2->sheet_dimensions(m_identifier)
                    : TableDimensions();
