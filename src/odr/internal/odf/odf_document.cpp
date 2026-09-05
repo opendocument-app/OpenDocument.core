@@ -460,6 +460,21 @@ public:
   sheet_name(const ElementIdentifier element_id) const override {
     return get_node(element_id).attribute("table:name").value();
   }
+  [[nodiscard]] PageLayout
+  sheet_page_layout(const ElementIdentifier element_id) const override {
+    // The table style names the master page (20.383); a sheet that names none
+    // takes the first.
+    ElementIdentifier master_page_id =
+        m_document->style_registry().master_page_of_style(
+            get_node(element_id).attribute("table:style-name").value());
+    if (master_page_id == null_element_id) {
+      master_page_id = m_document->style_registry().first_master_page();
+    }
+    if (master_page_id == null_element_id) {
+      return {};
+    }
+    return master_page_page_layout(master_page_id);
+  }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).dimensions;

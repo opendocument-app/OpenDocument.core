@@ -312,6 +312,9 @@ public:
 
   [[nodiscard]] std::string name() const;
 
+  /// The paper the sheet is meant to be printed on, where the file states one.
+  [[nodiscard]] PageLayout page_layout() const;
+
   [[nodiscard]] TableDimensions dimensions() const;
   [[nodiscard]] TableDimensions
   content(std::optional<TableDimensions> range) const;

@@ -308,6 +308,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       [&] { return to_nsstring(self.handle.as_sheet().name()); }, @"");
 }
 
+- (ODRPageLayout *)pageLayout {
+  return guarded_value(
+      [&]() -> ODRPageLayout * {
+        return [ODRPageLayout
+            layoutWithHandle:self.handle.as_sheet().page_layout()];
+      },
+      nil);
+}
+
 - (ODRTableDimensions)dimensions {
   return guarded_value(
       [&] { return to_dimensions(self.handle.as_sheet().dimensions()); },

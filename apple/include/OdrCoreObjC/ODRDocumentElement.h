@@ -117,6 +117,8 @@ NS_SWIFT_NAME(Slide)
 NS_SWIFT_NAME(Sheet)
 @interface ODRSheet : ODRElement
 @property(nonatomic, readonly, copy) NSString *name;
+/// The paper the sheet is printed on, where the file states one.
+@property(nonatomic, readonly) ODRPageLayout *pageLayout;
 @property(nonatomic, readonly) ODRTableDimensions dimensions;
 /// The dimensions actually filled with content, optionally within `range`.
 - (ODRTableDimensions)contentDimensions NS_SWIFT_NAME(contentDimensions());

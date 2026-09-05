@@ -183,6 +183,40 @@ TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
   return {end_row, end_column};
 }
 
+namespace {
+
+/// How far a sheet has to shrink to fit the paper the file states; nothing
+/// where it fits already, or where no width is stated.
+std::optional<double> sheet_print_fit(const Sheet &sheet,
+                                      const std::uint32_t end_column) {
+  const PageLayout page_layout = sheet.page_layout();
+  const std::optional<double> page = html::css_pixels(page_layout.width);
+  if (!page.has_value()) {
+    return {};
+  }
+  const double printable =
+      *page - html::css_pixels(page_layout.margin.left).value_or(0) -
+      html::css_pixels(page_layout.margin.right).value_or(0);
+
+  // the ruler does not print
+  double content = 0;
+  for (std::uint32_t column = 0; column < end_column; ++column) {
+    const std::optional<double> width =
+        html::css_pixels(sheet.column_style(column).width);
+    if (!width.has_value()) {
+      return {};
+    }
+    content += *width;
+  }
+
+  if (printable <= 0 || content <= printable) {
+    return {};
+  }
+  return printable / content;
+}
+
+} // namespace
+
 std::optional<HtmlSheetCut> html::sheet_cut(const Sheet &sheet,
                                             const HtmlConfig &config) {
   const TableDimensions rendered = sheet_rendered_extent(sheet, config);
@@ -199,12 +233,24 @@ std::optional<HtmlSheetCut> html::sheet_cut(const Sheet &sheet,
 }
 
 void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
-  state.out().write_element_begin("table",
-                                  HtmlElementOptions().set_class("odr-sheet"));
-
   const TableDimensions rendered = sheet_rendered_extent(sheet, state.config());
   const std::uint32_t end_column = rendered.columns;
   const std::uint32_t end_row = rendered.rows;
+
+  const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
+
+  state.out().write_element_begin(
+      "table", HtmlElementOptions()
+                   .set_class("odr-sheet")
+                   .set_style([&]() -> std::optional<HtmlWritable> {
+                     if (!print_fit.has_value()) {
+                       return std::nullopt;
+                     }
+                     // `Measure` renders no exponent form
+                     return "--odr-print-fit:" +
+                            Measure(*print_fit, DynamicUnit()).to_string() +
+                            ";";
+                   }()));
 
   state.out().write_element_begin("col",
                                   HtmlElementOptions()

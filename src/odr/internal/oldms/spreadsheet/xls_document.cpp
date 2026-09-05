@@ -123,6 +123,11 @@ public:
   sheet_name(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).name;
   }
+  /// TODO `SETUP` ([MS-XLS] 2.4.257) is not read.
+  [[nodiscard]] PageLayout sheet_page_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return {};
+  }
   [[nodiscard]] TableDimensions
   sheet_dimensions(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).dimensions;

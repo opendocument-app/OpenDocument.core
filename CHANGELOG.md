@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- New `Sheet::page_layout()`: the paper an ods states for a sheet, read from
+  the master page its table style names. Mirrored in the Python, JNI and Apple
+  bindings. Empty for xlsx, xls, numbers and csv.
+
+- A printed sheet is fitted to the paper the file states, at the file's own
+  column proportions. Towards #816.
+
 - A right-to-left document renders right-to-left. `style:writing-mode`,
   `w:bidi` and `a:pPr@rtl` are read into a new `TextDirection` on
   `ParagraphStyle` and `PageLayout`, and the view's root carries it as

@@ -191,6 +191,7 @@ void odr_python::bind_document(py::module_ &m) {
 
   bind_element<odr::Sheet>(m, "Sheet")
       .def("name", &odr::Sheet::name)
+      .def("page_layout", &odr::Sheet::page_layout)
       .def("dimensions", &odr::Sheet::dimensions)
       .def("content", &odr::Sheet::content, py::arg("range"))
       .def("cell", &odr::Sheet::cell, py::arg("column"), py::arg("row"),

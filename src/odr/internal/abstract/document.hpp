@@ -258,6 +258,10 @@ public:
   [[nodiscard]] virtual std::string
   sheet_name(ElementIdentifier element_id) const = 0;
 
+  /// Empty where the file states no paper.
+  [[nodiscard]] virtual PageLayout
+  sheet_page_layout(ElementIdentifier element_id) const = 0;
+
   [[nodiscard]] virtual TableDimensions
   sheet_dimensions(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TableDimensions

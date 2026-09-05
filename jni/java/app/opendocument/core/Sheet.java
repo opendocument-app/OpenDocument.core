@@ -12,6 +12,11 @@ public final class Sheet extends Element {
     return nameNative(handle());
   }
 
+  /** The paper the sheet is printed on, where the file states one. */
+  public PageLayout pageLayout() {
+    return pageLayoutNative(handle());
+  }
+
   public TableDimensions dimensions() {
     return dimensionsNative(handle());
   }
@@ -50,6 +55,8 @@ public final class Sheet extends Element {
   }
 
   private native String nameNative(long handle);
+
+  private native PageLayout pageLayoutNative(long handle);
 
   private native TableDimensions dimensionsNative(long handle);
 
