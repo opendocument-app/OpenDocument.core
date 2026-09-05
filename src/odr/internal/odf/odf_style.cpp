@@ -105,9 +105,7 @@ std::optional<BreakType> read_break(const pugi::xml_attribute attribute) {
   return BreakType::none;
 }
 
-/// [OpenDocument] 20.386. `start`/`end` are absolute here, unlike `w:jc`'s:
-/// producers write `start` for a plain left, and LibreOffice inverts the two
-/// against `w:jc` on a round-trip.
+/// [OpenDocument] 20.386. `start`/`end` are absolute here, unlike `w:jc`'s.
 std::optional<TextAlign> read_text_align(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};

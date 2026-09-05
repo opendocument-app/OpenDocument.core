@@ -32,7 +32,7 @@ enum class FontPosition {
 /// @brief Collection of text alignments.
 ///
 /// @ref TextAlign::start and @ref TextAlign::end name the edge @ref
-/// TextDirection decides; the rest name an absolute side.
+/// TextDirection decides, as css reads them; the rest name an absolute side.
 enum class TextAlign {
   left,
   right,
