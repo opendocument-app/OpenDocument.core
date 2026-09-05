@@ -728,6 +728,24 @@ TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
   EXPECT_EQ(rendered(30, 3).rows, 5);
 }
 
+// #816
+TEST(html, a_printed_sheet_drops_the_ruler_and_fits_the_page) {
+  const std::string sheet =
+      render("odr-public/ods/file_example_ODS_10.ods", HtmlConfig());
+
+  // on screen the sheet keeps its stated width and its ruler
+  EXPECT_NE(sheet.find("<col style=\"width:"), std::string::npos);
+  EXPECT_NE(sheet.find("table-layout:fixed"), std::string::npos);
+  EXPECT_NE(sheet.find("class=\"odr-sheet-column-header\""), std::string::npos);
+
+  EXPECT_NE(sheet.find(".odr-sheet thead{display:none}"), std::string::npos);
+  EXPECT_NE(sheet.find(".odr-sheet-gutter{visibility:collapse"),
+            std::string::npos);
+  EXPECT_NE(sheet.find(".odr-sheet{max-width:100%}"), std::string::npos);
+  EXPECT_NE(sheet.find(".odr-sheet col{min-width:0!important}"),
+            std::string::npos);
+}
+
 TEST(html, a_view_that_renders_no_sheet_has_no_cut) {
   const DecodedFile file(File::from_memory("<a><b>c</b></a>"), FileType::xml);
   const HtmlService service = html::translate(file, HtmlConfig());

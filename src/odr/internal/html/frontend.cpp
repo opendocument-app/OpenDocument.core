@@ -112,6 +112,17 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-sort:hover{background:var(--odr-sheet-wash-ruler)}
 .odr-sheet-sort::after{content:"\25BE";font-size:15px;line-height:1}
 .odr-sheet-sort-asc::after{content:"\25B4"}
+/* Paper cannot scroll, so a sheet wider than the page is cut off; only
+   `!important` beats the inline column width. The ruler collapses rather than
+   `display:none`, which would take the cells out of their rows and shift every
+   column left. */
+@media print{
+.odr-sheet thead{display:none}
+.odr-sheet-gutter{visibility:collapse;width:0}
+.odr-sheet-row-header{visibility:collapse;padding:0;box-shadow:none}
+.odr-sheet{max-width:100%}
+.odr-sheet col{min-width:0!important}
+}
 )css";
 
 constexpr std::string_view spreadsheet_dark_css = R"css(
