@@ -47,7 +47,9 @@ Roughly ordered by importance.
   - [x] superscript, subscript (`style:text-position`, incl. relative font
     size)
 - [x] paragraph
-  - [x] alignment
+  - [x] alignment (`start` / `end` are absolute here, unlike `w:jc`'s)
+  - [x] base direction (`style:writing-mode`; the vertical modes are not laid
+    out vertically)
   - [x] margins (percentages are dropped)
   - [x] line height (absolute and percentage)
   - [x] first line indent (`fo:text-indent`)
@@ -87,7 +89,7 @@ Roughly ordered by importance.
   - [x] transform (`draw:transform`, its operation list composed to one matrix)
   - [ ] mirror (`style:mirror`, and `draw:mirror-*` on a shape with no
     enhanced geometry)
-- [x] page layout (size, orientation, margins)
+- [x] page layout (size, orientation, margins, base direction)
 - [ ] annotations (`office:annotation`)
 
 ### Text documents (`.odt`)

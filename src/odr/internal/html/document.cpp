@@ -111,6 +111,38 @@ std::optional<double> document_content_pixels(const Document &document,
   return result;
 }
 
+/// A spreadsheet states its direction per table, which is not read yet.
+TextDirection document_direction(const Document &document) {
+  const Element root = document.root_element();
+
+  std::optional<TextDirection> result;
+  switch (document.document_type()) {
+  case DocumentType::text:
+    result = root.as_text_root().page_layout().direction;
+    break;
+  case DocumentType::presentation:
+    for (const Element child : root.children()) {
+      result = child.as_slide().page_layout().direction;
+      if (result.has_value()) {
+        break;
+      }
+    }
+    break;
+  case DocumentType::drawing:
+    for (const Element child : root.children()) {
+      result = child.as_page().page_layout().direction;
+      if (result.has_value()) {
+        break;
+      }
+    }
+    break;
+  default:
+    break;
+  }
+
+  return result.value_or(TextDirection::left_to_right);
+}
+
 /// A spreadsheet answers the viewport question with its own mode.
 std::optional<HtmlViewportMode>
 viewport_mode_override(const Document &document, const HtmlConfig &config) {
@@ -121,14 +153,17 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
 
 /// @p name titles the view; empty when the whole document is written as one
 /// file, which no one view names.
-void front(const Document &document, const WritingState &state,
+void front(const Document &document, WritingState &state,
            const std::string &name,
            const std::optional<double> content_pixels) {
   HtmlWriter &out = state.out();
 
   const bool paged_content = is_paged_content(document, state.config());
 
-  out.write_begin();
+  state.set_direction(document_direction(document));
+
+  out.write_begin(HtmlElementOptions().set_attributes(HtmlAttributesVector{
+      {"dir", translate_text_direction(state.direction())}}));
   out.write_header_begin();
   out.write_header_charset("UTF-8");
   out.write_header_title(

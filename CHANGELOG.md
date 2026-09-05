@@ -16,6 +16,18 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A right-to-left document renders right-to-left. `style:writing-mode`,
+  `w:bidi` and `a:pPr@rtl` are read into a new `TextDirection` on
+  `ParagraphStyle` and `PageLayout`, and the view's root carries it as
+  `<html dir>`. Towards
+  [OpenDocument.droid#653](https://github.com/opendocument-app/OpenDocument.droid/issues/653).
+
+- **Breaking**: `TextAlign` gains `start` and `end`, which `w:jc` now resolves
+  to instead of `left` / `right`; they follow the paragraph's direction.
+  `fo:text-align`'s same-named values stay absolute. Existing enumerators keep
+  their values, so only an exhaustive `switch` needs changing. Mirrored in
+  every binding.
+
 - A printed sheet drops our row/column ruler and is capped to the page width
   rather than cut off at the right edge. Print only; the on-screen view is
   unchanged. Towards #816.

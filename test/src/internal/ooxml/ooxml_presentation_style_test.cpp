@@ -340,6 +340,22 @@ TEST(ooxml_presentation_style, line_spacing_is_a_percent_or_a_length) {
   EXPECT_EQ(Measure(18, DynamicUnit("pt")), *points.line_height);
 }
 
+/// [ECMA-376] 21.1.2.2.7. Absent says nothing, `0` says left-to-right.
+TEST(ooxml_presentation_style, rtl_reads_as_a_paragraph_direction) {
+  const auto direction_of = [](const char *xml) {
+    pugi::xml_document document;
+    ParagraphStyle style;
+    resolve_paragraph_style(node_of(xml, document), style);
+    return style.direction;
+  };
+
+  EXPECT_EQ(TextDirection::right_to_left,
+            direction_of(R"(<a:p><a:pPr rtl="1"/></a:p>)"));
+  EXPECT_EQ(TextDirection::left_to_right,
+            direction_of(R"(<a:p><a:pPr rtl="0"/></a:p>)"));
+  EXPECT_FALSE(direction_of(R"(<a:p><a:pPr/></a:p>)").has_value());
+}
+
 TEST(ooxml_presentation_style, paragraph_spacing_is_taken_absolute_only) {
   pugi::xml_document document;
   ParagraphStyle style;

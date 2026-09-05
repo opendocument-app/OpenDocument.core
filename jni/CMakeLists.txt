@@ -157,6 +157,7 @@ add_jar(odr_java
         "java/app/opendocument/core/TableStyle.java"
         "java/app/opendocument/core/Text.java"
         "java/app/opendocument/core/TextAlign.java"
+        "java/app/opendocument/core/TextDirection.java"
         "java/app/opendocument/core/TextFile.java"
         "java/app/opendocument/core/TextRoot.java"
         "java/app/opendocument/core/TextStyle.java"

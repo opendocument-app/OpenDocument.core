@@ -63,6 +63,7 @@ void TextStyle::override(const TextStyle &other) {
 
 void ParagraphStyle::override(const ParagraphStyle &other) {
   override_if_set(text_align, other.text_align);
+  override_if_set(direction, other.direction);
   margin.override(other.margin);
   override_if_set(line_height, other.line_height);
   override_if_set(text_indent, other.text_indent);

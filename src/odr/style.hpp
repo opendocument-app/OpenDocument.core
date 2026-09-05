@@ -30,11 +30,24 @@ enum class FontPosition {
 };
 
 /// @brief Collection of text alignments.
+///
+/// @ref TextAlign::start and @ref TextAlign::end name the edge @ref
+/// TextDirection decides, as css reads them; the rest name an absolute side.
 enum class TextAlign {
   left,
   right,
   center,
   justify,
+  start,
+  end,
+};
+
+/// @brief Collection of base directions a line of text runs in.
+///
+/// Vertical writing modes have no value here.
+enum class TextDirection {
+  left_to_right,
+  right_to_left,
 };
 
 /// @brief Collection of horizontal alignments.
@@ -165,6 +178,8 @@ struct TextStyle final {
 /// @brief Represents a style for paragraphs.
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
+  /// The base direction the paragraph's text runs in.
+  std::optional<TextDirection> direction;
   DirectionalStyle<Measure> margin;
   std::optional<Measure> line_height;
   std::optional<Measure> text_indent;
@@ -235,6 +250,8 @@ struct PageLayout final {
   DirectionalStyle<Measure> margin;
   /// The ground the page is painted on; unset leaves it to the viewer.
   std::optional<Color> background_color;
+  /// The base direction, inherited by paragraphs stating none of their own.
+  std::optional<TextDirection> direction;
 };
 
 } // namespace odr

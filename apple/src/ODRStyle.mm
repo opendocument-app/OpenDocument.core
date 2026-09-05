@@ -25,6 +25,11 @@ ODR_SAME_ENUM(ODRTextAlignLeft, odr::TextAlign::left);
 ODR_SAME_ENUM(ODRTextAlignRight, odr::TextAlign::right);
 ODR_SAME_ENUM(ODRTextAlignCenter, odr::TextAlign::center);
 ODR_SAME_ENUM(ODRTextAlignJustify, odr::TextAlign::justify);
+ODR_SAME_ENUM(ODRTextAlignStart, odr::TextAlign::start);
+ODR_SAME_ENUM(ODRTextAlignEnd, odr::TextAlign::end);
+
+ODR_SAME_ENUM(ODRTextDirectionLeftToRight, odr::TextDirection::left_to_right);
+ODR_SAME_ENUM(ODRTextDirectionRightToLeft, odr::TextDirection::right_to_left);
 ODR_SAME_ENUM(ODRHorizontalAlignLeft, odr::HorizontalAlign::left);
 ODR_SAME_ENUM(ODRHorizontalAlignCenter, odr::HorizontalAlign::center);
 ODR_SAME_ENUM(ODRHorizontalAlignRight, odr::HorizontalAlign::right);
@@ -216,6 +221,7 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
 + (instancetype)styleWithHandle:(const odr::ParagraphStyle &)handle {
   ODRParagraphStyle *const result = [[ODRParagraphStyle alloc] init];
   result->_textAlign = box_enum(handle.text_align);
+  result->_direction = box_enum(handle.direction);
   result->_margin = [ODRDirectionalMeasure directionalWithHandle:handle.margin];
   result->_lineHeight = box(handle.line_height);
   result->_textIndent = box(handle.text_indent);
@@ -299,6 +305,7 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_printOrientation = box_enum(handle.print_orientation);
   result->_margin = [ODRDirectionalMeasure directionalWithHandle:handle.margin];
   result->_backgroundColor = box(handle.background_color);
+  result->_direction = box_enum(handle.direction);
   return result;
 }
 

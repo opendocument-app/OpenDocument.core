@@ -52,7 +52,8 @@ Roughly ordered by importance.
   - [x] shadow
   - [ ] superscript, subscript
 - [x] paragraph
-  - [x] alignment
+  - [x] alignment (`start` / `end` stay relative to the direction)
+  - [x] base direction (`w:bidi`, on the paragraph and on `w:sectPr`)
   - [x] indentation / left & right margins
   - [x] top / bottom margins, line height (`w:spacing`, incl.
     `w:contextualSpacing`)

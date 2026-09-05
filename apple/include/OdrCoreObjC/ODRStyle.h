@@ -26,12 +26,21 @@ typedef NS_ENUM(NSInteger, ODRBreakType) {
   ODRBreakTypeColumn,
 } NS_SWIFT_NAME(BreakType);
 
+/// `Start`/`End` name the edge `ODRTextDirection` decides.
 typedef NS_ENUM(NSInteger, ODRTextAlign) {
   ODRTextAlignLeft = 0,
   ODRTextAlignRight,
   ODRTextAlignCenter,
   ODRTextAlignJustify,
+  ODRTextAlignStart,
+  ODRTextAlignEnd,
 } NS_SWIFT_NAME(TextAlign);
+
+/// The base direction a line of text runs in.
+typedef NS_ENUM(NSInteger, ODRTextDirection) {
+  ODRTextDirectionLeftToRight = 0,
+  ODRTextDirectionRightToLeft,
+} NS_SWIFT_NAME(TextDirection);
 
 typedef NS_ENUM(NSInteger, ODRHorizontalAlign) {
   ODRHorizontalAlignLeft = 0,
@@ -161,6 +170,8 @@ NS_SWIFT_NAME(ParagraphStyle)
 @interface ODRParagraphStyle : NSObject
 /// `ODRTextAlign`, boxed.
 @property(nonatomic, readonly, nullable) NSNumber *textAlign;
+/// `ODRTextDirection`, boxed; `nil` where the style says nothing.
+@property(nonatomic, readonly, nullable) NSNumber *direction;
 @property(nonatomic, readonly) ODRDirectionalMeasure *margin;
 @property(nonatomic, readonly, nullable) ODRMeasure *lineHeight;
 @property(nonatomic, readonly, nullable) ODRMeasure *textIndent;
@@ -250,6 +261,8 @@ NS_SWIFT_NAME(PageLayout)
 @property(nonatomic, readonly) ODRDirectionalMeasure *margin;
 /// `ODRColor`, boxed in an `NSValue`.
 @property(nonatomic, readonly, nullable) NSValue *backgroundColor;
+/// `ODRTextDirection`, boxed; `nil` where the layout says nothing.
+@property(nonatomic, readonly, nullable) NSNumber *direction;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

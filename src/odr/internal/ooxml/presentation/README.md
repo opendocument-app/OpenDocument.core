@@ -49,6 +49,7 @@ Roughly ordered by importance.
   - [x] superscript, subscript (`@baseline`)
 - [x] paragraph
   - [x] alignment (`a:pPr/@algn`)
+  - [x] base direction (`a:pPr/@rtl`)
   - [x] indentation / left & right margins (`@marL` / `@marR`)
   - [x] line height (`a:lnSpc`), space before / after (`a:spcPts` only)
 - [x] shape fill (`p:spPr/a:solidFill`) and text anchor (`a:bodyPr/@anchor`)

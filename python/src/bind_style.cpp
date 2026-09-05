@@ -47,7 +47,13 @@ void odr_python::bind_style(py::module_ &m) {
       .value("left", odr::TextAlign::left)
       .value("right", odr::TextAlign::right)
       .value("center", odr::TextAlign::center)
-      .value("justify", odr::TextAlign::justify);
+      .value("justify", odr::TextAlign::justify)
+      .value("start", odr::TextAlign::start)
+      .value("end", odr::TextAlign::end);
+
+  py::enum_<odr::TextDirection>(m, "TextDirection")
+      .value("left_to_right", odr::TextDirection::left_to_right)
+      .value("right_to_left", odr::TextDirection::right_to_left);
 
   py::enum_<odr::HorizontalAlign>(m, "HorizontalAlign")
       .value("left", odr::HorizontalAlign::left)
@@ -149,6 +155,7 @@ void odr_python::bind_style(py::module_ &m) {
   py::class_<odr::ParagraphStyle>(m, "ParagraphStyle")
       .def(py::init<>())
       .def_readwrite("text_align", &odr::ParagraphStyle::text_align)
+      .def_readwrite("direction", &odr::ParagraphStyle::direction)
       .def_readwrite("margin", &odr::ParagraphStyle::margin)
       .def_readwrite("line_height", &odr::ParagraphStyle::line_height)
       .def_readwrite("text_indent", &odr::ParagraphStyle::text_indent)
@@ -197,5 +204,6 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("height", &odr::PageLayout::height)
       .def_readwrite("print_orientation", &odr::PageLayout::print_orientation)
       .def_readwrite("margin", &odr::PageLayout::margin)
-      .def_readwrite("background_color", &odr::PageLayout::background_color);
+      .def_readwrite("background_color", &odr::PageLayout::background_color)
+      .def_readwrite("direction", &odr::PageLayout::direction);
 }

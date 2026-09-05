@@ -130,9 +130,11 @@ HtmlWriter::HtmlWriter(std::ostream &out, const HtmlConfig &config)
                  util::string::repeat(config.html_indent_string,
                                       config.html_indent)} {}
 
-void HtmlWriter::write_begin() {
+void HtmlWriter::write_begin(const HtmlElementOptions &options) {
   out() << "<!DOCTYPE html>\n";
-  out() << "<html>";
+  out() << "<html";
+  write_element_options(out(), options);
+  out() << ">";
 }
 
 void HtmlWriter::write_end() {

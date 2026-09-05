@@ -214,6 +214,11 @@ void presentation::resolve_paragraph_style(const pugi::xml_node node,
               paragraph_properties.attribute("algn"))) {
     result.text_align = text_align;
   }
+  if (const std::optional<TextDirection> direction =
+          read_drawing_text_direction_attribute(
+              paragraph_properties.attribute("rtl"))) {
+    result.direction = direction;
+  }
   if (const std::optional<Measure> margin_left =
           read_emus_attribute(paragraph_properties.attribute("marL"))) {
     result.margin.left = margin_left;

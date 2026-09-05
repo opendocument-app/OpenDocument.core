@@ -49,6 +49,11 @@ std::optional<FontStyle> read_font_style_attribute(pugi::xml_attribute);
 std::optional<FontStyle> read_font_style_attribute(pugi::xml_node);
 std::optional<TextAlign> read_text_align_attribute(pugi::xml_attribute);
 std::optional<TextAlign> read_drawing_text_align_attribute(pugi::xml_attribute);
+/// [ECMA-376] 17.3.1.6 `w:bidi`; absent says nothing.
+std::optional<TextDirection> read_text_direction_attribute(pugi::xml_node);
+/// [ECMA-376] 21.1.2.2.7 `a:pPr/@rtl`.
+std::optional<TextDirection>
+    read_drawing_text_direction_attribute(pugi::xml_attribute);
 std::optional<VerticalAlign> read_vertical_align_attribute(pugi::xml_attribute);
 std::optional<VerticalAlign>
     read_drawing_vertical_align_attribute(pugi::xml_attribute);

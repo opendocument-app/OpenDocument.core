@@ -19,6 +19,21 @@ const char *html::translate_text_align(const TextAlign text_align) {
     return "center";
   case TextAlign::justify:
     return "justify";
+  case TextAlign::start:
+    return "start";
+  case TextAlign::end:
+    return "end";
+  default:
+    return ""; // TODO log
+  }
+}
+
+const char *html::translate_text_direction(const TextDirection direction) {
+  switch (direction) {
+  case TextDirection::left_to_right:
+    return "ltr";
+  case TextDirection::right_to_left:
+    return "rtl";
   default:
     return ""; // TODO log
   }
@@ -232,8 +247,15 @@ std::string html::translate_block_font_style(const TextStyle &text_style) {
 }
 
 std::string
-html::translate_paragraph_style(const ParagraphStyle &paragraph_style) {
+html::translate_paragraph_style(const ParagraphStyle &paragraph_style,
+                                const TextDirection base) {
   std::string result;
+  if (const std::optional<TextDirection> direction = paragraph_style.direction;
+      direction.has_value() && *direction != base) {
+    result.append("direction:")
+        .append(translate_text_direction(*direction))
+        .append(";");
+  }
   if (const std::optional<TextAlign> text_align = paragraph_style.text_align;
       text_align.has_value()) {
     result.append("text-align:")

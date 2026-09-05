@@ -105,6 +105,7 @@ std::optional<BreakType> read_break(const pugi::xml_attribute attribute) {
   return BreakType::none;
 }
 
+/// [OpenDocument] 20.386. `start`/`end` are absolute here, unlike `w:jc`'s.
 std::optional<TextAlign> read_text_align(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
@@ -121,6 +122,22 @@ std::optional<TextAlign> read_text_align(const pugi::xml_attribute attribute) {
   }
   if (std::strcmp("justify", value) == 0) {
     return TextAlign::justify;
+  }
+  return {};
+}
+
+/// [OpenDocument] 20.404. The vertical modes name no horizontal direction.
+std::optional<TextDirection>
+read_text_direction(const pugi::xml_attribute attribute) {
+  if (!attribute) {
+    return {};
+  }
+  const char *value = attribute.value();
+  if (std::strcmp("lr-tb", value) == 0 || std::strcmp("lr", value) == 0) {
+    return TextDirection::left_to_right;
+  }
+  if (std::strcmp("rl-tb", value) == 0 || std::strcmp("rl", value) == 0) {
+    return TextDirection::right_to_left;
   }
   return {};
 }
@@ -237,6 +254,8 @@ PageLayout read_page_layout(const pugi::xml_node node) {
       read_measure(page_layout_properties.attribute("fo:page-height"));
   result.print_orientation = read_print_orientation(
       page_layout_properties.attribute("style:print-orientation"));
+  result.direction = read_text_direction(
+      page_layout_properties.attribute("style:writing-mode"));
   result.margin = DirectionalStyle(
       read_measure(page_layout_properties.attribute("fo:margin")));
   if (const pugi::xml_attribute margin_right =
@@ -387,6 +406,10 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   if (const std::optional<TextAlign> text_align =
           read_text_align(paragraph_properties.attribute("fo:text-align"))) {
     result.text_align = text_align;
+  }
+  if (const std::optional<TextDirection> direction = read_text_direction(
+          paragraph_properties.attribute("style:writing-mode"))) {
+    result.direction = direction;
   }
   if (const std::optional<Measure> margin =
           read_measure(paragraph_properties.attribute("fo:margin"))) {

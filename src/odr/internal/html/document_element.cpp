@@ -454,7 +454,8 @@ void html::translate_paragraph(const Element &element,
   state.out().write_element_begin(
       "x-p",
       HtmlElementOptions().set_inline(true).set_style(
-          "display:block;" + translate_paragraph_style(paragraph.style()) +
+          "display:block;" +
+          translate_paragraph_style(paragraph.style(), state.direction()) +
           translate_block_font_style(paragraph.text_style())));
   if (!marker.empty()) {
     state.out().write_element_begin(

@@ -9,6 +9,7 @@
 #include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/quantity.hpp>
+#include <odr/style.hpp>
 
 namespace odr {
 struct Color;
@@ -34,11 +35,16 @@ struct WritingState {
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
   [[nodiscard]] const Logger &logger() const { return *m_logger; }
 
+  /// The view's base direction, stated on its root.
+  [[nodiscard]] TextDirection direction() const { return m_direction; }
+  void set_direction(const TextDirection direction) { m_direction = direction; }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
   HtmlResources *m_resources;
   const Logger *m_logger;
+  TextDirection m_direction{TextDirection::left_to_right};
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,

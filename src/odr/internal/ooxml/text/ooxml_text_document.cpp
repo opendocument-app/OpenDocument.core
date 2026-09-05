@@ -51,6 +51,9 @@ PageLayout read_page_layout(const pugi::xml_node body) {
             : PrintOrientation::portrait;
   }
 
+  result.direction =
+      read_text_direction_attribute(section_properties.child("w:bidi"));
+
   const pugi::xml_node page_margin = section_properties.child("w:pgMar");
   result.margin.right = read_page_margin(page_margin.attribute("w:right"));
   result.margin.top = read_page_margin(page_margin.attribute("w:top"));
