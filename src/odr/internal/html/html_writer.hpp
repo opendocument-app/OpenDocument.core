@@ -11,6 +11,8 @@
 
 namespace odr::internal::html {
 
+class StyleRegistry;
+
 enum class HtmlCloseType {
   standard,
   trailing,
@@ -35,6 +37,8 @@ struct HtmlElementOptions {
 
   std::optional<HtmlWritable> style{};
   std::optional<HtmlWritable> clazz{};
+  /// The class a deduplicated style block resolved to, written after `clazz`.
+  std::optional<std::string> style_class{};
 
   std::optional<HtmlWritable> extra{};
 
@@ -42,6 +46,10 @@ struct HtmlElementOptions {
   HtmlElementOptions &set_close_type(HtmlCloseType _close_type);
   HtmlElementOptions &set_attributes(std::optional<HtmlAttributes> _attributes);
   HtmlElementOptions &set_style(std::optional<HtmlWritable> _style);
+  /// Either an inline `style` attribute or, where @p registry names the block,
+  /// a class beside whatever `set_class` says. A null @p registry — every view
+  /// but a spreadsheet's — keeps it inline.
+  HtmlElementOptions &set_style(std::string _style, StyleRegistry *registry);
   HtmlElementOptions &set_class(std::optional<HtmlWritable> _class);
   HtmlElementOptions &set_extra(std::optional<HtmlWritable> _extra);
 };

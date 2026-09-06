@@ -13,10 +13,12 @@
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
+#include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <vector>
 
 namespace odr::internal {
 
@@ -185,6 +187,42 @@ TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
 
 namespace {
 
+/// Whether a reader sees anything. A bookmark marks a place rather than filling
+/// one, and a span or a link is a style around what it holds, so a paragraph
+/// holding only those is still an empty line.
+bool has_content(const ElementRange &children) {
+  for (const Element child : children) {
+    switch (child.type()) {
+    case ElementType::bookmark:
+      break;
+    case ElementType::span:
+    case ElementType::link:
+      if (has_content(child.children())) {
+        return true;
+      }
+      break;
+    case ElementType::text:
+      if (!child.as_text().content().empty()) {
+        return true;
+      }
+      break;
+    default:
+      return true;
+    }
+  }
+  return false;
+}
+
+/// A break where the paragraph holds nothing, so a blank line survives being
+/// pasted elsewhere; otherwise a break opportunity, or content all out of flow
+/// leaves no line box.
+void write_paragraph_line_box(const bool empty,
+                              const html::WritingState &state) {
+  state.out().write_element_begin(
+      empty ? "br" : "wbr",
+      html::HtmlElementOptions().set_close_type(html::HtmlCloseType::none));
+}
+
 /// How far a sheet has to shrink to fit the paper the file states; nothing
 /// where it fits already, or where no width is stated.
 std::optional<double> sheet_print_fit(const Sheet &sheet,
@@ -213,6 +251,166 @@ std::optional<double> sheet_print_fit(const Sheet &sheet,
     return {};
   }
   return printable / content;
+}
+
+/// A run whose style the box around it can carry instead. Not a background, a
+/// raised run or an editable one: each means something else on the box.
+std::optional<Text> plain_text(const Element &element,
+                               const html::WritingState &state) {
+  if (element.type() != ElementType::text) {
+    return {};
+  }
+  if (state.config().editable && element.is_editable()) {
+    return {};
+  }
+
+  const Text text = element.as_text();
+  if (text.content().empty()) {
+    return {};
+  }
+  const TextStyle style = text.style();
+  if (style.background_color.has_value() || style.font_position.has_value()) {
+    return {};
+  }
+  return text;
+}
+
+/// @ref plain_text where @p paragraph holds one and nothing else.
+std::optional<Text> plain_run(const Paragraph &paragraph,
+                              const html::WritingState &state) {
+  const ElementRange children = paragraph.children();
+  ElementIterator child = children.begin();
+  if (child == children.end()) {
+    return {};
+  }
+  const Element element = *child;
+  if (++child != children.end()) {
+    return {};
+  }
+  return plain_text(element, state);
+}
+
+/// Nothing a reader would see, so the cell beside it may spill over it.
+bool is_blank(const SheetCell &cell) {
+  for (const Element child : cell.children()) {
+    if (child.type() != ElementType::paragraph ||
+        has_content(child.children())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// A shape or picture anchored in a cell reaches past it by design.
+bool holds_only_text(const SheetCell &cell) {
+  for (const Element child : cell.children()) {
+    switch (child.type()) {
+    case ElementType::paragraph:
+    case ElementType::text:
+    case ElementType::span:
+    case ElementType::link:
+    case ElementType::bookmark:
+    case ElementType::line_break:
+      break;
+    default:
+      return false;
+    }
+  }
+  return true;
+}
+
+bool is_zero(const std::optional<Quantity<double>> &margin) {
+  return !margin.has_value() || margin->magnitude() == 0;
+}
+
+/// What the run computed to, under the two properties the paragraph's block
+/// carries.
+TextStyle run_style(const Paragraph &paragraph, const Text &run) {
+  TextStyle result;
+  result.font_name = paragraph.text_style().font_name;
+  result.font_size = paragraph.text_style().font_size;
+  result.override(run.style());
+  return result;
+}
+
+struct FoldedCell {
+  std::string style;
+  std::string text;
+};
+
+/// The `td` carries the styles of the boxes it stands in for. A stated row
+/// height keeps the paragraph: `contain:size`, `max-height`, `overflow` and
+/// `content-visibility` are all ignored on a table cell.
+std::optional<FoldedCell> fold_cell(const SheetCell &cell,
+                                    const html::WritingState &state,
+                                    const bool wraps, const bool anchors_shapes,
+                                    const std::optional<Measure> &row_height) {
+  if (wraps || anchors_shapes) {
+    return {};
+  }
+
+  const ElementRange children = cell.children();
+  ElementIterator child = children.begin();
+  if (child == children.end()) {
+    return {};
+  }
+  const Element only = *child;
+  if (++child != children.end()) {
+    return {};
+  }
+
+  if (only.type() == ElementType::text) {
+    const std::optional<Text> run = plain_text(only, state);
+    if (!run.has_value()) {
+      return {};
+    }
+    return FoldedCell{html::translate_text_style(run->style()),
+                      html::escape_text(run->content())};
+  }
+
+  if (only.type() != ElementType::paragraph || row_height.has_value()) {
+    return {};
+  }
+  const Paragraph paragraph = only.as_paragraph();
+  const std::optional<Text> run = plain_run(paragraph, state);
+  if (!run.has_value()) {
+    return {};
+  }
+  const ParagraphStyle style = paragraph.style();
+  if (!is_zero(style.margin.left) || !is_zero(style.margin.right) ||
+      !is_zero(style.margin.top) || !is_zero(style.margin.bottom)) {
+    return {};
+  }
+
+  return FoldedCell{html::translate_paragraph_style(style, state.direction()) +
+                        html::translate_text_style(run_style(paragraph, *run)),
+                    html::escape_text(run->content())};
+}
+
+/// A paragraph holding one plain string carries what the run's `x-s` carried.
+void translate_cell_children(const SheetCell &cell,
+                             const html::WritingState &state) {
+  for (const Element child : cell.children()) {
+    const std::optional<Text> run = child.type() == ElementType::paragraph
+                                        ? plain_run(child.as_paragraph(), state)
+                                        : std::nullopt;
+    if (!run.has_value()) {
+      html::translate_element(child, state);
+      continue;
+    }
+    const Paragraph paragraph = child.as_paragraph();
+
+    state.out().write_element_begin(
+        "x-p", html::HtmlElementOptions().set_inline(true).set_style(
+                   "display:block;" +
+                       html::translate_paragraph_style(paragraph.style(),
+                                                       state.direction()) +
+                       html::translate_text_style(run_style(paragraph, *run)),
+                   state.styles()));
+    state.out().out() << html::escape_text(run->content());
+    write_paragraph_line_box(false, state);
+    state.out().write_element_end("x-p");
+  }
 }
 
 } // namespace
@@ -257,16 +455,22 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                                       .set_close_type(HtmlCloseType::none)
                                       .set_class("odr-sheet-gutter"));
 
+  // `table-layout:fixed` still sizes the table from its content, so an unbroken
+  // line would widen its column; `max-width:0` takes the cell out of that sum.
+  // Only where a width is stated: a column that states none is its content's.
+  std::vector<std::optional<double>> column_pixels(end_column);
+
   for (std::uint32_t column_index = 0; column_index < end_column;
        ++column_index) {
     const TableColumnStyle table_column_style =
         sheet.column_style(column_index);
+    column_pixels[column_index] = css_pixels(table_column_style.width);
 
     state.out().write_element_begin(
-        "col",
-        HtmlElementOptions()
-            .set_close_type(HtmlCloseType::none)
-            .set_style(translate_table_column_style(table_column_style)));
+        "col", HtmlElementOptions()
+                   .set_close_type(HtmlCloseType::none)
+                   .set_style(translate_table_column_style(table_column_style),
+                              state.styles()));
   }
 
   // No `scope`: the letters and numbers are a ruler, not headers of what they
@@ -304,6 +508,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
   state.out().write_element_begin("tbody");
 
+  const ElementRange shapes = sheet.shapes();
+  const bool has_shapes = shapes.begin() != shapes.end();
+
   TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
@@ -311,27 +518,33 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
     state.out().write_element_begin(
         "tr", HtmlElementOptions().set_style(
-                  translate_table_row_style(table_row_style)));
+                  translate_table_row_style(table_row_style), state.styles()));
 
     state.out().write_element_begin(
         "th", HtmlElementOptions()
                   .set_inline(true)
                   .set_class("odr-sheet-row-header")
-                  .set_style([&]() -> std::optional<HtmlWritable> {
-                    const std::optional<Measure> height =
-                        table_row_style.height;
-                    if (!height.has_value()) {
-                      return std::nullopt;
-                    }
-                    return "height:" + height->to_string() +
-                           ";max-height:" + height->to_string() + ";";
-                  }()));
+                  .set_style(
+                      [&]() -> std::string {
+                        const std::optional<Measure> height =
+                            table_row_style.height;
+                        if (!height.has_value()) {
+                          return {};
+                        }
+                        return "height:" + height->to_string() +
+                               ";max-height:" + height->to_string() + ";";
+                      }(),
+                      state.styles()));
     state.out().write_raw(TablePosition::to_row_string(row_index));
     state.out().write_element_end("th");
 
+    // Carried forward, so no position is read twice.
+    std::optional<SheetCell> pending;
     for (std::uint32_t column_index = cursor.column();
          column_index < end_column; column_index = cursor.column()) {
-      const SheetCell cell = sheet.cell(column_index, row_index);
+      const SheetCell cell =
+          pending.has_value() ? *pending : sheet.cell(column_index, row_index);
+      pending.reset();
 
       if (cell.is_covered()) {
         // normally unreachable: the cursor skips positions covered by an
@@ -348,9 +561,66 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const TableDimensions cell_span = cell.span();
       const ValueType cell_value_type = cell.value_type();
 
+      // `style:wrap-option` is `no-wrap` by default, and `wrapText` is off.
+      const bool wraps = cell_style.wrap_text.value_or(false);
+      const std::uint32_t next_column = column_index + cell_span.columns;
+      std::optional<SheetCell> next;
+      if (next_column < end_column) {
+        next = sheet.cell(next_column, row_index);
+      }
+
+      const bool anchors_shapes =
+          has_shapes && column_index == 0 && row_index == 0;
+      const bool cuts_its_text = !anchors_shapes && holds_only_text(cell);
+
+      std::string cell_css;
+      if (!wraps && cuts_its_text) {
+        cell_css += "white-space:nowrap;";
+      }
+      if (wraps && cuts_its_text) {
+        // Its block is held at the row's height, so a broken line runs past
+        // the bottom and would paint over the row below.
+        cell_css += "overflow:hidden;";
+      }
+      // Over the empty cells beside it, cut where the next one has something
+      // to show, unbounded where nothing follows. Each blank cell is walked by
+      // the one cell that may spill over it, so the row costs one pass.
+      if (!wraps && cuts_its_text && column_pixels[column_index].has_value()) {
+        std::optional<double> spill(0);
+        bool bounded = false;
+        for (std::uint32_t ahead = next_column; ahead < end_column; ++ahead) {
+          const SheetCell cell_ahead = ahead == next_column && next.has_value()
+                                           ? *next
+                                           : sheet.cell(ahead, row_index);
+          if (!is_blank(cell_ahead)) {
+            bounded = true;
+            break;
+          }
+          if (!column_pixels[ahead].has_value()) {
+            spill.reset();
+            bounded = true;
+            break;
+          }
+          *spill += *column_pixels[ahead];
+        }
+        if (bounded) {
+          if (!spill.has_value() || *spill == 0) {
+            cell_css += "overflow:hidden;";
+          } else {
+            cell_css += "clip-path:inset(0 " +
+                        util::number::to_string_significant(-*spill, 7) +
+                        "px 0 0);";
+          }
+        }
+      }
+
+      const std::optional<FoldedCell> folded =
+          fold_cell(cell, state, wraps, anchors_shapes, table_row_style.height);
+
       state.out().write_element_begin(
           "td",
           HtmlElementOptions()
+              .set_inline(folded.has_value())
               .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
                 if (cell_span.columns > 1) {
                   clb("colspan", std::to_string(cell_span.columns));
@@ -359,7 +629,13 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                   clb("rowspan", std::to_string(cell_span.rows));
                 }
               })
-              .set_style(translate_table_cell_style(cell_style))
+              .set_style(
+                  translate_table_cell_style(cell_style) +
+                      (column_pixels[column_index].has_value() ? "max-width:0;"
+                                                               : "") +
+                      cell_css +
+                      (folded.has_value() ? folded->style : std::string()),
+                  state.styles())
               .set_class([&]() -> std::optional<HtmlWritable> {
                 if (cell_value_type == ValueType::float_number) {
                   return "odr-value-type-float";
@@ -371,10 +647,17 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
           translate_element(shape, state);
         }
       }
-      translate_children(cell.children(), state);
+      if (folded.has_value()) {
+        state.out().out() << folded->text;
+      } else {
+        translate_cell_children(cell, state);
+      }
       state.out().write_element_end("td");
 
       cursor.add_cell(cell_span.columns, cell_span.rows);
+      if (cursor.column() == next_column) {
+        pending = next;
+      }
     }
 
     state.out().write_element_end("tr");
@@ -428,15 +711,16 @@ void html::translate_text(const Element &element, const WritingState &state) {
   const Text text = element.as_text();
 
   state.out().write_element_begin(
-      "x-s", HtmlElementOptions()
-                 .set_inline(true)
-                 .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-                   if (state.config().editable && element.is_editable()) {
-                     clb("contenteditable", "true");
-                     clb("data-odr-path", element.document_path().to_string());
-                   }
-                 })
-                 .set_style(translate_text_style(text.style())));
+      "x-s",
+      HtmlElementOptions()
+          .set_inline(true)
+          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+            if (state.config().editable && element.is_editable()) {
+              clb("contenteditable", "true");
+              clb("data-odr-path", element.document_path().to_string());
+            }
+          })
+          .set_style(translate_text_style(text.style()), state.styles()));
   state.out().out() << escape_text(text.content());
   state.out().write_element_end("x-s");
 }
@@ -453,35 +737,7 @@ void html::translate_line_break(const Element &element,
   state.out().write_element_end("x-s");
 }
 
-namespace {
-
-/// Whether a reader sees anything. A bookmark marks a place rather than filling
-/// one, and a span or a link is a style around what it holds, so a paragraph
-/// holding only those is still an empty line.
-bool has_content(const ElementRange &children) {
-  for (const Element child : children) {
-    switch (child.type()) {
-    case ElementType::bookmark:
-      break;
-    case ElementType::span:
-    case ElementType::link:
-      if (has_content(child.children())) {
-        return true;
-      }
-      break;
-    case ElementType::text:
-      if (!child.as_text().content().empty()) {
-        return true;
-      }
-      break;
-    default:
-      return true;
-    }
-  }
-  return false;
-}
-
-} // namespace
+namespace {} // namespace
 
 void html::translate_page_break(const Element & /*element*/,
                                 const WritingState &state) {
@@ -501,8 +757,9 @@ void html::translate_paragraph(const Element &element,
       "x-p",
       HtmlElementOptions().set_inline(true).set_style(
           "display:block;" +
-          translate_paragraph_style(paragraph.style(), state.direction()) +
-          translate_block_font_style(paragraph.text_style())));
+              translate_paragraph_style(paragraph.style(), state.direction()) +
+              translate_block_font_style(paragraph.text_style()),
+          state.styles()));
   if (!marker.empty()) {
     state.out().write_element_begin(
         "x-s", HtmlElementOptions()
@@ -514,16 +771,8 @@ void html::translate_paragraph(const Element &element,
     state.out().write_element_end("x-s");
   }
   translate_children(paragraph.children(), state);
-  if (marker.empty() && !has_content(paragraph.children())) {
-    // A line break, not a break opportunity: only a break is copied, so a blank
-    // line between two paragraphs survives being pasted somewhere else.
-    state.out().write_element_begin(
-        "br", HtmlElementOptions().set_close_type(HtmlCloseType::none));
-  } else {
-    // A paragraph whose content is all out of flow has no line box of its own.
-    state.out().write_element_begin(
-        "wbr", HtmlElementOptions().set_close_type(HtmlCloseType::none));
-  }
+  write_paragraph_line_box(marker.empty() && !has_content(paragraph.children()),
+                           state);
   state.out().write_element_end("x-p");
 }
 
@@ -532,7 +781,7 @@ void html::translate_span(const Element &element, const WritingState &state) {
 
   state.out().write_element_begin(
       "x-s", HtmlElementOptions().set_inline(true).set_style(
-                 translate_text_style(span.style())));
+                 translate_text_style(span.style()), state.styles()));
   translate_children(span.children(), state);
   state.out().write_element_end("x-s");
 }

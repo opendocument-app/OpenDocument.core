@@ -148,6 +148,10 @@ struct HtmlConfig {
   bool spreadsheet_limit_by_content{true};
   /// Which gridlines a sheet paints.
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
+  /// How much of a sheet's body is held back while `<head>` collects the
+  /// classes its cells name. Past it the head goes out with what it has, and a
+  /// style block first seen later stays inline.
+  std::uint64_t spreadsheet_style_buffer{128u << 20};
 
   /// The zoom the view opens at; see @ref HtmlViewportMode.
   HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};

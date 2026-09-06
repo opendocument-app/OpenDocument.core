@@ -37,6 +37,8 @@ public final class HtmlConfig {
 
   public boolean spreadsheetLimitByContent = true;
   public HtmlTableGridlines spreadsheetGridlines = HtmlTableGridlines.SOFT;
+  /** How much of a sheet's body is held back while the head collects its classes. */
+  public long spreadsheetStyleBuffer = 128L << 20;
 
   /** Initial zoom on mobile. */
   public HtmlViewportMode viewportMode = HtmlViewportMode.AUTOMATIC;

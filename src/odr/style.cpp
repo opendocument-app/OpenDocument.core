@@ -93,6 +93,7 @@ void TableCellStyle::override(const TableCellStyle &other) {
   padding.override(other.padding);
   border.override(other.border);
   override_if_set(text_rotation, other.text_rotation);
+  override_if_set(wrap_text, other.wrap_text);
 }
 
 void GraphicStyle::override(const GraphicStyle &other) {

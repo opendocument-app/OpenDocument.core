@@ -89,6 +89,8 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::spreadsheet_limit_by_content)
       .def_readwrite("spreadsheet_gridlines",
                      &odr::HtmlConfig::spreadsheet_gridlines)
+      .def_readwrite("spreadsheet_style_buffer",
+                     &odr::HtmlConfig::spreadsheet_style_buffer)
       .def_readwrite("viewport_mode", &odr::HtmlConfig::viewport_mode)
       .def_readwrite("spreadsheet_viewport_mode",
                      &odr::HtmlConfig::spreadsheet_viewport_mode)

@@ -87,6 +87,8 @@ StyleRegistry::StyleRegistry(std::vector<Font> fonts,
     text.font_line_through = font.fixed.fStrikeOut != 0;
     text.font_color = icv_color(font.fixed.icv, palette);
 
+    style.table_cell_style.wrap_text = xf.fWrap != 0;
+
     // For the solid pattern only icvFore is rendered; the other patterns are
     // approximated by their foreground color as well.
     if (xf.fls != 0) {

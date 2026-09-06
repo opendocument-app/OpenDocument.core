@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+    <style>
+      #report {
+        font: 13px/1.6 monospace;
+        margin: 16px;
+      }
+      .pass::before {
+        content: "PASS ";
+        color: #2a7;
+      }
+      .fail::before {
+        content: "FAIL ";
+        color: #c33;
+      }
+    </style>
+  </head>
+  <body class="odr-body odr-gridlines-soft">
+    <!-- What `translate_sheet` writes, cut down to the shapes the script has to
+         tell apart: a cell that spills, one that is cut, one that keeps its
+         block, and one that writes its string without one. -->
+    <table class="odr-sheet">
+      <col class="odr-sheet-gutter" />
+      <col style="width:80px;min-width:80px" />
+      <col style="width:80px;min-width:80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:3ch"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="height:20px">
+          <th class="odr-sheet-row-header" style="height:20px;max-height:20px">
+            1
+          </th>
+          <td id="cut-block" style="max-width:0;white-space:nowrap;overflow:hidden">
+            <x-p style="display:block">a string far too long for its cell</x-p>
+          </td>
+          <td><x-p style="display:block">next</x-p></td>
+        </tr>
+        <tr style="height:20px">
+          <th class="odr-sheet-row-header" style="height:20px;max-height:20px">
+            2
+          </th>
+          <td
+            id="spilling"
+            style="max-width:0;white-space:nowrap;clip-path:inset(0 -80px 0 0)"
+          >
+            <x-p style="display:block">short</x-p>
+          </td>
+          <td></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td id="cut-folded" style="max-width:0;white-space:nowrap;overflow:hidden">
+            a string far too long for its cell
+          </td>
+          <td>next</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="spreadsheet.js"></script>
+    <script>
+      var report = document.getElementById("report");
+      function check(name, condition) {
+        var line = document.createElement("div");
+        line.className = condition ? "pass" : "fail";
+        line.textContent = name;
+        report.appendChild(line);
+      }
+      function click(element) {
+        element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        document.body.offsetHeight;
+      }
+      function raised(cell) {
+        return cell.classList.contains("odr-sheet-raised");
+      }
+
+      var cutBlock = document.getElementById("cut-block");
+      var spilling = document.getElementById("spilling");
+      var cutFolded = document.getElementById("cut-folded");
+      var rowsBefore = [].map.call(
+        document.querySelectorAll(".odr-sheet tbody tr"),
+        function (tr) {
+          return Math.round(tr.getBoundingClientRect().height);
+        }
+      );
+
+      click(cutBlock);
+      check("a cut cell is raised", raised(cutBlock));
+      var box = cutBlock.querySelector("x-p");
+      check(
+        "the raised block is out of flow",
+        getComputedStyle(box).position === "absolute"
+      );
+      check(
+        "and wider than the cell",
+        box.getBoundingClientRect().width >
+          cutBlock.getBoundingClientRect().width
+      );
+      check(
+        "the rows do not move",
+        [].every.call(
+          document.querySelectorAll(".odr-sheet tbody tr"),
+          function (tr, i) {
+            return Math.round(tr.getBoundingClientRect().height) ===
+              rowsBefore[i];
+          }
+        )
+      );
+      click(box);
+      check("a click inside it keeps it up", raised(cutBlock));
+
+      click(spilling);
+      check("a cell that shows all of its text is not raised", !raised(spilling));
+      check("and the cut one is lowered again", !raised(cutBlock));
+
+      click(cutFolded);
+      check("a cell holding its string alone is raised too", raised(cutFolded));
+      var wrapper = cutFolded.querySelector(".odr-sheet-raised-box");
+      check("by a box the script adds", wrapper !== null);
+      check(
+        "which is out of flow",
+        wrapper !== null && getComputedStyle(wrapper).position === "absolute"
+      );
+      click(wrapper);
+      check("a click inside that one keeps it up too", raised(cutFolded));
+
+      var text = cutFolded.textContent;
+      click(spilling);
+      check("lowering takes the box away again", cutFolded.childElementCount === 0);
+      check("leaving the string as it was", cutFolded.textContent === text);
+
+      click(cutBlock);
+      click(report);
+      check("a click outside the sheet lowers it", !raised(cutBlock));
+    </script>
+  </body>
+</html>

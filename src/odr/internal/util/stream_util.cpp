@@ -155,6 +155,43 @@ protected:
 
 } // namespace
 
+DeferredBuffer::DeferredBuffer(std::ostream &out, const std::size_t cap,
+                               std::function<void()> release)
+    : m_out{&out}, m_cap{cap}, m_release{std::move(release)} {}
+
+void DeferredBuffer::release() {
+  if (m_released) {
+    return;
+  }
+  m_released = true;
+  m_release();
+  m_out->write(m_held.data(), static_cast<std::streamsize>(m_held.size()));
+  m_held.clear();
+  m_held.shrink_to_fit();
+}
+
+std::streamsize DeferredBuffer::xsputn(const char *data,
+                                       const std::streamsize size) {
+  if (m_released) {
+    m_out->write(data, size);
+    return size;
+  }
+  m_held.append(data, static_cast<std::size_t>(size));
+  if (m_held.size() > m_cap) {
+    release();
+  }
+  return size;
+}
+
+int DeferredBuffer::overflow(const int c) {
+  if (c == traits_type::eof()) {
+    return traits_type::not_eof(c);
+  }
+  const char value = traits_type::to_char_type(c);
+  xsputn(&value, 1);
+  return c;
+}
+
 ViewStream::ViewStream(std::string_view view)
     : std::istream(nullptr), m_sbuf{std::make_unique<ViewStreamBuf>(view)} {
   rdbuf(m_sbuf.get());

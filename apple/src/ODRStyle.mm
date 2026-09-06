@@ -276,6 +276,7 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
       [ODRDirectionalMeasure directionalWithHandle:handle.padding];
   result->_border = [ODRDirectionalString directionalWithHandle:handle.border];
   result->_textRotation = box_number(handle.text_rotation);
+  result->_wrapText = box_number(handle.wrap_text);
   return result;
 }
 

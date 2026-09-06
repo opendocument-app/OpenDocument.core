@@ -15,6 +15,8 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/html/style_registry.hpp>
+#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -151,16 +153,13 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
              : std::nullopt;
 }
 
-/// @p name titles the view; empty when the whole document is written as one
-/// file, which no one view names.
-void front(const Document &document, WritingState &state,
-           const std::string &name,
-           const std::optional<double> content_pixels) {
+/// @p name titles the view; empty for the file that holds every view.
+void write_head(const Document &document, const WritingState &state,
+                const std::string &name,
+                const std::optional<double> content_pixels) {
   HtmlWriter &out = state.out();
 
   const bool paged_content = is_paged_content(document, state.config());
-
-  state.set_direction(document_direction(document));
 
   out.write_begin(HtmlElementOptions().set_attributes(HtmlAttributesVector{
       {"dir", translate_text_direction(state.direction())}}));
@@ -188,8 +187,21 @@ void front(const Document &document, WritingState &state,
     write_spreadsheet_style(state);
     write_spreadsheet_dark_style(state);
   }
+  // Last, after the sheets whose rules they stand in for.
+  if (StyleRegistry *styles = state.styles();
+      styles != nullptr && styles->has_rules()) {
+    out.write_header_style_begin();
+    styles->write_rules(out.out());
+    out.write_header_style_end();
+  }
 
   out.write_header_end();
+}
+
+void write_body_begin(const Document &document, const WritingState &state) {
+  HtmlWriter &out = state.out();
+
+  const bool paged_content = is_paged_content(document, state.config());
 
   std::string body_clazz = "odr-body";
   if (paged_content) {
@@ -217,7 +229,7 @@ void front(const Document &document, WritingState &state,
   }
 }
 
-void back(const Document &document, const WritingState &state) {
+void write_body_end(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
   if (is_paged_content(document, state.config())) {
@@ -232,7 +244,53 @@ void back(const Document &document, const WritingState &state) {
   write_viewport_script(state);
 
   out.write_body_end();
+}
+
+/// Writes one view. A spreadsheet's body goes into a buffer so `<head>` can
+/// name the classes its cells use, which one walk cannot do in order.
+template <typename Write>
+HtmlResources
+render(const Document &document, const HtmlConfig &config, const Logger &logger,
+       HtmlWriter &out, const std::string &name,
+       const std::optional<double> content_pixels, Write &&write) {
+  HtmlResources resources;
+
+  const auto body = [&](const WritingState &state) {
+    write_body_begin(document, state);
+    write(state);
+    write_body_end(document, state);
+  };
+
+  if (document.document_type() != DocumentType::spreadsheet) {
+    WritingState state(out, config, resources, logger);
+    state.set_direction(document_direction(document));
+    write_head(document, state, name, content_pixels);
+    body(state);
+    out.write_end();
+    return resources;
+  }
+
+  StyleRegistry styles;
+  WritingState head_state(out, config, resources, logger, &styles);
+  head_state.set_direction(document_direction(document));
+
+  util::stream::DeferredBuffer buffer(
+      out.out(), static_cast<std::size_t>(config.spreadsheet_style_buffer),
+      [&] {
+        styles.close();
+        write_head(document, head_state, name, content_pixels);
+      });
+  {
+    std::ostream deferred(&buffer);
+    HtmlWriter body_out(deferred, config);
+    WritingState state(body_out, config, resources, logger, &styles);
+    state.set_direction(head_state.direction());
+    body(state);
+  }
+  buffer.release();
+
   out.write_end();
+  return resources;
 }
 
 class HtmlFragmentBase {
@@ -247,8 +305,10 @@ public:
   [[nodiscard]] const std::string &name() const { return m_name; }
   [[nodiscard]] std::size_t index() const { return m_index; }
   [[nodiscard]] const std::string &path() const { return m_path; }
+  [[nodiscard]] const Document &document() const { return m_document; }
 
-  virtual void write_fragment(HtmlWriter &out, WritingState &state) const = 0;
+  virtual void write_fragment(HtmlWriter &out,
+                              const WritingState &state) const = 0;
 
   /// The width this one view lays out, which is what it is fitted against.
   [[nodiscard]] virtual std::optional<double>
@@ -263,13 +323,6 @@ public:
       m_cut_measured = true;
     }
     return m_cut;
-  }
-
-  void write_document(HtmlWriter &out, WritingState &state) const {
-    const std::optional<double> content = content_pixels(state.config());
-    front(m_document, state, m_name, content);
-    write_fragment(out, state);
-    back(m_document, state);
   }
 
 protected:
@@ -313,10 +366,12 @@ public:
   }
 
   HtmlResources write_html(HtmlWriter &out) const override {
-    HtmlResources resources;
-    WritingState state(out, service().config(), resources, service().logger());
-    m_fragment->write_document(out, state);
-    return resources;
+    return render(m_fragment->document(), service().config(),
+                  service().logger(), out, m_fragment->name(),
+                  m_fragment->content_pixels(service().config()),
+                  [this](const WritingState &state) {
+                    m_fragment->write_fragment(state.out(), state);
+                  });
   }
 
 private:
@@ -448,21 +503,14 @@ public:
   }
 
   HtmlResources write_document(HtmlWriter &out) const {
-    HtmlResources resources;
-
-    WritingState state(out, config(), resources, logger());
-
     // every page in one file, so the column is as wide as the widest of them
-    const std::optional<double> content =
-        document_content_pixels(m_document, config());
-
-    front(m_document, state, "", content);
-    for (const auto &fragment : m_fragments) {
-      fragment->write_fragment(out, state);
-    }
-    back(m_document, state);
-
-    return resources;
+    return render(m_document, config(), logger(), out, "",
+                  document_content_pixels(m_document, config()),
+                  [this](const WritingState &state) {
+                    for (const auto &fragment : m_fragments) {
+                      fragment->write_fragment(state.out(), state);
+                    }
+                  });
   }
 
 protected:
@@ -505,7 +553,8 @@ public:
                                    config);
   }
 
-  void write_fragment(HtmlWriter &out, WritingState &state) const override {
+  void write_fragment(HtmlWriter &out,
+                      const WritingState &state) const override {
     const Element root = m_document.root_element();
     const TextRoot element = root.as_text_root();
 
@@ -593,7 +642,7 @@ public:
     return fragment_content_pixels(m_element, config);
   }
 
-  void write_fragment(HtmlWriter &, WritingState &state) const override {
+  void write_fragment(HtmlWriter &, const WritingState &state) const override {
     Translate(m_element, state);
   }
 

@@ -186,7 +186,8 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("background_color", &odr::TableCellStyle::background_color)
       .def_readwrite("padding", &odr::TableCellStyle::padding)
       .def_readwrite("border", &odr::TableCellStyle::border)
-      .def_readwrite("text_rotation", &odr::TableCellStyle::text_rotation);
+      .def_readwrite("text_rotation", &odr::TableCellStyle::text_rotation)
+      .def_readwrite("wrap_text", &odr::TableCellStyle::wrap_text);
 
   py::class_<odr::GraphicStyle>(m, "GraphicStyle")
       .def(py::init<>())

@@ -507,6 +507,10 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
           table_cell_properties.attribute("style:vertical-align"))) {
     result.vertical_align = vertical_align;
   }
+  if (const pugi::xml_attribute wrap_option =
+          table_cell_properties.attribute("style:wrap-option")) {
+    result.wrap_text = std::strcmp("wrap", wrap_option.value()) == 0;
+  }
   if (const std::optional<Color> background_color =
           read_color(table_cell_properties.attribute("fo:background-color"))) {
     result.background_color = background_color;

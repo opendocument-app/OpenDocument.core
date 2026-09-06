@@ -116,6 +116,8 @@ ResolvedStyle StyleRegistry::cell_style(const std::uint32_t i) const {
         read_horizontal(alignment.attribute("horizontal"));
     result.table_cell_style.vertical_align =
         read_vertical(alignment.attribute("vertical"));
+    result.table_cell_style.wrap_text =
+        alignment.attribute("wrapText").as_bool();
     if (const float text_rotation =
             alignment.attribute("textRotation").as_float();
         text_rotation != 0) {

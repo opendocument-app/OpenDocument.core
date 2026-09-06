@@ -80,17 +80,19 @@ constexpr std::string_view spreadsheet_css = R"css(
 --odr-sheet-wash-pinned:rgba(0,0,0,.09);
 --odr-sheet-wash-ruler:rgba(0,0,0,.10);
 --odr-sheet-focus:#3c78dc;
+--odr-sheet-raised:#ffffff;
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 /* A sheet is not a page: past the last row and column is canvas. */
 body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet{background:#fff;border-collapse:collapse;table-layout:fixed}
-/* The sheet's own cells, not a table the document itself drew inside one. */
-.odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px}
+/* The sheet's own cells, not a table the document itself drew inside one. The
+   font is what anything in a cell falls back to, a string written straight
+   into it included. */
+.odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px;font-family:var(--odr-sheet-font);font-size:10pt}
+/* Exactly the cell's height, which is what holds a row to the height the file
+   states. `translate_sheet` says per cell what a line too long for it does. */
 .odr-sheet>tbody>tr>td>x-p{height:inherit}
-/* The font anything in a cell falls back to, a shape's text included, where the
-   file names none of its own. */
-.odr-sheet>tbody>tr>td x-p{font-family:var(--odr-sheet-font);font-size:10pt}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
 .odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
@@ -106,6 +108,13 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
 .odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
 .odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
+/* The clipped cell a reader asked to see: out of flow so the row cannot move,
+   sized to the string, over its neighbours. `.odr-sheet-raised-box` is the
+   wrapper the script adds to a cell that writes its string without one. */
+.odr-sheet td.odr-sheet-raised{overflow:visible!important;clip-path:none!important;z-index:4}
+.odr-sheet td.odr-sheet-raised.odr-sheet-pinned-cell{outline:none}
+.odr-sheet td.odr-sheet-raised>x-p,.odr-sheet td.odr-sheet-raised>.odr-sheet-raised-box{position:absolute!important;left:0;top:0;z-index:4;height:auto!important;min-width:100%;width:max-content;max-width:60vw;padding:1px 6px;margin:-1px -6px;background:var(--odr-sheet-raised)!important;box-shadow:0 1px 4px rgba(0,0,0,.35);outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;overflow:visible!important;white-space:normal!important}
+.odr-sheet-raised-box{display:block}
 /* The header's `position:sticky` already makes it a containing block. */
 .odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
 .odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}
@@ -136,6 +145,7 @@ constexpr std::string_view spreadsheet_dark_css = R"css(
 --odr-sheet-wash-pinned:rgba(255,255,255,.10);
 --odr-sheet-wash-ruler:rgba(255,255,255,.12);
 --odr-sheet-focus:#4c8dff;
+--odr-sheet-raised:#1c2128;
 }
 .odr-sheet{background-color:#161b22!important}
 )css";
@@ -1001,7 +1011,90 @@ constexpr std::string_view spreadsheet_js = R"js(
     return cell !== null && !merged ? cell.cellIndex : -1;
   }
 
+  var raisedCell = null;
+  var raisedWrapper = null;
+  var raisedContent = null;
+
+  // The block the cell writes, or the cell where it writes none. `null` for
+  // anything else — a shape, several blocks — which is not raised.
+  function boxOf(cell) {
+    if (cell.childElementCount === 0) {
+      return cell;
+    }
+    var only = cell.firstElementChild;
+    return cell.childElementCount === 1 && only.tagName === "X-P" ? only : null;
+  }
+
+  // Past the cell's edge by the spill `translate_sheet` measured, at the edge
+  // where it clips, unbounded where it does neither.
+  function visibleRight(cell) {
+    var style = getComputedStyle(cell);
+    var right = cell.getBoundingClientRect().right;
+    var inset = /inset\(([^)]*)\)/.exec(style.clipPath || "");
+    if (inset !== null) {
+      var sides = inset[1].trim().split(/\s+/);
+      return sides.length > 1 ? right - parseFloat(sides[1]) : right;
+    }
+    return style.overflow === "visible" ? Infinity : right;
+  }
+
+  // On the text, not the box: what is cut off is the string running past where
+  // the cell still paints.
+  function cutOff(cell, box) {
+    var range = document.createRange();
+    range.selectNodeContents(box);
+    var ink = range.getBoundingClientRect();
+    var rect = cell.getBoundingClientRect();
+    return (
+      ink.width > 0 &&
+      (ink.right > visibleRight(cell) + 1 ||
+        (getComputedStyle(cell).overflow !== "visible" &&
+          ink.bottom > rect.bottom + 1))
+    );
+  }
+
+  function lower() {
+    if (raisedCell === null) {
+      return;
+    }
+    raisedCell.classList.remove("odr-sheet-raised");
+    if (raisedWrapper !== null) {
+      while (raisedWrapper.firstChild) {
+        raisedCell.insertBefore(raisedWrapper.firstChild, raisedWrapper);
+      }
+      raisedWrapper.remove();
+      raisedWrapper = null;
+    }
+    raisedContent = null;
+    raisedCell = null;
+  }
+
+  // Over its neighbours rather than pushing them aside.
+  function raise(cell) {
+    lower();
+    if (cell === null || cell.tagName !== "TD") {
+      return;
+    }
+    var box = boxOf(cell);
+    if (box === null || !cutOff(cell, box)) {
+      return;
+    }
+    if (box === cell) {
+      raisedWrapper = document.createElement("span");
+      raisedWrapper.className = "odr-sheet-raised-box";
+      while (cell.firstChild) {
+        raisedWrapper.appendChild(cell.firstChild);
+      }
+      cell.appendChild(raisedWrapper);
+      box = raisedWrapper;
+    }
+    cell.classList.add("odr-sheet-raised");
+    raisedCell = cell;
+    raisedContent = box;
+  }
+
   function pin(column, row, cell) {
+    lower();
     if (pinnedRow !== null) {
       pinnedRow.classList.remove("odr-sheet-pinned");
     }
@@ -1018,6 +1111,7 @@ constexpr std::string_view spreadsheet_js = R"js(
     }
     if (pinnedCell !== null) {
       pinnedCell.classList.add("odr-sheet-pinned-cell");
+      raise(pinnedCell);
     }
     paint();
   }
@@ -1036,6 +1130,11 @@ constexpr std::string_view spreadsheet_js = R"js(
   });
 
   table.addEventListener("click", function (event) {
+    // Selecting inside what is raised must not put the cell back.
+    if (raisedContent !== null && raisedContent.contains(event.target)) {
+      return;
+    }
+
     var cell = event.target.closest("td,th");
     if (cell === null) {
       return;
@@ -1055,6 +1154,13 @@ constexpr std::string_view spreadsheet_js = R"js(
       pin(-1, null, null);
     } else {
       pin(columnOf(cell), cell.parentElement, cell);
+    }
+  });
+
+  // The canvas around the sheet included.
+  document.addEventListener("click", function (event) {
+    if (event.target.closest(".odr-sheet") === null) {
+      pin(-1, null, null);
     }
   });
 

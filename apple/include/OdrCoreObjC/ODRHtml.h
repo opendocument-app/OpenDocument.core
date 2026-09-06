@@ -96,6 +96,9 @@ NS_SWIFT_NAME(HtmlConfig)
     NSNumber *spreadsheetCellLimit NS_REFINED_FOR_SWIFT;
 @property(nonatomic) BOOL spreadsheetLimitByContent;
 @property(nonatomic) ODRHtmlTableGridlines spreadsheetGridlines;
+/// How much of a sheet's body is held back while `<head>` collects the classes
+/// its cells name.
+@property(nonatomic) unsigned long long spreadsheetStyleBuffer;
 
 @property(nonatomic) ODRHtmlViewportMode viewportMode;
 /// Overrides `viewportMode` for spreadsheets when set.

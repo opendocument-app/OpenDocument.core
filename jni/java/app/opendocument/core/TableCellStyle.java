@@ -8,6 +8,7 @@ public final class TableCellStyle {
   public final DirectionalMeasure padding;
   public final DirectionalString border;
   public final Double textRotation;
+  public final Boolean wrapText;
 
   TableCellStyle(
       int horizontalAlign,
@@ -15,12 +16,14 @@ public final class TableCellStyle {
       Color backgroundColor,
       DirectionalMeasure padding,
       DirectionalString border,
-      Double textRotation) {
+      Double textRotation,
+      Boolean wrapText) {
     this.horizontalAlign = HorizontalAlign.fromNative(horizontalAlign);
     this.verticalAlign = VerticalAlign.fromNative(verticalAlign);
     this.backgroundColor = backgroundColor;
     this.padding = padding;
     this.border = border;
     this.textRotation = textRotation;
+    this.wrapText = wrapText;
   }
 }
