@@ -90,46 +90,29 @@ public:
   std::tuple<ElementIdentifier, Element &, Cell &>
   create_cell_element(ElementType type);
 
-  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
-    return m_texts.at(id);
+  [[nodiscard]] auto &text_element_at(this auto &self,
+                                      const ElementIdentifier id) {
+    return self.m_texts.at(id);
   }
-  [[nodiscard]] Frame &frame_element_at(const ElementIdentifier id) {
-    return m_frames.at(id);
+  [[nodiscard]] auto &frame_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_frames.at(id);
   }
-  [[nodiscard]] Slide &slide_element_at(const ElementIdentifier id) {
-    return m_slides.at(id);
+  [[nodiscard]] auto &slide_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_slides.at(id);
   }
-  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
-    return m_tables.at(id);
+  [[nodiscard]] auto &table_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_tables.at(id);
   }
-  [[nodiscard]] Sheet &sheet_element_at(const ElementIdentifier id) {
-    return m_sheets.at(id);
+  [[nodiscard]] auto &sheet_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_sheets.at(id);
   }
-  [[nodiscard]] Cell &cell_element_at(const ElementIdentifier id) {
-    return m_cells.at(id);
-  }
-
-  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
-    return m_texts.at(id);
-  }
-  [[nodiscard]] const Frame &
-  frame_element_at(const ElementIdentifier id) const {
-    return m_frames.at(id);
-  }
-  [[nodiscard]] const Slide &
-  slide_element_at(const ElementIdentifier id) const {
-    return m_slides.at(id);
-  }
-  [[nodiscard]] const Table &
-  table_element_at(const ElementIdentifier id) const {
-    return m_tables.at(id);
-  }
-  [[nodiscard]] const Sheet &
-  sheet_element_at(const ElementIdentifier id) const {
-    return m_sheets.at(id);
-  }
-  [[nodiscard]] const Cell &cell_element_at(const ElementIdentifier id) const {
-    return m_cells.at(id);
+  [[nodiscard]] auto &cell_element_at(this auto &self,
+                                      const ElementIdentifier id) {
+    return self.m_cells.at(id);
   }
 
   /// Links @p column_id into @p table_id's column chain. Columns are not

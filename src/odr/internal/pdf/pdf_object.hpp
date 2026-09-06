@@ -257,25 +257,19 @@ public:
   Array &operator=(const Array &) = default;
   Array &operator=(Array &&) = default;
 
-  [[nodiscard]] Holder &holder() { return m_holder; }
-  [[nodiscard]] const Holder &holder() const { return m_holder; }
+  [[nodiscard]] auto &holder(this auto &self) { return self.m_holder; }
 
   [[nodiscard]] std::size_t size() const { return m_holder.size(); }
   [[nodiscard]] bool empty() const { return m_holder.empty(); }
-  [[nodiscard]] Holder::iterator begin() { return m_holder.begin(); }
-  [[nodiscard]] Holder::iterator end() { return m_holder.end(); }
-  [[nodiscard]] Holder::const_iterator begin() const {
-    return m_holder.cbegin();
+  [[nodiscard]] auto begin(this auto &self) { return self.m_holder.begin(); }
+  [[nodiscard]] auto end(this auto &self) { return self.m_holder.end(); }
+
+  [[nodiscard]] auto &operator[](this auto &self, const std::size_t i) {
+    return self.m_holder.at(i);
   }
-  [[nodiscard]] Holder::const_iterator end() const { return m_holder.cend(); }
 
-  Object &operator[](const std::size_t i) { return m_holder.at(i); }
-  const Object &operator[](const std::size_t i) const { return m_holder.at(i); }
-
-  Object &front() { return m_holder.front(); }
-  [[nodiscard]] const Object &front() const { return m_holder.front(); }
-  Object &back() { return m_holder.back(); }
-  [[nodiscard]] const Object &back() const { return m_holder.back(); }
+  [[nodiscard]] auto &front(this auto &self) { return self.m_holder.front(); }
+  [[nodiscard]] auto &back(this auto &self) { return self.m_holder.back(); }
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
@@ -291,36 +285,25 @@ public:
   Dictionary() = default;
   explicit Dictionary(Holder holder) : m_holder{std::move(holder)} {}
 
-  Holder &holder() { return m_holder; }
-  [[nodiscard]] const Holder &holder() const { return m_holder; }
+  [[nodiscard]] auto &holder(this auto &self) { return self.m_holder; }
 
   [[nodiscard]] std::size_t size() const { return m_holder.size(); }
 
-  using iterator = Holder::iterator;
-  using const_iterator = Holder::const_iterator;
+  [[nodiscard]] auto begin(this auto &self) { return self.m_holder.begin(); }
+  [[nodiscard]] auto end(this auto &self) { return self.m_holder.end(); }
 
-  [[nodiscard]] iterator begin() { return m_holder.begin(); }
-  [[nodiscard]] iterator end() { return m_holder.end(); }
-  [[nodiscard]] const_iterator begin() const { return m_holder.cbegin(); }
-  [[nodiscard]] const_iterator end() const { return m_holder.cend(); }
-
+  /// Inserts a null when the key is absent — `at` is the one that throws.
   Object &operator[](const std::string &name) { return m_holder[name]; }
   const Object &operator[](const std::string &name) const {
     return m_holder.at(name);
   }
 
-  [[nodiscard]] Object &at(const std::string &name) {
-    return m_holder.at(name);
-  }
-  [[nodiscard]] const Object &at(const std::string &name) const {
-    return m_holder.at(name);
+  [[nodiscard]] auto &at(this auto &self, const std::string &name) {
+    return self.m_holder.at(name);
   }
 
-  [[nodiscard]] Holder::iterator find(const std::string &name) {
-    return m_holder.find(name);
-  }
-  [[nodiscard]] Holder::const_iterator find(const std::string &name) const {
-    return m_holder.find(name);
+  [[nodiscard]] auto find(this auto &self, const std::string &name) {
+    return self.m_holder.find(name);
   }
 
   [[nodiscard]] bool has_key(const std::string &name) const {
