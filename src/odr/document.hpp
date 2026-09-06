@@ -19,7 +19,7 @@ class Element;
 class File;
 class Filesystem;
 
-/// @brief Represents a document.
+/// Represents a document.
 class Document final {
 public:
   explicit Document(std::shared_ptr<internal::abstract::Document>);
@@ -36,7 +36,7 @@ public:
   void save(std::ostream &out) const;
   void save(std::ostream &out, const std::string &password) const;
 
-  /// @brief The saved document as a file in memory.
+  /// The saved document as a file in memory.
   [[nodiscard]] File save_to_memory() const;
   [[nodiscard]] File save_to_memory(const std::string &password) const;
 

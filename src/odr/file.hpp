@@ -34,7 +34,7 @@ class FontFile;
 class Archive;
 class Document;
 
-/// @brief Collection of file types.
+/// Collection of file types.
 enum class FileType {
   unknown,
 
@@ -168,7 +168,7 @@ enum class FileType {
   hypertext_markup_language,
 };
 
-/// @brief Collection of file categories.
+/// Collection of file categories.
 enum class FileCategory {
   unknown,
   text,
@@ -181,7 +181,7 @@ enum class FileCategory {
   video,
 };
 
-/// @brief Collection of file locations.
+/// Collection of file locations.
 enum class FileLocation {
   unknown, ///< no file behind the handle
   memory,
@@ -206,7 +206,7 @@ struct FileTypeCapabilities final {
   bool encrypt{}; ///< @ref Document::save with a password is supported
 };
 
-/// @brief Collection of encryption states.
+/// Collection of encryption states.
 enum class EncryptionState {
   unknown,
   not_encrypted,
@@ -214,7 +214,7 @@ enum class EncryptionState {
   decrypted,
 };
 
-/// @brief Collection of document types.
+/// Collection of document types.
 enum class DocumentType {
   unknown,
   text,
@@ -301,9 +301,9 @@ struct DecodeOptions final {
   /// Format-specific overrides for a file decoded as csv.
   CsvOptions csv;
 
-  /// @brief Decode as exactly @p type, skipping detection.
+  /// Decode as exactly @p type, skipping detection.
   [[nodiscard]] static DecodeOptions as(FileType type);
-  /// @brief Decode as csv, reading it with @p options.
+  /// Decode as csv, reading it with @p options.
   [[nodiscard]] static DecodeOptions as_csv(const CsvOptions &options);
 };
 
@@ -331,10 +331,10 @@ struct FileMeta final {
   std::optional<std::string> modification_date;
 };
 
-/// @brief Represents a file.
+/// Represents a file.
 class File final {
 public:
-  /// @brief A file read from @p path on disk.
+  /// A file read from @p path on disk.
   [[nodiscard]] static File from_disk(const std::string &path);
   /// @brief A file held in memory; @p data is its bytes, moved in, @p name
   /// what it is called, if known.
@@ -349,7 +349,7 @@ public:
   File();
   /// @throws NullPointerError if the impl is null.
   explicit File(std::shared_ptr<internal::abstract::File>);
-  /// @brief Equivalent to @ref from_disk.
+  /// Equivalent to @ref from_disk.
   explicit File(const std::string &path);
 
   [[nodiscard]] FileLocation location() const noexcept;
@@ -372,7 +372,7 @@ protected:
   std::shared_ptr<internal::abstract::File> m_impl;
 };
 
-/// @brief Represents a decoded file.
+/// Represents a decoded file.
 class DecodedFile {
 public:
   /// Decoding is @ref odr::open; this wraps what it produced.
@@ -419,18 +419,18 @@ protected:
   std::shared_ptr<internal::abstract::DecodedFile> m_impl;
 };
 
-/// @brief Represents a text file.
+/// Represents a text file.
 class TextFile final : public DecodedFile {
 public:
   explicit TextFile(std::shared_ptr<internal::abstract::TextFile>);
 
-  /// @brief The encoding the file's bytes were detected as, or decoded with.
+  /// The encoding the file's bytes were detected as, or decoded with.
   [[nodiscard]] TextEncoding encoding() const;
 
-  /// @brief The file's bytes as they are.
+  /// The file's bytes as they are.
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
-  /// @brief The file's text, decoded to UTF-8 where @ref encoding is
-  /// decodable, and the raw bytes where it is not.
+  /// The file's text, decoded to UTF-8 where @ref encoding is decodable, and
+  /// the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::TextFile> impl() const;
@@ -439,17 +439,17 @@ private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
 };
 
-/// @brief Represents a csv file.
+/// Represents a csv file.
 class CsvFile final : public DecodedFile {
 public:
   explicit CsvFile(std::shared_ptr<internal::abstract::CsvFile>);
 
-  /// @brief The csv as a one-sheet spreadsheet. The other view of the same
-  /// bytes — a csv stays a text file, so @ref TextFile::text still works.
+  /// The csv as a one-sheet spreadsheet. The other view of the same bytes — a
+  /// csv stays a text file, so @ref TextFile::text still works.
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] Document document() const;
 
-  /// @brief The options in use, every field resolved.
+  /// The options in use, every field resolved.
   [[nodiscard]] CsvOptions options() const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::CsvFile> impl() const;
@@ -458,12 +458,12 @@ private:
   std::shared_ptr<internal::abstract::CsvFile> m_impl;
 };
 
-/// @brief Represents a markdown file.
+/// Represents a markdown file.
 class MarkdownFile final : public DecodedFile {
 public:
   explicit MarkdownFile(std::shared_ptr<internal::abstract::MarkdownFile>);
 
-  /// @brief The markdown as a text document. The other view of the same bytes —
+  /// The markdown as a text document. The other view of the same bytes —
   /// markdown stays a text file, so @ref TextFile::text still works.
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] Document document() const;
@@ -474,7 +474,7 @@ private:
   std::shared_ptr<internal::abstract::MarkdownFile> m_impl;
 };
 
-/// @brief Represents an image file.
+/// Represents an image file.
 class ImageFile final : public DecodedFile {
 public:
   explicit ImageFile(std::shared_ptr<internal::abstract::ImageFile>);
@@ -485,7 +485,7 @@ private:
   std::shared_ptr<internal::abstract::ImageFile> m_impl;
 };
 
-/// @brief Represents an archive file.
+/// Represents an archive file.
 class ArchiveFile final : public DecodedFile {
 public:
   explicit ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile>);
@@ -496,7 +496,7 @@ private:
   std::shared_ptr<internal::abstract::ArchiveFile> m_impl;
 };
 
-/// @brief Represents a document file.
+/// Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
   /// Narrowing is @ref DecodedFile::as_document_file; this wraps its result.
@@ -521,7 +521,7 @@ private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
 };
 
-/// @brief Represents a PDF file.
+/// Represents a PDF file.
 class PdfFile final : public DecodedFile {
 public:
   explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
@@ -534,7 +534,7 @@ private:
   std::shared_ptr<internal::abstract::PdfFile> m_impl;
 };
 
-/// @brief Represents a font file.
+/// Represents a font file.
 class FontFile final : public DecodedFile {
 public:
   explicit FontFile(std::shared_ptr<internal::abstract::FontFile>);

@@ -53,7 +53,7 @@ public:
   using Clock = ILogger::Clock;
   using Time = ILogger::Time;
 
-  /// @brief A logger discarding everything. All instances share one sink.
+  /// A logger discarding everything. All instances share one sink.
   static Logger null();
   static Logger create_stdio(const std::string &name, LogLevel level,
                              const LogFormat &format = LogFormat(),
@@ -66,7 +66,7 @@ public:
                          const std::source_location &location,
                          const LogFormat &format);
 
-  /// @brief Constructs the null logger.
+  /// Constructs the null logger.
   Logger();
   explicit Logger(std::shared_ptr<ILogger> impl);
 

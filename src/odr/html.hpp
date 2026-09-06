@@ -67,14 +67,14 @@ using HtmlResourceLocator = std::function<HtmlResourceLocation(
 using HtmlResources =
     std::vector<std::pair<HtmlResource, HtmlResourceLocation>>;
 
-/// @brief HTML table gridlines.
+/// HTML table gridlines.
 enum class HtmlTableGridlines {
   none,
   soft,
   hard,
 };
 
-/// @brief The colors the emitted HTML renders against. @ref
+/// The colors the emitted HTML renders against. @ref
 /// FileTypeCapabilities::color_scheme says which views honor it.
 enum class HtmlColorScheme {
   light,  ///< a white page, carrying the colors the document gives its content
@@ -82,8 +82,8 @@ enum class HtmlColorScheme {
   system, ///< `light` or `dark`, by the reader's `prefers-color-scheme`
 };
 
-/// @brief The zoom a view opens at, and who fits it: the browser through the
-/// viewport meta tag, which desktop browsers ignore, or the view itself.
+/// The zoom a view opens at, and who fits it: the browser through the viewport
+/// meta tag, which desktop browsers ignore, or the view itself.
 enum class HtmlViewportMode {
   automatic,   ///< `fit_width` for fixed-size paged content (PDF pages, slides,
                ///< drawings, images, text documents with page margins),
@@ -97,8 +97,7 @@ enum class HtmlViewportMode {
   fit_width_by_view,
 };
 
-/// @brief How text is emitted in PDF→HTML output. Neither mode needs
-/// JavaScript.
+/// How text is emitted in PDF→HTML output. Neither mode needs JavaScript.
 enum class PdfTextMode {
   dual_layer,   ///< a visual layer (paint order, embedded PUA glyphs) plus a
                 ///< transparent selection layer (reading order, real Unicode),
@@ -107,7 +106,7 @@ enum class PdfTextMode {
                 ///< analysis, like pdf2htmlEX
 };
 
-/// @brief HTML configuration.
+/// HTML configuration.
 struct HtmlConfig {
   /// File name for the view that writes the whole document.
   std::string document_output_file_name{"document.html"};
@@ -293,17 +292,17 @@ namespace html {
 
 HtmlResourceLocator standard_resource_locator();
 
-/// @brief Translates a decoded file to HTML, dispatching on the decoded type.
+/// Translates a decoded file to HTML, dispatching on the decoded type.
 HtmlService translate(const DecodedFile &file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
-/// @brief Translates a document to HTML.
+/// Translates a document to HTML.
 HtmlService translate(const Document &document, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates a filesystem to HTML.
+/// Translates a filesystem to HTML.
 HtmlService translate(const Filesystem &filesystem, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
-/// @brief Translates an archive to HTML.
+/// Translates an archive to HTML.
 HtmlService translate(const Archive &archive, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 

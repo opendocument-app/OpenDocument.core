@@ -9,7 +9,7 @@
 
 namespace odr {
 
-/// @brief Represents a runtime unit of measure.
+/// Represents a runtime unit of measure.
 class DynamicUnit {
 public:
   /// Constructs the unitless unit, equal to `DynamicUnit("")`.
@@ -31,15 +31,15 @@ private:
   const Unit *m_unit{nullptr};
 };
 
-/// @brief The magnitude-type-independent part of @ref Quantity, so it can be
-/// compiled once in a source file instead of inline in every instantiation.
+/// The magnitude-type-independent part of @ref Quantity, so it can be compiled
+/// once in a source file instead of inline in every instantiation.
 class QuantityBase {
 protected:
   /// Renders @p magnitude with 7 significant digits, always positional.
   static std::string format_magnitude(double magnitude);
 };
 
-/// @brief Represents a quantity with a magnitude and a unit of measure.
+/// Represents a quantity with a magnitude and a unit of measure.
 template <typename Magnitude, typename Unit = DynamicUnit>
 class Quantity : private QuantityBase {
 public:
@@ -87,7 +87,7 @@ private:
   Unit m_unit;
 };
 
-/// @brief Represents a quantity: a magnitude and a unit of measure.
+/// Represents a quantity: a magnitude and a unit of measure.
 using Measure = Quantity<double>;
 
 } // namespace odr

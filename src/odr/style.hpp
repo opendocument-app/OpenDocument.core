@@ -10,19 +10,19 @@
 
 namespace odr {
 
-/// @brief Collection of font weights.
+/// Collection of font weights.
 enum class FontWeight {
   normal,
   bold,
 };
 
-/// @brief Collection of font styles.
+/// Collection of font styles.
 enum class FontStyle {
   normal,
   italic,
 };
 
-/// @brief Collection of vertical font positions (sub/superscript).
+/// Collection of vertical font positions (sub/superscript).
 enum class FontPosition {
   normal,
   super,
@@ -50,14 +50,14 @@ enum class TextDirection {
   right_to_left,
 };
 
-/// @brief Collection of horizontal alignments.
+/// Collection of horizontal alignments.
 enum class HorizontalAlign {
   left,
   center,
   right,
 };
 
-/// @brief Collection of vertical alignments.
+/// Collection of vertical alignments.
 enum class VerticalAlign {
   top,
   middle,
@@ -75,13 +75,13 @@ enum class BreakType {
   column,
 };
 
-/// @brief Collection of print orientations.
+/// Collection of print orientations.
 enum class PrintOrientation {
   portrait,
   landscape,
 };
 
-/// @brief Collection of text wrapping options.
+/// Collection of text wrapping options.
 enum class TextWrap {
   none,
   before,
@@ -89,16 +89,16 @@ enum class TextWrap {
   run_through,
 };
 
-/// @brief Represents a color.
+/// Represents a color.
 struct Color final {
   std::uint8_t red{0};
   std::uint8_t green{0};
   std::uint8_t blue{0};
   std::uint8_t alpha{255};
 
-  /// @brief Builds an opaque color from a packed `0xRRGGBB` value.
+  /// Builds an opaque color from a packed `0xRRGGBB` value.
   static Color from_rgb(std::uint32_t rgb);
-  /// @brief Builds a color from a packed `0xAARRGGBB` value.
+  /// Builds a color from a packed `0xAARRGGBB` value.
   static Color from_argb(std::uint32_t argb);
 
   Color();
@@ -114,7 +114,7 @@ inline Color operator""_rgb(const unsigned long long rgb) {
   return Color::from_rgb(static_cast<std::uint32_t>(rgb));
 }
 
-/// @brief Represents a directional style.
+/// Represents a directional style.
 template <typename T> struct DirectionalStyle final {
   std::optional<T> right;
   std::optional<T> top;
@@ -175,7 +175,7 @@ struct TextStyle final {
   void override(const TextStyle &other);
 };
 
-/// @brief Represents a style for paragraphs.
+/// Represents a style for paragraphs.
 struct ParagraphStyle final {
   std::optional<TextAlign> text_align;
   /// The base direction the paragraph's text runs in.
@@ -190,7 +190,7 @@ struct ParagraphStyle final {
   void override(const ParagraphStyle &other);
 };
 
-/// @brief Represents a style for tables.
+/// Represents a style for tables.
 struct TableStyle final {
   std::optional<Measure> width;
   /// The frame around the table, and the rules between its rows and columns.
@@ -203,21 +203,21 @@ struct TableStyle final {
   void override(const TableStyle &other);
 };
 
-/// @brief Represents a style for table columns.
+/// Represents a style for table columns.
 struct TableColumnStyle final {
   std::optional<Measure> width;
 
   void override(const TableColumnStyle &other);
 };
 
-/// @brief Represents a style for table rows.
+/// Represents a style for table rows.
 struct TableRowStyle final {
   std::optional<Measure> height;
 
   void override(const TableRowStyle &other);
 };
 
-/// @brief Represents a style for table cells.
+/// Represents a style for table cells.
 struct TableCellStyle final {
   std::optional<HorizontalAlign> horizontal_align;
   std::optional<VerticalAlign> vertical_align;
@@ -232,7 +232,7 @@ struct TableCellStyle final {
   void override(const TableCellStyle &other);
 };
 
-/// @brief Represents a style for graphics.
+/// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
   std::optional<Color> stroke_color;
@@ -245,7 +245,7 @@ struct GraphicStyle final {
   void override(const GraphicStyle &other);
 };
 
-/// @brief Represents a layout for a page.
+/// Represents a layout for a page.
 struct PageLayout final {
   std::optional<Measure> width;
   std::optional<Measure> height;
