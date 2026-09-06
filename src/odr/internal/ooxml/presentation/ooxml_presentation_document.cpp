@@ -1,6 +1,5 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/table_dimension.hpp>
 
@@ -11,7 +10,6 @@
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <iterator>

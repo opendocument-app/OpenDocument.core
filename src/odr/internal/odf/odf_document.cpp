@@ -1,7 +1,6 @@
 #include <odr/internal/odf/odf_document.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
@@ -15,7 +14,6 @@
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_table.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>

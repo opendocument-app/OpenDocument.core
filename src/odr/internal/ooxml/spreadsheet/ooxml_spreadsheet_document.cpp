@@ -1,13 +1,11 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <utility>

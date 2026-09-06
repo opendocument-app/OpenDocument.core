@@ -1,6 +1,5 @@
 #include <odr/internal/rtf/rtf_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
@@ -8,7 +7,6 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/rtf/rtf_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <istream>
 #include <memory>
@@ -90,8 +88,6 @@ public:
     (void)element_id;
     return {};
   }
-
-private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>

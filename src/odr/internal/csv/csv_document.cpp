@@ -1,7 +1,6 @@
 #include <odr/internal/csv/csv_document.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
@@ -9,7 +8,6 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/encoding/transcode.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>

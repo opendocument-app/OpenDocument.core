@@ -1,6 +1,5 @@
 #include <odr/internal/oldms/presentation/ppt_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/style.hpp>
@@ -9,7 +8,6 @@
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <memory>
 #include <optional>

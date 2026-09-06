@@ -2,6 +2,7 @@
 
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/util/document_util.hpp>

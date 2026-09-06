@@ -1,6 +1,5 @@
 #include <odr/internal/ooxml/text/ooxml_text_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/table_dimension.hpp>
 
@@ -9,7 +8,6 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 

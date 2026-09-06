@@ -1,13 +1,11 @@
 #include <odr/internal/oldms/spreadsheet/xls_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <algorithm>
 

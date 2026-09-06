@@ -1,13 +1,11 @@
 #include <odr/internal/markdown/markdown_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/markdown/markdown_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <memory>
 
