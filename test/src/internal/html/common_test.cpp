@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <locale>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -354,4 +355,32 @@ TEST(html_common, whitespace_inside_a_scheme_does_not_hide_it) {
   EXPECT_FALSE(
       ihtml::is_safe_uri(std::string("javascript") + '\0' + ":alert(1)"));
   EXPECT_FALSE(ihtml::is_safe_uri("\x01javascript:alert(1)"));
+}
+
+namespace {
+
+class LocaleGuard final {
+public:
+  ~LocaleGuard() { std::locale::global(m_previous); }
+
+private:
+  std::locale m_previous{std::locale()};
+};
+
+} // namespace
+
+/// The alpha is the only number `color` prints, so it is the only way the
+/// host's locale could reach the css. `rgba(0,0,0,0,501961)` is not a colour.
+TEST(html_common, a_global_locale_does_not_reach_the_css) {
+  const Color translucent{0, 0, 0, 128};
+  ASSERT_EQ(ihtml::color(translucent), "rgba(0,0,0,0.501961)");
+
+  const LocaleGuard guard;
+  try {
+    std::locale::global(std::locale("de_DE.UTF-8"));
+  } catch (const std::runtime_error &) {
+    GTEST_SKIP() << "de_DE.UTF-8 is not installed";
+  }
+
+  EXPECT_EQ(ihtml::color(translucent), "rgba(0,0,0,0.501961)");
 }

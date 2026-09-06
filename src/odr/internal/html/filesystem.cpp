@@ -15,9 +15,9 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <array>
-#include <iomanip>
+
+#include <fmt/format.h>
 #include <mutex>
-#include <sstream>
 
 namespace odr::internal::html {
 namespace {
@@ -36,10 +36,7 @@ std::string human_size(const std::size_t size) {
     ++unit;
   }
 
-  std::ostringstream result;
-  result << std::fixed << std::setprecision(unit == 0 ? 0 : 1) << value << " "
-         << units.at(unit);
-  return result.str();
+  return fmt::format("{:.{}f} {}", value, unit == 0 ? 0 : 1, units.at(unit));
 }
 
 /// From the extension, not the bytes: sniffing every entry would read the whole

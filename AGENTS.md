@@ -200,6 +200,13 @@ Dispatch `release.yml` against main, publish the draft that appears —
   input (`std::runtime_error` or the typed exceptions in `src/odr/exceptions.hpp`)
   rather than silently degrading. Only pass through (return empty / skip) values
   that are genuinely *optional* or *not yet modelled*.
+- **Format numbers with `fmt`, never a stream**: a stream carries the global
+  locale the host sets, and a german one writes `1,5` into a css length.
+  `util::number::to_string_significant` is the css/svg spelling. **Not
+  `std::format`** — libc++ reaches it through a floating-point `std::to_chars`
+  unavailable before macOS 13.3 / iOS 16.3, and the apple slices deploy to
+  macOS 12 / iOS 15, so one call anywhere in `src/` fails the framework build.
+  Only `-mmacosx-version-min=12.0` shows it.
 - **Fixed-width integer types — always**: prefer `<cstdint>` types (`std::int32_t`,
   `std::uint8_t`, …) over `int` / `unsigned` / `long` / `unsigned char`. Reserve
   the built-in types for genuinely index/size-like values (`std::size_t`) or where

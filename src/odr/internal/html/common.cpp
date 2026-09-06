@@ -16,9 +16,9 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+
+#include <fmt/format.h>
 #include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -320,17 +320,14 @@ html::fill_path_variables(const std::string &path,
 
 std::string html::color(const Color &color) {
   if (color.alpha != 255) {
-    std::stringstream ss;
-    ss << "rgba(" << static_cast<std::uint32_t>(color.red) << ","
-       << static_cast<std::uint32_t>(color.green) << ","
-       << static_cast<std::uint32_t>(color.blue) << ","
-       << (static_cast<double>(color.alpha) / 255.0) << ")";
-    return ss.str();
+    // `{:g}` is the six significant digits the stream this replaced wrote.
+    return fmt::format("rgba({},{},{},{:g})",
+                       static_cast<std::uint32_t>(color.red),
+                       static_cast<std::uint32_t>(color.green),
+                       static_cast<std::uint32_t>(color.blue),
+                       static_cast<double>(color.alpha) / 255.0);
   }
-  std::stringstream ss;
-  ss << "#";
-  ss << std::setw(6) << std::setfill('0') << std::hex << color.rgb();
-  return ss.str();
+  return fmt::format("#{:06x}", color.rgb());
 }
 
 std::string html::file_to_url(const std::string &file,

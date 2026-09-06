@@ -2,23 +2,19 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iomanip>
-#include <locale>
-#include <sstream>
+
+#include <fmt/format.h>
 
 namespace odr::internal::util {
 
 std::string number::to_string_significant(const double value,
                                           const int significant_digits) {
   if (!std::isfinite(value)) {
-    std::ostringstream ss;
-    ss.imbue(std::locale::classic());
-    ss << value;
-    return ss.str();
+    return fmt::format("{}", value);
   }
 
-  // `std::fixed` counts decimals, not significant digits, so shift by the
-  // integer part; clamped because a denormal or a huge value would blow up
+  // `{:.Nf}` counts decimals, not significant digits, so shift by the integer
+  // part; clamped because a denormal or a huge value would blow up
   int integer_digits = 1;
   if (value != 0.0) {
     integer_digits =
@@ -26,10 +22,7 @@ std::string number::to_string_significant(const double value,
   }
   const int decimals = std::clamp(significant_digits - integer_digits, 0, 15);
 
-  std::ostringstream ss;
-  ss.imbue(std::locale::classic());
-  ss << std::fixed << std::setprecision(decimals) << value;
-  std::string result = ss.str();
+  std::string result = fmt::format("{:.{}f}", value, decimals);
 
   if (result.find('.') != std::string::npos) {
     result.erase(result.find_last_not_of('0') + 1);
