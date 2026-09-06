@@ -58,6 +58,33 @@ void odr_python::bind_core(py::module_ &m) {
 void odr_python::bind_functions(py::module_ &m) {
   m.def("all_file_types", &odr::all_file_types,
         "Every file type this library knows about.");
+  m.def("all_text_encodings", &odr::all_text_encodings,
+        "Every text encoding the library knows about, excluding `unknown`.");
+  m.def(
+      "text_encoding_to_string",
+      [](const odr::TextEncoding encoding) {
+        return std::string(odr::text_encoding_to_string(encoding));
+      },
+      py::arg("encoding"),
+      "The canonical name, a label a browser accepts. Raises for `unknown`.");
+  m.def("text_encoding_by_name", &odr::text_encoding_by_name, py::arg("name"),
+        "The encoding for a name, `unknown` if none. Case and any `-`, `_` or "
+        "space are ignored.");
+  m.def(
+      "text_encoding_names",
+      [](const odr::TextEncoding encoding) {
+        std::vector<std::string> result;
+        for (const std::string_view name : odr::text_encoding_names(encoding)) {
+          result.emplace_back(name);
+        }
+        return result;
+      },
+      py::arg("encoding"), "Every accepted name, canonical first.");
+  m.def("text_encoding_is_decodable", &odr::text_encoding_is_decodable,
+        py::arg("encoding"),
+        "Whether the library can decode this encoding, as opposed to merely "
+        "naming it.");
+
   m.def("file_type_by_file_extension", &odr::file_type_by_file_extension,
         py::arg("extension"));
   m.def(

@@ -63,6 +63,23 @@ NS_SWIFT_NAME(Odr)
 + (ODRFileTypeCapabilities *)capabilitiesForFileType:(ODRFileType)type
     NS_SWIFT_NAME(capabilities(fileType:));
 
+/// Every text encoding the library knows about, excluding `unknown`.
+@property(class, nonatomic, readonly) NSArray<NSNumber *> *allTextEncodings;
+/// The canonical name, a label a browser accepts. `nil` for `unknown`.
++ (nullable NSString *)stringForTextEncoding:(ODRTextEncoding)encoding
+    NS_SWIFT_NAME(string(textEncoding:));
+/// The encoding for a name, `unknown` if none. Case and any `-`, `_` or space
+/// are ignored.
++ (ODRTextEncoding)textEncodingForName:(NSString *)name
+    NS_SWIFT_NAME(textEncoding(name:));
+/// Every accepted name, canonical first.
++ (NSArray<NSString *> *)namesForTextEncoding:(ODRTextEncoding)encoding
+    NS_SWIFT_NAME(names(textEncoding:));
+/// Whether the library can decode this encoding, as opposed to merely naming
+/// it.
++ (BOOL)isDecodableTextEncoding:(ODRTextEncoding)encoding
+    NS_SWIFT_NAME(isDecodable(textEncoding:));
+
 + (NSString *)stringForFileType:(ODRFileType)type
     NS_SWIFT_NAME(string(fileType:));
 + (NSString *)stringForFileCategory:(ODRFileCategory)category

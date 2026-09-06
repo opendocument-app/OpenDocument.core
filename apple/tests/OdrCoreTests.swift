@@ -47,6 +47,39 @@ final class FileTypeTableTests: XCTestCase {
   }
 }
 
+final class TextEncodingTests: XCTestCase {
+  func testNamesResolveBothWays() {
+    XCTAssertEqual(Odr.string(textEncoding: .windows1252), "windows-1252")
+    // case and separators are ignored, so an alias resolves
+    XCTAssertEqual(Odr.textEncoding(name: "CP1252"), .windows1252)
+    XCTAssertEqual(Odr.textEncoding(name: "definitely-not-an-encoding"), .unknown)
+    XCTAssertTrue(Odr.names(textEncoding: .windows1252).contains("windows-1252"))
+  }
+
+  /// `unknown` is the one with no name, and says so rather than inventing one.
+  func testUnknownHasNoName() {
+    XCTAssertNil(Odr.string(textEncoding: .unknown))
+  }
+
+  func testAllLeavesOutUnknown() {
+    let all = Odr.allTextEncodings.map { TextEncoding(rawValue: $0.intValue) }
+    XCTAssertTrue(all.contains(.utf8))
+    XCTAssertFalse(all.contains(.unknown))
+  }
+
+  func testDecodableIsNarrowerThanNamed() {
+    XCTAssertTrue(Odr.isDecodable(textEncoding: .utf8))
+    // named so a caller can say what a file is, but not decoded here
+    XCTAssertFalse(Odr.isDecodable(textEncoding: .shiftJis))
+  }
+
+  func testATextFileReportsItsEncoding() throws {
+    let path = try write("hello", as: "plain.txt")
+    let decoded = try DecodedFile.decode(path: path)
+    XCTAssertEqual((decoded as! TextFile).encoding, .utf8)
+  }
+}
+
 final class DecodeTests: XCTestCase {
   /// The non-BMP character is the point of the payload: `to_nsstring` converts
   /// UTF-8 to UTF-16, and a 😀 is a surrogate pair on the way out.

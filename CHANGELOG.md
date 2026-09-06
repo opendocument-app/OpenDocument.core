@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `TextEncoding` and its five lookups now reach the java, python, objc and wasm
+  bindings, and a text file reports `encoding()` beside the `charset()` it
+  keeps. wasm gets it as `Odr.enums.TextEncoding`. Nothing is removed.
+
 - **Breaking**: `odr::open` is the only way to decode a file. The `DecodedFile`
   and `DocumentFile` constructors and `DocumentFile::from_disk`/`::from_memory`
   are gone, in every binding; narrow with `open(...).as_document_file()`.

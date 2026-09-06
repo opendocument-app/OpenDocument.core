@@ -146,6 +146,60 @@ NSArray<NSString *> *to_nsarray(std::span<const std::string_view> strings) {
       nil);
 }
 
++ (NSArray<NSNumber *> *)allTextEncodings {
+  return guarded_value(
+      [&]() -> NSArray<NSNumber *> * {
+        const std::vector<odr::TextEncoding> encodings =
+            odr::all_text_encodings();
+        NSMutableArray<NSNumber *> *const result =
+            [NSMutableArray arrayWithCapacity:encodings.size()];
+        for (const odr::TextEncoding encoding : encodings) {
+          [result addObject:@(static_cast<NSInteger>(encoding))];
+        }
+        return result;
+      },
+      @[]);
+}
+
++ (nullable NSString *)stringForTextEncoding:(ODRTextEncoding)encoding {
+  // throws for `unknown`, which has no name; nil says so without an NSError
+  return guarded_value(
+      [&]() -> NSString * {
+        return to_nsstring(std::string(odr::text_encoding_to_string(
+            static_cast<odr::TextEncoding>(encoding))));
+      },
+      nil);
+}
+
++ (ODRTextEncoding)textEncodingForName:(NSString *)name {
+  return guarded_value(
+      [&] {
+        return static_cast<ODRTextEncoding>(
+            odr::text_encoding_by_name(to_string(name)));
+      },
+      ODRTextEncodingUnknown);
+}
+
++ (NSArray<NSString *> *)namesForTextEncoding:(ODRTextEncoding)encoding {
+  return guarded_value(
+      [&] {
+        return to_nsarray(
+            odr::text_encoding_names(static_cast<odr::TextEncoding>(encoding)));
+      },
+      @[]);
+}
+
++ (BOOL)isDecodableTextEncoding:(ODRTextEncoding)encoding {
+  return guarded_value(
+      [&] {
+        return odr::text_encoding_is_decodable(
+                   static_cast<odr::TextEncoding>(encoding))
+                   ? YES
+                   : NO;
+      },
+      NO);
+}
+
 + (NSString *)stringForFileType:(ODRFileType)type {
   return guarded_value(
       [&] {

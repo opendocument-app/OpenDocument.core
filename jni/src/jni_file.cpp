@@ -277,16 +277,11 @@ Java_app_opendocument_core_DecodedFile_asFontFileNative(JNIEnv *env, jobject,
 
 // app.opendocument.core.TextFile
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_TextFile_charsetNative(JNIEnv *env, jobject,
-                                                  jlong handle) {
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_TextFile_encodingNative(JNIEnv *env, jobject,
+                                                   jlong handle) {
   return guarded(env, [&] {
-    const odr::TextEncoding encoding =
-        decoded(handle).as_text_file().encoding();
-    return odr_jni::make_string_opt(
-        env, encoding == odr::TextEncoding::unknown
-                 ? std::optional<std::string>{}
-                 : std::string(odr::text_encoding_to_string(encoding)));
+    return static_cast<jint>(decoded(handle).as_text_file().encoding());
   });
 }
 

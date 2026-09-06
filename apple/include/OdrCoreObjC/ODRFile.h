@@ -115,6 +115,52 @@ typedef NS_ENUM(NSInteger, ODREncryptionState) {
   ODREncryptionStateDecrypted,
 } NS_SWIFT_NAME(EncryptionState);
 
+/// A text encoding. Only some can be decoded — see
+/// `Odr.isDecodable(textEncoding:)`; the rest can only be named.
+typedef NS_ENUM(NSInteger, ODRTextEncoding) {
+  ODRTextEncodingUnknown = 0,
+  ODRTextEncodingUtf8,
+  ODRTextEncodingUtf16le,
+  ODRTextEncodingUtf16be,
+  ODRTextEncodingUtf32le,
+  ODRTextEncodingUtf32be,
+  ODRTextEncodingIbm866,
+  ODRTextEncodingIso88591,
+  ODRTextEncodingIso88592,
+  ODRTextEncodingIso88593,
+  ODRTextEncodingIso88594,
+  ODRTextEncodingIso88595,
+  ODRTextEncodingIso88596,
+  ODRTextEncodingIso88597,
+  ODRTextEncodingIso88598,
+  ODRTextEncodingIso885910,
+  ODRTextEncodingIso885913,
+  ODRTextEncodingIso885914,
+  ODRTextEncodingIso885915,
+  ODRTextEncodingIso885916,
+  ODRTextEncodingKoi8R,
+  ODRTextEncodingKoi8U,
+  ODRTextEncodingMacintosh,
+  ODRTextEncodingWindows874,
+  ODRTextEncodingWindows1250,
+  ODRTextEncodingWindows1251,
+  ODRTextEncodingWindows1252,
+  ODRTextEncodingWindows1253,
+  ODRTextEncodingWindows1254,
+  ODRTextEncodingWindows1255,
+  ODRTextEncodingWindows1256,
+  ODRTextEncodingWindows1257,
+  ODRTextEncodingWindows1258,
+  ODRTextEncodingXMacCyrillic,
+  ODRTextEncodingBig5,
+  ODRTextEncodingEucJp,
+  ODRTextEncodingEucKr,
+  ODRTextEncodingGb18030,
+  ODRTextEncodingIso2022Jp,
+  ODRTextEncodingIso2022Kr,
+  ODRTextEncodingShiftJis,
+} NS_SWIFT_NAME(TextEncoding);
+
 typedef NS_ENUM(NSInteger, ODRDocumentType) {
   ODRDocumentTypeUnknown = 0,
   ODRDocumentTypeText,
@@ -298,7 +344,11 @@ NS_SWIFT_NAME(DecodedFile)
 /// A decoded text file — `odr::TextFile`.
 NS_SWIFT_NAME(TextFile)
 @interface ODRTextFile : ODRDecodedFile
+/// The encoding the bytes were detected as, or decoded with.
+@property(nonatomic, readonly) ODRTextEncoding encoding;
 /// The detected charset, `nil` if it could not be determined.
+///
+/// Deprecated: read `encoding` and ask `Odr.string(textEncoding:)` for a name.
 @property(nonatomic, readonly, nullable, copy) NSString *charset;
 /// The decoded text.
 - (nullable NSString *)textWithError:(NSError **)error NS_SWIFT_NAME(text());

@@ -62,6 +62,14 @@ describe('enums', () => {
     });
   }
 
+  it('derives TextEncoding from the library, unknown first', () => {
+    assert.equal(enums.TextEncoding.unknown, 0);
+    // keyed by the canonical name, as `FileType` is keyed by `odt`
+    assert.equal(enums.TextEncoding['UTF-8'], 1);
+    // a named-but-not-decodable one is still in the table
+    assert.equal(typeof enums.TextEncoding['Shift_JIS'], 'number');
+  });
+
   it('derives FileType from the library, unknown first', () => {
     assert.equal(enums.FileType.unknown, 0);
     assert.equal(typeof enums.FileType.odt, 'number');
