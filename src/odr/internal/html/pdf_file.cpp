@@ -25,6 +25,7 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_page_extractor.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
@@ -64,6 +65,24 @@ std::string svg_matrix(const util::math::Transform2D &m) {
   f << "matrix(" << m.a << ',' << m.b << ',' << m.c << ',' << m.d << ','
     << round2(m.e) << ',' << round2(m.f) << ')';
   return std::move(f).str();
+}
+
+/// The page's index and the map back from its box to pdf user space, for the
+/// annotator to place what the user draws. Empty when the transform is
+/// singular and nothing can be placed.
+std::string page_attributes(const std::size_t index,
+                            const util::math::Transform2D &to_box) {
+  const std::optional<util::math::Transform2D> from_box = to_box.inverse();
+  if (!from_box.has_value()) {
+    return {};
+  }
+  const auto n = [](const double v) {
+    return util::number::to_string_significant(v, 10);
+  };
+  return R"( data-odr-page=")" + std::to_string(index) +
+         R"(" data-odr-space=")" + n(from_box->a) + ',' + n(from_box->b) + ',' +
+         n(from_box->c) + ',' + n(from_box->d) + ',' + n(from_box->e) + ',' +
+         n(from_box->f) + '"';
 }
 
 /// One resolved link annotation, positioned in page-box points (y-down).
@@ -1127,6 +1146,9 @@ public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
       : HtmlService(std::move(config), logger), m_pdf_file{std::move(pdf_file)},
         m_resources{locate_search_resources(this->config())} {
+    for (auto &&resource : locate_pdf_annotation_resources(this->config())) {
+      m_resources.emplace_back(std::move(resource));
+    }
     // declared before any page is parsed, so before the views are known
     for (auto &&resource : locate_viewport_resources(this->config())) {
       m_resources.push_back(std::move(resource));
@@ -1328,6 +1350,7 @@ public:
 
   struct DualPageOut {
     std::string classes;
+    std::string attributes;
     double width{0};
     double height{0};
     std::vector<VisItem> vis_items;
@@ -1401,6 +1424,8 @@ public:
 
       DualPageOut &page_out = pages_out.emplace_back();
       page_out.classes = pb.classes;
+      page_out.attributes =
+          page_attributes(first_page_number - 1 + pages_out.size() - 1, to_box);
       page_out.width = width;
       page_out.height = height;
       page_out.links =
@@ -1837,10 +1862,10 @@ public:
     std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
       out.write_element_begin(
-          "div",
-          HtmlElementOptions()
-              .set_class(page.classes)
-              .set_extra(R"(id="p)" + std::to_string(page_number++) + R"(")"));
+          "div", HtmlElementOptions()
+                     .set_class(page.classes)
+                     .set_extra(R"(id="p)" + std::to_string(page_number++) +
+                                R"(")" + page.attributes));
 
       // Visual layer: paint-order graphics and unselectable glyphs.
       out.write_element_begin("div",
@@ -1865,6 +1890,7 @@ public:
     out.write_element_end("div"); // .d
     write_search_script(state);
     write_viewport_script(state);
+    write_pdf_annotation_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -1909,6 +1935,7 @@ public:
 
   struct SinglePageOut {
     std::string classes;
+    std::string attributes;
     double width{0};
     double height{0};
     std::vector<SingleItem> items;
@@ -2046,6 +2073,8 @@ public:
 
       SinglePageOut &page_out = pages_out.emplace_back();
       page_out.classes = pb.classes;
+      page_out.attributes =
+          page_attributes(first_page_number - 1 + pages_out.size() - 1, to_box);
       page_out.width = width;
       page_out.height = height;
       page_out.links =
@@ -2336,10 +2365,10 @@ public:
     std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {
       out.write_element_begin(
-          "div",
-          HtmlElementOptions()
-              .set_class(page.classes)
-              .set_extra(R"(id="p)" + std::to_string(page_number++) + R"(")"));
+          "div", HtmlElementOptions()
+                     .set_class(page.classes)
+                     .set_extra(R"(id="p)" + std::to_string(page_number++) +
+                                R"(")" + page.attributes));
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
                        write_line);
       write_page_links(out, page.links);
@@ -2348,6 +2377,7 @@ public:
     out.write_element_end("div"); // .d
     write_search_script(state);
     write_viewport_script(state);
+    write_pdf_annotation_script(state);
     out.write_body_end();
     out.write_end();
 
@@ -2679,6 +2709,7 @@ public:
     styles.write_rules(out.out());
     out.write_header_style_end();
     write_search_style(state);
+    write_pdf_annotation_style(state);
     out.write_header_end();
   }
 

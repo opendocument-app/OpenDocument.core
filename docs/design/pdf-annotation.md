@@ -3,8 +3,8 @@
 Status: **underway.** This records the architecture for adding markup
 annotations — text highlight and freehand drawing first — to an existing PDF,
 the alternatives weighed, and the effort it costs. The format model is
-validated against four viewers, and Phases 0 through 3 have landed: the writer
-appends, and the markup and ink annotations it carries are written.
+validated against four viewers, and Phases 0 through 5 have landed: the browser
+draws the markup and the writer appends it; the bindings are what is left.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -300,19 +300,28 @@ throwing per the repo's fail-fast rule. A `FileTypeCapabilities` bit for it, and
 the `file_type_table` row (the capability test fails if the declaration exceeds
 what the engine does).
 
-### Phase 5 — browser layer (4–6 d, ~700 JS + 80 CSS)
+### Phase 5 — browser layer — **done** (#849)
 
-`pdf_annotation_js` in `frontend.cpp`, following `viewport_js`/`search_js`:
+`pdf_annotation_js` and `pdf_annotation_css` in `frontend.cpp`, alongside
+`viewport_js`/`search_js`, exposing `odr.annotation`.
 
-- Per-page overlay SVG, live preview of pending annotations.
-- Highlight tool: selection → `getClientRects()` → merge per line, drop the
-  zero-width spacer spans of the `.sel` layer, clip to the page box.
-- Ink tool: pointer events, coalesced points.
-- Coordinate helper: client rect → page-div rect → scale by
-  `divRect.width / pageWidthPt` (robust against the zoom script's CSS transform)
-  → `to_box⁻¹`.
-- Undo/redo, colour, delete-by-hit-test.
-- `odr.getAnnotations()` returning the payload above.
+Each page div carries `data-odr-page` and `data-odr-space`, the latter being
+`to_box⁻¹` — which is what `Transform2D::inverse` was added for. A viewport
+point divides out the zoom (`rect.width / offsetWidth`), converts css pixels to
+points, and goes through that matrix; the model keeps page-box points and maps
+to user space only in `getAnnotations()`.
+
+**Two overlays per page.** A `mix-blend-mode` on a shape *inside* an svg
+composites against the svg's own canvas, not against the page, so a highlight
+painted that way covers the glyphs instead of letting them through. The blend
+belongs on the overlay element, and the washes therefore need an overlay of
+their own (`svg.an-m`) separate from the marks drawn on top (`svg.an`).
+
+The overlay captures pointer events only for ink; the text tools leave the
+selection layer alone, which is what makes selecting text to highlight work.
+
+Checks in `test/browser/annotation/`, run by hand as the repo's other emitted
+scripts are.
 
 ### Phase 6 — bindings (2 d, ~470 lines)
 

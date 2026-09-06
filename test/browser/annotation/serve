@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Extracts the emitted annotation script and style, and serves the checks."""
+
+import functools
+import http.server
+import pathlib
+import socketserver
+
+PORT = 8733
+
+HERE = pathlib.Path(__file__).resolve().parent
+SOURCE = HERE.parents[2] / "src" / "odr" / "internal" / "html" / "frontend.cpp"
+
+
+def extract(begin: str, end: str) -> str:
+    source = SOURCE.read_text()
+    start = source.index(begin)
+    return source[start + len(begin) : source.index(end, start)]
+
+
+def main() -> None:
+    (HERE / "pdf-annotation.js").write_text(
+        extract('constexpr std::string_view pdf_annotation_js = R"js(', ')js";')
+    )
+    (HERE / "pdf-annotation.css").write_text(
+        extract('constexpr std::string_view pdf_annotation_css = R"css(', ')css";')
+    )
+    print(f"{SOURCE.name} -> pdf-annotation.js, pdf-annotation.css")
+
+    handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler, directory=str(HERE)
+    )
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("127.0.0.1", PORT), handler) as server:
+        print(f"http://localhost:{PORT}/tests.html")
+        server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

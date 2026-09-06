@@ -45,6 +45,11 @@ void write_text_script(const WritingState &state);
 /// rest of that object, for every view rendering text, whatever the format.
 void write_search_script(const WritingState &state);
 
+/// `odr.annotation`: the pending markup a viewer draws on a pdf page, and
+/// `getAnnotations()`, the payload @ref odr::PdfFile::annotate takes.
+void write_pdf_annotation_style(const WritingState &state);
+void write_pdf_annotation_script(const WritingState &state);
+
 /// `odr.getZoom()`, `setZoom(value, focus)`, `adjustZoom(factor, focus)`,
 /// `resetZoom(focus)`, `isZoomFitted()`, `getViewportRect(element)`,
 /// `onZoomChange`, plus the fit @ref write_zoom_style left to be measured.
@@ -59,5 +64,6 @@ HtmlResources locate_xml_resources(const HtmlConfig &config);
 HtmlResources locate_media_resources(const HtmlConfig &config);
 HtmlResources locate_search_resources(const HtmlConfig &config);
 HtmlResources locate_viewport_resources(const HtmlConfig &config);
+HtmlResources locate_pdf_annotation_resources(const HtmlConfig &config);
 
 } // namespace odr::internal::html
