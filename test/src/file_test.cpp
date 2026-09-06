@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -162,12 +163,11 @@ TEST(File, from_memory_decodes_the_same_as_from_disk) {
   EXPECT_EQ(from_memory.file_meta().document_type,
             from_disk.file_meta().document_type);
 
-  EXPECT_EQ(DecodedFile::list_file_types(
-                File::from_memory(internal::util::file::read(path))),
-            DecodedFile::list_file_types(path));
-  EXPECT_EQ(DecodedFile::mimetype(
-                File::from_memory(internal::util::file::read(path))),
-            DecodedFile::mimetype(path));
+  EXPECT_EQ(
+      list_file_types(File::from_memory(internal::util::file::read(path))),
+      list_file_types(path));
+  EXPECT_EQ(mimetype(File::from_memory(internal::util::file::read(path))),
+            mimetype(path));
 }
 
 /// `MemoryFile` used to report itself as `disk`, and `memory_data()` handed

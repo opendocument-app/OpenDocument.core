@@ -10,14 +10,6 @@ public final class DocumentFile extends DecodedFile {
     this(create(path));
   }
 
-  public static FileType typeByPath(String path) {
-    return FileType.fromNative(typeByPathNative(path));
-  }
-
-  public static FileMeta metaByPath(String path) {
-    return metaByPathNative(path);
-  }
-
   public DocumentType documentType() {
     return DocumentType.fromNative(documentTypeNative(handle()));
   }
@@ -42,10 +34,6 @@ public final class DocumentFile extends DecodedFile {
   }
 
   private static native long create(String path);
-
-  private static native int typeByPathNative(String path);
-
-  private static native FileMeta metaByPathNative(String path);
 
   private native int documentTypeNative(long handle);
 

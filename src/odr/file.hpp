@@ -352,16 +352,6 @@ protected:
 /// @brief Represents a decoded file.
 class DecodedFile {
 public:
-  [[nodiscard]] static std::vector<FileType>
-  list_file_types(const File &file, const Logger &logger = Logger::null());
-  [[nodiscard]] static std::vector<FileType>
-  list_file_types(const std::string &path,
-                  const Logger &logger = Logger::null());
-  [[nodiscard]] static std::string_view
-  mimetype(const File &file, const Logger &logger = Logger::null());
-  [[nodiscard]] static std::string_view
-  mimetype(const std::string &path, const Logger &logger = Logger::null());
-
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
   explicit DecodedFile(const File &file, const Logger &logger = Logger::null());
   DecodedFile(const File &file, FileType as,
@@ -524,11 +514,6 @@ public:
   /// moved in.
   [[nodiscard]] static DocumentFile
   from_memory(std::string data, const Logger &logger = Logger::null());
-
-  static FileType type(const File &file);
-  static FileType type(const std::string &path);
-  static FileMeta meta(const File &file);
-  static FileMeta meta(const std::string &path);
 
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
   explicit DocumentFile(const File &file,

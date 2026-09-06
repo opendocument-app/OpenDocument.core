@@ -120,7 +120,7 @@ TEST(MarkdownFile, translating_the_decoded_file_yields_the_document) {
 TEST(MarkdownFile, it_is_not_detected_by_content) {
   const File file = File::from_memory("# hello\n\nsome *markdown*\n");
 
-  EXPECT_THAT(DecodedFile::list_file_types(file),
+  EXPECT_THAT(list_file_types(file),
               testing::Not(testing::Contains(FileType::markdown)));
   EXPECT_EQ(DecodedFile(file).file_type(), FileType::text_file);
 }

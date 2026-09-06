@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `DecodedFile::list_file_types`/`::mimetype` and
+  `DocumentFile::type`/`::meta` are gone, in every binding. Use the free
+  `odr::list_file_types`/`odr::mimetype`, or `odr::open(...).file_type()`.
+
 - **Breaking**: `html::translate` takes only a `DecodedFile`, `Document`,
   `Filesystem` or `Archive` now; drop the cache path, in every binding. Open a
   file as `FileType::text_file` to render it as a numbered line list.

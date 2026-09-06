@@ -384,21 +384,20 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                                                logger:(ODRLogger *)logger
                                                 error:(NSError **)error {
   return guarded(error, [&]() -> NSArray<NSNumber *> * {
-    return to_nsarray(
-        odr::DecodedFile::list_file_types(to_string(path), logger.handle));
+    return to_nsarray(odr::list_file_types(to_string(path), logger.handle));
   });
 }
 
 + (nullable NSArray<NSNumber *> *)listFileTypesAtPath:(NSString *)path
                                                 error:(NSError **)error {
   return guarded(error, [&]() -> NSArray<NSNumber *> * {
-    return to_nsarray(odr::DecodedFile::list_file_types(to_string(path)));
+    return to_nsarray(odr::list_file_types(to_string(path)));
   });
 }
 
 + (nullable NSString *)mimetypeAtPath:(NSString *)path error:(NSError **)error {
   return guarded(error, [&]() -> NSString * {
-    return to_nsstring(odr::DecodedFile::mimetype(to_string(path)));
+    return to_nsstring(odr::mimetype(to_string(path)));
   });
 }
 

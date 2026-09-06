@@ -265,24 +265,6 @@ void odr_python::bind_file(py::module_ &m) {
           },
           py::arg("data"), py::arg("logger") = odr::Logger::null(),
           "Decode a document file held in memory; `data` is its bytes.")
-      // `type`/`meta` are overloaded on `File` and path, so the address of
-      // either is ambiguous; name the signature.
-      .def_static(
-          "type_by_file",
-          py::overload_cast<const odr::File &>(&odr::DocumentFile::type),
-          py::arg("file"))
-      .def_static(
-          "type_by_path",
-          py::overload_cast<const std::string &>(&odr::DocumentFile::type),
-          py::arg("path"))
-      .def_static(
-          "meta_by_file",
-          py::overload_cast<const odr::File &>(&odr::DocumentFile::meta),
-          py::arg("file"))
-      .def_static(
-          "meta_by_path",
-          py::overload_cast<const std::string &>(&odr::DocumentFile::meta),
-          py::arg("path"))
       .def("document_type", &odr::DocumentFile::document_type)
       .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"),
            py::call_guard<py::gil_scoped_release>())

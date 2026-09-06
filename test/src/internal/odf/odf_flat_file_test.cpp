@@ -394,8 +394,8 @@ TEST(FlatOpenDocumentFile, the_statistics_give_the_entry_count) {
 
 /// A flat document is well formed xml too, so both readings are reported.
 TEST(FlatOpenDocumentFile, it_is_listed_next_to_the_source_view) {
-  const std::vector<FileType> types = DecodedFile::list_file_types(
-      File::from_memory(flat_text("<text:p>Hello</text:p>")));
+  const std::vector<FileType> types =
+      list_file_types(File::from_memory(flat_text("<text:p>Hello</text:p>")));
 
   EXPECT_NE(std::ranges::find(types, FileType::xml), std::end(types));
   EXPECT_NE(std::ranges::find(types, FileType::opendocument_text),

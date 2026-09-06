@@ -87,25 +87,6 @@ void File::copy(const std::string &path) const {
 
 std::shared_ptr<internal::abstract::File> File::impl() const { return m_impl; }
 
-std::vector<FileType> DecodedFile::list_file_types(const File &file,
-                                                   const Logger &logger) {
-  return internal::open_strategy::list_file_types(file.impl(), logger);
-}
-
-std::vector<FileType> DecodedFile::list_file_types(const std::string &path,
-                                                   const Logger &logger) {
-  return list_file_types(File::from_disk(path), logger);
-}
-
-std::string_view DecodedFile::mimetype(const File &file, const Logger &logger) {
-  return internal::magic::mimetype(file.impl(), logger);
-}
-
-std::string_view DecodedFile::mimetype(const std::string &path,
-                                       const Logger &logger) {
-  return mimetype(File::from_disk(path), logger);
-}
-
 DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
     : m_impl{std::move(impl)} {
   if (m_impl == nullptr) {
@@ -371,22 +352,6 @@ DocumentFile DocumentFile::from_disk(const std::string &path,
 
 DocumentFile DocumentFile::from_memory(std::string data, const Logger &logger) {
   return DocumentFile(File::from_memory(std::move(data)), logger);
-}
-
-FileType DocumentFile::type(const File &file) {
-  return DocumentFile(file).file_type();
-}
-
-FileType DocumentFile::type(const std::string &path) {
-  return type(File::from_disk(path));
-}
-
-FileMeta DocumentFile::meta(const File &file) {
-  return DocumentFile(file).file_meta();
-}
-
-FileMeta DocumentFile::meta(const std::string &path) {
-  return meta(File::from_disk(path));
 }
 
 DocumentFile::DocumentFile(
