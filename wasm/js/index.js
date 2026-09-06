@@ -91,6 +91,11 @@ export class Document {
     return this;
   }
 
+  // Whether this pdf can take annotations.
+  isAnnotatable() {
+    return unwrap(this.#core.isAnnotatable(this.#handle));
+  }
+
   // The annotated pdf's bytes; what `odr.annotation.getAnnotations()` collected
   // goes in.
   annotate(annotations) {

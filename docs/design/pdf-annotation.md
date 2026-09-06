@@ -1,10 +1,8 @@
 # PDF annotation design
 
-Status: **landed.** This records the architecture for adding markup
-annotations — text highlight and freehand drawing first — to an existing PDF,
-the alternatives weighed, and the effort it costs. The format model is
-validated against four viewers, and every phase has landed: the browser draws
-the markup, the writer appends it, and every binding can apply it.
+Status: **landed** (#843–#850). This records why the markup annotation feature
+is built the way it is — the decisions, and the alternatives they beat — for
+whoever changes it next. It is a record, not a plan.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -229,122 +227,44 @@ Three things the spike did **not** settle, and Phase 1 and 2 owe tests for each:
   whose newest section is an xref stream.** The spike's fixture had neither;
   Phase 1's tests cover both.
 
-## Implementation plan
+## How it landed
 
-Ordered so each step is verifiable on its own. Estimates are working days.
+| | |
+|---|---|
+| #843 | Object serialization made writable — escaping, and reals through `to_string_significant` rather than `{:.4g}`, which both rounded to four significant digits and reached for an exponent form 7.3.3 has no syntax for. `Transform2D::inverse`. |
+| #844 | The parse facts a writer needs: `start_xref_position()`, `xref_kind()`, `is_recovered()`, `highest_object_id()`. The first two are optional and recovery clears them, so the missing value and decision 2's refusal gate are the same fact. |
+| #845 | `IncrementalWriter`. Verified plumbing-first: a no-op update that re-parses identically, then a `/Rotate` rewrite, before any annotation semantics existed to blame. |
+| #846 | The object-stream page rewrite, which modern producers make the common case. It already worked. |
+| #847 | `write_text_markup`, `write_ink`, `append_page_annotations`. |
+| #848 | `PdfFile::annotate` and the wire format above; the `annotate` capability. |
+| #849 | `odr.annotation` and the page attributes it reads. |
+| #850 | python, java, swift and wasm. |
 
-### Phase 0 — serialization correctness — **done** (#843)
+Two things cost more than the estimate said, and both were found by looking
+rather than by testing:
 
-`Transform2D::inverse`; escaping for `StandardString`, `Name` and dictionary
-keys; reals through `util::number::to_string_significant`, since `{:.4g}` both
-rounded to four significant digits and reached for an exponent form 7.3.3 has
-no syntax for. Pinned by a round trip through `ObjectParser`.
+- **`mix-blend-mode` on a shape inside an svg composites against that svg's own
+  canvas**, not against the page, so the first highlight overlay painted over
+  the glyphs — the exact failure `/BM /Multiply` exists to prevent. The blend
+  belongs on the overlay element, which forces a separate overlay for the
+  washes.
+- **`selectionchange` fires on every character a drag covers.** Marking on the
+  first one and clearing the selection mid-gesture turned one intended
+  highlight into six fragments. The mark now waits for the pointer to come up.
 
-### Phase 0.5 — the parse facts a writer needs — **done** (#844)
+## Verified against
 
-Appending needs four things about the file, and `DocumentParser` computed all
-four while keeping one. `xref()`/`trailer()` were reachable; the newest
-section's offset, its kind, and the recovery flag were not. Now
-`start_xref_position()`, `xref_kind()`, `is_recovered()` and
-`highest_object_id()`.
+Six engines read what we write: ghostscript, PDFium (Chrome), CoreGraphics
+(Preview), pdf.js, qpdf's structural check, and our own renderer — which is the
+self-verifying one, since it paints only from `/AP /N`. Acrobat itself has not
+been tried; nothing in the file is Acrobat-specific, but that is an assumption
+rather than a result.
 
-The first two are `std::optional` and recovery clears them — a rebuilt table
-has no section of the file's own to chain onto, so the missing value and
-decision 2's refusal gate are the same fact.
-
-### Phase 1 — the incremental writer — **done** (#845)
-
-`pdf/pdf_writer.{hpp,cpp}`: `IncrementalWriter` pipes the source through
-untouched, appends the objects it collected, and closes with a cross-reference
-section naming only their ids and a trailer chaining back through `/Prev`.
-
-- **Matches the file's xref flavor** (`xref_kind()`), classic table or
-  cross-reference stream — the latter minting an id and an entry for the stream
-  object itself.
-- **Refuses** a recovered file (decision 2) and an encrypted one (decision 6),
-  resolving both gates in the constructor so nothing downstream re-asks.
-- **`/ID[1]` is derived from the update's own bytes**, not from a clock, so
-  writing the same update twice gives the same file and a test can pin it.
-- Only the update is buffered; the source is piped, so appending to a large
-  file does not hold it in memory.
-
-Verified in the order the plan asked for — a no-op update that re-parses
-identically first, then a `/Rotate` rewrite. `qpdf --check` passes, and
-ghostscript, CoreGraphics and our own renderer all honour the new rotation
-(the page box turns 8.5×11in into 11×8.5in).
-
-A page dictionary living inside an object stream is rewritten uncompressed in
-the new section, the newer type-1 entry winning over the older type-2 one.
-
-### Phases 2 and 3 — text markup and ink — **done** (#847)
-
-`pdf/pdf_annotation.{hpp,cpp}`: `write_text_markup` covers `/Highlight`,
-`/Underline`, `/StrikeOut` and `/Squiggly`; `write_ink` covers `/Ink`, its
-strokes smoothed Catmull-Rom → cubic bezier. `append_page_annotations` puts
-them on the page, rewriting the `/Annots` array itself where it is indirect.
-
-Only the highlight multiplies (11.6.4.1) — it is a wash over the text, where
-the others are marks drawn on top of it. Opacity rides on the annotation's
-`/CA` alone, which a viewer applies to the whole appearance; setting `ca` in
-the appearance's own state as well would square it.
-
-**`/QuadPoints` ordering is settled** against two appearance-less files that
-force a viewer to synthesize one: ghostscript draws the Z-order as a clean
-rectangle and 12.5.6.10's counterclockwise order as a twisted blob.
-CoreGraphics synthesizes nothing at all, so it is no oracle here.
-
-### Phase 4 — public API (1 d, ~130 lines)
-
-`PdfFile::annotate(std::string_view json, std::ostream &out, const Logger &)`,
-throwing per the repo's fail-fast rule. A `FileTypeCapabilities` bit for it, and
-the `file_type_table` row (the capability test fails if the declaration exceeds
-what the engine does).
-
-### Phase 5 — browser layer — **done** (#849)
-
-`pdf_annotation_js` and `pdf_annotation_css` in `frontend.cpp`, alongside
-`viewport_js`/`search_js`, exposing `odr.annotation`.
-
-Each page div carries `data-odr-page` and `data-odr-space`, the latter being
-`to_box⁻¹` — which is what `Transform2D::inverse` was added for. A viewport
-point divides out the zoom (`rect.width / offsetWidth`), converts css pixels to
-points, and goes through that matrix; the model keeps page-box points and maps
-to user space only in `getAnnotations()`.
-
-**Two overlays per page.** A `mix-blend-mode` on a shape *inside* an svg
-composites against the svg's own canvas, not against the page, so a highlight
-painted that way covers the glyphs instead of letting them through. The blend
-belongs on the overlay element, and the washes therefore need an overlay of
-their own (`svg.an-m`) separate from the marks drawn on top (`svg.an`).
-
-The overlay captures pointer events only for ink; the text tools leave the
-selection layer alone, which is what makes selecting text to highlight work.
-
-Checks in `test/browser/annotation/`, run by hand as the repo's other emitted
-scripts are.
-
-### Phase 6 — bindings — **done** (#850)
-
-`annotate` and the `annotate` capability across wasm, JNI, python and Apple.
-Each returns the annotated bytes rather than writing a file: none of these
-callers has a filesystem the caller would want written to.
-
-### Phase 7 — corpus and interop (2 d, ~600 test lines)
-
-Reference-output snapshot entries; interop check of our output in Acrobat,
-Preview and pdf.js.
-
-**Total ≈ 15–20 days, ≈2,700–3,300 lines** — about 1,000 C++ in `src/`, 600 C++
-test, 780 JS/CSS, 470 bindings. Per-app UI (droid/ios toolbars) is on top and
-outside this repo.
-
-**Narrower MVP** — highlight and ink, wasm only, unencrypted, no delete —
-**6–8 days, ~1,400 lines**, and shippable, because the render side already
-exists.
+The reference-output snapshot covers every rendered pdf page.
 
 ## What the writer unlocks next
 
-Nearly free once Phases 0–2 land, all reusing the same appearance machinery:
+Nearly free now, all reusing the same appearance machinery:
 
 - **Underline / StrikeOut / Squiggly** — the highlight path with a different
   appearance and subtype.
@@ -365,18 +285,21 @@ Medium:
 - **AcroForm field fill** — the writer makes it possible, but regenerating
   appearances from `/V` and `/DA` is the real work, and `pdf/AGENTS.md` scopes
   form interactivity out today.
+- **Deleting a foreign annotation** — we remove only what we wrote, identified
+  by its `/NM`; removing someone else's means proving nothing references it.
 
 ## Open questions
 
-- **Link overlays vs. the highlight tool.** `<a>` overlays already sit above the
-  `.sel` layer and block selection (`pdf/AGENTS.md` roadmap). A
-  selection-driven highlight tool makes that conflict user-visible rather than
-  theoretical — does this feature force the reverted `elementFromPoint`
-  workaround (commit `5cfa8a09`) back onto the table?
+- **Link overlays vs. the highlight tool.** `<a>` overlays sit above the `.sel`
+  layer and block selection (`pdf/AGENTS.md` roadmap), so text under a link
+  cannot be highlighted by selecting it. The markup tools capture no pointer
+  events, so this is the link overlay's problem rather than the annotator's —
+  but it is user-visible now rather than theoretical. Does it force the reverted
+  `elementFromPoint` workaround (commit `5cfa8a09`) back onto the table?
 - **Annotating a linearized file** breaks its linearization: the `/Linearized`
   dictionary then describes a prefix that is no longer the whole file. Viewers
   cope and Acrobat does the same — do we say so and move on, or de-linearize?
-- **Encrypted files**: is refusing acceptable for the app's real corpus, or does
-  the `Decryptor` key accessor need to land in v1 after all?
+- **Encrypted files** are refused (decision 6). Is that acceptable for the
+  app's real corpus, or does the `Decryptor` key accessor need to land?
 - **Where does the pending-annotation state live across a reload** in the mobile
   WebView — the browser only, or does the host persist the payload?

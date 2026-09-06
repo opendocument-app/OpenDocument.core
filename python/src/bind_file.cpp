@@ -328,6 +328,8 @@ void odr_python::bind_file(py::module_ &m) {
       .def("document", &odr::DocumentFile::document);
 
   py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")
+      .def("is_annotatable", &odr::PdfFile::is_annotatable,
+           "Whether this file can take annotations.")
       .def(
           "annotate",
           [](const odr::PdfFile &file, const std::string &annotations) {

@@ -145,6 +145,8 @@ FileTypeCapabilities DecodedFile::capabilities() const {
       result.translate_html && encryption_state() != EncryptionState::encrypted;
   // there is no scheme without html
   result.color_scheme = result.color_scheme && result.translate_html;
+  // a file we cannot append to cannot be annotated, whatever the format can do
+  result.annotate = result.annotate && m_impl->annotatable();
 
   // `edit`/`save`/`encrypt` stay as declared — resolving them would mean
   // decoding the document; ask `Document` for the precise answer
@@ -353,6 +355,8 @@ PdfFile::PdfFile(std::shared_ptr<internal::abstract::PdfFile> impl)
 PdfFile PdfFile::decrypt(const std::string &password) const {
   return DecodedFile::decrypt(password).as_pdf_file();
 }
+
+bool PdfFile::is_annotatable() const noexcept { return m_impl->annotatable(); }
 
 void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
                        const Logger &logger) const {

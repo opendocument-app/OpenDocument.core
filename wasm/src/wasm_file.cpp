@@ -115,6 +115,16 @@ emscripten::val file_type(const Handle handle) {
   });
 }
 
+/// Whether this file can take annotations, the counterpart of `isEditable`.
+emscripten::val is_annotatable(const Handle handle) {
+  return guarded([&] {
+    const Session &s = session(handle);
+    return ok(emscripten::val(s.file.file_type() ==
+                                  FileType::portable_document_format &&
+                              s.file.as_pdf_file().is_annotatable()));
+  });
+}
+
 /// The annotated pdf's bytes; there is no filesystem to write to. `payload` is
 /// what the rendered page's `odr.annotation.getAnnotations()` collected.
 emscripten::val annotate(const Handle handle, const std::string &payload) {
@@ -152,6 +162,7 @@ EMSCRIPTEN_BINDINGS(odr_file) {
   emscripten::function("decrypt", &odr::wasm::decrypt);
   emscripten::function("fileType", &odr::wasm::file_type);
   emscripten::function("fileName", &odr::wasm::file_name);
+  emscripten::function("isAnnotatable", &odr::wasm::is_annotatable);
   emscripten::function("annotate", &odr::wasm::annotate);
   emscripten::function("close", &odr::wasm::close);
   emscripten::function("closeAll", &odr::wasm::close_all);

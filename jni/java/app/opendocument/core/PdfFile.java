@@ -12,6 +12,11 @@ public final class PdfFile extends DecodedFile {
     return new PdfFile(decryptPdfFileNative(handle(), password));
   }
 
+  /** Whether this file can take annotations. */
+  public boolean isAnnotatable() {
+    return isAnnotatableNative(handle());
+  }
+
   /**
    * Applies markup annotations and returns the annotated pdf.
    *
@@ -25,4 +30,6 @@ public final class PdfFile extends DecodedFile {
   private native long decryptPdfFileNative(long handle, String password);
 
   private native byte[] annotateNative(long handle, String annotations);
+
+  private native boolean isAnnotatableNative(long handle);
 }

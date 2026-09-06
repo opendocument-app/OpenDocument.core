@@ -405,6 +405,10 @@ NS_SWIFT_NAME(DocumentFile)
 /// A decoded PDF — `odr::PdfFile`.
 NS_SWIFT_NAME(PdfFile)
 @interface ODRPdfFile : ODRDecodedFile
+/// Whether this file can take annotations — the counterpart of
+/// `ODRDocument.isEditable`. `NO` for a pdf declaring an `/Encrypt`, or whose
+/// cross-reference table had to be rebuilt by scanning.
+@property(nonatomic, readonly) BOOL isAnnotatable;
 /// Applies markup annotations — the payload the rendered page's
 /// `odr.annotation.getAnnotations()` collects — and returns the annotated pdf.
 - (nullable NSData *)annotate:(NSString *)annotations

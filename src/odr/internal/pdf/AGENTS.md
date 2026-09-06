@@ -4,10 +4,13 @@ The **why** behind the `pdf/` module and the roadmap. What is concretely
 implemented is in the code; this file keeps the rationale, the non-obvious
 invariants, and where things live. Reference links live in [`README.md`](README.md).
 
-**Goal.** Faithful read-only HTML for common real-world PDFs through a
-pure-serialization pipeline (no native renderer). The file-format,
-text-extraction, font and graphics foundations are in place; what remains is
-interaction & navigation plus a tail of known gaps (see *Roadmap*).
+**Goal.** Faithful HTML for common real-world PDFs through a pure-serialization
+pipeline (no native renderer). Reading is what the module mostly is; the one
+thing it writes is **markup annotations**, appended without disturbing anything
+already in the file (see [`docs/design/pdf-annotation.md`](../../../../docs/design/pdf-annotation.md)).
+The file-format, text-extraction, font and graphics foundations are in place;
+what remains is interaction & navigation plus a tail of known gaps (see
+*Roadmap*).
 
 **Scope in one line.** Parse the PDF object/file structure (xref tables, xref
 streams, object streams, hybrid files, forward-scan recovery), decrypt (RC4,
@@ -15,6 +18,9 @@ AES-128, AES-256), build the page tree, tokenize content streams, and emit HTML:
 absolutely-positioned text spans placed by the full text transform, with vector
 graphics / images / shadings / patterns / transparency as inline SVG per page,
 embedded fonts via `@font-face` and non-embedded fonts substituted to CSS stacks.
+On the write side: append an incremental update (7.5.6) carrying highlight,
+underline, strike-out, squiggly and ink annotations, each with the appearance
+stream it paints through.
 
 ---
 
@@ -226,7 +232,9 @@ Things the code won't shout at you:
 | `pdf_graphics_operator*.{hpp,cpp}` | Operator enum + `GraphicsOperator`; content-stream tokenizer |
 | `pdf_graphics_state.{hpp,cpp}` | `GraphicsState`: state stack, `execute(op)` for the modelled subset; CTM/`Tm`/`Tlm`; `text_placement_matrix()`, `advance_text()`; `save`/`restore`/`concat_matrix` reused by `q`/`Q`/`cm` and form invocation |
 | `pdf_page_text.{hpp,cpp}` | `extract_text`: content → `TextElement` per shown segment; `Do` recursion; marked-content/`ActualText`; pen-based space inference |
-| `pdf_file.{hpp,cpp}` | `abstract::PdfFile`; probes encryption at construction, carries the authenticated `Decryptor` forward |
+| `pdf_file.{hpp,cpp}` | `abstract::PdfFile`; probes encryption at construction, carries the authenticated `Decryptor` forward; `annotate` parses the json wire format and drives the two below |
+| `pdf_writer.{hpp,cpp}` | `IncrementalWriter`: copies the source through and appends changed objects under a cross-reference section of their own, matching the file's own xref flavor. Refuses a recovered or encrypted file |
+| `pdf_annotation.{hpp,cpp}` | The markup and ink annotations, and the appearance streams they paint through. Only the highlight blends Multiply (11.6.4.1) |
 
 Consumers outside the module: `open_strategy.cpp` (detection/engine selection) and
 `html/pdf_file.cpp` (`create_pdf_service`; the per-font PUA re-encode + OTF wrap +
@@ -270,8 +278,10 @@ fixtures are verified manually but not pinned.
 
 # Roadmap
 
-The next feature cluster is **interaction & navigation**; the rest is a tail of
-known gaps. Each remaining item gets its own detailed design before
+Markup annotations have landed — see
+[`docs/design/pdf-annotation.md`](../../../../docs/design/pdf-annotation.md) for
+the decisions and what the writer unlocks next. The next feature cluster is
+**interaction & navigation**; the rest is a tail of known gaps. Each remaining item gets its own detailed design before
 implementation. Grow the corpus alongside (odr-public fixtures + the PDF101
 "nasty files" collection linked in `README.md`; assertion tests per feature).
 
@@ -286,7 +296,8 @@ Link annotations (`/URI` + internal `/GoTo`) already land. Remaining:
   `pointer-events:none`, a click handler re-hit-tests via `elementFromPoint`) was
   built then **reverted as too involved** (commit `5cfa8a09`, reachable for
   later). Options: (a) reinstate it; (b) a CSS-only route if one exists;
-  (c) accept clickable-only.
+  (c) accept clickable-only. The markup annotator made this user-visible: text
+  under a link cannot be highlighted by selecting it either.
 - **Document outline** (`/Outlines`) → nav anchors/sidebar.
 - **Optional content groups** (layers): honor default visibility, no toggle UI.
 - **Output scaling**: monolithic HTML vs. per-page lazy loading (check what odr's
