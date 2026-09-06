@@ -283,6 +283,9 @@ Dispatch `release.yml` against main, publish the draft that appears —
   Detailed rationale belongs in the per-module `AGENTS.md`.
 - **Doc-comment markers**: `///` for functions/classes/structs/enums; trailing
   `///<` for the short note on the same line (enumerator/member). Keep terse.
+  **`@brief` only where there is a detail paragraph under it** — a lone
+  `@brief` marks nothing off from anything, so the tag is noise. Write the
+  description plainly; add `@brief` at the moment a second paragraph arrives.
 - **Pull requests**: put the `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
   line **at the top** of the PR body. If the change is one a consumer would
   notice, add its `CHANGELOG.md` entry in the same PR — see *Releasing*.

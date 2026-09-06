@@ -10,7 +10,7 @@
 
 namespace odr {
 
-/// @brief A path to a specific element in a document.
+/// A path to a specific element in a document.
 class DocumentPath final {
 public:
   class Child final {

@@ -77,7 +77,7 @@ class TableCell;
 class Frame;
 class Image;
 
-/// @brief Collection of element types.
+/// Collection of element types.
 enum class ElementType {
   none,
 
@@ -112,7 +112,7 @@ enum class ElementType {
   group,
 };
 
-/// @brief Collection of shapes a frame draws.
+/// Collection of shapes a frame draws.
 enum class ShapeType {
   none, ///< a plain box, drawing no outline of its own
   rect,
@@ -121,7 +121,7 @@ enum class ShapeType {
   custom, ///< an outline of its own, read from @ref Frame::path
 };
 
-/// @brief Collection of anchor types.
+/// Collection of anchor types.
 enum class AnchorType {
   as_char,
   at_char,
@@ -130,20 +130,20 @@ enum class AnchorType {
   at_paragraph,
 };
 
-/// @brief Collection of value types.
+/// Collection of value types.
 enum class ValueType {
   unknown,
   string,
   float_number,
 };
 
-/// @brief Collection of list types.
+/// Collection of list types.
 enum class ListType {
   unordered,
   ordered,
 };
 
-/// @brief Represents an element in a document.
+/// Represents an element in a document.
 class Element {
 public:
   Element();
@@ -206,7 +206,7 @@ protected:
   [[nodiscard]] bool exists_() const;
 };
 
-/// @brief Represents an iterator for elements in a document.
+/// Represents an iterator for elements in a document.
 class ElementIterator {
 public:
   using value_type = Element;
@@ -243,7 +243,7 @@ private:
   [[nodiscard]] bool exists_() const;
 };
 
-/// @brief Represents a range of elements in a document.
+/// Represents a range of elements in a document.
 class ElementRange {
 public:
   ElementRange();
@@ -258,7 +258,7 @@ private:
   ElementIterator m_end;
 };
 
-/// @brief Represents a typed element in a document.
+/// Represents a typed element in a document.
 template <typename T> class ElementBase : public Element {
 public:
   ElementBase() = default;
@@ -276,7 +276,7 @@ protected:
   }
 };
 
-/// @brief Represents a root element in a document.
+/// Represents a root element in a document.
 class TextRoot final : public ElementBase<internal::abstract::TextRootAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -286,7 +286,7 @@ public:
   [[nodiscard]] MasterPage first_master_page() const;
 };
 
-/// @brief Represents a slide element in a document.
+/// Represents a slide element in a document.
 class Slide final : public ElementBase<internal::abstract::SlideAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -298,7 +298,7 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
-/// @brief Represents a sheet element in a document.
+/// Represents a sheet element in a document.
 class Sheet final : public ElementBase<internal::abstract::SheetAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -322,7 +322,7 @@ public:
                                           std::uint32_t row) const;
 };
 
-/// @brief Represents a sheet cell element in a document.
+/// Represents a sheet cell element in a document.
 class SheetCell final
     : public ElementBase<internal::abstract::SheetCellAdapter> {
 public:
@@ -334,7 +334,7 @@ public:
   [[nodiscard]] ValueType value_type() const;
 };
 
-/// @brief Represents a page element in a document.
+/// Represents a page element in a document.
 class Page final : public ElementBase<internal::abstract::PageAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -346,7 +346,7 @@ public:
   [[nodiscard]] MasterPage master_page() const;
 };
 
-/// @brief Represents a master page element in a document.
+/// Represents a master page element in a document.
 class MasterPage final
     : public ElementBase<internal::abstract::MasterPageAdapter> {
 public:
@@ -355,7 +355,7 @@ public:
   [[nodiscard]] PageLayout page_layout() const;
 };
 
-/// @brief Represents a line break element in a document.
+/// Represents a line break element in a document.
 class LineBreak final
     : public ElementBase<internal::abstract::LineBreakAdapter> {
 public:
@@ -364,7 +364,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
-/// @brief Represents a paragraph element in a document.
+/// Represents a paragraph element in a document.
 class Paragraph final
     : public ElementBase<internal::abstract::ParagraphAdapter> {
 public:
@@ -374,7 +374,7 @@ public:
   [[nodiscard]] TextStyle text_style() const;
 };
 
-/// @brief Represents a span element in a document.
+/// Represents a span element in a document.
 class Span final : public ElementBase<internal::abstract::SpanAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -382,7 +382,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
-/// @brief Represents a text element in a document.
+/// Represents a text element in a document.
 class Text final : public ElementBase<internal::abstract::TextAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -393,7 +393,7 @@ public:
   [[nodiscard]] TextStyle style() const;
 };
 
-/// @brief Represents a link element in a document.
+/// Represents a link element in a document.
 class Link final : public ElementBase<internal::abstract::LinkAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -401,7 +401,7 @@ public:
   [[nodiscard]] std::string href() const;
 };
 
-/// @brief Represents a bookmark element in a document.
+/// Represents a bookmark element in a document.
 class Bookmark final : public ElementBase<internal::abstract::BookmarkAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -409,7 +409,7 @@ public:
   [[nodiscard]] std::string name() const;
 };
 
-/// @brief Represents a list element in a document.
+/// Represents a list element in a document.
 class List final : public ElementBase<internal::abstract::ListAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -417,7 +417,7 @@ public:
   [[nodiscard]] ListType type() const;
 };
 
-/// @brief Represents a list item element in a document.
+/// Represents a list item element in a document.
 class ListItem final : public ElementBase<internal::abstract::ListItemAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -432,7 +432,7 @@ public:
   [[nodiscard]] std::optional<std::uint32_t> number() const;
 };
 
-/// @brief Represents a table element in a document.
+/// Represents a table element in a document.
 class Table final : public ElementBase<internal::abstract::TableAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -448,7 +448,7 @@ public:
   [[nodiscard]] TableStyle style() const;
 };
 
-/// @brief Represents a table column element in a document.
+/// Represents a table column element in a document.
 class TableColumn final
     : public ElementBase<internal::abstract::TableColumnAdapter> {
 public:
@@ -457,7 +457,7 @@ public:
   [[nodiscard]] TableColumnStyle style() const;
 };
 
-/// @brief Represents a table row element in a document.
+/// Represents a table row element in a document.
 class TableRow final : public ElementBase<internal::abstract::TableRowAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -465,7 +465,7 @@ public:
   [[nodiscard]] TableRowStyle style() const;
 };
 
-/// @brief Represents a table cell element in a document.
+/// Represents a table cell element in a document.
 class TableCell final
     : public ElementBase<internal::abstract::TableCellAdapter> {
 public:
@@ -490,7 +490,7 @@ struct DrawingPath final {
   double height{0};
 };
 
-/// @brief Represents the two ends of a line shape, in the parent's space.
+/// Represents the two ends of a line shape, in the parent's space.
 struct DrawingLine final {
   Measure x1{0, DynamicUnit()};
   Measure y1{0, DynamicUnit()};
@@ -512,7 +512,7 @@ struct DrawingTransform final {
   Measure f{0, DynamicUnit()};
 };
 
-/// @brief Represents a frame element in a document.
+/// Represents a frame element in a document.
 class Frame final : public ElementBase<internal::abstract::FrameAdapter> {
 public:
   using ElementBase::ElementBase;
@@ -533,7 +533,7 @@ public:
   [[nodiscard]] GraphicStyle style() const;
 };
 
-/// @brief Represents an image element in a document.
+/// Represents an image element in a document.
 class Image final : public ElementBase<internal::abstract::ImageAdapter> {
 public:
   using ElementBase::ElementBase;

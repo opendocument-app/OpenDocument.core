@@ -4,7 +4,7 @@
 
 namespace odr {
 
-/// @brief Source flavor of a font program.
+/// Source flavor of a font program.
 enum class FontFormat {
   unknown,
   truetype,     ///< SFNT with `glyf` outlines (incl. CIDFontType2)
@@ -13,7 +13,7 @@ enum class FontFormat {
   type1,        ///< Type1 / `eexec`
 };
 
-/// @brief Glyph-space bounding box, in font design units.
+/// Glyph-space bounding box, in font design units.
 struct FontBBox {
   std::int16_t x_min{};
   std::int16_t y_min{};

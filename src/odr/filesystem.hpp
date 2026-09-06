@@ -11,7 +11,7 @@ class ReadableFilesystem;
 namespace odr {
 class File;
 
-/// @brief FileWalker class
+/// FileWalker class
 class FileWalker {
 public:
   explicit FileWalker(std::unique_ptr<internal::abstract::FileWalker>);
@@ -36,7 +36,7 @@ private:
   std::unique_ptr<internal::abstract::FileWalker> m_impl;
 };
 
-/// @brief Filesystem class
+/// Filesystem class
 class Filesystem {
 public:
   explicit Filesystem(std::shared_ptr<internal::abstract::ReadableFilesystem>);

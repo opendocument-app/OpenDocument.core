@@ -4,7 +4,7 @@
 
 namespace odr {
 
-/// @brief Represents the dimensions of a table.
+/// Represents the dimensions of a table.
 struct TableDimensions {
   std::uint32_t rows{0};
   std::uint32_t columns{0};
