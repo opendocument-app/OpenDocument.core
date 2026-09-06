@@ -4,6 +4,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/http_server.hpp>
+#include <odr/odr.hpp>
 
 #include <cstdint>
 #include <iostream>
@@ -30,7 +31,7 @@ int main(const int argc, char **argv) {
     DecodePreference decode_preference;
     decode_preference.as_file_type = FileType::zip;
 
-    DecodedFile decoded_file{input, decode_preference, logger};
+    DecodedFile decoded_file = open(input, decode_preference, logger);
 
     if (decoded_file.password_encrypted()) {
       if (!password) {

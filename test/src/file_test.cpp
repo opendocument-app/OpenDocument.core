@@ -62,8 +62,8 @@ TEST(File, opening_as_the_wrong_document_type_throws) {
   for (const auto &[path, is, is_not] : cases) {
     const std::string file_path = TestData::test_file_path(path);
 
-    EXPECT_EQ(DecodedFile(file_path, is).file_type(), is) << path;
-    EXPECT_THROW(std::ignore = DecodedFile(file_path, is_not), UnknownFileType)
+    EXPECT_EQ(open(file_path, is).file_type(), is) << path;
+    EXPECT_THROW(std::ignore = open(file_path, is_not), UnknownFileType)
         << path;
   }
 }
@@ -71,9 +71,9 @@ TEST(File, opening_as_the_wrong_document_type_throws) {
 /// The one reading that is not its own container's: an encrypted ooxml names
 /// no inner type until it is decrypted, so it stands in for the one asked for.
 TEST(File, an_encrypted_ooxml_opens_as_the_type_asked_for) {
-  const DecodedFile file(
-      TestData::test_file_path("odr-public/docx/encrypted.docx"),
-      FileType::office_open_xml_document);
+  const DecodedFile file =
+      open(TestData::test_file_path("odr-public/docx/encrypted.docx"),
+           FileType::office_open_xml_document);
 
   EXPECT_EQ(file.file_type(), FileType::office_open_xml_encrypted);
   EXPECT_TRUE(file.password_encrypted());
@@ -88,12 +88,12 @@ TEST(File, a_flat_document_and_a_package_answer_a_wrong_type_alike) {
       R"(application/vnd.oasis.opendocument.text">)"
       R"(<office:body><office:text/></office:body></office:document>)";
 
-  EXPECT_THROW(std::ignore = DecodedFile(File::from_memory(flat),
-                                         FileType::opendocument_graphics),
+  EXPECT_THROW(std::ignore = open(File::from_memory(flat),
+                                  FileType::opendocument_graphics),
                UnknownFileType);
-  EXPECT_THROW(std::ignore = DecodedFile(
-                   TestData::test_file_path("odr-public/odt/about.odt"),
-                   FileType::opendocument_graphics),
+  EXPECT_THROW(std::ignore =
+                   open(TestData::test_file_path("odr-public/odt/about.odt"),
+                        FileType::opendocument_graphics),
                UnknownFileType);
 }
 
@@ -129,7 +129,7 @@ TEST(File, an_archive_entry_is_named_by_its_entry) {
   std::stringstream out;
   zip.save(out);
 
-  const Filesystem filesystem = DecodedFile(File::from_memory(out.str()))
+  const Filesystem filesystem = open(File::from_memory(out.str()))
                                     .as_archive_file()
                                     .archive()
                                     .as_filesystem();
@@ -153,9 +153,9 @@ TEST(File, from_memory_holds_its_bytes) {
 TEST(File, from_memory_decodes_the_same_as_from_disk) {
   const std::string path = TestData::test_file_path("odr-public/odt/about.odt");
 
-  const DecodedFile from_disk(File::from_disk(path));
-  const DecodedFile from_memory(
-      File::from_memory(internal::util::file::read(path)));
+  const DecodedFile from_disk = open(File::from_disk(path));
+  const DecodedFile from_memory =
+      open(File::from_memory(internal::util::file::read(path)));
 
   EXPECT_EQ(from_memory.file_type(), from_disk.file_type());
   EXPECT_EQ(from_memory.file_category(), from_disk.file_category());
@@ -200,14 +200,17 @@ TEST(File, disk_file_has_no_memory_data) {
   EXPECT_FALSE(file.memory_data().has_value());
 }
 
-TEST(DocumentFile, open) { EXPECT_THROW(DocumentFile("/"), FileNotFound); }
+TEST(DocumentFile, open) {
+  EXPECT_THROW(std::ignore = open("/").as_document_file(), FileNotFound);
+}
 
 TEST(DocumentFile, from_disk_and_from_memory_agree) {
   const std::string path = TestData::test_file_path("odr-public/odt/about.odt");
 
-  const DocumentFile from_disk = DocumentFile::from_disk(path);
+  const DocumentFile from_disk = open(path).as_document_file();
   const DocumentFile from_memory =
-      DocumentFile::from_memory(internal::util::file::read(path));
+      open(File::from_memory(internal::util::file::read(path)))
+          .as_document_file();
 
   EXPECT_EQ(from_memory.file_type(), from_disk.file_type());
   EXPECT_EQ(from_memory.document_type(), from_disk.document_type());
@@ -217,24 +220,26 @@ TEST(DocumentFile, from_disk_and_from_memory_agree) {
 
 /// Not a document, so both factories have to refuse it the same way.
 TEST(DocumentFile, from_memory_throws_on_a_non_document) {
-  EXPECT_THROW(std::ignore = DocumentFile::from_memory("not a document"),
+  EXPECT_THROW(std::ignore =
+                   open(File::from_memory("not a document")).as_document_file(),
                NoDocumentFile);
 }
 
 TEST(DocumentFile, odf_thumbnail) {
-  const DocumentFile file(
-      TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods"));
+  const DocumentFile file =
+      open(TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods"))
+          .as_document_file();
 
   const std::optional<File> thumbnail = file.thumbnail();
   ASSERT_TRUE(thumbnail.has_value());
   EXPECT_LT(0, thumbnail->size());
-  EXPECT_EQ(DecodedFile(*thumbnail).file_type(),
-            FileType::portable_network_graphics);
+  EXPECT_EQ(open(*thumbnail).file_type(), FileType::portable_network_graphics);
 }
 
 TEST(DocumentFile, thumbnail_is_absent_where_the_package_has_none) {
-  const DocumentFile file(
-      TestData::test_file_path("odr-public/docx/style-various-1.docx"));
+  const DocumentFile file =
+      open(TestData::test_file_path("odr-public/docx/style-various-1.docx"))
+          .as_document_file();
 
   EXPECT_FALSE(file.thumbnail().has_value());
 }
@@ -261,7 +266,8 @@ TEST(DocumentFile, ooxml_thumbnail_is_named_by_the_package_relationship) {
   std::stringstream out;
   zip.save(out);
 
-  const DocumentFile file = DocumentFile::from_memory(out.str());
+  const DocumentFile file =
+      open(File::from_memory(out.str())).as_document_file();
   ASSERT_EQ(file.file_type(), FileType::office_open_xml_document);
 
   const std::optional<File> thumbnail = file.thumbnail();
@@ -276,7 +282,7 @@ TEST(DecodedFile, wpd) {
   const auto path =
       TestData::test_file_path("odr-public/wpd/Sync3 Sample Page.wpd");
   try {
-    DecodedFile file(path, logger);
+    DecodedFile file = open(path, logger);
     FAIL();
   } catch (const UnsupportedFileType &e) {
     EXPECT_EQ(e.file_type, FileType::word_perfect);

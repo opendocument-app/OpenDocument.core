@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `odr::open` is the only way to decode a file. The `DecodedFile`
+  and `DocumentFile` constructors and `DocumentFile::from_disk`/`::from_memory`
+  are gone, in every binding; narrow with `open(...).as_document_file()`.
+
 - **Breaking**: `DecodedFile::list_file_types`/`::mimetype` and
   `DocumentFile::type`/`::meta` are gone, in every binding. Use the free
   `odr::list_file_types`/`odr::mimetype`, or `odr::open(...).file_type()`.

@@ -1,4 +1,5 @@
 #include <odr/file.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/util/odr_meta_util.hpp>
 
@@ -25,7 +26,7 @@ int main(const int argc, char **argv) {
       password = argv[2];
     }
 
-    DocumentFile document_file{input};
+    DocumentFile document_file = open(input).as_document_file();
 
     if (document_file.password_encrypted()) {
       if (!password) {

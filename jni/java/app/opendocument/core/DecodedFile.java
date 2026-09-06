@@ -1,9 +1,9 @@
 package app.opendocument.core;
 
 /**
- * A decoded file. Mirrors {@code odr::DecodedFile}. Obtain via
- * {@link Odr#open} or the constructors; {@code as*} accessors return typed
- * views and throw when the file is not of that kind (check {@code is*} first).
+ * A decoded file. Mirrors {@code odr::DecodedFile}. Obtain via {@link Odr#open};
+ * {@code as*} accessors return typed views and throw when the file is not of
+ * that kind (check {@code is*} first).
  */
 public class DecodedFile extends NativeResource {
   static {
@@ -12,18 +12,6 @@ public class DecodedFile extends NativeResource {
 
   DecodedFile(long handle) {
     super(handle, null, DecodedFile::destroy);
-  }
-
-  public DecodedFile(String path) {
-    this(create(path));
-  }
-
-  public DecodedFile(String path, FileType as) {
-    this(createAs(path, as.toNative()));
-  }
-
-  public DecodedFile(File file) {
-    this(file.decode());
   }
 
   public File file() {
@@ -115,10 +103,6 @@ public class DecodedFile extends NativeResource {
   public FontFile asFontFile() {
     return new FontFile(asFontFileNative(handle()));
   }
-
-  private static native long create(String path);
-
-  private static native long createAs(String path, int as);
 
   static native void destroy(long handle);
 

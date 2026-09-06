@@ -73,8 +73,9 @@ Sheet first_sheet(const Document &document) {
 }
 
 Document decode(const std::shared_ptr<abstract::File> &file) {
-  return Document(
-      open_strategy::open_document_file(file, Logger::null())->document());
+  return Document(DecodedFile(open_strategy::open_file(file, Logger::null()))
+                      .as_document_file()
+                      .document());
 }
 
 constexpr const char *two_cells =

@@ -99,8 +99,8 @@ TEST(FlatOpenDocumentFile, the_root_mimetype_names_the_document_type) {
   };
 
   for (const auto &[mimetype, file_type, document_type] : cases) {
-    const DecodedFile file(
-        File::from_memory(flat_document(mimetype, "<office:text/>")));
+    const DecodedFile file =
+        open(File::from_memory(flat_document(mimetype, "<office:text/>")));
 
     EXPECT_EQ(file.file_type(), file_type);
     EXPECT_EQ(file.file_category(), FileCategory::document);
@@ -112,7 +112,7 @@ TEST(FlatOpenDocumentFile, the_root_mimetype_names_the_document_type) {
 /// The `-flat-xml` mimetypes are what a caller names the file, not what the
 /// root carries.
 TEST(FlatOpenDocumentFile, the_flat_mimetype_is_read_too_and_reported_back) {
-  const DecodedFile file(File::from_memory(
+  const DecodedFile file = open(File::from_memory(
       flat_document("application/vnd.oasis.opendocument.spreadsheet-flat-xml",
                     "<office:spreadsheet/>")));
 
@@ -122,19 +122,19 @@ TEST(FlatOpenDocumentFile, the_flat_mimetype_is_read_too_and_reported_back) {
 }
 
 TEST(FlatOpenDocumentFile, other_xml_is_left_to_the_source_view) {
-  EXPECT_EQ(DecodedFile(File::from_memory("<office:document/>")).file_type(),
+  EXPECT_EQ(open(File::from_memory("<office:document/>")).file_type(),
             FileType::xml);
-  EXPECT_EQ(
-      DecodedFile(File::from_memory(
-                      R"(<office:document office:mimetype="text/plain"/>)"))
-          .file_type(),
-      FileType::xml);
-  EXPECT_EQ(DecodedFile(File::from_memory("<a/>")).file_type(), FileType::xml);
+  EXPECT_EQ(open(File::from_memory(
+                     R"(<office:document office:mimetype="text/plain"/>)"))
+                .file_type(),
+            FileType::xml);
+  EXPECT_EQ(open(File::from_memory("<a/>")).file_type(), FileType::xml);
 }
 
 TEST(FlatOpenDocumentFile, opening_it_as_a_document_file_works) {
   const DocumentFile file =
-      DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>"));
+      open(File::from_memory(flat_text("<text:p>Hello</text:p>")))
+          .as_document_file();
 
   EXPECT_EQ(file.file_type(), FileType::opendocument_text);
   EXPECT_FALSE(file.password_encrypted());
@@ -143,18 +143,19 @@ TEST(FlatOpenDocumentFile, opening_it_as_a_document_file_works) {
 TEST(FlatOpenDocumentFile, opening_it_as_a_named_type_works) {
   const std::string source = flat_text("<text:p>Hello</text:p>");
 
-  EXPECT_EQ(DecodedFile(File::from_memory(source), FileType::opendocument_text)
-                .file_type(),
-            FileType::opendocument_text);
-  EXPECT_THROW(std::ignore = DecodedFile(File::from_memory(source),
-                                         FileType::opendocument_graphics),
+  EXPECT_EQ(
+      open(File::from_memory(source), FileType::opendocument_text).file_type(),
+      FileType::opendocument_text);
+  EXPECT_THROW(std::ignore = open(File::from_memory(source),
+                                  FileType::opendocument_graphics),
                UnknownFileType);
 }
 
 TEST(FlatOpenDocumentFile, the_body_decodes_to_the_same_tree_as_a_package) {
   const Document document =
-      DocumentFile::from_memory(
-          flat_text("<text:p>Hello <text:span>flat</text:span></text:p>"))
+      open(File::from_memory(
+               flat_text("<text:p>Hello <text:span>flat</text:span></text:p>")))
+          .as_document_file()
           .document();
 
   EXPECT_EQ(document.document_type(), DocumentType::text);
@@ -169,20 +170,20 @@ TEST(FlatOpenDocumentFile, the_body_decodes_to_the_same_tree_as_a_package) {
 /// has both under its one root.
 TEST(FlatOpenDocumentFile, styles_resolve_from_the_single_root) {
   const Document document =
-      DocumentFile::from_memory(
-          flat_text(
-              R"(<text:p text:style-name="P1">Hello</text:p>)",
-              R"(<office:styles>)"
-              R"(<style:style style:name="Base" style:family="paragraph">)"
-              R"(<style:text-properties fo:font-weight="bold"/>)"
-              R"(</style:style>)"
-              R"(</office:styles>)"
-              R"(<office:automatic-styles>)"
-              R"(<style:style style:name="P1" style:family="paragraph")"
-              R"( style:parent-style-name="Base">)"
-              R"(<style:text-properties fo:font-size="24pt"/>)"
-              R"(</style:style>)"
-              R"(</office:automatic-styles>)"))
+      open(File::from_memory(flat_text(
+               R"(<text:p text:style-name="P1">Hello</text:p>)",
+               R"(<office:styles>)"
+               R"(<style:style style:name="Base" style:family="paragraph">)"
+               R"(<style:text-properties fo:font-weight="bold"/>)"
+               R"(</style:style>)"
+               R"(</office:styles>)"
+               R"(<office:automatic-styles>)"
+               R"(<style:style style:name="P1" style:family="paragraph")"
+               R"( style:parent-style-name="Base">)"
+               R"(<style:text-properties fo:font-size="24pt"/>)"
+               R"(</style:style>)"
+               R"(</office:automatic-styles>)")))
+          .as_document_file()
           .document();
 
   const Element paragraph =
@@ -220,7 +221,7 @@ std::string render(const std::string &source) {
   config.text_document_margin = true;
 
   std::ostringstream out;
-  html::translate(DecodedFile(File::from_memory(source)), config)
+  html::translate(open(File::from_memory(source)), config)
       .list_views()
       .at(0)
       .write_html(out);
@@ -230,7 +231,8 @@ std::string render(const std::string &source) {
 /// `break_before` of every top-level paragraph, in document order.
 std::vector<std::optional<BreakType>>
 breaks_before_of(const std::string &source) {
-  const Document document = DocumentFile::from_memory(source).document();
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
 
   std::vector<std::optional<BreakType>> result;
   for (const Element child : document.root_element().children()) {
@@ -299,7 +301,8 @@ TEST(FlatOpenDocumentFile, a_soft_page_break_is_not_content) {
   const std::string source =
       flat_text(R"(<text:p>one<text:soft-page-break/>two</text:p>)");
 
-  const Document document = DocumentFile::from_memory(source).document();
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
   const Element paragraph =
       first_of_type(document.root_element(), ElementType::paragraph);
   ASSERT_TRUE(paragraph);
@@ -316,7 +319,7 @@ TEST(FlatOpenDocumentFile, a_reflowed_document_states_the_break_in_css_only) {
   config.text_document_margin = false;
 
   std::ostringstream out;
-  html::translate(DecodedFile(File::from_memory(
+  html::translate(open(File::from_memory(
                       three_paragraphs("P1", R"(fo:break-before="page")"))),
                   config)
       .list_views()
@@ -330,11 +333,12 @@ TEST(FlatOpenDocumentFile, a_reflowed_document_states_the_break_in_css_only) {
 /// Without a package there is nowhere to put an image but the markup.
 TEST(FlatOpenDocumentFile, an_embedded_image_is_internal_and_decodes) {
   const Document document =
-      DocumentFile::from_memory(
-          flat_text(std::string("<text:p><draw:frame><draw:image>"
-                                "<office:binary-data>") +
-                    png_base64 +
-                    "</office:binary-data></draw:image></draw:frame></text:p>"))
+      open(File::from_memory(flat_text(
+               std::string("<text:p><draw:frame><draw:image>"
+                           "<office:binary-data>") +
+               png_base64 +
+               "</office:binary-data></draw:image></draw:frame></text:p>")))
+          .as_document_file()
           .document();
 
   const Element element =
@@ -347,17 +351,17 @@ TEST(FlatOpenDocumentFile, an_embedded_image_is_internal_and_decodes) {
 
   const std::optional<File> file = image.file();
   ASSERT_TRUE(file.has_value());
-  EXPECT_EQ(DecodedFile(*file).file_type(),
-            FileType::portable_network_graphics);
+  EXPECT_EQ(open(*file).file_type(), FileType::portable_network_graphics);
 }
 
 /// A flat document has no package, so a linked image stays a plain link.
 TEST(FlatOpenDocumentFile, a_linked_image_is_not_internal) {
   const Document document =
-      DocumentFile::from_memory(
-          flat_text(R"(<text:p><draw:frame><draw:image )"
-                    R"(xlink:href="https://example.org/a.png"/>)"
-                    R"(</draw:frame></text:p>)"))
+      open(File::from_memory(
+               flat_text(R"(<text:p><draw:frame><draw:image )"
+                         R"(xlink:href="https://example.org/a.png"/>)"
+                         R"(</draw:frame></text:p>)")))
+          .as_document_file()
           .document();
 
   const Element element =
@@ -375,18 +379,18 @@ TEST(FlatOpenDocumentFile, the_statistics_give_the_entry_count) {
            "/></office:meta>";
   };
 
-  const DecodedFile text(File::from_memory(
+  const DecodedFile text = open(File::from_memory(
       flat_document("application/vnd.oasis.opendocument.text", "<office:text/>",
                     meta(R"(meta:page-count="7")"))));
   EXPECT_EQ(text.file_meta().entry_count, 7);
 
-  const DecodedFile spreadsheet(File::from_memory(
+  const DecodedFile spreadsheet = open(File::from_memory(
       flat_document("application/vnd.oasis.opendocument.spreadsheet",
                     "<office:spreadsheet/>", meta(R"(meta:table-count="3")"))));
   EXPECT_EQ(spreadsheet.file_meta().entry_count, 3);
 
   // the statistic a text document does not count
-  const DecodedFile mismatched(File::from_memory(
+  const DecodedFile mismatched = open(File::from_memory(
       flat_document("application/vnd.oasis.opendocument.text", "<office:text/>",
                     meta(R"(meta:table-count="3")"))));
   EXPECT_FALSE(mismatched.file_meta().entry_count.has_value());
@@ -405,7 +409,9 @@ TEST(FlatOpenDocumentFile, it_is_listed_next_to_the_source_view) {
 /// There is no package behind a flat document; asking for one answers empty.
 TEST(FlatOpenDocumentFile, it_has_an_empty_filesystem) {
   const Document document =
-      DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>")).document();
+      open(File::from_memory(flat_text("<text:p>Hello</text:p>")))
+          .as_document_file()
+          .document();
 
   const Filesystem filesystem = document.as_filesystem();
   EXPECT_FALSE(filesystem.exists("/content.xml"));
@@ -418,10 +424,10 @@ TEST(FlatOpenDocumentFile, embedded_images_get_distinct_hrefs) {
                                         "<office:binary-data>") +
                             png_base64 +
                             "</office:binary-data></draw:image></draw:frame>";
-  const Document document =
-      DocumentFile::from_memory(
-          flat_text("<text:p>" + image + image + "</text:p>"))
-          .document();
+  const Document document = open(File::from_memory(flat_text(
+                                     "<text:p>" + image + image + "</text:p>")))
+                                .as_document_file()
+                                .document();
 
   std::vector<std::string> hrefs;
   for (const Element child :
@@ -442,13 +448,14 @@ TEST(FlatOpenDocumentFile, embedded_images_get_distinct_hrefs) {
 TEST(FlatOpenDocumentFile,
      an_embedded_image_does_not_take_its_href_from_the_markup) {
   const Document document =
-      DocumentFile::from_memory(
-          flat_text(std::string(R"(<text:p><draw:frame>)")
-                        .append(R"(<draw:image xlink:href="../../evil.html">)")
-                        .append("<office:binary-data>")
-                        .append(png_base64)
-                        .append("</office:binary-data></draw:image>")
-                        .append("</draw:frame></text:p>")))
+      open(File::from_memory(flat_text(
+               std::string(R"(<text:p><draw:frame>)")
+                   .append(R"(<draw:image xlink:href="../../evil.html">)")
+                   .append("<office:binary-data>")
+                   .append(png_base64)
+                   .append("</office:binary-data></draw:image>")
+                   .append("</draw:frame></text:p>"))))
+          .as_document_file()
           .document();
 
   const Element element =
@@ -469,7 +476,7 @@ TEST(FlatOpenDocumentFile, a_packaged_embedded_image_decodes_as_well) {
           .append(png_base64)
           .append("</office:binary-data></draw:image></draw:frame></text:p>"));
 
-  const Document document = DocumentFile(path).document();
+  const Document document = open(path).as_document_file().document();
 
   const Element element =
       first_of_type(document.root_element(), ElementType::image);
@@ -480,8 +487,7 @@ TEST(FlatOpenDocumentFile, a_packaged_embedded_image_decodes_as_well) {
 
   const std::optional<File> file = image.file();
   ASSERT_TRUE(file.has_value());
-  EXPECT_EQ(DecodedFile(*file).file_type(),
-            FileType::portable_network_graphics);
+  EXPECT_EQ(open(*file).file_type(), FileType::portable_network_graphics);
 }
 
 TEST(FlatOpenDocumentFile, packaged_markup_bytes_beat_the_href) {
@@ -496,7 +502,7 @@ TEST(FlatOpenDocumentFile, packaged_markup_bytes_beat_the_href) {
 
   // the element holds a bare pointer into the document, so the document has
   // to outlive it
-  const Document document = DocumentFile(path).document();
+  const Document document = open(path).as_document_file().document();
 
   const Element element =
       first_of_type(document.root_element(), ElementType::image);
@@ -522,7 +528,7 @@ TEST(FlatOpenDocumentFile, it_renders_its_embedded_image_embedded_or_linked) {
     config.embed_images = true;
 
     std::ostringstream out;
-    html::translate(DecodedFile(File::from_memory(source)), config)
+    html::translate(open(File::from_memory(source)), config)
         .list_views()
         .at(0)
         .write_html(out);
@@ -535,7 +541,7 @@ TEST(FlatOpenDocumentFile, it_renders_its_embedded_image_embedded_or_linked) {
     config.embed_images = false;
 
     const HtmlService service =
-        html::translate(DecodedFile(File::from_memory(source)), config);
+        html::translate(open(File::from_memory(source)), config);
 
     std::ostringstream out;
     const HtmlResources resources = service.list_views().at(0).write_html(out);
@@ -565,7 +571,8 @@ namespace {
 /// `direction` of every top-level paragraph, in document order.
 std::vector<std::optional<TextDirection>>
 directions_of(const std::string &source) {
-  const Document document = DocumentFile::from_memory(source).document();
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
 
   std::vector<std::optional<TextDirection>> result;
   for (const Element child : document.root_element().children()) {
@@ -668,7 +675,8 @@ TEST(FlatOpenDocumentFile, start_and_end_alignment_are_the_sides_they_name) {
     const std::string properties =
         R"(fo:text-align=")" + std::string(value) + "\"";
     const Document document =
-        DocumentFile::from_memory(three_paragraphs("P1", properties))
+        open(File::from_memory(three_paragraphs("P1", properties)))
+            .as_document_file()
             .document();
 
     // the middle one is the one carrying `P1`
@@ -692,14 +700,16 @@ TEST(FlatOpenDocumentFile, start_and_end_alignment_are_the_sides_they_name) {
 
 TEST(FlatOpenDocumentFile, it_saves_back_as_one_xml_file) {
   const Document document =
-      DocumentFile::from_memory(flat_text("<text:p>Hello</text:p>")).document();
+      open(File::from_memory(flat_text("<text:p>Hello</text:p>")))
+          .as_document_file()
+          .document();
 
   const std::string path =
       (std::filesystem::current_path() / "flat_save_test.fodt").string();
   ASSERT_TRUE(document.is_savable());
   document.save(path);
 
-  const DocumentFile saved(path);
+  const DocumentFile saved = open(path).as_document_file();
   EXPECT_EQ(saved.file_type(), FileType::opendocument_text);
   EXPECT_EQ(first_of_type(saved.document().root_element(), ElementType::text)
                 .as_text()

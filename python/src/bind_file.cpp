@@ -185,21 +185,8 @@ void odr_python::bind_file(py::module_ &m) {
           "Read the whole file into bytes.")
       .def("copy", &odr::File::copy, py::arg("path"));
 
+  // no constructor: `pyodr.open(...)` decodes, this is what it hands back
   py::class_<odr::DecodedFile>(m, "DecodedFile")
-      .def(py::init<const odr::File &, const odr::Logger &>(), py::arg("file"),
-           py::arg("logger") = odr::Logger::null())
-      .def(py::init<const odr::File &, odr::FileType, const odr::Logger &>(),
-           py::arg("file"), py::arg("as_type"),
-           py::arg("logger") = odr::Logger::null())
-      .def(py::init<const odr::File &, const odr::DecodePreference &,
-                    const odr::Logger &>(),
-           py::arg("file"), py::arg("preference"),
-           py::arg("logger") = odr::Logger::null())
-      .def(py::init<const std::string &, const odr::Logger &>(),
-           py::arg("path"), py::arg("logger") = odr::Logger::null())
-      .def(py::init<const std::string &, odr::FileType, const odr::Logger &>(),
-           py::arg("path"), py::arg("as_type"),
-           py::arg("logger") = odr::Logger::null())
       .def("file", &odr::DecodedFile::file)
       .def("file_type", &odr::DecodedFile::file_type)
       .def("file_category", &odr::DecodedFile::file_category)
@@ -246,25 +233,8 @@ void odr_python::bind_file(py::module_ &m) {
   py::class_<odr::ArchiveFile, odr::DecodedFile>(m, "ArchiveFile")
       .def("archive", &odr::ArchiveFile::archive);
 
+  // no constructor either: `pyodr.open(...).as_document_file()` narrows
   py::class_<odr::DocumentFile, odr::DecodedFile>(m, "DocumentFile")
-      .def(py::init<const odr::File &, const odr::Logger &>(), py::arg("file"),
-           py::arg("logger") = odr::Logger::null())
-      .def(py::init<const std::string &>(), py::arg("path"))
-      .def_static("from_disk", &odr::DocumentFile::from_disk, py::arg("path"),
-                  py::arg("logger") = odr::Logger::null(),
-                  py::call_guard<py::gil_scoped_release>(),
-                  "Decode the document file at `path` on disk.")
-      .def_static(
-          "from_memory",
-          [](const py::bytes &data, const odr::Logger &logger) {
-            // the bytes have to be copied out under the GIL; only the decode
-            // that follows is long-running
-            std::string bytes(data);
-            const py::gil_scoped_release release;
-            return odr::DocumentFile::from_memory(std::move(bytes), logger);
-          },
-          py::arg("data"), py::arg("logger") = odr::Logger::null(),
-          "Decode a document file held in memory; `data` is its bytes.")
       .def("document_type", &odr::DocumentFile::document_type)
       .def("decrypt", &odr::DocumentFile::decrypt, py::arg("password"),
            py::call_guard<py::gil_scoped_release>())

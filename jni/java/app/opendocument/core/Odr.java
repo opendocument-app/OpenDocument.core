@@ -100,6 +100,15 @@ public final class Odr {
   /** Determines the MIME type of a file. */
   public static native String mimetype(String path);
 
+  /** Decodes an already-opened file. */
+  public static DecodedFile open(File file) {
+    try {
+      return new DecodedFile(file.decode());
+    } finally {
+      file.keepAlive();
+    }
+  }
+
   /** Opens and decodes a file. */
   public static DecodedFile open(String path) {
     return new DecodedFile(openNative(path));

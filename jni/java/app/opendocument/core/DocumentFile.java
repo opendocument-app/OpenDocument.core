@@ -6,10 +6,6 @@ public final class DocumentFile extends DecodedFile {
     super(handle);
   }
 
-  public DocumentFile(String path) {
-    this(create(path));
-  }
-
   public DocumentType documentType() {
     return DocumentType.fromNative(documentTypeNative(handle()));
   }
@@ -32,8 +28,6 @@ public final class DocumentFile extends DecodedFile {
   public Document document() {
     return new Document(documentNative(handle()));
   }
-
-  private static native long create(String path);
 
   private native int documentTypeNative(long handle);
 

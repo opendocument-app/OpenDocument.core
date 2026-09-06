@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
+#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/encoding/text_encoding_table.hpp>
 #include <odr/internal/file_type_table.hpp>
 #include <odr/internal/git_info.hpp>
@@ -203,30 +204,32 @@ std::string_view odr::mimetype(const std::string &path, const Logger &logger) {
 }
 
 odr::DecodedFile odr::open(const File &file, const Logger &logger) {
-  return DecodedFile(file, logger);
+  return DecodedFile(internal::open_strategy::open_file(file.impl(), logger));
 }
 
 odr::DecodedFile odr::open(const File &file, const FileType as,
                            const Logger &logger) {
-  return {file, as, logger};
+  return DecodedFile(
+      internal::open_strategy::open_file(file.impl(), as, logger));
 }
 
 odr::DecodedFile odr::open(const File &file, const DecodePreference &preference,
                            const Logger &logger) {
-  return {file, preference, logger};
+  return DecodedFile(
+      internal::open_strategy::open_file(file.impl(), preference, logger));
 }
 
 odr::DecodedFile odr::open(const std::string &path, const Logger &logger) {
-  return DecodedFile(path, logger);
+  return open(File::from_disk(path), logger);
 }
 
 odr::DecodedFile odr::open(const std::string &path, const FileType as,
                            const Logger &logger) {
-  return {path, as, logger};
+  return open(File::from_disk(path), as, logger);
 }
 
 odr::DecodedFile odr::open(const std::string &path,
                            const DecodePreference &preference,
                            const Logger &logger) {
-  return {path, preference, logger};
+  return open(File::from_disk(path), preference, logger);
 }
