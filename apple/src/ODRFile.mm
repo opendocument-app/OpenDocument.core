@@ -649,6 +649,10 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 @implementation ODRPdfFile
 
+- (BOOL)isAnnotatable {
+  return self.handle.as_pdf_file().is_annotatable() ? YES : NO;
+}
+
 - (nullable NSData *)annotate:(NSString *)annotations error:(NSError **)error {
   return guarded(error, [&]() -> NSData * {
     std::ostringstream out;

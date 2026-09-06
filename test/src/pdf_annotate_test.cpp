@@ -6,9 +6,12 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 
+#include <odr/internal/util/file_util.hpp>
+
 #include <test_util.hpp>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -17,6 +20,7 @@
 #include <gtest/gtest.h>
 
 using namespace odr;
+using namespace odr::internal;
 using namespace odr::test;
 using odr::internal::pdf::DocumentParser;
 using odr::internal::pdf::Page;
@@ -59,6 +63,45 @@ constexpr std::string_view one_highlight = R"json({
 TEST(PdfAnnotate, capability_is_declared) {
   EXPECT_TRUE(
       capabilities_by_file_type(FileType::portable_document_format).annotate);
+}
+
+// The static table is an upper bound for the format; the file narrows it to
+// what this file can actually take.
+TEST(PdfAnnotate, capability_narrows_to_the_file) {
+  const PdfFile plain = open_fixture("odr-public/pdf/style-various-1.pdf");
+  EXPECT_TRUE(plain.is_annotatable());
+  EXPECT_TRUE(plain.capabilities().annotate);
+
+  // Owner-locked: the empty password opens it, so it reports itself
+  // unencrypted — but the `/Encrypt` is still there and we cannot append.
+  const PdfFile locked = open_fixture("odr-public/pdf/Casio_WVA-M650-7AJF.pdf");
+  EXPECT_EQ(locked.encryption_state(), EncryptionState::not_encrypted);
+  EXPECT_FALSE(locked.is_annotatable());
+  EXPECT_FALSE(locked.capabilities().annotate);
+
+  std::ostringstream out;
+  EXPECT_ANY_THROW(locked.annotate(std::string(one_highlight), out));
+}
+
+// A file whose cross-reference table had to be rebuilt cannot take an
+// incremental update either, and says so before it is asked.
+TEST(PdfAnnotate, capability_is_false_for_a_recovered_file) {
+  // the header still claims a pdf, so it is detected; the `startxref` points
+  // nowhere, so the table has to be rebuilt by scanning
+  std::string source = util::file::read(
+      TestData::test_file_path("odr-public/pdf/style-various-1.pdf"));
+  const std::size_t position =
+      source.rfind("startxref\n") + std::strlen("startxref\n");
+  source.replace(position, source.find('\n', position) - position, "999999");
+
+  const PdfFile file =
+      open(File::from_memory(source), DecodeOptions{}, Logger::null())
+          .as_pdf_file();
+  EXPECT_FALSE(file.is_annotatable());
+  EXPECT_FALSE(file.capabilities().annotate);
+
+  std::ostringstream out;
+  EXPECT_ANY_THROW(file.annotate(std::string(one_highlight), out));
 }
 
 TEST(PdfAnnotate, writes_a_highlight) {

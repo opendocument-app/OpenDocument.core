@@ -158,6 +158,12 @@ export declare class Document {
   edit(diff: string): this;
 
   /**
+   * Whether this pdf can take annotations — false for one declaring an
+   * `/Encrypt`, or whose cross-reference table had to be rebuilt.
+   */
+  isAnnotatable(): boolean;
+
+  /**
    * Applies markup annotations to a pdf and returns the annotated bytes.
    *
    * @param annotations what the rendered page's

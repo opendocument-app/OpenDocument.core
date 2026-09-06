@@ -204,7 +204,9 @@ struct FileTypeCapabilities final {
   bool edit{};              ///< @ref Document::is_editable can be `true`
   bool save{};              ///< @ref Document::save is supported
   bool encrypt{};  ///< @ref Document::save with a password is supported
-  bool annotate{}; ///< @ref PdfFile::annotate is supported
+  bool annotate{}; ///< @ref PdfFile::annotate is supported; a concrete file
+                   ///< still answers for itself with
+                   ///< @ref PdfFile::is_annotatable
 };
 
 /// Collection of encryption states.
@@ -529,6 +531,16 @@ public:
 
   [[nodiscard]] PdfFile decrypt(const std::string &password) const;
 
+  /// @brief Whether this file can take annotations.
+  ///
+  /// The counterpart of @ref Document::is_editable, and the question to ask
+  /// before offering the user an annotate button: @ref FileTypeCapabilities
+  /// answers for the *format*, this one for the file in hand. False for a pdf
+  /// declaring an `/Encrypt` — including an owner-locked one that opened with
+  /// the empty password and so reports itself unencrypted — and for one whose
+  /// cross-reference table had to be rebuilt by scanning.
+  [[nodiscard]] bool is_annotatable() const noexcept;
+
   /// @brief Applies markup @p annotations, writing the annotated pdf to
   ///        @p out.
   ///
@@ -537,8 +549,7 @@ public:
   /// source is copied and the annotations appended, so nothing else about the
   /// file changes.
   /// @throws std::invalid_argument if @p annotations is malformed.
-  /// @throws std::runtime_error if the file cannot take them — its
-  ///         cross-reference table was recovered, or it is encrypted.
+  /// @throws std::runtime_error if @ref is_annotatable is false.
   void annotate(std::string_view annotations, std::ostream &out,
                 const Logger &logger = Logger::null()) const;
 

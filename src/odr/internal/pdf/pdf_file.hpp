@@ -27,6 +27,7 @@ public:
   decrypt(const std::string &password) const override;
 
   [[nodiscard]] bool is_decodable() const noexcept override;
+  [[nodiscard]] bool annotatable() const noexcept override;
 
   void annotate(std::string_view annotations, std::ostream &out,
                 const Logger &logger) const override;
@@ -41,6 +42,9 @@ private:
 
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
+  /// What `IncrementalWriter`'s constructor would accept, settled by the
+  /// probe rather than by re-parsing when someone asks.
+  bool m_annotatable{false};
 };
 
 } // namespace odr::internal::pdf

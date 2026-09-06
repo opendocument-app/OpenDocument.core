@@ -52,6 +52,11 @@ public:
   [[nodiscard]] virtual EncryptionState encryption_state() const noexcept {
     return EncryptionState::not_encrypted;
   }
+  /// Whether this particular file can take annotations. Not the same question
+  /// as `encryption_state()`: an owner-locked pdf opens with the empty
+  /// password and reports itself unencrypted, yet still carries the `/Encrypt`
+  /// that stops us appending to it.
+  [[nodiscard]] virtual bool annotatable() const noexcept { return false; }
   [[nodiscard]] virtual std::shared_ptr<DecodedFile>
   decrypt([[maybe_unused]] const std::string &password) const {
     return nullptr;
@@ -140,6 +145,7 @@ public:
   }
 
   /// Apply `annotations` and write the result to `out`.
+  /// @throws std::runtime_error when `annotatable()` is false.
   virtual void annotate(std::string_view annotations, std::ostream &out,
                         const Logger &logger) const = 0;
 };

@@ -366,6 +366,15 @@ Java_app_opendocument_core_PdfFile_decryptPdfFileNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_PdfFile_isAnnotatableNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(
+        decoded(handle).as_pdf_file().is_annotatable());
+  });
+}
+
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_app_opendocument_core_PdfFile_annotateNative(JNIEnv *env, jobject,
                                                   jlong handle,

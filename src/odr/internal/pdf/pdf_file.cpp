@@ -111,6 +111,10 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
   DocumentParser parser(m_file->stream());
 
   m_file_meta.type = FileType::portable_document_format;
+  // Both conditions `IncrementalWriter` refuses on. An `/Encrypt` counts even
+  // where the empty password opens it, since the new objects would still have
+  // to be encrypted with a key the parser does not keep.
+  m_annotatable = !parser.is_encrypted() && !parser.is_recovered();
 
   m_authenticator = parser.authenticator();
   if (parser.is_encrypted()) {
@@ -142,6 +146,8 @@ std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
 }
 
 FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
+
+bool PdfFile::annotatable() const noexcept { return m_annotatable; }
 
 bool PdfFile::password_encrypted() const noexcept {
   return m_encryption_state == EncryptionState::encrypted;

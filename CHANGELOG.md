@@ -23,6 +23,9 @@ The release run heads these entries with the version and opens a fresh
 - The rendered pdf view exposes `odr.annotation`: the five tools, live preview
   and undo, whose `getAnnotations()` produces exactly what `annotate` takes.
 
+- `PdfFile::is_annotatable` answers for the file what the `annotate` capability
+  answers for the format, and narrows it. Encrypted and repaired pdfs say no.
+
 - **Breaking**: `html::edit` becomes `Document::edit`, in every binding —
   java's `Html.edit(document, diff)` becomes `document.edit(diff)`, and so on.
   `Text::set_content` is unchanged.
