@@ -12,9 +12,8 @@ class IncrementalWriter;
 struct Page;
 
 /// A text markup quadrilateral in user space: upper-left, upper-right,
-/// lower-left, lower-right. 12.5.6.10 states a different order, which no
-/// producer writes and which viewers synthesizing an appearance draw as a
-/// twisted quad.
+/// lower-left, lower-right — the order producers write, not the
+/// counterclockwise one 12.5.6.10 states.
 using Quad = std::array<double, 8>;
 
 /// One pen-down to pen-up stroke as flat `x y` pairs in user space.
@@ -47,16 +46,17 @@ struct Ink {
   AnnotationCommon common;
 };
 
-/// Write the annotation and the appearance stream it paints through
-/// (decision 3: we never leave a viewer to synthesize one).
+/// Write the annotation together with the appearance stream it paints through,
+/// so no viewer has to synthesize one.
 /// @throws std::invalid_argument on empty or malformed geometry.
 ObjectReference write_text_markup(IncrementalWriter &writer,
                                   const TextMarkup &markup);
 ObjectReference write_ink(IncrementalWriter &writer, const Ink &ink);
 
-/// Append `annotations` to `page`'s `/Annots`, rewriting whichever object
-/// holds it — the page dictionary, or the array itself where `/Annots` is
-/// indirect.
+/// Append `annotations` to `page`'s `/Annots`, rewriting whichever object holds
+/// it — the page dictionary, or the array itself where `/Annots` is indirect.
+/// Reads the page as the source file has it, so call it once per page with
+/// everything that page gains.
 void append_page_annotations(IncrementalWriter &writer, const Page &page,
                              const std::vector<ObjectReference> &annotations);
 

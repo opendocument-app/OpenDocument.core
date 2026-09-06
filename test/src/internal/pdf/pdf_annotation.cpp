@@ -56,6 +56,20 @@ std::string annotated(const std::string &pdf, Annotate &&annotate) {
   return std::move(out).str();
 }
 
+std::string with_markup(const TextMarkup &markup) {
+  return annotated(mini_pdf(), [&markup](IncrementalWriter &w) {
+    return std::vector{write_text_markup(w, markup)};
+  });
+}
+
+/// The dictionary of the one annotation `markup` produces.
+Dictionary markup_annotation(const TextMarkup &markup) {
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(with_markup(markup)));
+  const std::unique_ptr<Document> document = parser.parse_document();
+  return first_page(*document)->annotations.front()->object.as_dictionary();
+}
+
 TextMarkup one_line_highlight() {
   TextMarkup markup;
   markup.kind = TextMarkupKind::highlight;
@@ -68,11 +82,8 @@ TextMarkup one_line_highlight() {
 
 // The annotation and its appearance both land, and the page reaches them.
 TEST(PdfAnnotation, highlight_round_trips) {
-  const std::string result = annotated(mini_pdf(), [](IncrementalWriter &w) {
-    return std::vector{write_text_markup(w, one_line_highlight())};
-  });
-
-  DocumentParser parser(std::make_unique<std::istringstream>(result));
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(with_markup(one_line_highlight())));
   const std::unique_ptr<Document> document = parser.parse_document();
   const Page *page = first_page(*document);
   ASSERT_NE(page, nullptr);
@@ -97,57 +108,49 @@ TEST(PdfAnnotation, highlight_round_trips) {
 }
 
 // 11.6.4.1: the highlight is a wash, so its appearance multiplies; the marks
-// drawn on top of the text do not.
+// drawn on top of the text do not. Opacity stays out of the state — `/CA`
+// already applies to the whole appearance, so a second `ca` would square it.
 TEST(PdfAnnotation, only_highlight_multiplies) {
-  const auto blend_mode = [](const TextMarkupKind kind) {
+  const auto resources = [](const TextMarkupKind kind) {
     TextMarkup markup = one_line_highlight();
     markup.kind = kind;
+    markup.common.opacity = 0.5;
 
-    const std::string result =
-        annotated(mini_pdf(), [&markup](IncrementalWriter &w) {
-          return std::vector{write_text_markup(w, markup)};
-        });
-
-    DocumentParser parser(std::make_unique<std::istringstream>(result));
+    DocumentParser parser(
+        std::make_unique<std::istringstream>(with_markup(markup)));
     const std::unique_ptr<Document> document = parser.parse_document();
-    const Annotation &annotation = *first_page(*document)->annotations.front();
-    const ObjectReference appearance = annotation.object.as_dictionary()
-                                           .get("AP")
-                                           .as_dictionary()
-                                           .get("N")
-                                           .as_reference();
-    const Dictionary &state = parser.read_object(appearance)
-                                  .object.as_dictionary()
-                                  .get("Resources")
-                                  .as_dictionary()
-                                  .get("ExtGState")
-                                  .as_dictionary()
-                                  .get("G0")
-                                  .as_dictionary();
-    return state.has_key("BM") ? state.get("BM").as_string() : std::string();
+    const Dictionary &dictionary =
+        first_page(*document)->annotations.front()->object.as_dictionary();
+    EXPECT_DOUBLE_EQ(dictionary.get("CA").as_real(), 0.5);
+    return parser
+        .read_object(
+            dictionary.get("AP").as_dictionary().get("N").as_reference())
+        .object.as_dictionary()
+        .get("Resources")
+        .as_dictionary();
   };
 
-  EXPECT_EQ(blend_mode(TextMarkupKind::highlight), "Multiply");
-  EXPECT_EQ(blend_mode(TextMarkupKind::underline), "");
-  EXPECT_EQ(blend_mode(TextMarkupKind::strike_out), "");
-  EXPECT_EQ(blend_mode(TextMarkupKind::squiggly), "");
+  const Dictionary state = resources(TextMarkupKind::highlight)
+                               .get("ExtGState")
+                               .as_dictionary()
+                               .get("G0")
+                               .as_dictionary();
+  EXPECT_EQ(state.get("BM").as_string(), "Multiply");
+  EXPECT_FALSE(state.has_key("ca"));
+  EXPECT_FALSE(state.has_key("CA"));
+
+  for (const TextMarkupKind kind :
+       {TextMarkupKind::underline, TextMarkupKind::strike_out,
+        TextMarkupKind::squiggly}) {
+    EXPECT_FALSE(resources(kind).has_key("ExtGState"));
+  }
 }
 
 TEST(PdfAnnotation, text_markup_subtypes) {
   const auto subtype = [](const TextMarkupKind kind) {
     TextMarkup markup = one_line_highlight();
     markup.kind = kind;
-    const std::string result =
-        annotated(mini_pdf(), [&markup](IncrementalWriter &w) {
-          return std::vector{write_text_markup(w, markup)};
-        });
-    DocumentParser parser(std::make_unique<std::istringstream>(result));
-    const std::unique_ptr<Document> document = parser.parse_document();
-    return first_page(*document)
-        ->annotations.front()
-        ->object.as_dictionary()
-        .get("Subtype")
-        .as_string();
+    return markup_annotation(markup).get("Subtype").as_string();
   };
 
   EXPECT_EQ(subtype(TextMarkupKind::highlight), "Highlight");
@@ -203,19 +206,9 @@ TEST(PdfAnnotation, empty_geometry_throws) {
 }
 
 TEST(PdfAnnotation, optional_fields_are_omitted_when_empty) {
-  const auto annotation_of = [](const TextMarkup &markup, DocumentParser &out) {
-    return first_page(*out.parse_document())
-        ->annotations.front()
-        ->object.as_dictionary();
-  };
-
   TextMarkup markup = one_line_highlight();
   {
-    DocumentParser parser(std::make_unique<std::istringstream>(
-        annotated(mini_pdf(), [&markup](IncrementalWriter &w) {
-          return std::vector{write_text_markup(w, markup)};
-        })));
-    const Dictionary dictionary = annotation_of(markup, parser);
+    const Dictionary dictionary = markup_annotation(markup);
     EXPECT_FALSE(dictionary.has_key("T"));
     EXPECT_FALSE(dictionary.has_key("Contents"));
   }
@@ -223,11 +216,7 @@ TEST(PdfAnnotation, optional_fields_are_omitted_when_empty) {
   markup.common.author = "a reviewer";
   markup.common.contents = "why (this) matters";
   {
-    DocumentParser parser(std::make_unique<std::istringstream>(
-        annotated(mini_pdf(), [&markup](IncrementalWriter &w) {
-          return std::vector{write_text_markup(w, markup)};
-        })));
-    const Dictionary dictionary = annotation_of(markup, parser);
+    const Dictionary dictionary = markup_annotation(markup);
     EXPECT_EQ(dictionary.get("T").as_string(), "a reviewer");
     // the parenthesis survives the escaping the writer applies
     EXPECT_EQ(dictionary.get("Contents").as_string(), "why (this) matters");

@@ -34,23 +34,13 @@ struct Box {
   }
 };
 
-Box box_of(const std::vector<Quad> &quads) {
-  Box result{quads.front()[0], quads.front()[1], quads.front()[0],
-             quads.front()[1]};
-  for (const Quad &quad : quads) {
-    for (std::size_t i = 0; i < quad.size(); i += 2) {
-      result.include(quad[i], quad[i + 1]);
-    }
-  }
-  return result;
-}
-
-Box box_of(const std::vector<InkStroke> &strokes) {
-  Box result{strokes.front()[0], strokes.front()[1], strokes.front()[0],
-             strokes.front()[1]};
-  for (const InkStroke &stroke : strokes) {
-    for (std::size_t i = 0; i < stroke.size(); i += 2) {
-      result.include(stroke[i], stroke[i + 1]);
+/// The bounding box of a non-empty range of `x y` pair sequences.
+template <typename Points> Box box_of(const std::vector<Points> &groups) {
+  Box result{groups.front()[0], groups.front()[1], groups.front()[0],
+             groups.front()[1]};
+  for (const Points &points : groups) {
+    for (std::size_t i = 0; i < points.size(); i += 2) {
+      result.include(points[i], points[i + 1]);
     }
   }
   return result;
@@ -68,16 +58,12 @@ std::string number(const double value) {
   return util::number::to_string_significant(value, 6);
 }
 
-/// The `/ExtGState` an appearance needs, and the `gs` name to invoke it with.
-/// `blend` is empty for the default Normal.
-Dictionary graphics_state_resources(const double alpha,
-                                    const std::string_view blend) {
+/// The `/ExtGState` a multiplied appearance invokes as `/G0 gs`. Opacity is not
+/// in it: `/CA` already applies to the appearance as a whole (12.5.2), so
+/// repeating it here would square it.
+Dictionary multiply_resources() {
   Dictionary state;
-  state["ca"] = Object(Real{alpha});
-  state["CA"] = Object(Real{alpha});
-  if (!blend.empty()) {
-    state["BM"] = Object(Name{std::string(blend)});
-  }
+  state["BM"] = Object(Name{"Multiply"});
   Dictionary states;
   states["G0"] = Object(std::move(state));
   Dictionary result;
@@ -85,9 +71,9 @@ Dictionary graphics_state_resources(const double alpha,
   return result;
 }
 
-/// The form XObject an annotation's `/AP /N` points at. A transparency group
-/// is what lets `/BM /Multiply` composite against the page rather than against
-/// the form's own backdrop.
+/// The form XObject an annotation's `/AP /N` points at. A transparency group is
+/// what lets `/BM /Multiply` composite against the page rather than against the
+/// form's own backdrop.
 Dictionary appearance_dictionary(const Box &box, Dictionary resources,
                                  const bool transparency_group) {
   Dictionary result;
@@ -115,7 +101,6 @@ void write_common(Dictionary &dictionary, const AnnotationCommon &common,
   dictionary["CA"] = Object(Real{common.opacity});
   // 12.5.3: bit 3, Print. Without it a viewer may show but never print it.
   dictionary["F"] = Object(Integer{4});
-  // unique within the file, and stable for a given file and annotation
   dictionary["NM"] = Object(StandardString{fmt::format("odr-{}", self.id)});
   if (!common.author.empty()) {
     dictionary["T"] = Object(StandardString{common.author});
@@ -139,7 +124,7 @@ std::string_view subtype_of(const TextMarkupKind kind) {
   throw std::invalid_argument("unknown text markup kind");
 }
 
-/// A quad's corners, named. The order is the one `Quad` documents.
+/// A quad's extent, whichever corners it states.
 struct QuadCorners {
   double left{0};
   double right{0};
@@ -154,7 +139,6 @@ QuadCorners corners_of(const Quad &quad) {
           std::min({quad[1], quad[3], quad[5], quad[7]})};
 }
 
-/// A filled bar across `quad`, `height` tall, its bottom at `bottom`.
 void bar(std::ostringstream &out, const QuadCorners &quad, const double bottom,
          const double height) {
   out << number(quad.left) << ' ' << number(bottom) << ' '
@@ -177,15 +161,12 @@ void wave(std::ostringstream &out, const QuadCorners &quad,
 
 std::string text_markup_appearance(const TextMarkup &markup) {
   std::ostringstream out;
-  out << "/G0 gs\n";
+  if (markup.kind == TextMarkupKind::highlight) {
+    out << "/G0 gs\n";
+  }
   const auto &[r, g, b] = markup.common.color;
   out << number(r) << ' ' << number(g) << ' ' << number(b);
-
-  if (markup.kind == TextMarkupKind::squiggly) {
-    out << " RG\n";
-  } else {
-    out << " rg\n";
-  }
+  out << (markup.kind == TextMarkupKind::squiggly ? " RG\n" : " rg\n");
 
   for (const Quad &quad : markup.quads) {
     const QuadCorners c = corners_of(quad);
@@ -213,8 +194,9 @@ std::string text_markup_appearance(const TextMarkup &markup) {
   return std::move(out).str();
 }
 
-/// Catmull-Rom through `points`, emitted as the cubic beziers PDF has. The
-/// tangent at each point is half the vector between its neighbours.
+/// Catmull-Rom through `stroke`, emitted as the cubic beziers PDF has: the
+/// tangent at a point is half the vector between its neighbours, and a control
+/// point sits a third of that away.
 void smooth_path(std::ostringstream &out, const InkStroke &stroke) {
   const std::size_t count = stroke.size() / 2;
   const auto x = [&](const std::size_t i) {
@@ -243,7 +225,6 @@ void smooth_path(std::ostringstream &out, const InkStroke &stroke) {
 
 std::string ink_appearance(const Ink &ink) {
   std::ostringstream out;
-  out << "/G0 gs\n";
   const auto &[r, g, b] = ink.common.color;
   out << number(r) << ' ' << number(g) << ' ' << number(b) << " RG\n";
   out << number(ink.width) << " w 1 J 1 j\n";
@@ -254,10 +235,20 @@ std::string ink_appearance(const Ink &ink) {
   return std::move(out).str();
 }
 
+Object annotation_appearance(const ObjectReference &appearance) {
+  Dictionary result;
+  result["N"] = Object(appearance);
+  return Object(std::move(result));
+}
+
 } // namespace
 
-ObjectReference write_text_markup(IncrementalWriter &writer,
-                                  const TextMarkup &markup) {
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+pdf::ObjectReference pdf::write_text_markup(IncrementalWriter &writer,
+                                            const TextMarkup &markup) {
   if (markup.quads.empty()) {
     throw std::invalid_argument("text markup has no quads");
   }
@@ -271,11 +262,8 @@ ObjectReference write_text_markup(IncrementalWriter &writer,
   const bool multiply = markup.kind == TextMarkupKind::highlight;
   writer.set_stream_object(
       appearance,
-      appearance_dictionary(
-          box,
-          graphics_state_resources(markup.common.opacity,
-                                   multiply ? "Multiply" : ""),
-          multiply),
+      appearance_dictionary(box, multiply ? multiply_resources() : Dictionary{},
+                            multiply),
       text_markup_appearance(markup));
 
   Dictionary dictionary;
@@ -290,15 +278,13 @@ ObjectReference write_text_markup(IncrementalWriter &writer,
   }
   dictionary["QuadPoints"] = Object(std::move(quad_points));
   write_common(dictionary, markup.common, annotation);
-  Dictionary appearances;
-  appearances["N"] = Object(appearance);
-  dictionary["AP"] = Object(std::move(appearances));
+  dictionary["AP"] = annotation_appearance(appearance);
 
   writer.set_object(annotation, Object(std::move(dictionary)));
   return annotation;
 }
 
-ObjectReference write_ink(IncrementalWriter &writer, const Ink &ink) {
+pdf::ObjectReference pdf::write_ink(IncrementalWriter &writer, const Ink &ink) {
   if (ink.strokes.empty()) {
     throw std::invalid_argument("ink has no strokes");
   }
@@ -313,11 +299,9 @@ ObjectReference write_ink(IncrementalWriter &writer, const Ink &ink) {
   const ObjectReference appearance = writer.mint_object();
   const ObjectReference annotation = writer.mint_object();
 
-  writer.set_stream_object(
-      appearance,
-      appearance_dictionary(
-          box, graphics_state_resources(ink.common.opacity, ""), false),
-      ink_appearance(ink));
+  writer.set_stream_object(appearance,
+                           appearance_dictionary(box, Dictionary{}, false),
+                           ink_appearance(ink));
 
   Dictionary dictionary;
   dictionary["Type"] = Object(Name{"Annot"});
@@ -336,16 +320,15 @@ ObjectReference write_ink(IncrementalWriter &writer, const Ink &ink) {
   border["W"] = Object(Real{ink.width});
   dictionary["BS"] = Object(std::move(border));
   write_common(dictionary, ink.common, annotation);
-  Dictionary appearances;
-  appearances["N"] = Object(appearance);
-  dictionary["AP"] = Object(std::move(appearances));
+  dictionary["AP"] = annotation_appearance(appearance);
 
   writer.set_object(annotation, Object(std::move(dictionary)));
   return annotation;
 }
 
-void append_page_annotations(IncrementalWriter &writer, const Page &page,
-                             const std::vector<ObjectReference> &annotations) {
+void pdf::append_page_annotations(
+    IncrementalWriter &writer, const Page &page,
+    const std::vector<ObjectReference> &annotations) {
   if (annotations.empty()) {
     return;
   }
@@ -360,8 +343,8 @@ void append_page_annotations(IncrementalWriter &writer, const Page &page,
     return array;
   };
 
-  // `/Annots` may be an indirect array shared with nothing else; rewriting it
-  // in place leaves the page dictionary untouched.
+  // where `/Annots` is indirect, rewriting the array leaves the page dictionary
+  // untouched
   if (existing.is_reference()) {
     const ObjectReference reference = existing.as_reference();
     const Object &array = writer.parser().read_object(reference).object;
@@ -376,4 +359,4 @@ void append_page_annotations(IncrementalWriter &writer, const Page &page,
   writer.set_object(page.object_reference, Object(std::move(dictionary)));
 }
 
-} // namespace odr::internal::pdf
+} // namespace odr::internal

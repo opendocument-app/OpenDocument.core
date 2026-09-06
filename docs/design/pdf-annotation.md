@@ -284,13 +284,14 @@ strokes smoothed Catmull-Rom → cubic bezier. `append_page_annotations` puts
 them on the page, rewriting the `/Annots` array itself where it is indirect.
 
 Only the highlight multiplies (11.6.4.1) — it is a wash over the text, where
-the others are marks drawn on top of it.
+the others are marks drawn on top of it. Opacity rides on the annotation's
+`/CA` alone, which a viewer applies to the whole appearance; setting `ca` in
+the appearance's own state as well would square it.
 
-**`/QuadPoints` ordering is settled.** Two files carrying the same visual
-rectangle, one in Z-order and one in the spec's counterclockwise order, each
-with no `/AP` so a viewer has to synthesize the appearance: ghostscript draws
-the Z-order as a clean rectangle and the spec's order as a twisted, smeared
-blob. CoreGraphics synthesizes nothing at all, so it is no oracle here.
+**`/QuadPoints` ordering is settled** against two appearance-less files that
+force a viewer to synthesize one: ghostscript draws the Z-order as a clean
+rectangle and 12.5.6.10's counterclockwise order as a twisted blob.
+CoreGraphics synthesizes nothing at all, so it is no oracle here.
 
 ### Phase 4 — public API (1 d, ~130 lines)
 
