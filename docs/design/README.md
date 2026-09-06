@@ -8,6 +8,9 @@
 - [The v7 public API](api-v7.md) — what the next major removes from
   `src/odr/*.hpp`, why, and in which pull requests: one road per operation, and
   the removals this document's *Open tasks* deferred until a major.
+- [PDF annotation design](pdf-annotation.md) — markup annotations (highlight,
+  freehand ink) written back as standard annotations via an incremental update:
+  why no PDF library, the JSON wire format, and the effort it costs.
 
 ## Diagrams
 
