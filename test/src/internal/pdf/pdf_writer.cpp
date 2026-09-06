@@ -249,3 +249,45 @@ TEST(IncrementalWriter, rewrites_a_page_of_a_real_fixture) {
     }
   }
 }
+
+// A page dictionary compressed into an object stream is rewritten uncompressed
+// in the new section; the newer type-1 entry wins over the older type-2 one.
+TEST(IncrementalWriter, rewrites_a_page_out_of_an_object_stream) {
+  const auto file = std::make_shared<DiskFile>(
+      TestData::test_file_path("odr-public/pdf/opendocument-app-website.pdf"));
+
+  std::ostringstream out;
+  ObjectReference page_reference;
+  {
+    DocumentParser parser(file->stream());
+    ASSERT_EQ(parser.xref_kind(), DocumentParser::XrefKind::stream);
+
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const Page *page = first_page(*document);
+    ASSERT_NE(page, nullptr);
+    page_reference = page->object_reference;
+    // the fixture keeps its page objects in object streams
+    ASSERT_TRUE(parser.xref().table.at(page_reference).is_compressed());
+
+    IncrementalWriter writer(parser);
+    Dictionary rotated = page->object.as_dictionary();
+    rotated["Rotate"] = Object(Integer{90});
+    writer.set_object(page_reference, Object(std::move(rotated)));
+    writer.write(out);
+  }
+
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(std::move(out).str()));
+  EXPECT_TRUE(parser.xref().table.at(page_reference).is_used());
+
+  const std::unique_ptr<Document> document = parser.parse_document();
+  const std::vector<Page *> pages = document->collect_pages();
+  ASSERT_EQ(pages.size(), 9);
+  EXPECT_EQ(pages[0]->rotate, 90);
+  EXPECT_EQ(pages[1]->rotate, 0);
+  for (const Page *page : pages) {
+    for (const auto &content_reference : page->contents_reference) {
+      EXPECT_FALSE(parser.read_decoded_stream(content_reference).empty());
+    }
+  }
+}
