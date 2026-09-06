@@ -6,6 +6,10 @@ public final class Frame extends Element {
     super(handle, owner);
   }
 
+  public ShapeType shapeType() {
+    return ShapeType.fromNative(shapeTypeNative(handle()));
+  }
+
   public AnchorType anchorType() {
     return AnchorType.fromNative(anchorTypeNative(handle()));
   }
@@ -34,9 +38,21 @@ public final class Frame extends Element {
     return transformNative(handle());
   }
 
+  /** {@code null} for a shape whose geometry we cannot read, leaving its box. */
+  public DrawingPath path() {
+    return pathNative(handle());
+  }
+
+  /** The ends of a {@link ShapeType#LINE}, which states them instead of a box. */
+  public DrawingLine line() {
+    return lineNative(handle());
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
+
+  private native int shapeTypeNative(long handle);
 
   private native int anchorTypeNative(long handle);
 
@@ -51,6 +67,10 @@ public final class Frame extends Element {
   private native Integer zIndexNative(long handle);
 
   private native DrawingTransform transformNative(long handle);
+
+  private native DrawingPath pathNative(long handle);
+
+  private native DrawingLine lineNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

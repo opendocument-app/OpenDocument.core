@@ -52,6 +52,21 @@ parse_element_tree(ElementRegistry &registry, const ElementType type,
   return {element_id, node.next_sibling()};
 }
 
+std::tuple<ElementIdentifier, pugi::xml_node>
+parse_shape_tree(ElementRegistry &registry, const ShapeType shape_type,
+                 const pugi::xml_node node,
+                 const ChildrenParser &children_parser) {
+  if (!node) {
+    return {null_element_id, pugi::xml_node()};
+  }
+
+  const auto &[element_id, _] = registry.create_shape_element(shape_type, node);
+
+  children_parser(registry, element_id, node);
+
+  return {element_id, node.next_sibling()};
+}
+
 bool is_text_node(const pugi::xml_node node) {
   if (!node) {
     return false;
@@ -253,10 +268,12 @@ parse_replaceable_image(ElementRegistry &registry, const pugi::xml_node node) {
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_elliptical_element(ElementRegistry &registry, const pugi::xml_node node) {
   const std::string_view kind = node.attribute("draw:kind").value();
-  const ElementType type = (kind == "arc" || kind == "cut" || kind == "section")
-                               ? ElementType::custom_shape
-                               : ElementType::circle;
-  return parse_element_tree(registry, type, node, parse_any_element_children);
+  const ShapeType shape_type =
+      (kind == "arc" || kind == "cut" || kind == "section")
+          ? ShapeType::custom
+          : ShapeType::ellipse;
+  return parse_shape_tree(registry, shape_type, node,
+                          parse_any_element_children);
 }
 
 void parse_presentation_children(ElementRegistry &registry,
@@ -298,6 +315,11 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
           return parse_element_tree(r, type, n, children_parser);
         };
       };
+  const auto create_shape_tree_parser = [](const ShapeType shape_type) {
+    return [shape_type](ElementRegistry &r, const pugi::xml_node n) {
+      return parse_shape_tree(r, shape_type, n, parse_any_element_children);
+    };
+  };
 
   static std::unordered_map<std::string, TreeParser> parser_table{
       {"office:text", create_default_tree_parser(ElementType::root)},
@@ -348,20 +370,18 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"draw:image", parse_replaceable_image},
       // An embedded object renders as the image its own part is drawn to.
       {"draw:object", create_default_tree_parser(ElementType::image)},
-      {"draw:rect", create_default_tree_parser(ElementType::rect)},
-      {"draw:line", create_default_tree_parser(ElementType::line)},
+      {"draw:rect", create_shape_tree_parser(ShapeType::rect)},
+      {"draw:line", create_shape_tree_parser(ShapeType::line)},
       {"draw:circle", parse_elliptical_element},
-      {"draw:custom-shape",
-       create_default_tree_parser(ElementType::custom_shape)},
+      {"draw:custom-shape", create_shape_tree_parser(ShapeType::custom)},
       // A shape whose geometry is given rather than named is a custom shape.
-      {"draw:path", create_default_tree_parser(ElementType::custom_shape)},
-      {"draw:polygon", create_default_tree_parser(ElementType::custom_shape)},
-      {"draw:polyline", create_default_tree_parser(ElementType::custom_shape)},
-      {"draw:regular-polygon",
-       create_default_tree_parser(ElementType::custom_shape)},
-      {"draw:connector", create_default_tree_parser(ElementType::custom_shape)},
-      {"draw:caption", create_default_tree_parser(ElementType::rect)},
-      {"draw:measure", create_default_tree_parser(ElementType::line)},
+      {"draw:path", create_shape_tree_parser(ShapeType::custom)},
+      {"draw:polygon", create_shape_tree_parser(ShapeType::custom)},
+      {"draw:polyline", create_shape_tree_parser(ShapeType::custom)},
+      {"draw:regular-polygon", create_shape_tree_parser(ShapeType::custom)},
+      {"draw:connector", create_shape_tree_parser(ShapeType::custom)},
+      {"draw:caption", create_shape_tree_parser(ShapeType::rect)},
+      {"draw:measure", create_shape_tree_parser(ShapeType::line)},
       {"draw:ellipse", parse_elliptical_element},
       {"draw:text-box", create_default_tree_parser(ElementType::group)},
       {"draw:g", create_default_tree_parser(ElementType::frame)},

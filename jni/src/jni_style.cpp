@@ -184,6 +184,19 @@ jobject make_drawing_path(JNIEnv *env,
                     path->x, path->y, path->width, path->height);
 }
 
+jobject make_drawing_line(JNIEnv *env,
+                          const std::optional<odr::DrawingLine> &line) {
+  if (!line.has_value()) {
+    return nullptr;
+  }
+  return new_object(
+      env, "app/opendocument/core/DrawingLine",
+      "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;"
+      "Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;)V",
+      make_measure(env, line->x1), make_measure(env, line->y1),
+      make_measure(env, line->x2), make_measure(env, line->y2));
+}
+
 jobject make_color(JNIEnv *env, const std::optional<odr::Color> &value) {
   if (!value.has_value()) {
     return nullptr;

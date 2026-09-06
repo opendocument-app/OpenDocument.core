@@ -66,6 +66,12 @@ its own format has. Compact example: `rtf/rtf_element_registry.*` +
 
 `ElementType` is the shared enum in `src/odr/document_element.hpp`.
 
+**Every drawing is a `frame`**, and `Frame::shape_type` says which outline it
+draws — `none` for a plain box, else `rect`/`ellipse`/`line`/`custom`, the last
+carrying its own `Frame::path`. Only odf sets anything but `none`; the other
+engines funnel every shape into a plain frame, so `FrameAdapter` defaults the
+three shape readers.
+
 A **manual page break** reaches the renderer two ways, as the formats state it
 two ways: `ParagraphStyle::break_before`/`break_after` for odf and ooxml, where
 it is a style property, and `ElementType::page_break` for rtf and `.doc`, where

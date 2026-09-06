@@ -13,6 +13,14 @@ ElementRegistry::create_element(const ElementType type,
   return {element_id, element};
 }
 
+std::tuple<ElementIdentifier, ElementRegistry::Element &>
+ElementRegistry::create_shape_element(const ShapeType shape_type,
+                                      const pugi::xml_node node) {
+  const auto &[element_id, element] = create_element(ElementType::frame, node);
+  m_shape_types.emplace(element_id, shape_type);
+  return {element_id, element};
+}
+
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Text &>
 ElementRegistry::create_text_element(const pugi::xml_node first_node,
@@ -190,6 +198,12 @@ ElementRegistry::Sheet::cell_node(const std::uint32_t column,
     return cell_entry->node;
   }
   return {};
+}
+
+[[nodiscard]] ShapeType
+ElementRegistry::shape_type(const ElementIdentifier id) const {
+  const ShapeType *entry = m_shape_types.find(id);
+  return entry != nullptr ? *entry : ShapeType::none;
 }
 
 void ElementRegistry::set_list_type(const ElementIdentifier id,

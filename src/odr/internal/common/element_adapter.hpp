@@ -124,23 +124,6 @@ public:
   frame_adapter(const ElementIdentifier element_id) const override {
     return adapter_<abstract::FrameAdapter, ElementType::frame>(element_id);
   }
-  [[nodiscard]] const abstract::RectAdapter *
-  rect_adapter(const ElementIdentifier element_id) const override {
-    return adapter_<abstract::RectAdapter, ElementType::rect>(element_id);
-  }
-  [[nodiscard]] const abstract::LineAdapter *
-  line_adapter(const ElementIdentifier element_id) const override {
-    return adapter_<abstract::LineAdapter, ElementType::line>(element_id);
-  }
-  [[nodiscard]] const abstract::CircleAdapter *
-  circle_adapter(const ElementIdentifier element_id) const override {
-    return adapter_<abstract::CircleAdapter, ElementType::circle>(element_id);
-  }
-  [[nodiscard]] const abstract::CustomShapeAdapter *
-  custom_shape_adapter(const ElementIdentifier element_id) const override {
-    return adapter_<abstract::CustomShapeAdapter, ElementType::custom_shape>(
-        element_id);
-  }
   [[nodiscard]] const abstract::ImageAdapter *
   image_adapter(const ElementIdentifier element_id) const override {
     return adapter_<abstract::ImageAdapter, ElementType::image>(element_id);

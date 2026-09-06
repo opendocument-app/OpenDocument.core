@@ -41,11 +41,13 @@ ODR_SAME_ENUM(ODRElementTypeTableRow, odr::ElementType::table_row);
 ODR_SAME_ENUM(ODRElementTypeTableCell, odr::ElementType::table_cell);
 ODR_SAME_ENUM(ODRElementTypeFrame, odr::ElementType::frame);
 ODR_SAME_ENUM(ODRElementTypeImage, odr::ElementType::image);
-ODR_SAME_ENUM(ODRElementTypeRect, odr::ElementType::rect);
-ODR_SAME_ENUM(ODRElementTypeLine, odr::ElementType::line);
-ODR_SAME_ENUM(ODRElementTypeCircle, odr::ElementType::circle);
-ODR_SAME_ENUM(ODRElementTypeCustomShape, odr::ElementType::custom_shape);
 ODR_SAME_ENUM(ODRElementTypeGroup, odr::ElementType::group);
+
+ODR_SAME_ENUM(ODRShapeTypeNone, odr::ShapeType::none);
+ODR_SAME_ENUM(ODRShapeTypeRect, odr::ShapeType::rect);
+ODR_SAME_ENUM(ODRShapeTypeEllipse, odr::ShapeType::ellipse);
+ODR_SAME_ENUM(ODRShapeTypeLine, odr::ShapeType::line);
+ODR_SAME_ENUM(ODRShapeTypeCustom, odr::ShapeType::custom);
 
 ODR_SAME_ENUM(ODRAnchorTypeAsChar, odr::AnchorType::as_char);
 ODR_SAME_ENUM(ODRAnchorTypeAtChar, odr::AnchorType::at_char);
@@ -153,18 +155,6 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
     break;
   case odr::ElementType::image:
     klass = [ODRImage class];
-    break;
-  case odr::ElementType::rect:
-    klass = [ODRRect class];
-    break;
-  case odr::ElementType::line:
-    klass = [ODRLine class];
-    break;
-  case odr::ElementType::circle:
-    klass = [ODRCircle class];
-    break;
-  case odr::ElementType::custom_shape:
-    klass = [ODRCustomShape class];
     break;
   // page_break, list and group have no typed C++ view of their own
   default:
@@ -707,6 +697,14 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
 
 @implementation ODRFrame
 
+- (ODRShapeType)shapeType {
+  return guarded_value(
+      [&] {
+        return static_cast<ODRShapeType>(self.handle.as_frame().shape_type());
+      },
+      ODRShapeTypeNone);
+}
+
 - (ODRAnchorType)anchorType {
   return guarded_value(
       [&] {
@@ -751,6 +749,22 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (nullable ODRDrawingPath *)path {
+  return guarded_value(
+      [&]() -> ODRDrawingPath * {
+        return [ODRDrawingPath pathWithHandle:self.handle.as_frame().path()];
+      },
+      nil);
+}
+
+- (nullable ODRDrawingLine *)line {
+  return guarded_value(
+      [&]() -> ODRDrawingLine * {
+        return [ODRDrawingLine lineWithHandle:self.handle.as_frame().line()];
+      },
+      nil);
+}
+
 - (ODRGraphicStyle *)style {
   return guarded_value(
       [&]() -> ODRGraphicStyle * {
@@ -779,6 +793,23 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
 
 @end
 
+@implementation ODRDrawingLine
+
++ (nullable instancetype)lineWithHandle:
+    (const std::optional<odr::DrawingLine> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRDrawingLine *const result = [[ODRDrawingLine alloc] init];
+  result->_x1 = [ODRMeasure measureWithHandle:handle->x1];
+  result->_y1 = [ODRMeasure measureWithHandle:handle->y1];
+  result->_x2 = [ODRMeasure measureWithHandle:handle->x2];
+  result->_y2 = [ODRMeasure measureWithHandle:handle->y2];
+  return result;
+}
+
+@end
+
 @implementation ODRDrawingTransform
 
 + (nullable instancetype)transformWithHandle:
@@ -794,213 +825,6 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   result->_e = [ODRMeasure measureWithHandle:handle->e];
   result->_f = [ODRMeasure measureWithHandle:handle->f];
   return result;
-}
-
-@end
-
-@implementation ODRRect
-
-- (ODRMeasure *)x {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_rect().x()]; },
-      nil);
-}
-
-- (ODRMeasure *)y {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_rect().y()]; },
-      nil);
-}
-
-- (ODRMeasure *)width {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_rect().width()];
-      },
-      nil);
-}
-
-- (ODRMeasure *)height {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_rect().height()];
-      },
-      nil);
-}
-
-- (nullable ODRDrawingTransform *)transform {
-  return guarded_value(
-      [&]() -> ODRDrawingTransform * {
-        return [ODRDrawingTransform
-            transformWithHandle:self.handle.as_rect().transform()];
-      },
-      nil);
-}
-
-- (ODRGraphicStyle *)style {
-  return guarded_value(
-      [&]() -> ODRGraphicStyle * {
-        return [ODRGraphicStyle styleWithHandle:self.handle.as_rect().style()];
-      },
-      nil);
-}
-
-@end
-
-@implementation ODRLine
-
-- (ODRMeasure *)x1 {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_line().x1()]; },
-      nil);
-}
-
-- (ODRMeasure *)y1 {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_line().y1()]; },
-      nil);
-}
-
-- (ODRMeasure *)x2 {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_line().x2()]; },
-      nil);
-}
-
-- (ODRMeasure *)y2 {
-  return guarded_value(
-      [&] { return [ODRMeasure measureWithHandle:self.handle.as_line().y2()]; },
-      nil);
-}
-
-- (nullable ODRDrawingTransform *)transform {
-  return guarded_value(
-      [&]() -> ODRDrawingTransform * {
-        return [ODRDrawingTransform
-            transformWithHandle:self.handle.as_line().transform()];
-      },
-      nil);
-}
-
-- (ODRGraphicStyle *)style {
-  return guarded_value(
-      [&]() -> ODRGraphicStyle * {
-        return [ODRGraphicStyle styleWithHandle:self.handle.as_line().style()];
-      },
-      nil);
-}
-
-@end
-
-@implementation ODRCircle
-
-- (ODRMeasure *)x {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_circle().x()];
-      },
-      nil);
-}
-
-- (ODRMeasure *)y {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_circle().y()];
-      },
-      nil);
-}
-
-- (ODRMeasure *)width {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_circle().width()];
-      },
-      nil);
-}
-
-- (ODRMeasure *)height {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure measureWithHandle:self.handle.as_circle().height()];
-      },
-      nil);
-}
-
-- (nullable ODRDrawingTransform *)transform {
-  return guarded_value(
-      [&]() -> ODRDrawingTransform * {
-        return [ODRDrawingTransform
-            transformWithHandle:self.handle.as_circle().transform()];
-      },
-      nil);
-}
-
-- (ODRGraphicStyle *)style {
-  return guarded_value(
-      [&]() -> ODRGraphicStyle * {
-        return
-            [ODRGraphicStyle styleWithHandle:self.handle.as_circle().style()];
-      },
-      nil);
-}
-
-@end
-
-@implementation ODRCustomShape
-
-- (nullable ODRMeasure *)x {
-  return guarded_value([&] { return box(self.handle.as_custom_shape().x()); },
-                       nil);
-}
-
-- (nullable ODRMeasure *)y {
-  return guarded_value([&] { return box(self.handle.as_custom_shape().y()); },
-                       nil);
-}
-
-- (ODRMeasure *)width {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure
-            measureWithHandle:self.handle.as_custom_shape().width()];
-      },
-      nil);
-}
-
-- (ODRMeasure *)height {
-  return guarded_value(
-      [&] {
-        return [ODRMeasure
-            measureWithHandle:self.handle.as_custom_shape().height()];
-      },
-      nil);
-}
-
-- (nullable ODRDrawingTransform *)transform {
-  return guarded_value(
-      [&]() -> ODRDrawingTransform * {
-        return [ODRDrawingTransform
-            transformWithHandle:self.handle.as_custom_shape().transform()];
-      },
-      nil);
-}
-
-- (nullable ODRDrawingPath *)path {
-  return guarded_value(
-      [&]() -> ODRDrawingPath * {
-        return [ODRDrawingPath
-            pathWithHandle:self.handle.as_custom_shape().path()];
-      },
-      nil);
-}
-
-- (ODRGraphicStyle *)style {
-  return guarded_value(
-      [&]() -> ODRGraphicStyle * {
-        return [ODRGraphicStyle
-            styleWithHandle:self.handle.as_custom_shape().style()];
-      },
-      nil);
 }
 
 @end

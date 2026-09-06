@@ -171,26 +171,6 @@ public class Element extends NativeResource {
     return h == 0 ? null : new Frame(h, owner());
   }
 
-  public Rect asRect() {
-    long h = asRectNative(handle());
-    return h == 0 ? null : new Rect(h, owner());
-  }
-
-  public Line asLine() {
-    long h = asLineNative(handle());
-    return h == 0 ? null : new Line(h, owner());
-  }
-
-  public Circle asCircle() {
-    long h = asCircleNative(handle());
-    return h == 0 ? null : new Circle(h, owner());
-  }
-
-  public CustomShape asCustomShape() {
-    long h = asCustomShapeNative(handle());
-    return h == 0 ? null : new CustomShape(h, owner());
-  }
-
   public Image asImage() {
     long h = asImageNative(handle());
     return h == 0 ? null : new Image(h, owner());
@@ -269,14 +249,6 @@ public class Element extends NativeResource {
   private native long asTableCellNative(long handle);
 
   private native long asFrameNative(long handle);
-
-  private native long asRectNative(long handle);
-
-  private native long asLineNative(long handle);
-
-  private native long asCircleNative(long handle);
-
-  private native long asCustomShapeNative(long handle);
 
   private native long asImageNative(long handle);
 }

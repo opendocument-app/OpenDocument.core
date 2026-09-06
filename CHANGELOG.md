@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: the drawing elements `Rect`, `Line`, `Circle` and `CustomShape`
+  are gone, with their `ElementType` values and `Element::as_rect`/`as_line`/
+  `as_circle`/`as_custom_shape`. Every shape is a `Frame` now, naming itself
+  through the new `ShapeType Frame::shape_type()` and carrying `Frame::path()`
+  and the new `Frame::line()`. Shapes gain `anchor_type()` and `z_index()`,
+  which only frames had. Mirrored in the JNI, Apple and Python bindings. No
+  rendered html changes. Closes #773.
+
 ## v6.14.0 - 2026-09-06
 
 - Fixed: a semi-transparent colour wrote `rgba(0,0,0,0,501961)` where the host
