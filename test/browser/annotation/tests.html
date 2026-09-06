@@ -1,0 +1,260 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>pdf annotation checks</title>
+<link rel="stylesheet" href="pdf-annotation.css" />
+<style>
+  body {
+    margin: 0;
+    font: 13px/1.5 system-ui, sans-serif;
+  }
+  #report {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 30em;
+    max-height: 100vh;
+    overflow: auto;
+    padding: 1em;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    z-index: 10;
+  }
+  .ok {
+    color: #0a7d28;
+  }
+  .fail {
+    color: #c00;
+    font-weight: bold;
+  }
+  /* stands in for a rendered page: laid out in inches, as the pdf view does */
+  .p {
+    position: relative;
+    background: #fff;
+    margin: 1em;
+    box-shadow: 0 0 4px #999;
+  }
+  .x0 {
+    width: 8.5in;
+  }
+  .y0 {
+    height: 11in;
+  }
+  .t {
+    position: absolute;
+    white-space: pre;
+    line-height: 1;
+  }
+</style>
+
+<div id="report"></div>
+
+<!-- a us-letter page: 612x792pt, y-down, so the map back to user space is
+     [1 0 0 -1 0 792] -->
+<div class="p x0 y0" id="p1" data-odr-page="0" data-odr-space="1,0,0,-1,0,792">
+  <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
+    <span class="sr">Selectable text on page one</span>
+  </div>
+</div>
+<div class="p x0 y0" id="p2" data-odr-page="1" data-odr-space="1,0,0,-1,0,792">
+  <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
+    <span class="sr">Selectable text on page two</span>
+  </div>
+</div>
+
+<script src="pdf-annotation.js"></script>
+<script>
+  const report = document.getElementById("report");
+  let failed = 0;
+
+  function check(name, condition, detail) {
+    const line = document.createElement("div");
+    line.className = condition ? "ok" : "fail";
+    line.textContent = (condition ? "PASS " : "FAIL ") + name;
+    if (!condition) {
+      failed += 1;
+      if (detail !== undefined) {
+        line.textContent += " — " + JSON.stringify(detail);
+      }
+    }
+    report.appendChild(line);
+  }
+
+  function near(a, b, tolerance) {
+    return Math.abs(a - b) <= (tolerance === undefined ? 0.75 : tolerance);
+  }
+
+  const api = window.odr.annotation;
+
+  function selectRun(page) {
+    const run = document
+      .querySelector('[data-odr-page="' + page + '"]')
+      .querySelector(".sr");
+    const range = document.createRange();
+    range.selectNodeContents(run);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return run;
+  }
+
+  function payload() {
+    return JSON.parse(api.getAnnotations());
+  }
+
+  async function run() {
+    check("the api is exposed", typeof api.getAnnotations === "function");
+
+    // --- a selection becomes one quad in user space -----------------------
+    api.clear();
+    api.setTool("highlight");
+    api.setColor([1, 0.9, 0.2]);
+    const run1 = selectRun(0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    check("a selection makes one annotation", api.list().length === 1, api.list());
+
+    const first = payload().annotations[0];
+    check("it names its page", first.page === 0, first.page);
+    check("it is a highlight", first.type === "highlight", first.type);
+    check("it has one quad of eight numbers", first.quads.length === 1 &&
+      first.quads[0].length === 8, first.quads);
+
+    // Measured off the run's own rect rather than through the script, and
+    // rather than off the css: a text range's rect follows the font's metrics,
+    // not the line box.
+    const q = first.quads[0];
+    const page = document.querySelector('[data-odr-page="0"]');
+    const runRect = run1.getBoundingClientRect();
+    const pageRect = page.getBoundingClientRect();
+    const topPt =
+      ((runRect.top - pageRect.top) / (pageRect.width / page.offsetWidth)) * 0.75;
+    check(
+      "the quad's top edge maps to user space",
+      near(q[1], 792 - topPt),
+      [q[1], 792 - topPt]
+    );
+    check("its bottom edge is below the top", q[5] < q[1], [q[1], q[5]]);
+    check("upper-left is left of upper-right", q[0] < q[2], [q[0], q[2]]);
+    check(
+      "the quad is z-ordered (ul, ur, ll, lr)",
+      near(q[1], q[3]) && near(q[5], q[7]) && near(q[0], q[4]) && near(q[2], q[6]),
+      q
+    );
+
+    // --- a drag marks once, not once per character it covers -------------
+    api.clear();
+    api.setTool("highlight");
+    const text = document.querySelector('[data-odr-page="0"] .sr').firstChild;
+    const pointer = (type) =>
+      document.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, pointerId: 2, button: 0 })
+      );
+    window.getSelection().removeAllRanges();
+    pointer("pointerdown");
+    for (let k = 1; k <= 6; ++k) {
+      window.getSelection().setBaseAndExtent(text, 0, text, k);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    pointer("pointerup");
+    await new Promise((r) => setTimeout(r, 100));
+    check(
+      "a drag makes one annotation, not one per character",
+      api.list().length === 1,
+      api.list().length
+    );
+    api.clear();
+    api.setTool("highlight");
+    selectRun(0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    // --- the overlay is drawn, and the wash is the one that multiplies ----
+    const page1 = document.querySelector('[data-odr-page="0"]');
+    check("an overlay is added", page1.querySelectorAll("svg.an").length >= 1);
+    check(
+      "the highlight goes in the multiplying overlay",
+      page1.querySelector("svg.an-m path") !== null
+    );
+
+    api.clear();
+    api.setTool("underline");
+    selectRun(0);
+    await new Promise((r) => setTimeout(r, 100));
+    check(
+      "an underline does not multiply",
+      page1.querySelector("svg.an-m path") === null &&
+        page1.querySelector('svg[class="an"] path') !== null
+    );
+
+    // --- a second page is addressed by its own index ---------------------
+    api.clear();
+    api.setTool("highlight");
+    selectRun(1);
+    await new Promise((r) => setTimeout(r, 100));
+    check("page two annotates as page 1", payload().annotations[0].page === 1);
+
+    // --- ink through real pointer events ---------------------------------
+    api.clear();
+    api.setTool("ink");
+    api.setWidth(3);
+    api.setColor([0.9, 0.1, 0.1]);
+    const rect = page1.getBoundingClientRect();
+    const zoom = rect.width / page1.offsetWidth;
+    const at = (bx, by) => ({
+      clientX: rect.left + (bx / 0.75) * zoom,
+      clientY: rect.top + (by / 0.75) * zoom,
+      bubbles: true,
+      pointerId: 1,
+      button: 0,
+    });
+    page1.setPointerCapture = () => {};
+    document.dispatchEvent(new PointerEvent("pointerdown", at(100, 100)));
+    document.dispatchEvent(new PointerEvent("pointermove", at(140, 140)));
+    document.dispatchEvent(new PointerEvent("pointermove", at(180, 100)));
+    document.dispatchEvent(new PointerEvent("pointerup", at(180, 100)));
+
+    const ink = payload().annotations[0];
+    check("a drag makes an ink annotation", ink && ink.type === "ink", ink);
+    check("its width carries", ink && ink.width === 3, ink && ink.width);
+    check(
+      "its first point is where the pointer went down",
+      ink && near(ink.strokes[0][0], 100) && near(ink.strokes[0][1], 692),
+      ink && ink.strokes[0].slice(0, 2)
+    );
+
+    // --- undo, remove, clear ---------------------------------------------
+    const before = api.list().length;
+    api.undo();
+    check("undo drops the last one", api.list().length === before - 1);
+
+    api.setTool("highlight");
+    selectRun(0);
+    await new Promise((r) => setTimeout(r, 100));
+    const id = api.list()[api.list().length - 1].id;
+    api.remove(id);
+    check("remove drops it by id", !api.list().some((a) => a.id === id));
+
+    api.clear();
+    check("clear empties the model", api.list().length === 0);
+    check(
+      "and the overlays with it",
+      page1.querySelectorAll("svg.an path").length === 0
+    );
+
+    // --- the tool gates pointer capture -----------------------------------
+    api.setTool("ink");
+    check("ink arms the page for drawing", page1.classList.contains("an-draw"));
+    api.setTool("highlight");
+    check(
+      "a text tool leaves selection alone",
+      !page1.classList.contains("an-draw")
+    );
+    api.setTool(null);
+
+    const summary = document.createElement("div");
+    summary.className = failed ? "fail" : "ok";
+    summary.textContent = failed ? failed + " FAILED" : "all passed";
+    report.prepend(summary);
+  }
+
+  run();
+</script>
