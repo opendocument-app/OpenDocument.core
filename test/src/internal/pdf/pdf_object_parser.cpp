@@ -286,3 +286,38 @@ TEST(PdfObjectParser, hex_string_pads_odd_digit) {
   // whitespace before the terminator must not be mistaken for a digit
   EXPECT_EQ(read_hex_string("<41 >"), "A");
 }
+
+// What `to_stream` writes, `read_object` reads back unchanged.
+TEST(PdfObjectParser, serialization_round_trips) {
+  const auto round_trip = [](const Object &object) {
+    return read_object(object.to_string()).first;
+  };
+
+  EXPECT_EQ(round_trip(Object(StandardString{"a(b)c\\d\re"})).as_string(),
+            "a(b)c\\d\re");
+  EXPECT_EQ(round_trip(Object(Name{"Odd #Name/With Spaces"})).as_string(),
+            "Odd #Name/With Spaces");
+  EXPECT_DOUBLE_EQ(round_trip(Object(Real{0.00001})).as_real(), 0.00001);
+  EXPECT_DOUBLE_EQ(round_trip(Object(Real{-612.345})).as_real(), -612.345);
+
+  Array array;
+  array.holder().emplace_back(Integer{1});
+  array.holder().emplace_back(Real{2.5});
+  array.holder().emplace_back(Name{"Three"});
+  const Object read_array = round_trip(Object(std::move(array)));
+  ASSERT_TRUE(read_array.is_array());
+  ASSERT_EQ(read_array.as_array().size(), 3u);
+  EXPECT_EQ(read_array.as_array()[0].as_integer(), 1);
+  EXPECT_DOUBLE_EQ(read_array.as_array()[1].as_real(), 2.5);
+  EXPECT_EQ(read_array.as_array()[2].as_string(), "Three");
+
+  Dictionary dictionary;
+  dictionary["Type"] = Object(Name{"Annot"});
+  dictionary["Odd Key"] = Object(Integer{1});
+  dictionary["Rect"] = Object(Real{72.5});
+  const Object read_dictionary = round_trip(Object(std::move(dictionary)));
+  ASSERT_TRUE(read_dictionary.is_dictionary());
+  EXPECT_EQ(read_dictionary.as_dictionary().get("Type").as_string(), "Annot");
+  EXPECT_EQ(read_dictionary.as_dictionary().get("Odd Key").as_integer(), 1);
+  EXPECT_DOUBLE_EQ(read_dictionary.as_dictionary().get("Rect").as_real(), 72.5);
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 
 namespace odr::internal::util::math {
 
@@ -60,6 +61,23 @@ struct Transform2D {
   [[nodiscard]] constexpr std::array<double, 2>
   apply(const double x, const double y) const noexcept {
     return {a * x + c * y + e, b * x + d * y + f};
+  }
+
+  /// The transform undoing this one, or `nullopt` where the linear part is
+  /// singular.
+  [[nodiscard]] constexpr std::optional<Transform2D> inverse() const noexcept {
+    const double determinant = a * d - b * c;
+    if (determinant == 0) {
+      return std::nullopt;
+    }
+    return Transform2D{
+        d / determinant,
+        -b / determinant,
+        -c / determinant,
+        a / determinant,
+        (c * f - d * e) / determinant,
+        (b * e - a * f) / determinant,
+    };
   }
 };
 

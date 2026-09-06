@@ -2,6 +2,7 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/hash_util.hpp>
+#include <odr/internal/util/number_util.hpp>
 
 #include <optional>
 #include <ostream>
@@ -12,9 +13,44 @@
 
 namespace odr::internal::pdf {
 
+namespace {
+
+/// A name's regular characters (ISO 32000-1 7.3.5): anything else is written
+/// as `#` and two hex digits, `#` itself included.
+bool name_char_is_regular(const unsigned char c) {
+  return c >= 0x21 && c <= 0x7e && c != '#' && c != '/' && c != '%' &&
+         c != '(' && c != ')' && c != '<' && c != '>' && c != '[' && c != ']' &&
+         c != '{' && c != '}';
+}
+
+} // namespace
+
 void StandardString::to_stream(std::ostream &out) const {
-  // TODO escape
-  out << "(" << string << ")";
+  // 7.3.4.2: only the reverse solidus and unbalanced parentheses need
+  // escaping, but balance is a property of the whole string, so escape every
+  // parenthesis rather than track it. A literal carriage return is read back
+  // as an end-of-line marker, i.e. as `\n`, so it has to be escaped too.
+  out << "(";
+  for (const char c : string) {
+    switch (c) {
+    case '\\':
+      out << "\\\\";
+      break;
+    case '(':
+      out << "\\(";
+      break;
+    case ')':
+      out << "\\)";
+      break;
+    case '\r':
+      out << "\\r";
+      break;
+    default:
+      out << c;
+      break;
+    }
+  }
+  out << ")";
 }
 
 std::string StandardString::to_string() const {
@@ -33,7 +69,16 @@ std::string HexString::to_string() const {
   return ss.str();
 }
 
-void Name::to_stream(std::ostream &out) const { out << "/" << string; }
+void Name::to_stream(std::ostream &out) const {
+  out << "/";
+  for (const char c : string) {
+    if (name_char_is_regular(static_cast<unsigned char>(c))) {
+      out << c;
+    } else {
+      out << fmt::format("#{:02X}", static_cast<unsigned char>(c));
+    }
+  }
+}
 
 std::string Name::to_string() const {
   std::ostringstream ss;
@@ -136,8 +181,8 @@ void Object::to_stream(std::ostream &out) const {
   } else if (is_integer()) {
     out << as_integer();
   } else if (is_real()) {
-    // not `setprecision`, which would stick to the stream
-    out << fmt::format("{:.4g}", as_real());
+    // 7.3.3 has no exponent form, and a stream would carry the host locale
+    out << util::number::to_string_significant(as_real(), 10);
   } else if (is_standard_string()) {
     as<StandardString>().to_stream(out);
   } else if (is_hex_string()) {
@@ -164,12 +209,16 @@ std::string Object::to_string() const {
 void Array::to_stream(std::ostream &out) const {
   out << "[";
 
+  bool first = true;
   for (const auto &item : *this) {
+    if (!first) {
+      out << " ";
+    }
+    first = false;
     item.to_stream(out);
-    out << " ";
   }
 
-  out << " ]";
+  out << "]";
 }
 
 std::string Array::to_string() const {
@@ -182,13 +231,13 @@ void Dictionary::to_stream(std::ostream &out) const {
   out << "<<";
 
   for (const auto &[key, value] : *this) {
-    out << "/" << key;
+    Name(key).to_stream(out);
     out << " ";
     value.to_stream(out);
     out << " ";
   }
 
-  out << " >>";
+  out << ">>";
 }
 
 std::string Dictionary::to_string() const {

@@ -166,3 +166,61 @@ TEST(PdfObject, to_string) {
   EXPECT_EQ(Object(Name{"Type"}).to_string(), "/Type");
   EXPECT_EQ(Object(ObjectReference(12, 0)).to_string(), "12 0 R");
 }
+
+// 7.3.3 knows no exponent form, and the host locale must not reach the output.
+TEST(PdfObject, real_to_string_is_plain_decimal) {
+  EXPECT_EQ(Object(Real{1.5}).to_string(), "1.5");
+  EXPECT_EQ(Object(Real{0.0}).to_string(), "0");
+  EXPECT_EQ(Object(Real{-72.25}).to_string(), "-72.25");
+  // `{:g}` would have written these as `1e-05` and `1.44e+04`
+  EXPECT_EQ(Object(Real{0.00001}).to_string(), "0.00001");
+  EXPECT_EQ(Object(Real{14400.0}).to_string(), "14400");
+  // and would have rounded this one to four significant digits
+  EXPECT_EQ(Object(Real{612.345}).to_string(), "612.345");
+}
+
+TEST(PdfObject, standard_string_escapes_delimiters) {
+  EXPECT_EQ(Object(StandardString{"plain"}).to_string(), "(plain)");
+  EXPECT_EQ(Object(StandardString{"a(b)c"}).to_string(), R"((a\(b\)c))");
+  EXPECT_EQ(Object(StandardString{R"(back\slash)"}).to_string(),
+            R"((back\\slash))");
+  EXPECT_EQ(Object(StandardString{"cr\rlf"}).to_string(), R"((cr\rlf))");
+  // a line feed stands for itself (7.3.4.2), so it is written raw
+  EXPECT_EQ(Object(StandardString{"a\nb"}).to_string(), "(a\nb)");
+}
+
+TEST(PdfObject, name_escapes_irregular_characters) {
+  EXPECT_EQ(Object(Name{"Type"}).to_string(), "/Type");
+  EXPECT_EQ(Object(Name{"A;Name_With-Various***Chars?"}).to_string(),
+            "/A;Name_With-Various***Chars?");
+  EXPECT_EQ(Object(Name{"Adobe Green"}).to_string(), "/Adobe#20Green");
+  EXPECT_EQ(Object(Name{"paired()parentheses"}).to_string(),
+            "/paired#28#29parentheses");
+  EXPECT_EQ(Object(Name{"The_Key_of_F#_Minor"}).to_string(),
+            "/The_Key_of_F#23_Minor");
+  EXPECT_EQ(Object(Name{"1.2/3"}).to_string(), "/1.2#2F3");
+}
+
+TEST(PdfObject, container_to_string) {
+  Array array;
+  array.holder().emplace_back(Integer{1});
+  array.holder().emplace_back(Real{2.5});
+  array.holder().emplace_back(Name{"Three"});
+  EXPECT_EQ(Object(std::move(array)).to_string(), "[1 2.5 /Three]");
+
+  EXPECT_EQ(Object(Array{}).to_string(), "[]");
+
+  Dictionary dictionary;
+  dictionary["Type"] = Object(Name{"Catalog"});
+  EXPECT_EQ(Object(std::move(dictionary)).to_string(), "<</Type /Catalog >>");
+
+  EXPECT_EQ(Object(Dictionary{}).to_string(), "<<>>");
+}
+
+// A key is a name and is escaped as one, or a space in it would split the
+// dictionary in two on the way back in.
+TEST(PdfObject, dictionary_key_is_escaped) {
+  Dictionary dictionary;
+  dictionary["Odd Key"] = Object(Integer{1});
+  EXPECT_EQ(Object(std::move(dictionary)).to_string(), "<</Odd#20Key 1 >>");
+}
