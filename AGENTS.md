@@ -35,20 +35,34 @@ bytes ─▶ magic/open_strategy ─▶ DecodedFile ─▶ Document ─▶ Eleme
 
 ### The element-adapter pattern (every engine follows it)
 
-- An **`ElementRegistry`**: a flat `std::vector<Element>` (id = index + 1); each
-  `Element` holds `parent`/`first_child`/`last_child`/`prev`/`next` ids and a
-  `type`, plus side maps for per-type payloads. Builders: `create_element` /
-  `create_*_element` / `append_child`. Minimal example:
-  `oldms/presentation/ppt_element_registry.*`.
+**The machinery is shared — do not write it again.** `internal/common/element_registry.hpp`
+and `internal/common/element_adapter.hpp` hold it; an engine writes only what
+its own format has. Compact example: `rtf/rtf_element_registry.*` +
+`rtf/rtf_document.cpp`.
+
+- An **`ElementRegistry`**: `internal::ElementRegistry<Element, Id>` is the flat
+  store (id = index + 1, a `std::deque` so `create_element_` can hand back a
+  reference), with `element_at`, `append_child`, `link_child` and
+  `check_element_id`. The engine derives `struct RegistryElement final :
+  ElementNode<Id>` — adding a field only if it has one, as odf/ooxml add the
+  `pugi::xml_node` — and declares its per-type payloads as `SideTable<T>`
+  (hashed) or `SortedSideTable<T, Id>` (binary search, for payloads written in
+  id order). Both carry their own bounds check, so an accessor is
+  `return m_texts.at(id);` and nothing else. Only the `create_*_element` and
+  the secondary-chain `append_*` are per engine.
 - An **`ElementIdentifier` is opaque, and 64 bits wide**: registry engines use it
   as index + 1, `csv` packs a kind, a row and a column into its bits. An engine
-  wanting a narrower id narrows it inside its own store (`odf`'s
-  `ElementRegistry::StoredId`) and widens at the boundary.
-- An **`ElementAdapter`**: one class implementing `abstract::ElementAdapter` (tree
-  navigation by id) and, via multiple inheritance, the per-type adapters it
-  supports (`SlideAdapter`, `ParagraphAdapter`, …). Each `*_adapter(id)` returns
-  `this` when the element is that type, else `nullptr`. Compact example:
-  `oldms/presentation/ppt_document.cpp`.
+  wanting a narrower id passes it as `internal::ElementRegistry`'s `Id`
+  (`odf::StoredId`) and widens at the boundary.
+- An **`ElementAdapter`**: `internal::RegistryElementAdapter<Registry, Adapters…>`
+  implements the tree navigation over the registry, and its base
+  `internal::ElementAdapter<Adapters…>` inherits the per-type adapters named in
+  the pack and answers **every** `*_adapter(id)` hook from them — an engine
+  writes no hook of its own, it only lists the adapters. `element_is_unique` and
+  `element_is_self_locatable` default to true and `element_is_editable` to
+  false; override only where that is wrong (odf, ooxml text). An engine with no
+  registry (`csv`) derives from `internal::ElementAdapter` and writes its own
+  navigation.
 
 `ElementType` is the shared enum in `src/odr/document_element.hpp`.
 
@@ -64,7 +78,7 @@ producer's layout recorded — odf's `text:soft-page-break` — are not parsed.
 |------|------|
 | `src/odr/*.hpp` | **Public API**: `file`, `document`, `document_element`, `html`, `style`, `quantity` (`Measure`), `odr`. |
 | `src/odr/internal/abstract/` | Core interfaces: `File`/`DecodedFile`, `Document` + `ElementAdapter`, `Filesystem`, `Archive`, `HtmlService`. |
-| `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, filesystem, `style`, table cursor/range, temp files. |
+| `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, the shared `ElementRegistry` + `ElementAdapter`, filesystem, `style`, table cursor/range, temp files. |
 | `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
 | `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |
@@ -247,9 +261,10 @@ Dispatch `release.yml` against main, publish the draft that appears —
    alias is claimed twice, or if the declared capabilities exceed what the
    engines actually do.
 2. For documents: subclass `internal::Document`; in its constructor build an
-   `ElementRegistry` and an `ElementAdapter` (pattern above). It defaults to
-   read-only — override `is_editable`/`is_savable`/`save` only for an engine
-   that can write.
+   `ElementRegistry` (derived from `internal::ElementRegistry`) and an
+   `ElementAdapter` (derived from `internal::RegistryElementAdapter`) — pattern
+   above, and neither is written from scratch. It defaults to read-only —
+   override `is_editable`/`is_savable`/`save` only for an engine that can write.
 3. Implement the per-element adapters you can populate; the **generic HTML
    renderer then works for free**.
 4. Register the factory (e.g. `oldms_file.cpp::document()` switches on

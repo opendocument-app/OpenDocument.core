@@ -3,26 +3,21 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
-#include <map>
-#include <unordered_map>
-#include <vector>
+#include <odr/internal/common/element_registry.hpp>
+
+#include <tuple>
 
 #include <pugixml.hpp>
 
 namespace odr::internal::ooxml::presentation {
 
-class ElementRegistry final {
-public:
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-    pugi::xml_node node;
-  };
+struct RegistryElement final : ElementNode<ElementIdentifier> {
+  pugi::xml_node node;
+};
 
+class ElementRegistry final
+    : public internal::ElementRegistry<RegistryElement> {
+public:
   struct Table final {
     ElementIdentifier first_column_id{null_element_id};
     ElementIdentifier last_column_id{null_element_id};
@@ -32,10 +27,6 @@ public:
     pugi::xml_node last;
   };
 
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
                                                           pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Table &>
@@ -43,25 +34,26 @@ public:
   std::tuple<ElementIdentifier, Element &, Text &>
   create_text_element(pugi::xml_node first_node, pugi::xml_node last_node);
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Table &table_element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
+  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Table &
+  table_element_at(const ElementIdentifier id) const {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
 
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
+  SideTable<Table> m_tables;
+  SideTable<Text> m_texts;
 };
 
 } // namespace odr::internal::ooxml::presentation

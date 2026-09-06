@@ -1,6 +1,5 @@
 #include <odr/internal/iwork/iwork_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
@@ -8,8 +7,8 @@
 #include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/iwork/iwork_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -55,119 +54,17 @@ const ElementRegistry &Document::element_registry() const {
 
 namespace {
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::TextRootAdapter,
-                             public abstract::SlideAdapter,
-                             public abstract::SheetAdapter,
-                             public abstract::SheetCellAdapter,
-                             public abstract::TableAdapter,
-                             public abstract::TableColumnAdapter,
-                             public abstract::TableRowAdapter,
-                             public abstract::TableCellAdapter,
-                             public abstract::FrameAdapter,
-                             public abstract::LineBreakAdapter,
-                             public abstract::ParagraphAdapter,
-                             public abstract::TextAdapter {
+using AdapterBase = internal::RegistryElementAdapter<
+    ElementRegistry, abstract::TextRootAdapter, abstract::SlideAdapter,
+    abstract::SheetAdapter, abstract::SheetCellAdapter, abstract::TableAdapter,
+    abstract::TableColumnAdapter, abstract::TableRowAdapter,
+    abstract::TableCellAdapter, abstract::FrameAdapter,
+    abstract::LineBreakAdapter, abstract::ParagraphAdapter,
+    abstract::TextAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
-  explicit ElementAdapter(ElementRegistry &registry) : m_registry(&registry) {}
-
-  [[nodiscard]] ElementType
-  element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
-  }
-
-  [[nodiscard]] ElementIdentifier
-  element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
-  }
-
-  [[nodiscard]] bool element_is_unique(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_self_locatable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_editable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return false;
-  }
-  [[nodiscard]] DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const TextRootAdapter *
-  text_root_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::root ? this : nullptr;
-  }
-  [[nodiscard]] const SlideAdapter *
-  slide_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::slide ? this : nullptr;
-  }
-  [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet ? this : nullptr;
-  }
-  [[nodiscard]] const SheetCellAdapter *
-  sheet_cell_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet_cell ? this : nullptr;
-  }
-  [[nodiscard]] const TableAdapter *
-  table_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table ? this : nullptr;
-  }
-  [[nodiscard]] const TableColumnAdapter *
-  table_column_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_column ? this
-                                                                 : nullptr;
-  }
-  [[nodiscard]] const TableRowAdapter *
-  table_row_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_row ? this : nullptr;
-  }
-  [[nodiscard]] const TableCellAdapter *
-  table_cell_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_cell ? this : nullptr;
-  }
-  [[nodiscard]] const FrameAdapter *
-  frame_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::frame ? this : nullptr;
-  }
-  [[nodiscard]] const LineBreakAdapter *
-  line_break_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::line_break ? this : nullptr;
-  }
-  [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::text ? this : nullptr;
-  }
+  explicit ElementAdapter(ElementRegistry &registry) : AdapterBase(registry) {}
 
   // The page geometry sits in the document archive and the styles in
   // `Index/DocumentStylesheet.iwa`; neither is read yet.
@@ -416,8 +313,6 @@ private:
     }
     return points(*value);
   }
-
-  ElementRegistry *m_registry{nullptr};
 };
 
 std::unique_ptr<abstract::ElementAdapter>

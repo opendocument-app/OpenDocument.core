@@ -1,27 +1,11 @@
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
-#include <stdexcept>
-
 namespace odr::internal::ooxml::text {
-
-void ElementRegistry::clear() noexcept {
-  m_elements.clear();
-  m_tables.clear();
-  m_texts.clear();
-  m_list_types.clear();
-  m_list_markers.clear();
-}
-
-[[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
-  return m_elements.size();
-}
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
-  Element &element = m_elements.emplace_back();
-  const ElementIdentifier element_id = m_elements.size();
-  element.type = type;
+  const auto &[element_id, element] = create_element_(type);
   element.node = node;
   return {element_id, element};
 }
@@ -30,8 +14,8 @@ std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Table &>
 ElementRegistry::create_table_element(const pugi::xml_node node) {
   const auto &[element_id, element] = create_element(ElementType::table, node);
-  auto [it, success] = m_tables.emplace(element_id, Table{});
-  return {element_id, element, it->second};
+  Table &table = m_tables.emplace(element_id, Table{});
+  return {element_id, element, table};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
@@ -40,132 +24,38 @@ ElementRegistry::create_text_element(const pugi::xml_node first_node,
                                      const pugi::xml_node last_node) {
   const auto &[element_id, element] =
       create_element(ElementType::text, first_node);
-  auto [it, success] = m_texts.emplace(element_id, Text{last_node});
-  return {element_id, element, it->second};
-}
-
-ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-ElementRegistry::Text &
-ElementRegistry::text_element_at(const ElementIdentifier id) {
-  check_text_id(id);
-  return m_texts.at(id);
-}
-
-ElementRegistry::Table &
-ElementRegistry::table_element_at(const ElementIdentifier id) {
-  return m_tables.at(id);
-}
-
-const ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-const ElementRegistry::Text &
-ElementRegistry::text_element_at(const ElementIdentifier id) const {
-  check_text_id(id);
-  return m_texts.at(id);
-}
-
-const ElementRegistry::Table &
-ElementRegistry::table_element_at(const ElementIdentifier id) const {
-  return m_tables.at(id);
-}
-
-void ElementRegistry::check_element_id(const ElementIdentifier id) const {
-  if (id == null_element_id) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: null identifier");
-  }
-  if (id - 1 >= m_elements.size()) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier out of range");
-  }
-}
-
-void ElementRegistry::check_table_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (!m_tables.contains(id)) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
-}
-
-void ElementRegistry::check_text_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (!m_texts.contains(id)) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
-}
-
-void ElementRegistry::append_child(const ElementIdentifier parent_id,
-                                   const ElementIdentifier child_id) {
-  check_element_id(parent_id);
-  check_element_id(child_id);
-
-  const ElementIdentifier previous_sibling_id =
-      element_at(parent_id).last_child_id;
-
-  element_at(child_id).parent_id = parent_id;
-  element_at(child_id).previous_sibling_id = previous_sibling_id;
-
-  if (element_at(parent_id).first_child_id == null_element_id) {
-    element_at(parent_id).first_child_id = child_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = child_id;
-  }
-  element_at(parent_id).last_child_id = child_id;
+  Text &text = m_texts.emplace(element_id, Text{last_node});
+  return {element_id, element, text};
 }
 
 void ElementRegistry::append_column(const ElementIdentifier table_id,
                                     const ElementIdentifier column_id) {
-  check_table_id(table_id);
-  check_element_id(column_id);
-
-  const ElementIdentifier previous_sibling_id =
-      table_element_at(table_id).last_column_id;
-
-  element_at(column_id).parent_id = table_id;
-  element_at(column_id).previous_sibling_id = previous_sibling_id;
-
-  if (table_element_at(table_id).first_column_id == null_element_id) {
-    table_element_at(table_id).first_column_id = column_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = column_id;
-  }
-  table_element_at(table_id).last_column_id = column_id;
+  Table &table = table_element_at(table_id);
+  link_child(table_id, column_id, table.first_column_id, table.last_column_id);
 }
 
 void ElementRegistry::set_list_type(const ElementIdentifier id,
                                     const ListType type) {
   check_element_id(id);
-  m_list_types[id] = type;
+  m_list_types.emplace(id, type);
 }
 
 void ElementRegistry::set_list_marker(const ElementIdentifier id,
                                       ListMarker marker) {
   check_element_id(id);
-  m_list_markers[id] = std::move(marker);
+  m_list_markers.emplace(id, std::move(marker));
 }
 
-[[nodiscard]] ListType
-ElementRegistry::list_type(const ElementIdentifier id) const {
-  const auto it = m_list_types.find(id);
-  return it != std::end(m_list_types) ? it->second : ListType::unordered;
+ListType ElementRegistry::list_type(const ElementIdentifier id) const {
+  const ListType *type = m_list_types.find(id);
+  return type != nullptr ? *type : ListType::unordered;
 }
 
-[[nodiscard]] const ListMarker &
+const ListMarker &
 ElementRegistry::list_marker(const ElementIdentifier id) const {
   static const ListMarker none;
-  const auto it = m_list_markers.find(id);
-  return it != std::end(m_list_markers) ? it->second : none;
+  const ListMarker *marker = m_list_markers.find(id);
+  return marker != nullptr ? *marker : none;
 }
 
 } // namespace odr::internal::ooxml::text

@@ -1,12 +1,11 @@
 #include <odr/internal/markdown/markdown_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/markdown/markdown_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <memory>
 
@@ -36,124 +35,19 @@ const StyleRegistry &Document::style_registry() const {
 
 namespace {
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::TextRootAdapter,
-                             public abstract::LineBreakAdapter,
-                             public abstract::ParagraphAdapter,
-                             public abstract::SpanAdapter,
-                             public abstract::TextAdapter,
-                             public abstract::LinkAdapter,
-                             public abstract::ListAdapter,
-                             public abstract::ListItemAdapter,
-                             public abstract::TableAdapter,
-                             public abstract::TableColumnAdapter,
-                             public abstract::TableRowAdapter,
-                             public abstract::TableCellAdapter {
+using AdapterBase = internal::RegistryElementAdapter<
+    const ElementRegistry, abstract::TextRootAdapter,
+    abstract::LineBreakAdapter, abstract::ParagraphAdapter,
+    abstract::SpanAdapter, abstract::TextAdapter, abstract::LinkAdapter,
+    abstract::ListAdapter, abstract::ListItemAdapter, abstract::TableAdapter,
+    abstract::TableColumnAdapter, abstract::TableRowAdapter,
+    abstract::TableCellAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(const ElementRegistry &registry,
                  const StyleRegistry &style_registry)
-      : m_registry(&registry), m_style_registry(&style_registry) {}
-
-  [[nodiscard]] ElementType
-  element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
-  }
-
-  [[nodiscard]] ElementIdentifier
-  element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
-  }
-
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return false;
-  }
-  [[nodiscard]] DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const TextRootAdapter *
-  text_root_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::root ? this : nullptr;
-  }
-  [[nodiscard]] const LineBreakAdapter *
-  line_break_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::line_break ? this : nullptr;
-  }
-  [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
-  }
-  [[nodiscard]] const SpanAdapter *
-  span_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::span ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::text ? this : nullptr;
-  }
-  [[nodiscard]] const LinkAdapter *
-  link_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::link ? this : nullptr;
-  }
-  [[nodiscard]] const ListAdapter *
-  list_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::list ? this : nullptr;
-  }
-  [[nodiscard]] const ListItemAdapter *
-  list_item_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::list_item ? this : nullptr;
-  }
-  [[nodiscard]] const TableAdapter *
-  table_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table ? this : nullptr;
-  }
-  [[nodiscard]] const TableColumnAdapter *
-  table_column_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_column ? this
-                                                                 : nullptr;
-  }
-  [[nodiscard]] const TableRowAdapter *
-  table_row_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_row ? this : nullptr;
-  }
-  [[nodiscard]] const TableCellAdapter *
-  table_cell_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::table_cell ? this : nullptr;
-  }
+      : AdapterBase(registry), m_style_registry(&style_registry) {}
 
   /// Markdown is flow content: it has no page, and the viewport is the width.
   [[nodiscard]] PageLayout
@@ -286,7 +180,6 @@ public:
   }
 
 private:
-  const ElementRegistry *m_registry{nullptr};
   const StyleRegistry *m_style_registry{nullptr};
 
   [[nodiscard]] TextStyle

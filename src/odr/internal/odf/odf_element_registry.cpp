@@ -1,36 +1,14 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 
 namespace odr::internal::odf {
 
-void ElementRegistry::clear() noexcept {
-  m_elements.clear();
-  m_texts.clear();
-  m_tables.clear();
-  m_sheets.clear();
-  m_sheet_cells.clear();
-  m_list_types.clear();
-  m_list_markers.clear();
-}
-
-[[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
-  return m_elements.size();
-}
-
 std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
-  if (m_elements.size() >= std::numeric_limits<StoredId>::max()) {
-    throw std::overflow_error(
-        "ElementRegistry::create_element: out of identifiers");
-  }
-
-  Element &element = m_elements.emplace_back();
-  const ElementIdentifier element_id = m_elements.size();
-  element.type = type;
+  const auto &[element_id, element] = create_element_(type);
   element.node = node;
   return {element_id, element};
 }
@@ -73,146 +51,32 @@ ElementRegistry::create_sheet_cell_element(const pugi::xml_node node,
   return {element_id, element, sheet_cell};
 }
 
-ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-ElementRegistry::Text &
-ElementRegistry::text_element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_texts.at(id);
-}
-
-ElementRegistry::Table &
-ElementRegistry::table_element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_tables.at(id);
-}
-
-ElementRegistry::Sheet &
-ElementRegistry::sheet_element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_sheets.at(id);
-}
-
-const ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-const ElementRegistry::Text &
-ElementRegistry::text_element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_texts.at(id);
-}
-
-const ElementRegistry::Table &
-ElementRegistry::table_element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_tables.at(id);
-}
-
-const ElementRegistry::Sheet &
-ElementRegistry::sheet_element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_sheets.at(id);
-}
-
-const ElementRegistry::SheetCell &
-ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_sheet_cells.at(id);
-}
-
-const ElementRegistry::SheetCell *
-ElementRegistry::sheet_cell_element(const ElementIdentifier id) const {
-  return m_sheet_cells.find(id);
-}
-
-void ElementRegistry::link_child(const ElementIdentifier parent_id,
-                                 const ElementIdentifier child_id,
-                                 StoredId &first_id, StoredId &last_id) {
-  Element &child = element_at(child_id);
-  child.parent_id = static_cast<StoredId>(parent_id);
-  child.previous_sibling_id = last_id;
-
-  if (first_id == null_element_id) {
-    first_id = static_cast<StoredId>(child_id);
-  } else {
-    element_at(last_id).next_sibling_id = static_cast<StoredId>(child_id);
-  }
-  last_id = static_cast<StoredId>(child_id);
-}
-
-void ElementRegistry::append_child(const ElementIdentifier parent_id,
-                                   const ElementIdentifier child_id) {
-  check_element_id(parent_id);
-  check_element_id(child_id);
-  if (element_at(child_id).parent_id != null_element_id) {
-    throw std::invalid_argument(
-        "DocumentElementRegistry::append_child: child already has a parent");
-  }
-
-  Element &parent = element_at(parent_id);
-  link_child(parent_id, child_id, parent.first_child_id, parent.last_child_id);
-}
-
 void ElementRegistry::append_column(const ElementIdentifier table_id,
                                     const ElementIdentifier column_id) {
   Table &table = table_element_at(table_id);
-  check_element_id(column_id);
-  if (element_at(column_id).parent_id != null_element_id) {
-    throw std::invalid_argument(
-        "DocumentElementRegistry::append_column: child already has a parent");
-  }
-
   link_child(table_id, column_id, table.first_column_id, table.last_column_id);
 }
 
 void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
                                    const ElementIdentifier shape_id) {
   Sheet &sheet = sheet_element_at(sheet_id);
-  check_element_id(shape_id);
-  if (element_at(shape_id).parent_id != null_element_id) {
-    throw std::invalid_argument(
-        "DocumentElementRegistry::append_shape: child already has a parent");
-  }
-
   link_child(sheet_id, shape_id, sheet.first_shape_id, sheet.last_shape_id);
 }
 
 void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
                                         const ElementIdentifier cell_id) {
-  check_sheet_id(sheet_id);
-  check_element_id(cell_id);
-  if (element_at(cell_id).parent_id != null_element_id) {
-    throw std::invalid_argument("DocumentElementRegistry::append_sheet_cell: "
-                                "child already has a parent");
+  if (m_sheets.find(sheet_id) == nullptr) {
+    throw std::out_of_range(
+        "ElementRegistry::append_sheet_cell: not a sheet identifier");
   }
 
-  element_at(cell_id).parent_id = static_cast<StoredId>(sheet_id);
-}
+  Element &cell = element_at(cell_id);
+  if (cell.parent_id != null_element_id) {
+    throw std::invalid_argument(
+        "ElementRegistry::append_sheet_cell: child already has a parent");
+  }
 
-void ElementRegistry::check_element_id(const ElementIdentifier id) const {
-  if (id == null_element_id) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: null identifier");
-  }
-  if (id - 1 >= m_elements.size()) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier out of range");
-  }
-}
-
-void ElementRegistry::check_sheet_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (m_sheets.find(id) == nullptr) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
+  cell.parent_id = static_cast<StoredId>(sheet_id);
 }
 
 void ElementRegistry::Sheet::register_column(const std::uint32_t column,
@@ -331,26 +195,26 @@ ElementRegistry::Sheet::cell_node(const std::uint32_t column,
 void ElementRegistry::set_list_type(const ElementIdentifier id,
                                     const ListType type) {
   check_element_id(id);
-  m_list_types[id] = type;
+  m_list_types.emplace(id, type);
 }
 
 void ElementRegistry::set_list_marker(const ElementIdentifier id,
                                       ListMarker marker) {
   check_element_id(id);
-  m_list_markers[id] = std::move(marker);
+  m_list_markers.emplace(id, std::move(marker));
 }
 
 [[nodiscard]] ListType
 ElementRegistry::list_type(const ElementIdentifier id) const {
-  const auto it = m_list_types.find(id);
-  return it != std::end(m_list_types) ? it->second : ListType::unordered;
+  const ListType *type = m_list_types.find(id);
+  return type != nullptr ? *type : ListType::unordered;
 }
 
 [[nodiscard]] const ListMarker &
 ElementRegistry::list_marker(const ElementIdentifier id) const {
   static const ListMarker none;
-  const auto it = m_list_markers.find(id);
-  return it != std::end(m_list_markers) ? it->second : none;
+  const ListMarker *marker = m_list_markers.find(id);
+  return marker != nullptr ? *marker : none;
 }
 
 } // namespace odr::internal::odf

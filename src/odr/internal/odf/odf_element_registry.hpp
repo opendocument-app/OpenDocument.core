@@ -3,39 +3,31 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
+#include <odr/internal/common/element_registry.hpp>
 #include <odr/internal/common/list_numbering.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
-#include <algorithm>
 #include <cstdint>
-#include <deque>
 #include <span>
-#include <stdexcept>
-#include <unordered_map>
-#include <utility>
+#include <tuple>
 #include <vector>
 
 #include <pugixml.hpp>
 
 namespace odr::internal::odf {
 
-class ElementRegistry final {
+/// An element is five ids, so the width is most of what one costs. Widened
+/// back at every boundary; an id past `check_element_id` fits.
+using StoredId = std::uint32_t;
+
+struct RegistryElement final : ElementNode<StoredId> {
+  pugi::xml_node node;
+};
+
+class ElementRegistry final
+    : public internal::ElementRegistry<RegistryElement, StoredId> {
 public:
-  /// An element is five ids, so the width is most of what one costs. Widened
-  /// back at every boundary; an id past @ref check_element_id fits.
-  using StoredId = std::uint32_t;
-
-  struct Element final {
-    StoredId parent_id{null_element_id};
-    StoredId first_child_id{null_element_id};
-    StoredId last_child_id{null_element_id};
-    StoredId previous_sibling_id{null_element_id};
-    StoredId next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-    pugi::xml_node node;
-  };
-
   struct Table final {
     StoredId first_column_id{null_element_id};
     StoredId last_column_id{null_element_id};
@@ -105,68 +97,6 @@ public:
     bool is_repeated{false};
   };
 
-  /// Payloads keyed by element id and written in id order, so a lookup is a
-  /// binary search. A deque: `create_*_element` hands out a reference.
-  template <typename T> class SideTable final {
-  public:
-    T &emplace(const ElementIdentifier id, T value) {
-      if (!m_entries.empty() && m_entries.back().first >= id) {
-        throw std::invalid_argument(
-            "ElementRegistry::SideTable::emplace: identifier out of order");
-      }
-      return m_entries.emplace_back(static_cast<StoredId>(id), std::move(value))
-          .second;
-    }
-
-    [[nodiscard]] T *find(const ElementIdentifier id) {
-      const auto it =
-          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
-      return it != std::end(m_entries) && it->first == id ? &it->second
-                                                          : nullptr;
-    }
-
-    [[nodiscard]] const T *find(const ElementIdentifier id) const {
-      const auto it =
-          std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
-      return it != std::end(m_entries) && it->first == id ? &it->second
-                                                          : nullptr;
-    }
-
-    [[nodiscard]] T &at(const ElementIdentifier id) {
-      T *entry = find(id);
-      if (entry == nullptr) {
-        throw std::out_of_range(
-            "ElementRegistry::SideTable::at: identifier not found");
-      }
-      return *entry;
-    }
-
-    [[nodiscard]] const T &at(const ElementIdentifier id) const {
-      const T *entry = find(id);
-      if (entry == nullptr) {
-        throw std::out_of_range(
-            "ElementRegistry::SideTable::at: identifier not found");
-      }
-      return *entry;
-    }
-
-    void clear() noexcept { m_entries.clear(); }
-
-    [[nodiscard]] auto begin() const noexcept { return m_entries.begin(); }
-    [[nodiscard]] auto end() const noexcept { return m_entries.end(); }
-    [[nodiscard]] auto begin() noexcept { return m_entries.begin(); }
-    [[nodiscard]] auto end() noexcept { return m_entries.end(); }
-
-  private:
-    using Entry = std::pair<StoredId, T>;
-
-    std::deque<Entry> m_entries;
-  };
-
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
                                                           pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Text &>
@@ -179,19 +109,36 @@ public:
   create_sheet_cell_element(pugi::xml_node node, const TablePosition &position,
                             bool is_repeated);
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
-  [[nodiscard]] Table &table_element_at(ElementIdentifier id);
-  [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] Sheet &sheet_element_at(const ElementIdentifier id) {
+    return m_sheets.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Sheet &sheet_element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Table &
+  table_element_at(const ElementIdentifier id) const {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] const Sheet &
+  sheet_element_at(const ElementIdentifier id) const {
+    return m_sheets.at(id);
+  }
   [[nodiscard]] const SheetCell &
-  sheet_cell_element_at(ElementIdentifier id) const;
+  sheet_cell_element_at(const ElementIdentifier id) const {
+    return m_sheet_cells.at(id);
+  }
 
-  [[nodiscard]] const SheetCell *sheet_cell_element(ElementIdentifier id) const;
+  [[nodiscard]] const SheetCell *
+  sheet_cell_element(const ElementIdentifier id) const {
+    return m_sheet_cells.find(id);
+  }
 
   void set_list_type(ElementIdentifier id, ListType type);
   void set_list_marker(ElementIdentifier id, ListMarker marker);
@@ -199,30 +146,18 @@ public:
   [[nodiscard]] ListType list_type(ElementIdentifier id) const;
   [[nodiscard]] const ListMarker &list_marker(ElementIdentifier id) const;
 
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);
   void append_shape(ElementIdentifier sheet_id, ElementIdentifier shape_id);
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
-  /// A deque, not a vector: `create_element` hands back a reference the parser
-  /// holds on to, and a vector both invalidates it and peaks holding two
-  /// copies.
-  std::deque<Element> m_elements;
-  SideTable<Text> m_texts;
-  SideTable<Table> m_tables;
-  SideTable<Sheet> m_sheets;
-  SideTable<SheetCell> m_sheet_cells;
+  SortedSideTable<Text, StoredId> m_texts;
+  SortedSideTable<Table, StoredId> m_tables;
+  SortedSideTable<Sheet, StoredId> m_sheets;
+  SortedSideTable<SheetCell, StoredId> m_sheet_cells;
   // out of id order: written when a list is resolved, not when it is parsed
-  std::unordered_map<ElementIdentifier, ListType> m_list_types;
-  std::unordered_map<ElementIdentifier, ListMarker> m_list_markers;
-
-  /// Links `child_id` as the last child of the chain `first_id`/`last_id`.
-  void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,
-                  StoredId &first_id, StoredId &last_id);
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_sheet_id(ElementIdentifier id) const;
+  SideTable<ListType> m_list_types;
+  SideTable<ListMarker> m_list_markers;
 };
 
 } // namespace odr::internal::odf

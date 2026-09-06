@@ -1,14 +1,13 @@
 #include <odr/internal/csv/csv_document.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/encoding/transcode.hpp>
-#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
@@ -54,10 +53,11 @@ std::uint32_t column_of(const ElementIdentifier element_id) {
   return static_cast<std::uint32_t>(element_id & column_mask);
 }
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::SheetAdapter,
-                             public abstract::SheetCellAdapter,
-                             public abstract::TextAdapter {
+using AdapterBase =
+    internal::ElementAdapter<abstract::SheetAdapter, abstract::SheetCellAdapter,
+                             abstract::TextAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
   explicit ElementAdapter(const CsvDocument &document)
       : m_document{&document} {}
@@ -117,41 +117,6 @@ public:
   [[nodiscard]] ElementIdentifier element_next_sibling(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return null_element_id;
-  }
-
-  [[nodiscard]] bool element_is_unique(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_self_locatable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_editable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return false;
-  }
-  [[nodiscard]] DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ElementIdentifier element_id) const override {
-    return kind_of(element_id) == Kind::sheet ? this : nullptr;
-  }
-  [[nodiscard]] const SheetCellAdapter *
-  sheet_cell_adapter(const ElementIdentifier element_id) const override {
-    return kind_of(element_id) == Kind::cell ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return kind_of(element_id) == Kind::text ? this : nullptr;
   }
 
   // SheetAdapter

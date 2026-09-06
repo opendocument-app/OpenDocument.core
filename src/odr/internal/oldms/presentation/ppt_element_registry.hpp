@@ -3,29 +3,20 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
+#include <odr/internal/common/element_registry.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
 
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace odr::internal::oldms::presentation {
 
-class ElementRegistry final {
+class ElementRegistry final
+    : public internal::ElementRegistry<ElementNode<ElementIdentifier>> {
 public:
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-  };
-
   struct Text final {
     std::string text;
   };
@@ -40,26 +31,32 @@ public:
     std::string href; //< pseudo-path naming the BLIP (no real container path)
   };
 
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type);
   std::tuple<ElementIdentifier, Element &, Text &> create_text_element();
   std::tuple<ElementIdentifier, Element &, Frame &> create_frame_element();
   std::tuple<ElementIdentifier, Element &, Image &> create_image_element();
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
-  [[nodiscard]] Frame &frame_element_at(ElementIdentifier id);
-  [[nodiscard]] Image &image_element_at(ElementIdentifier id);
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] Frame &frame_element_at(const ElementIdentifier id) {
+    return m_frames.at(id);
+  }
+  [[nodiscard]] Image &image_element_at(const ElementIdentifier id) {
+    return m_images.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Frame &frame_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Image &image_element_at(ElementIdentifier id) const;
-
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Frame &
+  frame_element_at(const ElementIdentifier id) const {
+    return m_frames.at(id);
+  }
+  [[nodiscard]] const Image &
+  image_element_at(const ElementIdentifier id) const {
+    return m_images.at(id);
+  }
 
   /// Character style of a span or paragraph element, as an index into the
   /// document's `StyleRegistry` (0 is the default style).
@@ -72,17 +69,11 @@ public:
   slide_size() const;
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Frame> m_frames;
-  std::unordered_map<ElementIdentifier, Image> m_images;
-  std::unordered_map<ElementIdentifier, std::uint32_t> m_style_indices;
+  SideTable<Text> m_texts;
+  SideTable<Frame> m_frames;
+  SideTable<Image> m_images;
+  SideTable<std::uint32_t> m_style_indices;
   std::optional<std::pair<std::int32_t, std::int32_t>> m_slide_size;
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
-  void check_frame_id(ElementIdentifier id) const;
-  void check_image_id(ElementIdentifier id) const;
 };
 
 } // namespace odr::internal::oldms::presentation

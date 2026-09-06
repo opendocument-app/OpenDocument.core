@@ -1,12 +1,11 @@
 #include <odr/internal/oldms/spreadsheet/xls_document.hpp>
 
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <algorithm>
 
@@ -39,85 +38,16 @@ const StyleRegistry &Document::style_registry() const {
 
 namespace {
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::SheetAdapter,
-                             public abstract::SheetCellAdapter,
-                             public abstract::ParagraphAdapter,
-                             public abstract::TextAdapter {
+using AdapterBase = internal::RegistryElementAdapter<
+    ElementRegistry, abstract::SheetAdapter, abstract::SheetCellAdapter,
+    abstract::ParagraphAdapter, abstract::TextAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry,
                  const StyleRegistry &style_registry)
-      : m_document(&document), m_registry(&registry),
+      : AdapterBase(registry), m_document(&document),
         m_style_registry(&style_registry) {}
-
-  [[nodiscard]] ElementType
-  element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
-  }
-
-  [[nodiscard]] ElementIdentifier
-  element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
-  }
-
-  [[nodiscard]] bool element_is_unique(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool element_is_self_locatable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool element_is_editable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return false;
-  }
-  [[nodiscard]]
-  DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet ? this : nullptr;
-  }
-  [[nodiscard]] const SheetCellAdapter *
-  sheet_cell_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet_cell ? this : nullptr;
-  }
-  [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::text ? this : nullptr;
-  }
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
@@ -234,7 +164,6 @@ private:
   // TODO remove maybe_unused
   [[maybe_unused]]
   const Document *m_document{nullptr};
-  ElementRegistry *m_registry{nullptr};
   const StyleRegistry *m_style_registry{nullptr};
 
   /// The font style of the sheet_cell ancestor (paragraph and text elements
