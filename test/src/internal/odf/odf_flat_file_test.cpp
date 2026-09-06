@@ -587,10 +587,13 @@ TEST(FlatOpenDocumentFile, a_right_to_left_writing_mode_reads_as_a_direction) {
 /// Neither is a left-to-right claim.
 TEST(FlatOpenDocumentFile, a_writing_mode_without_a_side_names_no_direction) {
   for (const char *mode : {"tb-rl", "tb-lr", "tb", "page"}) {
+    // built outside the macro: msvc's traditional preprocessor does not read
+    // a raw string in a macro argument, and trips over the quotes inside it
+    const std::string properties =
+        R"(style:writing-mode=")" + std::string(mode) + R"(")";
     EXPECT_EQ(std::vector<std::optional<TextDirection>>(
                   {std::nullopt, std::nullopt, std::nullopt}),
-              directions_of(three_paragraphs(
-                  "P1", R"(style:writing-mode=")" + std::string(mode) + "\"")))
+              directions_of(three_paragraphs("P1", properties)))
         << mode;
   }
 }

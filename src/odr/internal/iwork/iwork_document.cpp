@@ -197,6 +197,7 @@ public:
         .print_orientation = {},
         .margin = {},
         .background_color = {},
+        .direction = {},
     };
   }
   [[nodiscard]] ElementIdentifier slide_master_page(
