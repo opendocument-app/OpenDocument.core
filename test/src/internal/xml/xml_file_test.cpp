@@ -110,11 +110,12 @@ TEST(XmlDeclaration, the_encoding_pseudo_attribute_is_read_off_the_bytes) {
   EXPECT_EQ(declared_encoding(R"(<?xml encoding="UTF-8")"), "");
 }
 
-/// Asking for the text rendering by hand gets the text rendering — the source
-/// view is what an xml file translates to, not what a text file translates to.
-TEST(XmlHtml, translating_it_as_a_text_file_still_writes_the_line_list) {
+/// The source view is what an xml file translates to. Opening the same bytes as
+/// a text file is how you ask for the line list instead.
+TEST(XmlHtml, opening_it_as_a_text_file_writes_the_line_list) {
   const HtmlService service = html::translate(
-      odr::TextFile(xml_file("<a><b/></a>")), HtmlConfig(), Logger::null());
+      DecodedFile(File::from_memory("<a><b/></a>"), FileType::text_file),
+      HtmlConfig(), Logger::null());
 
   std::ostringstream out;
   service.write("text.html", out);

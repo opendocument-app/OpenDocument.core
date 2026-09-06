@@ -31,14 +31,11 @@ using namespace odr::test;
 TEST(html, linked_resources_are_served) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const std::string cache_path =
-      (std::filesystem::current_path() / "cache").string();
-
   const auto check = [&](const DecodedFile &file, const std::string &view) {
     HtmlConfig config;
     config.embed_shipped_resources = false;
 
-    const HtmlService service = html::translate(file, cache_path, config);
+    const HtmlService service = html::translate(file, config);
 
     std::ostringstream out;
     const HtmlResources resources = service.list_views().at(0).write_html(out);
@@ -79,16 +76,13 @@ TEST(html, linked_resources_are_served) {
 TEST(html, linked_images_are_served) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const std::string cache_path =
-      (std::filesystem::current_path() / "images").string();
-
   const auto check = [&](const std::string &path) {
     const DecodedFile file(TestData::test_file_path(path), logger);
 
     HtmlConfig config;
     config.embed_images = false;
 
-    const HtmlService service = html::translate(file, cache_path, config);
+    const HtmlService service = html::translate(file, config);
 
     std::ostringstream out;
     const HtmlResources resources = service.list_views().at(0).write_html(out);
@@ -398,10 +392,8 @@ TEST(html, views) {
 
   const Document document = document_file.document();
 
-  const std::string cache_path =
-      (std::filesystem::current_path() / "cache").string();
   const HtmlConfig config;
-  const HtmlService service = html::translate(document, cache_path, config);
+  const HtmlService service = html::translate(document, config);
 
   const HtmlViews &views = service.list_views();
 
@@ -423,7 +415,7 @@ TEST(html, paged_output_fits_the_viewport) {
     const std::string cache =
         (std::filesystem::current_path() / "fit").string();
     std::ostringstream out;
-    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
   };
 
@@ -504,8 +496,7 @@ TEST(html, each_view_fits_the_page_it_renders) {
   config.viewport_width = 400;
 
   const DecodedFile file{path};
-  const HtmlService service = html::translate(
-      file, (std::filesystem::current_path() / "rotate").string(), config);
+  const HtmlService service = html::translate(file, config);
 
   const auto factor_of = [&](const std::size_t view) {
     std::ostringstream out;
@@ -542,7 +533,7 @@ TEST(html, an_image_fits_the_viewport) {
     const std::string cache =
         (std::filesystem::current_path() / "image_fit").string();
     std::ostringstream out;
-    html::translate(file, cache, config).list_views().at(0).write_html(out);
+    html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
   };
 

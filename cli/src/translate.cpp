@@ -46,7 +46,7 @@ int main(const int argc, char **argv) {
     config.format_html = true;
 
     std::filesystem::create_directories(output);
-    const HtmlService service = html::translate(decoded_file, output, config);
+    const HtmlService service = html::translate(decoded_file, config);
     const Html html = service.bring_offline(output);
 
     return 0;

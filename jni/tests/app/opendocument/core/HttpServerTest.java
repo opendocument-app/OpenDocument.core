@@ -61,11 +61,10 @@ class HttpServerTest {
     HttpServer server = new HttpServer();
 
     // the server hosts what it is given; translating is the caller's business
-    String cachePath = Files.createDirectories(tempDir.resolve("doc-cache")).toString();
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlConfig htmlConfig = new HtmlConfig();
     htmlConfig.embedImages = false;
-    HtmlService service = Html.translate(file, cachePath, htmlConfig);
+    HtmlService service = Html.translate(file, htmlConfig);
     server.connectService(service, "doc");
     List<HtmlView> views = service.listViews();
     assertEquals(1, views.size());

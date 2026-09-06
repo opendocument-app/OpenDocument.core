@@ -6,7 +6,7 @@ render them to HTML.
 Example:
     >>> import pyodr
     >>> file = pyodr.open("document.odt")
-    >>> service = pyodr.html.translate(file, cache_path, pyodr.HtmlConfig())
+    >>> service = pyodr.html.translate(file, pyodr.HtmlConfig())
     >>> html = service.bring_offline(output_path)
     >>> [page.path for page in html.pages()]
 """

@@ -257,39 +257,34 @@ NS_SWIFT_NAME(HtmlService)
 NS_SWIFT_NAME(HtmlTranslator)
 @interface ODRHtmlTranslator : NSObject
 
-/// Translates a decoded file. `cachePath` is a directory for temporary output.
+/// Translates a decoded file, dispatching on what it decoded to.
 + (nullable ODRHtmlService *)translateFile:(ODRDecodedFile *)file
-                                 cachePath:(NSString *)cachePath
                                     config:(ODRHtmlConfig *)config
                                      error:(NSError **)error
-    NS_SWIFT_NAME(translate(file:cachePath:config:));
+    NS_SWIFT_NAME(translate(file:config:));
 + (nullable ODRHtmlService *)translateFile:(ODRDecodedFile *)file
-                                 cachePath:(NSString *)cachePath
                                     config:(ODRHtmlConfig *)config
                                     logger:(ODRLogger *)logger
                                      error:(NSError **)error
-    NS_SWIFT_NAME(translate(file:cachePath:config:logger:));
+    NS_SWIFT_NAME(translate(file:config:logger:));
 
 /// Translates an already-decoded document.
 + (nullable ODRHtmlService *)translateDocument:(ODRDocument *)document
-                                     cachePath:(NSString *)cachePath
                                         config:(ODRHtmlConfig *)config
                                          error:(NSError **)error
-    NS_SWIFT_NAME(translate(document:cachePath:config:));
+    NS_SWIFT_NAME(translate(document:config:));
 
 /// Translates a filesystem — a document's parts, or an archive's contents.
 + (nullable ODRHtmlService *)translateFilesystem:(ODRFilesystem *)filesystem
-                                       cachePath:(NSString *)cachePath
                                           config:(ODRHtmlConfig *)config
                                            error:(NSError **)error
-    NS_SWIFT_NAME(translate(filesystem:cachePath:config:));
+    NS_SWIFT_NAME(translate(filesystem:config:));
 
 /// Translates an archive.
 + (nullable ODRHtmlService *)translateArchive:(ODRArchive *)archive
-                                    cachePath:(NSString *)cachePath
                                        config:(ODRHtmlConfig *)config
                                         error:(NSError **)error
-    NS_SWIFT_NAME(translate(archive:cachePath:config:));
+    NS_SWIFT_NAME(translate(archive:config:));
 
 /// Applies a diff produced by the browser-side JavaScript back to `document`.
 + (BOOL)editDocument:(ODRDocument *)document
