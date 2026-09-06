@@ -1,9 +1,10 @@
 # PDF annotation design
 
-Status: **researched; not scheduled.** This records the architecture for adding
-markup annotations — text highlight and freehand drawing first — to an existing
-PDF, the alternatives weighed, and the effort it costs. Nothing here is
-implemented.
+Status: **underway.** This records the architecture for adding markup
+annotations — text highlight and freehand drawing first — to an existing PDF,
+the alternatives weighed, and the effort it costs. The format model is
+validated against four viewers; Phases 0 and 0.5 have landed, and the writer
+itself has not started.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -166,7 +167,9 @@ Notes on the shape:
   spec's stated order (12.5.6.10) is counterclockwise; every implementation
   writes the Z-order above, and `pdfAnnotate`'s documentation says as much
   outright. Follow the implementations, and say so in a comment at the one place
-  that emits it.
+  that emits it. Still **unverified** — see *Validated against real viewers*:
+  an annotation carrying an `/AP` never has its `/QuadPoints` read, so a test
+  has to reach for a viewer that regenerates the appearance.
 - **`delete` only names an annotation we wrote**, identified by the `/NM` we
   minted. Deleting a foreign annotation is out of scope: we would have to prove
   nothing else references it.
@@ -203,15 +206,54 @@ and an appearance of `m`/`c`/`S` with round caps and joins.
 The transparency group on the form is what makes `/BM /Multiply` composite
 against the page rather than against the form's own backdrop.
 
+### Validated against real viewers
+
+A throwaway script wrote exactly the above — a highlight and an ink stroke, as
+one incremental update — onto `odr-public/pdf/style-various-1.pdf`, before any
+of it was committed to C++. `qpdf --check` passes and four independent engines
+paint both annotations with the page text showing through the highlight:
+ghostscript, PDFium (Chrome), CoreGraphics (Preview), and **our own renderer**,
+which emits the highlight as `<path fill="rgb(255,230,51)"
+style="mix-blend-mode:multiply">` and the ink as a round-capped stroke.
+
+So the following are facts, not assumptions: the transparency group composites
+against the page rather than a black backdrop; appending to a page's *existing*
+`/Annots` array works and the newer page object wins; a classic section listing
+only the changed ids is accepted everywhere; and `to_box` places the result
+correctly (user-space y 700/688 arrived at page-box y 92/104).
+
+Three things the spike did **not** settle, and Phase 1 and 2 owe tests for each:
+
+- **QuadPoints ordering.** With an `/AP` present, the appearance is what every
+  one of those engines painted — the `/QuadPoints` were never consulted. The
+  ordering matters only to a viewer that regenerates the appearance, and to
+  text-selection semantics. The note below stands as a note.
+- **A page dictionary inside an object stream.** The fixture's was plain.
+- **Appending to a file whose newest section is an xref stream.** The fixture's
+  was a classic table.
+
 ## Implementation plan
 
 Ordered so each step is verifiable on its own. Estimates are working days.
 
-### Phase 0 — serialization correctness (0.5 d, ~70 lines)
+### Phase 0 — serialization correctness — **done** (#843)
 
-`Transform2D::inverse`; escape `(`, `)`, `\` in `StandardString` (the existing
-`TODO`); `#`-escape `Name`; emit reals through `fmt` with no exponent and no
-locale (the repo's `to_string_significant` rule). Assertion tests per case.
+`Transform2D::inverse`; escaping for `StandardString`, `Name` and dictionary
+keys; reals through `util::number::to_string_significant`, since `{:.4g}` both
+rounded to four significant digits and reached for an exponent form 7.3.3 has
+no syntax for. Pinned by a round trip through `ObjectParser`.
+
+### Phase 0.5 — the parse facts a writer needs — **done** (#844)
+
+Appending needs four things about the file, and `DocumentParser` computed all
+four while keeping one. `xref()`/`trailer()` were reachable; the newest
+section's offset, its kind, and the recovery flag were not. Now
+`start_xref_position()`, `xref_kind()`, `is_recovered()` and
+`highest_object_id()`.
+
+The first two are `std::optional` and recovery clears them — a rebuilt table
+has no section of the file's own to chain onto, so the missing value and
+decision 2's refusal gate are the same fact.
 
 ### Phase 1 — the incremental writer (2–3 d, ~340 lines)
 
@@ -219,12 +261,23 @@ New `pdf/pdf_writer.{hpp,cpp}`: copy the source stream, append indirect objects,
 emit the changed-ids xref, write the trailer with `/Prev` and a regenerated
 second `/ID` element.
 
-- **Match the file's xref flavor.** If the last section was an xref stream,
-  append an xref stream; otherwise a classic table.
+- **Match the file's xref flavor** (`xref_kind()`). If the last section was an
+  xref stream, append an xref stream; otherwise a classic table.
 - **A page dictionary living in an object stream is rewritten uncompressed** in
   the new section — legal, the newer entry wins.
-- Refuse a file that came from xref recovery (decision 2), and an encrypted one
+- Refuse a file where `is_recovered()` (decision 2), and an encrypted one
   (decision 6).
+
+Sequence the first two steps so the plumbing fails separately from the
+annotation semantics:
+
+1. **A no-op incremental update** — append a section that changes nothing;
+   assert the file re-parses identically and `qpdf --check` passes.
+2. **Page `/Rotate` as the first real write** — one integer on an existing
+   dictionary, no new object types, no appearance. It exercises the genuinely
+   risky part (rewriting an object that may live in an object stream, in a file
+   of either xref flavor) and lands a feature from *What the writer unlocks
+   next* on the way.
 
 Verification: round-trip through our own parser, then `qpdf --check`, then
 LibreOffice and ghostscript as external oracles (the standing oracles for this
@@ -319,3 +372,8 @@ Medium:
   the `Decryptor` key accessor need to land in v1 after all?
 - **Where does the pending-annotation state live across a reload** in the mobile
   WebView — the browser only, or does the host persist the payload?
+- **How do we test `/QuadPoints` ordering at all?** Every engine we have as an
+  oracle paints the `/AP` and ignores them. Options: write one annotation
+  *without* an appearance and see where a viewer puts it, or check what Acrobat
+  does with our file. Cheap either way, but it needs deciding before Phase 2
+  claims the ordering is right.
