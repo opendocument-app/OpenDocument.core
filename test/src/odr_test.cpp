@@ -220,6 +220,7 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
       EXPECT_FALSE(capabilities.translate_html) << file_type_to_string(type);
       EXPECT_FALSE(capabilities.edit) << file_type_to_string(type);
       EXPECT_FALSE(capabilities.save) << file_type_to_string(type);
+      EXPECT_FALSE(capabilities.annotate) << file_type_to_string(type);
     }
     if (!capabilities.save) {
       EXPECT_FALSE(capabilities.encrypt) << file_type_to_string(type);

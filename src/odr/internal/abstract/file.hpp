@@ -138,6 +138,10 @@ public:
   [[nodiscard]] std::string_view mimetype() const noexcept final {
     return "application/pdf";
   }
+
+  /// Apply `annotations` and write the result to `out`.
+  virtual void annotate(std::string_view annotations, std::ostream &out,
+                        const Logger &logger) const = 0;
 };
 
 class FontFile : public DecodedFile {

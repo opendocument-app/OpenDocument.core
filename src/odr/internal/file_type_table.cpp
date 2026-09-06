@@ -445,7 +445,8 @@ constexpr std::array table{
         {.detect_by_content = true,
          .open = true,
          .decrypt = true,
-         .translate_html = true}},
+         .translate_html = true,
+         .annotate = true}},
 
     Row{FileType::text_file,
         "txt"sv,

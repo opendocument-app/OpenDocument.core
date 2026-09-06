@@ -354,6 +354,11 @@ PdfFile PdfFile::decrypt(const std::string &password) const {
   return DecodedFile::decrypt(password).as_pdf_file();
 }
 
+void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
+                       const Logger &logger) const {
+  m_impl->annotate(annotations, out, logger);
+}
+
 std::shared_ptr<internal::abstract::PdfFile> PdfFile::impl() const {
   return m_impl;
 }

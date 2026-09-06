@@ -203,7 +203,8 @@ struct FileTypeCapabilities final {
   bool color_scheme{};      ///< the view honors @ref HtmlConfig::color_scheme
   bool edit{};              ///< @ref Document::is_editable can be `true`
   bool save{};              ///< @ref Document::save is supported
-  bool encrypt{}; ///< @ref Document::save with a password is supported
+  bool encrypt{};  ///< @ref Document::save with a password is supported
+  bool annotate{}; ///< @ref PdfFile::annotate is supported
 };
 
 /// Collection of encryption states.
@@ -527,6 +528,19 @@ public:
   explicit PdfFile(std::shared_ptr<internal::abstract::PdfFile>);
 
   [[nodiscard]] PdfFile decrypt(const std::string &password) const;
+
+  /// @brief Applies markup @p annotations, writing the annotated pdf to
+  ///        @p out.
+  ///
+  /// The wire format our browser-side annotator produces: highlight, underline,
+  /// strike-out, squiggly and freehand ink, placed in pdf user space. The
+  /// source is copied and the annotations appended, so nothing else about the
+  /// file changes.
+  /// @throws std::invalid_argument if @p annotations is malformed.
+  /// @throws std::runtime_error if the file cannot take them — its
+  ///         cross-reference table was recovered, or it is encrypted.
+  void annotate(std::string_view annotations, std::ostream &out,
+                const Logger &logger = Logger::null()) const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::PdfFile> impl() const;
 
