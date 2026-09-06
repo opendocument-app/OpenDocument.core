@@ -45,7 +45,7 @@ std::string declared_encoding(const std::string &content) {
 } // namespace
 
 TEST(XmlFile, an_xml_file_opens_as_xml) {
-  const DecodedFile file(File::from_memory("<a><b/></a>"));
+  const DecodedFile file = open(File::from_memory("<a><b/></a>"));
 
   EXPECT_EQ(file.file_type(), FileType::xml);
   EXPECT_EQ(file.file_meta().mimetype, "application/xml");
@@ -59,8 +59,8 @@ TEST(XmlFile, an_xml_file_opens_as_xml) {
 
 /// Xml is the last resort: anything with a more specific reading keeps it.
 TEST(XmlFile, an_svg_still_opens_as_an_image) {
-  const DecodedFile file(
-      File::from_memory(R"(<svg xmlns="http://www.w3.org/2000/svg"/>)"));
+  const DecodedFile file =
+      open(File::from_memory(R"(<svg xmlns="http://www.w3.org/2000/svg"/>)"));
 
   EXPECT_EQ(file.file_type(), FileType::scalable_vector_graphics);
   EXPECT_TRUE(file.is_image_file());
@@ -70,7 +70,7 @@ TEST(XmlFile, malformed_xml_is_no_xml_file_and_stays_text) {
   EXPECT_THROW(std::ignore = xml_file("<a><b></a>"), NoXmlFile);
 
   // which is what leaves the line list in place for it
-  const DecodedFile file(File::from_memory("<a><b></a>"));
+  const DecodedFile file = open(File::from_memory("<a><b></a>"));
   EXPECT_EQ(file.file_type(), FileType::text_file);
 }
 
@@ -91,8 +91,7 @@ TEST(XmlFile, an_encoding_we_cannot_decode_has_no_source_view) {
       "<?xml version=\"1.0\" encoding=\"Shift_JIS\"?><a/>";
 
   EXPECT_THROW(std::ignore = xml_file(content), UnsupportedTextEncoding);
-  EXPECT_EQ(DecodedFile(File::from_memory(content)).file_type(),
-            FileType::text_file);
+  EXPECT_EQ(open(File::from_memory(content)).file_type(), FileType::text_file);
 }
 
 TEST(XmlDeclaration, the_encoding_pseudo_attribute_is_read_off_the_bytes) {

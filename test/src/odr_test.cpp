@@ -92,7 +92,8 @@ TEST(odr, a_misnamed_file_is_what_its_bytes_are) {
   EXPECT_EQ(open(path, logger).file_type(), FileType::opendocument_text);
 
   // no name at all, so no hint: the same bytes come back as plain text
-  const DecodedFile from_memory(File::from_memory("# heading\n"), logger);
+  const DecodedFile from_memory =
+      open(File::from_memory("# heading\n"), logger);
   EXPECT_EQ(from_memory.file_type(), FileType::text_file);
 }
 
@@ -108,7 +109,7 @@ TEST(odr, a_named_file_in_memory_is_offered_its_type) {
   EXPECT_EQ(types.front(), FileType::text_file);
   EXPECT_EQ(types.back(), FileType::markdown);
 
-  EXPECT_EQ(DecodedFile(file, logger).file_type(), FileType::markdown);
+  EXPECT_EQ(open(file, logger).file_type(), FileType::markdown);
   EXPECT_EQ(mimetype(file, logger), "text/markdown");
 }
 

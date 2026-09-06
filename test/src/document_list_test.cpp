@@ -2,6 +2,7 @@
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
+#include <odr/odr.hpp>
 
 #include <test_util.hpp>
 
@@ -41,8 +42,8 @@ void collect_markers(const Element element, const ListType type,
 
 std::vector<Marker> markers_of(const std::string &short_path) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::warning);
-  const DocumentFile document_file(TestData::test_file_path(short_path),
-                                   logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path(short_path), logger).as_document_file();
 
   std::vector<Marker> result;
   collect_markers(document_file.document().root_element(), ListType::unordered,

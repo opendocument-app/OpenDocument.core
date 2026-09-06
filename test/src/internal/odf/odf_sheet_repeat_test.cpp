@@ -47,10 +47,11 @@ std::string repeated_rows(const std::uint32_t rows_repeated,
 }
 
 std::shared_ptr<abstract::Document> document_of(const std::string &source) {
-  const std::unique_ptr<abstract::DocumentFile> file =
-      open_strategy::open_document_file(std::make_shared<MemoryFile>(source),
-                                        Logger::null());
-  return file->document();
+  const DocumentFile file =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(source),
+                                           Logger::null()))
+          .as_document_file();
+  return file.impl()->document();
 }
 
 } // namespace

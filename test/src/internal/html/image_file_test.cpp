@@ -44,7 +44,7 @@ std::string write_path(const HtmlService &service, const std::string &path) {
 
 std::string image_src(const File &file) {
   std::ostringstream out;
-  internal::html::translate_image_src(DecodedFile(file).as_image_file(), out,
+  internal::html::translate_image_src(open(file).as_image_file(), out,
                                       HtmlConfig(), Logger::null());
   return out.str();
 }
@@ -95,7 +95,7 @@ TEST(image_file, xml_that_is_not_an_svg_stops_at_xml) {
 }
 
 TEST(image_file, svg_is_detected_and_opens_as_an_image) {
-  const DecodedFile file{svg_file()};
+  const DecodedFile file = open(svg_file());
 
   EXPECT_EQ(file.file_type(), FileType::scalable_vector_graphics);
   EXPECT_EQ(file.file_category(), FileCategory::image);
@@ -108,7 +108,7 @@ TEST(image_file, svg_is_detected_and_opens_as_an_image) {
 }
 
 TEST(image_file, svg_translates_to_an_image_page) {
-  const DecodedFile file{svg_file()};
+  const DecodedFile file = open(svg_file());
   const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
@@ -120,7 +120,7 @@ TEST(image_file, svg_translates_to_an_image_page) {
 }
 
 TEST(image_file, ico_is_named_by_its_own_mime_type) {
-  const DecodedFile file{ico_file()};
+  const DecodedFile file = open(ico_file());
 
   EXPECT_EQ(file.file_type(), FileType::windows_icon);
   EXPECT_TRUE(file.is_image_file());
@@ -135,7 +135,7 @@ TEST(image_file, ico_is_named_by_its_own_mime_type) {
 /// wrappers all filled theirs in, so a png reported no type and no mimetype.
 TEST(image_file, every_image_reports_its_meta) {
   for (const File &file : {png_file(), ico_file(), svg_file()}) {
-    const DecodedFile decoded{file};
+    const DecodedFile decoded = open(file);
     const FileMeta meta = decoded.file_meta();
 
     EXPECT_EQ(meta.type, decoded.file_type());

@@ -94,31 +94,6 @@ DecodedFile::DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl)
   }
 }
 
-DecodedFile::DecodedFile(const File &file, const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(file.impl(), logger)) {}
-
-DecodedFile::DecodedFile(const File &file, const FileType as,
-                         const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(file.impl(), as, logger)) {
-}
-
-DecodedFile::DecodedFile(const File &file, const DecodePreference &preference,
-                         const Logger &logger)
-    : DecodedFile(internal::open_strategy::open_file(file.impl(), preference,
-                                                     logger)) {}
-
-DecodedFile::DecodedFile(const std::string &path, const Logger &logger)
-    : DecodedFile(File::from_disk(path), logger) {}
-
-DecodedFile::DecodedFile(const std::string &path, const FileType as,
-                         const Logger &logger)
-    : DecodedFile(File::from_disk(path), as, logger) {}
-
-DecodedFile::DecodedFile(const std::string &path,
-                         const DecodePreference &preference,
-                         const Logger &logger)
-    : DecodedFile(File::from_disk(path), preference, logger) {}
-
 File DecodedFile::file() const { return File(m_impl->file()); }
 
 FileType DecodedFile::file_type() const noexcept { return m_impl->file_type(); }
@@ -345,25 +320,9 @@ ArchiveFile::ArchiveFile(std::shared_ptr<internal::abstract::ArchiveFile> impl)
 
 Archive ArchiveFile::archive() const { return Archive(m_impl->archive()); }
 
-DocumentFile DocumentFile::from_disk(const std::string &path,
-                                     const Logger &logger) {
-  return DocumentFile(File::from_disk(path), logger);
-}
-
-DocumentFile DocumentFile::from_memory(std::string data, const Logger &logger) {
-  return DocumentFile(File::from_memory(std::move(data)), logger);
-}
-
 DocumentFile::DocumentFile(
     std::shared_ptr<internal::abstract::DocumentFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
-
-DocumentFile::DocumentFile(const File &file, const Logger &logger)
-    : DocumentFile(
-          internal::open_strategy::open_document_file(file.impl(), logger)) {}
-
-DocumentFile::DocumentFile(const std::string &path, const Logger &logger)
-    : DocumentFile(File::from_disk(path), logger) {}
 
 DocumentType DocumentFile::document_type() const {
   return m_impl->document_type();

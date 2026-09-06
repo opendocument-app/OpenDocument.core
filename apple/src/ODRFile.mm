@@ -313,8 +313,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 + (nullable instancetype)decodePath:(NSString *)path error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
-    return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(to_string(path))];
+    return [ODRDecodedFile decodedFileWithHandle:odr::open(to_string(path))];
   });
 }
 
@@ -323,9 +322,8 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(
-                                  to_string(path),
-                                  static_cast<odr::FileType>(type))];
+        decodedFileWithHandle:odr::open(to_string(path),
+                                        static_cast<odr::FileType>(type))];
   });
 }
 
@@ -340,13 +338,13 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
     }
     native.file_type_priority = to_file_types(preference.fileTypePriority);
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(to_string(path), native)];
+        decodedFileWithHandle:odr::open(to_string(path), native)];
   });
 }
 
 + (nullable instancetype)decodeFile:(ODRFile *)file error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
-    return [ODRDecodedFile decodedFileWithHandle:odr::DecodedFile(file.handle)];
+    return [ODRDecodedFile decodedFileWithHandle:odr::open(file.handle)];
   });
 }
 
@@ -355,7 +353,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(to_string(path), logger.handle)];
+        decodedFileWithHandle:odr::open(to_string(path), logger.handle)];
   });
 }
 
@@ -365,9 +363,9 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(to_string(path),
-                                               static_cast<odr::FileType>(type),
-                                               logger.handle)];
+        decodedFileWithHandle:odr::open(to_string(path),
+                                        static_cast<odr::FileType>(type),
+                                        logger.handle)];
   });
 }
 
@@ -376,7 +374,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::DecodedFile(file.handle, logger.handle)];
+        decodedFileWithHandle:odr::open(file.handle, logger.handle)];
   });
 }
 

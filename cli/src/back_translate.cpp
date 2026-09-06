@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/util/file_util.hpp>
 
@@ -23,7 +24,7 @@ int main(const int argc, char **argv) {
     const std::string diff_path{argv[2]};
     const std::string output{argv[3]};
 
-    const DocumentFile document_file{input};
+    const DocumentFile document_file = open(input).as_document_file();
 
     if (document_file.password_encrypted()) {
       ODR_FATAL(logger, "encrypted documents are not supported");

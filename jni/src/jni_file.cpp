@@ -90,7 +90,7 @@ extern "C" JNIEXPORT void JNICALL Java_app_opendocument_core_File_copyNative(
 extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_File_decodeNative(
     JNIEnv *env, jobject, jlong handle) {
   return guarded(env, [&] {
-    return make_handle(odr::DecodedFile(*from_handle<odr::File>(handle)));
+    return make_handle(odr::open(*from_handle<odr::File>(handle)));
   });
 }
 
@@ -98,22 +98,6 @@ extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_File_decodeNative(
 //
 // Handles hold a heap `odr::DecodedFile` (the typed C++ subclasses are sliced
 // away); typed accessors re-derive the typed view per call via `as_*`.
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DecodedFile_create(JNIEnv *env, jclass,
-                                              jstring path) {
-  return guarded(
-      env, [&] { return make_handle(odr::DecodedFile(to_string(env, path))); });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DecodedFile_createAs(JNIEnv *env, jclass,
-                                                jstring path, jint as) {
-  return guarded(env, [&] {
-    return make_handle(
-        odr::DecodedFile(to_string(env, path), static_cast<odr::FileType>(as)));
-  });
-}
 
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_DecodedFile_destroy(JNIEnv *env, jclass,
@@ -337,15 +321,6 @@ Java_app_opendocument_core_ArchiveFile_archiveNative(JNIEnv *env, jobject,
 }
 
 // app.opendocument.core.DocumentFile
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DocumentFile_create(JNIEnv *env, jclass,
-                                               jstring path) {
-  return guarded(env, [&] {
-    return make_handle(
-        odr::DecodedFile(odr::DocumentFile(to_string(env, path))));
-  });
-}
 
 extern "C" JNIEXPORT jint JNICALL
 Java_app_opendocument_core_DocumentFile_documentTypeNative(JNIEnv *env, jobject,

@@ -65,4 +65,4 @@ def test_logger_accepted_by_entry_points(odt_path):
     logger = pyodr.Logger(CollectingLogger())
     assert pyodr.list_file_types(str(odt_path), logger=logger)
     assert pyodr.mimetype(str(odt_path), logger=logger)
-    assert pyodr.DecodedFile(str(odt_path), logger=logger).is_document_file()
+    assert pyodr.open(str(odt_path), logger=logger).is_document_file()

@@ -1,6 +1,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <filesystem>
 #include <iostream>
@@ -26,7 +27,7 @@ int main(const int argc, char **argv) {
       password = argv[3];
     }
 
-    DecodedFile decoded_file{input};
+    DecodedFile decoded_file = open(input);
 
     if (decoded_file.password_encrypted()) {
       if (!password) {

@@ -33,7 +33,8 @@ std::shared_ptr<svg::SvgFile> svg_file(const std::string &content) {
 } // namespace
 
 TEST(SvgFile, an_svg_opens_as_an_image_that_knows_it_is_one) {
-  const DecodedFile file(File::from_memory(std::string(svg_open) + "</svg>"));
+  const DecodedFile file =
+      open(File::from_memory(std::string(svg_open) + "</svg>"));
 
   EXPECT_EQ(file.file_type(), FileType::scalable_vector_graphics);
   EXPECT_EQ(file.file_category(), FileCategory::image);

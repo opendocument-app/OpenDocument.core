@@ -278,7 +278,7 @@ TEST(CsvOptions, with_options_derives_another_handle) {
 TEST(CsvOptions, a_decoded_csv_is_reachable_as_one) {
   const File file(
       TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv"));
-  const DecodedFile decoded(file, FileType::comma_separated_values);
+  const DecodedFile decoded = open(file, FileType::comma_separated_values);
 
   EXPECT_TRUE(decoded.is_csv_file());
   EXPECT_EQ(decoded.as_csv_file().options().separator, ',');
@@ -461,7 +461,7 @@ TEST(CsvDocument, a_cell_path_round_trips) {
 /// line list.
 TEST(CsvDocument, translating_the_decoded_file_yields_a_table) {
   const File bytes = File::from_memory("a,b\n1,2\n");
-  const DecodedFile decoded(bytes, FileType::comma_separated_values);
+  const DecodedFile decoded = open(bytes, FileType::comma_separated_values);
 
   // a csv stays a text file and is rendered as a table anyway
   EXPECT_TRUE(decoded.is_text_file());

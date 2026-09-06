@@ -352,18 +352,8 @@ protected:
 /// @brief Represents a decoded file.
 class DecodedFile {
 public:
+  /// Decoding is @ref odr::open; this wraps what it produced.
   explicit DecodedFile(std::shared_ptr<internal::abstract::DecodedFile> impl);
-  explicit DecodedFile(const File &file, const Logger &logger = Logger::null());
-  DecodedFile(const File &file, FileType as,
-              const Logger &logger = Logger::null());
-  DecodedFile(const File &file, const DecodePreference &preference,
-              const Logger &logger = Logger::null());
-  explicit DecodedFile(const std::string &path,
-                       const Logger &logger = Logger::null());
-  DecodedFile(const std::string &path, FileType as,
-              const Logger &logger = Logger::null());
-  DecodedFile(const std::string &path, const DecodePreference &preference,
-              const Logger &logger = Logger::null());
 
   [[nodiscard]] File file() const;
 
@@ -507,19 +497,9 @@ private:
 /// @brief Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
-  /// @brief Decodes the document file at @p path on disk.
-  [[nodiscard]] static DocumentFile
-  from_disk(const std::string &path, const Logger &logger = Logger::null());
-  /// @brief Decodes a document file held in memory; @p data is its bytes,
-  /// moved in.
-  [[nodiscard]] static DocumentFile
-  from_memory(std::string data, const Logger &logger = Logger::null());
-
+  /// Reached through @ref DecodedFile::as_document_file, on what @ref
+  /// odr::open produced; this wraps what that narrowed to.
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
-  explicit DocumentFile(const File &file,
-                        const Logger &logger = Logger::null());
-  explicit DocumentFile(const std::string &path,
-                        const Logger &logger = Logger::null());
 
   [[nodiscard]] DocumentType document_type() const;
 

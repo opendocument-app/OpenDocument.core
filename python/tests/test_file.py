@@ -54,10 +54,10 @@ def test_file_name_of_an_archive_entry(odt_path):
 def test_named_bytes_decode_as_markdown():
     # markdown has no signature, so only the name can offer it
     named = pyodr.File.from_memory(b"# heading\n", "notes.md")
-    assert pyodr.DecodedFile(named).file_type() == pyodr.FileType.markdown
+    assert pyodr.open(named).file_type() == pyodr.FileType.markdown
 
     unnamed = pyodr.File.from_memory(b"# heading\n")
-    assert pyodr.DecodedFile(unnamed).file_type() == pyodr.FileType.text_file
+    assert pyodr.open(unnamed).file_type() == pyodr.FileType.text_file
 
 
 def test_open_missing_file(tmp_path):
@@ -152,18 +152,18 @@ def test_open_from_memory_as_type(odt_path):
 def test_decoded_file_from_file(odt_path):
     file = pyodr.File.from_memory(odt_path.read_bytes())
 
-    assert pyodr.DecodedFile(file).file_type() == pyodr.FileType.opendocument_text
-    assert pyodr.DecodedFile(file, pyodr.FileType.zip).is_archive_file()
+    assert pyodr.open(file).file_type() == pyodr.FileType.opendocument_text
+    assert pyodr.open(file, pyodr.FileType.zip).is_archive_file()
 
     preference = pyodr.DecodePreference()
     preference.as_file_type = pyodr.FileType.zip
-    assert pyodr.DecodedFile(file, preference).is_archive_file()
+    assert pyodr.open(file, preference).is_archive_file()
 
 
 def test_document_file_from_file(odt_path):
     file = pyodr.File.from_memory(odt_path.read_bytes())
 
-    document_file = pyodr.DocumentFile(file)
+    document_file = pyodr.open(file).as_document_file()
     assert document_file.file_type() == pyodr.FileType.opendocument_text
     assert document_file.file_meta().type == pyodr.FileType.opendocument_text
 
@@ -171,8 +171,8 @@ def test_document_file_from_file(odt_path):
 
 
 def test_document_file_from_disk_and_from_memory(odt_path):
-    from_disk = pyodr.DocumentFile.from_disk(str(odt_path))
-    from_memory = pyodr.DocumentFile.from_memory(odt_path.read_bytes())
+    from_disk = pyodr.open(str(odt_path)).as_document_file()
+    from_memory = pyodr.open(pyodr.File.from_memory(odt_path.read_bytes())).as_document_file()
 
     assert from_disk.file_type() == pyodr.FileType.opendocument_text
     assert from_memory.file_type() == from_disk.file_type()
@@ -184,7 +184,7 @@ def test_document_file_from_disk_and_from_memory(odt_path):
 
 def test_document_file_thumbnail(tmp_path, odt_path):
     # The minimal odt the fixture builds carries none.
-    assert pyodr.DocumentFile.from_disk(str(odt_path)).thumbnail() is None
+    assert pyodr.open(str(odt_path)).as_document_file().thumbnail() is None
 
     with_thumbnail = tmp_path / "with-thumbnail.odt"
     with zipfile.ZipFile(odt_path) as source:
@@ -194,14 +194,14 @@ def test_document_file_thumbnail(tmp_path, odt_path):
         for name, content in entries.items():
             archive.writestr(name, content)
 
-    thumbnail = pyodr.DocumentFile.from_disk(str(with_thumbnail)).thumbnail()
+    thumbnail = pyodr.open(str(with_thumbnail)).as_document_file().thumbnail()
     assert thumbnail is not None
     assert thumbnail.read() == b"not really a png"
 
 
 def test_document_file_from_memory_rejects_a_non_document():
     with pytest.raises(pyodr.Error):
-        pyodr.DocumentFile.from_memory(b"not a document")
+        pyodr.open(pyodr.File.from_memory(b"not a document")).as_document_file()
 
 
 def test_file_and_path_entry_points_agree(odt_path):
@@ -211,4 +211,7 @@ def test_file_and_path_entry_points_agree(odt_path):
     assert pyodr.mimetype(file) == pyodr.mimetype(path)
     assert pyodr.list_file_types(file) == pyodr.list_file_types(path)
     assert pyodr.open(file).file_type() == pyodr.open(path).file_type()
-    assert pyodr.DocumentFile(file).file_type() == pyodr.DocumentFile(path).file_type()
+    assert (
+        pyodr.open(file).as_document_file().file_type()
+        == pyodr.open(path).as_document_file().file_type()
+    )

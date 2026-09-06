@@ -1,6 +1,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
 
@@ -44,7 +45,7 @@ std::string write_path(const HtmlService &service, const std::string &path) {
 } // namespace
 
 TEST(media_file, audio_is_decoded_without_a_wrapper_type) {
-  const DecodedFile file{mp3_file()};
+  const DecodedFile file = open(mp3_file());
 
   EXPECT_EQ(file.file_type(), FileType::mpeg_audio);
   EXPECT_EQ(file.file_category(), FileCategory::audio);
@@ -58,7 +59,7 @@ TEST(media_file, audio_is_decoded_without_a_wrapper_type) {
 }
 
 TEST(media_file, audio_translates_to_a_player) {
-  const DecodedFile file{mp3_file()};
+  const DecodedFile file = open(mp3_file());
   const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
@@ -72,7 +73,7 @@ TEST(media_file, audio_translates_to_a_player) {
 }
 
 TEST(media_file, video_translates_to_a_player) {
-  const DecodedFile file{mp4_file()};
+  const DecodedFile file = open(mp4_file());
   const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
@@ -87,7 +88,7 @@ TEST(media_file, video_translates_to_a_player) {
 /// The point of the resource: a video is served and copied as bytes, never
 /// base64'd into the markup the way an image is.
 TEST(media_file, the_media_is_served_as_a_resource) {
-  const DecodedFile file{mp4_file()};
+  const DecodedFile file = open(mp4_file());
   const HtmlService service = html::translate(file, HtmlConfig());
 
   EXPECT_TRUE(service.exists("video.mp4"));
@@ -104,7 +105,7 @@ TEST(media_file, bring_offline_writes_the_media_next_to_the_page) {
   const std::string output_path = temp_path("media_offline");
   std::filesystem::remove_all(output_path);
 
-  const DecodedFile file{mp4_file()};
+  const DecodedFile file = open(mp4_file());
   const HtmlService service = html::translate(file, HtmlConfig());
   const Html html = service.bring_offline(output_path);
 
@@ -135,7 +136,7 @@ TEST(media_file, a_webm_keeps_its_own_name_and_mime) {
     const std::filesystem::path file_path = directory / path;
     std::ofstream(file_path, std::ios::binary) << "\x1a\x45\xdf\xa3payload";
 
-    const DecodedFile file{File(file_path.string())};
+    const DecodedFile file = open(File(file_path.string()));
     ASSERT_EQ(file.file_type(), FileType::matroska_video) << path;
 
     const HtmlService service = html::translate(file, HtmlConfig());
@@ -154,7 +155,7 @@ TEST(media_file, a_webm_keeps_its_own_name_and_mime) {
 TEST(media_file, webp_opens_as_an_image) {
   const File file(std::make_shared<MemoryFile>(
       std::string("RIFF\x24\x00\x00\x00WEBPdata", 16)));
-  const DecodedFile decoded{file};
+  const DecodedFile decoded = open(file);
 
   EXPECT_EQ(decoded.file_type(), FileType::webp);
   EXPECT_TRUE(decoded.is_image_file());

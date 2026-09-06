@@ -224,22 +224,22 @@ TEST(RtfDocument, the_open_strategy_opens_an_rtf) {
   const File file(memory_file(R"({\rtf1\ansi Hello\par})"));
 
   // magic names the type and the strategy decodes it
-  const DecodedFile detected(file);
+  const DecodedFile detected = open(file);
   EXPECT_EQ(detected.file_type(), FileType::rich_text_format);
   EXPECT_TRUE(detected.is_document_file());
 
   // as does asking for the type outright
-  EXPECT_EQ(DecodedFile(file, FileType::rich_text_format).file_type(),
+  EXPECT_EQ(open(file, FileType::rich_text_format).file_type(),
             FileType::rich_text_format);
   // the branch's `NoRtfFile` is what `open_file` catches to move on to the
   // next candidate type, so a caller asking for an rtf that is not one sees
   // the strategy's own answer
-  EXPECT_THROW(DecodedFile(File(memory_file("Hello, World!")),
-                           FileType::rich_text_format),
-               UnknownFileType);
+  EXPECT_THROW(
+      open(File(memory_file("Hello, World!")), FileType::rich_text_format),
+      UnknownFileType);
 
   // and the document-file path, which a caller reaches through `DocumentFile`
-  const DocumentFile document_file(file);
+  const DocumentFile document_file = open(file).as_document_file();
   EXPECT_EQ(document_file.file_type(), FileType::rich_text_format);
   EXPECT_EQ(document_file.document_type(), DocumentType::text);
 }

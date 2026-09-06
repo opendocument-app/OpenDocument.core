@@ -186,7 +186,7 @@ namespace odr::internal {
 void html::translate_image_src(const File &file, std::ostream &out,
                                const HtmlConfig &config, const Logger &logger) {
   try {
-    translate_image_src(DecodedFile(file).as_image_file(), out, config, logger);
+    translate_image_src(odr::open(file).as_image_file(), out, config, logger);
   } catch (...) {
     // nothing named it, so the label is a guess - browsers sniff `<img>` and
     // `image/jpg` is what they have been handed here for years

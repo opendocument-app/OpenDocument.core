@@ -299,8 +299,9 @@ TEST(OldMs, xls_palette_record) {
 TEST(OldMs, xls_empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/xls/empty.xls"), logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/xls/empty.xls"), logger)
+          .as_document_file();
 
   EXPECT_EQ(document_file.file_type(), FileType::legacy_excel_worksheets);
 
@@ -323,9 +324,10 @@ TEST(OldMs, xls_empty) {
 TEST(OldMs, xls_file_example_10) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/xls/file_example_XLS_10.xls"),
-      logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/xls/file_example_XLS_10.xls"),
+           logger)
+          .as_document_file();
 
   EXPECT_EQ(document_file.file_type(), FileType::legacy_excel_worksheets);
 
@@ -367,9 +369,10 @@ TEST(OldMs, xls_file_example_10) {
 TEST(OldMs, xls_file_example_5000) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/xls/file_example_XLS_5000.xls"),
-      logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/xls/file_example_XLS_5000.xls"),
+           logger)
+          .as_document_file();
 
   const Document document = document_file.document();
 

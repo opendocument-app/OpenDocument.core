@@ -28,7 +28,8 @@ namespace {
 /// An `Element` holds a bare pointer into its document, so every test binds the
 /// document to a local before walking it.
 Document document(const std::string &markdown) {
-  const DecodedFile file(File::from_memory(markdown), FileType::markdown);
+  const DecodedFile file =
+      open(File::from_memory(markdown), FileType::markdown);
   return file.as_markdown_file().document();
 }
 
@@ -87,7 +88,8 @@ std::vector<ElementType> types_of(const std::vector<Element> &elements) {
 /// Like a csv, markdown stays a text file — the document is the other view of
 /// the same bytes.
 TEST(MarkdownFile, a_markdown_file_is_a_text_file_that_loads_as_a_document) {
-  const DecodedFile file(File::from_memory("# hello"), FileType::markdown);
+  const DecodedFile file =
+      open(File::from_memory("# hello"), FileType::markdown);
   const Document md = document("# hello");
 
   EXPECT_EQ(file.file_type(), FileType::markdown);
@@ -104,8 +106,8 @@ TEST(MarkdownFile, a_markdown_file_is_a_text_file_that_loads_as_a_document) {
 /// The whole point: a markdown file handed to the renderer comes out as prose,
 /// not as the line list a text file renders to.
 TEST(MarkdownFile, translating_the_decoded_file_yields_the_document) {
-  const DecodedFile file(File::from_memory("# hello\n\ntext\n"),
-                         FileType::markdown);
+  const DecodedFile file =
+      open(File::from_memory("# hello\n\ntext\n"), FileType::markdown);
 
   const HtmlService service = html::translate(file, HtmlConfig());
   std::ostringstream out;
@@ -122,7 +124,7 @@ TEST(MarkdownFile, it_is_not_detected_by_content) {
 
   EXPECT_THAT(list_file_types(file),
               testing::Not(testing::Contains(FileType::markdown)));
-  EXPECT_EQ(DecodedFile(file).file_type(), FileType::text_file);
+  EXPECT_EQ(open(file).file_type(), FileType::text_file);
 }
 
 /// Nothing rejects: any UTF-8 byte sequence is some markdown document.

@@ -77,7 +77,7 @@ TEST(Iwork, pages_is_detected_by_content) {
   EXPECT_THAT(list_file_types(path, logger),
               testing::Contains(FileType::iwork_pages));
 
-  const DecodedFile file(path, logger);
+  const DecodedFile file = open(path, logger);
   EXPECT_EQ(file.file_type(), FileType::iwork_pages);
   EXPECT_EQ(file.file_category(), FileCategory::document);
   EXPECT_EQ(file.as_document_file().document_type(), DocumentType::text);
@@ -88,8 +88,9 @@ TEST(Iwork, pages_is_detected_by_content) {
 TEST(Iwork, pages_empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/pages/empty.pages"), logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/pages/empty.pages"), logger)
+          .as_document_file();
   EXPECT_EQ(document_file.file_type(), FileType::iwork_pages);
 
   const Document document = document_file.document();
@@ -104,9 +105,10 @@ TEST(Iwork, pages_empty) {
 TEST(Iwork, pages_body_text) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/pages/style-various-1.pages"),
-      logger);
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/pages/style-various-1.pages"),
+           logger)
+          .as_document_file();
 
   const Document document = document_file.document();
   const std::vector<std::string> text = paragraphs(document.root_element());
@@ -131,9 +133,10 @@ TEST(Iwork, pages_body_text) {
 // names. The one that is a table becomes a `Table` after the paragraph its
 // anchor sits in; its cells hold rich text, one storage each.
 TEST(Iwork, pages_table) {
-  const DocumentFile document_file(
-      TestData::test_file_path("odr-public/pages/style-various-1.pages"),
-      Logger::null());
+  const DocumentFile document_file =
+      open(TestData::test_file_path("odr-public/pages/style-various-1.pages"),
+           Logger::null())
+          .as_document_file();
   const Document document = document_file.document();
 
   std::vector<Element> tables;
