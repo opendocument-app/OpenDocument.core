@@ -137,7 +137,7 @@ def test_save_to_memory_carries_an_edit(odt_path, tmp_path):
     document = pyodr.open(str(odt_path)).as_document_file().document()
 
     diff = '{"modifiedText":{"/child:0/child:0":"edited in python"}}'
-    pyodr.html.edit(document, diff)
+    document.edit(diff)
 
     path = tmp_path / "edited.odt"
     path.write_bytes(document.save_to_memory())

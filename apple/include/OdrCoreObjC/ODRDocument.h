@@ -23,6 +23,13 @@ NS_SWIFT_NAME(Document)
 /// Whether `saveTo:password:` works.
 @property(nonatomic, readonly) BOOL isSavableEncrypted;
 
+/// Applies the operations our browser-side editor produces, in order.
+///
+/// Editing a single element in process is `ODRText.setContent:` and needs none
+/// of this.
+- (BOOL)edit:(NSString *)operations
+       error:(NSError **)error NS_SWIFT_NAME(edit(operations:));
+
 - (BOOL)saveTo:(NSString *)path error:(NSError **)error;
 - (BOOL)saveTo:(NSString *)path
       password:(NSString *)password

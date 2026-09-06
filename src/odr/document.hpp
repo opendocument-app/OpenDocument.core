@@ -1,8 +1,11 @@
 #pragma once
 
+#include <odr/logger.hpp>
+
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace odr::internal::abstract {
 class Document;
@@ -39,6 +42,15 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] DocumentType document_type() const noexcept;
+
+  /// @brief Applies @p operations to the document, in order.
+  ///
+  /// The wire format our browser-side editor produces. Editing a single
+  /// element in process is @ref Text::set_content and needs none of this.
+  /// @throws std::invalid_argument if an operation names an element that is
+  ///         not there, or not one it can be applied to.
+  void edit(std::string_view operations,
+            const Logger &logger = Logger::null()) const;
 
   [[nodiscard]] Element root_element() const;
 

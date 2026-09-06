@@ -286,11 +286,6 @@ NS_SWIFT_NAME(HtmlTranslator)
                                         error:(NSError **)error
     NS_SWIFT_NAME(translate(archive:config:));
 
-/// Applies a diff produced by the browser-side JavaScript back to `document`.
-+ (BOOL)editDocument:(ODRDocument *)document
-                diff:(NSString *)diff
-               error:(NSError **)error NS_SWIFT_NAME(edit(document:diff:));
-
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 

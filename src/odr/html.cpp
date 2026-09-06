@@ -1,8 +1,6 @@
 #include <odr/html.hpp>
 
 #include <odr/archive.hpp>
-#include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/odr.hpp>
@@ -24,8 +22,6 @@
 #include <filesystem>
 #include <fstream>
 #include <unordered_set>
-
-#include <nlohmann/json.hpp>
 
 using namespace odr::internal;
 
@@ -343,23 +339,6 @@ HtmlService html::translate(const Archive &archive, const HtmlConfig &config,
 HtmlService html::translate(const Document &document, const HtmlConfig &config,
                             const Logger &logger) {
   return internal::html::create_document_service(document, config, logger);
-}
-
-void html::edit(const Document &document, const std::string_view diff,
-                const Logger & /*logger*/) {
-  const nlohmann::json json = nlohmann::json::parse(diff);
-  for (const auto &[key, value] : json["modifiedText"].items()) {
-    const Element element =
-        document.root_element().navigate_path(DocumentPath(key));
-    if (!element) {
-      throw std::invalid_argument("element with path " + key + " not found");
-    }
-    if (!element.as_text()) {
-      throw std::invalid_argument("element with path " + key +
-                                  " is not a text element");
-    }
-    element.as_text().set_content(value);
-  }
 }
 
 } // namespace odr

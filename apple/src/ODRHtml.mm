@@ -553,13 +553,4 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
   });
 }
 
-+ (BOOL)editDocument:(ODRDocument *)document
-                diff:(NSString *)diff
-               error:(NSError **)error {
-  return guarded(error, [&] {
-    odr::html::edit(document.handle, to_string(diff));
-    return YES;
-  });
-}
-
 @end

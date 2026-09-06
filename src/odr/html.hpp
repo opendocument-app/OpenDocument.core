@@ -307,11 +307,6 @@ HtmlService translate(const Filesystem &filesystem, const HtmlConfig &config,
 HtmlService translate(const Archive &archive, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
-/// @brief Applies a diff to a document. The diff is what our JavaScript
-/// produces in the browser.
-void edit(const Document &document, std::string_view diff,
-          const Logger &logger = Logger::null());
-
 } // namespace html
 
 } // namespace odr

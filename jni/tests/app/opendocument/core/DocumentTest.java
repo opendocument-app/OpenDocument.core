@@ -100,7 +100,7 @@ class DocumentTest {
     Element paragraph = document.rootElement().firstChild();
     DocumentPath text = paragraph.firstChild().documentPath();
 
-    Html.edit(document, "{\"modifiedText\":{\"" + text + "\":\"edited by the diff\"}}");
+    document.edit("{\"modifiedText\":{\"" + text + "\":\"edited by the diff\"}}");
 
     assertTrue(walkText(document.rootElement()).contains("edited by the diff"));
   }
@@ -111,7 +111,7 @@ class DocumentTest {
 
     Element paragraph = document.rootElement().firstChild();
     DocumentPath text = paragraph.firstChild().documentPath();
-    Html.edit(document, "{\"modifiedText\":{\"" + text + "\":\"saved to memory\"}}");
+    document.edit("{\"modifiedText\":{\"" + text + "\":\"saved to memory\"}}");
 
     byte[] saved = document.saveToMemory();
     assertTrue(saved.length > 0);

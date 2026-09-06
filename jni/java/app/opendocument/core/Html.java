@@ -81,11 +81,6 @@ public final class Html {
     }
   }
 
-  /** Applies a diff (produced by the browser-side editor) to a document. */
-  public static void edit(Document document, String diff) {
-    document.edit(diff);
-  }
-
   private static native long translateFile(long fileHandle, HtmlConfig config);
 
   private static native long translateDocument(long documentHandle, HtmlConfig config);

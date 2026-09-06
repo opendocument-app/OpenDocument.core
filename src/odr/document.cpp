@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
@@ -12,7 +13,11 @@
 #include <fstream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <utility>
+
+#include <nlohmann/json.hpp>
 
 namespace odr {
 
@@ -78,6 +83,22 @@ FileType Document::file_type() const noexcept { return m_impl->file_type(); }
 
 DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
+}
+
+void Document::edit(const std::string_view operations,
+                    const Logger & /*logger*/) const {
+  const nlohmann::json json = nlohmann::json::parse(operations);
+  for (const auto &[key, value] : json["modifiedText"].items()) {
+    const Element element = root_element().navigate_path(DocumentPath(key));
+    if (!element) {
+      throw std::invalid_argument("element with path " + key + " not found");
+    }
+    if (!element.as_text()) {
+      throw std::invalid_argument("element with path " + key +
+                                  " is not a text element");
+    }
+    element.as_text().set_content(value);
+  }
 }
 
 Element Document::root_element() const {

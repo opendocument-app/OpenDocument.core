@@ -39,6 +39,13 @@ using odr::apple::to_string;
   return guarded_value([&] { return _handle->is_editable() ? YES : NO; }, NO);
 }
 
+- (BOOL)edit:(NSString *)operations error:(NSError **)error {
+  return guarded(error, [&] {
+    _handle->edit(to_string(operations));
+    return YES;
+  });
+}
+
 - (BOOL)isSavable {
   return guarded_value([&] { return _handle->is_savable(false) ? YES : NO; },
                        NO);

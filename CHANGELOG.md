@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `html::edit` becomes `Document::edit`, in every binding —
+  java's `Html.edit(document, diff)` becomes `document.edit(diff)`, and so on.
+  `Text::set_content` is unchanged.
+
 - **Breaking**: `DecodePreference` becomes `DecodeOptions`, gains a `csv` field
   and is all `open` takes besides the file and logger. `CsvFile::from_file` and
   `::with_options` go — use `DecodeOptions::as(type)` / `::as_csv(options)`.

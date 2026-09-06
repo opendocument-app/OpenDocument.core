@@ -239,12 +239,4 @@ void odr_python::bind_html(py::module_ &m) {
       py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(),
       "Translate a filesystem to HTML.");
-
-  html.def(
-      "edit",
-      [](const odr::Document &document, const std::string &diff) {
-        odr::html::edit(document, diff);
-      },
-      py::arg("document"), py::arg("diff"),
-      "Apply a diff (produced by the browser-side editor) to a document.");
 }

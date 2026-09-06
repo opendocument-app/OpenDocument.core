@@ -76,7 +76,7 @@ Document edit_and_reload(const std::string &path, const char *diff,
       open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
-  html::edit(document, diff);
+  document.edit(diff);
 
   const std::string output_path =
       (std::filesystem::current_path() / output_name).string();
@@ -367,7 +367,7 @@ TEST(Document, edit_ods_diff) {
       R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
   const Document document = decrypted_pages_ods();
 
-  html::edit(document, diff);
+  document.edit(diff);
 
   expect_text_at(document, "/child:0/cell:A1/child:0/child:0", "Page 1 hi");
   expect_text_at(document, "/child:1/cell:A1/child:0/child:0", "Page 2 hihi");
