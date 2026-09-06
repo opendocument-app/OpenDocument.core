@@ -63,6 +63,7 @@ set_property(TARGET pugixml::pugixml APPEND PROPERTY
 find_package(md4c REQUIRED)
 find_package(miniz REQUIRED)
 find_package(cryptopp REQUIRED)
+find_package(fmt REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenJPEG REQUIRED)
 find_package(uchardet REQUIRED)
@@ -318,6 +319,7 @@ target_link_libraries(odr
         md4c::md4c
         miniz::miniz
         cryptopp::cryptopp
+        fmt::fmt
         nlohmann_json::nlohmann_json
         openjp2
         uchardet::uchardet

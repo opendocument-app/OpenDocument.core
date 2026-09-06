@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Fixed: a semi-transparent colour wrote `rgba(0,0,0,0,501961)` where the host
+  had set a global locale with a comma decimal separator. Adds a `fmt`
+  dependency.
+
 - New `Sheet::page_layout()`: the paper an ods states for a sheet, read from
   the master page its table style names. Mirrored in the Python, JNI and Apple
   bindings. Empty for xlsx, xls, numbers and csv.

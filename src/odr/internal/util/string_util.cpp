@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
-#include <iomanip>
 #include <iterator>
-#include <sstream>
 #include <stdexcept>
+
+#include <fmt/format.h>
 
 #include <utf8/unchecked.h>
 #include <utf8cpp/utf8/checked.h>
@@ -167,9 +167,7 @@ std::vector<std::string> string::split(const std::string &string,
 }
 
 std::string string::to_string(const double d, const int precision) {
-  std::stringstream stream;
-  stream << std::fixed << std::setprecision(precision) << d;
-  return stream.str();
+  return fmt::format("{:.{}f}", d, precision);
 }
 
 std::size_t string::utf8_length(const std::string &string) {

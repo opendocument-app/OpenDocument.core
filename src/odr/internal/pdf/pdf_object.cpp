@@ -3,10 +3,11 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/hash_util.hpp>
 
-#include <iomanip>
 #include <optional>
 #include <ostream>
 #include <sstream>
+
+#include <fmt/format.h>
 #include <stdexcept>
 
 namespace odr::internal::pdf {
@@ -135,7 +136,8 @@ void Object::to_stream(std::ostream &out) const {
   } else if (is_integer()) {
     out << as_integer();
   } else if (is_real()) {
-    out << std::setprecision(4) << as_real();
+    // not `setprecision`, which would stick to the stream
+    out << fmt::format("{:.4g}", as_real());
   } else if (is_standard_string()) {
     as<StandardString>().to_stream(out);
   } else if (is_hex_string()) {
