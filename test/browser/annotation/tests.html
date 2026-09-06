@@ -44,6 +44,12 @@
     white-space: pre;
     line-height: 1;
   }
+  /* as the real selection layer: an inline-block whose box is the laid-out
+     line, taller than the rect a range gets from the substituted font */
+  .sr {
+    display: inline-block;
+    line-height: 1.6;
+  }
 </style>
 
 <div id="report"></div>
@@ -104,14 +110,25 @@
   async function run() {
     check("the api is exposed", typeof api.getAnnotations === "function");
 
-    // --- a selection becomes one quad in user space -----------------------
+    // --- nothing is marked until the host asks ----------------------------
     api.clear();
     api.setTool("highlight");
     api.setColor([1, 0.9, 0.2]);
-    const run1 = selectRun(0);
+    selectRun(0);
     await new Promise((r) => setTimeout(r, 100));
+    check("a selection alone marks nothing", api.list().length === 0, api.list());
 
-    check("a selection makes one annotation", api.list().length === 1, api.list());
+    check("mark() takes the selection", api.mark() === true);
+    check("and it is one annotation", api.list().length === 1, api.list());
+    check(
+      "the selection is left standing",
+      !window.getSelection().isCollapsed
+    );
+    check("mark() on the same selection adds another", api.mark() === true);
+    api.undo();
+
+    // --- a selection becomes one quad in user space -----------------------
+    const run1 = document.querySelector('[data-odr-page="0"] .sr');
 
     const first = payload().annotations[0];
     check("it names its page", first.page === 0, first.page);
@@ -141,9 +158,24 @@
       q
     );
 
-    // --- a drag marks once, not once per character it covers -------------
+    // the quad follows the run's box, not the substituted font's rect
+    const zoom0 = pageRect.width / page.offsetWidth;
+    const rangeRect = window.getSelection().getRangeAt(0).getClientRects()[0];
+    check(
+      "the run's box is taller than the range's rect",
+      runRect.height > rangeRect.height + 1,
+      [runRect.height, rangeRect.height]
+    );
+    check(
+      "the quad covers the run's box, not that rect",
+      near(q[1] - q[5], (runRect.height / zoom0) * 0.75),
+      [q[1] - q[5], (runRect.height / zoom0) * 0.75, (rangeRect.height / zoom0) * 0.75]
+    );
+
+    // --- opted in, a drag marks once, not once per character ------------
     api.clear();
     api.setTool("highlight");
+    api.setOptions({ markOnSelection: true });
     const text = document.querySelector('[data-odr-page="0"] .sr').firstChild;
     const pointer = (type) =>
       document.dispatchEvent(
@@ -162,10 +194,15 @@
       api.list().length === 1,
       api.list().length
     );
+    check(
+      "the automatic path takes the selection with it",
+      window.getSelection().isCollapsed
+    );
+    api.setOptions({ markOnSelection: false });
     api.clear();
     api.setTool("highlight");
     selectRun(0);
-    await new Promise((r) => setTimeout(r, 100));
+    api.mark();
 
     // --- the overlay is drawn, and the wash is the one that multiplies ----
     const page1 = document.querySelector('[data-odr-page="0"]');
@@ -178,7 +215,7 @@
     api.clear();
     api.setTool("underline");
     selectRun(0);
-    await new Promise((r) => setTimeout(r, 100));
+    api.mark();
     check(
       "an underline does not multiply",
       page1.querySelector("svg.an-m path") === null &&
@@ -189,7 +226,7 @@
     api.clear();
     api.setTool("highlight");
     selectRun(1);
-    await new Promise((r) => setTimeout(r, 100));
+    api.mark();
     check("page two annotates as page 1", payload().annotations[0].page === 1);
 
     // --- ink through real pointer events ---------------------------------
@@ -228,7 +265,7 @@
 
     api.setTool("highlight");
     selectRun(0);
-    await new Promise((r) => setTimeout(r, 100));
+    api.mark();
     const id = api.list()[api.list().length - 1].id;
     api.remove(id);
     check("remove drops it by id", !api.list().some((a) => a.id === id));
@@ -243,11 +280,94 @@
     // --- the tool gates pointer capture -----------------------------------
     api.setTool("ink");
     check("ink arms the page for drawing", page1.classList.contains("an-draw"));
+    check(
+      "and the document, for the scroller it sits in",
+      document.documentElement.classList.contains("an-drawing")
+    );
     api.setTool("highlight");
     check(
       "a text tool leaves selection alone",
-      !page1.classList.contains("an-draw")
+      !page1.classList.contains("an-draw") &&
+        !document.documentElement.classList.contains("an-drawing")
     );
+    api.setTool(null);
+
+    // --- the gesture policy is the host's, and reaches the css ------------
+    check(
+      "the defaults draw nothing on their own",
+      api.getOptions().markOnSelection === false &&
+        api.getOptions().inkPointerTypes === null
+    );
+    api.setTool("ink");
+    check(
+      "a touch on the overlay does not pan by default",
+      getComputedStyle(page1.querySelector("svg.an")).touchAction === "none"
+    );
+    api.setOptions({ touchAction: "pinch-zoom" });
+    check(
+      "setOptions reaches the overlay",
+      getComputedStyle(page1.querySelector("svg.an")).touchAction ===
+        "pinch-zoom",
+      getComputedStyle(page1.querySelector("svg.an")).touchAction
+    );
+    api.setOptions({ touchAction: "none" });
+    check("getOptions reports what was set", api.getOptions().touchAction === "none");
+
+    let threw = false;
+    try {
+      api.setOptions({ nonesuch: 1 });
+    } catch (e) {
+      threw = true;
+    }
+    check("an unknown option throws rather than being ignored", threw);
+
+    // --- pointer types the host does not want are not drawn with ----------
+    api.clear();
+    api.setOptions({ inkPointerTypes: ["pen"] });
+    const withType = (type, x, y) =>
+      Object.assign(at(x, y), { pointerType: type, pointerId: 7 });
+    document.dispatchEvent(new PointerEvent("pointerdown", withType("touch", 100, 200)));
+    document.dispatchEvent(new PointerEvent("pointermove", withType("touch", 140, 240)));
+    document.dispatchEvent(new PointerEvent("pointerup", withType("touch", 140, 240)));
+    check("a rejected pointer type draws nothing", api.list().length === 0, api.list());
+
+    document.dispatchEvent(new PointerEvent("pointerdown", withType("pen", 100, 200)));
+    document.dispatchEvent(new PointerEvent("pointermove", withType("pen", 140, 240)));
+    document.dispatchEvent(new PointerEvent("pointerup", withType("pen", 140, 240)));
+    check("the accepted one draws", api.list().length === 1, api.list());
+    api.setOptions({ inkPointerTypes: null });
+
+    // --- a stroke extends its own path, it does not rebuild the page ------
+    api.clear();
+    api.setTool("highlight");
+    selectRun(0);
+    api.mark();
+    const settled = page1.querySelector("svg.an-m path");
+    api.setTool("ink");
+    document.dispatchEvent(new PointerEvent("pointerdown", at(100, 300)));
+    document.dispatchEvent(new PointerEvent("pointermove", at(140, 340)));
+    const live = page1.querySelector('svg[class="an"] path');
+    document.dispatchEvent(new PointerEvent("pointermove", at(180, 300)));
+    // pointerup flushes; a background window never gives us the frame
+    document.dispatchEvent(new PointerEvent("pointerup", at(180, 300)));
+    check(
+      "the live path grows in place, in the node it started in",
+      live.isConnected && live.getAttribute("d").split(" L ").length === 3,
+      live.getAttribute("d")
+    );
+    check("and what was already drawn is not rebuilt", settled.isConnected);
+
+    // a second pointer must not extend the stroke it did not start
+    document.dispatchEvent(new PointerEvent("pointerdown", at(100, 400)));
+    const points = () => api.list()[api.list().length - 1].strokes[0].length;
+    const started = points();
+    document.dispatchEvent(
+      new PointerEvent("pointermove", Object.assign(at(300, 400), { pointerId: 9 }))
+    );
+    check("a second pointer does not extend the stroke", points() === started);
+    document.dispatchEvent(new PointerEvent("pointerup", at(100, 400)));
+
+    api.clear();
     api.setTool(null);
 
     const summary = document.createElement("div");

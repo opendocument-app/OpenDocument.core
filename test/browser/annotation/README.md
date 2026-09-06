@@ -34,4 +34,8 @@ Why the harness is shaped this way:
 - **A drag is stepped through by hand** — pointer down, the selection extended
   a character at a time, pointer up. Chromium will not select text from a
   synthetic mouse event, and one `addRange` fires a single `selectionchange`,
-  so neither reaches the case a drag creates.
+  so neither reaches the case a drag creates. It is the one place that opts into
+  `markOnSelection`; elsewhere the checks call `mark()`.
+- **Nothing waits on a frame** — a background window throttles
+  `requestAnimationFrame`, so the live stroke is asserted after `pointerup`,
+  which flushes.

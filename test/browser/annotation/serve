@@ -21,6 +21,7 @@ def extract(begin: str, end: str) -> str:
 def main() -> None:
     (HERE / "pdf-annotation.js").write_text(
         extract('constexpr std::string_view pdf_annotation_js = R"js(', ')js";')
+        + extract('constexpr std::string_view pdf_annotation_js_tail = R"js(', ')js";')
     )
     (HERE / "pdf-annotation.css").write_text(
         extract('constexpr std::string_view pdf_annotation_css = R"css(', ')css";')
