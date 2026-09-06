@@ -321,7 +321,7 @@ private:
       m_stack.pop_back();
     }
     // args is reversed (top first); restore call order.
-    std::reverse(args.begin(), args.end());
+    std::ranges::reverse(args);
 
     switch (othersubr) {
     case 1: // flex start

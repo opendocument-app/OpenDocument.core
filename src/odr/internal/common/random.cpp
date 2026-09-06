@@ -1,6 +1,7 @@
 #include <odr/internal/common/random.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <random>
 
 namespace odr {
