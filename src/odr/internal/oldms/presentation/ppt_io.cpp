@@ -72,9 +72,11 @@ std::u16string presentation::read_raw_text_chars(std::istream &in,
 std::string presentation::read_raw_text_bytes(std::istream &in,
                                               const std::uint32_t rec_len) {
   std::string buffer;
-  buffer.resize(rec_len);
-  in.read(buffer.data(), static_cast<std::streamsize>(rec_len));
-  buffer.resize(static_cast<std::size_t>(in.gcount()));
+  // The record length is only a claim, so the buffer is cut to what was read.
+  buffer.resize_and_overwrite(rec_len, [&](char *out, const std::size_t size) {
+    in.read(out, static_cast<std::streamsize>(size));
+    return static_cast<std::size_t>(in.gcount());
+  });
   return buffer;
 }
 

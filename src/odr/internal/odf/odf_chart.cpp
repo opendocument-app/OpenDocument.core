@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstring>
 #include <numbers>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -282,11 +283,8 @@ private:
 
   [[nodiscard]] static std::vector<std::string>
   read_row_text(const pugi::xml_node row) {
-    std::vector<std::string> result;
-    for (const pugi::xml_node cell : read_row(row)) {
-      result.emplace_back(read_text(cell));
-    }
-    return result;
+    return read_row(row) | std::views::transform(read_text) |
+           std::ranges::to<std::vector<std::string>>();
   }
 
   /// A missing data point is written `office:value="NaN"`.

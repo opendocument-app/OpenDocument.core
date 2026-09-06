@@ -112,27 +112,19 @@ public:
   create_sheet_cell_element(pugi::xml_node node, const TablePosition &position,
                             bool is_repeated);
 
-  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
-    return m_texts.at(id);
+  [[nodiscard]] auto &text_element_at(this auto &self,
+                                      const ElementIdentifier id) {
+    return self.m_texts.at(id);
   }
-  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
-    return m_tables.at(id);
+  [[nodiscard]] auto &table_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_tables.at(id);
   }
-  [[nodiscard]] Sheet &sheet_element_at(const ElementIdentifier id) {
-    return m_sheets.at(id);
+  [[nodiscard]] auto &sheet_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_sheets.at(id);
   }
 
-  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
-    return m_texts.at(id);
-  }
-  [[nodiscard]] const Table &
-  table_element_at(const ElementIdentifier id) const {
-    return m_tables.at(id);
-  }
-  [[nodiscard]] const Sheet &
-  sheet_element_at(const ElementIdentifier id) const {
-    return m_sheets.at(id);
-  }
   [[nodiscard]] const SheetCell &
   sheet_cell_element_at(const ElementIdentifier id) const {
     return m_sheet_cells.at(id);

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: building `odr` from source now needs a **C++23** compiler. Using
+  it does not — the public headers still compile as C++20, and the package
+  forces no standard on a consumer.
+
 - **Breaking**: the drawing elements `Rect`, `Line`, `Circle` and `CustomShape`
   are gone, with their `ElementType` values and `Element::as_rect`/`as_line`/
   `as_circle`/`as_custom_shape`. Every shape is a `Frame` now, naming itself

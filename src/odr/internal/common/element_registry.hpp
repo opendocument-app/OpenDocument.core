@@ -33,37 +33,21 @@ public:
     return m_entries.insert_or_assign(id, std::move(value)).first->second;
   }
 
-  [[nodiscard]] T *find(const ElementIdentifier id) {
-    return find_(m_entries, id);
-  }
-  [[nodiscard]] const T *find(const ElementIdentifier id) const {
-    return find_(m_entries, id);
+  [[nodiscard]] auto *find(this auto &self, const ElementIdentifier id) {
+    const auto it = self.m_entries.find(id);
+    return it != std::end(self.m_entries) ? &it->second : nullptr;
   }
 
-  [[nodiscard]] T &at(const ElementIdentifier id) { return at_(*this, id); }
-  [[nodiscard]] const T &at(const ElementIdentifier id) const {
-    return at_(*this, id);
-  }
-
-private:
-  std::unordered_map<ElementIdentifier, T> m_entries;
-
-  /// One body for both constnesses: the argument carries the const and the
-  /// deduced return takes it on.
-  template <typename Entries>
-  static auto *find_(Entries &entries, const ElementIdentifier id) {
-    const auto it = entries.find(id);
-    return it != std::end(entries) ? &it->second : nullptr;
-  }
-
-  template <typename Self>
-  static auto &at_(Self &self, const ElementIdentifier id) {
+  [[nodiscard]] auto &at(this auto &self, const ElementIdentifier id) {
     auto *entry = self.find(id);
     if (entry == nullptr) {
       throw std::out_of_range("SideTable::at: identifier not found");
     }
     return *entry;
   }
+
+private:
+  std::unordered_map<ElementIdentifier, T> m_entries;
 };
 
 /// A per-type payload appended as its elements are created, so the ids only
@@ -80,44 +64,32 @@ public:
     return m_entries.emplace_back(static_cast<Id>(id), std::move(value)).second;
   }
 
-  [[nodiscard]] T *find(const ElementIdentifier id) {
-    return find_(m_entries, id);
-  }
-  [[nodiscard]] const T *find(const ElementIdentifier id) const {
-    return find_(m_entries, id);
-  }
-
-  [[nodiscard]] T &at(const ElementIdentifier id) { return at_(*this, id); }
-  [[nodiscard]] const T &at(const ElementIdentifier id) const {
-    return at_(*this, id);
+  [[nodiscard]] auto *find(this auto &self, const ElementIdentifier id) {
+    const auto it =
+        std::ranges::lower_bound(self.m_entries, id, {}, &Entry::first);
+    return it != std::end(self.m_entries) && it->first == id ? &it->second
+                                                             : nullptr;
   }
 
-  [[nodiscard]] auto begin() const noexcept { return m_entries.begin(); }
-  [[nodiscard]] auto end() const noexcept { return m_entries.end(); }
-  [[nodiscard]] auto begin() noexcept { return m_entries.begin(); }
-  [[nodiscard]] auto end() noexcept { return m_entries.end(); }
-
-private:
-  using Entry = std::pair<Id, T>;
-
-  std::deque<Entry> m_entries;
-
-  /// One body for both constnesses: the argument carries the const and the
-  /// deduced return takes it on.
-  template <typename Entries>
-  static auto *find_(Entries &entries, const ElementIdentifier id) {
-    const auto it = std::ranges::lower_bound(entries, id, {}, &Entry::first);
-    return it != std::end(entries) && it->first == id ? &it->second : nullptr;
-  }
-
-  template <typename Self>
-  static auto &at_(Self &self, const ElementIdentifier id) {
+  [[nodiscard]] auto &at(this auto &self, const ElementIdentifier id) {
     auto *entry = self.find(id);
     if (entry == nullptr) {
       throw std::out_of_range("SortedSideTable::at: identifier not found");
     }
     return *entry;
   }
+
+  [[nodiscard]] auto begin(this auto &self) noexcept {
+    return self.m_entries.begin();
+  }
+  [[nodiscard]] auto end(this auto &self) noexcept {
+    return self.m_entries.end();
+  }
+
+private:
+  using Entry = std::pair<Id, T>;
+
+  std::deque<Entry> m_entries;
 };
 
 /// The flat store an engine builds its element tree in: an id is the index
@@ -132,14 +104,9 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept { return m_elements.size(); }
 
-  [[nodiscard]] Element &element_at(const ElementIdentifier id) {
-    check_element_id(id);
-    return m_elements[id - 1];
-  }
-
-  [[nodiscard]] const Element &element_at(const ElementIdentifier id) const {
-    check_element_id(id);
-    return m_elements[id - 1];
+  [[nodiscard]] auto &element_at(this auto &self, const ElementIdentifier id) {
+    self.check_element_id(id);
+    return self.m_elements[id - 1];
   }
 
   void append_child(const ElementIdentifier parent_id,

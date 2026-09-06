@@ -73,8 +73,15 @@ std::string Tokenizer::bumpnc(const std::size_t n) {
     const std::size_t offset = result.size();
     const auto m =
         static_cast<std::streamsize>(std::min(chunk_size, n - offset));
-    result.resize(offset + static_cast<std::size_t>(m));
-    if (m_sb->sgetn(result.data() + offset, m) != m) {
+    // The callback must not throw, so a short read reports itself by
+    // shrinking the string back.
+    result.resize_and_overwrite(offset + static_cast<std::size_t>(m),
+                                [&](char *out, const std::size_t size) {
+                                  return m_sb->sgetn(out + offset, m) == m
+                                             ? size
+                                             : offset;
+                                });
+    if (result.size() == offset) {
       m_in->setstate(std::ios::eofbit);
       throw std::runtime_error("unexpected stream exhaust");
     }

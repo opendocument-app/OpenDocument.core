@@ -36,26 +36,17 @@ public:
   std::tuple<ElementIdentifier, Element &, Frame &> create_frame_element();
   std::tuple<ElementIdentifier, Element &, Image &> create_image_element();
 
-  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
-    return m_texts.at(id);
+  [[nodiscard]] auto &text_element_at(this auto &self,
+                                      const ElementIdentifier id) {
+    return self.m_texts.at(id);
   }
-  [[nodiscard]] Frame &frame_element_at(const ElementIdentifier id) {
-    return m_frames.at(id);
+  [[nodiscard]] auto &frame_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_frames.at(id);
   }
-  [[nodiscard]] Image &image_element_at(const ElementIdentifier id) {
-    return m_images.at(id);
-  }
-
-  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
-    return m_texts.at(id);
-  }
-  [[nodiscard]] const Frame &
-  frame_element_at(const ElementIdentifier id) const {
-    return m_frames.at(id);
-  }
-  [[nodiscard]] const Image &
-  image_element_at(const ElementIdentifier id) const {
-    return m_images.at(id);
+  [[nodiscard]] auto &image_element_at(this auto &self,
+                                       const ElementIdentifier id) {
+    return self.m_images.at(id);
   }
 
   /// Character style of a span or paragraph element, as an index into the

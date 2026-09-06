@@ -20,11 +20,9 @@ public:
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type);
   std::tuple<ElementIdentifier, Element &, Text &> create_text_element();
 
-  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
-    return m_texts.at(id);
-  }
-  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
-    return m_texts.at(id);
+  [[nodiscard]] auto &text_element_at(this auto &self,
+                                      const ElementIdentifier id) {
+    return self.m_texts.at(id);
   }
 
 private:

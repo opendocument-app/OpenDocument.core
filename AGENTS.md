@@ -5,10 +5,10 @@ user-facing docs see [`README.md`](README.md) and [`docs/`](docs/README.md).
 
 ## What this is
 
-`odr` (a.k.a. `odrcore`) is a **C++20 library that decodes documents and renders
+`odr` (a.k.a. `odrcore`) is a **C++23 library that decodes documents and renders
 them to HTML**. It reads many formats (ODF, OOXML, legacy MS binary, PDF, CSV, …)
 behind one abstract document model and a generic HTML renderer. It is the backend
-for OpenDocument.droid / .ios. Build: **CMake + Conan**; standard: **C++20**.
+for OpenDocument.droid / .ios. Build: **CMake + Conan**; standard: **C++23**.
 
 ## Big picture: how a file becomes HTML
 
@@ -202,6 +202,28 @@ Dispatch `release.yml` against main, publish the draft that appears —
 - **Formatting**: clang-format (LLVM-based, `.clang-format`); run `scripts/format`
   or use the `scripts/setup` git hook. `clang-tidy` per `.clang-tidy`. CI enforces
   both.
+- **C++23, but three separate ceilings sit under it.** Check a facility against
+  all three before reaching for it, and check it by building an **object file**
+  — `-fsyntax-only` misses the codegen bugs.
+  - **The standard library is capped by `emsdk 3.1.73`'s libc++ 18.1**, the
+    oldest in the profile matrix and the newest emsdk conan-center packages.
+    `std::ranges::to`, `std::expected`, `std::string::resize_and_overwrite`,
+    `views::zip`, `ranges::fold_left` and the monadic `std::optional` are there;
+    **`views::enumerate`, `std::generator`, `std::move_only_function` and
+    `std::flat_map` are not**. `std::mdspan` fails from the other side —
+    libstdc++ has no `<mdspan>`, so the gcc-14 job would not build it.
+  - **`std::format` is unusable, on every slice** — the apple deployment target
+    gates it, and `fmt` is what we format with instead. See *Format numbers*
+    below.
+  - **Deducing `this` is fine on accessors, not on a capturing recursive
+    lambda.** NDK 28.1's clang 19 segfaults on `[&](this auto self, …)` that
+    recurses (`cannot compile this l-value expression yet`). The Y-combinator
+    form — pass the lambda to itself — is what `ooxml_text_list` still uses.
+- **The public headers stay C++20**: nothing propagates the standard to a
+  consumer — no `target_compile_features(odr PUBLIC …)`, no `cppstd` in
+  `package_info` — so `src/odr/*.hpp` must keep compiling under C++20. C++23 is
+  for `internal/`, `cli/` and the bindings. `conanfile.py`'s `check_min_cppstd`
+  sits in `validate_build`, which constrains building `odr` and not using it.
 - **Fail fast**: where the spec dictates what to expect, **throw** on unexpected
   input (`std::runtime_error` or the typed exceptions in `src/odr/exceptions.hpp`)
   rather than silently degrading. Only pass through (return empty / skip) values
