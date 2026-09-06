@@ -255,8 +255,8 @@ TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
   EXPECT_TRUE(contains(html, ">Hi</span>"));
   EXPECT_TRUE(contains(html, ">to</span>"));
   // Both words and the space between them carry a PDF-derived width.
-  EXPECT_EQ(count(html, R"(<span class="sr f1 w)"), 2u);
-  EXPECT_EQ(count(html, R"(<span class="sg f1 w)"), 1u);
+  EXPECT_EQ(count(html, R"(<span class="sr f0 w)"), 2u);
+  EXPECT_EQ(count(html, R"(<span class="sg f0 w)"), 1u);
 }
 
 // A standalone page view (`page{index}.html`) resolves internal links to the

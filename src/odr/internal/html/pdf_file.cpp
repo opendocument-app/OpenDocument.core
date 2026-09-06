@@ -18,6 +18,7 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
@@ -1121,43 +1122,6 @@ std::vector<pdf::PageElement> page_elements(const pdf::Page &page,
   return elements;
 }
 
-/// Deduplicates CSS declarations into atomic, single-property classes named
-/// `<prefix><n>` in first-seen order, emitted once in `<head>`. The same font
-/// sizes, offsets and spacings recur across up to millions of positioned
-/// elements, and inline declarations bloat the document. Representation-only:
-/// no element's computed style changes.
-class AtomicStyles {
-public:
-  /// `prefix` selects the property family; `declaration` is a full CSS
-  /// declaration without trailing ';' (e.g. "font-size:9.96pt"). Returns the
-  /// class name to add to the element.
-  const std::string &intern(const std::string &prefix,
-                            std::string declaration) {
-    const auto [it, inserted] =
-        m_class_by_declaration.try_emplace(std::move(declaration));
-    if (inserted) {
-      it->second = prefix + std::to_string(++m_count_by_prefix[prefix]);
-      m_order.push_back(&*it);
-    }
-    return it->second;
-  }
-
-  /// One rule per line (`.f1{font-size:9.96pt}`) so regeneration diffs stay
-  /// legible; each is preceded by a newline.
-  void write_rules(std::ostream &o) const {
-    for (const auto *entry : m_order) {
-      o << "\n." << entry->second << '{' << entry->first << '}';
-    }
-  }
-
-private:
-  /// Node-based map: pointers stored in `m_order` stay valid across
-  /// insertions.
-  std::unordered_map<std::string, std::string> m_class_by_declaration;
-  std::unordered_map<std::string, int> m_count_by_prefix;
-  std::vector<const std::pair<const std::string, std::string> *> m_order;
-};
-
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
@@ -1383,7 +1347,7 @@ public:
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
 
-    AtomicStyles styles;
+    StyleRegistry styles(StyleRegistry::Rank::plain);
     std::vector<DualPageOut> pages_out;
     pages_out.reserve(pages.size());
 
@@ -2000,7 +1964,7 @@ public:
                          });
     };
 
-    AtomicStyles styles;
+    StyleRegistry styles(StyleRegistry::Rank::plain);
     const auto add_class = [&styles](std::string &classes,
                                      const std::string &prefix,
                                      std::string declaration) {
@@ -2489,7 +2453,7 @@ public:
   /// The colour class suffix (with a leading space) for a run's paint colour,
   /// or "" for black / invisible.
   static std::string color_class(const pdf::TextElement &text,
-                                 const bool invisible, AtomicStyles &styles) {
+                                 const bool invisible, StyleRegistry &styles) {
     if (invisible) {
       return {};
     }
@@ -2666,7 +2630,7 @@ public:
   void write_header_common(const WritingState &state,
                            const std::string &font_faces,
                            const std::string &font_styles,
-                           const AtomicStyles &styles,
+                           const StyleRegistry &styles,
                            const std::optional<double> content,
                            WriteModeCss &&write_mode_css) const {
     HtmlWriter &out = state.out();

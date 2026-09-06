@@ -121,8 +121,9 @@ HtmlElementOptions::set_style(std::optional<HtmlWritable> _style) {
 HtmlElementOptions &HtmlElementOptions::set_style(std::string _style,
                                                   StyleRegistry *registry) {
   if (registry != nullptr) {
-    if (const std::string *name = registry->use(_style); name != nullptr) {
-      style_class = *name;
+    if (const std::string &name = registry->intern("c", _style);
+        !name.empty()) {
+      style_class = name;
       return *this;
     }
   }
