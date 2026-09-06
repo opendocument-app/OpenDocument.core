@@ -228,10 +228,9 @@ Three things the spike did **not** settle, and Phase 1 and 2 owe tests for each:
   one of those engines painted — the `/QuadPoints` were never consulted. The
   ordering matters only to a viewer that regenerates the appearance, and to
   text-selection semantics. The note below stands as a note.
-- **A page dictionary inside an object stream.** The fixture's was plain, and
-  Phase 1 did not close this either — no fixture we have puts one there.
-- **Appending to a file whose newest section is an xref stream.** The fixture's
-  was a classic table; Phase 1's tests cover both flavors.
+- **A page dictionary inside an object stream**, and **appending to a file
+  whose newest section is an xref stream.** The spike's fixture had neither;
+  Phase 1's tests cover both.
 
 ## Implementation plan
 
@@ -277,9 +276,8 @@ identically first, then a `/Rotate` rewrite. `qpdf --check` passes, and
 ghostscript, CoreGraphics and our own renderer all honour the new rotation
 (the page box turns 8.5×11in into 11×8.5in).
 
-**Still untested: a page dictionary living inside an object stream.** It has to
-be rewritten uncompressed in the new section — legal, the newer entry wins —
-but no fixture we have puts one there. Owed before Phase 2 ships.
+A page dictionary living inside an object stream is rewritten uncompressed in
+the new section, the newer type-1 entry winning over the older type-2 one.
 
 ### Phase 2 — highlight (2 d, ~200 lines)
 
