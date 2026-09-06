@@ -653,8 +653,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   return guarded(error, [&]() -> NSData * {
     std::ostringstream out;
     self.handle.as_pdf_file().annotate(to_string(annotations), out);
-    std::istringstream in(std::move(out).str());
-    return to_nsdata(in);
+    return to_nsdata(std::move(out).str());
   });
 }
 

@@ -86,7 +86,7 @@ final class TestFiles {
     int start = out.length();
     out.append("xref\n0 ").append(objects.size() + 1).append("\n0000000000 65535 f \n");
     for (int offset : offsets) {
-      out.append(String.format("%010d 00000 n %n", offset).replace(System.lineSeparator(), "\n"));
+      out.append(String.format("%010d 00000 n \n", offset));
     }
     out.append("trailer\n<< /Size ").append(objects.size() + 1).append(" /Root 1 0 R >>\n");
     out.append("startxref\n").append(start).append("\n%%EOF\n");

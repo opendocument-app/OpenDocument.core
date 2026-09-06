@@ -1,6 +1,6 @@
 package app.opendocument.core;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -34,9 +35,7 @@ class PdfFileTest {
 
       assertTrue(result.length > source.length);
       // the source is copied and the annotation appended after it
-      for (int i = 0; i < source.length; ++i) {
-        assertEquals(source[i], result[i]);
-      }
+      assertArrayEquals(source, Arrays.copyOf(result, source.length));
       String text = new String(result, StandardCharsets.ISO_8859_1);
       assertTrue(text.contains("/Highlight"));
       assertTrue(text.contains("/Subtype /Form"));

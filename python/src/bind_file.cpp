@@ -332,7 +332,12 @@ void odr_python::bind_file(py::module_ &m) {
           "annotate",
           [](const odr::PdfFile &file, const std::string &annotations) {
             std::ostringstream out;
-            file.annotate(annotations, out);
+            {
+              // scoped rather than a `call_guard`: the `py::bytes` below needs
+              // the GIL back
+              const py::gil_scoped_release release;
+              file.annotate(annotations, out);
+            }
             return py::bytes(std::move(out).str());
           },
           py::arg("annotations"),

@@ -28,8 +28,8 @@ std::string to_string(NSString *string);
 NSString *to_nsstring(const std::string &string);
 NSString *to_nsstring(std::string_view string);
 
-/// Drains `stream` into an `NSData`. The stream APIs of odrcore hand out a
-/// `std::istream`; ObjC callers want bytes.
+/// Bytes as an `NSData`, drained from a stream where odrcore hands one out.
+NSData *to_nsdata(const std::string &bytes);
 NSData *to_nsdata(std::istream &stream);
 
 /// Fills `*error` from the exception currently being handled. Call only from
