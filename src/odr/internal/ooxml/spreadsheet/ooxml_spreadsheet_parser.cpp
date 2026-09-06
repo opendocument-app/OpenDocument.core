@@ -6,6 +6,8 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 
 #include <algorithm>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -81,12 +83,20 @@ void parse_sheet_cell_children(ElementRegistry &registry,
                                const ParseContext &context,
                                const ElementIdentifier parent_id,
                                const pugi::xml_node node) {
-  if (const pugi::xml_attribute type_attr = node.attribute("t");
-      type_attr.value() == std::string("s")) {
+  const std::string_view type = node.attribute("t").value();
+
+  // ECMA-376 18.3.1.4: a shared string indexes `sharedStrings.xml`, an inline
+  // one carries the same content model under `is`. Both hold the text one
+  // level below the cell, where the walker does not descend on its own.
+  if (type == "s") {
     const pugi::xml_node v_node = node.child("v");
     const std::size_t ref = v_node.first_child().text().as_ullong();
     const pugi::xml_node shared_node = context.shared_strings().at(ref);
     parse_any_element_children(registry, context, parent_id, shared_node);
+    return;
+  }
+  if (type == "inlineStr") {
+    parse_any_element_children(registry, context, parent_id, node.child("is"));
     return;
   }
 

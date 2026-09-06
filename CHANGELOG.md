@@ -16,9 +16,20 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `SheetCell::value` reads what a cell holds past the text it shows: the number
-  the file states, and the formula behind a cached result. Filled by odf, ooxml
-  and csv; `value_type` is unchanged and stays the question the renderer asks.
+- `Sheet::set_cell` and `::clear_cell` write one cell of an `.ods` or an
+  `.xlsx`, and `Document::is_editable` is true for both. An absent, repeated,
+  covered, formula or richly marked-up cell refuses.
+
+- `.xlsx` gains `Document::save`, with `edit` and `save` capabilities to match.
+  A saved workbook sets `fullCalcOnLoad`, since nothing here computes a formula.
+
+- **Fix**: a `.xlsx` cell holding an inline string (`t="inlineStr"`) read as
+  empty.
+
+- `CellValue` is what a cell holds — type, number, text, formula — read by
+  `SheetCell::value` and written by `Sheet::set_cell`. Immutable, built from a
+  text or a number, its getters throwing `ValueNotStated` where a cell states
+  none. `value_type` is unchanged and stays what the renderer asks.
 
 - `PdfFile::annotate` writes highlight, underline, strike-out, squiggly and ink
   annotations into a pdf as an incremental update — source bytes untouched,

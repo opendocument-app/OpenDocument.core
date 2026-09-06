@@ -25,9 +25,10 @@ inline void insert(internal::zip::ZipArchive &zip, const std::string &path,
 
 /// The smallest workbook that opens: one sheet, whose `<sheetData>` is
 /// @p sheet_data and which carries @p sheet_extra - `<mergeCells>`, say -
-/// after it.
+/// after it. @p shared_strings writes a `sharedStrings.xml` where it is given.
 inline std::shared_ptr<internal::abstract::File>
-workbook(const std::string &sheet_data, const std::string &sheet_extra = "") {
+workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
+         const std::string &shared_strings = "") {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -58,6 +59,13 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "") {
       R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
       R"(<sheetData>)" +
           sheet_data + R"(</sheetData>)" + sheet_extra + R"(</worksheet>)");
+
+  if (!shared_strings.empty()) {
+    insert(
+        zip, "xl/sharedStrings.xml",
+        R"(<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)" +
+            shared_strings + R"(</sst>)");
+  }
 
   std::stringstream out;
   zip.save(out);

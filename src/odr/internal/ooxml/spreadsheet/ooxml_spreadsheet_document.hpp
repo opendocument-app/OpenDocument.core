@@ -6,6 +6,7 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
+#include <iosfwd>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -21,9 +22,17 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
   [[nodiscard]] const StyleRegistry &style_registry() const;
 
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
+
+  void save(std::ostream &out) const override;
+  void save(std::ostream &out, const char *password) const override;
+
 private:
   XmlDocumentsAndRelations m_xml_documents_and_relations;
   SharedStrings m_shared_strings;
+  /// The parts `save` writes back from their dom; the rest is byte-copied.
+  std::vector<AbsPath> m_written_parts;
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;

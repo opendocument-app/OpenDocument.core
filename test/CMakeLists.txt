@@ -36,6 +36,7 @@ add_executable(odr_test
         "src/logger_test.cpp"
         "src/odr_test.cpp"
         "src/pdf_annotate_test.cpp"
+        "src/cell_value_test.cpp"
         "src/quantity_test.cpp"
         "src/table_position_test.cpp"
 
@@ -82,6 +83,7 @@ add_executable(odr_test
         "src/internal/odf/odf_geometry_test.cpp"
         "src/internal/odf/odf_sheet_repeat_test.cpp"
         "src/internal/odf/odf_sheet_value_test.cpp"
+        "src/internal/odf/odf_sheet_write_test.cpp"
         "src/internal/odf/odf_table_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
@@ -93,6 +95,7 @@ add_executable(odr_test
         "src/internal/ooxml/ooxml_text_style_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_merge_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_value_test.cpp"
+        "src/internal/ooxml/ooxml_spreadsheet_write_test.cpp"
         "src/internal/ooxml/ooxml_util_test.cpp"
         "src/internal/ooxml/ooxml_presentation_style_test.cpp"
 

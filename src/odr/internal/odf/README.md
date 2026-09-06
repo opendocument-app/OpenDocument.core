@@ -117,7 +117,10 @@ Roughly ordered by importance.
   - [x] shapes anchored to a sheet
   - [ ] computed values (stored values are used as-is; formulas are read but
     not evaluated)
-- [ ] edit (currently disabled, see `Document::is_editable`)
+- [x] edit
+  - [x] cell values (number, string, cleared)
+  - [ ] a cell that is absent or repeated (the run has to be split first)
+  - [ ] a formula cell, and a cell of richer markup than one plain paragraph
 
 ### Presentation documents (`.odp`)
 

@@ -19,11 +19,14 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <array>
 #include <cstring>
 #include <mutex>
 #include <ostream>
 #include <sstream>
 #include <unordered_map>
+
+#include <fmt/format.h>
 
 namespace odr::internal::odf {
 
@@ -78,12 +81,7 @@ const StyleRegistry &Document::style_registry() const {
   return m_style_registry;
 }
 
-bool Document::is_editable() const noexcept {
-  // TODO fix spreadsheet editability
-  return m_document_type == DocumentType::text ||
-         m_document_type == DocumentType::presentation ||
-         m_document_type == DocumentType::drawing;
-}
+bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
   return !encrypted && !is_decrypted();
@@ -371,6 +369,82 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
+  /// The one run this writes through: a cell of a single paragraph holding a
+  /// single text run. Richer markup is kept rather than thrown away; an empty
+  /// paragraph - a cleared cell, a blank styled one - is given a run.
+  [[nodiscard]] ElementIdentifier
+  only_text_run(const ElementIdentifier cell_id) const {
+    const ElementIdentifier paragraph_id = element_first_child(cell_id);
+    if (paragraph_id == null_element_id ||
+        element_next_sibling(paragraph_id) != null_element_id ||
+        element_type(paragraph_id) != ElementType::paragraph) {
+      return null_element_id;
+    }
+    const ElementIdentifier text_id = element_first_child(paragraph_id);
+    if (text_id == null_element_id) {
+      const pugi::xml_node text_node =
+          get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
+      const auto &[new_id, unused1, unused2] =
+          m_registry->create_text_element(text_node, text_node);
+      m_registry->append_child(paragraph_id, new_id);
+      return new_id;
+    }
+    if (element_next_sibling(text_id) != null_element_id ||
+        element_type(text_id) != ElementType::text) {
+      return null_element_id;
+    }
+    return text_id;
+  }
+
+  /// [ODF 1.2] 19.385: the value is an attribute and the `text:p` under the
+  /// cell shows it, so both are written or the file contradicts itself.
+  void sheet_set_cell(const ElementIdentifier element_id,
+                      const std::uint32_t column, const std::uint32_t row,
+                      const CellValue &value) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id) {
+      throw UnsupportedOperation(); // an empty cell is written as no element
+    }
+    const ElementIdentifier cell_id = cell->element_id;
+    if (m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+      throw UnsupportedOperation();
+    }
+
+    pugi::xml_node node = get_node(cell_id);
+    if (node.attribute("table:formula")) {
+      throw UnsupportedOperation(); // its dependants would go stale
+    }
+
+    const ElementIdentifier text_id = only_text_run(cell_id);
+    if (text_id == null_element_id) {
+      throw UnsupportedOperation();
+    }
+    text_set_content(text_id, value.has_text() ? value.text() : "");
+
+    static constexpr std::array stated = {
+        "office:value-type", "office:value",      "office:boolean-value",
+        "office:date-value", "office:time-value", "office:string-value",
+        "office:currency",   "calcext:value-type"};
+    for (const char *attribute : stated) {
+      node.remove_attribute(attribute);
+    }
+
+    switch (value.type()) {
+    case ValueType::unknown:
+      break;
+    case ValueType::string:
+      node.append_attribute("office:value-type").set_value("string");
+      break;
+    case ValueType::float_number:
+      node.append_attribute("office:value-type").set_value("float");
+      node.append_attribute("office:value")
+          .set_value(fmt::format("{}", value.number()).c_str());
+      break;
+    }
+  }
+
   [[nodiscard]] TableStyle
   sheet_style(const ElementIdentifier element_id) const override {
     return get_partial_style(element_id).table_style;
@@ -445,13 +519,14 @@ public:
   sheet_cell_value(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
-    CellValue result;
-    result.type = sheet_cell_value_type(element_id);
-    if (const pugi::xml_attribute value = node.attribute("office:value")) {
-      result.number = util::number::parse(value.value());
+    CellValue result = CellValue(sheet_cell_value_type(element_id));
+    // a missing attribute reads as an empty string, which parses as no number
+    if (const std::optional<double> number =
+            util::number::parse(node.attribute("office:value").value())) {
+      result = result.with_number(*number);
     }
     if (const pugi::xml_attribute formula = node.attribute("table:formula")) {
-      result.formula = formula.value();
+      result = result.with_formula(formula.value());
     }
     return result;
   }

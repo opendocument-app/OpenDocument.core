@@ -1,6 +1,7 @@
 #include <odr/document_element.hpp>
 
 #include <odr/document_path.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
@@ -8,7 +9,87 @@
 
 #include <odr/internal/abstract/document.hpp>
 
+#include <utility>
+
+#include <fmt/format.h>
+
 namespace odr {
+
+namespace {
+
+/// The text under @p element, which for a cell is spread over its paragraphs
+/// and runs.
+std::string element_text(const Element element) {
+  if (element.type() == ElementType::text) {
+    return element.as_text().content();
+  }
+  std::string result;
+  for (const Element child : element.children()) {
+    result += element_text(child);
+  }
+  return result;
+}
+
+} // namespace
+
+CellValue::CellValue(std::string text)
+    : m_type{ValueType::string}, m_text{std::move(text)} {}
+
+CellValue::CellValue(const double number, std::string text)
+    : m_type{ValueType::float_number}, m_number{number},
+      m_text{std::move(text)} {}
+
+CellValue::CellValue(const double number)
+    : CellValue(number, fmt::format("{}", number)) {}
+
+CellValue::CellValue(const ValueType type) : m_type{type} {}
+
+CellValue CellValue::with_number(const double number) const {
+  CellValue result = *this;
+  result.m_number = number;
+  return result;
+}
+
+CellValue CellValue::with_text(std::string text) const {
+  CellValue result = *this;
+  result.m_text = std::move(text);
+  return result;
+}
+
+CellValue CellValue::with_formula(std::string formula) const {
+  CellValue result = *this;
+  result.m_formula = std::move(formula);
+  return result;
+}
+
+ValueType CellValue::type() const noexcept { return m_type; }
+
+bool CellValue::has_number() const noexcept { return m_number.has_value(); }
+
+bool CellValue::has_text() const noexcept { return m_text.has_value(); }
+
+bool CellValue::has_formula() const noexcept { return m_formula.has_value(); }
+
+double CellValue::number() const {
+  if (!m_number.has_value()) {
+    throw ValueNotStated();
+  }
+  return *m_number;
+}
+
+const std::string &CellValue::text() const {
+  if (!m_text.has_value()) {
+    throw ValueNotStated();
+  }
+  return *m_text;
+}
+
+const std::string &CellValue::formula() const {
+  if (!m_formula.has_value()) {
+    throw ValueNotStated();
+  }
+  return *m_formula;
+}
 
 Element::Element() = default;
 
@@ -335,6 +416,22 @@ ElementRange Sheet::shapes() const {
   return ElementRange(ElementIterator(m_adapter, first_shape_id));
 }
 
+void Sheet::set_cell(const std::uint32_t column, const std::uint32_t row,
+                     const CellValue &value) const {
+  if (!exists_()) {
+    return;
+  }
+  if (value.has_formula()) {
+    throw UnsupportedOperation(); // writing one waits for an evaluator
+  }
+  m_adapter2->sheet_set_cell(m_identifier, column, row, value);
+}
+
+void Sheet::clear_cell(const std::uint32_t column,
+                       const std::uint32_t row) const {
+  set_cell(column, row, CellValue());
+}
+
 TableStyle Sheet::style() const {
   return exists_() ? m_adapter2->sheet_style(m_identifier) : TableStyle();
 }
@@ -375,7 +472,13 @@ ValueType SheetCell::value_type() const {
 }
 
 CellValue SheetCell::value() const {
-  return exists_() ? m_adapter2->sheet_cell_value(m_identifier) : CellValue();
+  if (!exists_()) {
+    return {};
+  }
+  // the text is the one part no engine states of itself - it is spread over
+  // the cell's children, where the renderer reads it from
+  const CellValue value = m_adapter2->sheet_cell_value(m_identifier);
+  return value.has_text() ? value : value.with_text(element_text(*this));
 }
 
 std::string Page::name() const {

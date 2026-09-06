@@ -154,6 +154,12 @@ public:
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return null_element_id;
   }
+  void sheet_set_cell([[maybe_unused]] const ElementIdentifier element_id,
+                      [[maybe_unused]] const std::uint32_t column,
+                      [[maybe_unused]] const std::uint32_t row,
+                      [[maybe_unused]] const CellValue &value) const override {
+    throw UnsupportedOperation();
+  }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
@@ -196,11 +202,13 @@ public:
   }
   [[nodiscard]] CellValue
   sheet_cell_value(const ElementIdentifier element_id) const override {
-    CellValue result;
-    result.type = sheet_cell_value_type(element_id);
-    if (result.type == ValueType::float_number) {
-      result.number = util::number::parse(
-          m_document->cell(column_of(element_id), row_of(element_id)));
+    // the text is the cell's one child, which `SheetCell::value` collects
+    CellValue result = CellValue(sheet_cell_value_type(element_id));
+    if (result.type() == ValueType::float_number) {
+      if (const std::optional<double> number = util::number::parse(
+              m_document->cell(column_of(element_id), row_of(element_id)))) {
+        result = result.with_number(*number);
+      }
     }
     return result;
   }

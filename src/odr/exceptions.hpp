@@ -190,6 +190,12 @@ struct UnknownDocumentType final : Exception {
   UnknownDocumentType();
 };
 
+/// A value asked of something that states none, e.g. `CellValue::number` on a
+/// cell holding a string
+struct ValueNotStated final : Exception {
+  ValueNotStated();
+};
+
 /// Invalid prefix string
 struct InvalidPrefix final : Exception {
   InvalidPrefix();

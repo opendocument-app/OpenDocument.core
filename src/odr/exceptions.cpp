@@ -91,6 +91,8 @@ MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
 UnknownDocumentType::UnknownDocumentType()
     : Exception("unknown document type") {}
 
+ValueNotStated::ValueNotStated() : Exception("value not stated") {}
+
 InvalidPrefix::InvalidPrefix() : Exception("invalid prefix string") {}
 
 InvalidPrefix::InvalidPrefix(const std::string &prefix)

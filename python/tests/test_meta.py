@@ -105,10 +105,10 @@ def test_capabilities_by_file_type():
     assert not wpd.open
     assert not wpd.translate_html
 
-    # spreadsheet editing is force-disabled
-    assert not pyodr.capabilities_by_file_type(
-        pyodr.FileType.opendocument_spreadsheet
-    ).edit
+    # a sheet cell can be written, and the package written back
+    ods = pyodr.capabilities_by_file_type(pyodr.FileType.opendocument_spreadsheet)
+    assert ods.edit
+    assert ods.save
 
     # a pdf renders, but paints its own page backgrounds
     pdf = pyodr.capabilities_by_file_type(pyodr.FileType.portable_document_format)

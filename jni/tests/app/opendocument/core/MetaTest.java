@@ -81,8 +81,10 @@ class MetaTest {
     assertFalse(wpd.open);
     assertFalse(wpd.translateHtml);
 
-    // spreadsheet editing is force-disabled
-    assertFalse(Odr.capabilitiesByFileType(FileType.OPENDOCUMENT_SPREADSHEET).edit);
+    // a sheet cell can be written, and the package written back
+    FileTypeCapabilities ods = Odr.capabilitiesByFileType(FileType.OPENDOCUMENT_SPREADSHEET);
+    assertTrue(ods.edit);
+    assertTrue(ods.save);
 
     // a pdf renders, but paints its own page backgrounds
     FileTypeCapabilities pdf = Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT);
