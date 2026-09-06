@@ -38,6 +38,36 @@ TEST(Transform2D, compose_is_ordered) {
   EXPECT_DOUBLE_EQ(q[1], 10);
 }
 
+// Applying a transform then its inverse returns the original point, whatever
+// the transform is made of.
+TEST(Transform2D, inverse_undoes_apply) {
+  const Transform2D m = Transform2D::translation(-30, -40) *
+                        Transform2D::scaling_translation(1, -1, 0, 800) *
+                        Transform2D{0, 1, -1, 0, 600, 0};
+
+  const auto inverse = m.inverse();
+  ASSERT_TRUE(inverse.has_value());
+
+  const auto forward = m.apply(123, 456);
+  const auto back = inverse->apply(forward[0], forward[1]);
+  EXPECT_DOUBLE_EQ(back[0], 123);
+  EXPECT_DOUBLE_EQ(back[1], 456);
+}
+
+TEST(Transform2D, inverse_of_identity_is_identity) {
+  const auto inverse = Transform2D().inverse();
+  ASSERT_TRUE(inverse.has_value());
+  const auto p = inverse->apply(3, 4);
+  EXPECT_DOUBLE_EQ(p[0], 3);
+  EXPECT_DOUBLE_EQ(p[1], 4);
+}
+
+// A singular linear part collapses the plane, so nothing undoes it.
+TEST(Transform2D, inverse_of_singular_is_nullopt) {
+  EXPECT_FALSE(Transform2D::scaling(0, 1).inverse().has_value());
+  EXPECT_FALSE((Transform2D{1, 2, 2, 4, 5, 6}).inverse().has_value());
+}
+
 // Composing then applying equals applying each factor in sequence.
 TEST(Transform2D, compose_matches_sequential_apply) {
   const Transform2D a{1, 2, 3, 4, 5, 6};
