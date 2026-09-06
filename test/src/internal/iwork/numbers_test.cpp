@@ -84,7 +84,7 @@ TEST(IworkNumbers, is_detected_by_content) {
   EXPECT_THAT(list_file_types(path, logger),
               testing::Contains(FileType::iwork_numbers));
 
-  const DecodedFile file = open(path, logger);
+  const DecodedFile file = open(path, {}, logger);
   EXPECT_EQ(file.file_type(), FileType::iwork_numbers);
   EXPECT_EQ(file.file_category(), FileCategory::document);
   EXPECT_EQ(file.as_document_file().document_type(), DocumentType::spreadsheet);
@@ -94,7 +94,7 @@ TEST(IworkNumbers, is_detected_by_content) {
 // must come back as a sheet of its declared extent and no content.
 TEST(IworkNumbers, empty) {
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/numbers/empty.numbers"),
+      open(TestData::test_file_path("odr-public/numbers/empty.numbers"), {},
            Logger::null())
           .as_document_file();
   EXPECT_EQ(document_file.file_type(), FileType::iwork_numbers);
@@ -119,7 +119,7 @@ TEST(IworkNumbers, one_sheet_per_table) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
 
@@ -132,7 +132,7 @@ TEST(IworkNumbers, cell_values) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
 
@@ -153,7 +153,7 @@ TEST(IworkNumbers, a_table_wider_than_it_is_tall) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
 
@@ -172,7 +172,7 @@ TEST(IworkNumbers, every_cell_type_the_fixtures_hold) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
 
@@ -197,7 +197,7 @@ TEST(IworkNumbers, only_a_number_reports_a_float_value_type) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
   const Sheet sheet = sheet_at(document.root_element(), 2);

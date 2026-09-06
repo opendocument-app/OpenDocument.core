@@ -80,7 +80,7 @@ TEST(odr, types_md) {
   EXPECT_EQ(types.back(), FileType::markdown);
 
   // the name only adds a candidate; opening by path takes it
-  EXPECT_EQ(open(path, logger).file_type(), FileType::markdown);
+  EXPECT_EQ(open(path, {}, logger).file_type(), FileType::markdown);
   EXPECT_EQ(mimetype(path, logger), "text/markdown");
 }
 
@@ -89,11 +89,11 @@ TEST(odr, a_misnamed_file_is_what_its_bytes_are) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const auto path = TestData::test_file_path("odr-public/odt/about.odt");
-  EXPECT_EQ(open(path, logger).file_type(), FileType::opendocument_text);
+  EXPECT_EQ(open(path, {}, logger).file_type(), FileType::opendocument_text);
 
   // no name at all, so no hint: the same bytes come back as plain text
   const DecodedFile from_memory =
-      open(File::from_memory("# heading\n"), logger);
+      open(File::from_memory("# heading\n"), {}, logger);
   EXPECT_EQ(from_memory.file_type(), FileType::text_file);
 }
 
@@ -109,7 +109,7 @@ TEST(odr, a_named_file_in_memory_is_offered_its_type) {
   EXPECT_EQ(types.front(), FileType::text_file);
   EXPECT_EQ(types.back(), FileType::markdown);
 
-  EXPECT_EQ(open(file, logger).file_type(), FileType::markdown);
+  EXPECT_EQ(open(file, {}, logger).file_type(), FileType::markdown);
   EXPECT_EQ(mimetype(file, logger), "text/markdown");
 }
 
@@ -193,9 +193,10 @@ TEST(FileTypeTable, html_is_named_but_not_decoded) {
   EXPECT_FALSE(capabilities.translate_html);
 
   const std::string page = "<!DOCTYPE html><html><body><p>hi</p></body></html>";
-  EXPECT_THROW(std::ignore =
-                   open(File::from_memory(page), html, Logger::null()),
-               UnknownFileType);
+  // named but undecodable, and the refusal says which of the two it is
+  EXPECT_THROW(std::ignore = open(File::from_memory(page),
+                                  DecodeOptions::as(html), Logger::null()),
+               UnsupportedFileType);
 }
 
 /// `FileType::unknown` is the only type we refuse to name a MIME type for.
@@ -249,7 +250,8 @@ TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
 
     std::optional<DecodedFile> file;
     try {
-      file = open(test_files.front().absolute_path, type, logger);
+      file = open(test_files.front().absolute_path, DecodeOptions::as(type),
+                  logger);
     } catch (...) {
       continue;
     }
@@ -296,15 +298,15 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
       const TestFile &test_file = test_files[i];
 
       if (!declared.open) {
-        EXPECT_ANY_THROW(std::ignore =
-                             open(test_file.absolute_path, type, logger))
+        EXPECT_ANY_THROW(std::ignore = open(test_file.absolute_path,
+                                            DecodeOptions::as(type), logger))
             << test_file.short_path;
         continue;
       }
 
       std::optional<DecodedFile> file;
       try {
-        file = open(test_file.absolute_path, type, logger);
+        file = open(test_file.absolute_path, DecodeOptions::as(type), logger);
       } catch (...) {
         // declared support is an upper bound — a single file may still fail
         continue;

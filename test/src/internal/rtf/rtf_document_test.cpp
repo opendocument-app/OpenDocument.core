@@ -230,14 +230,15 @@ TEST(RtfDocument, the_open_strategy_opens_an_rtf) {
   EXPECT_TRUE(detected.is_document_file());
 
   // as does asking for the type outright
-  EXPECT_EQ(open(file, FileType::rich_text_format).file_type(),
-            FileType::rich_text_format);
-  // the branch's `NoRtfFile` is what `open_file` catches to move on to the
-  // next candidate type, so a caller asking for an rtf that is not one sees
-  // the strategy's own answer
-  EXPECT_THROW(std::ignore = open(File(memory_file("Hello, World!")),
-                                  FileType::rich_text_format),
-               UnknownFileType);
+  EXPECT_EQ(
+      open(file, DecodeOptions::as(FileType::rich_text_format)).file_type(),
+      FileType::rich_text_format);
+  // a named type has nothing to move on to, so the branch's own `NoRtfFile`
+  // reaches the caller rather than the strategy's `UnknownFileType`
+  EXPECT_THROW(std::ignore =
+                   open(File(memory_file("Hello, World!")),
+                        DecodeOptions::as(FileType::rich_text_format)),
+               NoRtfFile);
 
   // and the document-file path, which a caller reaches through `DocumentFile`
   const DocumentFile document_file = open(file).as_document_file();

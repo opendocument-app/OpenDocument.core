@@ -196,13 +196,19 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 @end
 
-#pragma mark - ODRDecodePreference
+#pragma mark - ODRCsvOptions
 
-@implementation ODRDecodePreference
+@implementation ODRCsvOptions
+@end
+
+#pragma mark - ODRDecodeOptions
+
+@implementation ODRDecodeOptions
 
 - (instancetype)init {
   if ((self = [super init]) != nil) {
     _fileTypePriority = @[];
+    _csv = [[ODRCsvOptions alloc] init];
   }
   return self;
 }
@@ -323,20 +329,32 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
         decodedFileWithHandle:odr::open(to_string(path),
-                                        static_cast<odr::FileType>(type))];
+                                        odr::DecodeOptions::as(
+                                            static_cast<odr::FileType>(type)))];
   });
 }
 
 + (nullable instancetype)decodePath:(NSString *)path
-                         preference:(ODRDecodePreference *)preference
+                            options:(ODRDecodeOptions *)options
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
-    odr::DecodePreference native;
-    if (preference.asFileType != nil) {
+    odr::DecodeOptions native;
+    if (options.asFileType != nil) {
       native.as_file_type =
-          static_cast<odr::FileType>(preference.asFileType.integerValue);
+          static_cast<odr::FileType>(options.asFileType.integerValue);
     }
-    native.file_type_priority = to_file_types(preference.fileTypePriority);
+    native.file_type_priority = to_file_types(options.fileTypePriority);
+    if (options.csv.encoding != nil) {
+      native.csv.encoding =
+          static_cast<odr::TextEncoding>(options.csv.encoding.integerValue);
+    }
+    // one character, and an empty string means unset rather than a NUL
+    if (options.csv.separator.length > 0) {
+      native.csv.separator = [options.csv.separator characterAtIndex:0];
+    }
+    if (options.csv.quote.length > 0) {
+      native.csv.quote = [options.csv.quote characterAtIndex:0];
+    }
     return [ODRDecodedFile
         decodedFileWithHandle:odr::open(to_string(path), native)];
   });
@@ -353,7 +371,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::open(to_string(path), logger.handle)];
+        decodedFileWithHandle:odr::open(to_string(path), {}, logger.handle)];
   });
 }
 
@@ -364,7 +382,8 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
         decodedFileWithHandle:odr::open(to_string(path),
-                                        static_cast<odr::FileType>(type),
+                                        odr::DecodeOptions::as(
+                                            static_cast<odr::FileType>(type)),
                                         logger.handle)];
   });
 }
@@ -374,7 +393,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
                               error:(NSError **)error {
   return guarded(error, [&]() -> ODRDecodedFile * {
     return [ODRDecodedFile
-        decodedFileWithHandle:odr::open(file.handle, logger.handle)];
+        decodedFileWithHandle:odr::open(file.handle, {}, logger.handle)];
   });
 }
 

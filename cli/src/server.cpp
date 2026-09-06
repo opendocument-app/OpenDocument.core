@@ -28,10 +28,10 @@ int main(const int argc, char **argv) {
       password = argv[2];
     }
 
-    DecodePreference decode_preference;
-    decode_preference.as_file_type = FileType::zip;
-
-    DecodedFile decoded_file = open(input, decode_preference, logger);
+    // the server offers the container's own entries beside the render, so a
+    // package is opened as the zip it is
+    DecodedFile decoded_file =
+        open(input, DecodeOptions::as(FileType::zip), logger);
 
     if (decoded_file.password_encrypted()) {
       if (!password) {

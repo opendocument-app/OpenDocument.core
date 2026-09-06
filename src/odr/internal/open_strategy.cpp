@@ -77,7 +77,7 @@ bool is_the_requested_ooxml(const ooxml::OfficeOpenXmlFile &file,
 /// exception (@ref UnsupportedFileType for a type we cannot decode at all).
 std::unique_ptr<abstract::DecodedFile>
 open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
-             const Logger &logger) {
+             const DecodeOptions &options, const Logger &logger) {
   if (as == FileType::opendocument_text ||
       as == FileType::opendocument_presentation ||
       as == FileType::opendocument_spreadsheet ||
@@ -252,8 +252,11 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
   if (as == FileType::comma_separated_values) {
     ODR_VERBOSE(logger, "open as csv");
     try {
-      auto text = std::make_shared<text::TextFile>(file);
-      return std::make_unique<csv::CsvFile>(text);
+      return std::make_unique<csv::CsvFile>(file, options.csv);
+    } catch (const std::invalid_argument &) {
+      // an incoherent dialect is a caller mistake, not "these bytes are not a
+      // csv" - saying the latter would send them looking at the file
+      throw;
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as csv");
     }
@@ -454,9 +457,14 @@ open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
   return result;
 }
 
+namespace {
+
+/// Decodes by what magic says, engine by engine. What @ref
+/// open_strategy::open_file does when @p options names no type and no
+/// priority - the probe below is for when it does.
 std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         const Logger &logger) {
+open_by_cascade(const std::shared_ptr<abstract::File> &file,
+                const DecodeOptions &options, const Logger &logger) {
   auto file_type = magic::file_type(*file);
   ODR_VERBOSE(logger,
               "magic determined file type " << file_type_to_string(file_type));
@@ -557,7 +565,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger,
                     "name says " << file_type_to_string(by_name) << ", try it");
         try {
-          return open_file_as(file, by_name, logger);
+          return open_file_as(file, by_name, options, logger);
         } catch (...) {
           ODR_VERBOSE(logger, "failed to open as what the name says");
         }
@@ -565,7 +573,7 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
       try {
         ODR_VERBOSE(logger, "try open as csv");
-        return std::make_unique<csv::CsvFile>(text);
+        return std::make_unique<csv::CsvFile>(file, options.csv);
       } catch (...) {
         ODR_VERBOSE(logger, "failed to open as csv");
       }
@@ -616,41 +624,25 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
   throw UnsupportedFileType(file_type);
 }
 
+/// Decodes by probing the detected types, reordered by @p options.
 std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         FileType as, const Logger &logger) {
-  DecodePreference preference;
-  preference.as_file_type = as;
-  return open_file(file, preference, logger);
-}
-
-std::unique_ptr<abstract::DecodedFile>
-open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
-                         const DecodePreference &preference,
-                         const Logger &logger) {
-  std::vector<FileType> probe_types;
-  if (preference.as_file_type.has_value()) {
-    ODR_VERBOSE(logger, "using preferred file type "
-                            << file_type_to_string(*preference.as_file_type));
-    probe_types.push_back(*preference.as_file_type);
-  } else {
-    ODR_VERBOSE(logger, "probe file types");
-    std::vector<FileType> detected_types = list_file_types(file, logger);
-    probe_types.insert(probe_types.end(), detected_types.begin(),
-                       detected_types.end());
-    auto probe_types_end = std::ranges::unique(probe_types).begin();
-    probe_types.erase(probe_types_end, probe_types.end());
-    // more specific file types are further down the list, so we bring them up
-    std::ranges::reverse(probe_types);
-  }
+open_by_probe(const std::shared_ptr<abstract::File> &file,
+              const DecodeOptions &options, const Logger &logger) {
+  ODR_VERBOSE(logger, "probe file types");
+  std::vector<FileType> probe_types =
+      open_strategy::list_file_types(file, logger);
+  auto probe_types_end = std::ranges::unique(probe_types).begin();
+  probe_types.erase(probe_types_end, probe_types.end());
+  // more specific file types are further down the list, so we bring them up
+  std::ranges::reverse(probe_types);
 
   std::ranges::stable_sort(probe_types,
-                           priority_comparator(preference.file_type_priority));
+                           priority_comparator(options.file_type_priority));
 
   for (FileType as : probe_types) {
     ODR_VERBOSE(logger, "try opening as file type " << file_type_to_string(as));
     try {
-      return open_file_as(file, as, logger);
+      return open_file_as(file, as, options, logger);
     } catch (...) {
       ODR_VERBOSE(logger,
                   "failed to open as file type " << file_type_to_string(as));
@@ -659,6 +651,25 @@ open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
 
   ODR_ERROR(logger, "no suitable file type found");
   throw UnknownFileType();
+}
+
+} // namespace
+
+std::unique_ptr<abstract::DecodedFile>
+open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
+                         const DecodeOptions &options, const Logger &logger) {
+  // A named type is not a probe with one candidate: there is nothing to move
+  // on to, so the format's own "not a ..." reaches the caller rather than
+  // being collapsed into UnknownFileType.
+  if (options.as_file_type.has_value()) {
+    ODR_VERBOSE(logger, "open as the requested file type "
+                            << file_type_to_string(*options.as_file_type));
+    return open_file_as(file, *options.as_file_type, options, logger);
+  }
+  if (options.file_type_priority.empty()) {
+    return open_by_cascade(file, options, logger);
+  }
+  return open_by_probe(file, options, logger);
 }
 
 } // namespace odr::internal

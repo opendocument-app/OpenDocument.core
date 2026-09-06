@@ -128,13 +128,16 @@ public final class Odr {
     return new DecodedFile(openAsNative(path, as.toNative()));
   }
 
-  /** Opens and decodes a file with a decode preference. */
-  public static DecodedFile open(String path, DecodePreference preference) {
+  /** Opens and decodes a file, per {@code options}. */
+  public static DecodedFile open(String path, DecodeOptions options) {
     return new DecodedFile(
-        openWithPreferenceNative(
+        openWithOptionsNative(
             path,
-            preference.asFileTypeNative(),
-            preference.fileTypePriorityNative()));
+            options.asFileTypeNative(),
+            options.fileTypePriorityNative(),
+            options.csv.encodingNative(),
+            options.csv.separatorNative(),
+            options.csv.quoteNative()));
   }
 
   private static native int[] allFileTypesNative();
@@ -171,8 +174,13 @@ public final class Odr {
 
   private static native long openAsNative(String path, int as);
 
-  private static native long openWithPreferenceNative(
-      String path, int asFileType, int[] fileTypePriority);
+  private static native long openWithOptionsNative(
+      String path,
+      int asFileType,
+      int[] fileTypePriority,
+      int csvEncoding,
+      int csvSeparator,
+      int csvQuote);
 
   private Odr() {}
 }

@@ -206,13 +206,6 @@ struct FileTypeCapabilities final {
   bool encrypt{}; ///< @ref Document::save with a password is supported
 };
 
-/// @brief Preference for decoding files.
-struct DecodePreference final {
-  std::optional<FileType> as_file_type;
-
-  std::vector<FileType> file_type_priority;
-};
-
 /// @brief Collection of encryption states.
 enum class EncryptionState {
   unknown,
@@ -282,6 +275,36 @@ enum class TextEncoding {
   iso_2022_jp,
   iso_2022_kr,
   shift_jis,
+};
+
+/// @brief How to read a csv file.
+///
+/// An unset field is detected from the file's opening bytes; a set one is taken
+/// as given. @ref CsvFile::options returns these with every field resolved, so
+/// a caller can show what was detected and offer to change it.
+struct CsvOptions final {
+  std::optional<TextEncoding> encoding{};
+  std::optional<char> separator{};
+  std::optional<char> quote{};
+};
+
+/// @brief How to decode a file.
+///
+/// Every field is optional; the default detects everything. @ref as_file_type
+/// skips detection outright, @ref file_type_priority only reorders what
+/// detection found.
+struct DecodeOptions final {
+  /// Decode as exactly this type, rather than detecting one.
+  std::optional<FileType> as_file_type;
+  /// Preferred types, most preferred first, among those detected.
+  std::vector<FileType> file_type_priority;
+  /// Format-specific overrides for a file decoded as csv.
+  CsvOptions csv;
+
+  /// @brief Decode as exactly @p type, skipping detection.
+  [[nodiscard]] static DecodeOptions as(FileType type);
+  /// @brief Decode as csv, reading it with @p options.
+  [[nodiscard]] static DecodeOptions as_csv(const CsvOptions &options);
 };
 
 /// @brief Meta information about a file.
@@ -416,27 +439,9 @@ private:
   std::shared_ptr<internal::abstract::TextFile> m_impl;
 };
 
-/// @brief How to read a csv file.
-///
-/// An unset field is detected from the file's opening bytes; a set one is taken
-/// as given. @ref CsvFile::options returns these with every field resolved, so
-/// a caller can show what was detected and offer to change it.
-struct CsvOptions final {
-  std::optional<TextEncoding> encoding{};
-  std::optional<char> separator{};
-  std::optional<char> quote{};
-};
-
 /// @brief Represents a csv file.
 class CsvFile final : public DecodedFile {
 public:
-  /// @brief Decodes @p file as a csv, with @p options.
-  /// @throws NoCsvFile if no separator was given and the file does not look
-  ///         like one.
-  [[nodiscard]] static CsvFile from_file(const File &file,
-                                         const CsvOptions &options,
-                                         const Logger &logger = Logger::null());
-
   explicit CsvFile(std::shared_ptr<internal::abstract::CsvFile>);
 
   /// @brief The csv as a one-sheet spreadsheet. The other view of the same
@@ -446,9 +451,6 @@ public:
 
   /// @brief The options in use, every field resolved.
   [[nodiscard]] CsvOptions options() const;
-
-  /// @brief The same file read with @p options.
-  [[nodiscard]] CsvFile with_options(const CsvOptions &options) const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::CsvFile> impl() const;
 

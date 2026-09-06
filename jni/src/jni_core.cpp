@@ -232,7 +232,7 @@ Java_app_opendocument_core_Odr_openWithLoggerNative(JNIEnv *env, jclass,
                                                     jlong logger) {
   return guarded(env, [&] {
     return make_handle(
-        odr::open(to_string(env, path), *from_handle<odr::Logger>(logger)));
+        odr::open(to_string(env, path), {}, *from_handle<odr::Logger>(logger)));
   });
 }
 
@@ -240,29 +240,41 @@ extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_Odr_openAsNative(
     JNIEnv *env, jclass, jstring path, jint as) {
   return guarded(env, [&] {
     return make_handle(
-        odr::open(to_string(env, path), static_cast<odr::FileType>(as)));
+        odr::open(to_string(env, path),
+                  odr::DecodeOptions::as(static_cast<odr::FileType>(as))));
   });
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Odr_openWithPreferenceNative(
+Java_app_opendocument_core_Odr_openWithOptionsNative(
     JNIEnv *env, jclass, jstring path, jint as_file_type,
-    jintArray file_type_priority) {
+    jintArray file_type_priority, jint csv_encoding, jint csv_separator,
+    jint csv_quote) {
   return guarded(env, [&] {
-    odr::DecodePreference preference;
+    odr::DecodeOptions options;
     if (as_file_type >= 0) {
-      preference.as_file_type = static_cast<odr::FileType>(as_file_type);
+      options.as_file_type = static_cast<odr::FileType>(as_file_type);
     }
     if (jint *codes = env->GetIntArrayElements(file_type_priority, nullptr);
         codes != nullptr) {
       const jsize length = env->GetArrayLength(file_type_priority);
       for (jsize i = 0; i < length; ++i) {
-        preference.file_type_priority.push_back(
+        options.file_type_priority.push_back(
             static_cast<odr::FileType>(codes[i]));
       }
       env->ReleaseIntArrayElements(file_type_priority, codes, JNI_ABORT);
     }
-    return make_handle(odr::open(to_string(env, path), preference));
+    // -1 is how java spells an unset field across the boundary
+    if (csv_encoding >= 0) {
+      options.csv.encoding = static_cast<odr::TextEncoding>(csv_encoding);
+    }
+    if (csv_separator >= 0) {
+      options.csv.separator = static_cast<char>(csv_separator);
+    }
+    if (csv_quote >= 0) {
+      options.csv.quote = static_cast<char>(csv_quote);
+    }
+    return make_handle(odr::open(to_string(env, path), options));
   });
 }
 

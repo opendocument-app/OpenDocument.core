@@ -29,7 +29,7 @@ namespace {
 /// document to a local before walking it.
 Document document(const std::string &markdown) {
   const DecodedFile file =
-      open(File::from_memory(markdown), FileType::markdown);
+      open(File::from_memory(markdown), DecodeOptions::as(FileType::markdown));
   return file.as_markdown_file().document();
 }
 
@@ -89,7 +89,7 @@ std::vector<ElementType> types_of(const std::vector<Element> &elements) {
 /// the same bytes.
 TEST(MarkdownFile, a_markdown_file_is_a_text_file_that_loads_as_a_document) {
   const DecodedFile file =
-      open(File::from_memory("# hello"), FileType::markdown);
+      open(File::from_memory("# hello"), DecodeOptions::as(FileType::markdown));
   const Document md = document("# hello");
 
   EXPECT_EQ(file.file_type(), FileType::markdown);
@@ -106,8 +106,8 @@ TEST(MarkdownFile, a_markdown_file_is_a_text_file_that_loads_as_a_document) {
 /// The whole point: a markdown file handed to the renderer comes out as prose,
 /// not as the line list a text file renders to.
 TEST(MarkdownFile, translating_the_decoded_file_yields_the_document) {
-  const DecodedFile file =
-      open(File::from_memory("# hello\n\ntext\n"), FileType::markdown);
+  const DecodedFile file = open(File::from_memory("# hello\n\ntext\n"),
+                                DecodeOptions::as(FileType::markdown));
 
   const HtmlService service = html::translate(file, HtmlConfig());
   std::ostringstream out;

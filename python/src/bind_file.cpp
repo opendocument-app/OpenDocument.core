@@ -164,11 +164,36 @@ void odr_python::bind_file(py::module_ &m) {
       .value("spreadsheet", odr::DocumentType::spreadsheet)
       .value("drawing", odr::DocumentType::drawing);
 
-  py::class_<odr::DecodePreference>(m, "DecodePreference")
-      .def(py::init<>())
-      .def_readwrite("as_file_type", &odr::DecodePreference::as_file_type)
+  py::class_<odr::CsvOptions>(m, "CsvOptions",
+                              "How to read a csv file. An unset field is "
+                              "detected from the file's opening bytes.")
+      .def(py::init([](std::optional<odr::TextEncoding> encoding,
+                       std::optional<char> separator,
+                       std::optional<char> quote) {
+             return odr::CsvOptions{encoding, separator, quote};
+           }),
+           py::arg("encoding") = py::none(), py::arg("separator") = py::none(),
+           py::arg("quote") = py::none())
+      .def_readwrite("encoding", &odr::CsvOptions::encoding)
+      .def_readwrite("separator", &odr::CsvOptions::separator)
+      .def_readwrite("quote", &odr::CsvOptions::quote);
+
+  py::class_<odr::DecodeOptions>(m, "DecodeOptions",
+                                 "How to decode a file. Every field is "
+                                 "optional; the default detects everything.")
+      .def(py::init([](std::optional<odr::FileType> as_file_type,
+                       std::vector<odr::FileType> file_type_priority,
+                       odr::CsvOptions csv) {
+             return odr::DecodeOptions{
+                 as_file_type, std::move(file_type_priority), std::move(csv)};
+           }),
+           py::arg("as_file_type") = py::none(),
+           py::arg("file_type_priority") = std::vector<odr::FileType>{},
+           py::arg("csv") = odr::CsvOptions{})
+      .def_readwrite("as_file_type", &odr::DecodeOptions::as_file_type)
       .def_readwrite("file_type_priority",
-                     &odr::DecodePreference::file_type_priority);
+                     &odr::DecodeOptions::file_type_priority)
+      .def_readwrite("csv", &odr::DecodeOptions::csv);
 
   py::class_<odr::FileMeta>(m, "FileMeta")
       .def(py::init<>())
@@ -246,17 +271,27 @@ void odr_python::bind_file(py::module_ &m) {
       .def("is_decodable", &odr::DecodedFile::is_decodable)
       .def("capabilities", &odr::DecodedFile::capabilities)
       .def("is_text_file", &odr::DecodedFile::is_text_file)
+      .def("is_csv_file", &odr::DecodedFile::is_csv_file)
       .def("is_image_file", &odr::DecodedFile::is_image_file)
       .def("is_archive_file", &odr::DecodedFile::is_archive_file)
       .def("is_document_file", &odr::DecodedFile::is_document_file)
       .def("is_pdf_file", &odr::DecodedFile::is_pdf_file)
       .def("is_font_file", &odr::DecodedFile::is_font_file)
       .def("as_text_file", &odr::DecodedFile::as_text_file)
+      .def("as_csv_file", &odr::DecodedFile::as_csv_file)
       .def("as_image_file", &odr::DecodedFile::as_image_file)
       .def("as_archive_file", &odr::DecodedFile::as_archive_file)
       .def("as_document_file", &odr::DecodedFile::as_document_file)
       .def("as_pdf_file", &odr::DecodedFile::as_pdf_file)
       .def("as_font_file", &odr::DecodedFile::as_font_file);
+
+  // A csv is a text file too, so `CsvFile` derives from `TextFile` the way the
+  // C++ handle does - `text()` still reads the raw bytes.
+  py::class_<odr::CsvFile, odr::DecodedFile>(m, "CsvFile")
+      .def("options", &odr::CsvFile::options,
+           "The options in use, every field resolved.")
+      .def("document", &odr::CsvFile::document,
+           "The csv as a one-sheet spreadsheet.");
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
       .def("encoding", &odr::TextFile::encoding,

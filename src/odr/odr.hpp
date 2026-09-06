@@ -97,25 +97,18 @@ list_file_types(const std::string &path, const Logger &logger = Logger::null());
 [[nodiscard]] std::string_view mimetype(const std::string &path,
                                         const Logger &logger = Logger::null());
 
-/// @brief Decodes @p file.
+/// @brief Decodes @p file, per @p options.
+///
+/// The default @ref DecodeOptions detects everything, so
+/// `open(file)` is the common call and
+/// `open(file, DecodeOptions::as(FileType::comma_separated_values))` the way
+/// to insist on a type.
 [[nodiscard]] DecodedFile open(const File &file,
+                               const DecodeOptions &options = {},
                                const Logger &logger = Logger::null());
-/// @brief Decodes @p file as @p as.
-[[nodiscard]] DecodedFile open(const File &file, FileType as,
-                               const Logger &logger = Logger::null());
-/// @brief Decodes @p file by @p preference.
-[[nodiscard]] DecodedFile open(const File &file,
-                               const DecodePreference &preference,
-                               const Logger &logger = Logger::null());
-/// @brief Opens and decodes the file at @p path.
+/// @brief Opens and decodes the file at @p path, per @p options.
 [[nodiscard]] DecodedFile open(const std::string &path,
-                               const Logger &logger = Logger::null());
-/// @brief Opens the file at @p path, decoding it as @p as.
-[[nodiscard]] DecodedFile open(const std::string &path, FileType as,
-                               const Logger &logger = Logger::null());
-/// @brief Opens the file at @p path, decoding it by @p preference.
-[[nodiscard]] DecodedFile open(const std::string &path,
-                               const DecodePreference &preference,
+                               const DecodeOptions &options = {},
                                const Logger &logger = Logger::null());
 
 } // namespace odr

@@ -203,33 +203,13 @@ std::string_view odr::mimetype(const std::string &path, const Logger &logger) {
   return mimetype(File::from_disk(path), logger);
 }
 
-odr::DecodedFile odr::open(const File &file, const Logger &logger) {
-  return DecodedFile(internal::open_strategy::open_file(file.impl(), logger));
-}
-
-odr::DecodedFile odr::open(const File &file, const FileType as,
+odr::DecodedFile odr::open(const File &file, const DecodeOptions &options,
                            const Logger &logger) {
   return DecodedFile(
-      internal::open_strategy::open_file(file.impl(), as, logger));
-}
-
-odr::DecodedFile odr::open(const File &file, const DecodePreference &preference,
-                           const Logger &logger) {
-  return DecodedFile(
-      internal::open_strategy::open_file(file.impl(), preference, logger));
-}
-
-odr::DecodedFile odr::open(const std::string &path, const Logger &logger) {
-  return open(File::from_disk(path), logger);
-}
-
-odr::DecodedFile odr::open(const std::string &path, const FileType as,
-                           const Logger &logger) {
-  return open(File::from_disk(path), as, logger);
+      internal::open_strategy::open_file(file.impl(), options, logger));
 }
 
 odr::DecodedFile odr::open(const std::string &path,
-                           const DecodePreference &preference,
-                           const Logger &logger) {
-  return open(File::from_disk(path), preference, logger);
+                           const DecodeOptions &options, const Logger &logger) {
+  return open(File::from_disk(path), options, logger);
 }

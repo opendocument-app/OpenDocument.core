@@ -94,9 +94,8 @@ TEST_P(HtmlOutputTests, html_meta) {
     GTEST_SKIP();
   }
 
-  DecodePreference decode_preference;
-  decode_preference.as_file_type = test_file.type;
-  DecodedFile file = open(test_file.absolute_path, decode_preference, logger);
+  DecodedFile file =
+      open(test_file.absolute_path, DecodeOptions::as(test_file.type), logger);
 
   FileMeta file_meta = file.file_meta();
 

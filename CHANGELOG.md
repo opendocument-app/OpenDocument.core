@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `DecodePreference` becomes `DecodeOptions`, gains a `csv` field
+  and is all `open` takes besides the file and logger. `CsvFile::from_file` and
+  `::with_options` go — use `DecodeOptions::as(type)` / `::as_csv(options)`.
+
+- **Breaking**: naming a type reports the engine's own refusal, so
+  `open(f, DecodeOptions::as(FileType::rich_text_format))` on non-rtf bytes
+  throws `NoRtfFile`, not `UnknownFileType`. Detection alone is unchanged.
+
 - `TextEncoding` and its five lookups now reach the java, python, objc and wasm
   bindings, and a text file reports `encoding()` beside the `charset()` it
   keeps. wasm gets it as `Odr.enums.TextEncoding`. Nothing is removed.

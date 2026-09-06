@@ -52,8 +52,9 @@ TEST(SvgFile, only_an_svg_opens_as_one) {
   // `open` reports its own failure to find a reading, not the format's
   EXPECT_THROW(std::ignore =
                    open(File::from_memory("<a/>"),
-                        FileType::scalable_vector_graphics, Logger::null()),
-               UnknownFileType);
+                        DecodeOptions::as(FileType::scalable_vector_graphics),
+                        Logger::null()),
+               NoSvgFile);
 }
 
 /// pugixml does not process namespaces, so a prefixed root has to be seen for

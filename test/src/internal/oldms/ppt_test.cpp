@@ -69,7 +69,7 @@ TEST(OldMs, ppt_empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/ppt/empty.ppt"), logger)
+      open(TestData::test_file_path("odr-public/ppt/empty.ppt"), {}, logger)
           .as_document_file();
 
   EXPECT_EQ(document_file.file_type(),
@@ -90,7 +90,7 @@ TEST(OldMs, ppt_style_various) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/ppt/style-various-1.ppt"),
+      open(TestData::test_file_path("odr-public/ppt/style-various-1.ppt"), {},
            logger)
           .as_document_file();
 
