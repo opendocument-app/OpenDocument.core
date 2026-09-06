@@ -16,11 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- **Breaking**: building `odr` from source now needs a **C++23** compiler; the
-  conan recipe says so. Using it does not — the installed public headers still
-  compile as C++20, and nothing in the package forces a standard on a consumer.
-  The toolchains the project already builds on (clang 18, gcc 14, apple-clang,
-  MSVC 19.40, NDK 28, emsdk 3.1.73) all qualify.
+- **Breaking**: building `odr` from source now needs a **C++23** compiler. Using
+  it does not — the public headers still compile as C++20, and the package
+  forces no standard on a consumer.
 
 - **Breaking**: the drawing elements `Rect`, `Line`, `Circle` and `CustomShape`
   are gone, with their `ElementType` values and `Element::as_rect`/`as_line`/

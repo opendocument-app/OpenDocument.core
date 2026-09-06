@@ -164,10 +164,7 @@ target_link_libraries(odr_test
 
 gtest_add_tests(TARGET odr_test)
 
-# `odr` is C++23 and does not propagate it — no `target_compile_features(odr
-# PUBLIC …)`, no `cppstd` in the conan `package_info` — so a consumer keeps its
-# own standard. Compiling the public headers at C++20 is what holds them to
-# that. Not a gtest: it either compiles or it does not.
+# Holds the public headers to C++20. Not a gtest: it compiles or it does not.
 add_library(odr_public_headers_cpp20 OBJECT "public_headers_cpp20.cpp")
 target_link_libraries(odr_public_headers_cpp20 PRIVATE odr)
 set_target_properties(odr_public_headers_cpp20 PROPERTIES

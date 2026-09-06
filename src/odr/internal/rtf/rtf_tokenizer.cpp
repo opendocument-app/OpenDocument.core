@@ -73,8 +73,8 @@ std::string Tokenizer::bumpnc(const std::size_t n) {
     const std::size_t offset = result.size();
     const auto m =
         static_cast<std::streamsize>(std::min(chunk_size, n - offset));
-    // The chunk is handed over unwritten rather than zeroed first. The callback
-    // must not throw, so a short read shrinks the string back to report itself.
+    // The callback must not throw, so a short read reports itself by
+    // shrinking the string back.
     result.resize_and_overwrite(offset + static_cast<std::size_t>(m),
                                 [&](char *out, const std::size_t size) {
                                   return m_sb->sgetn(out + offset, m) == m

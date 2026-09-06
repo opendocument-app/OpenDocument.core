@@ -204,9 +204,8 @@ void resolve_list_numbering(ElementRegistry &registry,
     return node.child("w:pPr").child("w:numPr");
   };
 
-  // Handed itself rather than taking `this auto self`: NDK 28.1's clang 19
-  // segfaults compiling a capturing lambda that recurses through an explicit
-  // object parameter.
+  // Takes itself as a parameter rather than `this auto self`: NDK 28.1's
+  // clang 19 segfaults on a capturing lambda that recurses through one.
   const auto walk = [&](auto &self, const ElementIdentifier id) -> void {
     for (ElementIdentifier child_id = id; child_id != null_element_id;
          child_id = registry.element_at(child_id).next_sibling_id) {

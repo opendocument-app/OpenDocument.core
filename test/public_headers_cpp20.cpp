@@ -1,10 +1,4 @@
 // Every public header, compiled as a C++20 consumer sees them.
-//
-// `odr` itself is built as C++23, and nothing propagates that: there is no
-// `target_compile_features(odr PUBLIC …)` and no `cppstd` in the conan
-// `package_info`, so a consumer keeps whatever standard it picked. This target
-// is what keeps that true — a C++23 construct reaching `src/odr/*.hpp` breaks
-// it here rather than in someone else's build.
 
 #include <odr/archive.hpp>
 #include <odr/definitions.hpp>

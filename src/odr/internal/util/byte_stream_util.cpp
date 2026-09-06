@@ -53,8 +53,8 @@ std::string byte_stream::read_u8s(std::istream &in, const std::uint64_t n) {
     const std::size_t offset = result.size();
     const auto step =
         static_cast<std::size_t>(std::min(chunk_size, n - offset));
-    // The chunk is handed over unwritten rather than zeroed first. The callback
-    // must not throw, so a short read shrinks the string back to report itself.
+    // The callback must not throw, so a short read reports itself by
+    // shrinking the string back.
     result.resize_and_overwrite(
         offset + step, [&](char *out, const std::size_t size) {
           return try_read(in, out + offset, step) ? size : offset;
