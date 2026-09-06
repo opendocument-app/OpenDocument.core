@@ -34,7 +34,7 @@ int main(const int argc, char **argv) {
     const Document document = document_file.document();
 
     const std::string diff = internal::util::file::read(diff_path);
-    html::edit(document, diff);
+    document.edit(diff);
 
     document.save(output);
 

@@ -142,7 +142,7 @@ emscripten::val read_path(const Handle handle, const std::string &path) {
 emscripten::val edit(const Handle handle, const std::string &diff) {
   return guarded([&] {
     Session &s = session(handle);
-    html::edit(document_of(s), diff, s.logger);
+    document_of(s).edit(diff, s.logger);
     return ok();
   });
 }

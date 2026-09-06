@@ -59,13 +59,11 @@ Java_app_opendocument_core_Document_destroy(JNIEnv *env, jclass, jlong handle) {
   destroy_handle<odr::Document>(env, handle);
 }
 
-// odr::html::edit, but it belongs to Document: a native taking a handle must be
-// an instance method of its owner, or the wrapper can be collected mid-call.
 extern "C" JNIEXPORT void JNICALL
 Java_app_opendocument_core_Document_editNative(JNIEnv *env, jobject,
                                                jlong handle, jstring diff) {
   guarded(env, [&] {
-    odr::html::edit(*from_handle<odr::Document>(handle), to_string(env, diff));
+    from_handle<odr::Document>(handle)->edit(to_string(env, diff));
   });
 }
 

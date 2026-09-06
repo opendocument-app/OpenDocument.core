@@ -133,10 +133,21 @@ questions — but only if the header says which is which.
 input. [`editing.md`](editing.md) already commits to an operation log replacing
 the diff blob, which changes this signature anyway.
 
-**Target:** `Document::apply(std::string_view operations)`, in
-`document.hpp`; `html::edit` and the public `Text::set_content` go. The op-log
-*semantics* stay exactly what they are today — this is the entry point moving
-to where v7.x can fill it in without breaking again.
+**Target:** `Document::edit(std::string_view operations)`, in `document.hpp`;
+`html::edit` goes. The op-log *semantics* stay exactly what they are today —
+this is the entry point moving to where v7.x can fill it in without breaking
+again. Named `edit` rather than `apply` to sit beside `is_editable`, and
+because JNI had already put it there: `jni_document.cpp` carried the comment
+*"odr::html::edit, but it belongs to Document"*.
+
+**`Text::set_content` stays.** An earlier draft of this plan removed it as the
+second road. That was wrong. The two are not one operation spelled twice: one
+edits a named element in process, the other replays a log a browser produced.
+`set_content` is mirrored in the java, python and objc bindings and exercised
+by the Swift suite, so removing it would take capability away and force a
+caller who wants to change one text run to assemble JSON. What was actually
+wrong here was the *filing* — an editing entry point in `namespace html`, whose
+only connection to html is that our JavaScript writes its input.
 
 ## Finding 4 — smaller things a major is the only chance to fix
 

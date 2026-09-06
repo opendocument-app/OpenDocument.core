@@ -315,6 +315,13 @@ void odr_python::bind_document(py::module_ &m) {
 
   py::class_<odr::Document>(m, "Document")
       .def("is_editable", &odr::Document::is_editable)
+      .def(
+          "edit",
+          [](const odr::Document &document, const std::string &operations) {
+            document.edit(operations);
+          },
+          py::arg("operations"),
+          "Apply the operations our browser-side editor produces.")
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
       // saving serialises the whole document; holding the GIL for it blocks

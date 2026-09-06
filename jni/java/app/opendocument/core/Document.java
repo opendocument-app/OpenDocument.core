@@ -52,8 +52,8 @@ public final class Document extends NativeResource {
     return new Filesystem(asFilesystemNative(handle()), this);
   }
 
-  /** Applies a diff; what {@link Html#edit} calls. */
-  void edit(String diff) {
+  /** Applies the operations our browser-side editor produces. */
+  public void edit(String diff) {
     editNative(handle(), diff);
   }
 
