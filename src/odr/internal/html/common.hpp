@@ -24,16 +24,21 @@ class File;
 
 namespace odr::internal::html {
 
+class StyleRegistry;
+
 struct WritingState {
   WritingState(HtmlWriter &out, const HtmlConfig &config,
-               HtmlResources &resources, const Logger &logger)
+               HtmlResources &resources, const Logger &logger,
+               StyleRegistry *styles = nullptr)
       : m_out{&out}, m_config{&config}, m_resources(&resources),
-        m_logger{&logger} {}
+        m_logger{&logger}, m_styles{styles} {}
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
   [[nodiscard]] const Logger &logger() const { return *m_logger; }
+  /// Where repeated style blocks are deduplicated, or null where they are not.
+  [[nodiscard]] StyleRegistry *styles() const { return m_styles; }
 
   /// The view's base direction, stated on its root.
   [[nodiscard]] TextDirection direction() const { return m_direction; }
@@ -44,6 +49,7 @@ private:
   const HtmlConfig *m_config;
   HtmlResources *m_resources;
   const Logger *m_logger;
+  StyleRegistry *m_styles;
   TextDirection m_direction{TextDirection::left_to_right};
 };
 

@@ -1,6 +1,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <ios>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -39,4 +40,47 @@ TEST(ViewStream, seek_out_of_range) {
   in.clear();
   in.seekg(-1, std::ios::beg);
   EXPECT_TRUE(in.fail());
+}
+
+// Nothing reaches the stream until the buffer is released, and the release
+// writes the prologue the held bytes need in front of them.
+TEST(DeferredBuffer, holds_until_released) {
+  std::ostringstream out;
+  stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
+  std::ostream deferred(&buffer);
+
+  deferred << "body";
+  EXPECT_EQ(out.str(), "");
+
+  buffer.release();
+  EXPECT_EQ(out.str(), "headbody");
+
+  deferred << "tail";
+  EXPECT_EQ(out.str(), "headbodytail");
+}
+
+// Past the cap it releases itself, so what it holds is bounded.
+TEST(DeferredBuffer, releases_itself_past_the_cap) {
+  std::ostringstream out;
+  stream::DeferredBuffer buffer(out, 4, [&out] { out << "head"; });
+  std::ostream deferred(&buffer);
+
+  deferred << "abc";
+  EXPECT_EQ(out.str(), "");
+
+  deferred << "de";
+  EXPECT_EQ(out.str(), "headabcde");
+}
+
+// Releasing twice writes the prologue once.
+TEST(DeferredBuffer, releases_once) {
+  std::ostringstream out;
+  stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
+  std::ostream deferred(&buffer);
+
+  deferred << "body";
+  buffer.release();
+  buffer.release();
+
+  EXPECT_EQ(out.str(), "headbody");
 }

@@ -300,8 +300,11 @@ std::vector<std::pair<std::string, ConfigVariant>> list_variant_cases() {
       {"odr-public/odt/about.odt", reflow},
       {"odr-public/docx/physics.docx", reflow},
 
-      // The output a reader gets rather than an editor.
+      // The output a reader gets rather than an editor. A sheet is pinned
+      // too: a cell holding one plain string drops the run around it only
+      // where nothing has to carry `contenteditable`.
       {"odr-public/odt/style-various-1.odt", read_only},
+      {"odr-public/ods/file_example_ODS_100.ods", read_only},
   };
 }
 

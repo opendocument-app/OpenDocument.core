@@ -1,6 +1,7 @@
 #include <odr/internal/html/html_writer.hpp>
 
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -64,9 +65,18 @@ void write_attributes(std::ostream &out, const HtmlAttributes &attributes) {
 
 void write_element_options(std::ostream &out,
                            const HtmlElementOptions &options) {
-  if (options.clazz && !is_empty(*options.clazz)) {
+  const bool has_clazz = options.clazz && !is_empty(*options.clazz);
+  if (has_clazz || options.style_class) {
     out << " class=\"";
-    write_writable(out, *options.clazz);
+    if (has_clazz) {
+      write_writable(out, *options.clazz);
+    }
+    if (options.style_class) {
+      if (has_clazz) {
+        out << " ";
+      }
+      out << *options.style_class;
+    }
     out << "\"";
   }
   if (options.style && !is_empty(*options.style)) {
@@ -105,6 +115,20 @@ HtmlElementOptions::set_attributes(std::optional<HtmlAttributes> _attributes) {
 HtmlElementOptions &
 HtmlElementOptions::set_style(std::optional<HtmlWritable> _style) {
   style = std::move(_style);
+  return *this;
+}
+
+HtmlElementOptions &HtmlElementOptions::set_style(std::string _style,
+                                                  StyleRegistry *registry) {
+  if (registry != nullptr) {
+    if (const std::string *name = registry->use(_style); name != nullptr) {
+      style_class = *name;
+      return *this;
+    }
+  }
+  if (!_style.empty()) {
+    style = std::move(_style);
+  }
   return *this;
 }
 

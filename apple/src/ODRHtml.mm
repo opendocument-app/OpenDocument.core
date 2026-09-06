@@ -104,6 +104,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _spreadsheetLimitByContent = config.spreadsheet_limit_by_content ? YES : NO;
   _spreadsheetGridlines =
       static_cast<ODRHtmlTableGridlines>(config.spreadsheet_gridlines);
+  _spreadsheetStyleBuffer =
+      static_cast<unsigned long long>(config.spreadsheet_style_buffer);
   _viewportMode = static_cast<ODRHtmlViewportMode>(config.viewport_mode);
   _spreadsheetViewportMode =
       config.spreadsheet_viewport_mode.has_value()
@@ -176,6 +178,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.spreadsheet_limit_by_content = _spreadsheetLimitByContent == YES;
   config.spreadsheet_gridlines =
       static_cast<odr::HtmlTableGridlines>(_spreadsheetGridlines);
+  config.spreadsheet_style_buffer =
+      static_cast<std::uint64_t>(_spreadsheetStyleBuffer);
   config.viewport_mode = static_cast<odr::HtmlViewportMode>(_viewportMode);
   if (_spreadsheetViewportMode != nil) {
     config.spreadsheet_viewport_mode = static_cast<odr::HtmlViewportMode>(

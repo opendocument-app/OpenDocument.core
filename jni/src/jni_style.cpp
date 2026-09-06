@@ -310,12 +310,13 @@ jobject make_table_cell_style(JNIEnv *env, const odr::TableCellStyle &style) {
       env, "app/opendocument/core/TableCellStyle",
       "(IILapp/opendocument/core/Color;"
       "Lapp/opendocument/core/DirectionalMeasure;"
-      "Lapp/opendocument/core/DirectionalString;Ljava/lang/Double;)V",
+      "Lapp/opendocument/core/DirectionalString;Ljava/lang/Double;"
+      "Ljava/lang/Boolean;)V",
       enum_code(style.horizontal_align), enum_code(style.vertical_align),
       make_color(env, style.background_color),
       make_directional_measure(env, style.padding),
       make_directional_string(env, style.border),
-      box_double(env, style.text_rotation));
+      box_double(env, style.text_rotation), box_boolean(env, style.wrap_text));
 }
 
 jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
@@ -421,6 +422,9 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   const auto set_double = [&](const char *name, const double value) {
     env->SetDoubleField(result, env->GetFieldID(cls, name, "D"), value);
   };
+  const auto set_long = [&](const char *name, const jlong value) {
+    env->SetLongField(result, env->GetFieldID(cls, name, "J"), value);
+  };
   const auto set_object = [&](const char *name, const char *signature,
                               jobject value) {
     env->SetObjectField(result, env->GetFieldID(cls, name, signature), value);
@@ -446,6 +450,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_object("spreadsheetCellLimit", "Ljava/lang/Long;",
              box_long(env, config.spreadsheet_cell_limit));
   set_boolean("spreadsheetLimitByContent", config.spreadsheet_limit_by_content);
+  set_long("spreadsheetStyleBuffer",
+           static_cast<jlong>(config.spreadsheet_style_buffer));
   set_object("spreadsheetGridlines",
              "Lapp/opendocument/core/HtmlTableGridlines;",
              enum_from_code(env, "app/opendocument/core/HtmlTableGridlines",
@@ -538,6 +544,9 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   const auto get_double = [&](const char *name) {
     return env->GetDoubleField(config, env->GetFieldID(cls, name, "D"));
   };
+  const auto get_long = [&](const char *name) {
+    return env->GetLongField(config, env->GetFieldID(cls, name, "J"));
+  };
   const auto get_object = [&](const char *name, const char *signature) {
     return env->GetObjectField(config, env->GetFieldID(cls, name, signature));
   };
@@ -592,6 +601,8 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       env->DeleteLocalRef(long_cls);
     }
   }
+  result.spreadsheet_style_buffer =
+      static_cast<std::uint64_t>(get_long("spreadsheetStyleBuffer"));
   result.spreadsheet_limit_by_content =
       get_boolean("spreadsheetLimitByContent");
   {

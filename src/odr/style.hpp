@@ -225,6 +225,9 @@ struct TableCellStyle final {
   DirectionalStyle<Measure> padding;
   DirectionalStyle<std::string> border;
   std::optional<double> text_rotation;
+  /// Whether the cell breaks its text into lines. Off in every spreadsheet
+  /// format unless the file turns it on.
+  std::optional<bool> wrap_text;
 
   void override(const TableCellStyle &other);
 };

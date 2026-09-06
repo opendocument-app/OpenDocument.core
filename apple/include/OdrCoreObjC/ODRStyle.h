@@ -227,6 +227,8 @@ NS_SWIFT_NAME(TableCellStyle)
 @property(nonatomic, readonly) ODRDirectionalString *border;
 /// `double`, boxed.
 @property(nonatomic, readonly, nullable) NSNumber *textRotation;
+/// `BOOL`, boxed.
+@property(nonatomic, readonly, nullable) NSNumber *wrapText;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

@@ -597,6 +597,79 @@ DecodedFile csv_file(const std::uint32_t rows, const std::uint32_t columns) {
   return DecodedFile(File::from_memory(csv), FileType::comma_separated_values);
 }
 
+/// A flat ODF sheet holding @p rows, each a `table:table-row`, under the
+/// `table:table-column`s in @p columns. The one cell style, `ce1`, aligns a
+/// cell to the top, so every cell that names it writes the same style block.
+DecodedFile fods_file(const std::string &rows,
+                      const std::string &columns = "") {
+  const std::string fods =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document)"
+      R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+      R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
+      R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
+      R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
+      R"( office:version="1.3")"
+      R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="ce1" style:family="table-cell">)"
+      R"(<style:table-cell-properties style:vertical-align="top"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="co1" style:family="table-column">)"
+      R"(<style:table-column-properties style:column-width="1in"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="ce2" style:family="table-cell">)"
+      R"(<style:table-cell-properties style:vertical-align="top")"
+      R"( style:wrap-option="wrap"/>)"
+      R"(</style:style>)"
+      R"(</office:automatic-styles>)"
+      R"(<office:body><office:spreadsheet><table:table table:name="Sheet1">)" +
+      columns + rows +
+      R"(</table:table></office:spreadsheet></office:body>)"
+      R"(</office:document>)";
+  return DecodedFile(File::from_memory(fods),
+                     FileType::opendocument_spreadsheet);
+}
+
+/// A cell holding @p text, styled by `ce1`, or by `ce2` where it wraps.
+std::string fods_cell(const std::string &text, const bool wraps = false) {
+  return R"(<table:table-cell table:style-name=")" +
+         std::string(wraps ? "ce2" : "ce1") +
+         R"(" office:value-type="string"><text:p>)" + text +
+         R"(</text:p></table:table-cell>)";
+}
+
+/// An empty cell, which the cell beside it may spill over.
+std::string fods_blank() { return "<table:table-cell/>"; }
+
+/// @p count columns of one inch, which is 96 css pixels. Without them a column
+/// is exactly its content's width and nothing can overflow it.
+std::string fods_columns(const std::uint32_t count) {
+  return R"(<table:table-column table:style-name="co1")"
+         R"( table:number-columns-repeated=")" +
+         std::to_string(count) + R"("/>)";
+}
+
+std::string fods_row(const std::string &cells) {
+  return "<table:table-row>" + cells + "</table:table-row>";
+}
+
+/// How many times @p needle occurs in @p haystack, without overlap.
+std::size_t count(const std::string &haystack, const std::string_view needle) {
+  std::size_t result = 0;
+  for (std::size_t at = haystack.find(needle); at != std::string::npos;
+       at = haystack.find(needle, at + needle.size())) {
+    ++result;
+  }
+  return result;
+}
+
+std::string render_sheet(const DecodedFile &file, const HtmlConfig &config) {
+  std::ostringstream out;
+  html::translate(file, config).list_views().at(0).write_html(out);
+  return std::move(out).str();
+}
+
 const HtmlView &view_at(const HtmlService &service,
                         const std::string_view path) {
   const auto it =
@@ -728,13 +801,121 @@ TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
   EXPECT_EQ(rendered(30, 3).rows, 5);
 }
 
+// #822: an inline `style` is the one shape a browser cannot share across the
+// cells of a sheet.
+TEST(html, a_sheet_defines_a_repeated_style_once_and_names_it) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one") + fods_cell("two") +
+                                      fods_cell("three"))),
+                   HtmlConfig());
+
+  // Named three times: the class stands in for an inline style, which outranks
+  // every rule the sheet stylesheets carry.
+  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
+            std::string::npos);
+  EXPECT_EQ(count(page, R"(<td class="c0">)"), 3);
+}
+
+// #822: a block is named the first time it is written, because the view is
+// walked once — nothing knows yet that this one will not be written again.
+TEST(html, a_sheet_names_a_style_it_writes_only_once_too) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
+            std::string::npos);
+  EXPECT_EQ(page.find(R"(<td style=")"), std::string::npos);
+}
+
+// #822: `td > x-p > x-s > text` is four nodes per cell before any content.
+TEST(html, a_cell_holding_one_plain_string_writes_no_box_of_its_own) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_NE(page.find(">one</td>"), std::string::npos);
+  EXPECT_EQ(page.find("<x-s"), std::string::npos);
+  EXPECT_EQ(page.find("<x-p"), std::string::npos);
+}
+
+// The run is what an editor addresses, so it stays wherever it is written.
+TEST(html, an_editable_cell_keeps_the_run_it_is_addressed_by) {
+  HtmlConfig config;
+  config.editable = true;
+
+  const std::string page = render_sheet(
+      fods_file(fods_row(fods_cell("one") + fods_cell("two"))), config);
+
+  EXPECT_NE(page.find(R"(<x-s contenteditable="true")"), std::string::npos);
+}
+
+// #822: a sheet cell does not break its text into lines unless the file says
+// to — `style:wrap-option` is `no-wrap` by default, and so is `wrapText`.
+TEST(html, a_sheet_cell_keeps_its_text_on_one_line) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
+            std::string::npos);
+}
+
+// #822: and it keeps the block it breaks into lines in, which is what holds the
+// row to the height the file states. The cell cuts what runs past its bottom
+// rather than letting it paint over the row below.
+TEST(html, a_cell_the_file_says_to_wrap_wraps) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one", true))), HtmlConfig());
+
+  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;overflow:hidden}"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(<td class="c0"><x-p )"), std::string::npos);
+}
+
+// #822: what a spreadsheet does with a line too long for its cell — over the
+// cell beside it while that one is empty, cut where the next one has something
+// to show. The spill is bounded, so it never paints over that content.
+TEST(html, a_cell_spills_over_a_blank_neighbour_and_is_cut_by_a_full_one) {
+  const std::string cut = render_sheet(
+      fods_file(fods_row(fods_cell("one") + fods_cell("two")), fods_columns(2)),
+      HtmlConfig());
+  const std::string spills = render_sheet(
+      fods_file(fods_row(fods_cell("one") + fods_blank() + fods_cell("three")),
+                fods_columns(3)),
+      HtmlConfig());
+
+  EXPECT_NE(cut.find("max-width:0;white-space:nowrap;overflow:hidden"),
+            std::string::npos);
+  EXPECT_NE(spills.find("max-width:0;white-space:nowrap;"
+                        "clip-path:inset(0 -96px 0 0)"),
+            std::string::npos);
+}
+
+// #822: and where nothing follows it at all, out onto the canvas — there is no
+// content to the right of the last column for it to paint over.
+TEST(html, a_cell_at_the_end_of_its_row_is_not_cut) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(fods_cell("one")), fods_columns(1)), HtmlConfig());
+
+  EXPECT_EQ(page.find("nowrap;overflow:hidden"), std::string::npos);
+  EXPECT_EQ(page.find("nowrap;clip-path"), std::string::npos);
+}
+
+// #822 is a sheet's problem: nothing else repeats a style block often enough.
+TEST(html, a_text_document_keeps_its_styles_inline) {
+  const std::string page = render_markdown("one\n\ntwo\n");
+
+  EXPECT_NE(page.find(R"(<x-p style="display:block;")"), std::string::npos);
+  EXPECT_EQ(page.find(".c1.c1.c1"), std::string::npos);
+}
+
 // #816
 TEST(html, a_printed_sheet_drops_the_ruler_and_fits_the_page) {
   const std::string sheet =
       render("odr-public/ods/file_example_ODS_10.ods", HtmlConfig());
 
-  // on screen the sheet keeps its stated width and its ruler
-  EXPECT_NE(sheet.find("<col style=\"width:"), std::string::npos);
+  // on screen the sheet keeps its stated width and its ruler. Every column of
+  // this sheet is the same width, so that width is a class (#822).
+  EXPECT_NE(sheet.find("<col class=\"c"), std::string::npos);
+  EXPECT_NE(sheet.find("{width:"), std::string::npos);
   EXPECT_NE(sheet.find("table-layout:fixed"), std::string::npos);
   EXPECT_NE(sheet.find("class=\"odr-sheet-column-header\""), std::string::npos);
 

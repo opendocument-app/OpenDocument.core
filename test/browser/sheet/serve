@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Extracts the emitted sheet stylesheet and script and serves the checks."""
+
+import functools
+import http.server
+import pathlib
+import socketserver
+
+PORT = 8732
+
+HERE = pathlib.Path(__file__).resolve().parent
+SOURCE = HERE.parents[2] / "src" / "odr" / "internal" / "html" / "frontend.cpp"
+PARTS = {
+    "document.css": 'constexpr std::string_view document_css = R"css(',
+    "spreadsheet.css": 'constexpr std::string_view spreadsheet_css = R"css(',
+    "spreadsheet.js": 'constexpr std::string_view spreadsheet_js = R"js(',
+}
+
+
+def extract(source: str, begin: str) -> str:
+    at = source.index(begin)
+    end = ')css";' if begin.endswith('R"css(') else ')js";'
+    return source[at + len(begin) : source.index(end, at)]
+
+
+def main() -> None:
+    source = SOURCE.read_text()
+    for name, begin in PARTS.items():
+        (HERE / name).write_text(extract(source, begin))
+    print(f"{SOURCE.name} -> {', '.join(PARTS)}")
+
+    handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler, directory=str(HERE)
+    )
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("127.0.0.1", PORT), handler) as server:
+        print(f"http://localhost:{PORT}/tests.html")
+        server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

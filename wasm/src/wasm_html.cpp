@@ -183,6 +183,11 @@ HtmlConfig to_html_config(const emscripten::val &value) {
                                          limit["rows"].as<std::uint32_t>(),
                                          limit["columns"].as<std::uint32_t>()));
   }
+  if (const emscripten::val buffer = value["spreadsheetStyleBuffer"];
+      !buffer.isUndefined() && !buffer.isNull()) {
+    config.spreadsheet_style_buffer =
+        static_cast<std::uint64_t>(buffer.as<double>());
+  }
   if (const emscripten::val limit = value["spreadsheetCellLimit"];
       !limit.isUndefined()) {
     // as a `number`, not a BigInt - a cell budget is nowhere near 2^53

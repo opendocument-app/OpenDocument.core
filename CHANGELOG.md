@@ -20,6 +20,15 @@ The release run heads these entries with the version and opens a fresh
   had set a global locale with a comma decimal separator. Adds a `fmt`
   dependency.
 
+- A sheet cell keeps its text on one line unless the file says to wrap it, read
+  into a new `TableCellStyle::wrap_text`. A line too long for its cell spills
+  over the empty cells beside it and is cut where the next has content. #238
+
+- A spreadsheet view writes far less html for the same rendering: repeated style
+  blocks become classes, and a plain cell drops the run around it. The register
+  file's 500,000 cells fall from 121 MB to 38 MB. New
+  `HtmlConfig::spreadsheet_style_buffer`. #822
+
 - New `Sheet::page_layout()`: the paper an ods states for a sheet, read from
   the master page its table style names. Mirrored in the Python, JNI and Apple
   bindings. Empty for xlsx, xls, numbers and csv.
