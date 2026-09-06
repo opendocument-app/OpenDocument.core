@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/internal/common/element_registry.hpp>
 #include <odr/internal/common/path.hpp>
 
 #include <odr/internal/ooxml/ooxml_util.hpp>
@@ -11,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -18,18 +20,14 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-class ElementRegistry final {
-public:
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-    pugi::xml_node node;
-  };
+struct RegistryElement final : ElementNode<ElementIdentifier> {
+  pugi::xml_node node;
+};
 
+class ElementRegistry final
+    : public internal::ElementRegistry<RegistryElement, ElementIdentifier,
+                                       std::vector<RegistryElement>> {
+public:
   struct ElementRelations final {
     const Relations *relations{nullptr};
     AbsPath origin;
@@ -88,10 +86,6 @@ public:
     bool is_covered{false};
   };
 
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type,
                                                           pugi::xml_node node);
   std::tuple<ElementIdentifier, Element &, Text &>
@@ -105,34 +99,38 @@ public:
                                              const Relations &relations,
                                              const AbsPath &origin);
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
-  [[nodiscard]] SheetCell &sheet_cell_element_at(ElementIdentifier id);
+  [[nodiscard]] Sheet &sheet_element_at(const ElementIdentifier id) {
+    return m_sheets.at(id);
+  }
+  [[nodiscard]] SheetCell &sheet_cell_element_at(const ElementIdentifier id) {
+    return m_sheet_cells.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Sheet &sheet_element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Sheet &
+  sheet_element_at(const ElementIdentifier id) const {
+    return m_sheets.at(id);
+  }
   [[nodiscard]] const SheetCell &
-  sheet_cell_element_at(ElementIdentifier id) const;
+  sheet_cell_element_at(const ElementIdentifier id) const {
+    return m_sheet_cells.at(id);
+  }
 
   [[nodiscard]] const ElementRelations *
-  element_relations(ElementIdentifier id) const;
+  element_relations(const ElementIdentifier id) const {
+    return m_element_relations.find(id);
+  }
 
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_shape(ElementIdentifier sheet_id, ElementIdentifier shape_id);
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, ElementRelations> m_element_relations;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Sheet> m_sheets;
-  std::unordered_map<ElementIdentifier, SheetCell> m_sheet_cells;
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
-  void check_sheet_id(ElementIdentifier id) const;
-  void check_sheet_cell_id(ElementIdentifier id) const;
+  SideTable<ElementRelations> m_element_relations;
+  SideTable<Text> m_texts;
+  SideTable<Sheet> m_sheets;
+  SideTable<SheetCell> m_sheet_cells;
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

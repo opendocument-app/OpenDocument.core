@@ -6,24 +6,10 @@
 
 namespace odr::internal::ooxml::spreadsheet {
 
-void ElementRegistry::clear() noexcept {
-  m_elements.clear();
-  m_element_relations.clear();
-  m_texts.clear();
-  m_sheets.clear();
-  m_sheet_cells.clear();
-}
-
-[[nodiscard]] std::size_t ElementRegistry::size() const noexcept {
-  return m_elements.size();
-}
-
 std::tuple<ElementIdentifier, ElementRegistry::Element &>
 ElementRegistry::create_element(const ElementType type,
                                 const pugi::xml_node node) {
-  Element &element = m_elements.emplace_back();
-  const ElementIdentifier element_id = m_elements.size();
-  element.type = type;
+  const auto &[element_id, element] = create_element_(type);
   element.node = node;
   return {element_id, element};
 }
@@ -34,16 +20,16 @@ ElementRegistry::create_text_element(const pugi::xml_node first_node,
                                      const pugi::xml_node last_node) {
   const auto &[element_id, element] =
       create_element(ElementType::text, first_node);
-  auto [it, success] = m_texts.emplace(element_id, Text{last_node});
-  return {element_id, element, it->second};
+  Text &text = m_texts.emplace(element_id, Text{last_node});
+  return {element_id, element, text};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
            ElementRegistry::Sheet &>
 ElementRegistry::create_sheet_element(const pugi::xml_node node) {
   const auto &[element_id, element] = create_element(ElementType::sheet, node);
-  auto [it, success] = m_sheets.emplace(element_id, Sheet{});
-  return {element_id, element, it->second};
+  Sheet &sheet = m_sheets.emplace(element_id, Sheet{});
+  return {element_id, element, sheet};
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,
@@ -52,9 +38,9 @@ ElementRegistry::create_sheet_cell_element(const pugi::xml_node node,
                                            const TablePosition &position) {
   const auto &[element_id, element] =
       create_element(ElementType::sheet_cell, node);
-  auto [it, success] =
+  SheetCell &sheet_cell =
       m_sheet_cells.emplace(element_id, SheetCell{.position = position});
-  return {element_id, element, it->second};
+  return {element_id, element, sheet_cell};
 }
 
 ElementRegistry::ElementRelations &
@@ -62,145 +48,26 @@ ElementRegistry::attach_element_relations(const ElementIdentifier id,
                                           const Relations &relations,
                                           const AbsPath &origin) {
   check_element_id(id);
-  if (m_element_relations.contains(id)) {
-    throw std::runtime_error("DocumentElementRegistry::attach_element_"
-                             "relations: relations already attached");
+  if (m_element_relations.find(id) != nullptr) {
+    throw std::runtime_error("ElementRegistry::attach_element_relations: "
+                             "relations already attached");
   }
-  ElementRelations &result = m_element_relations[id];
-  result.relations = &relations;
-  result.origin = origin;
-  return result;
-}
-
-ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-ElementRegistry::Sheet &
-ElementRegistry::sheet_element_at(const ElementIdentifier id) {
-  check_sheet_id(id);
-  return m_sheets.at(id);
-}
-
-ElementRegistry::SheetCell &
-ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) {
-  check_sheet_cell_id(id);
-  return m_sheet_cells.at(id);
-}
-
-const ElementRegistry::Element &
-ElementRegistry::element_at(const ElementIdentifier id) const {
-  check_element_id(id);
-  return m_elements.at(id - 1);
-}
-
-const ElementRegistry::Text &
-ElementRegistry::text_element_at(const ElementIdentifier id) const {
-  check_text_id(id);
-  return m_texts.at(id);
-}
-
-const ElementRegistry::Sheet &
-ElementRegistry::sheet_element_at(const ElementIdentifier id) const {
-  check_sheet_id(id);
-  return m_sheets.at(id);
-}
-
-const ElementRegistry::SheetCell &
-ElementRegistry::sheet_cell_element_at(const ElementIdentifier id) const {
-  check_sheet_cell_id(id);
-  return m_sheet_cells.at(id);
-}
-
-const ElementRegistry::ElementRelations *
-ElementRegistry::element_relations(const ElementIdentifier id) const {
-  if (const auto it = m_element_relations.find(id);
-      it != m_element_relations.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-void ElementRegistry::check_element_id(const ElementIdentifier id) const {
-  if (id == null_element_id) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: null identifier");
-  }
-  if (id - 1 >= m_elements.size()) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier out of range");
-  }
-}
-
-void ElementRegistry::check_text_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (!m_texts.contains(id)) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
-}
-
-void ElementRegistry::check_sheet_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (!m_sheets.contains(id)) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
-}
-
-void ElementRegistry::check_sheet_cell_id(const ElementIdentifier id) const {
-  check_element_id(id);
-  if (!m_sheet_cells.contains(id)) {
-    throw std::out_of_range(
-        "DocumentElementRegistry::check_id: identifier not found");
-  }
-}
-
-void ElementRegistry::append_child(const ElementIdentifier parent_id,
-                                   const ElementIdentifier child_id) {
-  check_element_id(parent_id);
-  check_element_id(child_id);
-
-  const ElementIdentifier previous_sibling_id =
-      element_at(parent_id).last_child_id;
-
-  element_at(child_id).parent_id = parent_id;
-  element_at(child_id).previous_sibling_id = previous_sibling_id;
-
-  if (element_at(parent_id).first_child_id == null_element_id) {
-    element_at(parent_id).first_child_id = child_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = child_id;
-  }
-  element_at(parent_id).last_child_id = child_id;
+  return m_element_relations.emplace(
+      id, ElementRelations{.relations = &relations, .origin = origin});
 }
 
 void ElementRegistry::append_shape(const ElementIdentifier sheet_id,
                                    const ElementIdentifier shape_id) {
-  check_sheet_id(sheet_id);
-  check_element_id(shape_id);
-
-  const ElementIdentifier previous_sibling_id =
-      sheet_element_at(sheet_id).last_shape_id;
-
-  element_at(shape_id).parent_id = sheet_id;
-  element_at(shape_id).previous_sibling_id = previous_sibling_id;
-
-  if (sheet_element_at(sheet_id).first_shape_id == null_element_id) {
-    sheet_element_at(sheet_id).first_shape_id = shape_id;
-  } else {
-    element_at(previous_sibling_id).next_sibling_id = shape_id;
-  }
-  sheet_element_at(sheet_id).last_shape_id = shape_id;
+  Sheet &sheet = sheet_element_at(sheet_id);
+  link_child(sheet_id, shape_id, sheet.first_shape_id, sheet.last_shape_id);
 }
 
 void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
                                         const ElementIdentifier cell_id) {
-  check_sheet_id(sheet_id);
-  check_element_id(cell_id);
-
+  if (m_sheets.find(sheet_id) == nullptr) {
+    throw std::out_of_range(
+        "ElementRegistry::append_sheet_cell: not a sheet identifier");
+  }
   element_at(cell_id).parent_id = sheet_id;
 }
 

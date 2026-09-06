@@ -5,6 +5,7 @@
 #include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -80,105 +81,16 @@ Document::parse_xml_(const AbsPath &path) {
 
 namespace {
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::SheetAdapter,
-                             public abstract::SheetCellAdapter,
-                             public abstract::LineBreakAdapter,
-                             public abstract::ParagraphAdapter,
-                             public abstract::SpanAdapter,
-                             public abstract::TextAdapter,
-                             public abstract::LinkAdapter,
-                             public abstract::FrameAdapter,
-                             public abstract::ImageAdapter {
+using AdapterBase = internal::RegistryElementAdapter<
+    ElementRegistry, abstract::SheetAdapter, abstract::SheetCellAdapter,
+    abstract::LineBreakAdapter, abstract::ParagraphAdapter,
+    abstract::SpanAdapter, abstract::TextAdapter, abstract::LinkAdapter,
+    abstract::FrameAdapter, abstract::ImageAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
-      : m_document(&document), m_registry(&registry) {}
-
-  [[nodiscard]] ElementType
-  element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
-  }
-
-  [[nodiscard]] ElementIdentifier
-  element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
-  }
-
-  [[nodiscard]] bool element_is_unique(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_self_locatable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return true;
-  }
-  [[nodiscard]] bool element_is_editable(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return false;
-  }
-  [[nodiscard]]
-  DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const SheetAdapter *
-  sheet_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet ? this : nullptr;
-  }
-  [[nodiscard]] const SheetCellAdapter *
-  sheet_cell_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::sheet_cell ? this : nullptr;
-  }
-  [[nodiscard]] const LineBreakAdapter *
-  line_break_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::line_break ? this : nullptr;
-  }
-  [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
-  }
-  [[nodiscard]] const SpanAdapter *
-  span_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::span ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::text ? this : nullptr;
-  }
-  [[nodiscard]] const LinkAdapter *
-  link_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::link ? this : nullptr;
-  }
-  [[nodiscard]] const FrameAdapter *
-  frame_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::frame ? this : nullptr;
-  }
-  [[nodiscard]] const ImageAdapter *
-  image_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::image ? this : nullptr;
-  }
+      : AdapterBase(registry), m_document(&document) {}
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
@@ -423,7 +335,6 @@ public:
 
 private:
   const Document *m_document{nullptr};
-  ElementRegistry *m_registry{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
