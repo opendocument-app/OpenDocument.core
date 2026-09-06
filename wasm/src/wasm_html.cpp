@@ -159,11 +159,6 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   read(value, "editable", config.editable);
   read(value, "textDocumentMargin", config.text_document_margin);
   read(value, "formatHtml", config.format_html);
-  read(value, "embedOutline", config.embed_outline);
-  read(value, "noDrm", config.no_drm);
-
-  read(value, "backgroundImageFormat", config.background_image_format);
-  read(value, "backgroundImageDpi", config.background_image_dpi);
 
   read(value, "pageRangeBegin", config.page_range_begin);
   if (const emscripten::val end = value["pageRangeEnd"];

@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: the inert `HtmlConfig` fields `background_image_format`,
+  `background_image_dpi`, `no_drm` and `embed_outline` are gone, with their
+  java, python, objc and wasm mirrors. Drop them; nothing replaces them.
+
+- **Breaking**: `TextFile::charset()` and the `UnknownCharset` exception are
+  gone. Use `TextFile::encoding()`, which returns `TextEncoding::unknown` where
+  `charset()` returned `nullopt`. The bindings' own `charset()` is unchanged.
+
 - **Breaking**: `GlobalParams` is gone, with its java, python and objc mirrors,
   `OdrAndroid.init`, and the `ODR_WITH_LIBMAGIC` / `ODR_BUNDLE_ASSETS` cmake
   options. All of it was inert; delete the calls, nothing replaces them.

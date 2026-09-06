@@ -49,8 +49,6 @@ NoMarkdownFile::NoMarkdownFile() : Exception("not a markdown file") {}
 
 NoJsonFile::NoJsonFile() : Exception("not a json file") {}
 
-UnknownCharset::UnknownCharset() : Exception("unknown charset") {}
-
 NoImageFile::NoImageFile() : Exception("not an image file") {}
 
 NoArchiveFile::NoArchiveFile() : Exception("not an archive file") {}

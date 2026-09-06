@@ -301,14 +301,6 @@ TextFile::TextFile(std::shared_ptr<internal::abstract::TextFile> impl)
 
 TextEncoding TextFile::encoding() const { return m_impl->encoding(); }
 
-std::optional<std::string> TextFile::charset() const {
-  const TextEncoding encoding = this->encoding();
-  if (encoding == TextEncoding::unknown) {
-    return {};
-  }
-  return std::string(text_encoding_to_string(encoding));
-}
-
 std::unique_ptr<std::istream> TextFile::stream() const {
   return m_impl->file()->stream();
 }
