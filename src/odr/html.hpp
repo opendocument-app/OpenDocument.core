@@ -293,20 +293,8 @@ namespace html {
 
 HtmlResourceLocator standard_resource_locator();
 
-/// @brief Translates a decoded file to HTML.
-///
-/// The one entry point for a file: it dispatches on the decoded type, so a
-/// caller that already narrowed to a @ref DocumentFile or a @ref PdfFile
-/// passes it here too.
+/// @brief Translates a decoded file to HTML, dispatching on the decoded type.
 HtmlService translate(const DecodedFile &file, const HtmlConfig &config,
-                      const Logger &logger = Logger::null());
-
-/// @brief Translates a text file to HTML, as a numbered line list.
-///
-/// Not what @ref translate(const DecodedFile &, const HtmlConfig &, const
-/// Logger &) does with one: it renders an xml as its source view and a csv as
-/// a table. Narrowing by hand is how a caller asks for the lines instead.
-HtmlService translate(const TextFile &text_file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
 /// @brief Translates a document to HTML.

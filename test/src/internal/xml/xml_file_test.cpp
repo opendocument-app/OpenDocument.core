@@ -110,8 +110,7 @@ TEST(XmlDeclaration, the_encoding_pseudo_attribute_is_read_off_the_bytes) {
   EXPECT_EQ(declared_encoding(R"(<?xml encoding="UTF-8")"), "");
 }
 
-/// The source view is what an xml file translates to. Opening the same bytes as
-/// a text file is how you ask for the line list instead.
+/// Opening the same bytes as a text file is how to ask for the line list.
 TEST(XmlHtml, opening_it_as_a_text_file_writes_the_line_list) {
   const HtmlService service = html::translate(
       DecodedFile(File::from_memory("<a><b/></a>"), FileType::text_file),

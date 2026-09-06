@@ -16,12 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- **Breaking**: `html::translate` is five overloads instead of twenty, taking a
-  `DecodedFile`, `TextFile`, `Document`, `Filesystem` or `Archive`. The
-  `cache_path` and the other narrowed-handle ones are gone, in every binding
-  too: drop the cache path. `TextFile` stays because it is not the same call —
-  it writes the numbered line list, where `translate(DecodedFile)` renders an
-  xml as its source view and a csv as a table.
+- **Breaking**: `html::translate` takes only a `DecodedFile`, `Document`,
+  `Filesystem` or `Archive` now; drop the cache path, in every binding. Open a
+  file as `FileType::text_file` to render it as a numbered line list.
 
 - **Breaking**: the inert `HtmlConfig` fields `background_image_format`,
   `background_image_dpi`, `no_drm` and `embed_outline` are gone, with their
