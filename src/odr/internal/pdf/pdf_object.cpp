@@ -26,10 +26,9 @@ bool name_char_is_regular(const unsigned char c) {
 } // namespace
 
 void StandardString::to_stream(std::ostream &out) const {
-  // 7.3.4.2: only the reverse solidus and unbalanced parentheses need
-  // escaping, but balance is a property of the whole string, so escape every
-  // parenthesis rather than track it. A literal carriage return is read back
-  // as an end-of-line marker, i.e. as `\n`, so it has to be escaped too.
+  // 7.3.4.2: balance is a property of the whole string, so escape every
+  // parenthesis rather than track it. A carriage return would read back as
+  // `\n`.
   out << "(";
   for (const char c : string) {
     switch (c) {

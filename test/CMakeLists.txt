@@ -114,6 +114,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_page_extractor.cpp"
         "src/internal/pdf/pdf_shading.cpp"
         "src/internal/pdf/pdf_test_file_builder.cpp"
+        "src/internal/pdf/pdf_writer.cpp"
 
         "src/internal/png/png_util_test.cpp"
 
