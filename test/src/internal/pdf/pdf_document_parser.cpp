@@ -490,6 +490,56 @@ TEST(DocumentParser, simple_font_widths) {
 // `order-EK52VKL0.pdf` is an HTTP response saved as `.pdf`) has every xref
 // offset and the `startxref` shifted, so the chain walk fails. A forward scan
 // rebuilds the table from the actual object positions.
+namespace {
+
+/// The offset the file's own `startxref` names, which is what the parser must
+/// report back.
+std::uint32_t declared_start_xref(const std::string &pdf) {
+  const std::size_t pos = pdf.rfind("startxref\n") + std::strlen("startxref\n");
+  return static_cast<std::uint32_t>(
+      std::stoul(pdf.substr(pos, pdf.find('\n', pos) - pos)));
+}
+
+} // namespace
+
+// The facts a writer appending an incremental update needs: where the newest
+// cross-reference section sits, how it is written, and the last id in use.
+TEST(DocumentParser, parse_facts_of_classic_xref_table) {
+  const std::string pdf = two_object_mini_pdf(true);
+  const DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+
+  EXPECT_FALSE(parser.is_recovered());
+  EXPECT_EQ(parser.xref_kind(), DocumentParser::XrefKind::table);
+  EXPECT_EQ(parser.start_xref_position(), declared_start_xref(pdf));
+  // the four objects the builder wrote
+  EXPECT_EQ(parser.highest_object_id(), 4u);
+}
+
+TEST(DocumentParser, parse_facts_of_xref_stream) {
+  const std::string pdf = two_object_mini_pdf(false);
+  const DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+
+  EXPECT_FALSE(parser.is_recovered());
+  EXPECT_EQ(parser.xref_kind(), DocumentParser::XrefKind::stream);
+  EXPECT_EQ(parser.start_xref_position(), declared_start_xref(pdf));
+  // the four objects plus the cross-reference stream itself
+  EXPECT_EQ(parser.highest_object_id(), 5u);
+}
+
+// A rebuilt table has no section of the file's own to chain onto, so a writer
+// has nothing to point `/Prev` at — and must refuse the file.
+TEST(DocumentParser, parse_facts_of_a_recovered_file) {
+  const std::string pdf =
+      "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\n\r\n" +
+      two_object_mini_pdf(true);
+  const DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+
+  EXPECT_TRUE(parser.is_recovered());
+  EXPECT_FALSE(parser.start_xref_position().has_value());
+  EXPECT_FALSE(parser.xref_kind().has_value());
+  EXPECT_EQ(parser.highest_object_id(), 4u);
+}
+
 TEST(DocumentParser, recovers_from_prepended_garbage) {
   const std::string pdf =
       "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\n\r\n" +
