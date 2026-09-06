@@ -266,6 +266,54 @@ Java_app_opendocument_core_Odr_openWithPreferenceNative(
   });
 }
 
+// app.opendocument.core.TextEncoding
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_TextEncoding_toStringNative(JNIEnv *env, jclass,
+                                                       jint encoding) {
+  return guarded(env, [&] {
+    return to_jstring(env, odr::text_encoding_to_string(
+                               static_cast<odr::TextEncoding>(encoding)));
+  });
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_app_opendocument_core_TextEncoding_namesNative(JNIEnv *env, jclass,
+                                                    jint encoding) {
+  return guarded(env, [&] {
+    return to_jstring_array(env, odr::text_encoding_names(
+                                     static_cast<odr::TextEncoding>(encoding)));
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_TextEncoding_isDecodableNative(JNIEnv *env, jclass,
+                                                          jint encoding) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(odr::text_encoding_is_decodable(
+        static_cast<odr::TextEncoding>(encoding)));
+  });
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_TextEncoding_byNameNative(JNIEnv *env, jclass,
+                                                     jstring name) {
+  return guarded(env, [&] {
+    return static_cast<jint>(odr::text_encoding_by_name(to_string(env, name)));
+  });
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_app_opendocument_core_TextEncoding_allNative(JNIEnv *env, jclass) {
+  return guarded(env, [&] {
+    std::vector<jint> codes;
+    for (const odr::TextEncoding encoding : odr::all_text_encodings()) {
+      codes.push_back(static_cast<jint>(encoding));
+    }
+    return to_jint_array(env, codes);
+  });
+}
+
 // app.opendocument.core.TablePosition
 
 extern "C" JNIEXPORT jint JNICALL

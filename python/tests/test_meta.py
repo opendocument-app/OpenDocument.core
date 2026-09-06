@@ -128,3 +128,30 @@ def test_mimetype_names_what_is_inside_the_container(odt_path):
     # An ODF file is a ZIP, and the answer worth having is the one from inside
     # it. Detection opens the container to get there.
     assert pyodr.mimetype(str(odt_path)) == "application/vnd.oasis.opendocument.text"
+
+
+def test_text_encoding_lookups():
+    assert pyodr.TextEncoding.utf8 in pyodr.all_text_encodings()
+    # `unknown` is the one with no name, and is left out
+    assert pyodr.TextEncoding.unknown not in pyodr.all_text_encodings()
+
+    assert (
+        pyodr.text_encoding_to_string(pyodr.TextEncoding.windows_1252) == "windows-1252"
+    )
+    # case and separators are ignored, so an alias resolves
+    assert pyodr.text_encoding_by_name("CP1252") == pyodr.TextEncoding.windows_1252
+    assert pyodr.text_encoding_by_name("nope") == pyodr.TextEncoding.unknown
+    assert "windows-1252" in pyodr.text_encoding_names(pyodr.TextEncoding.windows_1252)
+
+    assert pyodr.text_encoding_is_decodable(pyodr.TextEncoding.utf8)
+    # named so a caller can say what a file is, but not decoded here
+    assert not pyodr.text_encoding_is_decodable(pyodr.TextEncoding.shift_jis)
+
+
+def test_text_file_reports_its_encoding(tmp_path):
+    path = tmp_path / "plain.txt"
+    path.write_text("hello", encoding="utf-8")
+
+    text_file = pyodr.open(str(path)).as_text_file()
+    assert text_file.encoding() != pyodr.TextEncoding.unknown
+    assert isinstance(text_file.charset(), str)

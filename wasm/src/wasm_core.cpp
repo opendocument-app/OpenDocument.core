@@ -52,8 +52,9 @@ emscripten::val file_types() {
 }
 
 /// Enum name to ordinal, so the JS side never restates an ordinal by hand.
-/// `FileType`, `FileCategory` and `DocumentType` are derived from the library's
-/// tables and cannot drift; the rest have no runtime table and are listed here,
+/// `FileType`, `FileCategory`, `DocumentType` and `TextEncoding` are derived
+/// from the library's tables and cannot drift; the rest have no runtime table
+/// and are listed here,
 /// pinned by `tests/enums.test.mjs`.
 emscripten::val enum_tables() {
   const auto table = [](const auto &...entries) {
@@ -87,8 +88,17 @@ emscripten::val enum_tables() {
                       static_cast<int>(type));
   }
 
+  // `all_text_encodings` leaves `unknown` out, and it is the one with no name
+  emscripten::val text_encoding = emscripten::val::object();
+  text_encoding.set("unknown", static_cast<int>(TextEncoding::unknown));
+  for (const TextEncoding encoding : odr::all_text_encodings()) {
+    text_encoding.set(std::string(odr::text_encoding_to_string(encoding)),
+                      static_cast<int>(encoding));
+  }
+
   emscripten::val result = emscripten::val::object();
   result.set("FileType", file_type);
+  result.set("TextEncoding", text_encoding);
   result.set("FileCategory", file_category);
   result.set("DocumentType", document_type);
   result.set("HtmlResourceType",

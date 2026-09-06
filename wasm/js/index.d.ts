@@ -5,6 +5,7 @@
 export interface EnumTables {
   FileType: Record<string, number>;
   FileCategory: Record<string, number>;
+  TextEncoding: Record<string, number>;
   DocumentType: Record<string, number>;
   HtmlResourceType: Record<string, number>;
   HtmlColorScheme: Record<string, number>;

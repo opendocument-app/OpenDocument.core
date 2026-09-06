@@ -522,6 +522,15 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 @implementation ODRTextFile
 
+- (ODRTextEncoding)encoding {
+  return guarded_value(
+      [&] {
+        return static_cast<ODRTextEncoding>(
+            self.handle.as_text_file().encoding());
+      },
+      ODRTextEncodingUnknown);
+}
+
 - (nullable NSString *)charset {
   return guarded_value(
       [&]() -> NSString * {

@@ -149,6 +149,7 @@ add_jar(odr_java
         "java/app/opendocument/core/TableColumnStyle.java"
         "java/app/opendocument/core/TableDimensions.java"
         "java/app/opendocument/core/TablePosition.java"
+        "java/app/opendocument/core/TextEncoding.java"
         "java/app/opendocument/core/TableRow.java"
         "java/app/opendocument/core/TableRowStyle.java"
         "java/app/opendocument/core/TableStyle.java"
@@ -196,6 +197,7 @@ if (ODR_TEST AND NOT ANDROID)
             "tests/app/opendocument/core/HttpServerTest.java"
             "tests/app/opendocument/core/LoggerTest.java"
             "tests/app/opendocument/core/MetaTest.java"
+            "tests/app/opendocument/core/TextEncodingTest.java"
             # shared with the instrumented suite of the AAR, see `android/`
             "testfixtures/app/opendocument/core/TestFiles.java"
             # `RESOURCES NAMESPACE` rather than listing the file under SOURCES:

@@ -100,6 +100,52 @@ void odr_python::bind_file(py::module_ &m) {
       .value("audio", odr::FileCategory::audio)
       .value("video", odr::FileCategory::video);
 
+  py::enum_<odr::TextEncoding>(
+      m, "TextEncoding",
+      "A text encoding. Only some can be decoded - see\n"
+      "`text_encoding_is_decodable`.")
+      .value("unknown", odr::TextEncoding::unknown)
+      .value("utf8", odr::TextEncoding::utf8)
+      .value("utf16le", odr::TextEncoding::utf16le)
+      .value("utf16be", odr::TextEncoding::utf16be)
+      .value("utf32le", odr::TextEncoding::utf32le)
+      .value("utf32be", odr::TextEncoding::utf32be)
+      .value("ibm866", odr::TextEncoding::ibm866)
+      .value("iso_8859_1", odr::TextEncoding::iso_8859_1)
+      .value("iso_8859_2", odr::TextEncoding::iso_8859_2)
+      .value("iso_8859_3", odr::TextEncoding::iso_8859_3)
+      .value("iso_8859_4", odr::TextEncoding::iso_8859_4)
+      .value("iso_8859_5", odr::TextEncoding::iso_8859_5)
+      .value("iso_8859_6", odr::TextEncoding::iso_8859_6)
+      .value("iso_8859_7", odr::TextEncoding::iso_8859_7)
+      .value("iso_8859_8", odr::TextEncoding::iso_8859_8)
+      .value("iso_8859_10", odr::TextEncoding::iso_8859_10)
+      .value("iso_8859_13", odr::TextEncoding::iso_8859_13)
+      .value("iso_8859_14", odr::TextEncoding::iso_8859_14)
+      .value("iso_8859_15", odr::TextEncoding::iso_8859_15)
+      .value("iso_8859_16", odr::TextEncoding::iso_8859_16)
+      .value("koi8_r", odr::TextEncoding::koi8_r)
+      .value("koi8_u", odr::TextEncoding::koi8_u)
+      .value("macintosh", odr::TextEncoding::macintosh)
+      .value("windows_874", odr::TextEncoding::windows_874)
+      .value("windows_1250", odr::TextEncoding::windows_1250)
+      .value("windows_1251", odr::TextEncoding::windows_1251)
+      .value("windows_1252", odr::TextEncoding::windows_1252)
+      .value("windows_1253", odr::TextEncoding::windows_1253)
+      .value("windows_1254", odr::TextEncoding::windows_1254)
+      .value("windows_1255", odr::TextEncoding::windows_1255)
+      .value("windows_1256", odr::TextEncoding::windows_1256)
+      .value("windows_1257", odr::TextEncoding::windows_1257)
+      .value("windows_1258", odr::TextEncoding::windows_1258)
+      .value("x_mac_cyrillic", odr::TextEncoding::x_mac_cyrillic)
+      .value("big5", odr::TextEncoding::big5)
+      .value("euc_jp", odr::TextEncoding::euc_jp)
+      .value("euc_kr", odr::TextEncoding::euc_kr)
+      .value("gb18030", odr::TextEncoding::gb18030)
+      .value("iso_2022_jp", odr::TextEncoding::iso_2022_jp)
+      .value("iso_2022_kr", odr::TextEncoding::iso_2022_kr)
+      .value("shift_jis", odr::TextEncoding::shift_jis);
+
   py::enum_<odr::FileLocation>(m, "FileLocation")
       .value("unknown", odr::FileLocation::unknown)
       .value("memory", odr::FileLocation::memory)
@@ -213,6 +259,8 @@ void odr_python::bind_file(py::module_ &m) {
       .def("as_font_file", &odr::DecodedFile::as_font_file);
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
+      .def("encoding", &odr::TextFile::encoding,
+           "The encoding the bytes were detected as, or decoded with.")
       .def("charset",
            [](const odr::TextFile &file) -> std::optional<std::string> {
              const odr::TextEncoding encoding = file.encoding();
