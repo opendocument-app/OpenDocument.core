@@ -9,7 +9,6 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/font.hpp>
-#include <odr/global_params.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>

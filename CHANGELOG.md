@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `GlobalParams` is gone, with its java, python and objc mirrors,
+  `OdrAndroid.init`, and the `ODR_WITH_LIBMAGIC` / `ODR_BUNDLE_ASSETS` cmake
+  options. All of it was inert; delete the calls, nothing replaces them.
+
 - **Breaking**: building `odr` from source now needs a **C++23** compiler. Using
   it does not — the public headers still compile as C++20, and the package
   forces no standard on a consumer.

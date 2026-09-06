@@ -40,7 +40,6 @@ set(ODR_APPLE_PUBLIC_HEADERS
         "include/OdrCoreObjC/OdrCoreObjC.h"
         "include/OdrCoreObjC/ODRDocumentElement.h"
         "include/OdrCoreObjC/ODRError.h"
-        "include/OdrCoreObjC/ODRGlobalParams.h"
         "include/OdrCoreObjC/ODRDocument.h"
         "include/OdrCoreObjC/ODRFile.h"
         "include/OdrCoreObjC/ODRFilesystem.h"
@@ -54,7 +53,6 @@ set(ODR_APPLE_PUBLIC_HEADERS
 
 add_library(odr_apple SHARED
         "src/ODRInternal.mm"
-        "src/ODRGlobalParams.mm"
         "src/ODRDocument.mm"
         "src/ODRDocumentElement.mm"
         "src/ODRFile.mm"

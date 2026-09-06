@@ -16,12 +16,6 @@ option(ODR_TEST_FETCH_DATA "Fetch the test data pinned in test/data.cmake" OFF)
 option(ODR_CLI "enable command line interface" ON)
 option(ODR_WITH_HTTP_SERVER "Build the HTTP server (requires cpp-httplib)" ON)
 option(ODR_CLANG_TIDY "Run clang-tidy static analysis" OFF)
-# Removed, and accepted only so a consumer still passing it keeps configuring.
-# `odr::mimetype` is our own detection now: it reads inside zip and cfb
-# containers, which libmagic cannot, and it costs neither a dependency nor the
-# 8 MB `magic.mgc` database every consumer had to ship and point us at.
-option(ODR_WITH_LIBMAGIC "Removed, does nothing (deprecated)" OFF)
-option(ODR_BUNDLE_ASSETS "Removed, does nothing (deprecated)" OFF)
 option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
@@ -100,7 +94,6 @@ set(ODR_SOURCE_FILES
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
         "src/odr/filesystem.cpp"
-        "src/odr/global_params.cpp"
         "src/odr/html.cpp"
         "src/odr/logger.cpp"
         "src/odr/odr.cpp"
@@ -345,18 +338,6 @@ if (ODR_WITH_HTTP_SERVER)
             PRIVATE
             ODR_WITH_HTTP_SERVER
     )
-endif ()
-if (ODR_WITH_LIBMAGIC)
-    message(DEPRECATION
-            "ODR_WITH_LIBMAGIC no longer does anything: libmagic is gone and "
-            "`odr::mimetype` is our own detection. Drop the option; "
-            "`GlobalParams::libmagic_database_path` is inert too.")
-endif ()
-if (ODR_BUNDLE_ASSETS)
-    message(DEPRECATION
-            "ODR_BUNDLE_ASSETS no longer does anything: the css and js are "
-            "part of the library and there is nothing left to ship. Drop the "
-            "option; `GlobalParams::odr_core_data_path` is inert too.")
 endif ()
 
 configure_file("src/odr/internal/project_info.cpp.in" "src/odr/internal/project_info.cpp")
