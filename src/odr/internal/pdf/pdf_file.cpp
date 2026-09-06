@@ -1,5 +1,17 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 
+#include <odr/internal/pdf/pdf_annotation.hpp>
+#include <odr/internal/pdf/pdf_document.hpp>
+#include <odr/internal/pdf/pdf_document_element.hpp>
+#include <odr/internal/pdf/pdf_writer.hpp>
+
+#include <array>
+#include <map>
+#include <stdexcept>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
@@ -173,6 +185,128 @@ bool PdfFile::is_decodable() const noexcept {
 
 DocumentParser PdfFile::create_parser(const Logger &logger) const {
   return DocumentParser(m_file->stream(), m_decryptor, logger);
+}
+
+namespace {
+
+/// A required member of `value`, refused rather than defaulted.
+const nlohmann::json &at(const nlohmann::json &value, const char *key) {
+  const auto it = value.find(key);
+  if (it == value.end()) {
+    throw std::invalid_argument(std::string("annotation is missing /") + key);
+  }
+  return *it;
+}
+
+std::array<double, 3> read_color(const nlohmann::json &value) {
+  if (!value.is_array() || value.size() != 3) {
+    throw std::invalid_argument("color is not three components");
+  }
+  return {value[0].get<double>(), value[1].get<double>(),
+          value[2].get<double>()};
+}
+
+AnnotationCommon read_common(const nlohmann::json &value) {
+  AnnotationCommon result;
+  result.color = read_color(at(value, "color"));
+  result.opacity = value.value("opacity", 1.0);
+  result.author = value.value("author", std::string());
+  result.contents = value.value("contents", std::string());
+  return result;
+}
+
+TextMarkupKind read_markup_kind(const std::string &type) {
+  if (type == "highlight") {
+    return TextMarkupKind::highlight;
+  }
+  if (type == "underline") {
+    return TextMarkupKind::underline;
+  }
+  if (type == "strikeOut") {
+    return TextMarkupKind::strike_out;
+  }
+  if (type == "squiggly") {
+    return TextMarkupKind::squiggly;
+  }
+  throw std::invalid_argument("unknown annotation type " + type);
+}
+
+TextMarkup read_text_markup(const nlohmann::json &value,
+                            const std::string &type) {
+  TextMarkup result;
+  result.kind = read_markup_kind(type);
+  for (const nlohmann::json &quad : at(value, "quads")) {
+    if (!quad.is_array() || quad.size() != 8) {
+      throw std::invalid_argument("quad is not eight coordinates");
+    }
+    Quad &out = result.quads.emplace_back();
+    for (std::size_t i = 0; i < out.size(); ++i) {
+      out[i] = quad[i].get<double>();
+    }
+  }
+  result.common = read_common(value);
+  return result;
+}
+
+Ink read_ink(const nlohmann::json &value) {
+  Ink result;
+  for (const nlohmann::json &stroke : at(value, "strokes")) {
+    if (!stroke.is_array() || stroke.empty() || stroke.size() % 2 != 0) {
+      throw std::invalid_argument("stroke is not a sequence of x y pairs");
+    }
+    result.strokes.push_back(stroke.get<std::vector<double>>());
+  }
+  result.width = value.value("width", 1.0);
+  result.common = read_common(value);
+  return result;
+}
+
+} // namespace
+
+void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
+                       const Logger &logger) const {
+  nlohmann::json json;
+  try {
+    json = nlohmann::json::parse(annotations);
+  } catch (const nlohmann::json::exception &e) {
+    throw std::invalid_argument(std::string("annotations are not json: ") +
+                                e.what());
+  }
+
+  // the guard against a payload from a frontend this build does not know
+  if (json.value("version", 0) != 1) {
+    throw std::invalid_argument("unsupported annotation format version");
+  }
+
+  DocumentParser parser = create_parser(logger);
+  const std::unique_ptr<Document> document = parser.parse_document();
+  const std::vector<Page *> pages = document->collect_pages();
+
+  IncrementalWriter writer(parser);
+  // one page rewrite per page, however many annotations land on it
+  std::map<Page *, std::vector<ObjectReference>> by_page;
+
+  for (const nlohmann::json &value :
+       json.value("annotations", nlohmann::json::array())) {
+    const auto index = at(value, "page").get<std::size_t>();
+    if (index >= pages.size()) {
+      throw std::invalid_argument("annotation names page " +
+                                  std::to_string(index) +
+                                  ", which is not there");
+    }
+    const auto type = at(value, "type").get<std::string>();
+
+    by_page[pages[index]].push_back(
+        type == "ink"
+            ? write_ink(writer, read_ink(value))
+            : write_text_markup(writer, read_text_markup(value, type)));
+  }
+
+  for (const auto &[page, references] : by_page) {
+    append_page_annotations(writer, *page, references);
+  }
+
+  writer.write(out);
 }
 
 } // namespace odr::internal::pdf

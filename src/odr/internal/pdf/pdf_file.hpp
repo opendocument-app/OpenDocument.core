@@ -28,6 +28,9 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
+  void annotate(std::string_view annotations, std::ostream &out,
+                const Logger &logger) const override;
+
   [[nodiscard]] DocumentParser
   create_parser(const Logger &logger = Logger::null()) const;
 
