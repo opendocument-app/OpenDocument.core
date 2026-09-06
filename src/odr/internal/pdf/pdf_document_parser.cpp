@@ -1565,7 +1565,7 @@ std::optional<DocumentParser::XrefKind> DocumentParser::xref_kind() const {
 bool DocumentParser::is_recovered() const { return m_recovered; }
 
 std::uint64_t DocumentParser::highest_object_id() const {
-  // the table is keyed by `ObjectReference`, which orders by id first
+  // keyed by `ObjectReference`, which orders by id first
   return m_xref.table.empty() ? 0 : m_xref.table.rbegin()->first.id;
 }
 
@@ -1859,8 +1859,7 @@ std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
   while (position.has_value() && visited.insert(*position).second) {
     auto [xref, trailer_dict, kind] = read_xref_section(*position);
 
-    // The newest section is the one an appended section chains onto, so it is
-    // the one whose position and kind a writer needs.
+    // the newest section is the one an appended section chains onto
     if (!m_start_xref_position.has_value()) {
       m_start_xref_position = position;
       m_xref_kind = kind;
@@ -1899,8 +1898,7 @@ void DocumentParser::recover_xref() {
   m_objects.clear();
   m_object_streams.clear();
   m_recovered = true;
-  // A partially walked chain may have recorded these before it threw, and a
-  // rebuilt table has no section of the file's own to chain onto anyway.
+  // a partially walked chain may have recorded these before it threw
   m_start_xref_position.reset();
   m_xref_kind.reset();
 

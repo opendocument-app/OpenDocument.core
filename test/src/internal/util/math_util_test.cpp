@@ -38,8 +38,6 @@ TEST(Transform2D, compose_is_ordered) {
   EXPECT_DOUBLE_EQ(q[1], 10);
 }
 
-// Applying a transform then its inverse returns the original point, whatever
-// the transform is made of.
 TEST(Transform2D, inverse_undoes_apply) {
   const Transform2D m = Transform2D::translation(-30, -40) *
                         Transform2D::scaling_translation(1, -1, 0, 800) *
@@ -62,7 +60,6 @@ TEST(Transform2D, inverse_of_identity_is_identity) {
   EXPECT_DOUBLE_EQ(p[1], 4);
 }
 
-// A singular linear part collapses the plane, so nothing undoes it.
 TEST(Transform2D, inverse_of_singular_is_nullopt) {
   EXPECT_FALSE(Transform2D::scaling(0, 1).inverse().has_value());
   EXPECT_FALSE((Transform2D{1, 2, 2, 4, 5, 6}).inverse().has_value());

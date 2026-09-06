@@ -167,15 +167,13 @@ TEST(PdfObject, to_string) {
   EXPECT_EQ(Object(ObjectReference(12, 0)).to_string(), "12 0 R");
 }
 
-// 7.3.3 knows no exponent form, and the host locale must not reach the output.
+// 7.3.3 has no exponent form, and the host locale must not reach the output.
 TEST(PdfObject, real_to_string_is_plain_decimal) {
   EXPECT_EQ(Object(Real{1.5}).to_string(), "1.5");
   EXPECT_EQ(Object(Real{0.0}).to_string(), "0");
   EXPECT_EQ(Object(Real{-72.25}).to_string(), "-72.25");
-  // `{:g}` would have written these as `1e-05` and `1.44e+04`
   EXPECT_EQ(Object(Real{0.00001}).to_string(), "0.00001");
   EXPECT_EQ(Object(Real{14400.0}).to_string(), "14400");
-  // and would have rounded this one to four significant digits
   EXPECT_EQ(Object(Real{612.345}).to_string(), "612.345");
 }
 
@@ -185,7 +183,7 @@ TEST(PdfObject, standard_string_escapes_delimiters) {
   EXPECT_EQ(Object(StandardString{R"(back\slash)"}).to_string(),
             R"((back\\slash))");
   EXPECT_EQ(Object(StandardString{"cr\rlf"}).to_string(), R"((cr\rlf))");
-  // a line feed stands for itself (7.3.4.2), so it is written raw
+  // 7.3.4.2: a line feed stands for itself
   EXPECT_EQ(Object(StandardString{"a\nb"}).to_string(), "(a\nb)");
 }
 
@@ -217,8 +215,7 @@ TEST(PdfObject, container_to_string) {
   EXPECT_EQ(Object(Dictionary{}).to_string(), "<<>>");
 }
 
-// A key is a name and is escaped as one, or a space in it would split the
-// dictionary in two on the way back in.
+// A space in a key would split the dictionary in two on the way back in.
 TEST(PdfObject, dictionary_key_is_escaped) {
   Dictionary dictionary;
   dictionary["Odd Key"] = Object(Integer{1});

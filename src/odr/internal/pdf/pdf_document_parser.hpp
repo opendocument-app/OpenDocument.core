@@ -54,29 +54,24 @@ public:
   [[nodiscard]] const Xref &xref() const;
   [[nodiscard]] const Dictionary &trailer() const;
 
-  /// How a cross-reference section states itself. A section appended to the
-  /// file has to match the newest one: a reader arriving over `/Prev` expects
-  /// what it already found.
+  /// How a cross-reference section is written. An appended section has to
+  /// match the newest one.
   enum class XrefKind {
     table,  ///< classic `xref` table plus `trailer` (7.5.4)
     stream, ///< cross-reference stream (7.5.8)
   };
 
-  /// The byte offset of the newest cross-reference section — what an appended
-  /// section's `/Prev` points back at. `nullopt` when the xref was recovered.
+  /// Byte offset of the newest cross-reference section, what an appended
+  /// section's `/Prev` points at. `nullopt` when the xref was recovered.
   [[nodiscard]] std::optional<std::uint32_t> start_xref_position() const;
-  /// How the newest cross-reference section is written. `nullopt` when the
-  /// xref was recovered.
+  /// `nullopt` when the xref was recovered.
   [[nodiscard]] std::optional<XrefKind> xref_kind() const;
 
-  /// Whether the cross-reference table was rebuilt by scanning the file
-  /// instead of read from the file's own. Nothing may be appended to such a
-  /// file: its structure is broken, so an incremental update onto it would
-  /// only be readable by us.
+  /// Whether the cross-reference table was rebuilt by scanning the file.
+  /// Nothing may be appended to such a file.
   [[nodiscard]] bool is_recovered() const;
 
-  /// The highest object id the cross-reference table carries, so new ids
-  /// continue past it. 0 for an empty table.
+  /// Highest object id in the cross-reference table; 0 when empty.
   [[nodiscard]] std::uint64_t highest_object_id() const;
 
   /// Whether the file declares an `/Encrypt` dictionary.
@@ -119,8 +114,7 @@ public:
   [[nodiscard]] Object deep_resolve_object_copy(Object object);
 
 private:
-  /// One cross-reference section as read. `trailer` is the trailer dictionary
-  /// (a cross-reference stream's own dictionary doubles as one).
+  /// A cross-reference stream's own dictionary doubles as the trailer.
   struct XrefSection {
     Xref xref;
     Dictionary trailer;
@@ -133,7 +127,7 @@ private:
 
   /// Walk the `startxref` → `Prev` chain and return the merged cross-reference
   /// table together with the newest (first-seen) trailer dictionary. Records
-  /// the newest section's position and kind on the way.
+  /// the newest section's position and kind.
   [[nodiscard]] std::pair<Xref, Dictionary> read_trailer_chain();
 
   void recover_xref();
