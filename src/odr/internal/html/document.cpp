@@ -270,7 +270,9 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     return resources;
   }
 
-  StyleRegistry styles;
+  // One prefix, so no name can be read as another's.
+  StyleRegistry styles(StyleRegistry::Rank::replaces_inline,
+                       StyleRegistry::Digits::base36);
   WritingState head_state(out, config, resources, logger, &styles);
   head_state.set_direction(document_direction(document));
 
