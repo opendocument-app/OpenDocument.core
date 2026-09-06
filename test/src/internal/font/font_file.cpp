@@ -145,10 +145,8 @@ TEST(FontFileTest, specimen_page_embeds_font_and_glyph_grid) {
   const odr::FontFile font_file(std::make_shared<font::FontFile>(
       std::make_shared<MemoryFile>(sample_ttf()), FileType::truetype_font));
 
-  const std::string cache_path =
-      (std::filesystem::temp_directory_path() / "odr_font_test").string();
   const HtmlConfig config;
-  const HtmlService service = html::translate(font_file, cache_path, config);
+  const HtmlService service = html::translate(font_file, config);
 
   const HtmlViews &views = service.list_views();
   ASSERT_EQ(views.size(), 1);

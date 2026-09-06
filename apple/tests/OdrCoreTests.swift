@@ -121,7 +121,7 @@ final class HtmlTests: XCTestCase {
   private func service() throws -> HtmlService {
     let file = try DecodedFile.decode(path: try Fixture.odt())
     return try HtmlTranslator.translate(
-      file: file, cachePath: try temporaryDirectory(), config: HtmlConfig())
+      file: file, config: HtmlConfig())
   }
 
   func testRendersHtml() throws {
@@ -152,7 +152,7 @@ final class HtmlTests: XCTestCase {
 
     let file = try DecodedFile.decode(path: try Fixture.odt())
     let service = try HtmlTranslator.translate(
-      file: file, cachePath: try temporaryDirectory(), config: config)
+      file: file, config: config)
     var resources: NSArray?
     let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
 
@@ -188,7 +188,7 @@ final class HtmlTests: XCTestCase {
       "alpha,beta\ngamma,delta\nepsilon,zeta\n", as: "table.csv")
     let file = try DecodedFile.decode(path: path)
     let service = try HtmlTranslator.translate(
-      file: file, cachePath: try temporaryDirectory(), config: config)
+      file: file, config: config)
     var resources: NSArray?
     let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
 
@@ -242,8 +242,7 @@ final class HttpServerTests: XCTestCase {
     let config = HtmlConfig()
     config.relativeResourcePaths = false
     let service = try HtmlTranslator.translate(
-      file: try DecodedFile.decode(path: try Fixture.odt()),
-      cachePath: try temporaryDirectory(), config: config)
+      file: try DecodedFile.decode(path: try Fixture.odt()), config: config)
 
     let server = HttpServer()
     try server.connect(service, prefix: "doc")

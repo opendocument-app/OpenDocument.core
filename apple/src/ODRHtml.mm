@@ -504,61 +504,51 @@ NSArray<ODRHtmlResource *> *to_nsarray(const odr::HtmlResources &resources) {
 @implementation ODRHtmlTranslator
 
 + (nullable ODRHtmlService *)translateFile:(ODRDecodedFile *)file
-                                 cachePath:(NSString *)cachePath
                                     config:(ODRHtmlConfig *)config
                                      error:(NSError **)error {
   return [ODRHtmlTranslator translateFile:file
-                                cachePath:cachePath
                                    config:config
                                    logger:ODRLogger.null
                                     error:error];
 }
 
 + (nullable ODRHtmlService *)translateFile:(ODRDecodedFile *)file
-                                 cachePath:(NSString *)cachePath
                                     config:(ODRHtmlConfig *)config
                                     logger:(ODRLogger *)logger
                                      error:(NSError **)error {
   return guarded(error, [&]() -> ODRHtmlService * {
     return [ODRHtmlService
-        serviceWithHandle:odr::html::translate(
-                              file.handle, to_string(cachePath),
-                              config.nativeConfig, logger.handle)];
+        serviceWithHandle:odr::html::translate(file.handle, config.nativeConfig,
+                                               logger.handle)];
   });
 }
 
 + (nullable ODRHtmlService *)translateDocument:(ODRDocument *)document
-                                     cachePath:(NSString *)cachePath
                                         config:(ODRHtmlConfig *)config
                                          error:(NSError **)error {
   return guarded(error, [&]() -> ODRHtmlService * {
     return [ODRHtmlService
         serviceWithHandle:odr::html::translate(document.handle,
-                                               to_string(cachePath),
                                                config.nativeConfig)];
   });
 }
 
 + (nullable ODRHtmlService *)translateFilesystem:(ODRFilesystem *)filesystem
-                                       cachePath:(NSString *)cachePath
                                           config:(ODRHtmlConfig *)config
                                            error:(NSError **)error {
   return guarded(error, [&]() -> ODRHtmlService * {
     return [ODRHtmlService
         serviceWithHandle:odr::html::translate(filesystem.handle,
-                                               to_string(cachePath),
                                                config.nativeConfig)];
   });
 }
 
 + (nullable ODRHtmlService *)translateArchive:(ODRArchive *)archive
-                                    cachePath:(NSString *)cachePath
                                        config:(ODRHtmlConfig *)config
                                         error:(NSError **)error {
   return guarded(error, [&]() -> ODRHtmlService * {
     return [ODRHtmlService
         serviceWithHandle:odr::html::translate(archive.handle,
-                                               to_string(cachePath),
                                                config.nativeConfig)];
   });
 }

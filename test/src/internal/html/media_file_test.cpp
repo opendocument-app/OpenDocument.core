@@ -31,7 +31,7 @@ const std::string mp4_signature =
 
 File mp4_file() { return media_file(mp4_signature); }
 
-std::string cache_path(const std::string &name) {
+std::string temp_path(const std::string &name) {
   return (std::filesystem::current_path() / name).string();
 }
 
@@ -59,8 +59,7 @@ TEST(media_file, audio_is_decoded_without_a_wrapper_type) {
 
 TEST(media_file, audio_translates_to_a_player) {
   const DecodedFile file{mp3_file()};
-  const HtmlService service =
-      html::translate(file, cache_path("media_audio"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
   EXPECT_EQ(service.list_views().front().name(), "audio");
@@ -74,8 +73,7 @@ TEST(media_file, audio_translates_to_a_player) {
 
 TEST(media_file, video_translates_to_a_player) {
   const DecodedFile file{mp4_file()};
-  const HtmlService service =
-      html::translate(file, cache_path("media_video"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
   EXPECT_EQ(service.list_views().front().name(), "video");
@@ -90,8 +88,7 @@ TEST(media_file, video_translates_to_a_player) {
 /// base64'd into the markup the way an image is.
 TEST(media_file, the_media_is_served_as_a_resource) {
   const DecodedFile file{mp4_file()};
-  const HtmlService service =
-      html::translate(file, cache_path("media_resource"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
 
   EXPECT_TRUE(service.exists("video.mp4"));
   EXPECT_EQ(service.mimetype("video.mp4"), "video/mp4");
@@ -104,12 +101,11 @@ TEST(media_file, the_media_is_served_as_a_resource) {
 }
 
 TEST(media_file, bring_offline_writes_the_media_next_to_the_page) {
-  const std::string output_path = cache_path("media_offline");
+  const std::string output_path = temp_path("media_offline");
   std::filesystem::remove_all(output_path);
 
   const DecodedFile file{mp4_file()};
-  const HtmlService service =
-      html::translate(file, cache_path("media_offline_cache"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
   const Html html = service.bring_offline(output_path);
 
   ASSERT_EQ(html.pages().size(), 1);
@@ -128,7 +124,7 @@ TEST(media_file, bring_offline_writes_the_media_next_to_the_page) {
 /// webm as `video/x-matroska` and no browser would play it. The name it came
 /// in under wins whenever the same type claims it.
 TEST(media_file, a_webm_keeps_its_own_name_and_mime) {
-  const std::filesystem::path directory = cache_path("media_webm");
+  const std::filesystem::path directory = temp_path("media_webm");
   std::filesystem::create_directories(directory);
 
   for (const auto &[name, path, mime_type] :
@@ -142,8 +138,7 @@ TEST(media_file, a_webm_keeps_its_own_name_and_mime) {
     const DecodedFile file{File(file_path.string())};
     ASSERT_EQ(file.file_type(), FileType::matroska_video) << path;
 
-    const HtmlService service =
-        html::translate(file, cache_path("media_webm_cache"), HtmlConfig());
+    const HtmlService service = html::translate(file, HtmlConfig());
 
     EXPECT_TRUE(service.exists(name)) << path;
     EXPECT_EQ(service.mimetype(name), mime_type) << path;
@@ -164,8 +159,7 @@ TEST(media_file, webp_opens_as_an_image) {
   EXPECT_EQ(decoded.file_type(), FileType::webp);
   EXPECT_TRUE(decoded.is_image_file());
 
-  const HtmlService service =
-      html::translate(decoded, cache_path("media_webp"), HtmlConfig());
+  const HtmlService service = html::translate(decoded, HtmlConfig());
   ASSERT_EQ(service.list_views().size(), 1);
 
   // named, not guessed: a browser that honours the data URL's type has to be

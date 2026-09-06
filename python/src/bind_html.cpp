@@ -211,31 +211,31 @@ void odr_python::bind_html(py::module_ &m) {
   // GIL themselves.
   html.def(
       "translate",
-      [](const odr::DecodedFile &file, const std::string &cache_path,
-         const odr::HtmlConfig &config, const odr::Logger &logger) {
-        return odr::html::translate(file, cache_path, config, logger);
+      [](const odr::DecodedFile &file, const odr::HtmlConfig &config,
+         const odr::Logger &logger) {
+        return odr::html::translate(file, config, logger);
       },
-      py::arg("file"), py::arg("cache_path"), py::arg("config"),
+      py::arg("file"), py::arg("config"),
       py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(),
       "Translate a decoded file to HTML.");
   html.def(
       "translate",
-      [](const odr::Document &document, const std::string &cache_path,
-         const odr::HtmlConfig &config, const odr::Logger &logger) {
-        return odr::html::translate(document, cache_path, config, logger);
+      [](const odr::Document &document, const odr::HtmlConfig &config,
+         const odr::Logger &logger) {
+        return odr::html::translate(document, config, logger);
       },
-      py::arg("document"), py::arg("cache_path"), py::arg("config"),
+      py::arg("document"), py::arg("config"),
       py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(),
       "Translate a document to HTML.");
   html.def(
       "translate",
-      [](const odr::Filesystem &filesystem, const std::string &cache_path,
-         const odr::HtmlConfig &config, const odr::Logger &logger) {
-        return odr::html::translate(filesystem, cache_path, config, logger);
+      [](const odr::Filesystem &filesystem, const odr::HtmlConfig &config,
+         const odr::Logger &logger) {
+        return odr::html::translate(filesystem, config, logger);
       },
-      py::arg("filesystem"), py::arg("cache_path"), py::arg("config"),
+      py::arg("filesystem"), py::arg("config"),
       py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(),
       "Translate a filesystem to HTML.");

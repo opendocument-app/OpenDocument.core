@@ -198,8 +198,7 @@ TEST_P(HtmlOutputTests, html_meta) {
   // and would bury the corpus log.
   const Logger render_logger =
       Logger::create_stdio("odr-test", LogLevel::warning);
-  HtmlService service =
-      html::translate(file, output_path_tmp, config, render_logger);
+  HtmlService service = html::translate(file, config, render_logger);
   Html html = service.bring_offline(output_path);
   fs::remove_all(output_path_tmp);
 

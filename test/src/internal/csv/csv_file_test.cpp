@@ -342,8 +342,7 @@ TEST(CsvDocument, renders_as_a_table) {
   const CsvFile file =
       CsvFile::from_file(File::from_memory("a,b\n1,2\n"), CsvOptions{});
 
-  const HtmlService service =
-      html::translate(file.document(), "", HtmlConfig());
+  const HtmlService service = html::translate(file.document(), HtmlConfig());
   std::ostringstream out;
   service.list_views().back().write_html(out);
 

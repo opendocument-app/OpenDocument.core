@@ -55,28 +55,27 @@ public final class Html {
   // the wrapper for the duration - keepAlive() does.
 
   /** Translates a decoded file to HTML. */
-  public static HtmlService translate(DecodedFile file, String cachePath, HtmlConfig config) {
+  public static HtmlService translate(DecodedFile file, HtmlConfig config) {
     try {
-      return new HtmlService(translateFile(file.handle(), cachePath, config), file);
+      return new HtmlService(translateFile(file.handle(), config), file);
     } finally {
       file.keepAlive();
     }
   }
 
   /** Translates a document to HTML. */
-  public static HtmlService translate(Document document, String cachePath, HtmlConfig config) {
+  public static HtmlService translate(Document document, HtmlConfig config) {
     try {
-      return new HtmlService(translateDocument(document.handle(), cachePath, config), document);
+      return new HtmlService(translateDocument(document.handle(), config), document);
     } finally {
       document.keepAlive();
     }
   }
 
   /** Translates a filesystem to HTML. */
-  public static HtmlService translate(Filesystem filesystem, String cachePath, HtmlConfig config) {
+  public static HtmlService translate(Filesystem filesystem, HtmlConfig config) {
     try {
-      return new HtmlService(
-          translateFilesystem(filesystem.handle(), cachePath, config), filesystem);
+      return new HtmlService(translateFilesystem(filesystem.handle(), config), filesystem);
     } finally {
       filesystem.keepAlive();
     }
@@ -87,11 +86,9 @@ public final class Html {
     document.edit(diff);
   }
 
-  private static native long translateFile(long fileHandle, String cachePath, HtmlConfig config);
+  private static native long translateFile(long fileHandle, HtmlConfig config);
 
-  private static native long translateDocument(
-      long documentHandle, String cachePath, HtmlConfig config);
+  private static native long translateDocument(long documentHandle, HtmlConfig config);
 
-  private static native long translateFilesystem(
-      long filesystemHandle, String cachePath, HtmlConfig config);
+  private static native long translateFilesystem(long filesystemHandle, HtmlConfig config);
 }

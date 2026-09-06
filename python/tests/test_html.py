@@ -5,11 +5,9 @@ import pyodr
 
 def translate_offline(path, tmp_path):
     file = pyodr.open(str(path))
-    cache = tmp_path / "cache"
     output = tmp_path / "output"
-    cache.mkdir()
     output.mkdir()
-    service = pyodr.html.translate(file, str(cache), pyodr.HtmlConfig())
+    service = pyodr.html.translate(file, pyodr.HtmlConfig())
     return service.bring_offline(str(output))
 
 
@@ -30,17 +28,16 @@ def test_html_config_defaults():
     assert config.spreadsheet_cell_limit is None
 
 
-def test_html_view_sheet_cut(csv_path, tmp_path):
-    cache = tmp_path / "cache"
+def test_html_view_sheet_cut(csv_path):
     file = pyodr.open(str(csv_path))
 
     config = pyodr.HtmlConfig()
-    service = pyodr.html.translate(file, str(cache), config)
+    service = pyodr.html.translate(file, config)
     assert all(view.sheet_cut() is None for view in service.list_views())
 
     config.spreadsheet_limit = pyodr.TableDimensions(2, 1)
     config.spreadsheet_cell_limit = None
-    service = pyodr.html.translate(file, str(cache), config)
+    service = pyodr.html.translate(file, config)
 
     cut = service.list_views()[1].sheet_cut()
     assert cut is not None
@@ -76,61 +73,57 @@ def test_html_config_viewport_defaults():
     assert config.initial_zoom == 1.5
 
 
-def test_viewport_mode_reaches_the_html(odt_path, tmp_path):
+def test_viewport_mode_reaches_the_html(odt_path):
     # The C++ suite covers the mode matrix; this only proves the config crosses
     # the binding. A text document without margins is reflowing content, so
     # `automatic` resolves to `actual_size`.
-    def render(name, config):
-        cache = tmp_path / name
-        cache.mkdir()
+    def render(config):
         file = pyodr.open(str(odt_path))
-        service = pyodr.html.translate(file, str(cache), config)
+        service = pyodr.html.translate(file, config)
         content, _ = service.list_views()[0].write_html()
         return content
 
     assert (
         '<meta name="viewport" '
         'content="width=device-width,initial-scale=1.0,user-scalable=yes"/>'
-        in render("automatic", pyodr.HtmlConfig())
+        in render(pyodr.HtmlConfig())
     )
 
     fit_width = pyodr.HtmlConfig()
     fit_width.viewport_mode = pyodr.HtmlViewportMode.fit_width
     assert (
         '<meta name="viewport" content="width=device-width,user-scalable=yes"/>'
-        in render("fit_width", fit_width)
+        in render(fit_width)
     )
 
     # only paged content has a width to fit, hence the margins
     by_view = pyodr.HtmlConfig()
     by_view.viewport_mode = pyodr.HtmlViewportMode.fit_width_by_view
     by_view.text_document_margin = True
-    assert "--odr-fit:view" in render("by_view", by_view)
+    assert "--odr-fit:view" in render(by_view)
 
     raw = pyodr.HtmlConfig()
     raw.viewport_content = "width=420"
-    assert '<meta name="viewport" content="width=420"/>' in render("raw", raw)
+    assert '<meta name="viewport" content="width=420"/>' in render(raw)
 
 
-def test_min_content_margin_reaches_the_html(odt_path, tmp_path):
+def test_min_content_margin_reaches_the_html(odt_path):
     # The C++ suite covers where the floor lands; this only proves it crosses
     # the binding, unset sides and all.
-    def render(name, config):
-        cache = tmp_path / name
-        cache.mkdir()
+    def render(config):
         file = pyodr.open(str(odt_path))
-        service = pyodr.html.translate(file, str(cache), config)
+        service = pyodr.html.translate(file, config)
         content, _ = service.list_views()[0].write_html()
         return content
 
     default = pyodr.HtmlConfig()
     assert default.min_content_margin.top is None
-    assert ":root{--odr-min-margin" not in render("default", default)
+    assert ":root{--odr-min-margin" not in render(default)
 
     config = pyodr.HtmlConfig()
     config.min_content_margin.top = pyodr.Measure("12px")
     config.min_content_margin.left = pyodr.Measure("1cm")
-    html = render("margin", config)
+    html = render(config)
     assert ":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}" in html
     assert "--odr-min-margin-right:" not in html
 
@@ -161,11 +154,9 @@ def test_translate_document(odt_path, tmp_path):
     assert "Hello from pyodr!" in content
 
 
-def test_html_service_views(odt_path, tmp_path):
+def test_html_service_views(odt_path):
     file = pyodr.open(str(odt_path))
-    cache = tmp_path / "cache"
-    cache.mkdir()
-    service = pyodr.html.translate(file, str(cache), pyodr.HtmlConfig())
+    service = pyodr.html.translate(file, pyodr.HtmlConfig())
 
     views = service.list_views()
     assert len(views) == 1
@@ -175,14 +166,12 @@ def test_html_service_views(odt_path, tmp_path):
     assert isinstance(resources, list)
 
 
-def test_html_view_outlives_service(odt_path, tmp_path):
+def test_html_view_outlives_service(odt_path):
     file = pyodr.open(str(odt_path))
-    cache = tmp_path / "cache"
-    cache.mkdir()
 
     # The service temporary is dropped immediately; the view must keep it
     # alive.
-    view = pyodr.html.translate(file, str(cache), pyodr.HtmlConfig()).list_views()[0]
+    view = pyodr.html.translate(file, pyodr.HtmlConfig()).list_views()[0]
 
     content, _ = view.write_html()
     assert "Hello from pyodr!" in content

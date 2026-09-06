@@ -177,24 +177,21 @@ odr::HtmlResource &resource(jlong handle) {
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Html_translateFile(JNIEnv *env, jclass,
                                               jlong file_handle,
-                                              jstring cache_path,
                                               jobject config) {
   return guarded(env, [&] {
-    return make_handle(odr::html::translate(
-        *from_handle<odr::DecodedFile>(file_handle), to_string(env, cache_path),
-        odr_jni::html_config_from_java(env, config)));
+    return make_handle(
+        odr::html::translate(*from_handle<odr::DecodedFile>(file_handle),
+                             odr_jni::html_config_from_java(env, config)));
   });
 }
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Html_translateDocument(JNIEnv *env, jclass,
                                                   jlong document_handle,
-                                                  jstring cache_path,
                                                   jobject config) {
   return guarded(env, [&] {
     return make_handle(
         odr::html::translate(*from_handle<odr::Document>(document_handle),
-                             to_string(env, cache_path),
                              odr_jni::html_config_from_java(env, config)));
   });
 }
@@ -202,12 +199,10 @@ Java_app_opendocument_core_Html_translateDocument(JNIEnv *env, jclass,
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Html_translateFilesystem(JNIEnv *env, jclass,
                                                     jlong filesystem_handle,
-                                                    jstring cache_path,
                                                     jobject config) {
   return guarded(env, [&] {
     return make_handle(
         odr::html::translate(*from_handle<odr::Filesystem>(filesystem_handle),
-                             to_string(env, cache_path),
                              odr_jni::html_config_from_java(env, config)));
   });
 }

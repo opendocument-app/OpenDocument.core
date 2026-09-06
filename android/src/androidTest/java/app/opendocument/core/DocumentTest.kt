@@ -85,11 +85,10 @@ class DocumentTest {
 
     @Test
     fun translateToHtml() {
-        val cache = Files.createDirectories(tempDir.resolve("cache"))
         val output = Files.createDirectories(tempDir.resolve("output"))
 
         val file = Odr.open(TestFiles.odtFile(tempDir).toString())
-        val service = Html.translate(file, cache.toString(), HtmlConfig())
+        val service = Html.translate(file, HtmlConfig())
         val html = service.bringOffline(output.toString())
 
         val pages = html.pages()
@@ -112,9 +111,8 @@ class DocumentTest {
 
     @Test
     fun translateCsv() {
-        val cache = Files.createDirectories(tempDir.resolve("csv-cache"))
         val file = Odr.open(TestFiles.csvFile(tempDir).toString())
-        val service = Html.translate(file, cache.toString(), HtmlConfig())
+        val service = Html.translate(file, HtmlConfig())
 
         // a spreadsheet: a document view plus one per sheet
         val views = service.listViews()

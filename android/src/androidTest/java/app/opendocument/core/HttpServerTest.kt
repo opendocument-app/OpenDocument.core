@@ -4,7 +4,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
@@ -60,12 +59,11 @@ class HttpServerTest {
 
         val server = HttpServer()
 
-        val cachePath = Files.createDirectories(tempDir.resolve("doc-cache")).toString()
         val file = Odr.open(TestFiles.odtFile(tempDir).toString())
         val htmlConfig = HtmlConfig()
         htmlConfig.embedImages = false
         htmlConfig.relativeResourcePaths = false
-        val service = Html.translate(file, cachePath, htmlConfig)
+        val service = Html.translate(file, htmlConfig)
         server.connectService(service, "doc")
         val views = service.listViews()
         assertEquals(1, views.size)

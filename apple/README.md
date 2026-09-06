@@ -24,7 +24,7 @@ Requires iOS 15 or macOS 12.
 let file = try DecodedFile.decode(path: path)
 let config = HtmlConfig()
 let service = try HtmlTranslator.translate(
-  file: file, cachePath: cacheDirectory, config: config)
+  file: file, config: config)
 
 for view in service.views {
   var resources: NSArray?
@@ -50,7 +50,7 @@ it beats writing every page to disk up front.
 
 ```swift
 let service = try HtmlTranslator.translate(
-  file: file, cachePath: cacheDirectory, config: HtmlConfig())
+  file: file, config: HtmlConfig())
 
 let server = HttpServer()
 try server.connect(service, prefix: "doc")

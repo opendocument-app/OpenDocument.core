@@ -16,17 +16,15 @@ class HtmlTest {
   @TempDir Path tempDir;
 
   private Html translateOffline(Path input) throws IOException {
-    Path cache = Files.createDirectories(tempDir.resolve("cache"));
     Path output = Files.createDirectories(tempDir.resolve("output"));
     DecodedFile file = Odr.open(input.toString());
-    HtmlService service = Html.translate(file, cache.toString(), new HtmlConfig());
+    HtmlService service = Html.translate(file, new HtmlConfig());
     return service.bringOffline(output.toString());
   }
 
   private String renderOdt(HtmlConfig config) throws IOException {
-    Path cache = Files.createTempDirectory(tempDir, "render");
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlService service = Html.translate(file, cache.toString(), config);
+    HtmlService service = Html.translate(file, config);
     return service.listViews().get(0).writeHtml().html;
   }
 
@@ -52,9 +50,8 @@ class HtmlTest {
     config.viewportWidth = 420;
     config.initialZoom = 1.5;
 
-    Path cache = Files.createDirectories(tempDir.resolve("cache"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlConfig readBack = Html.translate(file, cache.toString(), config).config();
+    HtmlConfig readBack = Html.translate(file, config).config();
 
     assertEquals(HtmlViewportMode.FIT_WIDTH, readBack.viewportMode);
     assertEquals(HtmlViewportMode.ACTUAL_SIZE, readBack.spreadsheetViewportMode);
@@ -80,9 +77,8 @@ class HtmlTest {
     assertTrue(
         renderOdt(config).contains(":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}"));
 
-    Path cache = Files.createDirectories(tempDir.resolve("margin"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlConfig readBack = Html.translate(file, cache.toString(), config).config();
+    HtmlConfig readBack = Html.translate(file, config).config();
     assertEquals(new Measure(12, "px"), readBack.minContentMargin.top);
     assertEquals(new Measure(1, "cm"), readBack.minContentMargin.left);
     assertNull(readBack.minContentMargin.right);
@@ -128,9 +124,8 @@ class HtmlTest {
     system.colorScheme = HtmlColorScheme.SYSTEM;
     assertTrue(renderOdt(system).contains("media=\"(prefers-color-scheme: dark)\""));
 
-    Path cache = Files.createDirectories(tempDir.resolve("scheme"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlConfig readBack = Html.translate(file, cache.toString(), system).config();
+    HtmlConfig readBack = Html.translate(file, system).config();
     assertEquals(HtmlColorScheme.SYSTEM, readBack.colorScheme);
   }
 
@@ -166,18 +161,17 @@ class HtmlTest {
   void spreadsheetCutReachesTheView() throws IOException {
     assertEquals(Long.valueOf(500000L), new HtmlConfig().spreadsheetCellLimit);
 
-    Path cache = Files.createDirectories(tempDir.resolve("cache"));
     DecodedFile file = Odr.open(TestFiles.csvFile(tempDir).toString());
 
     HtmlConfig full = new HtmlConfig();
-    for (HtmlView view : Html.translate(file, cache.toString(), full).listViews()) {
+    for (HtmlView view : Html.translate(file, full).listViews()) {
       assertNull(view.sheetCut());
     }
 
     HtmlConfig cut = new HtmlConfig();
     cut.spreadsheetLimit = new TableDimensions(2, 1);
     cut.spreadsheetCellLimit = null;
-    HtmlService service = Html.translate(file, cache.toString(), cut);
+    HtmlService service = Html.translate(file, cut);
 
     assertNull(service.config().spreadsheetCellLimit);
     HtmlSheetCut sheetCut = service.listViews().get(1).sheetCut();
@@ -190,9 +184,8 @@ class HtmlTest {
 
   @Test
   void htmlServiceViews() throws IOException {
-    Path cache = Files.createDirectories(tempDir.resolve("cache"));
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlService service = Html.translate(file, cache.toString(), new HtmlConfig());
+    HtmlService service = Html.translate(file, new HtmlConfig());
 
     List<HtmlView> views = service.listViews();
     assertEquals(1, views.size());

@@ -36,10 +36,6 @@ File png_file() {
   return image_file(std::string("\x89PNG\r\n\x1a\n", 8) + "payload");
 }
 
-std::string cache_path(const std::string &name) {
-  return (std::filesystem::current_path() / name).string();
-}
-
 std::string write_path(const HtmlService &service, const std::string &path) {
   std::ostringstream out;
   service.write(path, out);
@@ -113,8 +109,7 @@ TEST(image_file, svg_is_detected_and_opens_as_an_image) {
 
 TEST(image_file, svg_translates_to_an_image_page) {
   const DecodedFile file{svg_file()};
-  const HtmlService service =
-      html::translate(file, cache_path("image_svg"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
 
   ASSERT_EQ(service.list_views().size(), 1);
   EXPECT_EQ(service.list_views().front().name(), "image");
@@ -130,8 +125,7 @@ TEST(image_file, ico_is_named_by_its_own_mime_type) {
   EXPECT_EQ(file.file_type(), FileType::windows_icon);
   EXPECT_TRUE(file.is_image_file());
 
-  const HtmlService service =
-      html::translate(file, cache_path("image_ico"), HtmlConfig());
+  const HtmlService service = html::translate(file, HtmlConfig());
   const std::string html = write_path(service, "image.html");
   EXPECT_NE(html.find("data:image/vnd.microsoft.icon;base64,"),
             std::string::npos);

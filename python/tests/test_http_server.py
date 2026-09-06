@@ -20,16 +20,14 @@ def fetch(url, timeout=5.0):
 
 
 @pytest.mark.skipif(not pyodr.has_http_server, reason="built without the HTTP server")
-def test_serve_file(odt_path, tmp_path):
+def test_serve_file(odt_path):
     server = pyodr.HttpServer()
 
     # the server hosts what it is given; translating is the caller's business
-    cache_path = tmp_path / "doc-cache"
-    cache_path.mkdir()
     file = pyodr.open(str(odt_path))
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
-    service = pyodr.html.translate(file, str(cache_path), html_config)
+    service = pyodr.html.translate(file, html_config)
     server.connect_service(service, "doc")
     views = service.list_views()
     assert len(views) == 1

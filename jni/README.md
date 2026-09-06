@@ -11,7 +11,7 @@ import app.opendocument.core.HtmlService;
 import app.opendocument.core.Odr;
 
 DecodedFile file = Odr.open("document.odt");
-HtmlService service = Html.translate(file, "cache-dir", new HtmlConfig());
+HtmlService service = Html.translate(file, new HtmlConfig());
 app.opendocument.core.Html html = service.bringOffline("output-dir");
 for (var page : html.pages()) {
     System.out.println(page.name + " " + page.path);

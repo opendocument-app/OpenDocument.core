@@ -42,9 +42,8 @@ def _translate(args, file) -> int:
         output.mkdir(parents=True, exist_ok=True)
     else:
         output = Path(tempfile.mkdtemp(prefix="pyodr-"))
-    cache = tempfile.mkdtemp(prefix="pyodr-cache-")
 
-    service = pyodr.html.translate(file, cache, pyodr.HtmlConfig())
+    service = pyodr.html.translate(file, pyodr.HtmlConfig())
     html = service.bring_offline(str(output))
 
     for page in html.pages():
@@ -62,8 +61,7 @@ def _serve(args, file) -> int:
 
     html_config = pyodr.HtmlConfig()
     html_config.embed_images = False
-    cache = tempfile.mkdtemp(prefix="pyodr-server-")
-    service = pyodr.html.translate(file, cache, html_config)
+    service = pyodr.html.translate(file, html_config)
 
     prefix = "file"
     server = pyodr.HttpServer()

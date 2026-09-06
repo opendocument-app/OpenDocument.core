@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `html::translate` takes only a `DecodedFile`, `Document`,
+  `Filesystem` or `Archive` now; drop the cache path, in every binding. Open a
+  file as `FileType::text_file` to render it as a numbered line list.
+
 - **Breaking**: the inert `HtmlConfig` fields `background_image_format`,
   `background_image_dpi`, `no_drm` and `embed_outline` are gone, with their
   java, python, objc and wasm mirrors. Drop them; nothing replaces them.
