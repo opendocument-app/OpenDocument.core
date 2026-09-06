@@ -216,12 +216,6 @@ void HtmlResource::write_resource(std::ostream &os) const {
 
 namespace {
 
-HtmlService translate_text_file(const TextFile &text_file,
-                                const HtmlConfig &config,
-                                const Logger &logger) {
-  return internal::html::create_text_service(text_file, config, logger);
-}
-
 HtmlService translate_image_file(const ImageFile &image_file,
                                  const HtmlConfig &config,
                                  const Logger &logger) {
@@ -275,7 +269,7 @@ HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
                                               logger);
   }
   if (file.is_text_file()) {
-    return translate_text_file(file.as_text_file(), config, logger);
+    return translate(file.as_text_file(), config, logger);
   }
   if (file.is_image_file()) {
     return translate_image_file(file.as_image_file(), config, logger);
@@ -339,6 +333,11 @@ HtmlService html::translate(const Filesystem &filesystem,
 HtmlService html::translate(const Archive &archive, const HtmlConfig &config,
                             const Logger &logger) {
   return translate(archive.as_filesystem(), config, logger);
+}
+
+HtmlService html::translate(const TextFile &text_file, const HtmlConfig &config,
+                            const Logger &logger) {
+  return internal::html::create_text_service(text_file, config, logger);
 }
 
 HtmlService html::translate(const Document &document, const HtmlConfig &config,

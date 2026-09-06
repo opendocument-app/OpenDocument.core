@@ -301,6 +301,14 @@ HtmlResourceLocator standard_resource_locator();
 HtmlService translate(const DecodedFile &file, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
 
+/// @brief Translates a text file to HTML, as a numbered line list.
+///
+/// Not what @ref translate(const DecodedFile &, const HtmlConfig &, const
+/// Logger &) does with one: it renders an xml as its source view and a csv as
+/// a table. Narrowing by hand is how a caller asks for the lines instead.
+HtmlService translate(const TextFile &text_file, const HtmlConfig &config,
+                      const Logger &logger = Logger::null());
+
 /// @brief Translates a document to HTML.
 HtmlService translate(const Document &document, const HtmlConfig &config,
                       const Logger &logger = Logger::null());
