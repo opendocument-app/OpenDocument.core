@@ -5,9 +5,6 @@
 - [Editing design](editing.md) — architecture for in-browser editing of ODF/OOXML:
   fat-browser op log replayed on save, stable element ids, and a preliminary
   implementation plan.
-- [The v7 public API](api-v7.md) — what the next major removes from
-  `src/odr/*.hpp`, why, and in which pull requests: one road per operation, and
-  the removals this document's *Open tasks* deferred until a major.
 
 ## Diagrams
 
