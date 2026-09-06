@@ -3,6 +3,7 @@
 #include <odr/internal/util/byte_string.hpp>
 
 #include <cstdint>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -108,11 +109,10 @@ std::string cff::build_cff(const std::string_view name,
   // String INDEX: every glyph name gets a custom SID (391 + position). Glyph 0
   // is the implicit `.notdef` (SID 0), so its name is not stored; the charset
   // lists SIDs for glyphs 1..n-1.
-  std::vector<std::string> strings;
-  for (std::size_t i = 1; i < glyphs.size(); ++i) {
-    strings.push_back(glyphs[i].name);
-  }
-  const std::string string_index = build_index(strings);
+  const std::string string_index =
+      build_index(glyphs | std::views::drop(1) |
+                  std::views::transform(&BuilderGlyph::name) |
+                  std::ranges::to<std::vector<std::string>>());
 
   // Format-0 charset: SID per glyph 1..n-1.
   std::string charset;
