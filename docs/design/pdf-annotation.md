@@ -3,8 +3,8 @@
 Status: **underway.** This records the architecture for adding markup
 annotations — text highlight and freehand drawing first — to an existing PDF,
 the alternatives weighed, and the effort it costs. The format model is
-validated against four viewers; Phases 0 and 0.5 have landed, and the writer
-itself has not started.
+validated against four viewers, and Phases 0 through 1 have landed: the
+incremental writer works, the annotations it will carry are not written yet.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -228,9 +228,10 @@ Three things the spike did **not** settle, and Phase 1 and 2 owe tests for each:
   one of those engines painted — the `/QuadPoints` were never consulted. The
   ordering matters only to a viewer that regenerates the appearance, and to
   text-selection semantics. The note below stands as a note.
-- **A page dictionary inside an object stream.** The fixture's was plain.
+- **A page dictionary inside an object stream.** The fixture's was plain, and
+  Phase 1 did not close this either — no fixture we have puts one there.
 - **Appending to a file whose newest section is an xref stream.** The fixture's
-  was a classic table.
+  was a classic table; Phase 1's tests cover both flavors.
 
 ## Implementation plan
 
@@ -255,33 +256,30 @@ The first two are `std::optional` and recovery clears them — a rebuilt table
 has no section of the file's own to chain onto, so the missing value and
 decision 2's refusal gate are the same fact.
 
-### Phase 1 — the incremental writer (2–3 d, ~340 lines)
+### Phase 1 — the incremental writer — **done** (#845)
 
-New `pdf/pdf_writer.{hpp,cpp}`: copy the source stream, append indirect objects,
-emit the changed-ids xref, write the trailer with `/Prev` and a regenerated
-second `/ID` element.
+`pdf/pdf_writer.{hpp,cpp}`: `IncrementalWriter` pipes the source through
+untouched, appends the objects it collected, and closes with a cross-reference
+section naming only their ids and a trailer chaining back through `/Prev`.
 
-- **Match the file's xref flavor** (`xref_kind()`). If the last section was an
-  xref stream, append an xref stream; otherwise a classic table.
-- **A page dictionary living in an object stream is rewritten uncompressed** in
-  the new section — legal, the newer entry wins.
-- Refuse a file where `is_recovered()` (decision 2), and an encrypted one
-  (decision 6).
+- **Matches the file's xref flavor** (`xref_kind()`), classic table or
+  cross-reference stream — the latter minting an id and an entry for the stream
+  object itself.
+- **Refuses** a recovered file (decision 2) and an encrypted one (decision 6),
+  resolving both gates in the constructor so nothing downstream re-asks.
+- **`/ID[1]` is derived from the update's own bytes**, not from a clock, so
+  writing the same update twice gives the same file and a test can pin it.
+- Only the update is buffered; the source is piped, so appending to a large
+  file does not hold it in memory.
 
-Sequence the first two steps so the plumbing fails separately from the
-annotation semantics:
+Verified in the order the plan asked for — a no-op update that re-parses
+identically first, then a `/Rotate` rewrite. `qpdf --check` passes, and
+ghostscript, CoreGraphics and our own renderer all honour the new rotation
+(the page box turns 8.5×11in into 11×8.5in).
 
-1. **A no-op incremental update** — append a section that changes nothing;
-   assert the file re-parses identically and `qpdf --check` passes.
-2. **Page `/Rotate` as the first real write** — one integer on an existing
-   dictionary, no new object types, no appearance. It exercises the genuinely
-   risky part (rewriting an object that may live in an object stream, in a file
-   of either xref flavor) and lands a feature from *What the writer unlocks
-   next* on the way.
-
-Verification: round-trip through our own parser, then `qpdf --check`, then
-LibreOffice and ghostscript as external oracles (the standing oracles for this
-repo).
+**Still untested: a page dictionary living inside an object stream.** It has to
+be rewritten uncompressed in the new section — legal, the newer entry wins —
+but no fixture we have puts one there. Owed before Phase 2 ships.
 
 ### Phase 2 — highlight (2 d, ~200 lines)
 
