@@ -8,6 +8,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <algorithm>
 #include <array>
 #include <span>
 #include <string>
@@ -709,14 +710,18 @@ constexpr std::string_view viewport_js = R"js(
 })();
 )js";
 
-/// Text search over the rendered page, format-agnostic: it walks text nodes.
+/// The annotation overlays, and what `setOptions` writes into css.
 constexpr std::string_view pdf_annotation_css = R"css(
 .an{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:3}
 /* on the overlay, not on the shape: a blend inside an svg composites against
    the svg's own canvas, so the highlight would paint over the glyphs */
 .an-m{mix-blend-mode:multiply}
-.p.an-draw .an{pointer-events:auto;cursor:crosshair;touch-action:none}
+/* the two properties `setOptions` writes */
+.p.an-draw .an{pointer-events:auto;cursor:crosshair;touch-action:var(--odr-an-touch,none)}
 .p.an-draw .t,.p.an-draw .sel{pointer-events:none}
+/* neither may interrupt a stroke */
+.p.an-draw{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html.an-drawing{overscroll-behavior:var(--odr-an-overscroll,contain)}
 )css";
 /// `odr.annotation`: the pending markup a viewer draws, and the payload
 /// `PdfFile::annotate` takes. Geometry is kept in page-box points and mapped
@@ -734,6 +739,14 @@ constexpr std::string_view pdf_annotation_js = R"js(
   var width = 2;
   var pending = [];
   var nextId = 1;
+
+  /// Gesture policy, the viewer's to set. `inkPointerTypes` null takes any.
+  var options = {
+    markOnSelection: false,
+    inkPointerTypes: null,
+    touchAction: "none",
+    overscrollBehavior: "contain",
+  };
 
   function pages() {
     return Array.prototype.slice.call(
@@ -804,34 +817,33 @@ constexpr std::string_view pdf_annotation_js = R"js(
     );
   }
 
+  function inkPath(strokes) {
+    return strokes
+      .map(function (s) {
+        var d = "M " + s[0] + " " + s[1];
+        for (var i = 2; i < s.length; i += 2) {
+          d += " L " + s[i] + " " + s[i + 1];
+        }
+        return d;
+      })
+      .join(" ");
+  }
+
   function draw(annotation) {
     var page = pageOf(annotation.page);
     if (!page) {
-      return;
+      return null;
     }
     var svg = overlay(page, annotation.type === "highlight");
-    var node;
+    var node = document.createElementNS(SVG, "path");
     if (annotation.type === "ink") {
-      node = document.createElementNS(SVG, "path");
-      node.setAttribute(
-        "d",
-        annotation.strokes
-          .map(function (s) {
-            var d = "M " + s[0] + " " + s[1];
-            for (var i = 2; i < s.length; i += 2) {
-              d += " L " + s[i] + " " + s[i + 1];
-            }
-            return d;
-          })
-          .join(" ")
-      );
+      node.setAttribute("d", inkPath(annotation.strokes));
       node.setAttribute("fill", "none");
       node.setAttribute("stroke", css(annotation.color));
       node.setAttribute("stroke-width", annotation.width);
       node.setAttribute("stroke-linecap", "round");
       node.setAttribute("stroke-linejoin", "round");
     } else {
-      node = document.createElementNS(SVG, "path");
       node.setAttribute("d", annotation.boxes.map(barPath(annotation.type)).join(" "));
       if (annotation.type === "squiggly") {
         node.setAttribute("fill", "none");
@@ -843,6 +855,7 @@ constexpr std::string_view pdf_annotation_js = R"js(
     }
     node.setAttribute("data-odr-annotation", annotation.id);
     svg.appendChild(node);
+    return node;
   }
 
   /// The shape one covered box gets, in page-box points.
@@ -879,10 +892,77 @@ constexpr std::string_view pdf_annotation_js = R"js(
       });
     });
     pending.forEach(draw);
+    // a rebuild throws away the node a live stroke draws into
+    strokeNode = stroke
+      ? document.querySelector('[data-odr-annotation="' + stroke.id + '"]')
+      : null;
   }
 
-  /// The boxes a selection covers, per page, in page-box points. Zero-width
-  /// rects are the selection layer's spacer spans and carry no text.
+  function pushBox(byPage, left, top, right, bottom) {
+    if (right - left < 0.5 || bottom - top < 0.5) {
+      return;
+    }
+    var page = pageAt((left + right) / 2, (top + bottom) / 2);
+    if (!page) {
+      return;
+    }
+    var index = +page.getAttribute("data-odr-page");
+    var a = toBox(page, left, top);
+    var b = toBox(page, right, bottom);
+    (byPage[index] = byPage[index] || []).push([a[0], a[1], b[0], b[1]]);
+  }
+
+  /// The selection-layer runs a range touches; a spacer carries no text.
+  function selectedRuns(selection, range) {
+    var scope = range.commonAncestorContainer;
+    if (!scope.querySelectorAll) {
+      scope = scope.parentElement;
+    }
+    if (!scope) {
+      return [];
+    }
+    var self = scope.closest ? scope.closest(".sr") : null;
+    if (self) {
+      return self.textContent.length > 0 ? [self] : [];
+    }
+    return Array.prototype.filter.call(
+      scope.querySelectorAll(".sr"),
+      function (run) {
+        return run.textContent.length > 0 && selection.containsNode(run, true);
+      }
+    );
+  }
+
+  /// One run's covered box; a partly selected run takes its horizontal edges
+  /// from the rects, clamped to the run.
+  function runBox(byPage, run, rects, selection) {
+    var box = run.getBoundingClientRect();
+    var left = box.left;
+    var right = box.right;
+    if (!selection.containsNode(run, false)) {
+      left = Infinity;
+      right = -Infinity;
+      for (var i = 0; i < rects.length; ++i) {
+        var rect = rects[i];
+        if (
+          rect.width < 0.5 ||
+          rect.bottom <= box.top ||
+          rect.top >= box.bottom ||
+          rect.right <= box.left ||
+          rect.left >= box.right
+        ) {
+          continue;
+        }
+        left = Math.min(left, Math.max(rect.left, box.left));
+        right = Math.max(right, Math.min(rect.right, box.right));
+      }
+    }
+    pushBox(byPage, left, box.top, right, box.bottom);
+  }
+
+  /// The boxes a selection covers, per page, in page-box points. Vertically
+  /// the run's box, not the range's rect: that rect follows whatever font the
+  /// browser substituted for the layer.
   function selectionBoxes() {
     var selection = window.getSelection();
     var byPage = {};
@@ -890,20 +970,17 @@ constexpr std::string_view pdf_annotation_js = R"js(
       return byPage;
     }
     for (var r = 0; r < selection.rangeCount; ++r) {
-      var rects = selection.getRangeAt(r).getClientRects();
-      for (var i = 0; i < rects.length; ++i) {
-        var rect = rects[i];
-        if (rect.width < 0.5 || rect.height < 0.5) {
-          continue;
+      var range = selection.getRangeAt(r);
+      var rects = range.getClientRects();
+      var runs = selectedRuns(selection, range);
+      for (var i = 0; i < runs.length; ++i) {
+        runBox(byPage, runs[i], rects, selection);
+      }
+      if (runs.length === 0) {
+        // no selection layer under it
+        for (var k = 0; k < rects.length; ++k) {
+          pushBox(byPage, rects[k].left, rects[k].top, rects[k].right, rects[k].bottom);
         }
-        var page = pageAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        if (!page) {
-          continue;
-        }
-        var index = +page.getAttribute("data-odr-page");
-        var a = toBox(page, rect.left, rect.top);
-        var b = toBox(page, rect.right, rect.bottom);
-        (byPage[index] = byPage[index] || []).push([a[0], a[1], b[0], b[1]]);
       }
     }
     return byPage;
@@ -920,7 +997,12 @@ constexpr std::string_view pdf_annotation_js = R"js(
     return null;
   }
 
-  function markSelection() {
+  /// One annotation per page the selection covers. `keep` holds the selection,
+  /// which the automatic path cannot: the next `selectionchange` re-marks it.
+  function markSelection(keep) {
+    if (!tool || tool === "ink") {
+      return false;
+    }
     var byPage = selectionBoxes();
     var added = false;
     Object.keys(byPage).forEach(function (index) {
@@ -934,32 +1016,64 @@ constexpr std::string_view pdf_annotation_js = R"js(
       added = true;
     });
     if (added) {
-      window.getSelection().removeAllRanges();
+      if (!keep) {
+        window.getSelection().removeAllRanges();
+      }
       redraw();
     }
     return added;
   }
 
+)js";
+/// The rest of it; see `Asset::content_tail`.
+constexpr std::string_view pdf_annotation_js_tail = R"js(
   var stroke = null;
+  var strokeNode = null;
+  var strokePointer = null;
+  var strokeData = "";
+  var strokeFrame = 0;
   var pointerDown = false;
   var settle = null;
+
+  /// One dom write per frame; a pen reports faster than the page paints.
+  function flushStroke() {
+    strokeFrame = 0;
+    if (strokeNode) {
+      strokeNode.setAttribute("d", strokeData);
+    }
+  }
+
+  function scheduleFlush() {
+    if (!strokeFrame) {
+      strokeFrame = window.requestAnimationFrame(flushStroke);
+    }
+  }
 
   /// A drag fires `selectionchange` on every character it covers, so the mark
   /// waits for the gesture that makes it to end rather than taking the first
   /// character and tearing the selection out from under the pointer.
   function scheduleMark() {
-    if (!tool || tool === "ink" || pointerDown) {
+    if (!options.markOnSelection || !tool || tool === "ink" || pointerDown) {
       return;
     }
     window.clearTimeout(settle);
-    settle = window.setTimeout(markSelection, 50);
+    settle = window.setTimeout(function () {
+      markSelection(false);
+    }, 50);
+  }
+
+  function inkTakes(event) {
+    return (
+      options.inkPointerTypes === null ||
+      options.inkPointerTypes.indexOf(event.pointerType) !== -1
+    );
   }
 
   function onPointerDown(event) {
     pointerDown = true;
     // a new gesture supersedes a mark the previous one had queued
     window.clearTimeout(settle);
-    if (tool !== "ink" || event.button !== 0) {
+    if (tool !== "ink" || event.button !== 0 || !inkTakes(event)) {
       return;
     }
     var page = pageAt(event.clientX, event.clientY);
@@ -977,40 +1091,68 @@ constexpr std::string_view pdf_annotation_js = R"js(
       width: width,
     };
     pending.push(stroke);
+    strokePointer = event.pointerId;
+    strokeData = "M " + p[0] + " " + p[1];
+    strokeNode = draw(stroke);
     page.setPointerCapture(event.pointerId);
   }
 
   function onPointerMove(event) {
-    if (!stroke) {
+    if (!stroke || event.pointerId !== strokePointer) {
       return;
     }
     var page = pageOf(stroke.page);
-    var p = toBox(page, event.clientX, event.clientY);
     var points = stroke.strokes[0];
-    // drop the sub-point jitter a pointer emits while nearly still
-    if (
-      Math.abs(p[0] - points[points.length - 2]) +
-        Math.abs(p[1] - points[points.length - 1]) <
-      0.5
-    ) {
-      return;
+    // a synthetic event coalesces none, and is its own sample
+    var samples =
+      typeof event.getCoalescedEvents === "function"
+        ? event.getCoalescedEvents()
+        : [];
+    if (samples.length === 0) {
+      samples = [event];
     }
-    points.push(p[0], p[1]);
-    redraw();
+    var appended = false;
+    for (var i = 0; i < samples.length; ++i) {
+      var p = toBox(page, samples[i].clientX, samples[i].clientY);
+      // drop the sub-point jitter a pointer emits while nearly still
+      if (
+        Math.abs(p[0] - points[points.length - 2]) +
+          Math.abs(p[1] - points[points.length - 1]) <
+        0.5
+      ) {
+        continue;
+      }
+      points.push(p[0], p[1]);
+      strokeData += " L " + p[0] + " " + p[1];
+      appended = true;
+    }
+    if (appended) {
+      scheduleFlush();
+    }
   }
 
-  function onPointerUp() {
+  function onPointerUp(event) {
     pointerDown = false;
     scheduleMark();
-    if (!stroke) {
+    if (!stroke || (event && event.pointerId !== strokePointer)) {
       return;
     }
-    if (stroke.strokes[0].length < 4) {
+    var points = stroke.strokes[0];
+    if (points.length < 4) {
       // a tap with no drag leaves a dot, which is a legitimate mark
-      stroke.strokes[0].push(stroke.strokes[0][0], stroke.strokes[0][1]);
+      points.push(points[0], points[1]);
+      strokeData += " L " + points[0] + " " + points[1];
     }
+    flushStroke();
     stroke = null;
-    redraw();
+    strokeNode = null;
+    strokePointer = null;
+  }
+
+  function applyOptions() {
+    var style = document.documentElement.style;
+    style.setProperty("--odr-an-touch", options.touchAction);
+    style.setProperty("--odr-an-overscroll", options.overscrollBehavior);
   }
 
   document.addEventListener("pointerdown", onPointerDown);
@@ -1019,6 +1161,7 @@ constexpr std::string_view pdf_annotation_js = R"js(
   document.addEventListener("pointercancel", onPointerUp);
   document.addEventListener("selectionchange", scheduleMark);
   window.addEventListener("resize", redraw);
+  applyOptions();
 
   odr.annotation = {
     /// null, "highlight", "underline", "strikeOut", "squiggly" or "ink".
@@ -1027,6 +1170,7 @@ constexpr std::string_view pdf_annotation_js = R"js(
       pages().forEach(function (page) {
         page.classList.toggle("an-draw", tool === "ink");
       });
+      document.documentElement.classList.toggle("an-drawing", tool === "ink");
     },
     getTool: function () {
       return tool;
@@ -1037,6 +1181,28 @@ constexpr std::string_view pdf_annotation_js = R"js(
     },
     setWidth: function (value) {
       width = Number(value);
+    },
+    /// Merged into what is set; an unknown key throws.
+    setOptions: function (value) {
+      Object.keys(value || {}).forEach(function (key) {
+        if (!Object.prototype.hasOwnProperty.call(options, key)) {
+          throw new Error("odr.annotation: unknown option " + key);
+        }
+        options[key] = value[key];
+      });
+      applyOptions();
+    },
+    getOptions: function () {
+      var copy = {};
+      Object.keys(options).forEach(function (key) {
+        copy[key] = options[key];
+      });
+      return copy;
+    },
+    /// Marks the selection with the armed tool, and answers whether anything
+    /// was added. The selection is left standing.
+    mark: function () {
+      return markSelection(true);
     },
     /// What is pending, newest last. Geometry is in page-box points.
     list: function () {
@@ -1098,6 +1264,7 @@ constexpr std::string_view pdf_annotation_js = R"js(
 })();
 )js";
 
+/// Text search over the rendered page, format-agnostic: it walks text nodes.
 constexpr std::string_view search_js = R"js(
 (function () {
   "use strict";
@@ -2049,7 +2216,21 @@ struct Asset {
   std::string_view mime_type;
   std::string_view name;
   std::string_view content;
+  std::string_view content_tail{}; ///< written straight after @ref content
 };
+
+/// msvc caps a string literal at 16380 bytes, and a windows checkout spends one
+/// more per line, so a script outgrowing that is split over two.
+consteval bool fits_a_literal(const std::string_view content) {
+  return content.size() + std::ranges::count(content, '\n') <= 16380;
+}
+
+static_assert(fits_a_literal(viewport_js));
+static_assert(fits_a_literal(search_js));
+static_assert(fits_a_literal(spreadsheet_js));
+static_assert(fits_a_literal(text_js));
+static_assert(fits_a_literal(pdf_annotation_js));
+static_assert(fits_a_literal(pdf_annotation_js_tail));
 
 constexpr Asset document_css_asset{HtmlResourceType::css, "text/css",
                                    "document.css", document_css};
@@ -2093,7 +2274,8 @@ constexpr Asset pdf_annotation_css_asset{HtmlResourceType::css, "text/css",
                                          "pdf-annotation.css",
                                          pdf_annotation_css};
 constexpr Asset pdf_annotation_js_asset{HtmlResourceType::js, "text/javascript",
-                                        "pdf-annotation.js", pdf_annotation_js};
+                                        "pdf-annotation.js", pdf_annotation_js,
+                                        pdf_annotation_js_tail};
 
 /// Appends @p asset to @p resources; `nullopt` to embed it.
 HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
@@ -2101,7 +2283,9 @@ HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
   const odr::HtmlResource resource = HtmlResource::create(
       asset.type, std::string(asset.mime_type), std::string(asset.name),
       std::string(asset.name),
-      odr::File::from_memory(std::string(asset.content)), true, false, true);
+      odr::File::from_memory(std::string(asset.content) +
+                             std::string(asset.content_tail)),
+      true, false, true);
   HtmlResourceLocation location = config.resource_locator(resource, config);
   resources.emplace_back(resource, location);
   return location;
@@ -2140,7 +2324,7 @@ void write_style(const Asset &asset, const WritingState &state,
   }
 
   state.out().write_header_style_begin(media);
-  state.out().out() << asset.content;
+  state.out().out() << asset.content << asset.content_tail;
   state.out().write_header_style_end();
 }
 
@@ -2159,7 +2343,7 @@ void write_script(const Asset &asset, const WritingState &state) {
   }
 
   state.out().write_script_begin();
-  state.out().out() << asset.content;
+  state.out().out() << asset.content << asset.content_tail;
   state.out().write_script_end();
 }
 

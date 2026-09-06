@@ -22,6 +22,8 @@ The release run heads these entries with the version and opens a fresh
 
 - The rendered pdf view exposes `odr.annotation`: the five tools, live preview
   and undo, whose `getAnnotations()` produces exactly what `annotate` takes.
+  It marks on `mark()`, and `setOptions` holds the gesture policy: what marks,
+  which pointers draw, what a touch on an armed page does.
 
 - `PdfFile::is_annotatable` answers for the file what the `annotate` capability
   answers for the format, and narrows it. Encrypted and repaired pdfs say no.

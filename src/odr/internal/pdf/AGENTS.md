@@ -7,7 +7,7 @@ invariants, and where things live. Reference links live in [`README.md`](README.
 **Goal.** Faithful HTML for common real-world PDFs through a pure-serialization
 pipeline (no native renderer). Reading is what the module mostly is; the one
 thing it writes is **markup annotations**, appended without disturbing anything
-already in the file (see [`docs/design/pdf-annotation.md`](../../../../docs/design/pdf-annotation.md)).
+already in the file.
 The file-format, text-extraction, font and graphics foundations are in place;
 what remains is interaction & navigation plus a tail of known gaps (see
 *Roadmap*).
@@ -278,9 +278,7 @@ fixtures are verified manually but not pinned.
 
 # Roadmap
 
-Markup annotations have landed — see
-[`docs/design/pdf-annotation.md`](../../../../docs/design/pdf-annotation.md) for
-the decisions and what the writer unlocks next. The next feature cluster is
+Markup annotations have landed. The next feature cluster is
 **interaction & navigation**; the rest is a tail of known gaps. Each remaining item gets its own detailed design before
 implementation. Grow the corpus alongside (odr-public fixtures + the PDF101
 "nasty files" collection linked in `README.md`; assertion tests per feature).
