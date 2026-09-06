@@ -101,6 +101,7 @@ TEST(PdfAnnotate, writes_every_type) {
 
   const auto subtypes = [](const Page &page) {
     std::vector<std::string> result;
+    result.reserve(page.annotations.size());
     for (const auto *annotation : page.annotations) {
       result.push_back(
           annotation->object.as_dictionary().get("Subtype").as_string());
@@ -174,12 +175,24 @@ TEST(PdfAnnotate, malformed_payloads_are_refused) {
       [{"page": 0, "type": "highlight",
         "quads": [[0,0,0,0,0,0,0,0]]}]})json"),
                std::invalid_argument);
+  // a member of the wrong type, which nlohmann reports in its own hierarchy
+  EXPECT_THROW(annotate(R"json({"version": "1", "annotations": []})json"),
+               std::invalid_argument);
+  EXPECT_THROW(annotate(R"json({"version": 1, "annotations":
+      [{"page": "0", "type": "highlight", "quads": [[0,0,0,0,0,0,0,0]],
+        "color": [0, 0, 0]}]})json"),
+               std::invalid_argument);
+  EXPECT_THROW(annotate(R"json({"version": 1, "annotations":
+      [{"page": 0, "type": "highlight", "quads": [[0,0,0,0,0,0,0,0]],
+        "color": ["a", "b", "c"]}]})json"),
+               std::invalid_argument);
 }
 
 // Decision 6: an encrypted file cannot take an incremental update, because the
 // key its new objects would need is not retained.
 TEST(PdfAnnotate, refuses_an_encrypted_file) {
   std::ostringstream out;
-  EXPECT_ANY_THROW(open_fixture("odr-public/pdf/Casio_WVA-M650-7AJF.pdf")
-                       .annotate(std::string(one_highlight), out));
+  EXPECT_THROW(open_fixture("odr-public/pdf/Casio_WVA-M650-7AJF.pdf")
+                   .annotate(std::string(one_highlight), out),
+               std::runtime_error);
 }

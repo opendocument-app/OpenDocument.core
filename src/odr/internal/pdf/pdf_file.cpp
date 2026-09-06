@@ -1,30 +1,28 @@
 #include <odr/internal/pdf/pdf_file.hpp>
 
-#include <odr/internal/pdf/pdf_annotation.hpp>
-#include <odr/internal/pdf/pdf_document.hpp>
-#include <odr/internal/pdf/pdf_document_element.hpp>
-#include <odr/internal/pdf/pdf_writer.hpp>
-
-#include <array>
-#include <map>
-#include <stdexcept>
-#include <vector>
-
-#include <nlohmann/json.hpp>
-
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/pdf/pdf_annotation.hpp>
+#include <odr/internal/pdf/pdf_document.hpp>
+#include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_encryption.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/pdf/pdf_writer.hpp>
 
+#include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <vector>
+
+#include <nlohmann/json.hpp>
 
 namespace odr::internal::pdf {
 
@@ -261,30 +259,20 @@ Ink read_ink(const nlohmann::json &value) {
   return result;
 }
 
-} // namespace
-
-void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
-                       const Logger &logger) const {
-  nlohmann::json json;
-  try {
-    json = nlohmann::json::parse(annotations);
-  } catch (const nlohmann::json::exception &e) {
-    throw std::invalid_argument(std::string("annotations are not json: ") +
-                                e.what());
-  }
-
+/// @throws std::invalid_argument for a payload this build cannot write.
+void write_annotations(DocumentParser &parser, const nlohmann::json &json,
+                       std::ostream &out) {
   // the guard against a payload from a frontend this build does not know
   if (json.value("version", 0) != 1) {
     throw std::invalid_argument("unsupported annotation format version");
   }
 
-  DocumentParser parser = create_parser(logger);
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 
   IncrementalWriter writer(parser);
   // one page rewrite per page, however many annotations land on it
-  std::map<Page *, std::vector<ObjectReference>> by_page;
+  std::map<std::size_t, std::vector<ObjectReference>> by_page;
 
   for (const nlohmann::json &value :
        json.value("annotations", nlohmann::json::array())) {
@@ -296,17 +284,33 @@ void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
     }
     const auto type = at(value, "type").get<std::string>();
 
-    by_page[pages[index]].push_back(
+    by_page[index].push_back(
         type == "ink"
             ? write_ink(writer, read_ink(value))
             : write_text_markup(writer, read_text_markup(value, type)));
   }
 
-  for (const auto &[page, references] : by_page) {
-    append_page_annotations(writer, *page, references);
+  for (const auto &[index, references] : by_page) {
+    append_page_annotations(writer, *pages[index], references);
   }
 
   writer.write(out);
+}
+
+} // namespace
+
+void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
+                       const Logger &logger) const {
+  try {
+    const nlohmann::json json = nlohmann::json::parse(annotations);
+    DocumentParser parser = create_parser(logger);
+    write_annotations(parser, json, out);
+  } catch (const nlohmann::json::exception &e) {
+    // nlohmann reports a member of the wrong type in a hierarchy of its own,
+    // and that is a malformed payload like any other
+    throw std::invalid_argument(std::string("annotations are malformed: ") +
+                                e.what());
+  }
 }
 
 } // namespace odr::internal::pdf
