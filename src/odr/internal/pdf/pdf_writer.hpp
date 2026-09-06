@@ -19,6 +19,9 @@ public:
   ///         cross-reference table, or encrypted.
   explicit IncrementalWriter(DocumentParser &parser);
 
+  /// The parser the update is being written against.
+  [[nodiscard]] DocumentParser &parser() const noexcept { return *m_parser; }
+
   /// An id past every one the file uses.
   [[nodiscard]] ObjectReference mint_object();
 

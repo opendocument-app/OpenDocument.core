@@ -225,6 +225,7 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/pdf/pdf_afm.cpp"
         "src/odr/internal/pdf/pdf_afm_data.cpp"
+        "src/odr/internal/pdf/pdf_annotation.cpp"
         "src/odr/internal/pdf/pdf_cid.cpp"
         "src/odr/internal/pdf/pdf_cid_data.cpp"
         "src/odr/internal/pdf/pdf_cmap.cpp"

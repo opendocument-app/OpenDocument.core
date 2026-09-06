@@ -3,8 +3,8 @@
 Status: **underway.** This records the architecture for adding markup
 annotations — text highlight and freehand drawing first — to an existing PDF,
 the alternatives weighed, and the effort it costs. The format model is
-validated against four viewers, and Phases 0 through 1 have landed: the
-incremental writer works, the annotations it will carry are not written yet.
+validated against four viewers, and Phases 0 through 3 have landed: the writer
+appends, and the markup and ink annotations it carries are written.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -166,10 +166,8 @@ Notes on the shape:
 - **`quads` order is upper-left, upper-right, lower-left, lower-right.** The
   spec's stated order (12.5.6.10) is counterclockwise; every implementation
   writes the Z-order above, and `pdfAnnotate`'s documentation says as much
-  outright. Follow the implementations, and say so in a comment at the one place
-  that emits it. Still **unverified** — see *Validated against real viewers*:
-  an annotation carrying an `/AP` never has its `/QuadPoints` read, so a test
-  has to reach for a viewer that regenerates the appearance.
+  outright, as does Phase 2's appearance-less experiment. Follow the
+  implementations, and say so in a comment at the one place that emits it.
 - **`delete` only names an annotation we wrote**, identified by the `/NM` we
   minted. Deleting a foreign annotation is out of scope: we would have to prove
   nothing else references it.
@@ -225,9 +223,8 @@ correctly (user-space y 700/688 arrived at page-box y 92/104).
 Three things the spike did **not** settle, and Phase 1 and 2 owe tests for each:
 
 - **QuadPoints ordering.** With an `/AP` present, the appearance is what every
-  one of those engines painted — the `/QuadPoints` were never consulted. The
-  ordering matters only to a viewer that regenerates the appearance, and to
-  text-selection semantics. The note below stands as a note.
+  one of those engines painted — the `/QuadPoints` were never consulted.
+  Settled in Phase 2 with an appearance-less annotation instead.
 - **A page dictionary inside an object stream**, and **appending to a file
   whose newest section is an xref stream.** The spike's fixture had neither;
   Phase 1's tests cover both.
@@ -279,17 +276,21 @@ ghostscript, CoreGraphics and our own renderer all honour the new rotation
 A page dictionary living inside an object stream is rewritten uncompressed in
 the new section, the newer type-1 entry winning over the older type-2 one.
 
-### Phase 2 — highlight (2 d, ~200 lines)
+### Phases 2 and 3 — text markup and ink — **done** (#847)
 
-Annotation dictionary + appearance builder + `/Annots` append. The test is the
-round trip: write, re-open with `DocumentParser`, assert the appearance resolves
-and the rendered page carries a `mix-blend-mode:multiply` rect at the expected
-position.
+`pdf/pdf_annotation.{hpp,cpp}`: `write_text_markup` covers `/Highlight`,
+`/Underline`, `/StrikeOut` and `/Squiggly`; `write_ink` covers `/Ink`, its
+strokes smoothed Catmull-Rom → cubic bezier. `append_page_annotations` puts
+them on the page, rewriting the `/Annots` array itself where it is indirect.
 
-### Phase 3 — ink (1–2 d, ~150 lines)
+Only the highlight multiplies (11.6.4.1) — it is a wash over the text, where
+the others are marks drawn on top of it.
 
-Stroke smoothing (Catmull-Rom → cubic bezier) into the appearance stream.
-`/BS /W`, round caps/joins.
+**`/QuadPoints` ordering is settled.** Two files carrying the same visual
+rectangle, one in Z-order and one in the spec's counterclockwise order, each
+with no `/AP` so a viewer has to synthesize the appearance: ghostscript draws
+the Z-order as a clean rectangle and the spec's order as a twisted, smeared
+blob. CoreGraphics synthesizes nothing at all, so it is no oracle here.
 
 ### Phase 4 — public API (1 d, ~130 lines)
 
@@ -368,8 +369,3 @@ Medium:
   the `Decryptor` key accessor need to land in v1 after all?
 - **Where does the pending-annotation state live across a reload** in the mobile
   WebView — the browser only, or does the host persist the payload?
-- **How do we test `/QuadPoints` ordering at all?** Every engine we have as an
-  oracle paints the `/AP` and ignores them. Options: write one annotation
-  *without* an appearance and see where a viewer puts it, or check what Acrobat
-  does with our file. Cheap either way, but it needs deciding before Phase 2
-  claims the ordering is right.
