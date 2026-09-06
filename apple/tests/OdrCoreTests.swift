@@ -382,6 +382,41 @@ final class DocumentSaveTests: XCTestCase {
   }
 }
 
+final class PdfAnnotationTests: XCTestCase {
+  private static let highlight = """
+    {"version": 1, "annotations": [{"page": 0, "type": "highlight",
+     "quads": [[72, 700, 300, 700, 72, 688, 300, 688]],
+     "color": [1, 0.9, 0.2]}]}
+    """
+
+  func testAnnotateIsDeclaredForPdf() throws {
+    let capabilities = Odr.capabilities(fileType: .portableDocumentFormat)
+    XCTAssertTrue(capabilities.annotate)
+  }
+
+  func testAnnotateAppendsToTheSource() throws {
+    let path = try Fixture.pdf()
+    let source = try Data(contentsOf: URL(fileURLWithPath: path))
+
+    let file = try DecodedFile.decode(path: path).asPdfFile()
+    let result = try file.annotate(Self.highlight)
+
+    XCTAssertGreaterThan(result.count, source.count)
+    // the source is copied through and the annotation written after it
+    XCTAssertEqual(result.prefix(source.count), source)
+
+    let text = String(decoding: result, as: UTF8.self)
+    XCTAssertTrue(text.contains("/Highlight"))
+    XCTAssertTrue(text.contains("/Subtype /Form"))
+  }
+
+  func testAnnotateRefusesAPayloadItDoesNotUnderstand() throws {
+    let file = try DecodedFile.decode(path: try Fixture.pdf()).asPdfFile()
+    XCTAssertThrowsError(try file.annotate("{\"version\": 2}"))
+    XCTAssertThrowsError(try file.annotate("not json"))
+  }
+}
+
 final class TableAddressTests: XCTestCase {
   func testRoundTrips() throws {
     XCTAssertEqual(TableAddress.columnNumber(from: "C"), 2)

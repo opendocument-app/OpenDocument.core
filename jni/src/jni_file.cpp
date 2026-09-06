@@ -366,6 +366,17 @@ Java_app_opendocument_core_PdfFile_decryptPdfFileNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_app_opendocument_core_PdfFile_annotateNative(JNIEnv *env, jobject,
+                                                  jlong handle,
+                                                  jstring annotations) {
+  return guarded(env, [&] {
+    std::ostringstream out;
+    decoded(handle).as_pdf_file().annotate(to_string(env, annotations), out);
+    return to_jbytes(env, std::move(out).str());
+  });
+}
+
 // app.opendocument.core.FontFile
 
 extern "C" JNIEXPORT jbyteArray JNICALL

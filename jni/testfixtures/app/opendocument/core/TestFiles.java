@@ -66,6 +66,35 @@ final class TestFiles {
     return path;
   }
 
+  /** A one-page pdf, its cross-reference offsets computed so they are right. */
+  static Path pdfFile(Path directory) throws IOException {
+    Path path = directory.resolve("minimal.pdf");
+    List<String> objects =
+        Arrays.asList(
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                + "/Resources << >> /Contents 4 0 R >>",
+            "<< /Length 5 >>\nstream\nBT ET\nendstream");
+
+    StringBuilder out = new StringBuilder("%PDF-1.7\n");
+    int[] offsets = new int[objects.size()];
+    for (int i = 0; i < objects.size(); ++i) {
+      offsets[i] = out.length();
+      out.append(i + 1).append(" 0 obj\n").append(objects.get(i)).append("\nendobj\n");
+    }
+    int start = out.length();
+    out.append("xref\n0 ").append(objects.size() + 1).append("\n0000000000 65535 f \n");
+    for (int offset : offsets) {
+      out.append(String.format("%010d 00000 n \n", offset));
+    }
+    out.append("trailer\n<< /Size ").append(objects.size() + 1).append(" /Root 1 0 R >>\n");
+    out.append("startxref\n").append(start).append("\n%%EOF\n");
+
+    write(path, out.toString());
+    return path;
+  }
+
   private static void write(Path path, String content) throws IOException {
     Files.write(path, content.getBytes(StandardCharsets.UTF_8));
   }

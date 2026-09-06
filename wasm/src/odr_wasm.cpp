@@ -129,6 +129,7 @@ emscripten::val to_capabilities(const FileTypeCapabilities &capabilities) {
   result.set("edit", capabilities.edit);
   result.set("save", capabilities.save);
   result.set("encrypt", capabilities.encrypt);
+  result.set("annotate", capabilities.annotate);
   return result;
 }
 

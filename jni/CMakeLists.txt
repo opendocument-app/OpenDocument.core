@@ -198,6 +198,7 @@ if (ODR_TEST AND NOT ANDROID)
             "tests/app/opendocument/core/HttpServerTest.java"
             "tests/app/opendocument/core/LoggerTest.java"
             "tests/app/opendocument/core/MetaTest.java"
+            "tests/app/opendocument/core/PdfFileTest.java"
             "tests/app/opendocument/core/TextEncodingTest.java"
             # shared with the instrumented suite of the AAR, see `android/`
             "testfixtures/app/opendocument/core/TestFiles.java"

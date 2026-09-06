@@ -126,3 +126,31 @@ export function minimalOdt(text = 'hello') {
     },
   ]);
 }
+
+// The smallest pdf that opens: one page, its cross-reference offsets computed.
+export function minimalPdf() {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]' +
+      ' /Resources << >> /Contents 4 0 R >>',
+    '<< /Length 5 >>\nstream\nBT ET\nendstream',
+  ];
+
+  let out = '%PDF-1.7\n';
+  const offsets = [];
+  objects.forEach((body, index) => {
+    offsets.push(out.length);
+    out += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+
+  const start = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    out += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  }
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+  out += `startxref\n${start}\n%%EOF\n`;
+
+  return new Uint8Array(Buffer.from(out, 'latin1'));
+}

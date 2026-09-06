@@ -47,11 +47,14 @@ NSString *apple::to_nsstring(std::string_view string) {
   return result != nil ? result : @"";
 }
 
+NSData *apple::to_nsdata(const std::string &bytes) {
+  return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+}
+
 NSData *apple::to_nsdata(std::istream &stream) {
   std::ostringstream buffer;
   buffer << stream.rdbuf();
-  const std::string bytes = buffer.str();
-  return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  return to_nsdata(std::move(buffer).str());
 }
 
 namespace {

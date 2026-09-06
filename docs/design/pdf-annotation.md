@@ -1,10 +1,10 @@
 # PDF annotation design
 
-Status: **underway.** This records the architecture for adding markup
+Status: **landed.** This records the architecture for adding markup
 annotations — text highlight and freehand drawing first — to an existing PDF,
 the alternatives weighed, and the effort it costs. The format model is
-validated against four viewers, and Phases 0 through 5 have landed: the browser
-draws the markup and the writer appends it; the bindings are what is left.
+validated against four viewers, and every phase has landed: the browser draws
+the markup, the writer appends it, and every binding can apply it.
 
 Scope is **markup only**: draw on top of a page, highlight/underline/strike
 text. Editing or removing the *existing* text of a PDF is explicitly out — that
@@ -323,10 +323,11 @@ selection layer alone, which is what makes selecting text to highlight work.
 Checks in `test/browser/annotation/`, run by hand as the repo's other emitted
 scripts are.
 
-### Phase 6 — bindings (2 d, ~470 lines)
+### Phase 6 — bindings — **done** (#850)
 
-wasm (~50 C++, ~80 TS), JNI (~60 C++, ~70 Java), Python (~40), Apple (~80 ObjC,
-~90 Swift).
+`annotate` and the `annotate` capability across wasm, JNI, python and Apple.
+Each returns the annotated bytes rather than writing a file: none of these
+callers has a filesystem the caller would want written to.
 
 ### Phase 7 — corpus and interop (2 d, ~600 test lines)
 

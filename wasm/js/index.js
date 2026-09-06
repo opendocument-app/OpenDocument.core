@@ -91,6 +91,12 @@ export class Document {
     return this;
   }
 
+  // The annotated pdf's bytes; what `odr.annotation.getAnnotations()` collected
+  // goes in.
+  annotate(annotations) {
+    return unwrap(this.#core.annotate(this.#handle, annotations));
+  }
+
   // The document's bytes, not the rendered html.
   save(password) {
     return password === undefined
