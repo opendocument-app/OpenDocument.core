@@ -26,11 +26,13 @@ goes back to the node. **This is why ODF alone can edit and save**: a text edit
 is a local DOM splice, and `save` re-serialises the mutated tree. The other
 engines throw away the source, so their models are read-only.
 
-Everything else follows the shared registry/adapter pattern: a flat element
-store, id = index + 1, `null_element_id == 0`, parent/child/
-sibling ids, per-subtype payload tables (`m_texts`, `m_tables`, `m_sheets`,
-`m_sheet_cells`). One mega `ElementAdapter` multiply-inherits every abstract
-per-type adapter and dispatches by returning `this`/`nullptr` on `element_type`.
+Everything else comes from the shared machinery in `internal/common/`:
+`internal::ElementRegistry<RegistryElement, StoredId>` is the flat store (id =
+index + 1, `null_element_id == 0`, parent/child/sibling ids), and this module
+adds only the `pugi::xml_node` on the element and its payload tables
+(`m_texts`, `m_tables`, `m_sheets`, `m_sheet_cells`). One mega `ElementAdapter`
+derives from `internal::RegistryElementAdapter`, naming every abstract per-type
+adapter in its pack; the `*_adapter(id)` dispatch is the base's.
 
 ## Design decisions
 
@@ -64,18 +66,21 @@ vectors. The cells of every row live in one array per sheet, each row recording
 where its own run starts, so a sheet is two allocations rather than one per row.
 `register_cell` therefore has to follow its row's `register_row`.
 
-The elements themselves are a `std::deque`: `create_element` hands back a
-reference the parser holds on to, and a vector both invalidates it and peaks
-holding two copies. `parse_sheet` counts the row and cell nodes first, so the
+The elements themselves are a `std::deque` — that is now the shared
+`internal::ElementRegistry`'s doing, for the reason odf needed it:
+`create_element_` hands back a reference the parser holds on to, and a vector
+both invalidates it and peaks holding two copies.
+`parse_sheet` counts the row and cell nodes first, so the
 arrays are allocated once at the size they end at — a repeat collapses onto one
 entry, so the count is an upper bound, and one bounded by the dom.
 
-**Ids are stored narrow, payloads in sorted arrays.** `StoredId` is 32 bits and
-every boundary widens back to the public `ElementIdentifier`, which stays 64 —
-`csv` packs coordinates into it. The payload tables are written in id order as
-elements are created, so a binary search replaces a hash map; `m_list_types` and
-`m_list_markers` stay hash maps, written when a list is resolved rather than
-parsed.
+**Ids are stored narrow, payloads in sorted arrays.** `StoredId` is 32 bits —
+the `Id` this module gives `internal::ElementRegistry` — and every boundary
+widens back to the public `ElementIdentifier`, which stays 64: `csv` packs
+coordinates into it. The payload tables are written in id order as elements are
+created, so `SortedSideTable`'s binary search replaces a hash map;
+`m_list_types` and `m_list_markers` are plain `SideTable`s, written when a list
+is resolved rather than parsed.
 
 **Styles resolve to a flattened `ResolvedStyle`, eagerly.** `StyleRegistry`
 first builds name→node indices from *both* files (automatic and named styles land

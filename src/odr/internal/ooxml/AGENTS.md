@@ -19,11 +19,12 @@ detection**; each is a self-contained module with its own `AGENTS.md`:
 ## Shared element model (same as ODF)
 
 Like [`odf/`](../odf/), every format keeps its parsed XML parts **resident** and
-the `ElementRegistry` is a thin index over them: each `Element` holds a live
-`pugi::xml_node` plus its tree ids (flat vector, id = index + 1,
-`null_element_id == 0`, parent/child/sibling ids, per-subtype side maps). One
-mega `ElementAdapter` per format multiply-inherits the abstract per-type adapters
-and dispatches by returning `this`/`nullptr` on `element_type`. Parsing is a
+the `ElementRegistry` is a thin index over them: its `RegistryElement` adds a
+live `pugi::xml_node` to the shared `ElementNode`, and the store, the tree links
+and the `SideTable` payloads come from `internal::ElementRegistry` (see the top
+level [`AGENTS.md`](../../../../AGENTS.md)). One mega `ElementAdapter` per format
+derives from `internal::RegistryElementAdapter`, naming the abstract per-type
+adapters it answers for in the template pack; the hooks are the base's. Parsing is a
 static `unordered_map<tag, TreeParser>` dispatch table; unknown tags are skipped
 (children still visited). Text runs are coalesced into one `text` Element over a
 `[first, last]` node span. **Editing, where present, splices these live nodes;**

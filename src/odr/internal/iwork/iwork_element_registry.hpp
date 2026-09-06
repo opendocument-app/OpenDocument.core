@@ -3,19 +3,19 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
-#include <cstddef>
+#include <odr/internal/common/element_registry.hpp>
+
 #include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace odr::internal::iwork {
 
-class ElementRegistry final {
+class ElementRegistry final
+    : public internal::ElementRegistry<ElementNode<ElementIdentifier>> {
 public:
   struct Size final {
     float width{};
@@ -29,15 +29,6 @@ public:
     float y{};
     std::optional<float> width{};
     std::optional<float> height{};
-  };
-
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
   };
 
   struct Text final {
@@ -90,10 +81,6 @@ public:
                                          std::uint32_t row) const;
   };
 
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type);
   std::tuple<ElementIdentifier, Element &, Text &> create_text_element();
   std::tuple<ElementIdentifier, Element &, Frame &> create_frame_element();
@@ -103,23 +90,47 @@ public:
   std::tuple<ElementIdentifier, Element &, Cell &>
   create_cell_element(ElementType type);
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
-  [[nodiscard]] Frame &frame_element_at(ElementIdentifier id);
-  [[nodiscard]] Slide &slide_element_at(ElementIdentifier id);
-  [[nodiscard]] Table &table_element_at(ElementIdentifier id);
-  [[nodiscard]] Sheet &sheet_element_at(ElementIdentifier id);
-  [[nodiscard]] Cell &cell_element_at(ElementIdentifier id);
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] Frame &frame_element_at(const ElementIdentifier id) {
+    return m_frames.at(id);
+  }
+  [[nodiscard]] Slide &slide_element_at(const ElementIdentifier id) {
+    return m_slides.at(id);
+  }
+  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] Sheet &sheet_element_at(const ElementIdentifier id) {
+    return m_sheets.at(id);
+  }
+  [[nodiscard]] Cell &cell_element_at(const ElementIdentifier id) {
+    return m_cells.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Frame &frame_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Slide &slide_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Sheet &sheet_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Cell &cell_element_at(ElementIdentifier id) const;
-
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Frame &
+  frame_element_at(const ElementIdentifier id) const {
+    return m_frames.at(id);
+  }
+  [[nodiscard]] const Slide &
+  slide_element_at(const ElementIdentifier id) const {
+    return m_slides.at(id);
+  }
+  [[nodiscard]] const Table &
+  table_element_at(const ElementIdentifier id) const {
+    return m_tables.at(id);
+  }
+  [[nodiscard]] const Sheet &
+  sheet_element_at(const ElementIdentifier id) const {
+    return m_sheets.at(id);
+  }
+  [[nodiscard]] const Cell &cell_element_at(const ElementIdentifier id) const {
+    return m_cells.at(id);
+  }
 
   /// Links @p column_id into @p table_id's column chain. Columns are not
   /// children: a table's child chain is its rows.
@@ -130,21 +141,12 @@ public:
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Frame> m_frames;
-  std::unordered_map<ElementIdentifier, Slide> m_slides;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
-  std::unordered_map<ElementIdentifier, Sheet> m_sheets;
-  std::unordered_map<ElementIdentifier, Cell> m_cells;
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
-  void check_frame_id(ElementIdentifier id) const;
-  void check_slide_id(ElementIdentifier id) const;
-  void check_table_id(ElementIdentifier id) const;
-  void check_sheet_id(ElementIdentifier id) const;
-  void check_cell_id(ElementIdentifier id) const;
+  SideTable<Text> m_texts;
+  SideTable<Frame> m_frames;
+  SideTable<Slide> m_slides;
+  SideTable<Table> m_tables;
+  SideTable<Sheet> m_sheets;
+  SideTable<Cell> m_cells;
 };
 
 } // namespace odr::internal::iwork

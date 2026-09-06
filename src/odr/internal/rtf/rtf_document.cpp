@@ -6,6 +6,7 @@
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/rtf/rtf_parser.hpp>
 #include <odr/internal/util/document_util.hpp>
 
@@ -35,82 +36,15 @@ const ElementRegistry &Document::element_registry() const {
 
 namespace {
 
-class ElementAdapter final : public abstract::ElementAdapter,
-                             public abstract::TextRootAdapter,
-                             public abstract::LineBreakAdapter,
-                             public abstract::ParagraphAdapter,
-                             public abstract::TextAdapter {
+using AdapterBase = internal::RegistryElementAdapter<
+    const ElementRegistry, abstract::TextRootAdapter,
+    abstract::LineBreakAdapter, abstract::ParagraphAdapter,
+    abstract::TextAdapter>;
+
+class ElementAdapter final : public AdapterBase {
 public:
   explicit ElementAdapter(const ElementRegistry &registry)
-      : m_registry(&registry) {}
-
-  [[nodiscard]] ElementType
-  element_type(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).type;
-  }
-
-  [[nodiscard]] ElementIdentifier
-  element_parent(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).parent_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_first_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).first_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_last_child(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).last_child_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_previous_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).previous_sibling_id;
-  }
-  [[nodiscard]] ElementIdentifier
-  element_next_sibling(const ElementIdentifier element_id) const override {
-    return m_registry->element_at(element_id).next_sibling_id;
-  }
-
-  [[nodiscard]] bool
-  element_is_unique(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool
-  element_is_self_locatable(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return true;
-  }
-  [[nodiscard]] bool
-  element_is_editable(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return false;
-  }
-  [[nodiscard]] DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
-  }
-
-  [[nodiscard]] const TextRootAdapter *
-  text_root_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::root ? this : nullptr;
-  }
-  [[nodiscard]] const LineBreakAdapter *
-  line_break_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::line_break ? this : nullptr;
-  }
-  [[nodiscard]] const ParagraphAdapter *
-  paragraph_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::paragraph ? this : nullptr;
-  }
-  [[nodiscard]] const TextAdapter *
-  text_adapter(const ElementIdentifier element_id) const override {
-    return element_type(element_id) == ElementType::text ? this : nullptr;
-  }
+      : AdapterBase(registry) {}
 
   [[nodiscard]] PageLayout
   text_root_page_layout(const ElementIdentifier element_id) const override {
@@ -158,7 +92,6 @@ public:
   }
 
 private:
-  const ElementRegistry *m_registry{nullptr};
 };
 
 std::unique_ptr<abstract::ElementAdapter>

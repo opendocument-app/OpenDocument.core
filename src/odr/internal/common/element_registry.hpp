@@ -24,8 +24,9 @@ template <typename Id> struct ElementNode {
   ElementType type{ElementType::none};
 };
 
-/// A per-type payload keyed by element id, for payloads written out of parse
-/// order. @ref SortedSideTable is cheaper where they are not.
+/// A per-type payload keyed by element id, hashed, filled in any order.
+/// Prefer @ref SortedSideTable for a payload written when its element is
+/// created: it is a binary search over a narrow-keyed array instead.
 template <typename T> class SideTable final {
 public:
   T &emplace(const ElementIdentifier id, T value) {
@@ -33,32 +34,41 @@ public:
   }
 
   [[nodiscard]] T *find(const ElementIdentifier id) {
-    return const_cast<T *>(std::as_const(*this).find(id));
+    return find_(m_entries, id);
   }
-
   [[nodiscard]] const T *find(const ElementIdentifier id) const {
-    const auto it = m_entries.find(id);
-    return it != std::end(m_entries) ? &it->second : nullptr;
+    return find_(m_entries, id);
   }
 
-  [[nodiscard]] T &at(const ElementIdentifier id) {
-    return const_cast<T &>(std::as_const(*this).at(id));
-  }
-
+  [[nodiscard]] T &at(const ElementIdentifier id) { return at_(*this, id); }
   [[nodiscard]] const T &at(const ElementIdentifier id) const {
-    const T *entry = find(id);
+    return at_(*this, id);
+  }
+
+private:
+  std::unordered_map<ElementIdentifier, T> m_entries;
+
+  /// One body for both constnesses: the argument carries the const and the
+  /// deduced return takes it on.
+  template <typename Entries>
+  static auto *find_(Entries &entries, const ElementIdentifier id) {
+    const auto it = entries.find(id);
+    return it != std::end(entries) ? &it->second : nullptr;
+  }
+
+  template <typename Self>
+  static auto &at_(Self &self, const ElementIdentifier id) {
+    auto *entry = self.find(id);
     if (entry == nullptr) {
       throw std::out_of_range("SideTable::at: identifier not found");
     }
     return *entry;
   }
-
-private:
-  std::unordered_map<ElementIdentifier, T> m_entries;
 };
 
-/// A per-type payload keyed by element id and written in id order, so a lookup
-/// is a binary search. A deque: `emplace` hands out a reference.
+/// A per-type payload appended as its elements are created, so the ids only
+/// grow and a lookup is a binary search. `emplace` refuses one out of order,
+/// and hands out a reference — hence a deque.
 template <typename T, typename Id = ElementIdentifier>
 class SortedSideTable final {
 public:
@@ -71,24 +81,15 @@ public:
   }
 
   [[nodiscard]] T *find(const ElementIdentifier id) {
-    return const_cast<T *>(std::as_const(*this).find(id));
+    return find_(m_entries, id);
   }
-
   [[nodiscard]] const T *find(const ElementIdentifier id) const {
-    const auto it = std::ranges::lower_bound(m_entries, id, {}, &Entry::first);
-    return it != std::end(m_entries) && it->first == id ? &it->second : nullptr;
+    return find_(m_entries, id);
   }
 
-  [[nodiscard]] T &at(const ElementIdentifier id) {
-    return const_cast<T &>(std::as_const(*this).at(id));
-  }
-
+  [[nodiscard]] T &at(const ElementIdentifier id) { return at_(*this, id); }
   [[nodiscard]] const T &at(const ElementIdentifier id) const {
-    const T *entry = find(id);
-    if (entry == nullptr) {
-      throw std::out_of_range("SortedSideTable::at: identifier not found");
-    }
-    return *entry;
+    return at_(*this, id);
   }
 
   [[nodiscard]] auto begin() const noexcept { return m_entries.begin(); }
@@ -100,15 +101,31 @@ private:
   using Entry = std::pair<Id, T>;
 
   std::deque<Entry> m_entries;
+
+  /// One body for both constnesses: the argument carries the const and the
+  /// deduced return takes it on.
+  template <typename Entries>
+  static auto *find_(Entries &entries, const ElementIdentifier id) {
+    const auto it = std::ranges::lower_bound(entries, id, {}, &Entry::first);
+    return it != std::end(entries) && it->first == id ? &it->second : nullptr;
+  }
+
+  template <typename Self>
+  static auto &at_(Self &self, const ElementIdentifier id) {
+    auto *entry = self.find(id);
+    if (entry == nullptr) {
+      throw std::out_of_range("SortedSideTable::at: identifier not found");
+    }
+    return *entry;
+  }
 };
 
 /// The flat store an engine builds its element tree in: an id is the index
 /// plus one, and @p ElementT derives from @ref ElementNode for the links.
 ///
-/// A deque by default, because `create_element_` hands back a reference the
-/// parser holds on to.
-template <typename ElementT, typename Id = ElementIdentifier,
-          typename Container = std::deque<ElementT>>
+/// A deque, not a vector: `create_element_` hands back a reference the parser
+/// holds on to, and a vector both invalidates it and peaks holding two copies.
+template <typename ElementT, typename Id = ElementIdentifier>
 class ElementRegistry {
 public:
   using Element = ElementT;
@@ -179,7 +196,7 @@ protected:
     }
   }
 
-  Container m_elements;
+  std::deque<Element> m_elements;
 };
 
 } // namespace odr::internal

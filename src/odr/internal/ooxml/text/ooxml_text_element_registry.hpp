@@ -7,7 +7,6 @@
 #include <odr/internal/common/list_numbering.hpp>
 
 #include <tuple>
-#include <vector>
 
 #include <pugixml.hpp>
 
@@ -18,8 +17,7 @@ struct RegistryElement final : ElementNode<ElementIdentifier> {
 };
 
 class ElementRegistry final
-    : public internal::ElementRegistry<RegistryElement, ElementIdentifier,
-                                       std::vector<RegistryElement>> {
+    : public internal::ElementRegistry<RegistryElement> {
 public:
   struct Table final {
     ElementIdentifier first_column_id{null_element_id};

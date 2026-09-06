@@ -5,26 +5,18 @@
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 
+#include <odr/internal/common/element_registry.hpp>
+
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <tuple>
-#include <unordered_map>
-#include <vector>
 
 namespace odr::internal::markdown {
 
-class ElementRegistry final {
+class ElementRegistry final
+    : public internal::ElementRegistry<ElementNode<ElementIdentifier>> {
 public:
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-  };
-
   struct Text final {
     std::string text;
   };
@@ -55,8 +47,6 @@ public:
     std::optional<HorizontalAlign> horizontal_align;
   };
 
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type);
   std::tuple<ElementIdentifier, Element &, Text &> create_text_element();
   std::tuple<ElementIdentifier, Element &, Link &> create_link_element();
@@ -67,21 +57,35 @@ public:
   std::tuple<ElementIdentifier, Element &, TableCell &>
   create_table_cell_element();
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
-  [[nodiscard]] Table &table_element_at(ElementIdentifier id);
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] Table &table_element_at(const ElementIdentifier id) {
+    return m_tables.at(id);
+  }
 
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Link &link_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const List &list_element_at(ElementIdentifier id) const;
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Link &link_element_at(const ElementIdentifier id) const {
+    return m_links.at(id);
+  }
+  [[nodiscard]] const List &list_element_at(const ElementIdentifier id) const {
+    return m_lists.at(id);
+  }
   [[nodiscard]] const ListItem &
-  list_item_element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Table &table_element_at(ElementIdentifier id) const;
+  list_item_element_at(const ElementIdentifier id) const {
+    return m_list_items.at(id);
+  }
+  [[nodiscard]] const Table &
+  table_element_at(const ElementIdentifier id) const {
+    return m_tables.at(id);
+  }
   [[nodiscard]] const TableCell &
-  table_cell_element_at(ElementIdentifier id) const;
+  table_cell_element_at(const ElementIdentifier id) const {
+    return m_table_cells.at(id);
+  }
 
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);
 
   /// Character style of an element, as an index into the document's
@@ -97,22 +101,14 @@ public:
   element_paragraph_style_index(ElementIdentifier id) const;
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-  std::unordered_map<ElementIdentifier, Link> m_links;
-  std::unordered_map<ElementIdentifier, List> m_lists;
-  std::unordered_map<ElementIdentifier, ListItem> m_list_items;
-  std::unordered_map<ElementIdentifier, Table> m_tables;
-  std::unordered_map<ElementIdentifier, TableCell> m_table_cells;
-  std::unordered_map<ElementIdentifier, std::uint32_t> m_text_style_indices;
-  std::unordered_map<ElementIdentifier, std::uint32_t>
-      m_paragraph_style_indices;
-
-  void check_element_id(ElementIdentifier id) const;
-
-  /// Links @p child_id onto the chain @p first_id / @p last_id delimit.
-  void link_child(ElementIdentifier parent_id, ElementIdentifier child_id,
-                  ElementIdentifier &first_id, ElementIdentifier &last_id);
+  SideTable<Text> m_texts;
+  SideTable<Link> m_links;
+  SideTable<List> m_lists;
+  SideTable<ListItem> m_list_items;
+  SideTable<Table> m_tables;
+  SideTable<TableCell> m_table_cells;
+  SideTable<std::uint32_t> m_text_style_indices;
+  SideTable<std::uint32_t> m_paragraph_style_indices;
 };
 
 } // namespace odr::internal::markdown

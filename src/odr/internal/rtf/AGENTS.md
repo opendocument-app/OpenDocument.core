@@ -22,7 +22,7 @@ bytes ─▶ Tokenizer ─▶ TreeBuilder ─▶ ElementRegistry ─▶ Document
 | `rtf_tokenizer.*` | Bytes → tokens. Knows nothing about groups or destinations. |
 | `rtf_state.*` | The group stack: `{` saves, `}` restores. |
 | `rtf_parser.*` | `parse_tree` — tokens → `root → (paragraph \| page break) → (text \| line break)`. |
-| `rtf_element_registry.*` | The flat registry, copied from `oldms/text` minus its style index. |
+| `rtf_element_registry.*` | `internal::ElementRegistry` plus one `Text` payload — the smallest registry there is, and the one to read first. |
 | `rtf_document.*` | `internal::Document` + the element adapter. |
 | `rtf_file.*` | `abstract::DocumentFile`; validates the magic, hands out the document. |
 

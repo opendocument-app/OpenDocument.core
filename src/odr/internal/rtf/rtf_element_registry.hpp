@@ -3,50 +3,32 @@
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
 
-#include <cstddef>
+#include <odr/internal/common/element_registry.hpp>
+
 #include <string>
 #include <tuple>
-#include <unordered_map>
-#include <vector>
 
 namespace odr::internal::rtf {
 
-class ElementRegistry final {
+class ElementRegistry final
+    : public internal::ElementRegistry<ElementNode<ElementIdentifier>> {
 public:
-  struct Element final {
-    ElementIdentifier parent_id{null_element_id};
-    ElementIdentifier first_child_id{null_element_id};
-    ElementIdentifier last_child_id{null_element_id};
-    ElementIdentifier previous_sibling_id{null_element_id};
-    ElementIdentifier next_sibling_id{null_element_id};
-    ElementType type{ElementType::none};
-  };
-
   struct Text final {
     std::string text;
   };
 
-  void clear() noexcept;
-
-  [[nodiscard]] std::size_t size() const noexcept;
-
   std::tuple<ElementIdentifier, Element &> create_element(ElementType type);
   std::tuple<ElementIdentifier, Element &, Text &> create_text_element();
 
-  [[nodiscard]] Element &element_at(ElementIdentifier id);
-  [[nodiscard]] Text &text_element_at(ElementIdentifier id);
-
-  [[nodiscard]] const Element &element_at(ElementIdentifier id) const;
-  [[nodiscard]] const Text &text_element_at(ElementIdentifier id) const;
-
-  void append_child(ElementIdentifier parent_id, ElementIdentifier child_id);
+  [[nodiscard]] Text &text_element_at(const ElementIdentifier id) {
+    return m_texts.at(id);
+  }
+  [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
+    return m_texts.at(id);
+  }
 
 private:
-  std::vector<Element> m_elements;
-  std::unordered_map<ElementIdentifier, Text> m_texts;
-
-  void check_element_id(ElementIdentifier id) const;
-  void check_text_id(ElementIdentifier id) const;
+  SideTable<Text> m_texts;
 };
 
 } // namespace odr::internal::rtf

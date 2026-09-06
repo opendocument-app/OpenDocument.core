@@ -14,7 +14,6 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
-#include <vector>
 
 #include <pugixml.hpp>
 
@@ -25,8 +24,7 @@ struct RegistryElement final : ElementNode<ElementIdentifier> {
 };
 
 class ElementRegistry final
-    : public internal::ElementRegistry<RegistryElement, ElementIdentifier,
-                                       std::vector<RegistryElement>> {
+    : public internal::ElementRegistry<RegistryElement> {
 public:
   struct ElementRelations final {
     const Relations *relations{nullptr};
