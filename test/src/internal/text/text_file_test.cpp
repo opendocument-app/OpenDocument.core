@@ -64,8 +64,10 @@ TEST(TextFile, unrecognised_bytes_do_not_open) {
 
   EXPECT_THROW(std::ignore = mimetype(junk), UnknownFileType);
   EXPECT_THROW(std::ignore = open(junk), UnknownFileType);
-  // asking for text by name is no way around it
-  EXPECT_THROW(std::ignore = open(junk, FileType::text_file), UnknownFileType);
+  // asking for text by name is no way around it, and says so as the text
+  // engine rather than as the strategy
+  EXPECT_THROW(std::ignore = open(junk, DecodeOptions::as(FileType::text_file)),
+               NoTextFile);
 }
 
 TEST(TextFile, encoding_comes_from_the_byte_order_mark) {

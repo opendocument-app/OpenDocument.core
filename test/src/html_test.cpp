@@ -60,12 +60,12 @@ TEST(html, linked_resources_are_served) {
   };
 
   check(open(TestData::test_file_path("odr-public/odt/about.odt"),
-             FileType::zip, logger),
+             DecodeOptions::as(FileType::zip), logger),
         "files.html");
-  check(
-      open(TestData::test_file_path("odr-public/txt/lorem ipsum.txt"), logger),
-      "text.html");
-  check(open(TestData::test_file_path("odr-public/pdf/empty.pdf"), logger),
+  check(open(TestData::test_file_path("odr-public/txt/lorem ipsum.txt"), {},
+             logger),
+        "text.html");
+  check(open(TestData::test_file_path("odr-public/pdf/empty.pdf"), {}, logger),
         "document.html");
 }
 
@@ -76,7 +76,7 @@ TEST(html, linked_images_are_served) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const auto check = [&](const std::string &path) {
-    const DecodedFile file = open(TestData::test_file_path(path), logger);
+    const DecodedFile file = open(TestData::test_file_path(path), {}, logger);
 
     HtmlConfig config;
     config.embed_images = false;
@@ -119,8 +119,8 @@ TEST(html, archive_entry_yields_to_a_shipped_resource) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DecodedFile file =
-      open(TestData::test_file_path("odr-public/odt/about.odt"), FileType::zip,
-           logger);
+      open(TestData::test_file_path("odr-public/odt/about.odt"),
+           DecodeOptions::as(FileType::zip), logger);
 
   HtmlConfig config((std::filesystem::current_path() / "collision").string());
   config.embed_shipped_resources = false;
@@ -154,8 +154,8 @@ TEST(html, archive_listing) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DecodedFile file =
-      open(TestData::test_file_path("odr-public/odt/about.odt"), FileType::zip,
-           logger);
+      open(TestData::test_file_path("odr-public/odt/about.odt"),
+           DecodeOptions::as(FileType::zip), logger);
   ASSERT_TRUE(file.is_archive_file());
 
   const std::string output_path =
@@ -196,7 +196,8 @@ TEST(html, archive_listing) {
 namespace {
 
 std::string render(const std::string &path, const HtmlConfig &config) {
-  const DecodedFile file = open(TestData::test_file_path(path), Logger::null());
+  const DecodedFile file =
+      open(TestData::test_file_path(path), {}, Logger::null());
 
   std::ostringstream out;
   html::translate(file, config).list_views().at(0).write_html(out);
@@ -226,16 +227,16 @@ TEST(html, min_content_margin_reaches_every_view) {
   HtmlConfig config;
 
   const auto render_as = [&](const std::string &path, const FileType as) {
-    const DecodedFile file =
-        open(TestData::test_file_path(path), as, Logger::null());
+    const DecodedFile file = open(TestData::test_file_path(path),
+                                  DecodeOptions::as(as), Logger::null());
     std::ostringstream out;
     html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
   };
 
   const auto xml = [&] {
-    const DecodedFile file =
-        open(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+    const DecodedFile file = open(File::from_memory("<a><b>c</b></a>"),
+                                  DecodeOptions::as(FileType::xml));
     std::ostringstream out;
     html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
@@ -341,7 +342,7 @@ TEST(html, linked_dark_style_is_served) {
   config.color_scheme = HtmlColorScheme::system;
 
   const DecodedFile file = open(
-      TestData::test_file_path("odr-public/odt/about.odt"), Logger::null());
+      TestData::test_file_path("odr-public/odt/about.odt"), {}, Logger::null());
   const HtmlService service = html::translate(file, config);
 
   std::ostringstream out;
@@ -367,16 +368,16 @@ TEST(html, color_scheme_reaches_every_view) {
   EXPECT_NE(text.find("--odr-text-gutter:#161b22"), std::string::npos);
 
   // a source view
-  const DecodedFile xml_file =
-      open(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+  const DecodedFile xml_file = open(File::from_memory("<a><b>c</b></a>"),
+                                    DecodeOptions::as(FileType::xml));
   std::ostringstream xml;
   html::translate(xml_file, config).list_views().at(0).write_html(xml);
   EXPECT_NE(xml.str().find("--odr-xml-name:#7ee787"), std::string::npos);
 
   // a file listing: the archive view of a zip
   const DecodedFile archive =
-      open(TestData::test_file_path("odr-public/odt/about.odt"), FileType::zip,
-           Logger::null());
+      open(TestData::test_file_path("odr-public/odt/about.odt"),
+           DecodeOptions::as(FileType::zip), Logger::null());
   std::ostringstream listing;
   html::translate(archive, config).list_views().at(0).write_html(listing);
   EXPECT_NE(listing.str().find("--odr-files-link:#6cb6ff"), std::string::npos);
@@ -391,7 +392,8 @@ TEST(html, views) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/ods/Senza nome 1.ods"), logger)
+      open(TestData::test_file_path("odr-public/ods/Senza nome 1.ods"), {},
+           logger)
           .as_document_file();
 
   const Document document = document_file.document();
@@ -412,8 +414,9 @@ TEST(html, views) {
 TEST(html, paged_output_fits_the_viewport) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
-  const DecodedFile file = open(
-      TestData::test_file_path("odr-public/odp/style-various-1.odp"), logger);
+  const DecodedFile file =
+      open(TestData::test_file_path("odr-public/odp/style-various-1.odp"), {},
+           logger);
 
   const auto render = [&](const HtmlConfig &config) {
     const std::string cache =
@@ -531,7 +534,7 @@ TEST(html, an_image_fits_the_viewport) {
 
   const DecodedFile file =
       open(TestData::test_file_path("odr-public/png/tango-example-icons.png"),
-           logger);
+           {}, logger);
 
   const auto render = [&](const HtmlConfig &config) {
     const std::string cache =
@@ -563,7 +566,7 @@ TEST(html, an_image_no_browser_decodes_is_not_translated) {
 
     // nothing decodes the bytes, so any will do
     const DecodedFile file =
-        open(File::from_memory("image bytes"), type, logger);
+        open(File::from_memory("image bytes"), DecodeOptions::as(type), logger);
     ASSERT_TRUE(file.is_image_file()) << file_type_to_string(type);
     EXPECT_THROW(std::ignore = html::translate(file, HtmlConfig()),
                  UnsupportedFileType)
@@ -575,7 +578,7 @@ namespace {
 
 std::string render_markdown(const std::string &markdown) {
   const DecodedFile file =
-      open(File::from_memory(markdown), FileType::markdown);
+      open(File::from_memory(markdown), DecodeOptions::as(FileType::markdown));
   std::ostringstream out;
   html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
   return std::move(out).str();
@@ -590,7 +593,8 @@ DecodedFile csv_file(const std::uint32_t rows, const std::uint32_t columns) {
     }
     csv += "\n";
   }
-  return open(File::from_memory(csv), FileType::comma_separated_values);
+  return open(File::from_memory(csv),
+              DecodeOptions::as(FileType::comma_separated_values));
 }
 
 /// A flat ODF sheet holding @p rows, each a `table:table-row`, under the
@@ -623,7 +627,8 @@ DecodedFile fods_file(const std::string &rows,
       columns + rows +
       R"(</table:table></office:spreadsheet></office:body>)"
       R"(</office:document>)";
-  return open(File::from_memory(fods), FileType::opendocument_spreadsheet);
+  return open(File::from_memory(fods),
+              DecodeOptions::as(FileType::opendocument_spreadsheet));
 }
 
 /// A cell holding @p text, styled by `ce1`, or by `ce2` where it wraps.
@@ -731,11 +736,13 @@ TEST(html, no_view_declares_a_document_wide_link_target) {
 
   const std::array views{
       render(open(File::from_memory("a,b\n1,2\n"),
-                  FileType::comma_separated_values)),
-      render(open(File::from_memory("<a><b>c</b></a>"), FileType::xml)),
-      render(open(File::from_memory("plain text"), FileType::text_file)),
+                  DecodeOptions::as(FileType::comma_separated_values))),
+      render(open(File::from_memory("<a><b>c</b></a>"),
+                  DecodeOptions::as(FileType::xml))),
+      render(open(File::from_memory("plain text"),
+                  DecodeOptions::as(FileType::text_file))),
       render(open(File::from_memory("[a](https://x.example)\n"),
-                  FileType::markdown)),
+                  DecodeOptions::as(FileType::markdown))),
   };
 
   for (const std::string &view : views) {
@@ -974,8 +981,9 @@ std::string flat_ods_sheet(const std::string &width) {
 }
 
 std::optional<double> flat_ods_fit(const std::string &width) {
-  const DecodedFile file = open(File::from_memory(flat_ods_sheet(width)),
-                                FileType::opendocument_spreadsheet);
+  const DecodedFile file =
+      open(File::from_memory(flat_ods_sheet(width)),
+           DecodeOptions::as(FileType::opendocument_spreadsheet));
   std::ostringstream out;
   html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
   return print_fit_of(std::move(out).str());
@@ -994,8 +1002,8 @@ TEST(html, a_sheet_is_only_ever_fitted_down) {
 }
 
 TEST(html, a_view_that_renders_no_sheet_has_no_cut) {
-  const DecodedFile file =
-      open(File::from_memory("<a><b>c</b></a>"), FileType::xml);
+  const DecodedFile file = open(File::from_memory("<a><b>c</b></a>"),
+                                DecodeOptions::as(FileType::xml));
   const HtmlService service = html::translate(file, HtmlConfig());
 
   EXPECT_FALSE(service.list_views().at(0).sheet_cut().has_value());

@@ -32,6 +32,18 @@ deref(const std::shared_ptr<internal::abstract::File> &impl) {
 
 } // namespace
 
+DecodeOptions DecodeOptions::as(const FileType type) {
+  DecodeOptions result;
+  result.as_file_type = type;
+  return result;
+}
+
+DecodeOptions DecodeOptions::as_csv(const CsvOptions &options) {
+  DecodeOptions result = as(FileType::comma_separated_values);
+  result.csv = options;
+  return result;
+}
+
 File File::from_disk(const std::string &path) {
   return File(std::make_shared<internal::DiskFile>(path));
 }
@@ -276,23 +288,12 @@ std::shared_ptr<internal::abstract::TextFile> TextFile::impl() const {
   return m_impl;
 }
 
-CsvFile CsvFile::from_file(const File &file, const CsvOptions &options,
-                           const Logger &logger) {
-  ODR_VERBOSE(logger, "open as csv with options");
-  return CsvFile(
-      std::make_shared<internal::csv::CsvFile>(file.impl(), options));
-}
-
 CsvFile::CsvFile(std::shared_ptr<internal::abstract::CsvFile> impl)
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 Document CsvFile::document() const { return Document(m_impl->document()); }
 
 CsvOptions CsvFile::options() const { return m_impl->options(); }
-
-CsvFile CsvFile::with_options(const CsvOptions &options) const {
-  return CsvFile(m_impl->with_options(options));
-}
 
 std::shared_ptr<internal::abstract::CsvFile> CsvFile::impl() const {
   return m_impl;

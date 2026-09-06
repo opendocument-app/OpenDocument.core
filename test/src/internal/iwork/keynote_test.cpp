@@ -76,7 +76,7 @@ TEST(IworkKeynote, is_detected_by_content) {
   EXPECT_THAT(list_file_types(path, logger),
               testing::Contains(FileType::iwork_keynote));
 
-  const DecodedFile file = open(path, logger);
+  const DecodedFile file = open(path, {}, logger);
   EXPECT_EQ(file.file_type(), FileType::iwork_keynote);
   EXPECT_EQ(file.file_category(), FileCategory::document);
   EXPECT_EQ(file.as_document_file().document_type(),
@@ -90,7 +90,7 @@ TEST(IworkKeynote, empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/key/empty.key"), logger)
+      open(TestData::test_file_path("odr-public/key/empty.key"), {}, logger)
           .as_document_file();
   EXPECT_EQ(document_file.file_type(), FileType::iwork_keynote);
 
@@ -107,7 +107,7 @@ TEST(IworkKeynote, slide_text) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/key/style-various-1.key"),
+      open(TestData::test_file_path("odr-public/key/style-various-1.key"), {},
            logger)
           .as_document_file();
 
@@ -131,7 +131,7 @@ TEST(IworkKeynote, slide_text) {
 
 TEST(IworkKeynote, slides_are_named_in_presentation_order) {
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/key/style-various-1.key"),
+      open(TestData::test_file_path("odr-public/key/style-various-1.key"), {},
            Logger::null())
           .as_document_file();
 
@@ -150,7 +150,8 @@ TEST(IworkKeynote, slides_are_named_in_presentation_order) {
 // 1024x768 Keynote has defaulted to since the 13 era.
 TEST(IworkKeynote, slide_page_layout_comes_from_the_show) {
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/key/empty.key"), Logger::null())
+      open(TestData::test_file_path("odr-public/key/empty.key"), {},
+           Logger::null())
           .as_document_file();
 
   const Document document = document_file.document();
@@ -320,7 +321,8 @@ TEST(IworkKeynote, a_numbers_package_is_not_keynote) {
     EXPECT_THAT(list_file_types(path, Logger::null()),
                 testing::Not(testing::Contains(FileType::iwork_keynote)));
     EXPECT_THROW(std::ignore =
-                     open(path, FileType::iwork_keynote, Logger::null()),
-                 UnknownFileType);
+                     open(path, DecodeOptions::as(FileType::iwork_keynote),
+                          Logger::null()),
+                 NoIworkFile);
   }
 }

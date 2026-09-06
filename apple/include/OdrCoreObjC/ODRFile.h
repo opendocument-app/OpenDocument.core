@@ -216,13 +216,28 @@ NS_SWIFT_NAME(FileMeta)
 + (instancetype)new NS_UNAVAILABLE;
 @end
 
-/// How to decode a file, when the caller knows better than detection does.
-NS_SWIFT_NAME(DecodePreference)
-@interface ODRDecodePreference : NSObject
+/// How to read a csv file. An unset field is detected from the file's opening
+/// bytes; a set one is taken as given.
+NS_SWIFT_NAME(CsvOptions)
+@interface ODRCsvOptions : NSObject
+/// `nil` to detect.
+@property(nonatomic, strong, nullable) NSNumber *encoding;
+/// A one-character string, `nil` to detect.
+@property(nonatomic, copy, nullable) NSString *separator;
+/// A one-character string, `nil` to detect.
+@property(nonatomic, copy, nullable) NSString *quote;
+@end
+
+/// How to decode a file. Every field is optional; the default detects
+/// everything.
+NS_SWIFT_NAME(DecodeOptions)
+@interface ODRDecodeOptions : NSObject
 /// Decode as this type, whatever detection says. `nil` to let it decide.
 @property(nonatomic, strong, nullable) NSNumber *asFileType;
 /// Types to prefer, most preferred first.
 @property(nonatomic, copy) NSArray<NSNumber *> *fileTypePriority;
+/// Format-specific overrides for a file decoded as csv.
+@property(nonatomic, strong) ODRCsvOptions *csv;
 @end
 
 /// A file, decoded or not — `odr::File`.
@@ -261,11 +276,11 @@ NS_SWIFT_NAME(DecodedFile)
                                  as:(ODRFileType)type
                               error:(NSError **)error
     NS_SWIFT_NAME(decode(path:as:));
-/// Decodes the file at `path` following `preference`.
+/// Decodes the file at `path` per `options`.
 + (nullable instancetype)decodePath:(NSString *)path
-                         preference:(ODRDecodePreference *)preference
+                            options:(ODRDecodeOptions *)options
                               error:(NSError **)error
-    NS_SWIFT_NAME(decode(path:preference:));
+    NS_SWIFT_NAME(decode(path:options:));
 /// Decodes an already-open file.
 + (nullable instancetype)decodeFile:(ODRFile *)file
                               error:(NSError **)error

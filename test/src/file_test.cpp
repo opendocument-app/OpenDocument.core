@@ -35,9 +35,10 @@ TEST(File, from_disk_matches_the_path_constructor) {
   EXPECT_EQ(file.size(), File(path).size());
 }
 
-/// `open(file, as)` decodes as exactly what it is asked for. A container
-/// names its own document type, and `as` is a claim about what is inside it -
-/// so a claim the container contradicts is no reading of the file at all.
+/// `open(file, DecodeOptions::as(as))` decodes as exactly what it is asked for.
+/// A container names its own document type, and `as` is a claim about what is
+/// inside it - so a claim the container contradicts is no reading of the file
+/// at all.
 TEST(File, opening_as_the_wrong_document_type_throws) {
   const struct {
     const char *path;
@@ -62,8 +63,11 @@ TEST(File, opening_as_the_wrong_document_type_throws) {
   for (const auto &[path, is, is_not] : cases) {
     const std::string file_path = TestData::test_file_path(path);
 
-    EXPECT_EQ(open(file_path, is).file_type(), is) << path;
-    EXPECT_THROW(std::ignore = open(file_path, is_not), UnknownFileType)
+    EXPECT_EQ(open(file_path, DecodeOptions::as(is)).file_type(), is) << path;
+    // the engine that refuses says so in its own words, and which engine that
+    // is varies by row - `Exception` is the shared base
+    EXPECT_THROW(std::ignore = open(file_path, DecodeOptions::as(is_not)),
+                 Exception)
         << path;
   }
 }
@@ -73,7 +77,7 @@ TEST(File, opening_as_the_wrong_document_type_throws) {
 TEST(File, an_encrypted_ooxml_opens_as_the_type_asked_for) {
   const DecodedFile file =
       open(TestData::test_file_path("odr-public/docx/encrypted.docx"),
-           FileType::office_open_xml_document);
+           DecodeOptions::as(FileType::office_open_xml_document));
 
   EXPECT_EQ(file.file_type(), FileType::office_open_xml_encrypted);
   EXPECT_TRUE(file.password_encrypted());
@@ -88,13 +92,14 @@ TEST(File, a_flat_document_and_a_package_answer_a_wrong_type_alike) {
       R"(application/vnd.oasis.opendocument.text">)"
       R"(<office:body><office:text/></office:body></office:document>)";
 
-  EXPECT_THROW(std::ignore = open(File::from_memory(flat),
-                                  FileType::opendocument_graphics),
-               UnknownFileType);
+  EXPECT_THROW(std::ignore =
+                   open(File::from_memory(flat),
+                        DecodeOptions::as(FileType::opendocument_graphics)),
+               NoOpenDocumentFile);
   EXPECT_THROW(std::ignore =
                    open(TestData::test_file_path("odr-public/odt/about.odt"),
-                        FileType::opendocument_graphics),
-               UnknownFileType);
+                        DecodeOptions::as(FileType::opendocument_graphics)),
+               NoOpenDocumentFile);
 }
 
 TEST(File, name_is_the_file_name_on_disk) {
@@ -282,7 +287,7 @@ TEST(DecodedFile, wpd) {
   const auto path =
       TestData::test_file_path("odr-public/wpd/Sync3 Sample Page.wpd");
   try {
-    DecodedFile file = open(path, logger);
+    DecodedFile file = open(path, {}, logger);
     FAIL();
   } catch (const UnsupportedFileType &e) {
     EXPECT_EQ(e.file_type, FileType::word_perfect);

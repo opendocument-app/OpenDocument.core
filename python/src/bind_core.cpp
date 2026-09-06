@@ -167,52 +167,20 @@ void odr_python::bind_functions(py::module_ &m) {
   // Python `ILogger` re-acquires it in the trampoline.
   m.def(
       "open",
-      [](const odr::File &file, const odr::Logger &logger) {
-        return odr::open(file, logger);
+      [](const odr::File &file, const odr::DecodeOptions &options,
+         const odr::Logger &logger) {
+        return odr::open(file, options, logger);
       },
-      py::arg("file"), py::arg("logger") = odr::Logger::null(),
+      py::arg("file"), py::arg("options") = odr::DecodeOptions{},
+      py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(), "Decode a file.");
   m.def(
       "open",
-      [](const odr::File &file, const odr::FileType as,
-         const odr::Logger &logger) { return odr::open(file, as, logger); },
-      py::arg("file"), py::arg("as_type"),
-      py::arg("logger") = odr::Logger::null(),
-      py::call_guard<py::gil_scoped_release>(),
-      "Decode a file as a specific file type.");
-  m.def(
-      "open",
-      [](const odr::File &file, const odr::DecodePreference &preference,
+      [](const std::string &path, const odr::DecodeOptions &options,
          const odr::Logger &logger) {
-        return odr::open(file, preference, logger);
+        return odr::open(path, options, logger);
       },
-      py::arg("file"), py::arg("preference"),
+      py::arg("path"), py::arg("options") = odr::DecodeOptions{},
       py::arg("logger") = odr::Logger::null(),
-      py::call_guard<py::gil_scoped_release>(),
-      "Decode a file with a decode preference.");
-  m.def(
-      "open",
-      [](const std::string &path, const odr::Logger &logger) {
-        return odr::open(path, logger);
-      },
-      py::arg("path"), py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(), "Open and decode a file.");
-  m.def(
-      "open",
-      [](const std::string &path, const odr::FileType as,
-         const odr::Logger &logger) { return odr::open(path, as, logger); },
-      py::arg("path"), py::arg("as_type"),
-      py::arg("logger") = odr::Logger::null(),
-      py::call_guard<py::gil_scoped_release>(),
-      "Open and decode a file as a specific file type.");
-  m.def(
-      "open",
-      [](const std::string &path, const odr::DecodePreference &preference,
-         const odr::Logger &logger) {
-        return odr::open(path, preference, logger);
-      },
-      py::arg("path"), py::arg("preference"),
-      py::arg("logger") = odr::Logger::null(),
-      py::call_guard<py::gil_scoped_release>(),
-      "Open and decode a file with a decode preference.");
 }

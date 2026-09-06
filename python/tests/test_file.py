@@ -46,7 +46,9 @@ def test_file_name(txt_path):
 
 
 def test_file_name_of_an_archive_entry(odt_path):
-    file = pyodr.open(str(odt_path), pyodr.FileType.zip)
+    file = pyodr.open(
+        str(odt_path), pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    )
     filesystem = file.as_archive_file().archive().as_filesystem()
     assert filesystem.open("/META-INF/manifest.xml").name() == "manifest.xml"
 
@@ -90,15 +92,31 @@ def test_open_json_file(json_path):
 
 
 def test_open_as_type(txt_path):
-    file = pyodr.open(str(txt_path), pyodr.FileType.text_file)
+    file = pyodr.open(
+        str(txt_path), pyodr.DecodeOptions(as_file_type=pyodr.FileType.text_file)
+    )
     assert file.file_type() == pyodr.FileType.text_file
 
 
-def test_open_with_preference(txt_path):
-    preference = pyodr.DecodePreference()
-    preference.as_file_type = pyodr.FileType.text_file
-    file = pyodr.open(str(txt_path), preference)
+def test_open_with_options(txt_path):
+    options = pyodr.DecodeOptions(as_file_type=pyodr.FileType.text_file)
+    file = pyodr.open(str(txt_path), options)
     assert file.file_type() == pyodr.FileType.text_file
+
+
+def test_open_carries_csv_options(tmp_path):
+    path = tmp_path / "semicolons.csv"
+    path.write_text("a;b\n1;2\n", encoding="utf-8")
+
+    # detection would find the semicolon; a pipe it would not, so the caller says
+    csv = pyodr.open(
+        str(path),
+        pyodr.DecodeOptions(
+            as_file_type=pyodr.FileType.comma_separated_values,
+            csv=pyodr.CsvOptions(separator="|"),
+        ),
+    ).as_csv_file()
+    assert csv.options().separator == "|"
 
 
 def test_file_meta(csv_path):
@@ -113,7 +131,9 @@ def test_file_meta(csv_path):
 
 
 def test_open_zip_archive(odt_path):
-    file = pyodr.open(str(odt_path), pyodr.FileType.zip)
+    file = pyodr.open(
+        str(odt_path), pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    )
     assert file.is_archive_file()
 
     filesystem = file.as_archive_file().archive().as_filesystem()
@@ -142,22 +162,24 @@ def test_open_from_memory(odt_path):
 def test_open_from_memory_as_type(odt_path):
     file = pyodr.File.from_memory(odt_path.read_bytes())
 
-    assert pyodr.open(file, pyodr.FileType.zip).is_archive_file()
+    assert pyodr.open(
+        file, pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    ).is_archive_file()
 
-    preference = pyodr.DecodePreference()
-    preference.as_file_type = pyodr.FileType.zip
-    assert pyodr.open(file, preference).is_archive_file()
+    options = pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    assert pyodr.open(file, options).is_archive_file()
 
 
 def test_decoded_file_from_file(odt_path):
     file = pyodr.File.from_memory(odt_path.read_bytes())
 
     assert pyodr.open(file).file_type() == pyodr.FileType.opendocument_text
-    assert pyodr.open(file, pyodr.FileType.zip).is_archive_file()
+    assert pyodr.open(
+        file, pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    ).is_archive_file()
 
-    preference = pyodr.DecodePreference()
-    preference.as_file_type = pyodr.FileType.zip
-    assert pyodr.open(file, preference).is_archive_file()
+    options = pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
+    assert pyodr.open(file, options).is_archive_file()
 
 
 def test_document_file_from_file(odt_path):

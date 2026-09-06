@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -116,6 +117,20 @@ class FileTest {
     assertThrows(
         OdrException.FileNotFound.class,
         () -> Odr.open(tempDir.resolve("missing.odt").toString()));
+  }
+
+  @Test
+  void openCarriesCsvOptions() throws IOException {
+    Path path = Files.writeString(tempDir.resolve("semicolons.csv"), "a;b\n1;2\n");
+
+    // detection would find the semicolon; a pipe it would not, so the caller says
+    DecodeOptions options = new DecodeOptions();
+    options.asFileType = FileType.COMMA_SEPARATED_VALUES;
+    options.csv.separator = '|';
+
+    try (DecodedFile file = Odr.open(path.toString(), options)) {
+      assertEquals(FileType.COMMA_SEPARATED_VALUES, file.fileType());
+    }
   }
 
   @Test

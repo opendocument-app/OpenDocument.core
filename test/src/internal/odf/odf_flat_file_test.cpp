@@ -143,12 +143,14 @@ TEST(FlatOpenDocumentFile, opening_it_as_a_document_file_works) {
 TEST(FlatOpenDocumentFile, opening_it_as_a_named_type_works) {
   const std::string source = flat_text("<text:p>Hello</text:p>");
 
-  EXPECT_EQ(
-      open(File::from_memory(source), FileType::opendocument_text).file_type(),
-      FileType::opendocument_text);
-  EXPECT_THROW(std::ignore = open(File::from_memory(source),
-                                  FileType::opendocument_graphics),
-               UnknownFileType);
+  EXPECT_EQ(open(File::from_memory(source),
+                 DecodeOptions::as(FileType::opendocument_text))
+                .file_type(),
+            FileType::opendocument_text);
+  EXPECT_THROW(std::ignore =
+                   open(File::from_memory(source),
+                        DecodeOptions::as(FileType::opendocument_graphics)),
+               NoOpenDocumentFile);
 }
 
 TEST(FlatOpenDocumentFile, the_body_decodes_to_the_same_tree_as_a_package) {

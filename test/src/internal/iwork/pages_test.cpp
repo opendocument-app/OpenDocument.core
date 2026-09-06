@@ -77,7 +77,7 @@ TEST(Iwork, pages_is_detected_by_content) {
   EXPECT_THAT(list_file_types(path, logger),
               testing::Contains(FileType::iwork_pages));
 
-  const DecodedFile file = open(path, logger);
+  const DecodedFile file = open(path, {}, logger);
   EXPECT_EQ(file.file_type(), FileType::iwork_pages);
   EXPECT_EQ(file.file_category(), FileCategory::document);
   EXPECT_EQ(file.as_document_file().document_type(), DocumentType::text);
@@ -89,7 +89,7 @@ TEST(Iwork, pages_empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/pages/empty.pages"), logger)
+      open(TestData::test_file_path("odr-public/pages/empty.pages"), {}, logger)
           .as_document_file();
   EXPECT_EQ(document_file.file_type(), FileType::iwork_pages);
 
@@ -107,7 +107,7 @@ TEST(Iwork, pages_body_text) {
 
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/pages/style-various-1.pages"),
-           logger)
+           {}, logger)
           .as_document_file();
 
   const Document document = document_file.document();
@@ -135,7 +135,7 @@ TEST(Iwork, pages_body_text) {
 TEST(Iwork, pages_table) {
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/pages/style-various-1.pages"),
-           Logger::null())
+           {}, Logger::null())
           .as_document_file();
   const Document document = document_file.document();
 

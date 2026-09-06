@@ -210,8 +210,9 @@ TEST(RecordReader, an_unterminated_quote_still_yields_its_field) {
 }
 
 TEST(CsvOptions, detection_fills_in_what_was_not_given) {
-  const CsvFile file =
-      CsvFile::from_file(File::from_memory("a;b\n1;2\n"), CsvOptions{});
+  const CsvFile file = open(File::from_memory("a;b\n1;2\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
 
   const CsvOptions options = file.options();
   EXPECT_EQ(options.separator, ';');
@@ -224,10 +225,15 @@ TEST(CsvOptions, detection_fills_in_what_was_not_given) {
 TEST(CsvOptions, a_given_separator_is_taken_as_given) {
   const std::string content = "a|b\n1|2\n";
 
-  EXPECT_EQ(
-      CsvFile::from_file(File::from_memory(content), {}).options().separator,
-      '|');
-  EXPECT_EQ(CsvFile::from_file(File::from_memory(content), {.separator = ','})
+  EXPECT_EQ(open(File::from_memory(content),
+                 DecodeOptions::as(FileType::comma_separated_values))
+                .as_csv_file()
+                .options()
+                .separator,
+            '|');
+  EXPECT_EQ(open(File::from_memory(content),
+                 DecodeOptions::as_csv({.separator = ','}))
+                .as_csv_file()
                 .options()
                 .separator,
             ',');
@@ -236,40 +242,55 @@ TEST(CsvOptions, a_given_separator_is_taken_as_given) {
 /// One column is no evidence of a csv, but it is a perfectly good csv once
 /// someone says so.
 TEST(CsvOptions, a_declared_separator_makes_anything_readable) {
-  EXPECT_THROW((void)CsvFile::from_file(File::from_memory("a\nb\nc\n"), {}),
+  EXPECT_THROW((void)open(File::from_memory("a\nb\nc\n"),
+                          DecodeOptions::as(FileType::comma_separated_values))
+                   .as_csv_file(),
                NoCsvFile);
-  EXPECT_NO_THROW((void)CsvFile::from_file(File::from_memory("a\nb\nc\n"),
-                                           {.separator = ','}));
+  EXPECT_NO_THROW((void)open(File::from_memory("a\nb\nc\n"),
+                             DecodeOptions::as_csv({.separator = ','}))
+                      .as_csv_file());
   // and so is prose, and an empty file
-  EXPECT_NO_THROW((void)CsvFile::from_file(
-      File::from_memory("lorem ipsum dolor\nsit amet\n"), {.separator = ','}));
-  EXPECT_NO_THROW(
-      (void)CsvFile::from_file(File::from_memory(""), {.separator = ','}));
+  EXPECT_NO_THROW((void)open(File::from_memory("lorem ipsum dolor\nsit amet\n"),
+                             DecodeOptions::as_csv({.separator = ','}))
+                      .as_csv_file());
+  EXPECT_NO_THROW((void)open(File::from_memory(""),
+                             DecodeOptions::as_csv({.separator = ','}))
+                      .as_csv_file());
 }
 
 TEST(CsvOptions, an_incoherent_dialect_is_a_caller_mistake) {
-  EXPECT_THROW((void)CsvFile::from_file(File::from_memory("a,b\n"),
-                                        {.separator = '"', .quote = '"'}),
-               std::invalid_argument);
   EXPECT_THROW(
-      (void)CsvFile::from_file(File::from_memory("a,b\n"), {.separator = '\n'}),
+      (void)open(File::from_memory("a,b\n"),
+                 DecodeOptions::as_csv({.separator = '"', .quote = '"'}))
+          .as_csv_file(),
       std::invalid_argument);
+  EXPECT_THROW((void)open(File::from_memory("a,b\n"),
+                          DecodeOptions::as_csv({.separator = '\n'}))
+                   .as_csv_file(),
+               std::invalid_argument);
 }
 
 TEST(CsvOptions, a_given_encoding_skips_detection) {
   // latin-1 bytes that are not valid utf-8; detection would not name them
   const File file = File::from_memory("caf\xe9,x\nb,y\n");
 
-  EXPECT_EQ(CsvFile::from_file(file, {.encoding = TextEncoding::iso_8859_1})
-                .options()
-                .encoding,
-            TextEncoding::iso_8859_1);
+  EXPECT_EQ(
+      open(file, DecodeOptions::as_csv({.encoding = TextEncoding::iso_8859_1}))
+          .as_csv_file()
+          .options()
+          .encoding,
+      TextEncoding::iso_8859_1);
 }
 
-TEST(CsvOptions, with_options_derives_another_handle) {
-  const CsvFile file =
-      CsvFile::from_file(File::from_memory("a;b\n1;2\n"), CsvOptions{});
-  const CsvFile other = file.with_options({.separator = ','});
+/// Reading the same bytes with different options is another `open`, not a
+/// method on the handle: `file()` gives the bytes back.
+TEST(CsvOptions, the_same_bytes_read_twice) {
+  const CsvFile file = open(File::from_memory("a;b\n1;2\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
+  const CsvFile other =
+      open(file.file(), DecodeOptions::as_csv({.separator = ','}))
+          .as_csv_file();
 
   EXPECT_EQ(file.options().separator, ';');
   EXPECT_EQ(other.options().separator, ',');
@@ -278,15 +299,17 @@ TEST(CsvOptions, with_options_derives_another_handle) {
 TEST(CsvOptions, a_decoded_csv_is_reachable_as_one) {
   const File file(
       TestData::test_file_path("odr-public/csv/file_example_ODS_5000.csv"));
-  const DecodedFile decoded = open(file, FileType::comma_separated_values);
+  const DecodedFile decoded =
+      open(file, DecodeOptions::as(FileType::comma_separated_values));
 
   EXPECT_TRUE(decoded.is_csv_file());
   EXPECT_EQ(decoded.as_csv_file().options().separator, ',');
 }
 
 TEST(CsvDocument, a_csv_is_a_one_sheet_spreadsheet) {
-  const CsvFile file = CsvFile::from_file(
-      File::from_memory("a,b,c\n1,2,3\n4,5,6\n"), CsvOptions{});
+  const CsvFile file = open(File::from_memory("a,b,c\n1,2,3\n4,5,6\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
 
   const Document document = file.document();
   EXPECT_EQ(document.document_type(), DocumentType::spreadsheet);
@@ -301,8 +324,9 @@ TEST(CsvDocument, a_csv_is_a_one_sheet_spreadsheet) {
 /// The sheet is rectangular even where the file is not: a short row pads, a
 /// long one widens.
 TEST(CsvDocument, ragged_rows_become_a_rectangle) {
-  const CsvFile file = CsvFile::from_file(File::from_memory("a,b\n1,2,3\n4\n"),
-                                          CsvOptions{.separator = ','});
+  const CsvFile file = open(File::from_memory("a,b\n1,2,3\n4\n"),
+                            DecodeOptions::as_csv({.separator = ','}))
+                           .as_csv_file();
 
   const Document document = file.document();
   const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
@@ -314,8 +338,9 @@ TEST(CsvDocument, ragged_rows_become_a_rectangle) {
 }
 
 TEST(CsvDocument, the_separator_directive_is_not_data) {
-  const CsvFile file =
-      CsvFile::from_file(File::from_memory("sep=;\na;b\n1;2\n"), CsvOptions{});
+  const CsvFile file = open(File::from_memory("sep=;\na;b\n1;2\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
 
   const Document document = file.document();
   const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
@@ -329,19 +354,23 @@ TEST(CsvDocument, the_separator_directive_is_not_data) {
 TEST(CsvDocument, an_undecodable_encoding_has_no_document) {
   const File bytes = File::from_memory("a,b\n1,2\n");
 
-  EXPECT_THROW(
-      (void)CsvFile::from_file(bytes, {.encoding = TextEncoding::shift_jis}),
-      NoCsvFile);
+  EXPECT_THROW((void)open(bytes, DecodeOptions::as_csv(
+                                     {.encoding = TextEncoding::shift_jis}))
+                   .as_csv_file(),
+               NoCsvFile);
 
-  const CsvFile file = CsvFile::from_file(
-      bytes, {.encoding = TextEncoding::shift_jis, .separator = ','});
+  const CsvFile file =
+      open(bytes, DecodeOptions::as_csv(
+                      {.encoding = TextEncoding::shift_jis, .separator = ','}))
+          .as_csv_file();
   EXPECT_FALSE(file.is_decodable());
   EXPECT_THROW((void)file.document(), UnsupportedTextEncoding);
 }
 
 TEST(CsvDocument, renders_as_a_table) {
-  const CsvFile file =
-      CsvFile::from_file(File::from_memory("a,b\n1,2\n"), CsvOptions{});
+  const CsvFile file = open(File::from_memory("a,b\n1,2\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
 
   const HtmlService service = html::translate(file.document(), HtmlConfig());
   std::ostringstream out;
@@ -393,8 +422,9 @@ namespace {
 
 ValueType value_type_at(const std::string &content, const std::uint32_t column,
                         const std::uint32_t row) {
-  const CsvFile file = CsvFile::from_file(File::from_memory(content),
-                                          CsvOptions{.separator = ','});
+  const CsvFile file = open(File::from_memory(content),
+                            DecodeOptions::as_csv({.separator = ','}))
+                           .as_csv_file();
   const Document document = file.document();
   const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
   return sheet.cell(column, row).value_type();
@@ -443,8 +473,9 @@ TEST(CsvValueType, a_column_one_wide_record_opened_holds_one_value) {
 /// Cells are not reachable by walking, so the generic path machinery has to
 /// get at them the other way — through `sheet_cell`.
 TEST(CsvDocument, a_cell_path_round_trips) {
-  const CsvFile file =
-      CsvFile::from_file(File::from_memory("a,b\n1,2\n3,4\n"), CsvOptions{});
+  const CsvFile file = open(File::from_memory("a,b\n1,2\n3,4\n"),
+                            DecodeOptions::as(FileType::comma_separated_values))
+                           .as_csv_file();
   const Document document = file.document();
   const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
 
@@ -461,7 +492,8 @@ TEST(CsvDocument, a_cell_path_round_trips) {
 /// line list.
 TEST(CsvDocument, translating_the_decoded_file_yields_a_table) {
   const File bytes = File::from_memory("a,b\n1,2\n");
-  const DecodedFile decoded = open(bytes, FileType::comma_separated_values);
+  const DecodedFile decoded =
+      open(bytes, DecodeOptions::as(FileType::comma_separated_values));
 
   // a csv stays a text file and is rendered as a table anyway
   EXPECT_TRUE(decoded.is_text_file());

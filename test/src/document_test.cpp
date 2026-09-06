@@ -73,7 +73,7 @@ Document edit_and_reload(const std::string &path, const char *diff,
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path(path), logger).as_document_file();
+      open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
   html::edit(document, diff);
@@ -101,7 +101,7 @@ TEST(Document, odt) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odt/about.odt"), logger)
+      open(TestData::test_file_path("odr-public/odt/about.odt"), {}, logger)
           .as_document_file();
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
@@ -124,7 +124,7 @@ TEST(Document, docx_page_layout) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/docx/sample3.docx"), logger)
+      open(TestData::test_file_path("odr-public/docx/sample3.docx"), {}, logger)
           .as_document_file();
 
   const Document document = document_file.document();
@@ -147,7 +147,7 @@ TEST(Document, ods_sheet_page_layout) {
 
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/ods/file_example_ODS_100.ods"),
-           logger)
+           {}, logger)
           .as_document_file();
 
   const Document document = document_file.document();
@@ -168,7 +168,7 @@ TEST(Document, ods_sheet_page_layout_without_a_paper_size) {
 
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods"),
-           logger)
+           {}, logger)
           .as_document_file();
 
   const Document document = document_file.document();
@@ -185,7 +185,7 @@ TEST(Document, xlsx_sheet_names) {
 
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/xlsx/sampledatainsurance.xlsx"),
-           logger)
+           {}, logger)
           .as_document_file();
   const Document document = document_file.document();
 
@@ -202,7 +202,7 @@ TEST(Document, odt_element_path) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odt/about.odt"), logger)
+      open(TestData::test_file_path("odr-public/odt/about.odt"), {}, logger)
           .as_document_file();
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_text);
@@ -226,7 +226,7 @@ TEST(Document, odt_element_path2) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odt/style-various-1.odt"),
+      open(TestData::test_file_path("odr-public/odt/style-various-1.odt"), {},
            logger)
           .as_document_file();
 
@@ -248,7 +248,7 @@ TEST(Document, odt_text_position) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odt/style-various-1.odt"),
+      open(TestData::test_file_path("odr-public/odt/style-various-1.odt"), {},
            logger)
           .as_document_file();
   const Document document = document_file.document();
@@ -277,7 +277,7 @@ TEST(Document, odt_line_height_and_text_indent) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odt/file-sample_100kB.odt"),
+      open(TestData::test_file_path("odr-public/odt/file-sample_100kB.odt"), {},
            logger)
           .as_document_file();
   const Document document = document_file.document();
@@ -297,7 +297,7 @@ TEST(Document, odg) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path("odr-public/odg/sample.odg"), logger)
+      open(TestData::test_file_path("odr-public/odg/sample.odg"), {}, logger)
           .as_document_file();
 
   EXPECT_EQ(document_file.file_type(), FileType::opendocument_graphics);
@@ -324,7 +324,7 @@ void edit_every_text_and_reload(const std::string &path,
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
-      open(TestData::test_file_path(path), logger).as_document_file();
+      open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
   set_every_text(document.root_element(), "hello world!");

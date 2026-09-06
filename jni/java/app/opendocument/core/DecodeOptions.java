@@ -3,11 +3,19 @@ package app.opendocument.core;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Preference for decoding files. Mirrors {@code odr::DecodePreference}. */
-public final class DecodePreference {
+/**
+ * How to decode a file. Mirrors {@code odr::DecodeOptions}. Every field is optional; the default
+ * detects everything.
+ */
+public final class DecodeOptions {
   /** Decode as this file type; {@code null} to detect. */
   public FileType asFileType;
+
+  /** Preferred types, most preferred first, among those detected. */
   public List<FileType> fileTypePriority = new ArrayList<>();
+
+  /** Format-specific overrides for a file decoded as csv. */
+  public CsvOptions csv = new CsvOptions();
 
   // Flattened for the native layer.
   int asFileTypeNative() {
