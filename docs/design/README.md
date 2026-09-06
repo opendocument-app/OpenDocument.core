@@ -5,6 +5,10 @@
 - [Editing design](editing.md) — architecture for in-browser editing of ODF/OOXML:
   fat-browser op log replayed on save, stable element ids, and a preliminary
   implementation plan.
+- [Spreadsheet editing design](spreadsheet-editing.md) — cells edited by
+  position through the same op log, a browser-side editing mode with refusal
+  feedback, and formulas recomputed once, in C++; staged from number/string
+  cells to a formula engine.
 
 ## Diagrams
 

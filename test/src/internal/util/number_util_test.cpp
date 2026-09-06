@@ -1,10 +1,29 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <cmath>
+#include <optional>
 
 #include <gtest/gtest.h>
 
 using namespace odr::internal::util::number;
+
+TEST(Parse, reads_a_decimal_in_the_classic_spelling) {
+  EXPECT_EQ(parse("1234.5"), std::optional(1234.5));
+  EXPECT_EQ(parse("-0.25"), std::optional(-0.25));
+  EXPECT_EQ(parse("2.5e-3"), std::optional(2.5e-3));
+}
+
+TEST(Parse, allows_blanks_around_the_number) {
+  EXPECT_EQ(parse(" \t1234.5\n"), std::optional(1234.5));
+}
+
+/// Anything it cannot read whole is refused, so a number spelled in another
+/// locale is not truncated to the part before the separator.
+TEST(Parse, refuses_what_it_cannot_read_whole) {
+  EXPECT_FALSE(parse("1,5").has_value());
+  EXPECT_FALSE(parse("12pt").has_value());
+  EXPECT_FALSE(parse("").has_value());
+}
 
 TEST(ToStringSignificant, trims_trailing_zeros) {
   EXPECT_EQ(to_string_significant(1.5, 7), "1.5");

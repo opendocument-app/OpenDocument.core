@@ -8,6 +8,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/encoding/transcode.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
@@ -192,6 +193,16 @@ public:
   [[nodiscard]] ValueType
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
     return m_document->value_type(column_of(element_id), row_of(element_id));
+  }
+  [[nodiscard]] CellValue
+  sheet_cell_value(const ElementIdentifier element_id) const override {
+    CellValue result;
+    result.type = sheet_cell_value_type(element_id);
+    if (result.type == ValueType::float_number) {
+      result.number = util::number::parse(
+          m_document->cell(column_of(element_id), row_of(element_id)));
+    }
+    return result;
   }
 
   // TextAdapter

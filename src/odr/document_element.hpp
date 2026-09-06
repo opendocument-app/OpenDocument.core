@@ -137,6 +137,19 @@ enum class ValueType {
   float_number,
 };
 
+/// What a sheet cell holds past the text it shows — the text stays in the
+/// cell's children. A formula cell describes the result its producer cached.
+struct CellValue final {
+  ValueType type{ValueType::unknown};
+  /// Wider than `type == ValueType::float_number`: a percentage or a currency
+  /// states a number and is typed a string until its format is read.
+  std::optional<double> number;
+  /// In the format's own syntax — `of:=SUM([.A1:.B2])` for odf, `SUM(A1:B2)`
+  /// for ooxml. Set and empty for an ooxml cell whose shared formula only the
+  /// group's master spells.
+  std::optional<std::string> formula;
+};
+
 /// Collection of list types.
 enum class ListType {
   unordered,
@@ -332,6 +345,8 @@ public:
   [[nodiscard]] bool is_covered() const;
   [[nodiscard]] TableDimensions span() const;
   [[nodiscard]] ValueType value_type() const;
+  /// @ref value_type is the narrower and cheaper question the renderer asks.
+  [[nodiscard]] CellValue value() const;
 };
 
 /// Represents a page element in a document.

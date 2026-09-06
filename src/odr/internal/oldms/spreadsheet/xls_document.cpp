@@ -134,6 +134,15 @@ public:
     (void)element_id;
     return ValueType::string;
   }
+  /// Every cell is read into its display string at parse time, so neither the
+  /// number behind one nor a formula expression survives.
+  [[nodiscard]] CellValue sheet_cell_value(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    (void)element_id;
+    CellValue result;
+    result.type = ValueType::string;
+    return result;
+  }
 
   [[nodiscard]] ParagraphStyle
   paragraph_style(const ElementIdentifier element_id) const override {

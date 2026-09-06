@@ -374,6 +374,10 @@ ValueType SheetCell::value_type() const {
                    : ValueType::unknown;
 }
 
+CellValue SheetCell::value() const {
+  return exists_() ? m_adapter2->sheet_cell_value(m_identifier) : CellValue();
+}
+
 std::string Page::name() const {
   return exists_() ? m_adapter2->page_name(m_identifier) : "";
 }

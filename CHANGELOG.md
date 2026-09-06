@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `SheetCell::value` reads what a cell holds past the text it shows: the number
+  the file states, and the formula behind a cached result. Filled by odf, ooxml
+  and csv; `value_type` is unchanged and stays the question the renderer asks.
+
 - `PdfFile::annotate` writes highlight, underline, strike-out, squiggly and ink
   annotations into a pdf as an incremental update — source bytes untouched,
   any viewer reading them — in every binding, with an `annotate` capability.

@@ -1,8 +1,15 @@
 #pragma once
 
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr::internal::util::number {
+
+/// Reads @p text as a decimal number with a `.` separator, whatever the host's
+/// locale — a german one would read `1234.5` as `1234`. Only blanks may
+/// surround it: a unit or a group separator is refused, not truncated.
+[[nodiscard]] std::optional<double> parse(std::string_view text);
 
 /// Renders @p value with @p significant_digits significant digits, without
 /// trailing zeros, never in scientific notation, which CSS and SVG lengths do

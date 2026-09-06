@@ -32,8 +32,11 @@ otherwise its own `<v>`/`<is>` children. `get_text` concatenates `t` and `v`
 nodes verbatim, so a **formula's cached `<v>` result is shown and `<f>` is
 never evaluated**. `sheet_cell_value_type` derives number-vs-string from
 `c/@t` (default "n" → `float_number` when a `<v>` exists; dates/booleans/errors
-report `string`). Merged ranges from `mergeCells` land in the `SheetCell` side
-map as anchor `span` + `is_covered` flags at parse time.
+report `string`). `sheet_cell_value` adds what that leaves out — `<v>` parsed
+as a number where the type is one, and `<f>` as its own string. A shared
+formula writes its expression on the group's master, so a member's formula is
+**set and empty** rather than absent. Merged ranges from `mergeCells` land in
+the `SheetCell` side map as anchor `span` + `is_covered` flags at parse time.
 
 **Style resolution: styles.xml index vectors.** `StyleRegistry` loads positional
 `fonts`/`fills`/`borders`/`cellStyleXfs`/`cellXfs`. A cell's `s` attribute
