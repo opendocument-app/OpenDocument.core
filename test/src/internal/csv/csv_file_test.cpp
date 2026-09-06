@@ -4,6 +4,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <test_util.hpp>
@@ -66,7 +67,7 @@ TEST(CsvFile, csv) {
       std::make_shared<internal::text::TextFile>(file.impl())));
 
   // and the probe in `open_strategy` reaches the same conclusion
-  EXPECT_THAT(DecodedFile::list_file_types(file),
+  EXPECT_THAT(list_file_types(file),
               testing::Contains(FileType::comma_separated_values));
 }
 

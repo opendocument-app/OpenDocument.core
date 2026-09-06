@@ -6,6 +6,8 @@
 #include <odr/internal/encoding/text_encoding_table.hpp>
 #include <odr/internal/file_type_table.hpp>
 #include <odr/internal/git_info.hpp>
+#include <odr/internal/magic.hpp>
+#include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 
 #include <algorithm>
@@ -184,20 +186,20 @@ bool odr::text_encoding_is_decodable(const TextEncoding encoding) noexcept {
 
 std::vector<odr::FileType> odr::list_file_types(const File &file,
                                                 const Logger &logger) {
-  return DecodedFile::list_file_types(file, logger);
+  return internal::open_strategy::list_file_types(file.impl(), logger);
 }
 
 std::vector<odr::FileType> odr::list_file_types(const std::string &path,
                                                 const Logger &logger) {
-  return DecodedFile::list_file_types(path, logger);
+  return list_file_types(File::from_disk(path), logger);
 }
 
 std::string_view odr::mimetype(const File &file, const Logger &logger) {
-  return DecodedFile::mimetype(file, logger);
+  return internal::magic::mimetype(file.impl(), logger);
 }
 
 std::string_view odr::mimetype(const std::string &path, const Logger &logger) {
-  return DecodedFile::mimetype(path, logger);
+  return mimetype(File::from_disk(path), logger);
 }
 
 odr::DecodedFile odr::open(const File &file, const Logger &logger) {

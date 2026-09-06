@@ -348,23 +348,6 @@ Java_app_opendocument_core_DocumentFile_create(JNIEnv *env, jclass,
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_app_opendocument_core_DocumentFile_typeByPathNative(JNIEnv *env, jclass,
-                                                         jstring path) {
-  return guarded(env, [&] {
-    return static_cast<jint>(odr::DocumentFile::type(to_string(env, path)));
-  });
-}
-
-extern "C" JNIEXPORT jobject JNICALL
-Java_app_opendocument_core_DocumentFile_metaByPathNative(JNIEnv *env, jclass,
-                                                         jstring path) {
-  return guarded(env, [&] {
-    return odr_jni::make_file_meta(
-        env, odr::DocumentFile::meta(to_string(env, path)));
-  });
-}
-
-extern "C" JNIEXPORT jint JNICALL
 Java_app_opendocument_core_DocumentFile_documentTypeNative(JNIEnv *env, jobject,
                                                            jlong handle) {
   return guarded(env, [&] {

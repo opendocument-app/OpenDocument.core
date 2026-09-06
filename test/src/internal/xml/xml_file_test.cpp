@@ -53,7 +53,7 @@ TEST(XmlFile, an_xml_file_opens_as_xml) {
   EXPECT_FALSE(file.is_document_file());
   EXPECT_TRUE(file.capabilities().translate_html);
 
-  EXPECT_THAT(DecodedFile::list_file_types(File::from_memory("<a><b/></a>")),
+  EXPECT_THAT(list_file_types(File::from_memory("<a><b/></a>")),
               testing::Contains(FileType::xml));
 }
 

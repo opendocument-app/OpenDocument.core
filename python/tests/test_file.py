@@ -163,12 +163,10 @@ def test_decoded_file_from_file(odt_path):
 def test_document_file_from_file(odt_path):
     file = pyodr.File.from_memory(odt_path.read_bytes())
 
-    assert pyodr.DocumentFile.type_by_file(file) == pyodr.FileType.opendocument_text
-    assert (
-        pyodr.DocumentFile.meta_by_file(file).type == pyodr.FileType.opendocument_text
-    )
-
     document_file = pyodr.DocumentFile(file)
+    assert document_file.file_type() == pyodr.FileType.opendocument_text
+    assert document_file.file_meta().type == pyodr.FileType.opendocument_text
+
     assert document_file.document_type() == pyodr.DocumentType.text
 
 
@@ -213,10 +211,4 @@ def test_file_and_path_entry_points_agree(odt_path):
     assert pyodr.mimetype(file) == pyodr.mimetype(path)
     assert pyodr.list_file_types(file) == pyodr.list_file_types(path)
     assert pyodr.open(file).file_type() == pyodr.open(path).file_type()
-    assert pyodr.DocumentFile.type_by_file(file) == pyodr.DocumentFile.type_by_path(
-        path
-    )
-    assert (
-        pyodr.DocumentFile.meta_by_file(file).type
-        == pyodr.DocumentFile.meta_by_path(path).type
-    )
+    assert pyodr.DocumentFile(file).file_type() == pyodr.DocumentFile(path).file_type()

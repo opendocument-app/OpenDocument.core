@@ -127,8 +127,8 @@ class FileTest {
   @Test
   void documentFileByPath() throws IOException {
     Path odt = TestFiles.odtFile(tempDir);
-    assertEquals(FileType.OPENDOCUMENT_TEXT, DocumentFile.typeByPath(odt.toString()));
-    FileMeta meta = DocumentFile.metaByPath(odt.toString());
-    assertEquals(FileType.OPENDOCUMENT_TEXT, meta.type);
+    DecodedFile file = Odr.open(odt.toString());
+    assertEquals(FileType.OPENDOCUMENT_TEXT, file.fileType());
+    assertEquals(FileType.OPENDOCUMENT_TEXT, file.fileMeta().type);
   }
 }

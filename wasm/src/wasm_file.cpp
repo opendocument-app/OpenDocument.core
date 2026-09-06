@@ -37,13 +37,13 @@ emscripten::val detect(const std::string &bytes, std::string name) {
     const Logger &logger = default_logger();
 
     emscripten::val types = emscripten::val::array();
-    for (const FileType type : DecodedFile::list_file_types(file, logger)) {
+    for (const FileType type : odr::list_file_types(file, logger)) {
       types.call<void>("push", static_cast<int>(type));
     }
 
     emscripten::val result = emscripten::val::object();
     result.set("fileTypes", types);
-    result.set("mimeType", std::string(DecodedFile::mimetype(file, logger)));
+    result.set("mimeType", std::string(odr::mimetype(file, logger)));
     return ok(result);
   });
 }
