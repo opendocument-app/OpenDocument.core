@@ -157,10 +157,12 @@ only connection to html is that our JavaScript writes its input.
   `bind_core.cpp`, `ODRGlobalParams`, `OdrAndroid.init`, and the
   `ODR_WITH_LIBMAGIC` / conan `with_libmagic` / `bundle_assets` options.
 - **Enum ordinals**, per *Why a major* above. The recommendation is **not** to
-  renumber — the payoff is cosmetic and a stale binding would fail silently —
-  but to pin the values explicitly (`= 0, 1, 2, …`) and add a test that asserts
-  the mapping, turning the append-only convention into something the build
-  catches.
+  renumber — the payoff is cosmetic and a stale binding would fail silently.
+  Nor to write the values into the headers: 215 enumerators across 28 enums is
+  a lot of noise, and it does not stop anyone who reorders from renumbering as
+  they go. What catches a reorder is a *test*:
+  `test/src/enum_ordinals_test.cpp` pins every enumerator, the way
+  `wasm/tests/enums.test.mjs` already does on the JS side.
 - **`HtmlConfig` is ~36 flat fields** mixing output location, layout,
   spreadsheet limits and pdf. Grouping into sub-structs is breaking; now or
   never. Weighed against the cost of re-mirroring it in five bindings — see
