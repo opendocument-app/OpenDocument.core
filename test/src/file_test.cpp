@@ -201,7 +201,7 @@ TEST(File, disk_file_has_no_memory_data) {
 }
 
 TEST(DocumentFile, open) {
-  EXPECT_THROW(open("/").as_document_file(), FileNotFound);
+  EXPECT_THROW(std::ignore = open("/").as_document_file(), FileNotFound);
 }
 
 TEST(DocumentFile, from_disk_and_from_memory_agree) {

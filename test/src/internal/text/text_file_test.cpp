@@ -63,9 +63,9 @@ TEST(TextFile, unrecognised_bytes_do_not_open) {
   const File junk = File::from_memory(std::string(512, '\0'));
 
   EXPECT_THROW(std::ignore = mimetype(junk), UnknownFileType);
-  EXPECT_THROW(open(junk), UnknownFileType);
+  EXPECT_THROW(std::ignore = open(junk), UnknownFileType);
   // asking for text by name is no way around it
-  EXPECT_THROW(open(junk, FileType::text_file), UnknownFileType);
+  EXPECT_THROW(std::ignore = open(junk, FileType::text_file), UnknownFileType);
 }
 
 TEST(TextFile, encoding_comes_from_the_byte_order_mark) {

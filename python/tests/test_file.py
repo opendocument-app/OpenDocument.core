@@ -172,7 +172,9 @@ def test_document_file_from_file(odt_path):
 
 def test_document_file_from_disk_and_from_memory(odt_path):
     from_disk = pyodr.open(str(odt_path)).as_document_file()
-    from_memory = pyodr.open(pyodr.File.from_memory(odt_path.read_bytes())).as_document_file()
+    from_memory = pyodr.open(
+        pyodr.File.from_memory(odt_path.read_bytes())
+    ).as_document_file()
 
     assert from_disk.file_type() == pyodr.FileType.opendocument_text
     assert from_memory.file_type() == from_disk.file_type()

@@ -16,6 +16,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 using namespace odr;
 using namespace odr::internal;
@@ -234,9 +235,9 @@ TEST(RtfDocument, the_open_strategy_opens_an_rtf) {
   // the branch's `NoRtfFile` is what `open_file` catches to move on to the
   // next candidate type, so a caller asking for an rtf that is not one sees
   // the strategy's own answer
-  EXPECT_THROW(
-      open(File(memory_file("Hello, World!")), FileType::rich_text_format),
-      UnknownFileType);
+  EXPECT_THROW(std::ignore = open(File(memory_file("Hello, World!")),
+                                  FileType::rich_text_format),
+               UnknownFileType);
 
   // and the document-file path, which a caller reaches through `DocumentFile`
   const DocumentFile document_file = open(file).as_document_file();

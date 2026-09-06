@@ -497,8 +497,7 @@ private:
 /// @brief Represents a document file.
 class DocumentFile final : public DecodedFile {
 public:
-  /// Reached through @ref DecodedFile::as_document_file, on what @ref
-  /// odr::open produced; this wraps what that narrowed to.
+  /// Narrowing is @ref DecodedFile::as_document_file; this wraps its result.
   explicit DocumentFile(std::shared_ptr<internal::abstract::DocumentFile>);
 
   [[nodiscard]] DocumentType document_type() const;

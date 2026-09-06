@@ -52,7 +52,7 @@ emscripten::val open(const std::string &bytes, std::string name,
                      const emscripten::val &config) {
   return guarded([&] {
     return opened(
-        DecodedFile(from_bytes(bytes, std::move(name)), default_logger()),
+        odr::open(from_bytes(bytes, std::move(name)), default_logger()),
         config);
   });
 }
@@ -60,8 +60,8 @@ emscripten::val open(const std::string &bytes, std::string name,
 emscripten::val open_as(const std::string &bytes, std::string name,
                         const int as, const emscripten::val &config) {
   return guarded([&] {
-    return opened(DecodedFile(from_bytes(bytes, std::move(name)),
-                              static_cast<FileType>(as), default_logger()),
+    return opened(odr::open(from_bytes(bytes, std::move(name)),
+                            static_cast<FileType>(as), default_logger()),
                   config);
   });
 }
