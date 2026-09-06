@@ -751,20 +751,15 @@ constexpr std::string_view pdf_annotation_js = R"js(
     return null;
   }
 
-  // The page box is laid out in inches, so its own layout width in css pixels
-  // gives the scale a zoom transform is applied on top of.
-  function metrics(page) {
+  /// A viewport point to page-box points (y-down, the unit the overlay draws
+  /// in). The page box is laid out in inches, so its own layout width in css
+  /// pixels gives the scale a zoom transform is applied on top of.
+  function toBox(page, clientX, clientY) {
     var rect = page.getBoundingClientRect();
     var zoom = page.offsetWidth ? rect.width / page.offsetWidth : 1;
-    return { rect: rect, zoom: zoom, points: page.offsetWidth * 0.75 };
-  }
-
-  /// A viewport point to page-box points (y-down, the unit the overlay draws in).
-  function toBox(page, clientX, clientY) {
-    var m = metrics(page);
     return [
-      ((clientX - m.rect.left) / m.zoom) * 0.75,
-      ((clientY - m.rect.top) / m.zoom) * 0.75,
+      ((clientX - rect.left) / zoom) * 0.75,
+      ((clientY - rect.top) / zoom) * 0.75,
     ];
   }
 
@@ -790,9 +785,10 @@ constexpr std::string_view pdf_annotation_js = R"js(
       svg.setAttribute("preserveAspectRatio", "none");
       page.appendChild(svg);
     }
-    var m = metrics(page);
-    var height = page.offsetHeight * 0.75;
-    svg.setAttribute("viewBox", "0 0 " + m.points + " " + height);
+    svg.setAttribute(
+      "viewBox",
+      "0 0 " + page.offsetWidth * 0.75 + " " + page.offsetHeight * 0.75
+    );
     return svg;
   }
 
@@ -945,8 +941,24 @@ constexpr std::string_view pdf_annotation_js = R"js(
   }
 
   var stroke = null;
+  var pointerDown = false;
+  var settle = null;
+
+  /// A drag fires `selectionchange` on every character it covers, so the mark
+  /// waits for the gesture that makes it to end rather than taking the first
+  /// character and tearing the selection out from under the pointer.
+  function scheduleMark() {
+    if (!tool || tool === "ink" || pointerDown) {
+      return;
+    }
+    window.clearTimeout(settle);
+    settle = window.setTimeout(markSelection, 50);
+  }
 
   function onPointerDown(event) {
+    pointerDown = true;
+    // a new gesture supersedes a mark the previous one had queued
+    window.clearTimeout(settle);
     if (tool !== "ink" || event.button !== 0) {
       return;
     }
@@ -988,7 +1000,12 @@ constexpr std::string_view pdf_annotation_js = R"js(
   }
 
   function onPointerUp() {
-    if (stroke && stroke.strokes[0].length < 4) {
+    pointerDown = false;
+    scheduleMark();
+    if (!stroke) {
+      return;
+    }
+    if (stroke.strokes[0].length < 4) {
       // a tap with no drag leaves a dot, which is a legitimate mark
       stroke.strokes[0].push(stroke.strokes[0][0], stroke.strokes[0][1]);
     }
@@ -1000,12 +1017,7 @@ constexpr std::string_view pdf_annotation_js = R"js(
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
   document.addEventListener("pointercancel", onPointerUp);
-  document.addEventListener("selectionchange", function () {
-    if (tool && tool !== "ink") {
-      // a selection completes the mark; the pointer is already up by then
-      window.setTimeout(markSelection, 0);
-    }
-  });
+  document.addEventListener("selectionchange", scheduleMark);
   window.addEventListener("resize", redraw);
 
   odr.annotation = {

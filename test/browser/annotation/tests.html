@@ -109,7 +109,7 @@
     api.setTool("highlight");
     api.setColor([1, 0.9, 0.2]);
     const run1 = selectRun(0);
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 100));
 
     check("a selection makes one annotation", api.list().length === 1, api.list());
 
@@ -141,6 +141,32 @@
       q
     );
 
+    // --- a drag marks once, not once per character it covers -------------
+    api.clear();
+    api.setTool("highlight");
+    const text = document.querySelector('[data-odr-page="0"] .sr').firstChild;
+    const pointer = (type) =>
+      document.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, pointerId: 2, button: 0 })
+      );
+    window.getSelection().removeAllRanges();
+    pointer("pointerdown");
+    for (let k = 1; k <= 6; ++k) {
+      window.getSelection().setBaseAndExtent(text, 0, text, k);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    pointer("pointerup");
+    await new Promise((r) => setTimeout(r, 100));
+    check(
+      "a drag makes one annotation, not one per character",
+      api.list().length === 1,
+      api.list().length
+    );
+    api.clear();
+    api.setTool("highlight");
+    selectRun(0);
+    await new Promise((r) => setTimeout(r, 100));
+
     // --- the overlay is drawn, and the wash is the one that multiplies ----
     const page1 = document.querySelector('[data-odr-page="0"]');
     check("an overlay is added", page1.querySelectorAll("svg.an").length >= 1);
@@ -152,7 +178,7 @@
     api.clear();
     api.setTool("underline");
     selectRun(0);
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 100));
     check(
       "an underline does not multiply",
       page1.querySelector("svg.an-m path") === null &&
@@ -163,7 +189,7 @@
     api.clear();
     api.setTool("highlight");
     selectRun(1);
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 100));
     check("page two annotates as page 1", payload().annotations[0].page === 1);
 
     // --- ink through real pointer events ---------------------------------
@@ -202,7 +228,7 @@
 
     api.setTool("highlight");
     selectRun(0);
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 100));
     const id = api.list()[api.list().length - 1].id;
     api.remove(id);
     check("remove drops it by id", !api.list().some((a) => a.id === id));

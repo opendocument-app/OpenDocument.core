@@ -77,7 +77,8 @@ std::string page_attributes(const std::size_t index,
     return {};
   }
   const auto n = [](const double v) {
-    return util::number::to_string_significant(v, 10);
+    // a negative zero would render as `-0`, which is only noise in the output
+    return util::number::to_string_significant(v == 0 ? 0.0 : v, 10);
   };
   return R"( data-odr-page=")" + std::to_string(index) +
          R"(" data-odr-space=")" + n(from_box->a) + ',' + n(from_box->b) + ',' +
@@ -1422,10 +1423,12 @@ public:
       const double height = pb.height;
       const util::math::Transform2D &to_box = pb.to_box;
 
+      // page numbers are 1-based, `data-odr-page` is the 0-based index
+      const std::size_t page_index = first_page_number - 1 + pages_out.size();
+
       DualPageOut &page_out = pages_out.emplace_back();
       page_out.classes = pb.classes;
-      page_out.attributes =
-          page_attributes(first_page_number - 1 + pages_out.size() - 1, to_box);
+      page_out.attributes = page_attributes(page_index, to_box);
       page_out.width = width;
       page_out.height = height;
       page_out.links =
@@ -2071,10 +2074,12 @@ public:
       const double height = pb.height;
       const util::math::Transform2D &to_box = pb.to_box;
 
+      // page numbers are 1-based, `data-odr-page` is the 0-based index
+      const std::size_t page_index = first_page_number - 1 + pages_out.size();
+
       SinglePageOut &page_out = pages_out.emplace_back();
       page_out.classes = pb.classes;
-      page_out.attributes =
-          page_attributes(first_page_number - 1 + pages_out.size() - 1, to_box);
+      page_out.attributes = page_attributes(page_index, to_box);
       page_out.width = width;
       page_out.height = height;
       page_out.links =

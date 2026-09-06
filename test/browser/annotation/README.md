@@ -31,3 +31,7 @@ Why the harness is shaped this way:
   to capture and chromium throws on it.
 - The blend check reads which of the two overlays a shape lands in
   (`svg.an-m` multiplies, `svg.an` does not) rather than sampling pixels.
+- **A drag is stepped through by hand** — pointer down, the selection extended
+  a character at a time, pointer up. Chromium will not select text from a
+  synthetic mouse event, and one `addRange` fires a single `selectionchange`,
+  so neither reaches the case a drag creates.
