@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v6.14.0 - 2026-09-06
+
 - Fixed: a semi-transparent colour wrote `rgba(0,0,0,0,501961)` where the host
   had set a global locale with a comma decimal separator. Adds a `fmt`
   dependency.
