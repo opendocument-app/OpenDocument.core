@@ -175,11 +175,6 @@ struct HtmlConfig {
   std::uint8_t html_indent{1};
   std::string html_indent_string{"\t"};
 
-  /// @deprecated Inert: no view renders a background image to a file.
-  std::string background_image_format{"png"};
-  /// @deprecated See @ref background_image_format.
-  double background_image_dpi{144.0};
-
   /// Renders only the pages with 0-based index in `[page_range_begin,
   /// page_range_end)`; page views and `#pN` anchors keep their document-global
   /// numbers. Honored by the pdf pipeline.
@@ -195,12 +190,6 @@ struct HtmlConfig {
   /// Shrinks the fallback's metrics toward the pdf's (0-1) so css justify can
   /// fill the box. Safe to underestimate: the excess is clipped, not shrunk.
   double pdf_dual_layer_fallback_font_size_adjust{0.5};
-
-  /// @deprecated Inert: no output carries a restriction to lift.
-  bool no_drm{false};
-
-  /// @deprecated Inert: an outline is never written.
-  bool embed_outline{false};
 
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;

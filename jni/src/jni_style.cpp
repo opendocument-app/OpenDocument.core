@@ -489,8 +489,6 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
-  set_string("backgroundImageFormat", config.background_image_format);
-  set_double("backgroundImageDpi", config.background_image_dpi);
   set_int("pageRangeBegin", static_cast<jint>(config.page_range_begin));
   set_object("pageRangeEnd", "Ljava/lang/Integer;",
              box_integer(env, config.page_range_end));
@@ -514,8 +512,6 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   }
   set_double("pdfDualLayerFallbackFontSizeAdjust",
              config.pdf_dual_layer_fallback_font_size_adjust);
-  set_boolean("noDrm", config.no_drm);
-  set_boolean("embedOutline", config.embed_outline);
   set_object("outputPath", "Ljava/lang/String;",
              make_string_opt(env, config.output_path));
 
@@ -678,8 +674,6 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   result.format_html = get_boolean("formatHtml");
   result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));
   result.html_indent_string = get_string("htmlIndentString");
-  result.background_image_format = get_string("backgroundImageFormat");
-  result.background_image_dpi = get_double("backgroundImageDpi");
   result.page_range_begin =
       static_cast<std::uint32_t>(get_int("pageRangeBegin"));
   {
@@ -716,8 +710,6 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   }
   result.pdf_dual_layer_fallback_font_size_adjust =
       get_double("pdfDualLayerFallbackFontSizeAdjust");
-  result.no_drm = get_boolean("noDrm");
-  result.embed_outline = get_boolean("embedOutline");
   result.output_path = get_string_opt("outputPath");
 
   env->DeleteLocalRef(cls);

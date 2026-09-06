@@ -124,8 +124,6 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _formatHtml = config.format_html ? YES : NO;
   _htmlIndent = config.html_indent;
   _htmlIndentString = to_nsstring(config.html_indent_string);
-  _backgroundImageFormat = to_nsstring(config.background_image_format);
-  _backgroundImageDpi = config.background_image_dpi;
   _pageRangeBegin = config.page_range_begin;
   _pageRangeEnd = config.page_range_end.has_value()
                       ? @(static_cast<unsigned int>(*config.page_range_end))
@@ -134,8 +132,6 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _pdfDualLayerFallbackFonts = to_nsarray(config.pdf_dual_layer_fallback_fonts);
   _pdfDualLayerFallbackFontSizeAdjust =
       config.pdf_dual_layer_fallback_font_size_adjust;
-  _noDrm = config.no_drm ? YES : NO;
-  _embedOutline = config.embed_outline ? YES : NO;
   _outputPath =
       config.output_path.has_value() ? to_nsstring(*config.output_path) : nil;
   return self;
@@ -211,8 +207,6 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.format_html = _formatHtml == YES;
   config.html_indent = _htmlIndent;
   config.html_indent_string = to_string(_htmlIndentString);
-  config.background_image_format = to_string(_backgroundImageFormat);
-  config.background_image_dpi = _backgroundImageDpi;
   config.page_range_begin = _pageRangeBegin;
   if (_pageRangeEnd != nil) {
     config.page_range_end =
@@ -224,8 +218,6 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.pdf_dual_layer_fallback_fonts = to_strings(_pdfDualLayerFallbackFonts);
   config.pdf_dual_layer_fallback_font_size_adjust =
       _pdfDualLayerFallbackFontSizeAdjust;
-  config.no_drm = _noDrm == YES;
-  config.embed_outline = _embedOutline == YES;
   if (_outputPath != nil) {
     config.output_path = to_string(_outputPath);
   } else {

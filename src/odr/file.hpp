@@ -424,11 +424,6 @@ public:
   /// @brief The encoding the file's bytes were detected as, or decoded with.
   [[nodiscard]] TextEncoding encoding() const;
 
-  /// @deprecated See @ref encoding. Returns the encoding's canonical name, and
-  /// `nullopt` for @ref TextEncoding::unknown.
-  [[deprecated("use encoding()")]] [[nodiscard]] std::optional<std::string>
-  charset() const;
-
   /// @brief The file's bytes as they are.
   [[nodiscard]] std::unique_ptr<std::istream> stream() const;
   /// @brief The file's text, decoded to UTF-8 where @ref encoding is

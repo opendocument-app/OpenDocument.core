@@ -100,13 +100,6 @@ struct NoJsonFile final : Exception {
   NoJsonFile();
 };
 
-/// @brief Unknown charset exception
-/// @deprecated Nothing throws this any more: a file whose encoding cannot be
-/// named is still text, and reports @ref TextEncoding::unknown.
-struct [[deprecated("nothing throws this")]] UnknownCharset final : Exception {
-  UnknownCharset();
-};
-
 /// @brief No image file exception
 struct NoImageFile final : Exception {
   NoImageFile();

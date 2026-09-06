@@ -86,14 +86,6 @@ export interface HtmlConfig {
   editable?: boolean;
   textDocumentMargin?: boolean;
   formatHtml?: boolean;
-  /** @deprecated Inert. */
-  embedOutline?: boolean;
-  /** @deprecated Inert. */
-  noDrm?: boolean;
-  /** @deprecated Inert. */
-  backgroundImageFormat?: string;
-  /** @deprecated Inert. */
-  backgroundImageDpi?: number;
   pageRangeBegin?: number;
   pageRangeEnd?: number;
   colorScheme?: number;
