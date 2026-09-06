@@ -5,7 +5,7 @@ library for every ABI, and the runtime data the renderer needs, in one artifact.
 
 ```
 odr-core-android.aar
-├── classes.jar                        app.opendocument.core (../jni/java) + OdrAndroid
+├── classes.jar                        app.opendocument.core (../jni/java)
 ├── jni/<abi>/libodr_jni.so            the bindings with the core linked in
 ├── jni/<abi>/libc++_shared.so         the c++ runtime they were built against
 └── proguard.txt                       keeps the classes JNI resolves by name
@@ -39,9 +39,7 @@ val html = service.bringOffline(outputDir.path)
 ```
 
 Nothing needs initialising: the renderer's css and js are part of the native
-library. `OdrAndroid.init(context)` is a deprecated no-op — it used to unpack
-the assets that carried them — and stays callable, checked `IOException` and
-all, so apps written against the older AAR keep compiling.
+library, and the AAR carries no assets to unpack.
 
 Serving the rendered HTML through `HttpServer` needs two things from the app,
 neither of which a library may decide on its own: `android.permission.INTERNET`,

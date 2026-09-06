@@ -102,7 +102,6 @@ add_jar(odr_java
         "java/app/opendocument/core/LoggerBridge.java"
         "java/app/opendocument/core/SourceLocation.java"
         "java/app/opendocument/core/Frame.java"
-        "java/app/opendocument/core/GlobalParams.java"
         "java/app/opendocument/core/GraphicStyle.java"
         "java/app/opendocument/core/GuardedNativeResource.java"
         "java/app/opendocument/core/HorizontalAlign.java"

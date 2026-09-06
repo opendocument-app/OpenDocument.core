@@ -43,11 +43,6 @@ CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$PWD/conan_toolchain.cmake" pip install .
 ## Runtime data
 
 There is none. The renderer's css and js are part of the library, so rendering
-works out of the box; `odr_core_data_path()` and `set_odr_core_data_path(...)`
-are deprecated leftovers that still store and return a path nothing reads.
-
-MIME detection needs no runtime data: `mimetype` runs the open strategy, so it
-names what is *inside* a zip or a compound file. `libmagic_database_path()` and
-`set_libmagic_database_path(...)` are deprecated leftovers of the libmagic
-backend that used to answer this and could only say `application/zip` for an
-`.odt`; they still store and return a path, but nothing reads it.
+works out of the box, and MIME detection needs no database: `mimetype` runs the
+open strategy, so it names what is *inside* a zip or a compound file rather
+than answering `application/zip` for an `.odt`.

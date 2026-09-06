@@ -7,7 +7,6 @@
 #import <OdrCoreObjC/ODRError.h>
 #import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRFilesystem.h>
-#import <OdrCoreObjC/ODRGlobalParams.h>
 #import <OdrCoreObjC/ODRHtml.h>
 #import <OdrCoreObjC/ODRHttpServer.h>
 #import <OdrCoreObjC/ODRLogger.h>

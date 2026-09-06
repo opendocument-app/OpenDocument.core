@@ -124,10 +124,6 @@ def test_decoded_file_capabilities(odt_path):
     assert not capabilities.decrypt
 
 
-def test_global_params():
-    assert isinstance(pyodr.GlobalParams.odr_core_data_path(), str)
-
-
 def test_mimetype_names_what_is_inside_the_container(odt_path):
     # An ODF file is a ZIP, and the answer worth having is the one from inside
     # it. Detection opens the container to get there.

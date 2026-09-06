@@ -16,28 +16,22 @@ class OpenDocumentCoreConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        # removed and inert, kept only so a consumer still passing it does not
-        # hard-fail on an unknown option; see CMakeLists.txt
-        "with_libmagic": [True, False],
         "with_http_server": [True, False],
         "with_cli": [True, False],
         "with_python": [True, False],
         "with_jni": [True, False],
         "with_apple": [True, False],
         "with_wasm": [True, False],
-        "bundle_assets": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_libmagic": False,
         "with_http_server": True,
         "with_cli": True,
         "with_python": False,
         "with_jni": False,
         "with_apple": False,
         "with_wasm": False,
-        "bundle_assets": False,
         # paired with PUGIXML_COMPACT in CMakeLists.txt: no prebuilt library
         # to mismatch against the node layout the define changes
         "pugixml/*:header_only": True,
@@ -48,7 +42,6 @@ class OpenDocumentCoreConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-            del self.options.with_libmagic
 
     def requirements(self):
         self.requires("pugixml/1.15")
@@ -82,14 +75,12 @@ class OpenDocumentCoreConan(ConanFile):
         tc.variables["ODR_TEST"] = False
         # forwarded only so the CMake deprecation warning reaches a consumer
         # who still sets it; neither end does anything with it
-        tc.variables["ODR_WITH_LIBMAGIC"] = self.options.get_safe("with_libmagic", False)
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
         tc.variables["ODR_CLI"] = self.options.get_safe("with_cli", True)
         tc.variables["ODR_PYTHON"] = self.options.get_safe("with_python", False)
         tc.variables["ODR_JNI"] = self.options.get_safe("with_jni", False)
         tc.variables["ODR_APPLE"] = self.options.get_safe("with_apple", False)
         tc.variables["ODR_WASM"] = self.options.get_safe("with_wasm", False)
-        tc.variables["ODR_BUNDLE_ASSETS"] = self.options.get_safe("bundle_assets", False)
 
         tc.generate()
 

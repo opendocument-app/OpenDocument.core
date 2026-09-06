@@ -11,7 +11,6 @@ first — the java API and its android constraints live there. User facing docs:
 |------|------|
 | `build.gradle.kts` | The library module: sources from `../jni/java`, prebuilt native libs, lint, publishing. Single project — `rootProject.name` *is* the artifactId. |
 | `build_native.py` | conan + cmake per ABI → `native/prebuilt/jniLibs`. Invoked by the `buildNative` gradle task and directly by CI. |
-| `src/main/java/.../android/OdrAndroid.kt` | The only android specific production code, and a deprecated no-op: it used to extract the renderer's assets, which are part of the library now. |
 | `src/androidTest/` | Instrumented suite, JUnit 4 + androidx.test, inputs from `../jni/testfixtures`. |
 | `consumer-rules.pro` | Keeps `app.opendocument.core.**` — JNI resolves it by name, R8 cannot see that. |
 
@@ -41,9 +40,10 @@ calls it.
 - **What this module writes is kotlin; what it borrows is java.** `../jni/java`
   and `../jni/testfixtures` are compiled by CMake's `add_jar` for the maven jar
   and the host junit suite, which have no kotlin toolchain, so they stay java —
-  the kotlin here is only `OdrAndroid` and `src/androidTest`. Anything crossing
-  back to a java caller keeps its java shape: `@JvmStatic` so `OdrAndroid.init`
-  stays a static call, `@Throws` so the `IOException` stays checked.
+  the kotlin here is only `src/androidTest` — the module ships no production
+  code of its own. Anything added that crosses back to a java caller keeps its
+  java shape: `@JvmStatic` for a static call, `@Throws` for a checked
+  exception.
 - **Formatting is ktfmt** (kotlinlang style) via spotless, the same version
   OpenDocument.droid runs. `./gradlew spotlessApply`; CI checks it in
   `.github/workflows/format.yml`, which needs neither the NDK nor conan.

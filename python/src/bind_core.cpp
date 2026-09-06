@@ -2,7 +2,6 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/global_params.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
@@ -21,19 +20,6 @@ void odr_python::bind_core(py::module_ &m) {
   m.def("is_debug", &odr::is_debug);
   m.def("identify", &odr::identify,
         "Identification string of the underlying odrcore library.");
-
-  py::class_<odr::GlobalParams>(m, "GlobalParams",
-                                "Global resource paths of the library.")
-      .def_static("odr_core_data_path", &odr::GlobalParams::odr_core_data_path)
-      // the two libmagic paths are deprecated and inert: libmagic is gone, so
-      // nothing reads back what they store
-      .def_static("libmagic_database_path",
-                  &odr::GlobalParams::libmagic_database_path)
-      .def_static("set_odr_core_data_path",
-                  &odr::GlobalParams::set_odr_core_data_path, py::arg("path"))
-      .def_static("set_libmagic_database_path",
-                  &odr::GlobalParams::set_libmagic_database_path,
-                  py::arg("path"));
 
   // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
   // `register_exception`, not `py::exception`: the latter has no translator.

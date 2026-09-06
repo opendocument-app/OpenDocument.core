@@ -2,7 +2,6 @@
 #include "odr_jni.hpp"
 
 #include <odr/file.hpp>
-#include <odr/global_params.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
 #include <odr/table_position.hpp>
@@ -264,40 +263,6 @@ Java_app_opendocument_core_Odr_openWithPreferenceNative(
       env->ReleaseIntArrayElements(file_type_priority, codes, JNI_ABORT);
     }
     return make_handle(odr::open(to_string(env, path), preference));
-  });
-}
-
-// app.opendocument.core.GlobalParams
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_GlobalParams_odrCoreDataPath(JNIEnv *env, jclass) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::GlobalParams::odr_core_data_path());
-  });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_GlobalParams_libmagicDatabasePath(JNIEnv *env,
-                                                             jclass) {
-  return guarded(env, [&] {
-    return to_jstring(env, odr::GlobalParams::libmagic_database_path());
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_GlobalParams_setOdrCoreDataPath(JNIEnv *env, jclass,
-                                                           jstring path) {
-  guarded(env, [&] {
-    odr::GlobalParams::set_odr_core_data_path(to_string(env, path));
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_GlobalParams_setLibmagicDatabasePath(JNIEnv *env,
-                                                                jclass,
-                                                                jstring path) {
-  guarded(env, [&] {
-    odr::GlobalParams::set_libmagic_database_path(to_string(env, path));
   });
 }
 

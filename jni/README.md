@@ -80,9 +80,7 @@ configure step rather than producing a package without the jar in it.
 ## Runtime data
 
 There is none. The renderer's CSS/JS are part of the library and detection needs
-no database, so `GlobalParams.setOdrCoreDataPath(...)` and
-`setLibmagicDatabasePath(...)` are deprecated leftovers that store a path
-nothing reads.
+no database, so there is nothing to point the library at.
 
 ## Notes
 
