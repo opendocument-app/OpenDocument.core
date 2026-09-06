@@ -26,6 +26,8 @@ export interface Capabilities {
   edit: boolean;
   save: boolean;
   encrypt: boolean;
+  /** `annotate()` is supported. */
+  annotate: boolean;
 }
 
 export interface FileTypeInfo {
@@ -154,6 +156,14 @@ export declare class Document {
   /** Applies what the rendered page's `odr.generateDiff()` collected.
    * @throws OdrError `NoDocumentFile` */
   edit(diff: string): this;
+
+  /**
+   * Applies markup annotations to a pdf and returns the annotated bytes.
+   *
+   * @param annotations what the rendered page's
+   *   `odr.annotation.getAnnotations()` collected.
+   */
+  annotate(annotations: string): Uint8Array;
   /** The document's bytes, not the rendered html.
    * @throws OdrError `UnsupportedOperation` where the format cannot be saved */
   save(password?: string): Uint8Array;

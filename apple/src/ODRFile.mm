@@ -8,6 +8,7 @@
 
 #include <istream>
 #include <optional>
+#include <sstream>
 #include <vector>
 
 using odr::apple::guarded;
@@ -166,6 +167,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   result->_edit = handle.edit ? YES : NO;
   result->_save = handle.save ? YES : NO;
   result->_encrypt = handle.encrypt ? YES : NO;
+  result->_annotate = handle.annotate ? YES : NO;
   return result;
 }
 
@@ -646,6 +648,15 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 @end
 
 @implementation ODRPdfFile
+
+- (nullable NSData *)annotate:(NSString *)annotations error:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    self.handle.as_pdf_file().annotate(to_string(annotations), out);
+    std::istringstream in(std::move(out).str());
+    return to_nsdata(in);
+  });
+}
 
 - (nullable ODRPdfFile *)decryptWithPassword:(NSString *)password
                                        error:(NSError **)error {

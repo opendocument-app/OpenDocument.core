@@ -34,6 +34,9 @@ public final class FileTypeCapabilities {
   /** {@link Document#save} with a password is supported. */
   public final boolean encrypt;
 
+  /** {@link PdfFile#annotate} is supported. */
+  public final boolean annotate;
+
   FileTypeCapabilities(
       boolean detectByContent,
       boolean open,
@@ -42,7 +45,8 @@ public final class FileTypeCapabilities {
       boolean colorScheme,
       boolean edit,
       boolean save,
-      boolean encrypt) {
+      boolean encrypt,
+      boolean annotate) {
     this.detectByContent = detectByContent;
     this.open = open;
     this.decrypt = decrypt;
@@ -51,5 +55,6 @@ public final class FileTypeCapabilities {
     this.edit = edit;
     this.save = save;
     this.encrypt = encrypt;
+    this.annotate = annotate;
   }
 }

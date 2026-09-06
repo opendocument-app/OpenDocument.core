@@ -73,6 +73,36 @@ def odt_path(tmp_path):
     return path
 
 
+def _mini_pdf() -> bytes:
+    """A one-page pdf, offsets computed so the cross-reference table is right."""
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << >> /Contents 4 0 R >>",
+        b"<< /Length 5 >>\nstream\nBT ET\nendstream",
+    ]
+    out = bytearray(b"%PDF-1.7\n")
+    offsets = []
+    for index, body in enumerate(objects):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % (index + 1) + body + b"\nendobj\n"
+    start = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    for offset in offsets:
+        out += b"%010d 00000 n \n" % offset
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\n" % (len(objects) + 1)
+    out += b"startxref\n%d\n%%%%EOF\n" % start
+    return bytes(out)
+
+
+@pytest.fixture
+def pdf_path(tmp_path):
+    path = tmp_path / "minimal.pdf"
+    path.write_bytes(_mini_pdf())
+    return path
+
+
 @pytest.fixture
 def csv_path(tmp_path):
     path = tmp_path / "table.csv"

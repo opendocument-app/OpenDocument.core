@@ -7,6 +7,7 @@
 
 #include <emscripten/bind.h>
 
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -114,6 +115,17 @@ emscripten::val file_type(const Handle handle) {
   });
 }
 
+/// The annotated pdf's bytes; there is no filesystem to write to. `payload` is
+/// what the rendered page's `odr.annotation.getAnnotations()` collected.
+emscripten::val annotate(const Handle handle, const std::string &payload) {
+  return guarded([&] {
+    Session &s = session(handle);
+    std::ostringstream out;
+    s.file.as_pdf_file().annotate(payload, out, s.logger);
+    return ok(to_uint8_array(std::move(out).str()));
+  });
+}
+
 emscripten::val close(const Handle handle) {
   return guarded([&] { return ok(emscripten::val(remove_session(handle))); });
 }
@@ -140,6 +152,7 @@ EMSCRIPTEN_BINDINGS(odr_file) {
   emscripten::function("decrypt", &odr::wasm::decrypt);
   emscripten::function("fileType", &odr::wasm::file_type);
   emscripten::function("fileName", &odr::wasm::file_name);
+  emscripten::function("annotate", &odr::wasm::annotate);
   emscripten::function("close", &odr::wasm::close);
   emscripten::function("closeAll", &odr::wasm::close_all);
 }

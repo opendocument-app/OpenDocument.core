@@ -20,6 +20,10 @@ The release run heads these entries with the version and opens a fresh
   strike-out, squiggly and freehand ink — into a pdf as an incremental update,
   so the source bytes are left as they are and any viewer reads them as
   ordinary pdf annotations. `FileTypeCapabilities` gains an `annotate` flag.
+  In every binding: `PdfFile.annotate` in python, java and swift, `annotate()`
+  on the wasm handle. The rendered pdf view exposes `odr.annotation` — tools for
+  the five kinds, live preview, undo — and its `getAnnotations()` produces
+  exactly what `annotate` takes.
 
 - **Breaking**: `html::edit` becomes `Document::edit`, in every binding —
   java's `Html.edit(document, diff)` becomes `document.edit(diff)`, and so on.

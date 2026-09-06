@@ -187,6 +187,8 @@ NS_SWIFT_NAME(FileTypeCapabilities)
 @property(nonatomic, readonly) BOOL save;
 /// Saving with a password is supported.
 @property(nonatomic, readonly) BOOL encrypt;
+/// `ODRPdfFile.annotate` is supported.
+@property(nonatomic, readonly) BOOL annotate;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
@@ -403,6 +405,10 @@ NS_SWIFT_NAME(DocumentFile)
 /// A decoded PDF — `odr::PdfFile`.
 NS_SWIFT_NAME(PdfFile)
 @interface ODRPdfFile : ODRDecodedFile
+/// Applies markup annotations — the payload the rendered page's
+/// `odr.annotation.getAnnotations()` collects — and returns the annotated pdf.
+- (nullable NSData *)annotate:(NSString *)annotations
+                        error:(NSError **)error NS_SWIFT_NAME(annotate(_:));
 - (nullable ODRPdfFile *)decryptWithPassword:(NSString *)password
                                        error:(NSError **)error;
 @end

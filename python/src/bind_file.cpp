@@ -224,7 +224,8 @@ void odr_python::bind_file(py::module_ &m) {
       .def_readwrite("color_scheme", &odr::FileTypeCapabilities::color_scheme)
       .def_readwrite("edit", &odr::FileTypeCapabilities::edit)
       .def_readwrite("save", &odr::FileTypeCapabilities::save)
-      .def_readwrite("encrypt", &odr::FileTypeCapabilities::encrypt);
+      .def_readwrite("encrypt", &odr::FileTypeCapabilities::encrypt)
+      .def_readwrite("annotate", &odr::FileTypeCapabilities::annotate);
 
   py::class_<odr::File>(m, "File")
       .def(py::init<>())
@@ -327,6 +328,15 @@ void odr_python::bind_file(py::module_ &m) {
       .def("document", &odr::DocumentFile::document);
 
   py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")
+      .def(
+          "annotate",
+          [](const odr::PdfFile &file, const std::string &annotations) {
+            std::ostringstream out;
+            file.annotate(annotations, out);
+            return py::bytes(std::move(out).str());
+          },
+          py::arg("annotations"),
+          "Apply markup annotations and return the annotated pdf.")
       .def("decrypt", &odr::PdfFile::decrypt, py::arg("password"),
            py::call_guard<py::gil_scoped_release>());
 

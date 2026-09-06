@@ -12,5 +12,17 @@ public final class PdfFile extends DecodedFile {
     return new PdfFile(decryptPdfFileNative(handle(), password));
   }
 
+  /**
+   * Applies markup annotations and returns the annotated pdf.
+   *
+   * @param annotations the payload the rendered page's {@code
+   *     odr.annotation.getAnnotations()} collects.
+   */
+  public byte[] annotate(String annotations) {
+    return annotateNative(handle(), annotations);
+  }
+
   private native long decryptPdfFileNative(long handle, String password);
+
+  private native byte[] annotateNative(long handle, String annotations);
 }
