@@ -139,6 +139,12 @@ public:
     // a chart or a text box on the sheet; none read yet
     return null_element_id;
   }
+  void sheet_set_cell([[maybe_unused]] const ElementIdentifier element_id,
+                      [[maybe_unused]] const std::uint32_t column,
+                      [[maybe_unused]] const std::uint32_t row,
+                      [[maybe_unused]] const CellValue &value) const override {
+    throw UnsupportedOperation();
+  }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
@@ -183,9 +189,7 @@ public:
   /// Formulas live in `CalculationEngine`, which is not read.
   [[nodiscard]] CellValue
   sheet_cell_value(const ElementIdentifier element_id) const override {
-    CellValue result;
-    result.type = m_registry->cell_element_at(element_id).value_type;
-    return result;
+    return CellValue(m_registry->cell_element_at(element_id).value_type);
   }
 
   [[nodiscard]] TableDimensions

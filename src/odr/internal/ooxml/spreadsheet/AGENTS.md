@@ -2,7 +2,7 @@
 
 The **why**; the feature checklist is in [`README.md`](README.md), the shared
 OOXML mechanics (registry/adapter pattern, OPC relationships, encryption) in
-[`../AGENTS.md`](../AGENTS.md). **Read-only.**
+[`../AGENTS.md`](../AGENTS.md). Reads, and writes a cell value.
 
 **Scope.** Read `xl/workbook.xml`, its sheets, the shared-string table and
 drawings into the abstract model — a table per sheet. Cell styles resolved from
@@ -47,6 +47,23 @@ A legacy indexed colour palette is hardcoded. Named-style masters
 (`cellStyleXfs`) are loaded but **never consulted** (no master-style
 inheritance).
 
+**Writing a cell replaces its children, and a written string goes inline.**
+`sheet_set_cell` (position-addressed, so the cell it names need not have an
+element) rewrites the `c` and hands the registry a fresh text element for what
+it wrote; the elements that read the old children keep their ids and stop being
+reachable, which is the tombstoning the editing design asks for. A shared
+string is **never** written back into `sharedStrings.xml` — every other cell
+indexing that entry would change with it — so the cell becomes
+`t="inlineStr"`. Three cells refuse rather than lose something: one the file
+writes no `c` for, a covered one, and one holding an `f`.
+
+**`save` writes back the parts it can have changed** — every worksheet and
+`workbook.xml` — and byte-copies the rest, as `ooxml/text` does for
+`document.xml`. pugixml is not asked to parse the declaration, so it cannot
+write one back and `save` puts it there itself. Every save sets
+`calcPr/@fullCalcOnLoad` (18.2.2): nothing here computes a formula, so the
+reader is asked to.
+
 ## Module layout
 
 | File (`spreadsheet/`) | Role |
@@ -67,5 +84,6 @@ Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 3. **No named/master cell-style inheritance** (`cellStyleXfs` loaded but unused);
    borders rendered as `0.75pt solid` regardless of actual style (`// TODO thin
    only`); cell protection unhandled.
-4. **Read-only.** `text_set_content` is a no-op stub; `save` throws. Links and
-   comments/annotations not modelled.
+4. **Writing is one cell value.** `sheet_set_cell` writes a number or a string
+   into a cell the file already spells; `text_set_content` is still a no-op
+   stub. Links and comments/annotations not modelled.

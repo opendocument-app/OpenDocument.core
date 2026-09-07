@@ -82,6 +82,12 @@ public:
     (void)element_id;
     return null_element_id;
   }
+  void sheet_set_cell([[maybe_unused]] const ElementIdentifier element_id,
+                      [[maybe_unused]] const std::uint32_t column,
+                      [[maybe_unused]] const std::uint32_t row,
+                      [[maybe_unused]] const CellValue &value) const override {
+    throw UnsupportedOperation();
+  }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     (void)element_id;
@@ -139,9 +145,7 @@ public:
   [[nodiscard]] CellValue sheet_cell_value(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     (void)element_id;
-    CellValue result;
-    result.type = ValueType::string;
-    return result;
+    return CellValue(ValueType::string);
   }
 
   [[nodiscard]] ParagraphStyle

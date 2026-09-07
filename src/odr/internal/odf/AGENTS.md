@@ -169,8 +169,14 @@ The structural/foundational gaps, roughly by value:
 1. **Editing is text-content only.** No structural edits (insert/delete/move
    elements), no attribute or style editing. `text_set_content` splices the DOM
    for one text run; that's the whole editor.
-2. **Spreadsheet editing is force-disabled** (`is_editable` hardcodes `false`
-   for spreadsheets — `odf_document.cpp`, `// TODO fix spreadsheet editability`).
+2. **Spreadsheet editing is one cell value.** `sheet_set_cell` writes
+   `office:value-type`/`office:value` *and* the `text:p` under the cell — the
+   file states the value and shows a rendering of it, and setting one without
+   the other leaves it contradicting itself. It writes through the cell's
+   single text run, so a cell that is absent, repeated, holding a formula, or
+   holding richer markup than one plain paragraph refuses instead. Splitting a
+   repeat, which is what would let an absent or repeated cell be written, is
+   the next step in [`spreadsheet-editing.md`](../../../../docs/design/spreadsheet-editing.md).
 3. **Save never re-encrypts**, and refuses rather than dropping the encryption:
    a document decrypted from a password-protected package reports
    `is_savable(false) == false` and every `save` overload throws

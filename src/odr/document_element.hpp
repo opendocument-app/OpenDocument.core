@@ -137,17 +137,55 @@ enum class ValueType {
   float_number,
 };
 
-/// What a sheet cell holds past the text it shows — the text stays in the
-/// cell's children. A formula cell describes the result its producer cached.
-struct CellValue final {
-  ValueType type{ValueType::unknown};
-  /// Wider than `type == ValueType::float_number`: a percentage or a currency
-  /// states a number and is typed a string until its format is read.
-  std::optional<double> number;
-  /// In the format's own syntax — `of:=SUM([.A1:.B2])` for odf, `SUM(A1:B2)`
-  /// for ooxml. Set and empty for an ooxml cell whose shared formula only the
-  /// group's master spells.
-  std::optional<std::string> formula;
+/// @brief What a sheet cell holds: what @ref SheetCell::value reads out of one,
+/// and what @ref Sheet::set_cell writes into one.
+///
+/// Immutable. A number cell states the number and the text showing it both,
+/// because only the two together say what the cell holds and how it reads.
+class CellValue final {
+public:
+  /// A cell stating no value.
+  CellValue() noexcept = default;
+  /// A string cell showing @p text.
+  explicit CellValue(std::string text);
+  /// A number cell showing @p text for @p number.
+  explicit CellValue(double number, std::string text);
+  /// A number cell showing @p number in the shortest spelling that reads back
+  /// as it.
+  explicit CellValue(double number);
+  /// A cell typed @p type and stating nothing else — what a decoder builds on,
+  /// since a file types a cell whatever it goes on to state.
+  explicit CellValue(ValueType type);
+
+  /// The same value stating @p number as well. Wider than
+  /// `type() == ValueType::float_number`: a percentage or a currency states a
+  /// number and is typed a string until its format is read.
+  [[nodiscard]] CellValue with_number(double number) const;
+  /// The same value shown as @p text.
+  [[nodiscard]] CellValue with_text(std::string text) const;
+  /// The same value behind @p formula, in the format's own syntax —
+  /// `of:=SUM([.A1:.B2])` for odf, `SUM(A1:B2)` for ooxml. Empty where an
+  /// ooxml cell shares a formula only the group's master spells.
+  [[nodiscard]] CellValue with_formula(std::string formula) const;
+
+  [[nodiscard]] ValueType type() const noexcept;
+
+  [[nodiscard]] bool has_number() const noexcept;
+  [[nodiscard]] bool has_text() const noexcept;
+  [[nodiscard]] bool has_formula() const noexcept;
+
+  /// @throws ValueNotStated where the cell states none.
+  [[nodiscard]] double number() const;
+  /// @throws ValueNotStated where the cell shows no text.
+  [[nodiscard]] const std::string &text() const;
+  /// @throws ValueNotStated where the cell holds no formula.
+  [[nodiscard]] const std::string &formula() const;
+
+private:
+  ValueType m_type{ValueType::unknown};
+  std::optional<double> m_number;
+  std::optional<std::string> m_text;
+  std::optional<std::string> m_formula;
 };
 
 /// Collection of list types.
@@ -327,6 +365,17 @@ public:
 
   [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
   [[nodiscard]] ElementRange shapes() const;
+
+  /// Writes @p value into the cell. odf stores the number and its text both;
+  /// ooxml keeps no text for a number and shows it through its format.
+  /// @throws UnsupportedOperation where the cell cannot be written, or where
+  ///         @p value holds a formula - nothing here evaluates one.
+  /// @throws ValueNotStated where @p value is typed a number and states none.
+  void set_cell(std::uint32_t column, std::uint32_t row,
+                const CellValue &value) const;
+  /// Takes the cell's value away, keeping the style it carries. Not the same
+  /// as writing an empty string.
+  void clear_cell(std::uint32_t column, std::uint32_t row) const;
 
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;

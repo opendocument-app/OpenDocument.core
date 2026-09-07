@@ -25,9 +25,12 @@ inline void insert(internal::zip::ZipArchive &zip, const std::string &path,
 
 /// The smallest workbook that opens: one sheet, whose `<sheetData>` is
 /// @p sheet_data and which carries @p sheet_extra - `<mergeCells>`, say -
-/// after it.
+/// after it. @p shared_strings writes a `sharedStrings.xml` where it is given,
+/// and @p workbook_extra follows `<sheets>` in `workbook.xml`.
 inline std::shared_ptr<internal::abstract::File>
-workbook(const std::string &sheet_data, const std::string &sheet_extra = "") {
+workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
+         const std::string &shared_strings = "",
+         const std::string &workbook_extra = "") {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -44,7 +47,8 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "") {
       zip, "xl/workbook.xml",
       R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
       R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
-      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)");
+      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets>)" +
+          workbook_extra + R"(</workbook>)");
   insert(
       zip, "xl/_rels/workbook.xml.rels",
       R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
@@ -58,6 +62,13 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "") {
       R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
       R"(<sheetData>)" +
           sheet_data + R"(</sheetData>)" + sheet_extra + R"(</worksheet>)");
+
+  if (!shared_strings.empty()) {
+    insert(
+        zip, "xl/sharedStrings.xml",
+        R"(<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)" +
+            shared_strings + R"(</sst>)");
+  }
 
   std::stringstream out;
   zip.save(out);

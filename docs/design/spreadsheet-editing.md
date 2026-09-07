@@ -40,8 +40,8 @@ results go stale the moment an input changes.
 | ODS save | `odf_document.cpp::save` | Re-serialises `content.xml`, byte-copies the rest — the same shape a sheet needs |
 | ODS cell index | `odf_element_registry.cpp::Sheet::register_cell` | Per row a run of `(end, element_id, node)` entries; repeats collapse onto one entry. Written once at parse; nothing inserts |
 | ODS repeated cells | `ElementRegistry::SheetCell::is_repeated` | Already refused by `element_is_editable` |
-| XLSX edit | `ooxml_spreadsheet_document.cpp::text_set_content` | `// TODO`, a no-op |
-| XLSX save | — | Throws. `ooxml_text_document.cpp::save` is the template: re-serialise the mutated part, copy everything else |
+| XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
+| XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
 | XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; an empty position has no `<c>` node |
 | Cell value | `SheetCellAdapter` | `sheet_cell_value` reads the number and the formula (step 0.1, landed); `sheet_cell_value_type` stays the cheap question the renderer asks. Dates, booleans and errors still report `string` |
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
@@ -50,7 +50,7 @@ results go stale the moment an input changes.
 | Browser: editing script | `frontend.cpp::document_js` | The `modifiedText` collector: a `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` |
 | Wire format | `document.cpp::Document::edit` | Parses `modifiedText` only, path-addressed, calls `Text::set_content` |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
-| Capabilities | `file_type_table.cpp` | `ods` declares `save`, not `edit`; `xlsx` and `csv` declare neither. `odr_test` checks the declaration against `Document::is_editable` |
+| Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
 
 One inconsistency worth fixing on day one: `translate_sheet` stamps
 `contenteditable` on every run inside an `.ods` cell when `config.editable` is
@@ -270,33 +270,47 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 ### Step 0 — Foundation, C++ only
 
 1. **Landed.** `SheetCell::value()` → `CellValue`: the type, the number where
-   the file states one, and the formula where it states one. Abstract hook
-   `sheet_cell_value`, filled by odf, ooxml and csv; `xls` and `numbers` keep
-   only the display string, so they answer with the type alone. The text is
-   *not* repeated — it stays in the cell's children. This is also what a later
-   sort script needs instead of parsing the rendered text, though the number
-   still has to reach the page for that.
-2. Abstract write hook, position-addressed: `sheet_set_cell(sheet_id, column,
-   row, CellValue)`. ODS: an existing non-repeated cell gets its value type,
-   `office:value` and a fresh `text:p`; anything else throws until step 2.
-   XLSX: an existing cell gets `<v>` or `<is><t>`, `t` set accordingly; a
-   shared-string cell becomes `inlineStr` (`sharedStrings.xml` untouched); the
-   cell's registry subtree is re-parsed (old elements tombstoned, new ones
-   appended). Missing cell throws until step 2.
-3. XLSX `save`, mirroring docx: re-serialise every `sheetN.xml` that was
-   written to, set `fullCalcOnLoad`, copy the rest.
+   the file states one, the text showing it, and the formula where it states
+   one. Abstract hook `sheet_cell_value`, filled by odf, ooxml and csv; `xls`
+   and `numbers` state the type alone and let `SheetCell::value` collect the
+   text off the children, which is what every engine gets for free. This is
+   also what a later sort script needs instead of parsing the rendered text.
+
+   `CellValue` is **one type for reading and writing** — immutable, built by
+   explicit constructors from a text, a number, or a bare type, composed
+   further with the `with_*` withers a decoder needs, and read through getters
+   that throw `ValueNotStated` rather than hand back an empty optional. What a
+   cell reads as is what writing it back takes.
+2. **Landed.** `sheet_set_cell(sheet_id, column, row, CellValue)`, position-
+   addressed, behind `Sheet::set_cell` and `::clear_cell`. ODS writes
+   `office:value-type`, `office:value` and the `text:p`, through the cell's one
+   text run. XLSX rewrites the `c` — `<v>` for a number, `t="inlineStr"` with
+   `<is><t>` for a string — and hands the registry a fresh text element; the
+   old ones keep their ids and stop being reachable. A shared string is never
+   written back into `sharedStrings.xml`, which is what `inlineStr` is for.
+   Refused, rather than written badly: a cell the file spells no element for, a
+   repeated one (ODS), a covered one (XLSX), one holding a formula, and one
+   holding richer markup than a single plain paragraph. Every refusal is
+   decided before the engine writes anything. **Writing a formula cell waits
+   for step 4** — overwriting one leaves every value computed from it stale.
+3. **Landed.** XLSX `save`, mirroring docx: write back every worksheet and
+   `workbook.xml` from their dom, byte-copy the rest, and put back the xml
+   declaration pugixml never parsed. `fullCalcOnLoad` is set on every save
+   rather than only after an edit — we rewrote the file and compute no formula,
+   so the reader is asked to.
 4. The op envelope and dispatcher in `Document::edit`; `modifiedText` dropped
    (**Breaking**, wire only — changelog).
-5. `Document::is_editable` true for both; capability rows gain `edit` (`xlsx`
-   also `save`); `odr_test` keeps them honest.
+5. **Landed.** `Document::is_editable` true for both; capability rows gained
+   `edit` (`xlsx` also `save`); `odr_test` keeps them honest.
 6. Stop `translate_sheet` stamping `contenteditable` on a cell's runs at all.
    It cannot be gated on `Document::is_editable`, which item 5 makes *true* for
    a sheet: decision 3 puts a sheet's editing in an overlay, so the markup
    carries none. Changes the reference output — a reference `.ods` loses 594
    attributes — so it lands with a regen, on its own.
-7. Tests: set a number, a string, clear a cell, on both formats; save; reopen
-   with our reader *and* with the LibreOffice oracle (`soffice --convert-to`),
-   which is the only check that a package is really valid.
+7. **Landed.** Tests: set a number, a string, clear a cell, and each refusal,
+   on both formats, from inline fixtures; save and reopen. The LibreOffice
+   oracle (`soffice --convert-to`) stays a by-hand check — it is not in CI, and
+   it is the only one that says a written package is really valid.
 
 ### Step 1 — The browser editor
 

@@ -1,28 +1,58 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
+#include <odr/internal/common/file.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 
+#include <algorithm>
+#include <array>
+#include <ostream>
+#include <sstream>
+#include <string_view>
 #include <utility>
+
+#include <fmt/format.h>
 
 namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(const Document &document, ElementRegistry &registry);
+
+/// The `workbook` `calcPr`, appended where it is missing. ECMA-376 18.2.27
+/// orders the children, so a new one goes before the first that must follow it.
+pugi::xml_node calc_pr(pugi::xml_node workbook) {
+  if (const pugi::xml_node existing = workbook.child("calcPr")) {
+    return existing;
+  }
+  static constexpr std::array<std::string_view, 9> after = {
+      "oleSize",        "customWorkbookViews", "pivotCaches",
+      "smartTagPr",     "smartTagTypes",       "webPublishing",
+      "fileRecoveryPr", "webPublishObjects",   "extLst"};
+  for (const pugi::xml_node child : workbook.children()) {
+    if (std::ranges::find(after, std::string_view(child.name())) !=
+        std::end(after)) {
+      return workbook.insert_child_before("calcPr", child);
+    }
+  }
+  return workbook.append_child("calcPr");
 }
+} // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_workbook,
                          DocumentType::spreadsheet, std::move(files)) {
   const AbsPath workbook_path("/xl/workbook.xml");
   const auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
+  m_written_parts.push_back(workbook_path);
   const auto [styles_xml, _] = parse_xml_(AbsPath("/xl/styles.xml"));
 
   for (pugi::xml_node sheet_node :
@@ -31,6 +61,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     const AbsPath sheet_path =
         workbook_path.parent().join(RelPath(workbook_relations.at(id)));
     const auto [sheet_xml, sheet_relationships] = parse_xml_(sheet_path);
+    m_written_parts.push_back(sheet_path);
 
     if (const pugi::xml_node drawing =
             sheet_xml.document_element().child("drawing")) {
@@ -66,6 +97,58 @@ const ElementRegistry &Document::element_registry() const {
 
 const StyleRegistry &Document::style_registry() const {
   return m_style_registry;
+}
+
+bool Document::is_editable() const noexcept { return true; }
+
+bool Document::is_savable(const bool encrypted) const noexcept {
+  return !encrypted && !is_decrypted();
+}
+
+void Document::save(std::ostream &out) const {
+  if (!is_savable(false)) {
+    throw UnsupportedOperation();
+  }
+
+  // ECMA-376 18.2.2: nothing here computes a formula, so every save asks the
+  // reader to recompute what this one may have invalidated
+  pugi::xml_node calc_node =
+      calc_pr(m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
+                  .first.document_element());
+  calc_node.remove_attribute("fullCalcOnLoad");
+  calc_node.append_attribute("fullCalcOnLoad").set_value("1");
+
+  // TODO this would decrypt/inflate and encrypt/deflate again
+  zip::ZipArchive archive;
+
+  for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
+       walker->next()) {
+    const AbsPath &abs_path = walker->path();
+    RelPath rel_path = abs_path.rebase(AbsPath("/"));
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
+      continue;
+    }
+    if (std::ranges::find(m_written_parts, abs_path) !=
+        std::end(m_written_parts)) {
+      // TODO stream
+      std::stringstream content;
+      // pugixml is never asked to parse the declaration, so it writes none back
+      content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
+      m_xml_documents_and_relations.at(abs_path).first.print(content, "",
+                                                             pugi::format_raw);
+      auto tmp = std::make_shared<MemoryFile>(content.str());
+      archive.insert_file(std::end(archive), rel_path, tmp);
+      continue;
+    }
+    archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
+  }
+
+  archive.save(out);
+}
+
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
+  throw UnsupportedOperation();
 }
 
 std::pair<pugi::xml_document &, Relations &>
@@ -126,6 +209,63 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
+  /// ECMA-376 18.3.1.4: a cell states its value as `v`, or as the text under
+  /// `is` with `t="inlineStr"`. A written string goes inline - rewriting the
+  /// shared entry would rewrite every other cell indexing it.
+  void sheet_set_cell(const ElementIdentifier element_id,
+                      const std::uint32_t column, const std::uint32_t row,
+                      const CellValue &value) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id) {
+      throw UnsupportedOperation(); // the file spells no `c` here
+    }
+    const ElementIdentifier cell_id = cell->element_id;
+    if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
+      throw UnsupportedOperation(); // the anchor of the merge answers for it
+    }
+
+    pugi::xml_node node = cell->node;
+    if (node.child("f")) {
+      throw UnsupportedOperation(); // its dependants would go stale
+    }
+
+    // the elements over the old children keep their ids and stop being
+    // reachable
+    while (const pugi::xml_node child = node.first_child()) {
+      node.remove_child(child);
+    }
+    node.remove_attribute("t");
+    ElementRegistry::Element &cell_element = m_registry->element_at(cell_id);
+    cell_element.first_child_id = null_element_id;
+    cell_element.last_child_id = null_element_id;
+
+    switch (value.type()) {
+    case ValueType::unknown:
+      break;
+    case ValueType::string: {
+      node.append_attribute("t").set_value("inlineStr");
+      pugi::xml_node text_node = node.append_child("is").append_child("t");
+      // the text is written verbatim, so a leading space in one has to survive
+      text_node.append_attribute("xml:space").set_value("preserve");
+      text_node.text().set(value.has_text() ? value.text().c_str() : "");
+      const auto &[text_id, unused1, unused2] =
+          m_registry->create_text_element(text_node, text_node);
+      m_registry->append_child(cell_id, text_id);
+    } break;
+    case ValueType::float_number: {
+      // `t` defaults to "n"; the number format, not a stored string, is
+      // what shows the number, so `value.text()` has nowhere to go
+      const pugi::xml_node value_node = node.append_child("v");
+      value_node.text().set(fmt::format("{}", value.number()).c_str());
+      const auto &[text_id, unused1, unused2] =
+          m_registry->create_text_element(value_node, value_node);
+      m_registry->append_child(cell_id, text_id);
+    } break;
+    }
+  }
+
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {}; // TODO
@@ -206,13 +346,15 @@ public:
   sheet_cell_value(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
-    CellValue result;
-    result.type = sheet_cell_value_type(element_id);
-    if (result.type == ValueType::float_number) {
-      result.number = util::number::parse(node.child("v").text().get());
+    CellValue result = CellValue(sheet_cell_value_type(element_id));
+    if (result.type() == ValueType::float_number) {
+      if (const std::optional<double> number =
+              util::number::parse(node.child("v").text().get())) {
+        result = result.with_number(*number);
+      }
     }
     if (const pugi::xml_node formula = node.child("f")) {
-      result.formula = formula.text().get();
+      result = result.with_formula(formula.text().get());
     }
     return result;
   }

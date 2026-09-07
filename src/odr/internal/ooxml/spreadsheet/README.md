@@ -21,6 +21,7 @@ Roughly ordered by importance.
   - [x] columns, rows, cells
   - [x] dimensions
   - [x] shared strings
+  - [x] inline strings (`t="inlineStr"`)
   - [x] merged cells (`mergeCells`)
   - [x] shapes / images anchored to a sheet (`xdr:twoCellAnchor`)
   - [x] cell value types (number vs. string; dates/booleans/errors reported as
@@ -28,8 +29,10 @@ Roughly ordered by importance.
   - [x] cell values (`<v>` as a number, `<f>` as its own string)
   - [ ] computed values (formulas are read but not evaluated; the cached `<v>`
         result is shown)
-- [ ] edit
-- [ ] save
+- [x] edit
+  - [x] cell values (number, string, cleared), a written string going inline
+  - [ ] a cell the file writes no `c` for, a covered one, a formula one
+- [x] save
 
 ### Styles
 

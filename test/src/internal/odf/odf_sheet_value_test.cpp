@@ -49,10 +49,10 @@ TEST(OdfSheetValue, a_float_cell_states_its_number) {
       R"(<table:table-cell office:value-type="float" office:value="1234.5">)"
       R"(<text:p>1 234,50</text:p></table:table-cell>)");
 
-  EXPECT_EQ(value.type, ValueType::float_number);
-  ASSERT_TRUE(value.number.has_value());
-  EXPECT_DOUBLE_EQ(*value.number, 1234.5);
-  EXPECT_FALSE(value.formula.has_value());
+  EXPECT_EQ(value.type(), ValueType::float_number);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 1234.5);
+  EXPECT_FALSE(value.has_formula());
 }
 
 TEST(OdfSheetValue, a_string_cell_states_no_number) {
@@ -60,8 +60,8 @@ TEST(OdfSheetValue, a_string_cell_states_no_number) {
       value_of(R"(<table:table-cell office:value-type="string">)"
                R"(<text:p>1234.5</text:p></table:table-cell>)");
 
-  EXPECT_EQ(value.type, ValueType::string);
-  EXPECT_FALSE(value.number.has_value());
+  EXPECT_EQ(value.type(), ValueType::string);
+  EXPECT_FALSE(value.has_number());
 }
 
 /// [ODF 1.2] 19.642 `table:formula`, whose namespace prefix is the syntax it
@@ -73,10 +73,10 @@ TEST(OdfSheetValue, a_formula_cell_states_both_formula_and_result) {
                R"( office:value-type="float" office:value="7">)"
                R"(<text:p>7</text:p></table:table-cell>)");
 
-  ASSERT_TRUE(value.formula.has_value());
-  EXPECT_EQ(*value.formula, "of:=SUM([.B1:.C1])");
-  ASSERT_TRUE(value.number.has_value());
-  EXPECT_DOUBLE_EQ(*value.number, 7);
+  ASSERT_TRUE(value.has_formula());
+  EXPECT_EQ(value.formula(), "of:=SUM([.B1:.C1])");
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 7);
 }
 
 /// The type is read from `office:value-type` alone; reading the number format
@@ -86,9 +86,9 @@ TEST(OdfSheetValue, a_percentage_states_a_number_the_type_does_not_admit) {
       R"(<table:table-cell office:value-type="percentage" office:value="0.25">)"
       R"(<text:p>25%</text:p></table:table-cell>)");
 
-  EXPECT_EQ(value.type, ValueType::string);
-  ASSERT_TRUE(value.number.has_value());
-  EXPECT_DOUBLE_EQ(*value.number, 0.25);
+  EXPECT_EQ(value.type(), ValueType::string);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 0.25);
 }
 
 TEST(OdfSheetValue, a_number_is_read_in_one_spelling_only) {
@@ -96,5 +96,5 @@ TEST(OdfSheetValue, a_number_is_read_in_one_spelling_only) {
       R"(<table:table-cell office:value-type="float" office:value="1234,5">)"
       R"(<text:p>1234,5</text:p></table:table-cell>)");
 
-  EXPECT_FALSE(value.number.has_value());
+  EXPECT_FALSE(value.has_number());
 }

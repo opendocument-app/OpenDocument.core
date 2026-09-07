@@ -251,6 +251,15 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   sheet_first_shape(ElementIdentifier element_id) const = 0;
 
+  /// Writes @p value into the cell at (@p column, @p row). A value stating
+  /// nothing clears it.
+  /// @throws UnsupportedOperation where the engine cannot write, the cell is
+  ///         absent, repeated, covered, holding a formula or richer markup, or
+  ///         @p value holds a formula.
+  virtual void sheet_set_cell(ElementIdentifier element_id,
+                              std::uint32_t column, std::uint32_t row,
+                              const CellValue &value) const = 0;
+
   [[nodiscard]] virtual TableStyle
   sheet_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TableColumnStyle
