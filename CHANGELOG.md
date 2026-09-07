@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking** (wire only) `Document::edit` takes an op envelope,
+  `{"version": 1, "ops": [...]}`, with `setCell` writing a sheet cell by
+  position and `setText` carrying what the `modifiedText` map carried.
+
 - `Sheet::set_cell` writes a repeated `.ods` cell: the run is cut into the
   position written and the parts around it, which keep the value they had.
   Only a cell the file states no element for still refuses.

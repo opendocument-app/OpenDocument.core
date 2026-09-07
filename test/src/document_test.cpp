@@ -350,7 +350,7 @@ TEST(Document, edit_docx) {
 
 TEST(Document, edit_odt_diff) {
   const char *diff =
-      R"({"modifiedText":{"/child:16/child:0":"Outasdfsdafdline","/child:24/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0":"Text hello world!"}})";
+      R"({"version":1,"ops":[{"op":"setText","path":"/child:16/child:0","text":"Outasdfsdafdline"},{"op":"setText","path":"/child:24/child:0","text":"Colorasdfasdfasdfed Line"},{"op":"setText","path":"/child:6/child:0","text":"Text hello world!"}]})";
   const Document document =
       edit_and_reload("odr-public/odt/style-various-1.odt", diff,
                       "style-various-1_edit_diff.odt");
@@ -364,7 +364,7 @@ TEST(Document, edit_odt_diff) {
 // package is not savable — see `a_decrypted_package_is_not_savable`.
 TEST(Document, edit_ods_diff) {
   const char *diff =
-      R"({"modifiedText":{"/child:0/cell:A1/child:0/child:0":"Page 1 hi","/child:1/cell:A1/child:0/child:0":"Page 2 hihi","/child:2/cell:A1/child:0/child:0":"Page 3 hihihi","/child:3/cell:A1/child:0/child:0":"Page 4 hihihihi","/child:4/cell:A1/child:0/child:0":"Page 5 hihihihihi"}})";
+      R"({"version":1,"ops":[{"op":"setText","path":"/child:0/cell:A1/child:0/child:0","text":"Page 1 hi"},{"op":"setText","path":"/child:1/cell:A1/child:0/child:0","text":"Page 2 hihi"},{"op":"setText","path":"/child:2/cell:A1/child:0/child:0","text":"Page 3 hihihi"},{"op":"setText","path":"/child:3/cell:A1/child:0/child:0","text":"Page 4 hihihihi"},{"op":"setText","path":"/child:4/cell:A1/child:0/child:0","text":"Page 5 hihihihihi"}]})";
   const Document document = decrypted_pages_ods();
 
   document.edit(diff);
@@ -398,7 +398,7 @@ TEST(Document, a_decrypted_package_is_not_savable) {
 
 TEST(Document, edit_docx_diff) {
   const char *diff =
-      R"({"modifiedText":{"/child:16/child:0/child:0":"Outasdfsdafdline","/child:24/child:0/child:0":"Colorasdfasdfasdfed Line","/child:6/child:0/child:0":"Text hello world!"}})";
+      R"({"version":1,"ops":[{"op":"setText","path":"/child:16/child:0/child:0","text":"Outasdfsdafdline"},{"op":"setText","path":"/child:24/child:0/child:0","text":"Colorasdfasdfasdfed Line"},{"op":"setText","path":"/child:6/child:0/child:0","text":"Text hello world!"}]})";
   const Document document =
       edit_and_reload("odr-public/docx/style-various-1.docx", diff,
                       "style-various-1_edit_diff.docx");

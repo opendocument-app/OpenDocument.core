@@ -27,6 +27,7 @@ add_executable(odr_test
         "${CMAKE_CURRENT_BINARY_DIR}/src/test_info.cpp"
 
         "src/cell_value_test.cpp"
+        "src/document_edit_test.cpp"
         "src/document_list_test.cpp"
         "src/document_path_test.cpp"
         "src/enum_ordinals_test.cpp"

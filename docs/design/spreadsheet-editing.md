@@ -39,7 +39,7 @@ results go stale the moment an input changes.
 | ODS string-cell edit | `odf_document.cpp::text_set_content` | Works: `Document.edit_ods_diff` edits five cells in memory. Only the run's text changes; `office:value` on a number cell is not touched |
 | ODS save | `odf_document.cpp::save` | Re-serialises `content.xml`, byte-copies the rest — the same shape a sheet needs |
 | ODS cell index | `odf_element_registry.cpp::Sheet::register_cell` | Per row a run of `(end, element_id, node)` entries; repeats collapse onto one entry. Written once at parse; nothing inserts |
-| ODS repeated cells | `ElementRegistry::SheetCell::is_repeated` | Already refused by `element_is_editable` |
+| ODS repeated cells | `odf_document.cpp::split_repeat` | A write cuts the run and `reindex_sheet` rebuilds the index (step 2.1, landed) |
 | XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
 | XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; an empty position has no `<c>` node |
@@ -47,8 +47,8 @@ results go stale the moment an input changes.
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
 | Browser: sheet script | `frontend.cpp::spreadsheet_js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index |
-| Browser: editing script | `frontend.cpp::document_js` | The `modifiedText` collector: a `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` |
-| Wire format | `document.cpp::Document::edit` | Parses `modifiedText` only, path-addressed, calls `Text::set_content` |
+| Browser: editing script | `frontend.cpp::document_js` | A `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` emits the envelope |
+| Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
 
@@ -95,13 +95,14 @@ value beside the op. The whole log is idempotent, which decision 5 leans on.
 }
 ```
 
-`Document::edit` becomes a dispatcher over `ops`, throws on the first op it
-cannot apply, and applies nothing on failure (a document is decoded fresh by
-`DocumentFile::document()`, so the host replays onto a copy by construction;
-the wasm session, which holds one document, has to replay onto a fresh decode
-too). The text-document op `setText {id, text}` joins the same envelope when
-[`editing.md`](editing.md) phase 1 lands; `modifiedText` goes. The bindings
-pass a string through and do not change.
+**Landed.** `Document::edit` is a dispatcher over `ops` and throws on the first
+op it cannot apply, leaving the ones before it applied — a document is decoded
+fresh by `DocumentFile::document()`, so the host replays onto a copy by
+construction; the wasm session, which holds one document, has to replay onto a
+fresh decode too. `setText {path, text}` carries what `modifiedText` carried
+and is what `generateDiff()` now emits; it gains the id form when
+[`editing.md`](editing.md) phase 1 lands. The bindings pass a string through
+and did not change.
 
 `version` is the wire version. A document stamp (decision 7 in `editing.md`)
 is deferred: a sheet op names a position, and a position is meaningful against
@@ -289,17 +290,22 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    old ones keep their ids and stop being reachable. A shared string is never
    written back into `sharedStrings.xml`, which is what `inlineStr` is for.
    Refused, rather than written badly: a cell the file spells no element for, a
-   repeated one (ODS), a covered one (XLSX), one holding a formula, and one
-   holding richer markup than a single plain paragraph. Every refusal is
-   decided before the engine writes anything. **Writing a formula cell waits
-   for step 4** — overwriting one leaves every value computed from it stale.
+   covered one (XLSX), one holding a formula, and one holding richer markup
+   than a single plain paragraph. Every refusal is decided before the engine
+   writes anything. **Writing a formula cell waits for step 4** — overwriting
+   one leaves every value computed from it stale. A repeated ODS cell was
+   refused here and is written since step 2.1.
 3. **Landed.** XLSX `save`, mirroring docx: write back every worksheet and
    `workbook.xml` from their dom, byte-copy the rest, and put back the xml
    declaration pugixml never parsed. `fullCalcOnLoad` is set on every save
    rather than only after an edit — we rewrote the file and compute no formula,
    so the reader is asked to.
-4. The op envelope and dispatcher in `Document::edit`; `modifiedText` dropped
-   (**Breaking**, wire only — changelog).
+4. **Landed.** The op envelope and dispatcher in `Document::edit`, with
+   `setCell` and a path-addressed `setText`; `modifiedText` dropped
+   (**Breaking**, wire only). Coalescing writes here is also what would let a
+   batch of ODS writes reindex once rather than once per write — the reindex
+   costs about 0.18 us per row node per write, so 100 writes on a 20000-row
+   sheet is 0.36 s today.
 5. **Landed.** `Document::is_editable` true for both; capability rows gained
    `edit` (`xlsx` also `save`); `odr_test` keeps them honest.
 6. Stop `translate_sheet` stamping `contenteditable` on a cell's runs at all.
@@ -335,12 +341,17 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 
 ### Step 2 — Materialise the cells that are not there
 
-1. ODS repeat splitting: a write into a run of `n` repeated cells becomes
-   left (`k`), the cell, right (`n-k-1`); a repeated row is cloned the same
-   way first. The `Sheet::cells` run index gets an insert (entries after the
-   split shift; `Row::first_cell` re-indexed). New elements are appended, ids
-   never move. This one primitive unlocks empty cells *and* the repeated cells
-   step 0 refused, so the `repeated` lock goes.
+1. **Landed for repeated cells.** ODS repeat splitting: a write into a run of
+   `n` repeated cells becomes left (`k`), the cell, right (`n-k-1`), a repeated
+   row cloned the same way first, the original node staying as the one written
+   so its element survives. The index is not patched in place — `reindex_sheet`
+   rebuilds it off the dom, a cell node keeping the element it carries — which
+   avoids a second copy of the parser's row loop. The `repeated` lock is gone.
+
+   **Open:** the same primitive for a position the file states no element for.
+   A run with a node but no element (`<table:table-cell number-columns-repeated=
+   "1000"/>`) only needs the split plus a `text:p`; a position past the row's
+   last cell or the sheet's last row needs appending and growing the extent.
 2. XLSX: insert `<c r="…">` in column order into its `<row>`, create the
    `<row>` in row order, grow `<dimension ref>`.
 3. Rich cells: replace with one plain paragraph, keeping the cell style. The
