@@ -10,6 +10,7 @@
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/util/file_util.hpp>
 
+#include <cstdint>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -85,19 +86,74 @@ DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
 }
 
+namespace {
+
+/// `{"type": "number", "number": …, "text": …}`, or `"string"` with the text
+/// alone, or `"empty"` for a cell stating nothing.
+CellValue parse_cell_value(const nlohmann::json &json) {
+  const auto type = json.at("type").get<std::string>();
+  if (type == "empty") {
+    return {};
+  }
+  if (type == "string") {
+    return CellValue(json.at("text").get<std::string>());
+  }
+  if (type == "number") {
+    const auto number = json.at("number").get<double>();
+    const auto text = json.find("text");
+    return text != std::end(json) ? CellValue(number, text->get<std::string>())
+                                  : CellValue(number);
+  }
+  throw std::invalid_argument("unknown cell value type " + type);
+}
+
+/// The @p ordinal -th sheet in document order, which is how an op names one.
+Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
+  std::uint32_t seen = 0;
+  for (const Element child : root.children()) {
+    if (child.type() == ElementType::sheet && seen++ == ordinal) {
+      return child.as_sheet();
+    }
+  }
+  throw std::invalid_argument("sheet " + std::to_string(ordinal) +
+                              " not found");
+}
+
+} // namespace
+
 void Document::edit(const std::string_view operations,
                     const Logger & /*logger*/) const {
   const nlohmann::json json = nlohmann::json::parse(operations);
-  for (const auto &[key, value] : json["modifiedText"].items()) {
-    const Element element = root_element().navigate_path(DocumentPath(key));
-    if (!element) {
-      throw std::invalid_argument("element with path " + key + " not found");
+  if (json.value("version", 0) != 1) {
+    throw std::invalid_argument("unsupported edit version");
+  }
+
+  for (const nlohmann::json &operation : json.at("ops")) {
+    const auto name = operation.at("op").get<std::string>();
+
+    if (name == "setCell") {
+      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
+          .set_cell(operation.at("column").get<std::uint32_t>(),
+                    operation.at("row").get<std::uint32_t>(),
+                    parse_cell_value(operation.at("value")));
+      continue;
     }
-    if (!element.as_text()) {
-      throw std::invalid_argument("element with path " + key +
-                                  " is not a text element");
+
+    if (name == "setText") {
+      const auto path = operation.at("path").get<std::string>();
+      const Element element = root_element().navigate_path(DocumentPath(path));
+      if (!element) {
+        throw std::invalid_argument("element with path " + path + " not found");
+      }
+      if (!element.as_text()) {
+        throw std::invalid_argument("element with path " + path +
+                                    " is not a text element");
+      }
+      element.as_text().set_content(operation.at("text").get<std::string>());
+      continue;
     }
-    element.as_text().set_content(value);
+
+    throw std::invalid_argument("unknown operation " + name);
   }
 }
 

@@ -45,10 +45,15 @@ public:
 
   /// @brief Applies @p operations to the document, in order.
   ///
-  /// The wire format our browser-side editor produces. Editing a single
-  /// element in process is @ref Text::set_content and needs none of this.
-  /// @throws std::invalid_argument if an operation names an element that is
-  ///         not there, or not one it can be applied to.
+  /// The wire format our browser-side editor produces:
+  /// `{"version": 1, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
+  /// "row": 2, "value": {"type": "number", "number": 12.5, "text": "12.5"}}]}`.
+  /// A value is typed `number`, `string` or `empty`; `setText` names a text
+  /// element by `path` instead. Editing a single element in process is
+  /// @ref Text::set_content and needs none of this.
+  /// @throws std::invalid_argument on the first operation it cannot apply,
+  ///         leaving the ones before it applied - a host replays onto a fresh
+  ///         decode.
   void edit(std::string_view operations,
             const Logger &logger = Logger::null()) const;
 

@@ -37,7 +37,10 @@ describe('edit', () => {
       assert.match(html, /contenteditable/);
 
       const path = firstEditablePath(html);
-      doc.edit(JSON.stringify({ modifiedText: { [path]: 'edited in the browser' } }));
+      doc.edit(JSON.stringify({
+        version: 1,
+        ops: [{ op: 'setText', path, text: 'edited in the browser' }],
+      }));
 
       // the edit is in the document, so the same service renders it
       assert.match(doc.render(0).html, /edited in the browser/);
@@ -76,7 +79,7 @@ describe('edit', () => {
         assert.equal(error.name, 'NoDocumentFile');
         return true;
       });
-      assert.throws(() => doc.edit('{"modifiedText":{}}'), OdrError);
+      assert.throws(() => doc.edit('{"version":1,"ops":[]}'), OdrError);
     } finally {
       doc.close();
     }
