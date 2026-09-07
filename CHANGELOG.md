@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Sheet::set_cell` writes a repeated `.ods` cell: the run is cut into the
+  position written and the parts around it, which keep the value they had.
+  Only a cell the file states no element for still refuses.
+
 - **Fix**: a repeated `.ods` cell answers for the position it was looked up
   at rather than the anchor of its range, so `SheetCell::position()`,
   `Sheet::cell()` and `DocumentPath` all name the cell that was asked for.

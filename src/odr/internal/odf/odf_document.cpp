@@ -23,6 +23,7 @@
 #include <cstring>
 #include <mutex>
 #include <ostream>
+#include <span>
 #include <sstream>
 #include <unordered_map>
 
@@ -367,27 +368,28 @@ public:
   void sheet_set_cell(const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
                       const CellValue &value) const override {
-    const ElementRegistry::Sheet &sheet =
-        m_registry->sheet_element_at(element_id);
-    const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
     if (cell == nullptr || cell->element_id == null_element_id) {
       throw UnsupportedOperation(); // an empty cell is written as no element
     }
-    const ElementIdentifier cell_id = cell->element_id;
-    if (m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+    ElementIdentifier cell_id = cell->element_id;
+
+    // both refusals are decided on the run, before the split writes anything
+    if (get_node(cell_id).attribute("table:formula")) {
+      throw UnsupportedOperation(); // its dependants would go stale
+    }
+    if (!holds_one_run(cell_id)) {
       throw UnsupportedOperation();
+    }
+
+    if (m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+      cell_id = split_repeat(element_id, column, row); // `cell` is stale after
     }
 
     pugi::xml_node node = get_node(cell_id);
-    if (node.attribute("table:formula")) {
-      throw UnsupportedOperation(); // its dependants would go stale
-    }
-
-    const ElementIdentifier text_id = only_text_run(cell_id);
-    if (text_id == null_element_id) {
-      throw UnsupportedOperation();
-    }
-    text_set_content(text_id, value.has_text() ? value.text() : "");
+    text_set_content(text_run_of(cell_id),
+                     value.has_text() ? value.text() : "");
 
     static constexpr std::array stated = {
         "office:value-type", "office:value",      "office:boolean-value",
@@ -884,31 +886,93 @@ private:
     return m_registry->element_at(element_id).node;
   }
 
-  /// The single text run under a cell of one plain paragraph, created where
-  /// that paragraph is empty. Null where the markup is richer than that, which
-  /// a write then keeps rather than throws away.
-  [[nodiscard]] ElementIdentifier
-  only_text_run(const ElementIdentifier cell_id) const {
+  /// The attribute where @p node repeats at all, none where it covers one.
+  static void set_repeat(pugi::xml_node node, const char *attribute,
+                         const std::uint32_t repeated) {
+    node.remove_attribute(attribute);
+    if (repeated > 1) {
+      node.append_attribute(attribute).set_value(repeated);
+    }
+  }
+
+  /// Cuts the run [@p begin, @p end) so @p at stands alone, copying the parts
+  /// around it. @p node stays as the one at @p at, so its element survives.
+  static void split_run(pugi::xml_node node, const char *attribute,
+                        const std::uint32_t begin, const std::uint32_t end,
+                        const std::uint32_t at) {
+    if (end > at + 1) {
+      set_repeat(node.parent().insert_copy_after(node, node), attribute,
+                 end - at - 1);
+    }
+    if (at > begin) {
+      set_repeat(node.parent().insert_copy_before(node, node), attribute,
+                 at - begin);
+    }
+    set_repeat(node, attribute, 1);
+  }
+
+  /// Gives (@p column, @p row) a cell of its own, splitting the row and the
+  /// cell run it is one position of. Reindexes: every pointer read before is
+  /// stale.
+  [[nodiscard]] ElementIdentifier split_repeat(const ElementIdentifier sheet_id,
+                                               const std::uint32_t column,
+                                               const std::uint32_t row) const {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(sheet_id);
+
+    const ElementRegistry::Sheet::Row *row_entry = sheet.row(row);
+    const std::size_t row_index = row_entry - sheet.rows.data();
+    const std::uint32_t row_begin =
+        row_index == 0 ? 0 : sheet.rows[row_index - 1].end;
+
+    const std::span<const ElementRegistry::Sheet::Cell> cells =
+        sheet.row_cells(*row_entry);
+    const ElementRegistry::Sheet::Cell *cell_entry = sheet.cell(column, row);
+    const std::size_t cell_index = cell_entry - cells.data();
+    const std::uint32_t cell_begin =
+        cell_index == 0 ? 0 : cells[cell_index - 1].end;
+
+    // the row first: the cell keeps its node, so its own run is unmoved
+    split_run(row_entry->node, "table:number-rows-repeated", row_begin,
+              row_entry->end, row);
+    split_run(cell_entry->node, "table:number-columns-repeated", cell_begin,
+              cell_entry->end, column);
+
+    reindex_sheet(*m_registry, sheet_id);
+
+    return m_registry->sheet_element_at(sheet_id).cell(column, row)->element_id;
+  }
+
+  /// Whether a write can go through the cell: one plain paragraph of one run
+  /// at most. Richer markup is kept rather than overwritten.
+  [[nodiscard]] bool holds_one_run(const ElementIdentifier cell_id) const {
     const ElementIdentifier paragraph_id = element_first_child(cell_id);
     if (paragraph_id == null_element_id ||
         element_next_sibling(paragraph_id) != null_element_id ||
         element_type(paragraph_id) != ElementType::paragraph) {
-      return null_element_id;
+      return false;
     }
     const ElementIdentifier text_id = element_first_child(paragraph_id);
-    if (text_id == null_element_id) {
-      const pugi::xml_node text_node =
-          get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
-      const auto &[new_id, unused1, unused2] =
-          m_registry->create_text_element(text_node, text_node);
-      m_registry->append_child(paragraph_id, new_id);
-      return new_id;
+    return text_id == null_element_id ||
+           (element_next_sibling(text_id) == null_element_id &&
+            element_type(text_id) == ElementType::text);
+  }
+
+  /// That run, created where the paragraph is empty - what a cleared cell is.
+  /// @ref holds_one_run has to pass.
+  [[nodiscard]] ElementIdentifier
+  text_run_of(const ElementIdentifier cell_id) const {
+    const ElementIdentifier paragraph_id = element_first_child(cell_id);
+    if (const ElementIdentifier text_id = element_first_child(paragraph_id);
+        text_id != null_element_id) {
+      return text_id;
     }
-    if (element_next_sibling(text_id) != null_element_id ||
-        element_type(text_id) != ElementType::text) {
-      return null_element_id;
-    }
-    return text_id;
+    const pugi::xml_node text_node =
+        get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
+    const auto &[new_id, unused1, unused2] =
+        m_registry->create_text_element(text_node, text_node);
+    m_registry->append_child(paragraph_id, new_id);
+    return new_id;
   }
 
   /// The image's base64 bytes where the markup carries them itself.

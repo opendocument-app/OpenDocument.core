@@ -141,3 +141,22 @@ TEST(OdfSheetRepeat, the_children_of_a_repeated_cell_are_shared) {
   EXPECT_EQ(*(*sheet.cell(0, 0).children().begin()).children().begin(), text);
   EXPECT_EQ(document.root_element().navigate_path(text.document_path()), text);
 }
+
+/// A write cuts the run into three rather than expanding it, so what it costs
+/// follows the row it touched and not the grid the repeat claims.
+TEST(OdfSheetRepeat, a_write_into_a_repeat_does_not_expand_it) {
+  const std::string source = flat_sheet(repeated_rows(1048576, 1024));
+  const std::shared_ptr<abstract::Document> held = document_of(source);
+  const auto *document = dynamic_cast<const odf::Document *>(held.get());
+  ASSERT_NE(document, nullptr);
+
+  const odr::Document public_document(held);
+  const Sheet sheet =
+      (*public_document.root_element().children().begin()).as_sheet();
+  sheet.set_cell(512, 1024, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(512, 1024).value().text(), "y");
+  EXPECT_EQ(sheet.cell(511, 1024).value().text(), "x");
+  EXPECT_EQ(sheet.cell(512, 1023).value().text(), "x");
+  EXPECT_LT(document->element_registry().size(), 32);
+}

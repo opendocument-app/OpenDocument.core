@@ -187,10 +187,18 @@ The structural/foundational gaps, roughly by value:
    `office:value-type`/`office:value` *and* the `text:p` under the cell — the
    file states the value and shows a rendering of it, and setting one without
    the other leaves it contradicting itself. It writes through the cell's
-   single text run, so a cell that is absent, repeated, holding a formula, or
-   holding richer markup than one plain paragraph refuses instead. Splitting a
-   repeat, which is what would let an absent or repeated cell be written, is
-   the next step in [`spreadsheet-editing.md`](../../../../docs/design/spreadsheet-editing.md).
+   single text run, so a cell holding a formula or richer markup than one plain
+   paragraph refuses, as does one the file states no element for.
+
+   A **repeated** cell is written by cutting the run: `split_repeat` copies the
+   `table:table-row` and the `table:table-cell` around the position and leaves
+   the original node as the one written, so its element and children survive.
+   `reindex_sheet` then rebuilds the sheet's position index off the dom, a cell
+   node keeping the element it already carries. Both refusals are decided
+   before any of that, so a refused write leaves the run uncut. Two costs:
+   cutting a repeated row copies every cell in it, so the elements grow with
+   the row rather than with the repeat; and the reindex walks the row nodes,
+   which a repeat collapses, so it is bounded by the dom rather than the grid.
 3. **Save never re-encrypts**, and refuses rather than dropping the encryption:
    a document decrypted from a password-protected package reports
    `is_savable(false) == false` and every `save` overload throws
