@@ -3,9 +3,11 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/table_dimension.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/file.hpp>
@@ -86,4 +88,56 @@ TEST(OdfSheetRepeat, a_repeated_cell_reads_at_every_position_it_covers) {
       EXPECT_EQ((*paragraph.children().begin()).as_text().content(), "x");
     }
   }
+}
+
+/// The one element cannot say which position a handle means, so the id does.
+TEST(OdfSheetRepeat, a_repeated_cell_reports_the_position_it_was_asked_for) {
+  const std::shared_ptr<abstract::Document> held =
+      document_of(flat_sheet(repeated_rows(4, 3)));
+  const Sheet sheet =
+      (*odr::Document(held).root_element().children().begin()).as_sheet();
+
+  for (std::uint32_t row = 0; row < 4; ++row) {
+    for (std::uint32_t column = 0; column < 3; ++column) {
+      const TablePosition position = sheet.cell(column, row).position();
+      EXPECT_EQ(position.column, column);
+      EXPECT_EQ(position.row, row);
+    }
+  }
+}
+
+TEST(OdfSheetRepeat, two_positions_of_one_run_are_not_the_same_handle) {
+  const std::shared_ptr<abstract::Document> held =
+      document_of(flat_sheet(repeated_rows(4, 3)));
+  const Sheet sheet =
+      (*odr::Document(held).root_element().children().begin()).as_sheet();
+
+  EXPECT_NE(sheet.cell(0, 0), sheet.cell(2, 0));
+  EXPECT_EQ(sheet.cell(2, 0), sheet.cell(2, 0));
+}
+
+/// `DocumentPath` spells a cell by position, so it names the one asked for.
+TEST(OdfSheetRepeat, a_repeated_cell_round_trips_through_its_path) {
+  const std::shared_ptr<abstract::Document> held =
+      document_of(flat_sheet(repeated_rows(4, 3)));
+  const odr::Document document(held);
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  const SheetCell cell = sheet.cell(2, 1);
+
+  EXPECT_EQ(document.root_element().navigate_path(cell.document_path()), cell);
+}
+
+/// The position stops at the cell: one run stands for every position, so a
+/// path into a repeated cell names the anchor.
+TEST(OdfSheetRepeat, the_children_of_a_repeated_cell_are_shared) {
+  const std::shared_ptr<abstract::Document> held =
+      document_of(flat_sheet(repeated_rows(4, 3)));
+  const odr::Document document(held);
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  const Element text =
+      *(*sheet.cell(2, 1).children().begin()).children().begin();
+  EXPECT_EQ(*(*sheet.cell(0, 0).children().begin()).children().begin(), text);
+  EXPECT_EQ(document.root_element().navigate_path(text.document_path()), text);
 }

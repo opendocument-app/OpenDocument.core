@@ -62,8 +62,22 @@ over, and resolved with an upper bound — whether or not the cell has content.
 That last part is load-bearing: expanding a repeat per position let a 400-byte
 document ask for a `1048576 × 1024` grid of elements, both counts being legal
 repeats. Only non-empty cells get a real `sheet_cell` Element; empty ones are
-recorded as ranges alone. Cells carry a `TablePosition` (the anchor of the
-range, not each position it covers) + `is_repeated` flag.
+recorded as ranges alone. The `SheetCell` payload carries the anchor's
+`TablePosition` + an `is_repeated` flag.
+
+**A repeated cell is addressed by position, not by index.** One element for
+many positions means an index cannot say which of them a handle means, so
+`sheet_cell` hands out `tag | ordinal(15) | column(24) | row(24)`
+(`positional_id`) for a repeat and the index itself otherwise. `resolve_id`
+decodes it against the sheet's cell index — the shared
+`ElementRegistry::resolve_id` hook, identity for everyone else — and
+`RegistryElementAdapter` navigates through `element_at`, so nothing else needs
+to know.
+
+Three consequences: `SheetCell::position()` and `DocumentPath` name the cell
+asked for; a handle follows the index rather than the element it found, so a
+run can be split under one; and children are **shared**, so the position stops
+at the cell and a path to a run inside one names the anchor.
 
 The three containers are **sorted vectors, not maps**: parsing appends in
 document order, so the keys only grow, and a rb-tree node costs more than the 12

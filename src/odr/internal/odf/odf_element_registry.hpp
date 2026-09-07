@@ -25,6 +25,50 @@ struct RegistryElement final : ElementNode<StoredId> {
   pugi::xml_node node;
 };
 
+/// One element stands for every position a repeat covers ([ODF 1.2] 19.297,
+/// 19.302), so the position rides in the id rather than an index. Resolved
+/// through the sheet's cell index, so a handle follows it.
+namespace positional_id {
+
+/// `tag | ordinal(15) | column(24) | row(24)`, the ordinal in document order.
+constexpr ElementIdentifier tag = ElementIdentifier{1} << 63;
+constexpr std::uint64_t column_shift = 24;
+constexpr std::uint64_t ordinal_shift = 48;
+constexpr std::uint64_t row_max = (std::uint64_t{1} << column_shift) - 1;
+constexpr std::uint64_t column_max =
+    (std::uint64_t{1} << (ordinal_shift - column_shift)) - 1;
+constexpr std::uint64_t ordinal_max = (std::uint64_t{1} << 15) - 1;
+
+/// Null where a field is too wide; the caller then keeps the index.
+constexpr ElementIdentifier make(const std::uint32_t ordinal,
+                                 const std::uint32_t column,
+                                 const std::uint32_t row) noexcept {
+  if (ordinal > ordinal_max || column > column_max || row > row_max) {
+    return null_element_id;
+  }
+  return tag | static_cast<ElementIdentifier>(ordinal) << ordinal_shift |
+         static_cast<ElementIdentifier>(column) << column_shift |
+         static_cast<ElementIdentifier>(row);
+}
+
+constexpr bool holds(const ElementIdentifier id) noexcept {
+  return (id & tag) != 0;
+}
+
+constexpr std::uint32_t ordinal_of(const ElementIdentifier id) noexcept {
+  return static_cast<std::uint32_t>(id >> ordinal_shift & ordinal_max);
+}
+
+constexpr std::uint32_t column_of(const ElementIdentifier id) noexcept {
+  return static_cast<std::uint32_t>(id >> column_shift & column_max);
+}
+
+constexpr std::uint32_t row_of(const ElementIdentifier id) noexcept {
+  return static_cast<std::uint32_t>(id & row_max);
+}
+
+} // namespace positional_id
+
 class ElementRegistry final
     : public internal::ElementRegistry<RegistryElement, StoredId> {
 public:
@@ -60,6 +104,9 @@ public:
     };
 
     TableDimensions dimensions;
+
+    /// Its place in document order, which is what a cell id names it by.
+    std::uint32_t ordinal{0};
 
     std::vector<Column> columns;
     std::vector<Row> rows;
@@ -112,28 +159,46 @@ public:
   create_sheet_cell_element(pugi::xml_node node, const TablePosition &position,
                             bool is_repeated);
 
+  /// Null where the position no longer holds a cell.
+  [[nodiscard]] ElementIdentifier resolve_id(const ElementIdentifier id) const {
+    if (!positional_id::holds(id)) {
+      return id;
+    }
+    const Sheet &sheet =
+        m_sheets.at(m_sheet_ids.at(positional_id::ordinal_of(id)));
+    const Sheet::Cell *cell =
+        sheet.cell(positional_id::column_of(id), positional_id::row_of(id));
+    return cell != nullptr ? cell->element_id : null_element_id;
+  }
+
   [[nodiscard]] auto &text_element_at(this auto &self,
                                       const ElementIdentifier id) {
-    return self.m_texts.at(id);
+    return self.m_texts.at(self.resolve_id(id));
   }
   [[nodiscard]] auto &table_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_tables.at(id);
+    return self.m_tables.at(self.resolve_id(id));
   }
   [[nodiscard]] auto &sheet_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_sheets.at(id);
+    return self.m_sheets.at(self.resolve_id(id));
   }
 
   [[nodiscard]] const SheetCell &
   sheet_cell_element_at(const ElementIdentifier id) const {
-    return m_sheet_cells.at(id);
+    return m_sheet_cells.at(resolve_id(id));
   }
 
   [[nodiscard]] const SheetCell *
   sheet_cell_element(const ElementIdentifier id) const {
-    return m_sheet_cells.find(id);
+    return m_sheet_cells.find(resolve_id(id));
   }
+
+  /// The id a handle for (@p column, @p row) carries - the index itself unless
+  /// the cell there is repeated.
+  [[nodiscard]] ElementIdentifier sheet_cell_id(ElementIdentifier sheet_id,
+                                                std::uint32_t column,
+                                                std::uint32_t row) const;
 
   [[nodiscard]] ShapeType shape_type(ElementIdentifier id) const;
 
@@ -148,6 +213,9 @@ public:
   void append_sheet_cell(ElementIdentifier sheet_id, ElementIdentifier cell_id);
 
 private:
+  /// The sheets in document order, so a cell id can name one in 15 bits.
+  std::vector<StoredId> m_sheet_ids;
+
   SortedSideTable<Text, StoredId> m_texts;
   SortedSideTable<Table, StoredId> m_tables;
   SortedSideTable<Sheet, StoredId> m_sheets;

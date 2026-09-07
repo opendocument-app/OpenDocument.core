@@ -104,9 +104,16 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept { return m_elements.size(); }
 
+  /// The index @p id names; an engine whose ids are not all indices shadows it.
+  [[nodiscard]] static ElementIdentifier
+  resolve_id(const ElementIdentifier id) noexcept {
+    return id;
+  }
+
   [[nodiscard]] auto &element_at(this auto &self, const ElementIdentifier id) {
-    self.check_element_id(id);
-    return self.m_elements[id - 1];
+    const ElementIdentifier index = self.resolve_id(id);
+    self.check_element_id(index);
+    return self.m_elements[index - 1];
   }
 
   void append_child(const ElementIdentifier parent_id,
@@ -133,6 +140,7 @@ protected:
 
   /// Links @p child_id as the last child of the chain @p first_id / @p last_id
   /// - the element's own, or one of the secondary chains a payload holds.
+  /// Both ids are indices, not whatever @ref resolve_id accepts.
   void link_child(const ElementIdentifier parent_id,
                   const ElementIdentifier child_id, Id &first_id, Id &last_id) {
     Element &child = element_at(child_id);

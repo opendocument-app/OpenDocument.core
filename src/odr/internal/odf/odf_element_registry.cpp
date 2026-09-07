@@ -44,7 +44,25 @@ std::tuple<ElementIdentifier, ElementRegistry::Element &,
 ElementRegistry::create_sheet_element(const pugi::xml_node node) {
   const auto &[element_id, element] = create_element(ElementType::sheet, node);
   Sheet &sheet = m_sheets.emplace(element_id, Sheet{});
+  sheet.ordinal = static_cast<std::uint32_t>(m_sheet_ids.size());
+  m_sheet_ids.push_back(static_cast<StoredId>(element_id));
   return {element_id, element, sheet};
+}
+
+ElementIdentifier
+ElementRegistry::sheet_cell_id(const ElementIdentifier sheet_id,
+                               const std::uint32_t column,
+                               const std::uint32_t row) const {
+  const Sheet &sheet = sheet_element_at(sheet_id);
+  const Sheet::Cell *cell = sheet.cell(column, row);
+  if (cell == nullptr || cell->element_id == null_element_id) {
+    return null_element_id;
+  }
+  if (!m_sheet_cells.at(cell->element_id).is_repeated) {
+    return cell->element_id;
+  }
+  const ElementIdentifier id = positional_id::make(sheet.ordinal, column, row);
+  return id != null_element_id ? id : cell->element_id;
 }
 
 std::tuple<ElementIdentifier, ElementRegistry::Element &,

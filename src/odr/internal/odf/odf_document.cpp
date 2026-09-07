@@ -356,14 +356,7 @@ public:
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
              const std::uint32_t row) const override {
-    const ElementRegistry::Sheet &sheet_registry =
-        m_registry->sheet_element_at(element_id);
-    if (const ElementRegistry::Sheet::Cell *sheet_cell =
-            sheet_registry.cell(column, row);
-        sheet_cell != nullptr) {
-      return sheet_cell->element_id;
-    }
-    return {};
+    return m_registry->sheet_cell_id(element_id, column, row);
   }
   [[nodiscard]] ElementIdentifier
   sheet_first_shape(const ElementIdentifier element_id) const override {
@@ -464,6 +457,10 @@ public:
 
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
+    if (positional_id::holds(element_id)) {
+      return {positional_id::column_of(element_id),
+              positional_id::row_of(element_id)};
+    }
     return m_registry->sheet_cell_element_at(element_id).position;
   }
   [[nodiscard]] bool
@@ -1025,12 +1022,10 @@ private:
 
   [[nodiscard]] ResolvedStyle
   get_partial_style(const ElementIdentifier element_id) const {
-    if (const ElementRegistry::SheetCell *cell_registry =
-            m_registry->sheet_cell_element(element_id);
-        cell_registry != nullptr) {
-      const ElementIdentifier parent_id = element_parent(element_id);
-      return get_partial_cell_style(parent_id, element_id,
-                                    cell_registry->position);
+    if (m_registry->sheet_cell_element(element_id) != nullptr) {
+      // the id's position, not the anchor's: the column default is per column
+      return get_partial_cell_style(element_parent(element_id), element_id,
+                                    sheet_cell_position(element_id));
     }
     if (const char *style_name = get_style_name(element_id);
         style_name != nullptr) {
