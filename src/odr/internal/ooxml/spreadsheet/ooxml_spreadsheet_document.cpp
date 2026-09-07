@@ -13,8 +13,10 @@
 #include <odr/internal/zip/zip_archive.hpp>
 
 #include <algorithm>
+#include <array>
 #include <ostream>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
 #include <fmt/format.h>
@@ -24,7 +26,26 @@ namespace odr::internal::ooxml::spreadsheet {
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(const Document &document, ElementRegistry &registry);
+
+/// The `workbook` `calcPr`, appended where it is missing. ECMA-376 18.2.27
+/// orders the children, so a new one goes before the first that must follow it.
+pugi::xml_node calc_pr(pugi::xml_node workbook) {
+  if (const pugi::xml_node existing = workbook.child("calcPr")) {
+    return existing;
+  }
+  static constexpr std::array<std::string_view, 9> after = {
+      "oleSize",        "customWorkbookViews", "pivotCaches",
+      "smartTagPr",     "smartTagTypes",       "webPublishing",
+      "fileRecoveryPr", "webPublishObjects",   "extLst"};
+  for (const pugi::xml_node child : workbook.children()) {
+    if (std::ranges::find(after, std::string_view(child.name())) !=
+        std::end(after)) {
+      return workbook.insert_child_before("calcPr", child);
+    }
+  }
+  return workbook.append_child("calcPr");
 }
+} // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     : internal::Document(FileType::office_open_xml_workbook,
@@ -90,14 +111,10 @@ void Document::save(std::ostream &out) const {
   }
 
   // ECMA-376 18.2.2: nothing here computes a formula, so every save asks the
-  // reader to recompute the cached results an edit may have invalidated
-  pugi::xml_node workbook =
-      m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
-          .first.document_element();
-  pugi::xml_node calc_node = workbook.child("calcPr");
-  if (!calc_node) {
-    calc_node = workbook.append_child("calcPr");
-  }
+  // reader to recompute what this one may have invalidated
+  pugi::xml_node calc_node =
+      calc_pr(m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
+                  .first.document_element());
   calc_node.remove_attribute("fullCalcOnLoad");
   calc_node.append_attribute("fullCalcOnLoad").set_value("1");
 
@@ -116,8 +133,7 @@ void Document::save(std::ostream &out) const {
         std::end(m_written_parts)) {
       // TODO stream
       std::stringstream content;
-      // pugixml is not asked to parse the declaration, so it cannot write one
-      // back, and a part of a workbook is expected to carry it
+      // pugixml is never asked to parse the declaration, so it writes none back
       content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
       m_xml_documents_and_relations.at(abs_path).first.print(content, "",
                                                              pugi::format_raw);
@@ -203,7 +219,7 @@ public:
         m_registry->sheet_element_at(element_id);
     const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
     if (cell == nullptr || cell->element_id == null_element_id) {
-      throw UnsupportedOperation(); // no `c` to write into yet
+      throw UnsupportedOperation(); // the file spells no `c` here
     }
     const ElementIdentifier cell_id = cell->element_id;
     if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
@@ -215,8 +231,8 @@ public:
       throw UnsupportedOperation(); // its dependants would go stale
     }
 
-    // the elements reading the old children keep their ids and stop being
-    // reachable - the tombstoning `editing.md` asks for
+    // the elements over the old children keep their ids and stop being
+    // reachable
     while (const pugi::xml_node child = node.first_child()) {
       node.remove_child(child);
     }
@@ -239,8 +255,8 @@ public:
       m_registry->append_child(cell_id, text_id);
     } break;
     case ValueType::float_number: {
-      // `t` defaults to "n"; the file keeps no display string, so
-      // `CellValue::text` says nothing here - the number format does
+      // `t` defaults to "n"; the number format, not a stored string, is
+      // what shows the number, so `value.text()` has nowhere to go
       const pugi::xml_node value_node = node.append_child("v");
       value_node.text().set(fmt::format("{}", value.number()).c_str());
       const auto &[text_id, unused1, unused2] =

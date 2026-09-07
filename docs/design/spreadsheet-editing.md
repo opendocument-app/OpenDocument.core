@@ -282,19 +282,17 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    that throw `ValueNotStated` rather than hand back an empty optional. What a
    cell reads as is what writing it back takes.
 2. **Landed.** `sheet_set_cell(sheet_id, column, row, CellValue)`, position-
-   addressed, behind `Sheet::set_cell` and `::clear_cell`. ODS writes `office:value-type`, `office:value` and the
-   `text:p`, through the cell's one text run. XLSX rewrites the `c` — `<v>` for
-   a number, `t="inlineStr"` with `<is><t>` for a string — and hands the
-   registry a fresh text element; the old ones keep their ids and stop being
-   reachable. A shared string is never written back into `sharedStrings.xml`,
-   which is what `inlineStr` is for. Refused, rather than written badly: a cell
-   the file spells no element for, a repeated one (ODS), a covered one (XLSX),
-   one holding a formula, and one holding richer markup than a single plain
-   paragraph. **Writing a formula cell waits for step 4** — overwriting one
-   leaves every value computed from it stale.
-
-   Found on the way: an XLSX cell holding an **inline string read as empty**,
-   because the walker does not descend into `is`. Fixed with it.
+   addressed, behind `Sheet::set_cell` and `::clear_cell`. ODS writes
+   `office:value-type`, `office:value` and the `text:p`, through the cell's one
+   text run. XLSX rewrites the `c` — `<v>` for a number, `t="inlineStr"` with
+   `<is><t>` for a string — and hands the registry a fresh text element; the
+   old ones keep their ids and stop being reachable. A shared string is never
+   written back into `sharedStrings.xml`, which is what `inlineStr` is for.
+   Refused, rather than written badly: a cell the file spells no element for, a
+   repeated one (ODS), a covered one (XLSX), one holding a formula, and one
+   holding richer markup than a single plain paragraph. Every refusal is
+   decided before the engine writes anything. **Writing a formula cell waits
+   for step 4** — overwriting one leaves every value computed from it stale.
 3. **Landed.** XLSX `save`, mirroring docx: write back every worksheet and
    `workbook.xml` from their dom, byte-copy the rest, and put back the xml
    declaration pugixml never parsed. `fullCalcOnLoad` is set on every save
@@ -311,9 +309,8 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    attributes — so it lands with a regen, on its own.
 7. **Landed.** Tests: set a number, a string, clear a cell, and each refusal,
    on both formats, from inline fixtures; save and reopen. The LibreOffice
-   oracle was run by hand on a real `.ods` and a real `.xlsx` — both open and
-   show the written number where it was put — and is not a committed test,
-   since `soffice` is not in CI.
+   oracle (`soffice --convert-to`) stays a by-hand check — it is not in CI, and
+   it is the only one that says a written package is really valid.
 
 ### Step 1 — The browser editor
 

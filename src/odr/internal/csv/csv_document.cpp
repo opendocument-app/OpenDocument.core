@@ -202,7 +202,6 @@ public:
   }
   [[nodiscard]] CellValue
   sheet_cell_value(const ElementIdentifier element_id) const override {
-    // the text is the cell's one child, which `SheetCell::value` collects
     CellValue result = CellValue(sheet_cell_value_type(element_id));
     if (result.type() == ValueType::float_number) {
       if (const std::optional<double> number = util::number::parse(

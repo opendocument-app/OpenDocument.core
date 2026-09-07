@@ -369,33 +369,6 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
-  /// The one run this writes through: a cell of a single paragraph holding a
-  /// single text run. Richer markup is kept rather than thrown away; an empty
-  /// paragraph - a cleared cell, a blank styled one - is given a run.
-  [[nodiscard]] ElementIdentifier
-  only_text_run(const ElementIdentifier cell_id) const {
-    const ElementIdentifier paragraph_id = element_first_child(cell_id);
-    if (paragraph_id == null_element_id ||
-        element_next_sibling(paragraph_id) != null_element_id ||
-        element_type(paragraph_id) != ElementType::paragraph) {
-      return null_element_id;
-    }
-    const ElementIdentifier text_id = element_first_child(paragraph_id);
-    if (text_id == null_element_id) {
-      const pugi::xml_node text_node =
-          get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
-      const auto &[new_id, unused1, unused2] =
-          m_registry->create_text_element(text_node, text_node);
-      m_registry->append_child(paragraph_id, new_id);
-      return new_id;
-    }
-    if (element_next_sibling(text_id) != null_element_id ||
-        element_type(text_id) != ElementType::text) {
-      return null_element_id;
-    }
-    return text_id;
-  }
-
   /// [ODF 1.2] 19.385: the value is an attribute and the `text:p` under the
   /// cell shows it, so both are written or the file contradicts itself.
   void sheet_set_cell(const ElementIdentifier element_id,
@@ -520,7 +493,6 @@ public:
     const pugi::xml_node node = get_node(element_id);
 
     CellValue result = CellValue(sheet_cell_value_type(element_id));
-    // a missing attribute reads as an empty string, which parses as no number
     if (const std::optional<double> number =
             util::number::parse(node.attribute("office:value").value())) {
       result = result.with_number(*number);
@@ -913,6 +885,33 @@ private:
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
     return m_registry->element_at(element_id).node;
+  }
+
+  /// The single text run under a cell of one plain paragraph, created where
+  /// that paragraph is empty. Null where the markup is richer than that, which
+  /// a write then keeps rather than throws away.
+  [[nodiscard]] ElementIdentifier
+  only_text_run(const ElementIdentifier cell_id) const {
+    const ElementIdentifier paragraph_id = element_first_child(cell_id);
+    if (paragraph_id == null_element_id ||
+        element_next_sibling(paragraph_id) != null_element_id ||
+        element_type(paragraph_id) != ElementType::paragraph) {
+      return null_element_id;
+    }
+    const ElementIdentifier text_id = element_first_child(paragraph_id);
+    if (text_id == null_element_id) {
+      const pugi::xml_node text_node =
+          get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
+      const auto &[new_id, unused1, unused2] =
+          m_registry->create_text_element(text_node, text_node);
+      m_registry->append_child(paragraph_id, new_id);
+      return new_id;
+    }
+    if (element_next_sibling(text_id) != null_element_id ||
+        element_type(text_id) != ElementType::text) {
+      return null_element_id;
+    }
+    return text_id;
   }
 
   /// The image's base64 bytes where the markup carries them itself.

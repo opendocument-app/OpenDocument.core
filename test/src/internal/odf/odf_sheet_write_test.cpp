@@ -201,3 +201,13 @@ TEST(OdfSheetWrite, a_written_sheet_saves_and_reopens) {
   EXPECT_DOUBLE_EQ(value.number(), 41.5);
   EXPECT_EQ(first_sheet(reopened).cell(0, 0).value().text(), "41.5");
 }
+
+/// Every refusal is decided before anything is written.
+TEST(OdfSheetWrite, a_number_stating_none_leaves_the_cell_alone) {
+  const Document document = document_of(flat_sheet(string_cell("old")));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue(ValueType::float_number)),
+               ValueNotStated);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "old");
+}

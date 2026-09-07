@@ -17,8 +17,7 @@ namespace odr {
 
 namespace {
 
-/// The text under @p element, which for a cell is spread over its paragraphs
-/// and runs.
+/// The text under @p element, gathered out of its descendants.
 std::string element_text(const Element element) {
   if (element.type() == ElementType::text) {
     return element.as_text().content();
@@ -422,7 +421,12 @@ void Sheet::set_cell(const std::uint32_t column, const std::uint32_t row,
     return;
   }
   if (value.has_formula()) {
-    throw UnsupportedOperation(); // writing one waits for an evaluator
+    throw UnsupportedOperation();
+  }
+  // checked before the engine writes anything, so a refusal leaves the cell
+  // as it was
+  if (value.type() == ValueType::float_number && !value.has_number()) {
+    throw ValueNotStated();
   }
   m_adapter2->sheet_set_cell(m_identifier, column, row, value);
 }
@@ -475,8 +479,7 @@ CellValue SheetCell::value() const {
   if (!exists_()) {
     return {};
   }
-  // the text is the one part no engine states of itself - it is spread over
-  // the cell's children, where the renderer reads it from
+  // no engine states the text: it is spread over the cell's children
   const CellValue value = m_adapter2->sheet_cell_value(m_identifier);
   return value.has_text() ? value : value.with_text(element_text(*this));
 }

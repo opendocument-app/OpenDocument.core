@@ -119,6 +119,25 @@ TEST(OoxmlSpreadsheetWrite, a_written_workbook_saves_and_reopens) {
   EXPECT_DOUBLE_EQ(value.number(), 41.5);
 }
 
+/// ECMA-376 18.2.27 orders the `workbook` children, and `extLst` comes after
+/// `calcPr`: appending the new one would put it on the wrong side.
+TEST(OoxmlSpreadsheetWrite, a_new_calc_pr_lands_where_the_schema_orders_it) {
+  const Document document = decode(workbook(
+      R"(<row r="1"><c r="A1"><v>1</v></c></row>)", "", "", R"(<extLst/>)"));
+
+  std::ostringstream saved;
+  document.save(saved);
+
+  const Document reopened =
+      open(File::from_memory(saved.str())).as_document_file().document();
+  std::ostringstream workbook_xml;
+  workbook_xml
+      << reopened.as_filesystem().open("/xl/workbook.xml").stream()->rdbuf();
+
+  EXPECT_LT(workbook_xml.str().find("<calcPr"),
+            workbook_xml.str().find("<extLst"));
+}
+
 /// ECMA-376 18.2.2: nothing here computes a formula, so the reader is asked to.
 TEST(OoxmlSpreadsheetWrite, a_saved_workbook_asks_to_be_recalculated) {
   const Document document =
