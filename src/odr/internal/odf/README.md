@@ -119,7 +119,8 @@ Roughly ordered by importance.
     not evaluated)
 - [x] edit
   - [x] cell values (number, string, cleared)
-  - [ ] a cell that is absent or repeated (the run has to be split first)
+  - [x] a repeated cell, by cutting the run around the position written
+  - [ ] a cell the file states no element for
   - [ ] a formula cell, and a cell of richer markup than one plain paragraph
 
 ### Presentation documents (`.odp`)

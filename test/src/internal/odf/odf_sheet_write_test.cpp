@@ -4,6 +4,8 @@
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
+#include <odr/table_dimension.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
@@ -93,14 +95,107 @@ TEST(OdfSheetWrite, a_cleared_cell_states_nothing) {
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "");
 }
 
-/// One element stands for every cell of the run, so a write hits all of them.
-TEST(OdfSheetWrite, a_repeated_cell_refuses_to_be_written) {
+/// One element stands for every cell of the run, so a write cuts it in three.
+TEST(OdfSheetWrite, a_repeated_cell_is_split_by_a_write) {
   const Document document = document_of(flat_sheet(
       R"(<table:table-cell table:number-columns-repeated="4")"
       R"( office:value-type="string"><text:p>x</text:p></table:table-cell>)"));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+  sheet.set_cell(2, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "x");
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "x");
+  EXPECT_EQ(sheet.cell(2, 0).value().text(), "y");
+  EXPECT_EQ(sheet.cell(3, 0).value().text(), "x");
+}
+
+TEST(OdfSheetWrite, a_repeat_is_split_at_either_end_too) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell table:number-columns-repeated="3")"
+      R"( office:value-type="string"><text:p>x</text:p></table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("a"));
+  sheet.set_cell(2, 0, CellValue("c"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "x");
+  EXPECT_EQ(sheet.cell(2, 0).value().text(), "c");
+}
+
+/// The refusals are decided on the run, so one leaves it uncut.
+TEST(OdfSheetWrite, a_refused_write_leaves_a_repeat_uncut) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell table:number-columns-repeated="4")"
+      R"xml( table:formula="of:=SUM([.A2:.B2])" office:value-type="float")xml"
+      R"( office:value="7"><text:p>7</text:p></table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(2, 0, CellValue("y")), UnsupportedOperation);
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find(R"(table:number-columns-repeated="4")"),
+            std::string::npos);
+}
+
+/// A repeated row is cut the same way, so only the row written changes.
+TEST(OdfSheetWrite, a_repeated_row_is_split_by_a_write) {
+  const Document document = document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s">)"
+      R"(<table:table-row table:number-rows-repeated="3">)"
+      R"(<table:table-cell table:number-columns-repeated="2")"
+      R"( office:value-type="string"><text:p>x</text:p></table:table-cell>)"
+      R"(</table:table-row></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 1, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(1, 1).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 1).value().text(), "x");
+  for (const std::uint32_t row : {0u, 2u}) {
+    EXPECT_EQ(sheet.cell(0, row).value().text(), "x") << row;
+    EXPECT_EQ(sheet.cell(1, row).value().text(), "x") << row;
+  }
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
+/// The id names a position, so the handle still means its cell once the run
+/// is cut under it.
+TEST(OdfSheetWrite, a_handle_taken_before_a_split_shows_the_write) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell table:number-columns-repeated="4")"
+      R"( office:value-type="string"><text:p>x</text:p></table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  const SheetCell held = sheet.cell(2, 0);
+  sheet.set_cell(2, 0, CellValue("y"));
+
+  EXPECT_EQ(held.value().text(), "y");
+  EXPECT_EQ(held.position().column, 2);
+}
+
+TEST(OdfSheetWrite, a_split_sheet_saves_and_reopens) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell table:number-columns-repeated="4")"
+      R"( office:value-type="string"><text:p>x</text:p></table:table-cell>)"));
+  first_sheet(document).set_cell(2, 0, CellValue(41.5, "41.5"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened = document_of(saved.str());
+  const Sheet sheet = first_sheet(reopened);
+
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "x");
+  ASSERT_TRUE(sheet.cell(2, 0).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 41.5);
+  EXPECT_EQ(sheet.cell(3, 0).value().text(), "x");
 }
 
 TEST(OdfSheetWrite, a_formula_cell_refuses_to_be_written) {

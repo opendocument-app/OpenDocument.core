@@ -184,9 +184,9 @@ public:
     return self.m_sheets.at(self.resolve_id(id));
   }
 
-  [[nodiscard]] const SheetCell &
-  sheet_cell_element_at(const ElementIdentifier id) const {
-    return m_sheet_cells.at(resolve_id(id));
+  [[nodiscard]] auto &sheet_cell_element_at(this auto &self,
+                                            const ElementIdentifier id) {
+    return self.m_sheet_cells.at(self.resolve_id(id));
   }
 
   [[nodiscard]] const SheetCell *
