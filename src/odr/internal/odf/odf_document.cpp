@@ -14,6 +14,7 @@
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_table.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
@@ -437,6 +438,22 @@ public:
       return ValueType::float_number;
     }
     return ValueType::string;
+  }
+  /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date, a time
+  /// and a boolean state their value elsewhere and are read as their text.
+  [[nodiscard]] CellValue
+  sheet_cell_value(const ElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+
+    CellValue result;
+    result.type = sheet_cell_value_type(element_id);
+    if (const pugi::xml_attribute value = node.attribute("office:value")) {
+      result.number = util::number::parse(value.value());
+    }
+    if (const pugi::xml_attribute formula = node.attribute("table:formula")) {
+      result.formula = formula.value();
+    }
+    return result;
   }
 
   [[nodiscard]] PageLayout

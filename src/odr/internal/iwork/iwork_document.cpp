@@ -179,6 +179,14 @@ public:
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
     return m_registry->cell_element_at(element_id).value_type;
   }
+  /// A number stays the decimal the file states, which is the cell's text.
+  /// Formulas live in `CalculationEngine`, which is not read.
+  [[nodiscard]] CellValue
+  sheet_cell_value(const ElementIdentifier element_id) const override {
+    CellValue result;
+    result.type = m_registry->cell_element_at(element_id).value_type;
+    return result;
+  }
 
   [[nodiscard]] TableDimensions
   table_dimensions(const ElementIdentifier element_id) const override {

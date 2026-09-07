@@ -113,9 +113,10 @@ Roughly ordered by importance.
 - [x] sheets
   - [x] dimensions, content range detection
   - [x] cell value types (float, string)
+  - [x] cell values (`office:value`, and `table:formula` as its own string)
   - [x] shapes anchored to a sheet
-  - [ ] computed values (stored values are used as-is; formulas are not
-    evaluated)
+  - [ ] computed values (stored values are used as-is; formulas are read but
+    not evaluated)
 - [ ] edit (currently disabled, see `Document::is_editable`)
 
 ### Presentation documents (`.odp`)

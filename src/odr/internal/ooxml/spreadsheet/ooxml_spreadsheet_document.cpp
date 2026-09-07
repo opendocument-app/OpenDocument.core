@@ -6,6 +6,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <utility>
@@ -198,6 +199,22 @@ public:
       return ValueType::float_number;
     }
     return ValueType::string;
+  }
+  /// ECMA-376 18.3.1.4 `c`: `v` is the value, `f` the formula, whose
+  /// expression a shared group spells on its master only.
+  [[nodiscard]] CellValue
+  sheet_cell_value(const ElementIdentifier element_id) const override {
+    const pugi::xml_node node = get_node(element_id);
+
+    CellValue result;
+    result.type = sheet_cell_value_type(element_id);
+    if (result.type == ValueType::float_number) {
+      result.number = util::number::parse(node.child("v").text().get());
+    }
+    if (const pugi::xml_node formula = node.child("f")) {
+      result.formula = formula.text().get();
+    }
+    return result;
   }
 
   [[nodiscard]] TextStyle

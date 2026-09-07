@@ -276,6 +276,8 @@ public:
   sheet_cell_span(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual ValueType
   sheet_cell_value_type(ElementIdentifier element_id) const = 0;
+  [[nodiscard]] virtual CellValue
+  sheet_cell_value(ElementIdentifier element_id) const = 0;
 };
 
 class MasterPageAdapter {
