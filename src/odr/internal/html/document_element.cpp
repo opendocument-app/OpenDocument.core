@@ -235,12 +235,19 @@ std::optional<double> sheet_print_fit(const Sheet &sheet,
 
 /// A run whose style the box around it can carry instead. Not a background, a
 /// raised run or an editable one: each means something else on the box.
+/// Whether @p element carries `contenteditable`: an editable run of a view
+/// that writes its editing into the markup.
+bool writes_editable(const Element &element, const html::WritingState &state) {
+  return state.editable_markup() && state.config().editable &&
+         element.is_editable();
+}
+
 std::optional<Text> plain_text(const Element &element,
                                const html::WritingState &state) {
   if (element.type() != ElementType::text) {
     return {};
   }
-  if (state.config().editable && element.is_editable()) {
+  if (writes_editable(element, state)) {
     return {};
   }
 
@@ -411,6 +418,10 @@ std::optional<HtmlSheetCut> html::sheet_cut(const Sheet &sheet,
 }
 
 void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
+  // a sheet's editing is an overlay, so its content carries none
+  WritingState sheet_state = state;
+  sheet_state.set_editable_markup(false);
+
   const TableDimensions rendered = sheet_rendered_extent(sheet, state.config());
   const std::uint32_t end_column = rendered.columns;
   const std::uint32_t end_row = rendered.rows;
@@ -594,8 +605,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
         }
       }
 
-      const std::optional<FoldedCell> folded =
-          fold_cell(cell, state, wraps, anchors_shapes, table_row_style.height);
+      const std::optional<FoldedCell> folded = fold_cell(
+          cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
 
       state.out().write_element_begin(
           "td",
@@ -624,13 +635,13 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
               }()));
       if (column_index == 0 && row_index == 0) {
         for (const Element shape : sheet.shapes()) {
-          translate_element(shape, state);
+          translate_element(shape, sheet_state);
         }
       }
       if (folded.has_value()) {
         state.out().out() << folded->text;
       } else {
-        translate_cell_children(cell, state);
+        translate_cell_children(cell, sheet_state);
       }
       state.out().write_element_end("td");
 
@@ -695,7 +706,7 @@ void html::translate_text(const Element &element, const WritingState &state) {
       HtmlElementOptions()
           .set_inline(true)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            if (state.config().editable && element.is_editable()) {
+            if (writes_editable(element, state)) {
               clb("contenteditable", "true");
               clb("data-odr-path", element.document_path().to_string());
             }

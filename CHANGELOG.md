@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A sheet rendered with `HtmlConfig::editable` carries no `contenteditable`
+  and no `data-odr-path`: its editing is an overlay, so the markup states
+  none. A cell's runs fold into the `td` as they do read-only.
+
 - **Breaking** (wire only) `Document::edit` takes an op envelope,
   `{"version": 1, "ops": [...]}`, with `setCell` writing a sheet cell by
   position and `setText` carrying what the `modifiedText` map carried.

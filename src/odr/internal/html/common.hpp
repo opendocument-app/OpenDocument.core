@@ -44,6 +44,13 @@ struct WritingState {
   [[nodiscard]] TextDirection direction() const { return m_direction; }
   void set_direction(const TextDirection direction) { m_direction = direction; }
 
+  /// Whether an editable run says so in the markup - false under a sheet,
+  /// whose editing is an overlay.
+  [[nodiscard]] bool editable_markup() const { return m_editable_markup; }
+  void set_editable_markup(const bool editable) {
+    m_editable_markup = editable;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -51,6 +58,7 @@ private:
   const Logger *m_logger;
   StyleRegistry *m_styles;
   TextDirection m_direction{TextDirection::left_to_right};
+  bool m_editable_markup{true};
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,
