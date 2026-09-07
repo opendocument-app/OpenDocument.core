@@ -839,15 +839,29 @@ TEST(html, a_cell_holding_one_plain_string_writes_no_box_of_its_own) {
   EXPECT_EQ(page.find("<x-p"), std::string::npos);
 }
 
-// The run is what an editor addresses, so it stays wherever it is written.
-TEST(html, an_editable_cell_keeps_the_run_it_is_addressed_by) {
+// A sheet's editing is an overlay, so `editable` changes none of its markup,
+// and the run folds into its `td` as an editable one refused to.
+TEST(html, an_editable_sheet_writes_the_markup_a_read_only_one_does) {
   HtmlConfig config;
   config.editable = true;
 
-  const std::string page = render_sheet(
-      fods_file(fods_row(fods_cell("one") + fods_cell("two"))), config);
+  const DecodedFile file =
+      fods_file(fods_row(fods_cell("one") + fods_cell("two")));
+  const std::string page = render_sheet(file, config);
 
-  EXPECT_NE(page.find(R"(<x-s contenteditable="true")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
+  EXPECT_EQ(page, render_sheet(file, HtmlConfig()));
+}
+
+// A text document still says so in the markup: it has no overlay.
+TEST(html, an_editable_text_document_marks_its_runs) {
+  HtmlConfig config;
+  config.editable = true;
+
+  const std::string page = render_odt(config);
+
+  EXPECT_NE(page.find(R"(contenteditable="true")"), std::string::npos);
+  EXPECT_NE(page.find("data-odr-path"), std::string::npos);
 }
 
 // #822: a sheet cell does not break its text into lines unless the file says

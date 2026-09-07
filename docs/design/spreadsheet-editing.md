@@ -52,15 +52,6 @@ results go stale the moment an input changes.
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
 
-One inconsistency worth fixing on day one: `translate_sheet` stamps
-`contenteditable` on every run inside an `.ods` cell when `config.editable` is
-set — the writer asks the *element* (`element_is_editable`, true for a
-non-repeated cell) and never the document. The reference output for
-`style-color+fixed-1.ods` carries 594 of them. Two consequences: an app that
-turns `editable` on gets a half-working sheet editor (strings save, numbers
-desync), and the editable output lays out differently, because
-`plain_text` refuses to fold an editable run into its `td`.
-
 ## Decisions
 
 ### 1. A cell is the unit of editing, addressed by position
@@ -308,11 +299,10 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    sheet is 0.36 s today.
 5. **Landed.** `Document::is_editable` true for both; capability rows gained
    `edit` (`xlsx` also `save`); `odr_test` keeps them honest.
-6. Stop `translate_sheet` stamping `contenteditable` on a cell's runs at all.
-   It cannot be gated on `Document::is_editable`, which item 5 makes *true* for
-   a sheet: decision 3 puts a sheet's editing in an overlay, so the markup
-   carries none. Changes the reference output — a reference `.ods` loses 594
-   attributes — so it lands with a regen, on its own.
+6. **Landed.** `translate_sheet` writes its cells through a `WritingState`
+   whose `editable_markup` is false, so no run carries `contenteditable` and
+   `plain_text` folds it into the `td` as it does read-only. It could not be
+   gated on `Document::is_editable`, which item 5 makes *true* for a sheet.
 7. **Landed.** Tests: set a number, a string, clear a cell, and each refusal,
    on both formats, from inline fixtures; save and reopen. The LibreOffice
    oracle (`soffice --convert-to`) stays a by-hand check — it is not in CI, and
