@@ -14,7 +14,10 @@ PARTS = {
     "document.css": 'constexpr std::string_view document_css = R"css(',
     "spreadsheet.css": 'constexpr std::string_view spreadsheet_css = R"css(',
     "spreadsheet.js": 'constexpr std::string_view spreadsheet_js = R"js(',
+    "sheet-editing.js": 'constexpr std::string_view sheet_editing_js = R"js(',
 }
+
+PAGES = ("tests.html", "positions.html", "sorting.html")
 
 
 def extract(source: str, begin: str) -> str:
@@ -34,7 +37,8 @@ def main() -> None:
     )
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("127.0.0.1", PORT), handler) as server:
-        print(f"http://localhost:{PORT}/tests.html")
+        for page in PAGES:
+            print(f"http://localhost:{PORT}/{page}")
         server.serve_forever()
 
 

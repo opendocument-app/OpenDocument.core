@@ -255,6 +255,44 @@ frequent, it carries a position, and a host wants it on a snackbar while a real
 error goes to a dialog or a log. Sharing the code table keeps one lookup for
 both.
 
+### 8. The sheet script owns the position map, and publishes it as `odr.sheet`
+
+The editor is a second script on the page, and the two things it needs first —
+which cell a position names, and what is pinned — belong to the first, which
+already owns the pin, the raise and the sort:
+
+```js
+odr.sheet.cellAt(column, row); // the `td`, null past the sheet's extent
+odr.sheet.positionOf(cell);    // {column, row}, null for a header
+odr.sheet.pinned();            // {column, row, cell}, null for none
+odr.sheet.pin(position);       // null clears; false where there is no cell
+```
+
+**Why not a copy in the editor:** the map is not a walk over `colspan`. A row
+is named by its `<th>` label, because sorting moves the `<tr>`s away from
+position order; a `rowspan` from an earlier row leaves the positions it covers
+unwritten, so a colspan-only walk misreads every cell after them; and it is
+built once, which means the script that reorders rows is the one that has to
+know. Two copies would also be two owners of the pin classes and the raise
+wrapper — an editor whose overlay is open while the other script lowers the
+cell underneath it.
+
+**Why not one script instead:** the read-only view would carry the editor it
+never runs, and a raw string literal caps at 16380 bytes on msvc
+(`fits_a_literal`), which the two together would reach during step 1.
+
+**The coordinates are the ones an op names** (decision 1), never a DOM index.
+The wash paints through `nth-child`, so the ruler's index stays private to the
+script, and a merged sheet still gets no wash and no sort control. A position a
+merge covers answers with the cell covering it — the one the file states and an
+op names.
+
+**The cost is a public surface**, which a host keeps once it ships. It is a
+small one, and a host gets scroll-to-cell and "what is selected" out of it. What
+step 1.3 needs to reflow a row after a commit (`visibleRight`, `cutOff`) sits in
+the same closure and joins `odr.sheet` when it is written, rather than being
+reached around.
+
 ## Staging
 
 Each step ships on its own. "Both" means `.ods` and `.xlsx`.
@@ -312,11 +350,11 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 
 1. `odr.editing` mode: enable/disable, lock classes and the document attribute
    from `translate_sheet`, and the three `odr.on*` callbacks with their code
-   table (decision 7).
+   table (decision 7). `spreadsheet_js` publishes `odr.sheet` in the same step
+   (decision 8) — the position map the mode reads a lock through.
 2. Overlay editor: double-click / Enter / typing opens it over the cell; Enter,
-   Tab and blur commit; Escape cancels; arrow keys move the pin. Position
-   comes from the row `<th>` and a per-row colspan/rowspan walk, cached — never
-   `cellIndex`, which merged cells and sorting both break.
+   Tab and blur commit; Escape cancels; arrow keys move the pin, through
+   `odr.sheet.pin` rather than a pin of its own.
 3. Commit: parse per decision 4, record the op with its inverse, patch the
    cell — text, `odr-value-type-float` for alignment, keep any shapes in A1 —
    and **reflow the row**: the spill and clip `translate_sheet` measured for

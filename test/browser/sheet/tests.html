@@ -5,20 +5,6 @@
     <title>sheet checks</title>
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
-    <style>
-      #report {
-        font: 13px/1.6 monospace;
-        margin: 16px;
-      }
-      .pass::before {
-        content: "PASS ";
-        color: #2a7;
-      }
-      .fail::before {
-        content: "FAIL ";
-        color: #c33;
-      }
-    </style>
   </head>
   <body class="odr-body odr-gridlines-soft">
     <!-- What `translate_sheet` writes, cut down to the shapes the script has to
@@ -69,18 +55,9 @@
 
     <div id="report"></div>
     <script src="spreadsheet.js"></script>
+    <script src="checks.js"></script>
     <script>
       var report = document.getElementById("report");
-      function check(name, condition) {
-        var line = document.createElement("div");
-        line.className = condition ? "pass" : "fail";
-        line.textContent = name;
-        report.appendChild(line);
-      }
-      function click(element) {
-        element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-        document.body.offsetHeight;
-      }
       function raised(cell) {
         return cell.classList.contains("odr-sheet-raised");
       }

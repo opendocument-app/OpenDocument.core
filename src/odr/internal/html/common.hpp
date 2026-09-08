@@ -51,6 +51,13 @@ struct WritingState {
     m_editable_markup = editable;
   }
 
+  /// Whether the document can be edited at all, which a sheet states so its
+  /// editor can refuse before the user clicks anything.
+  [[nodiscard]] bool document_editable() const { return m_document_editable; }
+  void set_document_editable(const bool editable) {
+    m_document_editable = editable;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -59,6 +66,7 @@ private:
   StyleRegistry *m_styles;
   TextDirection m_direction{TextDirection::left_to_right};
   bool m_editable_markup{true};
+  bool m_document_editable{false};
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,
