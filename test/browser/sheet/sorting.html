@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet position checks under a sort</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft">
+    <!-- A sheet with no merge, which is the only kind offered a sort control.
+         Column B is ordered so that sorting it moves every row. -->
+    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col />
+      <col />
+      <col />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td>r0</td>
+          <td class="odr-value-type-float">0</td>
+          <td>x0</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td>r1</td>
+          <td class="odr-value-type-float">2</td>
+          <td>x1</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td>r2</td>
+          <td class="odr-value-type-float">4</td>
+          <td>x2</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td>r3</td>
+          <td class="odr-value-type-float">1</td>
+          <td>x3</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">5</th>
+          <td>r4</td>
+          <td class="odr-value-type-float">3</td>
+          <td>x4</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="spreadsheet.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function labels() {
+        return [].map
+          .call(document.querySelectorAll(".odr-sheet tbody th"), function (th) {
+            return th.textContent.trim();
+          })
+          .join("");
+      }
+      function positions() {
+        var wrong = [];
+        for (var row = 0; row < 5; ++row) {
+          var cell = odr.sheet.cellAt(0, row);
+          if (cell === null || cell.textContent !== "r" + row) {
+            wrong.push("0," + row + "=" + (cell && cell.textContent));
+          }
+          var at = odr.sheet.positionOf(odr.sheet.cellAt(2, row));
+          if (at === null || at.column !== 2 || at.row !== row) {
+            wrong.push("round trip at row " + row);
+          }
+        }
+        return wrong;
+      }
+
+      check("the sheet is in position order to begin with", labels() === "12345");
+      var before = positions();
+      check("every position answers with its cell" + (before.length ? ": " + before : ""), before.length === 0);
+
+      click(document.querySelectorAll(".odr-sheet-sort")[1]);
+      check("sorting column B moves every row", labels() === "14253");
+
+      var after = positions();
+      check(
+        "and a position still answers with the same cell" + (after.length ? ": " + after : ""),
+        after.length === 0
+      );
+
+      odr.sheet.pin({ column: 0, row: 3 });
+      var pinned = odr.sheet.pinned();
+      check(
+        "a pin by position follows the row, not the place",
+        pinned.cell.textContent === "r3" && pinned.row === 3
+      );
+      check(
+        "which the sort has moved away from where its position would put it",
+        pinned.cell.parentElement.cells[0].textContent.trim() === "4" &&
+          pinned.cell.parentElement.rowIndex - 1 !== 3
+      );
+      odr.sheet.pin(null);
+
+      click(document.querySelectorAll(".odr-sheet-sort")[1]);
+      click(document.querySelectorAll(".odr-sheet-sort")[1]);
+      check("a third click puts the file's order back", labels() === "12345");
+      var restored = positions();
+      check("with the positions intact" + (restored.length ? ": " + restored : ""), restored.length === 0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet position checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft">
+    <!-- A merged sheet as `translate_sheet` writes one: no `td` stands where a
+         span covers a position. B1 spans two columns, A2 two rows, and D4 two
+         rows past the last cell row 5 writes. C2 carries a lock. -->
+    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col />
+      <col />
+      <col />
+      <col />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td>a0</td>
+          <td colspan="2">b0</td>
+          <td>d0</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td rowspan="2">a1</td>
+          <td>b1</td>
+          <td class="odr-locked" data-odr-lock="formula">c1</td>
+          <td>d1</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td>b2</td>
+          <td>c2</td>
+          <td>d2</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td>a3</td>
+          <td>b3</td>
+          <td>c3</td>
+          <td rowspan="2">d3</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">5</th>
+          <td>a4</td>
+          <td>b4</td>
+          <td>c4</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      // What the sheet holds at every position, the covered ones answering
+      // with the cell that covers them.
+      var grid = [
+        ["a0", "b0", "b0", "d0"],
+        ["a1", "b1", "c1", "d1"],
+        ["a1", "b2", "c2", "d2"],
+        ["a3", "b3", "c3", "d3"],
+        ["a4", "b4", "c4", "d3"],
+      ];
+      var wrong = [];
+      for (var row = 0; row < grid.length; ++row) {
+        for (var column = 0; column < 4; ++column) {
+          var cell = odr.sheet.cellAt(column, row);
+          var text = cell === null ? null : cell.textContent;
+          if (text !== grid[row][column]) {
+            wrong.push(column + "," + row + "=" + text);
+          }
+        }
+      }
+      check("every position answers with its cell" + (wrong.length ? ": " + wrong : ""), wrong.length === 0);
+      check(
+        "a colspan-only walk would have missed them",
+        odr.sheet.cellAt(1, 2).textContent === "b2" &&
+          odr.sheet.cellAt(0, 2).textContent === "a1"
+      );
+      check(
+        "nothing stands past the sheet",
+        odr.sheet.cellAt(4, 0) === null &&
+          odr.sheet.cellAt(0, 5) === null &&
+          odr.sheet.cellAt(-1, 0) === null
+      );
+
+      var anchors = [];
+      [].forEach.call(document.querySelectorAll(".odr-sheet tbody td"), function (td) {
+        var at = odr.sheet.positionOf(td);
+        if (odr.sheet.cellAt(at.column, at.row) !== td) {
+          anchors.push(td.textContent);
+        }
+      });
+      check("a cell names the position it was found at" + (anchors.length ? ": " + anchors : ""), anchors.length === 0);
+      check(
+        "a header names none",
+        odr.sheet.positionOf(document.querySelector(".odr-sheet-row-header")) === null &&
+          odr.sheet.positionOf(document.querySelector(".odr-sheet-column-header")) === null
+      );
+
+      var mine = odr.sheet.positionOf(odr.sheet.cellAt(1, 0));
+      mine.column = 99;
+      check(
+        "what it hands out is a copy",
+        odr.sheet.positionOf(odr.sheet.cellAt(1, 0)).column === 1
+      );
+
+      odr.sheet.pin({ column: 2, row: 2 });
+      var pinned = odr.sheet.pinned();
+      check(
+        "a pin by position lands on the cell",
+        pinned !== null && pinned.cell.textContent === "c2" &&
+          pinned.column === 2 && pinned.row === 2
+      );
+      check(
+        "and paints it",
+        pinned.cell.classList.contains("odr-sheet-pinned-cell") &&
+          document.querySelectorAll(".odr-sheet-pinned-cell").length === 1
+      );
+
+      odr.sheet.pin({ column: 0, row: 2 });
+      var covered = odr.sheet.pinned();
+      check(
+        "pinning a covered position pins the cell covering it",
+        covered.cell.textContent === "a1" && covered.row === 1
+      );
+      check("a position the sheet has not is refused", odr.sheet.pin({ column: 9, row: 9 }) === false);
+      check("and leaves the pin where it was", odr.sheet.pinned().cell.textContent === "a1");
+
+      odr.sheet.pin(null);
+      check(
+        "null clears it",
+        odr.sheet.pinned() === null &&
+          document.querySelector(".odr-sheet-pinned-cell") === null
+      );
+
+      click(document.querySelectorAll(".odr-sheet-column-header")[2]);
+      var column = odr.sheet.pinned();
+      check(
+        "a column header names its column and no row",
+        column.column === 2 && column.row === null
+      );
+      click(document.querySelectorAll(".odr-sheet-row-header")[2]);
+      var row = odr.sheet.pinned();
+      check(
+        "a row header names its row and no column",
+        row.column === null && row.row === 2
+      );
+      odr.sheet.pin(null);
+
+      // The editing mode reads the same map.
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code + " at " + event.column + "," + event.row);
+      };
+      check("a locked cell is found through it", odr.editing.lockAt(2, 1) === "formula");
+      check("a plain one carries no lock", odr.editing.lockAt(1, 2) === null);
+      check("editing a locked cell is refused", odr.editing.refuseAt(2, 1) === true);
+      check("a plain cell is not", odr.editing.refuseAt(1, 2) === false);
+      check("the refusal reached the host", refusals.length === 1 && refusals[0] === "formula 2 at 2,1");
+      odr.editing.refuseAt(2, 1);
+      check("and the same one again is dropped", refusals.length === 1);
+    </script>
+  </body>
+</html>
