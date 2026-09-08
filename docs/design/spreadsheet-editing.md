@@ -1,8 +1,9 @@
 # Spreadsheet editing design
 
-Status: **proposed; nothing scheduled.** This records why spreadsheet editing
-is staged the way it is, what the code already gives us, and the order the
-steps go in. It is a plan, not a record — update it as steps land.
+Status: **steps 0 and 1 landed, and 2.1 with them; step 2 is next.** This
+records why spreadsheet editing is staged the way it is, what the code already
+gives us, and the order the steps go in. It is a plan, not a record — update it
+as steps land.
 
 Related: [`editing.md`](editing.md) is the accepted direction for text
 documents (op log, ids, browser-side undo). This builds on its decisions and
@@ -376,10 +377,9 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    op replaced and drops it from the log, so what the log hands out and what the
    page shows stay the same thing.
 5. **Landed.** `test/browser/sheet/editing.html` holds the editing cases; the
-   wasm example turns the mode on, lights its save button off `onEditChange`,
-   and writes the log into the document before it saves — the host-wiring
-   reference for droid/ios. A view holds its own log, so the example applies it
-   when the view goes away as well as on save.
+   wasm example is the host-wiring reference for droid/ios. A view holds its own
+   log, so the example writes it into the document when the view goes away as
+   well as on save.
 
 ### Step 2 — Materialise the cells that are not there
 
@@ -473,6 +473,9 @@ Ordered by value over cost; all in step 0 or 1.
   translate time from the neighbours; the browser has to redo it for the
   edited row. Without it an edit into a blank cell shows the left neighbour's
   overflow painting across the new text.
+- **A position the engine cannot write yet** — an `.xlsx` cell with no `<c>`,
+  an `.ods` one with no element — carries no lock, so the page takes the edit
+  and `Document::edit` throws it back at the host. Until step 2, it says so.
 - **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
   not in the page and cannot be edited; the mode should say so where a view
   reports a `sheet_cut`.
