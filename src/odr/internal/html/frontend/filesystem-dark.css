@@ -1,0 +1,9 @@
+:root{
+color-scheme:dark;
+--odr-files-line:#30363d;
+--odr-files-muted:#8b949e;
+--odr-files-link:#6cb6ff;
+}
+body{background:#0d1117;color:#e6edf3}
+.odr-files tbody tr:hover>*{background-image:linear-gradient(rgba(255,255,255,.05),rgba(255,255,255,.05))}
+.odr-files-action a:hover{background:rgba(255,255,255,.08)}

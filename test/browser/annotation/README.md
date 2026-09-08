@@ -4,13 +4,12 @@ What the emitted annotation script does can only be seen in a browser, so these
 are run by hand rather than by `odr_test`.
 
 ```bash
-test/browser/annotation/serve    # extracts script and style, serves on :8733
+test/browser/annotation/serve    # serves on :8733
 open http://localhost:8733/tests.html
 ```
 
-`serve` lifts `pdf_annotation_js` and `pdf_annotation_css` out of
-`src/odr/internal/html/frontend.cpp`, so what runs is what ships — renaming
-either declaration breaks the harness.
+`serve` serves `pdf-annotation.js` and `pdf-annotation.css` straight out of
+`src/odr/internal/html/frontend/`, so what runs is the file the library embeds.
 
 `tests.html` stands in for a rendered pdf view: two `.p` pages laid out in
 inches, each carrying the `data-odr-page` and `data-odr-space` the renderer

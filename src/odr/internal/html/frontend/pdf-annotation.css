@@ -1,0 +1,10 @@
+.an{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:3}
+/* on the overlay, not on the shape: a blend inside an svg composites against
+   the svg's own canvas, so the highlight would paint over the glyphs */
+.an-m{mix-blend-mode:multiply}
+/* the two properties `setOptions` writes */
+.p.an-draw .an{pointer-events:auto;cursor:crosshair;touch-action:var(--odr-an-touch,none)}
+.p.an-draw .t,.p.an-draw .sel{pointer-events:none}
+/* neither may interrupt a stroke */
+.p.an-draw{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html.an-drawing{overscroll-behavior:var(--odr-an-overscroll,contain)}

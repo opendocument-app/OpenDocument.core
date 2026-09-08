@@ -1,0 +1,13 @@
+:root{color-scheme:dark}
+body{background:#0d1117;color:#e6edf3}
+/* The step to the page is what makes it read as a sheet. */
+.odr-background{background:#010409}
+.odr-page-outer{background-color:#161b22!important;box-shadow:0 1px 4px rgba(0,0,0,.8)}
+/* Fills give way to the page, text to one legible against it.
+   `background-image` is left alone: a page printed on a picture keeps it. */
+div,table,tr,td,x-p,x-s{background-color:transparent!important}
+/* A shape's fill is an svg `fill` (`translate_drawing_style`), not a
+   background, and gives way like one. The stroke stays: it is the line. */
+svg,svg *{fill:transparent!important}
+td,x-p,x-s{color:#e6edf3!important}
+a,a x-p,a x-s{color:#6cb6ff!important}

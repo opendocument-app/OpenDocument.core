@@ -4,12 +4,12 @@ What the emitted zoom script does can only be seen in a browser, so these are
 run by hand rather than by `odr_test`.
 
 ```bash
-test/browser/viewport/serve      # extracts the script, serves on :8731
+test/browser/viewport/serve      # serves on :8731
 open http://localhost:8731/tests.html
 ```
 
-`serve` lifts `viewport_js` out of `src/odr/internal/html/frontend.cpp`, so what
-runs is what ships. `page.html` stands in for a rendered view: it writes the
+`serve` serves `viewport.js` straight out of
+`src/odr/internal/html/frontend/`, so what runs is the file the library embeds. `page.html` stands in for a rendered view: it writes the
 `:root{--odr-fit;--odr-zoom}` and `body{zoom}` that `write_zoom_style` would.
 
 Why the harness is shaped this way:

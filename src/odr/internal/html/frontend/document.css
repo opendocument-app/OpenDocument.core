@@ -1,0 +1,27 @@
+body{margin:0;background:#fff}
+/* What the formats anchor against: a page for shapes, a paragraph or a cell
+   for frames. */
+x-p,td,.odr-page-outer{position:relative}
+/* Word and odf start a cell at its top where the browser default centres it; a
+   sheet says its own, more specifically. */
+td{vertical-align:top}
+x-p{display:block}
+x-s{display:inline}
+.odr-background{padding:0;background:#525659}
+/* The page column, sized to the widest page so pages of differing width centre
+   against each other, not against the viewport. The page's side margin is part
+   of that width, so fitting the document to a phone screen leaves a gutter
+   instead of going edge to edge. */
+.odr-pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:max(16px,var(--odr-min-margin-top,0px)) 0 max(16px,var(--odr-min-margin-bottom,0px));width:max-content;min-width:100%}
+/* A stacking context, for the shape backgrounds a page holds at `z-index:-1`.
+   Not a negative `z-index`, which is one too but takes the page out of reach of
+   hit testing. */
+.odr-page-outer{display:flex;margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 max(16px,var(--odr-min-margin-left,0px));background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);isolation:isolate}
+/* Reflowed to the viewport there is no page box to inset the text. A physical
+   measure, like the page margin it stands in for; `--odr-min-margin-*` is the
+   floor the config puts under it, and is unset by default. */
+.odr-text-flow{padding:max(3mm,var(--odr-min-margin-top,0px)) max(3mm,var(--odr-min-margin-right,0px)) max(3mm,var(--odr-min-margin-bottom,0px)) max(3mm,var(--odr-min-margin-left,0px))}
+/* The label is text rather than a `::marker`, which no selection would copy.
+   It hangs into the item's padding so wrapped lines align under the text. */
+.odr-list-item{padding-left:2em}
+.odr-list-marker{display:inline-block;min-width:2em;margin-left:-2em;white-space:pre}
