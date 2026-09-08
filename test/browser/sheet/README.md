@@ -33,7 +33,8 @@ it finds.
 - **`editing.html`** — the overlay editor, driven through `odr.editing` the
   way a host drives it, over the shapes a commit has to get right: a string cut
   where its neighbour shows something, a formula cell, a cell of several runs,
-  and one whose single run carries a style a write must keep.
+  and one whose single run carries a style a write must keep. Undo, redo and
+  the log a save resets follow.
 - **`sorting.html`** — the same questions after the sort control has moved every
   row. Nothing here is merged, because a merged sheet is offered no sort
   control; a row is found by the label it carries, so where it now sits does not

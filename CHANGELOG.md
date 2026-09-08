@@ -23,6 +23,10 @@ The release run heads these entries with the version and opens a fresh
 - `odr.sheet` also answers what the page shows: `valueAt`, `showValue`,
   `reflow` and `lower`.
 
+- A sheet edit can be taken back: `odr.editing.undo()`, `redo()`, ctrl/cmd+Z,
+  and `committed()` after a save; `odr.onEditChange` reports the state of the
+  log to the host.
+
 - **Fix**: a zip entry name with a leading slash is read relative to the
   archive root rather than throwing, and one named `/` alone is dropped. An
   `.odt` carrying such an entry now opens; LibreOffice still refuses it.

@@ -2298,6 +2298,27 @@ constexpr std::string_view sheet_editing_js = R"js(
   var overlay = null;
   var editingAt = null;
   var history = [];
+  var undone = [];
+
+  /// One op per position, the last write made.
+  function coalesced() {
+    var byPosition = new Map();
+    for (var i = 0; i < history.length; ++i) {
+      var op = history[i].op;
+      byPosition.set(op.sheet + ":" + op.column + ":" + op.row, op);
+    }
+    return Array.from(byPosition.values());
+  }
+
+  /// What a host's save button and back-press warning read.
+  function changed() {
+    fire("onEditChange", {
+      dirty: history.length > 0,
+      operations: coalesced().length,
+      canUndo: history.length > 0,
+      canRedo: undone.length > 0,
+    });
+  }
 
   var NUMBER = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
 
@@ -2342,7 +2363,17 @@ constexpr std::string_view sheet_editing_js = R"js(
       },
       before: before,
     });
+    undone = [];
+    changed();
     return true;
+  }
+
+  /// An undo and a redo are the same move on the page; the log tells them
+  /// apart.
+  function replay(entry, value) {
+    close();
+    odr.sheet.showValue(entry.op.column, entry.op.row, value);
+    changed();
   }
 
   // Offsets, not rects: blink scales a rect by the body zoom `viewport_js`
@@ -2461,23 +2492,32 @@ constexpr std::string_view sheet_editing_js = R"js(
   /// What a pinned cell does with a key when no editor is open. Captured, so
   /// the keys taken here never reach the pin and the sort beneath.
   function pinnedKey(event) {
+    var target = event.target;
     if (
       !editing ||
       overlay !== null ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey
+      (target &&
+        (target.isContentEditable ||
+          /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))
     ) {
       return;
     }
-    var target = event.target;
-    if (
-      target &&
-      (target.isContentEditable ||
-        /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-    ) {
+
+    // ctrl/cmd is the undo chord here and nothing else.
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      var chord = event.key.toLowerCase();
+      if (!event.altKey && (chord === "z" || chord === "y")) {
+        if (chord === "y" || event.shiftKey) {
+          odr.editing.redo();
+        } else {
+          odr.editing.undo();
+        }
+        event.stopPropagation();
+        event.preventDefault();
+      }
       return;
     }
+
     var at = odr.sheet.pinned();
     if (at === null || at.column === null || at.row === null) {
       return;
@@ -2535,18 +2575,38 @@ constexpr std::string_view sheet_editing_js = R"js(
     return edit(column, row, null);
   };
 
-  /// What a host hands to `Document::edit` before saving, coalesced per
-  /// position.
+  /// The envelope a host hands to `Document::edit` before saving.
   odr.editing.getOperations = function () {
-    var byPosition = new Map();
-    for (var i = 0; i < history.length; ++i) {
-      var op = history[i].op;
-      byPosition.set(op.sheet + ":" + op.column + ":" + op.row, op);
+    return JSON.stringify({ version: 1, ops: coalesced() });
+  };
+
+  /// Takes the last write back; false where there is none.
+  odr.editing.undo = function () {
+    if (history.length === 0) {
+      return false;
     }
-    return JSON.stringify({
-      version: 1,
-      ops: Array.from(byPosition.values()),
-    });
+    var entry = history.pop();
+    undone.push(entry);
+    replay(entry, entry.before);
+    return true;
+  };
+
+  odr.editing.redo = function () {
+    if (undone.length === 0) {
+      return false;
+    }
+    var entry = undone.pop();
+    history.push(entry);
+    replay(entry, entry.op.value);
+    return true;
+  };
+
+  /// The host saved the log: the page and the file agree, and undo starts
+  /// over.
+  odr.editing.committed = function () {
+    history = [];
+    undone = [];
+    changed();
   };
 })();
 )js";

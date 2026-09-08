@@ -234,8 +234,8 @@ in three hosts.
 
 **`onEditChange` is what decision 6 needs.** `dirty` is how the app lights its
 save button and warns on back-press while the page holds unsaved edits;
-`canUndo`/`canRedo` drive the toolbar. It fires on every commit, undo, redo
-and on `committed()`.
+`operations` is how many ops the log would hand out, and `canUndo`/`canRedo`
+drive the toolbar. It fires on every commit, undo, redo and on `committed()`.
 
 **Attaching**, per host:
 
@@ -370,8 +370,11 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    blank cell fills or a full one empties. `odr.sheet` gained `valueAt`,
    `showValue` and `reflow` for it, and `getOperations()` came with them: a log
    nothing hands out is a log nothing can check.
-4. Undo/redo over the in-memory log; `committed()`; both raise `onEditChange`,
-   which is what a host's save button and back-press warning read.
+4. **Landed.** Undo/redo over the in-memory log, from `odr.editing` and from
+   ctrl/cmd+Z; `committed()`; all of them raise `onEditChange`, which is what a
+   host's save button and back-press warning read. An undo shows the value the
+   op replaced and drops it from the log, so what the log hands out and what the
+   page shows stay the same thing.
 5. `test/browser/sheet` grows the editing cases; the wasm example gets an
    edit-and-save button, which is also the host-wiring reference for droid/ios.
 
