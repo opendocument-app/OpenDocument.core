@@ -98,9 +98,9 @@ function zip(entries) {
   return new Uint8Array(Buffer.concat([...locals, directory, end]));
 }
 
-// The smallest odt that renders: one paragraph carrying `text`.
-export function minimalOdt(text = 'hello') {
-  const mimetype = 'application/vnd.oasis.opendocument.text';
+// `mimetype` uncompressed and a manifest naming the one part, which is what
+// the documents below share.
+function odf(mimetype, content) {
   return zip([
     { name: 'mimetype', data: mimetype, store: true },
     {
@@ -114,17 +114,41 @@ export function minimalOdt(text = 'hello') {
     },
     {
       name: 'content.xml',
-      data:
-        '<?xml version="1.0" encoding="UTF-8"?>' +
-        '<office:document-content' +
-        ' xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
-        ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
-        ' office:version="1.2">' +
-        '<office:body><office:text>' +
-        `<text:p>${text}</text:p>` +
-        '</office:text></office:body></office:document-content>',
+      data: `<?xml version="1.0" encoding="UTF-8"?>${content}`,
     },
   ]);
+}
+
+// The smallest odt that renders: one paragraph carrying `text`.
+export function minimalOdt(text = 'hello') {
+  return odf(
+    'application/vnd.oasis.opendocument.text',
+    '<office:document-content' +
+      ' xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+      ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
+      ' office:version="1.2">' +
+      '<office:body><office:text>' +
+      `<text:p>${text}</text:p>` +
+      '</office:text></office:body></office:document-content>',
+  );
+}
+
+// The smallest ods that renders: one sheet, one string cell holding `text`.
+export function minimalOds(text = 'hello') {
+  return odf(
+    'application/vnd.oasis.opendocument.spreadsheet',
+    '<office:document-content' +
+      ' xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+      ' xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' +
+      ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
+      ' office:version="1.2">' +
+      '<office:body><office:spreadsheet>' +
+      '<table:table table:name="Sheet1"><table:table-row>' +
+      '<table:table-cell office:value-type="string">' +
+      `<text:p>${text}</text:p>` +
+      '</table:table-cell></table:table-row></table:table>' +
+      '</office:spreadsheet></office:body></office:document-content>',
+  );
 }
 
 // The smallest pdf that opens: one page, its cross-reference offsets computed.

@@ -39,6 +39,8 @@
   <body>
     <header>
       <input type="file" id="file" />
+      <button id="edit" hidden>edit</button>
+      <button id="save" hidden disabled>save…</button>
       <span id="status">loading…</span>
       <select id="views" hidden></select>
     </header>
@@ -52,14 +54,65 @@
       const views = document.getElementById('views');
       const frame = document.getElementById('view');
       const drop = document.getElementById('drop');
+      const edit = document.getElementById('edit');
+      const save = document.getElementById('save');
 
       const odr = await Odr.load();
       status.textContent = odr.identify();
 
       let doc = null;
       let url = null;
+      let filename = 'document';
+      let framed = null;
+
+      // What the page in the frame publishes, or null for a view that has no
+      // editor - anything but a sheet, today.
+      function editing() {
+        return frame.contentWindow?.odr?.editing ?? null;
+      }
+
+      // A view holds its own log, so it is applied before the view goes away
+      // and again before a save; a cell op is idempotent, so both is fine.
+      // False where the engine refused one, which keeps the log.
+      function collect() {
+        const page = framed === doc ? editing() : null;
+        if (page === null || !page.isEditable()) return true;
+        const operations = page.getOperations();
+        if (JSON.parse(operations).ops.length === 0) return true;
+        try {
+          doc.edit(operations);
+        } catch (e) {
+          status.textContent = `${e.name} — ${e.message}`;
+          return false;
+        }
+        page.committed();
+        return true;
+      }
+
+      // The three callbacks a host assigns, which on droid/ios go in through
+      // `evaluateJavascript` once the WebView has finished loading.
+      function wire() {
+        const page = editing();
+        edit.hidden = page === null;
+        save.hidden = page === null || !doc.isSavable();
+        if (page === null) return;
+        edit.textContent = 'edit';
+        frame.contentWindow.odr.onEditRefused = (event) => {
+          // the snackbar an app writes in its own string catalogue
+          status.textContent = `${event.reason} (${event.code}): ${event.message}`;
+        };
+        frame.contentWindow.odr.onEditChange = (event) => {
+          save.disabled = !event.dirty;
+          save.textContent = event.dirty ? `save (${event.operations})` : 'save…';
+        };
+        frame.contentWindow.odr.onEditModeChange = (event) => {
+          edit.textContent = event.editing ? 'editing' : 'edit';
+          if (event.reason) status.textContent = event.message;
+        };
+      }
 
       function show(index) {
+        collect();
         const { html, externalResources } = doc.render(index);
         if (externalResources.length > 0) {
           // Media is never inlined, so a blob: iframe cannot resolve it. A real
@@ -69,7 +122,9 @@
         }
         if (url) URL.revokeObjectURL(url);
         url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        frame.onload = wire;
         frame.src = url;
+        framed = doc;
         frame.hidden = false;
         drop.hidden = true;
       }
@@ -96,6 +151,7 @@
           }
         }
 
+        filename = file.name;
         const list = doc.listViews();
         views.replaceChildren(
           ...list.map((v) => new Option(`${v.name} (${v.path})`, v.index)),
@@ -109,6 +165,23 @@
         .getElementById('file')
         .addEventListener('change', (e) => e.target.files[0] && open(e.target.files[0]));
       views.addEventListener('change', () => show(Number(views.value)));
+
+      edit.addEventListener('click', () => {
+        const page = editing();
+        page.isEnabled() ? page.disable() : page.enable();
+      });
+
+      save.addEventListener('click', () => {
+        // a file without the edits is not what the button offers
+        if (!collect()) return;
+        const saved = URL.createObjectURL(new Blob([doc.save()]));
+        const link = document.createElement('a');
+        link.href = saved;
+        link.download = filename;
+        link.click();
+        // revoking in the same tick cancels the download in chrome
+        setTimeout(() => URL.revokeObjectURL(saved), 0);
+      });
 
       document.addEventListener('dragover', (e) => e.preventDefault());
       document.addEventListener('drop', (e) => {

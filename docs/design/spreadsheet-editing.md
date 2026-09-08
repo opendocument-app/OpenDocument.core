@@ -375,8 +375,11 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    host's save button and back-press warning read. An undo shows the value the
    op replaced and drops it from the log, so what the log hands out and what the
    page shows stay the same thing.
-5. `test/browser/sheet` grows the editing cases; the wasm example gets an
-   edit-and-save button, which is also the host-wiring reference for droid/ios.
+5. **Landed.** `test/browser/sheet/editing.html` holds the editing cases; the
+   wasm example turns the mode on, lights its save button off `onEditChange`,
+   and writes the log into the document before it saves — the host-wiring
+   reference for droid/ios. A view holds its own log, so the example applies it
+   when the view goes away as well as on save.
 
 ### Step 2 — Materialise the cells that are not there
 

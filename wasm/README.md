@@ -187,7 +187,8 @@ cmake --build build-wasm --target odr_wasm
 
 The package lands in `build-wasm/wasm/dist` and is directly importable.
 `wasm/example/index.html` opens it with no bundler; serve the repository over
-HTTP and visit it.
+HTTP and visit it. Its `edit` and `save` buttons drive a sheet's `odr.editing`
+and are the reference for wiring a host to it.
 
 Tests run under node, from ctest with `-DODR_TEST=ON`:
 
