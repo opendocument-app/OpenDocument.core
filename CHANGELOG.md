@@ -16,6 +16,19 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The rendered sheet exposes `odr.editing`: `enable()` / `disable()` turn the
+  mode on, `lockAt()` answers for a cell, and a refusal reaches the host as
+  `odr.onEditRefused` / `odr.onEditModeChange`, whose codes share the space
+  `odr.onError` numbers. Beside it `odr.sheet` addresses the view the way an op
+  does — `cellAt`, `positionOf`, `pinned` and `pin`, by position rather than by
+  where a cell happens to sit after a merge or a sort.
+
+- A sheet states in its markup what the page cannot work out: the sheet an op
+  names (`data-odr-sheet`), whether the document can be edited at all
+  (`data-odr-editable`), and the lock on a cell that cannot be —
+  `data-odr-lock` of `formula`, `rich` or `shapes`, with an `odr-locked` class
+  beside it.
+
 - A sheet rendered with `HtmlConfig::editable` carries no `contenteditable`
   and no `data-odr-path`: its editing is an overlay, so the markup states
   none. A cell's runs fold into the `td` as they do read-only.

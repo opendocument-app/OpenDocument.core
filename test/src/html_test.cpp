@@ -853,6 +853,50 @@ TEST(html, an_editable_sheet_writes_the_markup_a_read_only_one_does) {
   EXPECT_EQ(page, render_sheet(file, HtmlConfig()));
 }
 
+// The page cannot work these out for itself, so the markup states them: which
+// sheet an op names, and whether `enable()` may say yes at all.
+TEST(html, a_sheet_states_its_index_and_whether_it_can_be_edited) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_NE(page.find(R"(data-odr-sheet="0")"), std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-editable="true")"), std::string::npos);
+}
+
+// A formula cell is locked: overwriting it leaves its dependants stale.
+TEST(html, a_formula_cell_is_locked_with_its_reason) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+          R"( office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      HtmlConfig());
+
+  EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
+  EXPECT_NE(page.find("odr-locked"), std::string::npos);
+}
+
+// A write replaces the cell's one run, so richer markup is locked rather than
+// thrown away.
+TEST(html, a_cell_of_several_paragraphs_is_locked_rich) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
+                         R"(<text:p>a</text:p><text:p>b</text:p>)"
+                         R"(</table:table-cell>)")),
+      HtmlConfig());
+
+  EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
+}
+
+// The cost is a class on the locked cells only, nothing on the others.
+TEST(html, a_plain_cell_carries_no_lock) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
+  EXPECT_EQ(page.find("odr-locked"), std::string::npos);
+}
+
 // A text document still says so in the markup: it has no overlay.
 TEST(html, an_editable_text_document_marks_its_runs) {
   HtmlConfig config;

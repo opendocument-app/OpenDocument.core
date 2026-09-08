@@ -288,6 +288,49 @@ bool is_blank(const SheetCell &cell) {
   return true;
 }
 
+/// Empty, or one text run at most - what a write can replace. odf wraps a
+/// cell's text in a `text:p`, ooxml hangs it under the `c` directly, so a
+/// single paragraph is unwrapped once.
+bool holds_one_run(const ElementRange &children, const bool unwrap = true) {
+  ElementIterator child = children.begin();
+  if (child == children.end()) {
+    return true;
+  }
+  const Element only = *child;
+  if (++child != children.end()) {
+    return false;
+  }
+  if (only.type() == ElementType::text) {
+    return true;
+  }
+  return unwrap && only.type() == ElementType::paragraph &&
+         holds_one_run(only.children(), false);
+}
+
+/// Its place among the document's sheets, which is how an op names one.
+std::uint32_t sheet_ordinal(const Sheet &sheet) {
+  std::uint32_t ordinal = 0;
+  for (Element previous = sheet.previous_sibling(); previous;
+       previous = previous.previous_sibling()) {
+    ++ordinal;
+  }
+  return ordinal;
+}
+
+/// Why a cell cannot be edited, or null where it can be. The names the page
+/// reports to its host; `spreadsheet-editing.md` decision 3 lists them.
+const char *cell_lock(const SheetCell &cell, const bool anchors_shapes) {
+  if (cell.value().has_formula()) {
+    return "formula";
+  }
+  // its drawings are what the cell is, and an overlay would cover them
+  if (anchors_shapes) {
+    return "shapes";
+  }
+  // a write replaces the cell's one run, so anything richer would be lost
+  return holds_one_run(cell.children()) ? nullptr : "rich";
+}
+
 /// A shape or picture anchored in a cell reaches past it by design.
 bool holds_only_text(const SheetCell &cell) {
   for (const Element child : cell.children()) {
@@ -429,17 +472,24 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
 
   state.out().write_element_begin(
-      "table", HtmlElementOptions()
-                   .set_class("odr-sheet")
-                   .set_style([&]() -> std::optional<HtmlWritable> {
-                     if (!print_fit.has_value()) {
-                       return std::nullopt;
-                     }
-                     // `Measure` renders no exponent form
-                     return "--odr-print-fit:" +
-                            Measure(*print_fit, DynamicUnit()).to_string() +
-                            ";";
-                   }()));
+      "table",
+      HtmlElementOptions()
+          .set_class("odr-sheet")
+          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+            // what the editor asks before the user clicks anything
+            clb("data-odr-editable",
+                state.document_editable() ? "true" : "readOnly");
+            // every op names its sheet, and a view holds only one
+            clb("data-odr-sheet", std::to_string(sheet_ordinal(sheet)));
+          })
+          .set_style([&]() -> std::optional<HtmlWritable> {
+            if (!print_fit.has_value()) {
+              return std::nullopt;
+            }
+            // `Measure` renders no exponent form
+            return "--odr-print-fit:" +
+                   Measure(*print_fit, DynamicUnit()).to_string() + ";";
+          }()));
 
   state.out().write_element_begin("col",
                                   HtmlElementOptions()
@@ -608,6 +658,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const std::optional<FoldedCell> folded = fold_cell(
           cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
 
+      const char *lock = cell_lock(cell, anchors_shapes);
+
       state.out().write_element_begin(
           "td",
           HtmlElementOptions()
@@ -619,6 +671,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 if (cell_span.rows > 1) {
                   clb("rowspan", std::to_string(cell_span.rows));
                 }
+                if (lock != nullptr) {
+                  clb("data-odr-lock", lock);
+                }
               })
               .set_style(
                   translate_table_cell_style(cell_style) +
@@ -628,10 +683,16 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                       (folded.has_value() ? folded->style : std::string()),
                   state.styles())
               .set_class([&]() -> std::optional<HtmlWritable> {
-                if (cell_value_type == ValueType::float_number) {
+                const bool number = cell_value_type == ValueType::float_number;
+                if (number && lock != nullptr) {
+                  return "odr-value-type-float odr-locked";
+                }
+                if (number) {
                   return "odr-value-type-float";
                 }
-                return std::nullopt;
+                return lock != nullptr
+                           ? std::optional<HtmlWritable>("odr-locked")
+                           : std::nullopt;
               }()));
       if (column_index == 0 && row_index == 0) {
         for (const Element shape : sheet.shapes()) {

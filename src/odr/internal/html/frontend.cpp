@@ -1527,6 +1527,8 @@ constexpr std::string_view spreadsheet_js = R"js(
 
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
 
+  var odr = (window.odr = window.odr || {});
+
   var style = document.createElement("style");
   document.head.appendChild(style);
 
@@ -1562,8 +1564,98 @@ constexpr std::string_view spreadsheet_js = R"js(
       columnRule(pinnedColumn, "var(--odr-sheet-wash-ruler)", "thead ");
   }
 
-  function columnOf(cell) {
+  // What the wash paints: the cell's place among the ones written beside it,
+  // gutter included, which is what `nth-child` counts. Not a position - a
+  // merge writes nothing for a covered one, and gets no wash either.
+  function rulerColumn(cell) {
     return cell !== null && !merged ? cell.cellIndex : -1;
+  }
+
+  // The gutter's label, which names the row wherever a sort has put it.
+  function rowOf(tr) {
+    return Number(tr.cells[0].textContent) - 1;
+  }
+
+  var index = null;
+
+  // Whether a cell above still reaches into @p row.
+  function holds(above, row) {
+    return above !== undefined && above.last >= row;
+  }
+
+  // A row by its label and, where the sheet merges, its cells by position.
+  // Walked once: a merged sheet is offered no sort control, so the rows are
+  // still in the file's order here and one pass can carry the rowspans down.
+  function build() {
+    var index = { rows: new Map(), positions: new Map() };
+    var covered = [];
+    var body = table.tBodies[0];
+    for (var i = 0; i < body.rows.length; ++i) {
+      var tr = body.rows[i];
+      var row = rowOf(tr);
+      var line = [];
+      index.rows.set(row, { tr: tr, cells: line });
+      if (!merged) {
+        continue;
+      }
+      var column = 0;
+      for (var j = 1; j < tr.cells.length; ++j) {
+        var td = tr.cells[j];
+        while (holds(covered[column], row)) {
+          line[column] = covered[column].cell;
+          ++column;
+        }
+        var columns = Number(td.getAttribute("colspan") || 1);
+        var last = row + Number(td.getAttribute("rowspan") || 1) - 1;
+        for (var k = 0; k < columns; ++k) {
+          line[column + k] = td;
+          covered[column + k] = { last: last, cell: td };
+        }
+        index.positions.set(td, { column: column, row: row });
+        column += columns;
+      }
+      // A rowspan reaching past the row's last cell covers the rest of it.
+      for (; column < covered.length; ++column) {
+        if (holds(covered[column], row)) {
+          line[column] = covered[column].cell;
+        }
+      }
+    }
+    return index;
+  }
+
+  function indexed() {
+    if (index === null) {
+      index = build();
+    }
+    return index;
+  }
+
+  // The `td` at a position, or null past the sheet's extent. A position a
+  // merge covers answers with the cell covering it, which is the one the file
+  // states and an op names.
+  function cellAt(column, row) {
+    var entry = indexed().rows.get(row);
+    if (entry === undefined || column < 0) {
+      return null;
+    }
+    var cell = merged ? entry.cells[column] : entry.tr.cells[column + 1];
+    return cell === undefined ? null : cell;
+  }
+
+  // Where a `td` sits, the way an op names it. Null for anything else - a
+  // header, a cell of another table.
+  function positionOf(cell) {
+    if (cell === null || cell.tagName !== "TD") {
+      return null;
+    }
+    if (merged) {
+      var position = indexed().positions.get(cell);
+      return position === undefined
+        ? null
+        : { column: position.column, row: position.row };
+    }
+    return { column: cell.cellIndex - 1, row: rowOf(cell.parentElement) };
   }
 
   var raisedCell = null;
@@ -1671,8 +1763,51 @@ constexpr std::string_view spreadsheet_js = R"js(
     paint();
   }
 
+  // What is pinned: a cell, or a whole column or row where a header is, the
+  // axis that header does not name being null. Null where nothing is pinned.
+  function pinnedPosition() {
+    if (pinnedCell === null) {
+      return null;
+    }
+    var position = positionOf(pinnedCell);
+    if (position !== null) {
+      return { column: position.column, row: position.row, cell: pinnedCell };
+    }
+    return {
+      column: pinnedCell.classList.contains("odr-sheet-column-header")
+        ? pinnedCell.cellIndex - 1
+        : null,
+      row: pinnedRow === null ? null : rowOf(pinnedRow),
+      cell: pinnedCell,
+    };
+  }
+
+  // Pins the cell at a position, as a click on it does; null clears the pin.
+  // False where the sheet holds no such cell.
+  function pinAt(position) {
+    if (position === null) {
+      pin(-1, null, null);
+      return true;
+    }
+    var cell = cellAt(position.column, position.row);
+    if (cell === null) {
+      return false;
+    }
+    pin(rulerColumn(cell), cell.parentElement, cell);
+    return true;
+  }
+
+  // What the script beside this one, and a host, ask of the sheet: positions
+  // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
+  odr.sheet = {
+    cellAt: cellAt,
+    positionOf: positionOf,
+    pinned: pinnedPosition,
+    pin: pinAt,
+  };
+
   table.addEventListener("mouseover", function (event) {
-    var column = columnOf(event.target.closest("td,th"));
+    var column = rulerColumn(event.target.closest("td,th"));
     if (column !== hovered) {
       hovered = column;
       paint();
@@ -1702,13 +1837,13 @@ constexpr std::string_view spreadsheet_js = R"js(
     }
 
     if (cell.classList.contains("odr-sheet-column-header")) {
-      pin(columnOf(cell), null, cell);
+      pin(rulerColumn(cell), null, cell);
     } else if (cell.classList.contains("odr-sheet-row-header")) {
       pin(-1, cell.parentElement, cell);
     } else if (cell.classList.contains("odr-sheet-corner")) {
       pin(-1, null, null);
     } else {
-      pin(columnOf(cell), cell.parentElement, cell);
+      pin(rulerColumn(cell), cell.parentElement, cell);
     }
   });
 
@@ -1851,6 +1986,130 @@ constexpr std::string_view spreadsheet_js = R"js(
       true
     );
   }
+})();
+)js";
+
+/// `odr.editing`: the mode, and the refusals the page reports to its host.
+/// A sheet's editing is an overlay, so the markup states only what the page
+/// cannot work out - the document's editability and a locked cell's reason.
+constexpr std::string_view sheet_editing_js = R"js(
+(function () {
+  "use strict";
+
+  var table = document.querySelector(".odr-sheet");
+  if (table === null) {
+    return;
+  }
+
+  var odr = (window.odr = window.odr || {});
+
+  var sheet = Number(table.getAttribute("data-odr-sheet") || 0);
+  var editable = table.getAttribute("data-odr-editable") === "true";
+  var editing = false;
+  var lastRefusal = null;
+
+  // One space with `odr.onError`'s codes, appended and never renumbered - 1 is
+  // `errorIllegalEditNewLine`. The host maps the code to its own wording; the
+  // message is for a developer who wires nothing.
+  var refusals = {
+    formula: { code: 2, message: "cell holds a formula" },
+    rich: { code: 3, message: "cell holds more than one plain run" },
+    shapes: { code: 4, message: "cell holds a drawing" },
+    readOnly: { code: 5, message: "document cannot be edited" },
+  };
+
+  odr.onEditRefused = function (event) {
+    console.warn("edit refused " + event.code + ": " + event.message);
+  };
+  odr.onEditModeChange = function (event) {
+    console.log("editing " + (event.editing ? "on" : "off"));
+  };
+  odr.onEditChange = function () {};
+
+  function fire(name, event) {
+    if (typeof odr[name] === "function") {
+      odr[name](event);
+    }
+  }
+
+  /// Four taps on a locked cell are one snackbar: the same refusal within two
+  /// seconds of the last is the page's to drop.
+  function refuse(reason, column, row) {
+    var refusal = refusals[reason] || refusals.readOnly;
+    var key = reason + ":" + column + ":" + row;
+    var now = Date.now();
+    if (lastRefusal && lastRefusal.key === key && now - lastRefusal.at < 2000) {
+      return;
+    }
+    lastRefusal = { key: key, at: now };
+    fire("onEditRefused", {
+      sheet: sheet,
+      column: column,
+      row: row,
+      reason: reason,
+      code: refusal.code,
+      message: refusal.message,
+    });
+  }
+
+  function modeChange(reason) {
+    fire("onEditModeChange", {
+      editing: editing,
+      editable: editable,
+      reason: reason || null,
+      code: reason ? refusals[reason].code : 0,
+      message: reason ? refusals[reason].message : "",
+    });
+  }
+
+  odr.editing = {
+    /// Answers whether the mode is on. A document that cannot be edited
+    /// refuses and says why, so a host can grey its button before a click.
+    enable: function () {
+      if (!editable) {
+        modeChange("readOnly");
+        return false;
+      }
+      if (!editing) {
+        editing = true;
+        table.classList.add("odr-editing");
+        modeChange(null);
+      }
+      return true;
+    },
+    disable: function () {
+      if (editing) {
+        editing = false;
+        table.classList.remove("odr-editing");
+        modeChange(null);
+      }
+    },
+    isEnabled: function () {
+      return editing;
+    },
+    /// Whether `enable` would succeed.
+    isEditable: function () {
+      return editable;
+    },
+    /// The lock on the cell at (@p column, @p row), or null where it has none.
+    lockAt: function (column, row) {
+      var cell = odr.sheet.cellAt(column, row);
+      return cell === null ? null : cell.getAttribute("data-odr-lock");
+    },
+  };
+
+  odr.editing.refuseAt = function (column, row) {
+    if (!editable) {
+      refuse("readOnly", column, row);
+      return true;
+    }
+    var lock = odr.editing.lockAt(column, row);
+    if (lock !== null) {
+      refuse(lock, column, row);
+      return true;
+    }
+    return false;
+  };
 })();
 )js";
 
@@ -2266,6 +2525,8 @@ constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
                                 "search.js", search_js};
 constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
                                      "spreadsheet.js", spreadsheet_js};
+constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
+                                       "sheet-editing.js", sheet_editing_js};
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
                               "text.js", text_js};
 constexpr Asset viewport_js_asset{HtmlResourceType::js, "text/javascript",
@@ -2425,6 +2686,7 @@ void html::write_search_script(const WritingState &state) {
 
 void html::write_spreadsheet_script(const WritingState &state) {
   write_script(spreadsheet_js_asset, state);
+  write_script(sheet_editing_js_asset, state);
 }
 
 void html::write_text_script(const WritingState &state) {
