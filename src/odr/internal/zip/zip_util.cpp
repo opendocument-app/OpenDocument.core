@@ -132,7 +132,8 @@ RelPath Archive::Entry::path() const {
   std::array<char, MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE> filename{};
   mz_zip_reader_get_filename(m_archive->zip(), m_index, filename.data(),
                              static_cast<mz_uint>(filename.size()));
-  return RelPath(filename.data());
+  // a leading slash is malformed (APPNOTE.TXT 4.4.17.1) and read away
+  return Path(filename.data()).make_relative();
 }
 
 Method Archive::Entry::method() const {

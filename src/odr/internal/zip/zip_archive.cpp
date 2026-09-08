@@ -44,6 +44,10 @@ ZipArchive::ZipArchive() = default;
 ZipArchive::ZipArchive(const std::shared_ptr<util::Archive> &archive) {
   for (auto &&entry : *archive) {
     RelPath path(entry.path());
+    // an entry named "/" addresses nothing
+    if (path.empty()) {
+      continue;
+    }
     if (entry.is_file()) {
       std::uint8_t compression_level = 6;
       if (entry.method() == util::Method::STORED) {
