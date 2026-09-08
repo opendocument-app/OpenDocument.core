@@ -1,0 +1,30 @@
+:root{
+--odr-xml-text:#1f2328;
+--odr-xml-muted:#6e7781;
+--odr-xml-punct:#57606a;
+--odr-xml-name:#116329;
+--odr-xml-attr:#953800;
+--odr-xml-value:#0a3069;
+--odr-xml-meta:#8250df;
+--odr-xml-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body{margin:0;background:#fff}
+.odr-xml{padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) max(16px,var(--odr-min-margin-left,0px));color:var(--odr-xml-text);font:13px/1.6 var(--odr-xml-mono);word-break:break-word;overflow-wrap:anywhere}
+.odr-xml-line,.odr-xml summary{padding-left:1.5em}
+.odr-xml summary{display:block;position:relative;list-style:none;cursor:pointer}
+.odr-xml summary::-webkit-details-marker{display:none}
+/* U+25BE, U+25B8 */
+.odr-xml summary::before{content:"\25BE";position:absolute;left:.35em;color:var(--odr-xml-muted)}
+.odr-xml details:not([open])>summary::before{content:"\25B8"}
+.odr-xml summary:hover{background:rgba(0,0,0,.04)}
+/* Indentation is spaces, not padding, so a copy of the page carries it. */
+.odr-xml-indent{white-space:pre}
+.odr-xml-tag{color:var(--odr-xml-punct)}
+.odr-xml-name{color:var(--odr-xml-name)}
+.odr-xml-attr{color:var(--odr-xml-attr)}
+.odr-xml-value{color:var(--odr-xml-value)}
+/* Source text, everywhere it is written - html would fold a run of spaces. */
+.odr-xml-text,.odr-xml-cdata,.odr-xml-comment,.odr-xml-value,.odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{white-space:pre-wrap}
+.odr-xml-cdata{color:var(--odr-xml-value)}
+.odr-xml-comment{color:var(--odr-xml-muted)}
+.odr-xml-decl,.odr-xml-doctype,.odr-xml-pi{color:var(--odr-xml-meta)}

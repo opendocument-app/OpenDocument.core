@@ -1,0 +1,9 @@
+:root{
+color-scheme:dark;
+--odr-text-fg:#e6edf3;
+--odr-text-muted:#8b949e;
+--odr-text-line:#30363d;
+--odr-text-gutter:#161b22;
+--odr-text-wash:rgba(255,255,255,.05);
+}
+body{background:#0d1117}

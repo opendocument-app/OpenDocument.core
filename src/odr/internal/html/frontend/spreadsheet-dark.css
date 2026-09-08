@@ -1,0 +1,14 @@
+:root{
+--odr-sheet-line:#30363d;
+--odr-sheet-rule:#484f58;
+--odr-sheet-ruler:#161b22;
+--odr-sheet-ruler-text:#8b949e;
+--odr-sheet-canvas:#0d1117;
+--odr-sheet-wash:rgba(255,255,255,.05);
+--odr-sheet-wash-pinned:rgba(255,255,255,.10);
+--odr-sheet-wash-ruler:rgba(255,255,255,.12);
+--odr-sheet-focus:#4c8dff;
+--odr-sheet-refused:#f0665b;
+--odr-sheet-raised:#1c2128;
+}
+.odr-sheet{background-color:#161b22!important}

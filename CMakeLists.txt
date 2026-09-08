@@ -86,6 +86,55 @@ else ()
     configure_file("${PRE_CONFIGURE_FILE}" "${POST_CONFIGURE_FILE}" @ONLY)
 endif ()
 
+# The renderer's own stylesheets and scripts. They live as the files a browser,
+# a formatter and `test/browser` can read, and are embedded into the library so
+# that nothing has to be shipped beside it.
+set(ODR_FRONTEND_ASSETS
+        "document.css"
+        "document-dark.css"
+        "spreadsheet.css"
+        "spreadsheet-dark.css"
+        "text.css"
+        "text-dark.css"
+        "xml.css"
+        "xml-dark.css"
+        "filesystem.css"
+        "filesystem-dark.css"
+        "media.css"
+        "search.css"
+        "search-dark.css"
+        "document.js"
+        "search.js"
+        "spreadsheet.js"
+        "sheet-editing.js"
+        "text.js"
+        "viewport.js"
+        "pdf-annotation.css"
+        "pdf-annotation.js"
+)
+set(ODR_FRONTEND_ASSET_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/odr/internal/html/frontend")
+# Generated rather than installed: it is an implementation detail of one source
+# file, and a consumer of the installed headers must not see it.
+set(ODR_FRONTEND_ASSETS_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/odr/internal/html/frontend_assets.hpp")
+set(ODR_FRONTEND_ASSET_PATHS "")
+foreach (ODR_FRONTEND_ASSET IN LISTS ODR_FRONTEND_ASSETS)
+    list(APPEND ODR_FRONTEND_ASSET_PATHS "${ODR_FRONTEND_ASSET_DIRECTORY}/${ODR_FRONTEND_ASSET}")
+endforeach ()
+# A `;` in a `-D` argument would split it into several, so the list travels
+# joined.
+string(JOIN "|" ODR_FRONTEND_ASSETS_ARGUMENT ${ODR_FRONTEND_ASSETS})
+add_custom_command(
+        OUTPUT "${ODR_FRONTEND_ASSETS_HEADER}"
+        COMMAND "${CMAKE_COMMAND}"
+        "-DASSET_DIR=${ODR_FRONTEND_ASSET_DIRECTORY}"
+        "-DASSETS=${ODR_FRONTEND_ASSETS_ARGUMENT}"
+        "-DOUTPUT=${ODR_FRONTEND_ASSETS_HEADER}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
+        DEPENDS ${ODR_FRONTEND_ASSET_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
+        COMMENT "Embedding the html frontend assets"
+        VERBATIM
+)
+
 set(ODR_SOURCE_FILES
         "src/odr/archive.cpp"
         "src/odr/document.cpp"
@@ -302,12 +351,14 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/zip/zip_util.cpp"
 )
 
-add_library(odr ${ODR_SOURCE_FILES})
+add_library(odr ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
 target_include_directories(odr
         PUBLIC
         src
         ${CMAKE_CURRENT_BINARY_DIR}/src
+        PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 target_link_libraries(odr
         PRIVATE

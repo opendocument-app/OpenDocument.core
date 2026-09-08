@@ -5,18 +5,18 @@ a position no `td` stands at, can only be seen in a browser, so these are run by
 hand rather than by `odr_test`.
 
 ```bash
-test/browser/sheet/serve         # extracts the css and the scripts, serves on :8732
+test/browser/sheet/serve         # serves on :8732
 open http://localhost:8732/tests.html
 open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
 ```
 
-`serve` lifts `document_css`, `spreadsheet_css`, `spreadsheet_js` (both
-literals) and `sheet_editing_js` out of `src/odr/internal/html/frontend.cpp`, so
-what runs is what ships. Each page prints its own report and heads it with a
-count; a page holds one `.odr-sheet`, because the script binds to the first one
-it finds.
+`serve` serves `document.css`, `spreadsheet.css`, `spreadsheet.js` and
+`sheet-editing.js` straight out of `src/odr/internal/html/frontend/`, so what
+runs is the file the library embeds. Each page prints its own report and heads
+it with a count; a page holds one `.odr-sheet`, because the script binds to the
+first one it finds.
 
 - **`tests.html`** — raising a cell whose text is cut off. The markup is what
   `translate_sheet` writes, cut down to the shapes the script has to tell apart:

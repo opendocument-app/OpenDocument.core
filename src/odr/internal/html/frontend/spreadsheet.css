@@ -1,0 +1,69 @@
+:root{
+--odr-sheet-line:#e3e5e8;
+--odr-sheet-rule:#c8ccd1;
+--odr-sheet-ruler:#f5f6f7;
+--odr-sheet-ruler-text:#5c6169;
+--odr-sheet-canvas:#eceef1;
+--odr-sheet-wash:rgba(0,0,0,.045);
+--odr-sheet-wash-pinned:rgba(0,0,0,.09);
+--odr-sheet-wash-ruler:rgba(0,0,0,.10);
+--odr-sheet-focus:#3c78dc;
+--odr-sheet-refused:#d1493f;
+--odr-sheet-raised:#ffffff;
+--odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+/* A sheet is not a page: past the last row and column is canvas. */
+body{margin:0;background:var(--odr-sheet-canvas)}
+.odr-sheet{background:#fff;border-collapse:collapse;table-layout:fixed}
+/* The sheet's own cells, not a table the document itself drew inside one. The
+   font is what anything in a cell falls back to, a string written straight
+   into it included. */
+.odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px;font-family:var(--odr-sheet-font);font-size:10pt}
+/* Exactly the cell's height, which is what holds a row to the height the file
+   states. `translate_sheet` says per cell what a line too long for it does. */
+.odr-sheet>tbody>tr>td>x-p{height:inherit}
+/* Sticky cells in a collapsed border model do not repaint their borders in
+   Chrome or WebKit, so the ruler uses inset shadows. */
+.odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
+.odr-sheet thead th{top:0;z-index:2;height:24px;box-shadow:inset 0 -1px 0 var(--odr-sheet-rule),inset -1px 0 0 var(--odr-sheet-line)}
+.odr-sheet-row-header{left:0;z-index:1;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
+.odr-sheet-corner{left:0;z-index:3;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-rule)}
+.odr-gridlines-soft .odr-sheet td{border-top:1px solid var(--odr-sheet-line);border-left:1px solid var(--odr-sheet-line)}
+.odr-gridlines-hard .odr-sheet td{border:1px solid var(--odr-sheet-line)!important}
+.odr-sheet td.odr-value-type-float{text-align:right}
+/* `background-image` layers over the document's own cell background instead of
+   replacing it, and leaves `box-shadow` to the ruler. */
+.odr-sheet tbody tr:hover>*{background-image:linear-gradient(var(--odr-sheet-wash),var(--odr-sheet-wash))}
+.odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
+.odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
+.odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
+/* The clipped cell a reader asked to see: out of flow so the row cannot move,
+   sized to the string, over its neighbours. `.odr-sheet-raised-box` is the
+   wrapper the script adds to a cell that writes its string without one. */
+.odr-sheet td.odr-sheet-raised{overflow:visible!important;clip-path:none!important;z-index:4}
+.odr-sheet td.odr-sheet-raised.odr-sheet-pinned-cell{outline:none}
+.odr-sheet td.odr-sheet-raised>x-p,.odr-sheet td.odr-sheet-raised>.odr-sheet-raised-box{position:absolute!important;left:0;top:0;z-index:4;height:auto!important;min-width:100%;width:max-content;max-width:60vw;padding:1px 6px;margin:-1px -6px;background:var(--odr-sheet-raised)!important;box-shadow:0 1px 4px rgba(0,0,0,.35);outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;overflow:visible!important;white-space:normal!important}
+.odr-sheet-raised-box{display:block}
+/* The editor is an overlay: over the ruler, which sticks at 3, and over the
+   raise at 4. */
+.odr-sheet-editor{position:absolute;z-index:5;box-sizing:border-box;margin:0;padding:1px 6px;border:0;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;border-radius:0;background:var(--odr-sheet-raised)}
+.odr-editing td{cursor:cell}
+.odr-editing td.odr-locked{cursor:not-allowed}
+.odr-sheet td.odr-sheet-refused{outline:2px solid var(--odr-sheet-refused);outline-offset:-2px}
+/* The header's `position:sticky` already makes it a containing block. */
+.odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
+.odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}
+.odr-sheet-sort:hover{background:var(--odr-sheet-wash-ruler)}
+.odr-sheet-sort::after{content:"\25BE";font-size:15px;line-height:1}
+.odr-sheet-sort-asc::after{content:"\25B4"}
+/* `--odr-print-fit` is written per sheet by `translate_sheet`; `zoom` keeps
+   the rows breaking across pages. Only `!important` beats the inline column
+   width. The ruler collapses rather than `display:none`, which would take the
+   cells out of their rows and shift every column left. */
+@media print{
+.odr-sheet thead{display:none}
+.odr-sheet-gutter{visibility:collapse;width:0}
+.odr-sheet-row-header{visibility:collapse;padding:0;box-shadow:none}
+.odr-sheet{zoom:var(--odr-print-fit,1);max-width:100%}
+.odr-sheet col{min-width:0!important}
+}

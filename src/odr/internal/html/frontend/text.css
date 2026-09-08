@@ -1,0 +1,21 @@
+:root{
+--odr-text-fg:#1f2328;
+--odr-text-muted:#8c959f;
+--odr-text-line:#d8dee4;
+--odr-text-gutter:#f6f8fa;
+--odr-text-wash:rgba(0,0,0,.04);
+--odr-text-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body{margin:0;background:#fff}
+.odr-text{display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4}
+/* The numbers are ours, not the file's, so the gutter stays out of a selection
+   of the page. */
+.odr-text-nr{display:flex;flex-direction:column;flex:none;padding:max(16px,var(--odr-min-margin-top,0px)) 12px max(16px,var(--odr-min-margin-bottom,0px)) max(16px,var(--odr-min-margin-left,0px));text-align:right;color:var(--odr-text-muted);background:var(--odr-text-gutter);border-right:1px solid var(--odr-text-line);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 16px;white-space:pre}
+.odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
+/* A hovered line reaches its number, which is in the other column, by beginning
+   a viewport to the left of it; the padding puts the text back where it was.
+   Overflow to the left of the page does not scroll. */
+.odr-text-body>div{margin-left:-100vw;padding-left:100vw}
+.odr-text-body>div:hover{background:var(--odr-text-wash)}
+[contenteditable]:focus{outline:none}

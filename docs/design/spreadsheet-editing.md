@@ -47,9 +47,9 @@ results go stale the moment an input changes.
 | Cell value | `SheetCellAdapter` | `sheet_cell_value` reads the number and the formula (step 0.1, landed); `sheet_cell_value_type` stays the cheap question the renderer asks. Dates, booleans and errors still report `string` |
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
-| Browser: sheet script | `frontend.cpp::spreadsheet_js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
-| Browser: editing script | `frontend.cpp::document_js` | A `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` emits the envelope |
-| Browser: sheet editor | `frontend.cpp::sheet_editing_js` | `odr.editing` with the mode, the locks and the refusals (step 1.1, landed), and the overlay that types into a cell (steps 1.2/1.3, landed). Undo/redo and `committed()` are step 1.4 |
+| Browser: sheet script | `html/frontend/spreadsheet.js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
+| Browser: editing script | `html/frontend/document.js` | A `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` emits the envelope |
+| Browser: sheet editor | `html/frontend/sheet-editing.js` | `odr.editing` with the mode, the locks and the refusals (step 1.1, landed), and the overlay that types into a cell (steps 1.2/1.3, landed). Undo/redo and `committed()` are step 1.4 |
 | Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
@@ -285,8 +285,7 @@ wrapper — an editor whose overlay is open while the other script lowers the
 cell underneath it.
 
 **Why not one script instead:** the read-only view would carry the editor it
-never runs, and a raw string literal caps at 16380 bytes on msvc
-(`fits_a_literal`), which the two together would reach during step 1.
+never runs.
 
 **The coordinates are the ones an op names** (decision 1), never a DOM index.
 The wash paints through `nth-child`, so the ruler's index stays private to the

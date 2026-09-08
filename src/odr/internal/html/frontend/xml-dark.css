@@ -1,0 +1,12 @@
+:root{
+color-scheme:dark;
+--odr-xml-text:#e6edf3;
+--odr-xml-muted:#8b949e;
+--odr-xml-punct:#9198a1;
+--odr-xml-name:#7ee787;
+--odr-xml-attr:#ffa657;
+--odr-xml-value:#a5d6ff;
+--odr-xml-meta:#d2a8ff;
+}
+body{background:#0d1117}
+.odr-xml summary:hover{background:rgba(255,255,255,.06)}
