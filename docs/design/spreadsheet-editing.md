@@ -46,8 +46,9 @@ results go stale the moment an input changes.
 | Cell value | `SheetCellAdapter` | `sheet_cell_value` reads the number and the formula (step 0.1, landed); `sheet_cell_value_type` stays the cheap question the renderer asks. Dates, booleans and errors still report `string` |
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
-| Browser: sheet script | `frontend.cpp::spreadsheet_js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index |
+| Browser: sheet script | `frontend.cpp::spreadsheet_js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
 | Browser: editing script | `frontend.cpp::document_js` | A `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` emits the envelope |
+| Browser: sheet editor | `frontend.cpp::sheet_editing_js` | `odr.editing` with the mode, the locks and the refusals (step 1.1, landed), and the overlay that types into a cell (steps 1.2/1.3, landed). Undo/redo and `committed()` are step 1.4 |
 | Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
@@ -209,7 +210,8 @@ odr.onEditModeChange = function (event) {};
 **The message is for the console; the code is for the host.** A mobile
 snackbar is written in the app's own string catalogue, and nothing in this
 library is localised — so the host maps `code` to its wording, and `reason`
-(`"formula"`, `"repeated"`, `"rich"`, `"readOnly"`, `"encrypted"`, `"cut"`)
+(`"formula"`, `"formulaInput"`, `"repeated"`, `"rich"`, `"readOnly"`,
+`"encrypted"`, `"cut"`)
 is the same thing spelled for a reader of the log. We still ship an English
 `message`, so a developer who wires nothing sees it in the console (the
 `odr.onError` default does exactly this) and a desktop host with no catalogue
@@ -266,6 +268,10 @@ odr.sheet.cellAt(column, row); // the `td`, null past the sheet's extent
 odr.sheet.positionOf(cell);    // {column, row}, null for a header
 odr.sheet.pinned();            // {column, row, cell}, null for none
 odr.sheet.pin(position);       // null clears; false where there is no cell
+odr.sheet.lower();             // puts back a cell the pin raised
+odr.sheet.valueAt(column, row);       // what the page shows, as an op states it
+odr.sheet.showValue(column, row, v);  // shows it, and reflows the row
+odr.sheet.reflow(row);                // the spill geometry, measured again
 ```
 
 **Why not a copy in the editor:** the map is not a walk over `colspan`. A row
@@ -348,22 +354,24 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 
 ### Step 1 — The browser editor
 
-1. `odr.editing` mode: enable/disable, lock classes and the document attribute
-   from `translate_sheet`, and the three `odr.on*` callbacks with their code
-   table (decision 7). `spreadsheet_js` publishes `odr.sheet` in the same step
-   (decision 8) — the position map the mode reads a lock through.
-2. Overlay editor: double-click / Enter / typing opens it over the cell; Enter,
+1. **Landed.** `odr.editing` mode: enable/disable, lock classes and the
+   document attribute from `translate_sheet`, and the three `odr.on*` callbacks
+   with their code table (decision 7). `spreadsheet_js` publishes `odr.sheet` in
+   the same step (decision 8) — the position map the mode reads a lock through.
+2. **Landed**, with item 3: an editor that drops what is typed is not one.
+   Overlay editor: double-click / Enter / typing opens it over the cell; Enter,
    Tab and blur commit; Escape cancels; arrow keys move the pin, through
-   `odr.sheet.pin` rather than a pin of its own.
-3. Commit: parse per decision 4, record the op with its inverse, patch the
-   cell — text, `odr-value-type-float` for alignment, keep any shapes in A1 —
-   and **reflow the row**: the spill and clip `translate_sheet` measured for
-   the neighbours (`clip-path:inset`, `overflow:hidden`) are stale once a blank
-   cell fills or a full one empties. The script already has the measuring
-   half (`visibleRight`, `cutOff`).
-4. Undo/redo over the in-memory log; `getOperations()`; `committed()`; both
-   raise `onEditChange`, which is what a host's save button and back-press
-   warning read.
+   `odr.sheet.pin` rather than a pin of its own. A locked cell refuses on the
+   click rather than on the double click that would have opened it.
+3. **Landed.** Commit: parse per decision 4, record the op with its inverse,
+   patch the cell — text, `odr-value-type-float` for alignment, keep any shapes
+   in A1 — and **reflow the row**: the spill and clip `translate_sheet` measured
+   for the neighbours (`clip-path:inset`, `overflow:hidden`) are stale once a
+   blank cell fills or a full one empties. `odr.sheet` gained `valueAt`,
+   `showValue` and `reflow` for it, and `getOperations()` came with them: a log
+   nothing hands out is a log nothing can check.
+4. Undo/redo over the in-memory log; `committed()`; both raise `onEditChange`,
+   which is what a host's save button and back-press warning read.
 5. `test/browser/sheet` grows the editing cases; the wasm example gets an
    edit-and-save button, which is also the host-wiring reference for droid/ios.
 

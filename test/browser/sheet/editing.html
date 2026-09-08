@@ -1,0 +1,251 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet editing checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft">
+    <!-- A sheet as `translate_sheet` writes one, with the styles it hoists into
+         classes written inline: every column states a width, so a string is cut
+         where the next cell shows something. B3 holds a formula, C3 a run of
+         its own, D3 two of them. -->
+    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="2">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td style="max-width:0;white-space:nowrap;clip-path:inset(0 -80px 0 0)">a string that runs on</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap">stop</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">12.5</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" style="max-width:0;white-space:nowrap">7</td>
+          <td style="max-width:0;white-space:nowrap"><x-p><x-s style="font-weight:bold">bold</x-s></x-p></td>
+          <td class="odr-locked" data-odr-lock="rich" style="max-width:0;white-space:nowrap"><x-p><x-s>two</x-s><x-s>runs</x-s></x-p></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td style="max-width:0;white-space:nowrap">edit me</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">5</th>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code + " at " + event.column + "," + event.row);
+      };
+
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(target, key, shift) {
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", { key: key, shiftKey: !!shift, bubbles: true })
+        );
+        document.body.offsetHeight;
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function cell(column, row) {
+        return odr.sheet.cellAt(column, row);
+      }
+      // The cut `translate_sheet` states as `clip-path:inset(0 <right> 0 0)`.
+      function inset(cell) {
+        var match = /inset\(([^)]*)\)/.exec(cell.style.clipPath);
+        return match === null ? null : parseFloat(match[1].trim().split(/\s+/)[1]);
+      }
+
+      check("the mode has to be enabled", odr.editing.editAt(0, 3) === false);
+      check("and says so", odr.editing.enable() === true && odr.editing.isEnabled());
+
+      check("editing a cell opens an overlay", odr.editing.editAt(0, 3) === true && editor() !== null);
+      var box = cell(0, 3).getBoundingClientRect();
+      check(
+        "it stands over the cell",
+        Math.abs(editor().getBoundingClientRect().left - box.left) < 1 &&
+          Math.abs(editor().getBoundingClientRect().top - box.top) < 1 &&
+          Math.abs(editor().getBoundingClientRect().width - box.width) < 1
+      );
+      check("holding what the cell shows", editor().value === "edit me");
+      // `viewport.js` zooms the body, which a rect carries in blink only.
+      document.body.style.zoom = "0.5";
+      odr.editing.editAt(0, 3);
+      var zoomed = cell(0, 3).getBoundingClientRect();
+      check(
+        "it stands over it under a body zoom too",
+        Math.abs(editor().getBoundingClientRect().left - zoomed.left) < 1 &&
+          Math.abs(editor().getBoundingClientRect().top - zoomed.top) < 1
+      );
+      document.body.style.zoom = "";
+      press(editor(), "Escape");
+      odr.editing.editAt(0, 3);
+      press(editor(), "Escape");
+      check("escape closes it", editor() === null);
+      check("and the cell is as it was", cell(0, 3).textContent === "edit me" && ops().length === 0);
+
+      odr.editing.editAt(0, 3);
+      editor().value = "12.5";
+      press(editor(), "Enter");
+      check("enter commits", editor() === null && cell(0, 3).textContent === "12.5");
+      check("a number is aligned as one", cell(0, 3).classList.contains("odr-value-type-float"));
+      check(
+        "and the op states the number and the string it was typed as",
+        ops().length === 1 &&
+          ops()[0].op === "setCell" &&
+          ops()[0].sheet === 2 &&
+          ops()[0].column === 0 &&
+          ops()[0].row === 3 &&
+          ops()[0].value.type === "number" &&
+          ops()[0].value.number === 12.5 &&
+          ops()[0].value.text === "12.5"
+      );
+      var below = odr.sheet.pinned();
+      check("the pin moved to the row below", below.column === 0 && below.row === 4);
+
+      odr.editing.editAt(0, 3);
+      editor().value = "'12";
+      press(editor(), "Enter");
+      check("a leading quote forces a string", cell(0, 3).textContent === "12");
+      check("which is not aligned as a number", !cell(0, 3).classList.contains("odr-value-type-float"));
+      check(
+        "and the position still names one op",
+        ops().length === 1 && ops()[0].value.type === "string" && ops()[0].value.text === "12"
+      );
+
+      odr.editing.editAt(0, 3);
+      editor().value = "done";
+      press(editor(), "Tab");
+      var right = odr.sheet.pinned();
+      check("tab commits and moves right", right.column === 1 && right.row === 3);
+      check("the last write is what the op says", ops()[0].value.text === "done");
+
+      refusals = [];
+      odr.editing.editAt(2, 1);
+      editor().value = "=SUM(A1:A2)";
+      press(editor(), "Enter");
+      check("a typed formula is refused", refusals.length === 1 && refusals[0] === "formulaInput 6 at 2,1");
+      check("and the editor stays open", editor() !== null && editor().value === "=SUM(A1:A2)");
+      press(editor(), "Escape");
+      check("the cell was not written", cell(2, 1).textContent === "" && ops().length === 1);
+
+      refusals = [];
+      check("a formula cell cannot be edited", odr.editing.editAt(1, 2) === false && editor() === null);
+      check("and says why", refusals.length === 1 && refusals[0] === "formula 2 at 1,2");
+      check("the cell is outlined for the tap it answers", cell(1, 2).classList.contains("odr-sheet-refused"));
+      check("a cell of several runs neither", odr.editing.editAt(3, 2) === false);
+
+      odr.editing.editAt(2, 2);
+      editor().value = "plain";
+      press(editor(), "Enter");
+      check(
+        "the run a write goes through keeps its style",
+        cell(2, 2).textContent === "plain" &&
+          cell(2, 2).querySelector("x-s").style.fontWeight === "bold"
+      );
+
+      odr.sheet.pin({ column: 0, row: 1 });
+      press(document.body, "ArrowRight");
+      check("an arrow moves the pin", odr.sheet.pinned().column === 1 && odr.sheet.pinned().row === 1);
+      press(document.body, "x");
+      check("a printable key opens the editor on what it typed", editor() !== null && editor().value === "x");
+      press(editor(), "Escape");
+
+      odr.sheet.pin({ column: 0, row: 1 });
+      press(document.body, "Delete");
+      check("delete clears the cell", cell(0, 1).textContent === "");
+      check(
+        "as an op stating nothing",
+        ops().filter(function (op) { return op.column === 0 && op.row === 1; })[0].value.type === "empty"
+      );
+
+      var spilling = cell(0, 0);
+      check("a string starts out cut where its neighbour ends", inset(spilling) === -80);
+      odr.editing.editAt(1, 0);
+      editor().value = "stop it";
+      press(editor(), "Enter");
+      check(
+        "filling that neighbour cuts it at its own edge",
+        spilling.style.overflow === "hidden" && spilling.style.clipPath === "none"
+      );
+      odr.sheet.pin({ column: 1, row: 0 });
+      press(document.body, "Delete");
+      check(
+        "emptying it lets the string run up to the next cell showing something",
+        spilling.style.overflow === "visible" &&
+          Math.round(inset(spilling)) ===
+            -Math.round(cell(2, 0).getBoundingClientRect().left - spilling.getBoundingClientRect().right)
+      );
+      check(
+        "and a row showing nothing to the right is not cut at all",
+        cell(0, 1).style.overflow === "visible" && cell(0, 1).style.clipPath === "none"
+      );
+
+      // A `clip-path` is stated in layout pixels, which a rect under a body
+      // zoom is not.
+      document.body.style.zoom = "0.5";
+      odr.sheet.pin({ column: 2, row: 0 });
+      press(document.body, "Delete");
+      odr.editing.editAt(2, 0);
+      editor().value = "stop";
+      press(editor(), "Enter");
+      check(
+        "the cut is measured in layout pixels under a body zoom",
+        Math.round(inset(spilling)) ===
+          -(cell(2, 0).offsetLeft - spilling.offsetLeft - spilling.offsetWidth)
+      );
+      document.body.style.zoom = "";
+
+      odr.editing.editAt(0, 3);
+      odr.editing.disable();
+      check("disabling closes the editor", editor() === null && odr.editing.isEnabled() === false);
+      check(
+        "the log holds one op per position written",
+        ops().length === 5 &&
+          ops()
+            .map(function (op) { return op.column + "," + op.row; })
+            .join(" ") === "0,3 2,2 0,1 1,0 2,0"
+      );
+    </script>
+  </body>
+</html>

@@ -10,14 +10,18 @@ PORT = 8732
 
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE.parents[2] / "src" / "odr" / "internal" / "html" / "frontend.cpp"
+# A script over the 16380 bytes msvc holds in one literal is written as two.
 PARTS = {
-    "document.css": 'constexpr std::string_view document_css = R"css(',
-    "spreadsheet.css": 'constexpr std::string_view spreadsheet_css = R"css(',
-    "spreadsheet.js": 'constexpr std::string_view spreadsheet_js = R"js(',
-    "sheet-editing.js": 'constexpr std::string_view sheet_editing_js = R"js(',
+    "document.css": ('constexpr std::string_view document_css = R"css(',),
+    "spreadsheet.css": ('constexpr std::string_view spreadsheet_css = R"css(',),
+    "spreadsheet.js": (
+        'constexpr std::string_view spreadsheet_js = R"js(',
+        'constexpr std::string_view spreadsheet_js_tail = R"js(',
+    ),
+    "sheet-editing.js": ('constexpr std::string_view sheet_editing_js = R"js(',),
 }
 
-PAGES = ("tests.html", "positions.html", "sorting.html")
+PAGES = ("tests.html", "positions.html", "sorting.html", "editing.html")
 
 
 def extract(source: str, begin: str) -> str:
@@ -28,8 +32,8 @@ def extract(source: str, begin: str) -> str:
 
 def main() -> None:
     source = SOURCE.read_text()
-    for name, begin in PARTS.items():
-        (HERE / name).write_text(extract(source, begin))
+    for name, parts in PARTS.items():
+        (HERE / name).write_text("".join(extract(source, p) for p in parts))
     print(f"{SOURCE.name} -> {', '.join(PARTS)}")
 
     handler = functools.partial(

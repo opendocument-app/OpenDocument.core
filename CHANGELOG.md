@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A sheet cell can be typed into: an overlay opens on a double click or a key,
+  Enter and Tab commit, and `odr.editing.getOperations()` hands the host the
+  envelope `Document::edit` takes.
+
+- `odr.sheet` also answers what the page shows: `valueAt`, `showValue`,
+  `reflow` and `lower`.
+
 - **Fix**: a zip entry name with a leading slash is read relative to the
   archive root rather than throwing, and one named `/` alone is dropped. An
   `.odt` carrying such an entry now opens; LibreOffice still refuses it.
