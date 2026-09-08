@@ -81,6 +81,7 @@ constexpr std::string_view spreadsheet_css = R"css(
 --odr-sheet-wash-pinned:rgba(0,0,0,.09);
 --odr-sheet-wash-ruler:rgba(0,0,0,.10);
 --odr-sheet-focus:#3c78dc;
+--odr-sheet-refused:#d1493f;
 --odr-sheet-raised:#ffffff;
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
@@ -116,6 +117,12 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet td.odr-sheet-raised.odr-sheet-pinned-cell{outline:none}
 .odr-sheet td.odr-sheet-raised>x-p,.odr-sheet td.odr-sheet-raised>.odr-sheet-raised-box{position:absolute!important;left:0;top:0;z-index:4;height:auto!important;min-width:100%;width:max-content;max-width:60vw;padding:1px 6px;margin:-1px -6px;background:var(--odr-sheet-raised)!important;box-shadow:0 1px 4px rgba(0,0,0,.35);outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;overflow:visible!important;white-space:normal!important}
 .odr-sheet-raised-box{display:block}
+/* The editor is an overlay: over the ruler, which sticks at 3, and over the
+   raise at 4. */
+.odr-sheet-editor{position:absolute;z-index:5;box-sizing:border-box;margin:0;padding:1px 6px;border:0;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;border-radius:0;background:var(--odr-sheet-raised)}
+.odr-editing td{cursor:cell}
+.odr-editing td.odr-locked{cursor:not-allowed}
+.odr-sheet td.odr-sheet-refused{outline:2px solid var(--odr-sheet-refused);outline-offset:-2px}
 /* The header's `position:sticky` already makes it a containing block. */
 .odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
 .odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}
@@ -146,6 +153,7 @@ constexpr std::string_view spreadsheet_dark_css = R"css(
 --odr-sheet-wash-pinned:rgba(255,255,255,.10);
 --odr-sheet-wash-ruler:rgba(255,255,255,.12);
 --odr-sheet-focus:#4c8dff;
+--odr-sheet-refused:#f0665b;
 --odr-sheet-raised:#1c2128;
 }
 .odr-sheet{background-color:#161b22!important}
@@ -1797,6 +1805,149 @@ constexpr std::string_view spreadsheet_js = R"js(
     return true;
   }
 
+  // Nothing a reader would see, so the cell beside it may spill over it.
+  function isBlank(cell) {
+    return (
+      cell.textContent.trim() === "" &&
+      cell.querySelector(":not(x-p):not(x-s)") === null
+    );
+  }
+
+  // A row's cells by position, a covered one answering with the cell covering
+  // it. Null past the sheet's last row.
+  function rowCells(row) {
+    var entry = indexed().rows.get(row);
+    if (entry === undefined) {
+      return null;
+    }
+    if (merged) {
+      return entry.cells;
+    }
+    return Array.prototype.slice.call(entry.tr.cells, 1);
+  }
+
+  // The row's cells once each, with what `translate_sheet` states about them:
+  // `max-width:0` where the column states a width, which is where it also
+  // clips, and `nowrap` where the string may run past the cell.
+  function rowState(row) {
+    var cells = rowCells(row);
+    if (cells === null) {
+      return null;
+    }
+    var line = [];
+    for (var i = 0; i < cells.length; ++i) {
+      if (cells[i] === cells[i - 1]) {
+        continue;
+      }
+      var style = getComputedStyle(cells[i]);
+      line.push({
+        cell: cells[i],
+        blank: isBlank(cells[i]),
+        sized: style.maxWidth === "0px",
+        nowrap: style.whiteSpace === "nowrap",
+      });
+    }
+    return line;
+  }
+
+  // The spill `translate_sheet` measured goes stale the moment a cell fills or
+  // empties: its rule again, off the geometry the browser has. Offsets, not
+  // rects: blink scales a rect by the body zoom, a `clip-path` is stated under
+  // it.
+  function reflow(row) {
+    var line = rowState(row);
+    if (line === null) {
+      return false;
+    }
+
+    // What each cell sees to its right: the next one showing something, or
+    // the column stating no width that stops the spill before one.
+    var bound = null;
+    var stopped = false;
+    for (var i = line.length - 1; i >= 0; --i) {
+      line[i].bound = bound;
+      line[i].stopped = stopped;
+      if (!line[i].blank) {
+        bound = line[i].cell;
+        stopped = false;
+      } else if (!line[i].sized) {
+        bound = null;
+        stopped = true;
+      }
+    }
+
+    for (var j = 0; j < line.length; ++j) {
+      var entry = line[j];
+      if (!entry.sized || !entry.nowrap) {
+        continue;
+      }
+      var spill =
+        entry.bound === null
+          ? 0
+          : entry.bound.offsetLeft -
+            entry.cell.offsetLeft -
+            entry.cell.offsetWidth;
+      entry.cell.style.overflow =
+        spill > 0.5 || (entry.bound === null && !entry.stopped)
+          ? "visible"
+          : "hidden";
+      entry.cell.style.clipPath =
+        spill > 0.5 ? "inset(0 " + -spill + "px 0 0)" : "none";
+    }
+    return true;
+  }
+
+  // The run a write goes through, so its style survives; the cell itself
+  // where it writes its string without one.
+  function runOf(cell) {
+    var box = boxOf(cell);
+    while (
+      box !== null &&
+      box.childElementCount === 1 &&
+      box.firstElementChild.tagName === "X-S"
+    ) {
+      box = box.firstElementChild;
+    }
+    return box;
+  }
+
+  // What the page shows at a position, shaped the way an op states a value.
+  function valueAt(column, row) {
+    var cell = cellAt(column, row);
+    if (cell === null) {
+      return null;
+    }
+    var text = cell.textContent.trim();
+    if (text === "") {
+      return { type: "empty" };
+    }
+    if (cell.classList.contains("odr-value-type-float")) {
+      var number = toNumber(text);
+      if (!isNaN(number)) {
+        return { type: "number", number: number, text: text };
+      }
+    }
+    return { type: "string", text: text };
+  }
+
+  // Shows @p value at a position, as a write leaves the cell, and reflows
+  // the row around it.
+  function showValue(column, row, value) {
+    var cell = cellAt(column, row);
+    if (cell === null) {
+      return false;
+    }
+    lower();
+    var run = runOf(cell);
+    if (run === null) {
+      return false;
+    }
+    run.textContent = value.type === "empty" ? "" : value.text;
+    cell.classList.toggle("odr-value-type-float", value.type === "number");
+    reflow(row);
+    return true;
+  }
+
   // What the script beside this one, and a host, ask of the sheet: positions
   // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
   odr.sheet = {
@@ -1804,6 +1955,10 @@ constexpr std::string_view spreadsheet_js = R"js(
     positionOf: positionOf,
     pinned: pinnedPosition,
     pin: pinAt,
+    lower: lower,
+    valueAt: valueAt,
+    showValue: showValue,
+    reflow: reflow,
   };
 
   table.addEventListener("mouseover", function (event) {
@@ -1860,6 +2015,10 @@ constexpr std::string_view spreadsheet_js = R"js(
     }
   });
 
+)js";
+
+/// The rest of `spreadsheet_js`, which one literal cannot hold.
+constexpr std::string_view spreadsheet_js_tail = R"js(
   var body = table.tBodies[0];
   var original = null;
   var sortedColumn = -1;
@@ -2016,6 +2175,7 @@ constexpr std::string_view sheet_editing_js = R"js(
     rich: { code: 3, message: "cell holds more than one plain run" },
     shapes: { code: 4, message: "cell holds a drawing" },
     readOnly: { code: 5, message: "document cannot be edited" },
+    formulaInput: { code: 6, message: "typing a formula is not supported" },
   };
 
   odr.onEditRefused = function (event) {
@@ -2032,12 +2192,33 @@ constexpr std::string_view sheet_editing_js = R"js(
     }
   }
 
+  var outlined = null;
+  var outlinedTimer = 0;
+
+  /// The outline a refusal paints, so a host wiring nothing is not silent.
+  function outline(cell) {
+    if (outlined !== null) {
+      outlined.classList.remove("odr-sheet-refused");
+    }
+    window.clearTimeout(outlinedTimer);
+    outlined = cell;
+    if (cell === null) {
+      return;
+    }
+    cell.classList.add("odr-sheet-refused");
+    outlinedTimer = window.setTimeout(function () {
+      cell.classList.remove("odr-sheet-refused");
+      outlined = null;
+    }, 700);
+  }
+
   /// Four taps on a locked cell are one snackbar: the same refusal within two
-  /// seconds of the last is the page's to drop.
+  /// seconds of the last is the page's to drop. The outline answers each.
   function refuse(reason, column, row) {
     var refusal = refusals[reason] || refusals.readOnly;
     var key = reason + ":" + column + ":" + row;
     var now = Date.now();
+    outline(odr.sheet.cellAt(column, row));
     if (lastRefusal && lastRefusal.key === key && now - lastRefusal.at < 2000) {
       return;
     }
@@ -2080,6 +2261,7 @@ constexpr std::string_view sheet_editing_js = R"js(
     disable: function () {
       if (editing) {
         editing = false;
+        close();
         table.classList.remove("odr-editing");
         modeChange(null);
       }
@@ -2098,6 +2280,8 @@ constexpr std::string_view sheet_editing_js = R"js(
     },
   };
 
+  /// Whether the cell at (@p column, @p row) refuses a write, which is also
+  /// what tells the host.
   odr.editing.refuseAt = function (column, row) {
     if (!editable) {
       refuse("readOnly", column, row);
@@ -2109,6 +2293,260 @@ constexpr std::string_view sheet_editing_js = R"js(
       return true;
     }
     return false;
+  };
+
+  var overlay = null;
+  var editingAt = null;
+  var history = [];
+
+  var NUMBER = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
+
+  /// The type follows the string the user typed: a number where the grammar
+  /// says so, a string otherwise, and a leading `'` forces one.
+  function parse(text) {
+    var quoted = text.charAt(0) === "'";
+    var content = quoted ? text.slice(1) : text;
+    if (content === "") {
+      return { type: "empty" };
+    }
+    if (!quoted && NUMBER.test(content)) {
+      return { type: "number", number: Number(content), text: content };
+    }
+    return { type: "string", text: content };
+  }
+
+  function same(one, other) {
+    return (
+      one.type === other.type &&
+      (one.type === "empty" || one.text === other.text)
+    );
+  }
+
+  /// Writes @p value at a position: the cell shows it, and the op joins the
+  /// log beside the value it replaced.
+  function write(column, row, value) {
+    var before = odr.sheet.valueAt(column, row);
+    if (before === null || same(before, value)) {
+      return false;
+    }
+    if (!odr.sheet.showValue(column, row, value)) {
+      return false;
+    }
+    history.push({
+      op: {
+        op: "setCell",
+        sheet: sheet,
+        column: column,
+        row: row,
+        value: value,
+      },
+      before: before,
+    });
+    return true;
+  }
+
+  // Offsets, not rects: blink scales a rect by the body zoom `viewport_js`
+  // applies, and the overlay is laid out under that zoom.
+  function place(cell) {
+    var left = 0;
+    var top = 0;
+    for (var node = cell; node !== null; node = node.offsetParent) {
+      left += node.offsetLeft;
+      top += node.offsetTop;
+    }
+    var style = getComputedStyle(cell);
+    overlay.style.left = left + "px";
+    overlay.style.top = top + "px";
+    overlay.style.width = cell.offsetWidth + "px";
+    overlay.style.height = cell.offsetHeight + "px";
+    overlay.style.textAlign = style.textAlign;
+    overlay.style.color = style.color;
+    overlay.style.fontFamily = style.fontFamily;
+    overlay.style.fontSize = style.fontSize;
+    overlay.style.fontStyle = style.fontStyle;
+    overlay.style.fontWeight = style.fontWeight;
+  }
+
+  /// Opens the editor over a cell, holding @p typed or the cell's own string.
+  /// The raise is put back down: the overlay shows what it would have.
+  function edit(column, row, typed) {
+    finish();
+    if (!editing || odr.editing.refuseAt(column, row)) {
+      return false;
+    }
+    var cell = odr.sheet.cellAt(column, row);
+    if (cell === null) {
+      return false;
+    }
+    odr.sheet.pin({ column: column, row: row });
+    odr.sheet.lower();
+
+    var value = odr.sheet.valueAt(column, row);
+    editingAt = { column: column, row: row };
+    overlay = document.createElement("input");
+    overlay.type = "text";
+    overlay.className = "odr-sheet-editor";
+    overlay.value =
+      typed !== null ? typed : value.type === "empty" ? "" : value.text;
+    place(cell);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("keydown", overlayKey);
+    overlay.addEventListener("blur", finish);
+    overlay.focus();
+    if (typed === null) {
+      overlay.select();
+    }
+    return true;
+  }
+
+  function close() {
+    var input = overlay;
+    overlay = null;
+    editingAt = null;
+    if (input !== null) {
+      input.remove();
+    }
+  }
+
+  /// Ends an open edit: what it holds is committed, and a refused formula is
+  /// dropped rather than left in an overlay nothing focuses again.
+  function finish() {
+    if (!commit(0, 0)) {
+      close();
+    }
+  }
+
+  /// Commits what is typed and moves the pin by (@p columns, @p rows). A
+  /// formula is refused rather than written, and leaves the editor open.
+  function commit(columns, rows) {
+    if (overlay === null) {
+      return false;
+    }
+    var text = overlay.value;
+    var at = editingAt;
+    if (text.charAt(0) === "=") {
+      refuse("formulaInput", at.column, at.row);
+      return false;
+    }
+    close();
+    write(at.column, at.row, parse(text));
+    if (!odr.sheet.pin({ column: at.column + columns, row: at.row + rows })) {
+      odr.sheet.pin({ column: at.column, row: at.row });
+    }
+    return true;
+  }
+
+  function overlayKey(event) {
+    // Typing is the overlay's, not the sheet's underneath it.
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      close();
+    } else if (event.key === "Enter") {
+      commit(0, event.shiftKey ? -1 : 1);
+    } else if (event.key === "Tab") {
+      commit(event.shiftKey ? -1 : 1, 0);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  }
+
+  var arrows = {
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1],
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+  };
+
+  /// What a pinned cell does with a key when no editor is open. Captured, so
+  /// the keys taken here never reach the pin and the sort beneath.
+  function pinnedKey(event) {
+    if (
+      !editing ||
+      overlay !== null ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    var target = event.target;
+    if (
+      target &&
+      (target.isContentEditable ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+    ) {
+      return;
+    }
+    var at = odr.sheet.pinned();
+    if (at === null || at.column === null || at.row === null) {
+      return;
+    }
+
+    var step =
+      arrows[event.key] ||
+      (event.key === "Tab" ? [event.shiftKey ? -1 : 1, 0] : null);
+    if (step !== null) {
+      odr.sheet.pin({ column: at.column + step[0], row: at.row + step[1] });
+    } else if (event.key === "Enter" || event.key === "F2") {
+      edit(at.column, at.row, null);
+    } else if (event.key === "Delete" || event.key === "Backspace") {
+      if (!odr.editing.refuseAt(at.column, at.row)) {
+        write(at.column, at.row, { type: "empty" });
+      }
+    } else if (event.key.length === 1) {
+      edit(at.column, at.row, event.key);
+    } else {
+      return;
+    }
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  document.addEventListener("keydown", pinnedKey, true);
+
+  window.addEventListener("resize", function () {
+    if (overlay !== null) {
+      place(odr.sheet.cellAt(editingAt.column, editingAt.row));
+    }
+  });
+
+  function targetPosition(event) {
+    return odr.sheet.positionOf(event.target.closest("td"));
+  }
+
+  table.addEventListener("dblclick", function (event) {
+    var at = editing ? targetPosition(event) : null;
+    if (at !== null) {
+      edit(at.column, at.row, null);
+    }
+  });
+
+  // A locked cell says so on the click, not on the double click.
+  table.addEventListener("click", function (event) {
+    var at = editing && overlay === null ? targetPosition(event) : null;
+    if (at !== null && odr.editing.lockAt(at.column, at.row) !== null) {
+      odr.editing.refuseAt(at.column, at.row);
+    }
+  });
+
+  /// Opens the editor over a cell, as a double click does.
+  odr.editing.editAt = function (column, row) {
+    return edit(column, row, null);
+  };
+
+  /// What a host hands to `Document::edit` before saving, coalesced per
+  /// position.
+  odr.editing.getOperations = function () {
+    var byPosition = new Map();
+    for (var i = 0; i < history.length; ++i) {
+      var op = history[i].op;
+      byPosition.set(op.sheet + ":" + op.column + ":" + op.row, op);
+    }
+    return JSON.stringify({
+      version: 1,
+      ops: Array.from(byPosition.values()),
+    });
   };
 })();
 )js";
@@ -2487,6 +2925,8 @@ consteval bool fits_a_literal(const std::string_view content) {
 static_assert(fits_a_literal(viewport_js));
 static_assert(fits_a_literal(search_js));
 static_assert(fits_a_literal(spreadsheet_js));
+static_assert(fits_a_literal(spreadsheet_js_tail));
+static_assert(fits_a_literal(sheet_editing_js));
 static_assert(fits_a_literal(text_js));
 static_assert(fits_a_literal(pdf_annotation_js));
 static_assert(fits_a_literal(pdf_annotation_js_tail));
@@ -2524,7 +2964,8 @@ constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
 constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
                                 "search.js", search_js};
 constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
-                                     "spreadsheet.js", spreadsheet_js};
+                                     "spreadsheet.js", spreadsheet_js,
+                                     spreadsheet_js_tail};
 constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
                                        "sheet-editing.js", sheet_editing_js};
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",

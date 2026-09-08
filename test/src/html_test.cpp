@@ -894,7 +894,8 @@ TEST(html, a_plain_cell_carries_no_lock) {
       render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
 
   EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
-  EXPECT_EQ(page.find("odr-locked"), std::string::npos);
+  // the stylesheet names the class either way
+  EXPECT_EQ(page.find(R"(class="odr-locked")"), std::string::npos);
 }
 
 // A text document still says so in the markup: it has no overlay.

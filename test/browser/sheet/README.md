@@ -9,12 +9,14 @@ test/browser/sheet/serve         # extracts the css and the scripts, serves on :
 open http://localhost:8732/tests.html
 open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
+open http://localhost:8732/editing.html
 ```
 
-`serve` lifts `document_css`, `spreadsheet_css`, `spreadsheet_js` and
-`sheet_editing_js` out of `src/odr/internal/html/frontend.cpp`, so what runs is
-what ships. Each page prints its own report and heads it with a count; a page
-holds one `.odr-sheet`, because the script binds to the first one it finds.
+`serve` lifts `document_css`, `spreadsheet_css`, `spreadsheet_js` (both
+literals) and `sheet_editing_js` out of `src/odr/internal/html/frontend.cpp`, so
+what runs is what ships. Each page prints its own report and heads it with a
+count; a page holds one `.odr-sheet`, because the script binds to the first one
+it finds.
 
 - **`tests.html`** — raising a cell whose text is cut off. The markup is what
   `translate_sheet` writes, cut down to the shapes the script has to tell apart:
@@ -28,6 +30,10 @@ holds one `.odr-sheet`, because the script binds to the first one it finds.
   `rowspan`, and a `rowspan` reaching past the last cell of the row below it:
   the three shapes a walk over `colspan` alone reads wrong. It also checks that
   `odr.editing` finds a lock through the same map.
+- **`editing.html`** — the overlay editor, driven through `odr.editing` the
+  way a host drives it, over the shapes a commit has to get right: a string cut
+  where its neighbour shows something, a formula cell, a cell of several runs,
+  and one whose single run carries a style a write must keep.
 - **`sorting.html`** — the same questions after the sort control has moved every
   row. Nothing here is merged, because a merged sheet is offered no sort
   control; a row is found by the label it carries, so where it now sits does not
