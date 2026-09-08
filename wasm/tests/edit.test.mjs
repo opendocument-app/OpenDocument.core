@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
-import { Odr, OdrError, minimalOdt } from './helper.mjs';
+import { Odr, OdrError, minimalOds, minimalOdt } from './helper.mjs';
 
 // Read out of the html rather than spelled, as the browser does.
 function firstEditablePath(html) {
@@ -54,6 +54,29 @@ describe('edit', () => {
       try {
         assert.equal(reopened.fileType, odr.enums.FileType.odt);
         assert.match(reopened.render(0).html, /edited in the browser/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('writes a sheet cell by position and saves it', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      doc.edit(JSON.stringify({
+        version: 1,
+        ops: [{
+          op: 'setCell', sheet: 0, column: 0, row: 0,
+          value: { type: 'number', number: 12.5, text: '12.5' },
+        }],
+      }));
+      assert.match(doc.render(0).html, /12\.5/);
+
+      const reopened = odr.open(doc.save());
+      try {
+        assert.match(reopened.render(0).html, /12\.5/);
       } finally {
         reopened.close();
       }
