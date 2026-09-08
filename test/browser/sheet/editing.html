@@ -78,9 +78,15 @@
       function editor() {
         return document.querySelector(".odr-sheet-editor");
       }
-      function press(target, key, shift) {
+      function press(target, key, modifiers) {
+        modifiers = modifiers || {};
         target.dispatchEvent(
-          new KeyboardEvent("keydown", { key: key, shiftKey: !!shift, bubbles: true })
+          new KeyboardEvent("keydown", {
+            key: key,
+            shiftKey: !!modifiers.shift,
+            ctrlKey: !!modifiers.ctrl,
+            bubbles: true,
+          })
         );
         document.body.offsetHeight;
       }
@@ -245,6 +251,70 @@
           ops()
             .map(function (op) { return op.column + "," + op.row; })
             .join(" ") === "0,3 2,2 0,1 1,0 2,0"
+      );
+
+      // The log a host reads: the change event, undo and redo, and the reset a
+      // save leaves behind.
+      var changes = [];
+      function last() {
+        return changes[changes.length - 1];
+      }
+      odr.onEditChange = function (event) {
+        changes.push(event);
+      };
+      odr.editing.enable();
+      odr.editing.committed();
+      check(
+        "committing resets the log",
+        ops().length === 0 && last().dirty === false && last().canUndo === false
+      );
+
+      odr.editing.editAt(3, 0);
+      editor().value = "one";
+      press(editor(), "Enter");
+      check(
+        "a commit reports the log",
+        last().dirty === true &&
+          last().operations === 1 &&
+          last().canUndo === true &&
+          last().canRedo === false
+      );
+
+      odr.editing.editAt(3, 0);
+      editor().value = "two";
+      press(editor(), "Enter");
+      check(
+        "a second write into the same cell is still one op",
+        ops().length === 1 && ops()[0].value.text === "two"
+      );
+
+      check("undo takes the last write back", odr.editing.undo() === true);
+      check("the cell shows the one before it", cell(3, 0).textContent === "one");
+      check("and the op says so too", ops().length === 1 && ops()[0].value.text === "one");
+      check("with a redo now open", last().canUndo === true && last().canRedo === true);
+
+      check("undo again empties the cell it filled", odr.editing.undo() === true && cell(3, 0).textContent === "");
+      check("and the log is clean", ops().length === 0 && last().dirty === false);
+      check("there is nothing further to take back", odr.editing.undo() === false);
+
+      check("redo puts it back", odr.editing.redo() === true && cell(3, 0).textContent === "one");
+      press(document.body, "z", { ctrl: true });
+      check("ctrl+z is undo", cell(3, 0).textContent === "");
+      press(document.body, "z", { ctrl: true, shift: true });
+      check("ctrl+shift+z is redo", cell(3, 0).textContent === "one");
+
+      var box = document.body.appendChild(document.createElement("input"));
+      press(box, "z", { ctrl: true });
+      check("a chord in another input is that input's", cell(3, 0).textContent === "one");
+      box.remove();
+
+      odr.editing.committed();
+      check(
+        "a save clears both stacks",
+        odr.editing.undo() === false &&
+          odr.editing.redo() === false &&
+          ops().length === 0 &&
+          last().dirty === false
       );
     </script>
   </body>
