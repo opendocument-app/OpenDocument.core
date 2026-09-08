@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a zip entry name with a leading slash is read relative to the
+  archive root rather than throwing, and one named `/` alone is dropped. An
+  `.odt` carrying such an entry now opens; LibreOffice still refuses it.
+
 - The rendered sheet exposes `odr.editing`: `enable()` / `disable()` turn the
   mode on, `lockAt()` answers for a cell, and a refusal reaches the host as
   `odr.onEditRefused` / `odr.onEditModeChange`, whose codes share the space

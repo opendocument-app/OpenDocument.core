@@ -1,5 +1,6 @@
 #include <odr/exceptions.hpp>
 
+#include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 #include <odr/internal/zip/zip_file.hpp>
@@ -9,9 +10,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <thread>
@@ -128,6 +131,41 @@ TEST(ZipArchive, create_order) {
     }
     EXPECT_EQ(actual, entries);
   }
+}
+
+/// A leading slash, forbidden by APPNOTE.TXT 4.4.17.1, is read away; a name
+/// that is nothing but the root addresses no entry.
+TEST(ZipArchive, absolute_entry_name) {
+  const std::string path =
+      (std::filesystem::current_path() / "absolute-name.zip").string();
+
+  {
+    // miniz refuses the name, so a placeholder goes in and is patched out
+    mz_zip_archive archive{};
+    ASSERT_TRUE(mz_zip_writer_init_file(&archive, path.c_str(), 0));
+    ASSERT_TRUE(mz_zip_writer_add_mem(&archive, "@", nullptr, 0, 0));
+    ASSERT_TRUE(mz_zip_writer_add_mem(&archive, "@one.txt", "abc", 3, 0));
+    ASSERT_TRUE(mz_zip_writer_finalize_archive(&archive));
+    ASSERT_TRUE(mz_zip_writer_end(&archive));
+
+    std::string data;
+    {
+      std::ifstream in(path, std::ios::binary);
+      data.assign(std::istreambuf_iterator<char>(in),
+                  std::istreambuf_iterator<char>());
+    }
+    std::ranges::replace(data, '@', '/');
+    std::ofstream out(path, std::ios::binary);
+    out.write(data.data(), static_cast<std::streamsize>(data.size()));
+  }
+
+  const auto zip =
+      std::make_shared<util::Archive>(std::make_shared<DiskFile>(path));
+  EXPECT_EQ(3, zip->find(RelPath("one.txt"))->file()->size());
+
+  const ZipArchive read(zip);
+  EXPECT_EQ(1, std::distance(read.begin(), read.end()));
+  EXPECT_TRUE(read.as_filesystem()->is_file(AbsPath("/one.txt")));
 }
 
 /// The read callback has to be re-entrant, for a memory and a stream source.
