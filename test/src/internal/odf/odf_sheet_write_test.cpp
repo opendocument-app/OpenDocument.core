@@ -471,6 +471,66 @@ TEST(OdfSheetWrite, an_empty_cell_written_into_saves_and_reopens) {
   EXPECT_FALSE(sheet.cell(3, 0).value().has_text());
 }
 
+/// The write replaces what the cell shows, and several runs of one paragraph
+/// are one line of it.
+TEST(OdfSheetWrite, a_cell_of_several_runs_is_written) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell office:value-type="string">)"
+                 R"(<text:p>two <text:span>runs</text:span></text:p>)"
+                 R"(</table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("one"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "one");
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_EQ(saved.str().find("<text:span"), std::string::npos);
+}
+
+/// One run is written through rather than replaced, so what carries its style
+/// stays.
+TEST(OdfSheetWrite, a_cell_of_one_span_keeps_it) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell office:value-type="string"><text:p>)"
+                 R"(<text:span text:style-name="bold">b</text:span></text:p>)"
+                 R"(</table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "y");
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find(R"(<text:span text:style-name="bold">y)"),
+            std::string::npos);
+}
+
+/// The target of a link is not what the cell shows, so the write would take it
+/// away without the user seeing it go.
+TEST(OdfSheetWrite, a_cell_holding_a_link_refuses_to_be_written) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell office:value-type="string"><text:p>)"
+                 R"(<text:a xlink:href="https://x.example">x</text:a></text:p>)"
+                 R"(</table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+}
+
+/// A line break is a second line, which one run cannot hold.
+TEST(OdfSheetWrite, a_cell_holding_a_line_break_refuses_to_be_written) {
+  const Document document =
+      document_of(flat_sheet(R"(<table:table-cell office:value-type="string">)"
+                             R"(<text:p>a<text:line-break/>b</text:p>)"
+                             R"(</table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+}
+
 TEST(OdfSheetWrite, a_cell_of_several_paragraphs_refuses_to_be_written) {
   const Document document = document_of(
       flat_sheet(R"(<table:table-cell office:value-type="string">)"

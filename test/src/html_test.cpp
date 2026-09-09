@@ -876,7 +876,30 @@ TEST(html, a_formula_cell_is_locked_with_its_reason) {
   EXPECT_NE(page.find("odr-locked"), std::string::npos);
 }
 
-// A write replaces the cell's one run, so richer markup is locked rather than
+// Several runs of one paragraph are one line, which a write replaces.
+TEST(html, a_cell_of_several_runs_carries_no_lock) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
+                         R"(<text:p>two <text:span>runs</text:span></text:p>)"
+                         R"(</table:table-cell>)")),
+      HtmlConfig());
+
+  EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
+}
+
+// The target of a link is not what the cell shows, so a write would take it
+// away without the user seeing it go.
+TEST(html, a_cell_holding_a_link_is_locked_rich) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
+                         R"(<text:p><text:a xlink:href="https://x.example">)"
+                         R"(x</text:a></text:p></table:table-cell>)")),
+      HtmlConfig());
+
+  EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
+}
+
+// A write replaces the cell's line, so several of them are locked rather than
 // thrown away.
 TEST(html, a_cell_of_several_paragraphs_is_locked_rich) {
   const std::string page = render_sheet(

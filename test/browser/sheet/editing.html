@@ -10,7 +10,7 @@
     <!-- A sheet as `translate_sheet` writes one, with the styles it hoists into
          classes written inline: every column states a width, so a string is cut
          where the next cell shows something. B3 holds a formula, C3 a run of
-         its own, D3 two of them. -->
+         its own, D3 a link. -->
     <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="2">
       <col class="odr-sheet-gutter" />
       <col style="width: 80px" />
@@ -46,7 +46,7 @@
           <td style="max-width:0;white-space:nowrap"></td>
           <td class="odr-value-type-float odr-locked" data-odr-lock="formula" style="max-width:0;white-space:nowrap">7</td>
           <td style="max-width:0;white-space:nowrap"><x-p><x-s style="font-weight:bold">bold</x-s></x-p></td>
-          <td class="odr-locked" data-odr-lock="rich" style="max-width:0;white-space:nowrap"><x-p><x-s>two</x-s><x-s>runs</x-s></x-p></td>
+          <td class="odr-locked" data-odr-lock="rich" style="max-width:0;white-space:nowrap"><x-p><a href="https://x.example"><x-s>x</x-s></a></x-p></td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">4</th>
@@ -179,7 +179,7 @@
       check("a formula cell cannot be edited", odr.editing.editAt(1, 2) === false && editor() === null);
       check("and says why", refusals.length === 1 && refusals[0] === "formula 2 at 1,2");
       check("the cell is outlined for the tap it answers", cell(1, 2).classList.contains("odr-sheet-refused"));
-      check("a cell of several runs neither", odr.editing.editAt(3, 2) === false);
+      check("a cell holding a link neither", odr.editing.editAt(3, 2) === false);
 
       odr.editing.editAt(2, 2);
       editor().value = "plain";

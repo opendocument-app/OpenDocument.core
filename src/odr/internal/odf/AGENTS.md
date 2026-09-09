@@ -186,10 +186,11 @@ The structural/foundational gaps, roughly by value:
 2. **Spreadsheet editing is one cell value.** `sheet_set_cell` writes
    `office:value-type`/`office:value` *and* the `text:p` under the cell — the
    file states the value and shows a rendering of it, and setting one without
-   the other leaves it contradicting itself. It writes through the cell's
-   single text run, so a cell holding a formula or richer markup than one plain
-   paragraph refuses; a position never does, because the write reaches any of
-   them.
+   the other leaves it contradicting itself. It writes through the run the cell
+   already holds, so that run keeps its style, and replaces the runs of a
+   paragraph that holds several. A cell holding a formula, a link, a line break
+   or several paragraphs refuses; a position never does, because the write
+   reaches any of them.
 
    A **repeated** cell is written by cutting the run: `claim_cell` copies the
    `table:table-row` and the `table:table-cell` around the position and leaves
@@ -203,6 +204,14 @@ The structural/foundational gaps, roughly by value:
    `text:p` *before* the reindex, which then sees a node that is not empty and
    builds the element for it. A spanned cell that holds no paragraph takes one
    from `text_run_of` instead, because the page already reads it as editable.
+
+   `text_run_of` descends through a single span before it looks for the run,
+   so a cell of one styled run is written through rather than rebuilt — the
+   same walk `spreadsheet.js::runOf` makes over the page, which is what keeps
+   the two showing the same thing. Where it rebuilds, the old children are
+   removed from the dom while their elements keep their ids and stop being
+   reachable. Their `pugi::xml_node` is dangling from then on, which is the
+   cost `ooxml/spreadsheet` already pays for the same tombstoning.
 
    A position the sheet stops before is reached by `grow_to_cell`, which
    appends the rows and the runs of empty cells it takes and declares the

@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0, 1, 2.1 and 2.2 landed; 2.3 is next.** This
+Status: **steps 0, 1 and 2 landed; step 3 is next.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -109,9 +109,8 @@ stops changing what a sheet writes. The page carries only what the browser
 cannot work out for itself:
 
 - a **lock** on a cell that cannot be edited, as a class plus its reason —
-  `formula`, `repeated` (ODS, until step 2), `rich` (several runs, several
-  paragraphs, a link, a line break), `shapes` only where the cell is nothing
-  but its anchored drawings;
+  `formula`, `rich` (several paragraphs, a link, a line break), `shapes` only
+  where the cell is nothing but its anchored drawings;
 - whether the **document** can be edited at all, one attribute on the table,
   so `enable()` can refuse with a reason before the user clicks anything.
 
@@ -325,12 +324,12 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    `<is><t>` for a string — and hands the registry a fresh text element; the
    old ones keep their ids and stop being reachable. A shared string is never
    written back into `sharedStrings.xml`, which is what `inlineStr` is for.
-   Refused, rather than written badly: a cell the file spells no element for, a
-   covered one (XLSX), one holding a formula, and one holding richer markup
-   than a single plain paragraph. Every refusal is decided before the engine
-   writes anything. **Writing a formula cell waits for step 4** — overwriting
-   one leaves every value computed from it stale. A repeated ODS cell was
-   refused here and is written since step 2.1.
+   Refused, rather than written badly: a covered one (XLSX), one holding a
+   formula, and one holding a link, a line break or several paragraphs. Every
+   refusal is decided before the engine writes anything. **Writing a formula
+   cell waits for step 4** — overwriting one leaves every value computed from
+   it stale. A repeated ODS cell, an empty one, a position past the sheet and a
+   cell of several runs were all refused here and are written since step 2.
 3. **Landed.** XLSX `save`, mirroring docx: write back every worksheet and
    `workbook.xml` from their dom, byte-copy the rest, and put back the xml
    declaration pugixml never parsed. `fullCalcOnLoad` is set on every save
@@ -415,9 +414,18 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    position, so the insert is local and nothing is reindexed. A position a
    merge covers refuses before any of it, because Excel ignores what a covered
    `c` holds.
-3. Rich cells: replace with one plain paragraph, keeping the cell style. The
-   `rich` lock stays on a cell with a link or a line break; it goes for
-   several runs of the same paragraph.
+3. **Landed.** Rich cells: a paragraph of text and spans is replaced with one
+   run, and the cell keeps its own style because nothing above the runs is
+   touched. `text_run_of` descends through a single span first, so a cell that
+   holds one run writes through it and that run keeps its style — which is what
+   `spreadsheet.js::runOf` does to the page, so the two agree. Several runs are
+   replaced, and the elements over the old ones keep their ids and stop being
+   reachable, as XLSX already did.
+
+   The `rich` lock stays on a link, a line break and several paragraphs: a link
+   target is not what the cell shows, and both of the others are a second line
+   the overlay cannot write. XLSX needed no engine change — `sheet_set_cell`
+   rewrites the whole `c` — so it is the lock alone there.
 
 ### Step 3 — Formulas, read side
 

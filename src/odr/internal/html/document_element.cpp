@@ -288,23 +288,33 @@ bool is_blank(const SheetCell &cell) {
   return true;
 }
 
-/// Empty, or one text run at most - what a write can replace. odf wraps a
-/// cell's text in a `text:p`, ooxml hangs it under the `c` directly, so a
-/// single paragraph is unwrapped once.
-bool holds_one_run(const ElementRange &children, const bool unwrap = true) {
+/// Text, and spans of text, and nothing else, all the way down.
+bool holds_plain_runs(const ElementRange &children) {
+  for (const Element child : children) {
+    const ElementType type = child.type();
+    if (type == ElementType::text) {
+      continue;
+    }
+    if (type != ElementType::span || !holds_plain_runs(child.children())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// What a write can replace: text and spans of it, under one paragraph at
+/// most. odf wraps a cell's text in a `text:p` and ooxml hangs it under the
+/// `c` directly, so a single paragraph is unwrapped once. Several are several
+/// lines, which the overlay cannot write.
+bool holds_plain_cell(const ElementRange &children) {
   ElementIterator child = children.begin();
   if (child == children.end()) {
     return true;
   }
-  const Element only = *child;
-  if (++child != children.end()) {
-    return false;
+  if (const Element first = *child; first.type() == ElementType::paragraph) {
+    return ++child == children.end() && holds_plain_runs(first.children());
   }
-  if (only.type() == ElementType::text) {
-    return true;
-  }
-  return unwrap && only.type() == ElementType::paragraph &&
-         holds_one_run(only.children(), false);
+  return holds_plain_runs(children);
 }
 
 /// Its place among the document's sheets, which is how an op names one.
@@ -327,8 +337,9 @@ const char *cell_lock(const SheetCell &cell, const bool anchors_shapes) {
   if (anchors_shapes) {
     return "shapes";
   }
-  // a write replaces the cell's one run, so anything richer would be lost
-  return holds_one_run(cell.children()) ? nullptr : "rich";
+  // a write replaces the cell's runs, and a link or a line break would go
+  // unseen with them
+  return holds_plain_cell(cell.children()) ? nullptr : "rich";
 }
 
 /// A shape or picture anchored in a cell reaches past it by design.
