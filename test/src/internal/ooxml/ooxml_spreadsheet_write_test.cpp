@@ -4,6 +4,7 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/odr.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 
@@ -16,6 +17,21 @@ using namespace odr;
 using namespace odr::test::ooxml;
 
 namespace {
+
+/// What the sheet holds after a save, which is where the order of the rows and
+/// the cells shows.
+std::string worksheet_of(const Document &document) {
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened =
+      open(File::from_memory(saved.str())).as_document_file().document();
+  std::ostringstream xml;
+  xml << reopened.as_filesystem()
+             .open("/xl/worksheets/sheet1.xml")
+             .stream()
+             ->rdbuf();
+  return xml.str();
+}
 
 constexpr const char *two_shared = R"(<row r="1"><c r="A1" t="s"><v>0</v></c>)"
                                    R"(<c r="B1" t="s"><v>0</v></c></row>)";
@@ -92,12 +108,102 @@ TEST(OoxmlSpreadsheetWrite, a_covered_cell_refuses_to_be_written) {
   EXPECT_THROW(sheet.set_cell(1, 0, CellValue("x")), UnsupportedOperation);
 }
 
-TEST(OoxmlSpreadsheetWrite, an_absent_cell_refuses_to_be_written) {
+/// A cell the file states no `c` for is written by stating one.
+TEST(OoxmlSpreadsheetWrite, an_absent_cell_is_written) {
   const Document document =
       decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(4, 4, CellValue("x")), UnsupportedOperation);
+  sheet.set_cell(4, 4, CellValue("x"));
+
+  EXPECT_EQ(sheet.cell(4, 4).value().text(), "x");
+  EXPECT_EQ(sheet.dimensions().columns, 5);
+  EXPECT_EQ(sheet.dimensions().rows, 5);
+}
+
+/// 18.3.1.73 states the cells of a row in column order.
+TEST(OoxmlSpreadsheetWrite, an_inserted_cell_lands_in_column_order) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="C1"><v>3</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("a"));
+  sheet.set_cell(1, 0, CellValue("b"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "b");
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 3);
+
+  const std::string xml = worksheet_of(document);
+  EXPECT_LT(xml.find(R"(r="A1")"), xml.find(R"(r="B1")"));
+  EXPECT_LT(xml.find(R"(r="B1")"), xml.find(R"(r="C1")"));
+}
+
+/// 18.3.1.80 states the rows of a sheet in row order.
+TEST(OoxmlSpreadsheetWrite, an_inserted_row_lands_in_row_order) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"
+                      R"(<row r="3"><c r="A3"><v>3</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 1, CellValue("two"));
+
+  EXPECT_EQ(sheet.cell(0, 1).value().text(), "two");
+
+  const std::string xml = worksheet_of(document);
+  EXPECT_LT(xml.find(R"(r="A1")"), xml.find(R"(r="A2")"));
+  EXPECT_LT(xml.find(R"(r="A2")"), xml.find(R"(r="A3")"));
+}
+
+/// 18.3.1.35 states the range the cells span, so a new cell widens it.
+TEST(OoxmlSpreadsheetWrite, an_inserted_cell_widens_the_dimension) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="B2"><v>1</v></c></row>)", "", "", "",
+                      R"(<dimension ref="B2:B2"/>)"));
+
+  first_sheet(document).set_cell(3, 3, CellValue("x"));
+
+  EXPECT_NE(worksheet_of(document).find(R"(ref="B2:D4")"), std::string::npos);
+}
+
+/// The anchor answers for the whole range, whether or not the file states a
+/// `c` for the position covered.
+TEST(OoxmlSpreadsheetWrite, an_absent_covered_cell_refuses_to_be_written) {
+  const Document document = decode(
+      workbook(R"(<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c>)"
+               R"(</row>)",
+               R"(<mergeCells><mergeCell ref="A1:B1"/></mergeCells>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(1, 0, CellValue("x")), UnsupportedOperation);
+}
+
+/// A `ref` bigger than the cells the sheet states is resolved by walking the
+/// cells, and its last row and column are covered like any other.
+TEST(OoxmlSpreadsheetWrite, the_last_cell_of_a_wide_merge_refuses_too) {
+  const Document document = decode(
+      workbook(R"(<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c>)"
+               R"(<c r="C1" t="inlineStr"><is><t>c</t></is></c></row>)",
+               R"(<mergeCells><mergeCell ref="A1:C1"/></mergeCells>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(2, 0, CellValue("x")), UnsupportedOperation);
+}
+
+TEST(OoxmlSpreadsheetWrite, an_inserted_cell_saves_and_reopens) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
+  first_sheet(document).set_cell(2, 3, CellValue(41.5, "41.5"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened =
+      open(File::from_memory(saved.str())).as_document_file().document();
+  const Sheet sheet = first_sheet(reopened);
+
+  ASSERT_TRUE(sheet.cell(2, 3).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 3).value().number(), 41.5);
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);
 }
 
 TEST(OoxmlSpreadsheetWrite, a_written_workbook_saves_and_reopens) {

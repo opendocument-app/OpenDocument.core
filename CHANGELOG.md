@@ -16,6 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An `.xlsx` cell the file states no `c` for is written: the write states the
+  `c` in its row in column order, the `row` in `sheetData` in row order where
+  the file states none, and widens `dimension` to hold the new cell. A position
+  a merge covers still refuses, whether or not the file states a `c` for it.
+
+- **Fix**: a cell in the last row or column of a merged range reports
+  `SheetCell::is_covered` as true. `TableRange::contains` left the end of the
+  range out, so an `.xlsx` merge too big to walk cell by cell marked one row
+  and one column too few.
+
 - A `.ods` sheet grows to the position a write names. Past the last cell of a
   row, past the last row, or past both, the write states the rows and the empty
   cells it takes to reach it and declares the columns the sheet stops before,

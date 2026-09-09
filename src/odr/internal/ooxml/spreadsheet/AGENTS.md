@@ -54,8 +54,17 @@ it wrote; the elements that read the old children keep their ids and stop being
 reachable, which is the tombstoning the editing design asks for. A shared
 string is **never** written back into `sharedStrings.xml` — every other cell
 indexing that entry would change with it — so the cell becomes
-`t="inlineStr"`. Three cells refuse rather than lose something: one the file
-writes no `c` for, a covered one, and one holding an `f`.
+`t="inlineStr"`. Two cells refuse rather than lose something: a covered one and
+one holding an `f`.
+
+A position the file writes no `c` for is **stated** rather than refused.
+`insert_cell` puts the `c` in its row in column order and, where the file
+states no row either, the `row` in `sheetData` in row order, then widens
+`dimension` around the new cell. Nothing is reindexed: the cell map is keyed by
+position, so an insert touches one entry. A position a merge covers refuses
+first, because Excel ignores what a covered `c` holds. That check reads
+`mergeCells` again rather than the parsed flags, which only exist for a cell
+the file states.
 
 **`save` writes back the parts it can have changed** — every worksheet and
 `workbook.xml` — and byte-copies the rest, as `ooxml/text` does for
@@ -84,6 +93,6 @@ Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 3. **No named/master cell-style inheritance** (`cellStyleXfs` loaded but unused);
    borders rendered as `0.75pt solid` regardless of actual style (`// TODO thin
    only`); cell protection unhandled.
-4. **Writing is one cell value.** `sheet_set_cell` writes a number or a string
-   into a cell the file already spells; `text_set_content` is still a no-op
-   stub. Links and comments/annotations not modelled.
+4. **Writing is one cell value.** `sheet_set_cell` writes a number or a string,
+   into a cell the file spells or one it states; `text_set_content` is still a
+   no-op stub. Links and comments/annotations not modelled.
