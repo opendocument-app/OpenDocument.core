@@ -77,6 +77,20 @@ TEST(OoxmlSpreadsheetWrite,
   EXPECT_EQ(sheet.cell(1, 0).value().text(), "same");
 }
 
+/// A write states one inline string over whatever the cell held, so several
+/// `r` runs go with it.
+TEST(OoxmlSpreadsheetWrite, a_cell_of_several_runs_is_written) {
+  const Document document = decode(
+      workbook(R"(<row r="1"><c r="A1" t="inlineStr"><is>)"
+               R"(<r><t>two </t></r><r><t>runs</t></r></is></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("one"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "one");
+  EXPECT_EQ(worksheet_of(document).find("<r>"), std::string::npos);
+}
+
 TEST(OoxmlSpreadsheetWrite, a_cleared_cell_states_nothing) {
   const Document document =
       decode(workbook(R"(<row r="1"><c r="A1"><v>7</v></c></row>)"));

@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A cell of several runs is written rather than locked: the write replaces what
+  the cell shows with one run. A cell holding one run is written through it, so
+  that run keeps its style. The `rich` lock stays on what a write would take
+  away unseen: several paragraphs, a link, a line break.
+
 - An `.xlsx` cell the file states no `c` for is written: the write states the
   `c` in its row in column order, the `row` in `sheetData` in row order where
   the file states none, and widens `dimension` to hold the new cell. A position

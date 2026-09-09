@@ -384,7 +384,7 @@ public:
       if (cell->node.attribute("table:formula")) {
         throw UnsupportedOperation(); // its dependants would go stale
       }
-      if (cell_id != null_element_id && !holds_one_run(cell_id)) {
+      if (cell_id != null_element_id && !holds_plain_paragraph(cell_id)) {
         throw UnsupportedOperation();
       }
 
@@ -1064,9 +1064,37 @@ private:
     return cell->element_id;
   }
 
-  /// Whether a write can go through the cell: one plain paragraph of one run
-  /// at most. Richer markup is kept rather than overwritten.
-  [[nodiscard]] bool holds_one_run(const ElementIdentifier cell_id) const {
+  /// The only child of @p element_id, null where it has none or several.
+  [[nodiscard]] ElementIdentifier
+  only_child(const ElementIdentifier element_id) const {
+    const ElementIdentifier child_id = element_first_child(element_id);
+    return child_id != null_element_id &&
+                   element_next_sibling(child_id) == null_element_id
+               ? child_id
+               : null_element_id;
+  }
+
+  /// Text, and spans of text, and nothing else, all the way down.
+  [[nodiscard]] bool holds_plain_runs(const ElementIdentifier parent_id) const {
+    for (ElementIdentifier child_id = element_first_child(parent_id);
+         child_id != null_element_id;
+         child_id = element_next_sibling(child_id)) {
+      const ElementType type = element_type(child_id);
+      if (type == ElementType::text) {
+        continue;
+      }
+      if (type != ElementType::span || !holds_plain_runs(child_id)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Whether a write can go through the cell: one paragraph, of text and spans
+  /// alone. A link, a line break or a second paragraph is content the write
+  /// would take away without the user seeing it go.
+  [[nodiscard]] bool
+  holds_plain_paragraph(const ElementIdentifier cell_id) const {
     const ElementIdentifier paragraph_id = element_first_child(cell_id);
     if (paragraph_id == null_element_id) {
       return true; // a spanned cell states no paragraph; the write states one
@@ -1075,14 +1103,13 @@ private:
         element_type(paragraph_id) != ElementType::paragraph) {
       return false;
     }
-    const ElementIdentifier text_id = element_first_child(paragraph_id);
-    return text_id == null_element_id ||
-           (element_next_sibling(text_id) == null_element_id &&
-            element_type(text_id) == ElementType::text);
+    return holds_plain_runs(paragraph_id);
   }
 
-  /// That run, and the paragraph around it, created where the cell states
-  /// neither. @ref holds_one_run has to pass.
+  /// The run a write goes through: the one the cell holds, so it keeps its
+  /// style, and a fresh one where the cell holds none or several. The
+  /// paragraph too where the cell states none. @ref holds_plain_paragraph has
+  /// to pass.
   [[nodiscard]] ElementIdentifier
   text_run_of(const ElementIdentifier cell_id) const {
     ElementIdentifier paragraph_id = element_first_child(cell_id);
@@ -1093,15 +1120,38 @@ private:
       m_registry->append_child(cell_id, new_id);
       paragraph_id = new_id;
     }
-    if (const ElementIdentifier text_id = element_first_child(paragraph_id);
-        text_id != null_element_id) {
+
+    // the deepest element holding the whole content: writing through it keeps
+    // the style it carries, as `spreadsheet.js::runOf` does on the page
+    ElementIdentifier holder_id = paragraph_id;
+    for (ElementIdentifier only_id = only_child(holder_id);
+         only_id != null_element_id &&
+         element_type(only_id) == ElementType::span;
+         only_id = only_child(holder_id)) {
+      holder_id = only_id;
+    }
+
+    if (const ElementIdentifier text_id = only_child(holder_id);
+        text_id != null_element_id &&
+        element_type(text_id) == ElementType::text) {
       return text_id;
     }
+
+    // several runs: the elements over the old children keep their ids and stop
+    // being reachable
+    pugi::xml_node holder_node = get_node(holder_id);
+    while (const pugi::xml_node child = holder_node.first_child()) {
+      holder_node.remove_child(child);
+    }
+    ElementRegistry::Element &holder = m_registry->element_at(holder_id);
+    holder.first_child_id = null_element_id;
+    holder.last_child_id = null_element_id;
+
     const pugi::xml_node text_node =
-        get_node(paragraph_id).append_child(pugi::xml_node_type::node_pcdata);
+        holder_node.append_child(pugi::xml_node_type::node_pcdata);
     const auto &[new_id, unused1, unused2] =
         m_registry->create_text_element(text_node, text_node);
-    m_registry->append_child(paragraph_id, new_id);
+    m_registry->append_child(holder_id, new_id);
     return new_id;
   }
 
