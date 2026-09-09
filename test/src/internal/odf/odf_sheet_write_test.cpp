@@ -208,12 +208,156 @@ TEST(OdfSheetWrite, a_formula_cell_refuses_to_be_written) {
   EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
 }
 
-/// Past the last cell the file states there is no node to write into.
-TEST(OdfSheetWrite, a_cell_past_the_sheet_refuses_to_be_written) {
+/// Past the last cell the file states, the write states the cells it takes to
+/// reach the position.
+TEST(OdfSheetWrite, a_cell_past_the_row_grows_the_row) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(4, 4, CellValue("y")), UnsupportedOperation);
+  sheet.set_cell(3, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(3, 0).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_FALSE(sheet.cell(1, 0).value().has_text());
+  EXPECT_EQ(sheet.dimensions().columns, 4);
+  EXPECT_EQ(sheet.dimensions().rows, 1);
+}
+
+TEST(OdfSheetWrite, a_cell_past_the_last_row_grows_the_sheet) {
+  const Document document = document_of(flat_sheet(string_cell("a")));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 2, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(0, 2).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_FALSE(sheet.cell(0, 1).value().has_text());
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
+TEST(OdfSheetWrite, a_cell_past_both_grows_both) {
+  const Document document = document_of(flat_sheet(string_cell("a")));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(4, 4, CellValue(7, "7"));
+
+  const CellValue value = sheet.cell(4, 4).value();
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 7);
+  EXPECT_EQ(sheet.dimensions().columns, 5);
+  EXPECT_EQ(sheet.dimensions().rows, 5);
+}
+
+/// A row's cells stand for every position it repeats over, so growing it cuts
+/// the run first.
+TEST(OdfSheetWrite, growing_a_repeated_row_leaves_the_others_short) {
+  const Document document =
+      document_of(R"(<?xml version="1.0" encoding="UTF-8"?>)"
+                  R"(<office:document office:mimetype=")"
+                  R"(application/vnd.oasis.opendocument.spreadsheet">)"
+                  R"(<office:body><office:spreadsheet>)"
+                  R"(<table:table table:name="s">)"
+                  R"(<table:table-row table:number-rows-repeated="3">)"
+                  R"(<table:table-cell office:value-type="string">)"
+                  R"(<text:p>x</text:p></table:table-cell>)"
+                  R"(</table:table-row></table:table>)"
+                  R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 1, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(2, 1).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 1).value().text(), "x");
+  for (const std::uint32_t row : {0u, 2u}) {
+    EXPECT_EQ(sheet.cell(0, row).value().text(), "x") << row;
+    EXPECT_FALSE(sheet.cell(2, row).value().has_text()) << row;
+  }
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
+/// A sheet the producer wrote no row for is grown from nothing.
+TEST(OdfSheetWrite, an_empty_sheet_grows_a_row) {
+  const Document document =
+      document_of(R"(<?xml version="1.0" encoding="UTF-8"?>)"
+                  R"(<office:document office:mimetype=")"
+                  R"(application/vnd.oasis.opendocument.spreadsheet">)"
+                  R"(<office:body><office:spreadsheet>)"
+                  R"(<table:table table:name="s"/>)"
+                  R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 1, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(1, 1).value().text(), "y");
+  EXPECT_EQ(sheet.dimensions().rows, 2);
+  EXPECT_EQ(sheet.dimensions().columns, 2);
+}
+
+/// The columns are declared as well, so the extent survives a reopen.
+TEST(OdfSheetWrite, a_grown_sheet_saves_and_reopens) {
+  const Document document = document_of(flat_sheet(string_cell("a")));
+  first_sheet(document).set_cell(3, 2, CellValue("y"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened = document_of(saved.str());
+  const Sheet sheet = first_sheet(reopened);
+
+  EXPECT_EQ(sheet.cell(3, 2).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(sheet.dimensions().columns, 4);
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
+/// A new declaration goes after the ones the file states, so the columns before
+/// it keep their width.
+TEST(OdfSheetWrite, a_grown_column_follows_the_declared_ones) {
+  const Document document =
+      document_of(R"(<?xml version="1.0" encoding="UTF-8"?>)"
+                  R"(<office:document office:mimetype=")"
+                  R"(application/vnd.oasis.opendocument.spreadsheet">)"
+                  R"(<office:body><office:spreadsheet>)"
+                  R"(<table:table table:name="s">)"
+                  R"(<table:table-column table:style-name="co1"/>)"
+                  R"(<table:table-row>)" +
+                  string_cell("a") +
+                  R"(</table:table-row></table:table>)"
+                  R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.dimensions().columns, 3);
+
+  std::ostringstream saved;
+  document.save(saved);
+  const std::string xml = saved.str();
+  EXPECT_LT(
+      xml.find(R"(table:style-name="co1")"),
+      xml.find(R"(<table:table-column table:number-columns-repeated="2")"));
+  EXPECT_EQ(first_sheet(document_of(xml)).dimensions().columns, 3);
+}
+
+/// The named expressions follow the rows ([ODF 1.2] 9.1.2), so an appended
+/// row goes before them.
+TEST(OdfSheetWrite, a_grown_row_goes_before_the_named_expressions) {
+  const Document document = document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s"><table:table-row>)" +
+      string_cell("a") +
+      R"(</table:table-row><table:named-expressions/></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)");
+  first_sheet(document).set_cell(0, 1, CellValue("y"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  const std::string xml = saved.str();
+  EXPECT_LT(xml.rfind("<table:table-row"),
+            xml.find("<table:named-expressions"));
+  EXPECT_EQ(first_sheet(document_of(xml)).cell(0, 1).value().text(), "y");
 }
 
 /// An empty cell is parsed as no element, so a write has to make one.

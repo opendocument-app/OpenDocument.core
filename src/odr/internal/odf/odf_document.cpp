@@ -19,12 +19,14 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <mutex>
 #include <ostream>
 #include <span>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 
 #include <fmt/format.h>
@@ -370,22 +372,26 @@ public:
                       const CellValue &value) const override {
     const ElementRegistry::Sheet::Cell *cell =
         m_registry->sheet_element_at(element_id).cell(column, row);
+
+    ElementIdentifier cell_id = null_element_id;
     if (cell == nullptr) {
-      throw UnsupportedOperation(); // the sheet states no node here
-    }
-    ElementIdentifier cell_id = cell->element_id;
+      // the sheet stops before the position, so there is nothing to refuse
+      cell_id = grow_to_cell(element_id, column, row);
+    } else {
+      cell_id = cell->element_id;
 
-    // both refusals are decided before the split writes anything
-    if (cell->node.attribute("table:formula")) {
-      throw UnsupportedOperation(); // its dependants would go stale
-    }
-    if (cell_id != null_element_id && !holds_one_run(cell_id)) {
-      throw UnsupportedOperation();
-    }
+      // both refusals are decided before the split writes anything
+      if (cell->node.attribute("table:formula")) {
+        throw UnsupportedOperation(); // its dependants would go stale
+      }
+      if (cell_id != null_element_id && !holds_one_run(cell_id)) {
+        throw UnsupportedOperation();
+      }
 
-    if (cell_id == null_element_id ||
-        m_registry->sheet_cell_element_at(cell_id).is_repeated) {
-      cell_id = claim_cell(element_id, column, row); // `cell` is stale after
+      if (cell_id == null_element_id ||
+          m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+        cell_id = claim_cell(element_id, column, row); // `cell` is stale after
+      }
     }
 
     pugi::xml_node node = get_node(cell_id);
@@ -912,6 +918,21 @@ private:
     set_repeat(node, attribute, 1);
   }
 
+  /// Cuts the row run @p row is one position of, so its node stands for that
+  /// row alone, and hands that node back. The caller reindexes.
+  static pugi::xml_node split_row_at(const ElementRegistry::Sheet &sheet,
+                                     const std::uint32_t row) {
+    const ElementRegistry::Sheet::Row *row_entry = sheet.row(row);
+    const std::size_t row_index = row_entry - sheet.rows.data();
+    const std::uint32_t row_begin =
+        row_index == 0 ? 0 : sheet.rows[row_index - 1].end;
+
+    split_run(row_entry->node, "table:number-rows-repeated", row_begin,
+              row_entry->end, row);
+
+    return row_entry->node;
+  }
+
   /// Gives (@p column, @p row) an element of its own: cuts the row and the
   /// cell run it is one position of, and states the `text:p` an empty cell
   /// has none of. Reindexes: every pointer read before is stale.
@@ -921,13 +942,8 @@ private:
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(sheet_id);
 
-    const ElementRegistry::Sheet::Row *row_entry = sheet.row(row);
-    const std::size_t row_index = row_entry - sheet.rows.data();
-    const std::uint32_t row_begin =
-        row_index == 0 ? 0 : sheet.rows[row_index - 1].end;
-
     const std::span<const ElementRegistry::Sheet::Cell> cells =
-        sheet.row_cells(*row_entry);
+        sheet.row_cells(*sheet.row(row));
     const ElementRegistry::Sheet::Cell *cell_entry = sheet.cell(column, row);
     const std::size_t cell_index = cell_entry - cells.data();
     const std::uint32_t cell_begin =
@@ -935,8 +951,7 @@ private:
     pugi::xml_node cell_node = cell_entry->node;
 
     // the row first: the cell keeps its node, so its own run is unmoved
-    split_run(row_entry->node, "table:number-rows-repeated", row_begin,
-              row_entry->end, row);
+    split_row_at(sheet, row);
     split_run(cell_node, "table:number-columns-repeated", cell_begin,
               cell_entry->end, column);
 
@@ -947,6 +962,106 @@ private:
     reindex_sheet(*m_registry, sheet_id);
 
     return m_registry->sheet_element_at(sheet_id).cell(column, row)->element_id;
+  }
+
+  /// What has to follow a `table:table-row` under a `table:table`, and what
+  /// has to follow a `table:table-column` ([ODF 1.2] 9.1.2 orders them).
+  static constexpr std::array after_rows{
+      std::string_view("table:named-expressions")};
+  static constexpr std::array after_columns{
+      std::string_view("table:table-header-rows"),
+      std::string_view("table:table-rows"),
+      std::string_view("table:table-row-group"),
+      std::string_view("table:table-row"),
+      std::string_view("table:named-expressions")};
+
+  /// A new @p name child of @p table, before the first one that has to follow
+  /// it.
+  static pugi::xml_node
+  insert_ordered(pugi::xml_node table, const char *name,
+                 const std::span<const std::string_view> after) {
+    for (const pugi::xml_node child : table.children()) {
+      if (std::ranges::find(after, std::string_view(child.name())) !=
+          std::end(after)) {
+        return table.insert_child_before(name, child);
+      }
+    }
+    return table.append_child(name);
+  }
+
+  static void append_empty_cells(pugi::xml_node row,
+                                 const std::uint32_t repeated) {
+    set_repeat(row.append_child("table:table-cell"),
+               "table:number-columns-repeated", repeated);
+  }
+
+  /// Declares the columns the sheet stops before, so its extent reaches
+  /// @p column ([ODF 1.2] 9.1.6).
+  static void grow_columns(pugi::xml_node sheet_node,
+                           ElementRegistry::Sheet &sheet,
+                           const std::uint32_t column) {
+    if (column < sheet.dimensions.columns) {
+      return;
+    }
+    const std::uint32_t repeated = column + 1 - sheet.dimensions.columns;
+
+    // every declaration comes before the rows, so this lands after all of them
+    pugi::xml_node node =
+        insert_ordered(sheet_node, "table:table-column", after_columns);
+    set_repeat(node, "table:number-columns-repeated", repeated);
+
+    sheet.register_column(sheet.dimensions.columns, repeated, node);
+    sheet.dimensions.columns = column + 1;
+  }
+
+  /// States the rows and the cells the sheet stops before, so (@p column,
+  /// @p row) is a cell of its own holding the `text:p` a value needs.
+  /// Reindexes: every pointer read before is stale.
+  [[nodiscard]] ElementIdentifier grow_to_cell(const ElementIdentifier sheet_id,
+                                               const std::uint32_t column,
+                                               const std::uint32_t row) const {
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(sheet_id);
+    pugi::xml_node sheet_node = get_node(sheet_id);
+
+    pugi::xml_node row_node;
+    std::uint32_t cells_end = 0;
+
+    if (const ElementRegistry::Sheet::Row *row_entry = sheet.row(row);
+        row_entry == nullptr) {
+      const std::uint32_t rows_end =
+          sheet.rows.empty() ? 0 : sheet.rows.back().end;
+      if (row > rows_end) {
+        // a row states at least one cell, so the filler holds an empty one
+        pugi::xml_node filler =
+            insert_ordered(sheet_node, "table:table-row", after_rows);
+        set_repeat(filler, "table:number-rows-repeated", row - rows_end);
+        append_empty_cells(filler, sheet.dimensions.columns);
+      }
+      row_node = insert_ordered(sheet_node, "table:table-row", after_rows);
+    } else {
+      const std::span<const ElementRegistry::Sheet::Cell> cells =
+          sheet.row_cells(*row_entry);
+      cells_end = cells.empty() ? 0 : cells.back().end;
+      // its cells stand for every position the row repeats over
+      row_node = split_row_at(sheet, row);
+    }
+
+    if (column > cells_end) {
+      append_empty_cells(row_node, column - cells_end);
+    }
+    row_node.append_child("table:table-cell").append_child("text:p");
+
+    grow_columns(sheet_node, sheet, column);
+    reindex_sheet(*m_registry, sheet_id);
+
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(sheet_id).cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id) {
+      // a rowspan out of an earlier row can push the cell off the position;
+      // what was appended is empty, so no reader sees a difference
+      throw UnsupportedOperation();
+    }
+    return cell->element_id;
   }
 
   /// Whether a write can go through the cell: one plain paragraph of one run

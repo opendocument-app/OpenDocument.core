@@ -16,10 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A `.ods` sheet grows to the position a write names. Past the last cell of a
+  row, past the last row, or past both, the write states the rows and the empty
+  cells it takes to reach it and declares the columns the sheet stops before,
+  so the extent covers the new cell.
+
 - An empty `.ods` cell can be written: the write cuts the run of empty cells
   the position belongs to and states the `text:p` the file spells none of. A
-  merged cell that holds no paragraph takes one the same way. A position past
-  the last cell the file states still refuses.
+  merged cell that holds no paragraph takes one the same way.
 
 - A sheet cell can be typed into: an overlay opens on a double click or a key,
   Enter and Tab commit, and `odr.editing.getOperations()` hands the host the
