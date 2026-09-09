@@ -188,7 +188,8 @@ The structural/foundational gaps, roughly by value:
    file states the value and shows a rendering of it, and setting one without
    the other leaves it contradicting itself. It writes through the cell's
    single text run, so a cell holding a formula or richer markup than one plain
-   paragraph refuses, as does a position past the last cell the file states.
+   paragraph refuses; a position never does, because the write reaches any of
+   them.
 
    A **repeated** cell is written by cutting the run: `claim_cell` copies the
    `table:table-row` and the `table:table-cell` around the position and leaves
@@ -202,7 +203,14 @@ The structural/foundational gaps, roughly by value:
    `text:p` *before* the reindex, which then sees a node that is not empty and
    builds the element for it. A spanned cell that holds no paragraph takes one
    from `text_run_of` instead, because the page already reads it as editable.
-   Two costs:
+
+   A position the sheet stops before is reached by `grow_to_cell`, which
+   appends the rows and the runs of empty cells it takes and declares the
+   columns, so `dimensions` covers the new cell. A repeated row is cut before
+   a cell is appended to it, because its cells stand for every row it repeats
+   over. Nothing caps the position — ODF states no grid limit — so a write far
+   past what LibreOffice holds saves a valid package, and LibreOffice drops
+   that cell. Two costs:
    cutting a repeated row copies every cell in it, so the elements grow with
    the row rather than with the repeat; and the reindex walks the row nodes,
    which a repeat collapses, so it is bounded by the dom rather than the grid.

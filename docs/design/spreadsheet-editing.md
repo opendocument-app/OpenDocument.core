@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0 and 1 landed, and 2.1 with them; step 2 is under way.** This
+Status: **steps 0, 1 and 2.1 landed; 2.2 and 2.3 are next.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -41,6 +41,7 @@ results go stale the moment an input changes.
 | ODS save | `odf_document.cpp::save` | Re-serialises `content.xml`, byte-copies the rest — the same shape a sheet needs |
 | ODS cell index | `odf_element_registry.cpp::Sheet::register_cell` | Per row a run of `(end, element_id, node)` entries; repeats collapse onto one entry. Written once at parse; nothing inserts |
 | ODS repeated and empty cells | `odf_document.cpp::claim_cell` | A write cuts the run and states the `text:p` an empty cell has none of; `reindex_sheet` rebuilds the index (step 2.1, landed) |
+| ODS sheet growth | `odf_document.cpp::grow_to_cell` | A write past the last row or the last cell of a row appends both, and declares the columns (step 2.1, landed) |
 | XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
 | XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; an empty position has no `<c>` node |
@@ -396,8 +397,18 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    paragraph takes one too: the page reads it as editable, so the engine has to
    agree.
 
-   **Open:** a position past the row's last cell or the sheet's last row needs
-   appending and growing the extent.
+   **Landed for a position past the sheet.** `grow_to_cell`
+   appends the rows and the empty cells it takes to reach the position — a
+   repeated row is cut first, because its cells stand for every row it repeats
+   over — and `grow_columns` declares the columns the sheet stops before, so
+   `sheet_dimensions` covers the new cell. A `table:table-row` goes before
+   `table:named-expressions` and a `table:table-column` before the rows, which
+   is where [ODF 1.2] 9.1.2 orders them.
+
+   Nothing caps the position: ODF states no grid limit, and the page can only
+   name a cell it rendered. A write past what LibreOffice holds (1024 columns,
+   1048576 rows) saves a valid package that LibreOffice then drops the cell
+   from.
 2. XLSX: insert `<c r="…">` in column order into its `<row>`, create the
    `<row>` in row order, grow `<dimension ref>`.
 3. Rich cells: replace with one plain paragraph, keeping the cell style. The
@@ -477,10 +488,9 @@ Ordered by value over cost; all in step 0 or 1.
   translate time from the neighbours; the browser has to redo it for the
   edited row. Without it an edit into a blank cell shows the left neighbour's
   overflow painting across the new text.
-- **A position the engine cannot write yet** — an `.xlsx` cell with no `<c>`,
-  an `.ods` one past the last the file states — carries no lock, so the page
-  takes the edit and `Document::edit` throws it back at the host. Until step 2,
-  it says so.
+- **A position the engine cannot write yet** — an `.xlsx` cell with no `<c>` —
+  carries no lock, so the page takes the edit and `Document::edit` throws it
+  back at the host. Step 2.2 closes it; until then, the page says so.
 - **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
   not in the page and cannot be edited; the mode should say so where a view
   reports a `sheet_cut`.

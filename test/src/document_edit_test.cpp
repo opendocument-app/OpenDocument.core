@@ -133,7 +133,7 @@ TEST(DocumentEdit, the_ops_before_a_refusal_are_applied) {
       document.edit(R"({"version":1,"ops":[)"
                     R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
                     R"("value":{"type":"string","text":"written"}},)"
-                    R"({"op":"setCell","sheet":0,"column":9,"row":9,)"
+                    R"({"op":"setCell","sheet":9,"column":0,"row":0,)"
                     R"("value":{"type":"string","text":"absent"}}]})"));
 
   EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "written");
