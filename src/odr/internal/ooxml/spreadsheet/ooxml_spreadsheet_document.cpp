@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -218,18 +219,22 @@ public:
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(element_id);
     const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
-    if (cell == nullptr || cell->element_id == null_element_id) {
-      throw UnsupportedOperation(); // the file spells no `c` here
-    }
-    const ElementIdentifier cell_id = cell->element_id;
-    if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
-      throw UnsupportedOperation(); // the anchor of the merge answers for it
+
+    ElementIdentifier cell_id = null_element_id;
+    if (cell == nullptr) {
+      // the file spells no `c` here, so there is nothing to refuse
+      cell_id = insert_cell(element_id, column, row);
+    } else {
+      cell_id = cell->element_id;
+      if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
+        throw UnsupportedOperation(); // the anchor of the merge answers for it
+      }
+      if (cell->node.child("f")) {
+        throw UnsupportedOperation(); // its dependants would go stale
+      }
     }
 
-    pugi::xml_node node = cell->node;
-    if (node.child("f")) {
-      throw UnsupportedOperation(); // its dependants would go stale
-    }
+    pugi::xml_node node = get_node(cell_id);
 
     // the elements over the old children keep their ids and stop being
     // reachable
@@ -496,6 +501,116 @@ private:
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
     return m_registry->element_at(element_id).node;
+  }
+
+  /// A new `row` in @p sheet_data, before the first one past @p row: 18.3.1.80
+  /// states them in row order.
+  static pugi::xml_node insert_row_node(pugi::xml_node sheet_data,
+                                        const std::uint32_t row) {
+    for (const pugi::xml_node child : sheet_data.children("row")) {
+      if (child.attribute("r").as_uint() > row + 1) {
+        return sheet_data.insert_child_before("row", child);
+      }
+    }
+    return sheet_data.append_child("row");
+  }
+
+  /// A new `c` in @p row_node, before the first one past @p column: 18.3.1.73
+  /// states them in column order.
+  static pugi::xml_node insert_cell_node(pugi::xml_node row_node,
+                                         const std::uint32_t column) {
+    for (const pugi::xml_node child : row_node.children("c")) {
+      if (TablePosition(child.attribute("r").value()).column > column) {
+        return row_node.insert_child_before("c", child);
+      }
+    }
+    return row_node.append_child("c");
+  }
+
+  /// Widens the sheet's extent and its `dimension` (18.3.1.35) to hold
+  /// @p position.
+  static void grow_dimension(const pugi::xml_node sheet_node,
+                             ElementRegistry::Sheet &sheet,
+                             const TablePosition &position) {
+    if (position.column < sheet.dimensions.columns &&
+        position.row < sheet.dimensions.rows) {
+      return;
+    }
+    sheet.dimensions.columns =
+        std::max(sheet.dimensions.columns, position.column + 1);
+    sheet.dimensions.rows = std::max(sheet.dimensions.rows, position.row + 1);
+
+    pugi::xml_attribute ref = sheet_node.child("dimension").attribute("ref");
+    if (!ref) {
+      return; // it is optional, and a reader without it takes the cells
+    }
+    const std::string value = ref.value();
+    const TablePosition stated = value.find(':') == std::string::npos
+                                     ? TablePosition(value)
+                                     : TableRange(value).from();
+    const TableRange grown(
+        TablePosition(std::min(stated.column, position.column),
+                      std::min(stated.row, position.row)),
+        TablePosition(sheet.dimensions.columns - 1, sheet.dimensions.rows - 1));
+    ref.set_value(grown.to_string().c_str());
+  }
+
+  /// Whether a merge covers @p position without anchoring it - Excel ignores
+  /// what a covered `c` holds.
+  static bool is_covered_by_merge(const pugi::xml_node sheet_node,
+                                  const TablePosition &position) {
+    for (const pugi::xml_node merge_node :
+         sheet_node.child("mergeCells").children("mergeCell")) {
+      const std::string ref = merge_node.attribute("ref").value();
+      if (ref.find(':') == std::string::npos) {
+        continue;
+      }
+      const TableRange range(ref);
+      if (range.contains(position) && !(position == range.from())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// The `c` of (@p column, @p row), and the `row` around it, stated where the
+  /// file states neither.
+  [[nodiscard]] ElementIdentifier insert_cell(const ElementIdentifier sheet_id,
+                                              const std::uint32_t column,
+                                              const std::uint32_t row) const {
+    const pugi::xml_node sheet_node = get_node(sheet_id);
+    const TablePosition position(column, row);
+    if (is_covered_by_merge(sheet_node, position)) {
+      throw UnsupportedOperation();
+    }
+
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(sheet_id);
+
+    pugi::xml_node row_node;
+    if (const ElementRegistry::Sheet::Row *row_entry = sheet.row(row);
+        row_entry != nullptr) {
+      row_node = row_entry->node;
+    } else {
+      pugi::xml_node sheet_data = sheet_node.child("sheetData");
+      if (!sheet_data) {
+        throw UnsupportedOperation(); // 18.3.1.99 states one for every sheet
+      }
+      row_node = insert_row_node(sheet_data, row);
+      row_node.append_attribute("r").set_value(row + 1);
+      sheet.register_row(row, row_node);
+    }
+
+    pugi::xml_node cell_node = insert_cell_node(row_node, column);
+    cell_node.append_attribute("r").set_value(position.to_string().c_str());
+
+    const auto &[cell_id, unused1, unused2] =
+        m_registry->create_sheet_cell_element(cell_node, position);
+    m_registry->append_sheet_cell(sheet_id, cell_id);
+    sheet.register_cell(column, row, cell_node, cell_id);
+
+    grow_dimension(sheet_node, sheet, position);
+
+    return cell_id;
   }
 
   [[nodiscard]] std::pair<const Relations *, AbsPath>

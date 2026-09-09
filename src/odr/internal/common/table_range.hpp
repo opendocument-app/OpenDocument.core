@@ -16,6 +16,7 @@ public:
   [[nodiscard]] const TablePosition &to() const noexcept;
   [[nodiscard]] std::string to_string() const noexcept;
 
+  /// Closed: @ref to is the last position of the range, and it is contained.
   [[nodiscard]] bool contains(const TablePosition &position) const noexcept;
 
 private:

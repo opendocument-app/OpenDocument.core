@@ -25,12 +25,14 @@ inline void insert(internal::zip::ZipArchive &zip, const std::string &path,
 
 /// The smallest workbook that opens: one sheet, whose `<sheetData>` is
 /// @p sheet_data and which carries @p sheet_extra - `<mergeCells>`, say -
-/// after it. @p shared_strings writes a `sharedStrings.xml` where it is given,
-/// and @p workbook_extra follows `<sheets>` in `workbook.xml`.
+/// after it and @p sheet_prefix - `<dimension>` - before it.
+/// @p shared_strings writes a `sharedStrings.xml` where it is given, and
+/// @p workbook_extra follows `<sheets>` in `workbook.xml`.
 inline std::shared_ptr<internal::abstract::File>
 workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
          const std::string &shared_strings = "",
-         const std::string &workbook_extra = "") {
+         const std::string &workbook_extra = "",
+         const std::string &sheet_prefix = "") {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -59,9 +61,9 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
       R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
   insert(
       zip, "xl/worksheets/sheet1.xml",
-      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
-      R"(<sheetData>)" +
-          sheet_data + R"(</sheetData>)" + sheet_extra + R"(</worksheet>)");
+      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)" +
+          sheet_prefix + R"(<sheetData>)" + sheet_data + R"(</sheetData>)" +
+          sheet_extra + R"(</worksheet>)");
 
   if (!shared_strings.empty()) {
     insert(

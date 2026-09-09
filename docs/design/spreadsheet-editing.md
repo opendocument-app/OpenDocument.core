@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0, 1 and 2.1 landed; 2.2 and 2.3 are next.** This
+Status: **steps 0, 1, 2.1 and 2.2 landed; 2.3 is next.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -44,7 +44,7 @@ results go stale the moment an input changes.
 | ODS sheet growth | `odf_document.cpp::grow_to_cell` | A write past the last row or the last cell of a row appends both, and declares the columns (step 2.1, landed) |
 | XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
-| XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; an empty position has no `<c>` node |
+| XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; a position the file states no `<c>` for is written by `insert_cell` (step 2.2, landed) |
 | Cell value | `SheetCellAdapter` | `sheet_cell_value` reads the number and the formula (step 0.1, landed); `sheet_cell_value_type` stays the cheap question the renderer asks. Dates, booleans and errors still report `string` |
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
@@ -409,8 +409,12 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    name a cell it rendered. A write past what LibreOffice holds (1024 columns,
    1048576 rows) saves a valid package that LibreOffice then drops the cell
    from.
-2. XLSX: insert `<c r="…">` in column order into its `<row>`, create the
-   `<row>` in row order, grow `<dimension ref>`.
+2. **Landed.** XLSX: `insert_cell` states the `<c r="…">` in its `<row>` in
+   column order, the `<row>` in `sheetData` in row order where the file states
+   none, and widens `<dimension ref>` around the new cell. The map is keyed by
+   position, so the insert is local and nothing is reindexed. A position a
+   merge covers refuses before any of it, because Excel ignores what a covered
+   `c` holds.
 3. Rich cells: replace with one plain paragraph, keeping the cell style. The
    `rich` lock stays on a cell with a link or a line break; it goes for
    several runs of the same paragraph.
@@ -488,9 +492,6 @@ Ordered by value over cost; all in step 0 or 1.
   translate time from the neighbours; the browser has to redo it for the
   edited row. Without it an edit into a blank cell shows the left neighbour's
   overflow painting across the new text.
-- **A position the engine cannot write yet** — an `.xlsx` cell with no `<c>` —
-  carries no lock, so the page takes the edit and `Document::edit` throws it
-  back at the host. Step 2.2 closes it; until then, the page says so.
 - **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
   not in the page and cannot be edited; the mode should say so where a view
   reports a `sheet_cut`.
