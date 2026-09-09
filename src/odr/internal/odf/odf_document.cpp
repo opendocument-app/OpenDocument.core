@@ -370,21 +370,22 @@ public:
                       const CellValue &value) const override {
     const ElementRegistry::Sheet::Cell *cell =
         m_registry->sheet_element_at(element_id).cell(column, row);
-    if (cell == nullptr || cell->element_id == null_element_id) {
-      throw UnsupportedOperation(); // an empty cell is written as no element
+    if (cell == nullptr) {
+      throw UnsupportedOperation(); // the sheet states no node here
     }
     ElementIdentifier cell_id = cell->element_id;
 
-    // both refusals are decided on the run, before the split writes anything
-    if (get_node(cell_id).attribute("table:formula")) {
+    // both refusals are decided before the split writes anything
+    if (cell->node.attribute("table:formula")) {
       throw UnsupportedOperation(); // its dependants would go stale
     }
-    if (!holds_one_run(cell_id)) {
+    if (cell_id != null_element_id && !holds_one_run(cell_id)) {
       throw UnsupportedOperation();
     }
 
-    if (m_registry->sheet_cell_element_at(cell_id).is_repeated) {
-      cell_id = split_repeat(element_id, column, row); // `cell` is stale after
+    if (cell_id == null_element_id ||
+        m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+      cell_id = claim_cell(element_id, column, row); // `cell` is stale after
     }
 
     pugi::xml_node node = get_node(cell_id);
@@ -911,12 +912,12 @@ private:
     set_repeat(node, attribute, 1);
   }
 
-  /// Gives (@p column, @p row) a cell of its own, splitting the row and the
-  /// cell run it is one position of. Reindexes: every pointer read before is
-  /// stale.
-  [[nodiscard]] ElementIdentifier split_repeat(const ElementIdentifier sheet_id,
-                                               const std::uint32_t column,
-                                               const std::uint32_t row) const {
+  /// Gives (@p column, @p row) an element of its own: cuts the row and the
+  /// cell run it is one position of, and states the `text:p` an empty cell
+  /// has none of. Reindexes: every pointer read before is stale.
+  [[nodiscard]] ElementIdentifier claim_cell(const ElementIdentifier sheet_id,
+                                             const std::uint32_t column,
+                                             const std::uint32_t row) const {
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(sheet_id);
 
@@ -931,12 +932,17 @@ private:
     const std::size_t cell_index = cell_entry - cells.data();
     const std::uint32_t cell_begin =
         cell_index == 0 ? 0 : cells[cell_index - 1].end;
+    pugi::xml_node cell_node = cell_entry->node;
 
     // the row first: the cell keeps its node, so its own run is unmoved
     split_run(row_entry->node, "table:number-rows-repeated", row_begin,
               row_entry->end, row);
-    split_run(cell_entry->node, "table:number-columns-repeated", cell_begin,
+    split_run(cell_node, "table:number-columns-repeated", cell_begin,
               cell_entry->end, column);
+
+    if (!cell_node.first_child()) {
+      cell_node.append_child("text:p"); // a node with no content gets none
+    }
 
     reindex_sheet(*m_registry, sheet_id);
 
@@ -947,8 +953,10 @@ private:
   /// at most. Richer markup is kept rather than overwritten.
   [[nodiscard]] bool holds_one_run(const ElementIdentifier cell_id) const {
     const ElementIdentifier paragraph_id = element_first_child(cell_id);
-    if (paragraph_id == null_element_id ||
-        element_next_sibling(paragraph_id) != null_element_id ||
+    if (paragraph_id == null_element_id) {
+      return true; // a spanned cell states no paragraph; the write states one
+    }
+    if (element_next_sibling(paragraph_id) != null_element_id ||
         element_type(paragraph_id) != ElementType::paragraph) {
       return false;
     }
@@ -958,11 +966,18 @@ private:
             element_type(text_id) == ElementType::text);
   }
 
-  /// That run, created where the paragraph is empty - what a cleared cell is.
-  /// @ref holds_one_run has to pass.
+  /// That run, and the paragraph around it, created where the cell states
+  /// neither. @ref holds_one_run has to pass.
   [[nodiscard]] ElementIdentifier
   text_run_of(const ElementIdentifier cell_id) const {
-    const ElementIdentifier paragraph_id = element_first_child(cell_id);
+    ElementIdentifier paragraph_id = element_first_child(cell_id);
+    if (paragraph_id == null_element_id) {
+      pugi::xml_node cell_node = get_node(cell_id);
+      const auto &[new_id, unused] = m_registry->create_element(
+          ElementType::paragraph, cell_node.append_child("text:p"));
+      m_registry->append_child(cell_id, new_id);
+      paragraph_id = new_id;
+    }
     if (const ElementIdentifier text_id = element_first_child(paragraph_id);
         text_id != null_element_id) {
       return text_id;

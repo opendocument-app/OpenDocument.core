@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An empty `.ods` cell can be written: the write cuts the run of empty cells
+  the position belongs to and states the `text:p` the file spells none of. A
+  merged cell that holds no paragraph takes one the same way. A position past
+  the last cell the file states still refuses.
+
 - A sheet cell can be typed into: an overlay opens on a double click or a key,
   Enter and Tab commit, and `odr.editing.getOperations()` hands the host the
   envelope `Document::edit` takes.

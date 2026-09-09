@@ -188,14 +188,21 @@ The structural/foundational gaps, roughly by value:
    file states the value and shows a rendering of it, and setting one without
    the other leaves it contradicting itself. It writes through the cell's
    single text run, so a cell holding a formula or richer markup than one plain
-   paragraph refuses, as does one the file states no element for.
+   paragraph refuses, as does a position past the last cell the file states.
 
-   A **repeated** cell is written by cutting the run: `split_repeat` copies the
+   A **repeated** cell is written by cutting the run: `claim_cell` copies the
    `table:table-row` and the `table:table-cell` around the position and leaves
    the original node as the one written, so its element and children survive.
    `reindex_sheet` then rebuilds the sheet's position index off the dom, a cell
    node keeping the element it already carries. Both refusals are decided
-   before any of that, so a refused write leaves the run uncut. Two costs:
+   before any of that, so a refused write leaves the run uncut.
+
+   An **empty** cell carries no element, because `index_sheet_rows` builds one
+   only for a node with content or a span. `claim_cell` therefore appends the
+   `text:p` *before* the reindex, which then sees a node that is not empty and
+   builds the element for it. A spanned cell that holds no paragraph takes one
+   from `text_run_of` instead, because the page already reads it as editable.
+   Two costs:
    cutting a repeated row copies every cell in it, so the elements grow with
    the row rather than with the repeat; and the reindex walks the row nodes,
    which a repeat collapses, so it is bounded by the dom rather than the grid.

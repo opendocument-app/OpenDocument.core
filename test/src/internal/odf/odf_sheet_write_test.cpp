@@ -208,12 +208,123 @@ TEST(OdfSheetWrite, a_formula_cell_refuses_to_be_written) {
   EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
 }
 
-/// An empty cell is written as no element at all.
-TEST(OdfSheetWrite, an_absent_cell_refuses_to_be_written) {
+/// Past the last cell the file states there is no node to write into.
+TEST(OdfSheetWrite, a_cell_past_the_sheet_refuses_to_be_written) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);
 
   EXPECT_THROW(sheet.set_cell(4, 4, CellValue("y")), UnsupportedOperation);
+}
+
+/// An empty cell is parsed as no element, so a write has to make one.
+TEST(OdfSheetWrite, an_empty_cell_is_written) {
+  const Document document =
+      document_of(flat_sheet(string_cell("a") + R"(<table:table-cell/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+}
+
+TEST(OdfSheetWrite, an_empty_cell_takes_a_number) {
+  const Document document = document_of(flat_sheet(R"(<table:table-cell/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue(12.5, "12.5"));
+
+  const CellValue value = sheet.cell(0, 0).value();
+  EXPECT_EQ(value.type(), ValueType::float_number);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 12.5);
+  EXPECT_EQ(value.text(), "12.5");
+}
+
+/// The style is the cell's, not the paragraph's, so writing keeps it.
+TEST(OdfSheetWrite, an_empty_cell_keeps_its_style) {
+  const Document document =
+      document_of(flat_sheet(R"(<table:table-cell table:style-name="ce1"/>)"));
+  first_sheet(document).set_cell(0, 0, CellValue("y"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find(R"(table:style-name="ce1")"), std::string::npos);
+}
+
+TEST(OdfSheetWrite, an_empty_repeated_cell_is_split_by_a_write) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell table:number-columns-repeated="4"/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(2, 0).value().text(), "y");
+  // the cells around it are still no element, so they state nothing at all
+  for (const std::uint32_t column : {0u, 1u, 3u}) {
+    EXPECT_FALSE(sheet.cell(column, 0).value().has_text()) << column;
+  }
+  EXPECT_EQ(sheet.dimensions().rows, 1);
+}
+
+TEST(OdfSheetWrite, an_empty_cell_of_a_repeated_row_is_written) {
+  const Document document =
+      document_of(R"(<?xml version="1.0" encoding="UTF-8"?>)"
+                  R"(<office:document office:mimetype=")"
+                  R"(application/vnd.oasis.opendocument.spreadsheet">)"
+                  R"(<office:body><office:spreadsheet>)"
+                  R"(<table:table table:name="s">)"
+                  R"(<table:table-row table:number-rows-repeated="3">)"
+                  R"(<table:table-cell table:number-columns-repeated="2"/>)"
+                  R"(</table:table-row></table:table>)"
+                  R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 1, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(1, 1).value().text(), "y");
+  EXPECT_FALSE(sheet.cell(0, 1).value().has_text());
+  EXPECT_FALSE(sheet.cell(1, 0).value().has_text());
+  EXPECT_FALSE(sheet.cell(1, 2).value().has_text());
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
+/// A formula cell can hold no cached value, and the formula refuses either
+/// way.
+TEST(OdfSheetWrite, an_empty_formula_cell_refuses_to_be_written) {
+  const Document document = document_of(flat_sheet(
+      R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])"/>)xml"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+}
+
+/// A merged cell holds no paragraph until something is written into it.
+TEST(OdfSheetWrite, an_empty_spanned_cell_is_written) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell table:number-columns-spanned="2"/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).span().columns, 2);
+}
+
+TEST(OdfSheetWrite, an_empty_cell_written_into_saves_and_reopens) {
+  const Document document = document_of(
+      flat_sheet(R"(<table:table-cell table:number-columns-repeated="4"/>)"));
+  first_sheet(document).set_cell(2, 0, CellValue(41.5, "41.5"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened = document_of(saved.str());
+  const Sheet sheet = first_sheet(reopened);
+
+  ASSERT_TRUE(sheet.cell(2, 0).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 41.5);
+  EXPECT_FALSE(sheet.cell(1, 0).value().has_text());
+  EXPECT_FALSE(sheet.cell(3, 0).value().has_text());
 }
 
 TEST(OdfSheetWrite, a_cell_of_several_paragraphs_refuses_to_be_written) {

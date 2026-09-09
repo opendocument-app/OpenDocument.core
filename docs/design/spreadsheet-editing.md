@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0 and 1 landed, and 2.1 with them; step 2 is next.** This
+Status: **steps 0 and 1 landed, and 2.1 with them; step 2 is under way.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -40,7 +40,7 @@ results go stale the moment an input changes.
 | ODS string-cell edit | `odf_document.cpp::text_set_content` | Works: `Document.edit_ods_diff` edits five cells in memory. Only the run's text changes; `office:value` on a number cell is not touched |
 | ODS save | `odf_document.cpp::save` | Re-serialises `content.xml`, byte-copies the rest — the same shape a sheet needs |
 | ODS cell index | `odf_element_registry.cpp::Sheet::register_cell` | Per row a run of `(end, element_id, node)` entries; repeats collapse onto one entry. Written once at parse; nothing inserts |
-| ODS repeated cells | `odf_document.cpp::split_repeat` | A write cuts the run and `reindex_sheet` rebuilds the index (step 2.1, landed) |
+| ODS repeated and empty cells | `odf_document.cpp::claim_cell` | A write cuts the run and states the `text:p` an empty cell has none of; `reindex_sheet` rebuilds the index (step 2.1, landed) |
 | XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
 | XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; an empty position has no `<c>` node |
@@ -389,10 +389,15 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    rebuilds it off the dom, a cell node keeping the element it carries — which
    avoids a second copy of the parser's row loop. The `repeated` lock is gone.
 
-   **Open:** the same primitive for a position the file states no element for.
-   A run with a node but no element (`<table:table-cell number-columns-repeated=
-   "1000"/>`) only needs the split plus a `text:p`; a position past the row's
-   last cell or the sheet's last row needs appending and growing the extent.
+   **Landed for empty cells.** A run with a node but no element
+   (`<table:table-cell table:number-columns-repeated="1000"/>`) is cut the same
+   way, and the write states the `text:p`, because the reindex gives an element
+   to a node that is not empty. A cell a merge spans and that holds no
+   paragraph takes one too: the page reads it as editable, so the engine has to
+   agree.
+
+   **Open:** a position past the row's last cell or the sheet's last row needs
+   appending and growing the extent.
 2. XLSX: insert `<c r="…">` in column order into its `<row>`, create the
    `<row>` in row order, grow `<dimension ref>`.
 3. Rich cells: replace with one plain paragraph, keeping the cell style. The
@@ -473,8 +478,9 @@ Ordered by value over cost; all in step 0 or 1.
   edited row. Without it an edit into a blank cell shows the left neighbour's
   overflow painting across the new text.
 - **A position the engine cannot write yet** — an `.xlsx` cell with no `<c>`,
-  an `.ods` one with no element — carries no lock, so the page takes the edit
-  and `Document::edit` throws it back at the host. Until step 2, it says so.
+  an `.ods` one past the last the file states — carries no lock, so the page
+  takes the edit and `Document::edit` throws it back at the host. Until step 2,
+  it says so.
 - **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
   not in the page and cannot be edited; the mode should say so where a view
   reports a `sheet_cut`.
