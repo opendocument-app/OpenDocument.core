@@ -16,6 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An edit can span several runs: the new `insertText` and `removeElement`
+  operations, and `Document::remove` / `insert_text_before` / `insert_text_after`
+  in C++. ODF and `.docx`; every other format refuses.
+
+- **Fix**: a `.docx` edit keeps the space at either end of a run, by stating
+  `xml:space="preserve"` on the `w:t` that needs it.
+
 - **Breaking** (wire only): an edit operation names its element by the id the
   render writes into the page, `data-odr-id`, not by a document path. The
   envelope is `{"version": 2, ...}`; version 1 is refused. An editable render

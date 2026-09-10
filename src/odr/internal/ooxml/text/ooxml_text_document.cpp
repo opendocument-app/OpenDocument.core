@@ -162,6 +162,9 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableColumnAdapter, abstract::TableRowAdapter,
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
+using TreeEditor = xml::TreeEditor<ElementRegistry>;
+using xml::NodeSpan;
+
 class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
@@ -221,65 +224,42 @@ public:
     ElementRegistry::Text &text_element =
         m_registry->text_element_at(element_id);
 
-    const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element.last;
+    const NodeSpan old_span{element.node, text_element.last};
+    pugi::xml_node parent = old_span.first.parent();
+    const NodeSpan new_span = write_text_nodes(parent, old_span.first, text);
 
-    pugi::xml_node parent = first.parent();
-    const pugi::xml_node old_first = first;
-    const pugi::xml_node old_last = last;
-    pugi::xml_node new_first = old_first;
-    pugi::xml_node new_last = last;
+    element.node = new_span.first;
+    text_element.last = new_span.last;
 
-    const auto insert_node = [&](const char *node) {
-      const pugi::xml_node new_node =
-          parent.insert_child_before(node, old_first);
-      if (new_first == old_first) {
-        new_first = new_node;
-      }
-      new_last = new_node;
-      return new_node;
-    };
-
-    for (const xml::StringToken &token : xml::tokenize_text(text)) {
-      switch (token.type) {
-      case xml::StringToken::Type::none:
-        break;
-      case xml::StringToken::Type::string: {
-        auto text_node = insert_node("w:t");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case xml::StringToken::Type::spaces: {
-        auto text_node = insert_node("w:t");
-        text_node.append_attribute("xml:space").set_value("preserve");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case xml::StringToken::Type::tabs: {
-        for (std::size_t i = 0; i < token.string.size(); ++i) {
-          insert_node("w:tab");
-        }
-      } break;
-      }
-    }
-
-    if (new_first == old_first) {
-      // empty text still needs a live node to anchor the element to, or the
-      // removal below would leave the registry pointing at freed nodes
-      insert_node("w:t");
-    }
-
-    element.node = new_first;
-    text_element.last = new_last;
-
-    for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
-      const pugi::xml_node next = node.next_sibling();
-      parent.remove_child(node);
-      node = next;
-    }
+    xml::remove_nodes(old_span);
   }
+
+  [[nodiscard]] ElementIdentifier
+  text_insert(const ElementIdentifier element_id, const Placement where,
+              const std::string &text) const override {
+    const ElementRegistry::Text &anchor =
+        m_registry->text_element_at(element_id);
+    const pugi::xml_node first = get_node(element_id);
+    pugi::xml_node parent = first.parent();
+    // a run beside this one in the same `w:r` carries the same `w:rPr`
+    const pugi::xml_node before =
+        where == Placement::after ? anchor.last.next_sibling() : first;
+
+    const NodeSpan span = write_text_nodes(parent, before, text);
+    const auto &[new_id, unused_element, unused_text] =
+        m_registry->create_text_element(span.first, span.last);
+    if (where == Placement::after) {
+      m_registry->insert_sibling_after(element_id, new_id);
+    } else {
+      m_registry->insert_sibling_before(element_id, new_id);
+    }
+    return new_id;
+  }
+
+  void element_remove(const ElementIdentifier element_id) const override {
+    TreeEditor(*m_registry).remove(element_id);
+  }
+
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;

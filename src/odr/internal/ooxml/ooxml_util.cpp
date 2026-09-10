@@ -6,6 +6,7 @@
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <cstddef>
 #include <cstring>
 #include <stdexcept>
 
@@ -35,6 +36,56 @@ std::optional<FontStyle> font_style_from_value(const char *value) {
 }
 
 } // namespace
+
+xml::NodeSpan ooxml::write_text_nodes(pugi::xml_node parent,
+                                      const pugi::xml_node before,
+                                      const std::string &text) {
+  xml::NodeSpan span;
+
+  const auto insert = [&](const char *name) {
+    const pugi::xml_node node = before
+                                    ? parent.insert_child_before(name, before)
+                                    : parent.append_child(name);
+    if (!span.first) {
+      span.first = node;
+    }
+    span.last = node;
+    return node;
+  };
+  // [ECMA-376] Part 1 17.3.3.31: without `xml:space` a reader collapses the
+  // space at either end of a `w:t`, and a lone space is part of a `string`
+  // token - so the text says whether one is there, not the token type.
+  const auto insert_text = [&](const std::string &token) {
+    pugi::xml_node node = insert("w:t");
+    if (token.starts_with(' ') || token.ends_with(' ')) {
+      node.append_attribute("xml:space").set_value("preserve");
+    }
+    node.append_child(pugi::xml_node_type::node_pcdata)
+        .text()
+        .set(token.c_str());
+  };
+
+  for (const xml::StringToken &token : xml::tokenize_text(text)) {
+    switch (token.type) {
+    case xml::StringToken::Type::none:
+      break;
+    case xml::StringToken::Type::string:
+    case xml::StringToken::Type::spaces:
+      insert_text(token.string);
+      break;
+    case xml::StringToken::Type::tabs:
+      for (std::size_t i = 0; i < token.string.size(); ++i) {
+        insert("w:tab");
+      }
+      break;
+    }
+  }
+
+  if (!span.first) {
+    insert("w:t");
+  }
+  return span;
+}
 
 std::optional<std::string>
 ooxml::read_string_attribute(const pugi::xml_attribute attribute) {

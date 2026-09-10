@@ -1,5 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 
@@ -165,4 +166,225 @@ TEST(DocumentEdit, the_ops_before_a_refusal_are_applied) {
                     R"("value":{"type":"string","text":"absent"}}]})"));
 
   EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "written");
+}
+
+namespace {
+
+/// Two paragraphs, the first of three runs with the middle one under a span -
+/// so a test can see which parent a new run lands in.
+Document two_paragraph_text() {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.text">)"
+      R"(<office:body><office:text>)"
+      R"(<text:p>one <text:span text:style-name="s">two</text:span> three</text:p>)"
+      R"(<text:p>second</text:p>)"
+      R"(</office:text></office:body></office:document>)";
+  return DecodedFile(
+             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
+                                      Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+/// Every run under @p element, in document order, joined.
+std::string text_of(const Element element) {
+  std::string result;
+  if (element.type() == ElementType::text) {
+    result += element.as_text().content();
+  }
+  for (const Element child : element.children()) {
+    result += text_of(child);
+  }
+  return result;
+}
+
+Element paragraph_at(const Document &document, const std::uint32_t ordinal) {
+  std::uint32_t seen = 0;
+  for (const Element child : document.root_element().children()) {
+    if (child.type() == ElementType::paragraph && seen++ == ordinal) {
+      return child;
+    }
+  }
+  return {};
+}
+
+/// The @p ordinal -th run of the @p paragraph -th paragraph, counting a run
+/// under a span as the paragraph's own.
+Element run_at(const Document &document, const std::uint32_t paragraph,
+               const std::uint32_t ordinal) {
+  std::uint32_t seen = 0;
+  const auto walk = [&](this auto &&self, const Element element) -> Element {
+    if (element.type() == ElementType::text && seen++ == ordinal) {
+      return element;
+    }
+    for (const Element child : element.children()) {
+      if (const Element found = self(child)) {
+        return found;
+      }
+    }
+    return {};
+  };
+  return walk(paragraph_at(document, paragraph));
+}
+
+std::string ops(const std::string &body) {
+  return R"({"version":2,"ops":[)" + body + "]}";
+}
+
+std::string id_of(const Element element) {
+  return std::to_string(element.identifier());
+}
+
+} // namespace
+
+TEST(DocumentEdit, a_run_is_inserted_after_the_one_it_names) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertText","after":)" +
+                    id_of(run_at(document, 0, 0)) +
+                    R"(,"text":"and ","id":-1})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one and two three");
+}
+
+TEST(DocumentEdit, a_run_is_inserted_before_the_one_it_names) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertText","before":)" +
+                    id_of(run_at(document, 0, 2)) + R"(,"text":"!","id":-1})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one two! three");
+}
+
+TEST(DocumentEdit, a_run_inserted_beside_a_styled_one_shares_its_parent) {
+  const Document document = two_paragraph_text();
+  const Element styled = run_at(document, 0, 1);
+
+  document.edit(ops(R"({"op":"insertText","after":)" + id_of(styled) +
+                    R"(,"text":"!","id":-1})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one two! three");
+  EXPECT_EQ(run_at(document, 0, 2).parent(), styled.parent());
+}
+
+TEST(DocumentEdit, a_removed_run_takes_its_text_with_it) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"removeElement","id":)" +
+                    id_of(run_at(document, 0, 1)) + "}"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one  three");
+}
+
+TEST(DocumentEdit, a_removed_span_takes_its_subtree_with_it) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"removeElement","id":)" +
+                    id_of(run_at(document, 0, 1).parent()) + "}"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one  three");
+}
+
+/// What typing over a selection spanning three runs looks like on the wire.
+TEST(DocumentEdit, an_edit_across_three_runs_is_three_ops) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"setText","id":)" + id_of(run_at(document, 0, 0)) +
+                    R"(,"text":"oX"},)" + R"({"op":"removeElement","id":)" +
+                    id_of(run_at(document, 0, 1)) + "}," +
+                    R"({"op":"setText","id":)" + id_of(run_at(document, 0, 2)) +
+                    R"(,"text":"ree"})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "oXree");
+}
+
+TEST(DocumentEdit, a_later_op_names_a_run_an_earlier_one_created) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertText","after":)" +
+                    id_of(run_at(document, 0, 2)) +
+                    R"(,"text":"four","id":-1},)" +
+                    R"({"op":"setText","id":-1,"text":"FOUR"})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one two threeFOUR");
+}
+
+TEST(DocumentEdit, an_op_naming_a_created_element_that_is_not_there_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"setText","id":-1,"text":"x"})")),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, creating_two_elements_under_one_id_refuses) {
+  const Document document = two_paragraph_text();
+  const std::string anchor = id_of(run_at(document, 0, 0));
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"insertText","after":)" + anchor +
+                                 R"(,"text":"a","id":-1},)" +
+                                 R"({"op":"insertText","after":)" + anchor +
+                                 R"(,"text":"b","id":-1})")),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, a_created_element_with_a_positive_id_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"insertText","after":)" +
+                                 id_of(run_at(document, 0, 0)) +
+                                 R"(,"text":"a","id":7})")),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, an_insert_naming_neither_side_or_both_refuses) {
+  const Document document = two_paragraph_text();
+  const std::string anchor = id_of(run_at(document, 0, 0));
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"insertText","text":"a","id":-1})")),
+               std::invalid_argument);
+  EXPECT_THROW(
+      document.edit(ops(R"({"op":"insertText","after":)" + anchor +
+                        R"(,"before":)" + anchor + R"(,"text":"a","id":-1})")),
+      std::invalid_argument);
+}
+
+/// Rtf throws its source away as it parses, so its model is read-only.
+TEST(DocumentEdit, a_read_only_engine_refuses_a_structural_op) {
+  const Document document =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(
+                                               std::string(R"({\rtf1 hello})")),
+                                           {}, Logger::null()))
+          .as_document_file()
+          .document();
+  ASSERT_FALSE(document.is_editable());
+
+  const Element run = run_at(document, 0, 0);
+  ASSERT_TRUE(run);
+  EXPECT_THROW(
+      document.edit(ops(R"({"op":"removeElement","id":)" + id_of(run) + "}")),
+      UnsupportedOperation);
+  EXPECT_THROW(document.edit(ops(R"({"op":"insertText","after":)" + id_of(run) +
+                                 R"(,"text":"x","id":-1})")),
+               UnsupportedOperation);
+}
+
+TEST(DocumentEdit, a_structural_edit_refuses_another_documents_element) {
+  const Document document = two_paragraph_text();
+  const Document other = two_paragraph_text();
+  const Element run = run_at(other, 0, 0);
+  ASSERT_TRUE(run);
+
+  EXPECT_THROW(document.remove(run), std::invalid_argument);
+  EXPECT_THROW((void)document.insert_text_after(run.as_text(), "x"),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, inserting_a_run_beside_something_that_is_not_one_refuses) {
+  const Document document = two_paragraph_text();
+  const Element paragraph = paragraph_at(document, 0);
+
+  EXPECT_THROW((void)document.insert_text_after(paragraph.as_text(), "x"),
+               std::invalid_argument);
 }

@@ -2,6 +2,8 @@
 
 #include <odr/style.hpp>
 
+#include <odr/internal/xml/xml_tree_edit.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -25,6 +27,11 @@ class AbsPath;
 } // namespace odr::internal
 
 namespace odr::internal::ooxml {
+
+/// Writes @p text as `w:t` / `w:tab` nodes before @p before, or at the end of
+/// @p parent where that is null. Empty text still gets a node to anchor to.
+xml::NodeSpan write_text_nodes(pugi::xml_node parent, pugi::xml_node before,
+                               const std::string &text);
 
 std::optional<std::string> read_string_attribute(pugi::xml_attribute);
 std::optional<Color> read_color_attribute(pugi::xml_attribute);

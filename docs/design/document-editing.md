@@ -206,6 +206,16 @@ Every other id is one the page wrote.
  {"op": "mergeParagraph", "paragraph": 9}]
 ```
 
+## Where the C++ API puts an edit
+
+A **handle** says what an element holds — `Text::set_content`,
+`Sheet::set_cell`. The **document** says what the tree holds —
+`Document::remove`, `Document::insert_text_before` / `insert_text_after`, and
+the paragraph operations below. An `Element` is an immutable handle, so
+restructuring the tree through one would leave a handle naming something
+unreachable; and the document is what owns the tree either way. Each structural
+call refuses an element of another document.
+
 ## The adapter surface
 
 Alongside `TextAdapter::text_set_content`, all defaulting to
@@ -255,8 +265,10 @@ Each step is a pull request that builds and tests on its own.
 
 1. **Address by id.** `data-odr-id` on runs and paragraphs,
    `Document::element_by_id`, `setText` by id, envelope version 2.
+   **Landed.**
 2. **Runs come and go.** `insertText` and `removeElement`, the registry links
    they need, odf and ooxml text. A selection spanning runs is replayable.
+   **Landed.**
 3. **Paragraphs split and merge.** `splitParagraph`, `mergeParagraph`,
    `insertParagraph`.
 4. **The browser editor.** Model-first, owns the DOM mutation, records the ops,
