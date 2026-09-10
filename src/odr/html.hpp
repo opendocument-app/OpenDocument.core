@@ -39,6 +39,8 @@ enum class HtmlResourceType {
   file,
 };
 
+/// One file a rendered view needs: a stylesheet, a script, an image, a
+/// font. @ref HtmlConfig decides which are embedded and which are linked.
 class HtmlResource final {
 public:
   HtmlResource();
@@ -242,6 +244,9 @@ struct HtmlSheetCut final {
   TableDimensions rendered;
 };
 
+/// One page of a rendering: a slide, a sheet, a pdf page, or the whole of
+/// a text document. @ref write_html emits it and names the resources it
+/// needs.
 class HtmlView final {
 public:
   HtmlView();
@@ -269,6 +274,9 @@ private:
 
 using HtmlViews = std::vector<HtmlView>;
 
+/// A whole document, rendered. Its @ref list_views are the pages, and it
+/// serves them and their resources by path — what @ref odr::HttpServer
+/// puts on a socket.
 class HtmlService final {
 public:
   HtmlService();

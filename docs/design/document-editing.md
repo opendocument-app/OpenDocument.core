@@ -263,8 +263,8 @@ registry links.** Only the tag names differ — `text:p` / `text:span` against
 `w:p` / `w:r` / `a:p` / `a:r`.
 
 The shared `internal::ElementRegistry` grows the links the structural ops need:
-`unlink_child`, `insert_child_after` and `insert_child_before`. It has only
-`append_child` today, because until now nothing built a tree except a parser
+`unlink_child`, `insert_sibling_after` and `insert_sibling_before`. It had only
+`append_child` before, because until then nothing built a tree except a parser
 reading forward.
 
 ## Which formats
@@ -274,6 +274,7 @@ reading forward.
 | `.odt`, `.odp`, `.ods`, `.odg` | `odf` | edits and saves today; the new ops land here |
 | `.docx` | `ooxml/text` | edits and saves today; the new ops land here |
 | `.pptx` | `ooxml/presentation` | edits and saves; the same operations over `a:p` / `a:r` |
+| `.xlsx` | `ooxml/spreadsheet` | cells only; see [`spreadsheet-editing.md`](spreadsheet-editing.md) |
 | `.txt` | `text` | not a document at all; see [`txt-editing.md`](txt-editing.md) |
 | everything else | — | read-only, and says so by decision 7 |
 
