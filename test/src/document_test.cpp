@@ -14,6 +14,7 @@
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -86,23 +87,33 @@ std::string set_text_ops(const Document &document, const TextEdits &edits) {
   return nlohmann::json{{"version", 2}, {"ops", ops}}.dump();
 }
 
-/// Applies @p edits to `path`'s document, saves to `output_name` in the working
-/// directory and reopens it, so the assertions see what was written.
-Document edit_and_reload(const std::string &path, const TextEdits &edits,
-                         const std::string &output_name) {
+/// Applies what @p make_ops states against the opened document, saves to
+/// `output_name` and reopens it, so the assertions see what was written.
+Document
+edit_and_reload(const std::string &path,
+                const std::function<std::string(const Document &)> &make_ops,
+                const std::string &output_name) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
       open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
-  document.edit(set_text_ops(document, edits));
+  document.edit(make_ops(document));
 
   const std::string output_path =
       (std::filesystem::current_path() / output_name).string();
   document.save(output_path);
 
   return open(output_path).as_document_file().document();
+}
+
+Document edit_and_reload(const std::string &path, const TextEdits &edits,
+                         const std::string &output_name) {
+  return edit_and_reload(
+      path,
+      [&](const Document &document) { return set_text_ops(document, edits); },
+      output_name);
 }
 
 /// `pages.ods` is password-protected; every test that wants its content opens
@@ -418,6 +429,99 @@ TEST(Document, a_decrypted_package_is_not_savable) {
   std::ostringstream out;
   EXPECT_THROW(document.save(out), UnsupportedOperation);
   EXPECT_THROW((void)document.save_to_memory(), UnsupportedOperation);
+}
+
+namespace {
+
+/// Every run under @p element, in document order, joined.
+std::string text_of(const Element element) {
+  std::string result;
+  if (element.type() == ElementType::text) {
+    result += element.as_text().content();
+  }
+  for (const Element child : element.children()) {
+    result += text_of(child);
+  }
+  return result;
+}
+
+/// Every run under @p element, in document order.
+std::vector<Element> runs_of(const Element element) {
+  std::vector<Element> runs;
+  const auto walk = [&](this auto &&self, const Element at) -> void {
+    if (at.type() == ElementType::text) {
+      runs.push_back(at);
+    }
+    for (const Element child : at.children()) {
+      self(child);
+    }
+  };
+  walk(element);
+  return runs;
+}
+
+/// The first paragraph of at least three runs - two ends and something
+/// between them. Found rather than spelled: a data pin moves the index.
+Element paragraph_of_several_runs(const Document &document) {
+  for (const Element child : document.root_element().children()) {
+    if (child.type() == ElementType::paragraph && runs_of(child).size() >= 3) {
+      return child;
+    }
+  }
+  return {};
+}
+
+/// A paragraph rewritten end to end, as an edit across its runs would.
+std::string rewrite_paragraph_ops(const std::vector<Element> &runs) {
+  nlohmann::json ops = nlohmann::json::array();
+  ops.push_back({{"op", "setText"},
+                 {"id", runs.front().identifier()},
+                 {"text", "head "}});
+  for (std::size_t at = 1; at + 1 < runs.size(); ++at) {
+    ops.push_back({{"op", "removeElement"}, {"id", runs[at].identifier()}});
+  }
+  ops.push_back(
+      {{"op", "setText"}, {"id", runs.back().identifier()}, {"text", "tail"}});
+  ops.push_back({{"op", "insertText"},
+                 {"after", runs.back().identifier()},
+                 {"text", " and more"},
+                 {"id", -1}});
+  return nlohmann::json{{"version", 2}, {"ops", ops}}.dump();
+}
+
+/// Rewrites a paragraph of @p path's document across its runs, saves and
+/// reopens, and answers what that paragraph then reads.
+std::string edit_across_runs(const std::string &path,
+                             const std::string &output_name) {
+  std::string paragraph_path;
+  const Document document = edit_and_reload(
+      path,
+      [&](const Document &opened) {
+        const Element paragraph = paragraph_of_several_runs(opened);
+        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        paragraph_path = paragraph.document_path().to_string();
+        return rewrite_paragraph_ops(runs_of(paragraph));
+      },
+      output_name);
+
+  // no paragraph came or went, so the path still names the one that was edited
+  return text_of(
+      document.root_element().navigate_path(DocumentPath(paragraph_path)));
+}
+
+} // namespace
+
+// Reopening is what proves the package the engine wrote is sound.
+TEST(Document, edit_odt_across_runs) {
+  EXPECT_EQ(edit_across_runs("odr-public/odt/style-various-1.odt",
+                             "style-various-1_edit_runs.odt"),
+            "head tail and more");
+}
+
+TEST(Document, edit_docx_across_runs) {
+  EXPECT_EQ(edit_across_runs("odr-public/docx/style-various-1.docx",
+                             "style-various-1_edit_runs.docx"),
+            "head tail and more");
 }
 
 TEST(Document, edit_docx_diff) {

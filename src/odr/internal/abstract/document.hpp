@@ -4,6 +4,7 @@
 // for the element model itself: `FrameAdapter` defaults its shape readers, and
 // a default needs the complete type.
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/quantity.hpp>
 
 #include <cstdint>
@@ -106,6 +107,13 @@ public:
   [[nodiscard]] virtual ElementIdentifier
   element_navigate_path(ElementIdentifier element_id,
                         const DocumentPath &path) const = 0;
+
+  /// Removes @p element_id and its subtree; it keeps its id and stops being
+  /// reachable, so an id already handed out never names something else.
+  virtual void
+  element_remove([[maybe_unused]] const ElementIdentifier element_id) const {
+    throw UnsupportedOperation();
+  }
 
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
@@ -331,6 +339,15 @@ public:
   text_content(ElementIdentifier element_id) const = 0;
   virtual void text_set_content(ElementIdentifier element_id,
                                 const std::string &text) const = 0;
+
+  /// A run beside @p element_id, in the same parent, so it takes the same
+  /// style.
+  virtual ElementIdentifier
+  text_insert([[maybe_unused]] const ElementIdentifier element_id,
+              [[maybe_unused]] const Placement where,
+              [[maybe_unused]] const std::string &text) const {
+    throw UnsupportedOperation();
+  }
 
   [[nodiscard]] virtual TextStyle
   text_style(ElementIdentifier element_id) const = 0;

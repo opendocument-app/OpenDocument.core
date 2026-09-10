@@ -19,6 +19,7 @@ class DocumentFile;
 class Element;
 class File;
 class Filesystem;
+class Text;
 
 /// Represents a document.
 class Document final {
@@ -65,12 +66,34 @@ public:
   /// exist where this document holds no such id.
   [[nodiscard]] Element element_by_id(ElementIdentifier identifier) const;
 
+  /// @name Structural edits
+  /// Each throws `UnsupportedOperation` where the engine cannot write, and
+  /// `std::invalid_argument` for an element of another document.
+  /// @{
+
+  /// Removes @p element and its subtree; its identifier stays taken.
+  void remove(const Element &element) const;
+
+  /// A run beside @p anchor, in the same parent, so it takes the same style.
+  [[nodiscard]] Text insert_text_before(const Text &anchor,
+                                        const std::string &text) const;
+  [[nodiscard]] Text insert_text_after(const Text &anchor,
+                                       const std::string &text) const;
+
+  /// @}
+
   /// The files the document is packaged from; empty for a document that is
   /// one file.
   [[nodiscard]] Filesystem as_filesystem() const;
 
 private:
   std::shared_ptr<internal::abstract::Document> m_impl;
+
+  /// @p element 's identifier, checked to be one this document holds.
+  [[nodiscard]] ElementIdentifier check_(const Element &element) const;
+
+  [[nodiscard]] Text insert_text_(const Text &anchor, Placement where,
+                                  const std::string &text) const;
 
   friend DocumentFile;
 };

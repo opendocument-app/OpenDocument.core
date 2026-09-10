@@ -8,7 +8,11 @@
 
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
+#include <utility>
+
+#include <pugixml.hpp>
 
 using namespace odr::internal;
 using namespace odr::internal::ooxml;
@@ -105,4 +109,46 @@ TEST(ooxml_util, a_relationship_target_that_names_nothing_resolves_to_nothing) {
   EXPECT_FALSE(
       layout_of(relationships_of(relationship(layout_type, "../../../x.xml")))
           .has_value());
+}
+
+namespace {
+
+/// The `w:r` @p text is written into, serialised.
+std::string written(const std::string &text) {
+  pugi::xml_document document;
+  pugi::xml_node run = document.append_child("w:r");
+  write_text_nodes(run, {}, text);
+
+  std::ostringstream out;
+  document.print(out, "", pugi::format_raw);
+  return std::move(out).str();
+}
+
+} // namespace
+
+// [ECMA-376] Part 1 17.3.3.31: a reader collapses the space at either end of a
+// `w:t` unless the node says to keep it.
+TEST(ooxml_util, a_run_ending_in_a_space_keeps_it) {
+  EXPECT_EQ(written("head "),
+            R"(<w:r><w:t xml:space="preserve">head </w:t></w:r>)");
+}
+
+TEST(ooxml_util, a_run_starting_with_a_space_keeps_it) {
+  EXPECT_EQ(written(" and more"),
+            R"(<w:r><w:t xml:space="preserve"> and more</w:t></w:r>)");
+}
+
+TEST(ooxml_util, a_run_with_no_space_at_its_ends_says_nothing) {
+  EXPECT_EQ(written("head and more"), R"(<w:r><w:t>head and more</w:t></w:r>)");
+}
+
+TEST(ooxml_util, a_run_of_spaces_keeps_them) {
+  EXPECT_EQ(written("a   b"),
+            R"(<w:r><w:t>a</w:t><w:t xml:space="preserve">   </w:t>)"
+            R"(<w:t>b</w:t></w:r>)");
+}
+
+TEST(ooxml_util, a_tab_is_a_node_and_empty_text_is_still_one) {
+  EXPECT_EQ(written("a\tb"), R"(<w:r><w:t>a</w:t><w:tab/><w:t>b</w:t></w:r>)");
+  EXPECT_EQ(written(""), R"(<w:r><w:t/></w:r>)");
 }

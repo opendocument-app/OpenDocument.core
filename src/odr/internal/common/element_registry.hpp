@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <limits>
 #include <stdexcept>
@@ -123,6 +124,45 @@ public:
                parent.last_child_id);
   }
 
+  /// Links @p child_id beside @p anchor_id. Indices, as @ref link_child wants
+  /// them, and the element's own chain rather than one a payload holds.
+  void insert_sibling_after(const ElementIdentifier anchor_id,
+                            const ElementIdentifier child_id) {
+    insert_sibling_(anchor_id, child_id, Placement::after);
+  }
+  void insert_sibling_before(const ElementIdentifier anchor_id,
+                             const ElementIdentifier child_id) {
+    insert_sibling_(anchor_id, child_id, Placement::before);
+  }
+
+  /// Unlinks @p child_id from that same chain; it keeps its id and its
+  /// payload and stops being reachable.
+  void unlink_child(const ElementIdentifier child_id) {
+    Element &child = element_at(child_id);
+    const Id parent_id = child.parent_id;
+    if (parent_id == null_element_id) {
+      throw std::invalid_argument(
+          "ElementRegistry::unlink_child: child has no parent");
+    }
+    const Id previous_id = child.previous_sibling_id;
+    const Id next_id = child.next_sibling_id;
+
+    if (previous_id != null_element_id) {
+      element_at(previous_id).next_sibling_id = next_id;
+    } else {
+      element_at(parent_id).first_child_id = next_id;
+    }
+    if (next_id != null_element_id) {
+      element_at(next_id).previous_sibling_id = previous_id;
+    } else {
+      element_at(parent_id).last_child_id = previous_id;
+    }
+
+    child.parent_id = null_element_id;
+    child.previous_sibling_id = null_element_id;
+    child.next_sibling_id = null_element_id;
+  }
+
 protected:
   ~ElementRegistry() = default;
 
@@ -158,6 +198,43 @@ protected:
       element_at(last_id).next_sibling_id = static_cast<Id>(child_id);
     }
     last_id = static_cast<Id>(child_id);
+  }
+
+  void insert_sibling_(const ElementIdentifier anchor_id,
+                       const ElementIdentifier child_id,
+                       const Placement where) {
+    Element &anchor = element_at(anchor_id);
+    const Id parent_id = anchor.parent_id;
+    if (parent_id == null_element_id) {
+      throw std::invalid_argument(
+          "ElementRegistry::insert_sibling: anchor has no parent");
+    }
+    Element &child = element_at(child_id);
+    if (child.parent_id != null_element_id) {
+      throw std::invalid_argument(
+          "ElementRegistry::insert_sibling: child already has a parent");
+    }
+
+    const Id previous_id = where == Placement::after
+                               ? static_cast<Id>(anchor_id)
+                               : anchor.previous_sibling_id;
+    const Id next_id = where == Placement::after ? anchor.next_sibling_id
+                                                 : static_cast<Id>(anchor_id);
+
+    child.parent_id = parent_id;
+    child.previous_sibling_id = previous_id;
+    child.next_sibling_id = next_id;
+
+    if (previous_id != null_element_id) {
+      element_at(previous_id).next_sibling_id = static_cast<Id>(child_id);
+    } else {
+      element_at(parent_id).first_child_id = static_cast<Id>(child_id);
+    }
+    if (next_id != null_element_id) {
+      element_at(next_id).previous_sibling_id = static_cast<Id>(child_id);
+    } else {
+      element_at(parent_id).last_child_id = static_cast<Id>(child_id);
+    }
   }
 
   void check_element_id(const ElementIdentifier id) const {

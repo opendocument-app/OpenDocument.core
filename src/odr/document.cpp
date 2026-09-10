@@ -15,6 +15,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include <nlohmann/json.hpp>
@@ -127,16 +128,57 @@ void Document::edit(const std::string_view operations,
     throw std::invalid_argument("unsupported edit version");
   }
 
+  // an operation that creates an element states a negative id for it, and a
+  // later one names it by that number (`docs/design/document-editing.md`)
+  std::unordered_map<std::int64_t, ElementIdentifier> minted;
+
   // the element @p field names, checked to be one this document holds
   const auto element_of = [&](const nlohmann::json &operation,
                               const char *field) {
-    const auto identifier = operation.at(field).get<ElementIdentifier>();
+    const auto address = operation.at(field).get<std::int64_t>();
+    ElementIdentifier identifier{};
+    if (address < 0) {
+      const auto entry = minted.find(address);
+      if (entry == std::end(minted)) {
+        throw std::invalid_argument("element " + std::to_string(address) +
+                                    " has not been created");
+      }
+      identifier = entry->second;
+    } else {
+      identifier = static_cast<ElementIdentifier>(address);
+    }
     const Element element = element_by_id(identifier);
     if (!element) {
-      throw std::invalid_argument("element " + std::to_string(identifier) +
+      throw std::invalid_argument("element " + std::to_string(address) +
                                   " not found");
     }
     return element;
+  };
+
+  // the run @p field names, refusing an element that is not one
+  const auto text_of = [&](const nlohmann::json &operation, const char *field) {
+    const Element element = element_of(operation, field);
+    const Text text = element.as_text();
+    if (!text) {
+      throw std::invalid_argument("element " +
+                                  std::to_string(element.identifier()) +
+                                  " is not a text element");
+    }
+    return text;
+  };
+
+  // the negative id an operation reserves, checked before anything is created
+  // so that a refusal changes nothing
+  const auto reserve = [&](const nlohmann::json &operation) {
+    const auto address = operation.at("id").get<std::int64_t>();
+    if (address >= 0) {
+      throw std::invalid_argument("a created element needs a negative id");
+    }
+    if (minted.contains(address)) {
+      throw std::invalid_argument("element " + std::to_string(address) +
+                                  " has been created twice");
+    }
+    return address;
   };
 
   for (const nlohmann::json &operation : json.at("ops")) {
@@ -151,14 +193,28 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "setText") {
-      const Element element = element_of(operation, "id");
-      const Text text = element.as_text();
-      if (!text) {
-        throw std::invalid_argument("element " +
-                                    std::to_string(element.identifier()) +
-                                    " is not a text element");
+      text_of(operation, "id")
+          .set_content(operation.at("text").get<std::string>());
+      continue;
+    }
+
+    if (name == "insertText") {
+      const bool after = operation.contains("after");
+      if (after == operation.contains("before")) {
+        throw std::invalid_argument(
+            "insertText names one of `after` and `before`");
       }
-      text.set_content(operation.at("text").get<std::string>());
+      const std::int64_t address = reserve(operation);
+      const Text anchor = text_of(operation, after ? "after" : "before");
+      const auto text = operation.at("text").get<std::string>();
+      const Text created = after ? insert_text_after(anchor, text)
+                                 : insert_text_before(anchor, text);
+      minted.emplace(address, created.identifier());
+      continue;
+    }
+
+    if (name == "removeElement") {
+      remove(element_of(operation, "id"));
       continue;
     }
 
@@ -179,6 +235,42 @@ Element Document::element_by_id(const ElementIdentifier identifier) const {
     return {};
   }
   return {adapter, identifier};
+}
+
+ElementIdentifier Document::check_(const Element &element) const {
+  if (element_by_id(element.identifier()) != element) {
+    throw std::invalid_argument("element is not this document's");
+  }
+  return element.identifier();
+}
+
+void Document::remove(const Element &element) const {
+  m_impl->element_adapter()->element_remove(check_(element));
+}
+
+Text Document::insert_text_before(const Text &anchor,
+                                  const std::string &text) const {
+  return insert_text_(anchor, Placement::before, text);
+}
+
+Text Document::insert_text_after(const Text &anchor,
+                                 const std::string &text) const {
+  return insert_text_(anchor, Placement::after, text);
+}
+
+Text Document::insert_text_(const Text &anchor, const Placement where,
+                            const std::string &text) const {
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier anchor_id = check_(anchor);
+  const internal::abstract::TextAdapter *runs =
+      adapter->text_adapter(anchor_id);
+  if (runs == nullptr) {
+    throw std::invalid_argument("element " + std::to_string(anchor_id) +
+                                " is not a text element");
+  }
+  const ElementIdentifier identifier =
+      runs->text_insert(anchor_id, where, text);
+  return {adapter, identifier, adapter->text_adapter(identifier)};
 }
 
 Filesystem Document::as_filesystem() const {
