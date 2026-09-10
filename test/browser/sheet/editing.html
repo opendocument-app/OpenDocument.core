@@ -66,6 +66,9 @@
     </table>
 
     <div id="report"></div>
+    <!-- the table the library writes into a page, ahead of the script
+         that reads it; `serve.py` builds it from `odr/error_code.*` -->
+    <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="sheet-editing.js"></script>
@@ -171,14 +174,14 @@
       odr.editing.editAt(2, 1);
       editor().value = "=SUM(A1:A2)";
       press(editor(), "Enter");
-      check("a typed formula is refused", refusals.length === 1 && refusals[0] === "formulaInput 6 at 2,1");
+      check("a typed formula is refused", refusals.length === 1 && refusals[0] === "formulaInput 1006 at 2,1");
       check("and the editor stays open", editor() !== null && editor().value === "=SUM(A1:A2)");
       press(editor(), "Escape");
       check("the cell was not written", cell(2, 1).textContent === "" && ops().length === 1);
 
       refusals = [];
       check("a formula cell cannot be edited", odr.editing.editAt(1, 2) === false && editor() === null);
-      check("and says why", refusals.length === 1 && refusals[0] === "formula 2 at 1,2");
+      check("and says why", refusals.length === 1 && refusals[0] === "formula 1002 at 1,2");
       check("the cell is outlined for the tap it answers", cell(1, 2).classList.contains("odr-sheet-refused"));
       check("a cell holding a link neither", odr.editing.editAt(3, 2) === false);
 

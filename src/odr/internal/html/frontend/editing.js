@@ -15,20 +15,29 @@
   var editors = [];
   var lastRefusal = null;
 
-  // One space of codes, appended and never renumbered - `odr.onError` shares
-  // it, and holds 9. The host maps the code; the message is for a console, and
-  // says what the code means today rather than what it meant when it was
-  // added.
-  var refusals = {
-    newLine: { code: 1, message: "a line break inside a paragraph is not supported" },
-    formula: { code: 2, message: "cell holds a formula" },
-    rich: { code: 3, message: "cell holds more than one plain run" },
-    shapes: { code: 4, message: "cell holds a drawing" },
-    readOnly: { code: 5, message: "document cannot be edited" },
-    formulaInput: { code: 6, message: "typing a formula is not supported" },
-    unsupportedEdit: { code: 7, message: "this kind of edit is not supported" },
-    range: { code: 8, message: "an edit cannot reach over a picture or a table" },
+  // The codes are `odr::ErrorCode`, written into the page ahead of this
+  // script. The message stays here: it is for a console, and nothing in this
+  // library is localised.
+  var codes = (odr.errorCodes = odr.errorCodes || {});
+  var messages = {
+    newLine: "a line break inside a paragraph is not supported",
+    formula: "cell holds a formula",
+    rich: "cell holds more than one plain run",
+    shapes: "cell holds a drawing",
+    readOnly: "document cannot be edited",
+    formulaInput: "typing a formula is not supported",
+    unsupportedEdit: "this kind of edit is not supported",
+    range: "an edit cannot reach over a picture or a table",
+    unnameableEdit: "an edit landed where no operation can name it",
   };
+
+  /// Falls back to `readOnly` for a reason no script here states.
+  function refusal(reason) {
+    var known = Object.prototype.hasOwnProperty.call(messages, reason)
+      ? reason
+      : "readOnly";
+    return { code: codes[known] || 0, message: messages[known] };
+  }
 
   odr.onError = function (code, message) {
     console.error("error " + code + " message " + message);
@@ -85,12 +94,13 @@
   }
 
   function modeChange(reason) {
+    var refused = reason ? refusal(reason) : null;
     fire("onEditModeChange", {
       editing: editing,
       editable: editable,
       reason: reason || null,
-      code: reason ? refusals[reason].code : 0,
-      message: reason ? refusals[reason].message : "",
+      code: refused ? refused.code : 0,
+      message: refused ? refused.message : "",
     });
   }
 
@@ -136,14 +146,14 @@
     /// seconds: four taps on a locked cell are one snackbar. @p detail is how
     /// the format addresses it. Painting it is the editor's.
     refuse: function (reason, detail) {
-      var refusal = refusals[reason] || refusals.readOnly;
+      var refused = refusal(reason);
       var key = reason + ":" + JSON.stringify(detail || null);
       var now = Date.now();
       if (lastRefusal !== null && lastRefusal.key === key && now - lastRefusal.at < 2000) {
         return;
       }
       lastRefusal = { key: key, at: now };
-      var event = { reason: reason, code: refusal.code, message: refusal.message };
+      var event = { reason: reason, code: refused.code, message: refused.message };
       for (var field in detail) {
         if (Object.prototype.hasOwnProperty.call(detail, field)) {
           event[field] = detail[field];

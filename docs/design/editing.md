@@ -181,8 +181,10 @@ project, and hand-rolling gives full control over the model↔op mapping.
 runs or paragraphs. It owns:
 
 - the **mode** — `enable()`, `disable()`, `isEnabled()`, `isEditable()`;
-- the **refusals** — the code table, the repeat suppression, the outline a
-  refused element gets, and `odr.onEditRefused`;
+- the **refusals** — the repeat suppression, the outline a refused element
+  gets, and `odr.onEditRefused`. The codes are `odr::ErrorCode` and the
+  renderer writes them into the page as `odr.errorCodes`, so the script holds
+  the wording and not the numbers;
 - the **log** — `getOperations()`, `undo()`, `redo()`, `committed()`, and the
   `dirty` / `canUndo` / `canRedo` state `odr.onEditChange` reports;
 - the **keyboard classes** the page may take (decision 12).

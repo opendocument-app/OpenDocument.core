@@ -91,7 +91,8 @@ emscripten::val render_view(const Handle handle, const std::size_t index) {
   return guarded([&] {
     const Session &s = warm(handle);
     if (index >= s.views.size()) {
-      return error("OdrError", "no such view index: " + std::to_string(index));
+      return error(ErrorCode::unknown,
+                   "no such view index: " + std::to_string(index));
     }
 
     std::ostringstream out;
@@ -125,7 +126,8 @@ emscripten::val read_path(const Handle handle, const std::string &path) {
   return guarded([&] {
     const Session &s = warm(handle);
     if (!s.service->exists(path)) {
-      return error("FileNotFound", "no such path in the document: " + path);
+      return error(ErrorCode::file_not_found,
+                   "no such path in the document: " + path);
     }
 
     std::ostringstream out;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <odr/document.hpp>
+#include <odr/error_code.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
@@ -44,10 +45,9 @@ void clear_sessions() noexcept;
 
 emscripten::val ok(emscripten::val value);
 emscripten::val ok();
-/// `{ok: false, error: {type, message, ...}}`, with `type` naming the C++
-/// exception. Kept in step with `jni/src/odr_jni.cpp`'s `throw_java` and
-/// `apple/src/ODRInternal.mm`.
-emscripten::val error(const std::string &type, const std::string &message);
+/// `{ok: false, error: {type, code, message, ...}}`. Both name the same
+/// @ref odr::ErrorCode, which is where every binding gets them.
+emscripten::val error(ErrorCode code, const std::string &message);
 
 /// The envelope for the exception being handled. Call from a `catch` block.
 emscripten::val current_exception_error();

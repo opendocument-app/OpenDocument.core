@@ -23,6 +23,9 @@
 
     <!-- Not editable: the report is the harness, not the file. -->
     <div id="out" contenteditable="false"><div id="report"></div></div>
+    <!-- the table the library writes into a page, ahead of the script
+         that reads it; `serve.py` builds it from `odr/error_code.*` -->
+    <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="text.js"></script>
     <script src="checks.js"></script>
@@ -91,7 +94,7 @@
 
       caretAt(0, 5);
       check("and an edit is refused", input("insertText", "X") === "refused");
-      check("as read-only", refusals.pop() === "readOnly 5");
+      check("as read-only", refusals.pop() === "readOnly 1005");
       check("with nothing changed", lines() === "first line|second line|third line");
 
       check("the mode turns on", odr.editing.enable() === true);
@@ -122,7 +125,7 @@
       );
 
       check("a bold toggle is refused", input("formatBold") === "refused");
-      check("as an edit we cannot record", refusals.pop() === "unsupportedEdit 7");
+      check("as an edit we cannot record", refusals.pop() === "unsupportedEdit 1007");
       check("and nothing changed", lines() === "firstXY line|second line|third line");
 
       // ------------------------------------------------------- lines come and go

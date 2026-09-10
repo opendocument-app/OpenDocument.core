@@ -2,6 +2,8 @@
 
 #import <OdrCoreObjC/ODRError.h>
 
+#include <odr/error_code.hpp>
+
 #include <odr/exceptions.hpp>
 
 #include <exception>
@@ -59,39 +61,38 @@ NSData *apple::to_nsdata(std::istream &stream) {
 
 namespace {
 
-/// The code for the exception being handled. Mirrors the mapping in
-/// `jni/src/odr_jni.cpp::throw_java` — keep the two in step.
+#define ODR_SAME_CODE(code, objc)                                              \
+  static_assert(static_cast<int>(odr::ErrorCode::code) == objc,                \
+                "ODRError must stay odr::ErrorCode numbered the same")
+
+ODR_SAME_CODE(unknown, ODRErrorUnknown);
+ODR_SAME_CODE(unsupported_operation, ODRErrorUnsupportedOperation);
+ODR_SAME_CODE(file_not_found, ODRErrorFileNotFound);
+ODR_SAME_CODE(unknown_file_type, ODRErrorUnknownFileType);
+ODR_SAME_CODE(unsupported_file_type, ODRErrorUnsupportedFileType);
+ODR_SAME_CODE(file_read_error, ODRErrorFileReadError);
+ODR_SAME_CODE(file_write_error, ODRErrorFileWriteError);
+ODR_SAME_CODE(no_document_file, ODRErrorNoDocumentFile);
+ODR_SAME_CODE(unknown_document_type, ODRErrorUnknownDocumentType);
+ODR_SAME_CODE(unsupported_crypto_algorithm, ODRErrorUnsupportedCryptoAlgorithm);
+ODR_SAME_CODE(wrong_password, ODRErrorWrongPassword);
+ODR_SAME_CODE(decryption_failed, ODRErrorDecryptionFailed);
+ODR_SAME_CODE(not_encrypted, ODRErrorNotEncrypted);
+ODR_SAME_CODE(file_encrypted, ODRErrorFileEncrypted);
+ODR_SAME_CODE(document_copy_protected, ODRErrorDocumentCopyProtected);
+
+#undef ODR_SAME_CODE
+
+/// `ODRError` is `odr::ErrorCode` numbered the same, so this is a cast. A code
+/// past the ones `ODRError` names reports `ODRErrorUnknown`.
 ODRError error_code() {
   try {
     throw;
-  } catch (const odr::UnsupportedOperation &) {
-    return ODRErrorUnsupportedOperation;
-  } catch (const odr::FileNotFound &) {
-    return ODRErrorFileNotFound;
-  } catch (const odr::UnknownFileType &) {
-    return ODRErrorUnknownFileType;
-  } catch (const odr::UnsupportedFileType &) {
-    return ODRErrorUnsupportedFileType;
-  } catch (const odr::FileReadError &) {
-    return ODRErrorFileReadError;
-  } catch (const odr::FileWriteError &) {
-    return ODRErrorFileWriteError;
-  } catch (const odr::NoDocumentFile &) {
-    return ODRErrorNoDocumentFile;
-  } catch (const odr::UnknownDocumentType &) {
-    return ODRErrorUnknownDocumentType;
-  } catch (const odr::UnsupportedCryptoAlgorithm &) {
-    return ODRErrorUnsupportedCryptoAlgorithm;
-  } catch (const odr::WrongPasswordError &) {
-    return ODRErrorWrongPassword;
-  } catch (const odr::DecryptionFailed &) {
-    return ODRErrorDecryptionFailed;
-  } catch (const odr::NotEncryptedError &) {
-    return ODRErrorNotEncrypted;
-  } catch (const odr::FileEncryptedError &) {
-    return ODRErrorFileEncrypted;
-  } catch (const odr::DocumentCopyProtectedException &) {
-    return ODRErrorDocumentCopyProtected;
+  } catch (const std::exception &e) {
+    const odr::ErrorCode code = odr::error_code(e);
+    return code > odr::ErrorCode::document_copy_protected
+               ? ODRErrorUnknown
+               : static_cast<ODRError>(code);
   } catch (...) {
     return ODRErrorUnknown;
   }

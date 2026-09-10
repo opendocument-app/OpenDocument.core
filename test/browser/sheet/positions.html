@@ -62,6 +62,9 @@
     </table>
 
     <div id="report"></div>
+    <!-- the table the library writes into a page, ahead of the script
+         that reads it; `serve.py` builds it from `odr/error_code.*` -->
+    <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="sheet-editing.js"></script>
@@ -183,7 +186,7 @@
       check("a plain one carries no lock", odr.editing.lockAt(1, 2) === null);
       check("editing a locked cell is refused", odr.editing.refuseAt(2, 1) === true);
       check("a plain cell is not", odr.editing.refuseAt(1, 2) === false);
-      check("the refusal reached the host", refusals.length === 1 && refusals[0] === "formula 2 at 2,1");
+      check("the refusal reached the host", refusals.length === 1 && refusals[0] === "formula 1002 at 2,1");
       odr.editing.refuseAt(2, 1);
       check("and the same one again is dropped", refusals.length === 1);
     </script>

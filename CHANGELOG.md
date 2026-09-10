@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: the codes the page reports through `odr.onError` and
+  `odr.onEditRefused` moved from 1 to 9 onto 1001 to 1009. `readOnly` is 1005,
+  not 5; the `reason` string is unchanged.
+
+- **Added**: `odr::ErrorCode` (`odr/error_code.hpp`), one number space every
+  binding reports for both a thrown exception and a refused edit. `ODRError`
+  casts from it, `OdrException.getCode()` and the wasm envelope's `code` carry
+  it, and `enumTables()` and the python module expose it.
+
 - **Breaking**: `AnchorType` gains `none` as its first value, so every later
   ordinal shifts by one. `Frame::anchor_type()` answers it for a frame that
   does not exist, instead of `as_char`, which a real frame also answers.

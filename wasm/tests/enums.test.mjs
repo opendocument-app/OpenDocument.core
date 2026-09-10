@@ -83,4 +83,21 @@ describe('enums', () => {
     assert.equal(typeof enums.DocumentType.text, 'number');
     assert.equal(typeof enums.FileCategory.document, 'number');
   });
+
+  // The head keeps the order `ODRError` shipped, so an installed iOS app does
+  // not read a moved number; the edit band is what the rendered page raises.
+  it('derives ErrorCode, both bands pinned', () => {
+    assert.equal(enums.ErrorCode.Unknown, 1);
+    assert.equal(enums.ErrorCode.UnsupportedFileType, 5);
+    assert.equal(enums.ErrorCode.WrongPassword, 11);
+    assert.equal(enums.ErrorCode.DocumentCopyProtected, 15);
+
+    assert.equal(enums.ErrorCode.newLine, 1001);
+    assert.equal(enums.ErrorCode.formula, 1002);
+    assert.equal(enums.ErrorCode.readOnly, 1005);
+    assert.equal(enums.ErrorCode.formulaInput, 1006);
+    assert.equal(enums.ErrorCode.unsupportedEdit, 1007);
+    assert.equal(enums.ErrorCode.range, 1008);
+    assert.equal(enums.ErrorCode.unnameableEdit, 1009);
+  });
 });

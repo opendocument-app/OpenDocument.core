@@ -1,5 +1,6 @@
 #include <odr/internal/html/frontend.hpp>
 
+#include <odr/error_code.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 
@@ -10,6 +11,8 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <array>
+#include <cstdint>
+#include <ostream>
 #include <span>
 #include <string>
 #include <string_view>
@@ -178,6 +181,27 @@ void write_dark_style(const Asset &asset, const WritingState &state) {
   }
 }
 
+/// The editing band of @ref odr::ErrorCode. Always inline, even where the
+/// config links the scripts: it is per-render data, not an asset.
+void write_error_codes(const WritingState &state) {
+  state.out().write_script_begin();
+
+  std::ostream &out = state.out().out();
+  out << "\nwindow.odr = window.odr || {};\nwindow.odr.errorCodes = {";
+  bool first = true;
+  for (const ErrorCode code : all_error_codes()) {
+    if (code < ErrorCode::edit_new_line) {
+      continue;
+    }
+    out << (first ? "\n" : ",\n") << "  \"" << error_code_name(code)
+        << "\": " << static_cast<std::int32_t>(code);
+    first = false;
+  }
+  out << "\n};\n";
+
+  state.out().write_script_end();
+}
+
 void write_script(const Asset &asset, const WritingState &state) {
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
@@ -260,6 +284,7 @@ void html::write_search_dark_style(const WritingState &state) {
 }
 
 void html::write_editing_script(const WritingState &state) {
+  write_error_codes(state);
   write_script(editing_js_asset, state);
 }
 

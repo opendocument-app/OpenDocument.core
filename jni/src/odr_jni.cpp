@@ -1,5 +1,6 @@
 #include "odr_jni.hpp"
 
+#include <odr/error_code.hpp>
 #include <odr/exceptions.hpp>
 
 #include <cstdint>
@@ -8,15 +9,6 @@
 namespace odr_jni {
 
 namespace {
-
-void throw_new(JNIEnv *env, const char *class_name, const char *message) {
-  jclass cls = env->FindClass(class_name);
-  if (cls == nullptr) {
-    return; // a NoClassDefFoundError is pending instead
-  }
-  env->ThrowNew(cls, message);
-  env->DeleteLocalRef(cls);
-}
 
 void append_utf8(std::string &out, const std::uint32_t code_point) {
   if (code_point < 0x80) {
@@ -119,55 +111,52 @@ jbyteArray to_jbytes(JNIEnv *env, const std::string_view bytes) {
   return result;
 }
 
+/// Throws @p class_name, constructed from `(String, int)`. False where the
+/// class is absent.
+bool throw_coded(JNIEnv *env, const char *class_name, const char *message,
+                 const odr::ErrorCode code) {
+  jclass cls = env->FindClass(class_name);
+  if (cls == nullptr) {
+    env->ExceptionClear();
+    return false;
+  }
+  const jmethodID constructor =
+      env->GetMethodID(cls, "<init>", "(Ljava/lang/String;I)V");
+  if (constructor == nullptr) {
+    env->ExceptionClear();
+    env->DeleteLocalRef(cls);
+    return false;
+  }
+  jstring text = env->NewStringUTF(message);
+  auto throwable = static_cast<jthrowable>(
+      env->NewObject(cls, constructor, text, static_cast<jint>(code)));
+  env->DeleteLocalRef(text);
+  env->DeleteLocalRef(cls);
+  if (throwable == nullptr) {
+    return false; // an OutOfMemoryError is pending instead
+  }
+  env->Throw(throwable);
+  env->DeleteLocalRef(throwable);
+  return true;
+}
+
 void throw_java(JNIEnv *env) {
   constexpr auto base = "app/opendocument/core/OdrException";
   try {
     throw;
-  } catch (const odr::UnsupportedOperation &e) {
-    throw_new(env, "app/opendocument/core/OdrException$UnsupportedOperation",
-              e.what());
-  } catch (const odr::FileNotFound &e) {
-    throw_new(env, "app/opendocument/core/OdrException$FileNotFound", e.what());
-  } catch (const odr::UnknownFileType &e) {
-    throw_new(env, "app/opendocument/core/OdrException$UnknownFileType",
-              e.what());
-  } catch (const odr::UnsupportedFileType &e) {
-    throw_new(env, "app/opendocument/core/OdrException$UnsupportedFileType",
-              e.what());
-  } catch (const odr::FileReadError &e) {
-    throw_new(env, "app/opendocument/core/OdrException$FileReadError",
-              e.what());
-  } catch (const odr::FileWriteError &e) {
-    throw_new(env, "app/opendocument/core/OdrException$FileWriteError",
-              e.what());
-  } catch (const odr::NoDocumentFile &e) {
-    throw_new(env, "app/opendocument/core/OdrException$NoDocumentFile",
-              e.what());
-  } catch (const odr::UnknownDocumentType &e) {
-    throw_new(env, "app/opendocument/core/OdrException$UnknownDocumentType",
-              e.what());
-  } catch (const odr::UnsupportedCryptoAlgorithm &e) {
-    throw_new(env,
-              "app/opendocument/core/OdrException$UnsupportedCryptoAlgorithm",
-              e.what());
-  } catch (const odr::WrongPasswordError &e) {
-    throw_new(env, "app/opendocument/core/OdrException$WrongPassword",
-              e.what());
-  } catch (const odr::DecryptionFailed &e) {
-    throw_new(env, "app/opendocument/core/OdrException$DecryptionFailed",
-              e.what());
-  } catch (const odr::NotEncryptedError &e) {
-    throw_new(env, "app/opendocument/core/OdrException$NotEncrypted", e.what());
-  } catch (const odr::FileEncryptedError &e) {
-    throw_new(env, "app/opendocument/core/OdrException$FileEncrypted",
-              e.what());
-  } catch (const odr::DocumentCopyProtectedException &e) {
-    throw_new(env, "app/opendocument/core/OdrException$DocumentCopyProtected",
-              e.what());
   } catch (const std::exception &e) {
-    throw_new(env, base, e.what());
+    const odr::ErrorCode code = odr::error_code(e);
+    // The nested class is named after the code; one with no class of its own
+    // falls back to the base.
+    const std::string name =
+        std::string(base) + "$" + std::string(odr::error_code_name(code));
+    if (code != odr::ErrorCode::unknown &&
+        throw_coded(env, name.c_str(), e.what(), code)) {
+      return;
+    }
+    throw_coded(env, base, e.what(), code);
   } catch (...) {
-    throw_new(env, base, "unknown native error");
+    throw_coded(env, base, "unknown native error", odr::ErrorCode::unknown);
   }
 }
 

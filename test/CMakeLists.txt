@@ -31,6 +31,7 @@ add_executable(odr_test
         "src/document_list_test.cpp"
         "src/document_path_test.cpp"
         "src/enum_ordinals_test.cpp"
+        "src/error_code_test.cpp"
         "src/document_test.cpp"
         "src/file_test.cpp"
         "src/html_output_test.cpp"

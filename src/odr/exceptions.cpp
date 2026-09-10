@@ -6,143 +6,154 @@
 namespace odr {
 
 UnsupportedOperation::UnsupportedOperation()
-    : Exception("unsupported operation") {}
+    : CodedException("unsupported operation") {}
 
 UnsupportedOperation::UnsupportedOperation(const std::string &message)
-    : Exception("unsupported operation: " + message) {}
+    : CodedException("unsupported operation: " + message) {}
 
-FileNotFound::FileNotFound() : Exception("file not found") {}
+FileNotFound::FileNotFound() : CodedException("file not found") {}
 
 FileNotFound::FileNotFound(const std::string &path)
-    : Exception("file not found: " + path) {}
+    : CodedException("file not found: " + path) {}
 
-UnknownFileType::UnknownFileType() : Exception("unknown file type") {}
+UnknownFileType::UnknownFileType() : CodedException("unknown file type") {}
 
 UnsupportedFileType::UnsupportedFileType(const FileType file_type)
-    : Exception("unsupported file type: " + file_type_to_string(file_type)),
+    : CodedException("unsupported file type: " +
+                     file_type_to_string(file_type)),
       file_type{file_type} {}
 
 UnsupportedTextEncoding::UnsupportedTextEncoding(
     const TextEncoding text_encoding)
-    : Exception("unsupported text encoding"), text_encoding{text_encoding} {}
+    : CodedException("unsupported text encoding"),
+      text_encoding{text_encoding} {}
 
-FileReadError::FileReadError() : Exception("file read error") {}
+FileReadError::FileReadError() : CodedException("file read error") {}
 
 FileWriteError::FileWriteError(const std::string &path)
-    : Exception("file write error: " + path) {}
+    : CodedException("file write error: " + path) {}
 
-NoZipFile::NoZipFile() : Exception("not a zip file") {}
+NoZipFile::NoZipFile() : CodedException("not a zip file") {}
 
-ZipSaveError::ZipSaveError() : Exception("zip save error") {}
+ZipSaveError::ZipSaveError() : CodedException("zip save error") {}
 
-CfbError::CfbError(const std::string &desc) : Exception(desc) {}
+CfbError::CfbError(const std::string &desc) : CodedException(desc) {}
 
 NoCfbFile::NoCfbFile() : CfbError("no cfb file") {}
 
 CfbFileCorrupted::CfbFileCorrupted() : CfbError("cfb file corrupted") {}
 
-NoTextFile::NoTextFile() : Exception("not a text file") {}
+NoTextFile::NoTextFile() : CodedException("not a text file") {}
 
-NoCsvFile::NoCsvFile() : Exception("not a csv file") {}
+NoCsvFile::NoCsvFile() : CodedException("not a csv file") {}
 
-NoMarkdownFile::NoMarkdownFile() : Exception("not a markdown file") {}
+NoMarkdownFile::NoMarkdownFile() : CodedException("not a markdown file") {}
 
-NoJsonFile::NoJsonFile() : Exception("not a json file") {}
+NoJsonFile::NoJsonFile() : CodedException("not a json file") {}
 
-NoImageFile::NoImageFile() : Exception("not an image file") {}
+NoImageFile::NoImageFile() : CodedException("not an image file") {}
 
-NoArchiveFile::NoArchiveFile() : Exception("not an archive file") {}
+NoArchiveFile::NoArchiveFile() : CodedException("not an archive file") {}
 
-NoDocumentFile::NoDocumentFile() : Exception("not a document file") {}
+NoDocumentFile::NoDocumentFile() : CodedException("not a document file") {}
 
 NoOpenDocumentFile::NoOpenDocumentFile()
-    : Exception("not an open document file") {}
+    : CodedException("not an open document file") {}
 
 NoOfficeOpenXmlFile::NoOfficeOpenXmlFile()
-    : Exception("not an office open xml file") {}
+    : CodedException("not an office open xml file") {}
 
-NoPdfFile::NoPdfFile() : Exception("not a pdf file") {}
+NoPdfFile::NoPdfFile() : CodedException("not a pdf file") {}
 
-NoFontFile::NoFontFile() : Exception("not a font file") {}
+NoFontFile::NoFontFile() : CodedException("not a font file") {}
 
 NoLegacyMicrosoftFile::NoLegacyMicrosoftFile()
-    : Exception("not a legacy microsoft office file") {}
+    : CodedException("not a legacy microsoft office file") {}
 
-NoIworkFile::NoIworkFile() : Exception("not an iwork file") {}
+NoIworkFile::NoIworkFile() : CodedException("not an iwork file") {}
 
-NoXmlFile::NoXmlFile() : Exception("not an xml file") {}
+NoXmlFile::NoXmlFile() : CodedException("not an xml file") {}
 
-NoSvgFile::NoSvgFile() : Exception("not an svg file") {}
+NoSvgFile::NoSvgFile() : CodedException("not an svg file") {}
 
-NoRtfFile::NoRtfFile() : Exception("not an rtf file") {}
+NoRtfFile::NoRtfFile() : CodedException("not an rtf file") {}
 
 UnsupportedCryptoAlgorithm::UnsupportedCryptoAlgorithm()
-    : Exception("unsupported crypto algorithm") {}
+    : CodedException("unsupported crypto algorithm") {}
 
-NoSvmFile::NoSvmFile() : Exception("not a svm file") {}
+NoSvmFile::NoSvmFile() : CodedException("not a svm file") {}
 
-MalformedSvmFile::MalformedSvmFile() : Exception("malformed svm file") {}
+MalformedSvmFile::MalformedSvmFile() : CodedException("malformed svm file") {}
 
-UnsupportedEndian::UnsupportedEndian() : Exception("unsupported endian") {}
+UnsupportedEndian::UnsupportedEndian() : CodedException("unsupported endian") {}
 
 MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
-    : Exception("unsupported crypto algorithm") {}
+    : CodedException("unsupported crypto algorithm") {}
 
 UnknownDocumentType::UnknownDocumentType()
-    : Exception("unknown document type") {}
+    : CodedException("unknown document type") {}
 
-ValueNotStated::ValueNotStated() : Exception("value not stated") {}
+ValueNotStated::ValueNotStated() : CodedException("value not stated") {}
 
-InvalidPrefix::InvalidPrefix() : Exception("invalid prefix string") {}
+InvalidPrefix::InvalidPrefix() : CodedException("invalid prefix string") {}
 
 InvalidPrefix::InvalidPrefix(const std::string &prefix)
-    : Exception("invalid prefix string: " + prefix) {}
+    : CodedException("invalid prefix string: " + prefix) {}
 
 DocumentCopyProtectedException::DocumentCopyProtectedException()
-    : Exception("document copy protection") {}
+    : CodedException("document copy protection") {}
 
 ResourceNotAccessible::ResourceNotAccessible()
-    : Exception("resource not accessible") {}
+    : CodedException("resource not accessible") {}
 
 ResourceNotAccessible::ResourceNotAccessible(const std::string &name,
                                              const std::string &path)
-    : Exception("resource not accessible: " + name + " at " + path) {}
+    : CodedException("resource not accessible: " + name + " at " + path) {}
 
-PrefixInUse::PrefixInUse() : Exception("prefix in use") {}
+PrefixInUse::PrefixInUse() : CodedException("prefix in use") {}
 
 PrefixInUse::PrefixInUse(const std::string &prefix)
-    : Exception("prefix in use: " + prefix) {}
+    : CodedException("prefix in use: " + prefix) {}
 
 ServerBindFailed::ServerBindFailed(const std::string &host,
                                    const std::uint32_t port)
-    : Exception("server bind failed: " + host + ":" + std::to_string(port)) {}
+    : CodedException("server bind failed: " + host + ":" +
+                     std::to_string(port)) {}
 
 ServerAlreadyBound::ServerAlreadyBound()
-    : Exception("server is bound already") {}
+    : CodedException("server is bound already") {}
 
-ServerNotBound::ServerNotBound() : Exception("server is not bound") {}
+ServerNotBound::ServerNotBound() : CodedException("server is not bound") {}
 
 UnsupportedOption::UnsupportedOption(const std::string &message)
-    : Exception("unsupported option: " + message) {}
+    : CodedException("unsupported option: " + message) {}
 
 NullPointerError::NullPointerError(const std::string &variable)
-    : Exception("null pointer error: " + variable) {}
+    : CodedException("null pointer error: " + variable) {}
 
-WrongPasswordError::WrongPasswordError() : Exception("wrong password error") {}
+WrongPasswordError::WrongPasswordError()
+    : CodedException("wrong password error") {}
 
-DecryptionFailed::DecryptionFailed() : Exception("decryption failed") {}
+DecryptionFailed::DecryptionFailed() : CodedException("decryption failed") {}
 
-NotEncryptedError::NotEncryptedError() : Exception("not encrypted error") {}
+NotEncryptedError::NotEncryptedError()
+    : CodedException("not encrypted error") {}
 
 InvalidPath::InvalidPath(const std::string &message)
-    : Exception("invalid path: " + message) {}
+    : CodedException("invalid path: " + message) {}
 
 UnsupportedFileEncoding::UnsupportedFileEncoding(const std::string &message)
-    : Exception("unsupported file encoding: " + message) {}
+    : CodedException("unsupported file encoding: " + message) {}
 
-FileEncryptedError::FileEncryptedError() : Exception("file encrypted error") {}
+FileEncryptedError::FileEncryptedError()
+    : CodedException("file encrypted error") {}
 
 UnauthenticatedReadError::UnauthenticatedReadError()
-    : Exception("cannot read encrypted object without authentication") {}
+    : CodedException("cannot read encrypted object without authentication") {}
 
 } // namespace odr
+
+odr::ErrorCode odr::error_code(const std::exception &exception) noexcept {
+  const auto *coded = dynamic_cast<const Exception *>(&exception);
+  return coded == nullptr ? ErrorCode::unknown : coded->code();
+}

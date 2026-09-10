@@ -72,8 +72,10 @@ consumer, and a SwiftPM binary target gives the consumer no way to pass
   `guarded` where the caller gets an `NSError **`, `guarded_value` for a
   property, and `guarded_void` for a `void` method. Pick a fallback that keeps
   the caller sane — `YES` for a walker's `end`, so a `while (!end)` loop
-  terminates instead of spinning. The `NSError` code list mirrors
-  `jni/src/odr_jni.cpp::throw_java` — keep the two in step.
+  terminates instead of spinning. `ODRError` is the head of `odr::ErrorCode`
+  numbered the same, so `error_code()` is a cast and `ODRInternal.mm`
+  static_asserts it. Adding a case means adding the enumerator here too; a code
+  past the list reports `ODRErrorUnknown`.
 - **Elements carry their owner.** Most public C++ handles own a `shared_ptr`,
   so a wrapper holding one by value is self-sufficient and needs no keep-alive.
   `odr::Element` and `odr::HtmlView` are the exceptions: the first holds a bare
