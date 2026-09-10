@@ -167,6 +167,19 @@ void Document::edit(const std::string_view operations,
     return text;
   };
 
+  // the paragraph @p field names, refusing an element that is not one
+  const auto paragraph_of = [&](const nlohmann::json &operation,
+                                const char *field) {
+    const Element element = element_of(operation, field);
+    const Paragraph paragraph = element.as_paragraph();
+    if (!paragraph) {
+      throw std::invalid_argument("element " +
+                                  std::to_string(element.identifier()) +
+                                  " is not a paragraph");
+    }
+    return paragraph;
+  };
+
   // the negative id an operation reserves, checked before anything is created
   // so that a refusal changes nothing
   const auto reserve = [&](const nlohmann::json &operation) {
@@ -215,6 +228,28 @@ void Document::edit(const std::string_view operations,
 
     if (name == "removeElement") {
       remove(element_of(operation, "id"));
+      continue;
+    }
+
+    if (name == "splitParagraph") {
+      const std::int64_t address = reserve(operation);
+      const Paragraph paragraph = paragraph_of(operation, "paragraph");
+      const Element after = operation.contains("after")
+                                ? element_of(operation, "after")
+                                : Element();
+      minted.emplace(address, split_paragraph(paragraph, after).identifier());
+      continue;
+    }
+
+    if (name == "mergeParagraph") {
+      merge_paragraph_with_next(paragraph_of(operation, "paragraph"));
+      continue;
+    }
+
+    if (name == "insertParagraph") {
+      const std::int64_t address = reserve(operation);
+      const Paragraph after = paragraph_of(operation, "after");
+      minted.emplace(address, insert_paragraph_after(after).identifier());
       continue;
     }
 
@@ -271,6 +306,52 @@ Text Document::insert_text_(const Text &anchor, const Placement where,
   const ElementIdentifier identifier =
       runs->text_insert(anchor_id, where, text);
   return {adapter, identifier, adapter->text_adapter(identifier)};
+}
+
+/// The adapter @p paragraph answers to, refusing an element that is not a
+/// paragraph of this document.
+const internal::abstract::ParagraphAdapter *
+Document::paragraphs_(const Paragraph &paragraph,
+                      ElementIdentifier &identifier) const {
+  identifier = check_(paragraph);
+  const internal::abstract::ParagraphAdapter *paragraphs =
+      m_impl->element_adapter()->paragraph_adapter(identifier);
+  if (paragraphs == nullptr) {
+    throw std::invalid_argument("element " + std::to_string(identifier) +
+                                " is not a paragraph");
+  }
+  return paragraphs;
+}
+
+Paragraph Document::split_paragraph(const Paragraph &paragraph,
+                                    const Element &after) const {
+  ElementIdentifier paragraph_id{};
+  const internal::abstract::ParagraphAdapter *paragraphs =
+      paragraphs_(paragraph, paragraph_id);
+  // an element that does not exist splits before every child: Enter at the
+  // start of the paragraph
+  const ElementIdentifier after_id = after ? check_(after) : null_element_id;
+
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier identifier =
+      paragraphs->paragraph_split(paragraph_id, after_id);
+  return {adapter, identifier, adapter->paragraph_adapter(identifier)};
+}
+
+void Document::merge_paragraph_with_next(const Paragraph &paragraph) const {
+  ElementIdentifier paragraph_id{};
+  paragraphs_(paragraph, paragraph_id)->paragraph_merge_next(paragraph_id);
+}
+
+Paragraph Document::insert_paragraph_after(const Paragraph &paragraph) const {
+  ElementIdentifier paragraph_id{};
+  const internal::abstract::ParagraphAdapter *paragraphs =
+      paragraphs_(paragraph, paragraph_id);
+
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier identifier =
+      paragraphs->paragraph_insert_after(paragraph_id);
+  return {adapter, identifier, adapter->paragraph_adapter(identifier)};
 }
 
 Filesystem Document::as_filesystem() const {

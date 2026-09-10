@@ -210,8 +210,9 @@ Every other id is one the page wrote.
 
 A **handle** says what an element holds — `Text::set_content`,
 `Sheet::set_cell`. The **document** says what the tree holds —
-`Document::remove`, `Document::insert_text_before` / `insert_text_after`, and
-the paragraph operations below. An `Element` is an immutable handle, so
+`Document::remove`, `insert_text_before` / `insert_text_after`,
+`split_paragraph`, `merge_paragraph_with_next` and `insert_paragraph_after`. An
+`Element` is an immutable handle, so
 restructuring the tree through one would leave a handle naming something
 unreachable; and the document is what owns the tree either way. Each structural
 call refuses an element of another document.
@@ -270,21 +271,42 @@ Each step is a pull request that builds and tests on its own.
    they need, odf and ooxml text. A selection spanning runs is replayable.
    **Landed.**
 3. **Paragraphs split and merge.** `splitParagraph`, `mergeParagraph`,
-   `insertParagraph`.
+   `insertParagraph`. **Landed.**
 4. **The browser editor.** Model-first, owns the DOM mutation, records the ops,
    and carries undo/redo (decision 6).
 5. **pptx writes.** `save`, `is_editable`, `is_savable`, the capability row and
    the new hooks over `a:p` / `a:r`.
 
+## What a split does to what is around it
+
+`splitParagraph` names a **descendant**, not a direct child, because the caret
+sits in a run and the run sits in a span. So the split walks from that run up
+to the paragraph and splits **every element on the way**: a run inside a span
+leaves the span in both halves, and the tail keeps the formatting the span
+carried. The same holds for a link, so the tail is still a link to the same
+place.
+
+Only a **span** and a **link** are split through. Anything else — a frame
+between the run and the paragraph, say — refuses with `UnsupportedOperation`,
+because what a copy of it would mean is the format's question rather than this
+one's.
+
+A copy carries the original's attributes **and the property children the
+format writes ahead of the content** — `w:pPr` on a paragraph, `w:rPr` on a
+run. Those sit before the first child the registry knows about, which is how
+the copy finds them without naming a tag. ODF states the same thing as an
+attribute, so the rule covers both.
+
+A split exactly at the end of a span leaves an **empty copy of that span**
+behind. It is valid in both formats — the corpus is full of `<w:r><w:rPr/></w:r>`
+that producers wrote themselves — and pruning it would cost a branch to save
+nothing a reader sees.
+
 ## Open questions
 
-- A run inside a **link** or a **bookmark** splits differently: splitting the
-  paragraph has to decide whether the link follows the tail. Today it would,
-  because the link is a child that moves whole. Whether that is right is a
-  question for step 3.
 - **A list item** is a paragraph in a list. Enter at the end of one should make
-  a new list item, not a bare paragraph. Step 3 splits what the element tree
-  says is a paragraph; the list case is not covered.
+  a new list item, not a bare paragraph. `splitParagraph` splits what the
+  element tree says is a paragraph; the list case is not covered.
 - The **plain-text view** (`html/text_file.cpp`) is still its own editor and
   still answers to nobody. Unchanged by this work, and still the open question
   at the end of [`editing.md`](editing.md).

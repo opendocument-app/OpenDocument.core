@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A paragraph splits, merges and is inserted — `splitParagraph`,
+  `mergeParagraph`, `insertParagraph`, and the matching `Document` methods in
+  C++. Enter, Backspace at a paragraph start and a delete across paragraphs.
+
 - An edit can span several runs: the new `insertText` and `removeElement`
   operations, and `Document::remove` / `insert_text_before` / `insert_text_after`
   in C++. ODF and `.docx`; every other format refuses.

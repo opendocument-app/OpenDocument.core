@@ -10,6 +10,7 @@
 
 namespace odr::internal::abstract {
 class Document;
+class ParagraphAdapter;
 } // namespace odr::internal::abstract
 
 namespace odr {
@@ -19,6 +20,7 @@ class DocumentFile;
 class Element;
 class File;
 class Filesystem;
+class Paragraph;
 class Text;
 
 /// Represents a document.
@@ -80,6 +82,21 @@ public:
   [[nodiscard]] Text insert_text_after(const Text &anchor,
                                        const std::string &text) const;
 
+  /// Splits @p paragraph after @p after - one of its descendants, or an
+  /// element that does not exist to move every child - into a new paragraph
+  /// of the same style. Refuses where an element between the two is one it
+  /// will not split.
+  [[nodiscard]] Paragraph split_paragraph(const Paragraph &paragraph,
+                                          const Element &after) const;
+
+  /// @p paragraph takes the children of the paragraph after it, which then
+  /// goes. What @ref split_paragraph undoes.
+  void merge_paragraph_with_next(const Paragraph &paragraph) const;
+
+  /// An empty paragraph after @p paragraph, of the same style.
+  [[nodiscard]] Paragraph
+  insert_paragraph_after(const Paragraph &paragraph) const;
+
   /// @}
 
   /// The files the document is packaged from; empty for a document that is
@@ -94,6 +111,9 @@ private:
 
   [[nodiscard]] Text insert_text_(const Text &anchor, Placement where,
                                   const std::string &text) const;
+
+  [[nodiscard]] const internal::abstract::ParagraphAdapter *
+  paragraphs_(const Paragraph &paragraph, ElementIdentifier &identifier) const;
 
   friend DocumentFile;
 };
