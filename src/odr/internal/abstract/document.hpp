@@ -321,6 +321,26 @@ public:
   paragraph_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TextStyle
   paragraph_text_style(ElementIdentifier element_id) const = 0;
+
+  /// Splits @p element_id after @p after_id - one of its descendants, or null
+  /// to move every child - into a new paragraph of the same style.
+  virtual ElementIdentifier
+  paragraph_split([[maybe_unused]] const ElementIdentifier element_id,
+                  [[maybe_unused]] const ElementIdentifier after_id) const {
+    throw UnsupportedOperation();
+  }
+
+  /// Takes the children of the paragraph after @p element_id and removes it.
+  virtual void paragraph_merge_next(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
+    throw UnsupportedOperation();
+  }
+
+  /// An empty paragraph after @p element_id, carrying the same style.
+  virtual ElementIdentifier paragraph_insert_after(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
+    throw UnsupportedOperation();
+  }
 };
 
 class SpanAdapter {

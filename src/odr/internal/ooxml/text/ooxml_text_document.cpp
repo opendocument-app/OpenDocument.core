@@ -189,6 +189,26 @@ public:
     return get_intermediate_style(element_id).text_style;
   }
 
+  [[nodiscard]] ElementIdentifier
+  paragraph_split(const ElementIdentifier element_id,
+                  const ElementIdentifier after_id) const override {
+    return TreeEditor(*m_registry).split(element_id, after_id);
+  }
+
+  void paragraph_merge_next(const ElementIdentifier element_id) const override {
+    const ElementIdentifier next_id = element_next_sibling(element_id);
+    if (next_id == null_element_id ||
+        element_type(next_id) != ElementType::paragraph) {
+      throw std::invalid_argument("no paragraph follows the one to merge into");
+    }
+    TreeEditor(*m_registry).merge_next(element_id);
+  }
+
+  [[nodiscard]] ElementIdentifier
+  paragraph_insert_after(const ElementIdentifier element_id) const override {
+    return TreeEditor(*m_registry).insert_sibling_after(element_id);
+  }
+
   [[nodiscard]] ParagraphStyle
   paragraph_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).paragraph_style;

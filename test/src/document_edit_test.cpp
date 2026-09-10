@@ -14,6 +14,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 using namespace odr;
 using namespace odr::internal;
@@ -386,5 +387,225 @@ TEST(DocumentEdit, inserting_a_run_beside_something_that_is_not_one_refuses) {
   const Element paragraph = paragraph_at(document, 0);
 
   EXPECT_THROW((void)document.insert_text_after(paragraph.as_text(), "x"),
+               std::invalid_argument);
+}
+/// Every paragraph of @p document, its runs joined.
+namespace {
+
+std::vector<std::string> paragraph_texts(const Document &document) {
+  std::vector<std::string> result;
+  for (const Element child : document.root_element().children()) {
+    if (child.type() == ElementType::paragraph) {
+      result.push_back(text_of(child));
+    }
+  }
+  return result;
+}
+
+} // namespace
+
+TEST(DocumentEdit, a_paragraph_splits_after_the_run_it_names) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                    id_of(run_at(document, 0, 0)) + R"(,"id":-1})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one ", "two three", "second"}));
+}
+
+/// Enter at the very start of a paragraph.
+TEST(DocumentEdit, a_paragraph_naming_nothing_to_split_after_moves_everything) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"id":-1})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"", "one two three", "second"}));
+}
+
+/// Enter at the very end of a paragraph.
+TEST(DocumentEdit, a_split_after_the_last_run_leaves_an_empty_paragraph) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                    id_of(run_at(document, 0, 2)) + R"(,"id":-1})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two three", "", "second"}));
+}
+
+TEST(DocumentEdit, a_split_inside_a_span_leaves_the_span_in_both_halves) {
+  const Document document = two_paragraph_text();
+  const Element styled = run_at(document, 0, 1);
+
+  document.edit(ops(R"({"op":"insertText","after":)" + id_of(styled) +
+                    R"(,"text":"TWO","id":-1},)" +
+                    R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                    id_of(styled) + R"(,"id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two", "TWO three", "second"}));
+  // the tail's run still sits under a span of its own, not under the paragraph
+  EXPECT_EQ(run_at(document, 1, 0).parent().type(), ElementType::span);
+}
+
+/// What Enter in the middle of a run looks like on the wire.
+TEST(DocumentEdit, enter_in_the_middle_of_a_run_is_three_ops) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 0);
+
+  document.edit(ops(R"({"op":"setText","id":)" + id_of(run) +
+                    R"(,"text":"on"},)" + R"({"op":"insertText","after":)" +
+                    id_of(run) + R"(,"text":"e ","id":-1},)" +
+                    R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                    id_of(run) + R"(,"id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"on", "e two three", "second"}));
+}
+
+TEST(DocumentEdit, a_paragraph_takes_the_one_after_it) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"mergeParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + "}"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two threesecond"}));
+}
+
+/// Backspace at the start of a paragraph and then Enter again puts it back.
+TEST(DocumentEdit, a_merge_and_a_split_undo_each_other) {
+  const Document document = two_paragraph_text();
+  const std::string first = id_of(paragraph_at(document, 0));
+
+  document.edit(ops(R"({"op":"mergeParagraph","paragraph":)" + first + "}," +
+                    R"({"op":"splitParagraph","paragraph":)" + first +
+                    R"(,"after":)" + id_of(run_at(document, 0, 2)) +
+                    R"(,"id":-1})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two three", "second"}));
+}
+
+TEST(DocumentEdit, a_merge_with_nothing_after_it_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"mergeParagraph","paragraph":)" +
+                                 id_of(paragraph_at(document, 1)) + "}")),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, a_new_paragraph_is_inserted_after_the_one_it_names) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertParagraph","after":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"id":-1},)" +
+                    R"({"op":"insertText","before":)" +
+                    id_of(run_at(document, 0, 0)) + R"(,"text":"x","id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"xone two three", "", "second"}));
+}
+
+TEST(DocumentEdit, a_later_op_names_a_paragraph_an_earlier_one_created) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertParagraph","after":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"id":-1},)" +
+                    R"({"op":"insertParagraph","after":-1,"id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document).size(), 4U);
+}
+
+TEST(DocumentEdit, an_op_naming_a_paragraph_that_is_not_one_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(document.edit(ops(R"({"op":"mergeParagraph","paragraph":)" +
+                                 id_of(run_at(document, 0, 0)) + "}")),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, a_split_after_something_outside_the_paragraph_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(
+      document.edit(ops(R"({"op":"splitParagraph","paragraph":)" +
+                        id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                        id_of(run_at(document, 1, 0)) + R"(,"id":-1})")),
+      std::invalid_argument);
+}
+
+namespace {
+
+/// A paragraph whose middle run sits under a link, and one whose middle child
+/// is a frame holding a paragraph of its own.
+Document nested_text(const std::string &middle) {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.text">)"
+      R"(<office:body><office:text><text:p>one )" +
+      middle +
+      R"( three</text:p></office:text></office:body></office:document>)";
+  return DecodedFile(
+             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
+                                      Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+} // namespace
+
+TEST(DocumentEdit, a_split_inside_a_link_leaves_the_link_in_both_halves) {
+  const Document document =
+      nested_text(R"(<text:a xlink:href="https://x.example">two</text:a>)");
+  const Element linked = run_at(document, 0, 1);
+
+  document.edit(ops(R"({"op":"insertText","after":)" + id_of(linked) +
+                    R"(,"text":"TWO","id":-1},)" +
+                    R"({"op":"splitParagraph","paragraph":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                    id_of(linked) + R"(,"id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two", "TWO three"}));
+  const Element tail = run_at(document, 1, 0).parent();
+  ASSERT_EQ(tail.type(), ElementType::link);
+  EXPECT_EQ(tail.as_link().href(), "https://x.example");
+}
+
+/// A copy of a frame has no obvious meaning, so the split refuses.
+TEST(DocumentEdit, a_split_through_something_that_is_not_a_span_refuses) {
+  const Document document = nested_text(
+      R"(<draw:frame><draw:text-box><text:p>two</text:p></draw:text-box>)"
+      R"(</draw:frame>)");
+  const Element inner = run_at(document, 0, 1);
+  ASSERT_TRUE(inner);
+
+  EXPECT_THROW(
+      document.edit(ops(R"({"op":"splitParagraph","paragraph":)" +
+                        id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                        id_of(inner) + R"(,"id":-1})")),
+      UnsupportedOperation);
+}
+
+TEST(DocumentEdit, a_paragraph_edit_refuses_another_documents_element) {
+  const Document document = two_paragraph_text();
+  const Document other = two_paragraph_text();
+  const Paragraph paragraph = paragraph_at(other, 0).as_paragraph();
+  ASSERT_TRUE(paragraph);
+
+  EXPECT_THROW(document.merge_paragraph_with_next(paragraph),
+               std::invalid_argument);
+  EXPECT_THROW((void)document.insert_paragraph_after(paragraph),
+               std::invalid_argument);
+  EXPECT_THROW((void)document.split_paragraph(paragraph, Element()),
                std::invalid_argument);
 }

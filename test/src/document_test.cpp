@@ -524,6 +524,62 @@ TEST(Document, edit_docx_across_runs) {
             "head tail and more");
 }
 
+namespace {
+
+/// Splits a paragraph of several runs after its first run and types on into
+/// the new one - what Enter and then a keystroke produce.
+std::pair<std::string, std::string>
+split_a_paragraph(const std::string &path, const std::string &output_name) {
+  std::string paragraph_path;
+  const Document document = edit_and_reload(
+      path,
+      [&](const Document &opened) {
+        const Element paragraph = paragraph_of_several_runs(opened);
+        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        paragraph_path = paragraph.document_path().to_string();
+        const std::vector<Element> runs = runs_of(paragraph);
+        return nlohmann::json{{"version", 2},
+                              {"ops",
+                               {{{"op", "setText"},
+                                 {"id", runs.front().identifier()},
+                                 {"text", "head"}},
+                                {{"op", "splitParagraph"},
+                                 {"paragraph", paragraph.identifier()},
+                                 {"after", runs.front().identifier()},
+                                 {"id", -1}},
+                                {{"op", "insertText"},
+                                 {"before", runs[1].identifier()},
+                                 {"text", "tail "},
+                                 {"id", -2}}}}}
+            .dump();
+      },
+      output_name);
+
+  const DocumentPath head(paragraph_path);
+  return {text_of(document.root_element().navigate_path(head)),
+          text_of(document.root_element().navigate_path(head).next_sibling())};
+}
+
+} // namespace
+
+// Reopening is what proves the package the engine wrote is sound.
+TEST(Document, edit_odt_splits_a_paragraph) {
+  const auto &[head, tail] = split_a_paragraph(
+      "odr-public/odt/style-various-1.odt", "style-various-1_edit_split.odt");
+
+  EXPECT_EQ(head, "head");
+  EXPECT_TRUE(tail.starts_with("tail ")) << tail;
+}
+
+TEST(Document, edit_docx_splits_a_paragraph) {
+  const auto &[head, tail] =
+      split_a_paragraph("odr-public/docx/style-various-1.docx",
+                        "style-various-1_edit_split.docx");
+
+  EXPECT_EQ(head, "head");
+  EXPECT_TRUE(tail.starts_with("tail ")) << tail;
+}
+
 TEST(Document, edit_docx_diff) {
   const Document document = edit_and_reload(
       "odr-public/docx/style-various-1.docx",
