@@ -136,9 +136,10 @@ def test_save_to_memory_round_trips(odt_path, tmp_path):
 def test_save_to_memory_carries_an_edit(odt_path, tmp_path):
     document = pyodr.open(str(odt_path)).as_document_file().document()
 
+    run = document.root_element().first_child().first_child()
     diff = (
-        '{"version":1,"ops":[{"op":"setText","path":"/child:0/child:0",'
-        '"text":"edited in python"}]}'
+        '{"version":2,"ops":[{"op":"setText","id":%d,'
+        '"text":"edited in python"}]}' % run.identifier()
     )
     document.edit(diff)
 

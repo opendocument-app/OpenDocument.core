@@ -11,10 +11,14 @@
 
 #include <gtest/gtest.h>
 
+#include <nlohmann/json.hpp>
+
 #include <filesystem>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace odr;
 using namespace odr::test;
@@ -66,9 +70,25 @@ void expect_text_at(const Document &document, const std::string &path,
                           .content());
 }
 
-/// Applies `diff` to `path`'s document, saves to `output_name` in the working
+using TextEdits = std::vector<std::pair<std::string, std::string>>;
+
+/// One `setText` op per @p edits entry. A test states the path because that is
+/// what a reader can check; an op states the id the element carries.
+std::string set_text_ops(const Document &document, const TextEdits &edits) {
+  nlohmann::json ops = nlohmann::json::array();
+  for (const auto &[path, text] : edits) {
+    const Element element =
+        document.root_element().navigate_path(DocumentPath(path));
+    EXPECT_TRUE(element) << "no element at " << path;
+    ops.push_back(
+        {{"op", "setText"}, {"id", element.identifier()}, {"text", text}});
+  }
+  return nlohmann::json{{"version", 2}, {"ops", ops}}.dump();
+}
+
+/// Applies @p edits to `path`'s document, saves to `output_name` in the working
 /// directory and reopens it, so the assertions see what was written.
-Document edit_and_reload(const std::string &path, const char *diff,
+Document edit_and_reload(const std::string &path, const TextEdits &edits,
                          const std::string &output_name) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -76,7 +96,7 @@ Document edit_and_reload(const std::string &path, const char *diff,
       open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
-  document.edit(diff);
+  document.edit(set_text_ops(document, edits));
 
   const std::string output_path =
       (std::filesystem::current_path() / output_name).string();
@@ -349,10 +369,11 @@ TEST(Document, edit_docx) {
 }
 
 TEST(Document, edit_odt_diff) {
-  const char *diff =
-      R"({"version":1,"ops":[{"op":"setText","path":"/child:16/child:0","text":"Outasdfsdafdline"},{"op":"setText","path":"/child:24/child:0","text":"Colorasdfasdfasdfed Line"},{"op":"setText","path":"/child:6/child:0","text":"Text hello world!"}]})";
   const Document document =
-      edit_and_reload("odr-public/odt/style-various-1.odt", diff,
+      edit_and_reload("odr-public/odt/style-various-1.odt",
+                      {{"/child:16/child:0", "Outasdfsdafdline"},
+                       {"/child:24/child:0", "Colorasdfasdfasdfed Line"},
+                       {"/child:6/child:0", "Text hello world!"}},
                       "style-various-1_edit_diff.odt");
 
   expect_text_at(document, "/child:16/child:0", "Outasdfsdafdline");
@@ -363,11 +384,14 @@ TEST(Document, edit_odt_diff) {
 // Asserted in memory: `pages.ods` is password-protected, and a decrypted
 // package is not savable — see `a_decrypted_package_is_not_savable`.
 TEST(Document, edit_ods_diff) {
-  const char *diff =
-      R"({"version":1,"ops":[{"op":"setText","path":"/child:0/cell:A1/child:0/child:0","text":"Page 1 hi"},{"op":"setText","path":"/child:1/cell:A1/child:0/child:0","text":"Page 2 hihi"},{"op":"setText","path":"/child:2/cell:A1/child:0/child:0","text":"Page 3 hihihi"},{"op":"setText","path":"/child:3/cell:A1/child:0/child:0","text":"Page 4 hihihihi"},{"op":"setText","path":"/child:4/cell:A1/child:0/child:0","text":"Page 5 hihihihihi"}]})";
   const Document document = decrypted_pages_ods();
 
-  document.edit(diff);
+  document.edit(set_text_ops(
+      document, {{"/child:0/cell:A1/child:0/child:0", "Page 1 hi"},
+                 {"/child:1/cell:A1/child:0/child:0", "Page 2 hihi"},
+                 {"/child:2/cell:A1/child:0/child:0", "Page 3 hihihi"},
+                 {"/child:3/cell:A1/child:0/child:0", "Page 4 hihihihi"},
+                 {"/child:4/cell:A1/child:0/child:0", "Page 5 hihihihihi"}}));
 
   expect_text_at(document, "/child:0/cell:A1/child:0/child:0", "Page 1 hi");
   expect_text_at(document, "/child:1/cell:A1/child:0/child:0", "Page 2 hihi");
@@ -397,11 +421,12 @@ TEST(Document, a_decrypted_package_is_not_savable) {
 }
 
 TEST(Document, edit_docx_diff) {
-  const char *diff =
-      R"({"version":1,"ops":[{"op":"setText","path":"/child:16/child:0/child:0","text":"Outasdfsdafdline"},{"op":"setText","path":"/child:24/child:0/child:0","text":"Colorasdfasdfasdfed Line"},{"op":"setText","path":"/child:6/child:0/child:0","text":"Text hello world!"}]})";
-  const Document document =
-      edit_and_reload("odr-public/docx/style-various-1.docx", diff,
-                      "style-various-1_edit_diff.docx");
+  const Document document = edit_and_reload(
+      "odr-public/docx/style-various-1.docx",
+      {{"/child:16/child:0/child:0", "Outasdfsdafdline"},
+       {"/child:24/child:0/child:0", "Colorasdfasdfasdfed Line"},
+       {"/child:6/child:0/child:0", "Text hello world!"}},
+      "style-various-1_edit_diff.docx");
 
   expect_text_at(document, "/child:16/child:0/child:0", "Outasdfsdafdline");
   expect_text_at(document, "/child:24/child:0/child:0",

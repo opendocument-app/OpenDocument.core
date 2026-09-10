@@ -7,24 +7,28 @@
   var odr = (window.odr = window.odr || {});
 
   // A view whose runs carry no address is not this editor's: a sheet's editing
-  // is an overlay, and its cells state no path.
-  if (document.querySelector("[data-odr-path]") === null) {
+  // is an overlay, and its cells state no id.
+  if (document.querySelector("x-s[data-odr-id]") === null) {
     return;
   }
 
   var root = document.body;
   var modified = {};
 
+  function idOf(run) {
+    return Number(run.getAttribute("data-odr-id"));
+  }
+
   function operations() {
     var ops = [];
-    for (var path in modified) {
-      if (Object.prototype.hasOwnProperty.call(modified, path)) {
+    for (var id in modified) {
+      if (Object.prototype.hasOwnProperty.call(modified, id)) {
         ops.push({
           op: "setText",
-          path: path,
+          id: Number(id),
           // Not `innerText`: that is the rendered text, and it drops the
           // trailing space a reader just typed.
-          text: modified[path].textContent,
+          text: modified[id].textContent,
         });
       }
     }
@@ -37,7 +41,7 @@
       return null;
     }
     var element = node.nodeType === 1 ? node : node.parentElement;
-    return element === null ? null : element.closest("[data-odr-path]");
+    return element === null ? null : element.closest("x-s[data-odr-id]");
   }
 
   // The input types that only ever change the text of one run.
@@ -64,7 +68,7 @@
   var named = { insertParagraph: "newLine", insertLineBreak: "newLine" };
 
   /// Where an edit lands: `run` is the one run it is confined to, null where
-  /// it spans two or lands outside every run. `path` is where it starts.
+  /// it spans two or lands outside every run. `id` is where it starts.
   function target(event) {
     var ranges =
       typeof event.getTargetRanges === "function" ? event.getTargetRanges() : [];
@@ -78,12 +82,12 @@
       }
     }
     if (range === undefined) {
-      return { run: null, path: null };
+      return { run: null, id: null };
     }
     var start = runOf(range.startContainer);
     return {
       run: start !== null && start === runOf(range.endContainer) ? start : null,
-      path: start === null ? null : start.getAttribute("data-odr-path"),
+      id: start === null ? null : idOf(start),
     };
   }
 
@@ -91,9 +95,9 @@
     if (event.cancelable) {
       event.preventDefault();
     }
-    // The path keeps two refusals apart, so Enter in one run and then in
+    // The id keeps two refusals apart, so Enter in one run and then in
     // another is heard twice.
-    odr.editing.refuse(reason, { path: at.path });
+    odr.editing.refuse(reason, { id: at.id });
   }
 
   // Where the edit the gate just allowed will land, for `input` to record.
@@ -164,7 +168,7 @@
       odr.onError(9, "an edit landed where no operation can name it");
       return;
     }
-    modified[run.getAttribute("data-odr-path")] = run;
+    modified[idOf(run)] = run;
     odr.editing.changed();
   });
 

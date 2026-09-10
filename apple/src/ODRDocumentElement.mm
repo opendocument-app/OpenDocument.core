@@ -237,6 +237,10 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   return guarded_value([&] { return _handle.is_editable() ? YES : NO; }, NO);
 }
 
+- (uint64_t)identifier {
+  return guarded_value([&] { return _handle.identifier(); }, 0);
+}
+
 @end
 
 #pragma mark - typed views

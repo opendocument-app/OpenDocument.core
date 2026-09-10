@@ -146,6 +146,7 @@ void odr_python::bind_document(py::module_ &m) {
           },
           py::is_operator())
       .def("type", &odr::Element::type)
+      .def("identifier", &odr::Element::identifier)
       .def("parent", &odr::Element::parent, keep_self_alive)
       .def("first_child", &odr::Element::first_child, keep_self_alive)
       .def("previous_sibling", &odr::Element::previous_sibling, keep_self_alive)
@@ -322,6 +323,8 @@ void odr_python::bind_document(py::module_ &m) {
           },
           py::arg("operations"),
           "Apply the operations our browser-side editor produces.")
+      .def("element_by_id", &odr::Document::element_by_id,
+           py::arg("identifier"), keep_self_alive)
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
       // saving serialises the whole document; holding the GIL for it blocks

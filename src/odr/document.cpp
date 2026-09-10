@@ -1,7 +1,6 @@
 #include <odr/document.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
@@ -124,9 +123,21 @@ Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
 void Document::edit(const std::string_view operations,
                     const Logger & /*logger*/) const {
   const nlohmann::json json = nlohmann::json::parse(operations);
-  if (json.value("version", 0) != 1) {
+  if (json.value("version", 0) != 2) {
     throw std::invalid_argument("unsupported edit version");
   }
+
+  // the element @p field names, checked to be one this document holds
+  const auto element_of = [&](const nlohmann::json &operation,
+                              const char *field) {
+    const auto identifier = operation.at(field).get<ElementIdentifier>();
+    const Element element = element_by_id(identifier);
+    if (!element) {
+      throw std::invalid_argument("element " + std::to_string(identifier) +
+                                  " not found");
+    }
+    return element;
+  };
 
   for (const nlohmann::json &operation : json.at("ops")) {
     const auto name = operation.at("op").get<std::string>();
@@ -140,16 +151,14 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "setText") {
-      const auto path = operation.at("path").get<std::string>();
-      const Element element = root_element().navigate_path(DocumentPath(path));
-      if (!element) {
-        throw std::invalid_argument("element with path " + path + " not found");
-      }
-      if (!element.as_text()) {
-        throw std::invalid_argument("element with path " + path +
+      const Element element = element_of(operation, "id");
+      const Text text = element.as_text();
+      if (!text) {
+        throw std::invalid_argument("element " +
+                                    std::to_string(element.identifier()) +
                                     " is not a text element");
       }
-      element.as_text().set_content(operation.at("text").get<std::string>());
+      text.set_content(operation.at("text").get<std::string>());
       continue;
     }
 
@@ -159,6 +168,17 @@ void Document::edit(const std::string_view operations,
 
 Element Document::root_element() const {
   return {m_impl->element_adapter(), m_impl->root_element()};
+}
+
+Element Document::element_by_id(const ElementIdentifier identifier) const {
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  try {
+    // throwing is how a registry answers an id it does not hold
+    static_cast<void>(adapter->element_type(identifier));
+  } catch (const std::out_of_range &) {
+    return {};
+  }
+  return {adapter, identifier};
 }
 
 Filesystem Document::as_filesystem() const {

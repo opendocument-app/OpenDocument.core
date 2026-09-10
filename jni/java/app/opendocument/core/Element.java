@@ -56,6 +56,11 @@ public class Element extends NativeResource {
     }
   }
 
+  /** The address an edit operation names this element by. */
+  public long identifier() {
+    return identifierNative(handle());
+  }
+
   public DocumentPath documentPath() {
     return new DocumentPath(documentPathNative(handle()));
   }
@@ -207,6 +212,8 @@ public class Element extends NativeResource {
   private native boolean isEditableNative(long handle);
 
   private native boolean isSameNative(long handle, long otherHandle);
+
+  private native long identifierNative(long handle);
 
   private native long documentPathNative(long handle);
 

@@ -205,6 +205,10 @@ public:
 
   [[nodiscard]] ElementType type() const;
 
+  /// The address an edit operation names this element by; unique within one
+  /// document, and the same for every decode of the same bytes.
+  [[nodiscard]] ElementIdentifier identifier() const noexcept;
+
   [[nodiscard]] Element parent() const;
   [[nodiscard]] Element first_child() const;
   [[nodiscard]] Element previous_sibling() const;

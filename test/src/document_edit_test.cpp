@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -42,12 +43,17 @@ Sheet first_sheet(const Document &document) {
   return (*document.root_element().children().begin()).as_sheet();
 }
 
+/// The one run the @p column -th cell of the first row holds.
+Element run_of_cell(const Document &document, const std::uint32_t column) {
+  return first_sheet(document).cell(column, 0).first_child().first_child();
+}
+
 } // namespace
 
 TEST(DocumentEdit, the_ops_are_applied_in_order) {
   const Document document = three_cell_sheet();
 
-  document.edit(R"({"version":1,"ops":[)"
+  document.edit(R"({"version":2,"ops":[)"
                 R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
                 R"("value":{"type":"string","text":"first"}},)"
                 R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
@@ -59,7 +65,7 @@ TEST(DocumentEdit, the_ops_are_applied_in_order) {
 TEST(DocumentEdit, a_number_op_states_the_number_and_the_text) {
   const Document document = three_cell_sheet();
 
-  document.edit(R"({"version":1,"ops":[)"
+  document.edit(R"({"version":2,"ops":[)"
                 R"({"op":"setCell","sheet":0,"column":1,"row":0,)"
                 R"("value":{"type":"number","number":12.5,"text":"12,50"}}]})");
 
@@ -74,7 +80,7 @@ TEST(DocumentEdit, a_number_op_states_the_number_and_the_text) {
 TEST(DocumentEdit, a_number_op_without_text_spells_itself) {
   const Document document = three_cell_sheet();
 
-  document.edit(R"({"version":1,"ops":[)"
+  document.edit(R"({"version":2,"ops":[)"
                 R"({"op":"setCell","sheet":0,"column":1,"row":0,)"
                 R"("value":{"type":"number","number":12.5}}]})");
 
@@ -84,27 +90,49 @@ TEST(DocumentEdit, a_number_op_without_text_spells_itself) {
 TEST(DocumentEdit, an_empty_op_clears_the_cell) {
   const Document document = three_cell_sheet();
 
-  document.edit(R"({"version":1,"ops":[)"
+  document.edit(R"({"version":2,"ops":[)"
                 R"({"op":"setCell","sheet":0,"column":2,"row":0,)"
                 R"("value":{"type":"empty"}}]})");
 
   EXPECT_EQ(first_sheet(document).cell(2, 0).value().text(), "");
 }
 
-TEST(DocumentEdit, a_text_op_names_its_element_by_path) {
+TEST(DocumentEdit, a_text_op_names_its_element_by_id) {
   const Document document = three_cell_sheet();
+  const Element run = run_of_cell(document, 0);
 
-  document.edit(
-      R"({"version":1,"ops":[{"op":"setText",)"
-      R"("path":"/child:0/cell:A1/child:0/child:0","text":"typed"}]})");
+  document.edit(R"({"version":2,"ops":[{"op":"setText","id":)" +
+                std::to_string(run.identifier()) + R"(,"text":"typed"}]})");
 
   EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "typed");
+}
+
+TEST(DocumentEdit, a_text_op_naming_an_element_that_is_not_there_refuses) {
+  const Document document = three_cell_sheet();
+
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":[)"
+                             R"({"op":"setText","id":9999,"text":"typed"}]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":[)"
+                             R"({"op":"setText","id":0,"text":"typed"}]})"),
+               std::invalid_argument);
+}
+
+TEST(DocumentEdit, a_text_op_naming_something_that_is_not_a_run_refuses) {
+  const Document document = three_cell_sheet();
+  const ElementIdentifier cell = first_sheet(document).cell(0, 0).identifier();
+
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":[{"op":"setText","id":)" +
+                             std::to_string(cell) + R"(,"text":"typed"}]})"),
+               std::invalid_argument);
 }
 
 TEST(DocumentEdit, an_unknown_version_refuses) {
   const Document document = three_cell_sheet();
 
-  EXPECT_THROW(document.edit(R"({"version":2,"ops":[]})"),
+  EXPECT_THROW(document.edit(R"({"version":1,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version":3,"ops":[]})"),
                std::invalid_argument);
   EXPECT_THROW(document.edit(R"({"ops":[]})"), std::invalid_argument);
 }
@@ -112,14 +140,14 @@ TEST(DocumentEdit, an_unknown_version_refuses) {
 TEST(DocumentEdit, an_unknown_op_refuses) {
   const Document document = three_cell_sheet();
 
-  EXPECT_THROW(document.edit(R"({"version":1,"ops":[{"op":"setStyle"}]})"),
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":[{"op":"setStyle"}]})"),
                std::invalid_argument);
 }
 
 TEST(DocumentEdit, an_op_naming_a_sheet_that_is_not_there_refuses) {
   const Document document = three_cell_sheet();
 
-  EXPECT_THROW(document.edit(R"({"version":1,"ops":[)"
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":[)"
                              R"({"op":"setCell","sheet":3,"column":0,"row":0,)"
                              R"("value":{"type":"empty"}}]})"),
                std::invalid_argument);
@@ -130,7 +158,7 @@ TEST(DocumentEdit, the_ops_before_a_refusal_are_applied) {
   const Document document = three_cell_sheet();
 
   EXPECT_ANY_THROW(
-      document.edit(R"({"version":1,"ops":[)"
+      document.edit(R"({"version":2,"ops":[)"
                     R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
                     R"("value":{"type":"string","text":"written"}},)"
                     R"({"op":"setCell","sheet":9,"column":0,"row":0,)"

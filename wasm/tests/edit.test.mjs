@@ -5,11 +5,12 @@ import { after, before, describe, it } from 'node:test';
 
 import { Odr, OdrError, minimalOds, minimalOdt } from './helper.mjs';
 
-// Read out of the html rather than spelled, as the browser does.
-function firstEditablePath(html) {
-  const match = html.match(/data-odr-path="([^"]+)"/);
-  assert.ok(match, 'the editable render carries no data-odr-path');
-  return match[1];
+// Read out of the html rather than spelled, as the browser does. The runs
+// carry the ids an op names; a paragraph carries one too, so the tag counts.
+function firstEditableRunId(html) {
+  const match = html.match(/<x-s [^>]*data-odr-id="(\d+)"/);
+  assert.ok(match, 'the editable render carries no run id');
+  return Number(match[1]);
 }
 
 describe('edit', () => {
@@ -34,10 +35,10 @@ describe('edit', () => {
     const doc = odr.open(minimalOdt('hello'), { editable: true });
     try {
       const { html } = doc.render(0);
-      const path = firstEditablePath(html);
+      const id = firstEditableRunId(html);
       doc.edit(JSON.stringify({
-        version: 1,
-        ops: [{ op: 'setText', path, text: 'edited in the browser' }],
+        version: 2,
+        ops: [{ op: 'setText', id, text: 'edited in the browser' }],
       }));
 
       // the edit is in the document, so the same service renders it
@@ -64,7 +65,7 @@ describe('edit', () => {
     const doc = odr.open(minimalOds('hello'));
     try {
       doc.edit(JSON.stringify({
-        version: 1,
+        version: 2,
         ops: [{
           op: 'setCell', sheet: 0, column: 0, row: 0,
           value: { type: 'number', number: 12.5, text: '12.5' },
@@ -100,7 +101,7 @@ describe('edit', () => {
         assert.equal(error.name, 'NoDocumentFile');
         return true;
       });
-      assert.throws(() => doc.edit('{"version":1,"ops":[]}'), OdrError);
+      assert.throws(() => doc.edit('{"version":2,"ops":[]}'), OdrError);
     } finally {
       doc.close();
     }

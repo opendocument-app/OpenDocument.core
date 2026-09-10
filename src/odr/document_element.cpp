@@ -106,6 +106,8 @@ ElementType Element::type() const {
   return exists_() ? m_adapter->element_type(m_identifier) : ElementType::none;
 }
 
+ElementIdentifier Element::identifier() const noexcept { return m_identifier; }
+
 Element Element::parent() const {
   return exists_() ? Element(m_adapter, m_adapter->element_parent(m_identifier))
                    : Element();

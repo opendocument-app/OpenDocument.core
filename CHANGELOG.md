@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking** (wire only): an edit operation names its element by the id the
+  render writes into the page, `data-odr-id`, not by a document path. The
+  envelope is `{"version": 2, ...}`; version 1 is refused. An editable render
+  addresses its paragraphs as well as its runs.
+
+- `Element::identifier()` and `Document::element_by_id()` are the two ends of
+  that address, in C++ and in the python, jni and apple bindings.
+
 - `odr.editing` is on every document view, not only on a sheet's. The mode,
   the refusals, the log and the `odr.onEdit*` callbacks are one surface a host
   wires per document, and each format attaches its own editor to it.
@@ -108,11 +116,11 @@ The release run heads these entries with the version and opens a fresh
   beside it.
 
 - A sheet rendered with `HtmlConfig::editable` carries no `contenteditable`
-  and no `data-odr-path`: its editing is an overlay, so the markup states
+  and no `data-odr-id`: its editing is an overlay, so the markup states
   none. A cell's runs fold into the `td` as they do read-only.
 
 - **Breaking** (wire only) `Document::edit` takes an op envelope,
-  `{"version": 1, "ops": [...]}`, with `setCell` writing a sheet cell by
+  `{"version": 2, "ops": [...]}`, with `setCell` writing a sheet cell by
   position and `setText` carrying what the `modifiedText` map carried.
 
 - `Sheet::set_cell` writes a repeated `.ods` cell: the run is cut into the
