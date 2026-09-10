@@ -30,6 +30,16 @@
     document.body.offsetHeight;
   };
 
+  // `detail` counts the clicks, as a browser counts them.
+  window.doubleClick = function (element) {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 }));
+    element.dispatchEvent(
+      new MouseEvent("dblclick", { bubbles: true, detail: 2 })
+    );
+    document.body.offsetHeight;
+  };
+
   window.addEventListener("load", function () {
     var summary = document.createElement("div");
     summary.id = "summary";

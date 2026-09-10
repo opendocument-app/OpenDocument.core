@@ -37,6 +37,10 @@ The release run heads these entries with the version and opens a fresh
   default, decide whether the page takes the keys that move the selection and
   the undo chord. An open editor's own keys are never taken away.
 
+- **Fix**: double-clicking a sheet cell no longer flashes its border off. A
+  click on the pinned cell clears the pin, and the second click of a double
+  click was taking it - so selecting a word left the border coming and going.
+
 - A cell of several runs is written rather than locked: the write replaces what
   the cell shows with one run. A cell holding one run is written through it, so
   that run keeps its style. The `rich` lock stays on what a write would take

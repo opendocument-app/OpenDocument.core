@@ -149,6 +149,17 @@
           document.querySelector(".odr-sheet-pinned-cell") === null
       );
 
+      // A double click is the reader selecting a word, and the pin under it
+      // has to stand: clearing it on the second click flickers the border.
+      doubleClick(odr.sheet.cellAt(1, 2));
+      var held = odr.sheet.pinned();
+      check(
+        "a double click leaves the pin standing",
+        held !== null && held.column === 1 && held.row === 2
+      );
+      click(odr.sheet.cellAt(1, 2));
+      check("a single click on it still clears the pin", odr.sheet.pinned() === null);
+
       click(document.querySelectorAll(".odr-sheet-column-header")[2]);
       var column = odr.sheet.pinned();
       check(

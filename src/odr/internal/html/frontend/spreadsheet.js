@@ -458,9 +458,13 @@
       return;
     }
 
-    // Clicking what is pinned clears it.
+    // Clicking what is pinned clears it - but `detail` counts the clicks, and
+    // the second of a double click is the reader selecting a word. Clearing
+    // the pin under that flickers the border off again.
     if (cell === pinnedCell) {
-      pin(-1, null, null);
+      if (event.detail <= 1) {
+        pin(-1, null, null);
+      }
       return;
     }
 
