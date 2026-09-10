@@ -1,18 +1,24 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_document.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
+#include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/style.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_parser.hpp>
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
+#include <odr/internal/xml/xml_tree_edit.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 
 #include <iterator>
+#include <sstream>
+#include <stdexcept>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -38,6 +44,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     const std::string id = slide_id.attribute("r:id").value();
     AbsPath slide_path = AbsPath("/ppt").join(RelPath(relations.at(id)));
     m_slides_xml[id] = xml::parse(*m_files, slide_path);
+    m_slide_ids_by_path[slide_path] = id;
     slides.push_back(std::move(slide_path));
   }
 
@@ -63,6 +70,49 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   load_slide_styles_(slides);
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
+}
+
+bool Document::is_editable() const noexcept { return true; }
+
+bool Document::is_savable(const bool encrypted) const noexcept {
+  return !encrypted && !is_decrypted();
+}
+
+/// Only the slides are re-serialised; everything else is copied through as
+/// bytes, so a part we never parsed survives untouched.
+void Document::save(std::ostream &out) const {
+  if (!is_savable(false)) {
+    throw UnsupportedOperation();
+  }
+
+  // TODO this would decrypt/inflate and encrypt/deflate again
+  zip::ZipArchive archive;
+
+  for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
+       walker->next()) {
+    const AbsPath &abs_path = walker->path();
+    RelPath rel_path = walker->path().rebase(AbsPath("/"));
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
+      continue;
+    }
+    if (const auto slide = m_slide_ids_by_path.find(abs_path);
+        slide != std::end(m_slide_ids_by_path)) {
+      // TODO stream
+      std::stringstream content;
+      m_slides_xml.at(slide->second).print(content, "", pugi::format_raw);
+      auto tmp = std::make_shared<MemoryFile>(content.str());
+      archive.insert_file(std::end(archive), rel_path, tmp);
+      continue;
+    }
+    archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
+  }
+
+  archive.save(out);
+}
+
+void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
+  throw UnsupportedOperation();
 }
 
 /// slide → layout → master → theme; the master's `p:clrMap` says which slot
@@ -138,6 +188,9 @@ const ElementRegistry &Document::element_registry() const {
 
 namespace {
 
+using TreeEditor = xml::TreeEditor<ElementRegistry>;
+using xml::NodeSpan;
+
 using AdapterBase = internal::RegistryElementAdapter<
     ElementRegistry, abstract::SlideAdapter, abstract::LineBreakAdapter,
     abstract::ParagraphAdapter, abstract::SpanAdapter, abstract::TextAdapter,
@@ -149,6 +202,11 @@ class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(const Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
+
+  [[nodiscard]] bool element_is_editable(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return true;
+  }
 
   [[nodiscard]] PageLayout
   slide_page_layout(const ElementIdentifier element_id) const override {
@@ -203,65 +261,74 @@ public:
     ElementRegistry::Text &text_element =
         m_registry->text_element_at(element_id);
 
-    const pugi::xml_node first = get_node(element_id);
-    const pugi::xml_node last = text_element.last;
+    const NodeSpan old_span{element.node, text_element.last};
+    pugi::xml_node parent = old_span.first.parent();
+    const NodeSpan new_span =
+        write_text_nodes(parent, old_span.first, text, "a");
 
-    pugi::xml_node parent = first.parent();
-    const pugi::xml_node old_first = first;
-    const pugi::xml_node old_last = last;
-    pugi::xml_node new_first = old_first;
-    pugi::xml_node new_last = last;
+    element.node = new_span.first;
+    text_element.last = new_span.last;
 
-    const auto insert_node = [&](const char *node) {
-      const pugi::xml_node new_node =
-          parent.insert_child_before(node, old_first);
-      if (new_first == old_first) {
-        new_first = new_node;
-      }
-      new_last = new_node;
-      return new_node;
-    };
-
-    for (const xml::StringToken &token : xml::tokenize_text(text)) {
-      switch (token.type) {
-      case xml::StringToken::Type::none:
-        break;
-      case xml::StringToken::Type::string: {
-        auto text_node = insert_node("a:t");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case xml::StringToken::Type::spaces: {
-        auto text_node = insert_node("a:t");
-        text_node.append_attribute("xml:space").set_value("preserve");
-        text_node.append_child(pugi::xml_node_type::node_pcdata)
-            .text()
-            .set(token.string.c_str());
-      } break;
-      case xml::StringToken::Type::tabs: {
-        for (std::size_t i = 0; i < token.string.size(); ++i) {
-          insert_node("a:tab");
-        }
-      } break;
-      }
-    }
-
-    if (new_first == old_first) {
-      // empty text still needs a live node to anchor the element to, or the
-      // removal below would leave the registry pointing at freed nodes
-      insert_node("a:t");
-    }
-
-    element.node = new_first;
-    text_element.last = new_last;
-
-    for (pugi::xml_node node = old_first; node != old_last.next_sibling();) {
-      const pugi::xml_node next = node.next_sibling();
-      parent.remove_child(node);
-      node = next;
-    }
+    xml::remove_nodes(old_span);
   }
+
+  [[nodiscard]] ElementIdentifier
+  text_insert(const ElementIdentifier element_id, const Placement where,
+              const std::string &text) const override {
+    const ElementRegistry::Text &anchor =
+        m_registry->text_element_at(element_id);
+    const pugi::xml_node first = get_node(element_id);
+    pugi::xml_node parent = first.parent();
+    // a run beside this one in the same `a:r` carries the same `a:rPr`
+    const pugi::xml_node before =
+        where == Placement::after ? anchor.last.next_sibling() : first;
+
+    const NodeSpan span = write_text_nodes(parent, before, text, "a");
+    const auto &[new_id, unused_element, unused_text] =
+        m_registry->create_text_element(span.first, span.last);
+    if (where == Placement::after) {
+      m_registry->insert_sibling_after(element_id, new_id);
+    } else {
+      m_registry->insert_sibling_before(element_id, new_id);
+    }
+    return new_id;
+  }
+
+  [[nodiscard]] ElementIdentifier
+  element_append_text(const ElementIdentifier element_id,
+                      const std::string &text) const override {
+    pugi::xml_node node = get_node(element_id);
+    const NodeSpan span = write_text_nodes(node, {}, text, "a");
+    const auto &[new_id, unused_element, unused_text] =
+        m_registry->create_text_element(span.first, span.last);
+    m_registry->append_child(element_id, new_id);
+    return new_id;
+  }
+
+  void element_remove(const ElementIdentifier element_id) const override {
+    TreeEditor(*m_registry).remove(element_id);
+  }
+
+  [[nodiscard]] ElementIdentifier
+  paragraph_split(const ElementIdentifier element_id,
+                  const ElementIdentifier after_id) const override {
+    return TreeEditor(*m_registry).split(element_id, after_id);
+  }
+
+  void paragraph_merge_next(const ElementIdentifier element_id) const override {
+    const ElementIdentifier next_id = element_next_sibling(element_id);
+    if (next_id == null_element_id ||
+        element_type(next_id) != ElementType::paragraph) {
+      throw std::invalid_argument("no paragraph follows the one to merge into");
+    }
+    TreeEditor(*m_registry).merge_next(element_id);
+  }
+
+  [[nodiscard]] ElementIdentifier
+  paragraph_insert_after(const ElementIdentifier element_id) const override {
+    return TreeEditor(*m_registry).insert_sibling_after(element_id);
+  }
+
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;

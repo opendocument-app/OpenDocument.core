@@ -2,7 +2,7 @@
 
 The **why**; the feature checklist is in [`README.md`](README.md), the shared
 OOXML mechanics (registry/adapter pattern, OPC relationships, encryption) in
-[`../AGENTS.md`](../AGENTS.md). **Read-only.**
+[`../AGENTS.md`](../AGENTS.md). **Reader + text editor + save.**
 
 **Scope.** Read `ppt/presentation.xml` and each slide's shape tree into the
 abstract model so the generic renderer lays out positioned frames. Paragraphs,
@@ -92,7 +92,16 @@ Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 3. **Table cell styles unresolved.** Tables are wired (grid, spans, covered
    cells, column widths/row heights), but `a:tcPr` (fills, borders, margins)
    is not translated.
-4. **Read-only.** `text_set_content` machinery exists but is dormant
-   (`element_is_editable` → false); wiring edit + save (mirroring docx) is a
-   natural next step.
+4. **Editing is text-content and the structure a text edit needs**, the same
+   surface `.docx` has: set a run's text, put a run beside one, remove an
+   element, and split, merge or insert a paragraph. The dom half is
+   `xml::TreeEditor`, shared with odf and ooxml text — only the tag names
+   differ, and those come from the nodes. No style editing, and no editing of
+   a shape, a picture or a table's furniture.
+
+   `save` re-serialises the slide parts and copies the rest of the package
+   through as bytes, so a part we never parsed survives untouched. The slides
+   are held by their `r:id`, which is how the slide-id list names them, so
+   `save` keeps the other direction — path to `r:id` — to know which part it
+   is writing.
 5. **Listings, comments/annotations** not modelled.

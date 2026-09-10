@@ -246,7 +246,8 @@ public:
 
     const NodeSpan old_span{element.node, text_element.last};
     pugi::xml_node parent = old_span.first.parent();
-    const NodeSpan new_span = write_text_nodes(parent, old_span.first, text);
+    const NodeSpan new_span =
+        write_text_nodes(parent, old_span.first, text, "w");
 
     element.node = new_span.first;
     text_element.last = new_span.last;
@@ -265,7 +266,7 @@ public:
     const pugi::xml_node before =
         where == Placement::after ? anchor.last.next_sibling() : first;
 
-    const NodeSpan span = write_text_nodes(parent, before, text);
+    const NodeSpan span = write_text_nodes(parent, before, text, "w");
     const auto &[new_id, unused_element, unused_text] =
         m_registry->create_text_element(span.first, span.last);
     if (where == Placement::after) {
@@ -280,7 +281,7 @@ public:
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
     pugi::xml_node node = get_node(element_id);
-    const NodeSpan span = write_text_nodes(node, {}, text);
+    const NodeSpan span = write_text_nodes(node, {}, text, "w");
     const auto &[new_id, unused_element, unused_text] =
         m_registry->create_text_element(span.first, span.last);
     m_registry->append_child(element_id, new_id);
