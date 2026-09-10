@@ -212,9 +212,11 @@ public:
   slide_page_layout(const ElementIdentifier element_id) const override {
     return m_document->slide_page_layout(element_id);
   }
+  /// TODO the slide master is not parsed into the tree, so a slide reports
+  /// none. What the master paints is missing from the render with it.
   [[nodiscard]] ElementIdentifier slide_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
   [[nodiscard]] std::string
   slide_name(const ElementIdentifier element_id) const override {
@@ -334,9 +336,11 @@ public:
     return get_intermediate_style(element_id).text_style;
   }
 
+  /// TODO an `a:hlinkClick` relationship is not resolved, so a link in a
+  /// slide has no href.
   [[nodiscard]] std::string link_href(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
 
   [[nodiscard]] std::string

@@ -107,11 +107,18 @@ public:
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 
-/// A csv is a text file that can also be loaded as a document — a one-sheet
-/// spreadsheet. It stays in @ref FileCategory::text, so reading it as text
-/// needs no reopening; @ref document is the other view of the same bytes.
-class CsvFile : public TextFile {
+/// A csv holds a text file rather than being one: @ref document is what a
+/// caller wants from it, and the plain-text view is @ref text_file. It stays
+/// in @ref FileCategory::text, so the bytes are still bytes of text.
+class CsvFile : public DecodedFile {
 public:
+  [[nodiscard]] FileCategory file_category() const noexcept final {
+    return FileCategory::text;
+  }
+
+  /// The same bytes as plain text, so reading them needs no reopening.
+  [[nodiscard]] virtual std::shared_ptr<TextFile> text_file() const = 0;
+
   /// The options in use, every field resolved.
   [[nodiscard]] virtual CsvOptions options() const = 0;
 
@@ -123,11 +130,17 @@ public:
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };
 
-/// A markdown file is a text file that can also be loaded as a document — its
-/// prose, parsed. Like @ref CsvFile it stays in @ref FileCategory::text; @ref
-/// document is the other view of the same bytes.
-class MarkdownFile : public TextFile {
+/// Markdown holds a text file the same way @ref CsvFile does; @ref document is
+/// its prose, parsed.
+class MarkdownFile : public DecodedFile {
 public:
+  [[nodiscard]] FileCategory file_category() const noexcept final {
+    return FileCategory::text;
+  }
+
+  /// The same bytes as plain text, so reading them needs no reopening.
+  [[nodiscard]] virtual std::shared_ptr<TextFile> text_file() const = 0;
+
   /// The markdown as a text document.
   [[nodiscard]] virtual std::shared_ptr<Document> document() const = 0;
 };

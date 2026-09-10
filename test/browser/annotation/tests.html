@@ -19,13 +19,6 @@
     border-left: 1px solid #ccc;
     z-index: 10;
   }
-  .ok {
-    color: #0a7d28;
-  }
-  .fail {
-    color: #c00;
-    font-weight: bold;
-  }
   /* stands in for a rendered page: laid out in inches, as the pdf view does */
   .p {
     position: relative;
@@ -67,24 +60,9 @@
   </div>
 </div>
 
+<script src="checks.js"></script>
 <script src="pdf-annotation.js"></script>
 <script>
-  const report = document.getElementById("report");
-  let failed = 0;
-
-  function check(name, condition, detail) {
-    const line = document.createElement("div");
-    line.className = condition ? "ok" : "fail";
-    line.textContent = (condition ? "PASS " : "FAIL ") + name;
-    if (!condition) {
-      failed += 1;
-      if (detail !== undefined) {
-        line.textContent += " — " + JSON.stringify(detail);
-      }
-    }
-    report.appendChild(line);
-  }
-
   function near(a, b, tolerance) {
     return Math.abs(a - b) <= (tolerance === undefined ? 0.75 : tolerance);
   }
@@ -369,11 +347,6 @@
 
     api.clear();
     api.setTool(null);
-
-    const summary = document.createElement("div");
-    summary.className = failed ? "fail" : "ok";
-    summary.textContent = failed ? failed + " FAILED" : "all passed";
-    report.prepend(summary);
   }
 
   run();

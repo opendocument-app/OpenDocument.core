@@ -60,6 +60,16 @@ public class DecodedFile extends NativeResource {
     return isTextFileNative(handle());
   }
 
+  /** A csv holds a text file rather than being one; {@link #isTextFile} is false. */
+  public boolean isCsvFile() {
+    return isCsvFileNative(handle());
+  }
+
+  /** Markdown holds a text file the same way a csv does. */
+  public boolean isMarkdownFile() {
+    return isMarkdownFileNative(handle());
+  }
+
   public boolean isImageFile() {
     return isImageFileNative(handle());
   }
@@ -82,6 +92,14 @@ public class DecodedFile extends NativeResource {
 
   public TextFile asTextFile() {
     return new TextFile(asTextFileNative(handle()));
+  }
+
+  public CsvFile asCsvFile() {
+    return new CsvFile(asCsvFileNative(handle()));
+  }
+
+  public MarkdownFile asMarkdownFile() {
+    return new MarkdownFile(asMarkdownFileNative(handle()));
   }
 
   public ImageFile asImageFile() {
@@ -126,6 +144,10 @@ public class DecodedFile extends NativeResource {
 
   private native boolean isTextFileNative(long handle);
 
+  private native boolean isCsvFileNative(long handle);
+
+  private native boolean isMarkdownFileNative(long handle);
+
   private native boolean isImageFileNative(long handle);
 
   private native boolean isArchiveFileNative(long handle);
@@ -137,6 +159,10 @@ public class DecodedFile extends NativeResource {
   private native boolean isFontFileNative(long handle);
 
   private native long asTextFileNative(long handle);
+
+  private native long asCsvFileNative(long handle);
+
+  private native long asMarkdownFileNative(long handle);
 
   private native long asImageFileNative(long handle);
 

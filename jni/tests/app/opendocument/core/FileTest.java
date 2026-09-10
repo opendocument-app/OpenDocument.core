@@ -58,6 +58,28 @@ class FileTest {
     Path csv = TestFiles.csvFile(tempDir);
     try (DecodedFile file = Odr.open(csv.toString())) {
       assertEquals(FileType.COMMA_SEPARATED_VALUES, file.fileType());
+      // A csv holds a text file rather than being one; both views stay open.
+      assertFalse(file.isTextFile());
+      assertTrue(file.isCsvFile());
+
+      CsvFile decodedCsv = file.asCsvFile();
+      assertTrue(decodedCsv.textFile().text().startsWith("name,"));
+      assertNotNull(decodedCsv.document().rootElement());
+    }
+  }
+
+  @Test
+  void textFileWritesAnEditBack() throws IOException {
+    Path txt = TestFiles.txtFile(tempDir);
+    try (DecodedFile file = Odr.open(txt.toString())) {
+      TextFile text = file.asTextFile();
+      assertTrue(text.isSavable());
+
+      byte[] edited =
+          text.writeEdited(
+              "{\"version\":2,\"ops\":[{\"op\":\"setContent\",\"text\":\"rewritten\"}]}");
+
+      assertEquals("rewritten", new String(edited, java.nio.charset.StandardCharsets.UTF_8));
     }
   }
 

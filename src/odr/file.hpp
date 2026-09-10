@@ -370,7 +370,8 @@ public:
   void pipe(std::ostream &out) const;
   void copy(const std::string &path) const;
 
-  // TODO `impl()` might be a bit dirty
+  /// The internal file this wraps. The bindings need it to hand one wrapper's
+  /// value to another; every public wrapper here offers the same.
   [[nodiscard]] std::shared_ptr<internal::abstract::File> impl() const;
 
 protected:
@@ -460,10 +461,13 @@ class CsvFile final : public DecodedFile {
 public:
   explicit CsvFile(std::shared_ptr<internal::abstract::CsvFile>);
 
-  /// The csv as a one-sheet spreadsheet. The other view of the same bytes — a
-  /// csv stays a text file, so @ref TextFile::text still works.
+  /// The csv as a one-sheet spreadsheet.
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] Document document() const;
+
+  /// The same bytes as plain text. A csv holds a text file rather than being
+  /// one, so @ref DecodedFile::is_text_file is false for it.
+  [[nodiscard]] TextFile text_file() const;
 
   /// The options in use, every field resolved.
   [[nodiscard]] CsvOptions options() const;
@@ -479,10 +483,12 @@ class MarkdownFile final : public DecodedFile {
 public:
   explicit MarkdownFile(std::shared_ptr<internal::abstract::MarkdownFile>);
 
-  /// The markdown as a text document. The other view of the same bytes —
-  /// markdown stays a text file, so @ref TextFile::text still works.
+  /// The markdown as a text document.
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] Document document() const;
+
+  /// The same bytes as plain text, as @ref CsvFile::text_file is.
+  [[nodiscard]] TextFile text_file() const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::MarkdownFile> impl() const;
 

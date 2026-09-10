@@ -57,6 +57,63 @@ public final class Document extends NativeResource {
     editNative(handle(), diff);
   }
 
+  /** The element {@link Element#identifier()} handed out, or {@code null}. */
+  public Element elementById(long identifier) {
+    long h = elementByIdNative(handle(), identifier);
+    return h == 0 ? null : new Element(h, this);
+  }
+
+  /**
+   * Removes an element and its subtree; its identifier stays taken.
+   *
+   * <p>The structural edits below all throw where the engine cannot write, and
+   * for an element of another document.
+   */
+  public void remove(Element element) {
+    removeNative(handle(), element.handle());
+  }
+
+  /** A run before another, in the same parent, so it takes the same style. */
+  public Text insertTextBefore(Text anchor, String text) {
+    return new Text(insertTextBeforeNative(handle(), anchor.handle(), text), this);
+  }
+
+  /** A run after another, in the same parent. */
+  public Text insertTextAfter(Text anchor, String text) {
+    return new Text(insertTextAfterNative(handle(), anchor.handle(), text), this);
+  }
+
+  /** A run as the last child of an element. */
+  public Text appendText(Element parent, String text) {
+    return new Text(appendTextNative(handle(), parent.handle(), text), this);
+  }
+
+  /** Splits before every child of the paragraph. */
+  public Paragraph splitParagraph(Paragraph paragraph) {
+    return splitParagraph(paragraph, null);
+  }
+
+  /**
+   * Splits a paragraph after {@code after}, one of its descendants, into a new
+   * paragraph of the same style. A {@code null} {@code after} moves every child.
+   */
+  public Paragraph splitParagraph(Paragraph paragraph, Element after) {
+    long handle =
+        splitParagraphNative(
+            handle(), paragraph.handle(), after == null ? 0 : after.handle());
+    return new Paragraph(handle, this);
+  }
+
+  /** Takes the children of the paragraph after this one, which then goes. */
+  public void mergeParagraphWithNext(Paragraph paragraph) {
+    mergeParagraphWithNextNative(handle(), paragraph.handle());
+  }
+
+  /** An empty paragraph after this one, of the same style. */
+  public Paragraph insertParagraphAfter(Paragraph paragraph) {
+    return new Paragraph(insertParagraphAfterNative(handle(), paragraph.handle()), this);
+  }
+
   private static native void destroy(long handle);
 
   private native void editNative(long handle, String diff);
@@ -80,4 +137,20 @@ public final class Document extends NativeResource {
   private native long rootElementNative(long handle);
 
   private native long asFilesystemNative(long handle);
+
+  private native long elementByIdNative(long handle, long identifier);
+
+  private native void removeNative(long handle, long elementHandle);
+
+  private native long insertTextBeforeNative(long handle, long anchorHandle, String text);
+
+  private native long insertTextAfterNative(long handle, long anchorHandle, String text);
+
+  private native long appendTextNative(long handle, long parentHandle, String text);
+
+  private native long splitParagraphNative(long handle, long paragraphHandle, long afterHandle);
+
+  private native void mergeParagraphWithNextNative(long handle, long paragraphHandle);
+
+  private native long insertParagraphAfterNative(long handle, long paragraphHandle);
 }

@@ -16,6 +16,26 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: `Text::set_content` on an `.xlsx` run did nothing and said nothing.
+  An xlsx declares `edit`, so a caller had no way to learn the write was
+  dropped; it now throws `UnsupportedOperation`, as every other engine that
+  cannot write a run does.
+
+- **Fix**: the pdf object parser skipped over `null`, `true` and `false`
+  without reading them, so `nXYZ` parsed as null. The keyword is checked now,
+  without case, as the surrounding parser already allows.
+
+- Every binding reaches the structural edit API. python, jni and apple take
+  elements (`remove`, `insertTextBefore`/`After`, `appendText`,
+  `splitParagraph`, `mergeParagraphWithNext`, `insertParagraphAfter`); wasm
+  addresses the same operations by element id, because nothing escapes it as a
+  handle. `element_by_id` and `TextFile.write_edited` are bound too.
+
+- **Breaking**: a csv and a markdown file hold a text file instead of being
+  one. `is_text_file()` answers false for them; the plain-text view is
+  `as_csv_file().text_file()` / `as_markdown_file().text_file()`. `CsvFile` and
+  `MarkdownFile` are bound in python, jni and apple to carry both views.
+
 - A selection reaching over a picture is taken, and the picture goes with the
   text: a frame carries `data-odr-id`, so an operation can name it. A frame
   holding text of its own is still refused.

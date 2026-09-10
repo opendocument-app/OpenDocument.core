@@ -255,16 +255,14 @@ HtmlService translate_font_file(const FontFile &font_file,
 
 HtmlService html::translate(const DecodedFile &file, const HtmlConfig &config,
                             const Logger &logger) {
-  // before the text branch: a csv is a text file, and rendering one as a line
-  // list rather than a table is never what a viewer wants
   if (file.is_csv_file()) {
     return translate(file.as_csv_file().document(), config, logger);
   }
-  // markdown too — its point is the prose it parses to
   if (file.is_markdown_file()) {
     return translate(file.as_markdown_file().document(), config, logger);
   }
-  // and before it for the same reason; open as `text_file` for the line list
+  // an xml file *is* a text file, so this has to come first; open as
+  // `text_file` for the plain line list
   if (file.file_type() == FileType::xml) {
     return internal::html::create_xml_service(file.as_text_file(), config,
                                               logger);

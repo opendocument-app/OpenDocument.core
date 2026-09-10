@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 @class ODRLogger;
 
 @class ODRTextFile;
+@class ODRCsvFile;
+@class ODRMarkdownFile;
 @class ODRImageFile;
 @class ODRArchiveFile;
 @class ODRDocumentFile;
@@ -336,6 +338,10 @@ NS_SWIFT_NAME(DecodedFile)
 @property(nonatomic, readonly) ODRFileTypeCapabilities *capabilities;
 
 @property(nonatomic, readonly) BOOL isTextFile;
+/// A csv holds a text file rather than being one, so `isTextFile` is `NO`.
+@property(nonatomic, readonly) BOOL isCsvFile;
+/// Markdown holds a text file the same way a csv does.
+@property(nonatomic, readonly) BOOL isMarkdownFile;
 @property(nonatomic, readonly) BOOL isImageFile;
 @property(nonatomic, readonly) BOOL isArchiveFile;
 @property(nonatomic, readonly) BOOL isDocumentFile;
@@ -345,6 +351,10 @@ NS_SWIFT_NAME(DecodedFile)
 /// The typed views. Each fails unless the matching `is…` is true.
 - (nullable ODRTextFile *)asTextFileWithError:(NSError **)error
     NS_SWIFT_NAME(asTextFile());
+- (nullable ODRCsvFile *)asCsvFileWithError:(NSError **)error
+    NS_SWIFT_NAME(asCsvFile());
+- (nullable ODRMarkdownFile *)asMarkdownFileWithError:(NSError **)error
+    NS_SWIFT_NAME(asMarkdownFile());
 - (nullable ODRImageFile *)asImageFileWithError:(NSError **)error
     NS_SWIFT_NAME(asImageFile());
 - (nullable ODRArchiveFile *)asArchiveFileWithError:(NSError **)error
@@ -369,6 +379,38 @@ NS_SWIFT_NAME(TextFile)
 @property(nonatomic, readonly, nullable, copy) NSString *charset;
 /// The decoded text.
 - (nullable NSString *)textWithError:(NSError **)error NS_SWIFT_NAME(text());
+/// `NO` where the file type is one this library does not write, or the
+/// encoding cannot be decoded.
+@property(nonatomic, readonly) BOOL isSavable;
+/// Applies the operations and returns the result, as UTF-8 whatever the source
+/// encoding was.
+- (nullable NSData *)writeEdited:(NSString *)operations
+                           error:(NSError **)error
+    NS_SWIFT_NAME(writeEdited(operations:));
+@end
+
+/// A decoded csv — `odr::CsvFile`. It *holds* a text file rather than being
+/// one; `document` and `textFile` are the two views of the same bytes.
+NS_SWIFT_NAME(CsvFile)
+@interface ODRCsvFile : ODRDecodedFile
+/// The csv as a one-sheet spreadsheet.
+- (nullable ODRDocument *)documentWithError:(NSError **)error
+    NS_SWIFT_NAME(document());
+/// The same bytes as plain text, so reading them needs no reopening.
+- (nullable ODRTextFile *)textFileWithError:(NSError **)error
+    NS_SWIFT_NAME(textFile());
+@end
+
+/// A decoded markdown file — `odr::MarkdownFile`. Holds a text file the way
+/// `ODRCsvFile` does.
+NS_SWIFT_NAME(MarkdownFile)
+@interface ODRMarkdownFile : ODRDecodedFile
+/// The markdown as a text document.
+- (nullable ODRDocument *)documentWithError:(NSError **)error
+    NS_SWIFT_NAME(document());
+/// The same bytes as plain text, so reading them needs no reopening.
+- (nullable ODRTextFile *)textFileWithError:(NSError **)error
+    NS_SWIFT_NAME(textFile());
 @end
 
 /// A decoded image file — `odr::ImageFile`.

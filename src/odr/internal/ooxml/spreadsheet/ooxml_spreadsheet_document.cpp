@@ -192,7 +192,9 @@ public:
   sheet_content(const ElementIdentifier element_id,
                 [[maybe_unused]] const std::optional<TableDimensions> range)
       const override {
-    return sheet_dimensions(element_id); // TODO
+    // TODO the range is ignored: this answers the whole `<dimension>` rather
+    // than trimming to the populated cells inside it.
+    return sheet_dimensions(element_id);
   }
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
@@ -271,9 +273,11 @@ public:
     }
   }
 
+  /// TODO a sheet carries no style of its own here; `sheetFormatPr` (default
+  /// row height and column width) is not read.
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
   [[nodiscard]] TableColumnStyle
   sheet_column_style(const ElementIdentifier element_id,
@@ -398,19 +402,23 @@ public:
     }
     return result;
   }
+  /// A cell's value goes in through `sheet_set_cell`; a run inside one is not
+  /// writable. Refusing beats the silent no-op this was: the document declares
+  /// `edit`, so a caller has no other way to learn nothing happened.
   void
   text_set_content([[maybe_unused]] const ElementIdentifier element_id,
                    [[maybe_unused]] const std::string &text) const override {
-    // TODO
+    throw UnsupportedOperation();
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
 
+  /// TODO a `<hyperlink>` is not modelled, so a link in a sheet has no href.
   [[nodiscard]] std::string link_href(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
 
   [[nodiscard]] AnchorType frame_anchor_type(
@@ -492,7 +500,8 @@ public:
         }
       }
     }
-    return ""; // TODO
+    // an unresolvable relationship leaves no href rather than a broken one
+    return "";
   }
 
 private:

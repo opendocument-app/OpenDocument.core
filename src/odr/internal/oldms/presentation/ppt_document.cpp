@@ -17,7 +17,7 @@ namespace odr::internal::oldms::presentation {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry);
 }
 
@@ -27,7 +27,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
   m_element_adapter =
-      create_element_adapter(*this, m_element_registry, m_style_registry);
+      create_element_adapter(m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -49,10 +49,8 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry,
-                 const StyleRegistry &style_registry)
-      : AdapterBase(registry), m_document(&document),
-        m_style_registry(&style_registry) {}
+  ElementAdapter(ElementRegistry &registry, const StyleRegistry &style_registry)
+      : AdapterBase(registry), m_style_registry(&style_registry) {}
 
   [[nodiscard]] PageLayout slide_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -131,14 +129,17 @@ public:
     return {};
   }
 
+  /// TODO the character run of a line break is not read.
   [[nodiscard]] TextStyle line_break_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
 
+  /// TODO paragraph properties ([MS-PPT] `TextPFRun`) are not read: alignment,
+  /// indent and spacing all render as the default.
   [[nodiscard]] ParagraphStyle paragraph_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    return {}; // TODO
+    return {};
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
@@ -201,15 +202,13 @@ private:
     return Measure(select(*anchor) / master_units_per_inch, DynamicUnit("in"));
   }
 
-  [[maybe_unused]]
-  const Document *m_document{nullptr};
   const StyleRegistry *m_style_registry{nullptr};
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(document, registry, style_registry);
+  return std::make_unique<ElementAdapter>(registry, style_registry);
 }
 
 } // namespace

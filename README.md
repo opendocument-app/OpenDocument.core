@@ -53,9 +53,9 @@ to a system file picker. It is a declared upper bound; `DecodedFile::capabilitie
 and `Document::is_editable` / `is_savable` give the precise answer for a
 concrete file.
 
-Editing and saving are currently limited to odt, odp, odg (`edit` + `save`),
-ods (`save` only) and docx (`edit` + `save`); saving with a password is not
-supported for any format.
+Editing and saving are currently limited to odt, odp, ods, odg, docx, pptx,
+xlsx and txt (`edit` + `save` each); saving with a password is not supported
+for any format.
 
 ## Unsupported files
 

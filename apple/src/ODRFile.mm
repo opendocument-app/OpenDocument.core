@@ -300,6 +300,10 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
     klass = [ODRPdfFile class];
   } else if (handle.is_document_file()) {
     klass = [ODRDocumentFile class];
+  } else if (handle.is_csv_file()) {
+    klass = [ODRCsvFile class];
+  } else if (handle.is_markdown_file()) {
+    klass = [ODRMarkdownFile class];
   } else if (handle.is_text_file()) {
     klass = [ODRTextFile class];
   } else if (handle.is_image_file()) {
@@ -475,6 +479,15 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 - (BOOL)isTextFile {
   return guarded_value([&] { return _handle->is_text_file() ? YES : NO; }, NO);
 }
+
+- (BOOL)isCsvFile {
+  return guarded_value([&] { return _handle->is_csv_file() ? YES : NO; }, NO);
+}
+
+- (BOOL)isMarkdownFile {
+  return guarded_value([&] { return _handle->is_markdown_file() ? YES : NO; },
+                       NO);
+}
 - (BOOL)isImageFile {
   return guarded_value([&] { return _handle->is_image_file() ? YES : NO; }, NO);
 }
@@ -499,6 +512,20 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   return guarded(error, [&]() -> ODRTextFile * {
     return static_cast<ODRTextFile *>(
         [ODRDecodedFile decodedFileWithHandle:_handle->as_text_file()]);
+  });
+}
+
+- (nullable ODRCsvFile *)asCsvFileWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRCsvFile * {
+    return static_cast<ODRCsvFile *>(
+        [ODRDecodedFile decodedFileWithHandle:_handle->as_csv_file()]);
+  });
+}
+
+- (nullable ODRMarkdownFile *)asMarkdownFileWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRMarkdownFile * {
+    return static_cast<ODRMarkdownFile *>(
+        [ODRDecodedFile decodedFileWithHandle:_handle->as_markdown_file()]);
   });
 }
 
@@ -568,6 +595,57 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 - (nullable NSString *)textWithError:(NSError **)error {
   return guarded(error, [&]() -> NSString * {
     return to_nsstring(self.handle.as_text_file().text());
+  });
+}
+
+- (BOOL)isSavable {
+  return guarded_value(
+      [&] { return self.handle.as_text_file().is_savable() ? YES : NO; }, NO);
+}
+
+- (nullable NSData *)writeEdited:(NSString *)operations
+                           error:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    self.handle.as_text_file().write_edited(to_string(operations), out);
+    const std::string bytes = out.str();
+    return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  });
+}
+
+@end
+
+@implementation ODRCsvFile
+
+- (nullable ODRDocument *)documentWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRDocument * {
+    return
+        [ODRDocument documentWithHandle:self.handle.as_csv_file().document()];
+  });
+}
+
+- (nullable ODRTextFile *)textFileWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRTextFile * {
+    return static_cast<ODRTextFile *>([ODRDecodedFile
+        decodedFileWithHandle:self.handle.as_csv_file().text_file()]);
+  });
+}
+
+@end
+
+@implementation ODRMarkdownFile
+
+- (nullable ODRDocument *)documentWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRDocument * {
+    return [ODRDocument
+        documentWithHandle:self.handle.as_markdown_file().document()];
+  });
+}
+
+- (nullable ODRTextFile *)textFileWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRTextFile * {
+    return static_cast<ODRTextFile *>([ODRDecodedFile
+        decodedFileWithHandle:self.handle.as_markdown_file().text_file()]);
   });
 }
 

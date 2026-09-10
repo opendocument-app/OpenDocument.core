@@ -4,13 +4,17 @@ Read the root [`AGENTS.md`](../../../../AGENTS.md) first, and
 [`PLAN.md`](PLAN.md) for where this is going. This file covers what markdown
 does differently, and why.
 
-## A text file that also loads as a document
+## A file that holds a text file and also loads as a document
 
 `FileCategory::text` / `DocumentType::text` — the shape `abstract::CsvFile`
-already has. Markdown is plain text by construction, so the file stays text and
-the document is the other view of the same bytes: `as_text_file().text()` is
-the source, `as_markdown_file().document()` the prose. `html::translate` takes
-the document view, as it does for a csv.
+already has. `abstract::MarkdownFile` derives from `abstract::DecodedFile` and
+*holds* a `text::TextFile`, so `is_text_file()` is false for a `.md`:
+`as_markdown_file().text_file().text()` is the source and
+`as_markdown_file().document()` the prose. `html::translate` takes the document
+view, as it does for a csv.
+
+Composition rather than inheritance, because a `TextFile` is the thing this
+library edits and writes back as plain text, and markdown is not that.
 
 Decoding to a `TextRoot` is the whole argument for a decoder rather than a
 markdown→HTML renderer next to `html/text_file.cpp`: the latter would produce

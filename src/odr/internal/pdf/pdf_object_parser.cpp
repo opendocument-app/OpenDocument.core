@@ -2,6 +2,8 @@
 
 #include <odr/internal/util/stream_util.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -202,6 +204,20 @@ bool ObjectParser::skip_past(const std::string_view marker) {
   }
 }
 
+/// The keyword is lowercase in ISO 32000-1 7.3.2, but the `peek_` above take
+/// either case, so what follows has to as well - and it has to be read, or
+/// `nXYZ` parses as null.
+void ObjectParser::expect_keyword(const std::string &keyword) {
+  const std::string observed = bumpnc(keyword.size());
+  if (!std::ranges::equal(observed, keyword, [](char a, char b) {
+        return std::tolower(static_cast<unsigned char>(a)) ==
+               std::tolower(static_cast<unsigned char>(b));
+      })) {
+    throw std::runtime_error("unexpected keyword (expected: " + keyword +
+                             ", observed: " + observed + ")");
+  }
+}
+
 void ObjectParser::expect_characters(const std::string &string) {
   const std::string observed = bumpnc(string.size());
   if (observed != string) {
@@ -346,10 +362,7 @@ bool ObjectParser::peek_null() {
   return c != eof && (c == 'n' || c == 'N');
 }
 
-void ObjectParser::read_null() {
-  std::ignore = bumpnc<4>();
-  // TODO check ignore case
-}
+void ObjectParser::read_null() { expect_keyword("null"); }
 
 bool ObjectParser::peek_boolean() {
   const int_type c = geti();
@@ -360,16 +373,12 @@ Boolean ObjectParser::read_boolean() {
   const int_type c = geti();
 
   if (c == 't' || c == 'T') {
-    std::ignore = bumpnc<4>();
-    // TODO check ignore case
-
+    expect_keyword("true");
     return true;
   }
 
   if (c == 'f' || c == 'F') {
-    std::ignore = bumpnc<5>();
-    // TODO check ignore case
-
+    expect_keyword("false");
     return false;
   }
 

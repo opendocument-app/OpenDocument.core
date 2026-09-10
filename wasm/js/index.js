@@ -91,6 +91,40 @@ export class Document {
     return this;
   }
 
+  // Structural edits, by the id the render wrote into the page as
+  // `data-odr-id`. Each returns the id of what it created; nothing crosses as
+  // a handle. `edit()` above is the same operations as one batch.
+  removeElement(id) {
+    unwrap(this.#core.removeElement(this.#handle, id));
+    return this;
+  }
+
+  insertTextBefore(anchorId, text) {
+    return unwrap(this.#core.insertTextBefore(this.#handle, anchorId, text));
+  }
+
+  insertTextAfter(anchorId, text) {
+    return unwrap(this.#core.insertTextAfter(this.#handle, anchorId, text));
+  }
+
+  appendText(parentId, text) {
+    return unwrap(this.#core.appendText(this.#handle, parentId, text));
+  }
+
+  // `afterId` of 0 splits before every child.
+  splitParagraph(paragraphId, afterId = 0) {
+    return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));
+  }
+
+  mergeParagraphWithNext(paragraphId) {
+    unwrap(this.#core.mergeParagraphWithNext(this.#handle, paragraphId));
+    return this;
+  }
+
+  insertParagraphAfter(paragraphId) {
+    return unwrap(this.#core.insertParagraphAfter(this.#handle, paragraphId));
+  }
+
   // Whether this pdf can take annotations.
   isAnnotatable() {
     return unwrap(this.#core.isAnnotatable(this.#handle));

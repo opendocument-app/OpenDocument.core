@@ -44,6 +44,11 @@ Worker**, where every value that crosses is structured-cloned.
   `DocumentFile::document()` decodes a fresh one per call, so a `save` that
   opened its own would write the document nobody edited. Handle `0` is never
   issued, so a zeroed handle is always invalid.
+
+  This is why the structural edits are addressed **by element id**, not by an
+  element: an id is a plain number, and the render already writes it into the
+  page as `data-odr-id`. So there is no element surface here at all, and
+  `Document::element_by_id` has nothing to return.
 - **Config crosses as a plain object.** `to_html_config` reads known keys and
   leaves the rest defaulted. Never bind a mutable config: it could not cross
   `postMessage`.

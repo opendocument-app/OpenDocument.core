@@ -186,6 +186,23 @@ Java_app_opendocument_core_DecodedFile_isTextFileNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_DecodedFile_isCsvFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).is_csv_file());
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_DecodedFile_isMarkdownFileNative(JNIEnv *env,
+                                                            jobject,
+                                                            jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).is_markdown_file());
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
 Java_app_opendocument_core_DecodedFile_isImageFileNative(JNIEnv *env, jobject,
                                                          jlong handle) {
   return guarded(env, [&] {
@@ -231,6 +248,61 @@ Java_app_opendocument_core_DecodedFile_asTextFileNative(JNIEnv *env, jobject,
                                                         jlong handle) {
   return guarded(env, [&] {
     return make_handle(odr::DecodedFile(decoded(handle).as_text_file()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_DecodedFile_asCsvFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(odr::DecodedFile(decoded(handle).as_csv_file()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_DecodedFile_asMarkdownFileNative(JNIEnv *env,
+                                                            jobject,
+                                                            jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(odr::DecodedFile(decoded(handle).as_markdown_file()));
+  });
+}
+
+// app.opendocument.core.CsvFile
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_CsvFile_documentNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(decoded(handle).as_csv_file().document());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_CsvFile_textFileNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::DecodedFile(decoded(handle).as_csv_file().text_file()));
+  });
+}
+
+// app.opendocument.core.MarkdownFile
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_MarkdownFile_documentNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(decoded(handle).as_markdown_file().document());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_MarkdownFile_textFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::DecodedFile(decoded(handle).as_markdown_file().text_file()));
   });
 }
 
@@ -290,6 +362,26 @@ Java_app_opendocument_core_TextFile_textNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
     return to_jstring(env, decoded(handle).as_text_file().text());
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_TextFile_isSavableNative(JNIEnv *env, jobject,
+                                                    jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).as_text_file().is_savable());
+  });
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_app_opendocument_core_TextFile_writeEditedNative(JNIEnv *env, jobject,
+                                                      jlong handle,
+                                                      jstring operations) {
+  return guarded(env, [&] {
+    std::ostringstream out;
+    decoded(handle).as_text_file().write_edited(to_string(env, operations),
+                                                out);
+    return to_jbytes(env, out.str());
   });
 }
 

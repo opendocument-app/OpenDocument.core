@@ -6,6 +6,7 @@
 
 namespace odr {
 
+/// A cell by column and row, and the spreadsheet spelling of one: `B3`.
 struct TablePosition final {
   static std::uint32_t to_column_num(const std::string &string);
   static std::uint32_t to_row_num(const std::string &string);

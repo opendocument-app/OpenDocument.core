@@ -331,6 +331,8 @@ CsvFile::CsvFile(std::shared_ptr<internal::abstract::CsvFile> impl)
 
 Document CsvFile::document() const { return Document(m_impl->document()); }
 
+TextFile CsvFile::text_file() const { return TextFile(m_impl->text_file()); }
+
 CsvOptions CsvFile::options() const { return m_impl->options(); }
 
 std::shared_ptr<internal::abstract::CsvFile> CsvFile::impl() const {
@@ -342,6 +344,10 @@ MarkdownFile::MarkdownFile(
     : DecodedFile(impl), m_impl{std::move(impl)} {}
 
 Document MarkdownFile::document() const { return Document(m_impl->document()); }
+
+TextFile MarkdownFile::text_file() const {
+  return TextFile(m_impl->text_file());
+}
 
 std::shared_ptr<internal::abstract::MarkdownFile> MarkdownFile::impl() const {
   return m_impl;

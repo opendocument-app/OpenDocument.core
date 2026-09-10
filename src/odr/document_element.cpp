@@ -640,8 +640,10 @@ ShapeType Frame::shape_type() const {
 }
 
 AnchorType Frame::anchor_type() const {
+  // `AnchorType` has no neutral value, so a frame that does not exist answers
+  // the commonest one. Ask @ref Element::operator bool to tell the two apart.
   return exists_() ? m_adapter2->frame_anchor_type(m_identifier)
-                   : AnchorType::as_char; // TODO default?
+                   : AnchorType::as_char;
 }
 
 std::optional<Measure> Frame::x() const {

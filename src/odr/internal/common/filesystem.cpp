@@ -28,8 +28,10 @@ public:
     return std::make_unique<SystemFileWalker>(*this);
   }
 
+  /// TODO always false: two walkers at the same place do not compare equal.
+  /// Nothing calls this yet, so nothing depends on the answer.
   [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const override {
-    return false; // TODO
+    return false;
   }
 
   [[nodiscard]] bool end() const override {

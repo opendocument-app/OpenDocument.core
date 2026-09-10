@@ -56,6 +56,9 @@ public:
   /// if it was found; on false the stream has been consumed to eof. Operates on
   /// raw bytes, so the marker may straddle line breaks.
   bool skip_past(std::string_view marker);
+  /// @p keyword, compared without case. @throws std::runtime_error on a
+  /// mismatch.
+  void expect_keyword(const std::string &keyword);
   void expect_characters(const std::string &string);
 
   [[nodiscard]] bool peek_number();

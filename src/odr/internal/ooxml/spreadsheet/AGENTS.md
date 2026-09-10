@@ -94,5 +94,6 @@ Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
    borders rendered as `0.75pt solid` regardless of actual style (`// TODO thin
    only`); cell protection unhandled.
 4. **Writing is one cell value.** `sheet_set_cell` writes a number or a string,
-   into a cell the file spells or one it states; `text_set_content` is still a
-   no-op stub. Links and comments/annotations not modelled.
+   into a cell the file spells or one it states; `text_set_content` throws
+   `UnsupportedOperation` — a run inside a cell is not writable. Links and
+   comments/annotations not modelled.

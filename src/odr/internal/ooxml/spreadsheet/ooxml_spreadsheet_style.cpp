@@ -125,9 +125,10 @@ ResolvedStyle StyleRegistry::cell_style(const std::uint32_t i) const {
     }
   }
 
+  // TODO `protection` (locked/hidden) is read out and dropped; nothing in
+  // `TableCellStyle` carries it, and the render has no lock to show.
   if (const pugi::xml_node protection = cell_format.child("protection");
       cell_format.attribute("applyProtection").as_bool() && protection) {
-    // TODO
   }
 
   return result;

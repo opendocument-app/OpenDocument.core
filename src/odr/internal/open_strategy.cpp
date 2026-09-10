@@ -609,8 +609,9 @@ open_by_cascade(const std::shared_ptr<abstract::File> &file,
         ODR_VERBOSE(logger, "failed to open as xml");
       }
 
+      // the last resort: bytes that read as text are a text file, whatever
+      // else the probes above made of them
       ODR_VERBOSE(logger, "open as text file");
-      // TODO looks dirty
       return std::make_unique<text::TextFile>(file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as text");

@@ -18,6 +18,7 @@ enum class LogLevel {
   fatal,
 };
 
+/// The column widths and the clock a stdio logger writes its lines with.
 struct LogFormat {
   std::string time_format{"%H:%M:%S"};
   std::size_t level_width{7};

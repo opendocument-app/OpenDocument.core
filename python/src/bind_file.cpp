@@ -273,6 +273,7 @@ void odr_python::bind_file(py::module_ &m) {
       .def("capabilities", &odr::DecodedFile::capabilities)
       .def("is_text_file", &odr::DecodedFile::is_text_file)
       .def("is_csv_file", &odr::DecodedFile::is_csv_file)
+      .def("is_markdown_file", &odr::DecodedFile::is_markdown_file)
       .def("is_image_file", &odr::DecodedFile::is_image_file)
       .def("is_archive_file", &odr::DecodedFile::is_archive_file)
       .def("is_document_file", &odr::DecodedFile::is_document_file)
@@ -280,19 +281,26 @@ void odr_python::bind_file(py::module_ &m) {
       .def("is_font_file", &odr::DecodedFile::is_font_file)
       .def("as_text_file", &odr::DecodedFile::as_text_file)
       .def("as_csv_file", &odr::DecodedFile::as_csv_file)
+      .def("as_markdown_file", &odr::DecodedFile::as_markdown_file)
       .def("as_image_file", &odr::DecodedFile::as_image_file)
       .def("as_archive_file", &odr::DecodedFile::as_archive_file)
       .def("as_document_file", &odr::DecodedFile::as_document_file)
       .def("as_pdf_file", &odr::DecodedFile::as_pdf_file)
       .def("as_font_file", &odr::DecodedFile::as_font_file);
 
-  // A csv is a text file too, so `CsvFile` derives from `TextFile` the way the
-  // C++ handle does - `text()` still reads the raw bytes.
   py::class_<odr::CsvFile, odr::DecodedFile>(m, "CsvFile")
       .def("options", &odr::CsvFile::options,
            "The options in use, every field resolved.")
       .def("document", &odr::CsvFile::document,
-           "The csv as a one-sheet spreadsheet.");
+           "The csv as a one-sheet spreadsheet.")
+      .def("text_file", &odr::CsvFile::text_file,
+           "The same bytes as plain text.");
+
+  py::class_<odr::MarkdownFile, odr::DecodedFile>(m, "MarkdownFile")
+      .def("document", &odr::MarkdownFile::document,
+           "The markdown as a text document.")
+      .def("text_file", &odr::MarkdownFile::text_file,
+           "The same bytes as plain text.");
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
       .def("encoding", &odr::TextFile::encoding,
@@ -305,7 +313,23 @@ void odr_python::bind_file(py::module_ &m) {
              }
              return std::string(odr::text_encoding_to_string(encoding));
            })
-      .def("text", &odr::TextFile::text);
+      .def("text", &odr::TextFile::text)
+      .def("is_savable", &odr::TextFile::is_savable,
+           "False where the file type is one this library does not write, or "
+           "the encoding cannot be decoded.")
+      .def(
+          "write_edited",
+          [](const odr::TextFile &file, const std::string &operations) {
+            std::ostringstream out;
+            {
+              py::gil_scoped_release release;
+              file.write_edited(operations, out);
+            }
+            return py::bytes(out.str());
+          },
+          py::arg("operations"),
+          "Apply the operations and return the result, as UTF-8 whatever the "
+          "source encoding was.");
 
   py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")
       .def("read", [](const odr::ImageFile &file) {
