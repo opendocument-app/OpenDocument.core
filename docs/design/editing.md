@@ -6,11 +6,11 @@ editing of ODF and OOXML documents, the alternatives we weighed, and *why* we
 took each decision. Decisions 9 to 12 are the frame every format shares, and
 they are in the code.
 
-[`spreadsheet-editing.md`](spreadsheet-editing.md) is the first editor built on
-the frame, and it is where a sheet's own decisions live.
-[`document-editing.md`](document-editing.md) is the second, and it is where the phases
-below are being carried out — an edit across runs, a new paragraph, and the
-delete and replace that reach across both.
+One document per editor, each holding its own decisions:
+[`spreadsheet-editing.md`](spreadsheet-editing.md) for the sheet view,
+[`document-editing.md`](document-editing.md) for the document view — where the
+phases below are carried out — and [`txt-editing.md`](txt-editing.md) for the
+plain-text one.
 
 This builds on the existing principle in [`README.md`](README.md):
 
@@ -561,9 +561,10 @@ session-scoped, decision 4).
   [`spreadsheet-editing.md`](spreadsheet-editing.md)). Does the adapter hook
   grow into `element_edit_lock(id) -> reason`, or does the renderer keep
   deciding the reason from the element it is over?
-- The plain-text view (`html/text_file.cpp`) is outside the mode: `text.js` is
-  its own editor, with its own `beforeinput` interception and its own undo, and
-  `config.editable` writes the `contenteditable` it needs. Nothing replays those
-  edits into a file, because `txt` declares no `edit` capability. Does that view
-  attach to `odr.editing` — which would need an editable-but-not-savable state —
-  or stay the one editor that answers to nobody?
+- ~~The plain-text view is outside the mode.~~ **Answered: it attaches.**
+  See [`txt-editing.md`](txt-editing.md).
+- The **pdf annotator** is now the one editor that answers to nobody:
+  `odr.annotation` is its own API and `PdfFile::annotate` its own write path.
+  It is a different gesture from editing text, so whether it should share the
+  mode is a real question rather than an oversight
+  ([`txt-editing.md`](txt-editing.md) carries it too).

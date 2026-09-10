@@ -2,6 +2,7 @@
 
 #include <odr/logger.hpp>
 
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -202,7 +203,8 @@ struct FileTypeCapabilities final {
                             ///< paints
   bool color_scheme{};      ///< the view honors @ref HtmlConfig::color_scheme
   bool edit{};              ///< @ref Document::is_editable can be `true`
-  bool save{};              ///< @ref Document::save is supported
+  bool save{};              ///< @ref Document::save, or for a plain file
+                            ///< @ref TextFile::write_edited
   bool encrypt{};  ///< @ref Document::save with a password is supported
   bool annotate{}; ///< @ref PdfFile::annotate is supported; a concrete file
                    ///< still answers for itself with
@@ -435,6 +437,17 @@ public:
   /// The file's text, decoded to UTF-8 where @ref encoding is decodable, and
   /// the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
+
+  /// False where @ref encoding cannot be decoded: the view hands those bytes
+  /// to the browser as they are, so what comes back cannot be put back.
+  [[nodiscard]] bool is_savable() const noexcept;
+
+  /// Applies @p operations - `{"version": 2, "ops": [{"op": "setContent",
+  /// "text": "…"}]}` - and writes the result to @p out, as UTF-8 whatever
+  /// @ref encoding the source was. See `docs/design/txt-editing.md`.
+  /// @throws UnsupportedOperation where @ref is_savable is false.
+  void write_edited(std::string_view operations, std::ostream &out,
+                    const Logger &logger = Logger::null()) const;
 
   [[nodiscard]] std::shared_ptr<internal::abstract::TextFile> impl() const;
 

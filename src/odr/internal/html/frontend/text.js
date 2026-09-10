@@ -1,5 +1,10 @@
+// The plain-text editor: a line-number gutter that runs whatever the mode
+// says, and editing that attaches to `odr.editing` like every other format's.
+// See `docs/design/txt-editing.md`.
 (function () {
   "use strict";
+
+  var odr = (window.odr = window.odr || {});
 
   function TextEditor(textNr, textBody) {
     this.textNr = textNr;
@@ -30,6 +35,11 @@
     this.textBody.addEventListener("beforeinput", function (event) {
       event.preventDefault();
 
+      if (!odr.editing.isEnabled()) {
+        odr.editing.refuse("readOnly", null);
+        return;
+      }
+
       if (event.inputType === "historyUndo") {
         self.undo();
       } else if (event.inputType === "historyRedo") {
@@ -42,11 +52,19 @@
         self.removeTextAction("backward");
       } else if (event.inputType === "deleteContentForward") {
         self.removeTextAction("forward");
+      } else {
+        // a closed list, as the document editor's is: what we cannot record
+        // is refused rather than swallowed
+        odr.editing.refuse("unsupportedEdit", null);
       }
     });
 
     this.textBody.addEventListener("paste", function (event) {
       event.preventDefault();
+      if (!odr.editing.isEnabled()) {
+        odr.editing.refuse("readOnly", null);
+        return;
+      }
       self.insertTextAction(event.clipboardData.getData("text/plain"));
     });
 
@@ -262,24 +280,39 @@
   TextEditor.prototype.pushChange = function (change) {
     this.past.push(change);
     this.future = [];
+    odr.editing.changed();
   };
 
   TextEditor.prototype.undo = function () {
     if (this.past.length === 0) {
-      return;
+      return false;
     }
     var change = this.past.pop();
     this.future.push(change);
     this.doChange(this.invertChange(change));
+    odr.editing.changed();
+    return true;
   };
 
   TextEditor.prototype.redo = function () {
     if (this.future.length === 0) {
-      return;
+      return false;
     }
     var change = this.future.pop();
     this.past.push(change);
     this.doChange(change);
+    odr.editing.changed();
+    return true;
+  };
+
+  /// The file's whole text, which for a plain file is its whole document.
+  TextEditor.prototype.text = function () {
+    var lines = this.textBody.children;
+    var result = [];
+    for (var i = 0; i < lines.length; ++i) {
+      result.push(this.getLineText(lines[i]));
+    }
+    return result.join("\n");
   };
 
   TextEditor.prototype.insertTextAction = function (text) {
@@ -344,7 +377,40 @@
 
   var textNr = document.querySelector(".odr-text-nr");
   var textBody = document.querySelector(".odr-text-body");
-  if (textNr && textBody) {
-    new TextEditor(textNr, textBody);
+  if (!textNr || !textBody) {
+    return;
   }
+  var editor = new TextEditor(textNr, textBody);
+
+  odr.editing.attach({
+    enable: function () {
+      textBody.setAttribute("contenteditable", "true");
+    },
+    disable: function () {
+      textBody.removeAttribute("contenteditable");
+    },
+    /// One operation or none: a plain file's content is the whole of it.
+    operations: function () {
+      if (editor.past.length === 0) {
+        return [];
+      }
+      return [{ op: "setContent", text: editor.text() }];
+    },
+    canUndo: function () {
+      return editor.past.length > 0;
+    },
+    canRedo: function () {
+      return editor.future.length > 0;
+    },
+    undo: function () {
+      return editor.undo();
+    },
+    redo: function () {
+      return editor.redo();
+    },
+    committed: function () {
+      editor.past = [];
+      editor.future = [];
+    },
+  });
 })();

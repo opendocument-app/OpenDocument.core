@@ -14,7 +14,11 @@
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <optional>
+#include <ostream>
+#include <stdexcept>
 
 namespace odr {
 
@@ -284,6 +288,38 @@ std::string TextFile::text() const {
     return bytes;
   }
   return internal::encoding::to_utf8(bytes, encoding);
+}
+
+bool TextFile::is_savable() const noexcept {
+  const TextEncoding encoding = this->encoding();
+  return encoding == TextEncoding::unknown ||
+         text_encoding_is_decodable(encoding);
+}
+
+void TextFile::write_edited(const std::string_view operations,
+                            std::ostream &out,
+                            const Logger & /*logger*/) const {
+  if (!is_savable()) {
+    throw UnsupportedOperation();
+  }
+
+  const nlohmann::json json = nlohmann::json::parse(operations);
+  if (json.value("version", 0) != 2) {
+    throw std::invalid_argument("unsupported edit version");
+  }
+
+  std::optional<std::string> content;
+  for (const nlohmann::json &operation : json.at("ops")) {
+    const auto name = operation.at("op").get<std::string>();
+    if (name != "setContent") {
+      throw std::invalid_argument("unknown operation " + name);
+    }
+    content = operation.at("text").get<std::string>();
+  }
+
+  // an envelope stating any operation replaces every byte, so the file is
+  // only read where it states none
+  out << (content.has_value() ? *content : text());
 }
 
 std::shared_ptr<internal::abstract::TextFile> TextFile::impl() const {

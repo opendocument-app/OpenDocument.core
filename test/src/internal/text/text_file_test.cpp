@@ -10,8 +10,13 @@
 
 #include <cstdint>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
+#include <utility>
+
+#include <nlohmann/json.hpp>
 
 using namespace odr;
 using namespace odr::test;
@@ -95,4 +100,83 @@ TEST(TextFile, an_undecodable_encoding_yields_its_bytes) {
       File::from_memory(content).impl(), TextEncoding::shift_jis));
   EXPECT_FALSE(text_encoding_is_decodable(TextEncoding::shift_jis));
   EXPECT_EQ(file.text(), content);
+}
+
+namespace {
+
+/// The public handle over @p content, which is what the edit surface sits on.
+odr::TextFile opened(const std::string &content) {
+  return odr::TextFile(std::make_shared<internal::text::TextFile>(
+      File::from_memory(content).impl()));
+}
+
+std::string edited(const odr::TextFile &file, const std::string &operations) {
+  std::ostringstream out;
+  file.write_edited(operations, out);
+  return std::move(out).str();
+}
+
+std::string set_content(const std::string &text) {
+  return nlohmann::json{{"version", 2},
+                        {"ops", {{{"op", "setContent"}, {"text", text}}}}}
+      .dump();
+}
+
+} // namespace
+
+TEST(TextFile, an_edit_writes_the_text_it_states) {
+  EXPECT_EQ(edited(opened("one\ntwo\n"), set_content("one\nTWO\n")),
+            "one\nTWO\n");
+}
+
+/// A host that saves without an edit gets the file back as it was.
+TEST(TextFile, an_envelope_of_no_ops_writes_the_file_back) {
+  EXPECT_EQ(edited(opened("one\ntwo\n"), R"({"version":2,"ops":[]})"),
+            "one\ntwo\n");
+}
+
+TEST(TextFile, the_last_op_wins) {
+  const std::string ops =
+      nlohmann::json{{"version", 2},
+                     {"ops",
+                      {{{"op", "setContent"}, {"text", "first"}},
+                       {{"op", "setContent"}, {"text", "second"}}}}}
+          .dump();
+  EXPECT_EQ(edited(opened("one"), ops), "second");
+}
+
+TEST(TextFile, an_unknown_version_or_op_refuses) {
+  const odr::TextFile file = opened("one");
+
+  EXPECT_THROW((void)edited(file, R"({"version":1,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW((void)edited(file, R"({"version":2,"ops":[{"op":"setText"}]})"),
+               std::invalid_argument);
+}
+
+/// The view hands undecodable bytes to the browser as they are, so what comes
+/// back could not be put back.
+TEST(TextFile, a_file_we_cannot_decode_is_not_savable) {
+  EXPECT_TRUE(opened("plain ascii").is_savable());
+
+  const odr::TextFile shift_jis(std::make_shared<internal::text::TextFile>(
+      File::from_memory(std::string("\x82\xa0\x82\xa2")).impl(),
+      TextEncoding::shift_jis));
+  EXPECT_FALSE(shift_jis.is_savable());
+  std::ostringstream out;
+  EXPECT_THROW(shift_jis.write_edited(set_content("x"), out),
+               UnsupportedOperation);
+}
+
+/// A decodable encoding that is not utf-8 saves, and saves as utf-8.
+TEST(TextFile, a_decodable_encoding_saves_as_utf8) {
+  const odr::TextFile latin1(std::make_shared<internal::text::TextFile>(
+      File::from_memory(std::string("caf\xe9")).impl(),
+      TextEncoding::iso_8859_1));
+  ASSERT_TRUE(latin1.is_savable());
+  EXPECT_EQ(latin1.text(), "caf\u00e9");
+
+  std::ostringstream out;
+  latin1.write_edited(R"({"version":2,"ops":[]})", out);
+  EXPECT_EQ(std::move(out).str(), "caf\u00e9");
 }

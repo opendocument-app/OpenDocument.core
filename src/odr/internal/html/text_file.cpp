@@ -108,7 +108,15 @@ public:
 
     out.write_header_end();
 
-    out.write_body_begin();
+    out.write_body_begin(HtmlElementOptions().set_attributes(
+        [&](const HtmlAttributeWriterCallback &clb) {
+          // what `enable()` answers, stated only by a render that edits
+          if (config().editable) {
+            clb("data-odr-editable",
+                m_text_file.is_savable() ? "true" : "readOnly");
+          }
+          clb("data-odr-keyboard", keyboard_classes(config()));
+        }));
 
     out.write_element_begin("div", HtmlElementOptions().set_class("odr-text"));
 
@@ -128,16 +136,10 @@ public:
     }
     out.write_element_end("div");
 
-    // `text.js` is this view's own editor and needs the browser to edit the
-    // lines. Not the mode: `txt` declares no `edit`, so nothing replays these.
-    out.write_element_begin("div",
-                            HtmlElementOptions().set_attributes(
-                                [&](const HtmlAttributeWriterCallback &clb) {
-                                  clb("class", "odr-text-body odr-text-wrap");
-                                  if (config().editable) {
-                                    clb("contenteditable", "true");
-                                  }
-                                }));
+    // `contenteditable` is not written: `odr.editing.enable()` puts it on
+    // these lines, so one render serves both modes.
+    out.write_element_begin(
+        "div", HtmlElementOptions().set_class("odr-text-body odr-text-wrap"));
     in = std::istringstream(text);
     while (!in.eof()) {
       out.write_element_begin("div", HtmlElementOptions().set_inline(true));
@@ -158,6 +160,7 @@ public:
     out.write_element_end("div");
 
     write_search_script(state);
+    write_editing_script(state);
     write_text_script(state);
     write_viewport_script(state);
 

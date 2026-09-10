@@ -146,4 +146,7 @@ std::string file_to_url(std::istream &file, const std::string &mime_type);
 std::string file_to_url(const abstract::File &file,
                         const std::string &mime_type);
 
+/// The key classes a view's scripts may take; `editing.md` decision 12.
+[[nodiscard]] std::string keyboard_classes(const HtmlConfig &config);
+
 } // namespace odr::internal::html

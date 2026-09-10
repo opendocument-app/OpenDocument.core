@@ -296,9 +296,9 @@ void html::write_viewport_script(const WritingState &state) {
 }
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
-  static constexpr std::array assets{text_css_asset, search_css_asset,
-                                     search_js_asset, text_js_asset,
-                                     viewport_js_asset};
+  static constexpr std::array assets{text_css_asset,  search_css_asset,
+                                     search_js_asset, editing_js_asset,
+                                     text_js_asset,   viewport_js_asset};
   static constexpr std::array dark{text_dark_css_asset, search_dark_css_asset};
   return locate_all(assets, dark, config);
 }
