@@ -13,8 +13,8 @@ detection**; each is a self-contained module with its own `AGENTS.md`:
 | Module | Format | Editable | Agent doc |
 |---|---|:--:|---|
 | [`text/`](text/) | `.docx` (Word) | text + save | [text/AGENTS.md](text/AGENTS.md) |
-| [`presentation/`](presentation/) | `.pptx` (PowerPoint) | read-only | [presentation/AGENTS.md](presentation/AGENTS.md) |
-| [`spreadsheet/`](spreadsheet/) | `.xlsx` (Excel) | read-only | [spreadsheet/AGENTS.md](spreadsheet/AGENTS.md) |
+| [`presentation/`](presentation/) | `.pptx` (PowerPoint) | text + save | [presentation/AGENTS.md](presentation/AGENTS.md) |
+| [`spreadsheet/`](spreadsheet/) | `.xlsx` (Excel) | cell values + save | [spreadsheet/AGENTS.md](spreadsheet/AGENTS.md) |
 
 ## Shared element model (same as ODF)
 

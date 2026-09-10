@@ -580,6 +580,80 @@ TEST(Document, edit_docx_splits_a_paragraph) {
   EXPECT_TRUE(tail.starts_with("tail ")) << tail;
 }
 
+namespace {
+
+/// The first paragraph of at least three runs, found anywhere in the tree - a
+/// presentation puts its text inside frames rather than under the root.
+Element slide_paragraph_of_several_runs(const Document &document) {
+  const auto walk = [](this auto &&self, const Element element) -> Element {
+    if (element.type() == ElementType::paragraph &&
+        runs_of(element).size() >= 3) {
+      return element;
+    }
+    for (const Element child : element.children()) {
+      if (const Element found = self(child)) {
+        return found;
+      }
+    }
+    return {};
+  };
+  return walk(document.root_element());
+}
+
+} // namespace
+
+// Reopening is what proves the package the engine wrote is sound.
+TEST(Document, edit_pptx_across_runs) {
+  const std::string path = "odr-public/pptx/2025-09-11.15_35_15.pptx";
+  std::string paragraph_path;
+  const Document document = edit_and_reload(
+      path,
+      [&](const Document &opened) {
+        EXPECT_TRUE(opened.is_editable());
+        EXPECT_TRUE(opened.is_savable());
+        const Element paragraph = slide_paragraph_of_several_runs(opened);
+        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        paragraph_path = paragraph.document_path().to_string();
+        return rewrite_paragraph_ops(runs_of(paragraph));
+      },
+      "pptx_edit_runs.pptx");
+
+  EXPECT_EQ(text_of(document.root_element().navigate_path(
+                DocumentPath(paragraph_path))),
+            "head tail and more");
+}
+
+// The same split as a text document, over `a:p` and `a:r`.
+TEST(Document, edit_pptx_splits_a_paragraph) {
+  const std::string path = "odr-public/pptx/2025-09-11.15_35_15.pptx";
+  std::string paragraph_path;
+  const Document document = edit_and_reload(
+      path,
+      [&](const Document &opened) {
+        const Element paragraph = slide_paragraph_of_several_runs(opened);
+        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        paragraph_path = paragraph.document_path().to_string();
+        const std::vector<Element> runs = runs_of(paragraph);
+        return nlohmann::json{{"version", 2},
+                              {"ops",
+                               {{{"op", "setText"},
+                                 {"id", runs.front().identifier()},
+                                 {"text", "head"}},
+                                {{"op", "splitParagraph"},
+                                 {"paragraph", paragraph.identifier()},
+                                 {"after", runs.front().identifier()},
+                                 {"id", -1}}}}}
+            .dump();
+      },
+      "pptx_edit_split.pptx");
+
+  const Element head =
+      document.root_element().navigate_path(DocumentPath(paragraph_path));
+  EXPECT_EQ(text_of(head), "head");
+  EXPECT_EQ(head.next_sibling().type(), ElementType::paragraph);
+  EXPECT_FALSE(text_of(head.next_sibling()).empty());
+}
+
 TEST(Document, edit_docx_diff) {
   const Document document = edit_and_reload(
       "odr-public/docx/style-various-1.docx",
@@ -642,15 +716,17 @@ TEST(Document, save_to_memory_round_trips_a_package) {
   expect_every_text(reloaded.root_element(), "hello world!");
 }
 
+// `.doc` throws its source away as it parses, so there is nothing to write
+// back.
 TEST(Document, saving_an_unsavable_format_leaves_no_file) {
   const Document document =
-      open(TestData::test_file_path("odr-public/pptx/style-various-1.pptx"))
+      open(TestData::test_file_path("odr-public/doc/11KB.doc"))
           .as_document_file()
           .document();
   ASSERT_FALSE(document.is_savable());
 
   const std::string path =
-      (std::filesystem::current_path() / "unsavable_save.pptx").string();
+      (std::filesystem::current_path() / "unsavable_save.doc").string();
   EXPECT_THROW(document.save(path), UnsupportedOperation);
   EXPECT_FALSE(std::filesystem::exists(path));
 

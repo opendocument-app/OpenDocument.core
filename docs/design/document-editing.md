@@ -6,9 +6,8 @@ mode frame in [`editing.md`](editing.md), and the decisions that are its own.
 the sheet view. Text documents, presentations and drawings share this one:
 what it edits is runs and paragraphs, wherever the format puts them.
 
-Status: **the schema and the replay are landing; the browser editor follows.**
-This document is written ahead of the code, and each section says what is in
-and what is not.
+Status: **landed.** The schema, the replay, the browser editor and the pptx
+write side are all in the code; each section says what is in and what is not.
 
 Scope of this work: an edit that spans several runs, a new paragraph, and a
 delete or a replace that reaches across both. Inline formatting (bold, italic,
@@ -274,7 +273,7 @@ reading forward.
 |---|---|---|
 | `.odt`, `.odp`, `.ods`, `.odg` | `odf` | edits and saves today; the new ops land here |
 | `.docx` | `ooxml/text` | edits and saves today; the new ops land here |
-| `.pptx` | `ooxml/presentation` | **read-only today.** It already has `text_set_content` and keeps its slide DOMs resident; what it lacks is `save`, the two flags and the capability row |
+| `.pptx` | `ooxml/presentation` | edits and saves; the same operations over `a:p` / `a:r` |
 | everything else | — | read-only, and says so by decision 7 |
 
 `.odp` needs nothing of its own: a presentation is the same odf `Document` as a
@@ -295,7 +294,7 @@ Each step is a pull request that builds and tests on its own.
 4. **The browser editor.** Owns the DOM mutation, records the ops, and carries
    undo/redo (decisions 6 and 6b). **Landed.**
 5. **pptx writes.** `save`, `is_editable`, `is_savable`, the capability row and
-   the new hooks over `a:p` / `a:r`.
+   the new hooks over `a:p` / `a:r`. **Landed.**
 
 ## What a split does to what is around it
 

@@ -117,7 +117,7 @@ namespace {
 std::string written(const std::string &text) {
   pugi::xml_document document;
   pugi::xml_node run = document.append_child("w:r");
-  write_text_nodes(run, {}, text);
+  write_text_nodes(run, {}, text, "w");
 
   std::ostringstream out;
   document.print(out, "", pugi::format_raw);

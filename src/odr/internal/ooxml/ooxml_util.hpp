@@ -28,10 +28,13 @@ class AbsPath;
 
 namespace odr::internal::ooxml {
 
-/// Writes @p text as `w:t` / `w:tab` nodes before @p before, or at the end of
-/// @p parent where that is null. Empty text still gets a node to anchor to.
+/// Writes @p text as `<@p prefix>:t` / `<@p prefix>:tab` nodes before
+/// @p before, or at the end of @p parent where that is null. The prefix is the
+/// whole difference between the two markup languages: `w:` and `a:`. Empty
+/// text still gets a node to anchor to.
 xml::NodeSpan write_text_nodes(pugi::xml_node parent, pugi::xml_node before,
-                               const std::string &text);
+                               const std::string &text,
+                               std::string_view prefix);
 
 std::optional<std::string> read_string_attribute(pugi::xml_attribute);
 std::optional<Color> read_color_attribute(pugi::xml_attribute);

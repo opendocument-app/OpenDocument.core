@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A `.pptx` can be edited and saved: every text operation a `.docx` takes, and
+  a save that writes the slide parts back into the package. Its
+  `FileTypeCapabilities` now states `edit` and `save`.
+
 - A text document is edited the way a reader expects: typing, replacing and
   deleting across runs and paragraphs, Enter, Backspace at a paragraph start,
   and a plain-text paste that opens a paragraph per line.

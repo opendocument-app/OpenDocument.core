@@ -23,8 +23,8 @@ Roughly ordered by importance.
   - [x] slide background (`p:bg`, inherited from layout / master)
   - [ ] slide master / layout inheritance (beyond theme colors + background)
 - [x] text extraction
-- [ ] edit
-- [ ] save
+- [x] edit (text, and the structure a text edit needs)
+- [x] save
 
 ### Content
 

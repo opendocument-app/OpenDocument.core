@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
 
 namespace odr::internal {
 
@@ -39,10 +40,13 @@ std::optional<FontStyle> font_style_from_value(const char *value) {
 
 xml::NodeSpan ooxml::write_text_nodes(pugi::xml_node parent,
                                       const pugi::xml_node before,
-                                      const std::string &text) {
+                                      const std::string &text,
+                                      const std::string_view prefix) {
   xml::NodeSpan span;
+  const std::string text_tag = std::string(prefix) + ":t";
+  const std::string tab_tag = std::string(prefix) + ":tab";
 
-  const auto insert = [&](const char *name) {
+  const auto insert = [&](const std::string &name) {
     const pugi::xml_node node = before
                                     ? parent.insert_child_before(name, before)
                                     : parent.append_child(name);
@@ -56,7 +60,7 @@ xml::NodeSpan ooxml::write_text_nodes(pugi::xml_node parent,
   // space at either end of a `w:t`, and a lone space is part of a `string`
   // token - so the text says whether one is there, not the token type.
   const auto insert_text = [&](const std::string &token) {
-    pugi::xml_node node = insert("w:t");
+    pugi::xml_node node = insert(text_tag);
     if (token.starts_with(' ') || token.ends_with(' ')) {
       node.append_attribute("xml:space").set_value("preserve");
     }
@@ -75,14 +79,14 @@ xml::NodeSpan ooxml::write_text_nodes(pugi::xml_node parent,
       break;
     case xml::StringToken::Type::tabs:
       for (std::size_t i = 0; i < token.string.size(); ++i) {
-        insert("w:tab");
+        insert(tab_tag);
       }
       break;
     }
   }
 
   if (!span.first) {
-    insert("w:t");
+    insert(text_tag);
   }
   return span;
 }
