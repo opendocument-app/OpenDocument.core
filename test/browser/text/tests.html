@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>text editing checks</title>
+    <link rel="stylesheet" href="document.css" />
+  </head>
+  <body
+    class="odr-body"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+  >
+    <!-- A text document as `translate` writes one, cut down to the shapes the
+         editor has to tell apart: runs beside each other, a run under a link,
+         a run under a style-only wrapper, and a paragraph holding a picture
+         and no run at all. -->
+    <div class="odr-text-flow">
+      <x-p style="display:block"
+        ><x-s data-odr-path="/child:0/child:0">first run </x-s
+        ><a href="https://x.example"
+          ><x-s data-odr-path="/child:0/child:1/child:0">a link</x-s></a
+        ><x-s data-odr-path="/child:0/child:2"> and a tail</x-s></x-p
+      >
+      <x-p style="display:block"
+        ><x-s style="font-weight:bold"
+          ><x-s data-odr-path="/child:1/child:0/child:0">bold</x-s></x-s
+        ></x-p
+      >
+      <x-p style="display:block">
+        <img
+          alt=""
+          width="16"
+          height="16"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+        />
+      </x-p>
+    </div>
+
+    <!-- Not editable: the report is the harness, not the document. -->
+    <div id="out" contenteditable="false"><div id="report"></div></div>
+    <script src="editing.js"></script>
+    <script src="document.js"></script>
+    <script src="search.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      var errors = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code);
+      };
+      odr.onError = function (code, message) {
+        errors.push(code + " " + message);
+      };
+
+      function run(path) {
+        return document.querySelector('[data-odr-path="' + path + '"]');
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      /// Puts the caret or a selection where the next edit lands. A synthetic
+      /// `InputEvent` carries no target range, so the editor reads the
+      /// selection - which is what a browser with no `getTargetRanges` does.
+      function select(startNode, startOffset, endNode, endOffset) {
+        var range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(
+          endNode === undefined ? startNode : endNode,
+          endOffset === undefined ? startOffset : endOffset
+        );
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      /// Whether the editor refused the edit. `beforeinput` is what the
+      /// browser fires before it changes anything, so a prevented one is an
+      /// edit that never happened.
+      function input(type, data) {
+        var event = new InputEvent("beforeinput", {
+          inputType: type,
+          data: data === undefined ? null : data,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+        return event.defaultPrevented;
+      }
+
+      var first = run("/child:0/child:0");
+      var tail = run("/child:0/child:2");
+
+      check("the mode is off to start with", odr.editing.isEnabled() === false);
+      select(first.firstChild, 3);
+      check("and refuses an edit", input("insertText", "x") === true);
+      check("saying the document is read-only", refusals.pop() === "readOnly 5");
+
+      check("the mode turns on", odr.editing.enable() === true);
+      check(
+        "and the whole view is editable, not a run of it",
+        document.body.getAttribute("contenteditable") === "true" &&
+          first.getAttribute("contenteditable") === null
+      );
+
+      select(first.firstChild, 3);
+      check("typing inside a run is allowed", input("insertText", "x") === false);
+      select(first.firstChild, 0, first.firstChild, 5);
+      check("so is replacing a stretch of it", input("insertText", "x") === false);
+      select(first.firstChild, 3);
+      check("and so is a backspace", input("deleteContentBackward") === false);
+
+      refusals = [];
+      select(first.firstChild, 3);
+      check("a new line is refused", input("insertParagraph") === true);
+      check("by the name the reader knows", refusals.pop() === "newLine 1");
+      select(tail.firstChild, 3);
+      check("and so is a soft one", input("insertLineBreak") === true);
+      check("under the same reason", refusals.pop() === "newLine 1");
+      check(
+        "a refusal says which run it was in",
+        input("insertParagraph") === true && refusals.length === 0
+      );
+
+      check("a bold toggle is refused", input("formatBold") === true);
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 7");
+      check("so is a list", input("insertOrderedList") === true);
+      refusals = [];
+
+      // The address is per run, so an edit has to land in one.
+      select(first.firstChild, 3, tail.firstChild, 4);
+      check("an edit across two runs is refused", input("insertText", "x") === true);
+      check("because no op could name it", refusals.pop() === "range 8");
+
+      var picture = document.querySelectorAll("x-p")[2];
+      select(picture, 0, picture, picture.childNodes.length);
+      check(
+        "an edit where there is no run is refused too",
+        input("deleteContentBackward") === true
+      );
+
+      // A run under a link and one under a style-only wrapper are still runs.
+      var linked = run("/child:0/child:1/child:0");
+      select(linked.firstChild, 2);
+      check("a run inside a link takes a write", input("insertText", "x") === false);
+      var bold = run("/child:1/child:0/child:0");
+      select(bold.firstChild, 2);
+      check("and so does one under a style wrapper", input("insertText", "x") === false);
+
+      // The clipboard is plain text on one line or nothing.
+      if (typeof DataTransfer === "function") {
+        var clipboard = new DataTransfer();
+        clipboard.setData("text/plain", "two\nlines");
+        var pasted = new InputEvent("beforeinput", {
+          inputType: "insertFromPaste",
+          dataTransfer: clipboard,
+          bubbles: true,
+          cancelable: true,
+        });
+        select(tail.firstChild, 2);
+        document.body.dispatchEvent(pasted);
+        check(
+          "pasting two lines is refused",
+          pasted.defaultPrevented === true && refusals.pop() === "newLine 1"
+        );
+      }
+
+      // The collection half. Nothing scripted edits the way a key does -
+      // `execCommand` raises no `beforeinput` and dissolves a run whose whole
+      // text it replaces, neither of which trusted input does - so the two
+      // halves are driven apart: `beforeinput` above for the gate, and here
+      // the text change plus the `input` the browser raises after it.
+      check("nothing is collected yet", ops().length === 0);
+      select(first.firstChild, 3);
+      first.firstChild.data = "edited in the browser";
+      document.body.dispatchEvent(new Event("input", { bubbles: true }));
+      check(
+        "an allowed edit reaches the log as one setText",
+        ops().length === 1 &&
+          ops()[0].op === "setText" &&
+          ops()[0].path === "/child:0/child:0" &&
+          ops()[0].text === "edited in the browser"
+      );
+
+      // A script rewriting the page raises no `input`, so the log stays as it
+      // was: nine highlights are not nine edits.
+      var hits = odr.search("edited");
+      check("a search finds its matches", hits > 0 && document.querySelectorAll("mark").length === hits);
+      check("and leaves the log alone", ops().length === 1);
+      odr.resetSearch();
+      check("as does clearing it", ops().length === 1);
+
+      // What a WebView raising `input` and no `beforeinput` looks like: the
+      // editor cannot name where it landed, and says so rather than dropping
+      // it.
+      var picture = document.querySelectorAll("x-p")[2];
+      select(picture, 0);
+      document.body.dispatchEvent(new Event("input", { bubbles: true }));
+      check(
+        "an edit the gate never saw is reported rather than lost",
+        errors.length === 1 && errors[0].indexOf("9 ") === 0
+      );
+      check("and it reaches no operation", ops().length === 1);
+
+      odr.editing.committed();
+      check("committing clears the log", ops().length === 0);
+      odr.editing.disable();
+      check(
+        "and turning the mode off puts the view back",
+        document.body.getAttribute("contenteditable") === null
+      );
+    </script>
+  </body>
+</html>

@@ -129,8 +129,16 @@ struct HtmlConfig {
   /// output stays movable.
   bool relative_resource_paths{true};
 
-  /// Write `contenteditable` output, which back-translation reads edits from.
+  /// Write the editing scaffolding: the page's editing state, the address an
+  /// edit operation names, and the editor script. The mode itself starts off -
+  /// the host turns it on with `odr.editing.enable()`.
   bool editable{false};
+
+  /// Whether the view's scripts take the keys that move the selection: the
+  /// arrows, Tab, Escape, and the keys that open an editor over it.
+  bool keyboard_navigation{true};
+  /// Whether the view's scripts take the editing chords: undo and redo.
+  bool keyboard_shortcuts{true};
 
   /// Render a text document as fixed-size pages rather than reflowing text.
   bool text_document_margin{false};

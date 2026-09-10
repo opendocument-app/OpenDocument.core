@@ -128,6 +128,8 @@ public:
     }
     out.write_element_end("div");
 
+    // `text.js` is this view's own editor and needs the browser to edit the
+    // lines. Not the mode: `txt` declares no `edit`, so nothing replays these.
     out.write_element_begin("div",
                             HtmlElementOptions().set_attributes(
                                 [&](const HtmlAttributeWriterCallback &clb) {

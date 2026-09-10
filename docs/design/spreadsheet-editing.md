@@ -49,8 +49,9 @@ results go stale the moment an input changes.
 | Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
 | Browser: sheet script | `html/frontend/spreadsheet.js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
-| Browser: editing script | `html/frontend/document.js` | A `MutationObserver` over `contenteditable` runs keyed by `data-odr-path`; `odr.generateDiff()` emits the envelope |
-| Browser: sheet editor | `html/frontend/sheet-editing.js` | `odr.editing` with the mode, the locks and the refusals (step 1.1, landed), and the overlay that types into a cell (steps 1.2/1.3, landed). Undo/redo and `committed()` are step 1.4 |
+| Browser: the mode | `html/frontend/editing.js` | `odr.editing` — the mode, the refusal table, the log a save reads and the `odr.on*` callbacks, generic over every format. An editor attaches to it ([`editing.md`](editing.md) decision 9, step 1.6, landed) |
+| Browser: text editor | `html/frontend/document.js` | The skeleton, attached to the mode: `contenteditable` runs keyed by `data-odr-path`, a `MutationObserver`, one `setText` op per changed run. No undo |
+| Browser: sheet editor | `html/frontend/sheet-editing.js` | The cell overlay, the locks and the position map (steps 1.1 to 1.4, landed), attached to the mode as one editor |
 | Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
@@ -104,15 +105,15 @@ any decode of the same file.
 
 ### 3. Editing is a browser mode, not markup
 
-`odr.editing.enable()` / `disable()` turns the mode on; `HtmlConfig::editable`
-stops changing what a sheet writes. The page carries only what the browser
-cannot work out for itself:
+`odr.editing.enable()` / `disable()` turns the mode on, and switching it changes
+nothing a sheet writes — the user never translates twice for it. The page
+carries only what the browser cannot work out for itself:
 
 - a **lock** on a cell that cannot be edited, as a class plus its reason —
   `formula`, `rich` (several paragraphs, a link, a line break), `shapes` only
   where the cell is nothing but its anchored drawings;
-- whether the **document** can be edited at all, one attribute on the table,
-  so `enable()` can refuse with a reason before the user clicks anything.
+- whether the **document** can be edited at all, so `enable()` can refuse with
+  a reason before the user clicks anything.
 
 Everything else — including every empty cell — is editable. The cost is a
 class on the locked cells only, nothing on the half million others.
@@ -127,6 +128,24 @@ geometry; the sheet's DOM is untouched until the commit patches the cell.
 read-only document, outlines it briefly and calls `odr.onEditRefused` so the
 host can say why — a snackbar on mobile. A silent no-op is the frustrating
 outcome the mode exists to avoid. Decision 7 is the channel.
+
+**The mode itself is generic, and it moved.** This decision was written when the
+sheet was the only editor, so `sheet-editing.js` held the mode, the refusal
+table and the callbacks. Every format wants those, so they are
+[`editing.md`](editing.md) decisions 9 to 12 now, and `frontend/editing.js`
+holds them:
+
+- the sheet script **attaches** an editor to `odr.editing` and states no mode of
+  its own;
+- the document's editable state is one attribute on `<body>`, not on the
+  `.odr-sheet` table (decision 10) — which answers the open question below;
+- `HtmlConfig::editable` writes the scaffolding, the lock classes included, and
+  a read-only render carries none of it (decision 11);
+- the arrow keys and the undo chord are configurable, because the sheet takes
+  them in the capture phase and a host may need them (decision 12).
+
+What stays here is the sheet's own: the cell overlay, the locks and their
+reasons, the position map, and the `setCell` op.
 
 ### 4. The type follows the content
 
@@ -379,6 +398,13 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    wasm example is the host-wiring reference for droid/ios. A view holds its own
    log, so the example writes it into the document when the view goes away as
    well as on save.
+6. **Landed.** The mode is generic. `frontend/editing.js` owns `odr.editing`
+   and every format's editor attaches to it; the document's editable state moved
+   to `<body>`; `HtmlConfig::editable` writes the scaffolding and a read-only
+   render carries none of it; `keyboard_navigation` and `keyboard_shortcuts`
+   let a host keep the arrows and the undo chord. See
+   [`editing.md`](editing.md) decisions 9 to 12 — a `.docx` view has the same
+   `odr.editing` a sheet does, with the text skeleton behind it.
 
 ### Step 2 — Materialise the cells that are not there
 
@@ -536,7 +562,8 @@ Ordered by value over cost; all in step 0 or 1.
   the compromise for step 1.
 - Where does the document locale come from for the decimal separator —
   `settings.xml`, the number format, the host?
-- Does the read-only document attribute belong on the table or in a
-  page-level `data-odr-*` block the text editor will want too?
+- **Answered** ([`editing.md`](editing.md) decision 10): the page-level block,
+  as `data-odr-editable` on `<body>`. The frame is a fact about the document,
+  and a `.docx` view has no table to hang it on.
 - Should the refusal codes be generated from one C++ table so the bindings can
   hand a host the same list, rather than living only in the emitted script?

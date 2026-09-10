@@ -83,6 +83,10 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) BOOL relativeResourcePaths;
 
 @property(nonatomic) BOOL editable;
+/// Whether the view's scripts take the keys that move the selection.
+@property(nonatomic) BOOL keyboardNavigation;
+/// Whether the view's scripts take the editing chords: undo and redo.
+@property(nonatomic) BOOL keyboardShortcuts;
 @property(nonatomic) BOOL textDocumentMargin;
 
 @property(nonatomic) ODRHtmlColorScheme colorScheme;

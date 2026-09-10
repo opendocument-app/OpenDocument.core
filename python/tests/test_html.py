@@ -15,12 +15,16 @@ def test_html_config_defaults():
     config = pyodr.HtmlConfig()
     assert config.embed_images
     assert not config.editable
+    assert config.keyboard_navigation
+    assert config.keyboard_shortcuts
     assert config.spreadsheet_gridlines == pyodr.HtmlTableGridlines.soft
 
     config.editable = True
+    config.keyboard_navigation = False
     config.format_html = True
     config.spreadsheet_limit = pyodr.TableDimensions(100, 100)
     assert config.editable
+    assert not config.keyboard_navigation
     assert config.spreadsheet_limit.rows == 100
 
     assert config.spreadsheet_cell_limit == 500000

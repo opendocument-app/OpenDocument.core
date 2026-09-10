@@ -79,6 +79,9 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("relative_resource_paths",
                      &odr::HtmlConfig::relative_resource_paths)
       .def_readwrite("editable", &odr::HtmlConfig::editable)
+      .def_readwrite("keyboard_navigation",
+                     &odr::HtmlConfig::keyboard_navigation)
+      .def_readwrite("keyboard_shortcuts", &odr::HtmlConfig::keyboard_shortcuts)
       .def_readwrite("text_document_margin",
                      &odr::HtmlConfig::text_document_margin)
       .def_readwrite("color_scheme", &odr::HtmlConfig::color_scheme)

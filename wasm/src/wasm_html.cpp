@@ -157,6 +157,8 @@ HtmlConfig to_html_config(const emscripten::val &value) {
 
   read(value, "embedImages", config.embed_images);
   read(value, "editable", config.editable);
+  read(value, "keyboardNavigation", config.keyboard_navigation);
+  read(value, "keyboardShortcuts", config.keyboard_shortcuts);
   read(value, "textDocumentMargin", config.text_document_margin);
   read(value, "formatHtml", config.format_html);
 

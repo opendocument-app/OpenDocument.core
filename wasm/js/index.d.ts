@@ -87,6 +87,8 @@ export interface Content {
 export interface HtmlConfig {
   embedImages?: boolean;
   editable?: boolean;
+  keyboardNavigation?: boolean;
+  keyboardShortcuts?: boolean;
   textDocumentMargin?: boolean;
   formatHtml?: boolean;
   pageRangeBegin?: number;

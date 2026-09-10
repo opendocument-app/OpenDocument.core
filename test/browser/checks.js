@@ -13,6 +13,19 @@
   var report = document.getElementById("report");
   var failed = 0;
   var total = 0;
+  var summary = null;
+
+  // Written on every check, not once on load: a page whose last checks wait
+  // for a timer or an observer still gets counted.
+  function retally() {
+    if (summary === null) {
+      summary = document.createElement("div");
+      summary.id = "summary";
+      report.parentNode.insertBefore(summary, report);
+    }
+    summary.textContent = total + " checks, " + failed + " failed";
+    summary.style.color = failed === 0 ? "#2a7" : "#c33";
+  }
 
   window.check = function (name, condition) {
     var line = document.createElement("div");
@@ -23,6 +36,7 @@
     if (!condition) {
       failed += 1;
     }
+    retally();
   };
 
   window.click = function (element) {
@@ -30,11 +44,14 @@
     document.body.offsetHeight;
   };
 
-  window.addEventListener("load", function () {
-    var summary = document.createElement("div");
-    summary.id = "summary";
-    summary.textContent = total + " checks, " + failed + " failed";
-    summary.style.color = failed === 0 ? "#2a7" : "#c33";
-    report.parentNode.insertBefore(summary, report);
-  });
+  // `detail` counts the clicks, as a browser counts them.
+  window.doubleClick = function (element) {
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 }));
+    element.dispatchEvent(
+      new MouseEvent("dblclick", { bubbles: true, detail: 2 })
+    );
+    document.body.offsetHeight;
+  };
+
 })();

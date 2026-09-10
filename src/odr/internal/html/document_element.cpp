@@ -233,21 +233,22 @@ std::optional<double> sheet_print_fit(const Sheet &sheet,
   return printable / content;
 }
 
-/// A run whose style the box around it can carry instead. Not a background, a
-/// raised run or an editable one: each means something else on the box.
-/// Whether @p element carries `contenteditable`: an editable run of a view
-/// that writes its editing into the markup.
-bool writes_editable(const Element &element, const html::WritingState &state) {
+/// Whether @p element carries the address an edit operation names.
+/// `contenteditable` is not written: the mode adds it to these runs.
+bool writes_edit_markup(const Element &element,
+                        const html::WritingState &state) {
   return state.editable_markup() && state.config().editable &&
          element.is_editable();
 }
 
+/// A run whose style the box around it can carry instead. Not a background, a
+/// raised run or an addressed one: each means something else on the box.
 std::optional<Text> plain_text(const Element &element,
                                const html::WritingState &state) {
   if (element.type() != ElementType::text) {
     return {};
   }
-  if (writes_editable(element, state)) {
+  if (writes_edit_markup(element, state)) {
     return {};
   }
 
@@ -487,9 +488,6 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       HtmlElementOptions()
           .set_class("odr-sheet")
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            // what the editor asks before the user clicks anything
-            clb("data-odr-editable",
-                state.document_editable() ? "true" : "readOnly");
             // every op names its sheet, and a view holds only one
             clb("data-odr-sheet", std::to_string(sheet_ordinal(sheet)));
           })
@@ -669,7 +667,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const std::optional<FoldedCell> folded = fold_cell(
           cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
 
-      const char *lock = cell_lock(cell, anchors_shapes);
+      // scaffolding: a read-only render states no lock
+      const char *lock =
+          state.config().editable ? cell_lock(cell, anchors_shapes) : nullptr;
 
       state.out().write_element_begin(
           "td",
@@ -778,8 +778,7 @@ void html::translate_text(const Element &element, const WritingState &state) {
       HtmlElementOptions()
           .set_inline(true)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            if (writes_editable(element, state)) {
-              clb("contenteditable", "true");
+            if (writes_edit_markup(element, state)) {
               clb("data-odr-path", element.document_path().to_string());
             }
           })

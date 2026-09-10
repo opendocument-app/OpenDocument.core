@@ -34,8 +34,6 @@ describe('edit', () => {
     const doc = odr.open(minimalOdt('hello'), { editable: true });
     try {
       const { html } = doc.render(0);
-      assert.match(html, /contenteditable/);
-
       const path = firstEditablePath(html);
       doc.edit(JSON.stringify({
         version: 1,

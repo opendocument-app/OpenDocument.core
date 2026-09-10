@@ -6,10 +6,10 @@
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
   </head>
-  <body class="odr-body odr-gridlines-soft">
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A sheet with no merge, which is the only kind offered a sort control.
          Column B is ordered so that sorting it moves every row. -->
-    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="0">
+    <table class="odr-sheet" data-odr-sheet="0">
       <col class="odr-sheet-gutter" />
       <col />
       <col />
@@ -57,6 +57,7 @@
     </table>
 
     <div id="report"></div>
+    <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="checks.js"></script>
     <script>

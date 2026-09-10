@@ -1,3 +1,5 @@
+// The sheet's editor, attached to `odr.editing`: the cell overlay, the locks
+// and the `setCell` op. The mode itself is `editing.js`.
 (function () {
   "use strict";
 
@@ -9,34 +11,6 @@
   var odr = (window.odr = window.odr || {});
 
   var sheet = Number(table.getAttribute("data-odr-sheet") || 0);
-  var editable = table.getAttribute("data-odr-editable") === "true";
-  var editing = false;
-  var lastRefusal = null;
-
-  // One space with `odr.onError`'s codes, appended and never renumbered - 1 is
-  // `errorIllegalEditNewLine`. The host maps the code to its own wording; the
-  // message is for a developer who wires nothing.
-  var refusals = {
-    formula: { code: 2, message: "cell holds a formula" },
-    rich: { code: 3, message: "cell holds more than one plain run" },
-    shapes: { code: 4, message: "cell holds a drawing" },
-    readOnly: { code: 5, message: "document cannot be edited" },
-    formulaInput: { code: 6, message: "typing a formula is not supported" },
-  };
-
-  odr.onEditRefused = function (event) {
-    console.warn("edit refused " + event.code + ": " + event.message);
-  };
-  odr.onEditModeChange = function (event) {
-    console.log("editing " + (event.editing ? "on" : "off"));
-  };
-  odr.onEditChange = function () {};
-
-  function fire(name, event) {
-    if (typeof odr[name] === "function") {
-      odr[name](event);
-    }
-  }
 
   var outlined = null;
   var outlinedTimer = 0;
@@ -58,88 +32,11 @@
     }, 700);
   }
 
-  /// Four taps on a locked cell are one snackbar: the same refusal within two
-  /// seconds of the last is the page's to drop. The outline answers each.
+  /// The outline answers every tap; `odr.editing` drops the repeated event.
   function refuse(reason, column, row) {
-    var refusal = refusals[reason] || refusals.readOnly;
-    var key = reason + ":" + column + ":" + row;
-    var now = Date.now();
     outline(odr.sheet.cellAt(column, row));
-    if (lastRefusal && lastRefusal.key === key && now - lastRefusal.at < 2000) {
-      return;
-    }
-    lastRefusal = { key: key, at: now };
-    fire("onEditRefused", {
-      sheet: sheet,
-      column: column,
-      row: row,
-      reason: reason,
-      code: refusal.code,
-      message: refusal.message,
-    });
+    odr.editing.refuse(reason, { sheet: sheet, column: column, row: row });
   }
-
-  function modeChange(reason) {
-    fire("onEditModeChange", {
-      editing: editing,
-      editable: editable,
-      reason: reason || null,
-      code: reason ? refusals[reason].code : 0,
-      message: reason ? refusals[reason].message : "",
-    });
-  }
-
-  odr.editing = {
-    /// Answers whether the mode is on. A document that cannot be edited
-    /// refuses and says why, so a host can grey its button before a click.
-    enable: function () {
-      if (!editable) {
-        modeChange("readOnly");
-        return false;
-      }
-      if (!editing) {
-        editing = true;
-        table.classList.add("odr-editing");
-        modeChange(null);
-      }
-      return true;
-    },
-    disable: function () {
-      if (editing) {
-        editing = false;
-        close();
-        table.classList.remove("odr-editing");
-        modeChange(null);
-      }
-    },
-    isEnabled: function () {
-      return editing;
-    },
-    /// Whether `enable` would succeed.
-    isEditable: function () {
-      return editable;
-    },
-    /// The lock on the cell at (@p column, @p row), or null where it has none.
-    lockAt: function (column, row) {
-      var cell = odr.sheet.cellAt(column, row);
-      return cell === null ? null : cell.getAttribute("data-odr-lock");
-    },
-  };
-
-  /// Whether the cell at (@p column, @p row) refuses a write, which is also
-  /// what tells the host.
-  odr.editing.refuseAt = function (column, row) {
-    if (!editable) {
-      refuse("readOnly", column, row);
-      return true;
-    }
-    var lock = odr.editing.lockAt(column, row);
-    if (lock !== null) {
-      refuse(lock, column, row);
-      return true;
-    }
-    return false;
-  };
 
   var overlay = null;
   var editingAt = null;
@@ -154,16 +51,6 @@
       byPosition.set(op.sheet + ":" + op.column + ":" + op.row, op);
     }
     return Array.from(byPosition.values());
-  }
-
-  /// What a host's save button and back-press warning read.
-  function changed() {
-    fire("onEditChange", {
-      dirty: history.length > 0,
-      operations: coalesced().length,
-      canUndo: history.length > 0,
-      canRedo: undone.length > 0,
-    });
   }
 
   var NUMBER = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
@@ -210,7 +97,7 @@
       before: before,
     });
     undone = [];
-    changed();
+    odr.editing.changed();
     return true;
   }
 
@@ -219,7 +106,7 @@
   function replay(entry, value) {
     close();
     odr.sheet.showValue(entry.op.column, entry.op.row, value);
-    changed();
+    odr.editing.changed();
   }
 
   // Offsets, not rects: blink scales a rect by the body zoom `viewport_js`
@@ -248,7 +135,7 @@
   /// The raise is put back down: the overlay shows what it would have.
   function edit(column, row, typed) {
     finish();
-    if (!editing || odr.editing.refuseAt(column, row)) {
+    if (!odr.editing.isEnabled() || odr.editing.refuseAt(column, row)) {
       return false;
     }
     var cell = odr.sheet.cellAt(column, row);
@@ -313,6 +200,8 @@
     return true;
   }
 
+  /// The open editor's own keys, which no config takes away: they are the way
+  /// out of the overlay.
   function overlayKey(event) {
     // Typing is the overlay's, not the sheet's underneath it.
     event.stopPropagation();
@@ -336,31 +225,19 @@
   };
 
   /// What a pinned cell does with a key when no editor is open. Captured, so
-  /// the keys taken here never reach the pin and the sort beneath.
+  /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
   function pinnedKey(event) {
     var target = event.target;
     if (
-      !editing ||
+      !odr.editing.isEnabled() ||
       overlay !== null ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
       (target &&
         (target.isContentEditable ||
           /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))
     ) {
-      return;
-    }
-
-    // ctrl/cmd is the undo chord here and nothing else.
-    if (event.ctrlKey || event.metaKey || event.altKey) {
-      var chord = event.key.toLowerCase();
-      if (!event.altKey && (chord === "z" || chord === "y")) {
-        if (chord === "y" || event.shiftKey) {
-          odr.editing.redo();
-        } else {
-          odr.editing.undo();
-        }
-        event.stopPropagation();
-        event.preventDefault();
-      }
       return;
     }
 
@@ -389,7 +266,9 @@
     event.preventDefault();
   }
 
-  document.addEventListener("keydown", pinnedKey, true);
+  if (odr.takesKeys("navigation")) {
+    document.addEventListener("keydown", pinnedKey, true);
+  }
 
   window.addEventListener("resize", function () {
     if (overlay !== null) {
@@ -402,7 +281,7 @@
   }
 
   table.addEventListener("dblclick", function (event) {
-    var at = editing ? targetPosition(event) : null;
+    var at = odr.editing.isEnabled() ? targetPosition(event) : null;
     if (at !== null) {
       edit(at.column, at.row, null);
     }
@@ -410,48 +289,71 @@
 
   // A locked cell says so on the click, not on the double click.
   table.addEventListener("click", function (event) {
-    var at = editing && overlay === null ? targetPosition(event) : null;
+    var at =
+      odr.editing.isEnabled() && overlay === null ? targetPosition(event) : null;
     if (at !== null && odr.editing.lockAt(at.column, at.row) !== null) {
       odr.editing.refuseAt(at.column, at.row);
     }
   });
+
+  /// The lock on the cell at (@p column, @p row), or null where it has none.
+  odr.editing.lockAt = function (column, row) {
+    var cell = odr.sheet.cellAt(column, row);
+    return cell === null ? null : cell.getAttribute("data-odr-lock");
+  };
+
+  /// Whether the cell at (@p column, @p row) refuses a write, which is also
+  /// what tells the host.
+  odr.editing.refuseAt = function (column, row) {
+    if (!odr.editing.isEditable()) {
+      refuse("readOnly", column, row);
+      return true;
+    }
+    var lock = odr.editing.lockAt(column, row);
+    if (lock !== null) {
+      refuse(lock, column, row);
+      return true;
+    }
+    return false;
+  };
 
   /// Opens the editor over a cell, as a double click does.
   odr.editing.editAt = function (column, row) {
     return edit(column, row, null);
   };
 
-  /// The envelope a host hands to `Document::edit` before saving.
-  odr.editing.getOperations = function () {
-    return JSON.stringify({ version: 1, ops: coalesced() });
-  };
-
-  /// Takes the last write back; false where there is none.
-  odr.editing.undo = function () {
-    if (history.length === 0) {
-      return false;
-    }
-    var entry = history.pop();
-    undone.push(entry);
-    replay(entry, entry.before);
-    return true;
-  };
-
-  odr.editing.redo = function () {
-    if (undone.length === 0) {
-      return false;
-    }
-    var entry = undone.pop();
-    history.push(entry);
-    replay(entry, entry.op.value);
-    return true;
-  };
-
-  /// The host saved the log: the page and the file agree, and undo starts
-  /// over.
-  odr.editing.committed = function () {
-    history = [];
-    undone = [];
-    changed();
-  };
+  odr.editing.attach({
+    // A cell nothing can commit must keep no overlay open over it.
+    disable: close,
+    operations: coalesced,
+    canUndo: function () {
+      return history.length > 0;
+    },
+    canRedo: function () {
+      return undone.length > 0;
+    },
+    /// Takes the last write back; false where there is none.
+    undo: function () {
+      if (history.length === 0) {
+        return false;
+      }
+      var entry = history.pop();
+      undone.push(entry);
+      replay(entry, entry.before);
+      return true;
+    },
+    redo: function () {
+      if (undone.length === 0) {
+        return false;
+      }
+      var entry = undone.pop();
+      history.push(entry);
+      replay(entry, entry.op.value);
+      return true;
+    },
+    committed: function () {
+      history = [];
+      undone = [];
+    },
+  });
 })();

@@ -2,7 +2,9 @@
 
 A page links `viewport.js` or `spreadsheet.css` by name; those are not in the
 check directory but in `src/odr/internal/html/frontend/`, so what runs here is
-the file the library embeds rather than a copy of it.
+the file the library embeds rather than a copy of it. `checks.js` is shared by
+every check directory and sits here, which is the second place a name is
+looked up.
 """
 
 import functools
@@ -20,13 +22,17 @@ ASSETS = (
 )
 
 
+SHARED = pathlib.Path(__file__).resolve().parent
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
         translated = pathlib.Path(super().translate_path(path))
         if not translated.is_file():
-            asset = ASSETS / translated.name
-            if asset.is_file():
-                return str(asset)
+            for directory in (ASSETS, SHARED):
+                candidate = directory / translated.name
+                if candidate.is_file():
+                    return str(candidate)
         return str(translated)
 
 

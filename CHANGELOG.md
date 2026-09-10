@@ -16,6 +16,45 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `odr.editing` is on every document view, not only on a sheet's. The mode,
+  the refusals, the log and the `odr.onEdit*` callbacks are one surface a host
+  wires per document, and each format attaches its own editor to it.
+
+- **Breaking**: `HtmlConfig::editable` writes the editing scaffolding rather
+  than `contenteditable` - the address an op names, the lock on a locked cell,
+  the state on `<body>`, the editor script. `odr.editing.enable()` writes
+  `contenteditable`, so switching modes needs no second render.
+
+- **Breaking**: a render with `editable` off carries no editing markup at all,
+  and the document's editable state moved off the `.odr-sheet` table onto
+  `<body>` as `data-odr-editable`. The table keeps `data-odr-sheet`.
+
+- **Breaking**: a refused new line reaches `odr.onEditRefused` with reason
+  `newLine` rather than `odr.onError`, keeps code 1, and now fires only inside
+  an editable run while the mode is on.
+
+- `HtmlConfig::keyboard_navigation` and `keyboard_shortcuts`, both on by
+  default, decide whether the page takes the keys that move the selection and
+  the undo chord. An open editor's own keys are never taken away.
+
+- A text document is edited as a document: the mode makes the whole view
+  editable rather than each run, so the caret, a selection and a double click
+  cross runs and paragraphs the way a reader expects.
+
+- Every edit a text document cannot replay is refused through
+  `odr.onEditRefused` rather than silently impossible: a new line
+  (`newLine`, 1), an edit spanning two runs or landing outside every run
+  (`range`, 8), and anything else the browser offers (`unsupportedEdit`, 7).
+
+- **Fix**: searching a text document while the mode is on no longer marks it
+  unsaved. The log is collected from `input`, which the browser raises for an
+  edit it applied, rather than from every text mutation - a search highlighting
+  nine matches was nine no-op `setText` operations.
+
+- **Fix**: double-clicking a sheet cell no longer flashes its border off. A
+  click on the pinned cell clears the pin, and the second click of a double
+  click was taking it - so selecting a word left the border coming and going.
+
 - A cell of several runs is written rather than locked: the write replaces what
   the cell shows with one run. A cell holding one run is written through it, so
   that run keeps its style. The `rich` lock stays on what a write would take

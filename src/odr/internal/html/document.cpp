@@ -198,6 +198,21 @@ void write_head(const Document &document, const WritingState &state,
   out.write_header_end();
 }
 
+/// The key classes the view's scripts may take; `editing.md` decision 12.
+std::string keyboard_classes(const HtmlConfig &config) {
+  std::string classes;
+  if (config.keyboard_navigation) {
+    classes += "navigation";
+  }
+  if (config.keyboard_shortcuts) {
+    if (!classes.empty()) {
+      classes += " ";
+    }
+    classes += "shortcuts";
+  }
+  return classes;
+}
+
 void write_body_begin(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
@@ -222,7 +237,18 @@ void write_body_begin(const Document &document, const WritingState &state) {
     }
   }
 
-  out.write_body_begin(HtmlElementOptions().set_class(body_clazz));
+  out.write_body_begin(
+      HtmlElementOptions()
+          .set_class(body_clazz)
+          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+            // what `enable()` answers, stated only by a render that edits
+            if (state.config().editable) {
+              clb("data-odr-editable",
+                  state.document_editable() ? "true" : "readOnly");
+            }
+            // not an editing fact: a read-only sheet has a pin to clear
+            clb("data-odr-keyboard", keyboard_classes(state.config()));
+          }));
 
   if (paged_content) {
     out.write_element_begin("div", HtmlElementOptions().set_class("odr-pages"));
@@ -237,9 +263,15 @@ void write_body_end(const Document &document, const WritingState &state) {
   }
 
   write_search_script(state);
-  write_document_script(state);
+  write_editing_script(state);
+  if (state.config().editable) {
+    write_document_script(state);
+  }
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);
+    if (state.config().editable) {
+      write_sheet_editing_script(state);
+    }
   }
   write_viewport_script(state);
 

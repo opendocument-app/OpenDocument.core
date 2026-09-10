@@ -6,12 +6,12 @@
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
   </head>
-  <body class="odr-body odr-gridlines-soft">
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A sheet as `translate_sheet` writes one, with the styles it hoists into
          classes written inline: every column states a width, so a string is cut
          where the next cell shows something. B3 holds a formula, C3 a run of
          its own, D3 a link. -->
-    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="2">
+    <table class="odr-sheet" data-odr-sheet="2">
       <col class="odr-sheet-gutter" />
       <col style="width: 80px" />
       <col style="width: 80px" />
@@ -66,6 +66,7 @@
     </table>
 
     <div id="report"></div>
+    <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="sheet-editing.js"></script>
     <script src="checks.js"></script>
