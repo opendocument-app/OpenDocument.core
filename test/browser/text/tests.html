@@ -451,6 +451,11 @@
       odr.resetSearch();
       check("as does clearing it", ops().length === 1);
 
+      check(
+        "the envelope states the version the library takes",
+        JSON.parse(odr.editing.getOperations()).version === 2
+      );
+
       odr.editing.committed();
       check("committing clears the log", ops().length === 0);
       check("and undo with it", odr.editing.undo() === false);

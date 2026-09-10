@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: `odr.editing.getOperations()` and `odr.generateDiff()` stated
+  `"version": 1` while `Document::edit` takes 2, so every save the browser
+  produced was refused. A check page now asserts the version.
+
 - A `.pptx` can be edited and saved: every text operation a `.docx` takes, and
   a save that writes the slide parts back into the package. Its
   `FileTypeCapabilities` now states `edit` and `save`.

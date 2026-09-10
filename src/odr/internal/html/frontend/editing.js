@@ -162,9 +162,11 @@
       });
     },
 
-    /// The envelope a host hands to `Document::edit` before saving.
+    /// The envelope a host hands to `Document::edit` before saving. The
+    /// version is what the library takes; a check page asserts it, because
+    /// nothing else here would notice the two drifting apart.
     getOperations: function () {
-      return JSON.stringify({ version: 1, ops: operations() });
+      return JSON.stringify({ version: 2, ops: operations() });
     },
 
     /// False where no editor has an edit to take back.
