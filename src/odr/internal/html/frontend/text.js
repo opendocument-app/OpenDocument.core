@@ -27,7 +27,7 @@
         self.textNr.appendChild(nrCell);
       }
       for (var j = nrCount; j > lineCount; --j) {
-        self.textNr.removeChild(self.textNr.lastChild);
+        self.textNr.removeChild(self.textNr.lastElementChild);
       }
       self.updateLineNumberHeight();
     });
@@ -97,8 +97,10 @@
 
   // Lines are the element children: formatted output puts a whitespace text
   // node between them, and counting or indexing those as lines is off by as
-  // much as a factor of two. The line is the ancestor the body owns and the
-  // offset is measured from its start: a search `<mark>` may sit in between.
+  // much as a factor of two. The gutter is written the same way, which is why
+  // a cell is reached by `lastElementChild` and never by `lastChild`. The line
+  // is the ancestor the body owns and the offset is measured from its start: a
+  // search `<mark>` may sit in between.
   TextEditor.prototype.getPosition = function (container, offset) {
     var line = container;
     while (line !== null && line.parentNode !== this.textBody) {
@@ -210,9 +212,9 @@
         );
         line = line.nextElementSibling;
 
-        this.textNr.appendChild(document.createElement("div"));
         // the line is already in, so the count is the number the cell gets
-        this.textNr.lastChild.textContent = String(this.textBody.children.length);
+        this.textNr.appendChild(document.createElement("div")).textContent =
+          String(this.textBody.children.length);
       }
 
       if (i === 0) {
@@ -242,7 +244,7 @@
 
     for (var lineNr = from.line + 1; lineNr <= to.line; ++lineNr) {
       this.textBody.removeChild(firstLine.nextElementSibling);
-      this.textNr.removeChild(this.textNr.lastChild);
+      this.textNr.removeChild(this.textNr.lastElementChild);
     }
   };
 

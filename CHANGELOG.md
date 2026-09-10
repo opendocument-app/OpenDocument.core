@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: deleting across several lines of a `.txt` left stray line numbers
+  in the gutter. The renderer writes whitespace between the number cells, so
+  `lastChild` there was a text node and the removal took that instead of a cell.
+
+- **Fix**: two refusal messages described what their code meant before the
+  editor could span runs. Code 1 said "new line not supported" though Enter is
+  taken, and code 8 said "an edit has to lie inside one run of text" though it
+  now marks a range reaching over a picture. The codes are unchanged.
+
 - **Fix**: `odr.editing.getOperations()` and `odr.generateDiff()` stated
   `"version": 1` while `Document::edit` takes 2, so every save the browser
   produced was refused. A check page now asserts the version.

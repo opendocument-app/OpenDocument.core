@@ -144,6 +144,34 @@
       check("and joins the two", lines() === "firstXY line|second line|third line");
       check("the gutter follows back", gutter.children.length === 3);
 
+      check(
+        "the gutter is written with whitespace between the cells",
+        gutter.lastChild.nodeType !== 1
+      );
+
+      // Deleting across lines: the gutter has to lose one cell per line, and
+      // `lastChild` there is whitespace rather than a cell.
+      caretAt(0, 1);
+      (function () {
+        var r = document.createRange();
+        r.setStart(body.children[0].firstChild, 1);
+        r.setEnd(body.children[2].firstChild, 1);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      })();
+      check(
+        "deleting across three lines is taken",
+        input("deleteContentBackward") === "taken"
+      );
+      check("the lines go", body.children.length === 1);
+      check("and the numbers with them", gutter.children.length === 1);
+      check("undo brings both back", odr.editing.undo() === true);
+      check(
+        "in step",
+        body.children.length === 3 && gutter.children.length === 3
+      );
+
       // ---------------------------------------------------------- undo / redo
 
       check("undo takes the join back", odr.editing.undo() === true);
