@@ -15,8 +15,8 @@
   var editors = [];
   var lastRefusal = null;
 
-  // One space of codes, appended and never renumbered. The host maps the code;
-  // the message is for a console.
+  // One space of codes, appended and never renumbered - `odr.onError` shares
+  // it, and holds 9. The host maps the code; the message is for a console.
   var refusals = {
     newLine: { code: 1, message: "new line not supported by this document" },
     formula: { code: 2, message: "cell holds a formula" },
@@ -24,6 +24,8 @@
     shapes: { code: 4, message: "cell holds a drawing" },
     readOnly: { code: 5, message: "document cannot be edited" },
     formulaInput: { code: 6, message: "typing a formula is not supported" },
+    unsupportedEdit: { code: 7, message: "this kind of edit is not supported" },
+    range: { code: 8, message: "an edit has to lie inside one run of text" },
   };
 
   odr.onError = function (code, message) {

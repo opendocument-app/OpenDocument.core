@@ -37,6 +37,15 @@ The release run heads these entries with the version and opens a fresh
   default, decide whether the page takes the keys that move the selection and
   the undo chord. An open editor's own keys are never taken away.
 
+- A text document is edited as a document: the mode makes the whole view
+  editable rather than each run, so the caret, a selection and a double click
+  cross runs and paragraphs the way a reader expects.
+
+- Every edit a text document cannot replay is refused through
+  `odr.onEditRefused` rather than silently impossible: a new line
+  (`newLine`, 1), an edit spanning two runs or landing outside every run
+  (`range`, 8), and anything else the browser offers (`unsupportedEdit`, 7).
+
 - **Fix**: double-clicking a sheet cell no longer flashes its border off. A
   click on the pinned cell clears the pin, and the second click of a double
   click was taking it - so selecting a word left the border coming and going.

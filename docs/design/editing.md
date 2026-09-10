@@ -32,9 +32,10 @@ Today the frame is there and the text editor is not:
 - `frontend/editing.js` owns `odr.editing` — the mode, the refusals, the log a
   save reads and the callbacks a host wires. Every format's editor attaches to
   it; `frontend/sheet-editing.js` is the first one (decision 9).
-- `frontend/document.js` holds the text editor, and it is still the skeleton:
-  `contenteditable` runs, a `MutationObserver` keyed by `data-odr-path`, and one
-  `setText` op per changed run. No selection model, no marks, no undo.
+- `frontend/document.js` holds the text editor. The mode makes the **whole
+  view** editable and the editor refuses what it cannot replay (decision 13);
+  a `MutationObserver` reads the changed runs back and emits one `setText` op
+  each. No selection model of our own, no marks, no undo yet.
 - `Document::edit(diff)` (`src/odr/document.cpp`) parses the op envelope and
   dispatches `setCell` and `setText`.
 - `back_translate` CLI replays a diff file onto a source document and `save`s it.
@@ -337,6 +338,54 @@ config value reaches them only through the markup. One attribute carries both
 classes as a token list, and a third class appends to it without a fourth
 attribute.
 
+### 13. One editable view, and every edit it cannot replay is refused
+
+`enable()` puts `contenteditable` on the **body**, not on each run. The editor
+then intercepts `beforeinput` and refuses everything that is not the text of one
+addressed run:
+
+| The edit | What happens |
+|---|---|
+| text typed, replaced, pasted plain, deleted, composed — inside one run | allowed, and the run joins the log |
+| a new line (`insertParagraph`, `insertLineBreak`) | refused, reason `newLine` |
+| anything else the browser offers (a mark, a list, a drop) | refused, reason `unsupportedEdit` |
+| an edit spanning two runs, or landing outside every run | refused, reason `range` |
+
+**Why the whole view rather than a run at a time:** `contenteditable` per run
+makes every run its own editing host, and a host is a wall. The caret cannot
+cross it, a selection cannot span two of them, and a reader who selects a
+sentence gets nothing — silently, with no way to say why. One host gives the
+document the caret, selection and word-double-click a reader expects, and the
+refusal channel (decision 9) is what says no where we cannot follow. That is
+also far less markup to write and one attribute to toggle rather than a walk
+over every run.
+
+**Why `beforeinput` is the gate:** it fires before the browser changes anything,
+it says *what* the edit is (`inputType`), it says *where* (`getTargetRanges()`),
+and it is cancelable. `text.js` already edits the plain-text view this way.
+
+**The whitelist is closed, not open.** Only the input types that change the text
+of one run are allowed; anything unrecognised is refused. An open list would let
+a browser-specific `inputType` through to a `MutationObserver` that only watches
+`characterData`, and a structural change would then be invisible to the log and
+saved wrong. Refusing something we could have allowed costs a reader one
+gesture; allowing something we cannot replay costs them their document.
+
+**The address is the whole guard.** No element is marked non-editable: an edit is
+allowed because it lands inside a `[data-odr-path]` run, so a picture, a table's
+furniture, the gap between two paragraphs and the page box are all refused
+without a single attribute of their own. That is decision 10's rule — mark the
+exceptions, not the rest — applied to the caret instead of to a cell.
+
+**Known holes, both narrow.** A scripted `document.execCommand` can bypass the
+gate, because Chrome does not fire a cancelable `beforeinput` for every command;
+trusted input, which is all a reader has, is refused correctly. And a
+composition cannot be cancelled at all — `insertCompositionText` is allowed and
+reconciled afterwards, which is why the observer reports code 9 when text
+changes where no op can name it, rather than dropping it in silence. Android
+WebView's incomplete `beforeinput` (decision 8) is the reason that report
+exists; verify it on a device before trusting the gate there.
+
 ## Preliminary implementation plan (ODF / OOXML)
 
 Ordered to de-risk the linchpin (id stability) first and to keep every step
@@ -387,9 +436,9 @@ The frame is landed (decisions 9 to 12): the mode, the refusals, the callbacks
 and the keyboard classes are in `frontend/editing.js`, and `document.js`
 attaches the skeleton editor to it. What is left is the editor itself.
 
-1. Model keyed by `data-odr-id`; `beforeinput`-intercepting op recorder;
-   composition-aware reconciliation path. This replaces the `contenteditable`
-   plus `MutationObserver` path `document.js` still uses.
+1. Model keyed by `data-odr-id`; op recorder; composition-aware reconciliation.
+   `beforeinput` is already the gate (decision 13); what is left is owning the
+   edit rather than letting the browser apply it and reading the run back.
 2. Browser-side undo/redo over the in-memory log; coalescing before emit. The
    text editor then answers `undo()` rather than refusing it, and its ops move
    onto the shared log (decision 9).
