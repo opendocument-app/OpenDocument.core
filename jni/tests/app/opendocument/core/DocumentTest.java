@@ -98,10 +98,10 @@ class DocumentTest {
     assertTrue(document.isEditable());
 
     Element paragraph = document.rootElement().firstChild();
-    DocumentPath text = paragraph.firstChild().documentPath();
+    long text = paragraph.firstChild().identifier();
 
-    document.edit("{\"version\":1,\"ops\":[{\"op\":\"setText\",\"path\":\""
-        + text + "\",\"text\":\"edited by the diff\"}]}");
+    document.edit("{\"version\":2,\"ops\":[{\"op\":\"setText\",\"id\":"
+        + text + ",\"text\":\"edited by the diff\"}]}");
 
     assertTrue(walkText(document.rootElement()).contains("edited by the diff"));
   }
@@ -111,9 +111,9 @@ class DocumentTest {
     Document document = openDocument();
 
     Element paragraph = document.rootElement().firstChild();
-    DocumentPath text = paragraph.firstChild().documentPath();
-    document.edit("{\"version\":1,\"ops\":[{\"op\":\"setText\",\"path\":\""
-        + text + "\",\"text\":\"saved to memory\"}]}");
+    long text = paragraph.firstChild().identifier();
+    document.edit("{\"version\":2,\"ops\":[{\"op\":\"setText\",\"id\":"
+        + text + ",\"text\":\"saved to memory\"}]}");
 
     byte[] saved = document.saveToMemory();
     assertTrue(saved.length > 0);

@@ -208,6 +208,24 @@ std::string render_odt(const HtmlConfig &config) {
   return render("odr-public/odt/about.odt", config);
 }
 
+/// Whether any `<@p tag …>` in @p page states @p attribute. The writer puts
+/// class and style first, so the two are not adjacent.
+bool a_tag_states(const std::string &page, const std::string &tag,
+                  const std::string &attribute) {
+  const std::string open = "<" + tag + " ";
+  for (std::size_t at = page.find(open); at != std::string::npos;
+       at = page.find(open, at + 1)) {
+    const std::size_t end = page.find('>', at);
+    if (end == std::string::npos) {
+      return false;
+    }
+    if (page.find(attribute, at) < end) {
+      return true;
+    }
+  }
+  return false;
+}
+
 } // namespace
 
 // Reflowed to the viewport there is no page box to inset the text.
@@ -976,20 +994,26 @@ TEST(html, a_plain_cell_carries_no_lock) {
   EXPECT_EQ(page.find(R"(class="odr-locked")"), std::string::npos);
 }
 
-// An op names a run, so the markup addresses one. The mode writes the
-// `contenteditable`, so one page serves both modes.
+// The mode writes the `contenteditable`, so one page serves both modes.
 TEST(html, an_editable_text_document_addresses_its_runs) {
   const std::string page = render_odt(editing_config());
 
-  EXPECT_NE(page.find("data-odr-path"), std::string::npos);
+  EXPECT_TRUE(a_tag_states(page, "x-s", "data-odr-id="));
   EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
+}
+
+// A paragraph is what a split or an insert anchors on.
+TEST(html, an_editable_text_document_addresses_its_paragraphs) {
+  const std::string page = render_odt(editing_config());
+
+  EXPECT_TRUE(a_tag_states(page, "x-p", "data-odr-id="));
 }
 
 // The address is the expensive half, and a read-only render pays none of it.
 TEST(html, a_read_only_text_document_addresses_no_run) {
   const std::string page = render_odt(HtmlConfig());
 
-  EXPECT_EQ(page.find("data-odr-path"), std::string::npos);
+  EXPECT_EQ(page.find("data-odr-id"), std::string::npos);
 }
 
 // #822: a sheet cell does not break its text into lines unless the file says

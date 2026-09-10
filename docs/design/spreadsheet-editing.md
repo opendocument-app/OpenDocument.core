@@ -50,7 +50,7 @@ results go stale the moment an input changes.
 | Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
 | Browser: sheet script | `html/frontend/spreadsheet.js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
 | Browser: the mode | `html/frontend/editing.js` | `odr.editing` — the mode, the refusal table, the log a save reads and the `odr.on*` callbacks, generic over every format. An editor attaches to it ([`editing.md`](editing.md) decision 9, step 1.6, landed) |
-| Browser: text editor | `html/frontend/document.js` | The skeleton, attached to the mode: `contenteditable` runs keyed by `data-odr-path`, a `MutationObserver`, one `setText` op per changed run. No undo |
+| Browser: text editor | `html/frontend/document.js` | The skeleton, attached to the mode: the whole view editable, runs keyed by `data-odr-id`, one `setText` op per changed run. No undo |
 | Browser: sheet editor | `html/frontend/sheet-editing.js` | The cell overlay, the locks and the position map (steps 1.1 to 1.4, landed), attached to the mode as one editor |
 | Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
 | Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
@@ -78,7 +78,7 @@ value beside the op. The whole log is idempotent, which decision 5 leans on.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "ops": [
     {"op": "setCell", "sheet": 0, "column": 1, "row": 2,
      "value": {"type": "number", "number": 12.5, "text": "12.5"}},
@@ -94,10 +94,10 @@ value beside the op. The whole log is idempotent, which decision 5 leans on.
 op it cannot apply, leaving the ones before it applied — a document is decoded
 fresh by `DocumentFile::document()`, so the host replays onto a copy by
 construction; the wasm session, which holds one document, has to replay onto a
-fresh decode too. `setText {path, text}` carries what `modifiedText` carried
-and is what `generateDiff()` now emits; it gains the id form when
-[`editing.md`](editing.md) phase 1 lands. The bindings pass a string through
-and did not change.
+fresh decode too. `setText {id, text}` carries what `modifiedText` carried and
+is what `generateDiff()` now emits, addressing its run by the id the page
+states ([`document-editing.md`](document-editing.md) decision 1). The bindings pass a
+string through and did not change.
 
 `version` is the wire version. A document stamp (decision 7 in `editing.md`)
 is deferred: a sheet op names a position, and a position is meaningful against

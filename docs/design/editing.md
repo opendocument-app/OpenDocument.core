@@ -1,15 +1,16 @@
 # Editing design
 
-Status: **the mode frame is landed for every format; the text editor behind it
-is not.** This records the architecture we chose for in-browser editing of ODF
-and OOXML documents, the alternatives we weighed, and *why* we took each
-decision. Decisions 9 to 12 are the frame every format shares, and they are in
-the code. The phases below them are the text editor, and they are **not
-scheduled yet** — they are captured here so the decisions and the grounding
-survive until we pick the work up later.
+Status: **the mode frame is landed for every format, and the text editor behind
+it is being built.** This records the architecture we chose for in-browser
+editing of ODF and OOXML documents, the alternatives we weighed, and *why* we
+took each decision. Decisions 9 to 12 are the frame every format shares, and
+they are in the code.
 
 [`spreadsheet-editing.md`](spreadsheet-editing.md) is the first editor built on
 the frame, and it is where a sheet's own decisions live.
+[`document-editing.md`](document-editing.md) is the second, and it is where the phases
+below are being carried out — an edit across runs, a new paragraph, and the
+delete and replace that reach across both.
 
 This builds on the existing principle in [`README.md`](README.md):
 
@@ -26,8 +27,8 @@ edits back into the original ODF/OOXML file.
 Today the frame is there and the text editor is not:
 
 - `html::translate(..., config.editable)` writes the editing scaffolding: the
-  page-level state on `<body>`, `data-odr-path` on every editable run, and the
-  scripts that carry the mode (`internal/html/document_element.cpp`,
+  page-level state on `<body>`, `data-odr-id` on every editable run and
+  paragraph, and the scripts that carry the mode (`internal/html/document_element.cpp`,
   `internal/html/document.cpp`).
 - `frontend/editing.js` owns `odr.editing` — the mode, the refusals, the log a
   save reads and the callbacks a host wires. Every format's editor attaches to
@@ -236,7 +237,7 @@ editing:
 | `data-odr-editable="true" \| "readOnly"` | whether `enable()` can succeed at all |
 | `data-odr-keyboard="navigation shortcuts"` | which key classes the scripts may take (decision 12) |
 
-Per element the page states only the exceptions: `data-odr-path` addresses an
+Per element the page states only the exceptions: `data-odr-id` addresses an
 editable run, and `odr-locked` plus `data-odr-lock="<reason>"` marks what
 refuses. Everything unmarked is editable.
 
@@ -272,7 +273,7 @@ than tracking what it rendered with, and `odr.generateDiff()` — the name the
 apps and the wasm package already call — never goes missing.
 
 What the flag keeps out of a read-only render is what actually costs: the
-`data-odr-path` attribute on every editable run, the lock class on every locked
+`data-odr-id` attribute on every editable run, the lock class on every locked
 cell, and the editor script (`document.js`, `sheet-editing.js`). The mode script
 itself is small and buys the host one API for every format.
 
@@ -285,7 +286,7 @@ mode would be the only way to skip that line, and nothing needs it.
 
 **Why not drop the flag and always write the scaffolding:** a read-only host
 would carry the editor's script bytes and an attribute on every editable run for
-nothing. `data-odr-path` on the runs of a text document is the expensive half,
+nothing. `data-odr-id` on the runs of a text document is the expensive half,
 and it cannot be added later — the mode can only turn on if the addresses are
 already in the page.
 
@@ -372,7 +373,7 @@ saved wrong. Refusing something we could have allowed costs a reader one
 gesture; allowing something we cannot replay costs them their document.
 
 **The address is the whole guard.** No element is marked non-editable: an edit is
-allowed because it lands inside a `[data-odr-path]` run, so a picture, a table's
+allowed because it lands inside a `x-s[data-odr-id]` run, so a picture, a table's
 furniture, the gap between two paragraphs and the page box are all refused
 without a single attribute of their own. That is decision 10's rule — mark the
 exceptions, not the rest — applied to the caret instead of to a cell.

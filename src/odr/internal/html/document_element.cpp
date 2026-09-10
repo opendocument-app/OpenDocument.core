@@ -241,6 +241,15 @@ bool writes_edit_markup(const Element &element,
          element.is_editable();
 }
 
+/// The address an edit operation names @p element by, where the render offers
+/// editing at all.
+void write_edit_address(const Element &element, const html::WritingState &state,
+                        const html::HtmlAttributeWriterCallback &clb) {
+  if (writes_edit_markup(element, state)) {
+    clb("data-odr-id", std::to_string(element.identifier()));
+  }
+}
+
 /// A run whose style the box around it can carry instead. Not a background, a
 /// raised run or an addressed one: each means something else on the box.
 std::optional<Text> plain_text(const Element &element,
@@ -778,9 +787,7 @@ void html::translate_text(const Element &element, const WritingState &state) {
       HtmlElementOptions()
           .set_inline(true)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            if (writes_edit_markup(element, state)) {
-              clb("data-odr-path", element.document_path().to_string());
-            }
+            write_edit_address(element, state, clb);
           })
           .set_style(translate_text_style(text.style()), state.styles()));
   state.out().out() << escape_text(text.content());
@@ -817,11 +824,16 @@ void html::translate_paragraph(const Element &element,
 
   state.out().write_element_begin(
       "x-p",
-      HtmlElementOptions().set_inline(true).set_style(
-          "display:block;" +
-              translate_paragraph_style(paragraph.style(), state.direction()) +
-              translate_block_font_style(paragraph.text_style()),
-          state.styles()));
+      HtmlElementOptions()
+          .set_inline(true)
+          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+            write_edit_address(element, state, clb);
+          })
+          .set_style("display:block;" +
+                         translate_paragraph_style(paragraph.style(),
+                                                   state.direction()) +
+                         translate_block_font_style(paragraph.text_style()),
+                     state.styles()));
   if (!marker.empty()) {
     state.out().write_element_begin(
         "x-s", HtmlElementOptions()

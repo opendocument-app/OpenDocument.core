@@ -82,6 +82,8 @@ NS_SWIFT_NAME(Element)
 @interface ODRElement : NSObject
 
 @property(nonatomic, readonly) ODRElementType type;
+/// The address an edit operation names this element by.
+@property(nonatomic, readonly) uint64_t identifier;
 /// `NO` for the element you get past the end of the tree.
 @property(nonatomic, readonly) BOOL exists;
 

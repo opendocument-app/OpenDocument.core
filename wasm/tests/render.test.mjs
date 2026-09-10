@@ -102,8 +102,8 @@ describe('render', () => {
     try {
       // `editable` writes the address the mode needs; the mode writes the
       // `contenteditable`.
-      assert.ok(!plain.render(0).html.includes('data-odr-path'));
-      assert.ok(editable.render(0).html.includes('data-odr-path'));
+      assert.ok(!plain.render(0).html.includes('data-odr-id'));
+      assert.ok(editable.render(0).html.includes('data-odr-id'));
     } finally {
       plain.close();
       editable.close();

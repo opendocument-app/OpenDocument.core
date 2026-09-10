@@ -223,6 +223,13 @@ extern "C" JNIEXPORT jint JNICALL Java_app_opendocument_core_Element_typeNative(
 }
 
 extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Element_identifierNative(JNIEnv *env, jobject,
+                                                    jlong handle) {
+  return guarded(
+      env, [&] { return static_cast<jlong>(element(handle).identifier()); });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Element_parentNative(JNIEnv *env, jobject,
                                                 jlong handle) {
   return guarded(env, [&] { return wrap_element(element(handle).parent()); });

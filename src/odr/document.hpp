@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/definitions.hpp>
 #include <odr/logger.hpp>
 
 #include <iosfwd>
@@ -46,11 +47,12 @@ public:
   /// @brief Applies @p operations to the document, in order.
   ///
   /// The wire format our browser-side editor produces:
-  /// `{"version": 1, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
+  /// `{"version": 2, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
   /// "row": 2, "value": {"type": "number", "number": 12.5, "text": "12.5"}}]}`.
   /// A value is typed `number`, `string` or `empty`; `setText` names a text
-  /// element by `path` instead. Editing a single element in process is
-  /// @ref Text::set_content and needs none of this.
+  /// element by the `id` the render wrote into the page instead
+  /// (`docs/design/document-editing.md`). Editing a single element in process
+  /// is @ref Text::set_content and needs none of this.
   /// @throws std::invalid_argument on the first operation it cannot apply,
   ///         leaving the ones before it applied - a host replays onto a fresh
   ///         decode.
@@ -58,6 +60,10 @@ public:
             const Logger &logger = Logger::null()) const;
 
   [[nodiscard]] Element root_element() const;
+
+  /// The element @ref Element::identifier handed out, or one that does not
+  /// exist where this document holds no such id.
+  [[nodiscard]] Element element_by_id(ElementIdentifier identifier) const;
 
   /// The files the document is packaged from; empty for a document that is
   /// one file.
