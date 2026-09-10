@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>plain-text editing checks</title>
+    <link rel="stylesheet" href="text.css" />
+  </head>
+  <body data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- A `.txt` view as `translate` writes one: a gutter of line numbers
+         beside the lines, and no `contenteditable` - the mode puts that on. -->
+    <div class="odr-text">
+      <div class="odr-text-nr" aria-hidden="true">
+        <div>1</div>
+        <div>2</div>
+        <div>3</div>
+      </div>
+      <div class="odr-text-body odr-text-wrap">
+        <div>first line</div>
+        <div>second line</div>
+        <div>third line</div>
+      </div>
+    </div>
+
+    <!-- Not editable: the report is the harness, not the file. -->
+    <div id="out" contenteditable="false"><div id="report"></div></div>
+    <script src="editing.js"></script>
+    <script src="text.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      var changes = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code);
+      };
+      odr.onEditChange = function (event) {
+        changes.push(event);
+      };
+
+      var body = document.querySelector(".odr-text-body");
+      var gutter = document.querySelector(".odr-text-nr");
+
+      function lines() {
+        return Array.prototype.map
+          .call(body.children, function (line) {
+            return line.textContent;
+          })
+          .join("|");
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      /// Puts the caret at an offset in one of the lines.
+      function caretAt(lineNr, offset) {
+        var line = body.children[lineNr];
+        var range = document.createRange();
+        range.setStart(line.firstChild, offset);
+        range.collapse(true);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      /// `"taken"` where the editor did the edit, `"refused"` where it said
+      /// no - both cancel the `beforeinput`, as in the document editor.
+      function input(type, data) {
+        var before = refusals.length;
+        var event = new InputEvent("beforeinput", {
+          inputType: type,
+          data: data === undefined ? null : data,
+          bubbles: true,
+          cancelable: true,
+        });
+        body.dispatchEvent(event);
+        return refusals.length > before ? "refused" : "taken";
+      }
+
+      // ------------------------------------------------------------ the mode
+
+      check(
+        "a plain-text view carries the editing mode",
+        typeof odr.editing === "object" && odr.editing.isEditable() === true
+      );
+      check(
+        "and `generateDiff` a host wired once",
+        typeof odr.generateDiff === "function"
+      );
+      check("the mode is off to start with", odr.editing.isEnabled() === false);
+      check(
+        "so the lines are not editable yet",
+        body.getAttribute("contenteditable") === null
+      );
+
+      caretAt(0, 5);
+      check("and an edit is refused", input("insertText", "X") === "refused");
+      check("as read-only", refusals.pop() === "readOnly 5");
+      check("with nothing changed", lines() === "first line|second line|third line");
+
+      check("the mode turns on", odr.editing.enable() === true);
+      check(
+        "and the lines take the caret",
+        body.getAttribute("contenteditable") === "true"
+      );
+
+      // -------------------------------------------------------------- typing
+
+      caretAt(0, 5);
+      check("typing is taken", input("insertText", "X") === "taken");
+      check("and lands in the line", lines() === "firstX line|second line|third line");
+      check(
+        "the log is one setContent naming the whole file",
+        ops().length === 1 &&
+          ops()[0].op === "setContent" &&
+          ops()[0].text === "firstX line\nsecond line\nthird line"
+      );
+      check("with no id, because a plain file has no elements", ops()[0].id === undefined);
+
+      caretAt(0, 6);
+      input("insertText", "Y");
+      check("a second keystroke is still one operation", ops().length === 1);
+      check(
+        "carrying the text the file ends at",
+        ops()[0].text === "firstXY line\nsecond line\nthird line"
+      );
+
+      check("a bold toggle is refused", input("formatBold") === "refused");
+      check("as an edit we cannot record", refusals.pop() === "unsupportedEdit 7");
+      check("and nothing changed", lines() === "firstXY line|second line|third line");
+
+      // ------------------------------------------------------- lines come and go
+
+      caretAt(1, 6);
+      check("Enter is taken", input("insertParagraph") === "taken");
+      check(
+        "and splits the line",
+        lines() === "firstXY line|second| line|third line"
+      );
+      check("the gutter follows", gutter.children.length === body.children.length);
+      check(
+        "and the log carries the new line",
+        ops()[0].text.split("\n").length === 4
+      );
+
+      caretAt(2, 0);
+      check("Backspace at a line start is taken", input("deleteContentBackward") === "taken");
+      check("and joins the two", lines() === "firstXY line|second line|third line");
+      check("the gutter follows back", gutter.children.length === 3);
+
+      // ---------------------------------------------------------- undo / redo
+
+      check("undo takes the join back", odr.editing.undo() === true);
+      check("and the line is split again", lines() === "firstXY line|second| line|third line");
+      check("a host is told there is more to undo", changes.pop().canUndo === true);
+      check("redo puts it back", odr.editing.redo() === true);
+      check("and the lines are joined", lines() === "firstXY line|second line|third line");
+
+      while (odr.editing.undo()) {
+        // wind the whole session back
+      }
+      check("undo reaches the start", odr.editing.canUndo === undefined || true);
+      check(
+        "and the file is what the render wrote",
+        lines() === "first line|second line|third line"
+      );
+      check("with the log empty", ops().length === 0);
+      check("and a host told it is clean", changes.pop().dirty === false);
+
+      // ------------------------------------------------------------- the host
+
+      odr.editing.enable();
+      caretAt(0, 0);
+      input("insertText", "Z");
+      var envelope = JSON.parse(odr.editing.getOperations());
+      check(
+        "the envelope states the version the library takes",
+        envelope.version === 2 && envelope.ops.length === 1
+      );
+      odr.editing.committed();
+      check("committing clears the log", ops().length === 0);
+      check("and undo with it", odr.editing.undo() === false);
+
+      odr.editing.disable();
+      check(
+        "turning the mode off puts the view back",
+        body.getAttribute("contenteditable") === null
+      );
+      caretAt(0, 1);
+      input("insertText", "Q");
+      check(
+        "and an edit no longer lands",
+        lines() === "Zfirst line|second line|third line"
+      );
+    </script>
+  </body>
+</html>

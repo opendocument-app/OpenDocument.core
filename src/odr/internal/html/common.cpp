@@ -345,4 +345,18 @@ std::string html::file_to_url(const abstract::File &file,
   return file_to_url(*file.stream(), mime_type);
 }
 
+std::string html::keyboard_classes(const HtmlConfig &config) {
+  std::string classes;
+  if (config.keyboard_navigation) {
+    classes += "navigation";
+  }
+  if (config.keyboard_shortcuts) {
+    if (!classes.empty()) {
+      classes += " ";
+    }
+    classes += "shortcuts";
+  }
+  return classes;
+}
+
 } // namespace odr::internal

@@ -3,8 +3,9 @@
 The editor of the **document view** — `frontend/document.js` — built on the
 mode frame in [`editing.md`](editing.md), and the decisions that are its own.
 [`spreadsheet-editing.md`](spreadsheet-editing.md) is the sibling document for
-the sheet view. Text documents, presentations and drawings share this one:
-what it edits is runs and paragraphs, wherever the format puts them.
+the sheet view and [`txt-editing.md`](txt-editing.md) for the plain-text one.
+Text documents, presentations and drawings share this one: what it edits is
+runs and paragraphs, wherever the format puts them.
 
 Status: **landed.** The schema, the replay, the browser editor and the pptx
 write side are all in the code; each section says what is in and what is not.
@@ -274,6 +275,7 @@ reading forward.
 | `.odt`, `.odp`, `.ods`, `.odg` | `odf` | edits and saves today; the new ops land here |
 | `.docx` | `ooxml/text` | edits and saves today; the new ops land here |
 | `.pptx` | `ooxml/presentation` | edits and saves; the same operations over `a:p` / `a:r` |
+| `.txt` | `text` | not a document at all; see [`txt-editing.md`](txt-editing.md) |
 | everything else | — | read-only, and says so by decision 7 |
 
 `.odp` needs nothing of its own: a presentation is the same odf `Document` as a
@@ -350,6 +352,5 @@ Two details the checks pin down:
 - **A list item** is a paragraph in a list. Enter at the end of one should make
   a new list item, not a bare paragraph. `splitParagraph` splits what the
   element tree says is a paragraph; the list case is not covered.
-- The **plain-text view** (`html/text_file.cpp`) is still its own editor and
-  still answers to nobody. Unchanged by this work, and still the open question
-  at the end of [`editing.md`](editing.md).
+- The **plain-text view** is a `TextFile` rather than a document, so none of
+  this reaches it; [`txt-editing.md`](txt-editing.md) is its own.

@@ -198,21 +198,6 @@ void write_head(const Document &document, const WritingState &state,
   out.write_header_end();
 }
 
-/// The key classes the view's scripts may take; `editing.md` decision 12.
-std::string keyboard_classes(const HtmlConfig &config) {
-  std::string classes;
-  if (config.keyboard_navigation) {
-    classes += "navigation";
-  }
-  if (config.keyboard_shortcuts) {
-    if (!classes.empty()) {
-      classes += " ";
-    }
-    classes += "shortcuts";
-  }
-  return classes;
-}
-
 void write_body_begin(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 

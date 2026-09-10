@@ -20,6 +20,14 @@ The release run heads these entries with the version and opens a fresh
   `"version": 1` while `Document::edit` takes 2, so every save the browser
   produced was refused. A check page now asserts the version.
 
+- A `.txt` view carries `odr.editing` like every other view, rather than the
+  second API `text.js` was. **Breaking**: `HtmlConfig::editable` no longer
+  writes `contenteditable` — `odr.editing.enable()` does.
+
+- `TextFile::write_edited` saves an edited plain file and `is_savable()` says
+  whether it can; `txt` states `edit` and `save`. The output is UTF-8 whatever
+  the source encoding was, because there is no encoder back.
+
 - A `.pptx` can be edited and saved: every text operation a `.docx` takes, and
   a save that writes the slide parts back into the package. Its
   `FileTypeCapabilities` now states `edit` and `save`.
