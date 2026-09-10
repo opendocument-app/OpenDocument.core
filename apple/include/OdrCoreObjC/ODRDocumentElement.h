@@ -54,7 +54,9 @@ typedef NS_ENUM(NSInteger, ODRShapeType) {
 } NS_SWIFT_NAME(ShapeType);
 
 typedef NS_ENUM(NSInteger, ODRAnchorType) {
-  ODRAnchorTypeAsChar = 0,
+  /// The frame does not exist, so it is anchored nowhere.
+  ODRAnchorTypeNone = 0,
+  ODRAnchorTypeAsChar,
   ODRAnchorTypeAtChar,
   ODRAnchorTypeAtFrame,
   ODRAnchorTypeAtPage,

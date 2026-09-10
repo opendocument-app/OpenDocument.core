@@ -49,6 +49,7 @@ ODR_SAME_ENUM(ODRShapeTypeEllipse, odr::ShapeType::ellipse);
 ODR_SAME_ENUM(ODRShapeTypeLine, odr::ShapeType::line);
 ODR_SAME_ENUM(ODRShapeTypeCustom, odr::ShapeType::custom);
 
+ODR_SAME_ENUM(ODRAnchorTypeNone, odr::AnchorType::none);
 ODR_SAME_ENUM(ODRAnchorTypeAsChar, odr::AnchorType::as_char);
 ODR_SAME_ENUM(ODRAnchorTypeAtChar, odr::AnchorType::at_char);
 ODR_SAME_ENUM(ODRAnchorTypeAtFrame, odr::AnchorType::at_frame);

@@ -123,6 +123,7 @@ enum class ShapeType {
 
 /// Collection of anchor types.
 enum class AnchorType {
+  none, ///< the frame does not exist, so it is anchored nowhere
   as_char,
   at_char,
   at_frame,

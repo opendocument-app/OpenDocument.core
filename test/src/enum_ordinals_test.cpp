@@ -191,11 +191,12 @@ TEST(EnumOrdinals, shape_type) {
 }
 
 TEST(EnumOrdinals, anchor_type) {
-  EXPECT_EQ(ordinal(AnchorType::as_char), 0);
-  EXPECT_EQ(ordinal(AnchorType::at_char), 1);
-  EXPECT_EQ(ordinal(AnchorType::at_frame), 2);
-  EXPECT_EQ(ordinal(AnchorType::at_page), 3);
-  EXPECT_EQ(ordinal(AnchorType::at_paragraph), 4);
+  EXPECT_EQ(ordinal(AnchorType::none), 0);
+  EXPECT_EQ(ordinal(AnchorType::as_char), 1);
+  EXPECT_EQ(ordinal(AnchorType::at_char), 2);
+  EXPECT_EQ(ordinal(AnchorType::at_frame), 3);
+  EXPECT_EQ(ordinal(AnchorType::at_page), 4);
+  EXPECT_EQ(ordinal(AnchorType::at_paragraph), 5);
 }
 
 TEST(EnumOrdinals, value_type) {

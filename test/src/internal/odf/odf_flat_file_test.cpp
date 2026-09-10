@@ -718,3 +718,91 @@ TEST(FlatOpenDocumentFile, it_saves_back_as_one_xml_file) {
                 .content(),
             "Hello");
 }
+
+namespace {
+
+/// One paragraph, styled by @p properties over @p parent_properties.
+std::string one_paragraph(const std::string &properties,
+                          const std::string &parent_properties) {
+  return flat_text(
+      R"(<text:p text:style-name="P1">one</text:p>)",
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="Base" style:family="paragraph">)"
+      R"(<style:paragraph-properties )" +
+          parent_properties +
+          R"(/></style:style>)"
+          R"(<style:style style:name="P1" style:family="paragraph")"
+          R"( style:parent-style-name="Base">)"
+          R"(<style:paragraph-properties )" +
+          properties +
+          R"(/></style:style>)"
+          R"(</office:automatic-styles>)");
+}
+
+/// @p properties over a parent stating `fo:margin-left="2cm"`.
+std::string margin_over_parent(const std::string &properties) {
+  return one_paragraph(properties, R"(fo:margin-left="2cm")");
+}
+
+DirectionalStyle<Measure> margins_of(const std::string &source) {
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
+  return first_of_type(document.root_element(), ElementType::paragraph)
+      .as_paragraph()
+      .style()
+      .margin;
+}
+
+std::optional<Measure> margin_left_of(const std::string &source) {
+  return margins_of(source).left;
+}
+
+} // namespace
+
+/// The shorthand states all four sides.
+TEST(FlatOpenDocumentFile, a_margin_shorthand_states_every_side) {
+  const DirectionalStyle<Measure> margin =
+      margins_of(one_paragraph(R"(fo:margin="1cm")", ""));
+
+  for (const std::optional<Measure> &side :
+       {margin.right, margin.top, margin.left, margin.bottom}) {
+    ASSERT_TRUE(side.has_value());
+    EXPECT_EQ(side->to_string(), "1cm");
+  }
+}
+
+/// [OpenDocument] 16.2: a percentage is of the same property in the parent
+/// style, not of the containing block.
+TEST(FlatOpenDocumentFile, a_percentage_margin_is_of_the_parent_style) {
+  const std::optional<Measure> margin =
+      margin_left_of(margin_over_parent(R"(fo:margin-left="50%")"));
+
+  ASSERT_TRUE(margin.has_value());
+  EXPECT_DOUBLE_EQ(margin->magnitude(), 1);
+  EXPECT_EQ(margin->unit().name(), "cm");
+}
+
+/// The shorthand resolves each side against its own inherited value.
+TEST(FlatOpenDocumentFile, a_percentage_margin_shorthand_keeps_the_parent) {
+  const std::optional<Measure> margin =
+      margin_left_of(margin_over_parent(R"(fo:margin="100%")"));
+
+  ASSERT_TRUE(margin.has_value());
+  EXPECT_DOUBLE_EQ(margin->magnitude(), 2);
+  EXPECT_EQ(margin->unit().name(), "cm");
+}
+
+/// Nothing to be a percentage of leaves no margin at all.
+TEST(FlatOpenDocumentFile, a_percentage_margin_without_a_parent_states_none) {
+  EXPECT_FALSE(
+      margin_left_of(one_paragraph(R"(fo:margin-left="25%")", "")).has_value());
+}
+
+/// A percentage margin never reaches css, where `%` is of the containing
+/// block's width.
+TEST(FlatOpenDocumentFile, a_percentage_margin_is_resolved_before_the_css) {
+  const std::string html = render(margin_over_parent(R"(fo:margin="100%")"));
+
+  EXPECT_EQ(0U, count(html, "margin-left:100%"));
+  EXPECT_EQ(1U, count(html, "margin-left:2cm"));
+}
