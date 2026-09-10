@@ -12,7 +12,7 @@ namespace odr::internal::oldms::text {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry);
 }
 
@@ -22,7 +22,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
   m_element_adapter =
-      create_element_adapter(*this, m_element_registry, m_style_registry);
+      create_element_adapter(m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -43,10 +43,8 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry,
-                 const StyleRegistry &style_registry)
-      : AdapterBase(registry), m_document(&document),
-        m_style_registry(&style_registry) {}
+  ElementAdapter(ElementRegistry &registry, const StyleRegistry &style_registry)
+      : AdapterBase(registry), m_style_registry(&style_registry) {}
 
   [[nodiscard]] PageLayout text_root_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -59,16 +57,19 @@ public:
     return {};
   }
 
+  /// TODO the `PAP`/`CHP` of a line break is not read.
   [[nodiscard]] TextStyle
   line_break_style(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    return {};
   }
 
+  /// TODO paragraph properties ([MS-DOC] `PAPX`) are not read: alignment,
+  /// indent and spacing all render as the default.
   [[nodiscard]] ParagraphStyle
   paragraph_style(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {}; // TODO
+    return {};
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
@@ -98,9 +99,6 @@ public:
   }
 
 private:
-  // TODO remove maybe_unused
-  [[maybe_unused]]
-  const Document *m_document{nullptr};
   const StyleRegistry *m_style_registry{nullptr};
 
   /// The character style stored for a paragraph or span element.
@@ -112,9 +110,9 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(document, registry, style_registry);
+  return std::make_unique<ElementAdapter>(registry, style_registry);
 }
 
 } // namespace

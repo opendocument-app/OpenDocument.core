@@ -13,7 +13,7 @@ namespace odr::internal::oldms::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry);
 }
 
@@ -23,7 +23,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
   m_element_adapter =
-      create_element_adapter(*this, m_element_registry, m_style_registry);
+      create_element_adapter(m_element_registry, m_style_registry);
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -44,10 +44,8 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry,
-                 const StyleRegistry &style_registry)
-      : AdapterBase(registry), m_document(&document),
-        m_style_registry(&style_registry) {}
+  ElementAdapter(ElementRegistry &registry, const StyleRegistry &style_registry)
+      : AdapterBase(registry), m_style_registry(&style_registry) {}
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {
@@ -174,9 +172,6 @@ public:
   }
 
 private:
-  // TODO remove maybe_unused
-  [[maybe_unused]]
-  const Document *m_document{nullptr};
   const StyleRegistry *m_style_registry{nullptr};
 
   /// The font style of the sheet_cell ancestor (paragraph and text elements
@@ -198,9 +193,9 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry,
+create_element_adapter(ElementRegistry &registry,
                        const StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(document, registry, style_registry);
+  return std::make_unique<ElementAdapter>(registry, style_registry);
 }
 
 } // namespace

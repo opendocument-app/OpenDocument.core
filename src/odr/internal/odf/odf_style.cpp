@@ -336,7 +336,8 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
   }
   if (const std::optional<Measure> font_size =
           read_measure(text_properties.attribute("fo:font-size"))) {
-    // TODO
+    // A percentage is of the parent's size, resolved here rather than passed
+    // to css - the parent style is not on the element in the render.
     if (font_size->unit().name() != "%") {
       result.font_size = font_size;
     } else {
@@ -413,35 +414,45 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   }
   if (const std::optional<Measure> margin =
           read_measure(paragraph_properties.attribute("fo:margin"))) {
-    // TODO
+    // TODO a percentage margin is dropped. css takes `%` here with the same
+    // meaning, so passing it through would work - but it moves the reference
+    // output for every document that uses one.
     if (margin->unit().name() != "%") {
       result.margin = DirectionalStyle(margin);
     }
   }
   if (const std::optional<Measure> margin_right =
           read_measure(paragraph_properties.attribute("fo:margin-right"))) {
-    // TODO
+    // TODO a percentage margin is dropped. css takes `%` here with the same
+    // meaning, so passing it through would work - but it moves the reference
+    // output for every document that uses one.
     if (margin_right->unit().name() != "%") {
       result.margin.right = margin_right;
     }
   }
   if (const std::optional<Measure> margin_top =
           read_measure(paragraph_properties.attribute("fo:margin-top"))) {
-    // TODO
+    // TODO a percentage margin is dropped. css takes `%` here with the same
+    // meaning, so passing it through would work - but it moves the reference
+    // output for every document that uses one.
     if (margin_top->unit().name() != "%") {
       result.margin.top = margin_top;
     }
   }
   if (const std::optional<Measure> margin_left =
           read_measure(paragraph_properties.attribute("fo:margin-left"))) {
-    // TODO
+    // TODO a percentage margin is dropped. css takes `%` here with the same
+    // meaning, so passing it through would work - but it moves the reference
+    // output for every document that uses one.
     if (margin_left->unit().name() != "%") {
       result.margin.left = margin_left;
     }
   }
   if (const std::optional<Measure> margin_bottom =
           read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
-    // TODO
+    // TODO a percentage margin is dropped. css takes `%` here with the same
+    // meaning, so passing it through would work - but it moves the reference
+    // output for every document that uses one.
     if (margin_bottom->unit().name() != "%") {
       result.margin.bottom = margin_bottom;
     }

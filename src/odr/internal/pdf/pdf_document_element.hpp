@@ -79,7 +79,7 @@ struct Page final : Element {
   Object crop_box;   // rectangle array (defaults to media_box)
   Integer rotate{0}; // normalized to {0, 90, 180, 270}
 
-  // TODO remove
+  /// The `/Contents` streams to paint, in order.
   std::vector<ObjectReference> contents_reference;
 };
 

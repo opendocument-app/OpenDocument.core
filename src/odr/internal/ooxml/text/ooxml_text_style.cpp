@@ -159,9 +159,10 @@ void resolve_table_cell_style_(const pugi::xml_node node,
                                TableCellStyle &result) {
   const pugi::xml_node table_cell_properties = node.child("w:tcPr");
 
+  // TODO `w:tcW` is read and dropped. A cell width here fights the column
+  // width the table already states, and the two disagree in real documents.
   if (const std::optional<Measure> width =
           read_width_attribute(table_cell_properties.child("w:tcW"))) {
-    // result.width = width; // TODO
   }
   if (const std::optional<VerticalAlign> vertical_align =
           read_vertical_align_attribute(

@@ -503,7 +503,8 @@ public:
         return AbsPath("/word").join(RelPath(rel->second)).string();
       }
     }
-    return ""; // TODO
+    // an unresolvable relationship leaves no href rather than a broken one
+    return "";
   }
 
 private:
