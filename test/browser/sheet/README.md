@@ -10,13 +10,19 @@ open http://localhost:8732/tests.html
 open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
+open http://localhost:8732/keyboard.html
 ```
 
-`serve` serves `document.css`, `spreadsheet.css`, `spreadsheet.js` and
-`sheet-editing.js` straight out of `src/odr/internal/html/frontend/`, so what
-runs is the file the library embeds. Each page prints its own report and heads
-it with a count; a page holds one `.odr-sheet`, because the script binds to the
-first one it finds.
+`serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
+`spreadsheet.js` and `sheet-editing.js` straight out of
+`src/odr/internal/html/frontend/`, so what runs is the file the library embeds.
+Each page prints its own report and heads it with a count; a page holds one
+`.odr-sheet`, because the script binds to the first one it finds.
+
+`editing.js` goes first, as the library writes it: it owns `odr.editing` and
+`odr.takesKeys`, and both of the other scripts read them. The page states the
+frame on its `<body>` — `data-odr-editable` and `data-odr-keyboard` — because
+that is where `translate` writes it.
 
 - **`tests.html`** — raising a cell whose text is cut off. The markup is what
   `translate_sheet` writes, cut down to the shapes the script has to tell apart:
@@ -35,6 +41,9 @@ first one it finds.
   where its neighbour shows something, a formula cell, a cell of several runs,
   and one whose single run carries a style a write must keep. Undo, redo and
   the log a save resets follow.
+- **`keyboard.html`** — a page whose config took both key classes away. The
+  arrows, Escape, a printable key and the undo chord are all the host's, while
+  the commands (`editAt`, `undo`) and the open editor's own keys still work.
 - **`sorting.html`** — the same questions after the sort control has moved every
   row. Nothing here is merged, because a merged sheet is offered no sort
   control; a row is found by the label it carries, so where it now sits does not

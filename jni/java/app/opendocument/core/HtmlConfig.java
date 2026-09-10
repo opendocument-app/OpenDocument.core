@@ -21,6 +21,11 @@ public final class HtmlConfig {
 
   public boolean editable = false;
 
+  /** Whether the view's scripts take the keys that move the selection. */
+  public boolean keyboardNavigation = true;
+  /** Whether the view's scripts take the editing chords: undo and redo. */
+  public boolean keyboardShortcuts = true;
+
   public boolean textDocumentMargin = false;
 
   /** The colors a document renders against. */

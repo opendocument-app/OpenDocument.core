@@ -453,6 +453,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_string("resourcePath", config.resource_path);
   set_boolean("relativeResourcePaths", config.relative_resource_paths);
   set_boolean("editable", config.editable);
+  set_boolean("keyboardNavigation", config.keyboard_navigation);
+  set_boolean("keyboardShortcuts", config.keyboard_shortcuts);
   set_boolean("textDocumentMargin", config.text_document_margin);
   set_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;",
              enum_from_code(env, "app/opendocument/core/HtmlColorScheme",
@@ -573,6 +575,8 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   }
   result.relative_resource_paths = get_boolean("relativeResourcePaths");
   result.editable = get_boolean("editable");
+  result.keyboard_navigation = get_boolean("keyboardNavigation");
+  result.keyboard_shortcuts = get_boolean("keyboardShortcuts");
   result.text_document_margin = get_boolean("textDocumentMargin");
   {
     const jint code = enum_ordinal(

@@ -87,6 +87,10 @@ constexpr Asset search_dark_css_asset{HtmlResourceType::css, "text/css",
                                       frontend_assets::search_dark_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", frontend_assets::document_js};
+/// `odr.editing`: the mode, the refusals and the log a save reads, generic
+/// over every format. An editor script attaches itself to it.
+constexpr Asset editing_js_asset{HtmlResourceType::js, "text/javascript",
+                                 "editing.js", frontend_assets::editing_js};
 /// Text search over the rendered page, format-agnostic: it walks text nodes.
 constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
                                 "search.js", frontend_assets::search_js};
@@ -96,9 +100,8 @@ constexpr Asset search_js_asset{HtmlResourceType::js, "text/javascript",
 constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
                                      "spreadsheet.js",
                                      frontend_assets::spreadsheet_js};
-/// `odr.editing`: the mode, and the refusals the page reports to its host.
-/// A sheet's editing is an overlay, so the markup states only what the page
-/// cannot work out - the document's editability and a locked cell's reason.
+/// The cell overlay, and the locks the markup states because the page cannot
+/// work them out: a sheet's editing is an overlay, not `contenteditable`.
 constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
                                        "sheet-editing.js",
                                        frontend_assets::sheet_editing_js};
@@ -257,6 +260,10 @@ void html::write_search_dark_style(const WritingState &state) {
   write_dark_style(search_dark_css_asset, state);
 }
 
+void html::write_editing_script(const WritingState &state) {
+  write_script(editing_js_asset, state);
+}
+
 void html::write_document_script(const WritingState &state) {
   write_script(document_js_asset, state);
 }
@@ -267,6 +274,9 @@ void html::write_search_script(const WritingState &state) {
 
 void html::write_spreadsheet_script(const WritingState &state) {
   write_script(spreadsheet_js_asset, state);
+}
+
+void html::write_sheet_editing_script(const WritingState &state) {
   write_script(sheet_editing_js_asset, state);
 }
 

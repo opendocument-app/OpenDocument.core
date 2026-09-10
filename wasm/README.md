@@ -67,14 +67,27 @@ Editing is a round trip through the rendered page:
 ```js
 const doc = odr.open(bytes, { editable: true });
 const { html } = doc.render(0);
+const page = iframe.contentWindow.odr;
+// The mode starts off, whatever the config: turning it on is the host's, and
+// `enable()` refuses where the document cannot be edited.
+page.editing.enable();
 // ... the reader edits the page in the iframe ...
-// `generateDiff()` returns the json already; stringifying it again is a string
-// where `edit` wants an object, and it throws.
-doc.edit(iframe.contentWindow.odr.generateDiff());
+// `getOperations()` returns the json already; stringifying it again is a string
+// where `edit` wants an object, and it throws. `generateDiff()` is the older
+// name for the same envelope.
+doc.edit(page.editing.getOperations());
 
 const saved = doc.save();   // the document, not the html
 download(new Blob([saved]));
+// The page and the file agree now, so its log resets and undo starts over.
+page.editing.committed();
 ```
+
+`odr.editing` is on every document view, editable or not: `isEditable()` is what
+greys a host's edit button, and `onEditRefused` says why an edit was refused.
+`keyboardNavigation` and `keyboardShortcuts` in the config decide whether the
+page takes the arrow keys and the undo chord, for a host that has its own.
+`example/index.html` wires the whole surface.
 
 `isEditable()` and `isSavable()` answer for this document, where
 `capabilities()` answers for the format. Only ODF and docx can be saved so far;

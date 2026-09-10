@@ -256,12 +256,24 @@ it means.
 ### 11. `HtmlConfig::editable` writes the scaffolding; only JavaScript turns the mode on
 
 `editable` steers one thing: whether the render **offers** editing. True writes
-the editing scripts, the page-level state and the per-element addressing. False
-writes none of it, and the page has no `odr.editing`.
+the per-element addressing, the page-level editable state and the editor script
+of the format at hand. False writes none of those.
 
 The mode itself always starts **off**. A host that opens a document to edit it
 calls `odr.editing.enable()` at the point it wires its callbacks, which is after
 the page has loaded either way.
+
+**`odr.editing` is on every document view either way**, because `editing.js` is
+written unconditionally. On a page with no scaffolding it answers
+`isEditable() === false`, `enable()` refuses with `readOnly`, and
+`getOperations()` hands out an empty envelope. So a host asks the page rather
+than tracking what it rendered with, and `odr.generateDiff()` — the name the
+apps and the wasm package already call — never goes missing.
+
+What the flag keeps out of a read-only render is what actually costs: the
+`data-odr-path` attribute on every editable run, the lock class on every locked
+cell, and the editor script (`document.js`, `sheet-editing.js`). The mode script
+itself is small and buys the host one API for every format.
 
 **Why not let it steer the default state of the mode:** it would be a second
 meaning on one flag, and it buys a host nothing. A host assigns
@@ -275,6 +287,10 @@ would carry the editor's script bytes and an attribute on every editable run for
 nothing. `data-odr-path` on the runs of a text document is the expensive half,
 and it cannot be added later — the mode can only turn on if the addresses are
 already in the page.
+
+**Why the keyboard classes are stated either way:** they are not an editing
+fact. A read-only sheet has a pinned cell, and Escape clears it
+(`spreadsheet.js`), so `data-odr-keyboard` is written on every document view.
 
 **Why it may still change the markup, when decision 3 of
 [`spreadsheet-editing.md`](spreadsheet-editing.md) said it must not:** that
@@ -482,7 +498,9 @@ session-scoped, decision 4).
   [`spreadsheet-editing.md`](spreadsheet-editing.md)). Does the adapter hook
   grow into `element_edit_lock(id) -> reason`, or does the renderer keep
   deciding the reason from the element it is over?
-- The plain-text view (`html/text_file.cpp`) writes `contenteditable` on its
-  whole body under `config.editable`, and `txt` declares no `edit` capability —
-  so nothing collects or replays those edits. Decision 11 drops the attribute.
-  Does the source view get a real editor later, or stay a reader?
+- The plain-text view (`html/text_file.cpp`) is outside the mode: `text.js` is
+  its own editor, with its own `beforeinput` interception and its own undo, and
+  `config.editable` writes the `contenteditable` it needs. Nothing replays those
+  edits into a file, because `txt` declares no `edit` capability. Does that view
+  attach to `odr.editing` — which would need an editable-but-not-savable state —
+  or stay the one editor that answers to nobody?

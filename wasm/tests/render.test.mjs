@@ -100,8 +100,10 @@ describe('render', () => {
     const plain = odr.open(fixture('mixed-layout.odt'));
     const editable = odr.open(fixture('mixed-layout.odt'), { editable: true });
     try {
-      assert.ok(!plain.render(0).html.includes('contenteditable'));
-      assert.ok(editable.render(0).html.includes('contenteditable'));
+      // `editable` writes the scaffolding the mode needs, not
+      // `contenteditable`: the mode writes that when a host turns it on.
+      assert.ok(!plain.render(0).html.includes('data-odr-path'));
+      assert.ok(editable.render(0).html.includes('data-odr-path'));
     } finally {
       plain.close();
       editable.close();

@@ -664,6 +664,14 @@ std::size_t count(const std::string &haystack, const std::string_view needle) {
   return result;
 }
 
+/// The config a host renders with to offer editing: the scaffolding the mode
+/// needs is written only under it.
+HtmlConfig editing_config() {
+  HtmlConfig config;
+  config.editable = true;
+  return config;
+}
+
 std::string render_sheet(const DecodedFile &file, const HtmlConfig &config) {
   std::ostringstream out;
   html::translate(file, config).list_views().at(0).write_html(out);
@@ -839,28 +847,76 @@ TEST(html, a_cell_holding_one_plain_string_writes_no_box_of_its_own) {
   EXPECT_EQ(page.find("<x-p"), std::string::npos);
 }
 
-// A sheet's editing is an overlay, so `editable` changes none of its markup,
-// and the run folds into its `td` as an editable one refused to.
-TEST(html, an_editable_sheet_writes_the_markup_a_read_only_one_does) {
-  HtmlConfig config;
-  config.editable = true;
-
-  const DecodedFile file =
-      fods_file(fods_row(fods_cell("one") + fods_cell("two")));
-  const std::string page = render_sheet(file, config);
+// A sheet's editing is an overlay, so no run of it says so in the markup.
+TEST(html, an_editable_sheet_writes_no_contenteditable) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one") + fods_cell("two"))),
+                   editing_config());
 
   EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
-  EXPECT_EQ(page, render_sheet(file, HtmlConfig()));
 }
 
-// The page cannot work these out for itself, so the markup states them: which
-// sheet an op names, and whether `enable()` may say yes at all.
-TEST(html, a_sheet_states_its_index_and_whether_it_can_be_edited) {
+// Which sheet an op names is a fact about the view, not about editing.
+TEST(html, a_sheet_states_its_index_whatever_the_config) {
   const std::string page =
       render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
 
   EXPECT_NE(page.find(R"(data-odr-sheet="0")"), std::string::npos);
+}
+
+// The page cannot work this out for itself, so the body states it: whether
+// `enable()` may say yes at all.
+TEST(html, a_document_states_on_its_body_whether_it_can_be_edited) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), editing_config());
+
   EXPECT_NE(page.find(R"(data-odr-editable="true")"), std::string::npos);
+}
+
+// A render that offers no editing carries none of the scaffolding: not the
+// state, not a lock, not an address.
+TEST(html, a_read_only_render_writes_no_editing_scaffolding) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+          R"( office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      HtmlConfig());
+
+  // The attribute, not the name: the stylesheet and the scripts the page
+  // carries name both of these either way.
+  EXPECT_EQ(page.find(R"(data-odr-editable=")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
+}
+
+// The classes the scripts may take, which a host with its own bindings keeps.
+TEST(html, a_document_states_the_key_classes_its_scripts_take) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+
+  EXPECT_NE(page.find(R"(data-odr-keyboard="navigation shortcuts")"),
+            std::string::npos);
+}
+
+TEST(html, a_config_takes_the_key_classes_away) {
+  HtmlConfig config;
+  config.keyboard_navigation = false;
+  config.keyboard_shortcuts = false;
+
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), config);
+
+  EXPECT_NE(page.find(R"(data-odr-keyboard="")"), std::string::npos);
+}
+
+TEST(html, a_config_takes_one_key_class_away) {
+  HtmlConfig config;
+  config.keyboard_navigation = false;
+
+  const std::string page =
+      render_sheet(fods_file(fods_row(fods_cell("one"))), config);
+
+  EXPECT_NE(page.find(R"(data-odr-keyboard="shortcuts")"), std::string::npos);
 }
 
 // A formula cell is locked: overwriting it leaves its dependants stale.
@@ -870,7 +926,7 @@ TEST(html, a_formula_cell_is_locked_with_its_reason) {
           R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
           R"( office:value-type="float" office:value="7">)"
           R"(<text:p>7</text:p></table:table-cell>)")),
-      HtmlConfig());
+      editing_config());
 
   EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
   EXPECT_NE(page.find("odr-locked"), std::string::npos);
@@ -882,7 +938,7 @@ TEST(html, a_cell_of_several_runs_carries_no_lock) {
       fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
                          R"(<text:p>two <text:span>runs</text:span></text:p>)"
                          R"(</table:table-cell>)")),
-      HtmlConfig());
+      editing_config());
 
   EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
 }
@@ -894,7 +950,7 @@ TEST(html, a_cell_holding_a_link_is_locked_rich) {
       fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
                          R"(<text:p><text:a xlink:href="https://x.example">)"
                          R"(x</text:a></text:p></table:table-cell>)")),
-      HtmlConfig());
+      editing_config());
 
   EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
 }
@@ -906,7 +962,7 @@ TEST(html, a_cell_of_several_paragraphs_is_locked_rich) {
       fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
                          R"(<text:p>a</text:p><text:p>b</text:p>)"
                          R"(</table:table-cell>)")),
-      HtmlConfig());
+      editing_config());
 
   EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
 }
@@ -914,22 +970,28 @@ TEST(html, a_cell_of_several_paragraphs_is_locked_rich) {
 // The cost is a class on the locked cells only, nothing on the others.
 TEST(html, a_plain_cell_carries_no_lock) {
   const std::string page =
-      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
+      render_sheet(fods_file(fods_row(fods_cell("one"))), editing_config());
 
   EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
   // the stylesheet names the class either way
   EXPECT_EQ(page.find(R"(class="odr-locked")"), std::string::npos);
 }
 
-// A text document still says so in the markup: it has no overlay.
-TEST(html, an_editable_text_document_marks_its_runs) {
-  HtmlConfig config;
-  config.editable = true;
+// A text document addresses its runs, because an op names one. The mode writes
+// `contenteditable` on them, so the same page serves both modes.
+TEST(html, an_editable_text_document_addresses_its_runs) {
+  const std::string page = render_odt(editing_config());
 
-  const std::string page = render_odt(config);
-
-  EXPECT_NE(page.find(R"(contenteditable="true")"), std::string::npos);
   EXPECT_NE(page.find("data-odr-path"), std::string::npos);
+  EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
+}
+
+// The address is the expensive half of the scaffolding, and a read-only render
+// pays none of it.
+TEST(html, a_read_only_text_document_addresses_no_run) {
+  const std::string page = render_odt(HtmlConfig());
+
+  EXPECT_EQ(page.find("data-odr-path"), std::string::npos);
 }
 
 // #822: a sheet cell does not break its text into lines unless the file says

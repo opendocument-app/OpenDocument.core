@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet keyboard checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <!-- The page states an empty `data-odr-keyboard`, as a config with both key
+       classes off writes it: the host owns the arrows and the chords. -->
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard=""
+  >
+    <table class="odr-sheet" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td style="max-width:0;white-space:nowrap">one</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(target, key, modifiers) {
+        modifiers = modifiers || {};
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: key,
+            shiftKey: !!modifiers.shift,
+            ctrlKey: !!modifiers.ctrl,
+            bubbles: true,
+          })
+        );
+        document.body.offsetHeight;
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+
+      check("the page takes neither class", odr.takesKeys("navigation") === false && odr.takesKeys("shortcuts") === false);
+      check("the mode still turns on", odr.editing.enable() === true);
+
+      odr.sheet.pin({ column: 0, row: 0 });
+      press(document.body, "ArrowRight");
+      check("an arrow leaves the pin where it is", odr.sheet.pinned().column === 0);
+      press(document.body, "Escape");
+      check("escape does not clear the pin", odr.sheet.pinned() !== null);
+      press(document.body, "x");
+      check("a printable key opens no editor", editor() === null);
+      press(document.body, "Delete");
+      check("and delete writes nothing", ops().length === 0);
+
+      // The commands are the host's way in, and no config takes them away.
+      check("the host still opens the editor", odr.editing.editAt(1, 0) === true && editor() !== null);
+      editor().value = "typed";
+      press(editor(), "Enter");
+      check("the open editor keeps its own keys", editor() === null && ops().length === 1);
+
+      check("undo is still a command", odr.editing.undo() === true && ops().length === 0);
+      odr.editing.editAt(1, 0);
+      editor().value = "again";
+      press(editor(), "Enter");
+      press(document.body, "z", { ctrl: true });
+      check("but the chord is not taken", ops().length === 1);
+    </script>
+  </body>
+</html>

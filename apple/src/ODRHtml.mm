@@ -89,6 +89,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _resourcePath = to_nsstring(config.resource_path);
   _relativeResourcePaths = config.relative_resource_paths ? YES : NO;
   _editable = config.editable ? YES : NO;
+  _keyboardNavigation = config.keyboard_navigation ? YES : NO;
+  _keyboardShortcuts = config.keyboard_shortcuts ? YES : NO;
   _textDocumentMargin = config.text_document_margin ? YES : NO;
   _colorScheme = static_cast<ODRHtmlColorScheme>(config.color_scheme);
   if (config.spreadsheet_limit.has_value()) {
@@ -156,6 +158,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   }
   config.relative_resource_paths = _relativeResourcePaths == YES;
   config.editable = _editable == YES;
+  config.keyboard_navigation = _keyboardNavigation == YES;
+  config.keyboard_shortcuts = _keyboardShortcuts == YES;
   config.text_document_margin = _textDocumentMargin == YES;
   config.color_scheme = static_cast<odr::HtmlColorScheme>(_colorScheme);
   if (_spreadsheetLimit != nil) {

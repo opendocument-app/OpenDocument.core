@@ -1,30 +1,46 @@
+// The text editor, attached to `odr.editing` as one editor among the formats.
+// Still the skeleton `editing.md` phase 3 replaces: the browser edits the runs
+// and a `MutationObserver` reads back what changed, so there is no selection
+// model, no mark and no undo of our own.
 (function () {
   "use strict";
 
   var odr = (window.odr = window.odr || {});
 
-  odr.onError = function (code, message) {
-    console.error("error " + code + " message " + message);
-  };
-
-  var errorIllegalEditNewLine = {
-    code: 1,
-    message: "new line not supported by this document",
-  };
+  var runs = document.querySelectorAll("[data-odr-path]");
+  if (runs.length === 0) {
+    return;
+  }
 
   var modified = {};
 
-  odr.generateDiff = function () {
+  function operations() {
     var ops = [];
     for (var path in modified) {
       if (Object.prototype.hasOwnProperty.call(modified, path)) {
         ops.push({ op: "setText", path: path, text: modified[path].innerText });
       }
     }
-    return JSON.stringify({ version: 1, ops: ops });
-  };
+    return ops;
+  }
+
+  /// The mode writes `contenteditable`; the markup carries the address alone,
+  /// so the same page serves both modes.
+  function editable(on) {
+    for (var i = 0; i < runs.length; ++i) {
+      if (on) {
+        runs[i].setAttribute("contenteditable", "true");
+      } else {
+        runs[i].removeAttribute("contenteditable");
+      }
+    }
+  }
 
   new MutationObserver(function (mutations) {
+    if (!odr.editing.isEnabled()) {
+      return;
+    }
+    var moved = false;
     for (var i = 0; i < mutations.length; ++i) {
       if (mutations[i].type !== "characterData") {
         continue;
@@ -35,7 +51,11 @@
       var owner = parent && parent.closest("[data-odr-path]");
       if (owner) {
         modified[owner.getAttribute("data-odr-path")] = owner;
+        moved = true;
       }
+    }
+    if (moved) {
+      odr.editing.changed();
     }
   }).observe(document.body, {
     childList: true,
@@ -43,10 +63,30 @@
     characterData: true,
   });
 
+  // A run is one line, so a new line inside it has nowhere to go in the file.
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      odr.onError(errorIllegalEditNewLine.code, errorIllegalEditNewLine.message);
+    if (!odr.editing.isEnabled() || event.key !== "Enter") {
+      return;
     }
+    var target = event.target;
+    var owner = target && target.closest && target.closest("[data-odr-path]");
+    if (owner === null || owner === undefined) {
+      return;
+    }
+    event.preventDefault();
+    odr.editing.refuse("newLine", { path: owner.getAttribute("data-odr-path") });
+  });
+
+  odr.editing.attach({
+    enable: function () {
+      editable(true);
+    },
+    disable: function () {
+      editable(false);
+    },
+    operations: operations,
+    committed: function () {
+      modified = {};
+    },
   });
 })();

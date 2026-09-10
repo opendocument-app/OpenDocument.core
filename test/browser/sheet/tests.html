@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
   </head>
-  <body class="odr-body odr-gridlines-soft">
+  <body class="odr-body odr-gridlines-soft" data-odr-keyboard="navigation shortcuts">
     <!-- What `translate_sheet` writes, cut down to the shapes the script has to
          tell apart: a cell that spills, one that is cut, one that keeps its
          block, and one that writes its string without one. -->
@@ -54,6 +54,7 @@
     </table>
 
     <div id="report"></div>
+    <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="checks.js"></script>
     <script>

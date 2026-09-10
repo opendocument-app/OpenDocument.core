@@ -6,11 +6,11 @@
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
   </head>
-  <body class="odr-body odr-gridlines-soft">
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A merged sheet as `translate_sheet` writes one: no `td` stands where a
          span covers a position. B1 spans two columns, A2 two rows, and D4 two
          rows past the last cell row 5 writes. C2 carries a lock. -->
-    <table class="odr-sheet" data-odr-editable="true" data-odr-sheet="0">
+    <table class="odr-sheet" data-odr-sheet="0">
       <col class="odr-sheet-gutter" />
       <col />
       <col />
@@ -62,6 +62,7 @@
     </table>
 
     <div id="report"></div>
+    <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
     <script src="sheet-editing.js"></script>
     <script src="checks.js"></script>

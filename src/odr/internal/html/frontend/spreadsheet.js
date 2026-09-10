@@ -482,11 +482,15 @@
     }
   });
 
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") {
-      pin(-1, null, null);
-    }
-  });
+  // Navigation, not editing: a read-only sheet has a pin, and this is what
+  // clears it.
+  if (odr.takesKeys("navigation")) {
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        pin(-1, null, null);
+      }
+    });
+  }
 
 
   var body = table.tBodies[0];
