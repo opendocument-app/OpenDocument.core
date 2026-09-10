@@ -84,6 +84,50 @@ describe('edit', () => {
     }
   });
 
+  it('edits structurally by id and saves the result', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      const id = firstEditableRunId(doc.render(0).html);
+
+      assert.equal(typeof doc.insertTextBefore(id, 'before '), 'number');
+      assert.equal(typeof doc.insertTextAfter(id, ' after'), 'number');
+
+      const paragraph = doc.insertParagraphAfter(
+        Number(doc.render(0).html.match(/<x-p [^>]*data-odr-id="(\d+)"/)[1]));
+      doc.appendText(paragraph, 'a new paragraph');
+
+      const reopened = odr.open(doc.save());
+      try {
+        const html = reopened.render(0).html;
+        assert.match(html, /before /);
+        assert.match(html, /a new paragraph/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('removes an element by id', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      doc.removeElement(firstEditableRunId(doc.render(0).html));
+      assert.doesNotMatch(doc.render(0).html, /hello/);
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('refuses an id the document does not hold', () => {
+    const doc = odr.open(minimalOdt('hello'));
+    try {
+      assert.throws(() => doc.removeElement(999999), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('saves without a render having happened', () => {
     const doc = odr.open(minimalOdt('untouched'));
     try {

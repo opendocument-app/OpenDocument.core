@@ -239,3 +239,20 @@ def test_file_and_path_entry_points_agree(odt_path):
         pyodr.open(file).as_document_file().file_type()
         == pyodr.open(path).as_document_file().file_type()
     )
+
+
+def test_text_file_writes_an_edit_back(txt_path):
+    text_file = pyodr.open(str(txt_path)).as_text_file()
+    assert text_file.is_savable()
+
+    edited = text_file.write_edited(
+        '{"version":2,"ops":[{"op":"setContent","text":"rewritten\\n"}]}'
+    )
+    assert edited == b"rewritten\n"
+
+
+def test_a_csv_holds_a_text_file_rather_than_being_one(csv_path):
+    file = pyodr.open(str(csv_path))
+    assert not file.is_text_file()
+    assert file.is_csv_file()
+    assert file.as_csv_file().text_file().text().startswith("name,value")

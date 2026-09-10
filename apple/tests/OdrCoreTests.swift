@@ -104,15 +104,16 @@ final class DecodeTests: XCTestCase {
     }
   }
 
-  /// A csv is a *text* file to odrcore, not a document file. It does have an
-  /// element tree — `CsvFile.document()` is a second view of the same bytes —
-  /// but that does not move it out of `FileCategory.text`.
-  func testCsvIsTextRatherThanADocument() throws {
+  /// A csv is neither a document file nor a text file: it *holds* a text file,
+  /// and `CsvFile.document()` is the other view of the same bytes. Its bytes
+  /// are still text, so it stays in `FileCategory.text`.
+  func testCsvIsNeitherADocumentNorATextFile() throws {
     let path = try write("a,b\n1,2\n", as: "table.csv")
     let decoded = try DecodedFile.decode(path: path)
     XCTAssertEqual(decoded.fileType, .commaSeparatedValues)
     XCTAssertEqual(decoded.fileCategory, .text)
     XCTAssertFalse(decoded.isDocumentFile)
+    XCTAssertFalse(decoded.isTextFile)
   }
 
   /// `odr::Filesystem::exists("")` throws `std::invalid_argument`. Unguarded,
@@ -379,6 +380,91 @@ final class DocumentSaveTests: XCTestCase {
     let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
     XCTAssertTrue(
       reloadedRoot.descendants(ofType: Text.self).contains { $0.content == "saved to memory" })
+  }
+}
+
+final class DocumentStructuralEditTests: XCTestCase {
+  private func document() throws -> Document {
+    try DecodedFile.decode(path: try Fixture.odt())
+      .asDocumentFile().document()
+  }
+
+  func testElementByIdentifierResolvesWhatIdentifierHandedOut() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let run = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+
+    let found = try XCTUnwrap(document.element(identifier: run.identifier))
+
+    XCTAssertEqual((found as? Text)?.content, run.content)
+    XCTAssertNil(document.element(identifier: 999_999))
+  }
+
+  func testInsertedRunsSurroundTheAnchor() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let run = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+
+    let before = try XCTUnwrap(try document.insertText(before: run, text: "before "))
+    let after = try XCTUnwrap(try document.insertText(after: run, text: " after"))
+
+    XCTAssertEqual(before.content, "before ")
+    XCTAssertEqual(after.content, " after")
+    XCTAssertEqual(
+      root.descendants(ofType: Text.self).prefix(3).map(\.content),
+      ["before ", Fixture.odtText[0], " after"])
+  }
+
+  func testAnAddedParagraphTakesAnAddedRun() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let first = try XCTUnwrap(root.firstDescendant(ofType: Paragraph.self))
+
+    let added = try XCTUnwrap(try document.insertParagraph(after: first))
+    let run = try XCTUnwrap(try document.appendText(to: added, text: "a new paragraph"))
+
+    XCTAssertEqual(run.content, "a new paragraph")
+    XCTAssertTrue(
+      root.descendants(ofType: Text.self).contains { $0.content == "a new paragraph" })
+  }
+
+  func testRemoveTakesTheElementOut() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let run = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+
+    try document.remove(run)
+
+    // The fixture repeats its runs, so what proves the removal is the sequence.
+    XCTAssertEqual(
+      root.descendants(ofType: Text.self).map(\.content),
+      Array(Fixture.odtText.dropFirst()))
+  }
+
+  func testSplitAndMergeAreInverse() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let first = try XCTUnwrap(root.firstDescendant(ofType: Paragraph.self))
+    let run = try XCTUnwrap(first.firstDescendant(ofType: Text.self))
+
+    _ = try document.splitParagraph(first, after: run)
+    try document.mergeParagraphWithNext(first)
+
+    XCTAssertEqual(root.descendants(ofType: Text.self).map(\.content), Fixture.odtText)
+  }
+}
+
+final class TextFileEditTests: XCTestCase {
+  func testWritesAnEditBack() throws {
+    let path = try write("hello text file\n", as: "note.txt")
+    let file = try DecodedFile.decode(path: path).asTextFile()
+    XCTAssertTrue(file.isSavable)
+
+    let edited = try XCTUnwrap(
+      try file.writeEdited(
+        operations: #"{"version":2,"ops":[{"op":"setContent","text":"rewritten"}]}"#))
+
+    XCTAssertEqual(String(data: edited, encoding: .utf8), "rewritten")
   }
 }
 

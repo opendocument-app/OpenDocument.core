@@ -325,6 +325,33 @@ void odr_python::bind_document(py::module_ &m) {
           "Apply the operations our browser-side editor produces.")
       .def("element_by_id", &odr::Document::element_by_id,
            py::arg("identifier"), keep_self_alive)
+      // Structural edits. Each raises for an engine that cannot write, and for
+      // an element of another document.
+      .def("remove", &odr::Document::remove, py::arg("element"),
+           "Remove an element and its subtree.")
+      .def("insert_text_before", &odr::Document::insert_text_before,
+           py::arg("anchor"), py::arg("text"), keep_self_alive,
+           "A run before another, in the same parent, so it takes the same "
+           "style.")
+      .def("insert_text_after", &odr::Document::insert_text_after,
+           py::arg("anchor"), py::arg("text"), keep_self_alive,
+           "A run after another, in the same parent.")
+      .def("append_text", &odr::Document::append_text, py::arg("parent"),
+           py::arg("text"), keep_self_alive,
+           "A run as the last child of an element.")
+      .def("split_paragraph", &odr::Document::split_paragraph,
+           py::arg("paragraph"), py::arg("after") = odr::Element(),
+           keep_self_alive,
+           "Split a paragraph after one of its descendants into a new "
+           "paragraph of the same style. The default splits before every "
+           "child.")
+      .def("merge_paragraph_with_next",
+           &odr::Document::merge_paragraph_with_next, py::arg("paragraph"),
+           "Take the children of the paragraph after this one, which then "
+           "goes.")
+      .def("insert_paragraph_after", &odr::Document::insert_paragraph_after,
+           py::arg("paragraph"), keep_self_alive,
+           "An empty paragraph after this one, of the same style.")
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
       // saving serialises the whole document; holding the GIL for it blocks

@@ -305,7 +305,23 @@ void odr_python::bind_file(py::module_ &m) {
              }
              return std::string(odr::text_encoding_to_string(encoding));
            })
-      .def("text", &odr::TextFile::text);
+      .def("text", &odr::TextFile::text)
+      .def("is_savable", &odr::TextFile::is_savable,
+           "False where the file type is one this library does not write, or "
+           "the encoding cannot be decoded.")
+      .def(
+          "write_edited",
+          [](const odr::TextFile &file, const std::string &operations) {
+            std::ostringstream out;
+            {
+              py::gil_scoped_release release;
+              file.write_edited(operations, out);
+            }
+            return py::bytes(out.str());
+          },
+          py::arg("operations"),
+          "Apply the operations and return the result, as UTF-8 whatever the "
+          "source encoding was.");
 
   py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")
       .def("read", [](const odr::ImageFile &file) {

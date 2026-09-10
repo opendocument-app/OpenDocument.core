@@ -148,3 +148,52 @@ def test_save_to_memory_carries_an_edit(odt_path, tmp_path):
     reloaded = pyodr.open(str(path)).as_document_file().document()
 
     assert "edited in python" in walk_text(reloaded.root_element())
+
+
+def test_structural_edits_build_a_document_in_process(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    body = document.root_element().first_child()
+    first = body.as_paragraph()
+    run = first.first_child().as_text()
+
+    document.insert_text_before(run, "before ")
+    document.insert_text_after(run, " after")
+
+    added = document.insert_paragraph_after(first)
+    document.append_text(added, "a new paragraph")
+
+    path = tmp_path / "structural.odt"
+    path.write_bytes(document.save_to_memory())
+    text = walk_text(pyodr.open(str(path)).as_document_file().document().root_element())
+
+    assert "before Hello from pyodr! after" in text
+    assert "a new paragraph" in text
+
+
+def test_remove_takes_the_element_out(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    run = document.root_element().first_child().first_child().as_text()
+
+    document.remove(run)
+
+    path = tmp_path / "removed.odt"
+    path.write_bytes(document.save_to_memory())
+    text = walk_text(pyodr.open(str(path)).as_document_file().document().root_element())
+
+    assert "Hello from pyodr!" not in text
+    assert "Second paragraph" in text
+
+
+def test_split_and_merge_are_inverse(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    first = document.root_element().first_child().as_paragraph()
+    run = first.first_child().as_text()
+
+    document.split_paragraph(first, run)
+    document.merge_paragraph_with_next(first)
+
+    path = tmp_path / "split.odt"
+    path.write_bytes(document.save_to_memory())
+    text = walk_text(pyodr.open(str(path)).as_document_file().document().root_element())
+
+    assert "Hello from pyodr!" in text

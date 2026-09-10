@@ -151,6 +151,93 @@ Java_app_opendocument_core_Document_rootElementNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_elementByIdNative(JNIEnv *env, jobject,
+                                                      jlong handle,
+                                                      jlong identifier) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->element_by_id(
+        static_cast<odr::ElementIdentifier>(identifier)));
+  });
+}
+
+// Structural edits. A zero element handle is the element that does not exist,
+// which `splitParagraph` takes to mean "move every child".
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Document_removeNative(JNIEnv *env, jobject,
+                                                 jlong handle,
+                                                 jlong element_handle) {
+  guarded(env, [&] {
+    from_handle<odr::Document>(handle)->remove(element(element_handle));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertTextBeforeNative(JNIEnv *env, jobject,
+                                                           jlong handle,
+                                                           jlong anchor_handle,
+                                                           jstring text) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->insert_text_before(
+        element(anchor_handle).as_text(), to_string(env, text)));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertTextAfterNative(JNIEnv *env, jobject,
+                                                          jlong handle,
+                                                          jlong anchor_handle,
+                                                          jstring text) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->insert_text_after(
+        element(anchor_handle).as_text(), to_string(env, text)));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_appendTextNative(JNIEnv *env, jobject,
+                                                     jlong handle,
+                                                     jlong parent_handle,
+                                                     jstring text) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->append_text(
+        element(parent_handle), to_string(env, text)));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_splitParagraphNative(JNIEnv *env, jobject,
+                                                         jlong handle,
+                                                         jlong paragraph_handle,
+                                                         jlong after_handle) {
+  return guarded(env, [&] {
+    const odr::Element after =
+        after_handle == 0 ? odr::Element() : element(after_handle);
+    return wrap_element(from_handle<odr::Document>(handle)->split_paragraph(
+        element(paragraph_handle).as_paragraph(), after));
+  });
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Document_mergeParagraphWithNextNative(
+    JNIEnv *env, jobject, jlong handle, jlong paragraph_handle) {
+  guarded(env, [&] {
+    from_handle<odr::Document>(handle)->merge_paragraph_with_next(
+        element(paragraph_handle).as_paragraph());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertParagraphAfterNative(
+    JNIEnv *env, jobject, jlong handle, jlong paragraph_handle) {
+  return guarded(env, [&] {
+    return wrap_element(
+        from_handle<odr::Document>(handle)->insert_paragraph_after(
+            element(paragraph_handle).as_paragraph()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Document_asFilesystemNative(JNIEnv *env, jobject,
                                                        jlong handle) {
   return guarded(env, [&] {

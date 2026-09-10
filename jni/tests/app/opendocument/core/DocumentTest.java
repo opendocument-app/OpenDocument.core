@@ -1,7 +1,9 @@
 package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -123,5 +125,65 @@ class DocumentTest {
     Document reloaded = Odr.open(reloadedPath.toString()).asDocumentFile().document();
 
     assertTrue(walkText(reloaded.rootElement()).contains("saved to memory"));
+  }
+
+  @Test
+  void elementByIdResolvesWhatIdentifierHandedOut() throws IOException {
+    Document document = openDocument();
+    Element run = document.rootElement().firstChild().firstChild();
+
+    Element found = document.elementById(run.identifier());
+
+    assertNotNull(found);
+    assertEquals(run.asText().content(), found.asText().content());
+    assertNull(document.elementById(999999));
+  }
+
+  @Test
+  void structuralEditsBuildADocumentInProcess() throws IOException {
+    Document document = openDocument();
+    Paragraph first = document.rootElement().firstChild().asParagraph();
+    Text run = first.firstChild().asText();
+
+    document.insertTextBefore(run, "before ");
+    document.insertTextAfter(run, " after");
+
+    Paragraph added = document.insertParagraphAfter(first);
+    document.appendText(added, "a new paragraph");
+
+    List<String> text = walkText(document.rootElement());
+    assertTrue(text.contains("before "));
+    assertTrue(text.contains(" after"));
+    assertTrue(text.contains("a new paragraph"));
+  }
+
+  @Test
+  void removeTakesTheElementOut() throws IOException {
+    Document document = openDocument();
+    Element run = document.rootElement().firstChild().firstChild();
+
+    document.remove(run);
+
+    // The fixture repeats its runs, so what proves the removal is the count.
+    List<String> text = walkText(document.rootElement());
+    assertEquals(TestFiles.ODT_TEXT.size() - 1, text.size());
+    assertEquals(TestFiles.ODT_TEXT.subList(1, TestFiles.ODT_TEXT.size()), text);
+  }
+
+  @Test
+  void splitAndMergeAreInverse() throws IOException {
+    Document document = openDocument();
+    Paragraph first = document.rootElement().firstChild().asParagraph();
+    Text run = first.firstChild().asText();
+
+    document.splitParagraph(first, run);
+    document.mergeParagraphWithNext(first);
+
+    byte[] saved = document.saveToMemory();
+    Path path = tempDir.resolve("split.odt");
+    Files.write(path, saved);
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+
+    assertTrue(walkText(reloaded.rootElement()).contains(TestFiles.ODT_TEXT.get(0)));
   }
 }

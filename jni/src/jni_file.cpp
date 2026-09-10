@@ -293,6 +293,26 @@ Java_app_opendocument_core_TextFile_textNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_TextFile_isSavableNative(JNIEnv *env, jobject,
+                                                    jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).as_text_file().is_savable());
+  });
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_app_opendocument_core_TextFile_writeEditedNative(JNIEnv *env, jobject,
+                                                      jlong handle,
+                                                      jstring operations) {
+  return guarded(env, [&] {
+    std::ostringstream out;
+    decoded(handle).as_text_file().write_edited(to_string(env, operations),
+                                                out);
+    return to_jbytes(env, out.str());
+  });
+}
+
 // app.opendocument.core.ImageFile
 
 extern "C" JNIEXPORT jbyteArray JNICALL

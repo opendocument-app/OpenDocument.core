@@ -369,6 +369,14 @@ NS_SWIFT_NAME(TextFile)
 @property(nonatomic, readonly, nullable, copy) NSString *charset;
 /// The decoded text.
 - (nullable NSString *)textWithError:(NSError **)error NS_SWIFT_NAME(text());
+/// `NO` where the file type is one this library does not write, or the
+/// encoding cannot be decoded.
+@property(nonatomic, readonly) BOOL isSavable;
+/// Applies the operations and returns the result, as UTF-8 whatever the source
+/// encoding was.
+- (nullable NSData *)writeEdited:(NSString *)operations
+                           error:(NSError **)error
+    NS_SWIFT_NAME(writeEdited(operations:));
 @end
 
 /// A decoded image file — `odr::ImageFile`.

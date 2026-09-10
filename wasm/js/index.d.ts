@@ -160,6 +160,23 @@ export declare class Document {
   edit(diff: string): this;
 
   /**
+   * Structural edits, by the id the render wrote into the page as
+   * `data-odr-id`. Each returns the id of what it created; nothing crosses as
+   * a handle. `edit` above is the same operations as one batch.
+   *
+   * @throws OdrError `UnsupportedOperation` where the engine cannot write,
+   *   `invalid_argument` for an id this document does not hold.
+   */
+  removeElement(id: number): this;
+  insertTextBefore(anchorId: number, text: string): number;
+  insertTextAfter(anchorId: number, text: string): number;
+  appendText(parentId: number, text: string): number;
+  /** `afterId` of 0 splits before every child. */
+  splitParagraph(paragraphId: number, afterId?: number): number;
+  mergeParagraphWithNext(paragraphId: number): this;
+  insertParagraphAfter(paragraphId: number): number;
+
+  /**
    * Whether this pdf can take annotations — false for one declaring an
    * `/Encrypt`, or whose cross-reference table had to be rebuilt.
    */

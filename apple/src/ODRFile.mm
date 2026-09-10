@@ -571,6 +571,21 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   });
 }
 
+- (BOOL)isSavable {
+  return guarded_value(
+      [&] { return self.handle.as_text_file().is_savable() ? YES : NO; }, NO);
+}
+
+- (nullable NSData *)writeEdited:(NSString *)operations
+                           error:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    self.handle.as_text_file().write_edited(to_string(operations), out);
+    const std::string bytes = out.str();
+    return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  });
+}
+
 @end
 
 @implementation ODRImageFile

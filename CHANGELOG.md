@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Every binding reaches the structural edit API. python, jni and apple take
+  elements (`remove`, `insertTextBefore`/`After`, `appendText`,
+  `splitParagraph`, `mergeParagraphWithNext`, `insertParagraphAfter`); wasm
+  addresses the same operations by element id, because nothing escapes it as a
+  handle. `element_by_id` and `TextFile.write_edited` are bound too.
+
 - **Breaking**: a csv and a markdown file hold a text file instead of being
   one. `is_text_file()` answers false for them; the plain-text view is
   `as_csv_file().text_file()` / `as_markdown_file().text_file()`.
