@@ -33,9 +33,9 @@ Today the frame is there and the text editor is not:
   save reads and the callbacks a host wires. Every format's editor attaches to
   it; `frontend/sheet-editing.js` is the first one (decision 9).
 - `frontend/document.js` holds the text editor. The mode makes the **whole
-  view** editable and the editor refuses what it cannot replay (decision 13);
-  a `MutationObserver` reads the changed runs back and emits one `setText` op
-  each. No selection model of our own, no marks, no undo yet.
+  view** editable, the editor refuses what it cannot replay, and `input` is
+  what it collects on (decision 13). No selection model of our own, no marks,
+  no undo yet.
 - `Document::edit(diff)` (`src/odr/document.cpp`) parses the op envelope and
   dispatches `setCell` and `setText`.
 - `back_translate` CLI replays a diff file onto a source document and `save`s it.
@@ -377,6 +377,15 @@ furniture, the gap between two paragraphs and the page box are all refused
 without a single attribute of their own. That is decision 10's rule — mark the
 exceptions, not the rest — applied to the caret instead of to a cell.
 
+**`input` is what the log collects on, not a `MutationObserver`.** The browser
+raises `input` when *it* applied an edit; a script rewriting the page raises
+none. That is the whole difference: `search.js` wraps every match in a `<mark>`,
+which an observer watching `characterData` reads as nine edits — measured, and
+it lit the host's save button and put nine no-op `setText` ops in the log. The
+run is the one `beforeinput` named, or the one the caret sits in where no
+`beforeinput` arrived; a run the editor cannot name at all raises code 9 rather
+than being dropped.
+
 **Known holes, both narrow.** A scripted `document.execCommand` can bypass the
 gate, because Chrome does not fire a cancelable `beforeinput` for every command;
 trusted input, which is all a reader has, is refused correctly. And a
@@ -385,6 +394,22 @@ reconciled afterwards, which is why the observer reports code 9 when text
 changes where no op can name it, rather than dropping it in silence. Android
 WebView's incomplete `beforeinput` (decision 8) is the reason that report
 exists; verify it on a device before trusting the gate there.
+
+**Two limits a reader meets, and phase 3 is where both go:**
+
+- **Undo belongs to the browser, not to us.** Every allowed edit is one the
+  browser applied, so its own stack is the one that replays — ctrl+Z works, and
+  `chordKey` leaves the key alone because no editor claims it (decision 9). But
+  we cannot read that stack's depth, so `canUndo` is honestly false and a host's
+  undo *button* stays grey. Phase 3 item 2 is what fixes it: once the editor
+  records an op with its inverse, it answers `undo()` and joins the shared log.
+  Until then the button and the chord disagree, which is worse than either.
+- **Backspace at the start of a run is refused.** Its target range reaches back
+  into the run before it, so the edit spans two and `range` refuses it —
+  merging two runs is not something `setText` can express. It did nothing under
+  the per-run hosts either; the difference is that it now says why. The op that
+  would fix it is `deleteRange` across runs, which needs the write-side adapter
+  work in phase 2, not a browser change.
 
 ## Preliminary implementation plan (ODF / OOXML)
 

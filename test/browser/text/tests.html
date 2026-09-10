@@ -40,6 +40,7 @@
     <div id="out" contenteditable="false"><div id="report"></div></div>
     <script src="editing.js"></script>
     <script src="document.js"></script>
+    <script src="search.js"></script>
     <script src="checks.js"></script>
     <script>
       var refusals = [];
@@ -162,41 +163,50 @@
         );
       }
 
-      // What the browser does when the edit is allowed: it changes the text
-      // node, and the editor reads the run back off the page. The observer
-      // reports on a microtask, so the rest waits a turn.
+      // The collection half. Nothing scripted edits the way a key does -
+      // `execCommand` raises no `beforeinput` and dissolves a run whose whole
+      // text it replaces, neither of which trusted input does - so the two
+      // halves are driven apart: `beforeinput` above for the gate, and here
+      // the text change plus the `input` the browser raises after it.
       check("nothing is collected yet", ops().length === 0);
+      select(first.firstChild, 3);
       first.firstChild.data = "edited in the browser";
+      document.body.dispatchEvent(new Event("input", { bubbles: true }));
+      check(
+        "an allowed edit reaches the log as one setText",
+        ops().length === 1 &&
+          ops()[0].op === "setText" &&
+          ops()[0].path === "/child:0/child:0" &&
+          ops()[0].text === "edited in the browser"
+      );
 
-      window.setTimeout(function () {
-        check(
-          "an allowed edit reaches the log as one setText",
-          ops().length === 1 &&
-            ops()[0].op === "setText" &&
-            ops()[0].path === "/child:0/child:0" &&
-            ops()[0].text === "edited in the browser"
-        );
+      // A script rewriting the page raises no `input`, so the log stays as it
+      // was: nine highlights are not nine edits.
+      var hits = odr.search("edited");
+      check("a search finds its matches", hits > 0 && document.querySelectorAll("mark").length === hits);
+      check("and leaves the log alone", ops().length === 1);
+      odr.resetSearch();
+      check("as does clearing it", ops().length === 1);
 
-        var flow = document.querySelector(".odr-text-flow");
-        flow.appendChild(document.createTextNode("outside every run"));
-        flow.lastChild.data = "changed";
+      // What a WebView raising `input` and no `beforeinput` looks like: the
+      // editor cannot name where it landed, and says so rather than dropping
+      // it.
+      var picture = document.querySelectorAll("x-p")[2];
+      select(picture, 0);
+      document.body.dispatchEvent(new Event("input", { bubbles: true }));
+      check(
+        "an edit the gate never saw is reported rather than lost",
+        errors.length === 1 && errors[0].indexOf("9 ") === 0
+      );
+      check("and it reaches no operation", ops().length === 1);
 
-        window.setTimeout(function () {
-          check(
-            "text changing outside a run is reported rather than lost",
-            errors.length > 0 && errors[0].indexOf("9 ") === 0
-          );
-          check("and it reaches no operation", ops().length === 1);
-
-          odr.editing.committed();
-          check("committing clears the log", ops().length === 0);
-          odr.editing.disable();
-          check(
-            "and turning the mode off puts the view back",
-            document.body.getAttribute("contenteditable") === null
-          );
-        }, 0);
-      }, 0);
+      odr.editing.committed();
+      check("committing clears the log", ops().length === 0);
+      odr.editing.disable();
+      check(
+        "and turning the mode off puts the view back",
+        document.body.getAttribute("contenteditable") === null
+      );
     </script>
   </body>
 </html>

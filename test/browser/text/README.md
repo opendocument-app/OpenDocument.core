@@ -31,13 +31,17 @@ Why the checks look the way they do:
   decision 9), and a refusal is keyed by its run — so the two `newLine` checks
   sit in different runs, and the one outside every run asserts the prevented
   edit rather than a second event.
-- **The collection is a `MutationObserver`**, which reports on a microtask, so
-  the last checks wait a turn. `checks.js` retallies on every check for exactly
-  this reason.
+- **The gate and the collection are driven apart.** `beforeinput` is what
+  refuses; `input` is what collects, because a script rewriting the page raises
+  none — which is how a search highlighting nine matches leaves the log alone.
+  No script can raise the pair the way a key does, so a check drives one or the
+  other.
 
-**A scripted `document.execCommand` can still get past the guard.** Chrome does
-not fire a cancelable `beforeinput` for every command, so
-`execCommand("insertParagraph")` splits a paragraph the editor would have
-refused — leaving two elements under one `data-odr-path`. Trusted input does
-not: a real Enter is refused, which is what a reader can reach. Verified by
-hand on 2026-09-10.
+**Scripted editing is not the editing a reader does, which is why no check uses
+`execCommand`.** Chrome's scripted path differs from its trusted-input path
+twice over: it raises no cancelable `beforeinput`, so
+`execCommand("insertParagraph")` splits a paragraph the gate would have
+refused; and it dissolves a run whose whole text it replaces, leaving the new
+text outside every address. Trusted input does neither — a real Enter is
+refused, and typing over a whole run keeps the run, its address and its style.
+Both were checked by hand in a browser, and neither is reachable by a reader.

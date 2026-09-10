@@ -46,6 +46,11 @@ The release run heads these entries with the version and opens a fresh
   (`newLine`, 1), an edit spanning two runs or landing outside every run
   (`range`, 8), and anything else the browser offers (`unsupportedEdit`, 7).
 
+- **Fix**: searching a text document while the mode is on no longer marks it
+  unsaved. The log is collected from `input`, which the browser raises for an
+  edit it applied, rather than from every text mutation - a search highlighting
+  nine matches was nine no-op `setText` operations.
+
 - **Fix**: double-clicking a sheet cell no longer flashes its border off. A
   click on the pinned cell clears the pin, and the second click of a double
   click was taking it - so selecting a word left the border coming and going.

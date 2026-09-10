@@ -1,7 +1,6 @@
 // The text editor, attached to `odr.editing`. The mode makes the whole view
-// editable and refuses what it cannot replay: only `setText` reaches the file,
-// so an edit has to land inside one addressed run. `editing.md` phase 3
-// replaces the collection with a model of its own.
+// editable and refuses what it cannot replay: `setText` is the only op the
+// file takes, so an edit has to land inside one addressed run.
 (function () {
   "use strict";
 
@@ -32,15 +31,16 @@
     return ops;
   }
 
-  /// The run @p node sits in, or null where it sits outside one - between two
-  /// paragraphs, beside a picture, in the gap under the last block.
+  /// The run @p node sits in, or null where it sits outside every run.
   function runOf(node) {
-    var element = node === null || node.nodeType === 1 ? node : node.parentElement;
+    if (node === null) {
+      return null;
+    }
+    var element = node.nodeType === 1 ? node : node.parentElement;
     return element === null ? null : element.closest("[data-odr-path]");
   }
 
-  // The input types that only ever change the text of one run. Everything else
-  // is refused, because `setText` is the only op the file takes.
+  // The input types that only ever change the text of one run.
   var textual = {
     insertText: 1,
     insertReplacementText: 1,
@@ -54,8 +54,8 @@
     deleteWordForward: 1,
     deleteSoftLineBackward: 1,
     deleteSoftLineForward: 1,
-    // The browser's own stack holds the text edits above and nothing else,
-    // because the structural ones never happened.
+    // Its stack holds the edits above and nothing else: the structural ones
+    // never happened.
     historyUndo: 1,
     historyRedo: 1,
   };
@@ -64,8 +64,7 @@
   var named = { insertParagraph: "newLine", insertLineBreak: "newLine" };
 
   /// Where an edit lands: `run` is the one run it is confined to, null where
-  /// it spans two or lands outside every run. `path` is where it starts, which
-  /// is what a host needs to say *where* an edit was refused.
+  /// it spans two or lands outside every run. `path` is where it starts.
   function target(event) {
     var ranges =
       typeof event.getTargetRanges === "function" ? event.getTargetRanges() : [];
@@ -92,12 +91,16 @@
     if (event.cancelable) {
       event.preventDefault();
     }
-    // The path is what keeps two refusals apart, so a reader pressing Enter in
-    // one run and then in another hears about both.
+    // The path keeps two refusals apart, so Enter in one run and then in
+    // another is heard twice.
     odr.editing.refuse(reason, { path: at.path });
   }
 
+  // Where the edit the gate just allowed will land, for `input` to record.
+  var pending = null;
+
   root.addEventListener("beforeinput", function (event) {
+    pending = null;
     var at = target(event);
     if (!odr.editing.isEnabled()) {
       refuse(event, "readOnly", at);
@@ -115,6 +118,7 @@
       refuse(event, "range", at);
       return;
     }
+    pending = at.run;
     if (event.inputType === "insertFromPaste") {
       // Whatever the clipboard holds, one run takes plain text on one line.
       var text = event.dataTransfer
@@ -131,34 +135,37 @@
     }
   });
 
-  new MutationObserver(function (mutations) {
+  /// The run the caret sits in, for an edit no `beforeinput` announced.
+  function selectedRun() {
+    var selection = window.getSelection();
+    return selection === null || selection.rangeCount === 0
+      ? null
+      : runOf(selection.getRangeAt(0).startContainer);
+  }
+
+  // `input` is the browser saying it applied an edit, which a script rewriting
+  // the page never raises - so a search highlighting nine matches leaves the
+  // log alone. A `MutationObserver` could not tell the two apart.
+  root.addEventListener("input", function () {
     if (!odr.editing.isEnabled()) {
       return;
     }
-    var moved = false;
-    for (var i = 0; i < mutations.length; ++i) {
-      if (mutations[i].type !== "characterData") {
-        continue;
-      }
-      // The nearest owner, not the direct parent: a search `<mark>` may sit
-      // between the edited text and the element carrying the path.
-      var owner = runOf(mutations[i].target);
-      if (owner !== null) {
-        modified[owner.getAttribute("data-odr-path")] = owner;
-        moved = true;
-      } else {
-        // The page changed where no op can name it. `beforeinput` should have
-        // refused this, so a host hearing it has found a hole.
-        odr.onError(9, "text changed outside an addressed run");
-      }
+    // The caret first: the browser has just put it where the edit landed. A
+    // `beforeinput` whose edit changed nothing raises no `input`, so what it
+    // left in `pending` may be a run ago - it is the fallback, not the answer.
+    var run = selectedRun();
+    if (run === null) {
+      run = pending;
     }
-    if (moved) {
-      odr.editing.changed();
+    pending = null;
+    if (run === null) {
+      // The gate refuses an edit it cannot name, so this is a hole in it: a
+      // WebView that raised no `beforeinput`, or a composition it cannot stop.
+      odr.onError(9, "an edit landed where no operation can name it");
+      return;
     }
-  }).observe(root, {
-    childList: true,
-    subtree: true,
-    characterData: true,
+    modified[run.getAttribute("data-odr-path")] = run;
+    odr.editing.changed();
   });
 
   odr.editing.attach({
