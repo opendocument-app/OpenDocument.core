@@ -137,8 +137,7 @@ be what we would have to replay.
 **The consequence: the browser's undo stack goes empty**, because we cancel
 every edit it was going to apply. So this work has to carry undo/redo, which
 until now was honestly refused (`canUndo` answered false and a host's button
-stayed grey). That is phase 3 item 2 of [`editing.md`](editing.md), and it
-arrives here because it is no longer optional. One `beforeinput` is one undo
+stayed grey). It arrives here because it is no longer optional. One `beforeinput` is one undo
 step; a browser coalesces a word, and matching that is a later refinement.
 
 ### 6b. The page is the model, because the editor is the only one writing it

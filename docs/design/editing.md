@@ -1,16 +1,13 @@
 # Editing design
 
-Status: **the mode frame is landed for every format, and the text editor behind
-it is being built.** This records the architecture we chose for in-browser
-editing of ODF and OOXML documents, the alternatives we weighed, and *why* we
-took each decision. Decisions 9 to 12 are the frame every format shares, and
-they are in the code.
+Status: **landed.** This records the architecture we chose for in-browser
+editing, the alternatives we weighed, and *why* we took each decision.
+Decisions 9 to 12 are the frame every format shares.
 
 One document per editor, each holding its own decisions:
 [`spreadsheet-editing.md`](spreadsheet-editing.md) for the sheet view,
-[`document-editing.md`](document-editing.md) for the document view — where the
-phases below are carried out — and [`txt-editing.md`](txt-editing.md) for the
-plain-text one.
+[`document-editing.md`](document-editing.md) for the document view, and
+[`txt-editing.md`](txt-editing.md) for the plain-text one.
 
 This builds on the existing principle in [`README.md`](README.md):
 
@@ -19,30 +16,28 @@ This builds on the existing principle in [`README.md`](README.md):
 
 ## Problem
 
-We render documents to HTML and display them in a WebView (droid / ios). We want
-to let the user edit content — remove any element, add paragraphs, and toggle
-simple inline formatting (bold, italic, underline, highlight) — and persist those
-edits back into the original ODF/OOXML file.
+We render documents to HTML and display them in a WebView (droid / ios), and we
+want the user to edit what they see and have it persist back into the original
+file — with no live connection between the browser and C++.
 
-Today the frame is there and the text editor is not:
+## The pieces
 
-- `html::translate(..., config.editable)` writes the editing scaffolding: the
-  page-level state on `<body>`, `data-odr-id` on every editable run and
-  paragraph, and the scripts that carry the mode (`internal/html/document_element.cpp`,
-  `internal/html/document.cpp`).
+- `html::translate(..., config.editable)` writes the scaffolding: the page-level
+  state on `<body>`, `data-odr-id` on every editable run and paragraph, and the
+  scripts that carry the mode.
 - `frontend/editing.js` owns `odr.editing` — the mode, the refusals, the log a
-  save reads and the callbacks a host wires. Every format's editor attaches to
-  it; `frontend/sheet-editing.js` is the first one (decision 9).
-- `frontend/document.js` holds the text editor. The mode makes the **whole
-  view** editable, the editor refuses what it cannot replay, and `input` is
-  what it collects on (decision 13). No selection model of our own, no marks,
-  no undo yet.
-- `Document::edit(diff)` (`src/odr/document.cpp`) parses the op envelope and
-  dispatches `setCell` and `setText`.
-- `back_translate` CLI replays a diff file onto a source document and `save`s it.
+  save reads and the callbacks a host wires. **Every view has it**, and each
+  format's editor attaches one editor to it (decision 9):
+  `frontend/sheet-editing.js`, `frontend/document.js`, `frontend/text.js`.
+- `Document::edit` replays the envelope: `setCell` for a sheet, and `setText`,
+  `insertText`, `removeElement`, `splitParagraph`, `mergeParagraph` and
+  `insertParagraph` for a document. `TextFile::write_edited` is the plain-text
+  counterpart, since a `.txt` is not a document.
+- `back_translate` CLI replays an envelope onto a source document and `save`s it.
 
-The goal is to generalise this from "replace text in a span" to full content and
-formatting edits, without a live connection between the browser and C++.
+What is **not** done is inline formatting — bold, italic, underline, highlight.
+Decision 5 of [`document-editing.md`](document-editing.md) says why the schema
+takes it without changing.
 
 ## Decisions
 
@@ -223,9 +218,8 @@ projection of a model; the projection is what differs per format.
 **The log is the editor's until an editor can invert its ops.** `getOperations()`
 concatenates what the attached editors report, and `undo()` asks each in turn.
 The sheet keeps an op with its inverse beside it, so it answers; the text
-skeleton keeps a map of changed runs and answers `false`. The moment phase 1
-gives text a real op log, it moves onto the shared one and the concatenation
-becomes a single array.
+skeleton kept a map of changed runs and answered `false`. Every editor answers
+now, so the concatenation is what a save reads and nothing else.
 
 ### 10. The page states its editing frame at page level, on `<body>`
 
@@ -399,160 +393,40 @@ code 9 rather than being dropped. Android WebView's incomplete `beforeinput`
 range the browser did not state is extended by one character rather than
 refused; verify both on a device.
 
-## Preliminary implementation plan (ODF / OOXML)
+## What landed, and what did not
 
-Ordered to de-risk the linchpin (id stability) first and to keep every step
-shippable. "Text" = `odt`/`docx` first; spreadsheet/presentation follow the same
-adapters.
+The plan this document carried ran in five steps, and the first four are in.
+Each per-editor document holds what its own step decided.
 
-### Phase 0 — Stable ids across the HTML boundary (linchpin spike)
+| Step | State |
+|---|---|
+| Stable ids across the html boundary — `data-odr-id`, `Document::element_by_id` | landed |
+| The op envelope and a replay that dispatches over it | landed |
+| The write side of the engines — odf, ooxml text, ooxml presentation | landed |
+| The browser editor, owning the edit and its own undo | landed |
+| **Inline formatting** — bold, italic, underline, highlight | **not started** |
 
-1. Emit `ElementIdentifier` into the HTML as `data-odr-id` for editable elements
-   (extend `internal/html/document_element.cpp`).
-2. Add a resolver `Document::element_by_id(ElementIdentifier)` (public handle →
-   adapter lookup) so C++ can turn an id from the log back into an `Element`.
-3. Confirm the ODF and OOXML text registries can take **append-only inserts +
-   tombstone deletes** without renumbering live ids. This is the go/no-go for A.
+Formatting is the one left, and decision 5 of
+[`document-editing.md`](document-editing.md) is why the schema takes it without
+changing: toggling a mark on part of a run is, in both formats, "split the run,
+restyle the middle one", and the split is already two operations we have. What
+it needs is a `setMark {ids, mark, on}` and, for ODF, the automatic style a mark
+is reached through — a style-registry change with nothing to do with the ops.
 
-### Phase 1 — Op log format + engine-agnostic replay
-
-1. Define the op schema (JSON) and a C++ `EditOp` variant: `setText`,
-   `insertText`, `deleteRange`, `toggleMark`, `splitParagraph`, `insertParagraph`,
-   `deleteElement`. Addressing per decisions 4–5 (`id + anchor + offset`).
-2. Rework `html::edit` from the `modifiedText`-only shape into a dispatcher over
-   the op list that resolves ids and calls a new **mutation API** on the adapters.
-   Keep the version stamp + atomic apply (decision 7).
-3. Land the conformance-corpus harness with the text-only ops it can already
-   satisfy (the current `set_content` is the first case).
-
-### Phase 2 — Write-side adapter API (the real cost; format-specific)
-
-The adapters are decode-only today; add the mutation surface. Deletion is easy,
-insertion is the hard part, formatting sits between.
-
-- **Abstract layer** (`internal/abstract/document.hpp`): add mutation entry points
-  (`element_set_text`, `element_delete`, `element_insert_child`,
-  `element_split`, `element_apply_mark`), gated by `element_is_editable`.
-- **ODF** (`internal/odf/`): text edits mutate the backing pugixml tree.
-  Formatting is *automatic styles referenced by name* — toggling bold means split
-  the run, look up/create an automatic style with the property, reassign. Insert
-  synthesises `<text:p>` / `<text:span>` scaffolding.
-- **OOXML** (`internal/ooxml/`): mirror with `rPr` on runs and `pPr` on
-  paragraphs; split/merge runs on mark toggles; synthesise `w:p` / `w:r`.
-
-Sequence within Phase 2: (a) delete element, (b) toggle mark on a range,
-(c) split paragraph / insert paragraph, (d) insert/paste richer content.
-
-### Phase 3 — Browser editor
-
-**Landed**, over [`document-editing.md`](document-editing.md)'s schema. The mode, the
-refusals, the callbacks and the keyboard classes are in `frontend/editing.js`;
-`document.js` holds the editor, which owns every edit and carries its own
-undo.
-
-1. Model keyed by `data-odr-id`; op recorder; composition-aware reconciliation.
-   `beforeinput` is already the gate (decision 13); what is left is owning the
-   edit rather than letting the browser apply it and reading the run back.
-2. Browser-side undo/redo over the in-memory log; coalescing before emit. The
-   text editor then answers `undo()` rather than refusing it, and its ops move
-   onto the shared log (decision 9).
-3. Emit coalesced JSON to the WebView bridge; wire the native side to
-   `html::edit` + `save`. `odr.editing.getOperations()` is already the envelope
-   a host hands over.
-4. Refusal reasons for text: a field, a link target, a subtree a write would
-   take away unseen. The code table is shared and appended to, never renumbered
-   (decision 7 in [`spreadsheet-editing.md`](spreadsheet-editing.md)).
-
-### Phase 4 — Formatting UI + polish
-
-Selection toolbar for bold/italic/underline/highlight; validation feedback driven
-by `is_editable`; extend from `odt`/`docx` to the remaining ODF/OOXML documents.
-
-## Implementation sketch (grounded in the current code)
-
-### What the code already gives us
-
-The mutation surface exists in embryo. `abstract::Document` declares
-`text_set_content(ElementIdentifier, string)`
-([`abstract/document.hpp`](../../src/odr/internal/abstract/document.hpp)), and both
-engines implement it identically
-([`odf_document.cpp`](../../src/odr/internal/odf/odf_document.cpp),
-[`ooxml_text_document.cpp`](../../src/odr/internal/ooxml/text/ooxml_text_document.cpp)):
-
-1. Resolve `ElementIdentifier` → registry `Element` + `Text` entry.
-2. The `Text` entry holds two pugixml handles, `first`/`last`, spanning the run's
-   nodes.
-3. Rebuild the pcdata / `w:t` / `text:s` nodes between them, then update the
-   registry's `node`/`last` pointers.
-
-Every new op follows the same shape: **resolve id → registry entry (pugixml node)
-→ mutate the pugixml subtree → fix up registry pointers (append / tombstone for
-structural ops).** Identical in ODF and OOXML — only the tag names and the style
-mechanism differ.
-
-### Abstract API additions (`abstract/document.hpp`)
-
-New hooks alongside `text_set_content`, all gated by `element_is_editable(id)` and
-throwing on unsupported input (fail fast):
-
-```cpp
-virtual void text_replace_range(ElementIdentifier id, uint32_t start,
-                                uint32_t length, const std::string &text) = 0;
-virtual ElementIdentifier
-    element_insert(ElementIdentifier parent, ElementIdentifier anchor,
-                   Anchor where /*before|after|end*/, ElementType type) = 0;
-virtual void element_delete(ElementIdentifier id) = 0;          // tombstone
-virtual ElementIdentifier element_split(ElementIdentifier id, uint32_t off) = 0;
-virtual void mark_apply(ElementIdentifier id, uint32_t start, uint32_t length,
-                        Mark mark, bool on) = 0;                // bold/italic/…
-```
-
-`html::edit` stops being `modifiedText`-only and becomes a dispatcher: parse the
-op list → resolve ids via a new `Document::element_by_id` → call the matching hook,
-all against an in-memory copy, writing only on full success (decision 7).
-
-### Op → replay, per engine
-
-| Op | ODF replay | OOXML replay |
-|----|-----------|-------------|
-| `deleteElement` | `remove_child` across `first..last`; **tombstone** the registry slot | same, over `w:r`/`w:p` |
-| `toggleMark(range, bold)` | split run; assign an **automatic style** (`text:style-name`) — find or create a `<style:style>` with `fo:font-weight="bold"` | split `w:r`; set `<w:rPr><w:b/>` on the middle run |
-| `splitParagraph` | clone `<text:p>` (copy style-name), move trailing nodes into the clone | clone `<w:p>` incl. `w:pPr`, move trailing `w:r` |
-| `insertParagraph` | `insert_child_after` a fresh `<text:p>` at anchor; **append** registry entry | fresh `<w:p>`; append |
-| `insertText(range)` | reuse the `text_set_content` tokenizer (`xml::tokenize_text`) on a sub-range | same, `w:t` tokenizer |
-
-Two genuinely format-specific complications, both already visible in the code:
-
-- **Marks are styles, not attributes.** ODF references *named automatic styles*
-  ([`odf_style.cpp`](../../src/odr/internal/odf/odf_style.cpp)); a bold toggle is
-  "split run + find-or-create style + reassign `text:style-name`," not "set an
-  attribute." OOXML is friendlier — inline `w:rPr`. The op is trivial; the replay
-  is not (decision 5).
-- **Registry fix-up is mandatory.** Because ids *are* registry indices and
-  `first`/`last` are cached pugixml handles, every structural op must append new
-  entries (never renumber) and tombstone deletes — decision 4's append-only rule
-  made concrete.
-
-### Ids for created elements (`element_split` / `insert`)
-
-Split and insert **create** elements, so C++ mints ids the browser doesn't know.
-Decide before Phase 1:
-
-1. **Browser pre-allocates ids** from a reserved high range and passes the id to
-   use — replay is then a pure function, no id echo. Cleaner for A.
-2. **C++ returns minted ids**, browser reconciles on save-response —
-   reintroduces the round-trip A exists to avoid.
-
-Recommended: (1). The browser allocates provisional ids for created elements; on
-re-`translate` after save they are renumbered naturally anyway (ids are
-session-scoped, decision 4).
+The **conformance corpus** decision 7 asks for is still not built. What stands
+in for it is that both sides pin the same operation shapes: the browser check
+pages assert the log they emit, and `document_edit_test.cpp` replays those same
+shapes in C++. That is weaker than a shared corpus, and it missed the envelope
+version drifting until a new check page caught it.
 
 ## Open questions
 
-- Can `ElementIdentifier` inserts stay append-only in *every* engine's registry,
-  or does any engine rebuild indices in a way that breaks session stability?
-- Do we need a `data-odr-id` on non-editable structural elements too (as insertion
-  anchors), or only on editable leaves?
+- ~~Can inserts stay append-only in every registry?~~ **Answered: yes**, for the
+  three that write. `create_element` appends and `unlink_child` leaves the slot
+  taken, so no live id is renumbered.
+- ~~Is a `data-odr-id` needed on structural elements as insertion anchors?~~
+  **Answered: on paragraphs**, which is what a split or an insert anchors on.
+  Nothing above them needed one.
 - Highlight in ODF/OOXML: character background vs. a highlight-specific property —
   which maps cleanly to a single toggle?
 - `element_is_editable` answers one bool, and ooxml text answers `true` for
