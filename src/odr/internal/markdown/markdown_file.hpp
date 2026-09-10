@@ -21,10 +21,10 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
+  [[nodiscard]] std::shared_ptr<abstract::TextFile> text_file() const override;
+
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
-
-  [[nodiscard]] TextEncoding encoding() const noexcept override;
 
 private:
   std::shared_ptr<text::TextFile> m_file;

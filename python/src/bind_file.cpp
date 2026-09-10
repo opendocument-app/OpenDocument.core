@@ -286,13 +286,13 @@ void odr_python::bind_file(py::module_ &m) {
       .def("as_pdf_file", &odr::DecodedFile::as_pdf_file)
       .def("as_font_file", &odr::DecodedFile::as_font_file);
 
-  // A csv is a text file too, so `CsvFile` derives from `TextFile` the way the
-  // C++ handle does - `text()` still reads the raw bytes.
   py::class_<odr::CsvFile, odr::DecodedFile>(m, "CsvFile")
       .def("options", &odr::CsvFile::options,
            "The options in use, every field resolved.")
       .def("document", &odr::CsvFile::document,
-           "The csv as a one-sheet spreadsheet.");
+           "The csv as a one-sheet spreadsheet.")
+      .def("text_file", &odr::CsvFile::text_file,
+           "The same bytes as plain text.");
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")
       .def("encoding", &odr::TextFile::encoding,

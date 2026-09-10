@@ -63,12 +63,10 @@ work in stage 2:
 - md4c parses bytes and assumes UTF-8 (`MD4C_USE_UTF8`), so decoding happens
   before it, not inside it.
 
-**Markdown is a `DocumentFile`, not a `TextFile`.** `abstract::TextFile` fixes
-`file_category()` to `text` (`abstract/file.hpp`); a document has to be
-`FileCategory::document` with `DocumentType::text`. The table row changes
-category with it. This is api-visible for `FileType::markdown` — and free,
-because the row declares no capabilities today, so nothing can be relying on
-it.
+**Markdown is neither a `DocumentFile` nor a `TextFile`.** It keeps
+`FileCategory::text` with `DocumentType::text`, derives from
+`abstract::DecodedFile`, and holds a `text::TextFile` that
+`MarkdownFile::text_file()` hands out.
 
 **Input is UTF-8, produced by `internal/encoding`.** `MarkdownFile` takes a
 `std::shared_ptr<text::TextFile>` exactly as `CsvFile` and `JsonFile` do

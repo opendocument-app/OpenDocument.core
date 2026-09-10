@@ -334,6 +334,13 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
       EXPECT_TRUE(!actual.translate_html || declared_actual.translate_html)
           << test_file.short_path;
 
+      // A plain file is not a document, so `Document::is_savable` never
+      // answers for it - and without this the table could claim anything.
+      if (file->is_text_file()) {
+        EXPECT_EQ(file->as_text_file().is_savable(), declared_actual.save)
+            << test_file.short_path;
+      }
+
       if (!file->is_document_file() || file->password_encrypted()) {
         continue;
       }

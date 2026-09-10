@@ -52,18 +52,18 @@ reads it. `NoCsvFile` is a detection failure only. An incoherent dialect — a
 separator equal to the quote, a line break as a separator — is
 `std::invalid_argument`, a caller mistake rather than bad input.
 
-## A csv is a text file that also loads as a document
+## A csv holds a text file and also loads as a document
 
-`FileCategory::text`, `DocumentType::spreadsheet` — so `is_text_file()` is true
-for a csv and `is_document_file()` is false. `abstract::CsvFile` derives from
-`abstract::TextFile`, and `CsvFile::document()` is the *other* view of the same
-bytes rather than the only one: `TextFile::text()` keeps working, so reading a
-csv as text needs no reopening. Opening it as `FileType::text_file` stays the
-escape hatch when detection was wrong about it being a csv at all.
+`FileCategory::text`, `DocumentType::spreadsheet` — so `is_text_file()` and
+`is_document_file()` are both false for a csv. `abstract::CsvFile` derives from
+`abstract::DecodedFile` and *holds* a `text::TextFile`, which
+`CsvFile::text_file()` hands out, so reading a csv as text needs no reopening.
+`CsvFile::document()` is the other view of the same bytes.
 
-The one thing that costs: `html::translate` has to test `is_csv_file()` ahead of
-its text branch (`html.cpp:215`), because a csv answers `is_text_file()` and a
-line list is never what a viewer wants from a table.
+Composition rather than inheritance, because a `TextFile` is the thing this
+library edits and writes back as plain text, and a csv is not that. Opening it
+as `FileType::text_file` stays the escape hatch when detection was wrong about
+it being a csv at all.
 
 Text has to be UTF-8 by the time it reaches a cell: `Text::content()` returns
 `std::string` and every binding treats it as UTF-8. That is why an encoding

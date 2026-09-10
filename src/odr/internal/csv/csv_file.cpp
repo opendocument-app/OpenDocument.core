@@ -78,21 +78,23 @@ FileMeta CsvFile::file_meta() const noexcept {
 }
 
 bool CsvFile::is_decodable() const noexcept {
-  return text_encoding_is_decodable(encoding());
+  return text_encoding_is_decodable(m_file->encoding());
 }
 
 std::shared_ptr<abstract::Document> CsvFile::document() const {
   if (!is_decodable()) {
-    throw UnsupportedTextEncoding(encoding());
+    throw UnsupportedTextEncoding(m_file->encoding());
   }
-  return std::make_shared<CsvDocument>(*m_file->file(), encoding(), m_dialect,
-                                       m_separator_directive);
+  return std::make_shared<CsvDocument>(*m_file->file(), m_file->encoding(),
+                                       m_dialect, m_separator_directive);
 }
 
-TextEncoding CsvFile::encoding() const noexcept { return m_file->encoding(); }
+std::shared_ptr<abstract::TextFile> CsvFile::text_file() const {
+  return m_file;
+}
 
 CsvOptions CsvFile::options() const {
-  return {.encoding = encoding(),
+  return {.encoding = m_file->encoding(),
           .separator = m_dialect.separator,
           .quote = m_dialect.quote};
 }

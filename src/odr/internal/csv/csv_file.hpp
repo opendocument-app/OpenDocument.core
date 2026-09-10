@@ -28,9 +28,9 @@ public:
 
   [[nodiscard]] bool is_decodable() const noexcept override;
 
-  [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
+  [[nodiscard]] std::shared_ptr<abstract::TextFile> text_file() const override;
 
-  [[nodiscard]] TextEncoding encoding() const noexcept override;
+  [[nodiscard]] std::shared_ptr<abstract::Document> document() const override;
 
   [[nodiscard]] CsvOptions options() const override;
   [[nodiscard]] std::shared_ptr<abstract::CsvFile>

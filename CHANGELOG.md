@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: a csv and a markdown file hold a text file instead of being
+  one. `is_text_file()` answers false for them; the plain-text view is
+  `as_csv_file().text_file()` / `as_markdown_file().text_file()`.
+
 - A selection reaching over a picture is taken, and the picture goes with the
   text: a frame carries `data-odr-id`, so an operation can name it. A frame
   holding text of its own is still refused.

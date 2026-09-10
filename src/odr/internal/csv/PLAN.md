@@ -237,10 +237,9 @@ output at any file size worth caring about today.
   files.
 - csv **stays** `FileCategory::text` (`file_type_table.cpp:416`), carrying
   `DocumentType::spreadsheet`. Moving it to `document` was the plan and is not
-  what landed: a csv is still text, `TextFile::text()` still reads it, and
-  `document()` is the second view rather than a replacement. So `is_text_file()`
-  keeps answering true and `html::translate` orders its csv branch first. The
-  capabilities test enforces whatever the row claims.
+  what landed: the bytes are still text. But a csv *holds* a `TextFile` instead
+  of being one, so `is_text_file()` answers false and `CsvFile::text_file()` is
+  the second view. The capabilities test enforces whatever the row claims.
 - `html_output_test` skips csv (`// TODO enable zip, csv, json`). Csv now
   produces real output, so enabling it needs reference output committed to the
   output repo and the pointer advanced — a separate repo, a separate change.

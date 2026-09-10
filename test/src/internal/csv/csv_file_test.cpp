@@ -495,8 +495,10 @@ TEST(CsvDocument, translating_the_decoded_file_yields_a_table) {
   const DecodedFile decoded =
       open(bytes, DecodeOptions::as(FileType::comma_separated_values));
 
-  // a csv stays a text file and is rendered as a table anyway
-  EXPECT_TRUE(decoded.is_text_file());
+  // a csv holds a text file rather than being one, so nothing routes it to the
+  // line list
+  EXPECT_FALSE(decoded.is_text_file());
+  EXPECT_EQ(decoded.as_csv_file().text_file().text(), "a,b\n1,2\n");
 
   const HtmlService service = html::translate(decoded, HtmlConfig());
   std::ostringstream out;

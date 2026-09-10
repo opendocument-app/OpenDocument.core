@@ -32,21 +32,21 @@ FileMeta MarkdownFile::file_meta() const noexcept {
 }
 
 bool MarkdownFile::is_decodable() const noexcept {
-  return text_encoding_is_decodable(encoding());
+  return text_encoding_is_decodable(m_file->encoding());
 }
 
 std::shared_ptr<abstract::Document> MarkdownFile::document() const {
   // `Text::content()` is UTF-8 to every binding, so bytes we cannot decode
   // have no document at all — the text rendering path stays open to them.
   if (!is_decodable()) {
-    throw UnsupportedTextEncoding(encoding());
+    throw UnsupportedTextEncoding(m_file->encoding());
   }
   const std::string text = m_file->text();
   return std::make_shared<Document>(text);
 }
 
-TextEncoding MarkdownFile::encoding() const noexcept {
-  return m_file->encoding();
+std::shared_ptr<abstract::TextFile> MarkdownFile::text_file() const {
+  return m_file;
 }
 
 } // namespace odr::internal::markdown
