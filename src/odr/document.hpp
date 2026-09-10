@@ -82,6 +82,11 @@ public:
   [[nodiscard]] Text insert_text_after(const Text &anchor,
                                        const std::string &text) const;
 
+  /// A run as the last child of @p parent. What a paragraph holding no run at
+  /// all is typed into.
+  [[nodiscard]] Text append_text(const Element &parent,
+                                 const std::string &text) const;
+
   /// Splits @p paragraph after @p after - one of its descendants, or an
   /// element that does not exist to move every child - into a new paragraph
   /// of the same style. Refuses where an element between the two is one it

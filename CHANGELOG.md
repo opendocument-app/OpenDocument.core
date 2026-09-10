@@ -16,6 +16,17 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A text document is edited the way a reader expects: typing, replacing and
+  deleting across runs and paragraphs, Enter, Backspace at a paragraph start,
+  and a plain-text paste that opens a paragraph per line.
+
+- **Undo and redo are the editor's.** `odr.editing.undo()` / `redo()` answer
+  for a text document, `odr.onEditChange` reports `canUndo` / `canRedo`
+  truthfully, and ctrl/cmd+Z is taken.
+
+- Enter is no longer refused. Reason `newLine` (code 1) now marks only a soft
+  line break, which no operation carries.
+
 - A paragraph splits, merges and is inserted — `splitParagraph`,
   `mergeParagraph`, `insertParagraph`, and the matching `Document` methods in
   C++. Enter, Backspace at a paragraph start and a delete across paragraphs.

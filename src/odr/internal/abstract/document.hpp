@@ -115,6 +115,15 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// A run holding @p text as the last child of @p element_id. What a
+  /// paragraph holding no run at all is typed into.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  element_append_text([[maybe_unused]] const ElementIdentifier element_id,
+                      [[maybe_unused]] const std::string &text) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;

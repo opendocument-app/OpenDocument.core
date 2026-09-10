@@ -212,14 +212,27 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "insertText") {
+      const auto text = operation.at("text").get<std::string>();
+      const std::int64_t address = reserve(operation);
+
+      // `parent` appends into an element rather than naming a run to sit
+      // beside
+      if (operation.contains("parent")) {
+        if (operation.contains("after") || operation.contains("before")) {
+          throw std::invalid_argument(
+              "insertText names `parent` or a run to sit beside, not both");
+        }
+        const Element parent = element_of(operation, "parent");
+        minted.emplace(address, append_text(parent, text).identifier());
+        continue;
+      }
+
       const bool after = operation.contains("after");
       if (after == operation.contains("before")) {
         throw std::invalid_argument(
-            "insertText names one of `after` and `before`");
+            "insertText names one of `after`, `before` and `parent`");
       }
-      const std::int64_t address = reserve(operation);
       const Text anchor = text_of(operation, after ? "after" : "before");
-      const auto text = operation.at("text").get<std::string>();
       const Text created = after ? insert_text_after(anchor, text)
                                  : insert_text_before(anchor, text);
       minted.emplace(address, created.identifier());
@@ -305,6 +318,14 @@ Text Document::insert_text_(const Text &anchor, const Placement where,
   }
   const ElementIdentifier identifier =
       runs->text_insert(anchor_id, where, text);
+  return {adapter, identifier, adapter->text_adapter(identifier)};
+}
+
+Text Document::append_text(const Element &parent,
+                           const std::string &text) const {
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier identifier =
+      adapter->element_append_text(check_(parent), text);
   return {adapter, identifier, adapter->text_adapter(identifier)};
 }
 
