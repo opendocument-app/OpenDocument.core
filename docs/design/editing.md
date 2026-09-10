@@ -346,8 +346,9 @@ then intercepts `beforeinput` and takes the edits it can express as operations:
 | a paste of plain text, over as many lines as it holds | taken: each line after the first opens a paragraph |
 | a composition (CJK, autocorrect, dictation) | let through and reconciled on `compositionend` |
 | a soft line break (`insertLineBreak`) | refused, reason `newLine` - no operation carries one |
+| a range reaching over a picture or a table | refused, reason `range` - `replaceRange` takes runs and whole paragraphs away, so anything else caught between the ends would survive while the text around it went |
 | anything else the browser offers (a mark, a list, a drop) | refused, reason `unsupportedEdit` |
-| an edit reaching over a picture or a table, or landing outside every run | refused, reason `range` |
+| an edit landing outside every run | refused, reason `range` |
 
 **Why the whole view rather than a run at a time:** `contenteditable` per run
 makes every run its own editing host, and a host is a wall. The caret cannot
