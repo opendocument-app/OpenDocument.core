@@ -346,6 +346,18 @@ Two details the checks pin down:
   paragraph holds nothing, `<wbr>` where it holds something. An edited page
   then looks like a re-rendered one, which is what makes the two comparable.
 
+## A range that reaches over a picture
+
+`replaceRange` takes away the runs between its ends. A frame carries an
+address too, so it takes away **a frame that holds no run** — a picture, a
+plain shape. One that holds runs is a text box, and the text inside it is text
+the reader meant to keep, so it refuses.
+
+What it cannot reach is a picture **alone in its paragraph**, where both ends
+of the range land in a paragraph with no run: there is no run to anchor the
+edit to, so the edit is taken and changes nothing. Deleting one needs a gesture
+that names the frame rather than a range across text.
+
 ## Open questions
 
 - **A list item** is a paragraph in a list. Enter at the end of one should make

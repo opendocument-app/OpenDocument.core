@@ -27,6 +27,13 @@
     <script src="text.js"></script>
     <script src="checks.js"></script>
     <script>
+      // A throw inside an event listener does not stop the script that
+      // dispatched it, so a check page can pass over a live exception. This
+      // makes one a failed check.
+      window.addEventListener("error", function (event) {
+        check("threw: " + event.message, false);
+      });
+
       var refusals = [];
       var changes = [];
       odr.onEditRefused = function (event) {

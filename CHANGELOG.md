@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A selection reaching over a picture is taken, and the picture goes with the
+  text: a frame carries `data-odr-id`, so an operation can name it. A frame
+  holding text of its own is still refused.
+
+- **Fix**: undoing a paragraph split threw, taking every later edit in the
+  session with it — the node it restored each moved child before could be the
+  line box, which the split had replaced.
+
 - **Fix**: deleting across several lines of a `.txt` left stray line numbers
   in the gutter. The renderer writes whitespace between the number cells, so
   `lastChild` there was a text node and the removal took that instead of a cell.

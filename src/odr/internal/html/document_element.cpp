@@ -250,6 +250,15 @@ void write_edit_address(const Element &element, const html::WritingState &state,
   }
 }
 
+/// The attributes a drawing's box takes: its address, so an operation names
+/// the drawing rather than the runs inside it.
+html::HtmlAttributeCallback frame_attributes(const Frame &frame,
+                                             const html::WritingState &state) {
+  return [&frame, &state](const html::HtmlAttributeWriterCallback &clb) {
+    write_edit_address(frame, state, clb);
+  };
+}
+
 /// A run whose style the box around it can carry instead. Not a background, a
 /// raised run or an addressed one: each means something else on the box.
 std::optional<Text> plain_text(const Element &element,
@@ -1045,9 +1054,10 @@ void translate_plain_frame(const Frame &frame, const GraphicStyle &style,
     background = "background-color:" + color(*style.fill_color) + ";";
   }
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(translate_frame_properties(frame) +
-                                            translate_drawing_style(style) +
-                                            background));
+      "div", HtmlElementOptions()
+                 .set_attributes(frame_attributes(frame, state))
+                 .set_style(translate_frame_properties(frame) +
+                            translate_drawing_style(style) + background));
   translate_children(frame.children(), state);
   state.out().write_element_end("div");
 }
@@ -1055,8 +1065,10 @@ void translate_plain_frame(const Frame &frame, const GraphicStyle &style,
 void translate_rect(const Frame &frame, const GraphicStyle &style,
                     const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
-                                            translate_drawing_style(style)));
+      "div", HtmlElementOptions()
+                 .set_attributes(frame_attributes(frame, state))
+                 .set_style(translate_shape_properties(frame) +
+                            translate_drawing_style(style)));
   translate_children(frame.children(), state);
   state.out().write_new_line();
   state.out().write_raw(
@@ -1067,8 +1079,10 @@ void translate_rect(const Frame &frame, const GraphicStyle &style,
 void translate_ellipse(const Frame &frame, const GraphicStyle &style,
                        const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
-                                            translate_drawing_style(style)));
+      "div", HtmlElementOptions()
+                 .set_attributes(frame_attributes(frame, state))
+                 .set_style(translate_shape_properties(frame) +
+                            translate_drawing_style(style)));
   state.out().write_new_line();
   translate_children(frame.children(), state);
   state.out().write_raw(
@@ -1082,10 +1096,12 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
 
   state.out().write_element_begin(
       "svg", HtmlElementOptions()
-                 .set_attributes(HtmlAttributesVector{
-                     {"xmlns", "http://www.w3.org/2000/svg"},
-                     {"version", "1.1"},
-                     {"overflow", "visible"}})
+                 .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                   clb("xmlns", "http://www.w3.org/2000/svg");
+                   clb("version", "1.1");
+                   clb("overflow", "visible");
+                   write_edit_address(frame, state, clb);
+                 })
                  .set_style("z-index:-1;position:absolute;top:0;left:0;" +
                             translate_drawing_style(style) +
                             translate_drawing_transform(frame.transform())));
@@ -1120,8 +1136,10 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
 void translate_custom_shape(const Frame &frame, const GraphicStyle &style,
                             const WritingState &state) {
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style(translate_shape_properties(frame) +
-                                            translate_drawing_style(style)));
+      "div", HtmlElementOptions()
+                 .set_attributes(frame_attributes(frame, state))
+                 .set_style(translate_shape_properties(frame) +
+                            translate_drawing_style(style)));
   translate_children(frame.children(), state);
 
   if (const std::optional<DrawingPath> path = frame.path(); path.has_value()) {

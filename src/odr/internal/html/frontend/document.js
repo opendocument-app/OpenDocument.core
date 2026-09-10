@@ -56,14 +56,22 @@
 
   // ------------------------------------------------------------------- page
 
+  /// The `<br>` or `<wbr>` @p paragraph ends with, or null. A line break in
+  /// the middle of one is a `<br>` too, so only the last child counts.
+  function lineBoxOf(paragraph) {
+    var last = paragraph.lastChild;
+    return last !== null && (last.nodeName === "BR" || last.nodeName === "WBR")
+      ? last
+      : null;
+  }
+
   /// The renderer ends a paragraph with `<br>` where it holds nothing and
   /// `<wbr>` where it holds something; keeping to that makes an edited page
   /// look like a freshly rendered one.
   function refreshLineBox(paragraph) {
-    var last = paragraph.lastChild;
-    while (last !== null && (last.nodeName === "BR" || last.nodeName === "WBR")) {
-      paragraph.removeChild(last);
-      last = paragraph.lastChild;
+    var box;
+    while ((box = lineBoxOf(paragraph)) !== null) {
+      paragraph.removeChild(box);
     }
     // a picture is content the same way text is, as the renderer has it
     var holds =
@@ -233,19 +241,24 @@
       copy.parentNode.removeChild(copy);
     });
 
+    // What moved, in order, rather than a sibling captured per node: the one
+    // after the last of them is the line box, which `refreshLineBox` replaces.
+    var moved = [];
     var node = stays === null ? element.firstChild : stays.nextSibling;
     while (node !== null) {
       var next = node.nextSibling;
       if (node.nodeName !== "BR" && node.nodeName !== "WBR") {
-        (function (moved, from, at) {
-          undoLog.push(function () {
-            from.insertBefore(moved, at);
-          });
-        })(node, element, next);
+        moved.push(node);
         copy.appendChild(node);
       }
       node = next;
     }
+    undoLog.push(function () {
+      var box = lineBoxOf(element);
+      for (var i = 0; i < moved.length; ++i) {
+        element.insertBefore(moved[i], box);
+      }
+    });
     return copy;
   }
 
@@ -522,39 +535,76 @@
     return caret;
   }
 
-  /// Removes the runs of @p paragraph that lie strictly between @p after and
-  /// @p before; a null end means from the first run, or to the last.
+  /// What @p paragraph holds that an operation can name, in document order:
+  /// its runs, and anything a range takes away whole.
+  function addressedIn(paragraph) {
+    return Array.prototype.filter.call(
+      paragraph.querySelectorAll("[data-odr-id]"),
+      function (element) {
+        return element.tagName === "X-S" || removableWhole(element);
+      }
+    );
+  }
+
+  /// Removes what @p paragraph holds strictly between @p after and @p before;
+  /// a null end means from the first, or to the last.
   function removeRunsBetween(paragraph, after, before) {
-    var runs = runsOf(paragraph);
-    var from = after === null ? 0 : runs.indexOf(after) + 1;
-    var to = before === null ? runs.length : runs.indexOf(before);
+    var held = addressedIn(paragraph);
+    var from = after === null ? 0 : held.indexOf(after) + 1;
+    var to = before === null ? held.length : held.indexOf(before);
     for (var i = from; i < to; ++i) {
-      perform(removeElement(runs[i]));
+      perform(removeElement(held[i]));
     }
   }
 
-  // What a range may reach over: a run, a wrapper around one, a paragraph of
-  // them, and the line box. A picture or a table is not, and no sequence of
-  // operations takes one away.
+  // The text a range reaches over: a run, a wrapper around one, a paragraph of
+  // them, and the line box.
   var reachable = { "X-S": 1, A: 1, "X-P": 1, BR: 1, WBR: 1 };
 
-  /// Whether everything between @p from and @p to is text.
+  /// Whether a range can take @p element away whole: it carries an address, so
+  /// `removeElement` can name it, and holds no run to orphan. A picture is one;
+  /// a text box is not.
+  function removableWhole(element) {
+    return (
+      element.getAttribute("data-odr-id") !== null &&
+      element.tagName !== "X-S" &&
+      element.tagName !== "X-P" &&
+      element.querySelector("x-s[data-odr-id]") === null
+    );
+  }
+
+  /// Whether everything between @p from and @p to is text, or sits in
+  /// something the range takes away whole.
   function coversOnlyText(from, to) {
     var probe = document.createRange();
     probe.setStartAfter(from);
     probe.setEndBefore(to);
-    var nodes = probe.cloneContents().querySelectorAll("*");
+    var fragment = probe.cloneContents();
+    var nodes = fragment.querySelectorAll("*");
     for (var i = 0; i < nodes.length; ++i) {
-      if (reachable[nodes[i].tagName] !== 1) {
+      if (!reaches(nodes[i], fragment)) {
         return false;
       }
     }
     return true;
   }
 
+  /// Whether @p element is text, or sits in something taken away whole.
+  function reaches(element, fragment) {
+    if (reachable[element.tagName] === 1) {
+      return true;
+    }
+    for (var at = element; at !== null && at !== fragment; at = at.parentNode) {
+      if (removableWhole(at)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// The paragraphs strictly between @p first and @p last, or null where
-  /// something that is not a paragraph lies between them - a table, a picture
-  /// - which is a range no sequence of operations can express.
+  /// something that is not a paragraph lies between them - a table, or a
+  /// drawing anchored beside them rather than inside one.
   function paragraphsBetween(first, last) {
     if (first.parentNode !== last.parentNode) {
       return null;
