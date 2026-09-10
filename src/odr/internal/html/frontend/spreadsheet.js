@@ -482,8 +482,7 @@
     }
   });
 
-  // Navigation, not editing: a read-only sheet has a pin, and this is what
-  // clears it.
+  // Navigation, not editing: a read-only sheet has a pin to clear.
   if (odr.takesKeys("navigation")) {
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {

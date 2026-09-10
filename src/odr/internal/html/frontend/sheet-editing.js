@@ -1,6 +1,5 @@
-// The sheet's editor, attached to `odr.editing` as one editor among the
-// formats: the cell overlay, the locks and the `setCell` op. The mode itself,
-// the refusal channel and the log a save reads are `editing.js`.
+// The sheet's editor, attached to `odr.editing`: the cell overlay, the locks
+// and the `setCell` op. The mode itself is `editing.js`.
 (function () {
   "use strict";
 
@@ -33,8 +32,7 @@
     }, 700);
   }
 
-  /// Four taps on a locked cell are one snackbar, which `odr.editing` decides.
-  /// The outline answers each.
+  /// The outline answers every tap; `odr.editing` drops the repeated event.
   function refuse(reason, column, row) {
     outline(odr.sheet.cellAt(column, row));
     odr.editing.refuse(reason, { sheet: sheet, column: column, row: row });
@@ -202,8 +200,8 @@
     return true;
   }
 
-  /// The open editor's own keys, which no config takes away: Escape and Enter
-  /// are the only way out of an overlay.
+  /// The open editor's own keys, which no config takes away: they are the way
+  /// out of the overlay.
   function overlayKey(event) {
     // Typing is the overlay's, not the sheet's underneath it.
     event.stopPropagation();
@@ -227,8 +225,7 @@
   };
 
   /// What a pinned cell does with a key when no editor is open. Captured, so
-  /// the keys taken here never reach the pin and the sort beneath. The undo
-  /// chord is `editing.js`'s, for every format.
+  /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
   function pinnedKey(event) {
     var target = event.target;
     if (
@@ -326,8 +323,7 @@
   };
 
   odr.editing.attach({
-    // The overlay goes with the mode: a cell nothing can commit must not keep
-    // one open over it.
+    // A cell nothing can commit must keep no overlay open over it.
     disable: close,
     operations: coalesced,
     canUndo: function () {

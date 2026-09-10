@@ -198,8 +198,7 @@ void write_head(const Document &document, const WritingState &state,
   out.write_header_end();
 }
 
-/// The key classes the view's scripts may take, as the page states them.
-/// `editing.md` decision 12 names them.
+/// The key classes the view's scripts may take; `editing.md` decision 12.
 std::string keyboard_classes(const HtmlConfig &config) {
   std::string classes;
   if (config.keyboard_navigation) {
@@ -242,14 +241,12 @@ void write_body_begin(const Document &document, const WritingState &state) {
       HtmlElementOptions()
           .set_class(body_clazz)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            // what the mode answers before the user clicks anything; stated
-            // only where the render offers editing at all
+            // what `enable()` answers, stated only by a render that edits
             if (state.config().editable) {
               clb("data-odr-editable",
                   state.document_editable() ? "true" : "readOnly");
             }
-            // not an editing fact: a read-only sheet has a pin, and Escape
-            // clears it
+            // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));
           }));
 

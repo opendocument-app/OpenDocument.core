@@ -93,8 +93,8 @@
       // `evaluateJavascript` once the WebView has finished loading.
       function wire() {
         const page = editing();
-        // `odr.editing` is on every document view, so what greys the button is
-        // the page's own answer rather than the absence of the object.
+        // `odr.editing` is on every document view, so the page's own answer
+        // greys the button rather than the absence of the object.
         edit.hidden = page === null || !page.isEditable();
         save.hidden = edit.hidden || !doc.isSavable();
         if (page === null) return;

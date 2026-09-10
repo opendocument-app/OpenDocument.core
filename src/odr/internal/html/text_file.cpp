@@ -128,9 +128,8 @@ public:
     }
     out.write_element_end("div");
 
-    // `text_js` is this view's editor, with its own undo, and it needs the
-    // browser to edit the lines. Not the mode: nothing replays these edits
-    // into a file, because `txt` declares no `edit` capability.
+    // `text.js` is this view's own editor and needs the browser to edit the
+    // lines. Not the mode: `txt` declares no `edit`, so nothing replays these.
     out.write_element_begin("div",
                             HtmlElementOptions().set_attributes(
                                 [&](const HtmlAttributeWriterCallback &clb) {

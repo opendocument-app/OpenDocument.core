@@ -6,8 +6,8 @@
     <link rel="stylesheet" href="document.css" />
     <link rel="stylesheet" href="spreadsheet.css" />
   </head>
-  <!-- The page states an empty `data-odr-keyboard`, as a config with both key
-       classes off writes it: the host owns the arrows and the chords. -->
+  <!-- An empty `data-odr-keyboard`, as a config with both key classes off
+       writes it: the host owns the arrows and the chords. -->
   <body
     class="odr-body odr-gridlines-soft"
     data-odr-editable="true"
@@ -76,7 +76,7 @@
       press(document.body, "Delete");
       check("and delete writes nothing", ops().length === 0);
 
-      // The commands are the host's way in, and no config takes them away.
+      // The commands stay: no config takes a host's way in away.
       check("the host still opens the editor", odr.editing.editAt(1, 0) === true && editor() !== null);
       editor().value = "typed";
       press(editor(), "Enter");

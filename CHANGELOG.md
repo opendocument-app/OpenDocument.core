@@ -17,40 +17,25 @@ The release run heads these entries with the version and opens a fresh
 ## Unreleased
 
 - `odr.editing` is on every document view, not only on a sheet's. The mode,
-  the refusals, the log a save reads and the `odr.onEdit*` callbacks are one
-  generic surface a host wires once per document, and each format attaches its
-  own editor to it — the cell overlay for a sheet, the runs for a text
-  document. `isEditable()` is what greys a host's edit button: it answers for a
-  `.docx` the way it already answered for an `.ods`.
+  the refusals, the log and the `odr.onEdit*` callbacks are one surface a host
+  wires per document, and each format attaches its own editor to it.
 
-- **Breaking**: `HtmlConfig::editable` no longer writes `contenteditable`. It
-  writes the scaffolding the mode needs — `data-odr-path` on every editable
-  run, the lock class on a locked cell, the page's editing state on `<body>`,
-  and the editor script — and the mode writes `contenteditable` on those runs
-  when a host calls `odr.editing.enable()`. A host that rendered with
-  `editable` and expected the browser to edit the page has to turn the mode on.
-  Switching modes needs no second render. The plain-text source view is
-  unchanged: `text.js` is its own editor and keeps its `contenteditable`.
+- **Breaking**: `HtmlConfig::editable` writes the editing scaffolding rather
+  than `contenteditable` - the address an op names, the lock on a locked cell,
+  the state on `<body>`, the editor script. `odr.editing.enable()` writes
+  `contenteditable`, so switching modes needs no second render.
 
-- **Breaking**: a render with `editable` off carries no editing markup at all —
-  no `data-odr-editable`, no `data-odr-lock`, no `data-odr-path`. A read-only
-  view pays nothing for an editor it has no way to reach.
+- **Breaking**: a render with `editable` off carries no editing markup at all,
+  and the document's editable state moved off the `.odr-sheet` table onto
+  `<body>` as `data-odr-editable`. The table keeps `data-odr-sheet`.
 
 - **Breaking**: a refused new line reaches `odr.onEditRefused` with reason
-  `newLine`, rather than `odr.onError`. It keeps code 1, and it now fires only
-  inside an editable run while the mode is on — a read-only page took the Enter
-  key from the reader and reported an error for it.
+  `newLine` rather than `odr.onError`, keeps code 1, and now fires only inside
+  an editable run while the mode is on.
 
-- `HtmlConfig::keyboard_navigation` and `keyboard_shortcuts` decide whether the
-  page's scripts take the keys that move the selection (the arrows, Tab,
-  Escape, and the keys that open an editor over it) and the editing chords
-  (undo and redo). Both default to on. A host with its own bindings turns them
-  off and keeps the keys; the open editor's own keys — Escape, Enter, Tab — are
-  never taken away, because they are the only way out of it.
-
-- The document's editable state moved from the `.odr-sheet` table to `<body>`,
-  as `data-odr-editable`, beside the new `data-odr-keyboard`. The table keeps
-  `data-odr-sheet`.
+- `HtmlConfig::keyboard_navigation` and `keyboard_shortcuts`, both on by
+  default, decide whether the page takes the keys that move the selection and
+  the undo chord. An open editor's own keys are never taken away.
 
 - A cell of several runs is written rather than locked: the write replaces what
   the cell shows with one run. A cell holding one run is written through it, so

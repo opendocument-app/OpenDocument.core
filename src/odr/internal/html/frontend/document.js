@@ -1,7 +1,5 @@
-// The text editor, attached to `odr.editing` as one editor among the formats.
-// Still the skeleton `editing.md` phase 3 replaces: the browser edits the runs
-// and a `MutationObserver` reads back what changed, so there is no selection
-// model, no mark and no undo of our own.
+// The text editor, attached to `odr.editing`. Still the skeleton
+// `editing.md` phase 3 replaces: no selection model, no mark, no undo.
 (function () {
   "use strict";
 
@@ -24,8 +22,7 @@
     return ops;
   }
 
-  /// The mode writes `contenteditable`; the markup carries the address alone,
-  /// so the same page serves both modes.
+  /// The markup carries the address alone, so one page serves both modes.
   function editable(on) {
     for (var i = 0; i < runs.length; ++i) {
       if (on) {
@@ -70,7 +67,7 @@
     }
     var target = event.target;
     var owner = target && target.closest && target.closest("[data-odr-path]");
-    if (owner === null || owner === undefined) {
+    if (!owner) {
       return;
     }
     event.preventDefault();

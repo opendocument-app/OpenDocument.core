@@ -233,15 +233,16 @@ std::optional<double> sheet_print_fit(const Sheet &sheet,
   return printable / content;
 }
 
-/// Whether @p element carries the addressing an edit operation names: an
-/// editable run of a view whose editing is per run. `contenteditable` is not
-/// written - the mode adds it to these runs when a host turns it on.
+/// Whether @p element carries the address an edit operation names.
+/// `contenteditable` is not written: the mode adds it to these runs.
 bool writes_edit_markup(const Element &element,
                         const html::WritingState &state) {
   return state.editable_markup() && state.config().editable &&
          element.is_editable();
 }
 
+/// A run whose style the box around it can carry instead. Not a background, a
+/// raised run or an addressed one: each means something else on the box.
 std::optional<Text> plain_text(const Element &element,
                                const html::WritingState &state) {
   if (element.type() != ElementType::text) {
@@ -666,7 +667,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const std::optional<FoldedCell> folded = fold_cell(
           cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
 
-      // scaffolding: a render that offers no editing states no lock
+      // scaffolding: a read-only render states no lock
       const char *lock =
           state.config().editable ? cell_lock(cell, anchors_shapes) : nullptr;
 

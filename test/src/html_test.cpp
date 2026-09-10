@@ -664,8 +664,7 @@ std::size_t count(const std::string &haystack, const std::string_view needle) {
   return result;
 }
 
-/// The config a host renders with to offer editing: the scaffolding the mode
-/// needs is written only under it.
+/// The scaffolding the mode needs is written only under this config.
 HtmlConfig editing_config() {
   HtmlConfig config;
   config.editable = true;
@@ -864,8 +863,7 @@ TEST(html, a_sheet_states_its_index_whatever_the_config) {
   EXPECT_NE(page.find(R"(data-odr-sheet="0")"), std::string::npos);
 }
 
-// The page cannot work this out for itself, so the body states it: whether
-// `enable()` may say yes at all.
+// Whether `enable()` may say yes, which the page cannot work out itself.
 TEST(html, a_document_states_on_its_body_whether_it_can_be_edited) {
   const std::string page =
       render_sheet(fods_file(fods_row(fods_cell("one"))), editing_config());
@@ -873,8 +871,7 @@ TEST(html, a_document_states_on_its_body_whether_it_can_be_edited) {
   EXPECT_NE(page.find(R"(data-odr-editable="true")"), std::string::npos);
 }
 
-// A render that offers no editing carries none of the scaffolding: not the
-// state, not a lock, not an address.
+// A read-only render carries no state, no lock and no address.
 TEST(html, a_read_only_render_writes_no_editing_scaffolding) {
   const std::string page = render_sheet(
       fods_file(fods_row(
@@ -883,10 +880,12 @@ TEST(html, a_read_only_render_writes_no_editing_scaffolding) {
           R"(<text:p>7</text:p></table:table-cell>)")),
       HtmlConfig());
 
-  // The attribute, not the name: the stylesheet and the scripts the page
-  // carries name both of these either way.
+  // The attribute, not the name: the stylesheet and the scripts name both.
   EXPECT_EQ(page.find(R"(data-odr-editable=")"), std::string::npos);
   EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
+  // The mode itself stays, so a host asks the page rather than tracking what
+  // it rendered with.
+  EXPECT_NE(page.find("odr.takesKeys"), std::string::npos);
 }
 
 // The classes the scripts may take, which a host with its own bindings keeps.
@@ -977,8 +976,8 @@ TEST(html, a_plain_cell_carries_no_lock) {
   EXPECT_EQ(page.find(R"(class="odr-locked")"), std::string::npos);
 }
 
-// A text document addresses its runs, because an op names one. The mode writes
-// `contenteditable` on them, so the same page serves both modes.
+// An op names a run, so the markup addresses one. The mode writes the
+// `contenteditable`, so one page serves both modes.
 TEST(html, an_editable_text_document_addresses_its_runs) {
   const std::string page = render_odt(editing_config());
 
@@ -986,8 +985,7 @@ TEST(html, an_editable_text_document_addresses_its_runs) {
   EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
 }
 
-// The address is the expensive half of the scaffolding, and a read-only render
-// pays none of it.
+// The address is the expensive half, and a read-only render pays none of it.
 TEST(html, a_read_only_text_document_addresses_no_run) {
   const std::string page = render_odt(HtmlConfig());
 

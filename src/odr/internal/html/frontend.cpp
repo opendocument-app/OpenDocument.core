@@ -87,8 +87,7 @@ constexpr Asset search_dark_css_asset{HtmlResourceType::css, "text/css",
                                       frontend_assets::search_dark_css};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", frontend_assets::document_js};
-/// `odr.editing`: the mode, the refusals and the log a save reads, generic
-/// over every format. An editor script attaches itself to it.
+/// The mode, the refusals and the log a save reads, generic over the formats.
 constexpr Asset editing_js_asset{HtmlResourceType::js, "text/javascript",
                                  "editing.js", frontend_assets::editing_js};
 /// Text search over the rendered page, format-agnostic: it walks text nodes.
@@ -101,7 +100,7 @@ constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
                                      "spreadsheet.js",
                                      frontend_assets::spreadsheet_js};
 /// The cell overlay, and the locks the markup states because the page cannot
-/// work them out: a sheet's editing is an overlay, not `contenteditable`.
+/// work them out. A sheet's editing is an overlay, not `contenteditable`.
 constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
                                        "sheet-editing.js",
                                        frontend_assets::sheet_editing_js};

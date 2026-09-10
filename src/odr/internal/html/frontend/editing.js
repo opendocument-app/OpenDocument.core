@@ -1,16 +1,13 @@
-// `odr.editing`: the editing mode, and nothing about any one format. A host
-// wires this once for every document it opens; a format's editor attaches to
-// it. See `docs/design/editing.md` decisions 9 to 12.
+// `odr.editing`: the editing mode, generic over the formats. A format's editor
+// attaches to it. See `docs/design/editing.md` decisions 9 to 12.
 (function () {
   "use strict";
 
   var odr = (window.odr = window.odr || {});
   var body = document.body;
 
-  // The frame the page states. An absent `data-odr-editable` is a render that
-  // offers no editing, which is not the same as a document that refuses one -
-  // both answer `readOnly`, and neither can be told apart by a host that only
-  // ever asks whether it may edit.
+  // An absent `data-odr-editable` is a render offering no editing, and answers
+  // `readOnly` like a document that refuses one.
   var editable = body.getAttribute("data-odr-editable") === "true";
   var keyClasses = (body.getAttribute("data-odr-keyboard") || "").split(" ");
 
@@ -18,8 +15,8 @@
   var editors = [];
   var lastRefusal = null;
 
-  // One space of codes, appended and never renumbered: a host maps the code to
-  // its own wording, and the message is for a developer who wires nothing.
+  // One space of codes, appended and never renumbered. The host maps the code;
+  // the message is for a console.
   var refusals = {
     newLine: { code: 1, message: "new line not supported by this document" },
     formula: { code: 2, message: "cell holds a formula" },
@@ -46,16 +43,13 @@
     }
   }
 
-  /// Whether the view's scripts take a class of key event: `navigation` for
-  /// the keys that move the selection, `shortcuts` for the chords. A host that
-  /// owns the keyboard turns them off in `HtmlConfig`.
+  /// Whether the scripts take a class of key event: `navigation` or
+  /// `shortcuts`. `HtmlConfig` decides.
   odr.takesKeys = function (name) {
     return keyClasses.indexOf(name) !== -1;
   };
 
-  /// Calls @p name on every attached editor, and answers whether one of them
-  /// said yes. `undo` and `redo` lean on the order: the editor attached last
-  /// is asked first, so the editor a page put on top answers for it.
+  /// Whether any editor answered @p name; the one attached last is asked first.
   function ask(name) {
     for (var i = editors.length - 1; i >= 0; --i) {
       var editor = editors[i];
@@ -74,7 +68,7 @@
     }
   }
 
-  /// The ops every editor would hand a save, in the order they attached.
+  /// What every editor would hand a save, in the order they attached.
   function operations() {
     var ops = [];
     for (var i = 0; i < editors.length; ++i) {
@@ -97,9 +91,8 @@
   }
 
   odr.editing = {
-    /// Answers whether the mode is on. A render that offers no editing, and a
-    /// document that cannot be edited, both refuse and say why - so a host can
-    /// grey its button before a click.
+    /// False where nothing on this page can be edited, with the reason on
+    /// `onEditModeChange` - so a host can grey its button before a click.
     enable: function () {
       if (!editable) {
         modeChange("readOnly");
@@ -129,26 +122,21 @@
       return editable;
     },
 
-    /// Adds one format's editor to the mode. Only `operations` is required;
-    /// `enable`, `disable`, `undo`, `redo`, `canUndo`, `canRedo` and
-    /// `committed` are answered for the editor where it states none.
+    /// Adds one format's editor. Only `operations` is required; `enable`,
+    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo` and `committed` default.
     attach: function (editor) {
       editors.push(editor);
     },
 
-    /// Reports a refused edit, and drops it where the page just reported the
-    /// same one: tapping a locked cell four times is one snackbar. @p detail
-    /// carries what the format addresses the refusal by - a sheet its
-    /// position. Painting the refusal is the editor's, because what an outline
-    /// goes around differs per format.
+    /// Reports a refused edit, dropping a repeat of the same one within two
+    /// seconds: four taps on a locked cell are one snackbar. @p detail is how
+    /// the format addresses it. Painting it is the editor's.
     refuse: function (reason, detail) {
       var refusal = refusals[reason] || refusals.readOnly;
       var key = reason + ":" + JSON.stringify(detail || null);
       var now = Date.now();
-      if (lastRefusal !== null && lastRefusal.key === key) {
-        if (now - lastRefusal.at < 2000) {
-          return;
-        }
+      if (lastRefusal !== null && lastRefusal.key === key && now - lastRefusal.at < 2000) {
+        return;
       }
       lastRefusal = { key: key, at: now };
       var event = { reason: reason, code: refusal.code, message: refusal.message };
@@ -160,8 +148,8 @@
       fire("onEditRefused", event);
     },
 
-    /// What a host's save button and back-press warning read. An editor calls
-    /// this whenever its log moved.
+    /// The log a host's save button reads; an editor calls it when its log
+    /// moved.
     changed: function () {
       var count = operations().length;
       fire("onEditChange", {
@@ -177,7 +165,7 @@
       return JSON.stringify({ version: 1, ops: operations() });
     },
 
-    /// Takes the last edit back; false where no editor has one.
+    /// False where no editor has an edit to take back.
     undo: function () {
       return ask("undo");
     },
@@ -185,23 +173,20 @@
       return ask("redo");
     },
 
-    /// The host saved the log: the page and the file agree, and undo starts
-    /// over.
+    /// The host saved: every editor's log resets and undo starts over.
     committed: function () {
       tell("committed");
       odr.editing.changed();
     },
   };
 
-  /// The name the apps and the wasm package already call. Same envelope.
+  /// The name the apps and the wasm package call. Same envelope.
   odr.generateDiff = function () {
     return odr.editing.getOperations();
   };
 
-  /// The undo chord, for whichever editor answers it. A form field keeps its
-  /// own text undo, and a key no editor took is left alone - so a run the
-  /// browser edits keeps the undo the browser gives it until the text editor
-  /// has a log of its own.
+  /// The undo chord. A form field keeps its own text undo, and a key no editor
+  /// took is left to the browser.
   function chordKey(event) {
     if (!editing || event.altKey || !(event.ctrlKey || event.metaKey)) {
       return;

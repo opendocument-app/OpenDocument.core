@@ -36,18 +36,15 @@ void write_search_dark_style(const WritingState &state);
 bool writes_dark_style(const HtmlConfig &config);
 std::string_view dark_style_media(const HtmlConfig &config);
 
-/// `odr.editing`: the editing mode every format's editor attaches to, plus
-/// `odr.onError`, `odr.takesKeys` and `odr.generateDiff`. Written by every
-/// document view, and **before** the editor scripts and @ref
-/// write_spreadsheet_script, which read `odr.takesKeys`.
+/// `odr.editing`, `odr.onError`, `odr.takesKeys` and `odr.generateDiff`.
+/// Written by every document view, and **first**: the scripts below read
+/// `odr.takesKeys`.
 void write_editing_script(const WritingState &state);
-/// The text editor, attached to the mode: the runs the markup addresses with
-/// `data-odr-path`. Written where the config offers editing.
+/// The text editor, attached to the mode. Written where the config edits.
 void write_document_script(const WritingState &state);
-/// Written in addition to the document script.
+/// Written in addition to the editing script.
 void write_spreadsheet_script(const WritingState &state);
-/// The sheet's editor, attached to the mode. Written in addition to @ref
-/// write_spreadsheet_script, where the config offers editing.
+/// The sheet's editor, attached to the mode. Written where the config edits.
 void write_sheet_editing_script(const WritingState &state);
 void write_text_script(const WritingState &state);
 /// `odr.search()`, `searchNext()`, `searchPrevious()`, `resetSearch()` — the
