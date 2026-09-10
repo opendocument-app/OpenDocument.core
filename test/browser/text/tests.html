@@ -37,6 +37,31 @@
         /><wbr></x-p>
     </div>
 
+    <!-- A second flow, so adding a shape here does not move what the checks
+         above measure. -->
+    <div class="odr-text-flow" id="extra">
+      <!-- A picture between two runs, as the renderer writes one: the frame
+           carries the address, the `img` sits inside it. -->
+      <x-p data-odr-id="50" style="display:block"
+        ><x-s data-odr-id="51">before </x-s
+        ><div data-odr-id="52" style="position:relative"><img
+            alt=""
+            width="16"
+            height="16"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          /></div
+        ><x-s data-odr-id="53"> after</x-s><wbr></x-p
+      >
+      <!-- A text box: a frame that holds runs, so a range must not take it. -->
+      <x-p data-odr-id="60" style="display:block"
+        ><x-s data-odr-id="61">left </x-s
+        ><div data-odr-id="62" style="position:relative"
+          ><x-p data-odr-id="63"><x-s data-odr-id="64">boxed</x-s><wbr></x-p
+        ></div
+        ><x-s data-odr-id="65"> right</x-s><wbr></x-p
+      >
+    </div>
+
     <!-- Not editable: the report is the harness, not the document. -->
     <div id="out" contenteditable="false"><div id="report"></div></div>
     <script src="editing.js"></script>
@@ -44,6 +69,13 @@
     <script src="search.js"></script>
     <script src="checks.js"></script>
     <script>
+      // A throw inside an event listener does not stop the script that
+      // dispatched it, so a check page can pass over a live exception. This
+      // makes one a failed check.
+      window.addEventListener("error", function (event) {
+        check("threw: " + event.message, false);
+      });
+
       var refusals = [];
       var errors = [];
       var changes = [];
@@ -58,14 +90,17 @@
       };
 
       var flow = document.getElementById("flow");
+      var extra = document.getElementById("extra");
       // The page as the renderer wrote it, kept so each group starts from it.
       var source = flow.innerHTML;
+      var extraSource = extra.innerHTML;
 
       /// Puts the fixture and the log back, so each group starts from the
       /// page the renderer wrote.
       function reset() {
         odr.editing.disable();
         flow.innerHTML = source;
+        extra.innerHTML = extraSource;
         odr.editing.committed();
         odr.editing.enable();
         refusals = [];
@@ -387,23 +422,31 @@
       // ------------------------------------------------------- refusals
 
       reset();
+      // A refusal needs a caret: with none the gate cannot name where the edit
+      // lands, and says `range` before it looks at the input type.
+      select(run(11).firstChild, 3);
       check("a bold toggle is refused", input("formatBold") === "refused");
       check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 7");
+      // The same reason twice within two seconds is one event, so the list has
+      // to land in another run to be heard.
+      select(run(13).firstChild, 3);
       check("so is a list", input("insertOrderedList") === "refused");
+      check("under the same reason", refusals.pop() === "unsupportedEdit 7");
       refusals = [];
 
       select(run(11).firstChild, 3);
       check("a soft line break is refused", input("insertLineBreak") === "refused");
       check("by the name the reader knows", refusals.pop() === "newLine 1");
 
+      // A paragraph holding no run has nothing an operation can name, so the
+      // edit is taken and changes nothing rather than being refused.
       var picture = paragraph(40);
       select(picture, 0, picture, picture.childNodes.length);
       check(
-        "an edit over a paragraph holding no run is refused",
-        input("deleteContentBackward") === "refused"
+        "an edit inside a paragraph holding no run is taken",
+        input("deleteContentBackward") === "taken"
       );
-      check("because no operation could name it", refusals.pop() === "range 8");
-      check("and the picture is still there", picture.querySelector("img") !== null);
+      check("and changes nothing", picture.querySelector("img") !== null);
 
       selectRuns(31, 0, 31, 2);
       check(
@@ -414,6 +457,27 @@
         })()
       );
       check("under the same reason", refusals.pop() === "range 8");
+
+      // A range over a picture takes it away: the frame carries an address, so
+      // `removeElement` can name it, and it holds no run to orphan.
+      reset();
+      selectRuns(51, 1, 53, 3);
+      check("a range over a picture is taken", input("insertText", "-") === "taken");
+      check("the picture goes", paragraph(50).querySelector("img") === null);
+      check("and the text closes up", paragraph(50).textContent === "b-ter");
+      check(
+        "the log names the frame",
+        ops().some(function (op) {
+          return op.op === "removeElement" && op.id === 52;
+        })
+      );
+
+      // A frame holding runs is text the reader meant to keep.
+      reset();
+      selectRuns(61, 1, 65, 3);
+      check("a range over a text box is refused", input("insertText", "-") === "refused");
+      check("because it holds text of its own", refusals.pop() === "range 8");
+      check("and the box is still there", paragraph(60).querySelector("x-p") !== null);
 
       // A run under a link and one under a style-only wrapper are still runs.
       reset();
