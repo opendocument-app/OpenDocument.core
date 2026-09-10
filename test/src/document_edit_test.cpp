@@ -609,3 +609,27 @@ TEST(DocumentEdit, a_paragraph_edit_refuses_another_documents_element) {
   EXPECT_THROW((void)document.split_paragraph(paragraph, Element()),
                std::invalid_argument);
 }
+
+/// The paragraph Enter just made holds no run to sit beside, so the operation
+/// names the paragraph itself.
+TEST(DocumentEdit, a_run_is_appended_into_a_paragraph_that_holds_none) {
+  const Document document = two_paragraph_text();
+
+  document.edit(ops(R"({"op":"insertParagraph","after":)" +
+                    id_of(paragraph_at(document, 0)) + R"(,"id":-1},)" +
+                    R"({"op":"insertText","parent":-1,"text":"typed",)"
+                    R"("id":-2})"));
+
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two three", "typed", "second"}));
+}
+
+TEST(DocumentEdit, an_insert_naming_a_parent_and_a_run_to_sit_beside_refuses) {
+  const Document document = two_paragraph_text();
+
+  EXPECT_THROW(document.edit(ops(
+                   R"({"op":"insertText","parent":)" +
+                   id_of(paragraph_at(document, 0)) + R"(,"after":)" +
+                   id_of(run_at(document, 0, 0)) + R"(,"text":"x","id":-1})")),
+               std::invalid_argument);
+}

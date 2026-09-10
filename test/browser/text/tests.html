@@ -12,28 +12,29 @@
   >
     <!-- A text document as `translate` writes one, cut down to the shapes the
          editor has to tell apart: runs beside each other, a run under a link,
-         a run under a style-only wrapper, and a paragraph holding a picture
-         and no run at all. -->
-    <div class="odr-text-flow">
+         a run under a style-only wrapper, a paragraph holding a picture and no
+         run at all, and the `<wbr>` / `<br>` line box the renderer ends every
+         paragraph with. The whole fixture is rebuilt before each group of
+         checks, because every edit is a real edit. -->
+    <div class="odr-text-flow" id="flow">
       <x-p data-odr-id="10" style="display:block"
         ><x-s data-odr-id="11">first run </x-s
         ><a href="https://x.example"
           ><x-s data-odr-id="12">a link</x-s></a
-        ><x-s data-odr-id="13"> and a tail</x-s></x-p
+        ><x-s data-odr-id="13"> and a tail</x-s><wbr></x-p
       >
       <x-p data-odr-id="20" style="display:block"
         ><x-s style="font-weight:bold"
           ><x-s data-odr-id="21">bold</x-s></x-s
-        ></x-p
+        ><wbr></x-p
       >
-      <x-p data-odr-id="30" style="display:block">
-        <img
+      <x-p data-odr-id="30" style="display:block"><x-s data-odr-id="31">third</x-s><wbr></x-p>
+      <x-p data-odr-id="40" style="display:block"><img
           alt=""
           width="16"
           height="16"
           src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-        />
-      </x-p>
+        /><wbr></x-p>
     </div>
 
     <!-- Not editable: the report is the harness, not the document. -->
@@ -45,19 +46,62 @@
     <script>
       var refusals = [];
       var errors = [];
+      var changes = [];
       odr.onEditRefused = function (event) {
         refusals.push(event.reason + " " + event.code);
       };
       odr.onError = function (code, message) {
         errors.push(code + " " + message);
       };
+      odr.onEditChange = function (event) {
+        changes.push(event);
+      };
+
+      var flow = document.getElementById("flow");
+      // The page as the renderer wrote it, kept so each group starts from it.
+      var source = flow.innerHTML;
+
+      /// Puts the fixture and the log back, so each group starts from the
+      /// page the renderer wrote.
+      function reset() {
+        odr.editing.disable();
+        flow.innerHTML = source;
+        odr.editing.committed();
+        odr.editing.enable();
+        refusals = [];
+        errors = [];
+        changes = [];
+      }
 
       function run(id) {
         return document.querySelector('x-s[data-odr-id="' + id + '"]');
       }
+      function paragraph(id) {
+        return document.querySelector('x-p[data-odr-id="' + id + '"]');
+      }
       function ops() {
         return JSON.parse(odr.editing.getOperations()).ops;
       }
+      /// The text of every paragraph in the flow.
+      function texts() {
+        return Array.prototype.map
+          .call(flow.querySelectorAll("x-p[data-odr-id]"), function (p) {
+            return p.textContent;
+          })
+          .join("|");
+      }
+      /// The line box each paragraph ends with: `br` where it holds nothing,
+      /// `wbr` where it holds something, as a fresh render would write it.
+      function boxes() {
+        return Array.prototype.map
+          .call(flow.querySelectorAll("x-p[data-odr-id]"), function (p) {
+            return p.lastChild === null
+              ? "-"
+              : p.lastChild.nodeName.toLowerCase();
+          })
+          .join(" ");
+      }
+
       /// Puts the caret or a selection where the next edit lands. A synthetic
       /// `InputEvent` carries no target range, so the editor reads the
       /// selection - which is what a browser with no `getTargetRanges` does.
@@ -72,10 +116,21 @@
         selection.removeAllRanges();
         selection.addRange(range);
       }
-      /// Whether the editor refused the edit. `beforeinput` is what the
-      /// browser fires before it changes anything, so a prevented one is an
-      /// edit that never happened.
+      /// Selects from an offset in one run's text to an offset in another's.
+      function selectRuns(fromId, fromOffset, toId, toOffset) {
+        select(
+          run(fromId).firstChild,
+          fromOffset,
+          run(toId).firstChild,
+          toOffset
+        );
+      }
+      /// `"taken"` where the editor did the edit itself, `"refused"` where it
+      /// said no. Both cancel the `beforeinput`, so the refusal channel is
+      /// what tells them apart, not `defaultPrevented`.
+      var prevented = null;
       function input(type, data) {
+        var before = refusals.length;
         var event = new InputEvent("beforeinput", {
           inputType: type,
           data: data === undefined ? null : data,
@@ -83,74 +138,235 @@
           cancelable: true,
         });
         document.body.dispatchEvent(event);
-        return event.defaultPrevented;
+        prevented = event.defaultPrevented;
+        return refusals.length > before ? "refused" : "taken";
+      }
+      /// Where the caret sits afterwards, as `<run id>:<offset>`.
+      function caret() {
+        var selection = window.getSelection();
+        if (selection === null || selection.rangeCount === 0) {
+          return "none";
+        }
+        var at = selection.getRangeAt(0);
+        var holder =
+          at.startContainer.nodeType === 1
+            ? at.startContainer
+            : at.startContainer.parentElement;
+        var run = holder.closest("x-s[data-odr-id]");
+        return run === null
+          ? "outside:" + at.startOffset
+          : run.getAttribute("data-odr-id") + ":" + at.startOffset;
       }
 
-      var first = run(11);
-      var tail = run(13);
+      // ---------------------------------------------------------- the mode
 
       check("the mode is off to start with", odr.editing.isEnabled() === false);
-      select(first.firstChild, 3);
-      check("and refuses an edit", input("insertText", "x") === true);
+      select(run(11).firstChild, 3);
+      check("and refuses an edit", input("insertText", "x") === "refused");
       check("saying the document is read-only", refusals.pop() === "readOnly 5");
+      check("with nothing changed", texts().indexOf("first run ") === 0);
+
+      check(
+        "and cancelled what the browser was going to do",
+        prevented === true
+      );
 
       check("the mode turns on", odr.editing.enable() === true);
       check(
         "and the whole view is editable, not a run of it",
         document.body.getAttribute("contenteditable") === "true" &&
-          first.getAttribute("contenteditable") === null
+          run(11).getAttribute("contenteditable") === null
       );
 
-      select(first.firstChild, 3);
-      check("typing inside a run is allowed", input("insertText", "x") === false);
-      select(first.firstChild, 0, first.firstChild, 5);
-      check("so is replacing a stretch of it", input("insertText", "x") === false);
-      select(first.firstChild, 3);
-      check("and so is a backspace", input("deleteContentBackward") === false);
+      // ------------------------------------------------- inside one run
 
-      refusals = [];
-      select(first.firstChild, 3);
-      check("a new line is refused", input("insertParagraph") === true);
-      check("by the name the reader knows", refusals.pop() === "newLine 1");
-      select(tail.firstChild, 3);
-      check("and so is a soft one", input("insertLineBreak") === true);
-      check("under the same reason", refusals.pop() === "newLine 1");
+      reset();
+      select(run(11).firstChild, 5);
+      check("typing inside a run is taken", input("insertText", "X") === "taken");
+      check("with the browser stopped from doing it too", prevented === true);
+      check("and the editor wrote it", run(11).textContent === "firstX run ");
+      check("leaving the caret after it", caret() === "11:6");
       check(
-        "a refusal says which run it was in",
-        input("insertParagraph") === true && refusals.length === 0
+        "as one setText naming the run",
+        ops().length === 1 &&
+          ops()[0].op === "setText" &&
+          ops()[0].id === 11 &&
+          ops()[0].text === "firstX run "
       );
 
-      check("a bold toggle is refused", input("formatBold") === true);
-      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 7");
-      check("so is a list", input("insertOrderedList") === true);
-      refusals = [];
+      select(run(11).firstChild, 6);
+      input("insertText", "Y");
+      check("a second keystroke folds into the same op", ops().length === 1);
+      check("carrying the text the run ends at", ops()[0].text === "firstXY run ");
 
-      // The address is per run, so an edit has to land in one.
-      select(first.firstChild, 3, tail.firstChild, 4);
-      check("an edit across two runs is refused", input("insertText", "x") === true);
-      check("because no op could name it", refusals.pop() === "range 8");
+      selectRuns(11, 0, 11, 5);
+      check("replacing a stretch is taken", input("insertText", "F") === "taken");
+      check("and the run holds it", run(11).textContent === "FXY run ");
 
-      var picture = document.querySelectorAll("x-p")[2];
-      select(picture, 0, picture, picture.childNodes.length);
+      select(run(11).firstChild, 1);
+      check("so is a backspace", input("deleteContentBackward") === "taken");
+      check("which took the character", run(11).textContent === "XY run ");
+
+      // ------------------------------------------------- across two runs
+
+      reset();
+      selectRuns(11, 5, 13, 4);
       check(
-        "an edit where there is no run is refused too",
-        input("deleteContentBackward") === true
+        "an edit across two runs is taken",
+        input("insertText", "-") === "taken"
       );
       check(
-        "a paragraph's own address does not make it a run",
-        picture.getAttribute("data-odr-id") === "30" && refusals.pop() === "range 8"
+        "the two ends join and what lay between goes",
+        texts() === "first- a tail|bold|third|"
+      );
+      check("the caret sits where the text went in", caret() === "11:6");
+      var across = ops();
+      check(
+        "as setText on each end and a removeElement between",
+        across.length === 3 &&
+          across[0].op === "setText" &&
+          across[0].id === 11 &&
+          across[1].op === "removeElement" &&
+          across[1].id === 12 &&
+          across[2].op === "setText" &&
+          across[2].id === 13
       );
 
-      // A run under a link and one under a style-only wrapper are still runs.
-      var linked = run(12);
-      select(linked.firstChild, 2);
-      check("a run inside a link takes a write", input("insertText", "x") === false);
-      var bold = run(21);
-      select(bold.firstChild, 2);
-      check("and so does one under a style wrapper", input("insertText", "x") === false);
+      // ------------------------------------------- across two paragraphs
 
-      // The clipboard is plain text on one line or nothing.
+      reset();
+      selectRuns(11, 5, 31, 2);
+      check(
+        "an edit across two paragraphs is taken",
+        input("insertText", "=") === "taken"
+      );
+      check(
+        "the paragraphs between it go, and its ends become one",
+        texts() === "first=ird|"
+      );
+      var merged = ops();
+      check(
+        "ending in a mergeParagraph",
+        merged[merged.length - 1].op === "mergeParagraph" &&
+          merged[merged.length - 1].paragraph === 10
+      );
+      check(
+        "and the paragraph between it is removed whole",
+        merged.some(function (op) {
+          return op.op === "removeElement" && op.id === 20;
+        })
+      );
+
+      // --------------------------------------------------------- Enter
+
+      reset();
+      select(run(11).firstChild, 5);
+      check("Enter is taken, not refused", input("insertParagraph") === "taken");
+      check(
+        "the paragraph splits where the caret was",
+        texts() === "first| run a link and a tail|bold|third|"
+      );
+      check("and the caret opens the new paragraph", caret().indexOf(":0") > 0);
+      var split = ops();
+      check(
+        "as a setText, an insertText and a splitParagraph",
+        split.length === 3 &&
+          split[0].op === "setText" &&
+          split[1].op === "insertText" &&
+          split[1].after === 11 &&
+          split[2].op === "splitParagraph" &&
+          split[2].paragraph === 10 &&
+          split[2].after === 11
+      );
+      check(
+        "the created elements carrying ids of their own",
+        split[1].id < 0 && split[2].id < 0 && split[1].id !== split[2].id
+      );
+      check("and both paragraphs ending in a line box", boxes() === "wbr wbr wbr wbr wbr");
+
+      reset();
+      select(run(13).firstChild, run(13).textContent.length);
+      input("insertParagraph");
+      check(
+        "Enter at the end of a paragraph cuts no run",
+        ops().length === 1 && ops()[0].op === "splitParagraph"
+      );
+      check("and leaves an empty one after it", texts() === "first run a link and a tail||bold|third|");
+      check("whose line box says it holds nothing", boxes() === "wbr br wbr wbr wbr");
+
+      check("typing into it opens a run", input("insertText", "new") === "taken");
+      check("which the log states by its parent", ops()[1].op === "insertText" && ops()[1].parent < 0);
+      check("and the page holds the text", texts() === "first run a link and a tail|new|bold|third|");
+      check("with the line box back to holding something", boxes() === "wbr wbr wbr wbr wbr");
+
+      // ------------------------------------- Backspace at a paragraph start
+
+      reset();
+      select(run(21).firstChild, 0);
+      check(
+        "Backspace at the start of a paragraph is taken",
+        input("deleteContentBackward") === "taken"
+      );
+      check(
+        "and the paragraph joins the one before it",
+        texts() === "first run a link and a tailbold|third|"
+      );
+      check(
+        "as one mergeParagraph",
+        ops().length === 1 &&
+          ops()[0].op === "mergeParagraph" &&
+          ops()[0].paragraph === 10
+      );
+
+      // ------------------------------------------------------ undo / redo
+
+      reset();
+      check("nothing to take back to start with", odr.editing.undo() === false);
+      select(run(11).firstChild, 5);
+      input("insertText", "Z");
+      check("an edit can be taken back", odr.editing.undo() === true);
+      check("and the run is what it was", run(11).textContent === "first run ");
+      check("with the log empty", ops().length === 0);
+      check("redo puts it back", odr.editing.redo() === true);
+      check("text and all", run(11).textContent === "firstZ run " && ops().length === 1);
+
+      reset();
+      select(run(11).firstChild, 5);
+      input("insertParagraph");
+      check("a split can be taken back", odr.editing.undo() === true);
+      check(
+        "and the paragraph is one again",
+        texts() === "first run a link and a tail|bold|third|"
+      );
+      check("undo goes on to the run that was cut", odr.editing.undo() === true);
+      check("and to the run that was shortened", odr.editing.undo() === true);
+      check("until there is nothing left", odr.editing.undo() === false);
+      check("with the page as the renderer wrote it", texts() === "first run a link and a tail|bold|third|");
+      check("and the log empty", ops().length === 0);
+
+      reset();
+      select(run(21).firstChild, 0);
+      input("deleteContentBackward");
+      check("a merge can be taken back", odr.editing.undo() === true);
+      check(
+        "and both paragraphs are back",
+        texts() === "first run a link and a tail|bold|third|"
+      );
+      check("with their line boxes", boxes() === "wbr wbr wbr wbr");
+
+      reset();
+      select(run(11).firstChild, 5);
+      input("insertText", "Q");
+      odr.editing.undo();
+      check("a host is told undo is spent", changes.pop().canUndo === false);
+      select(run(11).firstChild, 5);
+      input("insertText", "R");
+      check("and a fresh edit drops what redo held", odr.editing.redo() === false);
+
+      // ----------------------------------------------------------- paste
+
       if (typeof DataTransfer === "function") {
+        reset();
         var clipboard = new DataTransfer();
         clipboard.setData("text/plain", "two\nlines");
         var pasted = new InputEvent("beforeinput", {
@@ -159,58 +375,91 @@
           bubbles: true,
           cancelable: true,
         });
-        select(tail.firstChild, 2);
+        select(run(11).firstChild, 5);
         document.body.dispatchEvent(pasted);
+        check("pasting two lines is taken", pasted.defaultPrevented === true);
         check(
-          "pasting two lines is refused",
-          pasted.defaultPrevented === true && refusals.pop() === "newLine 1"
+          "and the second opens a paragraph of its own",
+          texts() === "firsttwo|lines run a link and a tail|bold|third|"
         );
       }
 
-      // The collection half. Nothing scripted edits the way a key does -
-      // `execCommand` raises no `beforeinput` and dissolves a run whose whole
-      // text it replaces, neither of which trusted input does - so the two
-      // halves are driven apart: `beforeinput` above for the gate, and here
-      // the text change plus the `input` the browser raises after it.
-      check("nothing is collected yet", ops().length === 0);
-      select(first.firstChild, 3);
-      first.firstChild.data = "edited in the browser";
-      document.body.dispatchEvent(new Event("input", { bubbles: true }));
+      // ------------------------------------------------------- refusals
+
+      reset();
+      check("a bold toggle is refused", input("formatBold") === "refused");
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 7");
+      check("so is a list", input("insertOrderedList") === "refused");
+      refusals = [];
+
+      select(run(11).firstChild, 3);
+      check("a soft line break is refused", input("insertLineBreak") === "refused");
+      check("by the name the reader knows", refusals.pop() === "newLine 1");
+
+      var picture = paragraph(40);
+      select(picture, 0, picture, picture.childNodes.length);
       check(
-        "an allowed edit reaches the log as one setText",
-        ops().length === 1 &&
-          ops()[0].op === "setText" &&
-          ops()[0].id === 11 &&
-          ops()[0].text === "edited in the browser"
+        "an edit over a paragraph holding no run is refused",
+        input("deleteContentBackward") === "refused"
+      );
+      check("because no operation could name it", refusals.pop() === "range 8");
+      check("and the picture is still there", picture.querySelector("img") !== null);
+
+      selectRuns(31, 0, 31, 2);
+      check(
+        "a range reaching over a picture is refused",
+        (function () {
+          select(run(31).firstChild, 0, picture, 0);
+          return input("insertText", "x") === "refused";
+        })()
+      );
+      check("under the same reason", refusals.pop() === "range 8");
+
+      // A run under a link and one under a style-only wrapper are still runs.
+      reset();
+      select(run(12).firstChild, 2);
+      check("a run inside a link takes a write", input("insertText", "x") === "taken");
+      check("and keeps its link", run(12).parentElement.tagName === "A");
+      select(run(21).firstChild, 2);
+      check("and so does one under a style wrapper", input("insertText", "x") === "taken");
+      check("keeping the wrapper", run(21).parentElement.getAttribute("style") === "font-weight:bold");
+
+      // A split inside a wrapper leaves the wrapper in both halves.
+      reset();
+      select(run(21).firstChild, 2);
+      input("insertParagraph");
+      check(
+        "a split inside a style wrapper cuts the wrapper too",
+        texts() === "first run a link and a tail|bo|ld|third|"
+      );
+      var tail = flow.querySelectorAll("x-p[data-odr-id]")[2];
+      check(
+        "so the tail keeps the style it had",
+        tail.querySelector("x-s[style]") !== null
       );
 
-      // A script rewriting the page raises no `input`, so the log stays as it
-      // was: nine highlights are not nine edits.
-      var hits = odr.search("edited");
-      check("a search finds its matches", hits > 0 && document.querySelectorAll("mark").length === hits);
+      // ---------------------------------------------- what is not an edit
+
+      // A script rewriting the page is not a reader typing, so the log stays
+      // as it was: nine highlights are not nine edits.
+      reset();
+      select(run(11).firstChild, 5);
+      input("insertText", "E");
+      var hits = odr.search("first");
+      check("a search finds its matches", hits > 0);
       check("and leaves the log alone", ops().length === 1);
       odr.resetSearch();
       check("as does clearing it", ops().length === 1);
 
-      // What a WebView raising `input` and no `beforeinput` looks like: the
-      // editor cannot name where it landed, and says so rather than dropping
-      // it.
-      var picture = document.querySelectorAll("x-p")[2];
-      select(picture, 0);
-      document.body.dispatchEvent(new Event("input", { bubbles: true }));
-      check(
-        "an edit the gate never saw is reported rather than lost",
-        errors.length === 1 && errors[0].indexOf("9 ") === 0
-      );
-      check("and it reaches no operation", ops().length === 1);
-
       odr.editing.committed();
       check("committing clears the log", ops().length === 0);
+      check("and undo with it", odr.editing.undo() === false);
       odr.editing.disable();
       check(
-        "and turning the mode off puts the view back",
+        "turning the mode off puts the view back",
         document.body.getAttribute("contenteditable") === null
       );
+      check("and nothing reported an error", errors.length === 0);
     </script>
   </body>
 </html>

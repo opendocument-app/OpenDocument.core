@@ -276,6 +276,17 @@ public:
     return new_id;
   }
 
+  [[nodiscard]] ElementIdentifier
+  element_append_text(const ElementIdentifier element_id,
+                      const std::string &text) const override {
+    pugi::xml_node node = get_node(element_id);
+    const NodeSpan span = write_text_nodes(node, {}, text);
+    const auto &[new_id, unused_element, unused_text] =
+        m_registry->create_text_element(span.first, span.last);
+    m_registry->append_child(element_id, new_id);
+    return new_id;
+  }
+
   void element_remove(const ElementIdentifier element_id) const override {
     TreeEditor(*m_registry).remove(element_id);
   }

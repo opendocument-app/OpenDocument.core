@@ -138,7 +138,27 @@ be what we would have to replay.
 every edit it was going to apply. So this work has to carry undo/redo, which
 until now was honestly refused (`canUndo` answered false and a host's button
 stayed grey). That is phase 3 item 2 of [`editing.md`](editing.md), and it
-arrives here because it is no longer optional.
+arrives here because it is no longer optional. One `beforeinput` is one undo
+step; a browser coalesces a word, and matching that is a later refinement.
+
+### 6b. The page is the model, because the editor is the only one writing it
+
+Decision 8 of [`editing.md`](editing.md) called for a structured model beside
+the page, with the DOM as its projection. The editor keeps no such second
+structure: the runs and paragraphs are addressed in the page by
+`data-odr-id`, and **that is the model**.
+
+**Why the second structure bought nothing:** what decision 8 was protecting
+against is contenteditable inventing markup we cannot map back. Owning the
+mutation removes that at the source — nothing but this editor writes the page,
+so the page cannot drift into a shape the element tree has no name for. A
+parallel model would have to be kept in step with the page anyway, and the
+place the two could disagree is exactly the bug it was meant to catch.
+
+**Where it earns its keep:** a composition cannot be cancelled, so the browser
+*does* write inside a run. With the page as the model there is nothing to
+reconcile — `compositionend` reads the run's text and that is the operation.
+With a parallel model that same case would be a merge.
 
 ### 7. Read-only engines say nothing
 
@@ -272,8 +292,8 @@ Each step is a pull request that builds and tests on its own.
    **Landed.**
 3. **Paragraphs split and merge.** `splitParagraph`, `mergeParagraph`,
    `insertParagraph`. **Landed.**
-4. **The browser editor.** Model-first, owns the DOM mutation, records the ops,
-   and carries undo/redo (decision 6).
+4. **The browser editor.** Owns the DOM mutation, records the ops, and carries
+   undo/redo (decisions 6 and 6b). **Landed.**
 5. **pptx writes.** `save`, `is_editable`, `is_savable`, the capability row and
    the new hooks over `a:p` / `a:r`.
 
@@ -301,6 +321,30 @@ A split exactly at the end of a span leaves an **empty copy of that span**
 behind. It is valid in both formats — the corpus is full of `<w:r><w:rPr/></w:r>`
 that producers wrote themselves — and pruning it would cost a branch to save
 nothing a reader sees.
+
+## What the editor does with a keystroke
+
+Every edit is one of two shapes, and both come out of one function:
+
+- **A range replaced by some text.** Typing, replacing a selection, every
+  delete, and each line of a paste. Inside one run it is a `setText`; across
+  runs it is a `setText` on each end and a `removeElement` between; across
+  paragraphs it is that plus a `mergeParagraph`.
+- **A split where the caret sits.** Enter, and every line break in a paste.
+  The run is cut in two first (decision 3) unless the caret is already at a
+  run boundary.
+
+Two details the checks pin down:
+
+- **A delete whose range the browser did not state is one character**, in the
+  direction the key names — or, at the start of a paragraph, the boundary
+  itself, which merges and takes no character. A browser normally states the
+  range; an Android WebView is reported not to. The *word* and *line* deletes
+  are not extended this way: guessing where a word ends would take away text
+  the reader did not name, so nothing happens.
+- **The line box is kept the way a fresh render writes it** — `<br>` where a
+  paragraph holds nothing, `<wbr>` where it holds something. An edited page
+  then looks like a re-rendered one, which is what makes the two comparable.
 
 ## Open questions
 

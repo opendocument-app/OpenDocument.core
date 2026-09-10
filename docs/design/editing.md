@@ -342,15 +342,18 @@ attribute.
 ### 13. One editable view, and every edit it cannot replay is refused
 
 `enable()` puts `contenteditable` on the **body**, not on each run. The editor
-then intercepts `beforeinput` and refuses everything that is not the text of one
-addressed run:
+then intercepts `beforeinput` and takes the edits it can express as operations:
 
 | The edit | What happens |
 |---|---|
-| text typed, replaced, pasted plain, deleted, composed — inside one run | allowed, and the run joins the log |
-| a new line (`insertParagraph`, `insertLineBreak`) | refused, reason `newLine` |
+| text typed, replaced, deleted — inside one run, across runs, across paragraphs | taken |
+| Enter | taken: the paragraph splits where the caret sits |
+| Backspace at the start of a paragraph | taken: the paragraph merges into the one before it |
+| a paste of plain text, over as many lines as it holds | taken: each line after the first opens a paragraph |
+| a composition (CJK, autocorrect, dictation) | let through and reconciled on `compositionend` |
+| a soft line break (`insertLineBreak`) | refused, reason `newLine` - no operation carries one |
 | anything else the browser offers (a mark, a list, a drop) | refused, reason `unsupportedEdit` |
-| an edit spanning two runs, or landing outside every run | refused, reason `range` |
+| an edit reaching over a picture or a table, or landing outside every run | refused, reason `range` |
 
 **Why the whole view rather than a run at a time:** `contenteditable` per run
 makes every run its own editing host, and a host is a wall. The caret cannot
@@ -365,52 +368,36 @@ over every run.
 it says *what* the edit is (`inputType`), it says *where* (`getTargetRanges()`),
 and it is cancelable. `text.js` already edits the plain-text view this way.
 
-**The whitelist is closed, not open.** Only the input types that change the text
-of one run are allowed; anything unrecognised is refused. An open list would let
-a browser-specific `inputType` through to a `MutationObserver` that only watches
-`characterData`, and a structural change would then be invisible to the log and
-saved wrong. Refusing something we could have allowed costs a reader one
-gesture; allowing something we cannot replay costs them their document.
+**The whitelist is closed, not open.** Only the input types the editor can
+express are taken; anything unrecognised is refused. Refusing something we could
+have allowed costs a reader one gesture; allowing something we cannot replay
+costs them their document.
 
 **The address is the whole guard.** No element is marked non-editable: an edit is
-allowed because it lands inside a `x-s[data-odr-id]` run, so a picture, a table's
-furniture, the gap between two paragraphs and the page box are all refused
-without a single attribute of their own. That is decision 10's rule — mark the
-exceptions, not the rest — applied to the caret instead of to a cell.
+allowed because it lands inside a `x-s[data-odr-id]` run and reaches over
+nothing but runs, so a picture, a table's furniture and the page box are all
+refused without a single attribute of their own. That is decision 10's rule —
+mark the exceptions, not the rest — applied to the caret instead of to a cell.
 
-**`input` is what the log collects on, not a `MutationObserver`.** The browser
-raises `input` when *it* applied an edit; a script rewriting the page raises
-none. That is the whole difference: `search.js` wraps every match in a `<mark>`,
-which an observer watching `characterData` reads as nine edits — measured, and
-it lit the host's save button and put nine no-op `setText` ops in the log. The
-run is the one `beforeinput` named, or the one the caret sits in where no
-`beforeinput` arrived; a run the editor cannot name at all raises code 9 rather
-than being dropped.
+**The editor owns the edit.** It cancels the `beforeinput` and splices the page
+itself, rather than letting the browser apply the change and reading the run
+back. See decision 6 of [`document-editing.md`](document-editing.md) for why that had
+to change.
+
+**Undo is the editor's**, because cancelling every edit leaves the browser's own
+stack empty. Each step holds the operations it puts on the wire and the two
+halves of taking it back, so `canUndo` and the chord now agree and a host's undo
+button is live. One `beforeinput` is one step.
 
 **Known holes, both narrow.** A scripted `document.execCommand` can bypass the
 gate, because Chrome does not fire a cancelable `beforeinput` for every command;
-trusted input, which is all a reader has, is refused correctly. And a
-composition cannot be cancelled at all — `insertCompositionText` is allowed and
-reconciled afterwards, which is why the observer reports code 9 when text
-changes where no op can name it, rather than dropping it in silence. Android
-WebView's incomplete `beforeinput` (decision 8) is the reason that report
-exists; verify it on a device before trusting the gate there.
-
-**Two limits a reader meets, and phase 3 is where both go:**
-
-- **Undo belongs to the browser, not to us.** Every allowed edit is one the
-  browser applied, so its own stack is the one that replays — ctrl+Z works, and
-  `chordKey` leaves the key alone because no editor claims it (decision 9). But
-  we cannot read that stack's depth, so `canUndo` is honestly false and a host's
-  undo *button* stays grey. Phase 3 item 2 is what fixes it: once the editor
-  records an op with its inverse, it answers `undo()` and joins the shared log.
-  Until then the button and the chord disagree, which is worse than either.
-- **Backspace at the start of a run is refused.** Its target range reaches back
-  into the run before it, so the edit spans two and `range` refuses it —
-  merging two runs is not something `setText` can express. It did nothing under
-  the per-run hosts either; the difference is that it now says why. The op that
-  would fix it is `deleteRange` across runs, which needs the write-side adapter
-  work in phase 2, not a browser change.
+trusted input, which is all a reader has, goes through it. And a composition
+cannot be cancelled at all, so the editor lets it finish and reads the run back
+on `compositionend`; a composition that landed where no run can name it raises
+code 9 rather than being dropped. Android WebView's incomplete `beforeinput`
+(decision 8) is the reason that report exists, and the reason a delete whose
+range the browser did not state is extended by one character rather than
+refused; verify both on a device.
 
 ## Preliminary implementation plan (ODF / OOXML)
 
@@ -458,9 +445,10 @@ Sequence within Phase 2: (a) delete element, (b) toggle mark on a range,
 
 ### Phase 3 — Browser editor
 
-The frame is landed (decisions 9 to 12): the mode, the refusals, the callbacks
-and the keyboard classes are in `frontend/editing.js`, and `document.js`
-attaches the skeleton editor to it. What is left is the editor itself.
+**Landed**, over [`document-editing.md`](document-editing.md)'s schema. The mode, the
+refusals, the callbacks and the keyboard classes are in `frontend/editing.js`;
+`document.js` holds the editor, which owns every edit and carries its own
+undo.
 
 1. Model keyed by `data-odr-id`; op recorder; composition-aware reconciliation.
    `beforeinput` is already the gate (decision 13); what is left is owning the
