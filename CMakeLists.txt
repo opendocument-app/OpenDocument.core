@@ -141,6 +141,7 @@ set(ODR_SOURCE_FILES
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
         "src/odr/document_path.cpp"
+        "src/odr/error_code.cpp"
         "src/odr/exceptions.cpp"
         "src/odr/file.cpp"
         "src/odr/filesystem.cpp"

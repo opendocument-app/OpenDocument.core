@@ -31,9 +31,9 @@ Worker**, where every value that crosses is structured-cloned.
   `guarded` and returns `{ok, value | error}`. The worker protocol has to turn
   a failure into data regardless, and an *unconverted* C++ exception reaches JS
   as an opaque pointer. `js/index.js` turns the envelope back into a thrown
-  `OdrError`, so only the wire carries envelopes. The `error.type` names come
-  from the same list as `jni/src/odr_jni.cpp`'s `throw_java` and
-  `apple/src/ODRInternal.mm`; keep the three in step.
+  `OdrError`, so only the wire carries envelopes. `error.type` and `error.code`
+  both come from `odr::ErrorCode`, which every binding reads — there is no
+  second list to keep in step.
 - **Nothing escapes as an embind handle.** A `class_`-bound wrapper cannot be
   structured-cloned, so a document is a `std::uint32_t` into a registry and a
   view an index within its session. This also dissolves the keep-alive problem
@@ -64,7 +64,7 @@ Worker**, where every value that crosses is structured-cloned.
   wrong for a PNG or a font, so binary results go through `to_uint8_array`.
 - **`to_uint8_array` copies, deliberately.** A `typed_memory_view` aliases the
   wasm heap and `ALLOW_MEMORY_GROWTH` detaches it on the next allocation.
-- **Enums cross by ordinal.** `enum_tables()` derives `FileType`,
+- **Enums cross by ordinal.** `enum_tables()` derives `ErrorCode`, `FileType`,
   `FileCategory` and `DocumentType` from the library's own tables; the rest are
   listed by hand in `wasm_core.cpp` and pinned by `tests/enums.test.mjs`.
   Appending stays silent, reordering goes loud — the rule

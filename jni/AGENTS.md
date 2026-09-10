@@ -47,8 +47,11 @@ package `app.opendocument.core`. Mirrors the surface of the python bindings
   enum declaration; `-1` encodes an absent `std::optional`.
 - **Strings**: use `odr_jni::to_string`/`to_jstring` (real UTF-8 ↔ UTF-16),
   never JNI's modified-UTF-8 `GetStringUTFChars`.
-- **Exceptions**: every native body runs inside `odr_jni::guarded`; C++
-  exceptions map to `OdrException` subclasses (`odr_jni.cpp::throw_java`).
+- **Exceptions**: every native body runs inside `odr_jni::guarded`.
+  `throw_java` names the `OdrException` subclass after `odr::ErrorCode`, so a
+  code with no class here arrives as the base and the mapping cannot drift.
+  Every one carries `getCode()`, the number the page and the other bindings
+  report too.
 - Mirror the C++ names. `Logger` is bound as a `NativeResource`; entry points
   that take one get an overload (e.g. `Odr.open(path, logger)`).
 - `ILogger` is implementable in Java. `jni_logger.cpp`'s `JavaLogger` holds a

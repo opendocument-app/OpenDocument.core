@@ -1,5 +1,6 @@
 #include <odr_wasm.hpp>
 
+#include <odr/error_code.hpp>
 #include <odr/exceptions.hpp>
 
 #include <emscripten/bind.h>
@@ -23,8 +24,8 @@ Handle &next_handle() {
   return instance;
 }
 
-emscripten::val error_for(const std::exception &e, const std::string &type) {
-  return error(type, e.what());
+emscripten::val error_for(const std::exception &e) {
+  return error(error_code(e), e.what());
 }
 
 } // namespace
@@ -66,9 +67,13 @@ emscripten::val ok(emscripten::val value) {
 
 emscripten::val ok() { return ok(emscripten::val::undefined()); }
 
-emscripten::val error(const std::string &type, const std::string &message) {
+emscripten::val error(const ErrorCode code, const std::string &message) {
   emscripten::val detail = emscripten::val::object();
-  detail.set("type", type);
+  // The catch-all keeps the name `js/index.js` gives the thrown error.
+  detail.set("type", code == ErrorCode::unknown
+                         ? std::string("OdrError")
+                         : std::string(error_code_name(code)));
+  detail.set("code", static_cast<std::int32_t>(code));
   detail.set("message", message);
 
   emscripten::val result = emscripten::val::object();
@@ -80,42 +85,16 @@ emscripten::val error(const std::string &type, const std::string &message) {
 emscripten::val current_exception_error() {
   try {
     throw;
-  } catch (const UnsupportedOperation &e) {
-    return error_for(e, "UnsupportedOperation");
-  } catch (const FileNotFound &e) {
-    return error_for(e, "FileNotFound");
-  } catch (const UnknownFileType &e) {
-    return error_for(e, "UnknownFileType");
   } catch (const UnsupportedFileType &e) {
     // the only error carrying a payload the caller acts on: a viewer names the
     // format it cannot show
-    emscripten::val result = error_for(e, "UnsupportedFileType");
+    emscripten::val result = error_for(e);
     result["error"].set("fileType", static_cast<int>(e.file_type));
     return result;
-  } catch (const FileReadError &e) {
-    return error_for(e, "FileReadError");
-  } catch (const FileWriteError &e) {
-    return error_for(e, "FileWriteError");
-  } catch (const NoDocumentFile &e) {
-    return error_for(e, "NoDocumentFile");
-  } catch (const UnknownDocumentType &e) {
-    return error_for(e, "UnknownDocumentType");
-  } catch (const UnsupportedCryptoAlgorithm &e) {
-    return error_for(e, "UnsupportedCryptoAlgorithm");
-  } catch (const WrongPasswordError &e) {
-    return error_for(e, "WrongPassword");
-  } catch (const DecryptionFailed &e) {
-    return error_for(e, "DecryptionFailed");
-  } catch (const NotEncryptedError &e) {
-    return error_for(e, "NotEncrypted");
-  } catch (const FileEncryptedError &e) {
-    return error_for(e, "FileEncrypted");
-  } catch (const DocumentCopyProtectedException &e) {
-    return error_for(e, "DocumentCopyProtected");
   } catch (const std::exception &e) {
-    return error_for(e, "OdrError");
+    return error_for(e);
   } catch (...) {
-    return error("OdrError", "unknown native error");
+    return error(ErrorCode::unknown, "unknown native error");
   }
 }
 

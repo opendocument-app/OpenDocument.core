@@ -128,6 +128,10 @@ export interface OpenOptions extends HtmlConfig {
 
 /** `name` is the C++ exception type: `WrongPassword`, `UnsupportedFileType`, … */
 export declare class OdrError extends Error {
+  /** `odr::ErrorCode`, the number every binding reports — the same space the
+   * rendered page uses for `odr.onError` and `odr.onEditRefused`. Prefer it
+   * over `name` for anything but a log. */
+  code: number;
   /** Set when `name` is `UnsupportedFileType`. */
   fileType?: number;
 }

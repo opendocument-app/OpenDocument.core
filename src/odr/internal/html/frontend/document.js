@@ -832,7 +832,7 @@
         : runOf(selection.getRangeAt(0).startContainer);
     var target = landed !== null ? landed : run;
     if (target === null) {
-      odr.onError(9, "an edit landed where no operation can name it");
+      odr.onError(odr.errorCodes.unnameableEdit, "an edit landed where no operation can name it");
       return;
     }
     // whatever the browser built inside the run, its text is the operation

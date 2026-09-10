@@ -237,11 +237,17 @@ is the same thing spelled for a reader of the log. We still ship an English
 `odr.onError` default does exactly this) and a desktop host with no catalogue
 can show it as it stands.
 
-**Codes are appended, never renumbered**, and share one space with
-`odr.onError`'s — `errorIllegalEditNewLine` holds 1. The rule the wasm enum
-ordinals already live under: appending stays silent, reordering goes loud.
-Pin them in `test/browser/sheet` the way `tests/enums.test.mjs` pins the
-enums.
+**The codes are `odr::ErrorCode`**, defined in `src/odr/error_code.hpp` and
+written into the page by `html/frontend.cpp::write_error_codes`, so the scripts
+restate no number. They share one space with `odr.onError`'s and with the code
+every binding reports for a thrown `odr::Exception`: below 1000 an exception
+names itself, and the refusals sit from 1001, `newLine` first.
+
+**Codes are appended, never renumbered.** The rule the wasm enum ordinals
+already live under: appending stays silent, reordering goes loud. `odr_test`
+pins both bands (`error_code_test.cpp`), `tests/enums.test.mjs` pins them on the
+JS side, and `test/browser/sheet` reads the table `serve.py` builds from the
+header rather than a copy.
 
 **One object argument, never positional.** `onError(code, message)` cannot
 grow a field without breaking every host that implements it; an object can.

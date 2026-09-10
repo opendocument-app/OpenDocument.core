@@ -1,6 +1,7 @@
 #include <odr_wasm.hpp>
 
 #include <odr/document.hpp>
+#include <odr/error_code.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
@@ -52,10 +53,9 @@ emscripten::val file_types() {
 }
 
 /// Enum name to ordinal, so the JS side never restates an ordinal by hand.
-/// `FileType`, `FileCategory`, `DocumentType` and `TextEncoding` are derived
-/// from the library's tables and cannot drift; the rest have no runtime table
-/// and are listed here,
-/// pinned by `tests/enums.test.mjs`.
+/// `ErrorCode`, `FileType`, `FileCategory`, `DocumentType` and `TextEncoding`
+/// are derived from the library's tables and cannot drift; the rest have no
+/// runtime table and are listed here, pinned by `tests/enums.test.mjs`.
 emscripten::val enum_tables() {
   const auto table = [](const auto &...entries) {
     emscripten::val result = emscripten::val::object();
@@ -96,7 +96,14 @@ emscripten::val enum_tables() {
                       static_cast<int>(encoding));
   }
 
+  emscripten::val error_code = emscripten::val::object();
+  for (const ErrorCode code : odr::all_error_codes()) {
+    error_code.set(std::string(odr::error_code_name(code)),
+                   static_cast<int>(code));
+  }
+
   emscripten::val result = emscripten::val::object();
+  result.set("ErrorCode", error_code);
   result.set("FileType", file_type);
   result.set("TextEncoding", text_encoding);
   result.set("FileCategory", file_category);

@@ -64,6 +64,9 @@
 
     <!-- Not editable: the report is the harness, not the document. -->
     <div id="out" contenteditable="false"><div id="report"></div></div>
+    <!-- the table the library writes into a page, ahead of the script
+         that reads it; `serve.py` builds it from `odr/error_code.*` -->
+    <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="document.js"></script>
     <script src="search.js"></script>
@@ -191,7 +194,7 @@
       check("the mode is off to start with", odr.editing.isEnabled() === false);
       select(run(11).firstChild, 3);
       check("and refuses an edit", input("insertText", "x") === "refused");
-      check("saying the document is read-only", refusals.pop() === "readOnly 5");
+      check("saying the document is read-only", refusals.pop() === "readOnly 1005");
       check("with nothing changed", texts().indexOf("first run ") === 0);
 
       check(
@@ -419,17 +422,17 @@
       // lands, and says `range` before it looks at the input type.
       select(run(11).firstChild, 3);
       check("a bold toggle is refused", input("formatBold") === "refused");
-      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 7");
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 1007");
       // The same reason twice within two seconds is one event, so the list has
       // to land in another run to be heard.
       select(run(13).firstChild, 3);
       check("so is a list", input("insertOrderedList") === "refused");
-      check("under the same reason", refusals.pop() === "unsupportedEdit 7");
+      check("under the same reason", refusals.pop() === "unsupportedEdit 1007");
       refusals = [];
 
       select(run(11).firstChild, 3);
       check("a soft line break is refused", input("insertLineBreak") === "refused");
-      check("by the name the reader knows", refusals.pop() === "newLine 1");
+      check("by the name the reader knows", refusals.pop() === "newLine 1001");
 
       // A paragraph holding no run has nothing an operation can name, so the
       // edit is taken and changes nothing rather than being refused.
@@ -449,7 +452,7 @@
           return input("insertText", "x") === "refused";
         })()
       );
-      check("under the same reason", refusals.pop() === "range 8");
+      check("under the same reason", refusals.pop() === "range 1008");
 
       // A range over a picture takes it away: the frame carries an address, so
       // `removeElement` can name it, and it holds no run to orphan.
@@ -469,7 +472,7 @@
       reset();
       selectRuns(61, 1, 65, 3);
       check("a range over a text box is refused", input("insertText", "-") === "refused");
-      check("because it holds text of its own", refusals.pop() === "range 8");
+      check("because it holds text of its own", refusals.pop() === "range 1008");
       check("and the box is still there", paragraph(60).querySelector("x-p") !== null);
 
       // A run under a link and one under a style-only wrapper are still runs.

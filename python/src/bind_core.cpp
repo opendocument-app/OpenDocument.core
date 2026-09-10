@@ -1,5 +1,6 @@
 #include "bindings.hpp"
 
+#include <odr/error_code.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
@@ -20,6 +21,12 @@ void odr_python::bind_core(py::module_ &m) {
   m.def("is_debug", &odr::is_debug);
   m.def("identify", &odr::identify,
         "Identification string of the underlying odrcore library.");
+
+  py::enum_<odr::ErrorCode> error_code(m, "ErrorCode");
+  for (const odr::ErrorCode code : odr::all_error_codes()) {
+    error_code.value(std::string(odr::error_code_name(code)).c_str(), code);
+  }
+  // No `export_values`: `range` and its neighbours would land in the module.
 
   // Mirrors odr::Exception, so `except odr.Error` catches the whole library.
   // `register_exception`, not `py::exception`: the latter has no translator.

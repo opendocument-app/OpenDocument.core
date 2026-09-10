@@ -5,6 +5,8 @@
 import createOdrModule from './odr-core.mjs';
 
 export class OdrError extends Error {
+  /// `detail` carries `code` (`odr::ErrorCode`) and, for an unsupported type,
+  /// `fileType`.
   constructor(type, message, detail) {
     super(message);
     this.name = type;

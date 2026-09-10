@@ -5,10 +5,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Domain of every error this framework reports.
 extern NSErrorDomain const ODRErrorDomain;
 
-/// The subset of `odr::Exception` the bindings tell apart, mirroring the one
-/// `jni/src/odr_jni.cpp` maps to typed java exceptions. Anything else arrives
-/// as `ODRErrorUnknown`; the C++ message is always the error's
-/// `NSLocalizedDescriptionKey`, so nothing is lost by not having a code.
+/// The head of `odr::ErrorCode`, numbered the same — `ODRInternal.mm` asserts
+/// that and casts. A code past this list arrives as `ODRErrorUnknown`; the C++
+/// message is always the error's `NSLocalizedDescriptionKey`, so nothing is
+/// lost by not having a case here.
 typedef NS_ERROR_ENUM(ODRErrorDomain, ODRError){
     ODRErrorUnknown = 1,
     ODRErrorUnsupportedOperation = 2,
