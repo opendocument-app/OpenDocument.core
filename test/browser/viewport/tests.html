@@ -20,25 +20,20 @@
     </style>
   </head>
   <body>
-    <pre id="out">running…</pre>
+    <div id="report"></div>
+    <pre id="out"></pre>
     <iframe id="frame" width="900" height="600"></iframe>
+    <script src="checks.js"></script>
     <script>
       var out = document.getElementById("out");
       var frame = document.getElementById("frame");
       var lines = [];
-      var failed = 0;
 
+      // The prose around the checks: section heads, and the manual ones a
+      // frame cannot stand in for. `check` writes the report itself.
       function say(text) {
         lines.push(text);
         out.innerHTML = lines.join("\n");
-      }
-
-      function check(name, ok, detail) {
-        if (!ok) {
-          ++failed;
-        }
-        var head = ok ? "PASS  " : "<b>FAIL</b>  ";
-        say(head + name + (detail ? "   " + detail : ""));
       }
 
       function wait(ms) {
@@ -226,26 +221,21 @@
       }
 
       (async function () {
-        say("--- rect space against viewport space ---");
+        note("rect space against viewport space");
         await rectTest("chromium", false);
         await rectTest("webkit-simulated", true);
 
-        say("");
-        say("--- the pinch focus holds ---");
+        note("the pinch focus holds");
         await pinchTest("chromium", false, 400);
         await pinchTest("webkit-simulated", true, 400);
 
-        say("");
-        say("--- a stated fit holds the reading position ---");
+        note("a stated fit holds the reading position");
         await resizeHoldTest("resize");
 
-        say("");
-        say("--- who measures the fit ---");
+        note("who measures the fit");
         await framedFitTest("--odr-fit:auto", "auto");
         await framedFitTest("--odr-fit:view", "view");
 
-        say("");
-        say(failed ? "<b>" + failed + " failed</b>" : "all passed");
         say("");
         say("At the top level, where a frame cannot stand in - open each and");
         say("read the banner:");
