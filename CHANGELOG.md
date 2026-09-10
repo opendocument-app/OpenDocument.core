@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `AnchorType` gains `none` as its first value, so every later
+  ordinal shifts by one. `Frame::anchor_type()` answers it for a frame that
+  does not exist, instead of `as_char`, which a real frame also answers.
+
+- **Fix**: a percentage `fo:margin` on an odf paragraph is resolved against the
+  parent style ([OpenDocument] 16.2) instead of being dropped. LibreOffice
+  writes `fo:margin="100%"` for "whatever the parent had".
+
 - **Fix**: `Text::set_content` on an `.xlsx` run did nothing and said nothing.
   An xlsx declares `edit`, so a caller had no way to learn the write was
   dropped; it now throws `UnsupportedOperation`, as every other engine that
