@@ -256,3 +256,14 @@ def test_a_csv_holds_a_text_file_rather_than_being_one(csv_path):
     assert not file.is_text_file()
     assert file.is_csv_file()
     assert file.as_csv_file().text_file().text().startswith("name,value")
+
+
+def test_a_markdown_file_holds_a_text_file_too(tmp_path):
+    path = tmp_path / "note.md"
+    path.write_text("# hello\n")
+
+    file = pyodr.open(str(path))
+    assert not file.is_text_file()
+    assert file.is_markdown_file()
+    assert file.as_markdown_file().text_file().text() == "# hello\n"
+    assert file.as_markdown_file().document().document_type() == pyodr.DocumentType.text

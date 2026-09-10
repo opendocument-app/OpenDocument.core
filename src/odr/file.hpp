@@ -370,7 +370,8 @@ public:
   void pipe(std::ostream &out) const;
   void copy(const std::string &path) const;
 
-  // TODO `impl()` might be a bit dirty
+  /// The internal file this wraps. The bindings need it to hand one wrapper's
+  /// value to another; every public wrapper here offers the same.
   [[nodiscard]] std::shared_ptr<internal::abstract::File> impl() const;
 
 protected:

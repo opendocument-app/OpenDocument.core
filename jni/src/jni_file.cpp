@@ -186,6 +186,23 @@ Java_app_opendocument_core_DecodedFile_isTextFileNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_DecodedFile_isCsvFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).is_csv_file());
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_opendocument_core_DecodedFile_isMarkdownFileNative(JNIEnv *env,
+                                                            jobject,
+                                                            jlong handle) {
+  return guarded(env, [&] {
+    return static_cast<jboolean>(decoded(handle).is_markdown_file());
+  });
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
 Java_app_opendocument_core_DecodedFile_isImageFileNative(JNIEnv *env, jobject,
                                                          jlong handle) {
   return guarded(env, [&] {
@@ -231,6 +248,61 @@ Java_app_opendocument_core_DecodedFile_asTextFileNative(JNIEnv *env, jobject,
                                                         jlong handle) {
   return guarded(env, [&] {
     return make_handle(odr::DecodedFile(decoded(handle).as_text_file()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_DecodedFile_asCsvFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(odr::DecodedFile(decoded(handle).as_csv_file()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_DecodedFile_asMarkdownFileNative(JNIEnv *env,
+                                                            jobject,
+                                                            jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(odr::DecodedFile(decoded(handle).as_markdown_file()));
+  });
+}
+
+// app.opendocument.core.CsvFile
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_CsvFile_documentNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(decoded(handle).as_csv_file().document());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_CsvFile_textFileNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::DecodedFile(decoded(handle).as_csv_file().text_file()));
+  });
+}
+
+// app.opendocument.core.MarkdownFile
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_MarkdownFile_documentNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(decoded(handle).as_markdown_file().document());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_MarkdownFile_textFileNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::DecodedFile(decoded(handle).as_markdown_file().text_file()));
   });
 }
 

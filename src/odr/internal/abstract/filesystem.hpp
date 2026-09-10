@@ -19,7 +19,8 @@ public:
 
   [[nodiscard]] virtual bool end() const = 0;
   [[nodiscard]] virtual std::uint32_t depth() const = 0;
-  // TODO by reference?
+  /// By value: a walker builds the path from where it stands rather than
+  /// holding one.
   [[nodiscard]] virtual AbsPath path() const = 0;
   [[nodiscard]] virtual bool is_file() const = 0;
   [[nodiscard]] virtual bool is_directory() const = 0;

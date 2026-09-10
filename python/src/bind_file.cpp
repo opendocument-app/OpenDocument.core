@@ -273,6 +273,7 @@ void odr_python::bind_file(py::module_ &m) {
       .def("capabilities", &odr::DecodedFile::capabilities)
       .def("is_text_file", &odr::DecodedFile::is_text_file)
       .def("is_csv_file", &odr::DecodedFile::is_csv_file)
+      .def("is_markdown_file", &odr::DecodedFile::is_markdown_file)
       .def("is_image_file", &odr::DecodedFile::is_image_file)
       .def("is_archive_file", &odr::DecodedFile::is_archive_file)
       .def("is_document_file", &odr::DecodedFile::is_document_file)
@@ -280,6 +281,7 @@ void odr_python::bind_file(py::module_ &m) {
       .def("is_font_file", &odr::DecodedFile::is_font_file)
       .def("as_text_file", &odr::DecodedFile::as_text_file)
       .def("as_csv_file", &odr::DecodedFile::as_csv_file)
+      .def("as_markdown_file", &odr::DecodedFile::as_markdown_file)
       .def("as_image_file", &odr::DecodedFile::as_image_file)
       .def("as_archive_file", &odr::DecodedFile::as_archive_file)
       .def("as_document_file", &odr::DecodedFile::as_document_file)
@@ -292,6 +294,12 @@ void odr_python::bind_file(py::module_ &m) {
       .def("document", &odr::CsvFile::document,
            "The csv as a one-sheet spreadsheet.")
       .def("text_file", &odr::CsvFile::text_file,
+           "The same bytes as plain text.");
+
+  py::class_<odr::MarkdownFile, odr::DecodedFile>(m, "MarkdownFile")
+      .def("document", &odr::MarkdownFile::document,
+           "The markdown as a text document.")
+      .def("text_file", &odr::MarkdownFile::text_file,
            "The same bytes as plain text.");
 
   py::class_<odr::TextFile, odr::DecodedFile>(m, "TextFile")

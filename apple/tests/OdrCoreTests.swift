@@ -114,6 +114,11 @@ final class DecodeTests: XCTestCase {
     XCTAssertEqual(decoded.fileCategory, .text)
     XCTAssertFalse(decoded.isDocumentFile)
     XCTAssertFalse(decoded.isTextFile)
+    XCTAssertTrue(decoded.isCsvFile)
+
+    let csv = try decoded.asCsvFile()
+    XCTAssertEqual(try csv.textFile().text(), "a,b\n1,2\n")
+    XCTAssertNotNil(try csv.document().rootElement())
   }
 
   /// `odr::Filesystem::exists("")` throws `std::invalid_argument`. Unguarded,

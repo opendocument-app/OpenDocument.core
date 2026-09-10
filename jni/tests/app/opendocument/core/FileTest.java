@@ -58,8 +58,13 @@ class FileTest {
     Path csv = TestFiles.csvFile(tempDir);
     try (DecodedFile file = Odr.open(csv.toString())) {
       assertEquals(FileType.COMMA_SEPARATED_VALUES, file.fileType());
-      // A csv holds a text file rather than being one.
+      // A csv holds a text file rather than being one; both views stay open.
       assertFalse(file.isTextFile());
+      assertTrue(file.isCsvFile());
+
+      CsvFile decodedCsv = file.asCsvFile();
+      assertTrue(decodedCsv.textFile().text().startsWith("name,"));
+      assertNotNull(decodedCsv.document().rootElement());
     }
   }
 
