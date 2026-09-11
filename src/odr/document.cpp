@@ -7,6 +7,7 @@
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -373,6 +375,20 @@ Paragraph Document::insert_paragraph_after(const Paragraph &paragraph) const {
   const ElementIdentifier identifier =
       paragraphs->paragraph_insert_after(paragraph_id);
   return {adapter, identifier, adapter->paragraph_adapter(identifier)};
+}
+
+std::vector<SheetPosition>
+Document::dependents(const SheetPosition &position) const {
+  return dependents(std::vector<SheetPosition>{position});
+}
+
+std::vector<SheetPosition>
+Document::dependents(const std::vector<SheetPosition> &positions) const {
+  return m_impl->sheet_dependencies().dependents(positions);
+}
+
+std::vector<SheetPosition> Document::unresolved_formulas() const {
+  return m_impl->sheet_dependencies().unresolved();
 }
 
 Filesystem Document::as_filesystem() const {

@@ -19,6 +19,8 @@ public:
   /// Closed: @ref to is the last position of the range, and it is contained.
   [[nodiscard]] bool contains(const TablePosition &position) const noexcept;
 
+  friend bool operator==(const TableRange &, const TableRange &) = default;
+
 private:
   TablePosition m_from;
   TablePosition m_to;

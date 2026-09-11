@@ -473,8 +473,22 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    alone ([ECMA-376] 18.3.1.40), so a member now reads it moved by the offset
    between the two cells, `#REF!` where that leaves the grid. An array
    formula's members carry no `<f>` at all and still report none.
-2. Reference extraction → dependency graph per document; `Document` answers
-   "which cells depend on this position".
+2. **Landed.** Reference extraction → `internal::SheetDependencies`: every
+   sheet walked, every formula parsed, each reference resolved to the
+   rectangle of a sheet it reads. `Document::dependents(position)` answers
+   which cells read it, directly or through another formula. The graph is
+   built once off the decoded document and kept, because writing a formula is
+   refused until step 4.
+
+   A formula that names something no position can be read out of is in
+   `Document::unresolved_formulas()` instead: it may read anything, and the
+   graph cannot say what. A reference into another document is neither — no
+   edit here reaches it.
+
+   The walk goes through `SheetAdapter::sheet_visit_formulas`, which hands out
+   the cells the file *spells* rather than the positions they cover: a
+   repeated ODS row of 1024 columns over 1048576 rows is a handful of nodes
+   and a billion positions, and only the first is walked.
 3. View: a commit marks dependents stale (a class, the host is told); the
    locked formula cell exposes its text (`data-odr-formula`, formula cells
    only) so a formula bar or a tooltip can show it.

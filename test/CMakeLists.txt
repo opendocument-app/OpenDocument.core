@@ -40,6 +40,7 @@ add_executable(odr_test
         "src/odr_test.cpp"
         "src/pdf_annotate_test.cpp"
         "src/quantity_test.cpp"
+        "src/sheet_dependencies_test.cpp"
         "src/table_position_test.cpp"
 
         "src/internal/html/common_test.cpp"

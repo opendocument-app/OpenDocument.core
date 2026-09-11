@@ -8,6 +8,7 @@
 #include <odr/quantity.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <iosfwd>
 #include <memory>
 #include <optional>
@@ -29,6 +30,10 @@ struct TextStyle;
 struct ParagraphStyle;
 struct GraphicStyle;
 } // namespace odr
+
+namespace odr::internal {
+class SheetDependencies;
+} // namespace odr::internal
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -76,6 +81,10 @@ public:
 
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
   [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
+
+  /// Built on the first question and kept: writing a formula is refused, so
+  /// nothing a write does changes it.
+  [[nodiscard]] virtual const SheetDependencies &sheet_dependencies() const = 0;
 };
 
 class ElementAdapter {
@@ -245,6 +254,11 @@ public:
   page_name(ElementIdentifier element_id) const = 0;
 };
 
+/// What a formula cell states: the position the file states it at, and the
+/// expression in the engine's own syntax.
+using SheetFormulaVisitor = std::function<void(
+    std::uint32_t column, std::uint32_t row, const std::string &formula)>;
+
 class SheetAdapter {
 public:
   virtual ~SheetAdapter() = default;
@@ -267,6 +281,13 @@ public:
              std::uint32_t row) const = 0;
   [[nodiscard]] virtual ElementIdentifier
   sheet_first_shape(ElementIdentifier element_id) const = 0;
+
+  /// Calls @p visitor for every cell of the sheet stating a formula, once per
+  /// cell the file spells — a repeated run at its first position, so the grid
+  /// a repeat stands for is never walked. Visits none by default.
+  virtual void sheet_visit_formulas(
+      [[maybe_unused]] const ElementIdentifier element_id,
+      [[maybe_unused]] const SheetFormulaVisitor &visitor) const {}
 
   /// Writes @p value into the cell at (@p column, @p row). A value stating
   /// nothing clears it.

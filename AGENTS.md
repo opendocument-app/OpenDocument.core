@@ -84,7 +84,7 @@ producer's layout recorded — odf's `text:soft-page-break` — are not parsed.
 |------|------|
 | `src/odr/*.hpp` | **Public API**: `file`, `document`, `document_element`, `html`, `style`, `quantity` (`Measure`), `odr`. |
 | `src/odr/internal/abstract/` | Core interfaces: `File`/`DecodedFile`, `Document` + `ElementAdapter`, `Filesystem`, `Archive`, `HtmlService`. |
-| `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, the shared `ElementRegistry` + `ElementAdapter`, filesystem, `style`, table cursor/range, `TextCursor`, temp files. |
+| `src/odr/internal/common/` | Reusable impls: `Path`/`AbsPath`, base `Document`, the shared `ElementRegistry` + `ElementAdapter`, filesystem, `style`, table cursor/range, `TextCursor`, `SheetDependencies`, temp files. |
 | `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
 | `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |

@@ -3,10 +3,13 @@
 #include <odr/definitions.hpp>
 #include <odr/logger.hpp>
 
+#include <odr/sheet_position.hpp>
+
 #include <iosfwd>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace odr::internal::abstract {
 class Document;
@@ -101,6 +104,25 @@ public:
   /// An empty paragraph after @p paragraph, of the same style.
   [[nodiscard]] Paragraph
   insert_paragraph_after(const Paragraph &paragraph) const;
+
+  /// @}
+
+  /// @name Formulas
+  /// The graph is built the first time one of these is asked and kept.
+  /// @{
+
+  /// The cells whose formula reads @p position, directly or through another
+  /// formula. Sorted by sheet and then in reading order, each named once.
+  [[nodiscard]] std::vector<SheetPosition>
+  dependents(const SheetPosition &position) const;
+  /// The same for a whole batch of edited positions, which costs one walk
+  /// rather than one per position.
+  [[nodiscard]] std::vector<SheetPosition>
+  dependents(const std::vector<SheetPosition> &positions) const;
+
+  /// The cells holding a formula whose references could not all be read: it
+  /// may read any position, so a caller that must be right assumes it does.
+  [[nodiscard]] std::vector<SheetPosition> unresolved_formulas() const;
 
   /// @}
 
