@@ -13,23 +13,6 @@
 
 namespace odr::internal {
 
-namespace {
-
-/// The syntax the engine behind @p file_type writes a formula in. Nothing
-/// where it states none at all.
-std::optional<formula::Syntax> syntax_of(const FileType file_type) {
-  switch (file_type) {
-  case FileType::opendocument_spreadsheet:
-    return formula::Syntax::opendocument;
-  case FileType::office_open_xml_workbook:
-    return formula::Syntax::ooxml;
-  default:
-    return {};
-  }
-}
-
-} // namespace
-
 bool SheetDependencies::Read::contains(const SheetPosition &position) const {
   return position.sheet == sheet && range.contains(position.cell);
 }
@@ -37,7 +20,8 @@ bool SheetDependencies::Read::contains(const SheetPosition &position) const {
 SheetDependencies SheetDependencies::of(const abstract::Document &document) {
   SheetDependencies result;
 
-  const std::optional<formula::Syntax> syntax = syntax_of(document.file_type());
+  const std::optional<formula::Syntax> syntax =
+      formula::syntax_of(document.file_type());
   const abstract::ElementAdapter *adapter = document.element_adapter();
   if (!syntax.has_value() || adapter == nullptr) {
     return result;

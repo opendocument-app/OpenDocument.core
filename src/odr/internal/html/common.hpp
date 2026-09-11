@@ -8,6 +8,7 @@
 
 #include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/quantity.hpp>
 #include <odr/style.hpp>
 
@@ -58,6 +59,15 @@ struct WritingState {
     m_document_editable = editable;
   }
 
+  /// The syntax a formula of this document is written in, or nothing where
+  /// the engine states none.
+  [[nodiscard]] std::optional<formula::Syntax> formula_syntax() const {
+    return m_formula_syntax;
+  }
+  void set_formula_syntax(const std::optional<formula::Syntax> syntax) {
+    m_formula_syntax = syntax;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -67,6 +77,7 @@ private:
   TextDirection m_direction{TextDirection::left_to_right};
   bool m_editable_markup{true};
   bool m_document_editable{false};
+  std::optional<formula::Syntax> m_formula_syntax;
 };
 
 /// Writes the viewport meta tag. Precedence: `config.viewport_content` (raw,

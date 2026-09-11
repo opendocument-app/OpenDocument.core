@@ -9,6 +9,7 @@
 --odr-sheet-wash-ruler:rgba(0,0,0,.10);
 --odr-sheet-focus:#3c78dc;
 --odr-sheet-refused:#d1493f;
+--odr-sheet-stale:#b8860b;
 --odr-sheet-raised:#ffffff;
 --odr-sheet-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
@@ -50,6 +51,10 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-editing td{cursor:cell}
 .odr-editing td.odr-locked{cursor:not-allowed}
 .odr-sheet td.odr-sheet-refused{outline:2px solid var(--odr-sheet-refused);outline-offset:-2px}
+/* A formula whose input an edit changed; the cell still shows the cached
+   result. Underlined, so it layers over the pin and the hover wash and moves
+   no geometry. */
+.odr-sheet td.odr-sheet-stale{text-decoration:underline wavy var(--odr-sheet-stale);text-decoration-skip-ink:none}
 /* The header's `position:sticky` already makes it a containing block. */
 .odr-sheet-sort{position:absolute;top:1px;right:1px;bottom:1px;width:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;opacity:0;cursor:pointer}
 .odr-sheet-column-header:hover .odr-sheet-sort,.odr-sheet-sort-asc,.odr-sheet-sort-desc{opacity:1}

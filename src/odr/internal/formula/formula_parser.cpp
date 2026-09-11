@@ -684,6 +684,17 @@ std::string_view strip_prefix(std::string_view formula) {
 
 namespace odr::internal {
 
+std::optional<formula::Syntax> formula::syntax_of(const FileType file_type) {
+  switch (file_type) {
+  case FileType::opendocument_spreadsheet:
+    return formula::Syntax::opendocument;
+  case FileType::office_open_xml_workbook:
+    return formula::Syntax::ooxml;
+  default:
+    return {};
+  }
+}
+
 std::optional<formula::Node> formula::parse(const std::string_view formula,
                                             const formula::Syntax syntax) {
   return formula::Parser(formula::strip_prefix(formula), syntax).parse();

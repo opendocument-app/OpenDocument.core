@@ -89,7 +89,7 @@
         return true;
       }
 
-      // The three callbacks a host assigns, which on droid/ios go in through
+      // The callbacks a host assigns, which on droid/ios go in through
       // `evaluateJavascript` once the WebView has finished loading.
       function wire() {
         const page = editing();
@@ -110,6 +110,12 @@
         frame.contentWindow.odr.onEditModeChange = (event) => {
           edit.textContent = event.editing ? 'editing' : 'edit';
           if (event.reason) status.textContent = event.message;
+        };
+        // The cells an edit left computing an old input; the page marks them.
+        frame.contentWindow.odr.onCellsStale = (event) => {
+          if (event.cells.length > 0) {
+            status.textContent = `${event.cells.length} formula cell(s) out of date`;
+          }
         };
       }
 

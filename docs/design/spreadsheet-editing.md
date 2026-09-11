@@ -225,7 +225,12 @@ odr.onEditRefused = function (event) {};
 odr.onEditChange = function (event) {};
 // {editing, editable, reason, code, message}
 odr.onEditModeChange = function (event) {};
+// {sheet, cells} - the formula cells an edit left computing an old input
+odr.onCellsStale = function (event) {};
 ```
+
+`onCellsStale` carries no code, because it reports no refusal, and the page
+marks the cells itself, so a host that wires nothing still shows something.
 
 **The message is for the console; the code is for the host.** A mobile
 snackbar is written in the app's own string catalogue, and nothing in this
@@ -489,9 +494,21 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    the cells the file *spells* rather than the positions they cover: a
    repeated ODS row of 1024 columns over 1048576 rows is a handful of nodes
    and a billion positions, and only the first is walked.
-3. View: a commit marks dependents stale (a class, the host is told); the
-   locked formula cell exposes its text (`data-odr-formula`, formula cells
-   only) so a formula bar or a tooltip can show it.
+3. **Landed.** View: a formula cell states its expression
+   (`data-odr-formula`, which `odr.sheet.formulaAt` hands a formula bar) and
+   the rectangles it reads (`data-odr-reads`: sheet, columns, rows, `*` for an
+   axis a reference leaves open). Both are editing scaffolding, so a read-only
+   render carries neither.
+
+   A commit then marks the cells reading what it wrote — and the cells reading
+   those — with `odr-sheet-stale`, and raises `odr.onCellsStale`. The marks
+   follow the **log**, not the last write: `repaintStale` recomputes them off
+   the coalesced log, so an undo takes back what it made stale and a save
+   clears them with the log. Nothing recomputes a value; step 4 is what does.
+
+   The page carries the graph rather than asking the host for it, because a
+   mark has to keep up with typing. The engine's own graph (item 2) is what
+   the file side uses.
 4. File: the `.ods` answer from the spike — drop the cached value of dirty
    dependents, or whatever LibreOffice needs to recompute.
 

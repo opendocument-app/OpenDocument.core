@@ -8,6 +8,8 @@
 
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/table_cursor.hpp>
+#include <odr/internal/formula/formula_dependencies.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_style.hpp>
 #include <odr/internal/html/html_service.hpp>
@@ -15,9 +17,14 @@
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/number_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <limits>
+#include <optional>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal {
@@ -346,10 +353,78 @@ std::uint32_t sheet_ordinal(const Sheet &sheet) {
   return ordinal;
 }
 
+/// Every sheet by its name without case, as a formula names one, so a
+/// reference into another sheet resolves to the ordinal an op uses.
+std::unordered_map<std::string, std::uint32_t>
+sheet_ordinals_by_name(const Sheet &sheet) {
+  Element first = sheet;
+  for (Element previous = sheet.previous_sibling(); previous;
+       previous = previous.previous_sibling()) {
+    first = previous;
+  }
+
+  std::unordered_map<std::string, std::uint32_t> result;
+  std::uint32_t ordinal = 0;
+  for (Element current = first; current; current = current.next_sibling()) {
+    if (current.type() == ElementType::sheet) {
+      result.emplace(util::string::to_lower(current.as_sheet().name()),
+                     ordinal);
+    }
+    ++ordinal;
+  }
+  return result;
+}
+
+/// The open end of an axis a reference leaves out.
+std::string spell_bound(const std::uint32_t index) {
+  return index == std::numeric_limits<std::uint32_t>::max()
+             ? "*"
+             : std::to_string(index);
+}
+
+/// What @p formula reads, as the rectangles the page tests a written position
+/// against: `sheet,first column,last column,first row,last row`, space
+/// separated, with `*` for an axis the reference leaves open. Empty where the
+/// formula does not parse, or reads nothing this document holds.
+std::string
+cell_reads(const std::string &formula, const formula::Syntax syntax,
+           const std::uint32_t own_sheet,
+           const std::unordered_map<std::string, std::uint32_t> &by_name) {
+  const std::optional<formula::Node> node = formula::parse(formula, syntax);
+  if (!node.has_value()) {
+    return {};
+  }
+
+  std::string result;
+  for (const formula::Extent &extent : formula::references(*node).extents) {
+    if (extent.document.has_value()) {
+      continue; // another file, which no edit here reaches
+    }
+    std::uint32_t sheet = own_sheet;
+    if (extent.sheet.has_value()) {
+      const auto named = by_name.find(util::string::to_lower(*extent.sheet));
+      if (named == by_name.end()) {
+        continue;
+      }
+      sheet = named->second;
+    }
+    if (!result.empty()) {
+      result += " ";
+    }
+    result += std::to_string(sheet) + "," +
+              spell_bound(extent.range.from().column) + "," +
+              spell_bound(extent.range.to().column) + "," +
+              spell_bound(extent.range.from().row) + "," +
+              spell_bound(extent.range.to().row);
+  }
+  return result;
+}
+
 /// Why a cell cannot be edited, or null where it can be. The names the page
 /// reports to its host; `spreadsheet-editing.md` decision 3 lists them.
-const char *cell_lock(const SheetCell &cell, const bool anchors_shapes) {
-  if (cell.value().has_formula()) {
+const char *cell_lock(const CellValue &value, const SheetCell &cell,
+                      const bool anchors_shapes) {
+  if (value.has_formula()) {
     return "formula";
   }
   // its drawings are what the cell is, and an overlay would cover them
@@ -501,22 +576,30 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
   const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
 
+  // scaffolding: a read-only render states neither a lock nor a dependency
+  const std::optional<formula::Syntax> syntax =
+      state.config().editable ? state.formula_syntax() : std::nullopt;
+  const std::uint32_t ordinal = sheet_ordinal(sheet);
+  const std::unordered_map<std::string, std::uint32_t> ordinals_by_name =
+      syntax.has_value() ? sheet_ordinals_by_name(sheet)
+                         : std::unordered_map<std::string, std::uint32_t>();
+
   state.out().write_element_begin(
-      "table",
-      HtmlElementOptions()
-          .set_class("odr-sheet")
-          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-            // every op names its sheet, and a view holds only one
-            clb("data-odr-sheet", std::to_string(sheet_ordinal(sheet)));
-          })
-          .set_style([&]() -> std::optional<HtmlWritable> {
-            if (!print_fit.has_value()) {
-              return std::nullopt;
-            }
-            // `Measure` renders no exponent form
-            return "--odr-print-fit:" +
-                   Measure(*print_fit, DynamicUnit()).to_string() + ";";
-          }()));
+      "table", HtmlElementOptions()
+                   .set_class("odr-sheet")
+                   .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+                     // every op names its sheet, and a view holds only one
+                     clb("data-odr-sheet", std::to_string(ordinal));
+                   })
+                   .set_style([&]() -> std::optional<HtmlWritable> {
+                     if (!print_fit.has_value()) {
+                       return std::nullopt;
+                     }
+                     // `Measure` renders no exponent form
+                     return "--odr-print-fit:" +
+                            Measure(*print_fit, DynamicUnit()).to_string() +
+                            ";";
+                   }()));
 
   state.out().write_element_begin("col",
                                   HtmlElementOptions()
@@ -685,9 +768,18 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       const std::optional<FoldedCell> folded = fold_cell(
           cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
 
-      // scaffolding: a read-only render states no lock
-      const char *lock =
-          state.config().editable ? cell_lock(cell, anchors_shapes) : nullptr;
+      const CellValue cell_value =
+          state.config().editable ? cell.value() : CellValue();
+      const char *lock = state.config().editable
+                             ? cell_lock(cell_value, cell, anchors_shapes)
+                             : nullptr;
+      // what a formula bar shows, and the rectangles the page marks against
+      const bool computes = cell_value.has_formula() &&
+                            !cell_value.formula().empty() && syntax.has_value();
+      const std::string reads = computes
+                                    ? cell_reads(cell_value.formula(), *syntax,
+                                                 ordinal, ordinals_by_name)
+                                    : std::string();
 
       state.out().write_element_begin(
           "td",
@@ -702,6 +794,13 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 }
                 if (lock != nullptr) {
                   clb("data-odr-lock", lock);
+                }
+                if (computes) {
+                  clb("data-odr-formula",
+                      xml::escape_attribute(cell_value.formula()));
+                }
+                if (!reads.empty()) {
+                  clb("data-odr-reads", reads);
                 }
               })
               .set_style(

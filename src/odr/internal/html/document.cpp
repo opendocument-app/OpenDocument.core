@@ -9,6 +9,7 @@
 
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
@@ -282,6 +283,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     WritingState state(out, config, resources, logger);
     state.set_direction(document_direction(document));
     state.set_document_editable(document.is_editable());
+    state.set_formula_syntax(formula::syntax_of(document.file_type()));
     write_head(document, state, name, content_pixels);
     body(state);
     out.write_end();
@@ -294,6 +296,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
   WritingState head_state(out, config, resources, logger, &styles);
   head_state.set_direction(document_direction(document));
   head_state.set_document_editable(document.is_editable());
+  head_state.set_formula_syntax(formula::syntax_of(document.file_type()));
 
   util::stream::DeferredBuffer buffer(
       out.out(), static_cast<std::size_t>(config.spreadsheet_style_buffer),
@@ -307,6 +310,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     WritingState state(body_out, config, resources, logger, &styles);
     state.set_direction(head_state.direction());
     state.set_document_editable(head_state.document_editable());
+    state.set_formula_syntax(head_state.formula_syntax());
     body(state);
   }
   buffer.release();
