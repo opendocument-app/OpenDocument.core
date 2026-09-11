@@ -87,6 +87,7 @@ add_executable(odr_test
         "src/internal/odf/odf_frame_test.cpp"
         "src/internal/odf/odf_geometry_test.cpp"
         "src/internal/odf/odf_sheet_repeat_test.cpp"
+        "src/internal/odf/odf_sheet_stale_test.cpp"
         "src/internal/odf/odf_sheet_value_test.cpp"
         "src/internal/odf/odf_sheet_write_test.cpp"
         "src/internal/odf/odf_table_test.cpp"

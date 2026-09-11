@@ -213,6 +213,16 @@ The structural/foundational gaps, roughly by value:
    reachable. Their `pugi::xml_node` is dangling from then on, which is the
    cost `ooxml/spreadsheet` already pays for the same tombstoning.
 
+   A write also **takes the cached result of every formula reading it away**
+   (`drop_stale_results`, over `SheetDependencies`): the attributes stating a
+   value go, and the `text:p` showing it is removed as an element so the
+   registry keeps no dangling node. The formula, the cell's style and a
+   drawing anchored in it stay, and a formula the graph could read no
+   position out of (`SheetDependencies::unresolved`) keeps its result. ODF
+   has no `fullCalcOnLoad`, so a cell stating a formula and no result is the
+   only way the file avoids a wrong number; it renders empty until the
+   evaluator lands.
+
    A position the sheet stops before is reached by `grow_to_cell`, which
    appends the rows and the runs of empty cells it takes and declares the
    columns, so `dimensions` covers the new cell. A repeated row is cut before

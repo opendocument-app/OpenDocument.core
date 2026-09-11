@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0, 1 and 2 landed; step 3 is under way.** This
+Status: **steps 0 to 3 landed; step 4 — the evaluator — is next.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -509,8 +509,22 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    The page carries the graph rather than asking the host for it, because a
    mark has to keep up with typing. The engine's own graph (item 2) is what
    the file side uses.
-4. File: the `.ods` answer from the spike — drop the cached value of dirty
-   dependents, or whatever LibreOffice needs to recompute.
+4. **Landed.** File: an odf write takes the cached result of every formula
+   reading it away — the attributes stating a value, and the `text:p` showing
+   it, removed as an element so the registry keeps no dangling node. The
+   formula, the cell's style and a drawing anchored in it stay. An ooxml
+   write keeps them, because every save already sets `fullCalcOnLoad`.
+
+   **The spike says there is nothing to set.** ODF states no switch asking a
+   reader to recompute, and LibreOffice's `--convert-to` is no oracle for
+   what a reader shows, because it recomputes whatever the file cached. What
+   is left is the rule the file itself can carry: a cell stating a formula
+   and no result is one a reader has to compute, and none can show a wrong
+   number for.
+
+   The cost until step 4: such a cell renders empty here too. A formula the
+   graph could read no position out of (`unresolved_formulas`) keeps its
+   result — nothing links it to the write.
 
 ### Step 4 — Formulas, evaluate
 
@@ -565,8 +579,9 @@ Ordered by value over cost; all in step 0 or 1.
   cell's registry subtree points into `sharedStrings.xml` — it must be
   rebuilt, not patched. Verify with the oracle that a workbook mixing
   `inlineStr` and shared cells round-trips.
-- **Stale formula results in the file** for `.ods` (the spike). Until step 4
-  there is no way to write a correct value.
+- **Stale formula results in the file** for `.ods`: **answered** in step 3.4 —
+  the result is dropped rather than left wrong. Until step 4 there is no way to
+  write a correct one, so such a cell renders empty here.
 - **Row reflow after a commit**: the spill/clip geometry is computed at
   translate time from the neighbours; the browser has to redo it for the
   edited row. Without it an edit into a blank cell shows the left neighbour's

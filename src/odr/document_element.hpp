@@ -373,6 +373,10 @@ public:
 
   /// Writes @p value into the cell. odf stores the number and its text both;
   /// ooxml keeps no text for a number and shows it through its format.
+  ///
+  /// An odf document then takes the cached result of every formula reading
+  /// the cell away, because it can ask no reader to recompute. An ooxml one
+  /// keeps them: every save sets `calcPr/@fullCalcOnLoad`.
   /// @throws UnsupportedOperation where the cell cannot be written, or where
   ///         @p value holds a formula - nothing here evaluates one.
   /// @throws ValueNotStated where @p value is typed a number and states none.
