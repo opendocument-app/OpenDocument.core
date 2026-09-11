@@ -168,4 +168,8 @@ struct Node final {
   }
 };
 
+/// Moves every relative reference in @p node by (@p columns, @p rows). An
+/// absolute (`$`) axis stays, and one moved off the grid becomes `#REF!`.
+void shift(Node &node, std::int64_t columns, std::int64_t rows);
+
 } // namespace odr::internal::formula

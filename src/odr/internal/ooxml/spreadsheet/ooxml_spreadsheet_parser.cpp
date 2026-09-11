@@ -135,6 +135,15 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
       sheet.register_cell(position.column, position.row, cell_node, cell_id);
       parse_sheet_cell_children(registry, context, cell_id, cell_node);
 
+      // [ECMA-376] 18.3.1.40: only the master spells the expression
+      if (const pugi::xml_node formula_node = cell_node.child("f");
+          std::string_view(formula_node.attribute("t").value()) == "shared" &&
+          !std::string_view(formula_node.text().get()).empty()) {
+        sheet.shared_formulas.emplace(formula_node.attribute("si").value(),
+                                      ElementRegistry::Sheet::SharedFormula{
+                                          position, formula_node.text().get()});
+      }
+
       used.rows = std::max(used.rows, position.row + 1);
       used.columns = std::max(used.columns, position.column + 1);
     }

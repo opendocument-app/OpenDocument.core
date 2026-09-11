@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A shared formula in an `.xlsx` is read for every cell of its group, not only
+  the master that spells it: `SheetCell::value().formula()` answers a member
+  with the expression moved to it, and `#REF!` where it moved off the grid.
+
 - `TablePosition::try_to_column_num` / `try_to_row_num` read a column or row
   spelling as an optional instead of throwing, and without case. **Fix**:
   `to_column_num` wrapped silently past the index range instead of refusing.

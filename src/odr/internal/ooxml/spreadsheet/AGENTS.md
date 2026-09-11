@@ -34,9 +34,14 @@ never evaluated**. `sheet_cell_value_type` derives number-vs-string from
 `c/@t` (default "n" → `float_number` when a `<v>` exists; dates/booleans/errors
 report `string`). `sheet_cell_value` adds what that leaves out — `<v>` parsed
 as a number where the type is one, and `<f>` as its own string. A shared
-formula writes its expression on the group's master, so a member's formula is
-**set and empty** rather than absent. Merged ranges from `mergeCells` land in
-the `SheetCell` side map as anchor `span` + `is_covered` flags at parse time.
+formula (18.3.1.40) writes its expression on the group's master alone, so a
+member is read **through the master its `si` names** — the parser collects
+them per sheet, and `sheet_cell_value` moves the master's expression by the
+offset between the two cells (`internal/formula`), `#REF!` where that leaves
+the grid. A master that does not parse is handed out as it stands; a member
+whose `si` names none stays **set and empty**. Merged ranges from `mergeCells`
+land in the `SheetCell` side map as anchor `span` + `is_covered` flags at parse
+time.
 
 **Style resolution: styles.xml index vectors.** `StyleRegistry` loads positional
 `fonts`/`fills`/`borders`/`cellStyleXfs`/`cellXfs`. A cell's `s` attribute
@@ -87,7 +92,8 @@ reader is asked to.
 Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 
 1. **Formulas & rich value types.** `<f>` is never evaluated (the cached `<v>`
-   shows); dates, booleans, and errors are typed as plain strings.
+   shows); dates, booleans, and errors are typed as plain strings. An array
+   formula's members (`t="array"`) carry no `<f>` at all, so they report none.
 2. **Content-range detection.** `sheet_content` ignores the requested range and
    returns the full `<dimension>` — no trim to the populated range.
 3. **No named/master cell-style inheritance** (`cellStyleXfs` loaded but unused);
