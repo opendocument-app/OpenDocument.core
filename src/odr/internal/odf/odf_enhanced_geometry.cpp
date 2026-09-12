@@ -13,6 +13,8 @@
 
 namespace odr::internal::odf {
 
+namespace str = util::string;
+
 namespace {
 
 /// Recursive descent over 20.36's grammar: sums of products of unary terms,
@@ -26,7 +28,7 @@ public:
 
   [[nodiscard]] std::optional<double> parse() {
     const std::optional<double> value = expression();
-    skip_space();
+    skip_whitespace();
     if (!value.has_value() || !empty()) {
       return {};
     }
@@ -40,7 +42,7 @@ private:
   [[nodiscard]] std::optional<double> expression() {
     std::optional<double> result = term();
     while (result.has_value()) {
-      skip_space();
+      skip_whitespace();
       const char op = peek();
       if (op != '+' && op != '-') {
         break;
@@ -58,7 +60,7 @@ private:
   [[nodiscard]] std::optional<double> term() {
     std::optional<double> result = unary();
     while (result.has_value()) {
-      skip_space();
+      skip_whitespace();
       const char op = peek();
       if (op != '*' && op != '/') {
         break;
@@ -77,7 +79,7 @@ private:
   }
 
   [[nodiscard]] std::optional<double> unary() {
-    skip_space();
+    skip_whitespace();
     if (peek() == '-') {
       take();
       const std::optional<double> value = unary();
@@ -91,7 +93,7 @@ private:
   }
 
   [[nodiscard]] std::optional<double> primary() {
-    skip_space();
+    skip_whitespace();
 
     if (peek() == '(') {
       take();
@@ -104,7 +106,7 @@ private:
 
     if (peek() == '$') {
       take();
-      const std::string_view digits = take_while(is_digit);
+      const std::string_view digits = take_while(str::is_ascii_digit);
       std::size_t index = 0;
       const std::from_chars_result read =
           std::from_chars(digits.data(), digits.data() + digits.size(), index);
@@ -117,22 +119,22 @@ private:
 
     if (peek() == '?') {
       take();
-      const std::string_view name = take_while(is_letter_or_digit);
+      const std::string_view name = take_while(str::is_ascii_letter_or_digit);
       if (name.empty()) {
         return {};
       }
       return (*m_equations)(name);
     }
 
-    if (peek() == '.' || is_digit(peek())) {
+    if (peek() == '.' || str::is_ascii_digit(peek())) {
       return read_number();
     }
 
-    const std::string_view name = take_while(is_letter_or_digit);
+    const std::string_view name = take_while(str::is_ascii_letter_or_digit);
     if (name.empty()) {
       return {};
     }
-    skip_space();
+    skip_whitespace();
     return peek() == '(' ? function(name) : named(name);
   }
 
@@ -274,7 +276,7 @@ private:
     skip_separators();
     if (peek() == '$' || peek() == '?') {
       const char kind = take();
-      const std::string_view name = take_while(is_letter_or_digit);
+      const std::string_view name = take_while(str::is_ascii_letter_or_digit);
       if (name.empty()) {
         return {};
       }

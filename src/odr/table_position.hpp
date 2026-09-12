@@ -2,12 +2,19 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr {
 
 /// A cell by column and row, and the spreadsheet spelling of one: `B3`.
 struct TablePosition final {
+  /// Nothing where @p string is no index: empty, a character the axis is not
+  /// written in, a row that is not 1-based, or past the grid. Case is folded.
+  static std::optional<std::uint32_t> try_to_column_num(std::string_view);
+  static std::optional<std::uint32_t> try_to_row_num(std::string_view);
+  /// @throws std::invalid_argument where the pair above answers nothing.
   static std::uint32_t to_column_num(const std::string &string);
   static std::uint32_t to_row_num(const std::string &string);
   static std::string to_column_string(std::uint32_t column);

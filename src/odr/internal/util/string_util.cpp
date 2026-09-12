@@ -22,12 +22,26 @@ bool string::ends_with(const std::string &string, const std::string &with) {
   return string.ends_with(with);
 }
 
-bool string::is_ascii_space(const char c) {
+bool string::is_ascii_whitespace(const char c) {
   return std::isspace(static_cast<std::uint8_t>(c)) != 0;
+}
+
+bool string::is_ascii_digit(const char c) { return c >= '0' && c <= '9'; }
+
+bool string::is_ascii_letter(const char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+bool string::is_ascii_letter_or_digit(const char c) {
+  return is_ascii_letter(c) || is_ascii_digit(c);
 }
 
 char string::to_lower(const char c) {
   return static_cast<char>(std::tolower(static_cast<std::uint8_t>(c)));
+}
+
+char string::to_upper(const char c) {
+  return static_cast<char>(std::toupper(static_cast<std::uint8_t>(c)));
 }
 
 std::string string::to_lower(const std::string_view string) {
@@ -68,57 +82,61 @@ std::size_t string::find_ignore_case(const std::string_view string,
   return from + static_cast<std::size_t>(found.begin() - rest.begin());
 }
 
-void string::ltrim_inplace(std::string &s, const CharPredicate is_space) {
-  s.erase(s.begin(), std::ranges::find_if(s, [is_space](const char ch) {
-            return !is_space(ch);
+void string::ltrim_inplace(std::string &s, const CharPredicate is_whitespace) {
+  s.erase(s.begin(), std::ranges::find_if(s, [is_whitespace](const char ch) {
+            return !is_whitespace(ch);
           }));
 }
 
-void string::rtrim_inplace(std::string &s, const CharPredicate is_space) {
-  s.erase(std::find_if(s.rbegin(), s.rend(),
-                       [is_space](const char ch) { return !is_space(ch); })
+void string::rtrim_inplace(std::string &s, const CharPredicate is_whitespace) {
+  s.erase(std::find_if(
+              s.rbegin(), s.rend(),
+              [is_whitespace](const char ch) { return !is_whitespace(ch); })
               .base(),
           s.end());
 }
 
-void string::trim_inplace(std::string &s, const CharPredicate is_space) {
-  rtrim_inplace(s, is_space);
-  ltrim_inplace(s, is_space);
+void string::trim_inplace(std::string &s, const CharPredicate is_whitespace) {
+  rtrim_inplace(s, is_whitespace);
+  ltrim_inplace(s, is_whitespace);
 }
 
-std::string string::ltrim(const std::string &s, const CharPredicate is_space) {
-  return std::string(ltrim_view(s, is_space));
+std::string string::ltrim(const std::string &s,
+                          const CharPredicate is_whitespace) {
+  return std::string(ltrim_view(s, is_whitespace));
 }
 
-std::string string::rtrim(const std::string &s, const CharPredicate is_space) {
-  return std::string(rtrim_view(s, is_space));
+std::string string::rtrim(const std::string &s,
+                          const CharPredicate is_whitespace) {
+  return std::string(rtrim_view(s, is_whitespace));
 }
 
-std::string string::trim(const std::string &s, const CharPredicate is_space) {
-  return std::string(trim_view(s, is_space));
+std::string string::trim(const std::string &s,
+                         const CharPredicate is_whitespace) {
+  return std::string(trim_view(s, is_whitespace));
 }
 
 std::string_view string::ltrim_view(std::string_view s,
-                                    const CharPredicate is_space) {
+                                    const CharPredicate is_whitespace) {
   std::size_t begin = 0;
-  while (begin < s.size() && is_space(s[begin])) {
+  while (begin < s.size() && is_whitespace(s[begin])) {
     ++begin;
   }
   return s.substr(begin);
 }
 
 std::string_view string::rtrim_view(std::string_view s,
-                                    const CharPredicate is_space) {
+                                    const CharPredicate is_whitespace) {
   std::size_t end = s.size();
-  while (end > 0 && is_space(s[end - 1])) {
+  while (end > 0 && is_whitespace(s[end - 1])) {
     --end;
   }
   return s.substr(0, end);
 }
 
 std::string_view string::trim_view(std::string_view s,
-                                   const CharPredicate is_space) {
-  return ltrim_view(rtrim_view(s, is_space), is_space);
+                                   const CharPredicate is_whitespace) {
+  return ltrim_view(rtrim_view(s, is_whitespace), is_whitespace);
 }
 
 void string::replace_all(std::string &string, const std::string &search,

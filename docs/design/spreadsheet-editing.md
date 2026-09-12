@@ -1,6 +1,6 @@
 # Spreadsheet editing design
 
-Status: **steps 0, 1 and 2 landed; step 3 is next.** This
+Status: **steps 0, 1 and 2 landed; step 3 is under way.** This
 records why spreadsheet editing is staged the way it is, what the code already
 gives us, and the order the steps go in. It is a plan, not a record — update it
 as steps land.
@@ -461,10 +461,12 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 
 ### Step 3 — Formulas, read side
 
-1. Parse both syntaxes into one AST: OpenFormula (`of:=SUM([.A1:.B2])`,
-   `table:formula`) and OOXML (`SUM(A1:B2)`, `<f>`, shared and array
-   formulas). References, ranges, sheet-qualified references, named ranges
-   left as opaque.
+1. **Landed.** `internal/formula` parses both syntaxes into one AST:
+   OpenFormula (`of:=SUM([.A1:.B2])`, `table:formula`) and OOXML
+   (`SUM(A1:B2)`, `<f>`). One recursive descent takes a `Syntax` and branches
+   where the two part. A named expression, a reference over several sheets and
+   a spelling past the grid (`A0`) stay opaque names; a formula that does not
+   parse answers nothing.
 2. Reference extraction → dependency graph per document; `Document` answers
    "which cells depend on this position".
 3. View: a commit marks dependents stale (a class, the host is told); the

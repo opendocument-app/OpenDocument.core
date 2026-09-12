@@ -1,47 +1,74 @@
 #include <odr/table_position.hpp>
 
 #include <odr/internal/util/hash_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <limits>
 #include <stdexcept>
 
 namespace odr {
 
-std::uint32_t TablePosition::to_column_num(const std::string &string) {
+namespace {
+
+constexpr std::uint64_t index_limit = std::numeric_limits<std::uint32_t>::max();
+
+} // namespace
+
+/// Bijective base 26, the digits 1-26.
+std::optional<std::uint32_t>
+TablePosition::try_to_column_num(const std::string_view string) {
   if (string.empty()) {
-    throw std::invalid_argument("s is empty");
+    return {};
   }
-
-  std::uint32_t result = 0;
-  for (const char c : string) {
-    if (c < 'A' || c > 'Z') {
-      throw std::invalid_argument("illegal character in \"" + string + "\"");
-    }
-    result = result * 26 + static_cast<std::uint32_t>(c - 'A' + 1);
-  }
-  return result - 1;
-}
-
-/// @param string the 1-based row number, as written in a cell reference.
-std::uint32_t TablePosition::to_row_num(const std::string &string) {
-  if (string.empty()) {
-    throw std::invalid_argument("s is empty");
-  }
-
   std::uint64_t result = 0;
   for (const char c : string) {
-    if (c < '0' || c > '9') {
-      throw std::invalid_argument("illegal character in \"" + string + "\"");
+    const char letter = internal::util::string::to_upper(c);
+    if (letter < 'A' || letter > 'Z') {
+      return {};
+    }
+    result = result * 26 + static_cast<std::uint64_t>(letter - 'A' + 1);
+    if (result > index_limit) {
+      return {};
+    }
+  }
+  return static_cast<std::uint32_t>(result - 1);
+}
+
+std::optional<std::uint32_t>
+TablePosition::try_to_row_num(const std::string_view string) {
+  if (string.empty()) {
+    return {};
+  }
+  std::uint64_t result = 0;
+  for (const char c : string) {
+    if (!internal::util::string::is_ascii_digit(c)) {
+      return {};
     }
     result = result * 10 + static_cast<std::uint64_t>(c - '0');
-    if (result > std::numeric_limits<std::uint32_t>::max()) {
-      throw std::invalid_argument("row out of range in \"" + string + "\"");
+    if (result > index_limit) {
+      return {};
     }
   }
   if (result == 0) {
-    throw std::invalid_argument("row is not 1-based in \"" + string + "\"");
+    return {};
   }
-  return static_cast<std::uint32_t>(result) - 1;
+  return static_cast<std::uint32_t>(result - 1);
+}
+
+std::uint32_t TablePosition::to_column_num(const std::string &string) {
+  if (const std::optional<std::uint32_t> column = try_to_column_num(string);
+      column.has_value()) {
+    return *column;
+  }
+  throw std::invalid_argument("no column in \"" + string + "\"");
+}
+
+std::uint32_t TablePosition::to_row_num(const std::string &string) {
+  if (const std::optional<std::uint32_t> row = try_to_row_num(string);
+      row.has_value()) {
+    return *row;
+  }
+  throw std::invalid_argument("no row in \"" + string + "\"");
 }
 
 std::string TablePosition::to_column_string(const std::uint32_t column) {
