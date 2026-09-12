@@ -8,6 +8,9 @@
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/table_range.hpp>
+#include <odr/internal/formula/formula_ast.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
+#include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -15,6 +18,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <string_view>
@@ -363,9 +368,46 @@ public:
       }
     }
     if (const pugi::xml_node formula = node.child("f")) {
-      result = result.with_formula(formula.text().get());
+      result = result.with_formula(formula_expression(element_id, formula));
     }
     return result;
+  }
+
+  /// [ECMA-376] 18.3.1.40: a member of a shared group states its `si` alone,
+  /// and reads the master's expression moved by the offset between the two.
+  [[nodiscard]] std::string
+  formula_expression(const ElementIdentifier element_id,
+                     const pugi::xml_node formula) const {
+    std::string text = formula.text().get();
+    if (!text.empty() ||
+        std::string_view(formula.attribute("t").value()) != "shared") {
+      return text;
+    }
+    const ElementIdentifier sheet_id =
+        m_registry->element_at(element_id).parent_id;
+    if (sheet_id == null_element_id) {
+      return text;
+    }
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(sheet_id);
+    const auto master =
+        sheet.shared_formulas.find(formula.attribute("si").value());
+    if (master == sheet.shared_formulas.end()) {
+      return text;
+    }
+    std::optional<formula::Node> node =
+        formula::parse(master->second.expression, formula::Syntax::ooxml);
+    if (!node.has_value()) {
+      return master->second.expression;
+    }
+    const TablePosition position =
+        m_registry->sheet_cell_element_at(element_id).position;
+    formula::shift(*node,
+                   static_cast<std::int64_t>(position.column) -
+                       master->second.position.column,
+                   static_cast<std::int64_t>(position.row) -
+                       master->second.position.row);
+    return formula::to_string(*node, formula::Syntax::ooxml);
   }
 
   [[nodiscard]] TextStyle

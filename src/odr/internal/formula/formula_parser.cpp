@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <string>
@@ -410,7 +411,8 @@ private:
     const std::string text(rest().substr(0, length));
     char *end = nullptr;
     const double value = std::strtod(text.c_str(), &end);
-    if (end != text.c_str() + text.size()) {
+    // an overflow answers infinity, which no formula spells
+    if (end != text.c_str() + text.size() || !std::isfinite(value)) {
       return {};
     }
     advance(length);

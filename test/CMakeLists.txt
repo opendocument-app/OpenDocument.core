@@ -62,6 +62,7 @@ add_executable(odr_test
         "src/internal/csv/csv_file_test.cpp"
         "src/internal/encoding/text_encoding_test.cpp"
         "src/internal/formula/formula_parser_test.cpp"
+        "src/internal/formula/formula_writer_test.cpp"
         "src/internal/svg/svg_file_test.cpp"
         "src/internal/svg/svg_writer_test.cpp"
         "src/internal/xml/xml_file_test.cpp"

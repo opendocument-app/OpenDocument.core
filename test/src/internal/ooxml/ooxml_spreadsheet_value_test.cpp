@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
 
 using namespace odr;
@@ -19,6 +20,12 @@ CellValue value_of(const std::string &sheet_data) {
 
 std::string text_of(const std::string &sheet_data) {
   return value_of(sheet_data).text();
+}
+
+std::string formula_at(const std::string &sheet_data,
+                       const std::uint32_t column, const std::uint32_t row) {
+  const Document document = decode(workbook(sheet_data));
+  return first_sheet(document).cell(column, row).value().formula();
 }
 
 } // namespace
@@ -70,12 +77,43 @@ TEST(OoxmlSpreadsheetValue, a_formula_cell_states_both_formula_and_result) {
 
 /// Set-and-empty says the member computes; unset would claim it does not.
 TEST(OoxmlSpreadsheetValue,
-     a_shared_formula_member_holds_a_formula_it_cannot_spell) {
+     a_shared_formula_member_without_its_master_spells_nothing) {
   const CellValue value = value_of(
       R"(<row r="1"><c r="A1"><f t="shared" si="0"/><v>8</v></c></row>)");
 
   ASSERT_TRUE(value.has_formula());
   EXPECT_TRUE(value.formula().empty());
+}
+
+/// ECMA-376 18.3.1.40: the master spells the expression for the whole group.
+TEST(OoxmlSpreadsheetValue, a_shared_formula_member_reads_its_master_moved) {
+  const std::string data =
+      R"(<row r="1"><c r="C1"><f t="shared" ref="C1:C3" si="0">A1+$B$1</f>)"
+      R"(<v>3</v></c></row>)"
+      R"(<row r="2"><c r="C2"><f t="shared" si="0"/><v>7</v></c></row>)"
+      R"(<row r="3"><c r="C3"><f t="shared" si="0"/><v>9</v></c></row>)";
+
+  EXPECT_EQ(formula_at(data, 2, 0), "A1+$B$1");
+  EXPECT_EQ(formula_at(data, 2, 1), "A2+$B$1");
+  EXPECT_EQ(formula_at(data, 2, 2), "A3+$B$1");
+}
+
+TEST(OoxmlSpreadsheetValue, a_shared_formula_member_can_lose_its_reference) {
+  const std::string data =
+      R"(<row r="2"><c r="C2"><f t="shared" ref="C1:C2" si="0">A1</f>)"
+      R"(<v>3</v></c></row>)"
+      R"(<row r="1"><c r="C1"><f t="shared" si="0"/><v>7</v></c></row>)";
+
+  EXPECT_EQ(formula_at(data, 2, 0), "#REF!");
+}
+
+TEST(OoxmlSpreadsheetValue, a_shared_formula_that_does_not_parse_is_kept) {
+  const std::string data =
+      R"(<row r="1"><c r="C1"><f t="shared" ref="C1:C2" si="0">A1 +</f>)"
+      R"(<v>3</v></c></row>)"
+      R"(<row r="2"><c r="C2"><f t="shared" si="0"/><v>7</v></c></row>)";
+
+  EXPECT_EQ(formula_at(data, 2, 1), "A1 +");
 }
 
 /// `<v>` holds `1`, not a quantity, and `c/@t="b"` types the cell a string.

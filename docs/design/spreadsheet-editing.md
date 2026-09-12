@@ -467,6 +467,12 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    where the two part. A named expression, a reference over several sheets and
    a spelling past the grid (`A0`) stay opaque names; a formula that does not
    parse answers nothing.
+
+   A writer and a `shift` over the tree come with it, which is what makes an
+   ooxml shared formula readable: a group spells its expression on the master
+   alone ([ECMA-376] 18.3.1.40), so a member now reads it moved by the offset
+   between the two cells, `#REF!` where that leaves the grid. An array
+   formula's members carry no `<f>` at all and still report none.
 2. Reference extraction → dependency graph per document; `Document` answers
    "which cells depend on this position".
 3. View: a commit marks dependents stale (a class, the host is told); the

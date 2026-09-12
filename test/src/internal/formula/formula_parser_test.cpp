@@ -288,6 +288,7 @@ TEST(FormulaParser, what_does_not_parse_is_nothing) {
   EXPECT_FALSE(ooxml("\"open").has_value());
   EXPECT_FALSE(ooxml("").has_value());
   EXPECT_FALSE(ooxml("A1 B1").has_value());
+  EXPECT_FALSE(ooxml("1e999").has_value());
 }
 
 /// Rows are 1-based, and both axes stop at what an index holds.

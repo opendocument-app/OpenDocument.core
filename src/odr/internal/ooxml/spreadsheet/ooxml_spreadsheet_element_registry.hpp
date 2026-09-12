@@ -49,6 +49,12 @@ public:
       ElementIdentifier element_id{null_element_id};
     };
 
+    /// The master of a shared group, which every member of it reads.
+    struct SharedFormula final {
+      TablePosition position;
+      std::string expression;
+    };
+
     /// From the workbook's `<sheet name=…>`; the worksheet part carries none.
     std::string name;
 
@@ -57,6 +63,8 @@ public:
     std::map<std::uint32_t, Column> columns;
     std::unordered_map<std::uint32_t, Row> rows;
     std::unordered_map<TablePosition, Cell> cells;
+
+    std::unordered_map<std::string, SharedFormula> shared_formulas;
 
     ElementIdentifier first_shape_id{null_element_id};
     ElementIdentifier last_shape_id{null_element_id};
