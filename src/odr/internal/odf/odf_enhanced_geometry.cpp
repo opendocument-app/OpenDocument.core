@@ -13,6 +13,8 @@
 
 namespace odr::internal::odf {
 
+namespace str = util::string;
+
 namespace {
 
 /// Recursive descent over 20.36's grammar: sums of products of unary terms,
@@ -104,7 +106,7 @@ private:
 
     if (peek() == '$') {
       take();
-      const std::string_view digits = take_while(is_digit);
+      const std::string_view digits = take_while(str::is_ascii_digit);
       std::size_t index = 0;
       const std::from_chars_result read =
           std::from_chars(digits.data(), digits.data() + digits.size(), index);
@@ -117,18 +119,18 @@ private:
 
     if (peek() == '?') {
       take();
-      const std::string_view name = take_while(is_letter_or_digit);
+      const std::string_view name = take_while(str::is_ascii_letter_or_digit);
       if (name.empty()) {
         return {};
       }
       return (*m_equations)(name);
     }
 
-    if (peek() == '.' || is_digit(peek())) {
+    if (peek() == '.' || str::is_ascii_digit(peek())) {
       return read_number();
     }
 
-    const std::string_view name = take_while(is_letter_or_digit);
+    const std::string_view name = take_while(str::is_ascii_letter_or_digit);
     if (name.empty()) {
       return {};
     }
@@ -274,7 +276,7 @@ private:
     skip_separators();
     if (peek() == '$' || peek() == '?') {
       const char kind = take();
-      const std::string_view name = take_while(is_letter_or_digit);
+      const std::string_view name = take_while(str::is_ascii_letter_or_digit);
       if (name.empty()) {
         return {};
       }

@@ -1,5 +1,7 @@
 #include <odr/internal/rtf/rtf_tokenizer.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <algorithm>
 #include <cstdint>
 #include <limits>
@@ -8,15 +10,9 @@
 
 namespace odr::internal::rtf {
 
+namespace str = util::string;
+
 namespace {
-
-/// Only the ascii letters open a control word (*Control Word*); the locale
-/// must not widen that.
-bool is_letter(const char c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
-bool is_digit(const char c) { return c >= '0' && c <= '9'; }
 
 std::uint8_t hex_char_to_int(const char c) {
   if (c >= '0' && c <= '9') {
@@ -115,7 +111,7 @@ Token Tokenizer::read_control() {
     throw std::runtime_error("rtf: trailing backslash");
   }
 
-  if (const auto c = static_cast<char_type>(i); !is_letter(c)) {
+  if (const auto c = static_cast<char_type>(i); !str::is_ascii_letter(c)) {
     bumpc();
     if (c == '\'') {
       const char_type first = bumpc();
@@ -129,7 +125,8 @@ Token Tokenizer::read_control() {
   std::string name;
   while (true) {
     const int_type letter = geti();
-    if (letter == eof || !is_letter(static_cast<char_type>(letter))) {
+    if (letter == eof ||
+        !str::is_ascii_letter(static_cast<char_type>(letter))) {
       break;
     }
     name.push_back(bumpc());
@@ -142,7 +139,7 @@ Token Tokenizer::read_control() {
   std::optional<std::int32_t> parameter;
   if (const int_type delimiter = geti(); delimiter != eof) {
     const auto d = static_cast<char_type>(delimiter);
-    if (d == '-' || is_digit(d)) {
+    if (d == '-' || str::is_ascii_digit(d)) {
       const bool negative = d == '-';
       if (negative) {
         bumpc();
@@ -151,7 +148,8 @@ Token Tokenizer::read_control() {
       std::size_t digits = 0;
       while (digits < max_parameter_digits) {
         const int_type digit = geti();
-        if (digit == eof || !is_digit(static_cast<char_type>(digit))) {
+        if (digit == eof ||
+            !str::is_ascii_digit(static_cast<char_type>(digit))) {
           break;
         }
         value = value * 10 + (bumpc() - '0');

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
@@ -7,6 +9,8 @@
 #include <string_view>
 
 namespace odr::internal::odf {
+
+namespace str = util::string;
 
 /// A cursor over one of the small languages an odf attribute is written in.
 /// Reads are bounded by what remains, which carries no terminator.
@@ -32,14 +36,14 @@ public:
 
   /// Whitespace only: a comma separates the arguments of a formula.
   void skip_space() {
-    while (is_space(peek())) {
+    while (str::is_ascii_whitespace(peek())) {
       m_rest.remove_prefix(1);
     }
   }
 
   /// Whitespace and the commas a coordinate list may be written with.
   void skip_separators() {
-    while (is_space(peek()) || peek() == ',') {
+    while (str::is_ascii_whitespace(peek()) || peek() == ',') {
       m_rest.remove_prefix(1);
     }
   }
@@ -88,25 +92,14 @@ public:
 
   [[nodiscard]] bool starts_number() const {
     const char c = peek();
-    return c == '-' || c == '+' || c == '.' || is_digit(c);
-  }
-
-  static bool is_letter(const char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-  }
-  static bool is_digit(const char c) { return c >= '0' && c <= '9'; }
-  static bool is_letter_or_digit(const char c) {
-    return is_letter(c) || is_digit(c);
+    return c == '-' || c == '+' || c == '.' || str::is_ascii_digit(c);
   }
 
 private:
-  static bool is_space(const char c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-  }
   /// A superset of a number's characters, to bound the run `std::strtod` reads.
   static bool is_number_char(const char c) {
-    return is_digit(c) || c == '+' || c == '-' || c == '.' || c == 'e' ||
-           c == 'E';
+    return str::is_ascii_digit(c) || c == '+' || c == '-' || c == '.' ||
+           c == 'e' || c == 'E';
   }
 
   std::string_view m_rest;

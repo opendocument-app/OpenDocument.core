@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `TablePosition::try_to_column_num` / `try_to_row_num` read a column or row
+  spelling as an optional instead of throwing, and without case. **Fix**:
+  `to_column_num` wrapped silently past the index range instead of refusing.
+
 - **Breaking**: the codes the page reports through `odr.onError` and
   `odr.onEditRefused` moved from 1 to 9 onto 1001 to 1009. `readOnly` is 1005,
   not 5; the `reason` string is unchanged.

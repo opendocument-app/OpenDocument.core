@@ -22,6 +22,8 @@
 
 namespace odr::internal::odf {
 
+namespace str = util::string;
+
 namespace {
 
 /// The square a shape with no view box of its own is drawn into; the size is
@@ -86,7 +88,9 @@ private:
   /// is seen, which keeps a list of pure rotations unitless.
   std::string m_unit;
 
-  [[nodiscard]] std::string_view read_name() { return take_while(is_letter); }
+  [[nodiscard]] std::string_view read_name() {
+    return take_while(str::is_ascii_letter);
+  }
 
   /// Reduced to centimetres.
   [[nodiscard]] std::optional<double> read_length() {
@@ -94,8 +98,8 @@ private:
     if (!value.has_value()) {
       return {};
     }
-    const std::string_view unit =
-        take_while([](const char c) { return is_letter(c) || c == '%'; });
+    const std::string_view unit = take_while(
+        [](const char c) { return str::is_ascii_letter(c) || c == '%'; });
 
     // A zero needs no unit.
     if (unit.empty()) {
@@ -640,7 +644,7 @@ odf::read_hundredth_millimetres(const pugi::xml_attribute attribute) {
   }
   in.skip_space();
   const double scale =
-      odf::centimetres_per(in.take_while(odf::ValueCursor::is_letter));
+      odf::centimetres_per(in.take_while(str::is_ascii_letter));
   if (scale == 0) {
     return {};
   }

@@ -20,6 +20,16 @@ TEST(TablePosition, direct) {
   EXPECT_EQ("C2", tp.to_string());
 }
 
+TEST(TablePosition, a_column_letter_is_read_without_case) {
+  EXPECT_EQ(TablePosition::try_to_column_num("aa"), 26);
+}
+
+TEST(TablePosition, a_spelling_past_the_index_range_is_nothing) {
+  EXPECT_FALSE(TablePosition::try_to_column_num("ABCDEFGHI").has_value());
+  EXPECT_FALSE(TablePosition::try_to_row_num("99999999999").has_value());
+  EXPECT_FALSE(TablePosition::try_to_row_num("0").has_value());
+}
+
 TEST(TablePosition, string1) {
   const std::string input = "A1";
   const TablePosition tp(input);

@@ -17,10 +17,17 @@ bool ends_with(const std::string &string, const std::string &with);
 using CharPredicate = bool (*)(char);
 
 /// `std::isspace` for the default C locale, made safe for any `char` value.
-bool is_ascii_space(char c);
+bool is_ascii_whitespace(char c);
 
-/// `std::tolower` for the default C locale, made safe for any `char` value.
+/// The ascii classes a parser asks for, which no locale may widen.
+bool is_ascii_digit(char c);
+bool is_ascii_letter(char c);
+bool is_ascii_letter_or_digit(char c);
+
+/// `std::tolower` / `std::toupper` for the default C locale, made safe for any
+/// `char` value.
 char to_lower(char c);
+char to_upper(char c);
 std::string to_lower(std::string_view string);
 
 /// The comparisons below fold case with @ref to_lower, so only ascii letters
@@ -32,24 +39,28 @@ bool starts_with_ignore_case(std::string_view string, std::string_view prefix);
 std::size_t find_ignore_case(std::string_view string, std::string_view needle,
                              std::size_t from = 0);
 
-void ltrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
-void rtrim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
-void trim_inplace(std::string &s, CharPredicate is_space = is_ascii_space);
+void ltrim_inplace(std::string &s,
+                   CharPredicate is_whitespace = is_ascii_whitespace);
+void rtrim_inplace(std::string &s,
+                   CharPredicate is_whitespace = is_ascii_whitespace);
+void trim_inplace(std::string &s,
+                  CharPredicate is_whitespace = is_ascii_whitespace);
 
 std::string ltrim(const std::string &s,
-                  CharPredicate is_space = is_ascii_space);
+                  CharPredicate is_whitespace = is_ascii_whitespace);
 std::string rtrim(const std::string &s,
-                  CharPredicate is_space = is_ascii_space);
-std::string trim(const std::string &s, CharPredicate is_space = is_ascii_space);
+                  CharPredicate is_whitespace = is_ascii_whitespace);
+std::string trim(const std::string &s,
+                 CharPredicate is_whitespace = is_ascii_whitespace);
 
 /// Trim and return a subrange of `s`, so the leading offset is recoverable as
 /// `result.data() - s.data()`.
 std::string_view ltrim_view(std::string_view s,
-                            CharPredicate is_space = is_ascii_space);
+                            CharPredicate is_whitespace = is_ascii_whitespace);
 std::string_view rtrim_view(std::string_view s,
-                            CharPredicate is_space = is_ascii_space);
+                            CharPredicate is_whitespace = is_ascii_whitespace);
 std::string_view trim_view(std::string_view s,
-                           CharPredicate is_space = is_ascii_space);
+                           CharPredicate is_whitespace = is_ascii_whitespace);
 
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
