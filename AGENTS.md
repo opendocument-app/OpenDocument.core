@@ -88,6 +88,7 @@ producer's layout recorded — odf's `text:soft-page-break` — are not parsed.
 | `src/odr/internal/util/` | Helpers: `byte_stream_util`, `string_util`, `stream_util`, `document_util`. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | File-type detection + open/dispatch. |
 | `src/odr/internal/file_type_table.*` | **The** per-`FileType` table: extensions, MIME types, category, document type, `FileTypeCapabilities`. Every public lookup in `odr.hpp` is a thin forward into it — extend the table, not the lookups. |
+| `src/odr/internal/formula/` | Spreadsheet formulas: one AST, parsed from both OpenFormula and OOXML. Format-agnostic, and shared by the odf and ooxml engines. |
 | `src/odr/internal/html/` | Generic HTML renderer. |
 | `src/odr/internal/html/frontend/` | The stylesheets and scripts the renderer writes into the page, as the files a browser reads. `cmake/frontend_assets.cmake` embeds them into the library; `frontend.cpp` names them and decides which view writes which. |
 | `src/odr/internal/cfb/`, `zip/` | Container formats (CFB, ZIP). |

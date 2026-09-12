@@ -188,6 +188,8 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/csv/csv_file.cpp"
         "src/odr/internal/csv/csv_util.cpp"
 
+        "src/odr/internal/formula/formula_parser.cpp"
+
         "src/odr/internal/html/common.cpp"
         "src/odr/internal/html/document.cpp"
         "src/odr/internal/html/document_style.cpp"
