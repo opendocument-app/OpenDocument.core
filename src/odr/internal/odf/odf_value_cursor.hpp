@@ -1,78 +1,28 @@
 #pragma once
 
+#include <odr/internal/common/text_cursor.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
 #include <string>
-#include <string_view>
 
 namespace odr::internal::odf {
 
 namespace str = util::string;
 
 /// A cursor over one of the small languages an odf attribute is written in.
-/// Reads are bounded by what remains, which carries no terminator.
-class ValueCursor {
+class ValueCursor : public TextCursor {
 public:
-  explicit ValueCursor(const std::string_view input) : m_rest{input} {}
+  using TextCursor::TextCursor;
 
-  [[nodiscard]] bool empty() const { return m_rest.empty(); }
-
-  /// The next character, or `\0` where the input ended.
-  [[nodiscard]] char peek() const {
-    return m_rest.empty() ? '\0' : m_rest.front();
-  }
-
-  /// The next character, consumed.
-  char take() {
-    const char c = peek();
-    if (!m_rest.empty()) {
-      m_rest.remove_prefix(1);
-    }
-    return c;
-  }
-
-  /// Whitespace only: a comma separates the arguments of a formula.
-  void skip_space() {
-    while (str::is_ascii_whitespace(peek())) {
-      m_rest.remove_prefix(1);
-    }
-  }
-
-  /// Whitespace and the commas a coordinate list may be written with.
+  /// Whitespace and the commas a coordinate list may be written with. @ref
+  /// consume leaves a comma, which a formula separates its arguments with.
   void skip_separators() {
     while (str::is_ascii_whitespace(peek()) || peek() == ',') {
-      m_rest.remove_prefix(1);
+      advance(1);
     }
-  }
-
-  /// Only spaces are skipped ahead of @p c: a comma is an argument separator
-  /// where a formula is concerned, not filler.
-  [[nodiscard]] bool consume(const char c) {
-    skip_space();
-    if (peek() != c) {
-      return false;
-    }
-    m_rest.remove_prefix(1);
-    return true;
-  }
-
-  /// The leading run of characters @p accept admits, left in place.
-  [[nodiscard]] std::string_view peek_while(bool (*accept)(char)) const {
-    std::size_t length = 0;
-    while (length < m_rest.size() && accept(m_rest[length])) {
-      ++length;
-    }
-    return m_rest.substr(0, length);
-  }
-
-  /// The same run, consumed.
-  [[nodiscard]] std::string_view take_while(bool (*accept)(char)) {
-    const std::string_view taken = peek_while(accept);
-    m_rest.remove_prefix(taken.size());
-    return taken;
   }
 
   /// `std::strtod` wants a terminator, which the view does not promise, so the
@@ -86,7 +36,7 @@ public:
       return {};
     }
     // `strtod` may stop short of the run, on a trailing `e` say
-    m_rest.remove_prefix(static_cast<std::size_t>(end - number.c_str()));
+    advance(static_cast<std::size_t>(end - number.c_str()));
     return value;
   }
 
@@ -101,8 +51,6 @@ private:
     return str::is_ascii_digit(c) || c == '+' || c == '-' || c == '.' ||
            c == 'e' || c == 'E';
   }
-
-  std::string_view m_rest;
 };
 
 } // namespace odr::internal::odf

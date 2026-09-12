@@ -642,7 +642,7 @@ odf::read_hundredth_millimetres(const pugi::xml_attribute attribute) {
   if (!value.has_value()) {
     return {};
   }
-  in.skip_space();
+  in.skip_whitespace();
   const double scale =
       odf::centimetres_per(in.take_while(str::is_ascii_letter));
   if (scale == 0) {

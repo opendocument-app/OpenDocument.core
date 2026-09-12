@@ -28,7 +28,7 @@ public:
 
   [[nodiscard]] std::optional<double> parse() {
     const std::optional<double> value = expression();
-    skip_space();
+    skip_whitespace();
     if (!value.has_value() || !empty()) {
       return {};
     }
@@ -42,7 +42,7 @@ private:
   [[nodiscard]] std::optional<double> expression() {
     std::optional<double> result = term();
     while (result.has_value()) {
-      skip_space();
+      skip_whitespace();
       const char op = peek();
       if (op != '+' && op != '-') {
         break;
@@ -60,7 +60,7 @@ private:
   [[nodiscard]] std::optional<double> term() {
     std::optional<double> result = unary();
     while (result.has_value()) {
-      skip_space();
+      skip_whitespace();
       const char op = peek();
       if (op != '*' && op != '/') {
         break;
@@ -79,7 +79,7 @@ private:
   }
 
   [[nodiscard]] std::optional<double> unary() {
-    skip_space();
+    skip_whitespace();
     if (peek() == '-') {
       take();
       const std::optional<double> value = unary();
@@ -93,7 +93,7 @@ private:
   }
 
   [[nodiscard]] std::optional<double> primary() {
-    skip_space();
+    skip_whitespace();
 
     if (peek() == '(') {
       take();
@@ -134,7 +134,7 @@ private:
     if (name.empty()) {
       return {};
     }
-    skip_space();
+    skip_whitespace();
     return peek() == '(' ? function(name) : named(name);
   }
 
