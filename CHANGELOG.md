@@ -16,11 +16,13 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Writing a cell of an `.ods` takes the cached result of every formula reading
+  it away, keeping the formula itself, so the saved file states no number that
+  is now wrong. Such a cell renders empty until a reader computes it.
+
 - An editable sheet view states each formula cell's expression
-  (`data-odr-formula`, `odr.sheet.formulaAt`) and the cells it reads. A commit
-  marks the formula cells reading what it wrote with `odr-sheet-stale`, and
-  raises the new `odr.onCellsStale` callback, `{sheet, cells}`; an undo takes
-  the marks back. Nothing recomputes a formula yet.
+  (`data-odr-formula`, `odr.sheet.formulaAt`) and the cells it reads, and marks
+  the ones an edit left out of date (`odr-sheet-stale`, `odr.onCellsStale`).
 
 - `Document::dependents(position)` answers which cells' formulas read a
   position, directly or through another, and `unresolved_formulas()` those

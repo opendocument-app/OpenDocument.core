@@ -2,10 +2,12 @@
 
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/sheet_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/odf/odf_chart.hpp>
@@ -171,6 +173,18 @@ std::optional<DrawingPath> connector_box(const pugi::xml_node node) {
     return {};
   }
   return read_path(node);
+}
+
+/// Every attribute a cell states its value with, so a cell left with its
+/// formula alone states no result. [ODF 1.2] 19.385 and around it.
+void remove_value_attributes(pugi::xml_node node) {
+  static constexpr std::array stated = {
+      "office:value-type", "office:value",      "office:boolean-value",
+      "office:date-value", "office:time-value", "office:string-value",
+      "office:currency",   "calcext:value-type"};
+  for (const char *attribute : stated) {
+    node.remove_attribute(attribute);
+  }
 }
 
 using TreeEditor = xml::TreeEditor<ElementRegistry>;
@@ -470,13 +484,7 @@ public:
     text_set_content(text_run_of(cell_id),
                      value.has_text() ? value.text() : "");
 
-    static constexpr std::array stated = {
-        "office:value-type", "office:value",      "office:boolean-value",
-        "office:date-value", "office:time-value", "office:string-value",
-        "office:currency",   "calcext:value-type"};
-    for (const char *attribute : stated) {
-      node.remove_attribute(attribute);
-    }
+    remove_value_attributes(node);
 
     switch (value.type()) {
     case ValueType::unknown:
@@ -489,6 +497,73 @@ public:
       node.append_attribute("office:value")
           .set_value(fmt::format("{}", value.number()).c_str());
       break;
+    }
+
+    drop_stale_results(element_id, column, row);
+  }
+
+  /// The sheets of the document in the order an operation names them by.
+  [[nodiscard]] std::vector<ElementIdentifier> sheets_() const {
+    std::vector<ElementIdentifier> result;
+    for (ElementIdentifier id = element_first_child(m_document->root_element());
+         id != null_element_id; id = element_next_sibling(id)) {
+      if (element_type(id) == ElementType::sheet) {
+        result.push_back(id);
+      }
+    }
+    return result;
+  }
+
+  /// A write leaves every formula reading it computing an old input, and ODF
+  /// states no switch asking a reader to recompute, so the cached result goes
+  /// instead. A formula the graph could read no position out of
+  /// (`SheetDependencies::unresolved`) keeps its result: nothing links it to
+  /// the write.
+  void drop_stale_results(const ElementIdentifier sheet_id,
+                          const std::uint32_t column,
+                          const std::uint32_t row) const {
+    const std::vector<ElementIdentifier> sheets = sheets_();
+    const auto written = std::ranges::find(sheets, sheet_id);
+    if (written == sheets.end()) {
+      return;
+    }
+
+    const SheetPosition position(
+        static_cast<std::uint32_t>(written - sheets.begin()),
+        TablePosition(column, row));
+    for (const SheetPosition &stale :
+         m_document->sheet_dependencies().dependents({position})) {
+      if (stale.sheet >= sheets.size()) {
+        continue;
+      }
+      if (const ElementRegistry::Sheet::Cell *cell =
+              m_registry->sheet_element_at(sheets[stale.sheet])
+                  .cell(stale.cell.column, stale.cell.row);
+          cell != nullptr) {
+        drop_cell_result(*cell);
+      }
+    }
+  }
+
+  /// Takes what the cell states about a result away, and nothing else: the
+  /// formula, the cell's style and a drawing anchored in it stay.
+  void drop_cell_result(const ElementRegistry::Sheet::Cell &cell) const {
+    pugi::xml_node node = cell.node;
+    remove_value_attributes(node);
+    if (cell.element_id == null_element_id) {
+      return;
+    }
+
+    // collected first, because removing one relinks the chain the walk is on
+    std::vector<ElementIdentifier> paragraphs;
+    for (ElementIdentifier child = element_first_child(cell.element_id);
+         child != null_element_id; child = element_next_sibling(child)) {
+      if (element_type(child) == ElementType::paragraph) {
+        paragraphs.push_back(child);
+      }
+    }
+    for (const ElementIdentifier paragraph : paragraphs) {
+      element_remove(paragraph);
     }
   }
 
