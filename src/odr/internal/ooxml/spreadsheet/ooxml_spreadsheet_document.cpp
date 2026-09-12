@@ -217,6 +217,19 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
+  /// The cell map, not the grid `dimension` claims: a sheet states a `c` for
+  /// every cell it holds.
+  void sheet_visit_formulas(
+      const ElementIdentifier element_id,
+      const abstract::SheetFormulaVisitor &visitor) const override {
+    for (const auto &[position, cell] :
+         m_registry->sheet_element_at(element_id).cells) {
+      if (const pugi::xml_node formula = cell.node.child("f")) {
+        visitor(position.column, position.row,
+                formula_expression(cell.element_id, formula));
+      }
+    }
+  }
   /// ECMA-376 18.3.1.4: a cell states its value as `v`, or as the text under
   /// `is` with `t="inlineStr"`. A written string goes inline - rewriting the
   /// shared entry would rewrite every other cell indexing it.

@@ -149,6 +149,7 @@ set(ODR_SOURCE_FILES
         "src/odr/logger.cpp"
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
+        "src/odr/sheet_position.cpp"
         "src/odr/style.cpp"
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
@@ -176,6 +177,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/media_file.cpp"
         "src/odr/internal/common/path.cpp"
         "src/odr/internal/common/random.cpp"
+        "src/odr/internal/common/sheet_dependencies.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"
         "src/odr/internal/common/table_range.cpp"
@@ -189,6 +191,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/csv/csv_util.cpp"
 
         "src/odr/internal/formula/formula_ast.cpp"
+        "src/odr/internal/formula/formula_dependencies.cpp"
         "src/odr/internal/formula/formula_parser.cpp"
         "src/odr/internal/formula/formula_writer.cpp"
 

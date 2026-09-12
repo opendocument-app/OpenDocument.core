@@ -13,6 +13,8 @@ class ReadableFilesystem;
 
 namespace odr::internal {
 
+class SheetDependencies;
+
 class Document : public abstract::Document {
 public:
   Document(FileType file_type, DocumentType document_type,
@@ -37,6 +39,8 @@ public:
   [[nodiscard]] const abstract::ElementAdapter *
   element_adapter() const override;
 
+  [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
+
   /// Decoded from a package that was password-encrypted. `save` has no
   /// encryption to put back, so a savable engine refuses one.
   [[nodiscard]] bool is_decrypted() const noexcept;
@@ -50,6 +54,9 @@ protected:
 
   ElementIdentifier m_root_element{null_element_id};
   std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
+
+private:
+  mutable std::unique_ptr<SheetDependencies> m_sheet_dependencies;
 };
 
 } // namespace odr::internal

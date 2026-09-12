@@ -417,6 +417,26 @@ public:
   sheet_first_shape(const ElementIdentifier element_id) const override {
     return m_registry->sheet_element_at(element_id).first_shape_id;
   }
+  /// The runs the parser indexed, not the grid they stand for: a repeat is
+  /// one entry however many positions it covers.
+  void sheet_visit_formulas(
+      const ElementIdentifier element_id,
+      const abstract::SheetFormulaVisitor &visitor) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    std::uint32_t row = 0;
+    for (const ElementRegistry::Sheet::Row &run : sheet.rows) {
+      std::uint32_t column = 0;
+      for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
+        if (const pugi::xml_attribute formula =
+                cell.node.attribute("table:formula")) {
+          visitor(column, row, formula.value());
+        }
+        column = cell.end;
+      }
+      row = run.end;
+    }
+  }
   /// [ODF 1.2] 19.385: the value is an attribute and the `text:p` under the
   /// cell shows it, so both are written or the file contradicts itself.
   void sheet_set_cell(const ElementIdentifier element_id,

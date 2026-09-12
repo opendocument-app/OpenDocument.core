@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/sheet_dependencies.hpp>
 
 namespace odr::internal {
 
@@ -43,6 +44,14 @@ ElementIdentifier Document::root_element() const { return m_root_element; }
 
 const abstract::ElementAdapter *Document::element_adapter() const {
   return m_element_adapter.get();
+}
+
+const SheetDependencies &Document::sheet_dependencies() const {
+  if (!m_sheet_dependencies) {
+    m_sheet_dependencies =
+        std::make_unique<SheetDependencies>(SheetDependencies::of(*this));
+  }
+  return *m_sheet_dependencies;
 }
 
 bool Document::is_decrypted() const noexcept {

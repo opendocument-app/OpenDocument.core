@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Document::dependents(position)` answers which cells' formulas read a
+  position, directly or through another, and `unresolved_formulas()` those
+  whose references could not all be read. A position is the new
+  `SheetPosition`: the sheet by its place among the document's sheets.
+
 - A shared formula in an `.xlsx` is read for every cell of its group, not only
   the master that spells it: `SheetCell::value().formula()` answers a member
   with the expression moved to it, and `#REF!` where it moved off the grid.
