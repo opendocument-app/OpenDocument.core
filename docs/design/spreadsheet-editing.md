@@ -554,38 +554,23 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
 
 ## Low-hanging fruit
 
-Ordered by value over cost; all in step 0 or 1.
-
-- **XLSX save** — the docx save with three path names changed.
-- **ODS number sync** — `office:value` beside the text, a few lines in
-  `text_set_content`'s successor.
-- **`fullCalcOnLoad`** — one attribute, and the file stops lying after an
-  edit.
-- **Lock classes + refusal event** — the feedback the mode needs, cheap to
-  emit, and the read-side view gains a marker for formula cells. The callback
-  is three assignments on each host, and the same channel then carries the
-  dirty flag the save button needs.
-- **`SheetCell::value()`** — a missing read accessor; the sort script and any
-  binding user wants it regardless of editing.
-- **The `contenteditable` gate** — one condition, removes 594 attributes from
-  a reference `.ods` and a layout difference between the two modes.
+**All landed**, in steps 0 to 2: the xlsx save, the ods number sync,
+`fullCalcOnLoad`, the lock classes and the refusal event,
+`SheetCell::value()`, and the `contenteditable` gate.
 
 ## Complications to budget for
 
-- **ODS repeat splitting is the write primitive**, and the run index was built
-  to be written once. Design the insert before step 2, and keep ids
-  append-only (`editing.md` decision 4).
-- **XLSX shared strings**: converting to `inlineStr` is self-contained but the
-  cell's registry subtree points into `sharedStrings.xml` — it must be
-  rebuilt, not patched. Verify with the oracle that a workbook mixing
-  `inlineStr` and shared cells round-trips.
+- **ODS repeat splitting is the write primitive**: **done** in step 2 — a
+  write cuts the run and claims the cell, and ids stay append-only
+  (`editing.md` decision 4).
+- **XLSX shared strings**: **done** in step 2 — a written string goes inline
+  (`t="inlineStr"`) and the cell's registry subtree is rebuilt rather than
+  patched, so a workbook mixing inline and shared cells is what a save leaves.
 - **Stale formula results in the file** for `.ods`: **answered** in step 3.4 —
   the result is dropped rather than left wrong. Until step 4 there is no way to
   write a correct one, so such a cell renders empty here.
-- **Row reflow after a commit**: the spill/clip geometry is computed at
-  translate time from the neighbours; the browser has to redo it for the
-  edited row. Without it an edit into a blank cell shows the left neighbour's
-  overflow painting across the new text.
+- **Row reflow after a commit**: **done** — `odr.sheet.reflow(row)` redoes the
+  spill/clip geometry the translate computed from the neighbours.
 - **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
   not in the page and cannot be edited; the mode should say so where a view
   reports a `sheet_cut`.
@@ -595,25 +580,23 @@ Ordered by value over cost; all in step 0 or 1.
   `enable()` refuses on the document attribute rather than after typing.
 - **Decimal separator and locale** are read nowhere; a german user typing
   `1,5` gets a string in step 1.
-- **A1 anchors every shape** (`anchors_shapes`): the commit patch must keep
-  the shape nodes and replace only the text.
-- **Sort and edit together**: sorting reorders `<tr>`s in the DOM and keeps an
-  `original` snapshot; an edit patches the `<tr>` in place, so both survive,
-  but the position must come from the row label.
+- **A1 anchors every shape** (`anchors_shapes`): **done** — the page locks
+  such a cell `shapes`, and the odf write refuses a cell holding anything but
+  one paragraph of plain runs.
+- **Sort and edit together**: **done** — sorting reorders the `<tr>`s and an
+  edit patches one in place, and every position comes from the row label, so
+  the two survive each other (`test/browser/sheet/sorting.html`).
 
 ## Spikes before step 0
 
-1. **LibreOffice and a formula cell without a cached value** in an `.ods` it
-   generated itself: does it recompute on load, or show empty? Also what it
-   does when `meta:generator` is ours. Build the probe with `soffice
-   --convert-to`, then hand-edit `content.xml`; render and round-trip before
-   trusting the spec.
+1. **Answered** in step 3.4. LibreOffice recomputes whatever an `.ods`
+   cached, so `--convert-to` cannot show what a reader that does not
+   recompute would display. A cell stating a formula and no result is the
+   rule the file itself can carry.
 2. **Excel/LibreOffice on a mixed `inlineStr` workbook** — expected fine,
    worth ten minutes.
-3. **The ODS run-index insert**: sketch `Sheet::insert_cell` against
-   `register_cell` and the `SortedSideTable` (ids appended out of position
-   order are fine for a hashed table, not a sorted one — `m_sheet_cells` is
-   sorted by id, and new ids are larger, so it holds).
+3. **Answered** in step 2: the run index takes an insert, and ids appended
+   out of position order hold for `m_sheet_cells`, which is sorted by id.
 
 ## Open questions
 
@@ -625,5 +608,6 @@ Ordered by value over cost; all in step 0 or 1.
 - **Answered** ([`editing.md`](editing.md) decision 10): the page-level block,
   as `data-odr-editable` on `<body>`. The frame is a fact about the document,
   and a `.docx` view has no table to hang it on.
-- Should the refusal codes be generated from one C++ table so the bindings can
-  hand a host the same list, rather than living only in the emitted script?
+- **Answered**: `odr::ErrorCode` (`src/odr/error_code.hpp`) is that table.
+  `html/frontend.cpp::write_error_codes` writes it into the page, and every
+  binding reports the same numbers.
