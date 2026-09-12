@@ -40,7 +40,8 @@ that is where `translate` writes it.
   way a host drives it, over the shapes a commit has to get right: a string cut
   where its neighbour shows something, a formula cell, a cell of several runs,
   and one whose single run carries a style a write must keep. Undo, redo and
-  the log a save resets follow.
+  the log a save resets follow, and last the marks a commit leaves on the
+  formula cells reading what it wrote.
 - **`keyboard.html`** — a page whose config took both key classes away. The
   arrows, Escape, a printable key and the undo chord are all the host's, while
   the commands (`editAt`, `undo`) and the open editor's own keys still work.

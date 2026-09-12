@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An editable sheet view states each formula cell's expression
+  (`data-odr-formula`, `odr.sheet.formulaAt`) and the cells it reads. A commit
+  marks the formula cells reading what it wrote with `odr-sheet-stale`, and
+  raises the new `odr.onCellsStale` callback, `{sheet, cells}`; an undo takes
+  the marks back. Nothing recomputes a formula yet.
+
 - `Document::dependents(position)` answers which cells' formulas read a
   position, directly or through another, and `unresolved_formulas()` those
   whose references could not all be read. A position is the new

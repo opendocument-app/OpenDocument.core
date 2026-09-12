@@ -403,6 +403,13 @@
     return { type: "string", text: text };
   }
 
+  // The expression a formula cell computes, as the file spells it. Null for a
+  // cell holding none, and for a read-only render, which writes no scaffolding.
+  function formulaAt(column, row) {
+    var cell = cellAt(column, row);
+    return cell === null ? null : cell.getAttribute("data-odr-formula");
+  }
+
   // Shows @p value at a position, as a write leaves the cell, and reflows
   // the row around it.
   function showValue(column, row, value) {
@@ -430,6 +437,7 @@
     pin: pinAt,
     lower: lower,
     valueAt: valueAt,
+    formulaAt: formulaAt,
     showValue: showValue,
     reflow: reflow,
   };

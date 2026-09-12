@@ -616,10 +616,11 @@ DecodedFile csv_file(const std::uint32_t rows, const std::uint32_t columns) {
 }
 
 /// A flat ODF sheet holding @p rows, each a `table:table-row`, under the
-/// `table:table-column`s in @p columns. The one cell style, `ce1`, aligns a
-/// cell to the top, so every cell that names it writes the same style block.
-DecodedFile fods_file(const std::string &rows,
-                      const std::string &columns = "") {
+/// `table:table-column`s in @p columns, and the further `table:table`s in
+/// @p sheets. The one cell style, `ce1`, aligns a cell to the top, so every
+/// cell that names it writes the same style block.
+DecodedFile fods_file(const std::string &rows, const std::string &columns = "",
+                      const std::string &sheets = "") {
   const std::string fods =
       R"(<?xml version="1.0" encoding="UTF-8"?>)"
       R"(<office:document)"
@@ -642,8 +643,8 @@ DecodedFile fods_file(const std::string &rows,
       R"(</style:style>)"
       R"(</office:automatic-styles>)"
       R"(<office:body><office:spreadsheet><table:table table:name="Sheet1">)" +
-      columns + rows +
-      R"(</table:table></office:spreadsheet></office:body>)"
+      columns + rows + R"(</table:table>)" + sheets +
+      R"(</office:spreadsheet></office:body>)"
       R"(</office:document>)";
   return open(File::from_memory(fods),
               DecodeOptions::as(FileType::opendocument_spreadsheet));
@@ -947,6 +948,92 @@ TEST(html, a_formula_cell_is_locked_with_its_reason) {
 
   EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
   EXPECT_NE(page.find("odr-locked"), std::string::npos);
+}
+
+// A formula bar shows the expression, which is not what the cell shows.
+TEST(html, a_formula_cell_states_the_expression_it_computes) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+          R"( office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      editing_config());
+
+  const std::string expected = R"xml(data-odr-formula="of:=SUM([.B1:.C1])")xml";
+  EXPECT_NE(page.find(expected), std::string::npos);
+}
+
+// The page marks against the rectangles, not against the expression.
+TEST(html, a_formula_cell_states_the_cells_it_reads) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+          R"( office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      editing_config());
+
+  const std::string expected = R"xml(data-odr-reads="0,1,2,0,0")xml";
+  EXPECT_NE(page.find(expected), std::string::npos);
+}
+
+// A quote in an expression would close the attribute early.
+TEST(html, an_expression_is_escaped_into_its_attribute) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=IF([.B1];&quot;a&quot;;&quot;b&quot;)")xml"
+          R"( office:value-type="string">)"
+          R"(<text:p>a</text:p></table:table-cell>)")),
+      editing_config());
+
+  const std::string expected =
+      R"xml(data-odr-formula="of:=IF([.B1];&quot;a&quot;;&quot;b&quot;)")xml";
+  EXPECT_NE(page.find(expected), std::string::npos);
+}
+
+// A read-only render carries no dependency either: it is editing scaffolding.
+TEST(html, a_read_only_render_states_no_formula) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+          R"( office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      HtmlConfig());
+
+  EXPECT_EQ(page.find(R"(data-odr-formula=")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
+}
+
+// A reference into another sheet resolves to the ordinal an op names it by,
+// and a sheet name is matched without case.
+TEST(html, a_formula_reading_another_sheet_states_its_ordinal) {
+  const std::string page = render_sheet(
+      fods_file(
+          fods_row(R"xml(<table:table-cell table:formula="of:=[$sheet2.B1]")xml"
+                   R"( office:value-type="float" office:value="7">)"
+                   R"(<text:p>7</text:p></table:table-cell>)"),
+          "",
+          R"(<table:table table:name="Sheet2"><table:table-row>)"
+          R"(<table:table-cell office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell></table:table-row>)"
+          R"(</table:table>)"),
+      editing_config());
+
+  const std::string expected = R"xml(data-odr-reads="1,1,1,0,0")xml";
+  EXPECT_NE(page.find(expected), std::string::npos);
+}
+
+// A formula naming no position states no rectangle, not an empty one.
+TEST(html, a_formula_reading_nothing_states_no_rectangle) {
+  const std::string page =
+      render_sheet(fods_file(fods_row(
+                       R"xml(<table:table-cell table:formula="of:=TODAY()")xml"
+                       R"( office:value-type="float" office:value="7">)"
+                       R"(<text:p>7</text:p></table:table-cell>)")),
+                   editing_config());
+
+  const std::string expected = R"xml(data-odr-formula="of:=TODAY()")xml";
+  EXPECT_NE(page.find(expected), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
 }
 
 // Several runs of one paragraph are one line, which a write replaces.

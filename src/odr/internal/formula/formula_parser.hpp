@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/file.hpp>
+
 #include <odr/internal/formula/formula_ast.hpp>
 
 #include <optional>
@@ -13,6 +15,10 @@ enum class Syntax {
   opendocument, ///< OpenFormula, as `table:formula` states it
   ooxml,        ///< the expression an `<f>` holds
 };
+
+/// The syntax the engine behind @p file_type writes a formula in. Nothing
+/// where it states none, or drops the expression at parse time (`.xls`).
+[[nodiscard]] std::optional<Syntax> syntax_of(FileType file_type);
 
 /// Parses @p formula, with or without the `of:=` prefix. Nothing where it does
 /// not parse, so a caller reads no reference out of a formula it cannot read.

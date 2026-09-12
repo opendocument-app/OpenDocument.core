@@ -85,6 +85,8 @@ page.editing.committed();
 
 `odr.editing` is on every document view, editable or not: `isEditable()` is what
 greys a host's edit button, and `onEditRefused` says why an edit was refused.
+On a sheet, `onCellsStale` names the formula cells an edit left computing an
+old input - the page marks them, and nothing recomputes one yet.
 `keyboardNavigation` and `keyboardShortcuts` in the config decide whether the
 page takes the arrow keys and the undo chord, for a host that has its own.
 `example/index.html` wires the whole surface.

@@ -9,8 +9,9 @@
   <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A sheet as `translate_sheet` writes one, with the styles it hoists into
          classes written inline: every column states a width, so a string is cut
-         where the next cell shows something. B3 holds a formula, C3 a run of
-         its own, D3 a link. -->
+         where the next cell shows something. B3 holds a formula over A1:A2,
+         C3 a run of its own, D3 a link. B5 holds a formula over B3, so an
+         edit into A1 reaches B5 through B3. -->
     <table class="odr-sheet" data-odr-sheet="2">
       <col class="odr-sheet-gutter" />
       <col style="width: 80px" />
@@ -44,7 +45,7 @@
         <tr>
           <th class="odr-sheet-row-header">3</th>
           <td style="max-width:0;white-space:nowrap"></td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" style="max-width:0;white-space:nowrap">7</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=SUM([.A1:.A2])" data-odr-reads="2,0,0,0,1" style="max-width:0;white-space:nowrap">7</td>
           <td style="max-width:0;white-space:nowrap"><x-p><x-s style="font-weight:bold">bold</x-s></x-p></td>
           <td class="odr-locked" data-odr-lock="rich" style="max-width:0;white-space:nowrap"><x-p><a href="https://x.example"><x-s>x</x-s></a></x-p></td>
         </tr>
@@ -58,7 +59,7 @@
         <tr>
           <th class="odr-sheet-row-header">5</th>
           <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B3]*2" data-odr-reads="2,1,1,2,2" style="max-width:0;white-space:nowrap">14</td>
           <td style="max-width:0;white-space:nowrap"></td>
           <td style="max-width:0;white-space:nowrap"></td>
         </tr>
@@ -78,6 +79,19 @@
       odr.onEditRefused = function (event) {
         refusals.push(event.reason + " " + event.code + " at " + event.column + "," + event.row);
       };
+      var staleEvents = [];
+      odr.onCellsStale = function (event) {
+        staleEvents.push(event);
+      };
+      function staleNow() {
+        return Array.prototype.slice
+          .call(document.querySelectorAll(".odr-sheet-stale"))
+          .map(function (td) {
+            var at = odr.sheet.positionOf(td);
+            return at.column + "," + at.row;
+          })
+          .join(" ");
+      }
 
       function editor() {
         return document.querySelector(".odr-sheet-editor");
@@ -312,6 +326,44 @@
       check("a chord in another input is that input's", cell(3, 0).textContent === "one");
       box.remove();
 
+      // What an edit leaves stale: the cells reading it, and those reading them.
+      odr.editing.committed();
+      staleEvents = [];
+      check("a formula cell hands out its expression", odr.sheet.formulaAt(1, 2) === "of:=SUM([.A1:.A2])");
+      check("and a cell holding none hands out nothing", odr.sheet.formulaAt(0, 0) === null);
+
+      odr.editing.editAt(0, 1);
+      editor().value = "99";
+      press(editor(), "Enter");
+      check("writing an input marks the formula reading it", staleNow() === "1,2 1,4");
+      check(
+        "and the host is told, once",
+        staleEvents.length === 1 &&
+          staleEvents[0].sheet === 2 &&
+          staleEvents[0].cells.length === 2 &&
+          staleEvents[0].cells[0].column === 1 &&
+          staleEvents[0].cells[0].row === 2
+      );
+
+      odr.editing.editAt(3, 4);
+      editor().value = "nothing reads this";
+      press(editor(), "Enter");
+      check("a write nothing reads leaves the set as it was", staleNow() === "1,2 1,4");
+      check("so the host hears nothing further", staleEvents.length === 1);
+
+      odr.editing.undo();
+      odr.editing.undo();
+      check("undoing the edits takes the marks back", staleNow() === "");
+      check("and the host is told that too", staleEvents.length === 2 && staleEvents[1].cells.length === 0);
+
+      odr.editing.redo();
+      check("a redo puts them back", staleNow() === "1,2 1,4");
+      odr.editing.committed();
+      check("and a save clears them with the log", staleNow() === "");
+
+      odr.editing.editAt(3, 0);
+      editor().value = "one";
+      press(editor(), "Enter");
       odr.editing.committed();
       check(
         "a save clears both stacks",

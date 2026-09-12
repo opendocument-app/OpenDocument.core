@@ -49,6 +49,7 @@
     console.log("editing " + (event.editing ? "on" : "off"));
   };
   odr.onEditChange = function () {};
+  odr.onCellsStale = function () {};
 
   function fire(name, event) {
     if (typeof odr[name] === "function") {
@@ -160,6 +161,12 @@
         }
       }
       fire("onEditRefused", event);
+    },
+
+    /// The cells the edits so far left computing an old input. Raised
+    /// whenever the set changes, which an undo does too.
+    stale: function (detail) {
+      fire("onCellsStale", detail);
     },
 
     /// The log a host's save button reads; an editor calls it when its log

@@ -97,6 +97,7 @@
       before: before,
     });
     undone = [];
+    repaintStale();
     odr.editing.changed();
     return true;
   }
@@ -106,7 +107,124 @@
   function replay(entry, value) {
     close();
     odr.sheet.showValue(entry.op.column, entry.op.row, value);
+    repaintStale();
     odr.editing.changed();
+  }
+
+  /// What each formula cell reads, off `data-odr-reads`. Only the rectangles
+  /// in this sheet, because an edit here names a position in it.
+  var readers = null;
+
+  function bound(text) {
+    return text === "*" ? Infinity : Number(text);
+  }
+
+  function readersOf() {
+    if (readers !== null) {
+      return readers;
+    }
+    readers = [];
+    var cells = table.querySelectorAll("td[data-odr-reads]");
+    for (var i = 0; i < cells.length; ++i) {
+      var at = odr.sheet.positionOf(cells[i]);
+      if (at === null) {
+        continue;
+      }
+      var boxes = [];
+      var groups = cells[i].getAttribute("data-odr-reads").split(" ");
+      for (var j = 0; j < groups.length; ++j) {
+        var parts = groups[j].split(",");
+        if (parts.length === 5 && Number(parts[0]) === sheet) {
+          boxes.push([
+            bound(parts[1]),
+            bound(parts[2]),
+            bound(parts[3]),
+            bound(parts[4]),
+          ]);
+        }
+      }
+      if (boxes.length > 0) {
+        readers.push({ cell: cells[i], at: at, reads: boxes });
+      }
+    }
+    return readers;
+  }
+
+  function readsAny(entry, positions) {
+    for (var i = 0; i < entry.reads.length; ++i) {
+      var box = entry.reads[i];
+      for (var j = 0; j < positions.length; ++j) {
+        var at = positions[j];
+        if (
+          at.column >= box[0] &&
+          at.column <= box[1] &&
+          at.row >= box[2] &&
+          at.row <= box[3]
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Every cell reading one of @p positions, and every cell reading one of
+  /// those: a formula whose input went stale is stale itself.
+  function staleFrom(positions) {
+    var entries = readersOf();
+    var taken = [];
+    var frontier = positions;
+    var result = [];
+    while (frontier.length > 0) {
+      var next = [];
+      for (var i = 0; i < entries.length; ++i) {
+        if (taken[i] || !readsAny(entries[i], frontier)) {
+          continue;
+        }
+        taken[i] = true;
+        result.push(entries[i]);
+        next.push(entries[i].at);
+      }
+      frontier = next;
+    }
+    return result;
+  }
+
+  var stale = [];
+  var staleKey = "";
+
+  /// The marks follow the log, not the last write, so an undo takes back what
+  /// it made stale and a save clears them with the log.
+  function repaintStale() {
+    var written = [];
+    var ops = coalesced();
+    for (var i = 0; i < ops.length; ++i) {
+      written.push({ column: ops[i].column, row: ops[i].row });
+    }
+
+    for (var j = 0; j < stale.length; ++j) {
+      stale[j].classList.remove("odr-sheet-stale");
+    }
+    stale = [];
+
+    var cells = [];
+    var entries = staleFrom(written);
+    for (var k = 0; k < entries.length; ++k) {
+      entries[k].cell.classList.add("odr-sheet-stale");
+      stale.push(entries[k].cell);
+      cells.push({ column: entries[k].at.column, row: entries[k].at.row });
+    }
+
+    // A host hears when the set moved, not on every keystroke.
+    var key = cells
+      .map(function (at) {
+        return at.column + ":" + at.row;
+      })
+      .join(" ");
+    if (key !== staleKey) {
+      staleKey = key;
+      odr.editing.stale({ sheet: sheet, cells: cells });
+    }
   }
 
   // Offsets, not rects: blink scales a rect by the body zoom `viewport_js`
@@ -354,6 +472,7 @@
     committed: function () {
       history = [];
       undone = [];
+      repaintStale();
     },
   });
 })();
