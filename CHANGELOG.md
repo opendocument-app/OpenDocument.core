@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A run that is both underlined and struck through renders both lines. The
+  page wrote two `text-decoration` declarations, and the second replaced the
+  first.
+
 - **Breaking**: `all_file_types()` and `all_text_encodings()` return a
   `std::span` over the library's tables instead of a `std::vector`, like the
   other table lookups. The bindings still hand out a list.

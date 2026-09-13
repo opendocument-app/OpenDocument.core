@@ -73,6 +73,33 @@ TEST(html_document_style, outer_flowing_page_style_without_height) {
             "width:21cm;");
 }
 
+TEST(html_document_style, text_style_writes_one_line) {
+  TextStyle text_style;
+  text_style.font_underline = true;
+  EXPECT_EQ(ihtml::translate_text_style(text_style),
+            "text-decoration:underline;");
+
+  text_style.font_underline = std::nullopt;
+  text_style.font_line_through = true;
+  EXPECT_EQ(ihtml::translate_text_style(text_style),
+            "text-decoration:line-through;");
+}
+
+TEST(html_document_style, text_style_writes_both_lines_in_one_declaration) {
+  TextStyle text_style;
+  text_style.font_underline = true;
+  text_style.font_line_through = true;
+  EXPECT_EQ(ihtml::translate_text_style(text_style),
+            "text-decoration:underline line-through;");
+}
+
+TEST(html_document_style, text_style_writes_no_line_for_one_turned_off) {
+  TextStyle text_style;
+  text_style.font_underline = false;
+  text_style.font_line_through = false;
+  EXPECT_EQ(ihtml::translate_text_style(text_style), "");
+}
+
 TEST(html_document_style, block_font_style_carries_the_font) {
   TextStyle text_style;
   text_style.font_name = "Arial";
