@@ -833,6 +833,11 @@ TEST(DocumentEdit, a_style_the_handle_does_not_write_refuses) {
 
   EXPECT_THROW(run_at(document, 0, 0).as_text().set_style(style),
                UnsupportedOperation);
+
+  TextStyle named;
+  named.font_name = "Comic Sans";
+  EXPECT_THROW(run_at(document, 0, 0).as_text().set_style(named),
+               UnsupportedOperation);
 }
 
 namespace {

@@ -50,9 +50,8 @@ bool toggle_on(const std::uint8_t value) {
 
 } // namespace
 
-StyleRegistry::StyleRegistry(std::vector<std::string> font_names,
-                             std::vector<TextStyle> styles)
-    : m_font_names(std::move(font_names)), m_styles(std::move(styles)) {}
+StyleRegistry::StyleRegistry(std::vector<TextStyle> styles)
+    : m_styles(std::move(styles)) {}
 
 const TextStyle &StyleRegistry::text_style(const std::uint32_t index) const {
   return m_styles.at(index);

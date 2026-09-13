@@ -21,6 +21,10 @@ The release run heads these entries with the version and opens a fresh
   `Sheet::set_cell` writes a boolean and refuses the other three. The enum
   mirrors in every binding follow.
 
+- **Breaking**: `TextStyle::font_name` is a `std::string` rather than a
+  `std::string_view` that borrowed from the document, so a style outlives the
+  document it was read from and a caller can build one.
+
 - `Text::set_style` and the edit op `setTextStyle {id, style}` write bold,
   italic, underline, strikethrough, highlight, colour and size onto a run of
   an odf, docx or pptx document. The other engines refuse it.

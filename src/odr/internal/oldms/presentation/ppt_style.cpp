@@ -181,9 +181,8 @@ void read_text_cf_exception(BodyCursor &cursor, TextCFRun &run) {
 
 } // namespace
 
-StyleRegistry::StyleRegistry(std::vector<std::string> font_names,
-                             std::vector<TextStyle> styles)
-    : m_font_names(std::move(font_names)), m_styles(std::move(styles)) {}
+StyleRegistry::StyleRegistry(std::vector<TextStyle> styles)
+    : m_styles(std::move(styles)) {}
 
 const TextStyle &StyleRegistry::text_style(const std::uint32_t index) const {
   return m_styles.at(index);
@@ -249,7 +248,7 @@ std::uint32_t presentation::resolve_style(const TextCFRun &run,
         context.fonts[*run.font_ref].empty()) {
       throw std::runtime_error("ppt: font reference out of range");
     }
-    style.font_name = context.fonts[*run.font_ref].c_str();
+    style.font_name = context.fonts[*run.font_ref];
   }
   context.styles.push_back(style);
   return static_cast<std::uint32_t>(context.styles.size() - 1);

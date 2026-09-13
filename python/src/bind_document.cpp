@@ -19,8 +19,7 @@ namespace py = pybind11;
 namespace {
 
 // Ties the returned object to `self`: navigation handles keep the originating
-// `Document` alive transitively, and so does a `TextStyle`, whose `font_name`
-// borrows from the document.
+// `Document` alive transitively.
 constexpr auto keep_self_alive = py::keep_alive<0, 1>();
 
 py::object make_element_iterator(const odr::ElementRange &range) {
@@ -229,20 +228,19 @@ void odr_python::bind_document(py::module_ &m) {
       .def("page_layout", &odr::MasterPage::page_layout);
 
   bind_element<odr::LineBreak>(m, "LineBreak")
-      .def("style", &odr::LineBreak::style, keep_self_alive);
+      .def("style", &odr::LineBreak::style);
 
   bind_element<odr::Paragraph>(m, "Paragraph")
       .def("style", &odr::Paragraph::style)
-      .def("text_style", &odr::Paragraph::text_style, keep_self_alive);
+      .def("text_style", &odr::Paragraph::text_style);
 
-  bind_element<odr::Span>(m, "Span").def("style", &odr::Span::style,
-                                         keep_self_alive);
+  bind_element<odr::Span>(m, "Span").def("style", &odr::Span::style);
 
   bind_element<odr::Text>(m, "Text")
       .def("content", &odr::Text::content)
       .def("set_content", &odr::Text::set_content, py::arg("text"))
       .def("set_style", &odr::Text::set_style, py::arg("style"))
-      .def("style", &odr::Text::style, keep_self_alive);
+      .def("style", &odr::Text::style);
 
   bind_element<odr::Link>(m, "Link").def("href", &odr::Link::href);
 
@@ -251,7 +249,7 @@ void odr_python::bind_document(py::module_ &m) {
   bind_element<odr::List>(m, "List").def("list_type", &odr::List::type);
 
   bind_element<odr::ListItem>(m, "ListItem")
-      .def("style", &odr::ListItem::style, keep_self_alive)
+      .def("style", &odr::ListItem::style)
       .def("marker", &odr::ListItem::marker)
       .def("number", &odr::ListItem::number);
 

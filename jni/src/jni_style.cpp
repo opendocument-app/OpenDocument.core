@@ -1,8 +1,6 @@
 #include "jni_convert.hpp"
 #include "odr_jni.hpp"
 
-#include <odr/exceptions.hpp>
-
 #include <cstdarg>
 #include <vector>
 
@@ -134,11 +132,6 @@ jint enum_ordinal(JNIEnv *env, jobject value) {
 } // namespace
 
 jstring make_string_opt(JNIEnv *env, const std::optional<std::string> &value) {
-  return value.has_value() ? to_jstring(env, *value) : nullptr;
-}
-
-jstring make_string_opt(JNIEnv *env,
-                        const std::optional<std::string_view> &value) {
   return value.has_value() ? to_jstring(env, *value) : nullptr;
 }
 
@@ -295,12 +288,14 @@ odr::TextStyle text_style_from_java(JNIEnv *env, const jobject style) {
     return converted;
   };
 
-  if (const jobject font_name = field("fontName", "Ljava/lang/String;");
-      font_name != nullptr) {
-    env->DeleteLocalRef(font_name);
-    env->DeleteLocalRef(cls);
-    throw odr::UnsupportedOperation();
-  }
+  result.font_name =
+      take(field("fontName", "Ljava/lang/String;"),
+           [&](const jobject value) -> std::optional<std::string> {
+             if (value == nullptr) {
+               return std::nullopt;
+             }
+             return to_string(env, static_cast<jstring>(value));
+           });
   result.font_size =
       take(field("fontSize", "Lapp/opendocument/core/Measure;"),
            [&](const jobject value) { return measure_from_java(env, value); });

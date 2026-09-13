@@ -3,7 +3,6 @@
 #import "ODRInternal.h"
 #import "ODRPrivate.h"
 
-#include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <optional>
@@ -83,10 +82,7 @@ NSNumber *_Nullable box_enum(const std::optional<Enum> &value) {
   return value.has_value() ? @(static_cast<NSInteger>(*value)) : nil;
 }
 
-/// Also takes the `string_view` of `font_name`, which borrows from the document
-/// that produced the style — copying it here is the point.
-template <typename T>
-NSString *_Nullable box_string(const std::optional<T> &value) {
+NSString *_Nullable box_string(const std::optional<std::string> &value) {
   return value.has_value() ? to_nsstring(*value) : nil;
 }
 
@@ -224,7 +220,7 @@ odr::Color unbox_color(NSValue *const value) {
 - (odr::TextStyle)handle {
   odr::TextStyle result;
   if (_fontName != nil) {
-    throw odr::UnsupportedOperation();
+    result.font_name = to_string(_fontName);
   }
   if (_fontSize != nil) {
     result.font_size = _fontSize.handle;
