@@ -7,15 +7,23 @@
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
+#include <odr/quantity.hpp>
+#include <odr/style.hpp>
+
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/util/file_util.hpp>
 
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -107,6 +115,61 @@ CellValue parse_cell_value(const nlohmann::json &json) {
                                   : CellValue(number);
   }
   throw std::invalid_argument("unknown cell value type " + type);
+}
+
+/// `#rrggbb`, as the page spells one.
+Color parse_color(const std::string &text) {
+  const auto is_hex = [](const char c) {
+    return std::isxdigit(static_cast<unsigned char>(c)) != 0;
+  };
+  if (text.size() != 7 || text[0] != '#' ||
+      !std::ranges::all_of(text.substr(1), is_hex)) {
+    throw std::invalid_argument("not a color: " + text);
+  }
+  return Color::from_rgb(
+      static_cast<std::uint32_t>(std::strtoul(text.c_str() + 1, nullptr, 16)));
+}
+
+/// A length with a fixed size, as `Measure` spells it (`14pt`).
+Measure parse_font_size(const std::string &text) {
+  static constexpr std::array<std::string_view, 6> units{"pt", "px", "in",
+                                                         "cm", "mm", "pc"};
+  const Measure size(text);
+  if (!(size.magnitude() > 0) ||
+      !std::ranges::contains(units, size.unit().name())) {
+    throw std::invalid_argument("not a font size: " + text);
+  }
+  return size;
+}
+
+/// The `style` of a `setTextStyle` op: a toggle as a bool, a colour as
+/// `#rrggbb`, `null` for no highlight (`docs/design/document-editing.md`).
+TextStyle parse_text_style(const nlohmann::json &json) {
+  TextStyle style;
+  for (const auto &[key, value] : json.items()) {
+    if (key == "bold") {
+      style.font_weight =
+          value.get<bool>() ? FontWeight::bold : FontWeight::normal;
+    } else if (key == "italic") {
+      style.font_style =
+          value.get<bool>() ? FontStyle::italic : FontStyle::normal;
+    } else if (key == "underline") {
+      style.font_underline = value.get<bool>();
+    } else if (key == "strikethrough") {
+      style.font_line_through = value.get<bool>();
+    } else if (key == "highlight") {
+      style.background_color = value.is_null()
+                                   ? Color(0, 0, 0, 0)
+                                   : parse_color(value.get<std::string>());
+    } else if (key == "color") {
+      style.font_color = parse_color(value.get<std::string>());
+    } else if (key == "size") {
+      style.font_size = parse_font_size(value.get<std::string>());
+    } else {
+      throw std::invalid_argument("unknown text style property " + key);
+    }
+  }
+  return style;
 }
 
 /// The @p ordinal -th sheet in document order, which is how an op names one.
@@ -210,6 +273,12 @@ void Document::edit(const std::string_view operations,
     if (name == "setText") {
       text_of(operation, "id")
           .set_content(operation.at("text").get<std::string>());
+      continue;
+    }
+
+    if (name == "setTextStyle") {
+      text_of(operation, "id")
+          .set_style(parse_text_style(operation.at("style")));
       continue;
     }
 

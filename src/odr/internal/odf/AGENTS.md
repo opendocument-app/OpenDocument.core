@@ -180,9 +180,13 @@ since re-routing one between the shapes it names is layout rather than
 decoding.
 The structural/foundational gaps, roughly by value:
 
-1. **Editing is text-content only.** No structural edits (insert/delete/move
-   elements), no attribute or style editing. `text_set_content` splices the DOM
-   for one text run; that's the whole editor.
+1. **Editing is runs, paragraphs and the seven text properties.** No other
+   attribute or style editing. `text_set_style` cuts the `text:span` around
+   the run (`TreeEditor::isolate`) or wraps a bare run in a new one, and
+   points it at a fresh automatic style `T<n>`
+   (`StyleRegistry::create_text_style`): a copy of the span's automatic
+   style plus the delta, since an automatic style may be shared, or a child
+   of its named style. The new style joins the index.
 2. **Spreadsheet editing is one cell value.** `sheet_set_cell` writes
    `office:value-type`/`office:value` *and* the `text:p` under the cell — the
    file states the value and shows a rendering of it, and setting one without

@@ -542,6 +542,17 @@ TextStyle Text::style() const {
   return exists_() ? m_adapter2->text_style(m_identifier) : TextStyle();
 }
 
+void Text::set_style(const TextStyle &style) const {
+  if (!exists_()) {
+    return;
+  }
+  if (style.font_name.has_value() || style.font_shadow.has_value() ||
+      style.font_position.has_value()) {
+    throw UnsupportedOperation();
+  }
+  m_adapter2->text_set_style(m_identifier, style);
+}
+
 std::string Link::href() const {
   return exists_() ? m_adapter2->link_href(m_identifier) : "";
 }

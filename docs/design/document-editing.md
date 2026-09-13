@@ -362,8 +362,9 @@ that names the frame rather than a range across text.
 
 ## Inline formatting
 
-Status: **not started.** It is the one step of [`editing.md`](editing.md)
-still open. It covers what a reader changes on a stretch of text without
+Status: **in progress.** It is the one step of [`editing.md`](editing.md)
+still open; the order of work below says what is in. It covers what a reader
+changes on a stretch of text without
 changing the text: bold, italic, underline, strikethrough, highlight, colour
 and size. Font name, superscript and subscript are not in it; nothing asked
 for them, and each is the same shape once these seven are in.
@@ -443,12 +444,14 @@ container nobody else is in:
   `a:rPr` into each part. `paragraph_split` already does this copy when it
   walks up through a run, so this is that walk stopped one level early. The
   delta is then applied to the copy that holds the run and nothing else.
-- **ODF** wraps the run in a new `text:span` when it has siblings or sits bare
-  in the `text:p`, and reuses the span when the run is alone in it. Either
-  way the span gets a fresh automatic style (decision 12). The style resolver
-  walks the element parent chain
-  ([`odf/AGENTS.md`](../../src/odr/internal/odf/AGENTS.md)), so a span inside
-  a span already resolves.
+- **ODF** cuts the `text:span` the same way when the run sits in one, and
+  wraps a run that sits bare in the `text:p` (or in a link) in a new
+  `text:span`. Either way the span gets a fresh automatic style (decision
+  12): a copy of the cut span's style with the delta applied, or the delta
+  alone for a new span, since the resolver cascades down the element chain.
+
+`TreeEditor::isolate` is the cut, shared by the three engines: a split before
+the run and a split after it, each copying the container's shell.
 
 Marking part of a run is then what decision 5 said: `setText` and
 `insertText` split the run, and `setTextStyle` names the middle one. The
@@ -541,10 +544,11 @@ run keeps its id and what changes is what it holds. It reaches
 by decision 7. The container of decision 11 is a new registry element the
 run's parent link then names, which no handle held before.
 
-The delta is a `TextStyle` whose set fields are the change, with one thing it
-cannot say: `optional<Color>` empty means unstated, and the wire's
-`highlight: null` means none. Whether that is a field on `TextStyle` or a type
-of its own is the first question step 1 answers.
+The delta is a `TextStyle` whose set fields are the change. The wire's
+`highlight: null` is a `background_color` with alpha 0, which is what a
+highlight taken away is: `transparent` in ODF, `none` in docx. `font_name`,
+`font_shadow` and `font_position` are not written, and a delta setting one
+refuses.
 
 ### Order of work
 
@@ -552,12 +556,12 @@ Each step is a pull request that builds and tests on its own.
 
 1. **The renderer.** One `text-decoration` declaration (decision 15). Small,
    and no reference page holds both lines on one run today, so it changes no
-   reference output.
+   reference output. **Landed.**
 2. **The op and the ODF write side.** `setTextStyle`, `Text::set_style`, the
    hook, the span and automatic style rules, and `document_edit_test` cases
    from inline fixtures: a mark on a shared span, on a bare text node, on a
    run alone in its span, off over a bold paragraph style. A headless
-   LibreOffice reopen of the saved file is the oracle.
+   LibreOffice reopen of the saved file is the oracle. **Landed.**
 3. **docx and pptx.** The run cut, the `w:rPr` order, `w:shd` on the read
    side, the `a:rPr` children. The same cases, over Word and Impress fixtures.
 4. **The browser.** `format()`, `onSelectionChange`, the four input types,
@@ -579,6 +583,11 @@ Each step is a pull request that builds and tests on its own.
 - **Where the size list comes from.** A host offers sizes; the editor takes
   any length. Whether the ODF percentage sizes the reader resolves are ever
   written back as absolute is a question the fixtures answer.
+- **`transparent` is read as unstated.** `read_color` answers nothing for
+  `fo:background-color="transparent"`, so a highlight taken away on a run
+  inside a highlighted paragraph still shows in our render, not in
+  LibreOffice's. Reading it as alpha 0 fixes it and moves every page whose
+  styles write `transparent`.
 
 ## Open questions
 

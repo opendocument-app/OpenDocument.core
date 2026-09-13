@@ -38,7 +38,7 @@ namespace odr::internal::odf {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(Document &document, ElementRegistry &registry);
 }
 
 Document::Document(const FileType file_type, const DocumentType document_type,
@@ -250,7 +250,7 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
+  ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
 
   [[nodiscard]] bool
@@ -776,6 +776,30 @@ public:
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
+  /// Cuts the span around the run and copies its style, or wraps a bare run
+  /// in a new span carrying the delta alone.
+  void text_set_style(const ElementIdentifier element_id,
+                      const TextStyle &style) const override {
+    const ElementIdentifier parent_id = element_parent(element_id);
+    ElementIdentifier span_id = null_element_id;
+    const char *base_name = nullptr;
+    if (parent_id != null_element_id &&
+        element_type(parent_id) == ElementType::span) {
+      span_id = TreeEditor(*m_registry).isolate(element_id);
+      base_name = get_node(span_id).attribute("text:style-name").value();
+    } else {
+      span_id = wrap_in_span(element_id);
+    }
+
+    pugi::xml_node span_node = get_node(span_id);
+    const std::string name = m_document->style_registry().create_text_style(
+        automatic_styles_of(span_node), base_name, style);
+    pugi::xml_attribute attribute = span_node.attribute("text:style-name");
+    if (!attribute) {
+      attribute = span_node.prepend_attribute("text:style-name");
+    }
+    attribute.set_value(name.c_str());
+  }
 
   [[nodiscard]] std::string
   link_href(const ElementIdentifier element_id) const override {
@@ -1038,7 +1062,7 @@ public:
   }
 
 private:
-  const Document *m_document{nullptr};
+  Document *m_document{nullptr};
   mutable std::mutex m_charts_mutex;
   mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>
       m_charts;
@@ -1217,6 +1241,50 @@ private:
       throw UnsupportedOperation();
     }
     return cell->element_id;
+  }
+
+  /// A new `text:span` around the nodes of @p element_id, taking its place in
+  /// the tree.
+  [[nodiscard]] ElementIdentifier
+  wrap_in_span(const ElementIdentifier element_id) const {
+    const NodeSpan nodes = TreeEditor(*m_registry).node_span(element_id);
+    pugi::xml_node span_node =
+        nodes.first.parent().insert_child_before("text:span", nodes.first);
+    // the moves invalidate `next_sibling`, so where the span ends is read first
+    const pugi::xml_node end = nodes.last.next_sibling();
+    for (pugi::xml_node node = nodes.first; node != end;) {
+      const pugi::xml_node next = node.next_sibling();
+      span_node.append_move(node);
+      node = next;
+    }
+
+    const auto &[span_id, unused] =
+        m_registry->create_element(ElementType::span, span_node);
+    m_registry->insert_sibling_before(element_id, span_id);
+    m_registry->unlink_child(element_id);
+    m_registry->append_child(span_id, element_id);
+    return span_id;
+  }
+
+  /// The `office:automatic-styles` of the file @p node sits in, made where
+  /// there is none.
+  [[nodiscard]] static pugi::xml_node
+  automatic_styles_of(const pugi::xml_node node) {
+    pugi::xml_node root;
+    for (const pugi::xml_node child : node.root().children()) {
+      if (child.type() == pugi::xml_node_type::node_element) {
+        root = child;
+        break;
+      }
+    }
+    if (const pugi::xml_node automatic_styles =
+            root.child("office:automatic-styles")) {
+      return automatic_styles;
+    }
+    if (const pugi::xml_node body = root.child("office:body")) {
+      return root.insert_child_before("office:automatic-styles", body);
+    }
+    return root.append_child("office:automatic-styles");
   }
 
   /// The only child of @p element_id, null where it has none or several.
@@ -1502,7 +1570,7 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
+create_element_adapter(Document &document, ElementRegistry &registry) {
   return std::make_unique<ElementAdapter>(document, registry);
 }
 

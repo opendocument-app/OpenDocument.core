@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Text::set_style` and the edit op `setTextStyle {id, style}` write bold,
+  italic, underline, strikethrough, highlight, colour and size onto a run of
+  an odf document. The other engines refuse it.
+
 - A run that is both underlined and struck through renders both lines. The
   page wrote two `text-decoration` declarations, and the second replaced the
   first.

@@ -5,6 +5,7 @@
 #include <odr/internal/common/style.hpp>
 
 #include <any>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -82,7 +83,16 @@ public:
   [[nodiscard]] ElementIdentifier
   master_page_of_style(const char *style_name) const;
 
+  /// A text style under @p automatic_styles carrying @p style, under a fresh
+  /// name it answers: a copy of the automatic style @p base_name names, a
+  /// child of a named one, the delta alone where it is null.
+  std::string create_text_style(pugi::xml_node automatic_styles,
+                                const char *base_name, const TextStyle &style);
+
 private:
+  /// Where the search for a free `T<n>` name starts.
+  std::uint32_t m_next_text_style{1};
+
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_style;
