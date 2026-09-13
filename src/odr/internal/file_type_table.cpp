@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 
 namespace odr::internal {
 
@@ -831,10 +832,22 @@ const Row *find_by_alias(const std::string_view needle,
   return it == std::ranges::end(table) ? nullptr : &*it;
 }
 
+constexpr auto types_column = [] {
+  std::array<FileType, table.size()> result{};
+  for (std::size_t i = 0; i < table.size(); ++i) {
+    result[i] = table[i].type;
+  }
+  return result;
+}();
+
 } // namespace
 
 std::span<const file_type_table::Row> file_type_table::rows() noexcept {
   return table;
+}
+
+std::span<const FileType> file_type_table::types() noexcept {
+  return types_column;
 }
 
 const file_type_table::Row *

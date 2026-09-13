@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <optional>
 #include <set>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -115,9 +116,9 @@ TEST(odr, a_named_file_in_memory_is_offered_its_type) {
 
 TEST(FileTypeTable, covers_every_file_type_exactly_once) {
   const std::vector<FileType> expected = every_file_type();
-  const std::vector<FileType> actual = all_file_types();
+  const std::span<const FileType> actual = all_file_types();
 
-  EXPECT_EQ(actual, expected);
+  EXPECT_TRUE(std::ranges::equal(actual, expected));
 
   for (const FileType type : expected) {
     EXPECT_NE(file_type_to_string(type), "unnamed")

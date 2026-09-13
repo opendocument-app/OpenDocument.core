@@ -20,6 +20,8 @@ struct Row final {
 
 /// The whole table, one row per @ref FileType, in declaration order.
 [[nodiscard]] std::span<const Row> rows() noexcept;
+/// The type column of @ref rows.
+[[nodiscard]] std::span<const FileType> types() noexcept;
 
 /// The row for @p type, or `nullptr` if there is none.
 [[nodiscard]] const Row *find(FileType type) noexcept;

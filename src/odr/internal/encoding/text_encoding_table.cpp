@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <string>
 
 namespace odr::internal::encoding {
@@ -133,10 +134,22 @@ std::string normalize(const std::string_view name) {
   return result;
 }
 
+constexpr auto encodings_column = [] {
+  std::array<TextEncoding, table.size()> result{};
+  for (std::size_t i = 0; i < table.size(); ++i) {
+    result[i] = table[i].encoding;
+  }
+  return result;
+}();
+
 } // namespace
 
 std::span<const text_encoding_table::Row> text_encoding_table::rows() noexcept {
   return table;
+}
+
+std::span<const TextEncoding> text_encoding_table::encodings() noexcept {
+  return encodings_column;
 }
 
 const text_encoding_table::Row *
