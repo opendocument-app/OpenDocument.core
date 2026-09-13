@@ -92,12 +92,13 @@ Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
 3. **Table cell styles unresolved.** Tables are wired (grid, spans, covered
    cells, column widths/row heights), but `a:tcPr` (fills, borders, margins)
    is not translated.
-4. **Editing is text-content and the structure a text edit needs**, the same
-   surface `.docx` has: set a run's text, put a run beside one, remove an
-   element, and split, merge or insert a paragraph. The dom half is
-   `xml::TreeEditor`, shared with odf and ooxml text — only the tag names
-   differ, and those come from the nodes. No style editing, and no editing of
-   a shape, a picture or a table's furniture.
+4. **Editing is runs, paragraphs and the seven text properties**, the same
+   surface `.docx` has. The dom half is `xml::TreeEditor`, shared with odf and
+   ooxml text — only the tag names differ. `text_set_style` cuts the `a:r`
+   around the run and writes the toggles and the size as `a:rPr` attributes,
+   the colour as `a:solidFill` and the highlight as `a:highlight`, each at its
+   place in the `CT_TextCharacterProperties` sequence. No other style editing,
+   and no editing of a shape, a picture or a table's furniture.
 
    `save` re-serialises the slide parts and copies the rest of the package
    through as bytes, so a part we never parsed survives untouched. The slides

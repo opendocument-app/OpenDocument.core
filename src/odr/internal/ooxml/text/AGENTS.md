@@ -84,8 +84,15 @@ separately from its `ResolvedStyle` so an inherited one is seen.
 string and splices `w:t` (with `xml:space="preserve"` for spaces) / `w:tab` nodes
 into the live `m_document_xml`, updating the registry's node pointers. `save`
 re-zips the package, re-serialising **only** `word/document.xml` from the mutated
-DOM; everything else is byte-copied. No structural edits; `save(path, password)`
-throws (no re-encryption).
+DOM; everything else is byte-copied. `save(path, password)` throws (no
+re-encryption).
+
+`text_set_style` cuts the `w:r` around the run (`TreeEditor::isolate`) and
+writes the seven text properties into its `w:rPr`. `CT_RPr` is a sequence
+Word enforces, so each property lands at its rank (`run_property_order`) and
+replaces an existing one whole. A highlight is `w:highlight` for one of the
+sixteen names and a `w:shd` shading otherwise; the reader takes `w:shd` where
+no highlight names a colour.
 
 ## Module layout
 
@@ -106,8 +113,9 @@ Style/element coverage is in [`README.md`](README.md). Foundational gaps:
    nothing else; symbol-font bullets are mapped to Unicode by a small table and
    otherwise fall back to the level's default shape, since the private-use code
    points Word writes render only in Symbol / Wingdings.
-2. **No structural editing**; save doesn't stream (buffers document.xml, re-zips
-   the whole package); no re-encryption on save.
+2. **Editing is runs, paragraphs and the seven text properties**; save
+   doesn't stream (buffers document.xml, re-zips the whole package); no
+   re-encryption on save.
 3. **Theme fonts unhandled.** `w:rFonts w:asciiTheme="minorHAnsi"` (etc.) is
    ignored — only literal `w:ascii` names are read (README example
    `Sample large docx.docx`).

@@ -11,10 +11,14 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <array>
+#include <cmath>
 #include <cstring>
 #include <iterator>
+#include <optional>
 #include <ostream>
 #include <sstream>
+#include <string_view>
 
 namespace odr::internal::ooxml::text {
 
@@ -163,6 +167,117 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
 using TreeEditor = xml::TreeEditor<ElementRegistry>;
+
+/// [ECMA-376] 17.3.2.28 `CT_RPr`: a sequence, and Word refuses a file whose
+/// run properties break it.
+constexpr std::array<std::string_view, 39> run_property_order{
+    "w:rStyle",
+    "w:rFonts",
+    "w:b",
+    "w:bCs",
+    "w:i",
+    "w:iCs",
+    "w:caps",
+    "w:smallCaps",
+    "w:strike",
+    "w:dstrike",
+    "w:outline",
+    "w:shadow",
+    "w:emboss",
+    "w:imprint",
+    "w:noProof",
+    "w:snapToGrid",
+    "w:vanish",
+    "w:webHidden",
+    "w:color",
+    "w:spacing",
+    "w:w",
+    "w:kern",
+    "w:position",
+    "w:sz",
+    "w:szCs",
+    "w:highlight",
+    "w:u",
+    "w:effect",
+    "w:bdr",
+    "w:shd",
+    "w:fitText",
+    "w:vertAlign",
+    "w:rtl",
+    "w:cs",
+    "w:em",
+    "w:lang",
+    "w:eastAsianLayout",
+    "w:specVanish",
+    "w:oMath"};
+
+/// Replaces @p name whole at its place in the sequence, since a stale
+/// `w:themeColor` would win over a new `w:val`.
+pugi::xml_node set_run_property(pugi::xml_node properties, const char *name) {
+  properties.remove_child(name);
+  return insert_in_sequence(properties, name, run_property_order);
+}
+
+/// Writes the set fields of @p style into a `w:rPr`, the complex-script
+/// twins beside their siblings.
+void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
+  const auto toggle = [&](const char *name, const bool on) {
+    pugi::xml_node node = set_run_property(properties, name);
+    if (!on) {
+      node.append_attribute("w:val").set_value("0");
+    }
+  };
+  const auto value = [&](const char *name, const std::string &val) {
+    set_run_property(properties, name)
+        .append_attribute("w:val")
+        .set_value(val.c_str());
+  };
+
+  if (style.font_weight.has_value()) {
+    const bool bold = *style.font_weight == FontWeight::bold;
+    toggle("w:b", bold);
+    toggle("w:bCs", bold);
+  }
+  if (style.font_style.has_value()) {
+    const bool italic = *style.font_style == FontStyle::italic;
+    toggle("w:i", italic);
+    toggle("w:iCs", italic);
+  }
+  if (style.font_line_through.has_value()) {
+    toggle("w:strike", *style.font_line_through);
+    // a double strike beside it would still draw
+    properties.remove_child("w:dstrike");
+  }
+  if (style.font_color.has_value()) {
+    value("w:color", hex_color(*style.font_color));
+  }
+  if (style.font_size.has_value()) {
+    const std::string half_points =
+        std::to_string(std::lround(points(*style.font_size) * 2.0));
+    value("w:sz", half_points);
+    value("w:szCs", half_points);
+  }
+  if (style.background_color.has_value()) {
+    // a highlight paints over a shading, so only one of the two stays
+    const Color &color = *style.background_color;
+    const std::optional<std::string_view> name =
+        color.alpha == 0 ? std::optional<std::string_view>("none")
+                         : highlight_name(color);
+    if (name.has_value()) {
+      value("w:highlight", std::string(*name));
+      properties.remove_child("w:shd");
+    } else {
+      pugi::xml_node shading = set_run_property(properties, "w:shd");
+      shading.append_attribute("w:val").set_value("clear");
+      shading.append_attribute("w:color").set_value("auto");
+      shading.append_attribute("w:fill").set_value(hex_color(color).c_str());
+      properties.remove_child("w:highlight");
+    }
+  }
+  if (style.font_underline.has_value()) {
+    value("w:u", *style.font_underline ? "single" : "none");
+  }
+}
 using xml::NodeSpan;
 
 class ElementAdapter final : public AdapterBase {
@@ -295,6 +410,24 @@ public:
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
+  }
+  /// Cuts the `w:r` around the run, each part keeping the `w:rPr`, and
+  /// writes into the part that holds the run.
+  void text_set_style(const ElementIdentifier element_id,
+                      const TextStyle &style) const override {
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (parent_id == null_element_id ||
+        element_type(parent_id) != ElementType::span) {
+      throw std::invalid_argument("the run sits in no w:r");
+    }
+    const ElementIdentifier run_id =
+        TreeEditor(*m_registry).isolate(element_id);
+    pugi::xml_node run_node = get_node(run_id);
+    pugi::xml_node properties = run_node.child("w:rPr");
+    if (!properties) {
+      properties = run_node.prepend_child("w:rPr");
+    }
+    write_run_properties(properties, style);
   }
 
   [[nodiscard]] std::string

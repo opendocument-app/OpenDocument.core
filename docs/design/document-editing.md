@@ -564,6 +564,7 @@ Each step is a pull request that builds and tests on its own.
    LibreOffice reopen of the saved file is the oracle. **Landed.**
 3. **docx and pptx.** The run cut, the `w:rPr` order, `w:shd` on the read
    side, the `a:rPr` children. The same cases, over Word and Impress fixtures.
+   **Landed.**
 4. **The browser.** `format()`, `onSelectionChange`, the four input types,
    the word rule for a collapsed caret, and a check page in
    `test/browser/text` asserting the log of each gesture.

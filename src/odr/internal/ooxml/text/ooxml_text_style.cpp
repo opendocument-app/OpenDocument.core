@@ -46,9 +46,14 @@ void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
           run_properties.child("w:color").attribute("w:val"))) {
     result.font_color = font_color;
   }
+  // [ECMA-376] 17.3.2.32: a highlight paints over a shading, so the shading
+  // is read only where no highlight names a colour
   if (const std::optional<Color> background_color = read_color_attribute(
           run_properties.child("w:highlight").attribute("w:val"))) {
     result.background_color = background_color;
+  } else if (const std::optional<Color> shading = read_color_attribute(
+                 run_properties.child("w:shd").attribute("w:fill"))) {
+    result.background_color = shading;
   }
 }
 

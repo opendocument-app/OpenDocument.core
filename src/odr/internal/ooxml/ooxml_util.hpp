@@ -5,6 +5,7 @@
 #include <odr/internal/xml/xml_tree_edit.hpp>
 
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -35,6 +36,18 @@ namespace odr::internal::ooxml {
 xml::NodeSpan write_text_nodes(pugi::xml_node parent, pugi::xml_node before,
                                const std::string &text,
                                std::string_view prefix);
+
+/// Inserts a child @p name into @p parent at its place in the schema
+/// sequence @p order; a child the sequence does not name ranks last.
+pugi::xml_node insert_in_sequence(pugi::xml_node parent, const char *name,
+                                  std::span<const std::string_view> order);
+/// `RRGGBB`, as `w:color/@w:val` and `a:srgbClr/@val` spell one.
+std::string hex_color(const Color &color);
+/// The `w:highlight` name of @p color, where it is one of the sixteen
+/// ([ECMA-376] 17.18.40).
+std::optional<std::string_view> highlight_name(const Color &color);
+/// @p length in points; refuses a unit that has no fixed size.
+double points(const Measure &length);
 
 std::optional<std::string> read_string_attribute(pugi::xml_attribute);
 std::optional<Color> read_color_attribute(pugi::xml_attribute);

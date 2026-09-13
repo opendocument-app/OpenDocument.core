@@ -623,3 +623,38 @@ TEST(ooxml_text_style, frame_offset_is_read_where_it_flows_with_the_text) {
             read_frame_offset(anchor.child("wp:simplePos")));
   EXPECT_FALSE(read_frame_offset(anchor.child("wp:noSuchChild")).has_value());
 }
+
+/// [ECMA-376] 17.3.2.32: a run's shading is its background where no
+/// highlight paints over it.
+TEST(ooxml_text_style, a_shading_is_the_background_where_no_highlight_is) {
+  pugi::xml_document styles;
+  const StyleRegistry registry = registry_of("<w:styles/>", styles);
+  pugi::xml_document document;
+
+  const TextStyle shaded =
+      registry
+          .partial_text_style(node_of(
+              R"(<w:r><w:rPr><w:shd w:val="clear" w:fill="123456"/></w:rPr></w:r>)",
+              document))
+          .text_style;
+  ASSERT_TRUE(shaded.background_color.has_value());
+  EXPECT_EQ(shaded.background_color->rgb(), 0x123456U);
+
+  const TextStyle highlighted =
+      registry
+          .partial_text_style(
+              node_of(R"(<w:r><w:rPr><w:highlight w:val="yellow"/>)"
+                      R"(<w:shd w:val="clear" w:fill="123456"/></w:rPr></w:r>)",
+                      document))
+          .text_style;
+  ASSERT_TRUE(highlighted.background_color.has_value());
+  EXPECT_EQ(highlighted.background_color->rgb(), 0xffff00U);
+
+  const TextStyle automatic =
+      registry
+          .partial_text_style(node_of(
+              R"(<w:r><w:rPr><w:shd w:val="clear" w:fill="auto"/></w:rPr></w:r>)",
+              document))
+          .text_style;
+  EXPECT_EQ(automatic.background_color, std::nullopt);
+}
