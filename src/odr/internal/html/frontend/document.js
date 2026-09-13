@@ -122,9 +122,50 @@
     return copy;
   }
 
+  /// Whether @p op names @p id in any of its fields.
+  function names(op, id) {
+    return (
+      op.id === id ||
+      op.after === id ||
+      op.before === id ||
+      op.parent === id ||
+      op.paragraph === id
+    );
+  }
+
+  /// The earlier `setTextStyle` on @p op's run with no operation naming that
+  /// run in between: a run put beside it takes the style it has then.
+  function foldableStyle(result, op) {
+    for (var i = result.length - 1; i >= 0; --i) {
+      if (result[i].op === "setTextStyle" && result[i].id === op.id) {
+        return i;
+      }
+      if (names(result[i], op.id)) {
+        return -1;
+      }
+    }
+    return -1;
+  }
+
+  function withStyle(op, style) {
+    var merged = {};
+    var key;
+    for (key in op.style) {
+      if (Object.prototype.hasOwnProperty.call(op.style, key)) {
+        merged[key] = op.style[key];
+      }
+    }
+    for (key in style) {
+      if (Object.prototype.hasOwnProperty.call(style, key)) {
+        merged[key] = style[key];
+      }
+    }
+    return { op: "setTextStyle", id: op.id, style: merged };
+  }
+
   /// Folds what a save need not carry: several edits to one run are the text
-  /// it ends at, and a run created and typed into is one insert. Only adjacent
-  /// operations fold, so nothing between them can depend on it.
+  /// it ends at, a run created and typed into is one insert, and two marks on
+  /// one run are one where the later keys win.
   function coalesce(ops) {
     var result = [];
     for (var i = 0; i < ops.length; ++i) {
@@ -138,6 +179,13 @@
       ) {
         result[result.length - 1] = withText(last, op.text);
         continue;
+      }
+      if (op.op === "setTextStyle") {
+        var at = foldableStyle(result, op);
+        if (at !== -1) {
+          result[at] = withStyle(result[at], op.style);
+          continue;
+        }
       }
       result.push(op);
     }
@@ -349,6 +397,26 @@
     };
   }
 
+  /// States @p style on @p run as the renderer writes it; undo puts the
+  /// attribute back as it was.
+  function setRunStyle(run, style) {
+    var before = run.getAttribute("style");
+    return {
+      ops: [{ op: "setTextStyle", id: idOf(run), style: style }],
+      apply: function () {
+        paint(run, style);
+      },
+      revert: function () {
+        // Chrome serialises a declaration set through `style` into an empty
+        // attribute after a bare `removeAttribute`, so it is stated first
+        run.setAttribute("style", before === null ? "" : before);
+        if (before === null) {
+          run.removeAttribute("style");
+        }
+      },
+    };
+  }
+
   function insertParagraph(after) {
     var id = mint();
     var paragraph = shellCopy(after, id);
@@ -365,16 +433,341 @@
     };
   }
 
+  // ------------------------------------------------------------- formatting
+
+  // the properties `setTextStyle` carries (`docs/design/document-editing.md`)
+  var properties = [
+    "bold",
+    "italic",
+    "underline",
+    "strikethrough",
+    "highlight",
+    "color",
+    "size",
+  ];
+
+  // the input types a chord raises, and the property each one toggles
+  var toggling = {
+    formatBold: "bold",
+    formatItalic: "italic",
+    formatUnderline: "underline",
+    formatStrikeThrough: "strikethrough",
+  };
+
+  /// `#rrggbb` for a computed `rgb(…)`, null for a transparent one.
+  function hexOf(computed) {
+    var match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(
+      computed
+    );
+    if (match === null || (match[4] !== undefined && Number(match[4]) === 0)) {
+      return null;
+    }
+    var hex = "#";
+    for (var i = 1; i <= 3; ++i) {
+      hex += ("0" + Number(match[i]).toString(16)).slice(-2);
+    }
+    return hex;
+  }
+
+  /// The style @p run shows, as the wire spells it; computed, so what a
+  /// wrapper or the paragraph gives it counts.
+  function styleOf(run) {
+    var computed = window.getComputedStyle(run);
+    var weight = computed.fontWeight;
+    var lines = computed.textDecorationLine || computed.textDecoration || "";
+    var px = parseFloat(computed.fontSize);
+    return {
+      bold: weight === "bold" || weight === "bolder" || Number(weight) >= 600,
+      italic: computed.fontStyle === "italic" || computed.fontStyle === "oblique",
+      underline: lines.indexOf("underline") !== -1,
+      strikethrough: lines.indexOf("line-through") !== -1,
+      highlight: hexOf(computed.backgroundColor),
+      color: hexOf(computed.color),
+      size: isNaN(px) ? null : String(Math.round(px * 75) / 100) + "pt",
+    };
+  }
+
+  /// What @p runs agree on: a key per property with one value across them,
+  /// and none where they differ.
+  function summaryOf(runs) {
+    var result = {};
+    if (runs.length === 0) {
+      return result;
+    }
+    var styles = [];
+    for (var i = 0; i < runs.length; ++i) {
+      styles.push(styleOf(runs[i]));
+    }
+    for (var p = 0; p < properties.length; ++p) {
+      var key = properties[p];
+      var agreed = true;
+      for (var j = 1; j < styles.length && agreed; ++j) {
+        agreed = styles[j][key] === styles[0][key];
+      }
+      if (agreed) {
+        result[key] = styles[0][key];
+      }
+    }
+    return result;
+  }
+
+  /// Writes @p style into @p run's `style` attribute as `translate_text_style`
+  /// does: one `text-decoration` for both lines, none for a highlight removed.
+  function paint(run, style) {
+    var css = run.style;
+    if (style.bold !== undefined) {
+      css.fontWeight = style.bold ? "bold" : "normal";
+    }
+    if (style.italic !== undefined) {
+      css.fontStyle = style.italic ? "italic" : "normal";
+    }
+    if (style.underline !== undefined || style.strikethrough !== undefined) {
+      var shown = styleOf(run);
+      var underline =
+        style.underline !== undefined ? style.underline : shown.underline;
+      var strikethrough =
+        style.strikethrough !== undefined
+          ? style.strikethrough
+          : shown.strikethrough;
+      var lines = [];
+      if (underline) {
+        lines.push("underline");
+      }
+      if (strikethrough) {
+        lines.push("line-through");
+      }
+      if (lines.length === 0) {
+        css.removeProperty("text-decoration");
+      } else {
+        css.textDecoration = lines.join(" ");
+      }
+    }
+    if (style.color !== undefined) {
+      css.color = style.color;
+    }
+    if (style.highlight !== undefined) {
+      if (style.highlight === null) {
+        css.removeProperty("background-color");
+      } else {
+        css.backgroundColor = style.highlight;
+      }
+    }
+    if (style.size !== undefined) {
+      css.fontSize = style.size;
+    }
+  }
+
+  /// Every run of the view in document order.
+  function allRuns() {
+    return Array.prototype.slice.call(root.querySelectorAll("x-s[data-odr-id]"));
+  }
+
+  function runsBetween(from, to) {
+    var all = allRuns();
+    return all.slice(all.indexOf(from), all.indexOf(to) + 1);
+  }
+
+  /// Whether @p style names only properties the wire carries.
+  function knownStyle(style) {
+    if (style === null || typeof style !== "object") {
+      return false;
+    }
+    var any = false;
+    for (var key in style) {
+      if (Object.prototype.hasOwnProperty.call(style, key)) {
+        if (properties.indexOf(key) === -1) {
+          return false;
+        }
+        any = true;
+      }
+    }
+    return any;
+  }
+
+  /// A collapsed range grown to the word the caret sits in, as Word does;
+  /// null at a word boundary. A range that is not collapsed is itself.
+  function wordAround(at) {
+    if (at.start.run !== at.end.run || at.start.offset !== at.end.offset) {
+      return at;
+    }
+    var place = at.start;
+    if (place.run === null) {
+      return null;
+    }
+    var text = place.run.textContent;
+    var from = place.offset;
+    var to = place.offset;
+    if (
+      from <= 0 ||
+      to >= text.length ||
+      /\s/.test(text[from - 1]) ||
+      /\s/.test(text[to])
+    ) {
+      return null;
+    }
+    while (from > 0 && !/\s/.test(text[from - 1])) {
+      --from;
+    }
+    while (to < text.length && !/\s/.test(text[to])) {
+      ++to;
+    }
+    return {
+      start: { run: place.run, offset: from, paragraph: place.paragraph },
+      end: { run: place.run, offset: to, paragraph: place.paragraph },
+    };
+  }
+
+  /// States @p style on what @p at covers, cutting a run covered in part so
+  /// the mark lands on the covered text alone. Answers the range marked, or
+  /// null where it cannot be named.
+  function markRange(at, style) {
+    var start = at.start;
+    var end = at.end;
+    if (start.run === null || end.run === null) {
+      return null;
+    }
+    if (start.run !== end.run && !coversOnlyText(start.run, end.run)) {
+      return null;
+    }
+    if (
+      start.paragraph !== end.paragraph &&
+      paragraphsBetween(start.paragraph, end.paragraph) === null
+    ) {
+      return null;
+    }
+
+    // an end that covers none of its run steps over to the next one
+    var all = allRuns();
+    var from = all.indexOf(start.run);
+    var to = all.indexOf(end.run);
+    var first = start.run;
+    var last = end.run;
+    var startOffset = start.offset;
+    var endOffset = end.offset;
+    if (startOffset >= first.textContent.length && from < to) {
+      first = all[++from];
+      startOffset = 0;
+    }
+    if (endOffset === 0 && to > from) {
+      last = all[--to];
+      endOffset = last.textContent.length;
+    }
+    if (from > to || (first === last && startOffset >= endOffset)) {
+      return null;
+    }
+
+    if (startOffset > 0) {
+      var whole = first.textContent;
+      perform(setRunText(first, whole.slice(0, startOffset)));
+      var head = first;
+      first = perform(insertRun(head, "after", whole.slice(startOffset))).run;
+      if (last === head) {
+        last = first;
+        endOffset -= startOffset;
+      }
+    }
+    if (endOffset < last.textContent.length) {
+      var text = last.textContent;
+      perform(setRunText(last, text.slice(0, endOffset)));
+      perform(insertRun(last, "after", text.slice(endOffset)));
+    }
+
+    var runs = runsBetween(first, last);
+    for (var i = 0; i < runs.length; ++i) {
+      perform(setRunStyle(runs[i], style));
+    }
+    return {
+      start: { run: first, offset: 0, paragraph: paragraphOf(first) },
+      end: {
+        run: last,
+        offset: last.textContent.length,
+        paragraph: paragraphOf(last),
+      },
+    };
+  }
+
+  /// The runs @p at reaches, for what a toggle or a host's buttons read.
+  function coveredRuns(at) {
+    if (at === null || at.start.run === null || at.end.run === null) {
+      return [];
+    }
+    return runsBetween(at.start.run, at.end.run);
+  }
+
+  /// States @p style on @p at, for a host's `format` and for a chord.
+  /// Formatting sits behind the scope gate whole.
+  function format(style, at) {
+    if (!odr.editing.isEnabled()) {
+      refuse(null, "readOnly", at);
+      return false;
+    }
+    if (!knownStyle(style)) {
+      refuse(null, "unsupportedEdit", at);
+      return false;
+    }
+    if (at === null) {
+      refuse(null, "range", at);
+      return false;
+    }
+    if (odr.editing.scope() === "paragraph") {
+      refuse(null, "outOfScope", at);
+      return false;
+    }
+    var covering = wordAround(at);
+    var marked = covering === null ? null : markRange(covering, style);
+    if (marked === null) {
+      refuse(null, "range", at);
+      return false;
+    }
+    selectRange(marked);
+    return true;
+  }
+
+  // what the selection last reported, so a move that changes nothing is quiet
+  var lastReported = null;
+
+  function reportSelection() {
+    if (!odr.editing.isEnabled()) {
+      return;
+    }
+    var summary = summaryOf(coveredRuns(rangeOf({})));
+    var key = JSON.stringify(summary);
+    if (key === lastReported) {
+      return;
+    }
+    lastReported = key;
+    odr.editing.selectionChanged(summary);
+  }
+
+  document.addEventListener("selectionchange", reportSelection);
+
   // ------------------------------------------------------------------ caret
 
-  function placeCaret(run, offset) {
+  /// The text node of @p run a range can point into, made where it has none.
+  function textNodeOf(run) {
     var node = run.firstChild;
     if (node === null || node.nodeType !== 3) {
       node = run.insertBefore(document.createTextNode(""), run.firstChild);
     }
+    return node;
+  }
+
+  function placeCaret(run, offset) {
+    var node = textNodeOf(run);
     var range = document.createRange();
     range.setStart(node, Math.max(0, Math.min(offset, node.data.length)));
     range.collapse(true);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  /// Selects from the start of @p marked's first run to the end of its last.
+  function selectRange(marked) {
+    var range = document.createRange();
+    range.setStart(textNodeOf(marked.start.run), 0);
+    var end = textNodeOf(marked.end.run);
+    range.setEnd(end, end.data.length);
     var selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
@@ -805,7 +1198,7 @@
   }
 
   function refuse(event, reason, at) {
-    if (event.cancelable) {
+    if (event !== null && event.cancelable) {
       event.preventDefault();
     }
     // the id keeps two refusals apart, so the same key in one run and then in
@@ -915,6 +1308,23 @@
       return;
     }
 
+    var property = toggling[type];
+    if (property !== undefined) {
+      // the browser's own mark is never taken
+      event.preventDefault();
+      // a chord is the shortcuts class, and a host may keep it
+      if (!odr.takesKeys("shortcuts")) {
+        return;
+      }
+      // mixed turns on, as Word does
+      var covering = wordAround(at);
+      var current = covering === null ? {} : summaryOf(coveredRuns(covering));
+      var style = {};
+      style[property] = current[property] !== true;
+      format(style, at);
+      return;
+    }
+
     var text = replacing[type];
     if (text === undefined) {
       refuse(event, named[type] || "unsupportedEdit", at);
@@ -976,6 +1386,9 @@
       root.removeAttribute("contenteditable");
     },
     operations: operations,
+    format: function (style) {
+      return format(style, rangeOf({}));
+    },
     canUndo: function () {
       return done.length > 0;
     },

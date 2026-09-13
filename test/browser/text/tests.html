@@ -75,6 +75,10 @@
       var refusals = [];
       var errors = [];
       var changes = [];
+      var selections = [];
+      odr.onSelectionChange = function (style) {
+        selections.push(style);
+      };
       odr.onEditRefused = function (event) {
         refusals.push(event.reason + " " + event.code);
       };
@@ -102,6 +106,7 @@
         refusals = [];
         errors = [];
         changes = [];
+        selections = [];
       }
 
       function run(id) {
@@ -422,12 +427,12 @@
       // A refusal needs a caret: with none the gate cannot name where the edit
       // lands, and says `range` before it looks at the input type.
       select(run(11).firstChild, 3);
-      check("a bold toggle is refused", input("formatBold") === "refused");
+      check("a list is refused", input("insertUnorderedList") === "refused");
       check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 1007");
-      // The same reason twice within two seconds is one event, so the list has
+      // The same reason twice within two seconds is one event, so the rule has
       // to land in another run to be heard.
       select(run(13).firstChild, 3);
-      check("so is a list", input("insertOrderedList") === "refused");
+      check("so is a rule", input("insertHorizontalRule") === "refused");
       check("under the same reason", refusals.pop() === "unsupportedEdit 1007");
       refusals = [];
 
@@ -499,12 +504,207 @@
         tail.querySelector("x-s[style]") !== null
       );
 
+      // ------------------------------------------------------ formatting
+
+      reset();
+      selectRuns(11, 0, 11, 5);
+      check("bold over part of a run is taken", odr.editing.format({ bold: true }) === true);
+      check(
+        "the run is cut and the head is bold",
+        run(11).textContent === "first" &&
+          run(11).style.fontWeight === "bold" &&
+          run(11).nextSibling.textContent === " run " &&
+          run(11).nextSibling.style.fontWeight === ""
+      );
+      var cut = ops();
+      check(
+        "as a setText, an insertText and a setTextStyle naming the head",
+        cut.length === 3 &&
+          cut[0].op === "setText" &&
+          cut[0].id === 11 &&
+          cut[0].text === "first" &&
+          cut[1].op === "insertText" &&
+          cut[1].after === 11 &&
+          cut[1].text === " run " &&
+          cut[2].op === "setTextStyle" &&
+          cut[2].id === 11 &&
+          cut[2].style.bold === true
+      );
+      check(
+        "the tail carrying the id the log created",
+        cut[1].id < 0 &&
+          run(11).nextSibling.getAttribute("data-odr-id") === String(cut[1].id)
+      );
+      check(
+        "and the selection covers the marked text",
+        caret() === "11:0" && window.getSelection().toString() === "first"
+      );
+
+      selectRuns(11, 2, 11, 5);
+      check("bold off over part of it is taken", odr.editing.format({ bold: false }) === true);
+      check(
+        "cutting again, and the middle is normal",
+        run(11).textContent === "fi" &&
+          run(11).nextSibling.textContent === "rst" &&
+          run(11).nextSibling.style.fontWeight === "normal" &&
+          texts() === "first run a link and a tail|bold|third|"
+      );
+
+      // a chord toggles: mixed turns on, all on turns off
+      reset();
+      selectRuns(11, 0, 13, 4);
+      check("ctrl+B over runs of mixed weight is taken", input("formatBold") === "taken");
+      check(
+        "and turns them bold, the link's run too",
+        run(11).style.fontWeight === "bold" &&
+          run(12).style.fontWeight === "bold" &&
+          run(13).style.fontWeight === "bold" &&
+          run(13).textContent === " and"
+      );
+      function styleOps() {
+        return ops().filter(function (op) {
+          return op.op === "setTextStyle";
+        });
+      }
+      check(
+        "naming each run the selection covered",
+        styleOps()
+          .map(function (op) {
+            return op.id;
+          })
+          .join() === "11,12,13"
+      );
+      check("ctrl+B again is taken", input("formatBold") === "taken");
+      check("and turns them back", run(11).style.fontWeight === "normal");
+      check(
+        "the two toggles folding into one op per run",
+        styleOps().length === 3 && styleOps()[0].style.bold === false
+      );
+
+      // a collapsed caret marks the word it sits in
+      reset();
+      select(run(11).firstChild, 2);
+      check("italic with a caret inside a word is taken", odr.editing.format({ italic: true }) === true);
+      check(
+        "and marks the word",
+        run(11).textContent === "first" &&
+          run(11).style.fontStyle === "italic" &&
+          run(11).nextSibling.textContent === " run "
+      );
+      select(run(11).nextSibling.firstChild, 1);
+      check("a caret at a word boundary is refused", odr.editing.format({ italic: true }) === false);
+      check("as a range", refusals.pop() === "range 1008");
+
+      // the rest of the properties, and what they paint
+      reset();
+      selectRuns(31, 0, 31, 5);
+      odr.editing.format({
+        underline: true,
+        strikethrough: true,
+        highlight: "#ffff00",
+        color: "#ff0000",
+        size: "14pt",
+      });
+      check(
+        "every property paints what the renderer writes",
+        run(31).style.textDecoration === "underline line-through" &&
+          run(31).style.backgroundColor === "rgb(255, 255, 0)" &&
+          run(31).style.color === "rgb(255, 0, 0)" &&
+          run(31).style.fontSize === "14pt"
+      );
+      check(
+        "as one setTextStyle on the whole run",
+        ops().length === 1 &&
+          ops()[0].op === "setTextStyle" &&
+          ops()[0].id === 31 &&
+          ops()[0].style.size === "14pt" &&
+          ops()[0].style.highlight === "#ffff00"
+      );
+      odr.editing.format({ highlight: null, underline: false });
+      check(
+        "a highlight taken away leaves no declaration",
+        run(31).style.backgroundColor === "" &&
+          run(31).style.textDecoration === "line-through"
+      );
+      check(
+        "and the two ops fold into one, the later keys winning",
+        ops().length === 1 &&
+          ops()[0].style.highlight === null &&
+          ops()[0].style.underline === false &&
+          ops()[0].style.strikethrough === true
+      );
+      check("an unknown property is refused", odr.editing.format({ blink: true }) === false);
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 1007");
+
+      // what the selection shows, for a host's buttons
+      reset();
+      select(run(21).firstChild, 1);
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "the selection reports what the run shows, wrapper and all",
+        selections.length === 1 &&
+          selections[0].bold === true &&
+          selections[0].italic === false &&
+          selections[0].highlight === null
+      );
+      selectRuns(11, 0, 21, 2);
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "and leaves out what the runs differ on",
+        selections.length === 2 &&
+          selections[1].bold === undefined &&
+          selections[1].italic === false
+      );
+      document.dispatchEvent(new Event("selectionchange"));
+      check("saying nothing when nothing changed", selections.length === 2);
+
+      // undo
+      reset();
+      selectRuns(13, 0, 13, 11);
+      odr.editing.format({ bold: true });
+      check("a mark can be taken back", odr.editing.undo() === true);
+      check(
+        "leaving the run as the renderer wrote it",
+        run(13).getAttribute("style") === null && ops().length === 0,
+        { style: run(13).getAttribute("style"), ops: ops() }
+      );
+      check(
+        "and redo paints it again",
+        odr.editing.redo() === true && run(13).style.fontWeight === "bold"
+      );
+
+      // what a mark reaches over
+      reset();
+      selectRuns(51, 1, 53, 3);
+      check("a mark over a picture is taken", odr.editing.format({ bold: true }) === true);
+      check(
+        "marking the text on both sides and leaving the picture",
+        paragraph(50).querySelector("img") !== null && styleOps().length === 2
+      );
+      selectRuns(61, 1, 65, 3);
+      check("a mark over a text box is refused", odr.editing.format({ bold: true }) === false);
+      check("as a range", refusals.pop() === "range 1008");
+      var picture = paragraph(40);
+      select(picture, 0, picture, picture.childNodes.length);
+      check("a mark in a paragraph holding no run is refused", odr.editing.format({ bold: true }) === false);
+      check("as a range too", refusals.pop() === "range 1008");
+
       // ---------------------------------------------- scope paragraph
 
       reset();
       check("the page offers the whole editor", odr.editing.scope() === "document");
       document.body.setAttribute("data-odr-editing-scope", "paragraph");
       check("until the host narrows it", odr.editing.scope() === "paragraph");
+
+      // Formatting sits behind the gate whole, so these land in runs no other
+      // refusal of this group names.
+      select(run(12).firstChild, 2);
+      check("a chord is refused", input("formatBold") === "refused");
+      check("as out of scope", refusals.pop() === "outOfScope 1010");
+      selectRuns(51, 0, 51, 4);
+      check("and so is the host's format", odr.editing.format({ bold: true }) === false);
+      check("as out of scope too", refusals.pop() === "outOfScope 1010");
+      check("with nothing marked", run(51).getAttribute("style") === null);
 
       select(run(11).firstChild, 5);
       check("typing inside a run is taken", input("insertText", "X") === "taken");

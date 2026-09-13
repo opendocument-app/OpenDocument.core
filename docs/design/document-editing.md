@@ -186,11 +186,11 @@ a path in a version-2 world names the wrong element rather than none.
 | `splitParagraph` | `paragraph`, `after` (optional), `id` | the children after `after` move into a new paragraph that copies the style; no `after` moves all of them |
 | `mergeParagraph` | `paragraph` | takes the children of the next sibling paragraph and removes it |
 | `insertParagraph` | `after`, `id` | a fresh empty paragraph after the named one, copying its style |
+| `setTextStyle` | `id`, `style` | states the listed properties on one run; see [Inline formatting](#inline-formatting) |
 | `setCell` | `sheet`, `column`, `row`, `value` | unchanged; see [`spreadsheet-editing.md`](spreadsheet-editing.md) |
 
 Every `id` field on an op that creates an element is negative (decision 4).
-Every other id is one the page wrote. [Inline formatting](#inline-formatting)
-adds `setTextStyle` to this table.
+Every other id is one the page wrote.
 
 ### The four reader gestures, as ops
 
@@ -362,9 +362,8 @@ that names the frame rather than a range across text.
 
 ## Inline formatting
 
-Status: **in progress.** It is the one step of [`editing.md`](editing.md)
-still open; the order of work below says what is in. It covers what a reader
-changes on a stretch of text without
+Status: **landed**, but for the bindings; the order of work below says what
+is in. It covers what a reader changes on a stretch of text without
 changing the text: bold, italic, underline, strikethrough, highlight, colour
 and size. Font name, superscript and subscript are not in it; nothing asked
 for them, and each is the same shape once these seven are in.
@@ -515,15 +514,18 @@ second wins, so such a run shows one line. It has to become one declaration,
 ### 16. The gesture reaches the editor two ways, and both land in one function
 
 - **The host asks.** `odr.editing.format(style)` applies a partial style to
-  the current selection, since a mobile host has buttons and no keyboard.
-  For the buttons to show state, the editor reports the style of the
-  selection through `odr.onSelectionChange(style)`, one key per property and
-  a key left out where the selection is mixed.
+  the current selection, since a mobile host has buttons and no keyboard; it
+  answers false where the editor refused, and the refusal channel says why.
+  For the buttons to show state, the editor reports the computed style of
+  the selection through `odr.onSelectionChange(style)` as it moves, one key
+  per property and none where the covered runs differ.
 - **The browser asks.** `formatBold`, `formatItalic`, `formatUnderline` and
   `formatStrikeThrough` leave the refused list of decision 13 in
   [`editing.md`](editing.md) and join the whitelist. Chrome raises them for
   ctrl/cmd+B, I and U. They are chords, so they are the *shortcuts* class of
-  decision 12, and a host that keeps that class keeps these too.
+  decision 12: where a host keeps that class the editor cancels the
+  browser's own mark and does nothing else. A chord toggles, and a mixed
+  selection turns on, as Word does.
 
 Formatting sits behind the scope gate, decision 14 of
 [`editing.md`](editing.md): under `paragraph` every formatting gesture
@@ -535,6 +537,9 @@ questions hold what it should do instead.
 
 Undo needs nothing new. A step already holds its ops and the two halves of
 taking it back; here the halves are the runs' old and new `style` attributes.
+Two marks on one run fold into one op where the later keys win, unless an
+operation naming that run lies between them: a run put beside it takes the
+style it has at that moment.
 
 ### The adapter surface
 
@@ -567,7 +572,7 @@ Each step is a pull request that builds and tests on its own.
    **Landed.**
 4. **The browser.** `format()`, `onSelectionChange`, the four input types,
    the word rule for a collapsed caret, and a check page in
-   `test/browser/text` asserting the log of each gesture.
+   `test/browser/text` asserting the log of each gesture. **Landed.**
 
 ### Open questions
 
@@ -584,6 +589,9 @@ Each step is a pull request that builds and tests on its own.
 - **Where the size list comes from.** A host offers sizes; the editor takes
   any length. Whether the ODF percentage sizes the reader resolves are ever
   written back as absolute is a question the fixtures answer.
+- **A line under a wrapper.** `text-decoration` is drawn through every
+  descendant, so an underline taken off a run inside an underlined span
+  still shows in the page and in a fresh render; the saved file is right.
 - **`transparent` is read as unstated.** `read_color` answers nothing for
   `fo:background-color="transparent"`, so a highlight taken away on a run
   inside a highlighted paragraph still shows in our render, not in
