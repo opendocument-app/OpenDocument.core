@@ -3,6 +3,7 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/style.hpp>
+#include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/file.hpp>

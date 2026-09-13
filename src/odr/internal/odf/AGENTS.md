@@ -74,10 +74,10 @@ decodes it against the sheet's cell index — the shared
 `RegistryElementAdapter` navigates through `element_at`, so nothing else needs
 to know.
 
-Three consequences: `SheetCell::position()` and `DocumentPath` name the cell
+Three consequences: `SheetCell::position()` and the cell's id name the cell
 asked for; a handle follows the index rather than the element it found, so a
 run can be split under one; and children are **shared**, so the position stops
-at the cell and a path to a run inside one names the anchor.
+at the cell and a run inside one is the anchor's.
 
 The three containers are **sorted vectors, not maps**: parsing appends in
 document order, so the keys only grow, and a rb-tree node costs more than the 12

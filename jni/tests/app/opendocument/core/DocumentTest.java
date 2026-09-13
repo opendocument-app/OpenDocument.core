@@ -80,21 +80,6 @@ class DocumentTest {
   }
 
   @Test
-  void documentPath() throws IOException {
-    Document document = openDocument();
-    Element first = document.rootElement().firstChild();
-    DocumentPath path = first.documentPath();
-    assertNotNull(path.toString());
-    assertEquals(path, first.documentPath());
-
-    // join() and navigatePath() take another wrapper's handle as an argument
-    DocumentPath rejoined = path.parent().join(path);
-    assertTrue(path.parent().empty());
-    assertEquals(path, rejoined);
-    assertTrue(document.rootElement().navigatePath(rejoined).isSame(first));
-  }
-
-  @Test
   void editAppliesADiff() throws IOException {
     Document document = openDocument();
     assertTrue(document.isEditable());

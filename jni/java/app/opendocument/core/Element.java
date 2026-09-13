@@ -61,18 +61,6 @@ public class Element extends NativeResource {
     return identifierNative(handle());
   }
 
-  public DocumentPath documentPath() {
-    return new DocumentPath(documentPathNative(handle()));
-  }
-
-  public Element navigatePath(DocumentPath path) {
-    try {
-      return wrap(navigatePathNative(handle(), path.handle()));
-    } finally {
-      path.keepAlive();
-    }
-  }
-
   public List<Element> children() {
     List<Element> result = new ArrayList<>();
     for (Element child = firstChild(); child != null; child = child.nextSibling()) {
@@ -214,10 +202,6 @@ public class Element extends NativeResource {
   private native boolean isSameNative(long handle, long otherHandle);
 
   private native long identifierNative(long handle);
-
-  private native long documentPathNative(long handle);
-
-  private native long navigatePathNative(long handle, long pathHandle);
 
   private native long asTextRootNative(long handle);
 

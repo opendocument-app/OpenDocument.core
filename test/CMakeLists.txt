@@ -29,7 +29,6 @@ add_executable(odr_test
         "src/cell_value_test.cpp"
         "src/document_edit_test.cpp"
         "src/document_list_test.cpp"
-        "src/document_path_test.cpp"
         "src/enum_ordinals_test.cpp"
         "src/error_code_test.cpp"
         "src/document_test.cpp"

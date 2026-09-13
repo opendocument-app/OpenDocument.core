@@ -1,11 +1,11 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
+#include <odr/table_position.hpp>
 
 #include <test_util.hpp>
 
@@ -13,6 +13,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -63,12 +65,58 @@ void expect_every_text(const Element element, const std::string &content) {
   }
 }
 
+/// The element `/child:N/cell:A1/...` names under @p root: a child by its
+/// index, a sheet cell by its reference. What the tests address by, since an
+/// id is meaningless outside the decode that assigned it.
+Element navigate(const Element &root, const std::string &path) {
+  Element at = root;
+  std::size_t pos = 0;
+  while (at && pos < path.size()) {
+    if (path[pos] == '/') {
+      ++pos;
+      continue;
+    }
+    const std::size_t end = path.find('/', pos);
+    const std::string segment = path.substr(pos, end - pos);
+    pos = end == std::string::npos ? path.size() : end;
+    const std::size_t colon = segment.find(':');
+    const std::string kind = segment.substr(0, colon);
+    const std::string argument = segment.substr(colon + 1);
+    if (kind == "child") {
+      at = at.first_child();
+      for (auto n = std::stoul(argument); n > 0 && at; --n) {
+        at = at.next_sibling();
+      }
+    } else if (kind == "cell") {
+      const TablePosition position(argument);
+      at = at.as_sheet().cell(position.column, position.row);
+    } else {
+      return {};
+    }
+  }
+  return at;
+}
+
+/// The `/child:N/...` path from the root down to @p element, which
+/// `navigate` reads back.
+std::string path_of(Element element) {
+  std::string path;
+  while (const Element parent = element.parent()) {
+    std::uint32_t index = 0;
+    for (Element sibling = element.previous_sibling(); sibling;
+         sibling = sibling.previous_sibling()) {
+      ++index;
+    }
+    path = "/child:" + std::to_string(index) + path;
+    element = parent;
+  }
+  return path;
+}
+
 void expect_text_at(const Document &document, const std::string &path,
                     const std::string &expected) {
-  EXPECT_EQ(expected, document.root_element()
-                          .navigate_path(DocumentPath(path))
-                          .as_text()
-                          .content());
+  EXPECT_EQ(expected,
+            navigate(document.root_element(), path).as_text().content());
 }
 
 using TextEdits = std::vector<std::pair<std::string, std::string>>;
@@ -78,8 +126,7 @@ using TextEdits = std::vector<std::pair<std::string, std::string>>;
 std::string set_text_ops(const Document &document, const TextEdits &edits) {
   nlohmann::json ops = nlohmann::json::array();
   for (const auto &[path, text] : edits) {
-    const Element element =
-        document.root_element().navigate_path(DocumentPath(path));
+    const Element element = navigate(document.root_element(), path);
     EXPECT_TRUE(element) << "no element at " << path;
     ops.push_back(
         {{"op", "setText"}, {"id", element.identifier()}, {"text", text}});
@@ -229,7 +276,7 @@ TEST(Document, xlsx_sheet_names) {
             names);
 }
 
-TEST(Document, odt_element_path) {
+TEST(Document, odt_element_round_trips_through_its_id_and_its_path) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
@@ -248,12 +295,11 @@ TEST(Document, odt_element_path) {
   const Element t1 = p1.first_child();
   EXPECT_EQ(t1.type(), ElementType::text);
 
-  const DocumentPath t1_path = t1.document_path();
-  const Element t1_via_path = root.navigate_path(t1_path);
-  EXPECT_EQ(t1_via_path, t1);
+  EXPECT_EQ(document.element_by_id(t1.identifier()), t1);
+  EXPECT_EQ(navigate(root, path_of(t1)), t1);
 }
 
-TEST(Document, odt_element_path2) {
+TEST(Document, odt_element_at_a_path) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const DocumentFile document_file =
@@ -269,8 +315,8 @@ TEST(Document, odt_element_path2) {
 
   const Element root = document.root_element();
 
-  const Element cell_via_path = root.navigate_path(
-      DocumentPath("/child:41/child:0/child:1/child:0/child:0"));
+  const Element cell_via_path =
+      navigate(root, "/child:41/child:0/child:1/child:0/child:0");
   EXPECT_EQ(cell_via_path.type(), ElementType::text);
   EXPECT_EQ(cell_via_path.as_text().content(), "B1");
 }
@@ -499,14 +545,13 @@ std::string edit_across_runs(const std::string &path,
       [&](const Document &opened) {
         const Element paragraph = paragraph_of_several_runs(opened);
         EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
-        paragraph_path = paragraph.document_path().to_string();
+        paragraph_path = path_of(paragraph);
         return rewrite_paragraph_ops(runs_of(paragraph));
       },
       output_name);
 
   // no paragraph came or went, so the path still names the one that was edited
-  return text_of(
-      document.root_element().navigate_path(DocumentPath(paragraph_path)));
+  return text_of(navigate(document.root_element(), paragraph_path));
 }
 
 } // namespace
@@ -536,7 +581,7 @@ split_a_paragraph(const std::string &path, const std::string &output_name) {
       [&](const Document &opened) {
         const Element paragraph = paragraph_of_several_runs(opened);
         EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
-        paragraph_path = paragraph.document_path().to_string();
+        paragraph_path = path_of(paragraph);
         const std::vector<Element> runs = runs_of(paragraph);
         return nlohmann::json{{"version", 2},
                               {"ops",
@@ -555,9 +600,8 @@ split_a_paragraph(const std::string &path, const std::string &output_name) {
       },
       output_name);
 
-  const DocumentPath head(paragraph_path);
-  return {text_of(document.root_element().navigate_path(head)),
-          text_of(document.root_element().navigate_path(head).next_sibling())};
+  const Element head = navigate(document.root_element(), paragraph_path);
+  return {text_of(head), text_of(head.next_sibling())};
 }
 
 } // namespace
@@ -613,13 +657,12 @@ TEST(Document, edit_pptx_across_runs) {
         EXPECT_TRUE(opened.is_savable());
         const Element paragraph = slide_paragraph_of_several_runs(opened);
         EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
-        paragraph_path = paragraph.document_path().to_string();
+        paragraph_path = path_of(paragraph);
         return rewrite_paragraph_ops(runs_of(paragraph));
       },
       "pptx_edit_runs.pptx");
 
-  EXPECT_EQ(text_of(document.root_element().navigate_path(
-                DocumentPath(paragraph_path))),
+  EXPECT_EQ(text_of(navigate(document.root_element(), paragraph_path)),
             "head tail and more");
 }
 
@@ -632,7 +675,7 @@ TEST(Document, edit_pptx_splits_a_paragraph) {
       [&](const Document &opened) {
         const Element paragraph = slide_paragraph_of_several_runs(opened);
         EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
-        paragraph_path = paragraph.document_path().to_string();
+        paragraph_path = path_of(paragraph);
         const std::vector<Element> runs = runs_of(paragraph);
         return nlohmann::json{{"version", 2},
                               {"ops",
@@ -647,8 +690,7 @@ TEST(Document, edit_pptx_splits_a_paragraph) {
       },
       "pptx_edit_split.pptx");
 
-  const Element head =
-      document.root_element().navigate_path(DocumentPath(paragraph_path));
+  const Element head = navigate(document.root_element(), paragraph_path);
   EXPECT_EQ(text_of(head), "head");
   EXPECT_EQ(head.next_sibling().type(), ElementType::paragraph);
   EXPECT_FALSE(text_of(head.next_sibling()).empty());

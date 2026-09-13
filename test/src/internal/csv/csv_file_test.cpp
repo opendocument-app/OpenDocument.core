@@ -1,6 +1,5 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
@@ -480,9 +479,8 @@ TEST(CsvDocument, a_cell_path_round_trips) {
   const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
 
   const SheetCell cell = sheet.cell(1, 2);
-  const DocumentPath path = cell.document_path();
 
-  const Element found = document.root_element().navigate_path(path);
+  const Element found = document.element_by_id(cell.identifier());
   EXPECT_EQ(found.type(), ElementType::sheet_cell);
   EXPECT_EQ((*found.as_sheet_cell().children().begin()).as_text().content(),
             "4");

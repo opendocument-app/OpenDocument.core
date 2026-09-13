@@ -1,7 +1,6 @@
 #include <odr/internal/html/document_element.hpp>
 
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
 #include <odr/style.hpp>

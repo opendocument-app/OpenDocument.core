@@ -78,7 +78,6 @@ add_jar(odr_java
         "java/app/opendocument/core/DirectionalString.java"
         "java/app/opendocument/core/Document.java"
         "java/app/opendocument/core/DocumentFile.java"
-        "java/app/opendocument/core/DocumentPath.java"
         "java/app/opendocument/core/DocumentType.java"
         "java/app/opendocument/core/DrawingLine.java"
         "java/app/opendocument/core/DrawingPath.java"

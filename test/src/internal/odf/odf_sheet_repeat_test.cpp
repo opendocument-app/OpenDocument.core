@@ -3,7 +3,6 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/table_dimension.hpp>
@@ -116,8 +115,8 @@ TEST(OdfSheetRepeat, two_positions_of_one_run_are_not_the_same_handle) {
   EXPECT_EQ(sheet.cell(2, 0), sheet.cell(2, 0));
 }
 
-/// `DocumentPath` spells a cell by position, so it names the one asked for.
-TEST(OdfSheetRepeat, a_repeated_cell_round_trips_through_its_path) {
+/// A repeated cell's id carries its position, so it names the one asked for.
+TEST(OdfSheetRepeat, a_repeated_cell_round_trips_through_its_id) {
   const std::shared_ptr<abstract::Document> held =
       document_of(flat_sheet(repeated_rows(4, 3)));
   const odr::Document document(held);
@@ -125,11 +124,11 @@ TEST(OdfSheetRepeat, a_repeated_cell_round_trips_through_its_path) {
 
   const SheetCell cell = sheet.cell(2, 1);
 
-  EXPECT_EQ(document.root_element().navigate_path(cell.document_path()), cell);
+  EXPECT_EQ(document.element_by_id(cell.identifier()), cell);
 }
 
-/// The position stops at the cell: one run stands for every position, so a
-/// path into a repeated cell names the anchor.
+/// The position stops at the cell: one run stands for every position, so its
+/// id names the anchor's run.
 TEST(OdfSheetRepeat, the_children_of_a_repeated_cell_are_shared) {
   const std::shared_ptr<abstract::Document> held =
       document_of(flat_sheet(repeated_rows(4, 3)));
@@ -139,7 +138,7 @@ TEST(OdfSheetRepeat, the_children_of_a_repeated_cell_are_shared) {
   const Element text =
       *(*sheet.cell(2, 1).children().begin()).children().begin();
   EXPECT_EQ(*(*sheet.cell(0, 0).children().begin()).children().begin(), text);
-  EXPECT_EQ(document.root_element().navigate_path(text.document_path()), text);
+  EXPECT_EQ(document.element_by_id(text.identifier()), text);
 }
 
 /// A write cuts the run into three rather than expanding it, so what it costs
