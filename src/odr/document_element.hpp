@@ -464,6 +464,10 @@ public:
   void set_content(const std::string &text) const;
 
   [[nodiscard]] TextStyle style() const;
+  /// States the set fields of @p style on the run and leaves the rest. A
+  /// `background_color` with alpha 0 removes a highlight. `font_name`,
+  /// `font_shadow` and `font_position` refuse with `UnsupportedOperation`.
+  void set_style(const TextStyle &style) const;
 };
 
 /// Represents a link element in a document.

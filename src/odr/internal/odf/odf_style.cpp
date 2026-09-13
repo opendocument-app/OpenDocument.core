@@ -6,9 +6,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <ranges>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include <fmt/format.h>
 
 namespace odr::internal::odf {
 
@@ -731,6 +734,110 @@ void StyleRegistry::generate_master_pages_(Document &document) {
   if (m_first_master_page) {
     m_first_master_page_element = m_master_page_elements[*m_first_master_page];
   }
+}
+
+namespace {
+
+/// `#rrggbb`, or `transparent` for a colour with no alpha.
+std::string color_value(const Color &color) {
+  if (color.alpha == 0) {
+    return "transparent";
+  }
+  return fmt::format("#{:06x}", color.rgb());
+}
+
+/// Writes the set fields of @p style as attributes of @p properties, the
+/// asian and complex variants beside each western one.
+void write_text_properties(pugi::xml_node properties, const TextStyle &style) {
+  const auto set = [&](const char *name, const std::string &value) {
+    pugi::xml_attribute attribute = properties.attribute(name);
+    if (!attribute) {
+      attribute = properties.append_attribute(name);
+    }
+    attribute.set_value(value.c_str());
+  };
+
+  if (style.font_size.has_value()) {
+    const std::string value = style.font_size->to_string();
+    set("fo:font-size", value);
+    set("style:font-size-asian", value);
+    set("style:font-size-complex", value);
+  }
+  if (style.font_weight.has_value()) {
+    const std::string value =
+        *style.font_weight == FontWeight::bold ? "bold" : "normal";
+    set("fo:font-weight", value);
+    set("style:font-weight-asian", value);
+    set("style:font-weight-complex", value);
+  }
+  if (style.font_style.has_value()) {
+    const std::string value =
+        *style.font_style == FontStyle::italic ? "italic" : "normal";
+    set("fo:font-style", value);
+    set("style:font-style-asian", value);
+    set("style:font-style-complex", value);
+  }
+  if (style.font_underline.has_value()) {
+    set("style:text-underline-style", *style.font_underline ? "solid" : "none");
+  }
+  if (style.font_line_through.has_value()) {
+    set("style:text-line-through-style",
+        *style.font_line_through ? "solid" : "none");
+  }
+  if (style.font_color.has_value()) {
+    set("fo:color", color_value(*style.font_color));
+  }
+  if (style.background_color.has_value()) {
+    set("fo:background-color", color_value(*style.background_color));
+  }
+}
+
+} // namespace
+
+std::string StyleRegistry::create_text_style(pugi::xml_node automatic_styles,
+                                             const char *base_name,
+                                             const TextStyle &style) {
+  std::string name;
+  for (;; ++m_next_text_style) {
+    name = "T" + std::to_string(m_next_text_style);
+    if (!m_index_style.contains(name)) {
+      break;
+    }
+  }
+
+  pugi::xml_node node = automatic_styles.append_child("style:style");
+  node.append_attribute("style:name").set_value(name.c_str());
+  node.append_attribute("style:family").set_value("text");
+
+  pugi::xml_node properties;
+  if (base_name != nullptr && *base_name != '\0') {
+    const auto base_it = m_index_style.find(base_name);
+    const pugi::xml_node base =
+        base_it != std::end(m_index_style) ? base_it->second : pugi::xml_node();
+    // an automatic style may be shared, so it is copied; a named one is
+    // inherited from
+    if (base &&
+        std::strcmp(base.parent().name(), "office:automatic-styles") == 0) {
+      if (const pugi::xml_attribute parent =
+              base.attribute("style:parent-style-name")) {
+        node.append_copy(parent);
+      }
+      if (const pugi::xml_node base_properties =
+              base.child("style:text-properties")) {
+        properties = node.append_copy(base_properties);
+      }
+    } else {
+      node.append_attribute("style:parent-style-name").set_value(base_name);
+    }
+  }
+  if (!properties) {
+    properties = node.append_child("style:text-properties");
+  }
+  write_text_properties(properties, style);
+
+  m_index_style[name] = node;
+  generate_style_(name, node);
+  return name;
 }
 
 Style *StyleRegistry::style(const char *name) const {

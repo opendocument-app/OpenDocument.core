@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
+#include <odr/style.hpp>
 
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
@@ -12,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -594,6 +596,235 @@ TEST(DocumentEdit, a_split_through_something_that_is_not_a_span_refuses) {
                         id_of(paragraph_at(document, 0)) + R"(,"after":)" +
                         id_of(inner) + R"(,"id":-1})")),
       UnsupportedOperation);
+}
+
+namespace {
+
+/// A paragraph under a bold automatic style, two spans sharing an italic
+/// automatic style, a span under a named style, and a bare run - the four
+/// places a mark lands.
+Document styled_text() {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.text">)"
+      R"(<office:styles>)"
+      R"(<style:style style:name="Emphasis" style:family="text">)"
+      R"(<style:text-properties fo:font-style="italic"/></style:style>)"
+      R"(</office:styles>)"
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="P1" style:family="paragraph">)"
+      R"(<style:text-properties fo:font-weight="bold"/></style:style>)"
+      R"(<style:style style:name="T1" style:family="text">)"
+      R"(<style:text-properties fo:font-style="italic"/></style:style>)"
+      R"(</office:automatic-styles>)"
+      R"(<office:body><office:text>)"
+      R"(<text:p text:style-name="P1">bold </text:p>)"
+      R"(<text:p><text:span text:style-name="T1">one</text:span>)"
+      R"(<text:span text:style-name="T1">two</text:span>)"
+      R"(<text:span text:style-name="Emphasis">three</text:span> four</text:p>)"
+      R"(</office:text></office:body></office:document>)";
+  return DecodedFile(
+             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
+                                      Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+std::string style_op(const Element run, const std::string &style) {
+  return R"({"op":"setTextStyle","id":)" + id_of(run) + R"(,"style":)" + style +
+         "}";
+}
+
+} // namespace
+
+TEST(DocumentEdit, a_style_op_on_a_bare_run_gives_it_a_span_of_its_own) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 0);
+  ASSERT_EQ(run.parent().type(), ElementType::paragraph);
+
+  document.edit(ops(style_op(run, R"({"bold":true})")));
+
+  EXPECT_EQ(run.parent().type(), ElementType::span);
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(run_at(document, 0, 2).as_text().style().font_weight, std::nullopt);
+  EXPECT_EQ(paragraph_texts(document),
+            (std::vector<std::string>{"one two three", "second"}));
+}
+
+TEST(DocumentEdit, a_style_op_on_a_run_alone_in_its_span_keeps_the_span) {
+  const Document document = styled_text();
+  const Element run = run_at(document, 1, 0);
+  const Element span = run.parent();
+  ASSERT_EQ(span.type(), ElementType::span);
+
+  document.edit(ops(style_op(run, R"({"bold":true})")));
+
+  EXPECT_EQ(run.parent(), span);
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+}
+
+TEST(DocumentEdit, a_style_op_copies_a_shared_automatic_style) {
+  const Document document = styled_text();
+  const Element one = run_at(document, 1, 0);
+  const Element two = run_at(document, 1, 1);
+
+  document.edit(ops(style_op(one, R"({"bold":true})")));
+
+  // the copy keeps the italic and the sibling under the old style stays as it
+  // was
+  EXPECT_EQ(one.as_text().style().font_style, FontStyle::italic);
+  EXPECT_EQ(one.as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(two.as_text().style().font_style, FontStyle::italic);
+  EXPECT_EQ(two.as_text().style().font_weight, std::nullopt);
+}
+
+TEST(DocumentEdit, a_style_op_under_a_named_style_inherits_from_it) {
+  const Document document = styled_text();
+  const Element three = run_at(document, 1, 2);
+
+  document.edit(ops(style_op(three, R"({"bold":true})")));
+
+  EXPECT_EQ(three.as_text().style().font_style, FontStyle::italic);
+  EXPECT_EQ(three.as_text().style().font_weight, FontWeight::bold);
+}
+
+TEST(DocumentEdit, a_style_turned_off_is_written_over_the_paragraph) {
+  const Document document = styled_text();
+  const Element run = run_at(document, 0, 0);
+  ASSERT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+
+  document.edit(ops(style_op(run, R"({"bold":false})")));
+
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::normal);
+}
+
+TEST(DocumentEdit, every_property_reaches_the_run) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 1);
+
+  document.edit(ops(style_op(
+      run,
+      R"({"bold":true,"italic":true,"underline":true,"strikethrough":true,)"
+      R"("highlight":"#ffff00","color":"#ff0000","size":"14pt"})")));
+
+  const TextStyle style = run.as_text().style();
+  EXPECT_EQ(style.font_weight, FontWeight::bold);
+  EXPECT_EQ(style.font_style, FontStyle::italic);
+  EXPECT_EQ(style.font_underline, true);
+  EXPECT_EQ(style.font_line_through, true);
+  ASSERT_TRUE(style.background_color.has_value());
+  EXPECT_EQ(style.background_color->rgb(), 0xffff00U);
+  ASSERT_TRUE(style.font_color.has_value());
+  EXPECT_EQ(style.font_color->rgb(), 0xff0000U);
+  ASSERT_TRUE(style.font_size.has_value());
+  EXPECT_EQ(style.font_size->to_string(), "14pt");
+}
+
+TEST(DocumentEdit, a_highlight_of_null_takes_the_highlight_away) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 1);
+
+  document.edit(ops(style_op(run, R"({"highlight":"#ffff00"})") + "," +
+                    style_op(run, R"({"highlight":null})")));
+
+  EXPECT_EQ(run.as_text().style().background_color, std::nullopt);
+}
+
+TEST(DocumentEdit, a_second_style_op_keeps_what_the_first_wrote) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 0);
+
+  document.edit(ops(style_op(run, R"({"bold":true})") + "," +
+                    style_op(run, R"({"italic":true})")));
+
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(run.as_text().style().font_style, FontStyle::italic);
+}
+
+TEST(DocumentEdit, a_style_op_on_a_split_run_marks_the_middle_only) {
+  const Document document = styled_text();
+  const Element run = run_at(document, 1, 0);
+
+  // the browser splits `one` into `o`, `n`, `e` and marks the `n`
+  document.edit(ops(R"({"op":"setText","id":)" + id_of(run) +
+                    R"(,"text":"o"},)" + R"({"op":"insertText","after":)" +
+                    id_of(run) + R"(,"text":"n","id":-1},)" +
+                    R"({"op":"insertText","after":-1,"text":"e","id":-2},)" +
+                    R"({"op":"setTextStyle","id":-1,"style":{"bold":true}})"));
+
+  EXPECT_EQ(text_of(paragraph_at(document, 1)), "onetwothree four");
+  EXPECT_EQ(run_at(document, 1, 0).as_text().style().font_weight, std::nullopt);
+  EXPECT_EQ(run_at(document, 1, 1).as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_EQ(run_at(document, 1, 2).as_text().style().font_weight, std::nullopt);
+  // each part sits in a span of its own, all italic from the copied style
+  for (const std::uint32_t ordinal : {0U, 1U, 2U}) {
+    const Element part = run_at(document, 1, ordinal);
+    EXPECT_EQ(part.parent().type(), ElementType::span);
+    EXPECT_EQ(part.as_text().style().font_style, FontStyle::italic);
+  }
+}
+
+TEST(DocumentEdit, a_style_op_survives_a_save) {
+  const Document document = styled_text();
+  document.edit(ops(style_op(run_at(document, 1, 0), R"({"bold":true})") + "," +
+                    style_op(run_at(document, 0, 0), R"({"bold":false})")));
+
+  const Document reloaded =
+      DecodedFile(open_strategy::open_file(
+                      std::make_shared<MemoryFile>(std::string(
+                          document.save_to_memory().memory_data().value())),
+                      {}, Logger::null()))
+          .as_document_file()
+          .document();
+
+  EXPECT_EQ(run_at(reloaded, 1, 0).as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_EQ(run_at(reloaded, 1, 0).as_text().style().font_style,
+            FontStyle::italic);
+  EXPECT_EQ(run_at(reloaded, 1, 1).as_text().style().font_weight, std::nullopt);
+  EXPECT_EQ(run_at(reloaded, 0, 0).as_text().style().font_weight,
+            FontWeight::normal);
+}
+
+TEST(DocumentEdit, a_style_op_with_an_unknown_property_refuses) {
+  const Document document = two_paragraph_text();
+  const Element run = run_at(document, 0, 0);
+
+  EXPECT_THROW(document.edit(ops(style_op(run, R"({"blink":true})"))),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(ops(style_op(run, R"({"color":"red"})"))),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(ops(style_op(run, R"({"size":"large"})"))),
+               std::invalid_argument);
+  // no fixed size, so no engine can write it
+  EXPECT_THROW(document.edit(ops(style_op(run, R"({"size":"2em"})"))),
+               std::invalid_argument);
+  EXPECT_EQ(run.as_text().style().font_weight, std::nullopt);
+}
+
+TEST(DocumentEdit, a_read_only_engine_refuses_a_style_op) {
+  const Document document =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(
+                                               std::string(R"({\rtf1 hello})")),
+                                           {}, Logger::null()))
+          .as_document_file()
+          .document();
+  const Element run = run_at(document, 0, 0);
+  ASSERT_TRUE(run);
+
+  EXPECT_THROW(document.edit(ops(style_op(run, R"({"bold":true})"))),
+               UnsupportedOperation);
+}
+
+TEST(DocumentEdit, a_style_the_handle_does_not_write_refuses) {
+  const Document document = two_paragraph_text();
+  TextStyle style;
+  style.font_position = FontPosition::super;
+
+  EXPECT_THROW(run_at(document, 0, 0).as_text().set_style(style),
+               UnsupportedOperation);
 }
 
 TEST(DocumentEdit, a_paragraph_edit_refuses_another_documents_element) {

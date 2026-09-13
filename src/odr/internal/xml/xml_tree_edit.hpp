@@ -85,6 +85,24 @@ public:
     return split_level_(element_id, stays_id);
   }
 
+  /// Cuts the parent of @p element_id around it and answers the part holding
+  /// it alone; each part keeps the parent's shell.
+  ElementIdentifier isolate(const ElementIdentifier element_id) const {
+    ElementIdentifier holder_id = m_registry->element_at(element_id).parent_id;
+    if (holder_id == null_element_id) {
+      throw std::invalid_argument("TreeEditor::isolate: no parent to cut");
+    }
+    if (const ElementIdentifier previous_id =
+            m_registry->element_at(element_id).previous_sibling_id;
+        previous_id != null_element_id) {
+      holder_id = split(holder_id, previous_id);
+    }
+    if (m_registry->element_at(element_id).next_sibling_id != null_element_id) {
+      static_cast<void>(split(holder_id, element_id));
+    }
+    return holder_id;
+  }
+
   /// Takes the children of @p element_id's next sibling and removes it.
   void merge_next(const ElementIdentifier element_id) const {
     const ElementIdentifier next_id =

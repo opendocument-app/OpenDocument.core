@@ -401,6 +401,13 @@ public:
 
   [[nodiscard]] virtual TextStyle
   text_style(ElementIdentifier element_id) const = 0;
+  /// States the set fields of @p style on the run and leaves the rest. A run
+  /// sharing its style container with a sibling gets one of its own first.
+  virtual void
+  text_set_style([[maybe_unused]] const ElementIdentifier element_id,
+                 [[maybe_unused]] const TextStyle &style) const {
+    throw UnsupportedOperation();
+  }
 };
 
 class LinkAdapter {
