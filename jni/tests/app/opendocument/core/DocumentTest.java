@@ -170,6 +170,42 @@ class DocumentTest {
     assertEquals(TestFiles.ODT_TEXT.subList(1, TestFiles.ODT_TEXT.size()), text);
   }
 
+  private static Text firstText(Element element) {
+    if (element.type() == ElementType.TEXT) {
+      return element.asText();
+    }
+    for (Element child : element.children()) {
+      Text found = firstText(child);
+      if (found != null) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  @Test
+  void setStyleMarksARun() throws IOException {
+    Document document = openDocument();
+    Text run = firstText(document.rootElement());
+
+    TextStyle style = new TextStyle();
+    style.fontWeight = FontWeight.BOLD;
+    style.fontSize = new Measure(14, "pt");
+    style.backgroundColor = new Color(255, 255, 0);
+    run.setStyle(style);
+
+    Path path = tempDir.resolve("styled.odt");
+    Files.write(path, document.saveToMemory());
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+    TextStyle styled = firstText(reloaded.rootElement()).style();
+
+    assertEquals(FontWeight.BOLD, styled.fontWeight);
+    assertEquals(14.0, styled.fontSize.magnitude);
+    assertEquals("pt", styled.fontSize.unit);
+    assertEquals(new Color(255, 255, 0), styled.backgroundColor);
+    assertNull(styled.fontStyle);
+  }
+
   @Test
   void splitAndMergeAreInverse() throws IOException {
     Document document = openDocument();

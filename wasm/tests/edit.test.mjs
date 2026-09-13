@@ -109,6 +109,37 @@ describe('edit', () => {
     }
   });
 
+  it('marks a run by id and saves the mark', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      const id = firstEditableRunId(doc.render(0).html);
+      doc.setTextStyle(id, { bold: true, highlight: '#ffff00' });
+      assert.match(doc.render(0).html, /font-weight:bold/);
+
+      const reopened = odr.open(doc.save());
+      try {
+        const html = reopened.render(0).html;
+        assert.match(html, /font-weight:bold/);
+        assert.match(html, /background-color:#ffff00/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('refuses a style property it does not know', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      const id = firstEditableRunId(doc.render(0).html);
+      assert.throws(() => doc.setTextStyle(id, { blink: true }), OdrError);
+      assert.throws(() => doc.setTextStyle(id, 'bold'), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('removes an element by id', () => {
     const doc = odr.open(minimalOdt('hello'), { editable: true });
     try {

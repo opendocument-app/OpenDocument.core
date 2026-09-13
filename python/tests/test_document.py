@@ -197,3 +197,34 @@ def test_split_and_merge_are_inverse(odt_path, tmp_path):
     text = walk_text(pyodr.open(str(path)).as_document_file().document().root_element())
 
     assert "Hello from pyodr!" in text
+
+
+def first_text(element):
+    if element.type() == pyodr.ElementType.text:
+        return element.as_text()
+    for child in element.children():
+        found = first_text(child)
+        if found is not None:
+            return found
+    return None
+
+
+def test_set_style_marks_a_run(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+    run = first_text(document.root_element())
+
+    style = pyodr.TextStyle()
+    style.font_weight = pyodr.FontWeight.bold
+    style.font_size = pyodr.Measure("14pt")
+    style.background_color = pyodr.Color(0xFF, 0xFF, 0x00)
+    run.set_style(style)
+
+    path = tmp_path / "styled.odt"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    styled = first_text(reloaded.root_element()).style()
+
+    assert styled.font_weight == pyodr.FontWeight.bold
+    assert styled.font_size == pyodr.Measure("14pt")
+    assert styled.background_color.rgb() == 0xFFFF00
+    assert styled.font_style is None

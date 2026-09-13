@@ -1,6 +1,8 @@
 #include "jni_convert.hpp"
 #include "odr_jni.hpp"
 
+#include <odr/exceptions.hpp>
+
 #include <cstdarg>
 #include <vector>
 
@@ -229,6 +231,115 @@ std::optional<odr::Measure> measure_from_java(JNIEnv *env, jobject value) {
       value, env->GetFieldID(cls, "unit", "Ljava/lang/String;")));
   const odr::Measure result(magnitude, odr::DynamicUnit(to_string(env, unit)));
   env->DeleteLocalRef(unit);
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
+namespace {
+
+/// A Java enum constant to the C++ enumerator it mirrors, by ordinal.
+template <typename E>
+std::optional<E> enum_from_java(JNIEnv *env, const jobject value) {
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+  jclass cls = env->GetObjectClass(value);
+  const jint code =
+      env->CallIntMethod(value, env->GetMethodID(cls, "ordinal", "()I"));
+  env->DeleteLocalRef(cls);
+  return static_cast<E>(code);
+}
+
+std::optional<bool> boolean_from_java(JNIEnv *env, const jobject value) {
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+  jclass cls = env->GetObjectClass(value);
+  const jboolean result = env->CallBooleanMethod(
+      value, env->GetMethodID(cls, "booleanValue", "()Z"));
+  env->DeleteLocalRef(cls);
+  return result != JNI_FALSE;
+}
+
+std::optional<odr::Color> color_from_java(JNIEnv *env, const jobject value) {
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+  jclass cls = env->GetObjectClass(value);
+  const auto channel = [&](const char *name) {
+    return static_cast<std::uint8_t>(
+        env->GetIntField(value, env->GetFieldID(cls, name, "I")));
+  };
+  const odr::Color result(channel("red"), channel("green"), channel("blue"),
+                          channel("alpha"));
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
+} // namespace
+
+odr::TextStyle text_style_from_java(JNIEnv *env, const jobject style) {
+  odr::TextStyle result;
+  if (style == nullptr) {
+    return result;
+  }
+  jclass cls = env->GetObjectClass(style);
+  const auto field = [&](const char *name, const char *signature) {
+    return env->GetObjectField(style, env->GetFieldID(cls, name, signature));
+  };
+  const auto take = [&](jobject value, auto convert) {
+    auto converted = convert(value);
+    if (value != nullptr) {
+      env->DeleteLocalRef(value);
+    }
+    return converted;
+  };
+
+  if (const jobject font_name = field("fontName", "Ljava/lang/String;");
+      font_name != nullptr) {
+    env->DeleteLocalRef(font_name);
+    env->DeleteLocalRef(cls);
+    throw odr::UnsupportedOperation();
+  }
+  result.font_size =
+      take(field("fontSize", "Lapp/opendocument/core/Measure;"),
+           [&](const jobject value) { return measure_from_java(env, value); });
+  result.font_weight =
+      take(field("fontWeight", "Lapp/opendocument/core/FontWeight;"),
+           [&](const jobject value) {
+             return enum_from_java<odr::FontWeight>(env, value);
+           });
+  result.font_style =
+      take(field("fontStyle", "Lapp/opendocument/core/FontStyle;"),
+           [&](const jobject value) {
+             return enum_from_java<odr::FontStyle>(env, value);
+           });
+  result.font_underline =
+      take(field("fontUnderline", "Ljava/lang/Boolean;"),
+           [&](const jobject value) { return boolean_from_java(env, value); });
+  result.font_line_through =
+      take(field("fontLineThrough", "Ljava/lang/Boolean;"),
+           [&](const jobject value) { return boolean_from_java(env, value); });
+  result.font_shadow =
+      take(field("fontShadow", "Ljava/lang/String;"),
+           [&](const jobject value) -> std::optional<std::string> {
+             if (value == nullptr) {
+               return std::nullopt;
+             }
+             return to_string(env, static_cast<jstring>(value));
+           });
+  result.font_color =
+      take(field("fontColor", "Lapp/opendocument/core/Color;"),
+           [&](const jobject value) { return color_from_java(env, value); });
+  result.background_color =
+      take(field("backgroundColor", "Lapp/opendocument/core/Color;"),
+           [&](const jobject value) { return color_from_java(env, value); });
+  result.font_position =
+      take(field("fontPosition", "Lapp/opendocument/core/FontPosition;"),
+           [&](const jobject value) {
+             return enum_from_java<odr::FontPosition>(env, value);
+           });
+
   env->DeleteLocalRef(cls);
   return result;
 }

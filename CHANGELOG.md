@@ -29,6 +29,10 @@ The release run heads these entries with the version and opens a fresh
   chords, and `odr.onSelectionChange` for a host's buttons. A toggle on a
   collapsed caret marks the next typed text. Scope `paragraph` refuses it.
 
+- `Text::set_style` in every binding: `Text.set_style` in python,
+  `Text.setStyle` in Java, `-[ODRText setStyle:error:]` in Objective-C, both
+  with a constructible `TextStyle`, and `setTextStyle(id, style)` in npm.
+
 - A run that is both underlined and struck through renders both lines. The
   page wrote two `text-decoration` declarations, and the second replaced the
   first.

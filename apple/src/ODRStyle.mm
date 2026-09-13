@@ -3,6 +3,7 @@
 #import "ODRInternal.h"
 #import "ODRPrivate.h"
 
+#include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <optional>
@@ -87,6 +88,12 @@ NSNumber *_Nullable box_enum(const std::optional<Enum> &value) {
 template <typename T>
 NSString *_Nullable box_string(const std::optional<T> &value) {
   return value.has_value() ? to_nsstring(*value) : nil;
+}
+
+odr::Color unbox_color(NSValue *const value) {
+  ODRColor color{};
+  [value getValue:&color size:sizeof(color)];
+  return {color.red, color.green, color.blue, color.alpha};
 }
 
 } // namespace
@@ -211,6 +218,42 @@ NSString *_Nullable box_string(const std::optional<T> &value) {
   result->_fontColor = box(handle.font_color);
   result->_backgroundColor = box(handle.background_color);
   result->_fontPosition = box_enum(handle.font_position);
+  return result;
+}
+
+- (odr::TextStyle)handle {
+  odr::TextStyle result;
+  if (_fontName != nil) {
+    throw odr::UnsupportedOperation();
+  }
+  if (_fontSize != nil) {
+    result.font_size = _fontSize.handle;
+  }
+  if (_fontWeight != nil) {
+    result.font_weight = static_cast<odr::FontWeight>(_fontWeight.integerValue);
+  }
+  if (_fontStyle != nil) {
+    result.font_style = static_cast<odr::FontStyle>(_fontStyle.integerValue);
+  }
+  if (_fontUnderline != nil) {
+    result.font_underline = _fontUnderline.boolValue != NO;
+  }
+  if (_fontLineThrough != nil) {
+    result.font_line_through = _fontLineThrough.boolValue != NO;
+  }
+  if (_fontShadow != nil) {
+    result.font_shadow = to_string(_fontShadow);
+  }
+  if (_fontColor != nil) {
+    result.font_color = unbox_color(_fontColor);
+  }
+  if (_backgroundColor != nil) {
+    result.background_color = unbox_color(_backgroundColor);
+  }
+  if (_fontPosition != nil) {
+    result.font_position =
+        static_cast<odr::FontPosition>(_fontPosition.integerValue);
+  }
   return result;
 }
 

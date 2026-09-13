@@ -141,28 +141,32 @@ NS_SWIFT_NAME(DirectionalString)
 /// Every property is optional, and `nil` means the document did not specify it
 /// rather than that it is off. The enum-valued ones are boxed in `NSNumber`
 /// for that reason; unbox with `ODRFontWeight(rawValue:)`.
+///
+/// A caller builds one for `-[ODRText setStyle:error:]`: `init` leaves every
+/// property `nil`, and a `nil` property is left alone on the run.
 NS_SWIFT_NAME(TextStyle)
 @interface ODRTextStyle : NSObject
-@property(nonatomic, readonly, nullable, copy) NSString *fontName;
-@property(nonatomic, readonly, nullable) ODRMeasure *fontSize;
+/// Read only: it borrows from the document, and `setStyle:` refuses it.
+@property(nonatomic, nullable, copy) NSString *fontName;
+@property(nonatomic, nullable) ODRMeasure *fontSize;
 /// `ODRFontWeight`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *fontWeight;
+@property(nonatomic, nullable) NSNumber *fontWeight;
 /// `ODRFontStyle`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *fontStyle;
+@property(nonatomic, nullable) NSNumber *fontStyle;
 /// `BOOL`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *fontUnderline;
+@property(nonatomic, nullable) NSNumber *fontUnderline;
 /// `BOOL`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *fontLineThrough;
-@property(nonatomic, readonly, nullable, copy) NSString *fontShadow;
+@property(nonatomic, nullable) NSNumber *fontLineThrough;
+@property(nonatomic, nullable, copy) NSString *fontShadow;
 /// `ODRColor`, boxed in an `NSValue`.
-@property(nonatomic, readonly, nullable) NSValue *fontColor;
-/// `ODRColor`, boxed in an `NSValue`.
-@property(nonatomic, readonly, nullable) NSValue *backgroundColor;
+@property(nonatomic, nullable) NSValue *fontColor;
+/// `ODRColor`, boxed in an `NSValue`; an alpha of 0 takes a highlight away.
+@property(nonatomic, nullable) NSValue *backgroundColor;
 /// `ODRFontPosition`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *fontPosition;
+@property(nonatomic, nullable) NSNumber *fontPosition;
 
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)new NS_UNAVAILABLE;
+/// Every property `nil`.
+- (instancetype)init;
 @end
 
 /// Paragraph style — `odr::ParagraphStyle`.

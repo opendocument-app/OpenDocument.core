@@ -237,6 +237,7 @@ void odr_python::bind_document(py::module_ &m) {
   bind_element<odr::Text>(m, "Text")
       .def("content", &odr::Text::content)
       .def("set_content", &odr::Text::set_content, py::arg("text"))
+      .def("set_style", &odr::Text::set_style, py::arg("style"))
       .def("style", &odr::Text::style, keep_self_alive);
 
   bind_element<odr::Link>(m, "Link").def("href", &odr::Link::href);

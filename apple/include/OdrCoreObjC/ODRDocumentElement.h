@@ -195,6 +195,10 @@ NS_SWIFT_NAME(Text)
 /// Replaces the text. Only meaningful on an editable document.
 - (BOOL)setContent:(NSString *)content error:(NSError **)error;
 @property(nonatomic, readonly) ODRTextStyle *style;
+/// States the non-nil properties of `style` on the run and leaves the rest;
+/// a `backgroundColor` with alpha 0 removes a highlight. `fontName`,
+/// `fontShadow` and `fontPosition` refuse with `ODRErrorUnsupportedOperation`.
+- (BOOL)setStyle:(ODRTextStyle *)style error:(NSError **)error;
 @end
 
 /// `odr::Link`.

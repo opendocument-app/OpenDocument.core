@@ -17,6 +17,20 @@ export interface EnumTables {
   LogLevel: Record<string, number>;
 }
 
+/** What `Document.setTextStyle` states on a run: the seven properties of
+ * `docs/design/document-editing.md`, a toggle as a bool, a colour as
+ * `#rrggbb`, a size as a length with a fixed size (`14pt`). */
+export interface TextStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  /** `null` takes a highlight away. */
+  highlight?: string | null;
+  color?: string;
+  size?: string;
+}
+
 export interface Capabilities {
   detectByContent: boolean;
   open: boolean;
@@ -178,6 +192,13 @@ export declare class Document {
   insertTextBefore(anchorId: number, text: string): number;
   insertTextAfter(anchorId: number, text: string): number;
   appendText(parentId: number, text: string): number;
+  /**
+   * States `style` on one run and leaves what it does not name. A property
+   * set is written, never removed; `highlight: null` takes a highlight away.
+   * The same object the page's `odr.editing.format` takes.
+   * @throws OdrError `invalid_argument` for a property it does not know
+   */
+  setTextStyle(id: number, style: TextStyle): this;
   /** `afterId` of 0 splits before every child. */
   splitParagraph(paragraphId: number, afterId?: number): number;
   mergeParagraphWithNext(paragraphId: number): this;
