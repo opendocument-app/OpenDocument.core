@@ -4,7 +4,6 @@
 #include <odr/definitions.hpp>
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>

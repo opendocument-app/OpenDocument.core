@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `DocumentPath`, `Element::document_path()` and
+  `Element::navigate_path()` are gone, with their python and Java mirrors.
+  An element is addressed by `Element::identifier()` and
+  `Document::element_by_id()`, which is what the edit envelope uses.
+
 - **Breaking**: `ValueType` gains `boolean`, `date`, `time` and `error`, and
   the odf and xlsx readers report them; a boolean states 1 or 0 as its number.
   `Sheet::set_cell` writes a boolean and refuses the other three. The enum

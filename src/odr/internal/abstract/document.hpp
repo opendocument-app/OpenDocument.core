@@ -18,7 +18,6 @@ namespace odr {
 class File;
 enum class FileType;
 enum class DocumentType;
-class DocumentPath;
 struct PageLayout;
 struct TableDimensions;
 struct TablePosition;
@@ -111,11 +110,6 @@ public:
   element_is_self_locatable(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual bool
   element_is_editable(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual DocumentPath
-  element_document_path(ElementIdentifier element_id) const = 0;
-  [[nodiscard]] virtual ElementIdentifier
-  element_navigate_path(ElementIdentifier element_id,
-                        const DocumentPath &path) const = 0;
 
   /// Removes @p element_id and its subtree; it keeps its id and stops being
   /// reachable, so an id already handed out never names something else.

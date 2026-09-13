@@ -3,7 +3,6 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 
@@ -245,57 +244,6 @@ Java_app_opendocument_core_Document_asFilesystemNative(JNIEnv *env, jobject,
   });
 }
 
-// app.opendocument.core.DocumentPath
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DocumentPath_create(JNIEnv *env, jclass,
-                                               jstring path) {
-  return guarded(env, [&] {
-    return make_handle(odr::DocumentPath(to_string(env, path)));
-  });
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_DocumentPath_destroy(JNIEnv *env, jclass,
-                                                jlong handle) {
-  destroy_handle<odr::DocumentPath>(env, handle);
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_app_opendocument_core_DocumentPath_emptyNative(JNIEnv *env, jobject,
-                                                    jlong handle) {
-  return guarded(env, [&] {
-    return static_cast<jboolean>(
-        from_handle<odr::DocumentPath>(handle)->empty());
-  });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DocumentPath_parentNative(JNIEnv *env, jobject,
-                                                     jlong handle) {
-  return guarded(env, [&] {
-    return make_handle(from_handle<odr::DocumentPath>(handle)->parent());
-  });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_DocumentPath_joinNative(JNIEnv *env, jobject,
-                                                   jlong handle,
-                                                   jlong other_handle) {
-  return guarded(env, [&] {
-    return make_handle(from_handle<odr::DocumentPath>(handle)->join(
-        *from_handle<odr::DocumentPath>(other_handle)));
-  });
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_app_opendocument_core_DocumentPath_toStringNative(JNIEnv *env, jobject,
-                                                       jlong handle) {
-  return guarded(env, [&] {
-    return to_jstring(env, from_handle<odr::DocumentPath>(handle)->to_string());
-  });
-}
-
 // app.opendocument.core.Element
 
 extern "C" JNIEXPORT void JNICALL
@@ -372,23 +320,6 @@ Java_app_opendocument_core_Element_isSameNative(JNIEnv *env, jobject,
                                                 jlong other_handle) {
   return guarded(env, [&] {
     return static_cast<jboolean>(element(handle) == element(other_handle));
-  });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Element_documentPathNative(JNIEnv *env, jobject,
-                                                      jlong handle) {
-  return guarded(env,
-                 [&] { return make_handle(element(handle).document_path()); });
-}
-
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Element_navigatePathNative(JNIEnv *env, jobject,
-                                                      jlong handle,
-                                                      jlong path_handle) {
-  return guarded(env, [&] {
-    return wrap_element(element(handle).navigate_path(
-        *from_handle<odr::DocumentPath>(path_handle)));
   });
 }
 

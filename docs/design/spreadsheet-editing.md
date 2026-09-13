@@ -53,7 +53,6 @@ results go stale the moment an input changes.
 | Browser: text editor | `html/frontend/document.js` | The skeleton, attached to the mode: the whole view editable, runs keyed by `data-odr-id`, one `setText` op per changed run. No undo |
 | Browser: sheet editor | `html/frontend/sheet-editing.js` | The cell overlay, the locks and the position map (steps 1.1 to 1.4, landed), attached to the mode as one editor |
 | Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
-| Addressing | `DocumentPath` | Already spells a cell by position: `/child:0/cell:A1/...` |
 | Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
 
 ## Decisions

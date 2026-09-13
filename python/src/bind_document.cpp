@@ -2,7 +2,6 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/style.hpp>
@@ -123,23 +122,6 @@ void odr_python::bind_document(py::module_ &m) {
       .def_static("to_row_string", &odr::TablePosition::to_row_string,
                   py::arg("row"));
 
-  py::class_<odr::DocumentPath>(m, "DocumentPath")
-      .def(py::init<>())
-      .def(py::init<const std::string &>(), py::arg("string"))
-      .def("empty", &odr::DocumentPath::empty)
-      .def("parent", &odr::DocumentPath::parent)
-      .def("join", &odr::DocumentPath::join, py::arg("other"))
-      .def(
-          "__eq__",
-          [](const odr::DocumentPath &lhs, const odr::DocumentPath &rhs) {
-            return lhs == rhs;
-          },
-          py::is_operator())
-      .def("__str__", &odr::DocumentPath::to_string)
-      .def("__repr__", [](const odr::DocumentPath &path) {
-        return "DocumentPath('" + path.to_string() + "')";
-      });
-
   py::class_<odr::Element>(m, "Element")
       .def(py::init<>())
       .def("__bool__", &odr::Element::operator bool)
@@ -158,9 +140,6 @@ void odr_python::bind_document(py::module_ &m) {
       .def("is_unique", &odr::Element::is_unique)
       .def("is_self_locatable", &odr::Element::is_self_locatable)
       .def("is_editable", &odr::Element::is_editable)
-      .def("document_path", &odr::Element::document_path)
-      .def("navigate_path", &odr::Element::navigate_path, py::arg("path"),
-           keep_self_alive)
       .def("children", &make_children_iterator, keep_self_alive)
       .def("__iter__", &make_children_iterator, keep_self_alive)
       .def("as_text_root", &odr::Element::as_text_root, keep_self_alive)

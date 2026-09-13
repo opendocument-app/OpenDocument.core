@@ -13,7 +13,6 @@
 namespace odr {
 struct TablePosition;
 struct TableDimensions;
-class DocumentPath;
 class File;
 struct TextStyle;
 struct ParagraphStyle;
@@ -224,8 +223,6 @@ public:
   [[nodiscard]] bool is_unique() const;
   [[nodiscard]] bool is_self_locatable() const;
   [[nodiscard]] bool is_editable() const;
-  [[nodiscard]] DocumentPath document_path() const;
-  [[nodiscard]] Element navigate_path(const DocumentPath &path) const;
 
   [[nodiscard]] ElementRange children() const;
 

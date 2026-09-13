@@ -2,10 +2,8 @@
 
 #include <odr/definitions.hpp>
 #include <odr/document_element.hpp>
-#include <odr/document_path.hpp>
 
 #include <odr/internal/abstract/document.hpp>
-#include <odr/internal/util/document_util.hpp>
 
 #include <type_traits>
 
@@ -28,15 +26,6 @@ public:
   [[nodiscard]] bool element_is_editable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return false;
-  }
-  [[nodiscard]] DocumentPath
-  element_document_path(const ElementIdentifier element_id) const override {
-    return util::document::extract_path(*this, element_id, null_element_id);
-  }
-  [[nodiscard]] ElementIdentifier
-  element_navigate_path(const ElementIdentifier element_id,
-                        const DocumentPath &path) const override {
-    return util::document::navigate_path(*this, element_id, path);
   }
 
   [[nodiscard]] const abstract::TextRootAdapter *
