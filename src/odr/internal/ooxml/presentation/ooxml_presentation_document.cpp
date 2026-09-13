@@ -16,9 +16,12 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <array>
+#include <cmath>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -189,6 +192,68 @@ const ElementRegistry &Document::element_registry() const {
 namespace {
 
 using TreeEditor = xml::TreeEditor<ElementRegistry>;
+
+/// [ECMA-376] 21.1.2.3.9 `CT_TextCharacterProperties`: the children are a
+/// sequence, one fill among them.
+constexpr std::array<std::string_view, 22> run_property_order{
+    "a:ln",        "a:noFill",    "a:solidFill",  "a:gradFill",
+    "a:blipFill",  "a:pattFill",  "a:grpFill",    "a:effectLst",
+    "a:effectDag", "a:highlight", "a:uLnTx",      "a:uLn",
+    "a:uFillTx",   "a:uFill",     "a:latin",      "a:ea",
+    "a:cs",        "a:sym",       "a:hlinkClick", "a:hlinkMouseOver",
+    "a:rtl",       "a:extLst"};
+
+constexpr std::array<const char *, 6> fill_names{"a:noFill",   "a:solidFill",
+                                                 "a:gradFill", "a:blipFill",
+                                                 "a:pattFill", "a:grpFill"};
+
+/// Writes the set fields of @p style into an `a:rPr`: the toggles and the
+/// size as attributes, the colour and the highlight as children.
+void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
+  const auto attribute = [&](const char *name, const std::string &value) {
+    pugi::xml_attribute attr = properties.attribute(name);
+    if (!attr) {
+      attr = properties.append_attribute(name);
+    }
+    attr.set_value(value.c_str());
+  };
+  const auto solid = [&](const char *name, const Color &color) {
+    insert_in_sequence(properties, name, run_property_order)
+        .append_child("a:srgbClr")
+        .append_attribute("val")
+        .set_value(hex_color(color).c_str());
+  };
+
+  if (style.font_weight.has_value()) {
+    attribute("b", *style.font_weight == FontWeight::bold ? "1" : "0");
+  }
+  if (style.font_style.has_value()) {
+    attribute("i", *style.font_style == FontStyle::italic ? "1" : "0");
+  }
+  if (style.font_underline.has_value()) {
+    attribute("u", *style.font_underline ? "sng" : "none");
+  }
+  if (style.font_line_through.has_value()) {
+    attribute("strike", *style.font_line_through ? "sngStrike" : "noStrike");
+  }
+  if (style.font_size.has_value()) {
+    attribute("sz",
+              std::to_string(std::lround(points(*style.font_size) * 100.0)));
+  }
+  if (style.font_color.has_value()) {
+    for (const char *name : fill_names) {
+      properties.remove_child(name);
+    }
+    solid("a:solidFill", *style.font_color);
+  }
+  if (style.background_color.has_value()) {
+    // there is no `none`: an absent highlight is none
+    properties.remove_child("a:highlight");
+    if (style.background_color->alpha != 0) {
+      solid("a:highlight", *style.background_color);
+    }
+  }
+}
 using xml::NodeSpan;
 
 using AdapterBase = internal::RegistryElementAdapter<
@@ -309,6 +374,25 @@ public:
 
   void element_remove(const ElementIdentifier element_id) const override {
     TreeEditor(*m_registry).remove(element_id);
+  }
+  /// Cuts the `a:r` around the run, each part keeping the `a:rPr`, and
+  /// writes into the part that holds the run.
+  void text_set_style(const ElementIdentifier element_id,
+                      const TextStyle &style) const override {
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (parent_id == null_element_id ||
+        element_type(parent_id) != ElementType::span) {
+      throw std::invalid_argument("the run sits in no a:r");
+    }
+    const ElementIdentifier run_id =
+        TreeEditor(*m_registry).isolate(element_id);
+    pugi::xml_node run_node = get_node(run_id);
+    pugi::xml_node properties = run_node.child("a:rPr");
+    if (!properties) {
+      // the schema wants it ahead of the text
+      properties = run_node.prepend_child("a:rPr");
+    }
+    write_run_properties(properties, style);
   }
 
   [[nodiscard]] ElementIdentifier

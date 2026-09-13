@@ -6,16 +6,24 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace odr;
@@ -825,6 +833,312 @@ TEST(DocumentEdit, a_style_the_handle_does_not_write_refuses) {
 
   EXPECT_THROW(run_at(document, 0, 0).as_text().set_style(style),
                UnsupportedOperation);
+}
+
+namespace {
+
+using Part = std::pair<std::string, std::string>;
+
+Document package_of(const std::vector<Part> &parts) {
+  zip::ZipArchive archive;
+  for (const auto &[path, content] : parts) {
+    archive.insert_file(std::end(archive), RelPath(path),
+                        std::make_shared<MemoryFile>(content));
+  }
+  std::stringstream out;
+  archive.save(out);
+  return DecodedFile(
+             open_strategy::open_file(std::make_shared<MemoryFile>(out.str()),
+                                      {}, Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+/// The smallest docx that opens, its body @p paragraphs and one paragraph
+/// style `Bold`.
+Document docx_of(const std::string &paragraphs) {
+  return package_of(
+      {{"_rels/.rels",
+        R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+        R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>)"
+        R"(</Relationships>)"},
+       {"word/styles.xml",
+        R"(<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">)"
+        R"(<w:style w:type="paragraph" w:styleId="Bold"><w:rPr><w:b/></w:rPr></w:style>)"
+        R"(</w:styles>)"},
+       {"word/document.xml",
+        R"(<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">)"
+        R"(<w:body>)" +
+            paragraphs + R"(</w:body></w:document>)"}});
+}
+
+/// The smallest pptx that opens: one slide, one shape, its text body holding
+/// @p paragraphs.
+Document pptx_of(const std::string &paragraphs) {
+  return package_of(
+      {{"ppt/presentation.xml",
+        R"(<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" )"
+        R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+        R"(<p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>)"},
+       {"ppt/_rels/presentation.xml.rels",
+        R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+        R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>)"
+        R"(</Relationships>)"},
+       {"ppt/slides/slide1.xml",
+        R"(<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" )"
+        R"(xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">)"
+        R"(<p:cSld><p:spTree><p:sp><p:txBody>)" +
+            paragraphs + R"(</p:txBody></p:sp></p:spTree></p:cSld></p:sld>)"}});
+}
+
+/// The @p ordinal -th run anywhere in @p document.
+Element nth_run(const Document &document, const std::uint32_t ordinal) {
+  std::uint32_t seen = 0;
+  const auto walk = [&](this auto &&self, const Element element) -> Element {
+    if (element.type() == ElementType::text && seen++ == ordinal) {
+      return element;
+    }
+    for (const Element child : element.children()) {
+      if (const Element found = self(child)) {
+        return found;
+      }
+    }
+    return {};
+  };
+  return walk(document.root_element());
+}
+
+/// The part @p path of @p document saved, empty elements spelt `<x/>`
+/// whichever way the writer spells them.
+std::string part_of(const Document &document, const std::string &path) {
+  const std::shared_ptr<abstract::File> saved = std::make_shared<MemoryFile>(
+      std::string(document.save_to_memory().memory_data().value()));
+  std::string xml = util::stream::read(*zip::ZipFile(saved)
+                                            .archive()
+                                            ->as_filesystem()
+                                            ->open(AbsPath("/" + path))
+                                            ->stream());
+  util::string::replace_all(xml, " />", "/>");
+  return xml;
+}
+
+Document reopened(const Document &document) {
+  return DecodedFile(open_strategy::open_file(
+                         std::make_shared<MemoryFile>(std::string(
+                             document.save_to_memory().memory_data().value())),
+                         {}, Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+const std::string docx_paragraphs =
+    R"(<w:p><w:r><w:rPr><w:i/></w:rPr><w:t>one</w:t></w:r></w:p>)"
+    R"(<w:p><w:pPr><w:pStyle w:val="Bold"/></w:pPr><w:r><w:t>bold</w:t></w:r></w:p>)"
+    R"(<w:p><w:r><w:rPr><w:rFonts w:ascii="Arial"/><w:lang w:val="en"/></w:rPr><w:t>ordered</w:t></w:r></w:p>)";
+
+const std::string pptx_paragraphs =
+    R"(<a:p><a:r><a:rPr lang="en" i="1"/><a:t>one</a:t></a:r></a:p>)"
+    R"(<a:p><a:r><a:t>plain</a:t></a:r></a:p>)";
+
+} // namespace
+
+TEST(DocumentEdit, docx_a_mark_on_a_run_alone_in_its_w_r_writes_into_it) {
+  const Document document = docx_of(docx_paragraphs);
+  const Element run = nth_run(document, 0);
+  const Element holder = run.parent();
+  ASSERT_EQ(holder.type(), ElementType::span);
+
+  document.edit(ops(style_op(run, R"({"bold":true})")));
+
+  EXPECT_EQ(run.parent(), holder);
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(run.as_text().style().font_style, FontStyle::italic);
+}
+
+TEST(DocumentEdit, docx_a_mark_on_part_of_a_w_r_cuts_it) {
+  const Document document = docx_of(docx_paragraphs);
+  const Element run = nth_run(document, 0);
+
+  document.edit(ops(R"({"op":"setText","id":)" + id_of(run) +
+                    R"(,"text":"o"},)" + R"({"op":"insertText","after":)" +
+                    id_of(run) + R"(,"text":"n","id":-1},)" +
+                    R"({"op":"insertText","after":-1,"text":"e","id":-2},)" +
+                    R"({"op":"setTextStyle","id":-1,"style":{"bold":true}})"));
+
+  EXPECT_EQ(text_of(document.root_element()), "oneboldordered");
+  EXPECT_EQ(nth_run(document, 0).as_text().style().font_weight, std::nullopt);
+  EXPECT_EQ(nth_run(document, 1).as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_EQ(nth_run(document, 2).as_text().style().font_weight, std::nullopt);
+  // three `w:r`, each with the italic the one carried
+  for (const std::uint32_t ordinal : {0U, 1U, 2U}) {
+    const Element part = nth_run(document, ordinal);
+    EXPECT_EQ(part.as_text().style().font_style, FontStyle::italic);
+    EXPECT_NE(part.parent(), nth_run(document, (ordinal + 1) % 3).parent());
+  }
+}
+
+TEST(DocumentEdit, docx_off_is_written_over_the_paragraph_style) {
+  const Document document = docx_of(docx_paragraphs);
+  const Element run = nth_run(document, 1);
+  ASSERT_EQ(run.as_text().style().font_weight, FontWeight::bold);
+
+  document.edit(ops(style_op(run, R"({"bold":false})")));
+
+  EXPECT_EQ(run.as_text().style().font_weight, FontWeight::normal);
+  EXPECT_NE(part_of(document, "word/document.xml")
+                .find(R"(<w:rPr><w:b w:val="0"/><w:bCs w:val="0"/></w:rPr>)"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, docx_every_property_reaches_the_run_in_schema_order) {
+  const Document document = docx_of(docx_paragraphs);
+  const Element run = nth_run(document, 2);
+
+  document.edit(ops(style_op(
+      run,
+      R"({"bold":true,"italic":true,"underline":true,"strikethrough":true,)"
+      R"("highlight":"#ffff00","color":"#ff0000","size":"14pt"})")));
+
+  const TextStyle style = run.as_text().style();
+  EXPECT_EQ(style.font_weight, FontWeight::bold);
+  EXPECT_EQ(style.font_style, FontStyle::italic);
+  EXPECT_EQ(style.font_underline, true);
+  EXPECT_EQ(style.font_line_through, true);
+  ASSERT_TRUE(style.background_color.has_value());
+  EXPECT_EQ(style.background_color->rgb(), 0xffff00U);
+  ASSERT_TRUE(style.font_color.has_value());
+  EXPECT_EQ(style.font_color->rgb(), 0xff0000U);
+  ASSERT_TRUE(style.font_size.has_value());
+  EXPECT_EQ(style.font_size->to_string(), "14pt");
+
+  // between the font and the language the file already had, in the order
+  // [ECMA-376] 17.3.2.28 gives
+  EXPECT_NE(part_of(document, "word/document.xml")
+                .find(R"(<w:rPr><w:rFonts w:ascii="Arial"/><w:b/><w:bCs/>)"
+                      R"(<w:i/><w:iCs/><w:strike/><w:color w:val="FF0000"/>)"
+                      R"(<w:sz w:val="28"/><w:szCs w:val="28"/>)"
+                      R"(<w:highlight w:val="yellow"/><w:u w:val="single"/>)"
+                      R"(<w:lang w:val="en"/></w:rPr><w:t>ordered</w:t>)"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, docx_a_highlight_outside_words_palette_is_a_shading) {
+  const Document document = docx_of(docx_paragraphs);
+  const Element run = nth_run(document, 1);
+
+  document.edit(ops(style_op(run, R"({"highlight":"#123456"})")));
+
+  ASSERT_TRUE(run.as_text().style().background_color.has_value());
+  EXPECT_EQ(run.as_text().style().background_color->rgb(), 0x123456U);
+  const std::string shaded = part_of(document, "word/document.xml");
+  EXPECT_NE(
+      shaded.find(R"(<w:shd w:val="clear" w:color="auto" w:fill="123456"/>)"),
+      std::string::npos);
+  EXPECT_EQ(shaded.find("w:highlight"), std::string::npos);
+
+  document.edit(ops(style_op(run, R"({"highlight":null})")));
+
+  EXPECT_EQ(run.as_text().style().background_color, std::nullopt);
+  const std::string cleared = part_of(document, "word/document.xml");
+  EXPECT_NE(cleared.find(R"(<w:highlight w:val="none"/>)"), std::string::npos);
+  EXPECT_EQ(cleared.find("w:shd"), std::string::npos);
+}
+
+TEST(DocumentEdit, docx_a_mark_survives_a_save) {
+  const Document document = docx_of(docx_paragraphs);
+  document.edit(ops(style_op(nth_run(document, 0), R"({"bold":true})") + "," +
+                    style_op(nth_run(document, 1), R"({"bold":false})")));
+
+  const Document saved = reopened(document);
+
+  EXPECT_EQ(nth_run(saved, 0).as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(nth_run(saved, 0).as_text().style().font_style, FontStyle::italic);
+  EXPECT_EQ(nth_run(saved, 1).as_text().style().font_weight,
+            FontWeight::normal);
+}
+
+TEST(DocumentEdit, pptx_a_mark_writes_the_attributes_of_a_rPr) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const Element run = nth_run(document, 0);
+
+  document.edit(ops(style_op(
+      run,
+      R"({"bold":true,"underline":true,"strikethrough":true,"size":"20pt"})")));
+
+  const TextStyle style = run.as_text().style();
+  EXPECT_EQ(style.font_weight, FontWeight::bold);
+  EXPECT_EQ(style.font_style, FontStyle::italic);
+  EXPECT_EQ(style.font_underline, true);
+  EXPECT_EQ(style.font_line_through, true);
+  ASSERT_TRUE(style.font_size.has_value());
+  EXPECT_EQ(style.font_size->to_string(), "20pt");
+  EXPECT_NE(part_of(document, "ppt/slides/slide1.xml")
+                .find(R"(<a:rPr lang="en" i="1" b="1" u="sng" )"
+                      R"(strike="sngStrike" sz="2000"/><a:t>one</a:t>)"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, pptx_a_run_without_rPr_gets_one_ahead_of_its_text) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const Element run = nth_run(document, 1);
+
+  document.edit(
+      ops(style_op(run, R"({"color":"#ff0000","highlight":"#00ff00"})")));
+
+  ASSERT_TRUE(run.as_text().style().font_color.has_value());
+  EXPECT_EQ(run.as_text().style().font_color->rgb(), 0xff0000U);
+  ASSERT_TRUE(run.as_text().style().background_color.has_value());
+  EXPECT_EQ(run.as_text().style().background_color->rgb(), 0x00ff00U);
+  EXPECT_NE(part_of(document, "ppt/slides/slide1.xml")
+                .find(R"(<a:r><a:rPr><a:solidFill><a:srgbClr val="FF0000"/>)"
+                      R"(</a:solidFill><a:highlight><a:srgbClr val="00FF00"/>)"
+                      R"(</a:highlight></a:rPr><a:t>plain</a:t></a:r>)"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, pptx_a_highlight_taken_away_leaves_no_element) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const Element run = nth_run(document, 0);
+
+  document.edit(ops(style_op(run, R"({"highlight":"#00ff00"})") + "," +
+                    style_op(run, R"({"highlight":null})")));
+
+  EXPECT_EQ(run.as_text().style().background_color, std::nullopt);
+  EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml").find("a:highlight"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, pptx_a_mark_on_part_of_an_a_r_cuts_it) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const Element run = nth_run(document, 0);
+
+  document.edit(ops(R"({"op":"setText","id":)" + id_of(run) +
+                    R"(,"text":"o"},)" + R"({"op":"insertText","after":)" +
+                    id_of(run) + R"(,"text":"n","id":-1},)" +
+                    R"({"op":"insertText","after":-1,"text":"e","id":-2},)" +
+                    R"({"op":"setTextStyle","id":-1,"style":{"bold":true}})"));
+
+  EXPECT_EQ(text_of(document.root_element()), "oneplain");
+  EXPECT_EQ(nth_run(document, 0).as_text().style().font_weight, std::nullopt);
+  EXPECT_EQ(nth_run(document, 1).as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_EQ(nth_run(document, 2).as_text().style().font_weight, std::nullopt);
+  for (const std::uint32_t ordinal : {0U, 1U, 2U}) {
+    EXPECT_EQ(nth_run(document, ordinal).as_text().style().font_style,
+              FontStyle::italic);
+  }
+}
+
+TEST(DocumentEdit, pptx_a_mark_survives_a_save) {
+  const Document document = pptx_of(pptx_paragraphs);
+  document.edit(ops(style_op(nth_run(document, 0), R"({"bold":true})") + "," +
+                    style_op(nth_run(document, 1), R"({"italic":true})")));
+
+  const Document saved = reopened(document);
+
+  EXPECT_EQ(nth_run(saved, 0).as_text().style().font_weight, FontWeight::bold);
+  EXPECT_EQ(nth_run(saved, 1).as_text().style().font_style, FontStyle::italic);
 }
 
 TEST(DocumentEdit, a_paragraph_edit_refuses_another_documents_element) {

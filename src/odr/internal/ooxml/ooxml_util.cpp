@@ -6,10 +6,17 @@
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <utility>
+
+#include <fmt/format.h>
 
 namespace odr::internal {
 
@@ -99,21 +106,89 @@ ooxml::read_string_attribute(const pugi::xml_attribute attribute) {
   return attribute.value();
 }
 
+namespace {
+
+/// [ECMA-376] 17.18.40 `ST_HighlightColor`, less `none`. The rgb values are
+/// what Word paints for each name.
+constexpr std::array<std::pair<std::string_view, std::uint32_t>, 16>
+    highlight_colors{{
+        {"black", 0x000000},
+        {"blue", 0x0070c0},
+        {"cyan", 0x00b0f0},
+        {"darkBlue", 0x002060},
+        {"darkCyan", 0x006185},
+        {"darkGray", 0x404040},
+        {"darkGreen", 0x008000},
+        {"darkMagenta", 0x7030a0},
+        {"darkRed", 0xc00000},
+        {"darkYellow", 0x806000},
+        {"green", 0x00b050},
+        {"lightGray", 0xbfbfbf},
+        {"magenta", 0xff00ff},
+        {"red", 0xff0000},
+        {"white", 0xffffff},
+        {"yellow", 0xffff00},
+    }};
+
+} // namespace
+
+pugi::xml_node
+ooxml::insert_in_sequence(pugi::xml_node parent, const char *name,
+                          const std::span<const std::string_view> order) {
+  const auto rank = [&](const std::string_view child_name) {
+    const auto it = std::ranges::find(order, child_name);
+    return it == std::end(order)
+               ? order.size()
+               : static_cast<std::size_t>(it - std::begin(order));
+  };
+  const std::size_t own_rank = rank(name);
+  for (const pugi::xml_node child : parent.children()) {
+    if (rank(child.name()) > own_rank) {
+      return parent.insert_child_before(name, child);
+    }
+  }
+  return parent.append_child(name);
+}
+
+std::string ooxml::hex_color(const Color &color) {
+  return fmt::format("{:06X}", color.rgb());
+}
+
+std::optional<std::string_view> ooxml::highlight_name(const Color &color) {
+  const auto it =
+      std::ranges::find(highlight_colors, color.rgb(),
+                        &std::pair<std::string_view, std::uint32_t>::second);
+  if (it == std::end(highlight_colors)) {
+    return {};
+  }
+  return it->first;
+}
+
+double ooxml::points(const Measure &length) {
+  const std::string &unit = length.unit().name();
+  if (unit == "pt") {
+    return length.magnitude();
+  }
+  if (unit == "px") {
+    return length.magnitude() * 0.75;
+  }
+  if (unit == "in") {
+    return length.magnitude() * 72.0;
+  }
+  if (unit == "cm") {
+    return length.magnitude() * 72.0 / 2.54;
+  }
+  if (unit == "mm") {
+    return length.magnitude() * 72.0 / 25.4;
+  }
+  if (unit == "pc") {
+    return length.magnitude() * 12.0;
+  }
+  throw std::invalid_argument("no fixed size in points: " + length.to_string());
+}
+
 std::optional<Color>
 ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
-  // color codes from http://officeopenxml.com/WPtextShading.php
-  // rgb values suggested by chatgpt
-  static const std::unordered_map<std::string, Color> color_map{
-      {"black", {0, 0, 0}},       {"blue", {0, 112, 192}},
-      {"cyan", {0, 176, 240}},    {"darkBlue", {0, 32, 96}},
-      {"darkCyan", {0, 97, 133}}, {"darkGray", {64, 64, 64}},
-      {"darkGreen", {0, 128, 0}}, {"darkMagenta", {112, 48, 160}},
-      {"darkRed", {192, 0, 0}},   {"darkYellow", {128, 96, 0}},
-      {"green", {0, 176, 80}},    {"lightGray", {191, 191, 191}},
-      {"magenta", {255, 0, 255}}, {"red", {255, 0, 0}},
-      {"white", {255, 255, 255}}, {"yellow", {255, 255, 0}},
-  };
-
   if (!attribute) {
     return {};
   }
@@ -121,9 +196,11 @@ ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   if (std::strcmp("auto", value) == 0 || std::strcmp("none", value) == 0) {
     return {};
   }
-  if (const auto color_map_it = color_map.find(value);
-      color_map_it != std::end(color_map)) {
-    return color_map_it->second;
+  if (const auto it =
+          std::ranges::find(highlight_colors, std::string_view(value),
+                            &std::pair<std::string_view, std::uint32_t>::first);
+      it != std::end(highlight_colors)) {
+    return Color::from_rgb(it->second);
   }
   if (std::strlen(value) == 6) {
     const std::uint32_t color = std::strtoull(value, nullptr, 16);
