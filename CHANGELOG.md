@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The wasm package's `Document.edit`, `save`, `isEditable` and `isSavable`
+  work for a plain text file. They threw `NoDocumentFile` before, so a `.txt`
+  could not be saved from the browser. A txt saves as UTF-8.
+
+- `TextFile::is_savable` is false for a json file, as every binding's doc
+  already said. It was true, so a json view was editable and `write_edited`
+  wrote it.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and

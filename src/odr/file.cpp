@@ -291,6 +291,10 @@ std::string TextFile::text() const {
 }
 
 bool TextFile::is_savable() const noexcept {
+  // json is a text file too, and one this library does not write
+  if (file_type() != FileType::text_file) {
+    return false;
+  }
   const TextEncoding encoding = this->encoding();
   return encoding == TextEncoding::unknown ||
          text_encoding_is_decodable(encoding);

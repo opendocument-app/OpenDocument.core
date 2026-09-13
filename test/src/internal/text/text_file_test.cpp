@@ -168,6 +168,18 @@ TEST(TextFile, a_file_we_cannot_decode_is_not_savable) {
                UnsupportedOperation);
 }
 
+/// json reads as a text file, and the table declares it unsaved.
+TEST(TextFile, json_is_not_savable) {
+  const DecodedFile json =
+      open(File::from_memory(std::string(R"({"a": 1})")),
+           DecodeOptions::as(FileType::javascript_object_notation));
+  ASSERT_TRUE(json.is_text_file());
+  EXPECT_FALSE(json.as_text_file().is_savable());
+  std::ostringstream out;
+  EXPECT_THROW(json.as_text_file().write_edited(set_content("x"), out),
+               UnsupportedOperation);
+}
+
 /// A decodable encoding that is not utf-8 saves, and saves as utf-8.
 TEST(TextFile, a_decodable_encoding_saves_as_utf8) {
   const odr::TextFile latin1(std::make_shared<internal::text::TextFile>(

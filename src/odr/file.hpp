@@ -439,8 +439,9 @@ public:
   /// the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
 
-  /// False where @ref encoding cannot be decoded: the view hands those bytes
-  /// to the browser as they are, so what comes back cannot be put back.
+  /// False where the file type is not `text_file`, and where @ref encoding
+  /// cannot be decoded: the view hands those bytes to the browser as they are,
+  /// so what comes back cannot be put back.
   [[nodiscard]] bool is_savable() const noexcept;
 
   /// Applies @p operations - `{"version": 2, "ops": [{"op": "setContent",
