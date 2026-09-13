@@ -27,6 +27,7 @@ const pinned = {
     none: 3,
     fit_width_by_view: 4,
   },
+  HtmlEditingScope: { paragraph: 0, document: 1 },
   PdfTextMode: { dual_layer: 0, single_layer: 1 },
   EncryptionState: {
     unknown: 0,
@@ -99,5 +100,6 @@ describe('enums', () => {
     assert.equal(enums.ErrorCode.unsupportedEdit, 1007);
     assert.equal(enums.ErrorCode.range, 1008);
     assert.equal(enums.ErrorCode.unnameableEdit, 1009);
+    assert.equal(enums.ErrorCode.outOfScope, 1010);
   });
 });

@@ -29,6 +29,7 @@
     unsupportedEdit: "this kind of edit is not supported",
     range: "an edit cannot reach over a picture or a table",
     unnameableEdit: "an edit landed where no operation can name it",
+    outOfScope: "the edit reaches past what this page offers",
   };
 
   /// Falls back to `readOnly` for a reason no script here states.
@@ -135,6 +136,13 @@
     /// Whether `enable` would succeed.
     isEditable: function () {
       return editable;
+    },
+    /// `paragraph` or `document`, as `<body>` states it. Read per edit, so a
+    /// host can widen it without a render.
+    scope: function () {
+      return body.getAttribute("data-odr-editing-scope") === "paragraph"
+        ? "paragraph"
+        : "document";
     },
 
     /// Adds one format's editor. Only `operations` is required; `enable`,

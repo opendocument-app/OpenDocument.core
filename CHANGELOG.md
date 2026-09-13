@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `HtmlConfig::editing_scope` narrows the document view's editor to edits
+  inside one paragraph (`paragraph`); the page refuses the rest with the new
+  `ErrorCode::edit_out_of_scope` (1010, `outOfScope`). Bound in every binding.
+
 - Writing a cell of an `.ods` takes the cached result of every formula reading
   it away, keeping the formula itself, so the saved file states no number that
   is now wrong. Such a cell renders empty until a reader computes it.

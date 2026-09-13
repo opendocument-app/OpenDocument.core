@@ -231,6 +231,8 @@ void write_body_begin(const Document &document, const WritingState &state) {
             if (state.config().editable) {
               clb("data-odr-editable",
                   state.document_editable() ? "true" : "readOnly");
+              clb("data-odr-editing-scope", std::string(editing_scope_name(
+                                                state.config().editing_scope)));
             }
             // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));

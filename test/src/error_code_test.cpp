@@ -104,6 +104,7 @@ TEST(ErrorCode, edit_band_is_pinned) {
   EXPECT_EQ(static_cast<int>(ErrorCode::edit_unsupported), 1007);
   EXPECT_EQ(static_cast<int>(ErrorCode::edit_range), 1008);
   EXPECT_EQ(static_cast<int>(ErrorCode::edit_unnameable), 1009);
+  EXPECT_EQ(static_cast<int>(ErrorCode::edit_out_of_scope), 1010);
 }
 
 TEST(ErrorCode, every_code_is_named_once) {

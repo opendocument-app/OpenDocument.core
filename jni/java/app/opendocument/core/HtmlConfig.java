@@ -20,6 +20,8 @@ public final class HtmlConfig {
   public boolean relativeResourcePaths = true;
 
   public boolean editable = false;
+  /** How far an edit in a document view may reach; the page refuses the rest. */
+  public HtmlEditingScope editingScope = HtmlEditingScope.DOCUMENT;
 
   /** Whether the view's scripts take the keys that move the selection. */
   public boolean keyboardNavigation = true;

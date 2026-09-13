@@ -78,6 +78,8 @@ enum class ErrorCode : std::int32_t {
   edit_unsupported = 1007,
   edit_range = 1008,      ///< The range reaches over a picture or a table.
   edit_unnameable = 1009, ///< The edit landed where no operation names it.
+  /// The edit reaches past @ref HtmlConfig::editing_scope.
+  edit_out_of_scope = 1010,
 };
 
 /// @brief The code's name, as the bindings already spell it.

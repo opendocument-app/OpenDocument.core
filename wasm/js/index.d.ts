@@ -11,6 +11,7 @@ export interface EnumTables {
   HtmlColorScheme: Record<string, number>;
   HtmlTableGridlines: Record<string, number>;
   HtmlViewportMode: Record<string, number>;
+  HtmlEditingScope: Record<string, number>;
   PdfTextMode: Record<string, number>;
   EncryptionState: Record<string, number>;
   LogLevel: Record<string, number>;
@@ -87,6 +88,8 @@ export interface Content {
 export interface HtmlConfig {
   embedImages?: boolean;
   editable?: boolean;
+  /** How far an edit in a document view may reach; the page refuses the rest. */
+  editingScope?: number;
   keyboardNavigation?: boolean;
   keyboardShortcuts?: boolean;
   textDocumentMargin?: boolean;

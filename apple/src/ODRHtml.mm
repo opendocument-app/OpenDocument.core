@@ -39,6 +39,9 @@ ODR_SAME_ENUM(ODRHtmlViewportModeNone, odr::HtmlViewportMode::none);
 ODR_SAME_ENUM(ODRHtmlViewportModeFitWidthByView,
               odr::HtmlViewportMode::fit_width_by_view);
 
+ODR_SAME_ENUM(ODRHtmlEditingScopeParagraph, odr::HtmlEditingScope::paragraph);
+ODR_SAME_ENUM(ODRHtmlEditingScopeDocument, odr::HtmlEditingScope::document);
+
 ODR_SAME_ENUM(ODRPdfTextModeDualLayer, odr::PdfTextMode::dual_layer);
 ODR_SAME_ENUM(ODRPdfTextModeSingleLayer, odr::PdfTextMode::single_layer);
 
@@ -89,6 +92,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _resourcePath = to_nsstring(config.resource_path);
   _relativeResourcePaths = config.relative_resource_paths ? YES : NO;
   _editable = config.editable ? YES : NO;
+  _editingScope = static_cast<ODRHtmlEditingScope>(config.editing_scope);
   _keyboardNavigation = config.keyboard_navigation ? YES : NO;
   _keyboardShortcuts = config.keyboard_shortcuts ? YES : NO;
   _textDocumentMargin = config.text_document_margin ? YES : NO;
@@ -158,6 +162,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   }
   config.relative_resource_paths = _relativeResourcePaths == YES;
   config.editable = _editable == YES;
+  config.editing_scope = static_cast<odr::HtmlEditingScope>(_editingScope);
   config.keyboard_navigation = _keyboardNavigation == YES;
   config.keyboard_shortcuts = _keyboardShortcuts == YES;
   config.text_document_margin = _textDocumentMargin == YES;

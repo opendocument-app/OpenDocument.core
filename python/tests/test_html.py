@@ -15,6 +15,7 @@ def test_html_config_defaults():
     config = pyodr.HtmlConfig()
     assert config.embed_images
     assert not config.editable
+    assert config.editing_scope == pyodr.HtmlEditingScope.document
     assert config.keyboard_navigation
     assert config.keyboard_shortcuts
     assert config.spreadsheet_gridlines == pyodr.HtmlTableGridlines.soft
@@ -109,6 +110,23 @@ def test_viewport_mode_reaches_the_html(odt_path):
     raw = pyodr.HtmlConfig()
     raw.viewport_content = "width=420"
     assert '<meta name="viewport" content="width=420"/>' in render(raw)
+
+
+def test_editing_scope_reaches_the_html(odt_path):
+    # proves the scope crosses the binding; the C++ suite covers the rest
+    def render(config):
+        file = pyodr.open(str(odt_path))
+        service = pyodr.html.translate(file, config)
+        content, _ = service.list_views()[0].write_html()
+        return content
+
+    # the attribute, not the name: the script names it too
+    assert 'data-odr-editing-scope="' not in render(pyodr.HtmlConfig())
+
+    config = pyodr.HtmlConfig()
+    config.editable = True
+    config.editing_scope = pyodr.HtmlEditingScope.paragraph
+    assert 'data-odr-editing-scope="paragraph"' in render(config)
 
 
 def test_min_content_margin_reaches_the_html(odt_path):

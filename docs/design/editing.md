@@ -397,6 +397,35 @@ code 9 rather than being dropped. Android WebView's incomplete `beforeinput`
 range the browser did not state is extended by one character rather than
 refused; verify both on a device.
 
+### 14. The scope is host policy, and the page refuses past it
+
+`Document::is_editable` is an engine fact; what a host offers of it is the
+host's call. The core carries no policy, only one seam,
+`HtmlConfig::editing_scope`, and one signal back,
+`ErrorCode::edit_out_of_scope` (1010, `outOfScope`).
+
+| Scope | What the document editor takes |
+|---|---|
+| `document` (default) | everything in decision 13 |
+| `paragraph` | an edit that starts and ends in one paragraph |
+
+Scope `paragraph` refuses Enter, Backspace at a paragraph start, a paste
+holding a line break, and a selection over two paragraphs. A paragraph is a
+unit the reader sees, where a run is not: Word splits runs by revision session,
+so a wall at a run would stand in the middle of uniform text.
+
+**Why on the config:** the document did not change, the host's offer did. The
+scope joins the other host policy on `<body>` (decision 12) as
+`data-odr-editing-scope`.
+
+**Why the editor reads it per edit:** a host widens it by setting the
+attribute, with no second render.
+
+**Why its own code:** a host maps 1010 to what the wider scope offers.
+
+**Why replay does not check it:** the page cannot produce an operation past its
+scope, and a check in `Document::edit` would refuse the save.
+
 ## What landed, and what did not
 
 The plan this document carried ran in five steps, and the first four are in.

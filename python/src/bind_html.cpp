@@ -42,6 +42,10 @@ void odr_python::bind_html(py::module_ &m) {
       .value("none", odr::HtmlViewportMode::none)
       .value("fit_width_by_view", odr::HtmlViewportMode::fit_width_by_view);
 
+  py::enum_<odr::HtmlEditingScope>(m, "HtmlEditingScope")
+      .value("paragraph", odr::HtmlEditingScope::paragraph)
+      .value("document", odr::HtmlEditingScope::document);
+
   py::enum_<odr::PdfTextMode>(m, "PdfTextMode")
       .value("dual_layer", odr::PdfTextMode::dual_layer)
       .value("single_layer", odr::PdfTextMode::single_layer);
@@ -79,6 +83,7 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("relative_resource_paths",
                      &odr::HtmlConfig::relative_resource_paths)
       .def_readwrite("editable", &odr::HtmlConfig::editable)
+      .def_readwrite("editing_scope", &odr::HtmlConfig::editing_scope)
       .def_readwrite("keyboard_navigation",
                      &odr::HtmlConfig::keyboard_navigation)
       .def_readwrite("keyboard_shortcuts", &odr::HtmlConfig::keyboard_shortcuts)
