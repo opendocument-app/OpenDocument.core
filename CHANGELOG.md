@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.0.0 - 2026-09-13
+
 - **Breaking**: `DocumentPath`, `Element::document_path()` and
   `Element::navigate_path()` are gone, with their python and Java mirrors.
   An element is addressed by `Element::identifier()` and
