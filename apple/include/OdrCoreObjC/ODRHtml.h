@@ -92,8 +92,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) BOOL relativeResourcePaths;
 
 @property(nonatomic) BOOL editable;
-/// The scope the document view's editor offers; the page refuses the rest
-/// with `ODRErrorCode` 1010, `outOfScope`.
+/// How much of the document editor the page offers; it refuses the rest with
+/// `ODRErrorCode` 1010, `outOfScope`.
 @property(nonatomic) ODRHtmlEditingScope editingScope;
 /// Whether the view's scripts take the keys that move the selection.
 @property(nonatomic) BOOL keyboardNavigation;

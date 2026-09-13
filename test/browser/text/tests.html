@@ -517,7 +517,7 @@
       check("as out of scope", refusals.pop() === "outOfScope 1010");
       check("and the paragraph stands", texts() === "firstX run a link and a tail|bold|third|");
 
-      selectRuns(13, 5, 13, 5);
+      select(run(13).firstChild, 5);
       check("a delete inside a run is taken", input("deleteContentBackward") === "taken");
       select(run(13).firstChild, 0);
       check("a backspace at a run's start is refused", input("deleteContentBackward") === "refused");

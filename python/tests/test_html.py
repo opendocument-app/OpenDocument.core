@@ -113,8 +113,7 @@ def test_viewport_mode_reaches_the_html(odt_path):
 
 
 def test_editing_scope_reaches_the_html(odt_path):
-    # The C++ suite covers what the page refuses; this only proves the scope
-    # crosses the binding.
+    # proves the scope crosses the binding; the C++ suite covers the rest
     def render(config):
         file = pyodr.open(str(odt_path))
         service = pyodr.html.translate(file, config)

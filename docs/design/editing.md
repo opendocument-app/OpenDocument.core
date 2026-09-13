@@ -399,11 +399,9 @@ refused; verify both on a device.
 
 ### 14. The scope is host policy, and the page refuses past it
 
-`Document::is_editable` is an engine fact: the capability table asserts it,
-and the wasm package, the python module and the CLI all consume it. What a
-host *offers* of that is the host's own call - an edition that sells the full
-editor sells it on top of the same core. So the core carries no edition and no
-policy. It carries one seam, `HtmlConfig::editing_scope`, and one signal back,
+`Document::is_editable` is an engine fact; what a host offers of it is the
+host's call. The core carries no policy, only one seam,
+`HtmlConfig::editing_scope`, and one signal back,
 `ErrorCode::edit_out_of_scope` (1010, `outOfScope`).
 
 | Scope | What the document editor takes |
@@ -411,27 +409,21 @@ policy. It carries one seam, `HtmlConfig::editing_scope`, and one signal back,
 | `document` (default) | everything in decision 13 |
 | `run` | an edit that starts and ends in one run: one `setText` |
 
-In scope `run` the editor refuses Enter, a paste holding a line break, a
-selection reaching into another run, and a delete at a run's edge - which
-reaches into the run before it. A paragraph holding no run is refused too: the
-text would open one, and that is an `insertText`.
+Scope `run` refuses Enter, a paste holding a line break, a selection over two
+runs, a delete at a run's edge, and a write into a paragraph holding no run,
+which would open one.
 
-**Why on the config and not on the document:** the same `.odt` renders under
-both scopes; the document did not change, the host's offer did. And the
-renderer already writes host policy onto `<body>` (decision 12), so the scope
-is one more attribute there, `data-odr-editing-scope`.
+**Why on the config:** the document did not change, the host's offer did. The
+scope joins the other host policy on `<body>` (decision 12) as
+`data-odr-editing-scope`.
 
-**Why the editor reads it per edit, not once:** a host that widens the scope
-mid-session - a purchase went through - sets the attribute and keeps the page.
+**Why the editor reads it per edit:** a host widens it by setting the
+attribute, with no second render.
 
-**Why the refusal is its own code:** the host maps 1010 to an explanation of
-what the wider scope offers, where every other code is a shrug. A delete at a
-run's edge was refused with `range` before the full editor existed, so nothing
-a reader could do went away with the scope; only the code changed.
+**Why its own code:** a host maps 1010 to what the wider scope offers.
 
-**Why replay does not check it:** the page cannot produce an operation past
-its scope, and a check in `Document::edit` would refuse the *save*, after the
-reader typed. A second guard can take a scope argument later.
+**Why replay does not check it:** the page cannot produce an operation past its
+scope, and a check in `Document::edit` would refuse the save.
 
 ## What landed, and what did not
 

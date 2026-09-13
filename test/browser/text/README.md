@@ -50,9 +50,8 @@ Why the checks look the way they do:
   `document_edit_test.cpp` replays the same shapes in C++, which is what keeps
   the two sides from drifting apart.
 
-- **Scope `run` is checked on the same fixture.** `odr.editing.scope()` reads
-  `data-odr-editing-scope` off `<body>` per edit, so the group sets the
-  attribute, checks what is refused with code 1010, and takes it off again.
+- **Scope `run` runs on the same fixture**: the group sets
+  `data-odr-editing-scope` on `<body>`, which the editor reads per edit.
 
 **Scripted editing is not the editing a reader does, which is why no check uses
 `execCommand`.** Chrome's scripted path raises no cancelable `beforeinput`, so
