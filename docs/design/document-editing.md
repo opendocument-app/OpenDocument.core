@@ -11,9 +11,9 @@ Status: **landed.** The schema, the replay, the browser editor and the pptx
 write side are all in the code; each section says what is in and what is not.
 
 Scope of this work: an edit that spans several runs, a new paragraph, and a
-delete or a replace that reaches across both. Inline formatting (bold, italic,
-highlight) is *not* in it — decision 5 below says why the schema takes it later
-without changing.
+delete or a replace that reaches across both. Inline formatting is *not* in
+it — decision 5 below says why the schema takes it later without changing,
+and [Inline formatting](#inline-formatting) is the plan for it.
 
 ## What the editor has to express
 
@@ -114,8 +114,8 @@ number used before it was created, or created twice, throws.
 
 Toggling bold on part of a run is, in both formats, "split the run, restyle the
 middle one". The split is decision 3's first two ops, and what is left is one
-op naming whole runs — `setMark {ids, mark, on}`. No offsets, no new
-addressing.
+op naming whole runs — `setTextStyle {id, style}`, decisions 8 to 16. No
+offsets, no new addressing.
 
 **Why it is not in this work:** the split is the same machinery either way, and
 ODF reaches a mark through a named automatic style it may have to create, which
@@ -189,7 +189,8 @@ a path in a version-2 world names the wrong element rather than none.
 | `setCell` | `sheet`, `column`, `row`, `value` | unchanged; see [`spreadsheet-editing.md`](spreadsheet-editing.md) |
 
 Every `id` field on an op that creates an element is negative (decision 4).
-Every other id is one the page wrote.
+Every other id is one the page wrote. [Inline formatting](#inline-formatting)
+adds `setTextStyle` to this table.
 
 ### The four reader gestures, as ops
 
@@ -358,6 +359,226 @@ What it cannot reach is a picture **alone in its paragraph**, where both ends
 of the range land in a paragraph with no run: there is no run to anchor the
 edit to, so the edit is taken and changes nothing. Deleting one needs a gesture
 that names the frame rather than a range across text.
+
+## Inline formatting
+
+Status: **not started.** It is the one step of [`editing.md`](editing.md)
+still open. It covers what a reader changes on a stretch of text without
+changing the text: bold, italic, underline, strikethrough, highlight, colour
+and size. Font name, superscript and subscript are not in it; nothing asked
+for them, and each is the same shape once these seven are in.
+
+### What the reader changes, and where each format keeps it
+
+| On the wire | `TextStyle` | ODF `style:text-properties` | docx `w:rPr` | pptx `a:rPr` |
+|---|---|---|---|---|
+| `bold` | `font_weight` | `fo:font-weight="bold"` / `"normal"` | `<w:b/>` / `<w:b w:val="0"/>` | `b="1"` / `b="0"` |
+| `italic` | `font_style` | `fo:font-style="italic"` / `"normal"` | `<w:i/>` / `<w:i w:val="0"/>` | `i="1"` / `i="0"` |
+| `underline` | `font_underline` | `style:text-underline-style="solid"` / `"none"` | `<w:u w:val="single"/>` / `"none"` | `u="sng"` / `u="none"` |
+| `strikethrough` | `font_line_through` | `style:text-line-through-style="solid"` / `"none"` | `<w:strike/>` / `<w:strike w:val="0"/>` | `strike="sngStrike"` / `"noStrike"` |
+| `highlight` | `background_color` | `fo:background-color="#rrggbb"` / `"transparent"` | `<w:highlight w:val="yellow"/>` or `<w:shd w:val="clear" w:fill="RRGGBB"/>` (decision 14) | `<a:highlight><a:srgbClr val="RRGGBB"/></a:highlight>` |
+| `color` | `font_color` | `fo:color="#rrggbb"` | `<w:color w:val="RRGGBB"/>` | `<a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>` |
+| `size` | `font_size` | `fo:font-size="12pt"` | `<w:sz w:val="24"/>`, in half-points | `sz="1200"`, in hundredths of a point |
+
+Every cell of the three format columns is what `odf_style.cpp`,
+`ooxml_text_style.cpp` and `ooxml_presentation_style.cpp` read today, so a
+saved file renders what the editor showed. The one exception is `w:shd`, and
+decision 14 says what to do about it. The companions LibreOffice writes next
+to an underline, `style:text-underline-width` and `style:text-underline-color`,
+are optional in the schema and the writer leaves them out.
+
+### The op
+
+```json
+{"op": "setTextStyle", "id": 41,
+ "style": {"bold": true, "highlight": "#ffff00", "size": "14pt"}}
+```
+
+| op | fields | what it does |
+|---|---|---|
+| `setTextStyle` | `id`, `style` | states the listed properties on one run; a property not listed is untouched |
+
+`style` holds any of the seven keys. The four toggles carry `true` or
+`false`; `highlight` carries `#rrggbb` or `null` for none; `color` carries
+`#rrggbb`; `size` carries a length as `Measure` spells it, which is what the
+page's `font-size` already says. The envelope stays at version 2, since no
+existing op changes meaning.
+
+### 8. The wire carries a value, not a toggle
+
+The sketch in [`editing.md`](editing.md) said `setMark {ids, mark, on}`. It
+does not survive colour and size, which are not on or off, and it did not
+survive a toggle either: "toggle bold" needs the run's current state, and the
+browser has it while replay would have to look it up. So the browser resolves
+the gesture and the wire carries the result. Replay stays a pure function of
+the log, which is decision 4's argument again.
+
+### 9. Off is written, never removed
+
+`bold: false` writes `fo:font-weight="normal"`, `<w:b w:val="0"/>` or
+`b="0"`. It never removes the property, because the cascade underneath may be
+bold — a heading style, a list style — and the reader asked for not bold, not
+for whatever the cascade says. The same holds for `highlight: null`, which is
+`transparent` in ODF and `w:val="none"` in docx. `color` has no null in this
+work; the open questions say why.
+
+### 10. One run per op
+
+`setText` names one run, and so does this. A gesture over twenty runs is
+twenty ops. A list of ids would be shorter on the wire, but coalescing decides
+it: two `setTextStyle` on one run merge into one op where the later keys win,
+and one on a run a later `removeElement` takes away drops. With a list, both
+become set arithmetic over ids.
+
+### 11. A run shares its container's style, so a mark gives it a container of its own
+
+`data-odr-id` sits on the registry's text element: a text node in ODF, a
+`w:t` in docx, an `a:t` in pptx. All three take their style from the element
+around them — a `text:span`, a `w:r`, an `a:r` — and share it with every
+sibling inside it; `text_insert` relies on exactly that to give a new run the
+style of its neighbour. So a mark on one run must first give that run a
+container nobody else is in:
+
+- **docx and pptx** cut the `w:r` / `a:r` around the run, copying `w:rPr` /
+  `a:rPr` into each part. `paragraph_split` already does this copy when it
+  walks up through a run, so this is that walk stopped one level early. The
+  delta is then applied to the copy that holds the run and nothing else.
+- **ODF** wraps the run in a new `text:span` when it has siblings or sits bare
+  in the `text:p`, and reuses the span when the run is alone in it. Either
+  way the span gets a fresh automatic style (decision 12). The style resolver
+  walks the element parent chain
+  ([`odf/AGENTS.md`](../../src/odr/internal/odf/AGENTS.md)), so a span inside
+  a span already resolves.
+
+Marking part of a run is then what decision 5 said: `setText` and
+`insertText` split the run, and `setTextStyle` names the middle one. The
+browser emits the three; the engine sees whole runs only.
+
+### 12. ODF reaches a mark through a fresh automatic style, never an edited one
+
+An automatic style may be shared by any number of spans, so writing into one
+restyles text the reader never selected. The writer instead adds a
+`<style:style style:family="text">` to `content.xml`'s
+`office:automatic-styles`, under a name unused in the registry's index (both
+files' names are in it), and points the span at it. Its
+`style:text-properties` are the span's old automatic style copied with the
+delta applied; a named style on the span becomes the copy's
+`style:parent-style-name` instead. The new node joins the index, so a
+`document_edit_test` that renders after replay sees it. One style per distinct
+result is enough — a map the writer keeps for the length of a replay — and
+LibreOffice collapses duplicates on its next save either way.
+
+### 13. `w:rPr` is a sequence, and the writer keeps its order
+
+The schema orders the children of `w:rPr`, and Word refuses a file that
+breaks it as unreadable. Of the elements this work writes the order is `w:b`,
+`w:i`, `w:strike`, `w:color`, `w:sz`, `w:highlight`, `w:u`, `w:shd`. The writer
+inserts each at its position among the children already there, and replaces
+one already present. The complex-script twins `w:bCs`, `w:iCs` and `w:szCs`
+follow their sibling, as Word writes them, so a run holding both scripts does
+not come out half bold. `a:rPr` in pptx is attributes for five of the seven
+and ordered children for `a:solidFill` and `a:highlight`, with the fill before
+the highlight; `a:rPr` must be the first child of `a:r`, so a run without one
+gets it made.
+
+### 14. Highlight is the character background, and docx spells it two ways
+
+This answers the open question in [`editing.md`](editing.md). ODF has one
+property for it, `fo:background-color` on the text properties, and pptx has
+`a:highlight` taking any colour. docx has `w:highlight`, which takes one of
+sixteen names, and `w:shd`, which takes any colour and which the reader does
+not read yet. The wire carries a colour, since that is what two of three
+formats want. The docx writer spells one of the sixteen as `w:highlight` and
+anything else as `w:shd w:val="clear" w:fill`, and the reader learns `w:shd`
+on a run in the same step — otherwise a saved highlight renders as none on
+reopen, which is drift decision 7 of [`editing.md`](editing.md) exists to
+catch. A host that wants Word's palette offers the sixteen and never meets
+`w:shd`.
+
+### 15. The editor writes the css the renderer writes
+
+An edited page must look like a fresh render of the saved file, which is what
+makes the two comparable. `translate_text_style` puts the style inline on the
+`x-s`, so the editor sets the same declarations on the same attribute:
+`font-weight:bold`, `font-style:italic`, `text-decoration:underline`,
+`text-decoration:line-through`, `color`, `background-color`, `font-size`. The
+selection state a host shows (decision 16) reads the same declarations back.
+
+One thing to fix before copying it: the renderer writes two `text-decoration`
+declarations for a run that is both underlined and struck through, and the
+second wins, so such a run shows one line. It has to become one declaration,
+`text-decoration:underline line-through`, and the editor writes that form.
+
+### 16. The gesture reaches the editor two ways, and both land in one function
+
+- **The host asks.** `odr.editing.format(style)` applies a partial style to
+  the current selection, since a mobile host has buttons and no keyboard.
+  For the buttons to show state, the editor reports the style of the
+  selection through `odr.onSelectionChange(style)`, one key per property and
+  a key left out where the selection is mixed.
+- **The browser asks.** `formatBold`, `formatItalic`, `formatUnderline` and
+  `formatStrikeThrough` leave the refused list of decision 13 in
+  [`editing.md`](editing.md) and join the whitelist. Chrome raises them for
+  ctrl/cmd+B, I and U. They are chords, so they are the *shortcuts* class of
+  decision 12, and a host that keeps that class keeps these too.
+
+Formatting sits behind the scope gate, decision 14 of
+[`editing.md`](editing.md): under `paragraph` every formatting gesture
+refuses with `outOfScope`, whatever it covers, and only `document` takes it.
+A host that offers the narrow scope today keeps offering exactly what it
+tested. A collapsed caret inside a word marks the word, as Word does; a
+collapsed caret at a word boundary refuses with `range`, and the open
+questions hold what it should do instead.
+
+Undo needs nothing new. A step already holds its ops and the two halves of
+taking it back; here the halves are the runs' old and new `style` attributes.
+
+### The adapter surface
+
+`Text::set_style(delta)` on the handle, beside `Text::set_content`, since the
+run keeps its id and what changes is what it holds. It reaches
+`TextAdapter::text_set_style(id, delta)`, defaulting to `UnsupportedOperation`
+by decision 7. The container of decision 11 is a new registry element the
+run's parent link then names, which no handle held before.
+
+The delta is a `TextStyle` whose set fields are the change, with one thing it
+cannot say: `optional<Color>` empty means unstated, and the wire's
+`highlight: null` means none. Whether that is a field on `TextStyle` or a type
+of its own is the first question step 1 answers.
+
+### Order of work
+
+Each step is a pull request that builds and tests on its own.
+
+1. **The renderer.** One `text-decoration` declaration (decision 15). Small,
+   and no reference page holds both lines on one run today, so it changes no
+   reference output.
+2. **The op and the ODF write side.** `setTextStyle`, `Text::set_style`, the
+   hook, the span and automatic style rules, and `document_edit_test` cases
+   from inline fixtures: a mark on a shared span, on a bare text node, on a
+   run alone in its span, off over a bold paragraph style. A headless
+   LibreOffice reopen of the saved file is the oracle.
+3. **docx and pptx.** The run cut, the `w:rPr` order, `w:shd` on the read
+   side, the `a:rPr` children. The same cases, over Word and Impress fixtures.
+4. **The browser.** `format()`, `onSelectionChange`, the four input types,
+   the word rule for a collapsed caret, and a check page in
+   `test/browser/text` asserting the log of each gesture.
+
+### Open questions
+
+- **A pending mark.** A caret between words that toggles bold means "what I
+  type next is bold". That needs an empty run the caret can sit in, and
+  Chrome places a caret in an empty inline unreliably. Refusing it is
+  honest and not what a reader expects.
+- **Colour back to automatic.** docx has `w:color w:val="auto"`; ODF has
+  nothing but removal, which decision 9 forbids. Until this is answered a
+  colour once set can only become another colour.
+- **A range over a text box.** A replace refuses one, because it holds text
+  the reader did not mean to lose. A mark loses nothing, so marking the runs
+  inside it would be safe. The whitelist rule says refuse until decided.
+- **Where the size list comes from.** A host offers sizes; the editor takes
+  any length. Whether the ODF percentage sizes the reader resolves are ever
+  written back as absolute is a question the fixtures answer.
 
 ## Open questions
 

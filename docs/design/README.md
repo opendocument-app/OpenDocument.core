@@ -73,7 +73,8 @@
   - text changes
   - removal of content
   - adding paragraphs
-  - changing formatting: bold, italic, underline, highlight, font size
+  - changing formatting: bold, italic, underline, strikethrough, highlight,
+    colour, font size
 - plain text (txt) editing
 - spreadsheets: recompute cell values whose content has functions attached
   - open question: do this only offline (in `odr.core`), or also online (in JS)?

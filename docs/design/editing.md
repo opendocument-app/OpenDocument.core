@@ -35,9 +35,11 @@ file — with no live connection between the browser and C++.
   counterpart, since a `.txt` is not a document.
 - `back_translate` CLI replays an envelope onto a source document and `save`s it.
 
-What is **not** done is inline formatting — bold, italic, underline, highlight.
-Decision 5 of [`document-editing.md`](document-editing.md) says why the schema
-takes it without changing.
+What is **not** done is inline formatting — bold, italic, underline,
+strikethrough, highlight, colour and size. Decision 5 of
+[`document-editing.md`](document-editing.md) says why the schema takes it
+without changing, and its [Inline formatting](document-editing.md#inline-formatting)
+section is the plan.
 
 ## Decisions
 
@@ -406,8 +408,8 @@ host's call. The core carries no policy, only one seam,
 
 | Scope | What the document editor takes |
 |---|---|
-| `document` (default) | everything in decision 13 |
-| `paragraph` | an edit that starts and ends in one paragraph |
+| `document` (default) | everything in decision 13, and inline formatting once it lands |
+| `paragraph` | an edit that starts and ends in one paragraph, and no formatting |
 
 Scope `paragraph` refuses Enter, Backspace at a paragraph start, a paste
 holding a line break, and a selection over two paragraphs. A paragraph is a
@@ -437,14 +439,17 @@ Each per-editor document holds what its own step decided.
 | The op envelope and a replay that dispatches over it | landed |
 | The write side of the engines — odf, ooxml text, ooxml presentation | landed |
 | The browser editor, owning the edit and its own undo | landed |
-| **Inline formatting** — bold, italic, underline, highlight | **not started** |
+| **Inline formatting** — bold, italic, underline, strikethrough, highlight, colour, size | **not started**; planned in [`document-editing.md`](document-editing.md#inline-formatting) |
 
 Formatting is the one left, and decision 5 of
 [`document-editing.md`](document-editing.md) is why the schema takes it without
 changing: toggling a mark on part of a run is, in both formats, "split the run,
 restyle the middle one", and the split is already two operations we have. What
-it needs is a `setMark {ids, mark, on}` and, for ODF, the automatic style a mark
-is reached through — a style-registry change with nothing to do with the ops.
+it needs is one op, `setTextStyle {id, style}`, carrying values rather than
+toggles, and two things on the write side: a container of the run's own,
+because a run shares its `text:span` / `w:r` / `a:r` with its siblings, and for
+ODF the automatic style a mark is reached through. Decisions 8 to 16 there
+hold the rest.
 
 The **conformance corpus** decision 7 asks for is still not built. What stands
 in for it is that both sides pin the same operation shapes: the browser check
@@ -460,8 +465,11 @@ version drifting until a new check page caught it.
 - ~~Is a `data-odr-id` needed on structural elements as insertion anchors?~~
   **Answered: on paragraphs**, which is what a split or an insert anchors on.
   Nothing above them needed one.
-- Highlight in ODF/OOXML: character background vs. a highlight-specific property —
-  which maps cleanly to a single toggle?
+- ~~Highlight in ODF/OOXML: character background vs. a highlight-specific property —
+  which maps cleanly to a single toggle?~~ **Answered:** the character
+  background, carried as a colour. docx spells it as `w:highlight` for its
+  sixteen names and `w:shd` for any other; decision 14 of
+  [`document-editing.md`](document-editing.md).
 - `element_is_editable` answers one bool, and ooxml text answers `true` for
   everything. A refusal needs a reason, because the reason is what a host puts
   on a snackbar (decision 7 in
