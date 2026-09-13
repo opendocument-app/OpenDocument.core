@@ -103,6 +103,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ODRTextStyle (Private)
 + (instancetype)styleWithHandle:(const odr::TextStyle &)handle;
+/// The set properties as a `TextStyle`; throws `UnsupportedOperation` for a
+/// `fontName`, which the C++ one borrows from a document.
+- (odr::TextStyle)handle;
 @end
 
 @interface ODRParagraphStyle (Private)

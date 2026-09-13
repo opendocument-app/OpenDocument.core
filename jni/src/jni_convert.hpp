@@ -55,6 +55,9 @@ jobject make_file_type_capabilities(JNIEnv *env,
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);
+/// The fields a Java `TextStyle` states; a `fontName` is refused, since the
+/// C++ one borrows from a document.
+odr::TextStyle text_style_from_java(JNIEnv *env, jobject style);
 
 /// Optional enum to a Java-side code; -1 encodes absent.
 template <typename E> jint enum_code(const std::optional<E> &value) {

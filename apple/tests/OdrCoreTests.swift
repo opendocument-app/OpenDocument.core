@@ -382,6 +382,44 @@ final class DocumentSaveTests: XCTestCase {
       .asDocumentFile().document()
   }
 
+  func testSetStyleMarksARun() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let text = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+
+    let style = TextStyle()
+    style.fontWeight = NSNumber(value: FontWeight.bold.rawValue)
+    style.fontUnderline = true
+    style.fontSize = Measure(string: "14pt")
+    try text.setStyle(style)
+
+    let saved = try XCTUnwrap(try document.saveToMemory())
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("styled.odt")
+    try saved.write(to: path)
+
+    let reloaded = try DecodedFile.decode(path: path.path)
+      .asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    let styled = try XCTUnwrap(reloadedRoot.firstDescendant(ofType: Text.self)).style
+    XCTAssertEqual(styled.fontWeight?.intValue, FontWeight.bold.rawValue)
+    XCTAssertEqual(styled.fontUnderline?.boolValue, true)
+    XCTAssertEqual(styled.fontSize?.stringValue, "14pt")
+    XCTAssertNil(styled.fontStyle)
+  }
+
+  func testSetStyleRefusesAFontName() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let text = try XCTUnwrap(root.firstDescendant(ofType: Text.self))
+
+    let style = TextStyle()
+    style.fontName = "Comic Sans"
+    XCTAssertThrowsError(try text.setStyle(style)) { error in
+      XCTAssertEqual((error as NSError).code, ODRError.unsupportedOperation.rawValue)
+    }
+  }
+
   func testSaveToMemoryCarriesAnEdit() throws {
     let document = try self.document()
     XCTAssertTrue(document.isSavable)

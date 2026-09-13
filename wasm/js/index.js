@@ -113,6 +113,13 @@ export class Document {
     return unwrap(this.#core.appendText(this.#handle, parentId, text));
   }
 
+  // States `style` - `{bold, italic, underline, strikethrough, highlight,
+  // color, size}`, as the page's `odr.editing.format` takes it - on one run.
+  setTextStyle(id, style) {
+    unwrap(this.#core.setTextStyle(this.#handle, id, style));
+    return this;
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));

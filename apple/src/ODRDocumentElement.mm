@@ -522,6 +522,13 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   });
 }
 
+- (BOOL)setStyle:(ODRTextStyle *)style error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_text().set_style([style handle]);
+    return YES;
+  });
+}
+
 - (ODRTextStyle *)style {
   return guarded_value(
       [&]() -> ODRTextStyle * {

@@ -702,6 +702,15 @@ Java_app_opendocument_core_Text_setContentNative(JNIEnv *env, jobject,
           [&] { element(handle).as_text().set_content(to_string(env, text)); });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Text_setStyleNative(JNIEnv *env, jobject,
+                                               jlong handle, jobject style) {
+  guarded(env, [&] {
+    element(handle).as_text().set_style(
+        odr_jni::text_style_from_java(env, style));
+  });
+}
+
 extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Text_styleNative(JNIEnv *env, jobject,
                                             jlong handle) {

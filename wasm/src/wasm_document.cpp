@@ -79,6 +79,25 @@ emscripten::val append_text(const Handle handle, const double parent,
   });
 }
 
+/// @p style as the page spells it - `{bold: true, highlight: null, size:
+/// "14pt"}` - which is the envelope's own shape, so the envelope parses it.
+emscripten::val set_text_style(const Handle handle, const double id,
+                               const emscripten::val style) {
+  return guarded([&] {
+    Session &s = session(handle);
+    if (style.isUndefined() || style.isNull() ||
+        style.typeOf().as<std::string>() != "object") {
+      throw std::invalid_argument("setTextStyle takes a style object");
+    }
+    const std::string json =
+        emscripten::val::global("JSON").call<std::string>("stringify", style);
+    document_of(s).edit(R"({"version":2,"ops":[{"op":"setTextStyle","id":)" +
+                        std::to_string(element_of(s, id).identifier()) +
+                        R"(,"style":)" + json + "}]}");
+    return ok();
+  });
+}
+
 /// @p after of 0 is `null_element_id`: split before every child.
 emscripten::val split_paragraph(const Handle handle, const double paragraph,
                                 const double after) {
@@ -138,6 +157,7 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("insertTextBefore", &odr::wasm::insert_text_before);
   emscripten::function("insertTextAfter", &odr::wasm::insert_text_after);
   emscripten::function("appendText", &odr::wasm::append_text);
+  emscripten::function("setTextStyle", &odr::wasm::set_text_style);
   emscripten::function("splitParagraph", &odr::wasm::split_paragraph);
   emscripten::function("mergeParagraphWithNext",
                        &odr::wasm::merge_paragraph_with_next);

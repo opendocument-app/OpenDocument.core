@@ -1,17 +1,26 @@
 package app.opendocument.core;
 
-/** Style of a text run. Mirrors {@code odr::TextStyle}; fields may be {@code null}. */
+/**
+ * Style of a text run. Mirrors {@code odr::TextStyle}; a {@code null} field is one the document
+ * does not state. A caller builds one for {@link Text#setStyle}: every field left {@code null} is
+ * left alone on the run.
+ */
 public final class TextStyle {
-  public final String fontName;
-  public final Measure fontSize;
-  public final FontWeight fontWeight;
-  public final FontStyle fontStyle;
-  public final Boolean fontUnderline;
-  public final Boolean fontLineThrough;
-  public final String fontShadow;
-  public final Color fontColor;
-  public final Color backgroundColor;
-  public final FontPosition fontPosition;
+  /** Read only: it borrows from the document, and {@link Text#setStyle} refuses it. */
+  public String fontName;
+  public Measure fontSize;
+  public FontWeight fontWeight;
+  public FontStyle fontStyle;
+  public Boolean fontUnderline;
+  public Boolean fontLineThrough;
+  public String fontShadow;
+  public Color fontColor;
+  /** An alpha of 0 takes a highlight away. */
+  public Color backgroundColor;
+  public FontPosition fontPosition;
+
+  /** Every field {@code null}. */
+  public TextStyle() {}
 
   TextStyle(
       String fontName,

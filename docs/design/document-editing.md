@@ -362,11 +362,10 @@ that names the frame rather than a range across text.
 
 ## Inline formatting
 
-Status: **landed**, but for the bindings; the order of work below says what
-is in. It covers what a reader changes on a stretch of text without
-changing the text: bold, italic, underline, strikethrough, highlight, colour
-and size. Font name, superscript and subscript are not in it; nothing asked
-for them, and each is the same shape once these seven are in.
+Status: **landed.** It covers what a reader changes on a stretch of text
+without changing the text: bold, italic, underline, strikethrough, highlight,
+colour and size. Font name, superscript and subscript are not in it; nothing
+asked for them, and each is the same shape once these seven are in.
 
 ### What the reader changes, and where each format keeps it
 
@@ -580,6 +579,9 @@ Each step is a pull request that builds and tests on its own.
 4. **The browser.** `format()`, `onSelectionChange`, the four input types,
    the word rule for a collapsed caret, and a check page in
    `test/browser/text` asserting the log of each gesture. **Landed.**
+5. **The bindings.** `Text::set_style` in python, Java, Objective-C and the
+   npm package, the last taking the page's style object and replaying it
+   through the envelope. **Landed.**
 
 ### Open questions
 
