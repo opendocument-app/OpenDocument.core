@@ -27,6 +27,12 @@ tag_pattern = "v[0-9]*"
 topo_order = false
 sort_commits = "oldest"
 
+# A subject naming a doxygen tag or an npm scope would tag a github user in
+# the release notes; backticks keep it text.
+commit_preprocessors = [
+    { pattern = '(^|[\s(])@([\w./-]+)', replace = '$1`@$2`' },
+]
+
 # First match wins, so `chore(release)` has to precede `chore`.
 commit_parsers = [
     # the stamp commit, which would otherwise land in the next release's notes
