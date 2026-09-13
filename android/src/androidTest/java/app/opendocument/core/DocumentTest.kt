@@ -57,7 +57,8 @@ class DocumentTest {
 
     @Test
     fun elementNavigation() {
-        val root = openDocument().rootElement()
+        val document = openDocument()
+        val root = document.rootElement()
 
         val first = root.firstChild()
         assertNotNull(first)
@@ -65,7 +66,7 @@ class DocumentTest {
         val second = first.nextSibling()
         assertNotNull(second)
         assertTrue(second.previousSibling().isSame(first))
-        assertNotNull(first.documentPath().toString())
+        assertTrue(document.elementById(first.identifier()).isSame(first))
     }
 
     @Test
