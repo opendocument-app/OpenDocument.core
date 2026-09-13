@@ -30,16 +30,16 @@ file — with no live connection between the browser and C++.
   format's editor attaches one editor to it (decision 9):
   `frontend/sheet-editing.js`, `frontend/document.js`, `frontend/text.js`.
 - `Document::edit` replays the envelope: `setCell` for a sheet, and `setText`,
-  `insertText`, `removeElement`, `splitParagraph`, `mergeParagraph` and
-  `insertParagraph` for a document. `TextFile::write_edited` is the plain-text
-  counterpart, since a `.txt` is not a document.
+  `setTextStyle`, `insertText`, `removeElement`, `splitParagraph`,
+  `mergeParagraph` and `insertParagraph` for a document.
+  `TextFile::write_edited` is the plain-text counterpart, since a `.txt` is
+  not a document.
 - `back_translate` CLI replays an envelope onto a source document and `save`s it.
 
-What is **not** done is inline formatting — bold, italic, underline,
-strikethrough, highlight, colour and size. Decision 5 of
-[`document-editing.md`](document-editing.md) says why the schema takes it
-without changing, and its [Inline formatting](document-editing.md#inline-formatting)
-section is the plan.
+Inline formatting — bold, italic, underline, strikethrough, highlight, colour
+and size — is `setTextStyle` on the wire and `odr.editing.format` in the page;
+the [Inline formatting](document-editing.md#inline-formatting) section of
+[`document-editing.md`](document-editing.md) holds its decisions.
 
 ## Decisions
 
@@ -189,6 +189,9 @@ runs or paragraphs. It owns:
   the wording and not the numbers;
 - the **log** — `getOperations()`, `undo()`, `redo()`, `committed()`, and the
   `dirty` / `canUndo` / `canRedo` state `odr.onEditChange` reports;
+- the **formatting seam** — `format(style)` and `toggle(property)` hand a
+  host's button to the editor that has one, and `odr.onSelectionChange` is
+  where that editor reports what the selection shows;
 - the **keyboard classes** the page may take (decision 12).
 
 A format's editor is a second script that **attaches** one editor to the mode:
@@ -348,11 +351,12 @@ then intercepts `beforeinput` and takes the edits it can express as operations:
 | Enter | taken: the paragraph splits where the caret sits |
 | Backspace at the start of a paragraph | taken: the paragraph merges into the one before it |
 | a paste of plain text, over as many lines as it holds | taken: each line after the first opens a paragraph |
+| a mark - ctrl/cmd+B, I, U, or `odr.editing.format` - under scope `document` | taken: a run covered in part is cut, and the covered runs are restyled |
 | a composition (CJK, autocorrect, dictation) | let through and reconciled on `compositionend` |
 | a soft line break (`insertLineBreak`) | refused, reason `newLine` - no operation carries one |
 | a range reaching over a picture | taken: the frame carries an address, so the picture goes with the text |
 | a range reaching over a text box or a table | refused, reason `range` - it holds text of its own, which the reader did not mean to lose |
-| anything else the browser offers (a mark, a list, a drop) | refused, reason `unsupportedEdit` |
+| anything else the browser offers (a list, a rule, a drop) | refused, reason `unsupportedEdit` |
 | an edit landing outside every run | refused, reason `range` |
 
 **Why the whole view rather than a run at a time:** `contenteditable` per run
@@ -439,17 +443,13 @@ Each per-editor document holds what its own step decided.
 | The op envelope and a replay that dispatches over it | landed |
 | The write side of the engines — odf, ooxml text, ooxml presentation | landed |
 | The browser editor, owning the edit and its own undo | landed |
-| **Inline formatting** — bold, italic, underline, strikethrough, highlight, colour, size | **not started**; planned in [`document-editing.md`](document-editing.md#inline-formatting) |
+| **Inline formatting** — bold, italic, underline, strikethrough, highlight, colour, size | landed; [`document-editing.md`](document-editing.md#inline-formatting) |
 
-Formatting is the one left, and decision 5 of
-[`document-editing.md`](document-editing.md) is why the schema takes it without
-changing: toggling a mark on part of a run is, in both formats, "split the run,
-restyle the middle one", and the split is already two operations we have. What
-it needs is one op, `setTextStyle {id, style}`, carrying values rather than
-toggles, and two things on the write side: a container of the run's own,
-because a run shares its `text:span` / `w:r` / `a:r` with its siblings, and for
-ODF the automatic style a mark is reached through. Decisions 8 to 16 there
-hold the rest.
+Formatting landed last, and decision 5 of
+[`document-editing.md`](document-editing.md) is why the schema took it without
+changing: a mark on part of a run is "split the run, restyle the middle one",
+and the split was already two operations. It added one op, `setTextStyle
+{id, style}`; decisions 8 to 16 there hold the rest.
 
 The **conformance corpus** decision 7 asks for is still not built. What stands
 in for it is that both sides pin the same operation shapes: the browser check

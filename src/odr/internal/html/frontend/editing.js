@@ -51,6 +51,7 @@
   };
   odr.onEditChange = function () {};
   odr.onCellsStale = function () {};
+  odr.onSelectionChange = function () {};
 
   function fire(name, event) {
     if (typeof odr[name] === "function") {
@@ -146,9 +147,43 @@
     },
 
     /// Adds one format's editor. Only `operations` is required; `enable`,
-    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo` and `committed` default.
+    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo`, `committed`, `format`
+    /// and `toggle` default.
     attach: function (editor) {
       editors.push(editor);
+    },
+
+    /// States @p style on the selection: `bold`, `italic`, `underline`,
+    /// `strikethrough` (a bool), `highlight` (`#rrggbb` or null), `color`
+    /// (`#rrggbb`), `size` (`14pt`). False where refused; the channel says why.
+    format: function (style) {
+      for (var i = editors.length - 1; i >= 0; --i) {
+        if (typeof editors[i].format === "function") {
+          return editors[i].format(style) === true;
+        }
+      }
+      odr.editing.refuse("unsupportedEdit", null);
+      return false;
+    },
+
+    /// Flips `bold`, `italic`, `underline` or `strikethrough` on the
+    /// selection; a mixed selection turns on. On a collapsed caret at a word
+    /// boundary the mark waits for the next typed text, and
+    /// `onSelectionChange` shows it meanwhile.
+    toggle: function (property) {
+      for (var i = editors.length - 1; i >= 0; --i) {
+        if (typeof editors[i].toggle === "function") {
+          return editors[i].toggle(property) === true;
+        }
+      }
+      odr.editing.refuse("unsupportedEdit", null);
+      return false;
+    },
+
+    /// The style the selection shows, a key per property the covered runs
+    /// agree on; raised by an editor as the selection moves.
+    selectionChanged: function (style) {
+      fire("onSelectionChange", style);
     },
 
     /// Reports a refused edit, dropping a repeat of the same one within two

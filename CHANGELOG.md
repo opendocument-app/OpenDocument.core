@@ -23,6 +23,12 @@ The release run heads these entries with the version and opens a fresh
 - A `.docx` run's shading (`w:shd`) renders as its background where no
   highlight paints over it.
 
+- The document view's editor formats text under scope `document`:
+  `odr.editing.format({bold, italic, underline, strikethrough, highlight,
+  color, size})`, `odr.editing.toggle("bold")`, the ctrl/cmd+B, I and U
+  chords, and `odr.onSelectionChange` for a host's buttons. A toggle on a
+  collapsed caret marks the next typed text. Scope `paragraph` refuses it.
+
 - A run that is both underlined and struck through renders both lines. The
   page wrote two `text-decoration` declarations, and the second replaced the
   first.
