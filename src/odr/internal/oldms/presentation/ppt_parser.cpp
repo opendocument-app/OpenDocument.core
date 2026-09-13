@@ -751,8 +751,7 @@ collect_slides(std::istream &current_user, std::istream &document,
   }
   const std::uint32_t doc_offset = doc_it->second;
 
-  // The font names must be complete before the first style is resolved — the
-  // styles' `font_name` point into them.
+  // the font names must be complete before the first style is resolved
   {
     document.clear();
     document.seekg(doc_offset);
@@ -911,10 +910,7 @@ presentation::parse_tree(ElementRegistry &registry,
     }
   }
 
-  // The styles' `font_name` point into the font-name strings, which keep
-  // their buffers when the vectors are moved into the registry.
-  style_registry =
-      StyleRegistry(std::move(context.fonts), std::move(context.styles));
+  style_registry = StyleRegistry(std::move(context.styles));
 
   return root_id;
 }

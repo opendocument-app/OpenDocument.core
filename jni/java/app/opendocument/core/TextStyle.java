@@ -6,7 +6,7 @@ package app.opendocument.core;
  * left alone on the run.
  */
 public final class TextStyle {
-  /** Read only: it borrows from the document, and {@link Text#setStyle} refuses it. */
+  /** Read only: {@link Text#setStyle} refuses it. */
   public String fontName;
   public Measure fontSize;
   public FontWeight fontWeight;

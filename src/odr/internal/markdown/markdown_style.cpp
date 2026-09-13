@@ -15,9 +15,8 @@ constexpr std::array heading_font_sizes{2.0, 1.5, 1.17, 1.0, 0.83, 0.67};
 /// One `<blockquote>` worth of indent, per nesting level.
 constexpr double quote_margin = 2.5;
 
-/// Nothing in a markdown file names a face. Static storage, so
-/// `TextStyle::font_name` may point at it.
-constexpr std::string_view monospace_font_name = "monospace";
+/// Nothing in a markdown file names a face.
+constexpr const char *monospace_font_name = "monospace";
 
 constexpr std::uint32_t default_style_index = 0;
 constexpr std::uint32_t first_heading_style_index = 1;

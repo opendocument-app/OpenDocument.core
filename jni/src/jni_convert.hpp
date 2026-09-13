@@ -17,8 +17,6 @@ namespace odr_jni {
 
 // C++ to Java; optionals map to null.
 jstring make_string_opt(JNIEnv *env, const std::optional<std::string> &value);
-jstring make_string_opt(JNIEnv *env,
-                        const std::optional<std::string_view> &value);
 jobject make_integer_opt(JNIEnv *env, const std::optional<std::int32_t> &value);
 jobject make_measure(JNIEnv *env, const odr::Measure &value);
 jobject make_measure(JNIEnv *env, const std::optional<odr::Measure> &value);
@@ -55,8 +53,7 @@ jobject make_file_type_capabilities(JNIEnv *env,
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);
-/// The fields a Java `TextStyle` states; a `fontName` is refused, since the
-/// C++ one borrows from a document.
+/// The fields a Java `TextStyle` states.
 odr::TextStyle text_style_from_java(JNIEnv *env, jobject style);
 
 /// Optional enum to a Java-side code; -1 encodes absent.

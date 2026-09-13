@@ -134,14 +134,7 @@ void odr_python::bind_style(py::module_ &m) {
 
   py::class_<odr::TextStyle>(m, "TextStyle")
       .def(py::init<>())
-      .def_property_readonly(
-          "font_name",
-          [](const odr::TextStyle &style) -> std::optional<std::string> {
-            if (!style.font_name.has_value()) {
-              return std::nullopt;
-            }
-            return std::string(*style.font_name);
-          })
+      .def_readwrite("font_name", &odr::TextStyle::font_name)
       .def_readwrite("font_size", &odr::TextStyle::font_size)
       .def_readwrite("font_weight", &odr::TextStyle::font_weight)
       .def_readwrite("font_style", &odr::TextStyle::font_style)

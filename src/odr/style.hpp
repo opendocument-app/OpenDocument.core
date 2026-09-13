@@ -156,12 +156,9 @@ template <typename T> struct DirectionalStyle final {
   }
 };
 
-/// @brief Represents a style for text.
-///
-/// @note `font_name` borrows from the document that produced the style and is
-/// only valid for as long as that document is alive.
+/// Represents a style for text.
 struct TextStyle final {
-  std::optional<std::string_view> font_name;
+  std::optional<std::string> font_name;
   std::optional<Measure> font_size;
   std::optional<FontWeight> font_weight;
   std::optional<FontStyle> font_style;

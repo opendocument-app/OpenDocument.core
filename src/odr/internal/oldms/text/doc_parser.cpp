@@ -170,9 +170,7 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   }
   const auto table_stream = table_file->stream();
 
-  // TextStyle::font_name points into these strings, which keep their buffers
-  // when the vector is moved into the registry below.
-  std::vector<std::string> font_names =
+  const std::vector<std::string> font_names =
       read_font_names(*table_stream, fib.fibRgFcLcb->sttbfFfn);
 
   // Direct character formatting only ([MS-DOC] 2.4.6.2).
@@ -180,7 +178,7 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   const CharacterRuns character_runs =
       read_character_runs(*document_stream, *table_stream,
                           fib.fibRgFcLcb->plcfBteChpx, styles, font_names);
-  style_registry = StyleRegistry(std::move(font_names), std::move(styles));
+  style_registry = StyleRegistry(std::move(styles));
 
   table_stream->seekg(fib.fibRgFcLcb->clx.fc);
   const CharacterIndex character_index = read_character_index(*table_stream);

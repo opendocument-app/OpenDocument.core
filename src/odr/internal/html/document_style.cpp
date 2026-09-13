@@ -177,10 +177,10 @@ std::string html::translate_inner_page_style(const PageLayout &page_layout) {
 
 std::string html::translate_text_style(const TextStyle &text_style) {
   std::string result;
-  if (const std::optional<std::string_view> font_name = text_style.font_name;
+  if (const std::optional<std::string> &font_name = text_style.font_name;
       font_name.has_value()) {
     result.append("font-family:")
-        .append(xml::escape_attribute(std::string(*font_name)))
+        .append(xml::escape_attribute(*font_name))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
@@ -245,10 +245,10 @@ std::string html::translate_text_style(const TextStyle &text_style) {
 
 std::string html::translate_block_font_style(const TextStyle &text_style) {
   std::string result;
-  if (const std::optional<std::string_view> font_name = text_style.font_name;
+  if (const std::optional<std::string> &font_name = text_style.font_name;
       font_name.has_value()) {
     result.append("font-family:")
-        .append(xml::escape_attribute(std::string(*font_name)))
+        .append(xml::escape_attribute(*font_name))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;

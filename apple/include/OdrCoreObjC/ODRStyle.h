@@ -146,7 +146,7 @@ NS_SWIFT_NAME(DirectionalString)
 /// property `nil`, and a `nil` property is left alone on the run.
 NS_SWIFT_NAME(TextStyle)
 @interface ODRTextStyle : NSObject
-/// Read only: it borrows from the document, and `setStyle:` refuses it.
+/// Read only: `setStyle:` refuses it.
 @property(nonatomic, nullable, copy) NSString *fontName;
 @property(nonatomic, nullable) ODRMeasure *fontSize;
 /// `ODRFontWeight`, boxed.

@@ -29,27 +29,19 @@ struct TextCFRun final {
 std::vector<TextCFRun> parse_style_text_prop_atom(std::string_view body,
                                                   std::size_t char_count);
 
-/// Owns the document's resolved character styles — indexed by the style index
-/// stored on paragraph/span elements, 0 being the default style — and the
-/// font names `TextStyle::font_name` points into. Immutable after
-/// construction.
+/// Owns the document's resolved character styles, indexed by the style index
+/// stored on paragraph/span elements, 0 being the default style. Immutable
+/// after construction.
 class StyleRegistry final {
 public:
   StyleRegistry() = default;
-  /// `font_names` are the FontCollection names the styles' `font_name` point
-  /// into; `styles` are the resolved character styles, index 0 the default
-  /// style.
-  StyleRegistry(std::vector<std::string> font_names,
-                std::vector<TextStyle> styles);
+  /// `styles` are the resolved character styles, index 0 the default style.
+  explicit StyleRegistry(std::vector<TextStyle> styles);
 
   /// Throws if the index has no style.
   [[nodiscard]] const TextStyle &text_style(std::uint32_t index) const;
 
 private:
-  /// Owns the font names: `TextStyle::font_name` (`const char *`) points into
-  /// them. Never modified after construction (moving the registry is fine —
-  /// the strings themselves do not move).
-  std::vector<std::string> m_font_names;
   std::vector<TextStyle> m_styles;
 };
 
@@ -62,10 +54,9 @@ private:
 constexpr std::uint32_t default_style_index = 0;
 
 /// Accumulates the font names and resolved character styles while parsing;
-/// moved into the `StyleRegistry` once the tree is built. `fonts` is indexed
-/// by FontEntityAtom recInstance (an empty string marks a gap) and must be
-/// complete before the first style is resolved — the styles' `font_name`
-/// point into its strings.
+/// the styles move into the `StyleRegistry` once the tree is built. `fonts`
+/// is indexed by FontEntityAtom recInstance (an empty string marks a gap) and
+/// must be complete before the first style is resolved.
 struct StyleContext final {
   std::vector<std::string> fonts;
   std::vector<TextStyle> styles{default_character_style()};
