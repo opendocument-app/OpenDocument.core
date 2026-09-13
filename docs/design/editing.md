@@ -189,9 +189,9 @@ runs or paragraphs. It owns:
   the wording and not the numbers;
 - the **log** — `getOperations()`, `undo()`, `redo()`, `committed()`, and the
   `dirty` / `canUndo` / `canRedo` state `odr.onEditChange` reports;
-- the **formatting seam** — `format(style)` hands a host's button to the
-  editor that has one, and `odr.onSelectionChange` is where that editor
-  reports what the selection shows;
+- the **formatting seam** — `format(style)` and `toggle(property)` hand a
+  host's button to the editor that has one, and `odr.onSelectionChange` is
+  where that editor reports what the selection shows;
 - the **keyboard classes** the page may take (decision 12).
 
 A format's editor is a second script that **attaches** one editor to the mode:

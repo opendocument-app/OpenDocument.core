@@ -531,15 +531,22 @@ Formatting sits behind the scope gate, decision 14 of
 [`editing.md`](editing.md): under `paragraph` every formatting gesture
 refuses with `outOfScope`, whatever it covers, and only `document` takes it.
 A host that offers the narrow scope today keeps offering exactly what it
-tested. A collapsed caret inside a word marks the word, as Word does; a
-collapsed caret at a word boundary refuses with `range`, and the open
-questions hold what it should do instead.
+tested.
+
+`odr.editing.toggle(property)` is the chord's rule for a host's button: a
+mixed selection turns on, as Word does. A collapsed caret inside a word marks
+the word. At a word boundary, or in a paragraph holding no run, the mark is
+**pending**: nothing changes until the next typed text, which is cut into a
+run of its own and marked, so what follows stays marked on its own.
+`onSelectionChange` reports the pending mark meanwhile, and a caret that moves
+away drops it. There is no empty run for the caret to sit in, which is what
+Chrome places a caret in unreliably.
 
 Undo needs nothing new. A step already holds its ops and the two halves of
 taking it back; here the halves are the runs' old and new `style` attributes.
-Two marks on one run fold into one op where the later keys win, unless an
-operation naming that run lies between them: a run put beside it takes the
-style it has at that moment.
+Two marks on one run fold into one op where the later keys win, and so do
+two texts, each stepping over the other's kind; any other operation naming
+the run stops the fold, since a run put beside it takes what it holds then.
 
 ### The adapter surface
 
@@ -576,10 +583,6 @@ Each step is a pull request that builds and tests on its own.
 
 ### Open questions
 
-- **A pending mark.** A caret between words that toggles bold means "what I
-  type next is bold". That needs an empty run the caret can sit in, and
-  Chrome places a caret in an empty inline unreliably. Refusing it is
-  honest and not what a reader expects.
 - **Colour back to automatic.** docx has `w:color w:val="auto"`; ODF has
   nothing but removal, which decision 9 forbids. Until this is answered a
   colour once set can only become another colour.

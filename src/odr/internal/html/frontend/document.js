@@ -133,34 +133,45 @@
     );
   }
 
-  /// The earlier `setTextStyle` on @p op's run with no operation naming that
-  /// run in between: a run put beside it takes the style it has then.
-  function foldableStyle(result, op) {
+  /// The earlier operation of a kind in @p kinds on @p op's run. One of a
+  /// kind in @p skips on that run lies between them harmlessly - its text and
+  /// its style are independent - but any other operation naming the run
+  /// stops the walk: a run put beside it takes what it holds at that moment.
+  function foldable(result, op, kinds, skips) {
     for (var i = result.length - 1; i >= 0; --i) {
-      if (result[i].op === "setTextStyle" && result[i].id === op.id) {
+      var earlier = result[i];
+      if (kinds.indexOf(earlier.op) !== -1 && earlier.id === op.id) {
         return i;
       }
-      if (names(result[i], op.id)) {
+      if (skips.indexOf(earlier.op) !== -1 && earlier.id === op.id) {
+        continue;
+      }
+      if (names(earlier, op.id)) {
         return -1;
       }
     }
     return -1;
   }
 
-  function withStyle(op, style) {
-    var merged = {};
+  /// @p over's keys written over @p base's.
+  function merged(base, over) {
+    var result = {};
     var key;
-    for (key in op.style) {
-      if (Object.prototype.hasOwnProperty.call(op.style, key)) {
-        merged[key] = op.style[key];
+    for (key in base) {
+      if (Object.prototype.hasOwnProperty.call(base, key)) {
+        result[key] = base[key];
       }
     }
-    for (key in style) {
-      if (Object.prototype.hasOwnProperty.call(style, key)) {
-        merged[key] = style[key];
+    for (key in over) {
+      if (Object.prototype.hasOwnProperty.call(over, key)) {
+        result[key] = over[key];
       }
     }
-    return { op: "setTextStyle", id: op.id, style: merged };
+    return result;
+  }
+
+  function withStyle(op, style) {
+    return { op: "setTextStyle", id: op.id, style: merged(op.style, style) };
   }
 
   /// Folds what a save need not carry: several edits to one run are the text
@@ -170,18 +181,16 @@
     var result = [];
     for (var i = 0; i < ops.length; ++i) {
       var op = ops[i];
-      var last = result.length === 0 ? null : result[result.length - 1];
-      if (
-        last !== null &&
-        op.op === "setText" &&
-        (last.op === "setText" || last.op === "insertText") &&
-        last.id === op.id
-      ) {
-        result[result.length - 1] = withText(last, op.text);
-        continue;
+      var at = -1;
+      if (op.op === "setText") {
+        at = foldable(result, op, ["setText", "insertText"], ["setTextStyle"]);
+        if (at !== -1) {
+          result[at] = withText(result[at], op.text);
+          continue;
+        }
       }
       if (op.op === "setTextStyle") {
-        var at = foldableStyle(result, op);
+        at = foldable(result, op, ["setTextStyle"], ["setText"]);
         if (at !== -1) {
           result[at] = withStyle(result[at], op.style);
           continue;
@@ -446,6 +455,9 @@
     "size",
   ];
 
+  // the properties a toggle flips
+  var toggles = ["bold", "italic", "underline", "strikethrough"];
+
   // the input types a chord raises, and the property each one toggles
   var toggling = {
     formatBold: "bold",
@@ -694,7 +706,43 @@
     return runsBetween(at.start.run, at.end.run);
   }
 
-  /// States @p style on @p at, for a host's `format` and for a chord.
+  // A mark a toggle set on a collapsed caret, waiting for the next typed
+  // text; dropped when the caret moves away from where it was set.
+  var pending = null;
+  var pendingAt = null;
+
+  function isCollapsed(at) {
+    return at.start.run === at.end.run && at.start.offset === at.end.offset;
+  }
+
+  function samePlace(a, b) {
+    return (
+      a !== null &&
+      b !== null &&
+      a.run === b.run &&
+      a.offset === b.offset &&
+      a.paragraph === b.paragraph
+    );
+  }
+
+  function dropPending() {
+    pending = null;
+    pendingAt = null;
+  }
+
+  /// Whether @p at is a collapsed caret still where a pending mark was set.
+  function pendingApplies(at) {
+    return (
+      pending !== null &&
+      at !== null &&
+      isCollapsed(at) &&
+      samePlace(pendingAt, at.start)
+    );
+  }
+
+  /// States @p style on @p at, for a host's `format` and for a chord. A
+  /// collapsed caret marks the word it sits in; at a word boundary, or in a
+  /// paragraph holding no run, the mark waits for the next typed text.
   /// Formatting sits behind the scope gate whole.
   function format(style, at) {
     if (!odr.editing.isEnabled()) {
@@ -713,8 +761,17 @@
       refuse(null, "outOfScope", at);
       return false;
     }
-    var covering = wordAround(at);
-    var marked = covering === null ? null : markRange(covering, style);
+    if (isCollapsed(at)) {
+      var word = wordAround(at);
+      if (word === null) {
+        pending = pendingApplies(at) ? merged(pending, style) : style;
+        pendingAt = at.start;
+        reportSelection(true);
+        return true;
+      }
+      at = word;
+    }
+    var marked = markRange(at, style);
     if (marked === null) {
       refuse(null, "range", at);
       return false;
@@ -723,23 +780,79 @@
     return true;
   }
 
+  /// The style a toggle reads at @p at: the caret's word or the selection,
+  /// with a pending mark over it.
+  function shownAt(at) {
+    if (at === null) {
+      return {};
+    }
+    var covering = isCollapsed(at) ? wordAround(at) || at : at;
+    var summary = summaryOf(coveredRuns(covering));
+    return pendingApplies(at) ? merged(summary, pending) : summary;
+  }
+
+  /// Flips @p property at @p at; a mixed selection turns on, as Word does.
+  function toggle(property, at) {
+    if (toggles.indexOf(property) === -1) {
+      refuse(null, "unsupportedEdit", at);
+      return false;
+    }
+    var style = {};
+    style[property] = shownAt(at)[property] !== true;
+    return format(style, at);
+  }
+
+  /// Marks @p typed, which `replaceRange` just put before @p caret, with the
+  /// pending mark, and answers where the caret then sits.
+  function applyPending(caret, typed) {
+    var mark = pending;
+    dropPending();
+    var marked = markRange(
+      {
+        start: {
+          run: caret.run,
+          offset: caret.offset - typed.length,
+          paragraph: caret.paragraph,
+        },
+        end: caret,
+      },
+      mark
+    );
+    if (marked === null) {
+      return caret;
+    }
+    return {
+      run: marked.end.run,
+      offset: marked.end.run.textContent.length,
+      paragraph: marked.end.paragraph,
+    };
+  }
+
   // what the selection last reported, so a move that changes nothing is quiet
   var lastReported = null;
 
-  function reportSelection() {
+  /// Reports what the selection shows; @p force says so even where it did
+  /// not change, as when a pending mark was set over it.
+  function reportSelection(force) {
     if (!odr.editing.isEnabled()) {
       return;
     }
-    var summary = summaryOf(coveredRuns(rangeOf({})));
+    var at = rangeOf({});
+    if (pending !== null && !pendingApplies(at)) {
+      dropPending();
+    }
+    var summary = shownAt(at);
     var key = JSON.stringify(summary);
-    if (key === lastReported) {
+    if (key === lastReported && force !== true) {
       return;
     }
     lastReported = key;
     odr.editing.selectionChanged(summary);
   }
 
-  document.addEventListener("selectionchange", reportSelection);
+  document.addEventListener("selectionchange", function () {
+    reportSelection(false);
+  });
 
   // ------------------------------------------------------------------ caret
 
@@ -1316,12 +1429,7 @@
       if (!odr.takesKeys("shortcuts")) {
         return;
       }
-      // mixed turns on, as Word does
-      var covering = wordAround(at);
-      var current = covering === null ? {} : summaryOf(coveredRuns(covering));
-      var style = {};
-      style[property] = current[property] !== true;
-      format(style, at);
+      toggle(property, at);
       return;
     }
 
@@ -1345,10 +1453,19 @@
       return;
     }
 
-    var caret = replaceRange(covering, text(event));
+    var typed = text(event);
+    var caret = replaceRange(covering, typed);
     if (caret === null) {
       refuse(event, "range", at);
       return;
+    }
+    if (typed !== "" && pendingApplies(at)) {
+      // the gate may have narrowed since the mark was set
+      if (odr.editing.scope() === "paragraph") {
+        dropPending();
+      } else {
+        caret = applyPending(caret, typed);
+      }
     }
     event.preventDefault();
     restore(caret);
@@ -1383,11 +1500,15 @@
       root.setAttribute("contenteditable", "true");
     },
     disable: function () {
+      dropPending();
       root.removeAttribute("contenteditable");
     },
     operations: operations,
     format: function (style) {
       return format(style, rangeOf({}));
+    },
+    toggle: function (property) {
+      return toggle(property, rangeOf({}));
     },
     canUndo: function () {
       return done.length > 0;
@@ -1416,6 +1537,7 @@
       return true;
     },
     committed: function () {
+      dropPending();
       done.length = 0;
       undone.length = 0;
     },

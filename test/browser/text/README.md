@@ -53,11 +53,12 @@ Why the checks look the way they do:
 - **Scope `paragraph` runs on the same fixture**: the group sets
   `data-odr-editing-scope` on `<body>`, which the editor reads per edit. Its
   formatting refusals land in runs no other refusal of the group names.
-- **Formatting is driven two ways**: `odr.editing.format` for a host's button
-  and a `formatBold` input for the chord. The checks read the `style`
-  attribute back and assert the cut. `onSelectionChange` is checked by
-  dispatching `selectionchange` by hand, since the browser raises it after
-  the script.
+- **Formatting is driven two ways**: `odr.editing.format` and `toggle` for a
+  host's button and a `formatBold` input for the chord. The checks read the
+  `style` attribute back and assert the cut. `onSelectionChange` is checked
+  by dispatching `selectionchange` by hand, since the browser raises it after
+  the script; the same dispatch is what drops a pending mark when the caret
+  moved.
 
 **Scripted editing is not the editing a reader does, which is why no check uses
 `execCommand`.** Chrome's scripted path raises no cancelable `beforeinput`, so

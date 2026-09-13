@@ -592,8 +592,11 @@
           run(11).nextSibling.textContent === " run "
       );
       select(run(11).nextSibling.firstChild, 1);
-      check("a caret at a word boundary is refused", odr.editing.format({ italic: true }) === false);
-      check("as a range", refusals.pop() === "range 1008");
+      var marked = ops().length;
+      check(
+        "a caret at a word boundary takes the mark as pending",
+        odr.editing.format({ italic: true }) === true && ops().length === marked
+      );
 
       // the rest of the properties, and what they paint
       reset();
@@ -673,6 +676,95 @@
         odr.editing.redo() === true && run(13).style.fontWeight === "bold"
       );
 
+      // toggle: the chord's rule for a host's button
+      reset();
+      selectRuns(11, 0, 13, 4);
+      check(
+        "toggle over runs of mixed weight turns on",
+        odr.editing.toggle("bold") === true && run(12).style.fontWeight === "bold"
+      );
+      check(
+        "and again turns off",
+        odr.editing.toggle("bold") === true && run(12).style.fontWeight === "normal"
+      );
+      check("a property that is not a toggle is refused", odr.editing.toggle("color") === false);
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 1007");
+
+      // a toggle on a collapsed caret at a word boundary waits for typing
+      reset();
+      select(run(13).firstChild, run(13).textContent.length);
+      check("a toggle at the end of a run is taken", odr.editing.toggle("bold") === true);
+      check(
+        "and changes nothing yet",
+        ops().length === 0 && run(13).getAttribute("style") === null
+      );
+      check(
+        "but the selection reports it",
+        selections.length > 0 && selections[selections.length - 1].bold === true
+      );
+      check("typing is taken", input("insertText", "X") === "taken");
+      var typed = run(13).nextSibling;
+      check(
+        "and the typed text opens a bold run of its own",
+        typed !== null &&
+          typed.textContent === "X" &&
+          typed.style.fontWeight === "bold" &&
+          run(13).textContent === " and a tail"
+      );
+      check("with the caret inside it", caret() === typed.getAttribute("data-odr-id") + ":1");
+      check(
+        "as an insertText and a setTextStyle on the new run",
+        ops().some(function (op) {
+          return op.op === "insertText" && op.text === "X" && op.id < 0;
+        }) &&
+          ops().some(function (op) {
+            return op.op === "setTextStyle" && op.id < 0 && op.style.bold === true;
+          })
+      );
+      check("more typing stays bold", input("insertText", "Y") === "taken" && typed.textContent === "XY");
+      check(
+        "and folds into the insert",
+        ops().filter(function (op) {
+          return op.op === "insertText";
+        }).length === 1 &&
+          ops().filter(function (op) {
+            return op.op === "insertText";
+          })[0].text === "XY"
+      );
+
+      // moving the caret drops a pending mark
+      reset();
+      select(run(13).firstChild, run(13).textContent.length);
+      odr.editing.toggle("italic");
+      select(run(11).firstChild, 0);
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "a caret that moved away drops the pending mark",
+        selections[selections.length - 1].italic === false
+      );
+      input("insertText", "Z");
+      check(
+        "and text typed elsewhere is plain",
+        run(11).getAttribute("style") === null &&
+          ops().every(function (op) {
+            return op.op !== "setTextStyle";
+          })
+      );
+
+      // an empty paragraph takes a pending mark too
+      reset();
+      select(run(13).firstChild, run(13).textContent.length);
+      input("insertParagraph");
+      check("a toggle in an empty paragraph is taken", odr.editing.toggle("bold") === true);
+      check("and the first typed text opens a bold run", input("insertText", "n") === "taken");
+      var opened = flow.querySelectorAll("x-p[data-odr-id]")[1].querySelector("x-s");
+      check(
+        "in the paragraph, bold",
+        texts() === "first run a link and a tail|n|bold|third|" &&
+          opened !== null &&
+          opened.style.fontWeight === "bold"
+      );
+
       // what a mark reaches over
       reset();
       selectRuns(51, 1, 53, 3);
@@ -686,8 +778,11 @@
       check("as a range", refusals.pop() === "range 1008");
       var picture = paragraph(40);
       select(picture, 0, picture, picture.childNodes.length);
-      check("a mark in a paragraph holding no run is refused", odr.editing.format({ bold: true }) === false);
-      check("as a range too", refusals.pop() === "range 1008");
+      var pictureOps = ops().length;
+      check(
+        "a mark in a paragraph holding no run waits for typing",
+        odr.editing.format({ bold: true }) === true && ops().length === pictureOps
+      );
 
       // ---------------------------------------------- scope paragraph
 
