@@ -199,11 +199,23 @@ std::string html::translate_text_style(const TextStyle &text_style) {
         .append(translate_font_style(*font_style))
         .append(";");
   }
-  if (text_style.font_underline && *text_style.font_underline) {
-    result += "text-decoration:underline;";
-  }
-  if (text_style.font_line_through && *text_style.font_line_through) {
-    result += "text-decoration:line-through;";
+  // one declaration: a second `text-decoration` replaces the first
+  const bool underline =
+      text_style.font_underline && *text_style.font_underline;
+  const bool line_through =
+      text_style.font_line_through && *text_style.font_line_through;
+  if (underline || line_through) {
+    result += "text-decoration:";
+    if (underline) {
+      result += "underline";
+    }
+    if (underline && line_through) {
+      result += " ";
+    }
+    if (line_through) {
+      result += "line-through";
+    }
+    result += ";";
   }
   if (const std::optional<std::string> font_shadow = text_style.font_shadow;
       font_shadow.has_value()) {
