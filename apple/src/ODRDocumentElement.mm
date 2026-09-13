@@ -59,6 +59,10 @@ ODR_SAME_ENUM(ODRAnchorTypeAtParagraph, odr::AnchorType::at_paragraph);
 ODR_SAME_ENUM(ODRValueTypeUnknown, odr::ValueType::unknown);
 ODR_SAME_ENUM(ODRValueTypeString, odr::ValueType::string);
 ODR_SAME_ENUM(ODRValueTypeFloatNumber, odr::ValueType::float_number);
+ODR_SAME_ENUM(ODRValueTypeBoolean, odr::ValueType::boolean);
+ODR_SAME_ENUM(ODRValueTypeDate, odr::ValueType::date);
+ODR_SAME_ENUM(ODRValueTypeTime, odr::ValueType::time);
+ODR_SAME_ENUM(ODRValueTypeError, odr::ValueType::error);
 
 namespace {
 

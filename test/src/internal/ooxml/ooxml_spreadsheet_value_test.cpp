@@ -116,11 +116,26 @@ TEST(OoxmlSpreadsheetValue, a_shared_formula_that_does_not_parse_is_kept) {
   EXPECT_EQ(formula_at(data, 2, 1), "A1 +");
 }
 
-/// `<v>` holds `1`, not a quantity, and `c/@t="b"` types the cell a string.
-TEST(OoxmlSpreadsheetValue, a_boolean_cell_states_no_number) {
+/// ECMA-376 18.18.11: `c/@t="b"` types the cell a boolean, `<v>` its 1 or 0.
+TEST(OoxmlSpreadsheetValue, a_boolean_cell_is_typed_and_states_one_or_zero) {
   const CellValue value =
       value_of(R"(<row r="1"><c r="A1" t="b"><v>1</v></c></row>)");
 
-  EXPECT_EQ(value.type(), ValueType::string);
-  EXPECT_FALSE(value.has_number());
+  EXPECT_EQ(value.type(), ValueType::boolean);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 1);
+}
+
+/// An error cell states its text and a date cell its ISO 8601 text; neither
+/// is a number.
+TEST(OoxmlSpreadsheetValue, an_error_and_a_date_cell_are_typed) {
+  const CellValue error =
+      value_of(R"(<row r="1"><c r="A1" t="e"><v>#DIV/0!</v></c></row>)");
+  EXPECT_EQ(error.type(), ValueType::error);
+  EXPECT_FALSE(error.has_number());
+
+  const CellValue date =
+      value_of(R"(<row r="1"><c r="A1" t="d"><v>2024-01-31</v></c></row>)");
+  EXPECT_EQ(date.type(), ValueType::date);
+  EXPECT_FALSE(date.has_number());
 }

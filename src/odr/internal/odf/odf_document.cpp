@@ -187,6 +187,41 @@ void remove_value_attributes(pugi::xml_node node) {
   }
 }
 
+/// [ODF 1.2] 19.385 `office:value-type`. A percentage and a currency stay a
+/// string until number formats are read, since only their text shows them.
+ValueType value_type_of(const pugi::xml_node node) {
+  const char *value_type = node.attribute("office:value-type").value();
+  if (std::strcmp("float", value_type) == 0) {
+    return ValueType::float_number;
+  }
+  if (std::strcmp("boolean", value_type) == 0) {
+    return ValueType::boolean;
+  }
+  if (std::strcmp("date", value_type) == 0) {
+    return ValueType::date;
+  }
+  if (std::strcmp("time", value_type) == 0) {
+    return ValueType::time;
+  }
+  return ValueType::string;
+}
+
+/// Whether the engine has a form to write @p value in.
+bool writable(const CellValue &value) {
+  switch (value.type()) {
+  case ValueType::unknown:
+  case ValueType::string:
+  case ValueType::float_number:
+  case ValueType::boolean:
+    return true;
+  case ValueType::date:
+  case ValueType::time:
+  case ValueType::error:
+    return false;
+  }
+  return false;
+}
+
 using TreeEditor = xml::TreeEditor<ElementRegistry>;
 using xml::NodeSpan;
 
@@ -456,6 +491,9 @@ public:
   void sheet_set_cell(const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
                       const CellValue &value) const override {
+    if (!writable(value)) {
+      throw UnsupportedOperation();
+    }
     const ElementRegistry::Sheet::Cell *cell =
         m_registry->sheet_element_at(element_id).cell(column, row);
 
@@ -497,6 +535,16 @@ public:
       node.append_attribute("office:value")
           .set_value(fmt::format("{}", value.number()).c_str());
       break;
+    case ValueType::boolean:
+      node.append_attribute("office:value-type").set_value("boolean");
+      node.append_attribute("office:boolean-value")
+          .set_value(value.has_number() && value.number() != 0 ? "true"
+                                                               : "false");
+      break;
+    case ValueType::date:
+    case ValueType::time:
+    case ValueType::error:
+      throw UnsupportedOperation(); // `writable` refused these above
     }
 
     drop_stale_results(element_id, column, row);
@@ -632,15 +680,10 @@ public:
   }
   [[nodiscard]] ValueType
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const char *value_type = node.attribute("office:value-type").value();
-        std::strcmp("float", value_type) == 0) {
-      return ValueType::float_number;
-    }
-    return ValueType::string;
+    return value_type_of(get_node(element_id));
   }
-  /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date, a time
-  /// and a boolean state their value elsewhere and are read as their text.
+  /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date and a
+  /// time state their value as text; a boolean states 1 or 0.
   [[nodiscard]] CellValue
   sheet_cell_value(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
@@ -649,6 +692,12 @@ public:
     if (const std::optional<double> number =
             util::number::parse(node.attribute("office:value").value())) {
       result = result.with_number(*number);
+    }
+    if (result.type() == ValueType::boolean) {
+      const bool set =
+          std::strcmp("true", node.attribute("office:boolean-value").value()) ==
+          0;
+      result = result.with_number(set ? 1 : 0);
     }
     if (const pugi::xml_attribute formula = node.attribute("table:formula")) {
       result = result.with_formula(formula.value());
@@ -893,12 +942,7 @@ public:
   }
   [[nodiscard]] ValueType
   table_cell_value_type(const ElementIdentifier element_id) const override {
-    const pugi::xml_node node = get_node(element_id);
-    if (const char *value_type = node.attribute("office:value-type").value();
-        std::strcmp("float", value_type) == 0) {
-      return ValueType::float_number;
-    }
-    return ValueType::string;
+    return value_type_of(get_node(element_id));
   }
   [[nodiscard]] TableCellStyle
   table_cell_style(const ElementIdentifier element_id) const override {

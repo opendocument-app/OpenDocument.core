@@ -131,11 +131,17 @@ enum class AnchorType {
   at_paragraph,
 };
 
-/// Collection of value types.
+/// What a cell states, as the file types it. A percentage and a currency are
+/// a `string` stating a number until number formats are read, and so is an
+/// ooxml date, which is a serial its format shows.
 enum class ValueType {
   unknown,
   string,
   float_number,
+  boolean, ///< states 1 or 0 as its number
+  date,
+  time,
+  error, ///< an evaluation error the file recorded
 };
 
 /// @brief What a sheet cell holds: what @ref SheetCell::value reads out of one,
