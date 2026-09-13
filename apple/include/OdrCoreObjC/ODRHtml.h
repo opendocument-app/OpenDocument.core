@@ -54,9 +54,9 @@ typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 typedef NS_ENUM(NSInteger, ODRHtmlEditingScope) {
-  /// Inside one run of text: `setText` only.
-  ODRHtmlEditingScopeRun = 0,
-  /// Across runs and paragraphs: every operation.
+  /// Inside one paragraph: no split and no merge.
+  ODRHtmlEditingScopeParagraph = 0,
+  /// Across paragraphs: every operation.
   ODRHtmlEditingScopeDocument,
 } NS_SWIFT_NAME(HtmlEditingScope);
 

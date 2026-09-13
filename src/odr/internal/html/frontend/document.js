@@ -796,11 +796,11 @@
     };
   }
 
-  /// In scope `run` an edit is one `setText`: it starts and ends in one run.
+  /// In scope `paragraph` an edit starts and ends in one paragraph.
   function outOfScope(at) {
     return (
-      odr.editing.scope() === "run" &&
-      (at.start.run === null || at.start.run !== at.end.run)
+      odr.editing.scope() === "paragraph" &&
+      at.start.paragraph !== at.end.paragraph
     );
   }
 
@@ -877,7 +877,7 @@
     }
 
     if (type === "insertParagraph") {
-      if (odr.editing.scope() === "run") {
+      if (odr.editing.scope() === "paragraph") {
         refuse(event, "outOfScope", at);
         return;
       }
@@ -902,7 +902,7 @@
       // several lines open paragraphs
       if (
         outOfScope(at) ||
-        (odr.editing.scope() === "run" && /[\r\n]/.test(pasted))
+        (odr.editing.scope() === "paragraph" && /[\r\n]/.test(pasted))
       ) {
         refuse(event, "outOfScope", at);
         return;
@@ -929,7 +929,7 @@
       event.preventDefault();
       return;
     }
-    // a delete at a run's edge reaches into the run before it
+    // a delete at a paragraph's start reaches into the one before it
     if (outOfScope(covering)) {
       refuse(event, "outOfScope", at);
       return;

@@ -361,8 +361,8 @@ std::string html::keyboard_classes(const HtmlConfig &config) {
 
 std::string_view html::editing_scope_name(const HtmlEditingScope scope) {
   switch (scope) {
-  case HtmlEditingScope::run:
-    return "run";
+  case HtmlEditingScope::paragraph:
+    return "paragraph";
   case HtmlEditingScope::document:
   default:
     return "document";

@@ -137,11 +137,11 @@
     isEditable: function () {
       return editable;
     },
-    /// `run` or `document`, as `<body>` states it. Read per edit, so a host
-    /// can widen it without a render.
+    /// `paragraph` or `document`, as `<body>` states it. Read per edit, so a
+    /// host can widen it without a render.
     scope: function () {
-      return body.getAttribute("data-odr-editing-scope") === "run"
-        ? "run"
+      return body.getAttribute("data-odr-editing-scope") === "paragraph"
+        ? "paragraph"
         : "document";
     },
 

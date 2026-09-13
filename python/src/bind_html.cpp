@@ -43,7 +43,7 @@ void odr_python::bind_html(py::module_ &m) {
       .value("fit_width_by_view", odr::HtmlViewportMode::fit_width_by_view);
 
   py::enum_<odr::HtmlEditingScope>(m, "HtmlEditingScope")
-      .value("run", odr::HtmlEditingScope::run)
+      .value("paragraph", odr::HtmlEditingScope::paragraph)
       .value("document", odr::HtmlEditingScope::document);
 
   py::enum_<odr::PdfTextMode>(m, "PdfTextMode")

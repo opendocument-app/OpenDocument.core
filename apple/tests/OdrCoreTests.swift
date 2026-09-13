@@ -187,7 +187,7 @@ final class HtmlTests: XCTestCase {
 
     let config = HtmlConfig()
     config.editable = true
-    config.editingScope = .run
+    config.editingScope = .paragraph
 
     let file = try DecodedFile.decode(path: try Fixture.odt())
     let service = try HtmlTranslator.translate(file: file, config: config)
@@ -195,7 +195,7 @@ final class HtmlTests: XCTestCase {
     let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
 
     XCTAssertTrue(
-      html.contains("data-odr-editing-scope=\"run\""), "the scope did not reach the html")
+      html.contains("data-odr-editing-scope=\"paragraph\""), "the scope did not reach the html")
   }
 
   /// The C++ suite covers where the floor lands; this only proves the margin

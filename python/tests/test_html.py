@@ -125,8 +125,8 @@ def test_editing_scope_reaches_the_html(odt_path):
 
     config = pyodr.HtmlConfig()
     config.editable = True
-    config.editing_scope = pyodr.HtmlEditingScope.run
-    assert 'data-odr-editing-scope="run"' in render(config)
+    config.editing_scope = pyodr.HtmlEditingScope.paragraph
+    assert 'data-odr-editing-scope="paragraph"' in render(config)
 
 
 def test_min_content_margin_reaches_the_html(odt_path):

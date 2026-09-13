@@ -16,8 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `HtmlConfig::editing_scope` narrows the document view's editor to one run
-  of text (`run`); the page refuses the rest with the new
+- `HtmlConfig::editing_scope` narrows the document view's editor to edits
+  inside one paragraph (`paragraph`); the page refuses the rest with the new
   `ErrorCode::edit_out_of_scope` (1010, `outOfScope`). Bound in every binding.
 
 - Writing a cell of an `.ods` takes the cached result of every formula reading

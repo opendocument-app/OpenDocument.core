@@ -27,7 +27,7 @@ const pinned = {
     none: 3,
     fit_width_by_view: 4,
   },
-  HtmlEditingScope: { run: 0, document: 1 },
+  HtmlEditingScope: { paragraph: 0, document: 1 },
   PdfTextMode: { dual_layer: 0, single_layer: 1 },
   EncryptionState: {
     unknown: 0,

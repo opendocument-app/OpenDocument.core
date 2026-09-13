@@ -407,11 +407,12 @@ host's call. The core carries no policy, only one seam,
 | Scope | What the document editor takes |
 |---|---|
 | `document` (default) | everything in decision 13 |
-| `run` | an edit that starts and ends in one run: one `setText` |
+| `paragraph` | an edit that starts and ends in one paragraph |
 
-Scope `run` refuses Enter, a paste holding a line break, a selection over two
-runs, a delete at a run's edge, and a write into a paragraph holding no run,
-which would open one.
+Scope `paragraph` refuses Enter, Backspace at a paragraph start, a paste
+holding a line break, and a selection over two paragraphs. A paragraph is a
+unit the reader sees, where a run is not: Word splits runs by revision session,
+so a wall at a run would stand in the middle of uniform text.
 
 **Why on the config:** the document did not change, the host's offer did. The
 scope joins the other host policy on `<body>` (decision 12) as

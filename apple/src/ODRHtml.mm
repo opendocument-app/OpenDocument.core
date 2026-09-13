@@ -39,7 +39,7 @@ ODR_SAME_ENUM(ODRHtmlViewportModeNone, odr::HtmlViewportMode::none);
 ODR_SAME_ENUM(ODRHtmlViewportModeFitWidthByView,
               odr::HtmlViewportMode::fit_width_by_view);
 
-ODR_SAME_ENUM(ODRHtmlEditingScopeRun, odr::HtmlEditingScope::run);
+ODR_SAME_ENUM(ODRHtmlEditingScopeParagraph, odr::HtmlEditingScope::paragraph);
 ODR_SAME_ENUM(ODRHtmlEditingScopeDocument, odr::HtmlEditingScope::document);
 
 ODR_SAME_ENUM(ODRPdfTextModeDualLayer, odr::PdfTextMode::dual_layer);

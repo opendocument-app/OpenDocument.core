@@ -89,7 +89,7 @@ On a sheet, `onCellsStale` names the formula cells an edit left computing an
 old input - the page marks them, and nothing recomputes one yet.
 `keyboardNavigation` and `keyboardShortcuts` in the config decide whether the
 page takes the arrow keys and the undo chord, for a host that has its own.
-`editingScope` narrows a document view to one run of text at a time; the page
+`editingScope` narrows a document view to edits inside one paragraph; the page
 refuses the rest with code 1010, `outOfScope`.
 `example/index.html` wires the whole surface.
 

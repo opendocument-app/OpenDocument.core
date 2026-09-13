@@ -102,8 +102,8 @@ enum class HtmlViewportMode {
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 enum class HtmlEditingScope {
-  run,      ///< inside one run of text: `setText` only
-  document, ///< across runs and paragraphs: every operation
+  paragraph, ///< inside one paragraph: no split and no merge
+  document,  ///< across paragraphs: every operation
 };
 
 /// How text is emitted in PDF→HTML output. Neither mode needs JavaScript.

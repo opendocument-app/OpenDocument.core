@@ -896,16 +896,16 @@ TEST(html, an_editable_render_states_its_editing_scope) {
       render_odt(editing_config()).find(R"(data-odr-editing-scope="document")"),
       std::string::npos);
 
-  HtmlConfig run = editing_config();
-  run.editing_scope = HtmlEditingScope::run;
-  EXPECT_NE(render_odt(run).find(R"(data-odr-editing-scope="run")"),
+  HtmlConfig narrowed = editing_config();
+  narrowed.editing_scope = HtmlEditingScope::paragraph;
+  EXPECT_NE(render_odt(narrowed).find(R"(data-odr-editing-scope="paragraph")"),
             std::string::npos);
 }
 
 // The attribute, not the name: the script names it too.
 TEST(html, a_read_only_render_states_no_editing_scope) {
   HtmlConfig config;
-  config.editing_scope = HtmlEditingScope::run;
+  config.editing_scope = HtmlEditingScope::paragraph;
 
   EXPECT_EQ(render_odt(config).find(R"(data-odr-editing-scope=")"),
             std::string::npos);

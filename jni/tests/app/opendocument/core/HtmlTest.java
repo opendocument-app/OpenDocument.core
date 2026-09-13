@@ -71,14 +71,14 @@ class HtmlTest {
     editable.editable = true;
     assertTrue(renderOdt(editable).contains("data-odr-editing-scope=\"document\""));
 
-    HtmlConfig run = new HtmlConfig();
-    run.editable = true;
-    run.editingScope = HtmlEditingScope.RUN;
-    assertTrue(renderOdt(run).contains("data-odr-editing-scope=\"run\""));
+    HtmlConfig narrowed = new HtmlConfig();
+    narrowed.editable = true;
+    narrowed.editingScope = HtmlEditingScope.PARAGRAPH;
+    assertTrue(renderOdt(narrowed).contains("data-odr-editing-scope=\"paragraph\""));
 
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
-    HtmlConfig readBack = Html.translate(file, run).config();
-    assertEquals(HtmlEditingScope.RUN, readBack.editingScope);
+    HtmlConfig readBack = Html.translate(file, narrowed).config();
+    assertEquals(HtmlEditingScope.PARAGRAPH, readBack.editingScope);
   }
 
   /** The C++ suite covers where the floor lands; this only proves it crosses JNI. */

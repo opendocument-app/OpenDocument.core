@@ -50,7 +50,7 @@ Why the checks look the way they do:
   `document_edit_test.cpp` replays the same shapes in C++, which is what keeps
   the two sides from drifting apart.
 
-- **Scope `run` runs on the same fixture**: the group sets
+- **Scope `paragraph` runs on the same fixture**: the group sets
   `data-odr-editing-scope` on `<body>`, which the editor reads per edit.
 
 **Scripted editing is not the editing a reader does, which is why no check uses

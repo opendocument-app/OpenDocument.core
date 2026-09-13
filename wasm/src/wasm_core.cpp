@@ -132,7 +132,7 @@ emscripten::val enum_tables() {
             entry("none", HtmlViewportMode::none),
             entry("fit_width_by_view", HtmlViewportMode::fit_width_by_view)));
   result.set("HtmlEditingScope",
-             table(entry("run", HtmlEditingScope::run),
+             table(entry("paragraph", HtmlEditingScope::paragraph),
                    entry("document", HtmlEditingScope::document)));
   result.set("PdfTextMode",
              table(entry("dual_layer", PdfTextMode::dual_layer),
