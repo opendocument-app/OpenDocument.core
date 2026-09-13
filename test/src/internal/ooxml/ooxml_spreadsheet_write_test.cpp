@@ -103,6 +103,35 @@ TEST(OoxmlSpreadsheetWrite, a_cleared_cell_states_nothing) {
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "");
 }
 
+TEST(OoxmlSpreadsheetWrite, a_boolean_lands_as_a_boolean) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue(ValueType::boolean).with_number(0));
+
+  const CellValue value = sheet.cell(0, 0).value();
+  EXPECT_EQ(value.type(), ValueType::boolean);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 0);
+  EXPECT_NE(worksheet_of(document).find(R"(<c r="A1" t="b"><v>0</v></c>)"),
+            std::string::npos);
+}
+
+/// No form to write these in yet, and the refusal leaves the cell as it was.
+TEST(OoxmlSpreadsheetWrite, a_date_a_time_and_an_error_refuse_to_be_written) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  for (const ValueType type :
+       {ValueType::date, ValueType::time, ValueType::error}) {
+    EXPECT_THROW(sheet.set_cell(0, 0, CellValue(type).with_text("x")),
+                 UnsupportedOperation);
+  }
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);
+}
+
 TEST(OoxmlSpreadsheetWrite, a_formula_cell_refuses_to_be_written) {
   const Document document = decode(
       workbook(R"(<row r="1"><c r="A1"><f>SUM(B1:C1)</f><v>7</v></c></row>)"));

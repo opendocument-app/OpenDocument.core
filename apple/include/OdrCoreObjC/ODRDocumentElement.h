@@ -67,6 +67,10 @@ typedef NS_ENUM(NSInteger, ODRValueType) {
   ODRValueTypeUnknown = 0,
   ODRValueTypeString,
   ODRValueTypeFloatNumber,
+  ODRValueTypeBoolean,
+  ODRValueTypeDate,
+  ODRValueTypeTime,
+  ODRValueTypeError,
 } NS_SWIFT_NAME(ValueType);
 
 /// A node in a document's element tree — `odr::Element`.

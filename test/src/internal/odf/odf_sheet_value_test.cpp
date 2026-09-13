@@ -98,3 +98,29 @@ TEST(OdfSheetValue, a_number_is_read_in_one_spelling_only) {
 
   EXPECT_FALSE(value.has_number());
 }
+
+/// [ODF 1.2] 19.385: a boolean states `office:boolean-value`, read as 1 or 0.
+TEST(OdfSheetValue, a_boolean_cell_is_typed_and_states_one_or_zero) {
+  const CellValue value = value_of(
+      R"(<table:table-cell office:value-type="boolean" office:boolean-value="true">)"
+      R"(<text:p>TRUE</text:p></table:table-cell>)");
+
+  EXPECT_EQ(value.type(), ValueType::boolean);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 1);
+}
+
+/// A date and a time state their value as text, which is what the type says.
+TEST(OdfSheetValue, a_date_and_a_time_cell_are_typed_and_state_no_number) {
+  const CellValue date = value_of(
+      R"(<table:table-cell office:value-type="date" office:date-value="2024-01-31">)"
+      R"(<text:p>31.01.2024</text:p></table:table-cell>)");
+  EXPECT_EQ(date.type(), ValueType::date);
+  EXPECT_FALSE(date.has_number());
+
+  const CellValue time = value_of(
+      R"(<table:table-cell office:value-type="time" office:time-value="PT10H30M00S">)"
+      R"(<text:p>10:30</text:p></table:table-cell>)");
+  EXPECT_EQ(time.type(), ValueType::time);
+  EXPECT_FALSE(time.has_number());
+}

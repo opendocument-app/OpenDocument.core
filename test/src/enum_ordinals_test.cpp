@@ -203,6 +203,10 @@ TEST(EnumOrdinals, value_type) {
   EXPECT_EQ(ordinal(ValueType::unknown), 0);
   EXPECT_EQ(ordinal(ValueType::string), 1);
   EXPECT_EQ(ordinal(ValueType::float_number), 2);
+  EXPECT_EQ(ordinal(ValueType::boolean), 3);
+  EXPECT_EQ(ordinal(ValueType::date), 4);
+  EXPECT_EQ(ordinal(ValueType::time), 5);
+  EXPECT_EQ(ordinal(ValueType::error), 6);
 }
 
 TEST(EnumOrdinals, list_type) {

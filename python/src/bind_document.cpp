@@ -92,7 +92,11 @@ void odr_python::bind_document(py::module_ &m) {
   py::enum_<odr::ValueType>(m, "ValueType")
       .value("unknown", odr::ValueType::unknown)
       .value("string", odr::ValueType::string)
-      .value("float_number", odr::ValueType::float_number);
+      .value("float_number", odr::ValueType::float_number)
+      .value("boolean", odr::ValueType::boolean)
+      .value("date", odr::ValueType::date)
+      .value("time", odr::ValueType::time)
+      .value("error", odr::ValueType::error);
 
   py::class_<odr::TableDimensions>(m, "TableDimensions")
       .def(py::init<>())

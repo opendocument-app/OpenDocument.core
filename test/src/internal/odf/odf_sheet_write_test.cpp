@@ -621,3 +621,30 @@ TEST(OdfSheetWrite, a_number_stating_none_leaves_the_cell_alone) {
                ValueNotStated);
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "old");
 }
+
+TEST(OdfSheetWrite, a_boolean_is_written_as_its_value_and_text) {
+  const Document document = document_of(flat_sheet(string_cell("old")));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(
+      0, 0, CellValue(ValueType::boolean).with_number(1).with_text("TRUE"));
+
+  const CellValue value = sheet.cell(0, 0).value();
+  EXPECT_EQ(value.type(), ValueType::boolean);
+  ASSERT_TRUE(value.has_number());
+  EXPECT_DOUBLE_EQ(value.number(), 1);
+  EXPECT_EQ(value.text(), "TRUE");
+}
+
+/// No form to write these in yet, and the refusal leaves the cell as it was.
+TEST(OdfSheetWrite, a_date_a_time_and_an_error_refuse_to_be_written) {
+  const Document document = document_of(flat_sheet(string_cell("old")));
+  const Sheet sheet = first_sheet(document);
+
+  for (const ValueType type :
+       {ValueType::date, ValueType::time, ValueType::error}) {
+    EXPECT_THROW(sheet.set_cell(0, 0, CellValue(type).with_text("x")),
+                 UnsupportedOperation);
+  }
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "old");
+}

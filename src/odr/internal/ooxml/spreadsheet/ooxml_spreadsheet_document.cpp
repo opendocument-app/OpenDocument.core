@@ -236,6 +236,10 @@ public:
   void sheet_set_cell(const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
                       const CellValue &value) const override {
+    if (value.type() == ValueType::date || value.type() == ValueType::time ||
+        value.type() == ValueType::error) {
+      throw UnsupportedOperation(); // no form to write them in yet
+    }
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(element_id);
     const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
@@ -288,6 +292,19 @@ public:
           m_registry->create_text_element(value_node, value_node);
       m_registry->append_child(cell_id, text_id);
     } break;
+    case ValueType::boolean: {
+      node.append_attribute("t").set_value("b");
+      const pugi::xml_node value_node = node.append_child("v");
+      value_node.text().set(value.has_number() && value.number() != 0 ? "1"
+                                                                      : "0");
+      const auto &[text_id, unused1, unused2] =
+          m_registry->create_text_element(value_node, value_node);
+      m_registry->append_child(cell_id, text_id);
+    } break;
+    case ValueType::date:
+    case ValueType::time:
+    case ValueType::error:
+      throw UnsupportedOperation(); // refused above
     }
   }
 
@@ -358,8 +375,16 @@ public:
     // inline ("inlineStr"), or formula ("str") cells.
     const pugi::xml_node node = get_node(element_id);
     const std::string type = node.attribute("t").value();
-    if (type == "s" || type == "str" || type == "inlineStr" || type == "b" ||
-        type == "e" || type == "d") {
+    if (type == "b") {
+      return ValueType::boolean;
+    }
+    if (type == "e") {
+      return ValueType::error;
+    }
+    if (type == "d") {
+      return ValueType::date;
+    }
+    if (type == "s" || type == "str" || type == "inlineStr") {
       return ValueType::string;
     }
     if (node.child("v")) {
@@ -374,7 +399,8 @@ public:
     const pugi::xml_node node = get_node(element_id);
 
     CellValue result = CellValue(sheet_cell_value_type(element_id));
-    if (result.type() == ValueType::float_number) {
+    if (result.type() == ValueType::float_number ||
+        result.type() == ValueType::boolean) {
       if (const std::optional<double> number =
               util::number::parse(node.child("v").text().get())) {
         result = result.with_number(*number);

@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `ValueType` gains `boolean`, `date`, `time` and `error`, and
+  the odf and xlsx readers report them; a boolean states 1 or 0 as its number.
+  `Sheet::set_cell` writes a boolean and refuses the other three. The enum
+  mirrors in every binding follow.
+
 - `Text::set_style` and the edit op `setTextStyle {id, style}` write bold,
   italic, underline, strikethrough, highlight, colour and size onto a run of
   an odf, docx or pptx document. The other engines refuse it.
