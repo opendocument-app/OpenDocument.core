@@ -91,9 +91,9 @@ The release run heads these entries with the version and opens a fresh
   `lastChild` there was a text node and the removal took that instead of a cell.
 
 - **Fix**: two refusal messages described what their code meant before the
-  editor could span runs. Code 1 said "new line not supported" though Enter is
-  taken, and code 8 said "an edit has to lie inside one run of text" though it
-  now marks a range reaching over a picture. The codes are unchanged.
+  editor could span runs. `newLine` said "new line not supported" though Enter
+  is taken, and `range` said "an edit has to lie inside one run of text" though
+  it now marks a range reaching over a picture. The codes are unchanged.
 
 - **Fix**: `odr.editing.getOperations()` and `odr.generateDiff()` stated
   `"version": 1` while `Document::edit` takes 2, so every save the browser
@@ -119,7 +119,7 @@ The release run heads these entries with the version and opens a fresh
   for a text document, `odr.onEditChange` reports `canUndo` / `canRedo`
   truthfully, and ctrl/cmd+Z is taken.
 
-- Enter is no longer refused. Reason `newLine` (code 1) now marks only a soft
+- Enter is no longer refused. Reason `newLine` (1001) now marks only a soft
   line break, which no operation carries.
 
 - A paragraph splits, merges and is inserted — `splitParagraph`,
@@ -155,8 +155,8 @@ The release run heads these entries with the version and opens a fresh
   `<body>` as `data-odr-editable`. The table keeps `data-odr-sheet`.
 
 - **Breaking**: a refused new line reaches `odr.onEditRefused` with reason
-  `newLine` rather than `odr.onError`, keeps code 1, and now fires only inside
-  an editable run while the mode is on.
+  `newLine` rather than `odr.onError`, keeps its code, and now fires only
+  inside an editable run while the mode is on.
 
 - `HtmlConfig::keyboard_navigation` and `keyboard_shortcuts`, both on by
   default, decide whether the page takes the keys that move the selection and
@@ -168,8 +168,8 @@ The release run heads these entries with the version and opens a fresh
 
 - Every edit a text document cannot replay is refused through
   `odr.onEditRefused` rather than silently impossible: a new line
-  (`newLine`, 1), an edit spanning two runs or landing outside every run
-  (`range`, 8), and anything else the browser offers (`unsupportedEdit`, 7).
+  (`newLine`, 1001), an edit landing outside every run (`range`, 1008), and
+  anything else the browser offers (`unsupportedEdit`, 1007).
 
 - **Fix**: searching a text document while the mode is on no longer marks it
   unsaved. The log is collected from `input`, which the browser raises for an
