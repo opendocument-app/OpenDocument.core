@@ -890,6 +890,27 @@ TEST(html, a_document_states_on_its_body_whether_it_can_be_edited) {
   EXPECT_NE(page.find(R"(data-odr-editable="true")"), std::string::npos);
 }
 
+// The scope is host policy, so the page states it beside the editing state.
+TEST(html, an_editable_render_states_its_editing_scope) {
+  EXPECT_NE(
+      render_odt(editing_config()).find(R"(data-odr-editing-scope="document")"),
+      std::string::npos);
+
+  HtmlConfig run = editing_config();
+  run.editing_scope = HtmlEditingScope::run;
+  EXPECT_NE(render_odt(run).find(R"(data-odr-editing-scope="run")"),
+            std::string::npos);
+}
+
+// The attribute, not the name: the script names it too.
+TEST(html, a_read_only_render_states_no_editing_scope) {
+  HtmlConfig config;
+  config.editing_scope = HtmlEditingScope::run;
+
+  EXPECT_EQ(render_odt(config).find(R"(data-odr-editing-scope=")"),
+            std::string::npos);
+}
+
 // A read-only render carries no state, no lock and no address.
 TEST(html, a_read_only_render_writes_no_editing_scaffolding) {
   const std::string page = render_sheet(

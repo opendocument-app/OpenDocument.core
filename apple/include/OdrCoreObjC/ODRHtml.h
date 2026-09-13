@@ -51,6 +51,15 @@ typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
   ODRHtmlViewportModeFitWidthByView,
 } NS_SWIFT_NAME(HtmlViewportMode);
 
+/// How far an edit in a document view may reach. Host policy, not an engine
+/// fact.
+typedef NS_ENUM(NSInteger, ODRHtmlEditingScope) {
+  /// Inside one run of text: `setText` only.
+  ODRHtmlEditingScopeRun = 0,
+  /// Across runs and paragraphs: every operation.
+  ODRHtmlEditingScopeDocument,
+} NS_SWIFT_NAME(HtmlEditingScope);
+
 /// How text is emitted in PDF→HTML output.
 typedef NS_ENUM(NSInteger, ODRPdfTextMode) {
   /// A visual layer plus a transparent selection layer, like pdf.js.
@@ -83,6 +92,9 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) BOOL relativeResourcePaths;
 
 @property(nonatomic) BOOL editable;
+/// The scope the document view's editor offers; the page refuses the rest
+/// with `ODRErrorCode` 1010, `outOfScope`.
+@property(nonatomic) ODRHtmlEditingScope editingScope;
 /// Whether the view's scripts take the keys that move the selection.
 @property(nonatomic) BOOL keyboardNavigation;
 /// Whether the view's scripts take the editing chords: undo and redo.

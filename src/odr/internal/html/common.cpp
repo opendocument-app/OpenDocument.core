@@ -359,4 +359,14 @@ std::string html::keyboard_classes(const HtmlConfig &config) {
   return classes;
 }
 
+std::string_view html::editing_scope_name(const HtmlEditingScope scope) {
+  switch (scope) {
+  case HtmlEditingScope::run:
+    return "run";
+  case HtmlEditingScope::document:
+  default:
+    return "document";
+  }
+}
+
 } // namespace odr::internal

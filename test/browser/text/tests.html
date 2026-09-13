@@ -160,11 +160,12 @@
       /// said no. Both cancel the `beforeinput`, so the refusal channel is
       /// what tells them apart, not `defaultPrevented`.
       var prevented = null;
-      function input(type, data) {
+      function input(type, data, clipboard) {
         var before = refusals.length;
         var event = new InputEvent("beforeinput", {
           inputType: type,
           data: data === undefined ? null : data,
+          dataTransfer: clipboard === undefined ? null : clipboard,
           bubbles: true,
           cancelable: true,
         });
@@ -497,6 +498,76 @@
         "so the tail keeps the style it had",
         tail.querySelector("x-s[style]") !== null
       );
+
+      // ---------------------------------------------------- scope run
+
+      reset();
+      check("the page offers the whole editor", odr.editing.scope() === "document");
+      document.body.setAttribute("data-odr-editing-scope", "run");
+      check("until the host narrows it", odr.editing.scope() === "run");
+
+      select(run(11).firstChild, 5);
+      check("typing inside a run is still taken", input("insertText", "X") === "taken");
+      check("as one setText", ops().length === 1 && ops()[0].op === "setText");
+
+      // Each refusal lands in a run of its own: a repeat on one run within
+      // two seconds is dropped.
+      select(run(31).firstChild, 2);
+      check("Enter is refused", input("insertParagraph") === "refused");
+      check("as out of scope", refusals.pop() === "outOfScope 1010");
+      check("and the paragraph stands", texts() === "firstX run a link and a tail|bold|third|");
+
+      selectRuns(13, 5, 13, 5);
+      check("a delete inside a run is taken", input("deleteContentBackward") === "taken");
+      select(run(13).firstChild, 0);
+      check("a backspace at a run's start is refused", input("deleteContentBackward") === "refused");
+      check("as out of scope, not as a range", refusals.pop() === "outOfScope 1010");
+
+      select(run(21).firstChild, 0);
+      check("so is one at a paragraph's start", input("deleteContentBackward") === "refused");
+      check("with the same code", refusals.pop() === "outOfScope 1010");
+
+      selectRuns(11, 5, 13, 4);
+      check("a selection over two runs is refused", input("insertText", "-") === "refused");
+      check("as out of scope", refusals.pop() === "outOfScope 1010");
+      check("and both runs stand", run(12) !== null);
+
+      var picture = paragraph(40);
+      select(picture, 0, picture, picture.childNodes.length);
+      check(
+        "typing into a paragraph holding no run is refused",
+        input("insertText", "x") === "refused"
+      );
+      check("because it would open one", refusals.pop() === "outOfScope 1010");
+
+      if (typeof DataTransfer === "function") {
+        var oneLine = new DataTransfer();
+        oneLine.setData("text/plain", "flat");
+        select(run(31).firstChild, 2);
+        check(
+          "a one-line paste is taken",
+          input("insertFromPaste", undefined, oneLine) === "taken"
+        );
+        check("into the run", run(31).textContent === "thflatird");
+
+        var twoLines = new DataTransfer();
+        twoLines.setData("text/plain", "two\nlines");
+        select(run(12).firstChild, 2);
+        check(
+          "a paste holding a line break is refused",
+          input("insertFromPaste", undefined, twoLines) === "refused"
+        );
+        check("as out of scope", refusals.pop() === "outOfScope 1010");
+      }
+
+      check("the log holds only what one run took", ops().every(function (op) {
+        return op.op === "setText";
+      }));
+
+      document.body.removeAttribute("data-odr-editing-scope");
+      check("taking the attribute off widens it again", odr.editing.scope() === "document");
+      select(run(11).firstChild, 2);
+      check("and Enter is taken", input("insertParagraph") === "taken");
 
       // ---------------------------------------------- what is not an edit
 

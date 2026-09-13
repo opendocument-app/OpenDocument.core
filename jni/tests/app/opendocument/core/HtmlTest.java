@@ -33,6 +33,7 @@ class HtmlTest {
     HtmlConfig config = new HtmlConfig();
     assertTrue(config.embedImages);
     assertTrue(!config.editable);
+    assertEquals(HtmlEditingScope.DOCUMENT, config.editingScope);
     assertEquals(HtmlTableGridlines.SOFT, config.spreadsheetGridlines);
     assertEquals(HtmlViewportMode.AUTOMATIC, config.viewportMode);
     assertNull(config.spreadsheetViewportMode);
@@ -58,6 +59,26 @@ class HtmlTest {
     assertEquals("width=420", readBack.viewportContent);
     assertEquals(Integer.valueOf(420), readBack.viewportWidth);
     assertEquals(Double.valueOf(1.5), readBack.initialZoom);
+  }
+
+  /** Proves the scope crosses JNI; the C++ suite covers the rest. */
+  @Test
+  void editingScopeReachesTheHtml() throws IOException {
+    // the attribute, not the name: the script names it too
+    assertTrue(!renderOdt(new HtmlConfig()).contains("data-odr-editing-scope=\""));
+
+    HtmlConfig editable = new HtmlConfig();
+    editable.editable = true;
+    assertTrue(renderOdt(editable).contains("data-odr-editing-scope=\"document\""));
+
+    HtmlConfig run = new HtmlConfig();
+    run.editable = true;
+    run.editingScope = HtmlEditingScope.RUN;
+    assertTrue(renderOdt(run).contains("data-odr-editing-scope=\"run\""));
+
+    DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+    HtmlConfig readBack = Html.translate(file, run).config();
+    assertEquals(HtmlEditingScope.RUN, readBack.editingScope);
   }
 
   /** The C++ suite covers where the floor lands; this only proves it crosses JNI. */

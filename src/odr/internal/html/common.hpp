@@ -160,4 +160,7 @@ std::string file_to_url(const abstract::File &file,
 /// The key classes a view's scripts may take; `editing.md` decision 12.
 [[nodiscard]] std::string keyboard_classes(const HtmlConfig &config);
 
+/// The scope as the page states it; `editing.md` decision 14.
+[[nodiscard]] std::string_view editing_scope_name(HtmlEditingScope scope);
+
 } // namespace odr::internal::html

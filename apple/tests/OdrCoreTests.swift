@@ -181,6 +181,23 @@ final class HtmlTests: XCTestCase {
     XCTAssertTrue(html.contains("<style"), "the html has no stylesheet")
   }
 
+  /// Proves the scope crosses the binding; the C++ suite covers the rest.
+  func testEditingScopeReachesTheHtml() throws {
+    XCTAssertEqual(HtmlConfig().editingScope, .document)
+
+    let config = HtmlConfig()
+    config.editable = true
+    config.editingScope = .run
+
+    let file = try DecodedFile.decode(path: try Fixture.odt())
+    let service = try HtmlTranslator.translate(file: file, config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+
+    XCTAssertTrue(
+      html.contains("data-odr-editing-scope=\"run\""), "the scope did not reach the html")
+  }
+
   /// The C++ suite covers where the floor lands; this only proves the margin
   /// crosses the binding, `nil` sides and all.
   func testMinContentMarginReachesTheHtml() throws {

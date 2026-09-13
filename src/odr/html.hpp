@@ -99,6 +99,13 @@ enum class HtmlViewportMode {
   fit_width_by_view,
 };
 
+/// How far an edit in a document view may reach. Host policy, not an engine
+/// fact.
+enum class HtmlEditingScope {
+  run,      ///< inside one run of text: `setText` only
+  document, ///< across runs and paragraphs: every operation
+};
+
 /// How text is emitted in PDF→HTML output. Neither mode needs JavaScript.
 enum class PdfTextMode {
   dual_layer,   ///< a visual layer (paint order, embedded PUA glyphs) plus a
@@ -135,6 +142,10 @@ struct HtmlConfig {
   /// edit operation names, and the editor script. The mode itself starts off -
   /// the host turns it on with `odr.editing.enable()`.
   bool editable{false};
+  /// The scope the document view's editor offers; the page refuses the rest
+  /// with @ref ErrorCode::edit_out_of_scope. Sheet and plain-text views
+  /// ignore it.
+  HtmlEditingScope editing_scope{HtmlEditingScope::document};
 
   /// Whether the view's scripts take the keys that move the selection: the
   /// arrows, Tab, Escape, and the keys that open an editor over it.
