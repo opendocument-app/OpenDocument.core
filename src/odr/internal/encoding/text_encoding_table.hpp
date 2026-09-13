@@ -16,6 +16,8 @@ struct Row final {
 
 /// The whole table, one row per @ref TextEncoding, in declaration order.
 [[nodiscard]] std::span<const Row> rows() noexcept;
+/// The encoding column of @ref rows.
+[[nodiscard]] std::span<const TextEncoding> encodings() noexcept;
 
 /// The row for @p encoding, or `nullptr` if there is none.
 [[nodiscard]] const Row *find(TextEncoding encoding) noexcept;

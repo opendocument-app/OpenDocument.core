@@ -11,8 +11,6 @@
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 
-#include <algorithm>
-#include <iterator>
 #include <span>
 #include <string_view>
 
@@ -40,11 +38,8 @@ std::string odr::identify() noexcept {
          (is_dirty() ? " [dirty]" : "") + (is_debug() ? " [debug]" : "");
 }
 
-std::vector<odr::FileType> odr::all_file_types() {
-  std::vector<FileType> result;
-  result.reserve(table::rows().size());
-  std::ranges::transform(table::rows(), std::back_inserter(result), &Row::type);
-  return result;
+std::span<const odr::FileType> odr::all_file_types() noexcept {
+  return table::types();
 }
 
 odr::FileType
@@ -152,12 +147,8 @@ odr::capabilities_by_file_type(const FileType type) noexcept {
   return row == nullptr ? FileTypeCapabilities{} : row->capabilities;
 }
 
-std::vector<odr::TextEncoding> odr::all_text_encodings() {
-  std::vector<TextEncoding> result;
-  result.reserve(encoding_table::rows().size());
-  std::ranges::transform(encoding_table::rows(), std::back_inserter(result),
-                         &EncodingRow::encoding);
-  return result;
+std::span<const odr::TextEncoding> odr::all_text_encodings() noexcept {
+  return encoding_table::encodings();
 }
 
 std::string_view odr::text_encoding_to_string(const TextEncoding encoding) {

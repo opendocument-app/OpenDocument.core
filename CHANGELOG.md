@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking**: `all_file_types()` and `all_text_encodings()` return a
+  `std::span` over the library's tables instead of a `std::vector`, like the
+  other table lookups. The bindings still hand out a list.
+
 - `HtmlConfig::editing_scope` narrows the document view's editor to edits
   inside one paragraph (`paragraph`); the page refuses the rest with the new
   `ErrorCode::edit_out_of_scope` (1010, `outOfScope`). Bound in every binding.

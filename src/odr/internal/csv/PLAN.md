@@ -75,7 +75,7 @@ fails when an alias is claimed twice.
 enum class TextEncoding { unknown, utf8, utf16le, utf16be, utf32le, utf32be,
                           windows_1252, iso_8859_1, iso_8859_15, shift_jis, … };
 
-std::vector<TextEncoding> all_text_encodings();
+std::span<const TextEncoding> all_text_encodings() noexcept;
 std::string text_encoding_to_string(TextEncoding);
 TextEncoding text_encoding_by_name(std::string_view) noexcept;  // unknown if none
 std::span<const std::string_view> text_encoding_names(TextEncoding) noexcept;

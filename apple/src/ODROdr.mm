@@ -55,7 +55,7 @@ NSArray<NSString *> *to_nsarray(std::span<const std::string_view> strings) {
 + (NSArray<NSNumber *> *)allFileTypes {
   return guarded_value(
       [&]() -> NSArray<NSNumber *> * {
-        const std::vector<odr::FileType> types = odr::all_file_types();
+        const std::span<const odr::FileType> types = odr::all_file_types();
         NSMutableArray<NSNumber *> *const result =
             [NSMutableArray arrayWithCapacity:types.size()];
         for (const odr::FileType type : types) {
@@ -149,7 +149,7 @@ NSArray<NSString *> *to_nsarray(std::span<const std::string_view> strings) {
 + (NSArray<NSNumber *> *)allTextEncodings {
   return guarded_value(
       [&]() -> NSArray<NSNumber *> * {
-        const std::vector<odr::TextEncoding> encodings =
+        const std::span<const odr::TextEncoding> encodings =
             odr::all_text_encodings();
         NSMutableArray<NSNumber *> *const result =
             [NSMutableArray arrayWithCapacity:encodings.size()];

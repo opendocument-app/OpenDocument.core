@@ -23,7 +23,7 @@ namespace odr {
 
 /// Every file type this library knows about, in declaration order, including
 /// @ref FileType::unknown.
-[[nodiscard]] std::vector<FileType> all_file_types();
+[[nodiscard]] std::span<const FileType> all_file_types() noexcept;
 
 /// The file type for a file extension, @ref FileType::unknown if none.
 [[nodiscard]] FileType
@@ -66,7 +66,7 @@ capabilities_by_file_type(FileType type) noexcept;
 
 /// Every text encoding this library knows about, in declaration order,
 /// excluding @ref TextEncoding::unknown.
-[[nodiscard]] std::vector<TextEncoding> all_text_encodings();
+[[nodiscard]] std::span<const TextEncoding> all_text_encodings() noexcept;
 
 /// The text encoding's canonical name, a label a browser accepts.
 /// @throws UnsupportedTextEncoding for @ref TextEncoding::unknown.

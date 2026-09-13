@@ -63,10 +63,22 @@ void odr_python::bind_core(py::module_ &m) {
 }
 
 void odr_python::bind_functions(py::module_ &m) {
-  m.def("all_file_types", &odr::all_file_types,
-        "Every file type this library knows about.");
-  m.def("all_text_encodings", &odr::all_text_encodings,
-        "Every text encoding the library knows about, excluding `unknown`.");
+  // pybind11 has no caster for a span
+  m.def(
+      "all_file_types",
+      [] {
+        const auto types = odr::all_file_types();
+        return std::vector<odr::FileType>(types.begin(), types.end());
+      },
+      "Every file type this library knows about.");
+  m.def(
+      "all_text_encodings",
+      [] {
+        const auto encodings = odr::all_text_encodings();
+        return std::vector<odr::TextEncoding>(encodings.begin(),
+                                              encodings.end());
+      },
+      "Every text encoding the library knows about, excluding `unknown`.");
   m.def(
       "text_encoding_to_string",
       [](const odr::TextEncoding encoding) {
