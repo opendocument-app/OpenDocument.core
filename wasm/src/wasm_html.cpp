@@ -3,7 +3,6 @@
 #include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
-#include <odr/odr.hpp>
 
 #include <emscripten/bind.h>
 
@@ -146,19 +145,10 @@ emscripten::val edit(const Handle handle, const std::string &diff) {
   return guarded([&] {
     Session &s = session(handle);
     if (s.file.is_text_file()) {
-      // no tree holds the edit, so the edited bytes become the session's file
-      // and the next render translates them
-      std::ostringstream out;
-      s.file.as_text_file().write_edited(diff, out, s.logger);
-      DecodedFile edited = odr::open(
-          File::from_memory(std::move(out).str(), s.file.file().name()),
-          DecodeOptions::as(FileType::text_file), s.logger);
-      s.views.clear();
-      s.service.reset();
-      s.file = std::move(edited);
-      return ok();
+      s.file.as_text_file().edit(diff, s.logger);
+    } else {
+      document_of(s).edit(diff, s.logger);
     }
-    document_of(s).edit(diff, s.logger);
     return ok();
   });
 }

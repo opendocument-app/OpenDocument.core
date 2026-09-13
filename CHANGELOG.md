@@ -24,6 +24,10 @@ The release run heads these entries with the version and opens a fresh
   already said. It was true, so a json view was editable and `write_edited`
   wrote it.
 
+- `TextFile` has the names of `Document`: `edit` keeps the edit in the file,
+  and `save` and `save_to_memory` write it. Python, Java, Objective-C and
+  Swift bind them. `write_edited` stays, but is deprecated.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and

@@ -166,6 +166,26 @@ TEST(TextFile, a_file_we_cannot_decode_is_not_savable) {
   std::ostringstream out;
   EXPECT_THROW(shift_jis.write_edited(set_content("x"), out),
                UnsupportedOperation);
+  EXPECT_THROW(shift_jis.edit(set_content("x")), UnsupportedOperation);
+  EXPECT_THROW(shift_jis.save(out), UnsupportedOperation);
+}
+
+TEST(TextFile, an_edit_stays_in_the_file_until_it_is_saved) {
+  const DecodedFile file =
+      open(File::from_memory(std::string("one\ntwo\n"), "notes.txt"),
+           DecodeOptions::as(FileType::text_file));
+  file.as_text_file().edit(set_content("one\nTWO\n"));
+
+  // a second handle over the same file sees the edit
+  const odr::TextFile text = file.as_text_file();
+  EXPECT_EQ(text.text(), "one\nTWO\n");
+  EXPECT_EQ(text.encoding(), TextEncoding::utf8);
+  EXPECT_EQ(text.file().name(), "notes.txt");
+
+  std::ostringstream out;
+  text.save(out);
+  EXPECT_EQ(std::move(out).str(), "one\nTWO\n");
+  EXPECT_EQ(text.save_to_memory().size(), 8U);
 }
 
 /// json reads as a text file, and the table declares it unsaved.

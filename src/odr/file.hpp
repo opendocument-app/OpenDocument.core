@@ -444,9 +444,26 @@ public:
   /// so what comes back cannot be put back.
   [[nodiscard]] bool is_savable() const noexcept;
 
-  /// Applies @p operations - `{"version": 2, "ops": [{"op": "setContent",
-  /// "text": "…"}]}` - and writes the result to @p out, as UTF-8 whatever
-  /// @ref encoding the source was. See `docs/design/txt-editing.md`.
+  /// @brief Applies @p operations to the file, in order, as @ref Document::edit
+  /// does to a document.
+  ///
+  /// The envelope is `{"version": 2, "ops": [{"op": "setContent", "text":
+  /// "…"}]}`. The file is UTF-8 afterwards, whatever @ref encoding the source
+  /// was, and every handle over it sees the edit. See
+  /// `docs/design/txt-editing.md`.
+  /// @throws UnsupportedOperation where @ref is_savable is false.
+  void edit(std::string_view operations,
+            const Logger &logger = Logger::null()) const;
+
+  /// Writes the text as UTF-8, with every @ref edit applied.
+  /// @throws UnsupportedOperation where @ref is_savable is false.
+  void save(const std::string &path) const;
+  void save(std::ostream &out) const;
+  /// The saved file in memory.
+  [[nodiscard]] File save_to_memory() const;
+
+  /// Deprecated: @ref edit, then @ref save. Writes what @p operations make of
+  /// the file to @p out, and leaves the file as it is.
   /// @throws UnsupportedOperation where @ref is_savable is false.
   void write_edited(std::string_view operations, std::ostream &out,
                     const Logger &logger = Logger::null()) const;

@@ -145,8 +145,7 @@ emscripten::val save(const Handle handle) {
     Session &s = session(handle);
     std::ostringstream out;
     if (s.file.is_text_file()) {
-      s.file.as_text_file().write_edited(R"({"version":2,"ops":[]})", out,
-                                         s.logger);
+      s.file.as_text_file().save(out);
     } else {
       document_of(s).save(out);
     }

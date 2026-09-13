@@ -382,8 +382,19 @@ NS_SWIFT_NAME(TextFile)
 /// `NO` where the file type is one this library does not write, or the
 /// encoding cannot be decoded.
 @property(nonatomic, readonly) BOOL isSavable;
+/// Applies the operations our browser-side editor produces, in order. The text
+/// is UTF-8 afterwards, whatever the source encoding was.
+- (BOOL)edit:(NSString *)operations
+       error:(NSError **)error NS_SWIFT_NAME(edit(operations:));
+/// Writes the text, with every edit applied, as UTF-8.
+- (BOOL)saveTo:(NSString *)path error:(NSError **)error;
+/// The saved file as bytes.
+- (nullable NSData *)saveToMemoryWithError:(NSError **)error
+    NS_SWIFT_NAME(saveToMemory());
 /// Applies the operations and returns the result, as UTF-8 whatever the source
-/// encoding was.
+/// encoding was. The file stays as it is.
+///
+/// Deprecated: `edit(operations:)`, then `saveToMemory()`.
 - (nullable NSData *)writeEdited:(NSString *)operations
                            error:(NSError **)error
     NS_SWIFT_NAME(writeEdited(operations:));

@@ -43,8 +43,8 @@ Worker**, where every value that crosses is structured-cloned.
   document is the *one* tree the render, the edit and the save all go through:
   `DocumentFile::document()` decodes a fresh one per call, so a `save` that
   opened its own would write the document nobody edited. A plain text file
-  has no tree, so its `edit` makes the edited bytes the session's file, and
-  the same calls answer for it. Handle `0` is never issued, so a zeroed handle
+  has no tree, and `TextFile::edit` keeps the edit in the file itself, so the
+  same calls answer for it. Handle `0` is never issued, so a zeroed handle
   is always invalid.
 
   This is why the structural edits are addressed **by element id**, not by an

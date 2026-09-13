@@ -55,4 +55,9 @@ std::string TextFile::text() const {
   return encoding::to_utf8(util::stream::read(*in), m_encoding);
 }
 
+void TextFile::set_text(std::string utf8) {
+  m_file = File::from_memory(std::move(utf8), m_file->name()).impl();
+  m_encoding = TextEncoding::utf8;
+}
+
 } // namespace odr::internal::text

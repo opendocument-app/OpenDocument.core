@@ -32,8 +32,8 @@ file — with no live connection between the browser and C++.
 - `Document::edit` replays the envelope: `setCell` for a sheet, and `setText`,
   `setTextStyle`, `insertText`, `removeElement`, `splitParagraph`,
   `mergeParagraph` and `insertParagraph` for a document.
-  `TextFile::write_edited` is the plain-text counterpart, since a `.txt` is
-  not a document.
+  `TextFile::edit` is the plain-text counterpart, with the same name, since a
+  `.txt` is not a document.
 - `back_translate` CLI replays an envelope onto a source document and `save`s it.
 
 Inline formatting — bold, italic, underline, strikethrough, highlight, colour
