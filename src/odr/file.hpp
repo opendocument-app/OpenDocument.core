@@ -444,13 +444,9 @@ public:
   /// so what comes back cannot be put back.
   [[nodiscard]] bool is_savable() const noexcept;
 
-  /// @brief Applies @p operations to the file, in order, as @ref Document::edit
-  /// does to a document.
-  ///
-  /// The envelope is `{"version": 2, "ops": [{"op": "setContent", "text":
-  /// "…"}]}`. The file is UTF-8 afterwards, whatever @ref encoding the source
-  /// was, and every handle over it sees the edit. See
-  /// `docs/design/txt-editing.md`.
+  /// Applies @p operations - `{"version": 2, "ops": [{"op": "setContent",
+  /// "text": "…"}]}` - to the file, and every handle over it sees the edit. The
+  /// text is UTF-8 afterwards. See `docs/design/txt-editing.md`.
   /// @throws UnsupportedOperation where @ref is_savable is false.
   void edit(std::string_view operations,
             const Logger &logger = Logger::null()) const;

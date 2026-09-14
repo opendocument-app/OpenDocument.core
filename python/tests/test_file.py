@@ -253,9 +253,7 @@ def test_text_file_writes_an_edit_back(txt_path):
 
 def test_text_file_edits_and_saves_like_a_document(txt_path, tmp_path):
     text_file = pyodr.open(str(txt_path)).as_text_file()
-    text_file.edit(
-        '{"version":2,"ops":[{"op":"setContent","text":"rewritten\\n"}]}'
-    )
+    text_file.edit('{"version":2,"ops":[{"op":"setContent","text":"rewritten\\n"}]}')
 
     assert text_file.text() == "rewritten\n"
     assert text_file.save_to_memory() == b"rewritten\n"

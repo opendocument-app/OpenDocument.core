@@ -188,7 +188,6 @@ TEST(TextFile, an_edit_stays_in_the_file_until_it_is_saved) {
   EXPECT_EQ(text.save_to_memory().size(), 8U);
 }
 
-/// json reads as a text file, and the table declares it unsaved.
 TEST(TextFile, json_is_not_savable) {
   const DecodedFile json =
       open(File::from_memory(std::string(R"({"a": 1})")),

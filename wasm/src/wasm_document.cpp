@@ -15,8 +15,7 @@ namespace odr::wasm {
 
 namespace {
 
-/// `capabilities()` narrowed to this document. A plain text file has no
-/// document, and `TextFile::is_savable` answers both for it.
+/// `capabilities()` narrowed to this document, or `TextFile::is_savable`.
 emscripten::val is_editable(const Handle handle) {
   return guarded([&] {
     Session &s = session(handle);
@@ -138,8 +137,7 @@ emscripten::val insert_paragraph_after(const Handle handle,
   });
 }
 
-/// The document's bytes; there is no filesystem to save to. A plain text file
-/// saves as UTF-8, whatever its source encoding.
+/// The document's bytes; there is no filesystem to save to.
 emscripten::val save(const Handle handle) {
   return guarded([&] {
     Session &s = session(handle);

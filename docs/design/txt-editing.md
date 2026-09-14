@@ -85,10 +85,7 @@ see it. `save` writes the text.
 
 **Why:** a host saves a `.txt` with the calls it already makes for a document,
 and learns no second API because of what the file turned out to be — decision 9
-of [`editing.md`](editing.md) again. The first shape was `PdfFile::annotate`'s:
-`TextFile::write_edited` took the envelope and a stream and left the file as it
-was. Each binding then had to tell a txt from a document before a save. It
-stays, deprecated.
+of [`editing.md`](editing.md) again. `TextFile::write_edited` stays, deprecated.
 
 **What it costs:** a `TextFile` handle is no longer immutable. The edit lives in
 the text engine's file, which every handle shares, as a document's edit lives
