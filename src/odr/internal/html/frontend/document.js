@@ -98,10 +98,18 @@
   var done = [];
   var undone = [];
 
+  // One key press can take several steps: Enter inside a run cuts the run,
+  // puts its tail beside it and splits the paragraph. Each way in - an input,
+  // a composition, a format - opens a gesture, every step it performs carries
+  // it, and undo and redo take a gesture whole, so they never show a state
+  // the reader did not make.
+  var gesture = 0;
+
   function perform(step) {
     if (step === null) {
       return null;
     }
+    step.gesture = gesture;
     step.apply();
     done.push(step);
     undone.length = 0;
@@ -745,6 +753,7 @@
   /// paragraph holding no run, the mark waits for the next typed text.
   /// Formatting sits behind the scope gate whole.
   function format(style, at) {
+    gesture += 1;
     if (!odr.editing.isEnabled()) {
       refuse(null, "readOnly", at);
       return false;
@@ -1334,6 +1343,7 @@
   });
 
   root.addEventListener("compositionend", function () {
+    gesture += 1;
     var run = composing;
     composing = null;
     if (!odr.editing.isEnabled()) {
@@ -1354,6 +1364,7 @@
   });
 
   root.addEventListener("beforeinput", function (event) {
+    gesture += 1;
     var type = event.inputType;
     var at = rangeOf(event);
 
@@ -1520,9 +1531,12 @@
       if (done.length === 0) {
         return false;
       }
-      var step = done.pop();
-      step.revert();
-      undone.push(step);
+      var taken = done[done.length - 1].gesture;
+      while (done.length > 0 && done[done.length - 1].gesture === taken) {
+        var step = done.pop();
+        step.revert();
+        undone.push(step);
+      }
       odr.editing.changed();
       return true;
     },
@@ -1530,9 +1544,12 @@
       if (undone.length === 0) {
         return false;
       }
-      var step = undone.pop();
-      step.apply();
-      done.push(step);
+      var given = undone[undone.length - 1].gesture;
+      while (undone.length > 0 && undone[undone.length - 1].gesture === given) {
+        var step = undone.pop();
+        step.apply();
+        done.push(step);
+      }
       odr.editing.changed();
       return true;
     },
