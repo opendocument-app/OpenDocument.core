@@ -603,6 +603,29 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
       [&] { return self.handle.as_text_file().is_savable() ? YES : NO; }, NO);
 }
 
+- (BOOL)edit:(NSString *)operations error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_text_file().edit(to_string(operations));
+    return YES;
+  });
+}
+
+- (BOOL)saveTo:(NSString *)path error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_text_file().save(to_string(path));
+    return YES;
+  });
+}
+
+- (nullable NSData *)saveToMemoryWithError:(NSError **)error {
+  return guarded(error, [&]() -> NSData * {
+    std::ostringstream out;
+    self.handle.as_text_file().save(out);
+    const std::string bytes = out.str();
+    return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  });
+}
+
 - (nullable NSData *)writeEdited:(NSString *)operations
                            error:(NSError **)error {
   return guarded(error, [&]() -> NSData * {

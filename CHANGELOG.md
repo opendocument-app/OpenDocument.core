@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The wasm `Document.edit`, `save`, `isEditable` and `isSavable` work for a
+  plain text file, which saves as UTF-8.
+
+- `TextFile::is_savable` is false for a json file.
+
+- `TextFile::edit`, `save` and `save_to_memory`, also in Python, Java,
+  Objective-C and Swift. `write_edited` is deprecated.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and
