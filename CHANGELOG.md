@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: the document view's editor recorded nothing an Android keyboard
+  typed. The keyboard holds a composition open on the word under the caret,
+  and the editor compared a run with itself when the composition ended, and
+  let every key, Enter and Backspace through unrecorded while it was open. A
+  save wrote the document as it was. A composition is now recorded after each
+  change the browser makes, and an edit that can be cancelled is the editor's
+  even while a composition is open, so scope `paragraph` holds there too.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and

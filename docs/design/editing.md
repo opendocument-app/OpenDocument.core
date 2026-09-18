@@ -352,7 +352,7 @@ then intercepts `beforeinput` and takes the edits it can express as operations:
 | Backspace at the start of a paragraph | taken: the paragraph merges into the one before it |
 | a paste of plain text, over as many lines as it holds | taken: each line after the first opens a paragraph |
 | a mark - ctrl/cmd+B, I, U, or `odr.editing.format` - under scope `document` | taken: a run covered in part is cut, and the covered runs are restyled |
-| a composition (CJK, autocorrect, dictation) | let through and reconciled on `compositionend` |
+| a composition (CJK, autocorrect, dictation, an Android keyboard) | let through, and each change recorded after its `input` |
 | a soft line break (`insertLineBreak`) | refused, reason `newLine` - no operation carries one |
 | a range reaching over a picture | taken: the frame carries an address, so the picture goes with the text |
 | a range reaching over a text box or a table | refused, reason `range` - it holds text of its own, which the reader did not mean to lose |
@@ -396,9 +396,12 @@ button is live. One `beforeinput` is one step.
 **Known holes, both narrow.** A scripted `document.execCommand` can bypass the
 gate, because Chrome does not fire a cancelable `beforeinput` for every command;
 trusted input, which is all a reader has, goes through it. And a composition
-cannot be cancelled at all, so the editor lets it finish and reads the run back
-on `compositionend`; a composition that landed where no run can name it raises
-code 9 rather than being dropped. Android WebView's incomplete `beforeinput`
+cannot be cancelled at all, so the editor lets the browser write and records
+the run's text after each `input`; a run the browser took out of the page
+raises `unnameableEdit` rather than being dropped. Only an event that cannot be
+cancelled is let through: an Android keyboard holds a composition open on the
+word under the caret, so a key, Enter or Backspace arrives while one is open,
+and the editor still owns it. Android WebView's incomplete `beforeinput`
 (decision 8) is the reason that report exists, and the reason a delete whose
 range the browser did not state is extended by one character rather than
 refused; verify both on a device.

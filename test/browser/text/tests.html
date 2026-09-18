@@ -865,6 +865,81 @@
       select(run(11).firstChild, 2);
       check("and Enter is taken", input("insertParagraph") === "taken");
 
+      // ------------------------------------------------------ compositions
+
+      // What a browser does for a composition, which cannot be cancelled: a
+      // `beforeinput` nobody may cancel, the text written into the run, and
+      // the `input` after it. An Android keyboard keeps one open on the word
+      // under the caret, so a composition is how most of its text arrives.
+      function compose(id, text) {
+        var target = run(id);
+        select(target.firstChild, target.firstChild.length);
+        document.body.dispatchEvent(
+          new InputEvent("beforeinput", {
+            inputType: "insertCompositionText",
+            data: text,
+            bubbles: true,
+            cancelable: false,
+          })
+        );
+        target.firstChild.data = text;
+        // replacing the data puts the caret at 0; a browser leaves it after
+        // what it wrote
+        select(target.firstChild, text.length);
+        document.body.dispatchEvent(
+          new InputEvent("input", { inputType: "insertCompositionText", bubbles: true })
+        );
+      }
+
+      reset();
+      note("a composition");
+      select(run(31).firstChild, 5);
+      document.body.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      compose(31, "thirdx");
+      check("what the browser wrote is on the log", ops().length === 1, ops());
+      check(
+        "as the run's new text",
+        ops()[0].op === "setText" && ops()[0].id === 31 && ops()[0].text === "thirdx",
+        ops()
+      );
+      check("and the host hears of it", changes.length > 0 && changes[changes.length - 1].canUndo);
+      compose(31, "thirdxy");
+      check("a second change folds into the same operation", ops().length === 1, ops());
+      check("naming the text it ends at", ops()[0].text === "thirdxy", ops());
+
+      // the keyboard still holds the composition open, and the next key
+      // arrives as an edit the editor owns
+      check("an insert while it is open is taken", input("insertText", "!") === "taken");
+      check("into the run", run(31).textContent === "thirdxy!", run(31).textContent);
+      check("and on the log", ops()[0].text === "thirdxy!", ops());
+      check("Enter while it is open is taken", input("insertParagraph") === "taken");
+      check("and splits the paragraph", texts() === "first run a link and a tail|bold|thirdxy!||", texts());
+      document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+
+      check("undo takes back the split", odr.editing.undo() && texts() === "first run a link and a tail|bold|thirdxy!|", texts());
+      check("then the insert", odr.editing.undo() && run(31).textContent === "thirdxy");
+      check("then each change the browser wrote", odr.editing.undo() && run(31).textContent === "thirdx");
+      check("back to the text before it", odr.editing.undo() && run(31).textContent === "third");
+      check("and redo writes it again", odr.editing.redo() && run(31).textContent === "thirdx");
+
+      // a browser that ends a composition without an `input` for what it wrote
+      reset();
+      select(run(11).firstChild, 5);
+      document.body.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      run(11).firstChild.data = "first rune ";
+      document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      check("the end of the composition reads the run back", ops().length === 1 && ops()[0].text === "first rune ", ops());
+
+      // scope `paragraph` still gates an edit made while a composition is open
+      reset();
+      document.body.setAttribute("data-odr-editing-scope", "paragraph");
+      select(run(31).firstChild, 2);
+      document.body.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      check("Enter while it is open is refused under scope paragraph", input("insertParagraph") === "refused");
+      check("so the paragraph stays whole", texts() === "first run a link and a tail|bold|third|", texts());
+      document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      document.body.removeAttribute("data-odr-editing-scope");
+
       // ---------------------------------------------- what is not an edit
 
       // A script rewriting the page is not a reader typing, so the log stays
