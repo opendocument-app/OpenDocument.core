@@ -526,6 +526,20 @@ final class TextFileEditTests: XCTestCase {
 
     XCTAssertEqual(String(data: edited, encoding: .utf8), "rewritten")
   }
+
+  func testEditsAndSavesLikeADocument() throws {
+    let path = try write("hello text file\n", as: "note.txt")
+    let file = try DecodedFile.decode(path: path).asTextFile()
+
+    try file.edit(
+      operations: #"{"version":2,"ops":[{"op":"setContent","text":"rewritten"}]}"#)
+
+    XCTAssertEqual(try file.text(), "rewritten")
+    XCTAssertEqual(String(data: try file.saveToMemory(), encoding: .utf8), "rewritten")
+    let saved = (path as NSString).deletingLastPathComponent + "/saved.txt"
+    try file.save(to: saved)
+    XCTAssertEqual(try String(contentsOfFile: saved, encoding: .utf8), "rewritten")
+  }
 }
 
 final class PdfAnnotationTests: XCTestCase {

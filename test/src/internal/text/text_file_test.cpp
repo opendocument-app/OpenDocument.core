@@ -166,6 +166,37 @@ TEST(TextFile, a_file_we_cannot_decode_is_not_savable) {
   std::ostringstream out;
   EXPECT_THROW(shift_jis.write_edited(set_content("x"), out),
                UnsupportedOperation);
+  EXPECT_THROW(shift_jis.edit(set_content("x")), UnsupportedOperation);
+  EXPECT_THROW(shift_jis.save(out), UnsupportedOperation);
+}
+
+TEST(TextFile, an_edit_stays_in_the_file_until_it_is_saved) {
+  const DecodedFile file =
+      open(File::from_memory(std::string("one\ntwo\n"), "notes.txt"),
+           DecodeOptions::as(FileType::text_file));
+  file.as_text_file().edit(set_content("one\nTWO\n"));
+
+  // a second handle over the same file sees the edit
+  const odr::TextFile text = file.as_text_file();
+  EXPECT_EQ(text.text(), "one\nTWO\n");
+  EXPECT_EQ(text.encoding(), TextEncoding::utf8);
+  EXPECT_EQ(text.file().name(), "notes.txt");
+
+  std::ostringstream out;
+  text.save(out);
+  EXPECT_EQ(std::move(out).str(), "one\nTWO\n");
+  EXPECT_EQ(text.save_to_memory().size(), 8U);
+}
+
+TEST(TextFile, json_is_not_savable) {
+  const DecodedFile json =
+      open(File::from_memory(std::string(R"({"a": 1})")),
+           DecodeOptions::as(FileType::javascript_object_notation));
+  ASSERT_TRUE(json.is_text_file());
+  EXPECT_FALSE(json.as_text_file().is_savable());
+  std::ostringstream out;
+  EXPECT_THROW(json.as_text_file().write_edited(set_content("x"), out),
+               UnsupportedOperation);
 }
 
 /// A decodable encoding that is not utf-8 saves, and saves as utf-8.

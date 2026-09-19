@@ -16,6 +16,14 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The wasm `Document.edit`, `save`, `isEditable` and `isSavable` work for a
+  plain text file, which saves as UTF-8.
+
+- `TextFile::is_savable` is false for a json file.
+
+- `TextFile::edit`, `save` and `save_to_memory`, also in Python, Java,
+  Objective-C and Swift. `write_edited` is deprecated.
+
 - **Fix**: one undo in the document view's editor took back only part of an
   edit that took several steps, such as Enter inside a run, and showed states
   between the steps that the reader never made. `odr.editing.undo()` and

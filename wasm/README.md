@@ -95,7 +95,8 @@ refuses the rest with code 1010, `outOfScope`.
 
 `isEditable()` and `isSavable()` answer for this document, where
 `capabilities()` answers for the format. ODF, docx, pptx, xlsx and txt can be
-saved; anything else throws `UnsupportedOperation`.
+saved; anything else throws `UnsupportedOperation`. A txt saves as UTF-8,
+whatever encoding it was read in.
 
 Encrypted documents:
 

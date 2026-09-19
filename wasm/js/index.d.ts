@@ -176,8 +176,9 @@ export declare class Document {
   /** `capabilities()` narrowed to this document. */
   isEditable(): boolean;
   isSavable(encrypted?: boolean): boolean;
-  /** Applies what the rendered page's `odr.generateDiff()` collected.
-   * @throws OdrError `NoDocumentFile` */
+  /** Applies what the rendered page's `odr.generateDiff()` collected. A plain
+   * text file takes its `setContent` envelope, and the next render shows it.
+   * @throws OdrError `NoDocumentFile` for a file that is neither */
   edit(diff: string): this;
 
   /**
@@ -217,7 +218,8 @@ export declare class Document {
    *   `odr.annotation.getAnnotations()` collected.
    */
   annotate(annotations: string): Uint8Array;
-  /** The document's bytes, not the rendered html.
+  /** The document's bytes, not the rendered html. A plain text file saves as
+   * UTF-8, whatever its source encoding.
    * @throws OdrError `UnsupportedOperation` where the format cannot be saved */
   save(password?: string): Uint8Array;
 
