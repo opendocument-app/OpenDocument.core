@@ -29,6 +29,9 @@ The release run heads these entries with the version and opens a fresh
   between the steps that the reader never made. `odr.editing.undo()` and
   `redo()` now take back and replay the whole edit.
 
+- **Fix**: the document view's editor recorded nothing an Android keyboard
+  typed, so a save lost it. A composition is now recorded after each change.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and

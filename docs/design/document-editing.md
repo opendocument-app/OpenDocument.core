@@ -156,8 +156,12 @@ place the two could disagree is exactly the bug it was meant to catch.
 
 **Where it earns its keep:** a composition cannot be cancelled, so the browser
 *does* write inside a run. With the page as the model there is nothing to
-reconcile — `compositionend` reads the run's text and that is the operation.
-With a parallel model that same case would be a merge.
+reconcile — the editor notes the run's text before the browser writes, reads it
+after the `input`, and the difference is the operation. With a parallel model
+that same case would be a merge.
+
+It is read back after every change, not once at `compositionend`, because an
+Android keyboard holds a composition open on the word under the caret.
 
 ### 7. Read-only engines say nothing
 

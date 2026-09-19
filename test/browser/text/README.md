@@ -60,6 +60,10 @@ Why the checks look the way they do:
   the script; the same dispatch is what drops a pending mark when the caret
   moved.
 
+- **A composition is driven the way a browser fires one**: a `beforeinput`
+  that cannot be cancelled, the run written by hand, and the `input` after it.
+  A real Android keyboard was checked on an emulator with Gboard.
+
 **Scripted editing is not the editing a reader does, which is why no check uses
 `execCommand`.** Chrome's scripted path raises no cancelable `beforeinput`, so
 `execCommand("insertParagraph")` splits a paragraph without the editor ever
