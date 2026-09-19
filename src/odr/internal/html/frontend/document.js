@@ -98,11 +98,7 @@
   var done = [];
   var undone = [];
 
-  // One key press can take several steps: Enter inside a run cuts the run,
-  // puts its tail beside it and splits the paragraph. Each way in - an input,
-  // a composition, a format - opens a gesture, every step it performs carries
-  // it, and undo and redo take a gesture whole, so they never show a state
-  // the reader did not make.
+  // undo and redo take all steps of one gesture together
   var gesture = 0;
 
   function perform(step) {
