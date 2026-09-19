@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The pdf view reports the pending annotation count on
+  `odr.onAnnotationChange({count})`, and `odr.annotation.press` and `recolor`
+  do what a tool button does.
+
 - The wasm `Document.edit`, `save`, `isEditable` and `isSavable` work for a
   plain text file, which saves as UTF-8.
 
