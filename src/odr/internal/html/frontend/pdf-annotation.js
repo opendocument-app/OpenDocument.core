@@ -18,6 +18,22 @@
     overscrollBehavior: "contain",
   };
 
+  /// Raised as what is pending changes: a mark, a finished stroke, an undo, a
+  /// removal, a clear. A stroke counts once it ends.
+  odr.onAnnotationChange = function () {};
+
+  var reported = 0;
+
+  function changed() {
+    if (pending.length === reported) {
+      return;
+    }
+    reported = pending.length;
+    if (typeof odr.onAnnotationChange === "function") {
+      odr.onAnnotationChange({ count: pending.length });
+    }
+  }
+
   function pages() {
     return Array.prototype.slice.call(
       document.querySelectorAll("[data-odr-space]")
@@ -269,8 +285,8 @@
 
   /// One annotation per page the selection covers. `keep` holds the selection,
   /// which the automatic path cannot: the next `selectionchange` re-marks it.
-  function markSelection(keep) {
-    if (!tool || tool === "ink") {
+  function markSelection(type, rgb, keep) {
+    if (!type || type === "ink") {
       return false;
     }
     var byPage = selectionBoxes();
@@ -279,9 +295,9 @@
       pending.push({
         id: nextId++,
         page: +index,
-        type: tool,
+        type: type,
         boxes: byPage[index],
-        color: color.slice(),
+        color: rgb.slice(),
       });
       added = true;
     });
@@ -290,8 +306,47 @@
         window.getSelection().removeAllRanges();
       }
       redraw();
+      changed();
     }
     return added;
+  }
+
+  function hasSelection() {
+    var selection = window.getSelection();
+    return (
+      !!selection && !selection.isCollapsed && selection.toString().length > 0
+    );
+  }
+
+  function arm(value) {
+    tool = value || null;
+    pages().forEach(function (page) {
+      page.classList.toggle("an-draw", tool === "ink");
+    });
+    document.documentElement.classList.toggle("an-drawing", tool === "ink");
+  }
+
+  function applyStyle(style) {
+    if (style && style.color) {
+      color = style.color.slice(0, 3).map(Number);
+    }
+    if (style && style.width !== undefined) {
+      width = Number(style.width);
+    }
+  }
+
+  /// A tool button pressed over a standing selection: marks it once, and
+  /// leaves no tool armed. Disarmed first, so the cleared selection cannot
+  /// mark itself a second time.
+  function markOnce(type, style) {
+    var rgb =
+      style && style.color ? style.color.slice(0, 3).map(Number) : color;
+    arm(null);
+    markSelection(type, rgb, false);
+  }
+
+  function marksSelection(type) {
+    return !!type && type !== "ink" && hasSelection();
   }
 
 
@@ -326,7 +381,7 @@
     }
     window.clearTimeout(settle);
     settle = window.setTimeout(function () {
-      markSelection(false);
+      markSelection(tool, color, false);
     }, 50);
   }
 
@@ -415,6 +470,7 @@
     stroke = null;
     strokeNode = null;
     strokePointer = null;
+    changed();
   }
 
   function applyOptions() {
@@ -433,14 +489,35 @@
 
   odr.annotation = {
     /// null, "highlight", "underline", "strikeOut", "squiggly" or "ink".
-    setTool: function (value) {
-      tool = value || null;
-      pages().forEach(function (page) {
-        page.classList.toggle("an-draw", tool === "ink");
-      });
-      document.documentElement.classList.toggle("an-drawing", tool === "ink");
-    },
+    setTool: arm,
     getTool: function () {
+      return tool;
+    },
+    /// A tool button, pressed. Over a selection, @p type marks it once and no
+    /// tool stays armed; otherwise the press arms @p type, or disarms it if it
+    /// is armed already. Null disarms. @p style is `{color, width}`, either
+    /// optional. Answers the tool left armed.
+    press: function (type, style) {
+      type = type || null;
+      if (marksSelection(type)) {
+        markOnce(type, style);
+      } else if (type !== null && type === tool) {
+        arm(null);
+      } else {
+        applyStyle(style);
+        arm(type);
+      }
+      return tool;
+    },
+    /// A new @p style chosen for @p type. Over a selection it marks it once, as
+    /// `press` does; else it restyles @p type if armed. Answers the tool left
+    /// armed.
+    recolor: function (type, style) {
+      if (marksSelection(type)) {
+        markOnce(type, style);
+      } else if (type && type === tool) {
+        applyStyle(style);
+      }
       return tool;
     },
     /// DeviceRGB, each component in [0, 1].
@@ -470,7 +547,7 @@
     /// Marks the selection with the armed tool, and answers whether anything
     /// was added. The selection is left standing.
     mark: function () {
-      return markSelection(true);
+      return markSelection(tool, color, true);
     },
     /// What is pending, newest last. Geometry is in page-box points.
     list: function () {
@@ -481,14 +558,17 @@
         return a.id !== id;
       });
       redraw();
+      changed();
     },
     undo: function () {
       pending.pop();
       redraw();
+      changed();
     },
     clear: function () {
       pending = [];
       redraw();
+      changed();
     },
     /// The payload `PdfFile::annotate` takes, in pdf user space.
     getAnnotations: function () {

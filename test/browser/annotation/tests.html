@@ -347,6 +347,105 @@
 
     api.clear();
     api.setTool(null);
+
+    // --- the host hears of every change to what is pending ----------------
+    const heard = [];
+    window.odr.onAnnotationChange = (event) => heard.push(event.count);
+    api.setTool("highlight");
+    selectRun(0);
+    api.mark();
+    check("a mark is reported", heard.join() === "1", heard);
+    api.undo();
+    check("an undo is reported", heard.join() === "1,0", heard);
+    api.undo();
+    api.clear();
+    check("an undo or a clear that changes nothing is not", heard.length === 2, heard);
+
+    heard.length = 0;
+    api.setTool("ink");
+    document.dispatchEvent(new PointerEvent("pointerdown", at(100, 500)));
+    document.dispatchEvent(new PointerEvent("pointermove", at(140, 540)));
+    check("a stroke is not reported while it is drawn", heard.length === 0, heard);
+    document.dispatchEvent(new PointerEvent("pointerup", at(140, 540)));
+    check("but once it ends", heard.join() === "1", heard);
+    api.remove(api.list()[0].id);
+    check("a removal is reported", heard.join() === "1,0", heard);
+    api.setTool(null);
+
+    // --- a tool button: mark a standing selection, or arm and disarm ------
+    heard.length = 0;
+    selectRun(0);
+    check(
+      "a press over a selection arms nothing",
+      api.press("underline", { color: [0, 0, 1] }) === null
+    );
+    const pressed = payload().annotations;
+    check(
+      "and marks it once, in the colour pressed",
+      pressed.length === 1 &&
+        pressed[0].type === "underline" &&
+        pressed[0].color.join() === "0,0,1",
+      pressed
+    );
+    check("the selection goes with it", window.getSelection().isCollapsed);
+    check("the host hears of it", heard.join() === "1", heard);
+
+    check("a press with nothing selected arms", api.press("highlight") === "highlight");
+    check("a second press disarms", api.press("highlight") === null);
+    api.press("highlight", { color: [1, 0, 0] });
+    check("a press on another tool swaps", api.press("squiggly") === "squiggly");
+    check("null disarms", api.press(null) === null);
+    selectRun(0);
+    check("the pen arms over a selection too", api.press("ink", { width: 4 }) === "ink");
+    check("it marks nothing", api.list().length === 1, api.list());
+    api.press(null);
+
+    // a press over a selection with the automatic path on marks it once: the
+    // selection it clears must not come back as a second mark
+    api.clear();
+    api.setOptions({ markOnSelection: true });
+    selectRun(0);
+    api.press("strikeOut");
+    await new Promise((r) => setTimeout(r, 100));
+    check("with markOnSelection, still once", api.list().length === 1, api.list());
+    api.setOptions({ markOnSelection: false });
+
+    // --- a new colour marks a selection, or restyles the armed tool -------
+    api.clear();
+    selectRun(0);
+    check(
+      "recolor over a selection marks it once",
+      api.recolor("highlight", { color: [0, 1, 0] }) === null &&
+        api.list().length === 1 &&
+        api.list()[0].color.join() === "0,1,0",
+      api.list()
+    );
+    api.clear();
+    api.press("highlight", { color: [1, 1, 0] });
+    api.recolor("highlight", { color: [0, 1, 1] });
+    selectRun(0);
+    api.mark();
+    check(
+      "recolor restyles the armed tool",
+      api.list()[0].color.join() === "0,1,1",
+      api.list()[0].color
+    );
+    api.clear();
+    // mark() left it standing
+    window.getSelection().removeAllRanges();
+    api.recolor("underline", { color: [1, 0, 1] });
+    check("and arms nothing that was not armed", api.getTool() === "highlight");
+    selectRun(0);
+    api.mark();
+    check(
+      "nor restyles the armed one",
+      api.list()[0].color.join() === "0,1,1",
+      api.list()[0].color
+    );
+
+    window.odr.onAnnotationChange = () => {};
+    api.clear();
+    api.setTool(null);
   }
 
   run();

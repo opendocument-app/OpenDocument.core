@@ -483,4 +483,6 @@ version drifting until a new check page caught it.
   `odr.annotation` is its own API and `PdfFile::annotate` its own write path.
   It is a different gesture from editing text, so whether it should share the
   mode is a real question rather than an oversight
-  ([`txt-editing.md`](txt-editing.md) carries it too).
+  ([`txt-editing.md`](txt-editing.md) carries it too). It reports on a
+  callback of its own, `odr.onAnnotationChange`, and a pdf page does not
+  carry `editing.js`.
