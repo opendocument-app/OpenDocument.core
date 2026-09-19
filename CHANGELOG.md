@@ -24,6 +24,11 @@ The release run heads these entries with the version and opens a fresh
 - `TextFile::edit`, `save` and `save_to_memory`, also in Python, Java,
   Objective-C and Swift. `write_edited` is deprecated.
 
+- **Fix**: one undo in the document view's editor took back only part of an
+  edit that took several steps, such as Enter inside a run, and showed states
+  between the steps that the reader never made. `odr.editing.undo()` and
+  `redo()` now take back and replay the whole edit.
+
 ## v7.0.0 - 2026-09-13
 
 - **Breaking**: `DocumentPath`, `Element::document_path()` and
