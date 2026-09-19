@@ -439,13 +439,27 @@ public:
   /// the raw bytes where it is not.
   [[nodiscard]] std::string text() const;
 
-  /// False where @ref encoding cannot be decoded: the view hands those bytes
-  /// to the browser as they are, so what comes back cannot be put back.
+  /// False where the file type is not `text_file`, and where @ref encoding
+  /// cannot be decoded: the view hands those bytes to the browser as they are,
+  /// so what comes back cannot be put back.
   [[nodiscard]] bool is_savable() const noexcept;
 
   /// Applies @p operations - `{"version": 2, "ops": [{"op": "setContent",
-  /// "text": "…"}]}` - and writes the result to @p out, as UTF-8 whatever
-  /// @ref encoding the source was. See `docs/design/txt-editing.md`.
+  /// "text": "…"}]}` - to the file, and every handle over it sees the edit. The
+  /// text is UTF-8 afterwards. See `docs/design/txt-editing.md`.
+  /// @throws UnsupportedOperation where @ref is_savable is false.
+  void edit(std::string_view operations,
+            const Logger &logger = Logger::null()) const;
+
+  /// Writes the text as UTF-8, with every @ref edit applied.
+  /// @throws UnsupportedOperation where @ref is_savable is false.
+  void save(const std::string &path) const;
+  void save(std::ostream &out) const;
+  /// The saved file in memory.
+  [[nodiscard]] File save_to_memory() const;
+
+  /// Deprecated: @ref edit, then @ref save. Writes what @p operations make of
+  /// the file to @p out, and leaves the file as it is.
   /// @throws UnsupportedOperation where @ref is_savable is false.
   void write_edited(std::string_view operations, std::ostream &out,
                     const Logger &logger = Logger::null()) const;

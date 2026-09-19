@@ -318,6 +318,29 @@ void odr_python::bind_file(py::module_ &m) {
            "False where the file type is one this library does not write, or "
            "the encoding cannot be decoded.")
       .def(
+          "edit",
+          [](const odr::TextFile &file, const std::string &operations) {
+            file.edit(operations);
+          },
+          py::arg("operations"),
+          "Apply the operations our browser-side editor produces. The text is "
+          "UTF-8 afterwards, whatever the source encoding was.")
+      .def("save",
+           py::overload_cast<const std::string &>(&odr::TextFile::save,
+                                                  py::const_),
+           py::arg("path"), py::call_guard<py::gil_scoped_release>())
+      .def(
+          "save_to_memory",
+          [](const odr::TextFile &file) {
+            std::ostringstream out;
+            {
+              py::gil_scoped_release release;
+              file.save(out);
+            }
+            return py::bytes(out.str());
+          },
+          "Save the file and return its bytes.")
+      .def(
           "write_edited",
           [](const odr::TextFile &file, const std::string &operations) {
             std::ostringstream out;
@@ -328,8 +351,9 @@ void odr_python::bind_file(py::module_ &m) {
             return py::bytes(out.str());
           },
           py::arg("operations"),
-          "Apply the operations and return the result, as UTF-8 whatever the "
-          "source encoding was.");
+          "Deprecated: use edit, then save_to_memory. Apply the operations and "
+          "return the result, as UTF-8 whatever the source encoding was. The "
+          "file stays as it is.");
 
   py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")
       .def("read", [](const odr::ImageFile &file) {

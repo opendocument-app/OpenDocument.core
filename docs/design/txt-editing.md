@@ -64,27 +64,32 @@ does not have.
 UTF-16 code units and `std::string` counts bytes.
 
 **What it costs:** the whole file crosses the bridge on every save. Less than
-it looks, because `write_edited` produces the complete bytes either way, so a
+it looks, because `TextFile::save` writes the complete bytes either way, so a
 finer log would only be reassembled before writing; the saving would be one
 hop. Where it does bite is a large file, and the answer there is **one**
 `replaceLines {from, to, text}` computed as a single diff hunk at emit time —
 still one operation, still applied to the file as it was, so still nothing
 positional to go stale. That needs no schema change to reach.
 
-### 3. The write path is `PdfFile::annotate`'s shape, not `Document::save`'s
+### 3. The write path has `Document`'s names
 
 ```cpp
 [[nodiscard]] bool TextFile::is_savable() const noexcept;
-void TextFile::write_edited(std::string_view operations, std::ostream &out,
-                            const Logger & = Logger::null()) const;
+void TextFile::edit(std::string_view operations,
+                    const Logger & = Logger::null()) const;
+void TextFile::save(std::ostream &out) const;
 ```
 
-One call taking the envelope and a stream, leaving the handle unchanged.
+`edit` keeps the edit in the file, so every handle over it and the next render
+see it. `save` writes the text.
 
-**Why:** a `TextFile` is an immutable handle over bytes, and there is no
-document to mutate and later serialise. `PdfFile::annotate` is the precedent —
-the other non-document file with a write path of its own — and the shape suits
-for the same reason: nothing is held between the edit and the write.
+**Why:** a host saves a `.txt` with the calls it already makes for a document,
+and learns no second API because of what the file turned out to be — decision 9
+of [`editing.md`](editing.md) again. `TextFile::write_edited` stays, deprecated.
+
+**What it costs:** a `TextFile` handle is no longer immutable. The edit lives in
+the text engine's file, which every handle shares, as a document's edit lives
+in its shared tree.
 
 ### 4. What it writes is UTF-8, whatever the source was
 

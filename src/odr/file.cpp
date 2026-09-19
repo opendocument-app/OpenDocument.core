@@ -11,13 +11,16 @@
 #include <odr/internal/encoding/transcode.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/text/text_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <fstream>
 #include <optional>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 
 namespace odr {
@@ -291,18 +294,19 @@ std::string TextFile::text() const {
 }
 
 bool TextFile::is_savable() const noexcept {
+  // json is a text file too, and one this library does not write
+  if (file_type() != FileType::text_file) {
+    return false;
+  }
   const TextEncoding encoding = this->encoding();
   return encoding == TextEncoding::unknown ||
          text_encoding_is_decodable(encoding);
 }
 
-void TextFile::write_edited(const std::string_view operations,
-                            std::ostream &out,
-                            const Logger & /*logger*/) const {
-  if (!is_savable()) {
-    throw UnsupportedOperation();
-  }
+namespace {
 
+/// The text @p operations set, or none where they state no operation.
+std::optional<std::string> content_of(const std::string_view operations) {
   const nlohmann::json json = nlohmann::json::parse(operations);
   if (json.value("version", 0) != 2) {
     throw std::invalid_argument("unsupported edit version");
@@ -316,6 +320,56 @@ void TextFile::write_edited(const std::string_view operations,
     }
     content = operation.at("text").get<std::string>();
   }
+  return content;
+}
+
+} // namespace
+
+void TextFile::edit(const std::string_view operations,
+                    const Logger & /*logger*/) const {
+  if (!is_savable()) {
+    throw UnsupportedOperation();
+  }
+  std::optional<std::string> content = content_of(operations);
+  if (!content.has_value()) {
+    return;
+  }
+  const auto text_file =
+      std::dynamic_pointer_cast<internal::text::TextFile>(m_impl);
+  if (text_file == nullptr) {
+    throw UnsupportedOperation();
+  }
+  text_file->set_text(std::move(*content));
+}
+
+void TextFile::save(const std::string &path) const {
+  if (!is_savable()) {
+    throw UnsupportedOperation();
+  }
+  std::ofstream out = internal::util::file::create(path);
+  out << text();
+}
+
+void TextFile::save(std::ostream &out) const {
+  if (!is_savable()) {
+    throw UnsupportedOperation();
+  }
+  out << text();
+}
+
+File TextFile::save_to_memory() const {
+  std::ostringstream out;
+  save(out);
+  return File::from_memory(std::move(out).str());
+}
+
+void TextFile::write_edited(const std::string_view operations,
+                            std::ostream &out,
+                            const Logger & /*logger*/) const {
+  if (!is_savable()) {
+    throw UnsupportedOperation();
+  }
+  const std::optional<std::string> content = content_of(operations);
 
   // an envelope stating any operation replaces every byte, so the file is
   // only read where it states none

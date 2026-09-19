@@ -2,6 +2,7 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 
 #include <emscripten/bind.h>
@@ -14,17 +15,25 @@ namespace odr::wasm {
 
 namespace {
 
-/// `capabilities()` narrowed to this document.
+/// `capabilities()` narrowed to this document, or `TextFile::is_savable`.
 emscripten::val is_editable(const Handle handle) {
   return guarded([&] {
-    return ok(emscripten::val(document_of(session(handle)).is_editable()));
+    Session &s = session(handle);
+    if (s.file.is_text_file()) {
+      return ok(emscripten::val(s.file.as_text_file().is_savable()));
+    }
+    return ok(emscripten::val(document_of(s).is_editable()));
   });
 }
 
 emscripten::val is_savable(const Handle handle, const bool encrypted) {
   return guarded([&] {
-    return ok(
-        emscripten::val(document_of(session(handle)).is_savable(encrypted)));
+    Session &s = session(handle);
+    if (s.file.is_text_file()) {
+      return ok(
+          emscripten::val(!encrypted && s.file.as_text_file().is_savable()));
+    }
+    return ok(emscripten::val(document_of(s).is_savable(encrypted)));
   });
 }
 
@@ -131,8 +140,13 @@ emscripten::val insert_paragraph_after(const Handle handle,
 /// The document's bytes; there is no filesystem to save to.
 emscripten::val save(const Handle handle) {
   return guarded([&] {
+    Session &s = session(handle);
     std::ostringstream out;
-    document_of(session(handle)).save(out);
+    if (s.file.is_text_file()) {
+      s.file.as_text_file().save(out);
+    } else {
+      document_of(s).save(out);
+    }
     return ok(to_uint8_array(out.str()));
   });
 }
@@ -140,8 +154,12 @@ emscripten::val save(const Handle handle) {
 emscripten::val save_encrypted(const Handle handle,
                                const std::string &password) {
   return guarded([&] {
+    Session &s = session(handle);
+    if (s.file.is_text_file()) {
+      throw UnsupportedOperation();
+    }
     std::ostringstream out;
-    document_of(session(handle)).save(out, password);
+    document_of(s).save(out, password);
     return ok(to_uint8_array(out.str()));
   });
 }
