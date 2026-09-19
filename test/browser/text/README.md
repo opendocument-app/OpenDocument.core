@@ -61,12 +61,8 @@ Why the checks look the way they do:
   moved.
 
 - **A composition is driven the way a browser fires one**: a `beforeinput`
-  that cannot be cancelled, the run's text written by hand, and the `input`
-  after it. An Android keyboard holds a composition open on the word under the
-  caret, so the group also sends the keys a reader presses meanwhile - an
-  insert and Enter, which can be cancelled - and checks the editor still owns
-  them. What a real keyboard does was checked on an Android emulator with
-  Gboard, which no page here can stand in for.
+  that cannot be cancelled, the run written by hand, and the `input` after it.
+  A real Android keyboard was checked on an emulator with Gboard.
 
 **Scripted editing is not the editing a reader does, which is why no check uses
 `execCommand`.** Chrome's scripted path raises no cancelable `beforeinput`, so

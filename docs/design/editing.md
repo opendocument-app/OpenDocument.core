@@ -398,13 +398,11 @@ gate, because Chrome does not fire a cancelable `beforeinput` for every command;
 trusted input, which is all a reader has, goes through it. And a composition
 cannot be cancelled at all, so the editor lets the browser write and records
 the run's text after each `input`; a run the browser took out of the page
-raises `unnameableEdit` rather than being dropped. Only an event that cannot be
-cancelled is let through: an Android keyboard holds a composition open on the
-word under the caret, so a key, Enter or Backspace arrives while one is open,
-and the editor still owns it. Android WebView's incomplete `beforeinput`
-(decision 8) is the reason that report exists, and the reason a delete whose
-range the browser did not state is extended by one character rather than
-refused; verify both on a device.
+raises `unnameableEdit` rather than being dropped. A key that arrives while a
+composition is open is still the editor's. Android WebView's incomplete
+`beforeinput` (decision 8) is the reason that report exists, and the reason a
+delete whose range the browser did not state is extended by one character
+rather than refused; verify both on a device.
 
 ### 14. The scope is host policy, and the page refuses past it
 

@@ -160,10 +160,8 @@ reconcile — the editor notes the run's text before the browser writes, reads i
 after the `input`, and the difference is the operation. With a parallel model
 that same case would be a merge.
 
-It is read back after every change rather than once at `compositionend`,
-because an Android keyboard holds a composition open on the word under the
-caret until the caret leaves it: a save or an undo in between would miss the
-word, and the key events that arrive meanwhile are ones the editor owns.
+It is read back after every change, not once at `compositionend`, because an
+Android keyboard holds a composition open on the word under the caret.
 
 ### 7. Read-only engines say nothing
 

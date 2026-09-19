@@ -1331,13 +1331,11 @@
     });
   }
 
-  // A composition cannot be cancelled, so the browser writes inside a run and
-  // the editor records what it wrote. An Android keyboard holds one open on
-  // the word under the caret for as long as the caret stays there, so each
-  // change is recorded after its `input`, not when the composition ends.
+  // A composition cannot be cancelled, so the browser writes and the editor
+  // records each change after its `input`: an Android keyboard holds one open
+  // on the word under the caret for as long as the caret stays there.
 
-  // the runs the browser may write into before the log hears of it, each with
-  // the text it held before
+  // the runs the browser may write into, each with the text it held before
   var unrecorded = [];
 
   function watch(run) {
@@ -1359,8 +1357,7 @@
     }
   }
 
-  /// One step for what the browser wrote into the watched runs, since it is
-  /// on the page already.
+  /// One step for what the browser wrote into the watched runs.
   function recordWritten() {
     var changes = [];
     for (var i = 0; i < unrecorded.length; ++i) {
@@ -1417,6 +1414,8 @@
   });
 
   root.addEventListener("beforeinput", function (event) {
+    // what the browser wrote before this is a gesture of its own
+    recordWritten();
     gesture += 1;
     var type = event.inputType;
     var at = rangeOf(event);
@@ -1436,9 +1435,9 @@
       return;
     }
 
-    // a composition, and whatever else the browser will not let go of: it
-    // writes, and the `input` after it is recorded
-    if (!event.cancelable) {
+    // the browser writes these itself, and the `input` after it is recorded;
+    // WebKit may let a composition be cancelled, but it is not an edit we own
+    if (!event.cancelable || /Composition/.test(type)) {
       if (at === null) {
         watchSelection();
       } else {
@@ -1447,9 +1446,6 @@
       }
       return;
     }
-
-    // what the browser wrote before this goes on the log ahead of it
-    recordWritten();
 
     if (at === null) {
       refuse(event, "range", at);
@@ -1622,7 +1618,6 @@
     },
     committed: function () {
       dropPending();
-      unrecorded = [];
       done.length = 0;
       undone.length = 0;
     },

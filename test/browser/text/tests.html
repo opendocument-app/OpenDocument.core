@@ -875,10 +875,7 @@
 
       // ------------------------------------------------------ compositions
 
-      // What a browser does for a composition, which cannot be cancelled: a
-      // `beforeinput` nobody may cancel, the text written into the run, and
-      // the `input` after it. An Android keyboard keeps one open on the word
-      // under the caret, so a composition is how most of its text arrives.
+      // a `beforeinput` that cannot be cancelled, the run written, an `input`
       function compose(id, text) {
         var target = run(id);
         select(target.firstChild, target.firstChild.length);
@@ -891,8 +888,7 @@
           })
         );
         target.firstChild.data = text;
-        // replacing the data puts the caret at 0; a browser leaves it after
-        // what it wrote
+        // a browser leaves the caret after what it wrote
         select(target.firstChild, text.length);
         document.body.dispatchEvent(
           new InputEvent("input", { inputType: "insertCompositionText", bubbles: true })
@@ -915,8 +911,7 @@
       check("a second change folds into the same operation", ops().length === 1, ops());
       check("naming the text it ends at", ops()[0].text === "thirdxy", ops());
 
-      // the keyboard still holds the composition open, and the next key
-      // arrives as an edit the editor owns
+      // the composition is still open, and the next key is the editor's
       check("an insert while it is open is taken", input("insertText", "!") === "taken");
       check("into the run", run(31).textContent === "thirdxy!", run(31).textContent);
       check("and on the log", ops()[0].text === "thirdxy!", ops());
@@ -937,6 +932,20 @@
       run(11).firstChild.data = "first rune ";
       document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
       check("the end of the composition reads the run back", ops().length === 1 && ops()[0].text === "first rune ", ops());
+
+      reset();
+      select(run(11).firstChild, 5);
+      document.body.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      run(11).firstChild.data = "first rune ";
+      select(run(11).firstChild, 10);
+      check("a key after text written without an input is taken", input("insertText", "!") === "taken");
+      check("and undone apart from that text", odr.editing.undo() && run(11).textContent === "first rune ", run(11).textContent);
+      document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+
+      // WebKit may let a composition's `beforeinput` be cancelled
+      reset();
+      select(run(31).firstChild, 5);
+      check("a composition that can be cancelled is let through", input("insertCompositionText", "x") === "taken" && !prevented);
 
       // scope `paragraph` still gates an edit made while a composition is open
       reset();
