@@ -69,6 +69,7 @@ class FileTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   void textFileWritesAnEditBack() throws IOException {
     Path txt = TestFiles.txtFile(tempDir);
     try (DecodedFile file = Odr.open(txt.toString())) {
@@ -80,6 +81,22 @@ class FileTest {
               "{\"version\":2,\"ops\":[{\"op\":\"setContent\",\"text\":\"rewritten\"}]}");
 
       assertEquals("rewritten", new String(edited, java.nio.charset.StandardCharsets.UTF_8));
+    }
+  }
+
+  @Test
+  void textFileEditsAndSavesLikeADocument() throws IOException {
+    Path txt = TestFiles.txtFile(tempDir);
+    try (DecodedFile file = Odr.open(txt.toString())) {
+      TextFile text = file.asTextFile();
+      text.edit("{\"version\":2,\"ops\":[{\"op\":\"setContent\",\"text\":\"rewritten\"}]}");
+
+      assertEquals("rewritten", text.text());
+      assertEquals(
+          "rewritten", new String(text.saveToMemory(), java.nio.charset.StandardCharsets.UTF_8));
+      Path saved = tempDir.resolve("saved.txt");
+      text.save(saved.toString());
+      assertEquals("rewritten", Files.readString(saved));
     }
   }
 

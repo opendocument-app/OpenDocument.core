@@ -98,6 +98,9 @@
   var done = [];
   var undone = [];
 
+  // undo and redo take all steps of one gesture together
+  var gesture = 0;
+
   function perform(step) {
     if (step === null) {
       return null;
@@ -108,6 +111,7 @@
 
   /// Puts @p step on the log without applying it: the page shows it already.
   function record(step) {
+    step.gesture = gesture;
     done.push(step);
     undone.length = 0;
     odr.editing.changed();
@@ -750,6 +754,7 @@
   /// paragraph holding no run, the mark waits for the next typed text.
   /// Formatting sits behind the scope gate whole.
   function format(style, at) {
+    gesture += 1;
     if (!odr.editing.isEnabled()) {
       refuse(null, "readOnly", at);
       return false;
@@ -1374,6 +1379,7 @@
     if (changes.length === 0) {
       return;
     }
+    gesture += 1;
     record({
       ops: changes.map(function (change) {
         return { op: "setText", id: idOf(change.run), text: change.after };
@@ -1411,6 +1417,7 @@
   });
 
   root.addEventListener("beforeinput", function (event) {
+    gesture += 1;
     var type = event.inputType;
     var at = rangeOf(event);
 
@@ -1590,9 +1597,12 @@
       if (done.length === 0) {
         return false;
       }
-      var step = done.pop();
-      step.revert();
-      undone.push(step);
+      var taken = done[done.length - 1].gesture;
+      while (done.length > 0 && done[done.length - 1].gesture === taken) {
+        var step = done.pop();
+        step.revert();
+        undone.push(step);
+      }
       odr.editing.changed();
       return true;
     },
@@ -1601,9 +1611,12 @@
       if (undone.length === 0) {
         return false;
       }
-      var step = undone.pop();
-      step.apply();
-      done.push(step);
+      var given = undone[undone.length - 1].gesture;
+      while (undone.length > 0 && undone[undone.length - 1].gesture === given) {
+        var step = undone.pop();
+        step.apply();
+        done.push(step);
+      }
       odr.editing.changed();
       return true;
     },

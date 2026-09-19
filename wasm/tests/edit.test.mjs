@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
-import { Odr, OdrError, minimalOds, minimalOdt } from './helper.mjs';
+import { Odr, OdrError, minimalOds, minimalOdt, minimalPdf } from './helper.mjs';
 
 // Read out of the html rather than spelled, as the browser does. The runs
 // carry the ids an op names; a paragraph carries one too, so the tag counts.
@@ -168,8 +168,62 @@ describe('edit', () => {
     }
   });
 
+  it('edits and saves a plain text file through the same calls', () => {
+    const doc = odr.open(new TextEncoder().encode('lorem ipsum'), {
+      editable: true,
+      name: 'notes.txt',
+    });
+    try {
+      assert.equal(doc.isEditable(), true);
+      assert.equal(doc.isSavable(), true);
+      assert.equal(doc.isSavable(true), false);
+      assert.equal(new TextDecoder().decode(doc.save()), 'lorem ipsum');
+
+      assert.match(doc.render(0).html, /lorem ipsum/);
+      doc.edit(JSON.stringify({
+        version: 2,
+        ops: [{ op: 'setContent', text: 'edited in the browser' }],
+      }));
+      assert.equal(doc.fileName, 'notes.txt');
+      assert.match(doc.render(0).html, /edited in the browser/);
+
+      const saved = doc.save();
+      assert.equal(new TextDecoder().decode(saved), 'edited in the browser');
+      const reopened = odr.open(saved);
+      try {
+        assert.equal(reopened.fileType, odr.enums.FileType.txt);
+      } finally {
+        reopened.close();
+      }
+
+      assert.throws(() => doc.save('secret'), (error) => {
+        assert.equal(error.name, 'UnsupportedOperation');
+        return true;
+      });
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('refuses a text file of a type it does not write', () => {
+    const doc = odr.open(new TextEncoder().encode('{"a": 1}'), { editable: true });
+    try {
+      assert.equal(doc.isEditable(), false);
+      assert.equal(doc.isSavable(), false);
+      assert.match(doc.render(0).html, /data-odr-editable="readOnly"/);
+      for (const call of [() => doc.save(), () => doc.edit('{"version":2,"ops":[]}')]) {
+        assert.throws(call, (error) => {
+          assert.equal(error.name, 'UnsupportedOperation');
+          return true;
+        });
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
   it('refuses a file that is not a document', () => {
-    const doc = odr.open(new TextEncoder().encode('lorem ipsum dolor sit amet'));
+    const doc = odr.open(minimalPdf());
     try {
       assert.throws(() => doc.save(), (error) => {
         assert.ok(error instanceof OdrError);

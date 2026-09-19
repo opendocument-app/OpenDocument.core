@@ -35,14 +35,41 @@ public final class TextFile extends DecodedFile {
   }
 
   /**
-   * Applies the operations and returns the result, as UTF-8 whatever the source
-   * encoding was.
+   * Applies the operations our browser-side editor produces. The text is UTF-8 afterwards,
+   * whatever the source encoding was.
    */
+  public void edit(String operations) {
+    editNative(handle(), operations);
+  }
+
+  /** Writes the text, with every edit applied, as UTF-8. */
+  public void save(String path) {
+    saveNative(handle(), path);
+  }
+
+  /** The saved file as bytes. */
+  public byte[] saveToMemory() {
+    return saveToMemoryNative(handle());
+  }
+
+  /**
+   * Applies the operations and returns the result, as UTF-8 whatever the source encoding was. The
+   * file stays as it is.
+   *
+   * @deprecated use {@link #edit(String)}, then {@link #saveToMemory()}
+   */
+  @Deprecated
   public byte[] writeEdited(String operations) {
     return writeEditedNative(handle(), operations);
   }
 
   private native int encodingNative(long handle);
+
+  private native void editNative(long handle, String operations);
+
+  private native void saveNative(long handle, String path);
+
+  private native byte[] saveToMemoryNative(long handle);
 
   private native boolean isSavableNative(long handle);
 

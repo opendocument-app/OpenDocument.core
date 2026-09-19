@@ -375,11 +375,19 @@
         "and the paragraph is one again",
         texts() === "first run a link and a tail|bold|third|"
       );
-      check("undo goes on to the run that was cut", odr.editing.undo() === true);
-      check("and to the run that was shortened", odr.editing.undo() === true);
-      check("until there is nothing left", odr.editing.undo() === false);
+      check("in one step, so nothing is left", odr.editing.undo() === false);
       check("with the page as the renderer wrote it", texts() === "first run a link and a tail|bold|third|");
       check("and the log empty", ops().length === 0);
+      check("redo splits it again", odr.editing.redo() === true && ops().length > 0);
+      check("in one step too", odr.editing.redo() === false);
+
+      reset();
+      select(run(11).firstChild, 5);
+      input("insertText", "A");
+      select(run(11).firstChild, 6);
+      input("insertText", "B");
+      check("two edits are two steps", odr.editing.undo() === true);
+      check("and the first one stays", run(11).textContent === "firstA run ");
 
       reset();
       select(run(21).firstChild, 0);

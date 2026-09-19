@@ -29,6 +29,9 @@ public:
   /// @throws UnsupportedTextEncoding if the encoding cannot be decoded.
   [[nodiscard]] std::string text() const;
 
+  /// Replaces the bytes with @p utf8, keeping the file's name.
+  void set_text(std::string utf8);
+
 private:
   std::shared_ptr<abstract::File> m_file;
   TextEncoding m_encoding{TextEncoding::unknown};
