@@ -18,8 +18,7 @@
     overscrollBehavior: "contain",
   };
 
-  /// Raised as what is pending changes: a mark, a finished stroke, an undo, a
-  /// removal, a clear. A stroke counts once it ends.
+  /// Raised as the pending count changes; a stroke counts once it ends.
   odr.onAnnotationChange = function () {};
 
   var reported = 0;
@@ -311,13 +310,6 @@
     return added;
   }
 
-  function hasSelection() {
-    var selection = window.getSelection();
-    return (
-      !!selection && !selection.isCollapsed && selection.toString().length > 0
-    );
-  }
-
   function arm(value) {
     tool = value || null;
     pages().forEach(function (page) {
@@ -326,29 +318,28 @@
     document.documentElement.classList.toggle("an-drawing", tool === "ink");
   }
 
+  function rgbOf(value) {
+    return value.slice(0, 3).map(Number);
+  }
+
   function applyStyle(style) {
     if (style && style.color) {
-      color = style.color.slice(0, 3).map(Number);
+      color = rgbOf(style.color);
     }
     if (style && style.width !== undefined) {
       width = Number(style.width);
     }
   }
 
-  /// A tool button pressed over a standing selection: marks it once, and
-  /// leaves no tool armed. Disarmed first, so the cleared selection cannot
-  /// mark itself a second time.
+  /// Marks the selection once and disarms, if there is anything to mark.
   function markOnce(type, style) {
-    var rgb =
-      style && style.color ? style.color.slice(0, 3).map(Number) : color;
+    var rgb = style && style.color ? rgbOf(style.color) : color;
+    if (!markSelection(type, rgb, false)) {
+      return false;
+    }
     arm(null);
-    markSelection(type, rgb, false);
+    return true;
   }
-
-  function marksSelection(type) {
-    return !!type && type !== "ink" && hasSelection();
-  }
-
 
   var stroke = null;
   var strokeNode = null;
@@ -493,15 +484,13 @@
     getTool: function () {
       return tool;
     },
-    /// A tool button, pressed. Over a selection, @p type marks it once and no
-    /// tool stays armed; otherwise the press arms @p type, or disarms it if it
-    /// is armed already. Null disarms. @p style is `{color, width}`, either
-    /// optional. Answers the tool left armed.
+    /// A tool button: marks a selection once, else arms @p type or disarms
+    /// it. @p style is `{color, width}`. Answers the tool left armed.
     press: function (type, style) {
-      type = type || null;
-      if (marksSelection(type)) {
-        markOnce(type, style);
-      } else if (type !== null && type === tool) {
+      if (markOnce(type, style)) {
+        return tool;
+      }
+      if (type && type === tool) {
         arm(null);
       } else {
         applyStyle(style);
@@ -509,20 +498,17 @@
       }
       return tool;
     },
-    /// A new @p style chosen for @p type. Over a selection it marks it once, as
-    /// `press` does; else it restyles @p type if armed. Answers the tool left
-    /// armed.
+    /// Marks a selection once, as `press` does, else restyles @p type if it is
+    /// armed. Answers the tool left armed.
     recolor: function (type, style) {
-      if (marksSelection(type)) {
-        markOnce(type, style);
-      } else if (type && type === tool) {
+      if (!markOnce(type, style) && type && type === tool) {
         applyStyle(style);
       }
       return tool;
     },
     /// DeviceRGB, each component in [0, 1].
     setColor: function (value) {
-      color = value.slice(0, 3).map(Number);
+      color = rgbOf(value);
     },
     setWidth: function (value) {
       width = Number(value);

@@ -16,15 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- The rendered pdf view reports each change to the pending annotations on
-  `odr.onAnnotationChange({count})`. A host no longer has to count them after
-  every pointer event.
-
-- `odr.annotation.press(tool, {color, width})` and `recolor(tool, style)` do
-  what a tool button does. Over a selection, the tool marks the selection once
-  and no tool stays armed. With no selection, a press arms the tool or disarms
-  it, and `recolor` restyles the armed tool. Both return the tool that stays
-  armed.
+- The pdf view reports the pending annotation count on
+  `odr.onAnnotationChange({count})`, and `odr.annotation.press` and `recolor`
+  do what a tool button does.
 
 - The wasm `Document.edit`, `save`, `isEditable` and `isSavable` work for a
   plain text file, which saves as UTF-8.

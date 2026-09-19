@@ -59,6 +59,7 @@
     <span class="sr">Selectable text on page two</span>
   </div>
 </div>
+<p id="outside">Text on no page</p>
 
 <script src="checks.js"></script>
 <script src="pdf-annotation.js"></script>
@@ -395,13 +396,22 @@
     api.press("highlight", { color: [1, 0, 0] });
     check("a press on another tool swaps", api.press("squiggly") === "squiggly");
     check("null disarms", api.press(null) === null);
+    const outside = document.createRange();
+    outside.selectNodeContents(document.getElementById("outside"));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(outside);
+    check(
+      "a press over a selection on no page arms",
+      api.press("underline") === "underline" && api.list().length === 1,
+      api.list()
+    );
+    api.press(null);
     selectRun(0);
     check("the pen arms over a selection too", api.press("ink", { width: 4 }) === "ink");
     check("it marks nothing", api.list().length === 1, api.list());
     api.press(null);
 
-    // a press over a selection with the automatic path on marks it once: the
-    // selection it clears must not come back as a second mark
+    // the selection a press clears must not come back as a second mark
     api.clear();
     api.setOptions({ markOnSelection: true });
     selectRun(0);
