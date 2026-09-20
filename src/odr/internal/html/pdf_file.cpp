@@ -1787,8 +1787,8 @@ public:
       out.out() << ".g{user-select:none}";
       // Selection-layer fallback font: `size-adjust` shrinks a local system
       // font under the PDF-derived `.sr`/`.sg` widths. CSS justify only ever
-      // *adds* spacing, so undershooting is free while overshooting overflows
-      // and is clipped — hence the deliberately low config default. With no
+      // *adds* spacing, so undershooting is free while overshooting spills out
+      // of the run — hence the deliberately low config default. With no
       // fonts configured `.i` falls through to plain `sans-serif`.
       if (const std::vector<std::string> &fonts =
               config().pdf_dual_layer_fallback_fonts;
@@ -1825,15 +1825,17 @@ public:
           << ".i::selection,.i *::selection"
              "{color:transparent;background-color:rgba(70,130,220,.32);"
              "background-color:color-mix(in srgb,Highlight 45%,transparent)}";
-      // Selection-layer run span. `overflow:hidden` clips a wider system font;
+      // Selection-layer run span. No clip: a system font wider than the pdf
+      // advance spills, and a webview draws no selection handle for an end it
+      // cannot see. The clip also carried the y alignment, so state it:
+      // `.t`'s zero-height strut puts the line box bottom on the baseline.
       // `.t`'s inherited `pre` blocks wrapping while preserving a run's own
       // leading/trailing space, which is real PDF content.
-      out.out() << ".sr{display:inline-block;text-align:justify;"
-                   "text-align-last:justify;text-justify:inter-character;"
-                   "overflow:hidden}";
-      // Selection-layer gap spacer. `overflow:hidden` matches `.sr`: an
-      // inline-block baseline-aligns to its bottom margin edge only when
-      // overflow isn't visible, so without it the spacer shifts in y.
+      out.out() << ".sr{display:inline-block;vertical-align:bottom;"
+                   "text-align:justify;text-align-last:justify;"
+                   "text-justify:inter-character}";
+      // Selection-layer gap spacer. It holds only a space, so no handle can
+      // land in it and the clip is free, along with the y alignment it gives.
       out.out() << ".sg{display:inline-block;overflow:hidden}";
       // A lone space cannot be justified to its box, so pad the advance and let
       // the width clip it: else every word break shows a sliver of white.
