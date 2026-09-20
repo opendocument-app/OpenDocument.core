@@ -455,6 +455,16 @@
     paint();
   });
 
+  /// Whether the sheet is in the mode that writes cells. The editor is a
+  /// script of its own, and a read-only view carries none of it.
+  function editingEnabled() {
+    return (
+      odr.editing !== undefined &&
+      typeof odr.editing.isEnabled === "function" &&
+      odr.editing.isEnabled()
+    );
+  }
+
   table.addEventListener("click", function (event) {
     // Selecting inside what is raised must not put the cell back.
     if (raisedContent !== null && raisedContent.contains(event.target)) {
@@ -468,9 +478,12 @@
 
     // Clicking what is pinned clears it - but `detail` counts the clicks, and
     // the second of a double click is the reader selecting a word. Clearing
-    // the pin under that flickers the border off again.
+    // the pin under that flickers the border off again. A cell in an edited
+    // sheet holds its pin too, because the editor opens over that cell and
+    // reads it. A header opens none, so it still clears.
     if (cell === pinnedCell) {
-      if (event.detail <= 1) {
+      var takenByEditor = editingEnabled() && cell.tagName === "TD";
+      if (event.detail <= 1 && !takenByEditor) {
         pin(-1, null, null);
       }
       return;

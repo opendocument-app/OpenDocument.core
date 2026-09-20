@@ -372,6 +372,52 @@
           ops().length === 0 &&
           last().dirty === false
       );
+
+      // What a tap does. `tapEdits` reads `(pointer: coarse)`, so the check
+      // answers that query the way a phone does and puts the real one back.
+      var realMatchMedia = window.matchMedia;
+      function pointer(kind) {
+        window.matchMedia = function (query) {
+          return query === "(pointer: coarse)"
+            ? { matches: kind === "coarse" }
+            : realMatchMedia.call(window, query);
+        };
+      }
+
+      check("the mode is still on", odr.editing.isEnabled() === true);
+      pointer("fine");
+      odr.sheet.pin(null);
+      click(cell(0, 0));
+      check("a fine pointer selects a cell rather than opening it", editor() === null);
+      doubleClick(cell(0, 0));
+      check("and opens it on the double click", editor() !== null);
+      press(editor(), "Escape");
+
+      pointer("coarse");
+      click(cell(0, 0));
+      check(
+        "a coarse pointer opens it on one click",
+        editor() !== null && editor().value === "a string that runs on"
+      );
+      press(editor(), "Escape");
+
+      check("the locked cell is the one this uses", odr.editing.lockAt(1, 2) === "formula");
+      click(cell(1, 2));
+      check("a locked cell refuses the tap rather than opening", editor() === null);
+
+      // A tap, a pause, a tap is two clicks of `detail: 1`, so the second one
+      // reaches the cell the first pinned.
+      pointer("fine");
+      odr.sheet.pin({ column: 0, row: 0 });
+      click(cell(0, 0));
+      check("a second click holds the pin while the sheet is edited", odr.sheet.pinned() !== null);
+      var header = document.querySelectorAll(".odr-sheet-column-header")[1];
+      click(header);
+      check("a header takes the pin", odr.sheet.pinned().column === 1);
+      click(header);
+      check("and a second click on it still clears the pin", odr.sheet.pinned() === null);
+
+      window.matchMedia = realMatchMedia;
     </script>
   </body>
 </html>

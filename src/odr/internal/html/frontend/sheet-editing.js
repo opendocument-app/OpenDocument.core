@@ -405,12 +405,29 @@
     }
   });
 
+  /// A coarse pointer opens the editor on one tap: a phone gives up the first
+  /// tap of a double tap as a click of its own anyway. A fine pointer keeps the
+  /// double click, because there a single click selects a cell without editing.
+  function tapEdits() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches
+    );
+  }
+
   // A locked cell says so on the click, not on the double click.
   table.addEventListener("click", function (event) {
     var at =
       odr.editing.isEnabled() && overlay === null ? targetPosition(event) : null;
-    if (at !== null && odr.editing.lockAt(at.column, at.row) !== null) {
+    if (at === null) {
+      return;
+    }
+    if (odr.editing.lockAt(at.column, at.row) !== null) {
       odr.editing.refuseAt(at.column, at.row);
+      return;
+    }
+    if (tapEdits()) {
+      edit(at.column, at.row, null);
     }
   });
 
