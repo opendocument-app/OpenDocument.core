@@ -405,10 +405,9 @@
     }
   });
 
-  /// A touch screen has no double click to spare: the first tap of one is a
-  /// tap of its own, and the reader is already in the mode that edits. So a
-  /// tap opens the editor where the pointer is coarse, and the double click
-  /// keeps the job where it is fine.
+  /// A coarse pointer opens the editor on one tap: a phone gives up the first
+  /// tap of a double tap as a click of its own anyway. A fine pointer keeps the
+  /// double click, because there a single click selects a cell without editing.
   function tapEdits() {
     return (
       typeof window.matchMedia === "function" &&

@@ -478,11 +478,12 @@
 
     // Clicking what is pinned clears it - but `detail` counts the clicks, and
     // the second of a double click is the reader selecting a word. Clearing
-    // the pin under that flickers the border off again. While the sheet is
-    // edited the click belongs to the editor, which opens over that cell, so
-    // a second tap on it must not drop what the editor is about to use.
+    // the pin under that flickers the border off again. A cell in an edited
+    // sheet holds its pin too, because the editor opens over that cell and
+    // reads it. A header opens none, so it still clears.
     if (cell === pinnedCell) {
-      if (event.detail <= 1 && !editingEnabled()) {
+      var takenByEditor = editingEnabled() && cell.tagName === "TD";
+      if (event.detail <= 1 && !takenByEditor) {
         pin(-1, null, null);
       }
       return;

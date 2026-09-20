@@ -23,9 +23,9 @@ The release run heads these entries with the version and opens a fresh
 - A tap opens a sheet cell's editor where the pointer is coarse, so a phone
   needs one tap rather than a double tap. A mouse keeps the double click.
 
-- **Fix**: a second click on the pinned cell cleared the pin while the sheet
-  was being edited, so a reader who tapped a cell twice lost it. The pin is
-  now cleared only in a sheet that is not being edited.
+- **Fix**: a second click on a pinned cell cleared the pin while the sheet was
+  being edited, so a reader who tapped a cell twice lost it. A cell now holds
+  its pin there; a row or column header still clears on that click.
 
 ## v7.1.0 - 2026-09-19
 
