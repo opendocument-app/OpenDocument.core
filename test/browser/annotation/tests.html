@@ -39,9 +39,18 @@
   }
   /* as the real selection layer: an inline-block whose box is the laid-out
      line, taller than the rect a range gets from the substituted font */
-  .sr {
+  .sr,
+  .sg {
     display: inline-block;
     line-height: 1.6;
+    vertical-align: top;
+  }
+  /* the glyph layer draws at its own size, so its ink runs below the box the
+     selection layer states - which is where a descender is lost */
+  .g {
+    display: inline-block;
+    height: 26pt;
+    vertical-align: top;
   }
 </style>
 
@@ -57,6 +66,17 @@
 <div class="p x0 y0" id="p2" data-odr-page="1" data-odr-space="1,0,0,-1,0,792">
   <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
     <span class="sr">Selectable text on page two</span>
+  </div>
+</div>
+<!-- page three carries both layers, as a pdf view writes them: the glyphs
+     with ink below the selection layer's box, and a gap spacer where the word
+     break is -->
+<div class="p x0 y0" id="p3" data-odr-page="2" data-odr-space="1,0,0,-1,0,792">
+  <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
+    <span class="g">page</span><span class="g"> </span><span class="g">gypsy</span>
+  </div>
+  <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
+    <span class="sr">page</span><span class="sg"> </span><span class="sr">gypsy</span>
   </div>
 </div>
 <p id="outside">Text on no page</p>
@@ -451,6 +471,46 @@
       "nor restyles the armed one",
       api.list()[0].color.join() === "0,1,1",
       api.list()[0].color
+    );
+
+    // --- a mark covers the text it marks ---------------------------------
+
+    api.clear();
+    api.setTool("highlight");
+    const dual = document.querySelector('[data-odr-page="2"]');
+    const both = document.createRange();
+    both.setStart(dual.querySelectorAll(".sr")[0].firstChild, 0);
+    both.setEnd(dual.querySelectorAll(".sr")[1].firstChild, 5);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(both);
+    api.mark();
+
+    const line = api.list()[0];
+    check(
+      "a mark over a word break is one box, not one per word",
+      line.boxes.length === 1,
+      line.boxes
+    );
+
+    // the glyphs are 26pt tall where the selection layer states 1.6em = 19.2pt
+    const srBox = dual.querySelector(".sr").getBoundingClientRect();
+    const glyph = dual.querySelector(".g").getBoundingClientRect();
+    const zoom2 = dual.getBoundingClientRect().width / dual.offsetWidth;
+    check(
+      "the glyphs run below the selection layer's box",
+      glyph.bottom > srBox.bottom + 1,
+      [glyph.bottom, srBox.bottom]
+    );
+    check(
+      "and the box reaches them, so a descender is not cut off",
+      near((line.boxes[0][3] - line.boxes[0][1]) * zoom2, glyph.height * 0.75, 1),
+      [(line.boxes[0][3] - line.boxes[0][1]) * zoom2, glyph.height * 0.75]
+    );
+    check(
+      "the box spans both runs and the spacer",
+      near(line.boxes[0][2] - line.boxes[0][0],
+           (dual.querySelectorAll(".sr")[1].getBoundingClientRect().right - srBox.left) / zoom2 * 0.75, 1),
+      line.boxes[0]
     );
 
     window.odr.onAnnotationChange = () => {};

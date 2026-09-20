@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a pdf mark cut the tails off the text it marked and broke apart at
+  every word gap, because it took the selection layer's em box. It now covers
+  the glyphs under the selection, as one box per line.
+
 - Fitting the width states a `minimum-scale` where the content is more than
   four screens wide, which the browser's own floor of 0.25 cannot reach. An A0
   pdf page now zooms out to fit; narrower content is unchanged.

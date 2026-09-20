@@ -35,7 +35,7 @@
 
   function pages() {
     return Array.prototype.slice.call(
-      document.querySelectorAll("[data-odr-space]")
+      document.querySelectorAll("[data-odr-space]"),
     );
   }
 
@@ -64,19 +64,14 @@
   /// Page-box points to pdf user space, through the page's own inverse.
   function toUserSpace(page, x, y) {
     var m = page.getAttribute("data-odr-space").split(",").map(Number);
-    return [
-      m[0] * x + m[2] * y + m[4],
-      m[1] * x + m[3] * y + m[5],
-    ];
+    return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
   }
 
   /// Two overlays per page: `multiply` for the washes that have to let the
   /// text through, and a normal one for the marks drawn on top of it.
   function overlay(page, multiply) {
     var name = multiply ? "an an-m" : "an";
-    var svg = page.querySelector(
-      ':scope > svg[class="' + name + '"]'
-    );
+    var svg = page.querySelector(':scope > svg[class="' + name + '"]');
     if (!svg) {
       svg = document.createElementNS(SVG, "svg");
       svg.setAttribute("class", name);
@@ -85,7 +80,7 @@
     }
     svg.setAttribute(
       "viewBox",
-      "0 0 " + page.offsetWidth * 0.75 + " " + page.offsetHeight * 0.75
+      "0 0 " + page.offsetWidth * 0.75 + " " + page.offsetHeight * 0.75,
     );
     return svg;
   }
@@ -129,7 +124,10 @@
       node.setAttribute("stroke-linecap", "round");
       node.setAttribute("stroke-linejoin", "round");
     } else {
-      node.setAttribute("d", annotation.boxes.map(barPath(annotation.type)).join(" "));
+      node.setAttribute(
+        "d",
+        annotation.boxes.map(barPath(annotation.type)).join(" "),
+      );
       if (annotation.type === "squiggly") {
         node.setAttribute("fill", "none");
         node.setAttribute("stroke", css(annotation.color));
@@ -197,7 +195,11 @@
     (byPage[index] = byPage[index] || []).push([a[0], a[1], b[0], b[1]]);
   }
 
-  /// The selection-layer runs a range touches; a spacer carries no text.
+  /// The selection-layer nodes a range touches. The gap spacers count: a word
+  /// break is inside what the reader marked, and leaving it out breaks one
+  /// mark into a bar per word.
+  var RUNS = ".sr,.sg,.sw";
+
   function selectedRuns(selection, range) {
     var scope = range.commonAncestorContainer;
     if (!scope.querySelectorAll) {
@@ -206,21 +208,92 @@
     if (!scope) {
       return [];
     }
-    var self = scope.closest ? scope.closest(".sr") : null;
+    var self = scope.closest ? scope.closest(RUNS) : null;
     if (self) {
-      return self.textContent.length > 0 ? [self] : [];
+      return [self];
     }
     return Array.prototype.filter.call(
-      scope.querySelectorAll(".sr"),
+      scope.querySelectorAll(RUNS),
       function (run) {
-        return run.textContent.length > 0 && selection.containsNode(run, true);
-      }
+        return selection.containsNode(run, true);
+      },
     );
   }
 
+  /// Every glyph-layer rect on the page, read once per mark. `runBox` walks
+  /// this rather than the DOM, which would be a layout per run.
+  function glyphRects() {
+    var out = [];
+    var glyphs = document.querySelectorAll(".g");
+    for (var i = 0; i < glyphs.length; ++i) {
+      if (glyphs[i].textContent.length === 0) {
+        continue;
+      }
+      var r = glyphs[i].getBoundingClientRect();
+      if (r.width >= 0.2 && r.height >= 0.2) {
+        out.push(r);
+      }
+    }
+    return out;
+  }
+
+  /// @p box grown to the glyphs it stands over. The selection layer states one
+  /// em of a substituted font, and a descender falls out of it, so a mark that
+  /// takes that box alone cuts the tails off the text it marks.
+  function overInk(box, glyphs) {
+    var top = box.top;
+    var bottom = box.bottom;
+    var reach = (box.bottom - box.top) / 2;
+    for (var i = 0; i < glyphs.length; ++i) {
+      var g = glyphs[i];
+      if (g.right <= box.left || g.left >= box.right) {
+        continue;
+      }
+      var middle = (g.top + g.bottom) / 2;
+      if (middle < box.top - reach || middle > box.bottom + reach) {
+        continue;
+      }
+      top = Math.min(top, g.top);
+      bottom = Math.max(bottom, g.bottom);
+    }
+    return [top, bottom];
+  }
+
+  /// Client boxes of one line that touch become one: a pdf quad is per line,
+  /// and two of them meeting leaves a seam in the paint.
+  function joined(boxes) {
+    var out = [];
+    boxes
+      .slice()
+      .sort(function (a, b) {
+        return a.top - b.top || a.left - b.left;
+      })
+      .forEach(function (b) {
+        var last = out[out.length - 1];
+        if (
+          last &&
+          b.left - last.right < 0.6 &&
+          b.top < last.bottom &&
+          b.bottom > last.top
+        ) {
+          last.right = Math.max(last.right, b.right);
+          last.top = Math.min(last.top, b.top);
+          last.bottom = Math.max(last.bottom, b.bottom);
+          return;
+        }
+        out.push({
+          left: b.left,
+          top: b.top,
+          right: b.right,
+          bottom: b.bottom,
+        });
+      });
+    return out;
+  }
+
   /// One run's covered box; a partly selected run takes its horizontal edges
-  /// from the rects, clamped to the run.
-  function runBox(byPage, run, rects, selection) {
+  /// from the rects, clamped to the run, and its vertical ones from the ink.
+  function runBox(run, rects, selection, glyphs) {
     var box = run.getBoundingClientRect();
     var left = box.left;
     var right = box.right;
@@ -242,10 +315,14 @@
         right = Math.max(right, Math.min(rect.right, box.right));
       }
     }
-    pushBox(byPage, left, box.top, right, box.bottom);
+    if (right - left < 0.5) {
+      return null;
+    }
+    var ink = overInk(box, glyphs);
+    return { left: left, top: ink[0], right: right, bottom: ink[1] };
   }
 
-  /// The boxes a selection covers, per page, in page-box points. Vertically
+  /// The boxes a selection covers, per page, in page-box points. Horizontally
   /// the run's box, not the range's rect: that rect follows whatever font the
   /// browser substituted for the layer.
   function selectionBoxes() {
@@ -254,20 +331,28 @@
     if (!selection || selection.isCollapsed) {
       return byPage;
     }
+    var glyphs = glyphRects();
+    var boxes = [];
     for (var r = 0; r < selection.rangeCount; ++r) {
       var range = selection.getRangeAt(r);
       var rects = range.getClientRects();
       var runs = selectedRuns(selection, range);
       for (var i = 0; i < runs.length; ++i) {
-        runBox(byPage, runs[i], rects, selection);
+        var box = runBox(runs[i], rects, selection, glyphs);
+        if (box !== null) {
+          boxes.push(box);
+        }
       }
       if (runs.length === 0) {
         // no selection layer under it
         for (var k = 0; k < rects.length; ++k) {
-          pushBox(byPage, rects[k].left, rects[k].top, rects[k].right, rects[k].bottom);
+          boxes.push(rects[k]);
         }
       }
     }
+    joined(boxes).forEach(function (b) {
+      pushBox(byPage, b.left, b.top, b.right, b.bottom);
+    });
     return byPage;
   }
 
@@ -275,7 +360,12 @@
     var all = pages();
     for (var i = 0; i < all.length; ++i) {
       var rect = all[i].getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      if (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      ) {
         return all[i];
       }
     }
