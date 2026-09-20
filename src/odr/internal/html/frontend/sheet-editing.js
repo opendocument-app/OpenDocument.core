@@ -405,15 +405,42 @@
     }
   });
 
-  /// A coarse pointer opens the editor on one tap: a phone gives up the first
-  /// tap of a double tap as a click of its own anyway. A fine pointer keeps the
-  /// double click, because there a single click selects a cell without editing.
+  /// Gesture policy, the viewer's to set. `editOnClick` null asks the pointer.
+  var options = { editOnClick: null };
+
+  /// Whether a click opens the editor, where a double click always does.
+  ///
+  /// A touch screen has no double click to spare: the first tap of one is a
+  /// tap of its own, and the reader is already in the mode that edits. The
+  /// pointer is the fallback answer only, because it is a guess - an android
+  /// WebView on an emulator reports a fine one - and the viewer knows.
   function tapEdits() {
+    if (options.editOnClick !== null) {
+      return !!options.editOnClick;
+    }
     return (
       typeof window.matchMedia === "function" &&
       window.matchMedia("(pointer: coarse)").matches
     );
   }
+
+  /// Merged into what is set; an unknown key throws.
+  odr.editing.setSheetOptions = function (value) {
+    Object.keys(value || {}).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(options, key)) {
+        throw new Error("odr.editing: unknown sheet option " + key);
+      }
+      options[key] = value[key];
+    });
+  };
+
+  odr.editing.getSheetOptions = function () {
+    var copy = {};
+    Object.keys(options).forEach(function (key) {
+      copy[key] = options[key];
+    });
+    return copy;
+  };
 
   // A locked cell says so on the click, not on the double click.
   table.addEventListener("click", function (event) {

@@ -361,6 +361,50 @@
       odr.editing.committed();
       check("and a save clears them with the log", staleNow() === "");
 
+      // --------------------------------------- who says a tap opens the cell
+
+      // The pointer is a guess: an android WebView on an emulator reports a
+      // fine one. So the viewer may state it outright.
+      function clickCell(column, row) {
+        odr.editing.disable();
+        odr.editing.enable();
+        cell(column, row).dispatchEvent(
+          new MouseEvent("click", { bubbles: true, detail: 1 })
+        );
+      }
+
+      check(
+        "the pointer answers until the viewer states it",
+        odr.editing.getSheetOptions().editOnClick === null
+      );
+
+      odr.editing.setSheetOptions({ editOnClick: false });
+      clickCell(2, 2);
+      check("stated off, one click opens nothing", editor() === null);
+      cell(2, 2).dispatchEvent(new MouseEvent("dblclick", { bubbles: true, detail: 2 }));
+      check("and the double click still opens the cell", editor() !== null);
+
+      odr.editing.setSheetOptions({ editOnClick: true });
+      clickCell(0, 0);
+      check("stated on, one click opens it", editor() !== null);
+      check("holding what the cell shows", editor().value === "a string that runs on");
+      check(
+        "and the cell is pinned under it",
+        cell(0, 0).classList.contains("odr-sheet-pinned-cell")
+      );
+
+      var threw = false;
+      try {
+        odr.editing.setSheetOptions({ notAnOption: true });
+      } catch (error) {
+        threw = true;
+      }
+      check("an unknown option throws", threw);
+
+      odr.editing.setSheetOptions({ editOnClick: null });
+      odr.editing.disable();
+      odr.editing.enable();
+
       odr.editing.editAt(3, 0);
       editor().value = "one";
       press(editor(), "Enter");
