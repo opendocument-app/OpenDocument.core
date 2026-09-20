@@ -513,6 +513,60 @@
       line.boxes[0]
     );
 
+    // --- what is drawn under the text stays under it ----------------------
+
+    // Every y the path names, in the page-box points the box is stated in.
+    function pathRows(id) {
+      const d = document
+        .querySelector('[data-odr-annotation="' + id + '"]')
+        .getAttribute("d");
+      const rows = [];
+      let y = 0;
+      d.replace(/([MLhv]) *(-?[\d.]+)(?: +(-?[\d.]+))?/g, (all, op, a, b) => {
+        if (op === "M" || op === "L") {
+          y = +b;
+          rows.push(y);
+        } else if (op === "v") {
+          y += +a;
+          rows.push(y);
+        }
+        return all;
+      });
+      return rows;
+    }
+
+    function markDual(type) {
+      api.clear();
+      api.setTool(type);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(both.cloneRange());
+      api.mark();
+      return api.list()[0];
+    }
+
+    const under = markDual("underline");
+    check(
+      "an underline starts where the glyphs end",
+      Math.min.apply(null, pathRows(under.id)) >= under.boxes[0][3] - 0.01,
+      [Math.min.apply(null, pathRows(under.id)), under.boxes[0][3]]
+    );
+
+    const wave = markDual("squiggly");
+    check(
+      "and so does a squiggle",
+      Math.min.apply(null, pathRows(wave.id)) >= wave.boxes[0][3] - 0.01,
+      [Math.min.apply(null, pathRows(wave.id)), wave.boxes[0][3]]
+    );
+
+    const struck = markDual("strikeOut");
+    const strikeRows = pathRows(struck.id);
+    check(
+      "a strike-out is the one that crosses the text",
+      Math.min.apply(null, strikeRows) > struck.boxes[0][1] &&
+        Math.max.apply(null, strikeRows) < struck.boxes[0][3],
+      [strikeRows, struck.boxes[0]]
+    );
+
     window.odr.onAnnotationChange = () => {};
     api.clear();
     api.setTool(null);

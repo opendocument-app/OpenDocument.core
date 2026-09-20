@@ -145,16 +145,18 @@ void bar(std::ostringstream &out, const QuadCorners &quad, const double bottom,
       << number(quad.right - quad.left) << ' ' << number(height) << " re\n";
 }
 
-/// A wave along the bottom of `quad`, as a stroked zigzag of `amplitude`.
+/// A wave under `quad`, as a stroked zigzag of `amplitude` hanging off its
+/// bottom edge: `quad.bottom` is where the glyphs end, so the wave belongs
+/// below it rather than through the descenders.
 void wave(std::ostringstream &out, const QuadCorners &quad,
           const double amplitude) {
-  const double base = quad.bottom + amplitude;
-  out << number(quad.left) << ' ' << number(base) << " m\n";
+  const double base = quad.bottom - amplitude;
+  out << number(quad.left) << ' ' << number(quad.bottom) << " m\n";
   const auto steps = static_cast<std::size_t>(
       std::max(1.0, std::floor((quad.right - quad.left) / amplitude)));
   for (std::size_t i = 1; i <= steps; ++i) {
     out << number(quad.left + static_cast<double>(i) * amplitude) << ' '
-        << number(i % 2 == 1 ? base + amplitude : base) << " l\n";
+        << number(i % 2 == 1 ? base : quad.bottom) << " l\n";
   }
   out << "S\n";
 }
@@ -176,7 +178,9 @@ std::string text_markup_appearance(const TextMarkup &markup) {
       bar(out, c, c.bottom, height);
       break;
     case TextMarkupKind::underline:
-      bar(out, c, c.bottom + height / 16, std::max(height / 16, 0.5));
+      // Under the glyphs, not through them: `c.bottom` is where they end.
+      bar(out, c, c.bottom - std::max(height / 16, 0.5),
+          std::max(height / 16, 0.5));
       break;
     case TextMarkupKind::strike_out:
       bar(out, c, c.bottom + height / 2, std::max(height / 16, 0.5));

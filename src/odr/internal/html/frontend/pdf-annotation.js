@@ -148,17 +148,19 @@
       if (type === "highlight") {
         return rect(b[0], b[1], b[2] - b[0], h);
       }
+      // `b[3]` is the bottom of the glyph boxes, so an underline and a
+      // squiggle hang below it. A strike-out is the one meant to cross.
       if (type === "underline") {
-        return rect(b[0], b[3] - h / 16, b[2] - b[0], Math.max(h / 16, 0.5));
+        return rect(b[0], b[3], b[2] - b[0], Math.max(h / 16, 0.5));
       }
       if (type === "strikeOut") {
         return rect(b[0], b[1] + h / 2, b[2] - b[0], Math.max(h / 16, 0.5));
       }
       var step = Math.max(h / 8, 1);
-      var d = "M " + b[0] + " " + (b[3] - step);
+      var d = "M " + b[0] + " " + b[3];
       var up = true;
       for (var x = b[0] + step; x < b[2]; x += step, up = !up) {
-        d += " L " + x + " " + (up ? b[3] - step * 2 : b[3] - step);
+        d += " L " + x + " " + (up ? b[3] + step : b[3]);
       }
       return d;
     };
