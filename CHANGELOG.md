@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: selecting text in a pdf view hid the words it selected. The
+  `::selection` background v7.2.0 states is `Highlight`, which is opaque, and
+  the layer carrying it paints over the glyph layer. It is see-through now, so
+  the text reads through its own selection.
+
 ## v7.2.0 - 2026-09-20
 
 - **Fix**: a pdf underline and squiggle were drawn through the text rather than
