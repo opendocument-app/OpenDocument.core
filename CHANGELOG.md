@@ -27,11 +27,9 @@ The release run heads these entries with the version and opens a fresh
   being edited, so a reader who tapped a cell twice lost it. A cell now holds
   its pin there; a row or column header still clears on that click.
 
-- Editing scope `paragraph` no longer refuses `odr.editing.format`. It holds
-  the range, as its name says: marking runs inside one paragraph is taken, and
-  a format reaching over two is still refused. Which styles are offered is the
-  host's, because the host draws the buttons. The `formatBold` chords, which it
-  cannot draw, stay behind the gate.
+- Editing scope `paragraph` takes `odr.editing.format` inside one paragraph and
+  refuses it over two, rather than refusing every call. The `formatBold` chords
+  stay behind the gate.
 
 ## v7.1.0 - 2026-09-19
 

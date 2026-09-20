@@ -799,12 +799,10 @@
       document.body.setAttribute("data-odr-editing-scope", "paragraph");
       check("until the host narrows it", odr.editing.scope() === "paragraph");
 
-      // The gate holds the range, not the style: marking runs inside one
-      // paragraph opens and joins nothing. Which styles are offered is the
-      // host's, because the host draws the buttons - and the chord, which it
-      // cannot draw, stays behind the gate.
+      // The gate holds the range, not the style. The chord keeps it: the
+      // host draws no button for a key, so it cannot offer less.
       select(run(12).firstChild, 2);
-      check("a chord is refused, the host having no way to take the key", input("formatBold") === "refused");
+      check("a chord is still refused", input("formatBold") === "refused");
       check("as out of scope", refusals.pop() === "outOfScope 1010");
       selectRuns(51, 0, 51, 4);
       check("while the host's own format is taken", odr.editing.format({ bold: true }) === true);
