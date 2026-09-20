@@ -20,6 +20,10 @@ The release run heads these entries with the version and opens a fresh
   four screens wide, which the browser's own floor of 0.25 cannot reach. An A0
   pdf page now zooms out to fit; narrower content is unchanged.
 
+- `odr.editing.setSheetOptions({editOnClick})` states whether a click opens a
+  sheet cell's editor, because the pointer is a guess: an android WebView
+  reports a fine one on a touch screen. Unstated, the pointer answers.
+
 - **Fix**: selecting text in a pdf view showed the invisible layer that carries
   it, as a second set of glyphs over the drawn ones. That layer now stays
   transparent under `::selection`, and states the highlight background, which
