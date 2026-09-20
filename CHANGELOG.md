@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.2.0 - 2026-09-20
+
 - **Fix**: a pdf underline and squiggle were drawn through the text rather than
   under it, both in the view and in the saved file. They now hang below the
   glyphs. A strike-out still crosses the text.
