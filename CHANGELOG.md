@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: selecting text in a pdf view showed the invisible layer that carries
+  it, as a second set of glyphs over the drawn ones. That layer now stays
+  transparent under `::selection`.
+
 ## v7.1.0 - 2026-09-19
 
 - The pdf view reports the pending annotation count on
