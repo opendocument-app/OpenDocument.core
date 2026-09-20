@@ -86,9 +86,13 @@ private:
 /// `config.viewport_mode`. `fit_width_by_default` resolves
 /// `HtmlViewportMode::automatic`: true for fixed-size paged content, false for
 /// content that reflows to the screen width.
+///
+/// `content_pixels` is the width the content wants, as `write_zoom_style`
+/// takes it: fitting the width states a `minimum-scale` that reaches it.
 void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
-                         std::optional<HtmlViewportMode> mode_override = {});
+                         std::optional<HtmlViewportMode> mode_override = {},
+                         std::optional<double> content_pixels = {});
 
 /// Who fits the output's width to the viewport.
 enum class WidthFit {

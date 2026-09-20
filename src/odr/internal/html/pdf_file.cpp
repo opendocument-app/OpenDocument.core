@@ -2685,7 +2685,7 @@ public:
     out.write_header_begin();
     out.write_header_charset("UTF-8");
     out.write_header_title("odr");
-    write_viewport_meta(out, config(), true);
+    write_viewport_meta(out, config(), true, {}, content);
     write_zoom_style(out, config(), width_fit(config(), true), content);
     write_content_margin_style(out, config());
     out.write_header_style_begin();
