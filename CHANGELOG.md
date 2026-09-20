@@ -16,11 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- Fitting the width now states a `minimum-scale` where the content needs one.
-  A browser floors the page scale at 0.25, which cannot fit a page more than
-  four screens wide, so an A0 sheet on a phone scrolled sideways and would not
-  zoom out. The floor stated is what fits the widest page on a 320px screen,
-  and nothing is added where 0.25 already reaches.
+- Fitting the width states a `minimum-scale` where the content is more than
+  four screens wide, which the browser's own floor of 0.25 cannot reach. An A0
+  pdf page now zooms out to fit; narrower content is unchanged.
 
 - **Fix**: selecting text in a pdf view showed the invisible layer that carries
   it, as a second set of glyphs over the drawn ones. That layer now stays

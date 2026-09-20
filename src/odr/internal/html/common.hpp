@@ -88,9 +88,7 @@ private:
 /// content that reflows to the screen width.
 ///
 /// `content_pixels` is the width the content wants, as `write_zoom_style`
-/// takes it. Fitting the width states a `minimum-scale` that can reach it: the
-/// browser's own floor is 0.25, which cannot fit a page more than four screens
-/// wide - an A0 sheet on a phone scrolls sideways and will not zoom out.
+/// takes it: fitting the width states a `minimum-scale` that reaches it.
 void write_viewport_meta(HtmlWriter &out, const HtmlConfig &config,
                          bool fit_width_by_default,
                          std::optional<HtmlViewportMode> mode_override = {},

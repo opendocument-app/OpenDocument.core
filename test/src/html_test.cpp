@@ -307,11 +307,9 @@ std::optional<double> fit_of(const std::string &page) {
   return std::stod(page.substr(begin));
 }
 
-} // namespace
-
 /// The `content` of the page's viewport meta, or "" where it states none.
 std::string viewport_of(const std::string &page) {
-  static const std::string key = "name=\"viewport\" content=\"";
+  constexpr std::string_view key = "name=\"viewport\" content=\"";
   const std::size_t at = page.find(key);
   if (at == std::string::npos) {
     return {};
@@ -320,9 +318,10 @@ std::string viewport_of(const std::string &page) {
   return page.substr(begin, page.find('"', begin) - begin);
 }
 
+} // namespace
+
 // A browser floors the page scale at 0.25, so a page more than four screens
-// wide cannot be zoomed out to. Fitting the width states a floor that reaches
-// it, and states none where the browser's own already does.
+// wide cannot be zoomed out to. A wider page states a floor of its own.
 TEST(html, fitting_the_width_states_a_floor_a_wide_page_needs) {
   HtmlConfig config;
   config.text_document_margin = true;
@@ -336,8 +335,8 @@ TEST(html, fitting_the_width_states_a_floor_a_wide_page_needs) {
   config.min_content_margin.right = Measure("800px");
 
   const std::string wide = viewport_of(render_odt(config));
-  EXPECT_NE(wide.find("minimum-scale=0."), std::string::npos) << wide;
-  EXPECT_NE(wide.find("width=device-width"), std::string::npos) << wide;
+  EXPECT_TRUE(wide.starts_with("width=device-width,minimum-scale=0.")) << wide;
+  EXPECT_TRUE(wide.ends_with(",user-scalable=yes")) << wide;
 }
 
 // The gutter around the page column is part of the width the view is fitted

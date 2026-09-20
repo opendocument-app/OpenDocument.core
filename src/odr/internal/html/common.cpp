@@ -29,16 +29,14 @@ namespace odr::internal {
 
 namespace {
 
-/// The narrowest screen worth fitting a page to, in css px. A floor below what
-/// reaches here buys nothing: no phone is narrower.
+/// The narrowest screen a floor is computed for, in css px.
 constexpr double narrowest_viewport_pixels = 320.0;
 
 /// What the browser floors the page scale at on its own.
 constexpr double browser_minimum_scale = 0.25;
 
-/// `minimum-scale=<n>,` for content the browser's own floor cannot fit, or
-/// empty where it can. Fitting the width is pointless where the reader cannot
-/// zoom out far enough to see it.
+/// `minimum-scale=<n>,` where the browser's own floor cannot fit the content,
+/// empty where it can.
 std::string minimum_scale_for(const std::optional<double> content_pixels) {
   if (!content_pixels.has_value() || *content_pixels <= 0) {
     return {};
