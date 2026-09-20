@@ -257,6 +257,50 @@
       ink && ink.strokes[0].slice(0, 2)
     );
 
+    // --- ink where the rects leave the fit out ----------------------------
+    // Chromium reports the two alike and cannot show it, so the case is made
+    // by standing in a getViewportRect that halves the box.
+    api.clear();
+    api.setTool("ink");
+    const shrink = 0.5;
+    const drawnRect = (element) => {
+      const box = element.getBoundingClientRect();
+      return {
+        left: box.left * shrink,
+        top: box.top * shrink,
+        right: box.right * shrink,
+        bottom: box.bottom * shrink,
+        width: box.width * shrink,
+        height: box.height * shrink,
+      };
+    };
+    const hadViewportRect = odr.getViewportRect;
+    odr.getViewportRect = drawnRect;
+    // the finger goes down on the drawn page, not the laid-out one
+    const drawn = drawnRect(page1);
+    const drawnZoom = drawn.width / page1.offsetWidth;
+    const onScreen = (bx, by) => ({
+      clientX: drawn.left + (bx / 0.75) * drawnZoom,
+      clientY: drawn.top + (by / 0.75) * drawnZoom,
+      bubbles: true,
+      pointerId: 3,
+      button: 0,
+    });
+    document.dispatchEvent(new PointerEvent("pointerdown", onScreen(100, 100)));
+    document.dispatchEvent(new PointerEvent("pointermove", onScreen(140, 140)));
+    document.dispatchEvent(new PointerEvent("pointerup", onScreen(140, 140)));
+    odr.getViewportRect = hadViewportRect;
+
+    const fitted = payload().annotations[0];
+    check(
+      "a fit the rects leave out still marks where the finger went",
+      fitted &&
+        fitted.type === "ink" &&
+        near(fitted.strokes[0][0], 100) &&
+        near(fitted.strokes[0][1], 692),
+      fitted && fitted.strokes[0].slice(0, 2)
+    );
+
     // --- undo, remove, clear ---------------------------------------------
     const before = api.list().length;
     api.undo();

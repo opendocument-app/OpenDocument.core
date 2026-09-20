@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: drawing on a pdf put the stroke about twice as far from the page's
+  corner as the finger went, in a webkit view that fits the page to the screen.
+
 ## v7.2.1 - 2026-09-20
 
 - **Fix**: marking text in a pdf view left the selection one handle, because a
