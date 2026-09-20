@@ -18,7 +18,8 @@ The release run heads these entries with the version and opens a fresh
 
 - **Fix**: selecting text in a pdf view showed the invisible layer that carries
   it, as a second set of glyphs over the drawn ones. That layer now stays
-  transparent under `::selection`.
+  transparent under `::selection`, and states the highlight background, which
+  an author `::selection` otherwise drops.
 
 - A tap opens a sheet cell's editor where the pointer is coarse, so a phone
   needs one tap rather than a double tap. A mouse keeps the double click.
