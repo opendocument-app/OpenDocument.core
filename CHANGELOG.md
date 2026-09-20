@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: marking text in a pdf view left the selection one handle, because a
+  run of the selection layer clipped the end that handle belongs to. Nothing
+  clips a run now, so both handles show and the mark can be adjusted.
+
 - **Fix**: selecting text in a pdf view hid the words it selected. The
   `::selection` background v7.2.0 states is `Highlight`, which is opaque, and
   the layer carrying it paints over the glyph layer. It is see-through now, so
