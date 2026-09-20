@@ -1818,12 +1818,10 @@ public:
       // Transparent text for the selection layer line blocks.
       out.out() << ".i{color:transparent;font-family:sf,sans-serif}";
       // A selection paints text in the highlight's own colour, which beats
-      // `transparent` and shows this layer over the glyph layer it stands for.
-      // The background goes with it: an author `::selection` drops the UA's
-      // own, and a rule stating the colour alone leaves a selection that shows
-      // nothing at all.
+      // `transparent` and shows this layer over the glyphs it stands for. An
+      // author `::selection` drops the UA background, so state that too.
       out.out() << ".i::selection,.i *::selection"
-                   "{color:transparent;background:Highlight}";
+                   "{color:transparent;background-color:Highlight}";
       // Selection-layer run span. `overflow:hidden` clips a wider system font;
       // `.t`'s inherited `pre` blocks wrapping while preserving a run's own
       // leading/trailing space, which is real PDF content.
@@ -2294,12 +2292,12 @@ public:
       // height, while clipping nothing (the space is transparent).
       out.out() << ".sp{display:inline-block;"
                    "color:transparent;vertical-align:baseline}";
-      // A selection paints text in the highlight's own colour, which beats
-      // `transparent`. `*` reaches a run's own span and a search `mark`.
+      // As `.i` in the dual layer above, with `*` reaching a run's own span
+      // and a search `mark`.
       out.out() << ".i::selection,.i *::selection,"
                    ".ov::selection,.ov *::selection,"
                    ".sp::selection,.sp *::selection"
-                   "{color:transparent;background:Highlight}";
+                   "{color:transparent;background-color:Highlight}";
       // A hit in the overlay is clipped away with it, so the glyphs it belongs
       // to carry the highlight instead - the whole run of them, which is as
       // narrow as the overlay can say.
@@ -2875,7 +2873,8 @@ public:
       // The same guard for a line the embedded font makes invisible; the dual
       // layer's `fnN` rides a `user-select:none` run and needs none.
       font_styles += ".fn" + n + "::selection,.fn" + n +
-                     " *::selection{color:transparent;background:Highlight}";
+                     " *::selection"
+                     "{color:transparent;background-color:Highlight}";
     }
   }
 
