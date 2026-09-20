@@ -16,11 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- **Fix**: selecting text in a pdf view showed the layer that carries it. The
-  browser paints selected text in the highlight's own colour, which overrode
-  the layer's `transparent`, so a second set of glyphs appeared over the ones
-  the page draws. The selection layer now keeps its colour through
-  `::selection`.
+- **Fix**: selecting text in a pdf view showed the invisible layer that carries
+  it, as a second set of glyphs over the drawn ones. That layer now stays
+  transparent under `::selection`.
 
 ## v7.1.0 - 2026-09-19
 
