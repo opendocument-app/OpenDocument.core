@@ -365,6 +365,14 @@
 
       // The pointer is a guess: an android WebView on an emulator reports a
       // fine one. So the viewer may state it outright.
+      // what `tapEdits` answers, read through the one gesture that shows it
+      function tapEditsNow() {
+        clickCell(0, 0);
+        var open = editor() !== null;
+        odr.editing.disable();
+        odr.editing.enable();
+        return open;
+      }
       function clickCell(column, row) {
         odr.editing.disable();
         odr.editing.enable();
@@ -392,6 +400,18 @@
         "and the cell is pinned under it",
         cell(0, 0).classList.contains("odr-sheet-pinned-cell")
       );
+
+      // A host passing a key it has no value for means unstated, not off. The
+      // pointer has to say coarse for the two to tell apart.
+      var realMM = window.matchMedia;
+      window.matchMedia = function (query) {
+        return query === "(pointer: coarse)"
+          ? { matches: true }
+          : realMM.call(window, query);
+      };
+      odr.editing.setSheetOptions({ editOnClick: undefined });
+      check("a key passed unset asks the pointer rather than reading as off", tapEditsNow());
+      window.matchMedia = realMM;
 
       var threw = false;
       try {

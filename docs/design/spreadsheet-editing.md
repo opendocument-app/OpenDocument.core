@@ -388,7 +388,8 @@ Each step ships on its own. "Both" means `.ods` and `.xlsx`.
    with their code table (decision 7). `spreadsheet_js` publishes `odr.sheet` in
    the same step (decision 8) — the position map the mode reads a lock through.
 2. **Landed**, with item 3: an editor that drops what is typed is not one.
-   Overlay editor: double-click / Enter / typing opens it over the cell; Enter,
+   Overlay editor: double-click / Enter / typing opens it over the cell, and a
+   single click where `editOnClick` or the pointer says so; Enter,
    Tab and blur commit; Escape cancels; arrow keys move the pin, through
    `odr.sheet.pin` rather than a pin of its own. A locked cell refuses on the
    click rather than on the double click that would have opened it.

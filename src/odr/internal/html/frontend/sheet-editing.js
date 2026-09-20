@@ -405,17 +405,16 @@
     }
   });
 
-  /// Gesture policy, the viewer's to set. `editOnClick` null asks the pointer.
+  /// Gesture policy, the viewer's to set. `editOnClick` unstated asks the
+  /// pointer.
   var options = { editOnClick: null };
 
-  /// Whether a click opens the editor, where a double click always does.
-  ///
-  /// A touch screen has no double click to spare: the first tap of one is a
-  /// tap of its own, and the reader is already in the mode that edits. The
-  /// pointer is the fallback answer only, because it is a guess - an android
-  /// WebView on an emulator reports a fine one - and the viewer knows.
+  /// Whether a click opens the editor, where a double click always does. The
+  /// pointer answers only while `editOnClick` is unstated, because it is a
+  /// guess: an android WebView reports a fine one on a touch screen.
   function tapEdits() {
-    if (options.editOnClick !== null) {
+    // `!= null` so an unset key a host passes reads as unstated, not as off
+    if (options.editOnClick != null) {
       return !!options.editOnClick;
     }
     return (

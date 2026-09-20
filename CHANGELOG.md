@@ -21,9 +21,8 @@ The release run heads these entries with the version and opens a fresh
   pdf page now zooms out to fit; narrower content is unchanged.
 
 - `odr.editing.setSheetOptions({editOnClick})` states whether a click opens a
-  sheet cell's editor, for a viewer that knows its input better than the
-  pointer does - an android WebView on an emulator reports a fine pointer on a
-  touch screen. Unstated, the pointer answers as before.
+  sheet cell's editor, because the pointer is a guess: an android WebView
+  reports a fine one on a touch screen. Unstated, the pointer answers.
 
 - **Fix**: selecting text in a pdf view showed the invisible layer that carries
   it, as a second set of glyphs over the drawn ones. That layer now stays
