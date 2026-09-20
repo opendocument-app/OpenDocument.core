@@ -752,7 +752,8 @@
   /// States @p style on @p at, for a host's `format` and for a chord. A
   /// collapsed caret marks the word it sits in; at a word boundary, or in a
   /// paragraph holding no run, the mark waits for the next typed text.
-  /// Formatting sits behind the scope gate whole.
+  /// Scope `paragraph` holds the range, not the style: a mark inside one
+  /// paragraph opens none.
   function format(style, at) {
     gesture += 1;
     if (!odr.editing.isEnabled()) {
@@ -767,7 +768,7 @@
       refuse(null, "range", at);
       return false;
     }
-    if (odr.editing.scope() === "paragraph") {
+    if (outOfScope(at)) {
       refuse(null, "outOfScope", at);
       return false;
     }
@@ -1497,6 +1498,12 @@
       event.preventDefault();
       // a chord is the shortcuts class, and a host may keep it
       if (!odr.takesKeys("shortcuts")) {
+        return;
+      }
+      // The host draws no button for a key, so it cannot offer less here.
+      // The chord keeps the gate `format` no longer carries.
+      if (odr.editing.scope() === "paragraph") {
+        refuse(event, "outOfScope", at);
         return;
       }
       toggle(property, at);
