@@ -799,15 +799,19 @@
       document.body.setAttribute("data-odr-editing-scope", "paragraph");
       check("until the host narrows it", odr.editing.scope() === "paragraph");
 
-      // Formatting sits behind the gate whole, so these land in runs no other
-      // refusal of this group names.
+      // The gate holds the range, not the style: marking runs inside one
+      // paragraph opens and joins nothing. Which styles are offered is the
+      // host's, because the host draws the buttons - and the chord, which it
+      // cannot draw, stays behind the gate.
       select(run(12).firstChild, 2);
-      check("a chord is refused", input("formatBold") === "refused");
+      check("a chord is refused, the host having no way to take the key", input("formatBold") === "refused");
       check("as out of scope", refusals.pop() === "outOfScope 1010");
       selectRuns(51, 0, 51, 4);
-      check("and so is the host's format", odr.editing.format({ bold: true }) === false);
-      check("as out of scope too", refusals.pop() === "outOfScope 1010");
-      check("with nothing marked", run(51).getAttribute("style") === null);
+      check("while the host's own format is taken", odr.editing.format({ bold: true }) === true);
+      check("with the run marked", run(51).getAttribute("style") !== null);
+      selectRuns(11, 2, 31, 2);
+      check("a format over two paragraphs is refused", odr.editing.format({ bold: true }) === false);
+      check("as out of scope", refusals.pop().indexOf("outOfScope ") === 0);
 
       select(run(11).firstChild, 5);
       check("typing inside a run is taken", input("insertText", "X") === "taken");
@@ -864,7 +868,12 @@
       check(
         "the log names no paragraph operation",
         ops().every(function (op) {
-          return op.op === "setText" || op.op === "removeElement" || op.op === "insertText";
+          return (
+            op.op === "setText" ||
+            op.op === "setTextStyle" ||
+            op.op === "removeElement" ||
+            op.op === "insertText"
+          );
         })
       );
 
