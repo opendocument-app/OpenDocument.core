@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: selecting text in a pdf view showed no selection at all. The
+  `::selection` rules that keep the hidden layer hidden stated a colour and no
+  background, and an author `::selection` drops the UA's own background, so the
+  highlight went with the glyphs. They now state both.
+
 - **Fix**: selecting text in a pdf view showed the invisible layer that carries
   it, as a second set of glyphs over the drawn ones. That layer now stays
   transparent under `::selection`.
