@@ -27,9 +27,37 @@
 
 namespace odr::internal {
 
+namespace {
+
+/// The narrowest screen worth fitting a page to, in css px. A floor below what
+/// reaches here buys nothing: no phone is narrower.
+constexpr double narrowest_viewport_pixels = 320.0;
+
+/// What the browser floors the page scale at on its own.
+constexpr double browser_minimum_scale = 0.25;
+
+/// `minimum-scale=<n>,` for content the browser's own floor cannot fit, or
+/// empty where it can. Fitting the width is pointless where the reader cannot
+/// zoom out far enough to see it.
+std::string minimum_scale_for(const std::optional<double> content_pixels) {
+  if (!content_pixels.has_value() || *content_pixels <= 0) {
+    return {};
+  }
+  const double fit = narrowest_viewport_pixels / *content_pixels;
+  if (fit >= browser_minimum_scale) {
+    return {};
+  }
+  // three decimals reach a page 320000px wide, and the string stays short
+  const double floored = std::max(std::floor(fit * 1000.0) / 1000.0, 0.001);
+  return "minimum-scale=" + Measure(floored, DynamicUnit()).to_string() + ",";
+}
+
+} // namespace
+
 void html::write_viewport_meta(
     HtmlWriter &out, const HtmlConfig &config, const bool fit_width_by_default,
-    const std::optional<HtmlViewportMode> mode_override) {
+    const std::optional<HtmlViewportMode> mode_override,
+    const std::optional<double> content_pixels) {
   if (config.viewport_content.has_value()) {
     out.write_header_viewport(
         xml::escape_attribute(config.viewport_content.value()));
@@ -44,7 +72,9 @@ void html::write_viewport_meta(
 
   switch (mode) {
   case HtmlViewportMode::fit_width:
-    out.write_header_viewport("width=device-width,user-scalable=yes");
+    out.write_header_viewport("width=device-width," +
+                              minimum_scale_for(content_pixels) +
+                              "user-scalable=yes");
     break;
   case HtmlViewportMode::actual_size:
   // A stated scale is what turns the browser's own fitting off.

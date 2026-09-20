@@ -172,7 +172,8 @@ void write_head(const Document &document, const WritingState &state,
           : "odr");
   const std::optional<HtmlViewportMode> mode_override =
       viewport_mode_override(document, state.config());
-  write_viewport_meta(out, state.config(), paged_content, mode_override);
+  write_viewport_meta(out, state.config(), paged_content, mode_override,
+                      content_pixels);
   write_zoom_style(out, state.config(),
                    paged_content
                        ? width_fit(state.config(), paged_content, mode_override)
