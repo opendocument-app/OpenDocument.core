@@ -49,16 +49,26 @@
     return null;
   }
 
-  /// A viewport point to page-box points (y-down, the unit the overlay draws
+  /// What an event's point is scaled by to reach the space the rects report,
+  /// which is the space `toBox` takes. A webkit view leaves the fit's zoom out
+  /// of a rect while an event carries it; a chromium one reports both alike.
+  /// Read once per event, not per sample: each call costs two layouts.
+  function layoutScale(page) {
+    if (!page || !odr.getViewportRect) {
+      return 1;
+    }
+    var drawn = odr.getViewportRect(page);
+    var raw = page.getBoundingClientRect();
+    return drawn && drawn.width && raw.width ? raw.width / drawn.width : 1;
+  }
+
+  /// A layout point to page-box points (y-down, the unit the overlay draws
   /// in). The page box is laid out in inches, so its own layout width in css
   /// pixels gives the scale a zoom transform is applied on top of.
-  function toBox(page, clientX, clientY) {
+  function toBox(page, x, y) {
     var rect = page.getBoundingClientRect();
     var zoom = page.offsetWidth ? rect.width / page.offsetWidth : 1;
-    return [
-      ((clientX - rect.left) / zoom) * 0.75,
-      ((clientY - rect.top) / zoom) * 0.75,
-    ];
+    return [((x - rect.left) / zoom) * 0.75, ((y - rect.top) / zoom) * 0.75];
   }
 
   /// Page-box points to pdf user space, through the page's own inverse.
@@ -482,12 +492,15 @@
     if (tool !== "ink" || event.button !== 0 || !inkTakes(event)) {
       return;
     }
-    var page = pageAt(event.clientX, event.clientY);
+    var scale = layoutScale(document.querySelector("[data-odr-page]"));
+    var x = event.clientX * scale;
+    var y = event.clientY * scale;
+    var page = pageAt(x, y);
     if (!page) {
       return;
     }
     event.preventDefault();
-    var p = toBox(page, event.clientX, event.clientY);
+    var p = toBox(page, x, y);
     stroke = {
       id: nextId++,
       page: +page.getAttribute("data-odr-page"),
@@ -518,8 +531,13 @@
       samples = [event];
     }
     var appended = false;
+    var scale = layoutScale(page);
     for (var i = 0; i < samples.length; ++i) {
-      var p = toBox(page, samples[i].clientX, samples[i].clientY);
+      var p = toBox(
+        page,
+        samples[i].clientX * scale,
+        samples[i].clientY * scale,
+      );
       // drop the sub-point jitter a pointer emits while nearly still
       if (
         Math.abs(p[0] - points[points.length - 2]) +
