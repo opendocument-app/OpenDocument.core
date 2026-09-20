@@ -20,6 +20,13 @@ The release run heads these entries with the version and opens a fresh
   it, as a second set of glyphs over the drawn ones. That layer now stays
   transparent under `::selection`.
 
+- A tap opens a sheet cell's editor where the pointer is coarse, so a phone
+  needs one tap rather than a double tap. A mouse keeps the double click.
+
+- **Fix**: a second click on the pinned cell cleared the pin while the sheet
+  was being edited, so a reader who tapped a cell twice lost it. The pin is
+  now cleared only in a sheet that is not being edited.
+
 ## v7.1.0 - 2026-09-19
 
 - The pdf view reports the pending annotation count on

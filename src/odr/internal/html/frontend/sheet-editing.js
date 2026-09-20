@@ -405,12 +405,30 @@
     }
   });
 
+  /// A touch screen has no double click to spare: the first tap of one is a
+  /// tap of its own, and the reader is already in the mode that edits. So a
+  /// tap opens the editor where the pointer is coarse, and the double click
+  /// keeps the job where it is fine.
+  function tapEdits() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches
+    );
+  }
+
   // A locked cell says so on the click, not on the double click.
   table.addEventListener("click", function (event) {
     var at =
       odr.editing.isEnabled() && overlay === null ? targetPosition(event) : null;
-    if (at !== null && odr.editing.lockAt(at.column, at.row) !== null) {
+    if (at === null) {
+      return;
+    }
+    if (odr.editing.lockAt(at.column, at.row) !== null) {
       odr.editing.refuseAt(at.column, at.row);
+      return;
+    }
+    if (tapEdits()) {
+      edit(at.column, at.row, null);
     }
   });
 
