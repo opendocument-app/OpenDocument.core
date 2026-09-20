@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.2.1 - 2026-09-20
+
 - **Fix**: marking text in a pdf view left the selection one handle, because a
   run of the selection layer clipped the end that handle belongs to. Nothing
   clips a run now, so both handles show and the mark can be adjusted.
