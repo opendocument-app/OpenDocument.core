@@ -16,9 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- **Fix**: a pdf underline and squiggle were drawn inside the text rather than
-  under it, so they crossed the descenders they belong below. Both now start
-  where the glyphs end. A strike-out still crosses the text.
+- **Fix**: a pdf underline and squiggle were drawn through the text rather than
+  under it, both in the view and in the saved file. They now hang below the
+  glyphs. A strike-out still crosses the text.
 
 - **Fix**: a pdf mark cut the tails off the text it marked and broke apart at
   every word gap, because it took the selection layer's em box. It now covers

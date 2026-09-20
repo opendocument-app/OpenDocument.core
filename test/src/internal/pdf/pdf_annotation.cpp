@@ -10,6 +10,8 @@
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -144,6 +146,54 @@ TEST(PdfAnnotation, only_highlight_multiplies) {
         TextMarkupKind::squiggly}) {
     EXPECT_FALSE(resources(kind).has_key("ExtGState"));
   }
+}
+
+// The quad is the text, so an underline and a squiggle hang below it and only
+// a strike-out crosses it. `pdf-annotation.js` draws the same three shapes for
+// the view, and the two have to agree.
+TEST(PdfAnnotation, an_underline_and_a_squiggle_stay_under_the_quad) {
+  // Every y the appearance stream names, in pdf user space.
+  const auto rows = [](const TextMarkupKind kind) {
+    TextMarkup markup = one_line_highlight();
+    markup.kind = kind;
+    const std::string pdf = with_markup(markup);
+    DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const Dictionary &dictionary =
+        first_page(*document)->annotations.front()->object.as_dictionary();
+    const std::string stream = parser.read_object_stream(
+        dictionary.get("AP").as_dictionary().get("N").as_reference());
+    std::vector<double> out;
+    std::istringstream in(stream);
+    std::vector<std::string> words{std::istream_iterator<std::string>(in),
+                                   std::istream_iterator<std::string>()};
+    for (std::size_t i = 0; i < words.size(); ++i) {
+      if (words[i] == "l" || words[i] == "m") {
+        out.push_back(std::stod(words[i - 1]));
+      } else if (words[i] == "re") {
+        out.push_back(std::stod(words[i - 3]));
+        out.push_back(std::stod(words[i - 3]) + std::stod(words[i - 1]));
+      }
+    }
+    return out;
+  };
+
+  // `one_line_highlight` states a quad from y=688 to y=700.
+  constexpr double bottom = 688;
+  constexpr double top = 700;
+
+  for (const TextMarkupKind kind :
+       {TextMarkupKind::underline, TextMarkupKind::squiggly}) {
+    const std::vector<double> y = rows(kind);
+    ASSERT_FALSE(y.empty());
+    EXPECT_LE(*std::max_element(y.begin(), y.end()), bottom)
+        << "kind " << static_cast<int>(kind);
+  }
+
+  const std::vector<double> struck = rows(TextMarkupKind::strike_out);
+  ASSERT_FALSE(struck.empty());
+  EXPECT_GT(*std::min_element(struck.begin(), struck.end()), bottom);
+  EXPECT_LT(*std::max_element(struck.begin(), struck.end()), top);
 }
 
 TEST(PdfAnnotation, text_markup_subtypes) {

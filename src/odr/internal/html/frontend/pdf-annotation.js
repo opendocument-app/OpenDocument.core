@@ -148,10 +148,8 @@
       if (type === "highlight") {
         return rect(b[0], b[1], b[2] - b[0], h);
       }
-      // `b[3]` is where the glyphs end, so an underline and a squiggle start
-      // there and run below it. Drawing them inside the box puts them through
-      // the descenders they belong under. A strike-out is the one that is
-      // meant to cross the text.
+      // `b[3]` is the bottom of the glyph boxes, so an underline and a
+      // squiggle hang below it. A strike-out is the one meant to cross.
       if (type === "underline") {
         return rect(b[0], b[3], b[2] - b[0], Math.max(h / 16, 0.5));
       }
