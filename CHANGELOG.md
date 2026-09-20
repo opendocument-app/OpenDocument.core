@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.2.2 - 2026-09-20
+
 - **Fix**: drawing on a pdf put the stroke about twice as far from the page's
   corner as the finger went, in a webkit view that fits the page to the screen.
 
