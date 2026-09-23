@@ -136,6 +136,10 @@ namespace odr::internal::font {
 std::string cff::wrap_to_otf(const CffFont &font,
                              const std::map<char32_t, std::uint16_t> &extra) {
   const std::uint16_t glyphs = font.glyph_count();
+  if (glyphs < 2) {
+    // OTS rejects a `CFF ` table whose CharStrings hold only `.notdef`.
+    throw std::runtime_error("cff: no glyph besides .notdef");
+  }
 
   // Glyphs past the 6400-slot BMP PUA overflow into Supplementary PUA-A, which
   // serialize_cmap covers with a format-12 subtable.

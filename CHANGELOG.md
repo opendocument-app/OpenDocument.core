@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a pdf CFF font with no glyph but `.notdef` is no longer embedded,
+  because browsers reject it. Its text uses a substitute font.
+
 - **Fix**: a pdf whose zlib streams declare a smaller window than they use
   failed to open with "Inflator: error in compressed block". It opens now.
 
