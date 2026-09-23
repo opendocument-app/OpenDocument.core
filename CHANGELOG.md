@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Performance**: a pdf with a `ToUnicode` range on every page no longer
+  spends about 7 MB a page on it, and JBIG2 scans decode about a third faster.
+
 - **Fix**: a pdf from old Ghostscript (8.x) showed every glyph as an empty box
   or as the wrong glyph. Its embedded TrueType fonts now show the right glyphs.
 

@@ -54,6 +54,33 @@ TEST(PdfCMap, bfrange_increment_form) {
   EXPECT_EQ(cmap.translate_string("\x41\x42\x43"), "ABC");
 }
 
+TEST(PdfCMap, bfrange_matches_the_code_width) {
+  CMap cmap = parse("2 begincodespacerange\n"
+                    "<00> <7F>\n"
+                    "<8000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "2 beginbfrange\n"
+                    "<41> <42> <0061>\n"
+                    "<8041> <8042> <0041>\n"
+                    "endbfrange\n");
+
+  EXPECT_EQ(cmap.translate_string(std::string("\x42\x80\x42", 3)), "bB");
+}
+
+TEST(PdfCMap, bfchar_wins_over_bfrange) {
+  CMap cmap = parse("1 begincodespacerange\n"
+                    "<0000> <FFFF>\n"
+                    "endcodespacerange\n"
+                    "1 beginbfrange\n"
+                    "<0000> <00FF> <0000>\n"
+                    "endbfrange\n"
+                    "1 beginbfchar\n"
+                    "<0042> <0058>\n"
+                    "endbfchar\n");
+
+  EXPECT_EQ(cmap.translate_string(std::string("\x00\x41\x00\x42", 4)), "AX");
+}
+
 TEST(PdfCMap, bfrange_array_form) {
   CMap cmap = parse("1 begincodespacerange\n"
                     "<00> <FF>\n"
