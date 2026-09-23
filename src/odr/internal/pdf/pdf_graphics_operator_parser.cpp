@@ -200,27 +200,6 @@ std::istream &GraphicsOperatorParser::in() { return m_parser.in(); }
 
 std::streambuf &GraphicsOperatorParser::sb() { return m_parser.sb(); }
 
-std::string GraphicsOperatorParser::read_operator_name() {
-  std::string result;
-
-  while (true) {
-    const int_type c = m_parser.geti();
-
-    if (c == eof) {
-      return result;
-    }
-    // White space or a delimiter ends the bareword (7.2.2): producers write
-    // `Tm(text)Tj` with nothing in between.
-    if (ObjectParser::is_whitespace(static_cast<char_type>(c)) ||
-        ObjectParser::is_delimiter(static_cast<char_type>(c))) {
-      return result;
-    }
-
-    m_parser.bumpc();
-    result += static_cast<char_type>(c);
-  }
-}
-
 GraphicsOperator GraphicsOperatorParser::read_operator() {
   GraphicsOperator result;
 
@@ -245,7 +224,8 @@ GraphicsOperator GraphicsOperatorParser::read_operator() {
       // dictionaries carry them, 8.9.7) or the operator name ending the
       // arguments. `peek_boolean` cannot tell them apart — `f` and `Tj` share
       // their leading character with the keywords — so read the whole word.
-      operator_name = read_operator_name();
+      // It ends at a delimiter too: producers write `Tm(text)Tj`.
+      operator_name = m_parser.read_keyword();
       if (operator_name == "true") {
         result.arguments.emplace_back(Boolean(true));
       } else if (operator_name == "false") {
