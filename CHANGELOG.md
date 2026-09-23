@@ -28,11 +28,6 @@ The release run heads these entries with the version and opens a fresh
 - **Fix**: a pdf from old Ghostscript (8.x) showed every glyph as an empty box
   or as the wrong glyph. Its embedded TrueType fonts now show the right glyphs.
 
-## v7.2.2 - 2026-09-20
-
-- **Fix**: drawing on a pdf put the stroke about twice as far from the page's
-  corner as the finger went, in a webkit view that fits the page to the screen.
-
 - **Fix**: a pdf that starts its cross-reference table on the line of the
   last `endobj` (`endobj xref`) failed to open with "expected stream". It
   opens now, and its metadata reads.
@@ -45,6 +40,11 @@ The release run heads these entries with the version and opens a fresh
 
 - **Fix**: a pdf text clip (`Tr` 4 to 7) was ignored, so a title filled with
   a picture covered the whole page. The paint now stays inside the glyphs.
+
+## v7.2.2 - 2026-09-20
+
+- **Fix**: drawing on a pdf put the stroke about twice as far from the page's
+  corner as the finger went, in a webkit view that fits the page to the screen.
 
 ## v7.2.1 - 2026-09-20
 
