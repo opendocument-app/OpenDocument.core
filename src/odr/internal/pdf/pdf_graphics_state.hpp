@@ -14,6 +14,7 @@ namespace odr::internal::pdf {
 struct GraphicsOperator;
 struct ColorSpaceDef;
 struct SoftMask;
+struct Font;
 
 enum class ColorSpace {
   unknown,
@@ -53,11 +54,24 @@ struct Subpath {
   bool closed{false};
 };
 
+/// One string a text object shows in a clipping mode (`Tr` 4-7). The fields
+/// mean what they mean on `TextElement`.
+struct TextClipRun {
+  const Font *font{nullptr};
+  util::math::Transform2D transform; ///< text space -> user space, no size
+  double size{0};
+  double horizontal_scaling{100};
+  std::string codes;
+  std::vector<double> advances;
+};
+
 /// One `W`/`W*` clipping region in user space (ISO 32000-1 8.5.4). The current
-/// clip is the *intersection* of an ordered list of these.
+/// clip is the *intersection* of an ordered list of these. A text clip (9.3.6)
+/// has `text` instead of `subpaths`, its area the union of the glyphs.
 struct ClipPath {
   std::vector<Subpath> subpaths;
   bool even_odd{false};
+  std::vector<TextClipRun> text{};
 };
 
 struct GraphicsState {
@@ -172,6 +186,8 @@ struct GraphicsState {
   /// Intersect a rectangle given in the current CTM's space (e.g. a form's
   /// `/BBox`) into the clip.
   void clip_bounding_box(double x0, double y0, double x1, double y1);
+  /// Collects until `ET` intersects the runs into the clip as one region.
+  void add_text_clip(TextClipRun run);
 
   /// `q`: push a copy of the current state.
   void save();
@@ -227,6 +243,9 @@ private:
   /// by a painting/`n` operator before any `q`/`Q` (ISO 32000-1 8.5.4).
   enum class PendingClip { none, nonzero, even_odd };
   PendingClip m_pending_clip{PendingClip::none};
+
+  /// Outside the saved state, as `q`/`Q` cannot occur inside `BT`...`ET`.
+  std::vector<TextClipRun> m_text_clip;
 
   /// Lowest stack size a `Q` may pop to; raised by `ContentScope`.
   std::size_t m_restore_floor{1};

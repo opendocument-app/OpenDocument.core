@@ -31,6 +31,9 @@ The release run heads these entries with the version and opens a fresh
 - **Performance**: a black-and-white pdf image becomes a 1-bit png rather than
   an 8-bit colour one, so a 600-dpi scan translates about 8 times faster.
 
+- **Fix**: a pdf text clip (`Tr` 4 to 7) was ignored, so a title filled with
+  a picture covered the whole page. The paint now stays inside the glyphs.
+
 ## v7.2.1 - 2026-09-20
 
 - **Fix**: marking text in a pdf view left the selection one handle, because a

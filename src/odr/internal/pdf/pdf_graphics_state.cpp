@@ -168,6 +168,10 @@ void GraphicsState::clip_bounding_box(const double x0, const double y0,
   current().clip.push_back(ClipPath{{std::move(rect)}, false});
 }
 
+void GraphicsState::add_text_clip(TextClipRun run) {
+  m_text_clip.push_back(std::move(run));
+}
+
 void GraphicsState::save() { stack.push_back(stack.back()); }
 
 void GraphicsState::restore() {
@@ -312,6 +316,13 @@ void GraphicsState::execute(const GraphicsOperator &op) {
     // BT initializes both the text matrix and the text line matrix to identity.
     current().text.matrix = util::math::Transform2D();
     current().text.line_matrix = util::math::Transform2D();
+    m_text_clip.clear();
+    break;
+  case GraphicsOperatorType::end_text:
+    if (!m_text_clip.empty()) {
+      current().clip.push_back(ClipPath{{}, false, std::move(m_text_clip)});
+      m_text_clip.clear();
+    }
     break;
   case GraphicsOperatorType::text_next_line_relative: // Td
     next_line(op.arguments.at(0).as_real(), op.arguments.at(1).as_real());
