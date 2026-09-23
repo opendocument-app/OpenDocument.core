@@ -300,6 +300,10 @@ public:
   explicit UncheckedZlibDecompressor(BufferedTransformation *attachment)
       : ZlibDecompressor(attachment) {}
 
+  /// The full 32 KiB window, as zlib keeps it: producers declare a smaller
+  /// `CINFO` in the header than the distances they use.
+  [[nodiscard]] unsigned int GetLog2WindowSize() const override { return 15; }
+
 protected:
   void ProcessPoststreamTail() override { m_inQueue.Clear(); }
 };

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a pdf whose zlib streams declare a smaller window than they use
+  failed to open with "Inflator: error in compressed block". It opens now.
+
 - **Performance**: a pdf with a `ToUnicode` range on every page no longer
   spends about 7 MB a page on it, and JBIG2 scans decode about a third faster.
 
