@@ -36,16 +36,27 @@ IndirectObject FileParser::read_indirect_object() {
   // only be the generation of an `n g R`
   m_parser.promote_indirect_reference(result.object);
 
-  // the keyword may carry trailing whitespace (`endobj \n`) or a CR from a
-  // CRLF line ending (`stream\r\n`), so compare against the trimmed token
-  std::string next = m_parser.read_line();
-  util::string::rtrim_inplace(next);
+  // a token, not a line: some producers start the next keyword on the same
+  // line (`endobj xref`)
+  std::string next;
+  while (true) {
+    const ObjectParser::int_type c = m_parser.geti();
+    if (c == ObjectParser::eof ||
+        ObjectParser::is_whitespace(static_cast<char>(c)) ||
+        ObjectParser::is_delimiter(static_cast<char>(c))) {
+      break;
+    }
+    next.push_back(m_parser.bumpc());
+  }
 
   if (next == "endobj") {
     m_parser.skip_whitespace();
     return result;
   }
   if (next == "stream") {
+    // the payload starts after the line ending, which may carry trailing
+    // whitespace before it (`stream \r\n`)
+    m_parser.skip_line();
     result.has_stream = true;
     result.stream_position = in().tellg();
 

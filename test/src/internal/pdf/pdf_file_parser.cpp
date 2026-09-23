@@ -144,6 +144,28 @@ TEST(IndirectObject, comment_around_body) {
   EXPECT_EQ(object.object.as_dictionary()["Type"].as_name(), "Catalog");
 }
 
+// A producer that starts the cross-reference section on the `endobj` line.
+TEST(IndirectObject, keyword_shares_line) {
+  std::istringstream in("5 0 obj\n<< /Type /Page >>\nendobj xref\n");
+  FileParser parser(in);
+
+  const IndirectObject object = parser.read_indirect_object();
+  EXPECT_EQ(object.reference.id, 5u);
+  EXPECT_FALSE(object.has_stream);
+  EXPECT_EQ(parser.parser().read_line(), "xref");
+}
+
+// The payload starts after the `stream` line, whitespace before its EOL
+// included.
+TEST(IndirectObject, stream_keyword_trailing_whitespace) {
+  std::istringstream in("5 0 obj\n<< /Length 2 >>\nstream \r\n\n\nendstream");
+  FileParser parser(in);
+
+  const IndirectObject object = parser.read_indirect_object();
+  ASSERT_TRUE(object.has_stream);
+  EXPECT_EQ(object.stream_position, 33);
+}
+
 // read_stream with a known /Length reads exactly that many bytes, then the
 // `endstream` and `endobj` keywords.
 TEST(ReadStream, known_length) {
