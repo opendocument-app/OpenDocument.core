@@ -1239,6 +1239,46 @@ TEST(PdfPageExtractor, clip_rect_limits_later_fill) {
   EXPECT_DOUBLE_EQ(p.clip[0].subpaths[0].segments[0].end[0], 100); // 0 + 100
 }
 
+TEST(PdfPageExtractor, text_clip_applies_at_end_of_text) {
+  Font font = simple_font('A', {500, 600});
+  Resources resources;
+  resources.font["F1"] = &font;
+
+  const auto page = extract_page("BT /F1 10 Tf 7 Tr 5 6 Td (AB) Tj (A) Tj ET "
+                                 "0 0 100 100 re f",
+                                 resources, Logger::null());
+  ASSERT_EQ(page.size(), 3); // the two invisible runs, then the fill
+  EXPECT_TRUE(std::get<TextElement>(page[0]).rendering_mode ==
+              TextRenderingMode::clip);
+  const PathElement &fill = path_at(page, 2);
+  ASSERT_EQ(fill.clip.size(), 1);
+  EXPECT_TRUE(fill.clip[0].subpaths.empty());
+  ASSERT_EQ(fill.clip[0].text.size(), 2);
+  const TextClipRun &first = fill.clip[0].text[0];
+  EXPECT_EQ(first.font, &font);
+  EXPECT_EQ(first.codes, "AB");
+  EXPECT_DOUBLE_EQ(first.size, 10);
+  EXPECT_DOUBLE_EQ(first.transform.e, 5);
+  EXPECT_DOUBLE_EQ(first.transform.f, 6);
+  EXPECT_EQ(first.advances, (std::vector<double>{5, 6}));
+  EXPECT_DOUBLE_EQ(fill.clip[0].text[1].transform.e, 16); // past "AB"
+}
+
+TEST(PdfPageExtractor, text_clip_modes_and_scope) {
+  Font font = simple_font('A', {500});
+  Resources resources;
+  resources.font["F1"] = &font;
+
+  const auto page =
+      extract_page("q BT /F1 10 Tf 4 Tr (A) Tj ET 0 0 1 1 re f Q "
+                   "0 0 1 1 re f BT /F1 10 Tf 0 Tr (A) Tj ET 0 0 1 1 re f",
+                   resources, Logger::null());
+  ASSERT_EQ(page.size(), 5);
+  EXPECT_EQ(path_at(page, 1).clip.size(), 1);
+  EXPECT_TRUE(path_at(page, 2).clip.empty());
+  EXPECT_TRUE(path_at(page, 4).clip.empty());
+}
+
 // `W*` selects the even-odd clip rule.
 TEST(PdfPageExtractor, clip_evenodd_rule) {
   const auto page = run_page("0 0 10 10 re W* n 0 0 5 5 re f");

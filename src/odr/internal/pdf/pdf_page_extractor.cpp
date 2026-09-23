@@ -176,6 +176,11 @@ void show(std::vector<PageElement> &out, GraphicsState &state,
     auto [advances, total] = segment_advances(text, *font, element.codes);
     element.width = total;
     element.advances = std::move(advances);
+    if (element.rendering_mode >= TextRenderingMode::fill_clip) {
+      state.add_text_clip({font, element.transform, element.size,
+                           element.horizontal_scaling, element.codes,
+                           element.advances});
+    }
   }
 
   // Space inference: prepend a space when the segment starts far

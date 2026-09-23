@@ -742,7 +742,11 @@ private:
 /// the painted element references the last.
 class ClipRegistry : public DefsRegistry {
 public:
-  using DefsRegistry::DefsRegistry;
+  /// The `@font-face` family a font's glyphs are drawn in, "" for none.
+  using FontFamily = std::function<std::string(const pdf::Font &)>;
+
+  ClipRegistry(const std::uint32_t page, FontFamily font_family)
+      : DefsRegistry(page), m_font_family{std::move(font_family)} {}
 
   /// The clipPath id to reference on a path painted under `clip`, registering
   /// any not-yet-seen regions. Empty when `clip` is empty (unclipped).
@@ -751,9 +755,20 @@ public:
     std::string signature;
     std::string parent;
     for (const pdf::ClipPath &region : clip) {
-      const std::string d = svg_path_d(region.subpaths, to_box);
-      signature += region.even_odd ? 'E' : 'N';
-      signature += d;
+      std::string shape;
+      if (region.text.empty()) {
+        shape = "<path d=\"" + svg_path_d(region.subpaths, to_box) + '"';
+        if (region.even_odd) {
+          shape += " clip-rule=\"evenodd\"";
+        }
+        shape += "/>";
+      } else {
+        shape = text_shape(region.text, to_box);
+        if (shape.empty()) {
+          continue; // no face to draw the glyphs in: left unclipped
+        }
+      }
+      signature += shape;
       signature += ';';
       const auto [id, inserted] = intern(signature, "c");
       if (inserted) {
@@ -761,15 +776,52 @@ public:
         if (!parent.empty()) {
           m_defs << " clip-path=\"url(#" << parent << ")\"";
         }
-        m_defs << "><path d=\"" << d << '"';
-        if (region.even_odd) {
-          m_defs << " clip-rule=\"evenodd\"";
-        }
-        m_defs << "/></clipPath>";
+        m_defs << '>' << shape << "</clipPath>";
       }
       parent = id;
     }
     return parent;
+  }
+
+private:
+  FontFamily m_font_family;
+
+  /// One `<text>` a run in the glyph layer's `@font-face` and PUA code points,
+  /// each glyph at its own `x`. "" when a run's font has no face.
+  std::string text_shape(const std::vector<pdf::TextClipRun> &runs,
+                         const util::math::Transform2D &to_box) const {
+    // SVG text is y-down in its own space, text space y-up.
+    static constexpr util::math::Transform2D flip =
+        util::math::Transform2D::scaling(1, -1);
+    std::ostringstream out;
+    for (const pdf::TextClipRun &run : runs) {
+      const std::string family =
+          run.font != nullptr ? m_font_family(*run.font) : std::string();
+      if (family.empty() || run.horizontal_scaling == 0) {
+        return {};
+      }
+      // `advances` carry the horizontal scaling, which `transform` applies
+      // again.
+      const double scaling = run.horizontal_scaling / 100.0;
+      std::string glyphs;
+      std::ostringstream x;
+      double pen = 0;
+      std::size_t i = 0;
+      for (const std::uint32_t code : run.font->codes(run.codes)) {
+        util::string::append_c32(
+            font::pua_code_point(run.font->glyph_for_code(code)), glyphs);
+        x << (i == 0 ? "" : " ") << pen / scaling;
+        pen += i < run.advances.size() ? run.advances[i] : 0;
+        ++i;
+      }
+      if (glyphs.empty()) {
+        continue;
+      }
+      out << "<text transform=\"" << svg_matrix(flip * run.transform * to_box)
+          << "\" font-family=\"" << family << "\" font-size=\"" << run.size
+          << "\" x=\"" << std::move(x).str() << "\">" << glyphs << "</text>";
+    }
+    return std::move(out).str();
   }
 };
 
@@ -1392,6 +1444,8 @@ public:
                            font_class_used.push_back({false, false});
                          });
     };
+    const ClipRegistry::FontFamily clip_font_family =
+        [&](const pdf::Font &font) { return face_name(font_family(&font)); };
 
     const auto add_class = [&styles](std::string &classes,
                                      const std::string &prefix,
@@ -1440,7 +1494,8 @@ public:
         stream += '\n';
       }
 
-      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
+      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()),
+                         clip_font_family);
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
       MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
@@ -1983,7 +2038,7 @@ public:
     std::string font_faces;
     std::string font_styles;              // ".fvN{...}" / ".fnN{...}"
     SubstituteFontFaces substitute_faces; // metric-overriding `.odr-sN` faces
-    std::vector<pdf::Font *> accepted_fonts;
+    std::vector<const pdf::Font *> accepted_fonts;
     // Per-font, per-uchar, per-glyph occurrence count (pre-pass).
     // Indexed by font_index - 1.
     std::vector<std::map<char32_t, std::map<std::uint16_t, std::uint32_t>>>
@@ -1994,7 +2049,7 @@ public:
     std::vector<std::array<bool, 2>> font_class_used;
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
-    const auto font_family = [&](pdf::Font *font) {
+    const auto font_family = [&](const pdf::Font *font) {
       return intern_font(family_index, family_count, font, m_logger,
                          [&](std::uint32_t) {
                            accepted_fonts.push_back(font);
@@ -2003,6 +2058,8 @@ public:
                            font_class_used.push_back({false, false});
                          });
     };
+    const ClipRegistry::FontFamily clip_font_family =
+        [&](const pdf::Font &font) { return face_name(font_family(&font)); };
 
     StyleRegistry styles(StyleRegistry::Rank::plain);
     const auto add_class = [&styles](std::string &classes,
@@ -2095,7 +2152,8 @@ public:
       page_out.links =
           collect_page_links(page, to_box, link_resolver, page_href);
 
-      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()));
+      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()),
+                         clip_font_family);
       GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
       PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
       MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
@@ -2830,6 +2888,11 @@ public:
              const std::uint32_t font, const bool inv) {
     font_class_used[font - 1][inv ? 1 : 0] = true;
     return (inv ? "fn" : "fv") + std::to_string(font);
+  }
+
+  /// The `@font-face` family of the 1-based font `index`, "" for 0.
+  static std::string face_name(const std::uint32_t index) {
+    return index == 0 ? std::string() : "odr-f" + std::to_string(index);
   }
 
   /// Re-encodes `font`'s embedded program, folding `extra_unicode`'s cmap

@@ -228,6 +228,34 @@ bool a_tag_states(const std::string &page, const std::string &tag,
 
 } // namespace
 
+// The cover paints its title through a `7 Tr` text clip.
+TEST(html, a_pdf_text_clip_is_drawn_in_the_embedded_font) {
+  const std::string path = "odr-private/pdf/Classical Music - Sheet Music for "
+                           "Piano Intermediate Level.pdf";
+  if (!std::filesystem::exists(TestData::test_file_path(path))) {
+    GTEST_SKIP() << "private fixture not available";
+  }
+  const std::string page = render(path, HtmlConfig());
+
+  const std::string open = "<clipPath id=\"";
+  const std::size_t clip = page.find(open);
+  ASSERT_NE(clip, std::string::npos);
+  const std::size_t id_end = page.find('"', clip + open.size());
+  const std::string id =
+      page.substr(clip + open.size(), id_end - clip - open.size());
+  ASSERT_EQ(page.compare(id_end, 8, "\"><text "), 0);
+
+  const std::string family = "font-family=\"";
+  const std::size_t family_at = page.find(family, id_end);
+  ASSERT_NE(family_at, std::string::npos);
+  const std::string name = page.substr(
+      family_at + family.size(),
+      page.find('"', family_at + family.size()) - family_at - family.size());
+  EXPECT_NE(page.find("@font-face{font-family:'" + name + "'"),
+            std::string::npos);
+  EXPECT_NE(page.find("clip-path=\"url(#" + id + ")\""), std::string::npos);
+}
+
 // Reflowed to the viewport there is no page box to inset the text.
 TEST(html, flowing_text_is_inset_from_the_screen_edge) {
   HtmlConfig config;

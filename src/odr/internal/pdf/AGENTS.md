@@ -205,6 +205,10 @@ Things the code won't shout at you:
   included (and selectable). Hidden/NoView (`/F`) and popup annotations paint
   nothing. AcroForm *interactivity* stays out of scope: the appearance is what
   the writer left in the file, never regenerated from `/V` and `/DA`.
+- **Text clips** (`Tr` 4–7, 9.3.6) collect as `TextClipRun`s until `ET` makes
+  them one `ClipPath` region. The HTML writer draws it as `<text>` in the glyph
+  layer's `@font-face`, so no outline is extracted. Every glyph, the space too,
+  has its own `x`, so SVG's white-space handling moves nothing.
 - **CMYK is naive (no ICC); overprint ignored.** CIE/ICCBased/Indexed/Separation/
   DeviceN/Lab resolve to RGB at emission by sampling the tint `/Function` (types
   0/2/3/4).
@@ -315,7 +319,8 @@ Link annotations (`/URI` + internal `/GoTo`) already land. Remaining:
     SVG `pad` spread), so a non-extended shading over-paints past its interval.
   - **Overlapping tiling lattices** (`/PatternType 1` step < `/BBox`) can't be one
     SVG `<pattern>` and are not reproduced; nested content inside a tile skipped.
-  - **Text clipping** (`Tr` 4–7 / clip paths on text) not applied.
+  - **Clips on *text*** are not applied. A text clip whose font has no
+    `@font-face` (Type3, not embedded) is left out.
   - **Perceptual-diff oracle**: only the odr-output snapshot test gates graphics;
     an automated pdf.js screenshot-diff is not built.
 - **Encryption edge cases**: per-stream `/Crypt` `Name` overrides, the
