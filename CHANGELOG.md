@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.3.1 - 2026-09-23
+
 - **Fix**: with the pen armed, a drag on a pdf page that had no mark yet
   scrolled the page on iOS instead of drawing. It draws now.
 
