@@ -151,6 +151,32 @@ TEST(PdfFilter, decode_stops_at_image_codec) {
       0);
 }
 
+// A Group 4 ring, 16 columns (see the pdf_ccitt tests), inside a Flate
+// wrapper and read through its /DecodeParms.
+TEST(PdfFilter, decode_ccitt_fax) {
+  const std::string g4("\x9b\x16\x8f\xce\x91\x76\xdf\xfb\x62\x95\x8a"
+                       "\x93\x54\x2a\x00\x20\x02",
+                       17);
+  const Object parms = dictionary({{"K", Object(Integer(-1))},
+                                   {"Columns", Object(Integer(16))},
+                                   {"BlackIs1", Object(Boolean(true))}});
+  const DecodeResult result =
+      decode(array({name("FlateDecode"), name("CCF")}),
+             array({Object(), parms}), zlib_deflate(g4));
+  EXPECT_FALSE(result.stopped_at_filter.has_value());
+  EXPECT_EQ(result.data, std::string("\x00\x00\x0f\xf0\x18\x18\x33\xcc"
+                                     "\x33\xcc\x18\x18\x0f\xf0\x80\x01",
+                                     16));
+}
+
+TEST(PdfFilter, decode_stops_at_undecodable_ccitt_fax) {
+  const DecodeResult result =
+      decode(name("CCITTFaxDecode"), Object(), std::string("\x02\xff", 2));
+  ASSERT_TRUE(result.stopped_at_filter.has_value());
+  EXPECT_EQ(*result.stopped_at_filter, "CCITTFaxDecode");
+  EXPECT_EQ(result.data, std::string("\x02\xff", 2));
+}
+
 TEST(PdfFilter, terminal_image_codec_identifies_passthrough) {
   // The codec a chain terminates in, recognised without decoding — its last
   // entry when that is an image codec (abbreviations canonicalised).

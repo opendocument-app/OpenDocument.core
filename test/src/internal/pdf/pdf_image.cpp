@@ -30,10 +30,13 @@ std::uint32_t be32(const std::string &data, const std::size_t offset) {
 
 /// Minimal PNG reader for the encoder's output: walks the chunks, inflates the
 /// concatenated IDAT and strips the per-row filter byte (the encoder only emits
-/// filter type 0), yielding the raw 8-bit RGB pixels.
+/// filter type 0), yielding the raw 8-bit RGB pixels. A palette image is looked
+/// up into RGB.
 struct DecodedPng {
   std::int32_t width{0};
   std::int32_t height{0};
+  std::int32_t bit_depth{0};
+  std::int32_t colour_type{0};
   std::string rgb;
 };
 
@@ -46,6 +49,7 @@ DecodedPng decode_png(const std::string &png) {
 
   DecodedPng result;
   std::string idat;
+  std::string palette;
   std::size_t p = 8;
   while (p + 12 <= png.size()) {
     const std::uint32_t length = be32(png, p);
@@ -54,8 +58,10 @@ DecodedPng decode_png(const std::string &png) {
     if (type == "IHDR") {
       result.width = static_cast<std::int32_t>(be32(data, 0));
       result.height = static_cast<std::int32_t>(be32(data, 4));
-      EXPECT_EQ(static_cast<std::uint8_t>(data[8]), 8); // bit depth
-      EXPECT_EQ(static_cast<std::uint8_t>(data[9]), 2); // colour type RGB
+      result.bit_depth = static_cast<std::uint8_t>(data[8]);
+      result.colour_type = static_cast<std::uint8_t>(data[9]);
+    } else if (type == "PLTE") {
+      palette = data;
     } else if (type == "IDAT") {
       idat += data;
     } else if (type == "IEND") {
@@ -64,12 +70,32 @@ DecodedPng decode_png(const std::string &png) {
     p += 12 + length;
   }
 
+  const bool indexed = result.colour_type == 3;
+  if (indexed) {
+    EXPECT_FALSE(palette.empty());
+  } else {
+    EXPECT_EQ(result.bit_depth, 8);
+    EXPECT_EQ(result.colour_type, 2); // RGB
+  }
   const std::string raw = odr::internal::crypto::util::zlib_inflate(idat);
-  const auto stride = static_cast<std::size_t>(result.width) * 3;
+  const std::size_t stride =
+      indexed
+          ? (static_cast<std::size_t>(result.width) * result.bit_depth + 7) / 8
+          : static_cast<std::size_t>(result.width) * 3;
   for (std::int32_t y = 0; y < result.height; ++y) {
     const std::size_t row = static_cast<std::size_t>(y) * (stride + 1);
     EXPECT_EQ(static_cast<std::uint8_t>(raw[row]), 0); // filter type None
-    result.rgb.append(raw, row + 1, stride);
+    if (!indexed) {
+      result.rgb.append(raw, row + 1, stride);
+      continue;
+    }
+    for (std::int32_t x = 0; x < result.width; ++x) {
+      const std::size_t bit = static_cast<std::size_t>(x) * result.bit_depth;
+      const auto byte = static_cast<std::uint8_t>(raw[row + 1 + bit / 8]);
+      const std::size_t index = (byte >> (8 - result.bit_depth - bit % 8)) &
+                                ((1u << result.bit_depth) - 1);
+      result.rgb.append(palette, index * 3, 3);
+    }
   }
   return result;
 }
@@ -200,6 +226,29 @@ TEST(PdfImage, encode_indexed_1bpc_packs_and_pads_rows) {
   EXPECT_EQ(rgb_pixel(png.rgb, 3, 0, 0), bytes({255, 255, 255}));
   EXPECT_EQ(rgb_pixel(png.rgb, 3, 1, 0), bytes({0, 0, 0}));
   EXPECT_EQ(rgb_pixel(png.rgb, 3, 2, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.bit_depth, 1);
+}
+
+// A bilevel scan stays at a bit a pixel, its two colours from the /Decode.
+TEST(PdfImage, encode_gray_1bpc_as_a_palette) {
+  const std::string samples = bytes({0b01000000, 0b10000000});
+  const std::array<double, 2> decode = {1.0, 0.0};
+  const DecodedPng png =
+      decode_png(encode_image_png(samples, 2, 2, 1, device_gray(), decode));
+  EXPECT_EQ(png.colour_type, 3);
+  EXPECT_EQ(png.bit_depth, 1);
+  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 1), bytes({0, 0, 0}));
+  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 1), bytes({255, 255, 255}));
+}
+
+// Rows the samples do not reach read as zero, as on the 8-bit path.
+TEST(PdfImage, encode_gray_1bpc_pads_short_samples) {
+  const DecodedPng png =
+      decode_png(encode_image_png(bytes({0xff}), 8, 2, 1, device_gray(), {}));
+  EXPECT_EQ(rgb_pixel(png.rgb, 8, 0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(rgb_pixel(png.rgb, 8, 0, 1), bytes({0, 0, 0}));
 }
 
 TEST(PdfImage, encode_gray_4bpc) {
