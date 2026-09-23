@@ -1840,6 +1840,8 @@ public:
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
+      // Blank page resolves into `.sel`, not to `.vis` ahead of all the text.
+      out.out() << ".vis{pointer-events:none}.sel{position:absolute;inset:0}";
       // Selection-layer fallback font: `size-adjust` shrinks a local system
       // font under the PDF-derived `.sr`/`.sg` widths. CSS justify only ever
       // *adds* spacing, so undershooting is free while overshooting spills out

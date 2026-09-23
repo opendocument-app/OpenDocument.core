@@ -10,3 +10,4 @@
    that has started */
 .p.an-draw{touch-action:var(--odr-an-touch,none);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 html.an-drawing{overscroll-behavior:var(--odr-an-overscroll,contain)}
+html.odr-selecting .lk{pointer-events:none}

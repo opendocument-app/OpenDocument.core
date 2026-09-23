@@ -62,6 +62,8 @@
   <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
     <span class="sr">Selectable text on page one</span>
   </div>
+  <a class="lk" id="link" href="#p2"
+     style="position: absolute; left: 72pt; top: 150pt; width: 100pt; height: 20pt"></a>
 </div>
 <div class="p x0 y0" id="p2" data-odr-page="1" data-odr-space="1,0,0,-1,0,792">
   <div class="t" style="left: 72pt; top: 92pt; font-size: 12pt">
@@ -626,6 +628,47 @@
     window.odr.onAnnotationChange = () => {};
     api.clear();
     api.setTool(null);
+
+    // --- a selection drags across a link, it does not stop on it ----------
+    window.getSelection().removeAllRanges();
+    const link = document.getElementById("link");
+    const linkRect = link.getBoundingClientRect();
+    const linkHit = () =>
+      document.elementFromPoint(
+        linkRect.left + linkRect.width / 2,
+        linkRect.top + linkRect.height / 2
+      ) === link;
+    const press = (target, type) =>
+      target.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, pointerType: type })
+      );
+    const release = () =>
+      document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    const settle = () => new Promise((r) => setTimeout(r, 50));
+
+    check("a link takes a click", linkHit());
+    press(document.querySelector('[data-odr-page="0"] .sr'), "mouse");
+    check("a drag from the text passes over it", !linkHit());
+    release();
+    check("and it takes a click once the drag ends", linkHit());
+    press(link, "mouse");
+    check("a press on the link itself leaves it be", linkHit());
+    release();
+
+    press(document.querySelector('[data-odr-page="0"] .sr'), "touch");
+    document.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+    selectRun(0);
+    await settle();
+    check("a touch selection's handles pass over it", !linkHit());
+    window.getSelection().removeAllRanges();
+    press(document.querySelector('[data-odr-page="0"] .sr'), "pen");
+    release();
+    selectRun(0);
+    await settle();
+    check("and so do a pen's", !linkHit());
+    window.getSelection().removeAllRanges();
+    await settle();
+    check("until the selection goes", linkHit());
   }
 
   run();
