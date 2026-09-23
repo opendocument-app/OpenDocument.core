@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.3.0 - 2026-09-23
+
 - **Fix**: a pdf CFF font with no glyph but `.notdef` is no longer embedded,
   because browsers reject it. Its text uses a substitute font.
 
