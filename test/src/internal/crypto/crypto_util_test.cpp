@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 
@@ -85,4 +86,26 @@ TEST(CryptoUtil, rc4) {
   EXPECT_EQ(hex_encode(cipher), "bbf316e8d940af0ad3");
   // RC4 is symmetric: re-applying the keystream restores the plaintext.
   EXPECT_EQ(rc4("Key", cipher), "Plaintext");
+}
+
+// A stream may reach back farther than the window its header declares; zlib
+// decodes it with its full window regardless.
+TEST(CryptoUtil, zlib_inflate_ignores_the_declared_window) {
+  std::string block;
+  std::uint32_t state = 1;
+  for (int i = 0; i < 300; ++i) {
+    state = state * 1103515245 + 12345;
+    block += static_cast<char>(state >> 24);
+  }
+  const std::string data = block + block;
+
+  std::string stream = zlib_deflate(data);
+  // CINFO 0, a 256-byte window; FCHECK makes the header a multiple of 31.
+  constexpr std::uint8_t cmf = 0x08;
+  auto flg = static_cast<std::uint8_t>(stream[1] & 0xc0);
+  flg = static_cast<std::uint8_t>(flg + (31 - (cmf * 256 + flg) % 31) % 31);
+  stream[0] = static_cast<char>(cmf);
+  stream[1] = static_cast<char>(flg);
+
+  EXPECT_EQ(zlib_inflate(stream), data);
 }
