@@ -105,6 +105,7 @@ add_executable(odr_test
         "src/internal/ooxml/ooxml_presentation_style_test.cpp"
 
         "src/internal/pdf/pdf_annotation.cpp"
+        "src/internal/pdf/pdf_ccitt.cpp"
         "src/internal/pdf/pdf_cid.cpp"
         "src/internal/pdf/pdf_cmap.cpp"
         "src/internal/pdf/pdf_color.cpp"

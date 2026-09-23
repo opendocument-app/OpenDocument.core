@@ -92,3 +92,13 @@ TEST(PngUtil, only_three_or_four_channels) {
   EXPECT_TRUE(png::write(pixels, 2, 2, 2).empty());
   EXPECT_FALSE(png::write(pixels, 2, 2, 4).empty());
 }
+
+TEST(PngUtil, write_indexed_rejects_bad_input) {
+  const std::string two = bytes({0, 0, 0, 255, 255, 255});
+  EXPECT_FALSE(png::write_indexed(bytes({0}), 8, 1, 1, two).empty());
+  EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 1, 3, two).empty());
+  EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 2, 1, two).empty());
+  EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 1, 1, "").empty());
+  EXPECT_TRUE(
+      png::write_indexed(bytes({0}), 8, 1, 1, two + two.substr(0, 3)).empty());
+}

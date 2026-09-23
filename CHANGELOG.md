@@ -25,6 +25,12 @@ The release run heads these entries with the version and opens a fresh
   last `endobj` (`endobj xref`) failed to open with "expected stream". It
   opens now, and its metadata reads.
 
+- **Fix**: a pdf image compressed as a fax (`CCITTFaxDecode`, Group 3 or 4)
+  was left out, so a scanned page came out blank. It shows now.
+
+- **Performance**: a black-and-white pdf image becomes a 1-bit png rather than
+  an 8-bit colour one, so a 600-dpi scan translates about 8 times faster.
+
 ## v7.2.1 - 2026-09-20
 
 - **Fix**: marking text in a pdf view left the selection one handle, because a

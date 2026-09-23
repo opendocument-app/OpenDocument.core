@@ -158,16 +158,17 @@ Things the code won't shout at you:
   is unlocked with the empty password first so `/Info` decrypts). It is
   all-or-nothing: a malformed structure leaves `document_type` at `unknown` rather
   than half-filling the fields. XMP is not parsed — the strings are `/Info`-only.
-- **Image codecs mostly are not decoded** in the filter framework
-  (DCTDecode/JPXDecode/CCITTFaxDecode): `decode()` stops and hands back the
-  still-encoded payload for the image path; `read_decoded_stream` treats them as
-  an error. A JPEG then passes through to the browser and a JPEG 2000 goes to
-  `pdf_jpx` (openjpeg) to be re-encoded as PNG like any other raster; CCITT
-  remains undecodable. The exception is **JBIG2**: `pdf_jbig2` decodes it in
-  house, there being no library to defer to, covering the arithmetic generic
-  regions, symbol dictionaries and text regions a scanner emits. MMR/Huffman,
-  refinement and halftone fail the image, not the page. `/JBIG2Globals` reaches
-  the filter as a `DecodeOptions` — only the parser can follow its reference.
+- **Two image codecs are not decoded** in the filter framework
+  (DCTDecode/JPXDecode): `decode()` stops and hands back the still-encoded
+  payload for the image path; `read_decoded_stream` treats them as an error. A
+  JPEG then passes through to the browser and a JPEG 2000 goes to `pdf_jpx`
+  (openjpeg) to be re-encoded as PNG like any other raster. The two bilevel
+  codecs are decoded in house: `pdf_ccitt` covers Group 3 (1-D and 2-D) and
+  Group 4 but not the uncompressed-mode extension, and **JBIG2** (`pdf_jbig2`)
+  covers the arithmetic generic regions, symbol dictionaries and text regions a
+  scanner emits. MMR/Huffman, refinement and halftone fail the image, not the
+  page. `/JBIG2Globals` reaches the filter as a `DecodeOptions` — only the
+  parser can follow its reference.
   `Crypt` passes through only as `Identity`.
 - **Inherited page attributes** (`Resources`/`MediaBox`/`CropBox`/`Rotate`, Table
   30) are resolved by threading an accumulator down the `Pages` recursion — *not*

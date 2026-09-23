@@ -166,6 +166,40 @@ std::string pdf::encode_image_png(const std::string &samples,
   const bool has_alpha = alpha.size() == pixel_count || has_color_key;
   const std::size_t channels = has_alpha ? 4 : 3;
 
+  const auto component_value = [&](const std::uint32_t sample,
+                                   const std::size_t k) -> double {
+    if (decode.size() >= 2 * (k + 1)) {
+      const double d_min = decode[2 * k];
+      const double d_max = decode[2 * k + 1];
+      return d_min + sample * (d_max - d_min) / max_sample;
+    }
+    if (indexed) {
+      // Default Indexed /Decode is [0, 2^bpc-1]: the sample is the palette
+      // index, which `to_rgb` looks up directly (8.6.6.3).
+      return sample;
+    }
+    return static_cast<double>(sample) / max_sample;
+  };
+
+  if (bits_per_component == 1 && components == 1 && !has_alpha) {
+    // The samples are already the rows of a two-colour palette png.
+    std::string palette;
+    for (const std::uint32_t sample : {0u, 1u}) {
+      const std::array<double, 1> value{component_value(sample, 0)};
+      const std::array<double, 3> rgb = color_space.to_rgb(value);
+      for (const double c : rgb) {
+        palette.push_back(static_cast<char>(to_byte(c)));
+      }
+    }
+    const std::size_t size = row_bytes * static_cast<std::size_t>(height);
+    if (samples.size() >= size) {
+      return png::write_indexed(samples, width, height, 1, palette);
+    }
+    std::string padded = samples; // a short stream reads as zero, as below
+    padded.resize(size, '\0');
+    return png::write_indexed(padded, width, height, 1, palette);
+  }
+
   std::string out;
   out.resize(pixel_count * channels);
 
@@ -180,17 +214,7 @@ std::string pdf::encode_image_png(const std::string &samples,
         const std::uint32_t sample = reader.read(bits_per_component);
         const auto k = static_cast<std::size_t>(j);
         raw_samples[k] = sample;
-        if (decode.size() >= 2 * (k + 1)) {
-          const double d_min = decode[2 * k];
-          const double d_max = decode[2 * k + 1];
-          component_values[k] = d_min + sample * (d_max - d_min) / max_sample;
-        } else if (indexed) {
-          // Default Indexed /Decode is [0, 2^bpc-1]: the sample is the palette
-          // index, which `to_rgb` looks up directly (8.6.6.3).
-          component_values[k] = sample;
-        } else {
-          component_values[k] = static_cast<double>(sample) / max_sample;
-        }
+        component_values[k] = component_value(sample, k);
       }
       const std::array<double, 3> pixel = color_space.to_rgb(component_values);
       out[out_index++] = static_cast<char>(to_byte(pixel[0]));
@@ -340,10 +364,6 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     return encode_jpx(result.data, color_space, decode_array, alpha, color_key,
                       smask_in_data);
   }
-  if (terminal.has_value() && terminal != "JBIG2Decode") {
-    return std::nullopt; // CCITTFax: not decodable
-  }
-
   // A fully decodable raster: decode, assemble samples and PNG-encode.
   if (color_space == nullptr) {
     return std::nullopt;

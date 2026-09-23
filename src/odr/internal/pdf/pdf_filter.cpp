@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_filter.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/pdf/pdf_ccitt.hpp>
 #include <odr/internal/pdf/pdf_jbig2.hpp>
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
@@ -52,6 +53,29 @@ Integer parms_integer(const Object &parms, const std::string &key,
   const Dictionary &dictionary = parms.as_dictionary();
   const Object &value = dictionary.get(key);
   return value.is_integer() ? value.as_integer() : default_value;
+}
+
+bool parms_boolean(const Object &parms, const std::string &key,
+                   const bool default_value) {
+  if (!parms.is_dictionary()) {
+    return default_value;
+  }
+  const Object &value = parms.as_dictionary().get(key);
+  return value.is_bool() ? value.as_bool() : default_value;
+}
+
+/// ISO 32000-1 Table 11.
+CcittParameters ccitt_parameters(const Object &parms) {
+  CcittParameters result;
+  result.k = static_cast<std::int32_t>(parms_integer(parms, "K", result.k));
+  result.encoded_byte_align =
+      parms_boolean(parms, "EncodedByteAlign", result.encoded_byte_align);
+  result.columns = static_cast<std::int32_t>(
+      parms_integer(parms, "Columns", result.columns));
+  result.rows =
+      static_cast<std::int32_t>(parms_integer(parms, "Rows", result.rows));
+  result.black_is_1 = parms_boolean(parms, "BlackIs1", result.black_is_1);
+  return result;
 }
 
 std::string apply_filter(const std::string &name, const Object &parms,
@@ -230,9 +254,16 @@ pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
   for (std::size_t i = 0; i < filters.size(); ++i) {
     const std::string name = canonical_filter_name(filters[i].as_string());
     const Object parms = parms_for(i);
+    // Past the in-house decoder's reach a bilevel codec stops the chain like
+    // the other image codecs.
+    if (name == "CCITTFaxDecode") {
+      if (std::optional<std::string> samples =
+              decode_ccitt(data, ccitt_parameters(parms))) {
+        data = std::move(*samples);
+        continue;
+      }
+    }
     if (name == "JBIG2Decode") {
-      // The one image codec we decode ourselves; past the decoder's reach it
-      // stops the chain like the others.
       if (std::optional<Jbig2Image> image =
               decode_jbig2(data, options.jbig2_globals)) {
         data = std::move(image->samples);

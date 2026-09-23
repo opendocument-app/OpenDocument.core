@@ -28,9 +28,9 @@ struct EncodedImage {
 /// the JPEG pass-through. A `JPXDecode` raster comes through `decode_jpx`, its
 /// own opacity channel taken only as `smask_in_data` says (Table 89: 0 ignores
 /// it, 2 says the colour is premultiplied by it). A `JBIG2Decode` raster goes
-/// through `decode_jbig2`, `options` carrying the globals it may need.
-/// `nullopt` for an undecodable codec (CCITTFax, or JBIG2 past the decoder's
-/// reach) or an inconsistent raster.
+/// through `decode_jbig2`, `options` carrying the globals it may need, and a
+/// `CCITTFaxDecode` one through `decode_ccitt`. `nullopt` for a codec past its
+/// decoder's reach or an inconsistent raster.
 std::optional<EncodedImage>
 encode_image(std::string raw, const Object &filter, const Object &decode_parms,
              std::int32_t width, std::int32_t height,
@@ -42,8 +42,9 @@ encode_image(std::string raw, const Object &filter, const Object &decode_parms,
 
 /// Assemble decoded image samples (ISO 32000-1 8.9.5: MSB-first, rows padded
 /// to a byte boundary, `bits_per_component` of 1/2/4/8/16) into an 8-bit PNG,
-/// converting through `color_space`. `decode` is the `/Decode` array remapping
-/// the sample range. `alpha` (one byte per pixel, row-major) and `color_key`
+/// converting through `color_space`, or a 1-bit palette PNG for a 1-bpc gray
+/// image without alpha. `decode` is the `/Decode` array remapping the sample
+/// range. `alpha` (one byte per pixel, row-major) and `color_key`
 /// ([min0 max0 …] in raw sample units) each make the output RGBA, transparent
 /// where coverage is 0 / every component is inside the ranges (8.9.6). Returns
 /// "" for an inconsistent configuration, so the caller skips the image.

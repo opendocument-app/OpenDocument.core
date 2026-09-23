@@ -174,7 +174,7 @@ TEST(PdfJbig2, rejects_a_retained_coding_context) {
   EXPECT_FALSE(decode_jbig2(stream, "").has_value());
 }
 
-// An MMR-coded generic region needs the CCITT decoder we do not have.
+// An MMR-coded generic region is not wired to the CCITT decoder yet.
 TEST(PdfJbig2, rejects_mmr_coding) {
   std::string region;
   bs::put_u32_be(region, 8);

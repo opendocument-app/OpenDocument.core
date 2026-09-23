@@ -9,8 +9,8 @@ namespace odr::internal::pdf {
 
 /// Result of decoding a stream through its `/Filter` chain (ISO 32000-1 7.4).
 /// If the chain reaches an image codec it cannot decode (DCTDecode, JPXDecode,
-/// CCITTFaxDecode, or a JBIG2 stream past `decode_jbig2`'s reach), decoding
-/// stops there: `data` holds the still-encoded payload,
+/// or a CCITTFax or JBIG2 stream past its decoder's reach), decoding stops
+/// there: `data` holds the still-encoded payload,
 /// `stopped_at_filter` the codec's canonical name and `stopped_at_parms` its
 /// decode parameters.
 struct DecodeResult {
