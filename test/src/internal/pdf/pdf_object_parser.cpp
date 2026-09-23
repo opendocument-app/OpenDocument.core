@@ -147,6 +147,24 @@ TEST(PdfObjectParser, skip_past) {
             Result(true, "X"));
 }
 
+// read_keyword stops at white space and at a delimiter, and leaves it unread.
+TEST(PdfObjectParser, read_keyword) {
+  const auto read_keyword = [](const std::string &input) {
+    std::istringstream in(input);
+    ObjectParser parser(in);
+    std::string keyword = parser.read_keyword();
+    return std::pair(std::move(keyword), parser.read_line());
+  };
+  using Result = std::pair<std::string, std::string>;
+
+  EXPECT_EQ(read_keyword("endobj xref"), Result("endobj", " xref"));
+  EXPECT_EQ(read_keyword("stream\r\n"), Result("stream", ""));
+  EXPECT_EQ(read_keyword("Tj(text)"), Result("Tj", "(text)"));
+  EXPECT_EQ(read_keyword("endobj"), Result("endobj", ""));
+  EXPECT_EQ(read_keyword("/Name"), Result("", "/Name"));
+  EXPECT_EQ(read_keyword(""), Result("", ""));
+}
+
 // 7.3.10: an indirect reference `n g R` is three tokens. A bare read_object
 // reads only the object number as a plain integer — the `g R` tail is left for
 // the enclosing context (array/dictionary) to fold in, so nothing is consumed

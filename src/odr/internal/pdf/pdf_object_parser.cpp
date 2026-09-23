@@ -227,6 +227,18 @@ void ObjectParser::expect_characters(const std::string &string) {
   }
 }
 
+std::string ObjectParser::read_keyword() {
+  std::string result;
+  while (true) {
+    const int_type c = geti();
+    if (c == eof || is_whitespace(static_cast<char_type>(c)) ||
+        is_delimiter(static_cast<char_type>(c))) {
+      return result;
+    }
+    result += bumpc();
+  }
+}
+
 bool ObjectParser::peek_number() {
   const int_type c = geti();
   return c != eof && (c == '+' || c == '-' || c == '.' || std::isdigit(c));

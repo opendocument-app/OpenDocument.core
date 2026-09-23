@@ -38,16 +38,7 @@ IndirectObject FileParser::read_indirect_object() {
 
   // a token, not a line: some producers start the next keyword on the same
   // line (`endobj xref`)
-  std::string next;
-  while (true) {
-    const ObjectParser::int_type c = m_parser.geti();
-    if (c == ObjectParser::eof ||
-        ObjectParser::is_whitespace(static_cast<char>(c)) ||
-        ObjectParser::is_delimiter(static_cast<char>(c))) {
-      break;
-    }
-    next.push_back(m_parser.bumpc());
-  }
+  const std::string next = m_parser.read_keyword();
 
   if (next == "endobj") {
     m_parser.skip_whitespace();

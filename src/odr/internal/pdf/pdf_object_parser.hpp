@@ -60,6 +60,9 @@ public:
   /// mismatch.
   void expect_keyword(const std::string &keyword);
   void expect_characters(const std::string &string);
+  /// A bareword such as `endobj` or `Tj`, up to the next white space or
+  /// delimiter (7.2.2). Empty if the cursor is at one or at eof.
+  [[nodiscard]] std::string read_keyword();
 
   [[nodiscard]] bool peek_number();
   [[nodiscard]] bool peek_unsigned_integer();
