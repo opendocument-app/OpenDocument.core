@@ -146,6 +146,14 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
       glyph != 0) {
     return glyph;
   }
+  // A (3,0) subtable keys the byte code at U+F000 + code.
+  if (embedded_font->symbolic()) {
+    if (const std::uint16_t glyph =
+            embedded_font->glyph_for_code_point(0xf000 + code);
+        glyph != 0) {
+      return glyph;
+    }
+  }
   if (encoding.has_value()) {
     const std::u16string unicode = glyph_name_to_unicode(
         encoding->glyph_name(static_cast<std::uint8_t>(code)));
