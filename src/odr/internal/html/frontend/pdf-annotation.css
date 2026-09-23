@@ -3,8 +3,10 @@
    the svg's own canvas, so the highlight would paint over the glyphs */
 .an-m{mix-blend-mode:multiply}
 /* the two properties `setOptions` writes */
-.p.an-draw .an{pointer-events:auto;cursor:crosshair;touch-action:var(--odr-an-touch,none)}
+.p.an-draw .an{pointer-events:auto;cursor:crosshair}
 .p.an-draw .t,.p.an-draw .sel{pointer-events:none}
-/* neither may interrupt a stroke */
-.p.an-draw{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+/* none may interrupt a stroke. The pan is refused on the page, not on the
+   overlay: a page gets its overlay with its first mark, too late for a touch
+   that has started */
+.p.an-draw{touch-action:var(--odr-an-touch,none);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 html.an-drawing{overscroll-behavior:var(--odr-an-overscroll,contain)}

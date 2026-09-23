@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: with the pen armed, a drag on a pdf page that had no mark yet
+  scrolled the page on iOS instead of drawing. It draws now.
+
 ## v7.3.0 - 2026-09-23
 
 - **Fix**: a pdf CFF font with no glyph but `.notdef` is no longer embedded,

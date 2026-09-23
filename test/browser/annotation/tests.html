@@ -341,17 +341,29 @@
       api.getOptions().markOnSelection === false &&
         api.getOptions().inkPointerTypes === null
     );
+    // a page with no mark has no overlay yet, and a touch on it must not pan
+    // either: the page carries the policy, not the overlay
+    const bare = page1.cloneNode(false);
+    bare.setAttribute("data-odr-page", "2");
+    page1.parentNode.appendChild(bare);
     api.setTool("ink");
     check(
-      "a touch on the overlay does not pan by default",
-      getComputedStyle(page1.querySelector("svg.an")).touchAction === "none"
+      "a touch on a page does not pan by default",
+      getComputedStyle(page1).touchAction === "none",
+      getComputedStyle(page1).touchAction
     );
+    check(
+      "nor on a page that has no overlay yet",
+      bare.querySelector("svg.an") === null &&
+        getComputedStyle(bare).touchAction === "none",
+      getComputedStyle(bare).touchAction
+    );
+    bare.remove();
     api.setOptions({ touchAction: "pinch-zoom" });
     check(
-      "setOptions reaches the overlay",
-      getComputedStyle(page1.querySelector("svg.an")).touchAction ===
-        "pinch-zoom",
-      getComputedStyle(page1.querySelector("svg.an")).touchAction
+      "setOptions reaches the page",
+      getComputedStyle(page1).touchAction === "pinch-zoom",
+      getComputedStyle(page1).touchAction
     );
     api.setOptions({ touchAction: "none" });
     check("getOptions reports what was set", api.getOptions().touchAction === "none");
