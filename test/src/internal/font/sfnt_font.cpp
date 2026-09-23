@@ -6,7 +6,9 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace odr;
@@ -284,4 +286,29 @@ TEST(SfntFont, is_sfnt) {
 TEST(SfntFont, throws_on_truncated) {
   EXPECT_THROW(sfnt_font_from_string(std::string("\x00\x01\x00\x00", 4)),
                std::runtime_error);
+}
+
+TEST(SfntFont, write_pads_a_short_hmtx) {
+  // Two longHorMetrics for five glyphs, and none of the three leftSideBearings
+  // that must follow them.
+  const SfntFont font = sfnt_font_from_string(
+      build_sfnt({{"cmap", cmap_table(3, 1, cmap_format4('A', 3))},
+                  {"head", head_table()},
+                  {"hhea", hhea_table(2)},
+                  {"hmtx", hmtx_table({500, 600})},
+                  {"maxp", maxp_table(5)}}));
+
+  const std::string written = font.write();
+  const std::uint16_t count =
+      bs::read_u16_be(std::string_view(written).substr(4));
+  std::optional<std::uint32_t> hmtx_length;
+  for (std::uint16_t i = 0; i < count; ++i) {
+    const std::string_view entry =
+        std::string_view(written).substr(12 + static_cast<std::size_t>(i) * 16);
+    if (entry.substr(0, 4) == "hmtx") {
+      hmtx_length = bs::read_u32_be(entry.substr(12));
+    }
+  }
+  EXPECT_EQ(hmtx_length, 2 * 4 + 3 * 2);
+  EXPECT_EQ(SfntFont(written).advance_width(4), 600);
 }

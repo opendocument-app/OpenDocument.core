@@ -511,7 +511,19 @@ std::string SfntFont::write() const {
     if (tag == "cmap" || !is_kept_table(tag)) {
       continue;
     }
-    tables.emplace_back(tag, m_data.substr(location.offset, location.length));
+    std::string data = m_data.substr(location.offset, location.length);
+    if (tag == "hmtx") {
+      // OTS rejects an `hmtx` shorter than `hhea` and `maxp` say.
+      const std::size_t side_bearings =
+          std::max(m_glyph_count, m_number_of_h_metrics) -
+          m_number_of_h_metrics;
+      const std::size_t length =
+          4 * std::size_t{m_number_of_h_metrics} + 2 * side_bearings;
+      if (data.size() < length) {
+        data.resize(length, '\0');
+      }
+    }
+    tables.emplace_back(tag, std::move(data));
   }
   tables.emplace_back("cmap", serialize_cmap(m_cmap));
 

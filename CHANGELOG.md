@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a pdf from old Ghostscript (8.x) showed every glyph as an empty box
+  or as the wrong glyph. Its embedded TrueType fonts now show the right glyphs.
+
 ## v7.2.2 - 2026-09-20
 
 - **Fix**: drawing on a pdf put the stroke about twice as far from the page's

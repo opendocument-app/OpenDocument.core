@@ -81,12 +81,13 @@ std::string cmap_format4(const char16_t start, const std::uint16_t count) {
   return t;
 }
 
-std::string cmap_table(const std::string &subtable) {
+std::string cmap_table(const std::string &subtable,
+                       const std::uint16_t encoding = 1 /* Unicode BMP */) {
   std::string t;
   bs::put_u16_be(t, 0);
   bs::put_u16_be(t, 1);
   bs::put_u16_be(t, 3); // Windows
-  bs::put_u16_be(t, 1); // Unicode BMP
+  bs::put_u16_be(t, encoding);
   bs::put_u32_be(t, 12);
   t += subtable;
   return t;
@@ -210,6 +211,20 @@ TEST(PdfFont, simple_font_glyph_for_code_via_cmap) {
 
   EXPECT_EQ(font.glyph_for_code('A'), 1);
   EXPECT_EQ(font.glyph_for_code('C'), 3);
+}
+
+TEST(PdfFont, simple_font_glyph_for_code_via_symbol_cmap) {
+  // A (3,0) subtable keys byte code c at U+F000 + c (ISO 32000-1 9.6.6.4).
+  Font font;
+  font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
+      build_sfnt({{"cmap", cmap_table(cmap_format4(0xf003, 2), 0)},
+                  {"head", head_table()},
+                  {"hhea", hhea_table(5)},
+                  {"hmtx", hmtx_table(5)},
+                  {"maxp", maxp_table(5)}}));
+
+  EXPECT_EQ(font.glyph_for_code(3), 1);
+  EXPECT_EQ(font.glyph_for_code(4), 2);
 }
 
 TEST(PdfFont, simple_font_glyph_for_code_via_font_charset) {
