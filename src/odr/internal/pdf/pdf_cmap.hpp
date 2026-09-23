@@ -18,6 +18,11 @@ class CMap {
 public:
   void add_codespace_range(std::string low_code, std::string high_code);
   void map_single(std::string code, std::u16string unicode);
+  /// `low + i` maps to @p unicode with its last unit advanced by `i` (ISO
+  /// 32000-1 9.10.3). A `map_single` code wins over a range, and a later range
+  /// over an earlier.
+  void map_range(std::uint32_t low, std::uint32_t high, std::size_t width,
+                 std::u16string unicode);
 
   /// CID mapping from a composite font's `/Encoding` CMap stream (ISO 32000-1
   /// 9.7.5.3); a range maps `base_cid + (code - low)`. Codes are keyed by their
@@ -28,7 +33,7 @@ public:
 
   /// True when no code -> Unicode mapping was parsed (e.g. the font carries no
   /// `ToUnicode` CMap); the caller then falls back to the `/Encoding`.
-  [[nodiscard]] bool empty() const { return m_map.empty(); }
+  [[nodiscard]] bool empty() const { return m_map.empty() && m_ranges.empty(); }
 
   /// Records that the CMap stream referenced another CMap via `usecmap` (ISO
   /// 32000-1 9.7.5.3). We do not resolve the inherited base, so whatever
@@ -86,6 +91,13 @@ private:
     std::string high;
   };
 
+  struct UnicodeRange {
+    std::uint32_t low;
+    std::uint32_t high;
+    std::size_t width;
+    std::u16string unicode; ///< the destination of `low`
+  };
+
   struct CidRange {
     std::uint32_t low;      ///< numeric value of the low code
     std::uint32_t high;     ///< numeric value of the high code
@@ -96,8 +108,12 @@ private:
   bool m_inherits_external_cmap{false};
   std::vector<CodespaceRange> m_codespace_ranges;
   std::unordered_map<std::string, std::u16string> m_map;
+  std::vector<UnicodeRange> m_ranges;
   std::unordered_map<std::string, std::uint32_t> m_cid_chars;
   std::vector<CidRange> m_cid_ranges;
+
+  [[nodiscard]] std::optional<std::u16string>
+  unicode_for_code(const std::string &code) const;
 
   /// Byte width of the code starting at `pos`, decided by the codespace ranges;
   /// falls back to a single byte when no range declares/matches it.

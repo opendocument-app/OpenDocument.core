@@ -391,6 +391,26 @@ Bitmap decode_generic_region(const std::int32_t width,
     fail("jbig2: oversized generic region template");
   }
 
+  // With every template row a contiguous run of decoded pixels, a shift
+  // register per row carries it from one x to the next.
+  struct Row {
+    std::int8_t dy;
+    std::int8_t dx_min;
+    std::int8_t dx_max;
+    std::uint32_t bits;
+  };
+  std::vector<Row> rows;
+  bool contiguous = true;
+  for (const Point &p : tmpl) {
+    contiguous = contiguous && (p.y != 0 || p.x < 0);
+    if (!rows.empty() && rows.back().dy == p.y) {
+      contiguous = contiguous && p.x == rows.back().dx_max + 1;
+      rows.back().dx_max = p.x;
+    } else {
+      rows.push_back({p.y, p.x, p.x, 0});
+    }
+  }
+
   Bitmap bitmap(width, height);
   bool ltp = false;
   for (std::int32_t y = 0; y < height; ++y) {
@@ -411,6 +431,32 @@ Bitmap decode_generic_region(const std::int32_t width,
         }
         continue;
       }
+    }
+    if (contiguous) {
+      for (Row &row : rows) {
+        row.bits = 0;
+        for (std::int32_t i = 0; i <= row.dx_max - row.dx_min; ++i) {
+          row.bits = (row.bits << 1) | bitmap.get(row.dx_min + i, y + row.dy);
+        }
+      }
+      for (std::int32_t x = 0; x < width; ++x) {
+        std::uint32_t context = 0;
+        for (const Row &row : rows) {
+          context = (context << (row.dx_max - row.dx_min + 1)) | row.bits;
+        }
+        if (skip != nullptr && skip->get(x, y) != 0) {
+          bitmap.set(x, y, 0);
+        } else {
+          bitmap.set(x, y, decoder.decode(contexts, context));
+        }
+        for (Row &row : rows) {
+          const std::uint32_t mask = (1U << (row.dx_max - row.dx_min + 1)) - 1;
+          row.bits =
+              ((row.bits << 1) | bitmap.get(x + 1 + row.dx_max, y + row.dy)) &
+              mask;
+        }
+      }
+      continue;
     }
     for (std::int32_t x = 0; x < width; ++x) {
       if (skip != nullptr && skip->get(x, y) != 0) {

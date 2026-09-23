@@ -1,5 +1,6 @@
 #include <odr/internal/pdf/pdf_cmap.hpp>
 
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -14,6 +15,31 @@ void CMap::add_codespace_range(std::string low_code, std::string high_code) {
 
 void CMap::map_single(std::string code, std::u16string unicode) {
   m_map[std::move(code)] = std::move(unicode);
+}
+
+void CMap::map_range(const std::uint32_t low, const std::uint32_t high,
+                     const std::size_t width, std::u16string unicode) {
+  m_ranges.push_back({low, high, width, std::move(unicode)});
+}
+
+std::optional<std::u16string>
+CMap::unicode_for_code(const std::string &code) const {
+  if (const auto it = m_map.find(code); it != m_map.end()) {
+    return it->second;
+  }
+  const std::uint32_t value =
+      util::byte_string::read_uint_be(code, code.size());
+  for (auto it = m_ranges.rbegin(); it != m_ranges.rend(); ++it) {
+    if (it->width == code.size() && value >= it->low && value <= it->high) {
+      std::u16string unicode = it->unicode;
+      if (!unicode.empty()) {
+        unicode.back() =
+            static_cast<char16_t>(unicode.back() + (value - it->low));
+      }
+      return unicode;
+    }
+  }
+  return std::nullopt;
 }
 
 void CMap::map_cid_char(std::string code, const std::uint32_t cid) {
@@ -32,10 +58,8 @@ CMap::cid_for_code(const std::string_view code) const {
       it != m_cid_chars.end()) {
     return it->second;
   }
-  std::uint32_t value = 0;
-  for (const char c : code) {
-    value = (value << 8) | static_cast<std::uint8_t>(c);
-  }
+  const std::uint32_t value =
+      util::byte_string::read_uint_be(code, code.size());
   for (const CidRange &range : m_cid_ranges) {
     if (range.width == code.size() && value >= range.low &&
         value <= range.high) {
@@ -76,17 +100,17 @@ std::string CMap::translate_string(const std::string &codes,
     const std::string code = codes.substr(pos, width);
     pos += width;
 
-    if (const auto it = m_map.find(code); it != m_map.end()) {
-      result += it->second;
+    if (const std::optional<std::u16string> unicode = unicode_for_code(code)) {
+      result += *unicode;
       continue;
     }
 
     // Only for an imposed width — a declared mixed codespace keeps `<20>` and
     // `<0020>` distinct.
     if (single_byte_codes) {
-      if (const auto it = m_map.find(std::string(1, '\0') + code);
-          it != m_map.end()) {
-        result += it->second;
+      if (const std::optional<std::u16string> unicode =
+              unicode_for_code(std::string(1, '\0') + code)) {
+        result += *unicode;
         continue;
       }
     }
@@ -94,11 +118,8 @@ std::string CMap::translate_string(const std::string &codes,
     // Unknown code: fall back to its numeric value as a single UTF-16 unit
     // (identity for single-byte codes). These "no Unicode" runs are left for
     // later re-encoding.
-    std::uint32_t value = 0;
-    for (const char c : code) {
-      value = (value << 8) | static_cast<std::uint8_t>(c);
-    }
-    result += static_cast<char16_t>(value);
+    result += static_cast<char16_t>(
+        util::byte_string::read_uint_be(code, code.size()));
   }
 
   return util::string::u16string_to_string(result);

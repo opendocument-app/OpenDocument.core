@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_cmap_parser.hpp>
 
 #include <odr/internal/pdf/pdf_cmap.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/logger.hpp>
 
 #include <cstdint>
@@ -21,9 +22,8 @@ namespace {
 constexpr std::size_t max_code_width = 4;
 
 // A conforming `bfrange`'s low/high codes differ only in their last byte
-// (PDF 32000-1 §9.10.3), so a range spans at most 256 codes. We treat that as a
-// hard cap: with up-to-4-byte codes an out-of-spec range could otherwise span
-// millions of codes and explode the eagerly materialized mapping.
+// (PDF 32000-1 §9.10.3), so a range spans at most 256 codes, and a longer one
+// is taken as malformed.
 constexpr std::uint32_t max_bfrange_span = 0xff;
 
 bool valid_code_width(const std::size_t width) {
@@ -36,11 +36,7 @@ std::uint32_t code_to_uint(const std::string &code) {
   if (!valid_code_width(code.size())) {
     throw std::invalid_argument("pdf: CMap code width out of range");
   }
-  std::uint32_t value = 0;
-  for (const char c : code) {
-    value = (value << 8) | static_cast<std::uint8_t>(c);
-  }
-  return value;
+  return util::byte_string::read_uint_be(code, code.size());
 }
 
 std::string uint_to_code(std::uint32_t value, const std::size_t width) {
@@ -181,7 +177,7 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
                                 << (max_bfrange_span + 1) << " codes)");
       continue;
     }
-    // The span fits in 32 bits without wrapping, so the loops below can count.
+    // The span fits in 32 bits without wrapping, so the loop below can count.
     const std::uint32_t span = high_code - low_code;
 
     if (destination.is_array()) {
@@ -215,13 +211,7 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
                         << dst.size() << " bytes)");
         continue;
       }
-      std::u16string unicode = utf16be_to_u16string(dst);
-      for (std::uint32_t offset = 0; offset <= span; ++offset) {
-        cmap.map_single(uint_to_code(low_code + offset, width), unicode);
-        if (!unicode.empty()) {
-          ++unicode.back();
-        }
-      }
+      cmap.map_range(low_code, high_code, width, utf16be_to_u16string(dst));
     }
   }
 }
