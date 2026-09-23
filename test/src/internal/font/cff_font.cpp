@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -489,6 +490,16 @@ TEST(CffFontTest, WrapSanitizesTheFontName) {
   EXPECT_EQ(patched.glyph_count(), cff.glyph_count());
   EXPECT_EQ(patched.glyph_name(1), cff.glyph_name(1));
   EXPECT_EQ(patched.advance_width(1), cff.advance_width(1));
+}
+
+TEST(CffFontTest, WrapRejectsAFontOfOnlyNotdef) {
+  using namespace odr::internal::font;
+  const std::vector<cff::BuilderGlyph> glyphs = {
+      {".notdef", std::string("\x0e", 1)}};
+  const cff::CffFont font{
+      cff::build_cff("Hidden", glyphs, 0, 0, FontBBox{0, 0, 1000, 1000})};
+  ASSERT_EQ(font.glyph_count(), 1);
+  EXPECT_THROW((void)cff::wrap_to_otf(font), std::runtime_error);
 }
 
 TEST(CffFontTest, WrapDropsExtraEntriesPastGlyphCount) {

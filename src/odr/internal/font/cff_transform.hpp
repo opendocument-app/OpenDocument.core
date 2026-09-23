@@ -18,7 +18,7 @@ class CffFont;
 ///
 /// The `cmap` is `pua_cmap(glyph_count, extra)`, so the font renders every
 /// glyph — including charset-unreachable ones — at the PUA code points the PDF
-/// HTML layer emits.
+/// HTML layer emits. Throws for a font with no glyph besides `.notdef`.
 [[nodiscard]] std::string
 wrap_to_otf(const CffFont &font,
             const std::map<char32_t, std::uint16_t> &extra = {});
