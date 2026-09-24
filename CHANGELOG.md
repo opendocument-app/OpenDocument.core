@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a markdown document in the paged view put its text on the edge of
+  the page. The page now has a margin of `2em` on each side.
+
+- **Fix**: a selection in a pdf view moved away from the text a little more
+  at every word of a line. It now stays on the text for the full line.
+
 ## v7.3.1 - 2026-09-23
 
 - **Fix**: with the pen armed, a drag on a pdf page that had no mark yet
@@ -23,9 +29,6 @@ The release run heads these entries with the version and opens a fresh
 
 - **Fix**: a selection dragged in a pdf view no longer jumps to the page's
   start or end over blank space or a link.
-
-- **Fix**: a markdown document in the paged view put its text on the edge of
-  the page. The page now has a margin of `2em` on each side.
 
 ## v7.3.0 - 2026-09-23
 
