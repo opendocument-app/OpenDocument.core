@@ -1,71 +1,53 @@
 # text editing checks
 
-What the emitted text editor does and what it refuses can only be seen in a
-browser, so these are run by hand rather than by `odr_test`.
+What the embedded text editor does and refuses is visible only in a browser,
+so these checks run by hand and not in `odr_test`.
 
 ```bash
 test/browser/text/serve          # serves on :8734
 open http://localhost:8734/tests.html
 ```
 
-`serve` serves `document.css`, `editing.js` and `document.js` straight out of
-`src/odr/internal/html/frontend/`, and `checks.js` out of `test/browser/`, so
-what runs is the file the library embeds. `editing.js` goes first, as the
-library writes it.
+`serve` serves `document.css`, `editing.js`, `document.js` and `search.js` out
+of `src/odr/internal/html/frontend/`, and `checks.js` out of `test/browser/`,
+so the checks run the file the library embeds. `editing.js` goes first, as the
+library writes it. `error-codes.js` is built from `src/odr/error_code.{hpp,cpp}`
+by `test/browser/serve.py`.
 
-- **`tests.html`** — the editor **owns the edit**: it cancels what the browser
-  was about to do and splices the page itself, so the markup stays what the
-  renderer wrote and every change has an operation behind it. The fixture holds
-  the shapes that turns on: two runs beside each other, a run under a link, a
-  run under a style-only wrapper, a paragraph holding a picture and no run at
-  all, and the `<wbr>` / `<br>` line box the renderer ends every paragraph
-  with. The checks drive `beforeinput`, which is what a browser fires before it
-  changes anything.
+`tests.html` holds the shapes the editor handles: two runs beside each other,
+a run under a link, a run under a style-only wrapper, a paragraph with a
+picture and no run, and the `<wbr>` / `<br>` line box the renderer ends every
+paragraph with. The checks drive `beforeinput`, which a browser fires before
+it changes anything. The editor cancels the event and splices the page itself,
+so the markup stays what the renderer wrote and every change has an operation.
 
-Why the checks look the way they do:
+Rules the checks follow:
 
-- **`defaultPrevented` no longer says whether an edit was taken.** The editor
-  cancels the event either way — once because it is doing the edit itself, once
-  because it is refusing. So `input()` answers `"taken"` or `"refused"` by
-  watching the refusal channel, and the cancelling is checked once on its own.
-- **The page is rebuilt between groups.** Every edit is a real edit, so a group
-  that ran before would decide what the next one starts from. `reset()` puts
-  the fixture back, clears the log and turns the mode on again.
-- **A synthetic `InputEvent` carries no target range.** `getTargetRanges()` is
-  empty on an event the page constructs, so the editor falls back to the
-  selection — which is also what a browser lacking `getTargetRanges` gives it,
-  and what an Android WebView is reported to give it. That is why each check
-  sets the selection first, and it is the path `extendForDelete` exists for: a
-  Backspace whose range the browser did not state is one character, or the
-  paragraph boundary the caret stands at.
-- **The word and line deletes are not extended.** Where a browser states no
-  range for `deleteWordBackward`, guessing where the word ends would take away
-  text the reader did not name, so nothing happens.
-- **The repeat suppression is part of the contract.** Two identical refusals
-  within two seconds are one event ([`editing.md`](../../docs/design/editing.md)
-  decision 9), and a refusal is keyed by its run.
-- **The log is checked, not only the page.** What a save hands to
-  `Document::edit` is the point of the editor, so each group asserts the
-  operations as well as the text: which ops, in which order, naming which ids.
-  `document_edit_test.cpp` replays the same shapes in C++, which is what keeps
-  the two sides from drifting apart.
-
-- **Scope `paragraph` runs on the same fixture**: the group sets
-  `data-odr-editing-scope` on `<body>`, which the editor reads per edit. Its
-  formatting refusals land in runs no other refusal of the group names.
-- **Formatting is driven two ways**: `odr.editing.format` and `toggle` for a
-  host's button and a `formatBold` input for the chord. The checks read the
-  `style` attribute back and assert the cut. `onSelectionChange` is checked
-  by dispatching `selectionchange` by hand, since the browser raises it after
-  the script; the same dispatch is what drops a pending mark when the caret
-  moved.
-
-- **A composition is driven the way a browser fires one**: a `beforeinput`
-  that cannot be cancelled, the run written by hand, and the `input` after it.
-  A real Android keyboard was checked on an emulator with Gboard.
-
-**Scripted editing is not the editing a reader does, which is why no check uses
-`execCommand`.** Chrome's scripted path raises no cancelable `beforeinput`, so
-`execCommand("insertParagraph")` splits a paragraph without the editor ever
-seeing it. Trusted input does not; a real Enter goes through the gate. Checked
-by hand in a browser, and not reachable by a reader.
+- `defaultPrevented` does not say whether an edit was taken, because the
+  editor cancels the event on a refusal too. `input()` answers `"taken"` or
+  `"refused"` from the refusal channel.
+- `reset()` rebuilds the page between groups, clears the log and turns the
+  mode on again, because every edit is a real edit.
+- A synthetic `InputEvent` has an empty `getTargetRanges()`, so the editor
+  falls back to the selection. An Android WebView gives it the same. Each
+  check sets the selection first. `extendForDelete` covers a Backspace whose
+  range the browser did not state: one character, or the paragraph boundary
+  at the caret.
+- Word and line deletes are not extended. Where a browser states no range for
+  `deleteWordBackward`, nothing happens.
+- Two identical refusals within two seconds are one event (`editing.js`), and
+  a refusal is keyed by its run.
+- Each group asserts the operations as well as the text: which ops, in which
+  order, naming which ids. `test/src/document_edit_test.cpp` replays the same
+  shapes in C++.
+- Scope `paragraph` runs on the same fixture. The group sets
+  `data-odr-editing-scope` on `<body>`, which the editor reads per edit.
+- Formatting is driven two ways: `odr.editing.format` and `toggle` for a
+  host's button, and a `formatBold` input for the chord. The checks read the
+  `style` attribute back. `onSelectionChange` is checked by dispatching
+  `selectionchange` by hand, because the browser raises it after the script.
+- A composition is driven as a browser fires one: a `beforeinput` that cannot
+  be cancelled, the run written by hand, and the `input` after it.
+- No check uses `execCommand`. Chrome's scripted path raises no cancelable
+  `beforeinput`, so `execCommand("insertParagraph")` bypasses the editor. A
+  real Enter goes through the gate.

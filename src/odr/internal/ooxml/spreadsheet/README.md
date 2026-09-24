@@ -1,18 +1,13 @@
 # OOXML spreadsheet implementation
 
-Reader for spreadsheet documents (`.xlsx`).
-
-This implementation relies on [OOXML](../README.md).
-
-The workbook is parsed from `xl/workbook.xml`, with each sheet, the shared
-string table and drawings pulled in via relationships (see
-`ooxml_spreadsheet_parser.cpp`). Cell styles are resolved from `xl/styles.xml`
-through the `cellXfs` / `fonts` / `fills` / `borders` indices (see
-`ooxml_spreadsheet_style.cpp`).
+Reader and editor for spreadsheets (`.xlsx`). It relies on
+[OOXML](../README.md). The workbook is parsed from `xl/workbook.xml`. Each
+sheet, the shared strings and the drawings are loaded via relationships
+(`ooxml_spreadsheet_parser.cpp`). Cell styles resolve from `xl/styles.xml`
+through the `cellXfs`, `fonts`, `fills` and `borders` indices
+(`ooxml_spreadsheet_style.cpp`).
 
 ## Features
-
-Roughly ordered by importance.
 
 ### Functional
 
@@ -23,15 +18,15 @@ Roughly ordered by importance.
   - [x] shared strings
   - [x] inline strings (`t="inlineStr"`)
   - [x] merged cells (`mergeCells`)
-  - [x] shapes / images anchored to a sheet (`xdr:twoCellAnchor`)
-  - [x] cell value types (number vs. string; dates/booleans/errors reported as
-        string)
-  - [x] cell values (`<v>` as a number, `<f>` as its own string)
-  - [ ] computed values (formulas are read but not evaluated; the cached `<v>`
-        result is shown)
+  - [x] shapes and images anchored to a sheet (`xdr:twoCellAnchor`)
+  - [x] cell value types (number, string, boolean, error, date)
+  - [x] cell values (`<v>` as a number, `<f>` as its own string, shared formulas)
+  - [ ] computed values (the cached `<v>` result is shown)
+  - [ ] number formats (a date shows as its serial)
 - [x] edit
-  - [x] cell values (number, string, cleared), a written string going inline
-  - [ ] a cell the file writes no `c` for, a covered one, a formula one
+  - [x] cell values (number, string, boolean, cleared); a written string goes inline
+  - [x] a cell the file states no `c` for
+  - [ ] a covered cell, a formula cell, a date, time or error value
 - [x] save
 
 ### Styles
@@ -46,8 +41,9 @@ Roughly ordered by importance.
   - [ ] superscript, subscript
 - [x] cell
   - [x] background / fill color
-  - [x] borders (thin only)
-  - [x] alignment (horizontal & vertical center, text rotation)
+  - [x] borders (`0.75pt solid` only)
+  - [x] alignment (horizontal, vertical, text rotation)
+  - [ ] protection
 - [x] images
 - [ ] links
 - [ ] annotations / comments

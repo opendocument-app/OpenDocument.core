@@ -1,79 +1,65 @@
 # Office Open XML (`ooxml/`) — shared design & conventions
 
-The **why** for the OOXML engine; per-feature checklists live in the
-[`README.md`](README.md) files. Shared architecture (element-adapter pattern,
-build/test, conventions) is in the top-level [`AGENTS.md`](../../../../AGENTS.md);
-read it first.
+The shared mechanics of the OOXML engine. The per-feature checklists are in
+the [`README.md`](README.md) files. The element-adapter pattern, the build loop
+and the conventions are in the top-level [`AGENTS.md`](../../../../AGENTS.md).
 
-**Scope.** Reading the three OOXML document
-types — word (`.docx`), presentation (`.pptx`), spreadsheet (`.xlsx`). The three
-formats **share almost nothing beyond packaging, encryption, and type
-detection**; each is a self-contained module with its own `AGENTS.md`:
+The three formats share only packaging, encryption and type detection. Each is
+a self-contained module with its own `AGENTS.md`:
 
 | Module | Format | Editable | Agent doc |
-|---|---|:--:|---|
-| [`text/`](text/) | `.docx` (Word) | text + save | [text/AGENTS.md](text/AGENTS.md) |
-| [`presentation/`](presentation/) | `.pptx` (PowerPoint) | text + save | [presentation/AGENTS.md](presentation/AGENTS.md) |
-| [`spreadsheet/`](spreadsheet/) | `.xlsx` (Excel) | cell values + save | [spreadsheet/AGENTS.md](spreadsheet/AGENTS.md) |
+|---|---|---|---|
+| [`text/`](text/) | `.docx` | runs, paragraphs, text style, save | [text/AGENTS.md](text/AGENTS.md) |
+| [`presentation/`](presentation/) | `.pptx` | runs, paragraphs, text style, save | [presentation/AGENTS.md](presentation/AGENTS.md) |
+| [`spreadsheet/`](spreadsheet/) | `.xlsx` | cell values, save | [spreadsheet/AGENTS.md](spreadsheet/AGENTS.md) |
 
-## Shared element model (same as ODF)
+## Shared element model
 
-Like [`odf/`](../odf/), every format keeps its parsed XML parts **resident** and
-the `ElementRegistry` is a thin index over them: its `RegistryElement` adds a
-live `pugi::xml_node` to the shared `ElementNode`, and the store, the tree links
-and the `SideTable` payloads come from `internal::ElementRegistry` (see the top
-level [`AGENTS.md`](../../../../AGENTS.md)). One mega `ElementAdapter` per format
-derives from `internal::RegistryElementAdapter`, naming the abstract per-type
-adapters it answers for in the template pack; the hooks are the base's. Parsing is a
-static `unordered_map<tag, TreeParser>` dispatch table; unknown tags are skipped
-(children still visited). Text runs are coalesced into one `text` Element over a
-`[first, last]` node span. **Editing, where present, splices these live nodes;**
-`save` re-serialises only the mutated part and byte-copies the rest.
+As in [`odf/`](../odf/), each format keeps its parsed XML parts resident. The
+`ElementRegistry` is an index over them: its `RegistryElement` adds a live
+`pugi::xml_node` to the shared `ElementNode`. One `ElementAdapter` per format
+derives from `internal::RegistryElementAdapter`. Parsing is a static
+`unordered_map<tag, TreeParser>` dispatch table. An unknown tag is skipped, and
+its children are still visited. Text runs coalesce into one `text` element over
+a `[first, last]` node span. Editing splices these live nodes. `save`
+re-serialises only the mutated parts and byte-copies the rest.
 
-## OPC relationships (the cross-part mechanic)
+## OPC relationships
 
-OOXML packages are split across parts (`document.xml`, `slideN.xml`,
-`sheetN.xml`, `drawingN.xml`, `sharedStrings.xml`, …) wired by
-`_rels/*.rels`. `parse_relationships` (`ooxml_util`) reads a part's `.rels`
-sibling into an `rId → target-path` map. Cross-part references — a slide's
-`r:id`, a sheet, a drawing, an image `r:embed` — resolve through it, relative to
-the *referencing part's* path. `spreadsheet` threads a per-part `ParseContext`
-(path + its relations + the global part cache) so paths resolve correctly;
-`presentation` uses a thinner `rId → xml` map.
+Parts (`document.xml`, `slideN.xml`, `sheetN.xml`, `drawingN.xml`,
+`sharedStrings.xml`, ...) are wired by `_rels/*.rels`. `parse_relationships`
+(`ooxml_util`) reads a part's `.rels` sibling into an `rId → target` map. A
+target resolves relative to the referencing part's path. `spreadsheet` threads
+a per-part `ParseContext` (path, its relations, the part cache).
+`presentation` uses an `rId → xml` map.
 
 ## Shared files
 
 | File (`ooxml/`) | Role |
 |---|---|
-| `ooxml_file.{hpp,cpp}` | `OfficeOpenXmlFile` entry point: meta, encryption state, `decrypt()`, dispatch to the per-format `Document` on `file_type()` |
-| `ooxml_meta.cpp` | `parse_file_meta`: **sentinel-path** type detection (`/word/document.xml`→docx, `/ppt/presentation.xml`→pptx, `/xl/workbook.xml`→xlsx); encrypted-package detection (`/EncryptionInfo`+`/EncryptedPackage`) |
-| `ooxml_util.{hpp,cpp}` | Stateless pugixml attribute readers: OOXML unit systems (half-points, hundredth-points, EMUs `/914400in`, twips `/1440in`, percents), colours, borders, font weight/style, relationship parsing |
-| `ooxml_crypto.{hpp,cpp}` | Decryption (see below) |
+| `ooxml_file.{hpp,cpp}` | `OfficeOpenXmlFile`: meta, encryption state, `decrypt()`, dispatch to the per-format `Document` on `file_type()` |
+| `ooxml_meta.cpp` | `parse_file_meta`: type detection by sentinel path (`/word/document.xml`, `/ppt/presentation.xml`, `/xl/workbook.xml`); an encrypted package has `/EncryptionInfo` and `/EncryptedPackage` |
+| `ooxml_util.{hpp,cpp}` | Stateless attribute readers: half-points, hundredth-points, EMUs, twips, percents, colours, borders, font weight and style; relationship parsing; `write_text_nodes`, `insert_in_sequence` for the writers |
+| `ooxml_crypto.{hpp,cpp}` | Decryption |
 
 ## Encryption
 
-Only **ECMA-376 _standard_ encryption** (AES-ECB + SHA1) is implemented
-(`ECMA376Standard`, selected by `VersionInfo` major ∈ {2,3,4} & minor == 2). Key
-derivation: password→UTF16LE, salt-prefixed SHA1, **50000** hash iterations, then
-the block-key derivation with `0x36`/`0x5c` pads. The encryption container is a
-[CFB](../cfb/) compound file (`open_strategy.cpp` routes encrypted packages
-through the cfb filesystem, plain packages through [zip](../zip/)); `decrypt()`
-verifies the password, AES-decrypts `/EncryptedPackage`, and re-opens the plain
-ZIP in memory.
+Only ECMA-376 standard encryption (AES-ECB plus SHA1) is implemented:
+`ECMA376Standard`, selected when `VersionInfo` major is 2, 3 or 4 and minor is
+2. Key derivation: password as UTF-16LE, salt-prefixed SHA1, 50000 iterations
+(`ITER_COUNT`), then the block key with the `0x36` and `0x5c` pads. The
+container is a [CFB](../cfb/) compound file. `open_strategy.cpp` routes an
+encrypted package through the cfb filesystem and a plain one through
+[zip](../zip/). `decrypt()` verifies the password, decrypts
+`/EncryptedPackage` and reopens the plain zip in memory.
 
-**Rejected / unsupported (throw `MsUnsupportedCryptoAlgorithm`)**: *agile*
-(4.4) and *extensible* encryption. **Big-endian hosts throw `UnsupportedEndian`**
-— the crypto structs are `#pragma pack(1)` + `memcpy`/`reinterpret_cast`
-(`// TODO support big endian`).
+Agile (4.4) and extensible encryption throw `MsUnsupportedCryptoAlgorithm`. A
+big-endian host throws `UnsupportedEndian`, because the crypto structs are
+`#pragma pack(1)` and read by `memcpy`.
 
 ## Shared open work
 
-- **Agile encryption** — the common modern scheme; currently rejected. Highest-
-  value shared gap.
-- **Big-endian hosts** — crypto (and the `reinterpret_cast` reads) assume
-  little-endian; guarded by a runtime throw.
-- **Document statistics** (page / table counts) are not produced for any format.
-- `Crypto::Util` is rebuilt per `decrypt()` call (`// TODO cache`).
-
-Per-format element/style coverage and format-specific open work live in each
-module's own `AGENTS.md`.
+- Agile encryption, the common modern scheme.
+- Big-endian hosts.
+- Document statistics (page and table counts) for any format.
+- `Crypto::Util` is rebuilt per `decrypt()` call.

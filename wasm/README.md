@@ -1,12 +1,11 @@
 # WebAssembly bindings
 
-`@opendocument/odr-core` — render documents to HTML **in the browser**, with no
+`@opendocument/odr-core` renders documents to HTML in the browser, with no
 server and no upload. The bytes never leave the machine.
 
-Not to be confused with [OpenDocument.js](https://github.com/opendocument-app/OpenDocument.js),
-which is the renderer's own frontend TypeScript. That is compiled *into* the
-library (`src/odr/internal/html/frontend.cpp`) and is not published; this package
-is the library itself.
+This is not [OpenDocument.js](https://github.com/opendocument-app/OpenDocument.js),
+the renderer's own frontend TypeScript, which is compiled into the library and
+not published. This package is the library itself.
 
 ## Install
 
@@ -14,8 +13,7 @@ is the library itself.
 npm install @opendocument/odr-core
 ```
 
-Or skip the build step entirely — the package works straight off a CDN, which
-is the least-machinery way to put a viewer on a static host:
+The package also works straight off a CDN:
 
 ```html
 <script type="module">
@@ -23,7 +21,7 @@ is the least-machinery way to put a viewer on a static host:
 </script>
 ```
 
-For a self-hosted copy with no npm and no CDN, every release carries
+For a self-hosted copy, every release carries
 `odr-core-browser-<version>.zip`: the same files flat, plus an `example.html`
 that runs against them. Unzip it where your pages are served from and import
 `./index.js`.
@@ -46,13 +44,12 @@ try {
 }
 ```
 
-`html` is a complete document — styles, scripts, images and fonts all inline —
-so it needs nothing fetched alongside it. A `blob:` iframe keeps the same
-origin, so the page can still reach `iframe.contentWindow.odr` to drive
-`search()`, `searchNext()` and `generateDiff()`, exactly as the Android and iOS
-apps do from their WebViews. The frame inherits the embedding page's
-Content-Security-Policy, so a page that ships one has to allow what the
-document carries — see [Content-Security-Policy](#content-security-policy).
+`html` is a complete document with styles, scripts, images and fonts inline.
+A `blob:` iframe keeps the same origin, so the page can reach
+`iframe.contentWindow.odr` to drive `search()`, `searchNext()` and the
+editing API, as the Android and iOS apps do from their WebViews. The frame
+inherits the embedding page's Content-Security-Policy. See
+[Content-Security-Policy](#content-security-policy).
 
 Multi-page formats render one view at a time:
 
@@ -68,35 +65,33 @@ Editing is a round trip through the rendered page:
 const doc = odr.open(bytes, { editable: true });
 const { html } = doc.render(0);
 const page = iframe.contentWindow.odr;
-// The mode starts off, whatever the config: turning it on is the host's, and
-// `enable()` refuses where the document cannot be edited.
+// The mode starts off. `enable()` refuses where the document cannot be edited.
 page.editing.enable();
 // ... the reader edits the page in the iframe ...
-// `getOperations()` returns the json already; stringifying it again is a string
-// where `edit` wants an object, and it throws. `generateDiff()` is the older
-// name for the same envelope.
+// `getOperations()` returns an object. `edit` wants that object, not a string.
 doc.edit(page.editing.getOperations());
 
 const saved = doc.save();   // the document, not the html
 download(new Blob([saved]));
-// The page and the file agree now, so its log resets and undo starts over.
+// The page and the file agree now, so the log resets and undo starts over.
 page.editing.committed();
 ```
 
-`odr.editing` is on every document view, editable or not: `isEditable()` is what
-greys a host's edit button, and `onEditRefused` says why an edit was refused.
-On a sheet, `onCellsStale` names the formula cells an edit left computing an
-old input - the page marks them, and nothing recomputes one yet.
-`keyboardNavigation` and `keyboardShortcuts` in the config decide whether the
-page takes the arrow keys and the undo chord, for a host that has its own.
-`editingScope` narrows a document view to edits inside one paragraph; the page
-refuses the rest with code 1010, `outOfScope`.
+`odr.editing` is on every document view, editable or not. `isEditable()`
+tells a host whether to show an edit button, `onEditRefused` says why an edit
+was refused, and `onCellsStale` names the formula cells whose input changed.
+Nothing recomputes a formula yet. The config keys `keyboardNavigation` and
+`keyboardShortcuts` decide whether the page takes the arrow keys and the undo
+chord. `editingScope` narrows a document view to edits inside one paragraph,
+and the page refuses the rest with code 1010, `outOfScope`.
 `example/index.html` wires the whole surface.
 
-`isEditable()` and `isSavable()` answer for this document, where
-`capabilities()` answers for the format. ODF, docx, pptx, xlsx and txt can be
-saved; anything else throws `UnsupportedOperation`. A txt saves as UTF-8,
-whatever encoding it was read in.
+`doc.isEditable()` and `doc.isSavable()` answer for this document, where
+`doc.capabilities()` answers for the format. ODF, docx, pptx, xlsx and txt
+save. Anything else throws `UnsupportedOperation`. A txt saves as UTF-8.
+
+A pdf takes markup annotations through `doc.isAnnotatable()` and
+`doc.annotate(annotations)`.
 
 Encrypted documents:
 
@@ -110,103 +105,82 @@ if (doc.isPasswordEncrypted()) {
 }
 ```
 
-**Close what you open.** JS has no destructors, so a `Document` holds a handle
-into the wasm heap until you say otherwise. `using doc = odr.open(...)` works
-where `Symbol.dispose` is supported.
+Close what you open. A `Document` holds a handle into the wasm heap until you
+call `close()`. `using doc = odr.open(...)` works where `Symbol.dispose` is
+supported.
 
 ## Hosting
 
 - Serve `.wasm` as `application/wasm`, or the browser cannot stream-compile it.
 - `script-src 'self' 'wasm-unsafe-eval'` is enough to load the module. It is
-  linked with `-sDYNAMIC_EXECUTION=0`, so embind builds its invokers without
-  `new Function` and no `'unsafe-eval'` is needed.
-- **Enable brotli.** It takes the module from 2.9 M to about 830 K — worth more
-  than every code-size flag put together. Hosts that only gzip land at ~1.2 M.
-- No COOP/COEP headers needed. The build is deliberately single-threaded so
-  that a plain static host, GitHub Pages included, is enough.
-- Rendering is synchronous and a large PDF takes seconds, so run the module in
-  a Web Worker. Pass `doc.handle` across `postMessage`, never the `Document`.
+  linked with `-sDYNAMIC_EXECUTION=0`, so no `'unsafe-eval'` is needed.
+- Enable brotli. It takes the module from about 2.9 MB to about 830 KB. Gzip
+  lands at about 1.2 MB.
+- No COOP/COEP headers are needed. The build is single-threaded, so a plain
+  static host such as GitHub Pages is enough.
+- Rendering is synchronous, and a large PDF takes seconds, so run the module
+  in a Web Worker. Pass `doc.handle` across `postMessage`, never the
+  `Document`.
 
 ## Content-Security-Policy
 
-The rendered html is self-contained, but a frame inherits the embedding page's
-policy — so the *embedder's* CSP decides what the document may load, and the
-failures are quiet. Measured across an odt, ods, docx and pdf:
+A frame inherits the embedding page's policy, so the embedder's CSP decides
+what the document may load, and the failures are quiet.
 
-| Directive | What in the output needs it | Seen in |
-|---|---|---|
-| `font-src data:` | embedded subset fonts | pdf (7 of 8 `@font-face`) |
-| `img-src data:` | embedded images | odt, docx, standalone images |
-| `style-src 'unsafe-inline'` | the document's own `<style>` blocks **and** its `style` attributes | every format (2–3 blocks, and up to hundreds of attributes) |
-| `script-src 'unsafe-inline'` | the renderer's own js, written into every document | every format but a standalone image (1–3) |
+| Directive | What in the output needs it |
+|---|---|
+| `font-src data:` | embedded subset fonts (pdf) |
+| `img-src data:` | embedded images |
+| `style-src 'unsafe-inline'` | the document's `<style>` blocks and its `style` attributes |
+| `script-src 'unsafe-inline'` | the renderer's own js, written into every document |
 
-Nothing is fetched from another origin, so no host has to be allow-listed. A
-policy that works, for a document loaded into a frame:
+Nothing is fetched from another origin. A policy that works for a document
+loaded into a frame:
 
 ```
 frame-src 'self' blob:; font-src 'self' data:; img-src 'self' data:;
 style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
 ```
 
-### `script-src 'unsafe-inline'` is not free
+Before you tighten it:
 
-It also permits **`javascript:` urls**, and a document may carry one: odrcore
-filters a pdf link action down to an allowlist of navigable schemes, but a
-hyperlink in an odt or a docx is only attribute-escaped. In a `blob:` frame —
-same origin as the embedder, which is what lets the page call
-`iframe.contentWindow.odr` — such a link runs with the embedder's origin.
-
-Fine for documents you trust. For untrusted input, sandbox the frame and give
-up the same-origin API:
-
-```html
-<iframe sandbox="allow-scripts" srcdoc="..."></iframe>
-```
-
-`allow-scripts` **without** `allow-same-origin` puts the document in an opaque
-origin: search and editing still work inside the frame, while a `javascript:`
-link can no longer reach the embedding page. Granting both together is the same
-as not sandboxing at all.
-
-Narrowing to a hash or a nonce is not possible from here: the renderer's js is
-embedded in the document, and `HtmlConfig::embed_shipped_resources` — which
-links it as files instead — is not bound in this build.
-
-Worth knowing before tightening the rest:
-
-- **`font-src data:` is the one that fails most confusingly.** A pdf's text is
-  painted with the code points its embedded subset defines, so a blocked
-  `@font-face` does not fall back to a system face — every glyph comes out as a
-  replacement box.
-- **A blocked inline script is silent.** The layout is css, so the document
-  still looks right; only search, editing and the spreadsheet and text-view
-  behaviour stop working. Refusing `script-src 'unsafe-inline'` is a real
-  option when the document only has to be *read*.
-- **`style-src` cannot be narrowed to a nonce or a hash.** Most of the styling
-  is `style` attributes, which only `'unsafe-inline'` (or `'unsafe-hashes'`)
-  covers.
-- **Audio and video stay linked resources** rather than data urls, so a media
-  file needs `media-src` pointing wherever the resource was written.
-
-Loading the module itself is a separate question — see [Hosting](#hosting).
+- `font-src data:` fails in a confusing way. A pdf paints text with the code
+  points of its embedded subset, so a blocked `@font-face` gives replacement
+  boxes, not a fallback face.
+- A blocked inline script is silent. The layout is css, so the document still
+  looks right. Only search, editing and the sheet and text-view behaviour stop.
+  A read-only host can refuse `script-src 'unsafe-inline'`.
+- `style-src` cannot be narrowed to a nonce or a hash, because most styling
+  is `style` attributes.
+- Neither can `script-src`. The renderer's js is embedded in the document, and
+  `HtmlConfig::embed_shipped_resources`, which links it as files, is not bound.
+- Audio and video stay linked resources, so a media file needs `media-src`.
+- `script-src 'unsafe-inline'` also permits `javascript:` urls. The renderer
+  refuses every link scheme outside `http`, `https`, `mailto`, `ftp`, `ftps`
+  and `tel`, so a document cannot carry one. For untrusted input you can still
+  sandbox the frame: `<iframe sandbox="allow-scripts" srcdoc="...">` without
+  `allow-same-origin` puts the document in an opaque origin. Search and editing
+  keep working inside the frame, but the embedder loses
+  `iframe.contentWindow.odr`.
 
 ## Building
 
-Needs the Emscripten toolchain, via the conan profile in the repository:
+Needs the Emscripten toolchain, through the conan profile in the repository:
 
 ```sh
 conan install . --output-folder=build-wasm --build=missing --lockfile-partial \
   --profile:host=emscripten-wasm --profile:build=<your build profile> \
   -o '&:with_wasm=True'
 cmake -B build-wasm -DCMAKE_TOOLCHAIN_FILE=build-wasm/conan_toolchain.cmake \
-  -DODR_WASM=ON -DODR_CLI=OFF -DODR_WITH_HTTP_SERVER=OFF -DBUILD_SHARED_LIBS=OFF
+  -DCMAKE_BUILD_TYPE=Release -DODR_WASM=ON -DODR_CLI=OFF \
+  -DODR_WITH_HTTP_SERVER=OFF -DBUILD_SHARED_LIBS=OFF
 cmake --build build-wasm --target odr_wasm
 ```
 
-The package lands in `build-wasm/wasm/dist` and is directly importable.
-`wasm/example/index.html` opens it with no bundler; serve the repository over
-HTTP and visit it. Its `edit` and `save` buttons drive a sheet's `odr.editing`
-and are the reference for wiring a host to it.
+The package lands in `build-wasm/wasm/dist` and is importable as it is.
+`wasm/example/index.html` opens it with no bundler: serve the repository over
+HTTP and visit it. Its `edit` and `save` buttons are the reference for wiring
+a host to `odr.editing`.
 
 Tests run under node, from ctest with `-DODR_TEST=ON`:
 

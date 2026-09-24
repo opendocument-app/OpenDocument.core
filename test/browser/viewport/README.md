@@ -1,44 +1,41 @@
 # `viewport.js` checks
 
-What the emitted zoom script does can only be seen in a browser, so these are
-run by hand rather than by `odr_test`.
+What the embedded zoom script does is visible only in a browser, so these
+checks run by hand and not in `odr_test`.
 
 ```bash
 test/browser/viewport/serve      # serves on :8731
 open http://localhost:8731/tests.html
 ```
 
-`serve` serves `viewport.js` straight out of
-`src/odr/internal/html/frontend/`, so what runs is the file the library embeds. `page.html` stands in for a rendered view: it writes the
-`:root{--odr-fit;--odr-zoom}` and `body{zoom}` that `write_zoom_style` would.
+`serve` serves `viewport.js` out of `src/odr/internal/html/frontend/`, so the
+checks run the file the library embeds. `page.html` stands in for a rendered
+view. It writes the `:root{--odr-fit;--odr-zoom}` and `body{zoom}` that
+`write_zoom_style` writes.
 
-Why the harness is shaped this way:
+Rules the checks follow:
 
-- **`?webkit=1`** divides an applied zoom back out of chromium's rects, which is
-  what webkit returns — so one browser covers the rect space. It does not cover
-  the scroll space: `restore()` reads deltas in viewport coordinates and hands
-  them to `window.scrollBy`, which is only right if webkit's `scrollBy`/`scrollY`
-  are in that same zoomed space. `rectFactor()` probes for the rect convention at
-  runtime; nothing probes the scroll one, and here it is chromium's. So the pinch
-  check is worth one run in real safari.
-- **A pinch focus, not the top of the viewport.** `restore()` is re-asserted for
-  30 frames, and that loop converges at `y = 1` whatever coordinate space it
-  computes in; a focus 400px down does not.
-- **`overflow-anchor: none`**, or chromium's own scroll anchoring covers for the
-  script. Webkit has none.
-- **Positions are read as `(scrollY + y) / zoom`**, never through the script's
-  helpers, so a wrong answer cannot agree with itself.
+- `?webkit=1` divides an applied zoom back out of chromium's rects, which is
+  what webkit returns. So one browser covers the rect space. It does not cover
+  the scroll space: `restore()` hands deltas in viewport coordinates to
+  `window.scrollBy`, and `rectFactor()` probes only the rect convention. The
+  pinch check is worth one run in real safari.
+- The pinch focus is 400px down, not at the top. `restore()` runs for 30
+  frames, and that loop converges at `y = 1` in any coordinate space.
+- `page.html` sets `overflow-anchor: none`, because chromium's own scroll
+  anchoring hides script errors. Webkit has none.
+- Positions are read as `(scrollY + y) / zoom`, never through the script's
+  helpers.
 
-Who fits the width is the one thing a frame cannot check: `--odr-fit` `auto` and
-`view` both measure in one. `tests.html` links the two top-level pages that can,
-each printing its own verdict.
+Who fits the width is the one thing a frame cannot check, because `--odr-fit`
+`auto` and `view` both measure in one. `tests.html` links the two top-level
+pages that can, and each prints its own verdict.
 
-Keep the tab on screen: the browser throttles `requestAnimationFrame` in a
-window that is not. The harness dispatches the scroll and resize events itself,
-but not the settling frames that follow them.
+Keep the tab on screen. The browser throttles `requestAnimationFrame` in a
+window that is not. The harness dispatches the scroll and resize events
+itself, but not the settling frames after them.
 
-Two webkit rules nothing here reproduces, both about type under an applied
-`zoom` (#761): it holds the text at its unscaled size unless the zoom is stated
+Two webkit rules stay uncovered, both about type under an applied `zoom`
+(#761): webkit holds the text at its unscaled size unless the zoom is stated
 back as `text-size-adjust`, by a factor its cluster heuristics decide, and it
-draws no text below 9px. Neither shows on 400 identical lines — the factor needs
-the shape of a real render. The oracle is a document served to a real webkit.
+draws no text below 9px. The oracle is a document served to a real webkit.

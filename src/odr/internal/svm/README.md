@@ -1,7 +1,7 @@
 # SVM implementation
 
-StarView Metafile → SVG. See [`AGENTS.md`](AGENTS.md) for how the module is
-built, what it does differently, and what the corpus actually contains.
+StarView Metafile to SVG. See [`AGENTS.md`](AGENTS.md) for the design and the
+corpus.
 
 ## Features
 
@@ -44,16 +44,16 @@ built, what it does differently, and what the corpus actually contains.
 - [x] graphics state stack (`PUSH`/`POP`), restoring only what the push named
 - [ ] `EPS` substitute metafile
 - [ ] version 1 (pre-`VCLMTF`) files, via `SvmConverter.cxx`
-- [x] output is escaped and decoded, so no label can cost the whole image
-- [x] every action we skip is logged by name
+- [x] output is escaped and decoded
+- [x] every skipped action is logged by name
 
-Anything unimplemented is skipped by the action's own length, so the actions
-after it still read. None of it occurs in the corpus.
+An unimplemented action is skipped by its own length. None of them occurs in
+the corpus.
 
 ### Where the drawing is approximate
 
-- A `SQUARE` or `RECT` gradient shrinks a rectangle rather than an ellipse,
-  which svg has no gradient for; it comes out as the ellipse closest to it.
+- A `SQUARE` or `RECT` gradient shrinks a rectangle. svg has no such
+  gradient, so it comes out as the closest ellipse.
 - A triple hatch's third line set runs corner to corner of the pattern tile,
   so those lines sit `distance / √2` apart rather than `distance`.
 
@@ -67,13 +67,13 @@ after it still read. None of it occurs in the corpus.
 - [`SvmConverter.cxx`](https://github.com/LibreOffice/core/blob/master/vcl/source/filter/svm/SvmConverter.cxx)
   — the version 1 format, converted to the current one on read.
 - [`svgwriter.cxx`](https://github.com/LibreOffice/core/blob/master/filter/source/svg/svgwriter.cxx)
-  — LibreOffice's own metafile → svg export, i.e. our problem already solved.
-  The reference for mapping decisions.
+  — LibreOffice's own metafile to svg export. The reference for mapping
+  decisions.
 - [`textenc.h`](https://github.com/LibreOffice/core/blob/master/include/rtl/textenc.h)
   — the `rtl_TextEncoding` numbers a font's charset is one of.
 - [`SPEC`](https://github.com/ONLYOFFICE/core/blob/master/DesktopEditor/raster/Metafile/StarView/SPEC)
-  — ONLYOFFICE's prose write-up, modelled on [MS-WMF]. Cheap to read, but
-  incomplete: several FIXMEs, `Color` and the polygon flags unfinished.
+  — ONLYOFFICE's prose write-up, modelled on [MS-WMF]. Incomplete: `Color`
+  and the polygon flags are unfinished.
 
 ### Related work
 

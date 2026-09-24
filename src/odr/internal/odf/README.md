@@ -1,39 +1,34 @@
 # ODF implementation
 
-Reader, style resolver and (partial) editor for OpenDocument files: text
-(`.odt`), presentation (`.odp`), spreadsheet (`.ods`) and graphics/drawing
-(`.odg`), including their template and legacy StarOffice variants.
-
-This implementation relies on [ZIP](../zip/README.md) and [SVM](../svm/README.md)
-
-The document tree is parsed from `content.xml` (see `odf_parser.cpp`) into an
-`ElementRegistry`. Styles from `styles.xml` and the automatic/content styles are
-resolved lazily on top of the family/parent hierarchy (see `odf_style.cpp`).
-Most features below are shared by all document types; the ones that only make
-sense for a single type are split out into their own sections.
+Reader, style resolver and partial editor for OpenDocument files: `.odt`,
+`.odp`, `.ods`, `.odg`, their template, flat-xml and legacy StarOffice
+variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
+[ZIP](../zip/README.md) and [SVM](../svm/README.md).
 
 ## Features
-
-Roughly ordered by importance.
 
 ### Core (all document types)
 
 - [x] open
   - [x] decryption
-    - [x] algorithms: AES256-CBC, Triple-DES-CBC, Blowfish-CFB, AES256-GCM
+    - [x] algorithms: AES256-CBC, AES256-GCM, Triple-DES-CBC, Blowfish-CFB
     - [x] key derivation: PBKDF2, Argon2id
-    - [x] start key / checksum: SHA1, SHA256 (incl. 1K variants)
+    - [x] start key / checksum: SHA1, SHA256, and the 1K variants
     - [x] per-file and single `encrypted-package` layouts
 - [x] meta data
-  - [x] file type detection (incl. templates and legacy StarOffice mimetypes)
-  - [x] document statistics (page / table count)
+  - [x] file type detection, including templates and StarOffice mimetypes
+  - [x] document statistics (page and table count)
 - [x] text extraction
   - [x] spaces (`text:s`), tabs (`text:tab`), line breaks
 - [x] save
-  - [ ] encryption (re-encrypting on save is unsupported)
+  - [ ] encryption on save
 - [x] edit
   - [x] text content
-  - [ ] structural edits (insert / delete elements)
+  - [x] text style (weight, style, underline, line-through, size, colour,
+    background)
+  - [x] structural edits: insert text, split, merge and insert paragraphs,
+    remove elements
+  - [ ] paragraph style, page and drawing attributes
 
 ### Styles (all document types)
 
@@ -44,18 +39,18 @@ Roughly ordered by importance.
   - [x] underline, strike through
   - [x] color, background color
   - [x] shadow
-  - [x] superscript, subscript (`style:text-position`, incl. relative font
+  - [x] superscript, subscript (`style:text-position`, with the relative font
     size)
 - [x] paragraph
-  - [x] alignment (`start` / `end` are absolute here, unlike `w:jc`'s)
+  - [x] alignment (`start` / `end` are absolute here, unlike `w:jc`)
   - [x] base direction (`style:writing-mode`; the vertical modes are not laid
     out vertically)
-  - [x] margins (percentages are dropped)
+  - [x] margins (a percentage is of the parent style's margin)
   - [x] line height (absolute and percentage)
   - [x] first line indent (`fo:text-indent`)
 - [x] links
 - [x] images
-  - [x] internal and external references
+  - [x] internal and external references, `office:binary-data`
   - [x] svm
 - [x] embedded objects (`draw:object`)
   - [x] charts (`chart:bar`, `line`, `area`, `scatter`, `circle`, `ring`),
@@ -72,19 +67,22 @@ Roughly ordered by importance.
 - [x] drawings / shapes
   - [x] frame, group (`draw:g`), text box
   - [x] line, rect, circle, ellipse
-  - [x] path, polygon, polyline, regular polygon, connector (drawn as svg)
+  - [x] path, polygon, polyline, regular polygon, connector (drawn from the
+    `svg:d` the producer wrote)
   - [x] measure (`draw:measure`, with its `text:measure` label)
   - [x] caption (`draw:caption`; the box, not the tail)
   - [ ] 3-D scene (`dr3d:scene`)
   - [x] custom shapes (bounding box, fill/stroke) #159
     - [x] enhanced geometry (`draw:enhanced-path`, `draw:equation`,
       `draw:modifiers`, `draw:mirror-horizontal` / `-vertical`)
+    - [ ] a `draw:type` preset with no `draw:enhanced-path` (needs
+      LibreOffice's preset table; every file in the corpus writes the path)
     - [ ] `draw:text-areas` (text is laid out in the whole box)
     - [ ] `draw:handle` (the interactive control points)
     - [ ] `F` / `S`: one subpath painted differently from the rest
   - [x] graphic style: stroke width/color, fill color, vertical align, text wrap
   - [ ] gradient and hatch fills, `draw:opacity` / `draw:opacity-name`, and the
-    dash a `draw:stroke` names (a solid `draw:fill-color` and a solid line)
+    dash a `draw:stroke` names
   - [ ] arrowheads (`draw:marker`, `draw:marker-start` / `-end`)
   - [x] transform (`draw:transform`, its operation list composed to one matrix)
   - [ ] mirror (`style:mirror`, and `draw:mirror-*` on a shape with no
@@ -112,15 +110,15 @@ Roughly ordered by importance.
 
 - [x] sheets
   - [x] dimensions, content range detection
-  - [x] cell value types (float, string)
+  - [x] cell value types (float, boolean, date, time, string)
   - [x] cell values (`office:value`, and `table:formula` as its own string)
   - [x] shapes anchored to a sheet
-  - [ ] computed values (stored values are used as-is; formulas are read but
-    not evaluated)
+  - [ ] computed values (formulas are read, not evaluated)
 - [x] edit
   - [x] cell values (number, string, cleared)
   - [x] a repeated cell, by cutting the run around the position written
-  - [ ] a cell the file states no element for
+  - [x] a cell the file states no element for
+  - [x] a cell past the last row or column
   - [ ] a formula cell, and a cell of richer markup than one plain paragraph
 
 ### Presentation documents (`.odp`)
@@ -139,10 +137,6 @@ Roughly ordered by importance.
 
 - https://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
 - http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html
-- custom shapes
-  - https://wiki.openoffice.org/wiki/Create_a_New_Custom_Shape_in_Source_in_File#Features_in_Detail
-- Recent encryption https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
-
-### Related work
-
+- custom shapes: https://wiki.openoffice.org/wiki/Create_a_New_Custom_Shape_in_Source_in_File#Features_in_Detail
+- AES-GCM encryption: https://www.w3.org/TR/xmlenc-core1/#sec-AES-GCM
 - https://ringlord.com/odfdecrypt.html

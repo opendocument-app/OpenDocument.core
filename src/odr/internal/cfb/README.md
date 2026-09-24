@@ -1,6 +1,7 @@
 # CFB implementation
 
-CFB stands for _Microsoft Compound File Binary File Format_
+CFB is the Microsoft Compound File Binary File Format. The reader is own code
+in `cfb_impl.*`.
 
 ## Features
 
@@ -8,14 +9,14 @@ CFB stands for _Microsoft Compound File Binary File Format_
 - [x] from file
 - [x] list entries
 - [x] read as stream
-- [x] write as stream
+- [ ] write as stream (`CfbArchive::save` throws `UnsupportedOperation`)
 
 ## References
 
 - [[MS-CFB]: Compound File Binary File Format](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb)
-- implementation relies on [microsoft/compoundfilereader](https://github.com/microsoft/compoundfilereader)
+- [microsoft/compoundfilereader](https://github.com/microsoft/compoundfilereader)
 
 ### Related work
 
-- https://developer.gnome.org/gsf/ (might be heavy in binary size)
+- https://developer.gnome.org/gsf/
 - https://github.com/ironfede/openmcdf (c#)

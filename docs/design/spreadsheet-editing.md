@@ -1,79 +1,65 @@
 # Spreadsheet editing design
 
-Status: **steps 0 to 3 landed; step 4 — the evaluator — is next.** This
-records why spreadsheet editing is staged the way it is, what the code already
-gives us, and the order the steps go in. It is a plan, not a record — update it
-as steps land.
+Status: cells edit and save in `.ods` and `.xlsx`, formulas parse and track
+their dependents, and nothing evaluates a formula yet.
 
-Related: [`editing.md`](editing.md) is the accepted direction for text
-documents (op log, ids, browser-side undo). This builds on its decisions and
-takes the pieces a sheet makes cheap first. [`odf/AGENTS.md`](../../src/odr/internal/odf/AGENTS.md)
-and [`ooxml/spreadsheet/AGENTS.md`](../../src/odr/internal/ooxml/spreadsheet/AGENTS.md)
+Related: [`editing.md`](editing.md) holds the mode frame every editor shares,
+[`document-editing.md`](document-editing.md) the document view and
+[`txt-editing.md`](txt-editing.md) the plain-text view.
+[`odf/AGENTS.md`](../../src/odr/internal/odf/AGENTS.md) and
+[`ooxml/spreadsheet/AGENTS.md`](../../src/odr/internal/ooxml/spreadsheet/AGENTS.md)
 describe the read side.
 
 ## Problem
 
-Spreadsheets render but do not edit. `odf::Document::is_editable` hardcodes
-`false` for `.ods`, `.xlsx` is read-only end to end, and the browser side has
-nothing a sheet needs: no way to type into an empty cell, no notion of a
-number behind the string, no answer when a cell cannot be edited.
-
-The two complications the formats add over text are well understood:
+A sheet adds two format complications over a text document, and one thing
+text never had.
 
 - **ODS collapses repeats.** One `<table:table-cell
   table:number-columns-repeated="1000"/>` stands for a thousand cells, a row
-  can repeat the same way, and an empty cell has no element at all
-  (`odf_parser.cpp::is_cell_empty`). A cell to write into may not exist as a
-  node yet.
-- **XLSX shares strings.** A `t="s"` cell's text is parsed out of
-  `sharedStrings.xml`, so the registry's text nodes for that cell live in a
-  part every other cell with the same string points at. Writing into them
-  edits every one of those cells.
+  repeats the same way, and an empty cell has no element at all. The cell a
+  user types into may not exist as a node.
+- **XLSX shares strings.** A `t="s"` cell reads its text from
+  `sharedStrings.xml`, so a write into that text edits every cell that shares
+  it.
+- **Formulas.** A cached result goes stale the moment an input changes.
 
-And a spreadsheet adds the thing text never had: **formulas**, whose cached
-results go stale the moment an input changes.
+## Where the code is
 
-## What the code gives us
-
-| Piece | Where | State |
-|---|---|---|
-| ODS string-cell edit | `odf_document.cpp::text_set_content` | Works: `Document.edit_ods_diff` edits five cells in memory. Only the run's text changes; `office:value` on a number cell is not touched |
-| ODS save | `odf_document.cpp::save` | Re-serialises `content.xml`, byte-copies the rest — the same shape a sheet needs |
-| ODS cell index | `odf_element_registry.cpp::Sheet::register_cell` | Per row a run of `(end, element_id, node)` entries; repeats collapse onto one entry. Written once at parse; nothing inserts |
-| ODS repeated and empty cells | `odf_document.cpp::claim_cell` | A write cuts the run and states the `text:p` an empty cell has none of; `reindex_sheet` rebuilds the index (step 2.1, landed) |
-| ODS sheet growth | `odf_document.cpp::grow_to_cell` | A write past the last row or the last cell of a row appends both, and declares the columns (step 2.1, landed) |
-| XLSX edit | `sheet_set_cell` | Writes a cell value (step 0.2, landed); `text_set_content` is still a no-op |
-| XLSX save | `ooxml_spreadsheet_document.cpp::save` | Writes back the worksheets and `workbook.xml`, copies the rest (step 0.2, landed) |
-| XLSX cells | `Sheet.cells` `(col,row) → {node, id}` map | Off-tree; a position the file states no `<c>` for is written by `insert_cell` (step 2.2, landed) |
-| Cell value | `SheetCellAdapter` | `sheet_cell_value` reads the number and the formula (step 0.1, landed); `sheet_cell_value_type` stays the cheap question the renderer asks. A boolean, a date, a time and an error report their own kind; an xlsx date is a `float_number` serial until number formats are read |
-| Number formats | — | Not parsed in either engine. ODS shows the producer's cached `text:p`; XLSX shows the raw `<v>` (a date is its serial) |
-| Formulas | `sheet_cell_value` | The expression is read and handed out as a string (step 0.1, landed); nothing parses or evaluates it. XLSX shows the cached `<v>`, ODS the cached `text:p`. `xls` and `numbers` drop the expression at parse time |
-| Browser: sheet script | `html/frontend/spreadsheet.js` | Hover/pin, raise a clipped cell over its neighbours, sort rows in the DOM. Sorting reorders `<tr>`s, so a row's identity is its `<th>` label, not its index. Publishes `odr.sheet` (step 1.1, landed), and the value and reflow half of it (steps 1.2/1.3, landed) |
-| Browser: the mode | `html/frontend/editing.js` | `odr.editing` — the mode, the refusal table, the log a save reads and the `odr.on*` callbacks, generic over every format. An editor attaches to it ([`editing.md`](editing.md) decision 9, step 1.6, landed) |
-| Browser: text editor | `html/frontend/document.js` | The skeleton, attached to the mode: the whole view editable, runs keyed by `data-odr-id`, one `setText` op per changed run. No undo |
-| Browser: sheet editor | `html/frontend/sheet-editing.js` | The cell overlay, the locks and the position map (steps 1.1 to 1.4, landed), attached to the mode as one editor |
-| Wire format | `document.cpp::Document::edit` | The op envelope, `setCell` and `setText` (step 0.4, landed) |
-| Capabilities | `file_type_table.cpp` | `ods` and `xlsx` declare `edit` and `save` (step 0.2, landed); `csv` declares neither. `odr_test` checks the declaration against `Document::is_editable` |
+| Piece | Where |
+|---|---|
+| Cell value | `SheetCell::value()` returns a `CellValue`: type, number, text and formula. Abstract hook `sheet_cell_value`; `sheet_cell_value_type` stays the cheap question the renderer asks |
+| ODS write | `odf_document.cpp::sheet_set_cell`. `claim_cell` cuts a repeated run and states the `text:p` an empty cell lacks, `grow_to_cell` and `grow_columns` append past the sheet, `reindex_sheet` rebuilds the cell index off the dom |
+| ODS save | `odf_document.cpp::save` re-serialises `content.xml` and byte-copies the rest |
+| XLSX write | `ooxml_spreadsheet_document.cpp::sheet_set_cell`. `insert_cell` states a `<c>` the file lacks. A string goes inline as `t="inlineStr"`, never back into `sharedStrings.xml` |
+| XLSX save | `ooxml_spreadsheet_document.cpp::save` writes the worksheets and `workbook.xml`, copies the rest, and sets `calcPr/@fullCalcOnLoad="1"` |
+| Formulas | `internal/formula/` parses OpenFormula and OOXML into one AST, writes it back, and shifts it for an ooxml shared formula |
+| Dependencies | `internal::SheetDependencies`, built once off the decoded document. `Document::dependents` and `Document::unresolved_formulas` expose it |
+| Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad` |
+| Browser: sheet script | `html/frontend/spreadsheet.js` owns pin, raise, sort and the position map, and publishes `odr.sheet` |
+| Browser: the mode | `html/frontend/editing.js` owns `odr.editing`, the refusals, the log and the `odr.on*` callbacks |
+| Browser: sheet editor | `html/frontend/sheet-editing.js` attaches the cell overlay and the stale marks to the mode |
+| Wire format | `document.cpp::Document::edit` dispatches the op envelope |
+| Capabilities | `file_type_table.cpp`: `ods` and `xlsx` declare `edit` and `save`, `csv` declares neither |
+| Tests | `test/src/document_edit_test.cpp`, `test/src/sheet_dependencies_test.cpp`, `test/browser/sheet/` |
 
 ## Decisions
 
 ### 1. A cell is the unit of editing, addressed by position
 
-The op is `setCell {sheet, column, row, value}`. Not the run's element id, not
-a path.
+The op is `setCell {sheet, column, row, value}`, not an element id and not a
+path.
 
-**Why:** the cell a user types into may have no element — every empty cell in
-both formats, every repeated cell in ODS — so an id cannot name it. A position
-can, and it is what the file itself uses (`r="B3"`, the repeat cursor). It also
-side-steps [`editing.md`](editing.md)'s id-stability question entirely for
-sheets: nothing is renumbered when the only op replaces a cell's whole content.
-Ids stay the answer for text documents, where an insertion point inside a
-paragraph has no position of its own.
+**Why:** an empty cell, and a repeated ODS cell, has no element, so an id
+cannot name it. A position can, and it is what the file itself uses. Nothing
+is renumbered when the only op replaces a cell's whole content, so the
+id-stability question of `editing.md` does not arise for a sheet. Ids stay the
+answer for text, where an insertion point inside a paragraph has no position.
 
 Coalescing is a map keyed by position, last write wins. Undo keeps the previous
-value beside the op. The whole log is idempotent, which decision 5 leans on.
+value beside the op. The log is idempotent.
 
-### 2. One op-log envelope replaces `modifiedText`
+### 2. One op-log envelope
 
 ```json
 {
@@ -89,133 +75,72 @@ value beside the op. The whole log is idempotent, which decision 5 leans on.
 }
 ```
 
-**Landed.** `Document::edit` is a dispatcher over `ops` and throws on the first
-op it cannot apply, leaving the ones before it applied — a document is decoded
-fresh by `DocumentFile::document()`, so the host replays onto a copy by
-construction; the wasm session, which holds one document, has to replay onto a
-fresh decode too. `setText {id, text}` carries what `modifiedText` carried and
-is what `generateDiff()` now emits, addressing its run by the id the page
-states ([`document-editing.md`](document-editing.md) decision 1). The bindings pass a
-string through and did not change.
-
-`version` is the wire version. A document stamp (decision 7 in `editing.md`)
-is deferred: a sheet op names a position, and a position is meaningful against
-any decode of the same file.
+`Document::edit` throws on the first op it cannot apply and leaves the ones
+before it applied. A host replays onto a fresh decode, so a failed replay
+costs nothing. `version` is the wire version. A document stamp (`editing.md`
+decision 7) is not needed for a sheet: a position is meaningful against any
+decode of the same file.
 
 ### 3. Editing is a browser mode, not markup
 
-`odr.editing.enable()` / `disable()` turns the mode on, and switching it changes
-nothing a sheet writes — the user never translates twice for it. The page
-carries only what the browser cannot work out for itself:
+`odr.editing.enable()` and `disable()` switch the mode without a second
+translate. The page carries only what the browser cannot work out itself:
+`data-odr-lock` on a cell that refuses a write, with its reason (`formula`,
+`rich` for several paragraphs, a link or a line break, `shapes` where the
+cell is nothing but its anchored drawings), and `data-odr-editable` on
+`<body>`. Every other cell is editable, an empty one included.
 
-- a **lock** on a cell that cannot be edited, as a class plus its reason —
-  `formula`, `rich` (several paragraphs, a link, a line break), `shapes` only
-  where the cell is nothing but its anchored drawings;
-- whether the **document** can be edited at all, so `enable()` can refuse with
-  a reason before the user clicks anything.
+The editor is an overlay the script places over the cell, so the sheet's DOM
+stays untouched until the commit patches the cell.
 
-Everything else — including every empty cell — is editable. The cost is a
-class on the locked cells only, nothing on the half million others.
+**Why:** a `td` holds wrappers and shapes, so a static `contenteditable` is
+the wrong tool. Refusal is an event, not a silent no-op: a click on a locked
+cell outlines it and calls `odr.onEditRefused` (decision 7).
 
-**Why:** the user should not have to translate twice to switch modes, and a
-static `contenteditable` is the wrong tool for a cell anyway: a `td` holds
-`x-p` wrappers, the raise wrapper, shapes. The editor is an **overlay** the
-script places over the cell (as every spreadsheet does), reusing the raise
-geometry; the sheet's DOM is untouched until the commit patches the cell.
-
-**Refusal is a first-class event.** Clicking a locked cell, or any cell of a
-read-only document, outlines it briefly and calls `odr.onEditRefused` so the
-host can say why — a snackbar on mobile. A silent no-op is the frustrating
-outcome the mode exists to avoid. Decision 7 is the channel.
-
-**The mode itself is generic, and it moved.** This decision was written when the
-sheet was the only editor, so `sheet-editing.js` held the mode, the refusal
-table and the callbacks. Every format wants those, so they are
-[`editing.md`](editing.md) decisions 9 to 12 now, and `frontend/editing.js`
-holds them:
-
-- the sheet script **attaches** an editor to `odr.editing` and states no mode of
-  its own;
-- the document's editable state is one attribute on `<body>`, not on the
-  `.odr-sheet` table (decision 10) — which answers the open question below;
-- `HtmlConfig::editable` writes the scaffolding, the lock classes included, and
-  a read-only render carries none of it (decision 11);
-- the arrow keys and the undo chord are configurable, because the sheet takes
-  them in the capture phase and a host may need them (decision 12).
-
-What stays here is the sheet's own: the cell overlay, the locks and their
-reasons, the position map, and the `setCell` op.
+The mode itself is generic and lives in `editing.js` (`editing.md` decisions
+9 to 12). What stays here is the sheet's own: the overlay, the locks, the
+position map and the `setCell` op.
 
 ### 4. The type follows the content
 
-The typed string is parsed by a strict grammar: optional sign, digits, one `.`,
-optional exponent — a number. Anything else is a string. A leading `'` forces
-a string, as every spreadsheet does. `=` is refused in step 1 (formula input
-comes with step 4).
+A strict grammar parses the typed string: optional sign, digits, one `.`,
+optional exponent is a number. Anything else is a string. A leading `'` forces
+a string. `=` is refused with `formulaInput` until the evaluator exists.
 
-**Why not keep a number cell numeric:** telling the user "this cell holds a
-number" is a rule no spreadsheet has, and the file has no such rule either —
-`office:value-type` and `c/@t` are per cell and change freely. Letting the
-type follow keeps both the value and its string right by construction: a number
-cell writes `office:value` *and* the `text:p`, or `<v>` alone; a string cell
-drops `office:value`, or becomes `t="inlineStr"` with `<is><t>`.
+**Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
+changes it freely, so a cell has no fixed type. A number cell writes
+`office:value` and the `text:p`, or `<v>` alone. A string cell drops
+`office:value`, or becomes `t="inlineStr"` with `<is><t>`.
 
-The one thing the file has that we lack is the **number format**: a cell
-formatted `€ 1.234,50` and edited to `2000` shows `2000` until the file is
-reopened, where the producer formats it. Step 1 accepts that and the overlay
-says it (the raw string is what the user typed). Parsing number formats is
-step 5, and is a read-side gain on its own — `.xlsx` shows raw serials today.
-
-Decimal comma: step 1 parses `.` only. The document's locale is not read
-anywhere; see open questions.
+Number formats are not parsed, so a formatted cell edited to `2000` shows
+`2000` until a producer reopens the file. Only `.` is a decimal separator,
+because no locale is read anywhere.
 
 ### 5. Formulas are recomputed in C++, once, and reached through the host
 
-Step 1 locks formula cells and lets their cached results go stale. Step 3
-parses formulas for their *references* only, which is enough to mark the
-dependents stale in the view and to keep the file honest (below). Step 4 adds
-the evaluator.
+The evaluator, when it exists, runs in C++ only. The browser hands the host
+the op log per commit, and gets back the cells whose display changed.
 
-When it exists, the evaluator runs in C++ and nowhere else. The browser asks
-the host — the WebView bridge on droid/ios, the worker on wasm — with the op
-log, and gets back the cells whose display changed. Not per keystroke: per
-commit, and only when the edited cell has dependents.
+**Why not JavaScript generated from the tree:** two function libraries that
+drift. **Why not the engine as wasm inside the HTML:** every current host has
+the engine in process. `HtmlConfig::embed_shipped_resources` is where such a
+blob would go if a host without a bridge appears.
 
-**Why not JavaScript generated from the expression tree:** two evaluators,
-one per language, with the function library — `SUM`, `VLOOKUP`, date
-arithmetic, error propagation — written twice and drifting. The drift
-`editing.md` accepts for op *replay* is a few tree edits; a formula engine is
-hundreds of functions.
-
-**Why not ship the engine as wasm inside the HTML:** it is the right answer
-for a host with no bridge at all, and it is the *same* C++, so the door stays
-open. But it costs an emscripten build inside every platform build (the bytes
-have to be compiled into the library to be written beside the document), and
-no current host needs it — droid, ios and the npm package all have the engine
-in process. Revisit when a static host appears. The `embed_shipped_resources`
-mechanism is where such a blob would go.
-
-**The file has to stay honest without our engine.** An edited input leaves
-cached formula results wrong in the saved file. `.xlsx` has a switch for
-exactly this: `workbook.xml` `calcPr/@fullCalcOnLoad="1"` (ECMA-376
-18.2.2), set on any edited workbook. `.ods` has no such switch, and
-LibreOffice trusts a file its own generator wrote — whether it recomputes a
-formula cell whose cached value we *remove* is the first spike below.
+Until then the file has to stay honest. `.xlsx` has a switch for this,
+`calcPr/@fullCalcOnLoad="1"` (ECMA-376 18.2.2), set on every save. `.ods` has
+none, so an odf write removes the cached result of every dependent cell: the
+value attributes and the `text:p`. A cell stating a formula and no result is
+one a reader has to compute, and such a cell renders empty here.
 
 ### 6. The page stays up until the user saves
 
-The host holds the log the page hands out (`odr.editing.getOperations()`),
-the page is never re-translated for a save, and after a successful save the
-host tells the page (`odr.editing.committed()`) so the log resets and undo
-starts over with the file the page now matches. The `sheet{index}.html` views
-each run their own script, so a host showing sheets as separate pages collects
-a log per view; every op carries its sheet, so concatenation is the merge.
+The host takes the log from `odr.editing.getOperations()`, never re-translates
+for a save, and calls `odr.editing.committed()` after a successful save so the
+log resets. Each sheet view runs its own script, so a host showing sheets as
+separate pages collects a log per view. Every op carries its sheet, so
+concatenation is the merge.
 
 ### 7. Host events are flat `odr.on*` callbacks, and the host owns the wording
-
-The page calls out; the host listens. Commands live on `odr.editing` the way
-`odr.annotation` holds the annotator's, and events stay flat on `odr`,
-following `odr.onError` and `odr.onZoomChange`:
 
 ```js
 // {sheet, column, row, reason, code, message}
@@ -228,70 +153,26 @@ odr.onEditModeChange = function (event) {};
 odr.onCellsStale = function (event) {};
 ```
 
-`onCellsStale` carries no code, because it reports no refusal, and the page
-marks the cells itself, so a host that wires nothing still shows something.
+- The `code` is an `odr::ErrorCode` (`src/odr/error_code.hpp`), written into
+  the page by `html/frontend.cpp::write_error_codes`. Exceptions sit below
+  1000, refusals from 1001. Codes are appended, never renumbered;
+  `error_code_test.cpp` and `wasm/tests/enums.test.mjs` pin them.
+- `reason` is the same code spelled for a reader of the log. `message` is
+  English and for the console; a host maps `code` to its own wording.
+- Every callback takes one object, so a field can be added without breaking a
+  host.
+- The page drops an identical refusal repeated within a couple of seconds.
+- `onEditChange` fires on every commit, undo, redo and `committed()`; `dirty`
+  drives a save button and a back-press warning.
 
-**The message is for the console; the code is for the host.** A mobile
-snackbar is written in the app's own string catalogue, and nothing in this
-library is localised — so the host maps `code` to its wording, and `reason`
-(`"formula"`, `"formulaInput"`, `"repeated"`, `"rich"`, `"readOnly"`,
-`"encrypted"`, `"cut"`)
-is the same thing spelled for a reader of the log. We still ship an English
-`message`, so a developer who wires nothing sees it in the console (the
-`odr.onError` default does exactly this) and a desktop host with no catalogue
-can show it as it stands.
+Attaching: droid and ios assign the callbacks once the WebView has loaded the
+page. A browser host assigns on the iframe's `contentWindow.odr` at its
+`load`; a cross-origin sandboxed frame is out of scope.
 
-**The codes are `odr::ErrorCode`**, defined in `src/odr/error_code.hpp` and
-written into the page by `html/frontend.cpp::write_error_codes`, so the scripts
-restate no number. They share one space with `odr.onError`'s and with the code
-every binding reports for a thrown `odr::Exception`: below 1000 an exception
-names itself, and the refusals sit from 1001, `newLine` first.
-
-**Codes are appended, never renumbered.** The rule the wasm enum ordinals
-already live under: appending stays silent, reordering goes loud. `odr_test`
-pins both bands (`error_code_test.cpp`), `tests/enums.test.mjs` pins them on the
-JS side, and `test/browser/sheet` reads the table `serve.py` builds from the
-header rather than a copy.
-
-**One object argument, never positional.** `onError(code, message)` cannot
-grow a field without breaking every host that implements it; an object can.
-Every callback added from here takes one.
-
-**The page suppresses its own repeats.** Tapping a locked cell four times is
-one snackbar, not four: an identical refusal within a couple of seconds of the
-last is dropped by the page, which knows what it just fired. Cheaper here than
-in three hosts.
-
-**`onEditChange` is what decision 6 needs.** `dirty` is how the app lights its
-save button and warns on back-press while the page holds unsaved edits;
-`operations` is how many ops the log would hand out, and `canUndo`/`canRedo`
-drive the toolbar. It fires on every commit, undo, redo and on `committed()`.
-
-**Attaching**, per host:
-
-- **droid / ios**: the WebView loads the view at the top level, so the host
-  assigns the callbacks once the page has finished loading
-  (`evaluateJavascript` / `evaluateJavaScript`) and hops to the UI thread to
-  show the snackbar. The scripts are written at the end of `<body>`, so the
-  load event is late enough.
-- **Browser / npm**: the view is an iframe, and the wasm example already
-  renders it `allow-same-origin`, so the embedder assigns on
-  `contentWindow.odr` at the frame's `load`. A cross-origin sandboxed frame
-  cannot be reached this way and is out of scope — `postMessage` if one ever
-  appears.
-- No C++ is involved: these are page-to-host, so the wasm rule about callbacks
-  being worker-local and synchronous does not apply to them.
-
-**Why not reuse `odr.onError`:** a refusal is expected UX, not a fault. It is
-frequent, it carries a position, and a host wants it on a snackbar while a real
-error goes to a dialog or a log. Sharing the code table keeps one lookup for
-both.
+**Why not `odr.onError`:** a refusal is expected UX, frequent, and carries a
+position. Sharing the code table keeps one lookup for both.
 
 ### 8. The sheet script owns the position map, and publishes it as `odr.sheet`
-
-The editor is a second script on the page, and the two things it needs first —
-which cell a position names, and what is pinned — belong to the first, which
-already owns the pin, the raise and the sort:
 
 ```js
 odr.sheet.cellAt(column, row); // the `td`, null past the sheet's extent
@@ -300,314 +181,47 @@ odr.sheet.pinned();            // {column, row, cell}, null for none
 odr.sheet.pin(position);       // null clears; false where there is no cell
 odr.sheet.lower();             // puts back a cell the pin raised
 odr.sheet.valueAt(column, row);       // what the page shows, as an op states it
+odr.sheet.formulaAt(column, row);     // the expression a formula cell states
 odr.sheet.showValue(column, row, v);  // shows it, and reflows the row
 odr.sheet.reflow(row);                // the spill geometry, measured again
 ```
 
-**Why not a copy in the editor:** the map is not a walk over `colspan`. A row
-is named by its `<th>` label, because sorting moves the `<tr>`s away from
-position order; a `rowspan` from an earlier row leaves the positions it covers
-unwritten, so a colspan-only walk misreads every cell after them; and it is
-built once, which means the script that reorders rows is the one that has to
-know. Two copies would also be two owners of the pin classes and the raise
-wrapper — an editor whose overlay is open while the other script lowers the
-cell underneath it.
+**Why:** the map is not a walk over `colspan`. Sorting moves the `<tr>`s, so a
+row is named by its `<th>` label, and a `rowspan` leaves positions unwritten.
+The script that reorders rows has to own the map, and one owner of the pin
+classes and the raise wrapper avoids an overlay open over a cell the other
+script lowers. The read-only view does not carry the editor, so the two stay
+separate scripts. The coordinates are the ones an op names, never a DOM index.
 
-**Why not one script instead:** the read-only view would carry the editor it
-never runs.
+## Formulas, read side
 
-**The coordinates are the ones an op names** (decision 1), never a DOM index.
-The wash paints through `nth-child`, so the ruler's index stays private to the
-script, and a merged sheet still gets no wash and no sort control. A position a
-merge covers answers with the cell covering it — the one the file states and an
-op names.
+- `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
+  `SUM(A1:B2)` (`<f>`) with one recursive descent that branches on a
+  `Syntax`. A named expression, a reference over several sheets and a
+  spelling past the grid stay opaque names. A formula that does not parse
+  answers nothing.
+- The writer and `shift` make an ooxml shared formula readable: a member reads
+  the master's expression moved by the offset between the two cells.
+- `SheetAdapter::sheet_visit_formulas` hands out the cells the file spells,
+  not the positions they cover, so a repeated row is a handful of nodes.
+- A formula the graph can read no position out of is in
+  `Document::unresolved_formulas` and keeps its cached result.
+- The view writes `data-odr-formula` and `data-odr-reads` on a formula cell,
+  as editing scaffolding only. A commit marks the dependents `odr-sheet-stale`
+  off the coalesced log (`repaintStale`) and raises `odr.onCellsStale`, so an
+  undo takes its marks back.
 
-**The cost is a public surface**, which a host keeps once it ships. It is a
-small one, and a host gets scroll-to-cell and "what is selected" out of it. What
-step 1.3 needs to reflow a row after a commit (`visibleRight`, `cutOff`) sits in
-the same closure and joins `odr.sheet` when it is written, rather than being
-reached around.
+## Open work
 
-## Staging
-
-Each step ships on its own. "Both" means `.ods` and `.xlsx`.
-
-### Step 0 — Foundation, C++ only
-
-1. **Landed.** `SheetCell::value()` → `CellValue`: the type, the number where
-   the file states one, the text showing it, and the formula where it states
-   one. Abstract hook `sheet_cell_value`, filled by odf, ooxml and csv; `xls`
-   and `numbers` state the type alone and let `SheetCell::value` collect the
-   text off the children, which is what every engine gets for free. This is
-   also what a later sort script needs instead of parsing the rendered text.
-
-   `CellValue` is **one type for reading and writing** — immutable, built by
-   explicit constructors from a text, a number, or a bare type, composed
-   further with the `with_*` withers a decoder needs, and read through getters
-   that throw `ValueNotStated` rather than hand back an empty optional. What a
-   cell reads as is what writing it back takes.
-2. **Landed.** `sheet_set_cell(sheet_id, column, row, CellValue)`, position-
-   addressed, behind `Sheet::set_cell` and `::clear_cell`. ODS writes
-   `office:value-type`, `office:value` and the `text:p`, through the cell's one
-   text run. XLSX rewrites the `c` — `<v>` for a number, `t="inlineStr"` with
-   `<is><t>` for a string — and hands the registry a fresh text element; the
-   old ones keep their ids and stop being reachable. A shared string is never
-   written back into `sharedStrings.xml`, which is what `inlineStr` is for.
-   Refused, rather than written badly: a covered one (XLSX), one holding a
-   formula, and one holding a link, a line break or several paragraphs. Every
-   refusal is decided before the engine writes anything. **Writing a formula
-   cell waits for step 4** — overwriting one leaves every value computed from
-   it stale. A repeated ODS cell, an empty one, a position past the sheet and a
-   cell of several runs were all refused here and are written since step 2.
-3. **Landed.** XLSX `save`, mirroring docx: write back every worksheet and
-   `workbook.xml` from their dom, byte-copy the rest, and put back the xml
-   declaration pugixml never parsed. `fullCalcOnLoad` is set on every save
-   rather than only after an edit — we rewrote the file and compute no formula,
-   so the reader is asked to.
-4. **Landed.** The op envelope and dispatcher in `Document::edit`, with
-   `setCell` and a path-addressed `setText`; `modifiedText` dropped
-   (**Breaking**, wire only). Coalescing writes here is also what would let a
-   batch of ODS writes reindex once rather than once per write — the reindex
-   costs about 0.18 us per row node per write, so 100 writes on a 20000-row
-   sheet is 0.36 s today.
-5. **Landed.** `Document::is_editable` true for both; capability rows gained
-   `edit` (`xlsx` also `save`); `odr_test` keeps them honest.
-6. **Landed.** `translate_sheet` writes its cells through a `WritingState`
-   whose `editable_markup` is false, so no run carries `contenteditable` and
-   `plain_text` folds it into the `td` as it does read-only. It could not be
-   gated on `Document::is_editable`, which item 5 makes *true* for a sheet.
-7. **Landed.** Tests: set a number, a string, clear a cell, and each refusal,
-   on both formats, from inline fixtures; save and reopen. The LibreOffice
-   oracle (`soffice --convert-to`) stays a by-hand check — it is not in CI, and
-   it is the only one that says a written package is really valid.
-
-### Step 1 — The browser editor
-
-1. **Landed.** `odr.editing` mode: enable/disable, lock classes and the
-   document attribute from `translate_sheet`, and the three `odr.on*` callbacks
-   with their code table (decision 7). `spreadsheet_js` publishes `odr.sheet` in
-   the same step (decision 8) — the position map the mode reads a lock through.
-2. **Landed**, with item 3: an editor that drops what is typed is not one.
-   Overlay editor: double-click / Enter / typing opens it over the cell, and a
-   single click where `editOnClick` or the pointer says so; Enter,
-   Tab and blur commit; Escape cancels; arrow keys move the pin, through
-   `odr.sheet.pin` rather than a pin of its own. A locked cell refuses on the
-   click rather than on the double click that would have opened it.
-3. **Landed.** Commit: parse per decision 4, record the op with its inverse,
-   patch the cell — text, `odr-value-type-float` for alignment, keep any shapes
-   in A1 — and **reflow the row**: the spill and clip `translate_sheet` measured
-   for the neighbours (`clip-path:inset`, `overflow:hidden`) are stale once a
-   blank cell fills or a full one empties. `odr.sheet` gained `valueAt`,
-   `showValue` and `reflow` for it, and `getOperations()` came with them: a log
-   nothing hands out is a log nothing can check.
-4. **Landed.** Undo/redo over the in-memory log, from `odr.editing` and from
-   ctrl/cmd+Z; `committed()`; all of them raise `onEditChange`, which is what a
-   host's save button and back-press warning read. An undo shows the value the
-   op replaced and drops it from the log, so what the log hands out and what the
-   page shows stay the same thing.
-5. **Landed.** `test/browser/sheet/editing.html` holds the editing cases; the
-   wasm example is the host-wiring reference for droid/ios. A view holds its own
-   log, so the example writes it into the document when the view goes away as
-   well as on save.
-6. **Landed.** The mode is generic. `frontend/editing.js` owns `odr.editing`
-   and every format's editor attaches to it; the document's editable state moved
-   to `<body>`; `HtmlConfig::editable` writes the scaffolding and a read-only
-   render carries none of it; `keyboard_navigation` and `keyboard_shortcuts`
-   let a host keep the arrows and the undo chord. See
-   [`editing.md`](editing.md) decisions 9 to 12 — a `.docx` view has the same
-   `odr.editing` a sheet does, with the text skeleton behind it.
-
-### Step 2 — Materialise the cells that are not there
-
-1. **Landed for repeated cells.** ODS repeat splitting: a write into a run of
-   `n` repeated cells becomes left (`k`), the cell, right (`n-k-1`), a repeated
-   row cloned the same way first, the original node staying as the one written
-   so its element survives. The index is not patched in place — `reindex_sheet`
-   rebuilds it off the dom, a cell node keeping the element it carries — which
-   avoids a second copy of the parser's row loop. The `repeated` lock is gone.
-
-   **Landed for empty cells.** A run with a node but no element
-   (`<table:table-cell table:number-columns-repeated="1000"/>`) is cut the same
-   way, and the write states the `text:p`, because the reindex gives an element
-   to a node that is not empty. A cell a merge spans and that holds no
-   paragraph takes one too: the page reads it as editable, so the engine has to
-   agree.
-
-   **Landed for a position past the sheet.** `grow_to_cell`
-   appends the rows and the empty cells it takes to reach the position — a
-   repeated row is cut first, because its cells stand for every row it repeats
-   over — and `grow_columns` declares the columns the sheet stops before, so
-   `sheet_dimensions` covers the new cell. A `table:table-row` goes before
-   `table:named-expressions` and a `table:table-column` before the rows, which
-   is where [ODF 1.2] 9.1.2 orders them.
-
-   Nothing caps the position: ODF states no grid limit, and the page can only
-   name a cell it rendered. A write past what LibreOffice holds (1024 columns,
-   1048576 rows) saves a valid package that LibreOffice then drops the cell
-   from.
-2. **Landed.** XLSX: `insert_cell` states the `<c r="…">` in its `<row>` in
-   column order, the `<row>` in `sheetData` in row order where the file states
-   none, and widens `<dimension ref>` around the new cell. The map is keyed by
-   position, so the insert is local and nothing is reindexed. A position a
-   merge covers refuses before any of it, because Excel ignores what a covered
-   `c` holds.
-3. **Landed.** Rich cells: a paragraph of text and spans is replaced with one
-   run, and the cell keeps its own style because nothing above the runs is
-   touched. `text_run_of` descends through a single span first, so a cell that
-   holds one run writes through it and that run keeps its style — which is what
-   `spreadsheet.js::runOf` does to the page, so the two agree. Several runs are
-   replaced, and the elements over the old ones keep their ids and stop being
-   reachable, as XLSX already did.
-
-   The `rich` lock stays on a link, a line break and several paragraphs: a link
-   target is not what the cell shows, and both of the others are a second line
-   the overlay cannot write. XLSX needed no engine change — `sheet_set_cell`
-   rewrites the whole `c` — so it is the lock alone there.
-
-### Step 3 — Formulas, read side
-
-1. **Landed.** `internal/formula` parses both syntaxes into one AST:
-   OpenFormula (`of:=SUM([.A1:.B2])`, `table:formula`) and OOXML
-   (`SUM(A1:B2)`, `<f>`). One recursive descent takes a `Syntax` and branches
-   where the two part. A named expression, a reference over several sheets and
-   a spelling past the grid (`A0`) stay opaque names; a formula that does not
-   parse answers nothing.
-
-   A writer and a `shift` over the tree come with it, which is what makes an
-   ooxml shared formula readable: a group spells its expression on the master
-   alone ([ECMA-376] 18.3.1.40), so a member now reads it moved by the offset
-   between the two cells, `#REF!` where that leaves the grid. An array
-   formula's members carry no `<f>` at all and still report none.
-2. **Landed.** Reference extraction → `internal::SheetDependencies`: every
-   sheet walked, every formula parsed, each reference resolved to the
-   rectangle of a sheet it reads. `Document::dependents(position)` answers
-   which cells read it, directly or through another formula. The graph is
-   built once off the decoded document and kept, because writing a formula is
-   refused until step 4.
-
-   A formula that names something no position can be read out of is in
-   `Document::unresolved_formulas()` instead: it may read anything, and the
-   graph cannot say what. A reference into another document is neither — no
-   edit here reaches it.
-
-   The walk goes through `SheetAdapter::sheet_visit_formulas`, which hands out
-   the cells the file *spells* rather than the positions they cover: a
-   repeated ODS row of 1024 columns over 1048576 rows is a handful of nodes
-   and a billion positions, and only the first is walked.
-3. **Landed.** View: a formula cell states its expression
-   (`data-odr-formula`, which `odr.sheet.formulaAt` hands a formula bar) and
-   the rectangles it reads (`data-odr-reads`: sheet, columns, rows, `*` for an
-   axis a reference leaves open). Both are editing scaffolding, so a read-only
-   render carries neither.
-
-   A commit then marks the cells reading what it wrote — and the cells reading
-   those — with `odr-sheet-stale`, and raises `odr.onCellsStale`. The marks
-   follow the **log**, not the last write: `repaintStale` recomputes them off
-   the coalesced log, so an undo takes back what it made stale and a save
-   clears them with the log. Nothing recomputes a value; step 4 is what does.
-
-   The page carries the graph rather than asking the host for it, because a
-   mark has to keep up with typing. The engine's own graph (item 2) is what
-   the file side uses.
-4. **Landed.** File: an odf write takes the cached result of every formula
-   reading it away — the attributes stating a value, and the `text:p` showing
-   it, removed as an element so the registry keeps no dangling node. The
-   formula, the cell's style and a drawing anchored in it stay. An ooxml
-   write keeps them, because every save already sets `fullCalcOnLoad`.
-
-   **The spike says there is nothing to set.** ODF states no switch asking a
-   reader to recompute, and LibreOffice's `--convert-to` is no oracle for
-   what a reader shows, because it recomputes whatever the file cached. What
-   is left is the rule the file itself can carry: a cell stating a formula
-   and no result is one a reader has to compute, and none can show a wrong
-   number for.
-
-   The cost until step 4: such a cell renders empty here too. A formula the
-   graph could read no position out of (`unresolved_formulas`) keeps its
-   result — nothing links it to the write.
-
-### Step 4 — Formulas, evaluate
-
-1. Evaluator over the AST with a typed value (number, string, boolean, error,
-   empty), error propagation, and a function library opened with the
-   frequent thirty or so (arithmetic, `SUM`/`AVERAGE`/`MIN`/`MAX`/`COUNT`,
-   `IF`/`AND`/`OR`, `ROUND`, `CONCATENATE`, `VLOOKUP`/`INDEX`/`MATCH`,
-   `TODAY`/`DATE` with the 1900/1904 epochs). An unknown function leaves the
-   cached value and flags the cell rather than guessing.
-2. Incremental: recompute the dirty set in topological order, cycles detected
-   and reported as `#REF!`-style errors.
-3. `Document::recalculate(operations) → changed cells` (position, display
-   string, kind) — the query the host relays per decision 5; writing cached
-   results on save.
-4. Formula input in the editor (`=`), with the parse error surfaced.
-
-### Step 5 — Later
-
-- Number formats (`number:number-style`, `numFmt`) for display, dates and
-  booleans as their own kinds; fixes `.xlsx` serials on the read side too.
-- Multi-line cells (Alt+Enter), cell style edits, insert/delete rows and
-  columns (the moment ids for rows appear, `editing.md`'s append-only rules
-  apply).
-- `.csv`: `save` is a serialiser and the cell op fits its packed ids; cheap
-  once the envelope exists, low value.
-- The wasm-in-HTML engine, if a bridge-less host appears.
-
-## Low-hanging fruit
-
-**All landed**, in steps 0 to 2: the xlsx save, the ods number sync,
-`fullCalcOnLoad`, the lock classes and the refusal event,
-`SheetCell::value()`, and the `contenteditable` gate.
-
-## Complications to budget for
-
-- **ODS repeat splitting is the write primitive**: **done** in step 2 — a
-  write cuts the run and claims the cell, and ids stay append-only
-  (`editing.md` decision 4).
-- **XLSX shared strings**: **done** in step 2 — a written string goes inline
-  (`t="inlineStr"`) and the cell's registry subtree is rebuilt rather than
-  patched, so a workbook mixing inline and shared cells is what a save leaves.
-- **Stale formula results in the file** for `.ods`: **answered** in step 3.4 —
-  the result is dropped rather than left wrong. Until step 4 there is no way to
-  write a correct one, so such a cell renders empty here.
-- **Row reflow after a commit**: **done** — `odr.sheet.reflow(row)` redoes the
-  spill/clip geometry the translate computed from the neighbours.
-- **Sheets past the cut** (`spreadsheet_limit`, `spreadsheet_cell_limit`) are
-  not in the page and cannot be edited; the mode should say so where a view
-  reports a `sheet_cut`.
-- **Several views, one log**: the host merges; a save with a partial log is
-  a partial save. The wasm package can hide this in the session.
-- **Encrypted packages** are not savable (`is_savable` false after decrypt);
-  `enable()` refuses on the document attribute rather than after typing.
-- **Decimal separator and locale** are read nowhere; a german user typing
-  `1,5` gets a string in step 1.
-- **A1 anchors every shape** (`anchors_shapes`): **done** — the page locks
-  such a cell `shapes`, and the odf write refuses a cell holding anything but
-  one paragraph of plain runs.
-- **Sort and edit together**: **done** — sorting reorders the `<tr>`s and an
-  edit patches one in place, and every position comes from the row label, so
-  the two survive each other (`test/browser/sheet/sorting.html`).
-
-## Spikes before step 0
-
-1. **Answered** in step 3.4. LibreOffice recomputes whatever an `.ods`
-   cached, so `--convert-to` cannot show what a reader that does not
-   recompute would display. A cell stating a formula and no result is the
-   rule the file itself can carry.
-2. **Excel/LibreOffice on a mixed `inlineStr` workbook** — expected fine,
-   worth ten minutes.
-3. **Answered** in step 2: the run index takes an insert, and ids appended
-   out of position order hold for `m_sheet_cells`, which is sorted by id.
-
-## Open questions
-
-- Should a string cell that receives a numeric-looking string stay a string?
-  Real spreadsheets say no; a phone-number column says yes. The `'` escape is
-  the compromise for step 1.
-- Where does the document locale come from for the decimal separator —
-  `settings.xml`, the number format, the host?
-- **Answered** ([`editing.md`](editing.md) decision 10): the page-level block,
-  as `data-odr-editable` on `<body>`. The frame is a fact about the document,
-  and a `.docx` view has no table to hang it on.
-- **Answered**: `odr::ErrorCode` (`src/odr/error_code.hpp`) is that table.
-  `html/frontend.cpp::write_error_codes` writes it into the page, and every
-  binding reports the same numbers.
+- The evaluator: a typed value, error propagation, the frequent functions,
+  incremental recompute in topological order with cycles reported, and
+  `Document::recalculate(operations)` returning the changed cells. Formula
+  input in the editor comes with it.
+- Number formats (`number:number-style`, `numFmt`), dates and booleans as
+  their own kinds. This also fixes `.xlsx` serials on the read side.
+- Multi-line cells, cell style edits, insert and delete of rows and columns.
+- `.csv` save.
+- Sheets past `spreadsheet_limit` or `spreadsheet_cell_limit` are not in the
+  page; the mode should say so where a view reports a `sheet_cut`.
+- The decimal separator and the document locale are read nowhere.
+- A written string cell that looks numeric becomes a number; `'` is the escape.

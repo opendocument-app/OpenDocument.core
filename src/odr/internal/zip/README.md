@@ -1,6 +1,7 @@
 # ZIP implementation
 
-used by [ODF](../odf/README.md) and [OOXML](../ooxml/README.md)
+Used by [ODF](../odf/README.md) and [OOXML](../ooxml/README.md). Built on
+[richgel999/miniz](https://github.com/richgel999/miniz).
 
 ## Features
 
@@ -9,7 +10,3 @@ used by [ODF](../odf/README.md) and [OOXML](../ooxml/README.md)
 - [x] list entries
 - [x] read as stream
 - [x] write as stream
-
-## References
-
-implementation relies on [richgel999/miniz](https://github.com/richgel999/miniz)

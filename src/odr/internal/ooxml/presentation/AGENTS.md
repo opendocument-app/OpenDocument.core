@@ -1,108 +1,88 @@
 # `.pptx` (PowerPoint) support — design & open work
 
-The **why**; the feature checklist is in [`README.md`](README.md), the shared
-OOXML mechanics (registry/adapter pattern, OPC relationships, encryption) in
-[`../AGENTS.md`](../AGENTS.md). **Reader + text editor + save.**
+The design of the pptx module. The feature checklist is in
+[`README.md`](README.md), the shared OOXML mechanics in
+[`../AGENTS.md`](../AGENTS.md).
 
-**Scope.** Read `ppt/presentation.xml` and each slide's shape tree into the
-abstract model so the generic renderer lays out positioned frames. Paragraphs,
-runs, tables, inline text styling.
+Scope: read `ppt/presentation.xml` and each slide's shape tree into the
+abstract model as positioned frames. Paragraphs, runs, tables, inline text
+style. Edit runs, paragraphs and text style, and save.
 
 ## Design decisions
 
-**Parsing follows the slide-id list.** Slide **order = the document order of
-`p:sldId` in `p:sldIdLst`** (not filename/rId order), and that list is also what
-the `Document` ctor loads: each `p:sldId`'s `r:id` resolves through
-`presentation.xml`'s relationships into the `rId → xml` map, and nothing else
-does. Loading *every* relationship target instead is what broke a Google Slides
-export — it relates a protobuf blob (`ppt/metadata`) to the presentation, and
-parsing that as xml threw `NoXmlFile` before a single slide was read. A package
-may relate anything at all; only slides are xml we can use. Parsing then
-descends `p:cSld/p:spTree`. Dispatch table: `p:sp`→**frame** (shapes are
-frames), `p:graphicFrame`→frame (descends `a:graphic/a:graphicData`),
-`p:txBody`→group, `a:p`→paragraph, `a:r`→span, `a:t`→text, `a:br`→line break,
-`a:tbl`→table (columns from `a:tblGrid/a:gridCol` via `append_column`,
-rows/cells from `a:tr`/`a:tc`; spans from `gridSpan`/`rowSpan`, covered cells
-from `hMerge`/`vMerge`).
+**Parsing follows the slide-id list.** Slide order is the document order of
+`p:sldId` in `p:sldIdLst`, not filename or rId order. The `Document`
+constructor loads only those: each `p:sldId`'s `r:id` resolves through the
+relationships of `presentation.xml` into the `rId → xml` map. A package may
+relate anything to the presentation, for example a Google Slides export
+relates a protobuf blob under `ppt/metadata`, so nothing else is parsed as
+xml. Parsing descends `p:cSld/p:spTree`. Dispatch: `p:sp` and
+`p:graphicFrame` are frames, `p:txBody` and `a:txBody` groups, `a:p` a
+paragraph, `a:r` a span, `a:t` and `a:tab` text, `a:br` a line break, `a:tbl` a
+table (columns from `a:tblGrid/a:gridCol` via `append_column`, rows and cells
+from `a:tr` and `a:tc`, spans from `gridSpan` and `rowSpan`, covered cells from
+`hMerge` and `vMerge`).
 
-**Styles are resolved inline — there is no `StyleRegistry`.** Free functions in
-`ooxml_presentation_style` read `a:rPr` / `a:pPr` directly: font from `a:latin/@typeface`,
-size in hundredth-points, bold/italic/underline/strike/shadow, sub/superscript
-from `@baseline`; align from `@algn` ([ECMA-376] 20.1.10.59 `ST_TextAlignType`,
-which spells the values differently than wordprocessingml does), `@marL`/`@marR`
-margins in EMUs, `a:lnSpc` line height, `a:spcBef`/`a:spcAft` as top and bottom
-margins. **Read them where drawingml puts them, not where wordprocessingml
-does** — these were `rFonts@ascii`, `@jc` and `a:ind` for a while, none of which
-a pptx ever carries, so the properties simply never arrived. `a:spcBef`/`a:spcAft`
-are taken only in their absolute `a:spcPts` form: the percent form is of the text
-size, which css would resolve against the width instead. The element-parent
-cascade (`get_intermediate_style` → `.override()`) is the same shape as ODF/docx
-but computed on-demand from the XML with no cached or master/default-style
-contribution.
+**Styles resolve inline. There is no `StyleRegistry`.** Free functions in
+`ooxml_presentation_style` read `a:rPr` and `a:pPr` where drawingml puts them,
+not where wordprocessingml does: font from `a:latin/@typeface`, size in
+hundredth-points, bold, italic, underline, strike, shadow, sub- and superscript
+from `@baseline`, alignment from `@algn` ([ECMA-376] 20.1.10.59
+`ST_TextAlignType`), `@marL` and `@marR` in EMUs, `a:lnSpc` line height,
+`a:spcBef` and `a:spcAft` as top and bottom margins. `a:spcBef` and `a:spcAft`
+are taken only in their absolute `a:spcPts` form, because the percent form is
+of the text size and css would resolve it against the width. The parent
+cascade (`get_intermediate_style`, `.override()`) is computed on demand from
+the XML, with no master or default-style contribution.
 
-**Colour goes through the theme, and never lands without a ground.** A pptx
-states most of its colour as `a:schemeClr`, a *slot* name — `tx1`, `bg1`,
-`accent1` — so reading only the literal `a:srgbClr` sees almost nothing. A slot
-resolves along **slide → layout → master → theme**: the theme's `a:clrScheme`
-holds the colours, the master's `p:clrMap` says which slot each name stands for,
-and `ColorScheme` is the two folded together. Layouts are shared, so a layout,
-its master and its theme are read once rather than once per slide. Colour
-*transforms* — `a:lumMod`, `a:lumOff`, `a:tint`, `a:shade`, `a:alpha`
-([ECMA-376] 20.1.2.3) — are dropped, so a tinted slot renders at full strength.
+**Colour goes through the theme.** A pptx states most colour as `a:schemeClr`,
+a slot name such as `tx1`, `bg1` or `accent1`. A slot resolves along slide,
+layout, master, theme: the theme's `a:clrScheme` holds the colours, the
+master's `p:clrMap` says which slot each name stands for, and `ColorScheme`
+folds the two. A layout, its master and its theme are read once, not once per
+slide. Colour transforms (`a:lumMod`, `a:lumOff`, `a:tint`, `a:shade`,
+`a:alpha`, [ECMA-376] 20.1.2.3) are dropped, so a tinted slot renders at full
+strength.
 
-**A run colour is only safe once something paints behind it**, which is why it
-lands with the ground and not before: white text on a coloured master would
-otherwise vanish on our white page. So `p:bg` is read from the slide, else its
-layout, else its master, onto `PageLayout::background_color`, and a shape's own
-`p:spPr/a:solidFill` onto the frame. A `p:bg` we do not model — `p:bgRef`,
-`a:gradFill`, `a:blipFill` — ends that walk rather than falling through to the
-part behind it. Master and layout **shapes** are still not drawn (gap (1)
-below), so text a deck puts on one stays unreadable where that shape was its
-only ground.
+**A run colour lands only with its ground.** White text on a coloured master
+would vanish on a white page. So `p:bg` is read from the slide, else its
+layout, else its master, onto `PageLayout::background_color`, and a shape's
+own `p:spPr/a:solidFill` onto the frame. A `p:bg` that is not modelled
+(`p:bgRef`, `a:gradFill`, `a:blipFill`) ends that walk. Master and layout
+shapes are not drawn (open work 1), so text whose only ground is such a shape
+stays unreadable.
 
-**Frame positioning is EMU-based.** `p:spPr/a:xfrm/a:off` + `a:ext` (`p:xfrm`
-for `p:graphicFrame`) give `x/y/width/height` in EMUs; anchor type is always
-`at_page`. Slide size comes from `p:presentation/p:sldSz` (ECMA-376 default
-10in × 7.5in when absent).
+**Frames are positioned in EMUs.** `p:spPr/a:xfrm/a:off` and `a:ext` (`p:xfrm`
+for `p:graphicFrame`) give x, y, width and height. The anchor type is always
+`at_page`. Slide size comes from `p:presentation/p:sldSz`, with the ECMA-376
+default of 10in × 7.5in when absent.
+
+**Editing and save.** The dom half is `xml::TreeEditor`, shared with odf and
+docx. `text_set_style` cuts the `a:r` around the run and writes the toggles
+and the size as `a:rPr` attributes, the colour as `a:solidFill` and the
+highlight as `a:highlight`, each at its place in the
+`CT_TextCharacterProperties` sequence ([ECMA-376] 21.1.2.3.9). `save`
+re-serialises the slide parts and byte-copies the rest. The slides are held by
+`r:id`, so `save` keeps the path to `r:id` map to know which part it writes.
 
 ## Module layout
 
 | File (`presentation/`) | Role |
 |---|---|
-| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads XML + relationships) + `ElementAdapter` |
-| `ooxml_presentation_style.{hpp,cpp}` | `ColorScheme` (theme × `p:clrMap`), the layout/master walk, and the `a:rPr`/`a:pPr` resolution |
-| `ooxml_presentation_parser.{hpp,cpp}` | `ParseContext` (slides map) + tag dispatch; presentation.xml → slides → spTree |
-| `ooxml_presentation_element_registry.{hpp,cpp}` | Flat element store + Table/Text side maps |
+| `ooxml_presentation_document.{hpp,cpp}` | `Document` (loads the XML and relationships), the `ElementAdapter`, editing and save |
+| `ooxml_presentation_style.{hpp,cpp}` | `ColorScheme` (theme × `p:clrMap`), the layout and master walk, the `a:rPr` and `a:pPr` readers |
+| `ooxml_presentation_parser.{hpp,cpp}` | `ParseContext` (slides map) and tag dispatch |
+| `ooxml_presentation_element_registry.{hpp,cpp}` | Element store plus the table and text side maps |
 
-(No style translation unit.)
+## Open work
 
-## Status & open work
-
-Coverage is in [`README.md`](README.md). Foundational gaps, roughly by value:
-
-1. **No master/layout inheritance beyond colour.** `slide_master_page` returns
-   empty and neither shape tree is walked, so a placeholder's font, size and
-   position, and every shape a master or layout draws — banners, logos, rules —
-   are missing. The chain *is* walked now, but only for the theme's colours and
-   the background fill. Custom geometry (`a:custGeom`) and gradients
-   (`a:gradFill`) are unmodelled, so some grounds cannot be painted even once
-   the trees are walked.
-2. **Images not modelled** — no `p:pic`/`a:blip` parser entry; `image_href`
-   reads ODF-style `xlink:href` (wrong for pptx `r:embed`).
-3. **Table cell styles unresolved.** Tables are wired (grid, spans, covered
-   cells, column widths/row heights), but `a:tcPr` (fills, borders, margins)
-   is not translated.
-4. **Editing is runs, paragraphs and the seven text properties**, the same
-   surface `.docx` has. The dom half is `xml::TreeEditor`, shared with odf and
-   ooxml text — only the tag names differ. `text_set_style` cuts the `a:r`
-   around the run and writes the toggles and the size as `a:rPr` attributes,
-   the colour as `a:solidFill` and the highlight as `a:highlight`, each at its
-   place in the `CT_TextCharacterProperties` sequence. No other style editing,
-   and no editing of a shape, a picture or a table's furniture.
-
-   `save` re-serialises the slide parts and copies the rest of the package
-   through as bytes, so a part we never parsed survives untouched. The slides
-   are held by their `r:id`, which is how the slide-id list names them, so
-   `save` keeps the other direction — path to `r:id` — to know which part it
-   is writing.
-5. **Listings, comments/annotations** not modelled.
+1. No master or layout inheritance beyond colour. `slide_master_page` returns
+   null and neither shape tree is walked, so a placeholder's font, size and
+   position and every shape a master or layout draws are missing.
+   `a:custGeom` and `a:gradFill` are not modelled.
+2. Images are not modelled. There is no `p:pic` or `a:blip` parser entry, and
+   `image_href` reads `xlink:href`, which a pptx never carries.
+3. Table cell styles: `a:tcPr` (fills, borders, margins) is not translated.
+4. Editing covers runs, paragraphs and text style only. No editing of a shape,
+   a picture or a table's structure.
+5. Listings and comments are not modelled.
