@@ -22,6 +22,9 @@ The release run heads these entries with the version and opens a fresh
 - **Fix**: a selection in a pdf view moved away from the text a little more
   at every word of a line. It now stays on the text for the full line.
 
+- **Fix**: a selection in a pdf view showed a white hole at many spaces
+  between words, and after a word of one letter. It now covers the space.
+
 ## v7.3.1 - 2026-09-23
 
 - **Fix**: with the pen armed, a drag on a pdf page that had no mark yet

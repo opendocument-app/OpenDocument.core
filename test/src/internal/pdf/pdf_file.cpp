@@ -275,11 +275,56 @@ TEST(PdfFile, gapless_word_break_spacer_has_a_width) {
 // overlap, rather than being pushed to the previous run's end.
 TEST(PdfFile, overlapping_run_pulls_the_selection_back) {
   const std::string html = render_html(
-      text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj 24 0 Td ( world) Tj ET"),
+      text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj 22 0 Td ( world) Tj ET"),
       PdfTextMode::dual_layer);
 
   EXPECT_TRUE(contains(html, R"(<span class="sr f0 ml)"));
   EXPECT_TRUE(contains(html, "margin-left:-"));
+}
+
+// The advance of a real leading space goes to the spacer, not to the run that
+// drops the space from its text: one letter cannot be justified over it.
+TEST(PdfFile, leading_space_advance_goes_to_the_spacer) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj ( a) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  // Helvetica: the space is 278 and the `a` is 556 units wide, at 12pt and
+  // in the layer's local scale of 1.5
+  EXPECT_TRUE(contains(html, "{width:5pt}"));
+  EXPECT_TRUE(contains(html, "{width:10.01pt}"));
+  EXPECT_FALSE(contains(html, "{width:15.01pt}"));
+}
+
+// A gap after a space widens the span that holds the space. A margin on the
+// next run is not highlighted, so the space shows narrower than the gap.
+TEST(PdfFile, gap_after_a_space_widens_the_spacer) {
+  const std::string html = render_html(
+      text_mini_pdf(
+          "BT /F1 12 Tf 72 700 Td (Hello) Tj ( ) Tj 40 0 Td (world) Tj ET"),
+      PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, "{width:19pt}"));
+  EXPECT_FALSE(contains(html, R"(<span class="sr f0 ml)"));
+}
+
+TEST(PdfFile, gap_after_a_trailing_space_widens_the_run) {
+  const std::string html = render_html(
+      text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello ) Tj 40 0 Td (world) Tj ET"),
+      PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, "{width:60pt}"));
+  EXPECT_FALSE(contains(html, R"(<span class="sr f0 ml)"));
+}
+
+// A run of one letter cannot be justified to its width without a second
+// justification opportunity, which the pseudo-element gives and copy skips.
+TEST(PdfFile, selection_run_is_justified_after_its_last_letter) {
+  const std::string html =
+      render_html(text_mini_pdf("BT /F1 12 Tf 72 700 Td (a) Tj ET"),
+                  PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, R"(.sr::after{content:"";display:inline-block})"));
 }
 
 // A standalone page view (`page{index}.html`) resolves internal links to the
