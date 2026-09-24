@@ -1531,6 +1531,26 @@ public:
       /// advance owed to the next run: whitespace no span could carry, plus a
       /// gap no spacer took
       double sel_pending_space = 0;
+      /// width of the open line's last span, which a gap after a space widens:
+      /// a `margin-left` there is a hole in the selection highlight
+      double sel_tail_width_pt = 0;
+      /// the font size of the last span, if it is a `.sg`
+      std::optional<double> sel_tail_gap_font_size_pt;
+
+      const auto gap_classes = [&](const double font_size_pt,
+                                   const double width_pt) {
+        std::string result = "sg";
+        add_class(result, "f", pt_decl("font-size", font_size_pt));
+        // Always a width: an unsized spacer takes the space advance of the
+        // fallback font, and that adds up at every word break.
+        add_class(result, "w", pt_decl("width", width_pt));
+        // Only a gap that still reads as a word space: a column of white
+        // painted solid is worse than the sliver.
+        if (width_pt > 0 && width_pt <= font_size_pt) {
+          result += " sw";
+        }
+        return result;
+      };
 
       for (const pdf::PageElement &element :
            page_elements(*page, stream, m_logger)) {
@@ -1755,44 +1775,66 @@ public:
               page_out.sel_lines[sel_cur_line].runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
               sel_cur_run_start_ox = sel_ox;
+              sel_tail_width_pt = width_pt;
+              sel_tail_gap_font_size_pt.reset();
             }
           } else if (sel_gap || sel_prev_ends_space || starts_space) {
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
+            // A real leading space is dropped from the text, so its advance
+            // belongs to the gap: left in the run, one letter cannot be
+            // justified over it and the space shows as a hole.
+            const double lead =
+                starts_space && !text.leading_space_inferred && !core.empty() &&
+                        text.width > 0 && !text.advances.empty()
+                    ? std::max(0.0,
+                               sel_extent * text.advances.front() / text.width)
+                    : 0;
             // The gap before this run, plus its own advance when it is only
             // whitespace and emits no `.sr`. Dropping either shortens the line.
-            sel_pending_space += gap_pt + (core.empty() ? sel_extent : 0);
+            sel_pending_space +=
+                gap_pt + lead + (core.empty() ? sel_extent : 0);
             // One space character per run of whitespace; a second would be
             // copied as one. The advance waits for the next `.sr` instead.
             if (!sel_prev_ends_space && !runs.empty()) {
-              std::string gap_cls = "sg";
-              add_class(gap_cls, "f", pt_decl("font-size", sel_font_size_pt));
-              // Always a width: an unsized spacer takes the space advance of
-              // the fallback font, and that adds up at every word break.
               const double rounded_gap =
                   std::max(0.0, round2(sel_pending_space));
-              add_class(gap_cls, "w", pt_decl("width", rounded_gap));
-              // Only a gap that still reads as a word space: a column of
-              // white painted solid is worse than the sliver.
-              if (rounded_gap > 0 && rounded_gap <= sel_font_size_pt) {
-                gap_cls += " sw";
-              }
-              runs.push_back(SelRunOut{std::move(gap_cls), " "});
+              runs.push_back(
+                  SelRunOut{gap_classes(sel_font_size_pt, rounded_gap), " "});
               sel_pending_space -= rounded_gap;
+              sel_tail_width_pt = rounded_gap;
+              sel_tail_gap_font_size_pt = sel_font_size_pt;
             }
             if (!core.empty()) {
+              // The last span ends in a space, so it takes the gap.
+              if (const double owed = round2(sel_pending_space);
+                  owed > 0 && sel_prev_ends_space && !runs.empty()) {
+                sel_tail_width_pt = round2(sel_tail_width_pt + owed);
+                if (sel_tail_gap_font_size_pt) {
+                  runs.back().classes = gap_classes(*sel_tail_gap_font_size_pt,
+                                                    sel_tail_width_pt);
+                } else {
+                  strip_width_class(runs.back().classes);
+                  add_class(runs.back().classes, "w",
+                            pt_decl("width", sel_tail_width_pt));
+                }
+                sel_pending_space = 0;
+              }
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", sel_font_size_pt));
               if (const double owed = round2(sel_pending_space); owed != 0) {
                 add_class(cls, "ml", pt_decl("margin-left", owed));
               }
               sel_pending_space = 0;
+              width_pt = round2(sel_extent - lead);
               if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               runs.push_back(
                   SelRunOut{std::move(cls), escape_markup(std::move(core))});
-              sel_cur_run_start_ox = sel_ox;
+              sel_cur_run_start_ox = sel_ox + lead;
+              sel_tail_width_pt = width_pt;
+              sel_tail_gap_font_size_pt.reset();
             }
           } else {
             // Tight continuation on the same baseline: merge into the previous
@@ -1810,6 +1852,7 @@ public:
                 add_class(runs.back().classes, "w",
                           pt_decl("width", merged_width_pt));
               }
+              sel_tail_width_pt = merged_width_pt;
             }
           }
 
@@ -1893,6 +1936,10 @@ public:
       out.out() << ".sr{display:inline-block;vertical-align:bottom;"
                    "text-align:justify;text-align-last:justify;"
                    "text-justify:inter-character}";
+      // A justification opportunity after the last letter, which is not
+      // copied: else a one-letter run keeps its fallback advance and the rest
+      // of the run is a hole in the highlight.
+      out.out() << ".sr::after{content:\"\";display:inline-block}";
       // Selection-layer gap spacer. It holds only a space, so no handle can
       // land in it and the clip is free, along with the y alignment it gives.
       out.out() << ".sg{display:inline-block;overflow:hidden}";
