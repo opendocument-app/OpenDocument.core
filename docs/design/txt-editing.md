@@ -1,45 +1,31 @@
 # Plain-text editing design
 
-The editor of the **plain-text view** — `frontend/text.js` — built on the mode
-frame in [`editing.md`](editing.md), and the decisions that are its own. Its
-siblings are [`document-editing.md`](document-editing.md) for a document view
-and [`spreadsheet-editing.md`](spreadsheet-editing.md) for a sheet.
+The editor of the plain-text view, `frontend/text.js`, on the mode frame of
+[`editing.md`](editing.md). Its siblings are
+[`document-editing.md`](document-editing.md) for the document view and
+[`spreadsheet-editing.md`](spreadsheet-editing.md) for the sheet view.
 
-Status: **landed.** It answers the question `editing.md` carried from the day
-the mode was built — whether this view attaches to `odr.editing` or stays the
-one editor that answers to nobody. It attaches.
+Status: landed.
 
 ## What makes it different
 
-A `.txt` is a `TextFile`, **not a `DocumentFile`**. There is no element tree
-behind it: no runs, no paragraphs, no ids, no registry, and no adapters. So
-none of the document operations reach it, `Document::edit` and `Document::save`
-do not apply to it, and the whole write side of the engines is somewhere it
-cannot go.
-
-What it has instead is a flat string of lines and, in the browser, an editor
-that predates all of this — `text.js` had its own `beforeinput` gate and its
-own inverse-recording undo before the mode existed.
+A `.txt` is a `TextFile`, not a `DocumentFile`. It has no element tree, so no
+runs, paragraphs, ids, registry or adapters. `Document::edit` and
+`Document::save` do not apply to it. It has a flat string of lines, and
+`text.js` gates its own `beforeinput` and records an inverse per change for
+undo.
 
 ## Decisions
 
 ### 1. It attaches to the mode rather than keeping its own API
 
-`text.js` is an editor on `odr.editing` like every format's. The view writes
-`editing.js` and the page-level `data-odr-editable` / `data-odr-keyboard`.
+`text.js` is an editor on `odr.editing` like every format's. The view
+(`html/text_file.cpp`) writes `editing.js` and the page-level
+`data-odr-editable` and `data-odr-keyboard`.
 
-**Why:** decision 9 of [`editing.md`](editing.md) is that a host wires the mode
-once for every file it opens and must not learn a second API because of what
-the file turned out to be. Decision 11 states that `odr.editing` is on every
-view either way and `odr.generateDiff()` never goes missing. Both were true of
-every view **except this one**: `text_file.cpp` wrote `text.js` and not
-`editing.js`, so a `.txt` page had no mode at all and `odr.generateDiff` came
-back `undefined`.
-
-**What it cost:** nothing in the editor. `text.js` already recorded an inverse
-per change, so `undo`, `redo`, `canUndo` and `canRedo` answered honestly the
-moment they were wired up. It is the only editor of the three that did not need
-an undo built for it.
+**Why:** decision 9 of [`editing.md`](editing.md). A host wires the mode once
+for every file, so `odr.generateDiff()`, `undo`, `redo`, `canUndo` and
+`canRedo` answer on a `.txt` page too.
 
 ### 2. One operation, `setContent {text}`, carrying the whole file
 
@@ -47,29 +33,20 @@ an undo built for it.
 {"version": 2, "ops": [{"op": "setContent", "text": "…"}]}
 ```
 
-Coalescing makes the log exactly one operation however long the session runs,
-and an envelope stating none writes the file back as it was.
+Coalescing makes the log one operation however long the session runs. An
+envelope with no operation writes the file back as it was.
 
-**Why not a line at a time**, which is the obvious alternative: **a line number
-is a path**, and decision 1 of [`document-editing.md`](document-editing.md) is
-that an operation must not address by one — inserting a line shifts every line
-after it, so a log of more than one structural operation cannot be replayed. A
-document escapes that with ids from its registry. A plain file has no registry
-to hang an id on, because lines are not elements; they are where the newlines
-happen to be. Per-line operations would mean inventing an identity the format
-does not have.
+**Why not a line at a time:** a line number is a path, and decision 1 of
+[`document-editing.md`](document-editing.md) refuses positional addressing,
+because an inserted line shifts every line after it. A plain file has no
+registry to hang an id on. Decision 2 of the same document refuses offsets
+inside a line, because JavaScript counts UTF-16 code units and `std::string`
+counts bytes.
 
-**Why not finer:** addressing inside a line wants offsets, and decision 2 of
-[`document-editing.md`](document-editing.md) refused those — JavaScript counts
-UTF-16 code units and `std::string` counts bytes.
-
-**What it costs:** the whole file crosses the bridge on every save. Less than
-it looks, because `TextFile::save` writes the complete bytes either way, so a
-finer log would only be reassembled before writing; the saving would be one
-hop. Where it does bite is a large file, and the answer there is **one**
-`replaceLines {from, to, text}` computed as a single diff hunk at emit time —
-still one operation, still applied to the file as it was, so still nothing
-positional to go stale. That needs no schema change to reach.
+**Cost:** the whole file crosses the bridge on every save. `TextFile::save`
+writes the complete bytes anyway. If a large file makes this bite, one
+`replaceLines {from, to, text}` computed as a single diff hunk at emit time
+stays one operation on the file as it was, with no schema change.
 
 ### 3. The write path has `Document`'s names
 
@@ -83,40 +60,29 @@ void TextFile::save(std::ostream &out) const;
 `edit` keeps the edit in the file, so every handle over it and the next render
 see it. `save` writes the text.
 
-**Why:** a host saves a `.txt` with the calls it already makes for a document,
-and learns no second API because of what the file turned out to be — decision 9
-of [`editing.md`](editing.md) again. `TextFile::write_edited` stays, deprecated.
-
-**What it costs:** a `TextFile` handle is no longer immutable. The edit lives in
-the text engine's file, which every handle shares, as a document's edit lives
-in its shared tree.
+**Why:** decision 9 of [`editing.md`](editing.md) again. A host saves a `.txt`
+with the calls it makes for a document. `TextFile::write_edited` stays,
+deprecated. A `TextFile` handle is therefore no longer immutable, like a
+document whose edit lives in its shared tree.
 
 ### 4. What it writes is UTF-8, whatever the source was
 
-`is_savable()` refuses only an encoding we cannot **decode**: the view hands
-those bytes to the browser as they are, so what comes back could not be put
-back. Everything else saves — and saves as UTF-8.
+`is_savable()` is false for a text file that is not `FileType::text_file`
+(json), and for an encoding we cannot decode, because the view hands those
+bytes to the browser as they are. Everything else saves as UTF-8.
 
 **Why:** `encoding/transcode.hpp` has `to_utf8` and nothing in the other
-direction. A Shift-JIS file therefore opens, edits, saves, and is UTF-8
-afterwards.
-
-**Why it is stated rather than hidden:** the API doc says so, so a host can
-warn the reader. Silently changing a property of someone's file that nothing
-told them about is the failure mode worth avoiding here, more than the change
-itself.
+direction. A Shift-JIS file opens, edits, saves, and is UTF-8 afterwards. The
+API doc on `TextFile::edit` says so, so a host can warn the reader.
 
 ## Open questions
 
-- **`from_utf8`** would let a file round-trip in its own encoding and close
-  decision 4. The tables in `encoding/encoding_data` are there to reverse, so
-  the work is real but bounded — except for the question it brings with it:
-  what to do with a character the target encoding has no room for.
-- **Undo granularity.** Typing over a selection is two steps, because
+- **`from_utf8`** would let a file round-trip in its own encoding. The tables
+  in `encoding/encoding_data` are there to reverse. Open: what to do with a
+  character the target encoding cannot represent.
+- **Undo granularity.** Typing over a selection is two undo steps, because
   `insertTextAction` calls `removeTextAction` and each pushes its own change.
-  The document editor is one `beforeinput`, one step. It predates this work and
-  is only visible now that a host can drive undo.
-- **The pdf annotator** is now the one editor that answers to nobody:
-  `odr.annotation` is its own API and `PdfFile::annotate` its own write path.
-  That is a different gesture from editing text, so whether it should share the
-  mode is a real question rather than an oversight.
+  The document editor makes it one step.
+- **The pdf annotator** is the one editor outside the mode: `odr.annotation`
+  is its own API and `PdfFile::annotate` its own write path. It is a different
+  gesture from editing text, so sharing the mode is an open question.

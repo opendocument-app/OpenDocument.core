@@ -1,18 +1,13 @@
 # OOXML presentation implementation
 
-Reader for presentation documents (`.pptx`).
-
-This implementation relies on [OOXML](../README.md).
-
-The presentation is parsed from `ppt/presentation.xml`, with each slide named by
-`p:sldIdLst` pulled in via relationships and its shape tree (`p:cSld` /
-`p:spTree`) walked for content (see `ooxml_presentation_parser.cpp`). Text and
-paragraph styles are resolved inline from the run / paragraph properties (see
-`ooxml_presentation_document.cpp`).
+Reader and editor for presentations (`.pptx`). It relies on
+[OOXML](../README.md). The presentation is parsed from
+`ppt/presentation.xml`. Each slide named by `p:sldIdLst` is loaded via
+relationships, and its shape tree (`p:cSld/p:spTree`) is walked
+(`ooxml_presentation_parser.cpp`). Styles resolve inline from the run and
+paragraph properties (`ooxml_presentation_style.cpp`).
 
 ## Features
-
-Roughly ordered by importance.
 
 ### Functional
 
@@ -20,18 +15,17 @@ Roughly ordered by importance.
 - [x] slides
   - [x] shapes (`p:sp`), text bodies
   - [x] slide size (`p:sldSz`) and slide names
-  - [x] slide background (`p:bg`, inherited from layout / master)
-  - [ ] slide master / layout inheritance (beyond theme colors + background)
+  - [x] slide background (`p:bg`, inherited from layout and master)
+  - [ ] slide master and layout inheritance beyond theme colours and background
 - [x] text extraction
-- [x] edit (text, and the structure a text edit needs)
+- [x] edit (text content, text style, paragraph structure)
 - [x] save
 
 ### Content
 
 - [x] paragraphs, runs / spans
 - [x] line breaks
-- [x] tables (`p:graphicFrame` / `a:tbl`: grid columns incl. widths, rows,
-      cells, merged cells)
+- [x] tables (`p:graphicFrame` / `a:tbl`: grid columns with widths, rows, cells, merged cells)
 - [ ] images
 - [ ] listings
 - [ ] annotations / comments
@@ -43,15 +37,14 @@ Roughly ordered by importance.
   - [x] size
   - [x] italic, bold
   - [x] underline, strike through
-  - [x] color, background (highlight), incl. theme colors (`a:schemeClr`; no
-        `a:lumMod` / `a:tint` / `a:shade` transforms)
+  - [x] color, background (highlight), theme colours (`a:schemeClr`; no `a:lumMod` / `a:tint` / `a:shade` transforms)
   - [x] shadow
   - [x] superscript, subscript (`@baseline`)
 - [x] paragraph
-  - [x] alignment (`a:pPr/@algn`)
-  - [x] base direction (`a:pPr/@rtl`)
-  - [x] indentation / left & right margins (`@marL` / `@marR`)
-  - [x] line height (`a:lnSpc`), space before / after (`a:spcPts` only)
+  - [x] alignment (`@algn`)
+  - [x] base direction (`@rtl`)
+  - [x] left and right margins (`@marL` / `@marR`)
+  - [x] line height (`a:lnSpc`), space before and after (`a:spcPts` only)
 - [x] shape fill (`p:spPr/a:solidFill`) and text anchor (`a:bodyPr/@anchor`)
 - [x] tables (column widths, row heights; no `a:tcPr` cell styles)
 - [x] page layout (slide size)

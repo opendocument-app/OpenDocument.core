@@ -18,8 +18,8 @@ for (var page : html.pages()) {
 }
 ```
 
-The native library is loaded from `java.library.path` as `odr_jni`
-(`libodr_jni.so`/`libodr_jni.dylib`); the system property
+The native library loads from `java.library.path` as `odr_jni`
+(`libodr_jni.so` or `libodr_jni.dylib`). The system property
 `app.opendocument.core.library` overrides it with an absolute path.
 
 ## Maven distribution
@@ -27,14 +27,13 @@ The native library is loaded from `java.library.path` as `odr_jni`
 The Java classes are published as `app.opendocument:odr-core-java` to Maven
 Central and to
 [GitHub Packages](https://github.com/orgs/opendocument-app/packages?repo_name=OpenDocument.core)
-on release (`.github/workflows/maven.yml`, built from `pom.xml`); the Central
-deployment publishes itself, no click in the portal. The artifact
-contains **only the Java API** — consumers build the native `odr_jni` library
-themselves for their target platform (see below) and provide it at runtime.
+on release (`.github/workflows/maven.yml`, from `pom.xml`). The artifact
+contains only the Java API. A consumer builds the native `odr_jni` library for
+its platform (see below) and provides it at runtime.
 
-On android there is a second, self-contained artifact:
-`app.opendocument:odr-core-android`, an AAR with these same classes plus the
-native library for every ABI. See [`../android`](../android/README.md).
+On android use `app.opendocument:odr-core-android` instead. It is an AAR with
+the same classes plus the native library for every ABI. See
+[`../android`](../android/README.md).
 
 ```gradle
 repositories {
@@ -46,19 +45,19 @@ dependencies {
 }
 ```
 
-Prefer Central: GitHub Packages requires authentication (a token with
-`read:packages`) even for public packages.
+Prefer Central. GitHub Packages needs a token with `read:packages` even for a
+public package.
 
-Local build: `mvn --file jni/pom.xml verify` (produces the jar plus sources
-and javadoc jars in `jni/target/`). Central additionally wants every file PGP
-signed and a POM carrying `developers`; both live in the `central` profile
-(`mvn deploy -Pcentral`), kept off the default build so neither a signing key
-nor a portal token is needed to build or to deploy to GitHub Packages.
+Local build: `mvn --file jni/pom.xml verify` produces the jar plus the sources
+and javadoc jars in `jni/target/`. The `central` profile (`mvn deploy
+-Pcentral`) adds the PGP signatures and the `developers` POM entry that Central
+requires. It is off the default build, so neither a signing key nor a portal
+token is needed to build or to deploy to GitHub Packages.
 
 ## Building
 
-The bindings are part of the main CMake build, toggled by `ODR_JNI` (requires
-a JDK, 11+):
+The bindings are part of the main CMake build, toggled by `ODR_JNI`. The jar
+needs a JDK 17 or newer (`--release 17`):
 
 ```bash
 conan install . -o '&:with_jni=True' --build missing
@@ -68,26 +67,25 @@ cmake --build build --target odr_jni odr_java odr_java_tests
 ```
 
 This produces `build/jni/libodr_jni.dylib` (or `.so`) and
-`build/jni/odr-core-java.jar`. `jni/CMakeLists.txt` can also be configured
-standalone against an installed `odrcore` package.
+`build/jni/odr-core-java.jar`. `jni/CMakeLists.txt` also configures standalone
+against an installed `odrcore` package.
 
-`ODR_JNI_JAR=OFF` builds the native library alone. That is what the AAR build
-(`android/build_native.py`) asks for, since it compiles `jni/java/` with the
-android toolchain instead, and it is the only build needing no JDK — on android
-the headers come from the NDK sysroot. Otherwise a missing JDK fails the
-configure step rather than producing a package without the jar in it.
+`ODR_JNI_JAR=OFF` builds the native library alone. The AAR build
+(`android/build_native.py`) uses it, because it compiles `jni/java/` with the
+android toolchain. It is the only build that needs no JDK. Otherwise a missing
+JDK fails the configure step.
 
 ## Runtime data
 
-There is none. The renderer's CSS/JS are part of the library and detection needs
-no database, so there is nothing to point the library at.
+There is none. The renderer's CSS and JS are part of the library, and
+detection needs no database.
 
 ## Notes
 
 - Handle-backed objects (`DecodedFile`, `Document`, `Element`,
-  `HtmlService`, ...) own native memory. They free it on garbage collection;
-  use `close()` (or try-with-resources) to release large objects eagerly.
-- The C++ `HtmlConfig::resource_locator` callback is not exposed; the standard
+  `HtmlService`, ...) own native memory. They free it on garbage collection.
+  Use `close()` or try-with-resources to release a large object early.
+- The C++ `HtmlConfig::resource_locator` callback is not exposed. The standard
   resource locator is always used.
 - `HttpServer` is available when the native library was built with the HTTP
   server (`Odr.hasHttpServer()`).

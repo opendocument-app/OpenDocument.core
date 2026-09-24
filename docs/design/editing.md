@@ -1,488 +1,234 @@
 # Editing design
 
-Status: **landed.** This records the architecture we chose for in-browser
-editing, the alternatives we weighed, and *why* we took each decision.
-Decisions 9 to 12 are the frame every format shares.
+Status: landed. Decisions 9 to 12 are the frame every editor shares. Each
+editor has its own document: [`spreadsheet-editing.md`](spreadsheet-editing.md)
+for the sheet view, [`document-editing.md`](document-editing.md) for the
+document view, and [`txt-editing.md`](txt-editing.md) for the plain-text view.
 
-One document per editor, each holding its own decisions:
-[`spreadsheet-editing.md`](spreadsheet-editing.md) for the sheet view,
-[`document-editing.md`](document-editing.md) for the document view, and
-[`txt-editing.md`](txt-editing.md) for the plain-text one.
-
-This builds on the existing principle in [`README.md`](README.md):
-
-> saving should not depend on our internal representation of the document but
-> only the changes
+The principle comes from [`README.md`](README.md): a save depends on the
+changes, not on the internal representation of the document.
 
 ## Problem
 
-We render documents to HTML and display them in a WebView (droid / ios), and we
-want the user to edit what they see and have it persist back into the original
-file — with no live connection between the browser and C++.
+The apps render a document to HTML and show it in a WebView. The user edits
+what they see, and the edit has to persist into the original file. There is
+no live connection between the browser and C++.
 
 ## The pieces
 
-- `html::translate(..., config.editable)` writes the scaffolding: the page-level
-  state on `<body>`, `data-odr-id` on every editable run and paragraph, and the
-  scripts that carry the mode.
-- `frontend/editing.js` owns `odr.editing` — the mode, the refusals, the log a
-  save reads and the callbacks a host wires. **Every view has it**, and each
-  format's editor attaches one editor to it (decision 9):
-  `frontend/sheet-editing.js`, `frontend/document.js`, `frontend/text.js`.
-- `Document::edit` replays the envelope: `setCell` for a sheet, and `setText`,
-  `setTextStyle`, `insertText`, `removeElement`, `splitParagraph`,
-  `mergeParagraph` and `insertParagraph` for a document.
-  `TextFile::edit` is the plain-text counterpart, with the same name, since a
+- `html::translate` with `HtmlConfig::editable` writes the scaffolding: the
+  page-level state on `<body>`, `data-odr-id` on every editable run and
+  paragraph, and the scripts that carry the mode.
+- `frontend/editing.js` owns `odr.editing`: the mode, the refusals, the log a
+  save reads, and the callbacks a host wires. Every document view has it. An
+  editor attaches to it: `frontend/sheet-editing.js`, `frontend/document.js`
+  or `frontend/text.js`.
+- `Document::edit` replays the envelope (`"version": 2`). The ops are
+  `setCell` for a sheet, and `setText`, `setTextStyle`, `insertText`,
+  `removeElement`, `splitParagraph`, `mergeParagraph` and `insertParagraph`
+  for a document. `TextFile::edit` is the plain-text counterpart, because a
   `.txt` is not a document.
-- `back_translate` CLI replays an envelope onto a source document and `save`s it.
-
-Inline formatting — bold, italic, underline, strikethrough, highlight, colour
-and size — is `setTextStyle` on the wire and `odr.editing.format` in the page;
-the [Inline formatting](document-editing.md#inline-formatting) section of
-[`document-editing.md`](document-editing.md) holds its decisions.
+- The write side lives in `odf_document.cpp`, `ooxml_text_document.cpp`,
+  `ooxml_presentation_document.cpp` and `ooxml_spreadsheet_document.cpp`.
+- The `back_translate` CLI replays an envelope onto a source document and
+  saves it.
+- Inline formatting is `setTextStyle` on the wire and `odr.editing.format` in
+  the page. [`document-editing.md`](document-editing.md#inline-formatting)
+  holds its decisions.
 
 ## Decisions
 
-### 1. Architecture: fat browser, replay-on-save (not a live C++ model)
+### 1. Fat browser, replay on save
 
-The browser owns the authoritative document model *for the duration of an editing
-session*. It records an operation log as the user edits. On **save**, the coalesced
-log is handed to C++, which replays it onto the source document and writes the
-output. C++ is not consulted per keystroke.
+The browser owns the document model for the duration of an editing session and
+records an operation log. On save, C++ replays the coalesced log onto the
+source document and writes the output. C++ is not consulted per keystroke.
 
-**Alternative considered — fat C++, thin browser view (B):** C++ owns a live
-mutable model; the browser sends each op over the WebView bridge and re-renders
-the affected fragment from odr output; save is a flush. This has a single source
-of truth (no drift) and centralised validation.
+Why: a live C++ model needs incremental HTML rendering and a round trip per
+edit. Replay works offline and fits the one-shot `translate` and
+`back_translate` pipeline. The cost is that op semantics exist twice.
 
-**Why A:** B requires incremental HTML re-rendering from odr and a chatty
-round-trip per edit; A works fully offline and fits the existing one-shot
-`translate` / `back_translate` pipeline. The write-side adapter work (see plan) is
-identical either way — B's only advantage is deleting the *drift* failure mode.
-We accept A's duplicated op-semantics (JS + C++) and mitigate drift with a shared
-conformance corpus (decision 7). The duplication is a smaller price than
-continuous re-rendering.
+### 2. JSON over the WebView message bridge
 
-### 2. Transport: JSON over the WebView message bridge (not HTTP)
-
-The payload is JSON. The channel is the platform WebView bridge
-(`WKScriptMessageHandler` on iOS, `addJavascriptInterface` on Android); on
-desktop/CLI the same JSON is just a file, as `back_translate` already does.
-
-**Why not HTTP:** it forces odr to run as a live localhost server with a port and
-lifecycle, which fights the one-shot pipeline and is painful on mobile. The
-message bridge *is* the comm line and needs no server.
+The payload is JSON. The channel is the platform bridge
+(`WKScriptMessageHandler` on iOS, `addJavascriptInterface` on Android). In the
+CLI the same JSON is a file. A localhost HTTP server would have a port and a
+lifecycle, which fights the one-shot pipeline.
 
 ### 3. Record operations, do not compute a diff
 
-The wire format is an **operation log** recorded as the user acts
-(`insertText`, `deleteRange`, `toggleMark`, `splitParagraph`, `insertParagraph`,
-…), not a state-to-state diff.
+The wire format is an operation log, not a state-to-state diff.
 
-**Why:** a diff is derived by comparing two document states — ambiguous (edited vs
-deleted-and-reinserted?) and it reimplements tree-diff. Ops are unambiguous and
-directly replayable with no interpretation step. The current `modifiedText` map is
-a degenerate diff that only survives because it does in-place text swaps.
+Why: a diff compares two states and is ambiguous (edited, or deleted and
+reinserted?). An op is unambiguous and replays with no interpretation step.
 
 ### 4. Address by stable element id, not by path
 
-Ops reference `ElementIdentifier`, emitted into the HTML (e.g. `data-odr-id`) and
-re-resolved by C++ at replay. `DocumentPath` is dropped from the edit path.
+An op names an element by its `ElementIdentifier`, written as `data-odr-id`
+and resolved at replay by `Document::element_by_id`. `DocumentPath` is not on
+the edit path.
 
-**Why:** `DocumentPath` is *positional*; any insert/delete shifts sibling paths,
-so a path recorded early in a session goes stale. Ids don't move, so we don't even
-need to freeze a path→id resolution up front. A path buys nothing over an id for
-elements that exist.
+Why: a path is positional, so an insert or a delete shifts every later path.
+An id does not move. An id only has to hold for one session of
+`translate`, `edit` and `save`, so two rules are enough: `create_element`
+appends, and `unlink_child` leaves the slot taken. No live id is renumbered.
 
-**Consequence — id stability requirement.** In architecture A the id only needs to
-be **session-stable** (one `translate → edit → save`), *not* persistent across
-reload: after save we re-`translate` and the browser rebuilds its model from fresh
-ids. Each engine's `ElementRegistry` is a flat vector with `id = index + 1`, so
-"session-stable" reduces to two rules that edit ops must obey:
+### 5. The schema addresses locations and ranges, not only elements
 
-- **Append-only** — new elements take new indices at the end; never renumber
-  existing ones.
-- **Tombstone deletes** — a deleted element's slot stays reserved (marked dead),
-  never compacted or reused within the session.
+An insert carries an anchor, because no element exists at the place yet. A
+formatting op carries a character range on a run. The schema is built on
+`id + anchor + offset`, and a path never enters it.
 
-This is much cheaper than global stable identity, and it is exactly the discipline
-that keeps replay safe.
+### 6. The payload is one-way; undo lives in the browser
 
-### 5. Op schema addresses locations and ranges, not just elements
+Undo and redo run in the browser over its in-memory log, where the inverse
+data is local. The payload sent to C++ is coalesced and is not invertible.
 
-- A bare id can't express an **insertion location** (a place where no element
-  exists yet). Insert ops carry an anchor: `(parent-id, after-id | before-id)` or
-  `(parent-id, index)`.
-- Inline formatting addresses a **character range**: `(id, start-offset, length)`.
+Why: C++ never replays backward, because the user still has the original
+file. An invertible removal would carry the removed payload (an image, a
+table) across the bridge for nothing. Persistent change tracking is a
+different feature and belongs to `<text:tracked-changes>`, `w:ins` and `w:del`.
 
-So the schema is built around `id + anchor + offset` from op #1. Paths never enter.
+### 7. C++ replay is the validator; saves are atomic
 
-### 6. The persisted payload is one-way and non-invertible; symmetry lives only in the browser
+The browser refuses edits for UX only. Replay validates again and throws on an
+op it cannot apply. It applies to an in-memory copy and writes only on full
+success. The envelope states a `version`, and replay refuses any other.
 
-Undo/redo runs entirely in the browser over its in-memory op log, where the
-inverse data is already local and cheap (the image is displayed, the removed
-subtree is in the DOM to snapshot). The payload sent to C++ is one-way — "apply
-net changes and save" — and is **coalesced** first (add-then-delete never reaches
-C++).
+Open: a conformance corpus of `(base document, op log) → expected saved
+result` cases, replayed in C++ as a GoogleTest, is not built. What stands in
+for it is that the browser check pages under `test/browser/` assert the log
+they emit, and `document_edit_test.cpp` replays the same shapes.
 
-**Why not a symmetric, git-style diff:** we never replay backward in C++ — a user
-who wants the original still has the original file. Making removal ops invertible
-would force carrying the removed payload (images, whole tables) across the bridge
-for no benefit. Symmetry is valuable exactly where the data is already local (the
-browser) and useless where it is expensive (the wire / C++).
+### 8. The browser editor is hand-rolled and model-first
 
-*Future note:* persistent, reopen-surviving change tracking is a different feature
-and would use the format-native mechanisms — ODF `<text:tracked-changes>`, OOXML
-`w:ins` / `w:del` — not a symmetric JSON diff. Out of scope here.
+The editor intercepts `beforeinput`, cancels it, and applies the change itself.
+The DOM is a projection of the model. No editor framework is used.
 
-### 7. C++ replay is the authoritative validator; saves are atomic; guard against drift
+Why: native `contenteditable` output differs per browser and does not map onto
+the element model. The feature set is small, and a JS dependency is awkward to
+carry here. The hard parts are IME composition, which cannot be cancelled, and
+edits that cross a paragraph boundary.
 
-- The browser policing valid edits is UX only. C++ **re-validates on replay and
-  fails fast** (repo convention: throw, don't degrade) — it never trusts the log
-  to be applyable.
-- Replay applies to an in-memory copy and writes only on full success;
-  `back_translate` already saves to a separate output path.
-- The log is stamped with a document + odr-model-version identifier so a stale log
-  replayed against a changed model is rejected, not misapplied.
-- **Conformance corpus** to catch JS/C++ op-semantics drift (A's main risk): a set
-  of `(base document, op log) → expected saved result` cases replayed in C++ as a
-  GoogleTest, ideally cross-checked against the JS model producing HTML that
-  matches a fresh `translate` of the saved document. Stand this up alongside the
-  first non-text op.
+### 9. One mode for every format; a format brings only its editor
 
-### 8. Browser editor: hand-rolled, model-first (not contenteditable-diffing, not a framework)
+`odr.editing` is generic and is written by `editing.js` for every document
+view. It owns the mode (`enable`, `disable`, `isEnabled`, `isEditable`), the
+refusals (`odr.onEditRefused`, with the codes of `odr::ErrorCode` written into
+the page as `odr.errorCodes`), the log (`getOperations`, `undo`, `redo`,
+`committed`, and the `dirty`, `canUndo` and `canRedo` state that
+`odr.onEditChange` reports), the formatting seam (`format`, `toggle`,
+`odr.onSelectionChange`), and the keyboard classes of decision 12.
 
-The browser keeps a structured model mirroring odr's element tree (keyed by id).
-Edits intercept `beforeinput`, `preventDefault`, mutate the model, and re-render;
-the DOM is a *projection* of the model, never the source of truth. We build this
-ourselves rather than adopting ProseMirror/Lexical.
+A format's editor calls `odr.editing.attach({name, enable, disable,
+operations, undo, redo, ...})`. Only `operations` is required. `getOperations`
+concatenates what the attached editors report, and `undo` asks each in turn.
 
-**Why not diff contenteditable:** native contenteditable emits wildly inconsistent
-DOM across browsers (`<b>` vs `<strong>` vs inline style, wrapper divs, `<br>` vs
-`<p>`), which won't map onto odr's element model.
+Why: a host wires the mode once for every document it opens, whatever the
+format. A cell is edited by an overlay and a paragraph by a caret, so the
+editors share the log and nothing else.
 
-**Why build not buy:** the constrained feature set is a few hundred lines for text
-and a bit more for documents; JS dependencies are awkward to carry inside this
-project, and hand-rolling gives full control over the model↔op mapping.
-
-**Known hard parts (budget here, not on marks):**
-
-- **IME / composition** in mobile WebViews. You cannot `preventDefault` during an
-  active composition (CJK, autocorrect, swipe-type, dictation); Android WebView
-  also reports incomplete `beforeinput`. The loop must let composition complete
-  (`compositionstart`/`compositionend`) and *reconcile* into the model. Test
-  against a real Android IME early.
-- **Cross-block selection and block splitting** — split-paragraph,
-  merge-on-backspace-at-boundary, delete across paragraphs. This is where the real
-  complexity lives, not inline marks.
-
-### 9. Editing is one browser mode for every format; a format brings only its editor
-
-`odr.editing` is the mode, and it is generic. It is written by
-`frontend/editing.js` for every document view and it knows nothing about cells,
-runs or paragraphs. It owns:
-
-- the **mode** — `enable()`, `disable()`, `isEnabled()`, `isEditable()`;
-- the **refusals** — the repeat suppression, the outline a refused element
-  gets, and `odr.onEditRefused`. The codes are `odr::ErrorCode` and the
-  renderer writes them into the page as `odr.errorCodes`, so the script holds
-  the wording and not the numbers;
-- the **log** — `getOperations()`, `undo()`, `redo()`, `committed()`, and the
-  `dirty` / `canUndo` / `canRedo` state `odr.onEditChange` reports;
-- the **formatting seam** — `format(style)` and `toggle(property)` hand a
-  host's button to the editor that has one, and `odr.onSelectionChange` is
-  where that editor reports what the selection shows;
-- the **keyboard classes** the page may take (decision 12).
-
-A format's editor is a second script that **attaches** one editor to the mode:
-
-```js
-odr.editing.attach({
-  name: "sheet",        // what the log's ops belong to
-  enable: function () {},   // the mode turned on
-  disable: function () {},  // the mode turned off
-  operations: function () {}, // the ops this editor would hand a save
-  undo: function () {}, // false where this editor has nothing to take back
-  redo: function () {},
-});
-```
-
-`frontend/sheet-editing.js` attaches the cell overlay; `frontend/document.js`
-attaches the text runs. Neither states a mode, a code table or a callback of its
-own.
-
-**Why:** the mode, the refusal channel and the dirty flag are what a *host*
-wires, and a host wires them once for every document it opens — it must not
-learn a second API because the file turned out to be a sheet. Before this, all
-of it lived in `sheet-editing.js`, so a `.docx` had no `odr.editing` at all and
-an app could not grey its edit button without knowing the format first.
-
-**Why an editor per format, rather than one editor over the element tree:** a
-cell is edited by an overlay and a paragraph by a caret in the flow. The two
-share the log and share nothing else. Decision 8 already said the DOM is a
-projection of a model; the projection is what differs per format.
-
-**The log is the editor's until an editor can invert its ops.** `getOperations()`
-concatenates what the attached editors report, and `undo()` asks each in turn.
-The sheet keeps an op with its inverse beside it, so it answers; the text
-skeleton kept a map of changed runs and answered `false`. Every editor answers
-now, so the concatenation is what a save reads and nothing else.
-
-### 10. The page states its editing frame at page level, on `<body>`
-
-Three attributes, on the body element of every document view that offers
-editing:
+### 10. The page states its editing frame on `<body>`
 
 | Attribute | Meaning |
 |---|---|
-| `data-odr-editable="true" \| "readOnly"` | whether `enable()` can succeed at all |
-| `data-odr-keyboard="navigation shortcuts"` | which key classes the scripts may take (decision 12) |
+| `data-odr-editable="true" \| "readOnly"` | whether `enable()` can succeed |
+| `data-odr-keyboard="navigation shortcuts"` | the key classes the scripts may take (decision 12) |
+| `data-odr-editing-scope` | the scope of decision 14 |
 
 Per element the page states only the exceptions: `data-odr-id` addresses an
-editable run, and `odr-locked` plus `data-odr-lock="<reason>"` marks what
+editable run, and `odr-locked` with `data-odr-lock="<reason>"` marks what
 refuses. Everything unmarked is editable.
 
-**Why page level:** the frame is a fact about the document, not about a table.
-`data-odr-editable` sat on the `.odr-sheet` element first, which answered the
-question for the one view that had an editor and for no other. A `.docx` view
-has no sheet to hang it on.
+Why: the frame is a fact about the document, not about one table. `"readOnly"`
+is explicit because an absent attribute cannot be told from a page written by
+an older library.
 
-**Why on `<body>` and not in `<head>`:** `document.body` is one lookup, the body
-writer already exists in `html/document.cpp`, and a `<meta>` block would need a
-name space of its own for two attributes. The cost is two attributes on one
-element per view.
+### 11. `HtmlConfig::editable` writes the scaffolding; JavaScript turns the mode on
 
-**Why `"readOnly"` rather than an absent attribute:** an absent attribute cannot
-be told from a page written by an older library. The page says which of the two
-it means.
+`editable` decides whether the render offers editing. True writes the
+per-element addresses, the page-level state and the editor script of the
+format. False writes none of them, because `data-odr-id` on every run is the
+expensive half and cannot be added later.
 
-### 11. `HtmlConfig::editable` writes the scaffolding; only JavaScript turns the mode on
-
-`editable` steers one thing: whether the render **offers** editing. True writes
-the per-element addressing, the page-level editable state and the editor script
-of the format at hand. False writes none of those.
-
-The mode itself always starts **off**. A host that opens a document to edit it
-calls `odr.editing.enable()` at the point it wires its callbacks, which is after
-the page has loaded either way.
-
-**`odr.editing` is on every document view either way**, because `editing.js` is
-written unconditionally. On a page with no scaffolding it answers
-`isEditable() === false`, `enable()` refuses with `readOnly`, and
-`getOperations()` hands out an empty envelope. So a host asks the page rather
-than tracking what it rendered with, and `odr.generateDiff()` — the name the
-apps and the wasm package already call — never goes missing.
-
-What the flag keeps out of a read-only render is what actually costs: the
-`data-odr-id` attribute on every editable run, the lock class on every locked
-cell, and the editor script (`document.js`, `sheet-editing.js`). The mode script
-itself is small and buys the host one API for every format.
-
-**Why not let it steer the default state of the mode:** it would be a second
-meaning on one flag, and it buys a host nothing. A host assigns
-`odr.onEditRefused` and friends on the load event (decision 7 in
-[`spreadsheet-editing.md`](spreadsheet-editing.md)), so `enable()` costs it one
-more line at a point it already has. An attribute that opens the view in edit
-mode would be the only way to skip that line, and nothing needs it.
-
-**Why not drop the flag and always write the scaffolding:** a read-only host
-would carry the editor's script bytes and an attribute on every editable run for
-nothing. `data-odr-id` on the runs of a text document is the expensive half,
-and it cannot be added later — the mode can only turn on if the addresses are
-already in the page.
-
-**Why the keyboard classes are stated either way:** they are not an editing
-fact. A read-only sheet has a pinned cell, and Escape clears it
-(`spreadsheet.js`), so `data-odr-keyboard` is written on every document view.
-
-**Why it may still change the markup, when decision 3 of
-[`spreadsheet-editing.md`](spreadsheet-editing.md) said it must not:** that
-decision is about *switching modes*, and it stands — a user toggling the edit
-button must not cost a second `translate`. Whether editing is offered at all is
-a host's decision, made once before it renders. The two look alike and are not:
-one is a gesture, the other is a build-time choice.
-
-**A document that cannot be edited still gets the scaffolding** where the config
-asks for it, and states `data-odr-editable="readOnly"`. That is what lets a host
-grey its button rather than discover the refusal after a tap.
+The mode starts off, and a host calls `odr.editing.enable()` where it wires
+its callbacks. `editing.js` is written either way, so `odr.editing` and
+`odr.generateDiff()` exist on a read-only page: `isEditable()` is false,
+`enable()` refuses with `readOnly`, and `getOperations()` hands out an empty
+envelope. A document that cannot be edited states
+`data-odr-editable="readOnly"`, so a host can grey its button.
+`data-odr-keyboard` is written on every document view, because a read-only
+sheet still takes Escape to clear a pinned cell.
 
 ### 12. A host keeps the keys it needs
-
-The scripts take three classes of key event, and two of them are configurable:
 
 | Class | Keys | Config |
 |---|---|---|
 | The open editor's | Escape, Enter, Tab while an editor holds focus | always taken |
-| Navigation | the arrows, Tab, Escape, and the keys that open the editor over the selection (Enter, F2, Delete, a character) | `HtmlConfig::keyboard_navigation` |
-| Shortcuts | the chords: ctrl/cmd+Z, ctrl/cmd+Y, ctrl/cmd+shift+Z | `HtmlConfig::keyboard_shortcuts` |
+| Navigation | the arrows, Tab, Escape, and the keys that open the editor over the selection | `HtmlConfig::keyboard_navigation` |
+| Shortcuts | ctrl/cmd+Z, ctrl/cmd+Y, ctrl/cmd+shift+Z | `HtmlConfig::keyboard_shortcuts` |
 
-Both default to **on**, and the page states what it may take in
-`data-odr-keyboard`.
+Both options default to on, and the page states them in `data-odr-keyboard`.
 
-**Why configurable at all:** the sheet's key handler is registered in the
-capture phase and calls `preventDefault`, so an arrow key never reaches the
-embedder. A host with its own bindings — an app whose arrow keys page through
-the document, a site whose iframe sits inside a keyboard-driven shell — loses
-them with no way to ask for them back.
-
-**Why the open editor's keys are not configurable:** the editor holds focus, and
-Escape and Enter are the only way out of it. A host that took them would leave
-the user in an overlay nothing closes.
-
-**Why two classes and not one:** they fail differently. Navigation collides with
-a host that moves a selection of its own; the chords collide with a host that
-owns undo for the whole app, which is the common case on desktop and the rarer
-one on mobile.
-
-**Why the page states it rather than the script asking the config:** the scripts
-are static files embedded at build time (`cmake/frontend_assets.cmake`), so a
-config value reaches them only through the markup. One attribute carries both
-classes as a token list, and a third class appends to it without a fourth
-attribute.
+Why: the key handlers call `preventDefault` in the capture phase, so a host
+with its own bindings loses them. Navigation collides with a host that moves a
+selection, the chords with a host that owns undo, so the two are separate. The
+editor's own keys are the only way out of it. The scripts are static files
+(`cmake/frontend_assets.cmake`), so a config value reaches them only through
+the markup.
 
 ### 13. One editable view, and every edit it cannot replay is refused
 
-`enable()` puts `contenteditable` on the **body**, not on each run. The editor
-then intercepts `beforeinput` and takes the edits it can express as operations:
+`enable()` puts `contenteditable` on the body. The editor intercepts
+`beforeinput` and takes only the edits it can express as operations:
 
 | The edit | What happens |
 |---|---|
-| text typed, replaced, deleted — inside one run, across runs, across paragraphs | taken |
-| Enter | taken: the paragraph splits where the caret sits |
-| Backspace at the start of a paragraph | taken: the paragraph merges into the one before it |
-| a paste of plain text, over as many lines as it holds | taken: each line after the first opens a paragraph |
-| a mark - ctrl/cmd+B, I, U, or `odr.editing.format` - under scope `document` | taken: a run covered in part is cut, and the covered runs are restyled |
-| a composition (CJK, autocorrect, dictation, an Android keyboard) | let through, and each change recorded after its `input` |
-| a soft line break (`insertLineBreak`) | refused, reason `newLine` - no operation carries one |
-| a range reaching over a picture | taken: the frame carries an address, so the picture goes with the text |
-| a range reaching over a text box or a table | refused, reason `range` - it holds text of its own, which the reader did not mean to lose |
-| anything else the browser offers (a list, a rule, a drop) | refused, reason `unsupportedEdit` |
-| an edit landing outside every run | refused, reason `range` |
+| text typed, replaced or deleted, inside one run or across runs and paragraphs | taken |
+| Enter | taken: the paragraph splits at the caret |
+| Backspace at the start of a paragraph | taken: the paragraph merges into the one before |
+| a paste of plain text | taken: each line after the first opens a paragraph |
+| a mark (ctrl/cmd+B, I, U, or `odr.editing.format`) under scope `document` | taken: a run covered in part is cut, and the covered runs are restyled |
+| a composition (CJK, autocorrect, dictation) | let through, and each change recorded after its `input` |
+| a soft line break (`insertLineBreak`) | refused, reason `newLine` |
+| a range over a picture | taken: the frame carries an address |
+| a range over a text box or a table | refused, reason `range` |
+| an edit outside every run | refused, reason `range` |
+| anything else (a list, a rule, a drop) | refused, reason `unsupportedEdit` |
 
-**Why the whole view rather than a run at a time:** `contenteditable` per run
-makes every run its own editing host, and a host is a wall. The caret cannot
-cross it, a selection cannot span two of them, and a reader who selects a
-sentence gets nothing — silently, with no way to say why. One host gives the
-document the caret, selection and word-double-click a reader expects, and the
-refusal channel (decision 9) is what says no where we cannot follow. That is
-also far less markup to write and one attribute to toggle rather than a walk
-over every run.
+Why one view: `contenteditable` per run makes every run a wall the caret
+cannot cross. Why `beforeinput`: it fires before the browser changes anything,
+states the `inputType` and the target ranges, and is cancelable. The whitelist
+is closed, because an edit we cannot replay costs the reader the document.
+The address is the whole guard: an edit is allowed because it lands inside a
+`x-s[data-odr-id]` run and reaches over nothing but runs. The editor owns the
+edit and its undo, and one `beforeinput` is one step.
 
-**Why `beforeinput` is the gate:** it fires before the browser changes anything,
-it says *what* the edit is (`inputType`), it says *where* (`getTargetRanges()`),
-and it is cancelable. `text.js` already edits the plain-text view this way.
-
-**The whitelist is closed, not open.** Only the input types the editor can
-express are taken; anything unrecognised is refused. Refusing something we could
-have allowed costs a reader one gesture; allowing something we cannot replay
-costs them their document.
-
-**The address is the whole guard.** No element is marked non-editable: an edit is
-allowed because it lands inside a `x-s[data-odr-id]` run and reaches over
-nothing but runs, so a picture, a table's furniture and the page box are all
-refused without a single attribute of their own. That is decision 10's rule —
-mark the exceptions, not the rest — applied to the caret instead of to a cell.
-
-**The editor owns the edit.** It cancels the `beforeinput` and splices the page
-itself, rather than letting the browser apply the change and reading the run
-back. See decision 6 of [`document-editing.md`](document-editing.md) for why that had
-to change.
-
-**Undo is the editor's**, because cancelling every edit leaves the browser's own
-stack empty. Each step holds the operations it puts on the wire and the two
-halves of taking it back, so `canUndo` and the chord now agree and a host's undo
-button is live. One `beforeinput` is one step.
-
-**Known holes, both narrow.** A scripted `document.execCommand` can bypass the
-gate, because Chrome does not fire a cancelable `beforeinput` for every command;
-trusted input, which is all a reader has, goes through it. And a composition
-cannot be cancelled at all, so the editor lets the browser write and records
-the run's text after each `input`; a run the browser took out of the page
-raises `unnameableEdit` rather than being dropped. A key that arrives while a
-composition is open is still the editor's. Android WebView's incomplete
-`beforeinput` (decision 8) is the reason that report exists, and the reason a
-delete whose range the browser did not state is extended by one character
-rather than refused; verify both on a device.
+Known holes: a scripted `document.execCommand` can bypass the gate, and a
+composition cannot be cancelled, so the editor records the run's text after
+each `input`. A run the browser took out of the page raises `unnameableEdit`.
 
 ### 14. The scope is host policy, and the page refuses past it
 
-`Document::is_editable` is an engine fact; what a host offers of it is the
-host's call. The core carries no policy, only one seam,
-`HtmlConfig::editing_scope`, and one signal back,
-`ErrorCode::edit_out_of_scope` (1010, `outOfScope`).
+`Document::is_editable` is an engine fact. What a host offers is
+`HtmlConfig::editing_scope`, written as `data-odr-editing-scope`, with
+`ErrorCode::edit_out_of_scope` (1010, `outOfScope`) as the signal back.
 
 | Scope | What the document editor takes |
 |---|---|
-| `document` (default) | everything in decision 13, and inline formatting once it lands |
+| `document` (default) | everything in decision 13 |
 | `paragraph` | an edit that starts and ends in one paragraph, and no formatting |
 
-Scope `paragraph` refuses Enter, Backspace at a paragraph start, a paste
-holding a line break, and a selection over two paragraphs. A paragraph is a
-unit the reader sees, where a run is not: Word splits runs by revision session,
-so a wall at a run would stand in the middle of uniform text.
+Why a paragraph and not a run: Word splits runs by revision session, so a wall
+at a run would stand in the middle of uniform text. The editor reads the
+attribute per edit, so a host widens the scope with no second render.
 
-**Why on the config:** the document did not change, the host's offer did. The
-scope joins the other host policy on `<body>` (decision 12) as
-`data-odr-editing-scope`.
+## Open work
 
-**Why the editor reads it per edit:** a host widens it by setting the
-attribute, with no second render.
-
-**Why its own code:** a host maps 1010 to what the wider scope offers.
-
-**Why replay does not check it:** the page cannot produce an operation past its
-scope, and a check in `Document::edit` would refuse the save.
-
-## What landed, and what did not
-
-The plan this document carried ran in five steps, and the first four are in.
-Each per-editor document holds what its own step decided.
-
-| Step | State |
-|---|---|
-| Stable ids across the html boundary — `data-odr-id`, `Document::element_by_id` | landed |
-| The op envelope and a replay that dispatches over it | landed |
-| The write side of the engines — odf, ooxml text, ooxml presentation | landed |
-| The browser editor, owning the edit and its own undo | landed |
-| **Inline formatting** — bold, italic, underline, strikethrough, highlight, colour, size | landed; [`document-editing.md`](document-editing.md#inline-formatting) |
-
-Formatting landed last, and decision 5 of
-[`document-editing.md`](document-editing.md) is why the schema took it without
-changing: a mark on part of a run is "split the run, restyle the middle one",
-and the split was already two operations. It added one op, `setTextStyle
-{id, style}`; decisions 8 to 16 there hold the rest.
-
-The **conformance corpus** decision 7 asks for is still not built. What stands
-in for it is that both sides pin the same operation shapes: the browser check
-pages assert the log they emit, and `document_edit_test.cpp` replays those same
-shapes in C++. That is weaker than a shared corpus, and it missed the envelope
-version drifting until a new check page caught it.
-
-## Open questions
-
-- ~~Can inserts stay append-only in every registry?~~ **Answered: yes**, for the
-  three that write. `create_element` appends and `unlink_child` leaves the slot
-  taken, so no live id is renumbered.
-- ~~Is a `data-odr-id` needed on structural elements as insertion anchors?~~
-  **Answered: on paragraphs**, which is what a split or an insert anchors on.
-  Nothing above them needed one.
-- ~~Highlight in ODF/OOXML: character background vs. a highlight-specific property —
-  which maps cleanly to a single toggle?~~ **Answered:** the character
-  background, carried as a colour. docx spells it as `w:highlight` for its
-  sixteen names and `w:shd` for any other; decision 14 of
-  [`document-editing.md`](document-editing.md).
+- The conformance corpus of decision 7.
 - `element_is_editable` answers one bool, and ooxml text answers `true` for
-  everything. A refusal needs a reason, because the reason is what a host puts
-  on a snackbar (decision 7 in
-  [`spreadsheet-editing.md`](spreadsheet-editing.md)). Does the adapter hook
-  grow into `element_edit_lock(id) -> reason`, or does the renderer keep
-  deciding the reason from the element it is over?
-- ~~The plain-text view is outside the mode.~~ **Answered: it attaches.**
-  See [`txt-editing.md`](txt-editing.md).
-- The **pdf annotator** is now the one editor that answers to nobody:
-  `odr.annotation` is its own API and `PdfFile::annotate` its own write path.
-  It is a different gesture from editing text, so whether it should share the
-  mode is a real question rather than an oversight
-  ([`txt-editing.md`](txt-editing.md) carries it too). It reports on a
-  callback of its own, `odr.onAnnotationChange`, and a pdf page does not
-  carry `editing.js`.
+  everything. A refusal needs a reason for the host. Whether the adapter hook
+  grows into `element_edit_lock(id) -> reason` is undecided.
+- The pdf annotator is the one editor outside the mode: `odr.annotation` is
+  its own API, `PdfFile::annotate` its own write path, and it reports on
+  `odr.onAnnotationChange`. A pdf page does not carry `editing.js`.

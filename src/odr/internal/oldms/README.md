@@ -6,10 +6,7 @@
 - [[MS-DOC]: Word (.doc) Binary File Format](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-doc)
 - [[MS-PPT]: PowerPoint (.ppt) Binary File Format](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt)
 - [[MS-XLS]: Excel Binary File Format (.xls) Structure](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls)
-- [[MS-XLSB]: Excel (.xlsb) Binary File Format](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xlsb)
+- [[MS-ODRAW]: Office Drawing Binary File Format](https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-odraw)
 - [[MS-CFB]: Compound File Binary File Format](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb)
 - [[MS-OFFCRYPTO]: Office Document Cryptography Structure](https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-offcrypto)
-
-### Related work
-
 - https://github.com/microsoft/compoundfilereader

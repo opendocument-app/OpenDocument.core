@@ -1,179 +1,139 @@
-# `.ppt` (PowerPoint) support — design & open work
+# `.ppt` (PowerPoint) support: design & open work
 
-The **why** and the roadmap; what is concretely done lives in the code. Shared
-`oldms/` conventions are in [`../AGENTS.md`](../AGENTS.md).
+Shared `oldms/` conventions are in [`../AGENTS.md`](../AGENTS.md).
 
-**Scope.** Extract the **visible text of each slide, positioned in its text
-boxes**, plus **direct character formatting** (font, size, bold, italic,
-underline, color) as styled spans, plus **pictures** (JPEG/PNG BLIPs
-referenced by slide shapes), through the abstract model so the generic HTML
-renderer lays each slide out as positioned frames. No paragraph styles or
-master-inherited formatting/pictures, master/notes pages, charts, tables, or
-animations.
+**Scope.** The visible text of each slide, positioned in its text boxes, plus
+direct character formatting (font, size, bold, italic, underline, color) as
+styled spans, plus JPEG and PNG pictures referenced by slide shapes. The
+generic HTML renderer lays each slide out as positioned frames. No paragraph
+styles, no master-inherited formatting or pictures, no master or notes pages,
+charts, tables or animations.
 
-**Specs.** `[MS-PPT]` (the PowerPoint stream) + `[MS-ODRAW]` (the Office Art /
-Escher drawing records) + `[MS-CFB]` container. Section numbers cited inline in
-code and in the drawing-tree map below.
+**Specs.** `[MS-PPT]` (the PowerPoint stream), `[MS-ODRAW]` (the Office Art
+drawing records) and the `[MS-CFB]` container.
 
-## Module layout (mirrors `../text`)
+## Module layout
 
 | File (`oldms/presentation/`) | Role |
 |---|---|
-| `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`) + `static_assert` sizes + `RecordType` / `SlideListInstance` enums |
-| `ppt_io.{hpp,cpp}` | `read(...)` helpers over `std::istream` (record headers, text atoms, anchors) |
-| `ppt_style.{hpp,cpp}` | Character formatting: `parse_style_text_prop_atom` (StyleTextPropAtom → `TextCFRun`s), `resolve_style` (`TextCFRun` + `StyleContext` → style index), the 18pt default, and the `StyleRegistry` owning the resolved `TextStyle`s + font names (mirrors `doc_style`/`xls_style`) |
-| `ppt_parser.{hpp,cpp}` | `parse_tree(registry, style_registry, files)` → walks the stream, builds the element tree, fills the `StyleRegistry` |
-| `ppt_element_registry.{hpp,cpp}` | Flat element store + text & frame side-payloads + per-element style-index map |
-| `ppt_document.{hpp,cpp}` | `internal::Document` subclass + the `ElementAdapter` |
+| `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`), the `RecordType`, `BlipInstance` and `SlideListInstance` enums |
+| `ppt_io.{hpp,cpp}` | `read_*` helpers over `std::istream`: record headers, atoms, anchors, text |
+| `ppt_style.{hpp,cpp}` | `parse_style_text_prop_atom` (StyleTextPropAtom to `TextCFRun`s), `resolve_style` (`TextCFRun` plus `StyleContext` to a style index), the 18pt default, the `StyleRegistry` that owns the resolved `TextStyle`s and font names |
+| `ppt_parser.{hpp,cpp}` | `parse_tree(registry, style_registry, files)`: walks the stream, builds the tree, fills the `StyleRegistry` |
+| `ppt_element_registry.{hpp,cpp}` | The element store plus text and frame payloads and a per-element style index |
+| `ppt_document.{hpp,cpp}` | `internal::Document` subclass and the `ElementAdapter` |
 
-Element tree shape: `root → slide → frame (one per text box) → paragraph (split
-on 0x0D) → span (one per formatting run) → text`, with `line_break` (0x0B)
+The tree is `root → slide → frame (one per text box) → paragraph (split on
+0x0D) → span (one per formatting run) → text`, with `line_break` (0x0B)
 elements between spans.
 
 ## Design decisions
 
-**Slide resolution is persist-directory based — the single spec path.** The
-persist directory gives correct slide **ordering** for incrementally-saved files
-(stream order ≠ presentation order) and picks the **live** `DocumentContainer`
-rather than the first in the stream. The read follows the `[MS-PPT]` algorithm:
-`CurrentUserAtom` (`/Current User`) → walk the `UserEditAtom` chain newest→oldest
-building the persist directory (newest offset per id wins) → resolve the live
-`DocumentContainer` via `docPersistIdRef` → walk the slide list's
-`SlidePersistAtom`s in presentation order.
+**Slides resolve through the persist directory, the one spec path.** The
+persist directory gives the slide order for incrementally saved files (stream
+order is not presentation order) and the live `DocumentContainer`. The read:
+`CurrentUserAtom` (`/Current User`), then the `UserEditAtom` chain from newest
+to oldest (the newest offset per id wins), then the live `DocumentContainer`
+via `docPersistIdRef`, then the slide list's `SlidePersistAtom`s in
+presentation order. There is no scan fallback: both streams are required
+(§2.1.1, §2.1.2), every conformant file has a `UserEditAtom` and a
+`PersistDirectoryAtom`, and a scan can serve a stale container or the wrong
+order. `collect_slides` returns empty only for the one optional structure, a
+missing slide list (§2.4.1).
 
-**No scan/heuristic fallback — spec-justified.** Both `/Current User` (§2.1.1) and
-`/PowerPoint Document` (§2.1.2) are *required* streams, every conformant file has
-a `UserEditAtom` + `PersistDirectoryAtom`, and the reading algorithm has no
-alternative branch. An earlier stream-scan fallback (first `DocumentContainer`,
-every `SlideContainer` in stream order, plus an outline-vs-container "more text
-wins" heuristic) was **removed** — unreachable for conformant files and able to
-silently serve *wrong* results (stale `DocumentContainer`, wrong order).
-`collect_slides` returns empty only for the one *optional* structure: no
-presentation slide list (§2.4.1). Every mandatory structure that can't be resolved
-**throws**.
+**Two places hold slide text.** The outline (`SlideListWithTextContainer`,
+§2.4.14.3) is optional and carries placeholder text only. The
+`SlideContainer` (§2.5.1) is authoritative: on-slide text lives in the
+drawing's `ClientTextbox` records. LibreOffice leaves the outline empty.
+PowerPoint placeholders often carry an `OutlineTextRefAtom` (§2.9.78)
+instead of inline text, which indexes the i-th `TextHeaderAtom` block of the
+outline. The parser reads both and resolves the reference. Inline
+`ClientTextbox` text wins.
 
-**Two places hold slide text — and they are not equivalent.**
-- The **outline** (`SlideListWithTextContainer`, §2.4.14.3) is **optional**
-  (§2.4.1). When present it carries, per slide, the **placeholder** text only —
-  free text boxes are *never* in it.
-- The **`SlideContainer`** (§2.5.1) is authoritative: on-slide text lives in the
-  drawing's `ClientTextbox` records.
+**`RT_SlideListWithText` recInstance selects the list.** `0x000` is slides,
+`0x001` masters, `0x002` notes (`SlideListInstance`).
 
-LibreOffice-exported `.ppt` leaves the outline **empty**, so there we read from the
-`SlideContainer`. But PowerPoint-authored placeholders commonly carry *no* inline
-text and instead an `OutlineTextRefAtom` (§2.9.78) pointing by index at the *i*-th
-`TextHeaderAtom` block in the `SlideListWithTextContainer`. So we read the outline
-too and resolve `OutlineTextRefAtom` boxes against it; on-slide `ClientTextbox`
-text still wins when present.
+**Sequential reading, no `tellg`.** The CFB-backed stream's `tellg()` is not
+reliable. The caller `seekg`s to known offsets, and child records are walked
+forward with a `ChildCursor` that tracks the bytes left in the container. A
+record that overruns its container throws.
 
-**`RT_SlideListWithText` recInstance disambiguates three lists** that share
-`recType` 0x0FF0: `0x000` = slides (`SlideListWithTextContainer`), `0x001` =
-masters, `0x002` = notes. An early draft had slides/master swapped (read the
-*master* list); fixed in `ppt_structs.hpp` (`SlideListInstance`).
+**Fail early.** Throw on: a missing required stream; a wrong or truncated
+record type (`read_header`); a record that overruns its container; a missing
+mandatory child (`DrawingContainer`, `OfficeArtDgContainer`,
+`OfficeArtSpgrContainer`, via `require_child`); an `OfficeArtClientAnchor`
+whose `recLen` is neither 8 nor 16; a looping or empty `UserEditAtom` chain;
+an unresolved `docPersistIdRef`; a slide `persistIdRef` not in the directory.
+Pass through: an absent slide list, a shape with no anchor (unpositioned
+frame), nested groups and non-`Sp` records in a group, any unrecognised
+child.
 
-**Sequential reading, no `tellg`.** The CFB-backed stream's `tellg()` returns
-bogus values. The parser never depends on it: the caller `seekg`s to known offsets
-(persist directory / parent record), and child records are walked **forward** with
-a `ChildCursor` (`read` header → body → recurse/ignore) tracking the bytes left in
-the container. A record that overruns its container throws, keeping nested
-containers in sync or failing loudly.
-
-**Fail early on malformed input** (matches the sibling `.doc` parser). **Throw**
-on: a missing required stream; a wrong/truncated record type (`read_header`); a
-record overrunning its container (`ChildCursor`); a missing **mandatory** child
-(the `DrawingContainer`/`OfficeArtDgContainer`/`OfficeArtSpgrContainer`,
-`require_child`); an `OfficeArtClientAnchor` whose `recLen` is neither 8 nor 16;
-a looping/empty `UserEditAtom` chain, an unresolved `docPersistIdRef`, or a slide
-`persistIdRef` not in the directory. **Pass through** (no throw) for the
-unmodelled/optional: an absent slide list (0 slides), a shape with no anchor
-(unpositioned frame), nested groups and non-`Sp` records in a group, any
-unrecognised child.
-
-**First cut: top-level shapes only.** Direct children of the root
+**Top-level shapes only.** The parser reads the direct children of the root
 `OfficeArtSpgrContainer` plus the drawing's optional non-grouped shape
-([MS-ODRAW] 2.2.13), whose anchors are already in the slide's master-unit
-system (master units = 1/576 inch → inches via `/576`). Nested-group
-transforms and master-placeholder geometry inheritance are deferred (open
-work §1). Shapes with neither text nor a picture are dropped, so the group
-shape disappears.
+([MS-ODRAW] 2.2.13). Their anchors are in master units (1/576 inch). Shapes
+with neither text nor a picture are dropped, so the group shape itself
+disappears.
 
-**Direct character formatting only, resolved to styled spans.** Each text atom
-is kept raw (undecoded) until the **`StyleTextPropAtom`** (0x0FA1, §2.9.44)
-that most closely follows it; its character runs (`TextCFRun`, counts in
-UTF-16 units covering the text plus one implicit final paragraph mark) split
-the text into spans. Each span and paragraph stores an index into the
-document's `StyleRegistry`, which owns the resolved `TextStyle`s and the font
-names — index 0 is the default style (paragraphs keep their first run's style
-for empty-paragraph height). The non-obvious bits:
-- The **paragraph-level runs precede the character runs** in the atom and are
-  mask-skipped field by field (`TextPFException`, incl. the variable
-  `tabStops`).
-- **Font names** come from the `FontCollection` (0x07D5, inside
-  `RT_Environment` 0x03F2), indexed by each `FontEntityAtom`'s `recInstance`;
-  the `StyleRegistry` owns the strings (`TextStyle::font_name` is a
-  `const char *` pointing into them), so they are read before any style is
+**Direct character formatting, resolved to styled spans.** Each text atom
+stays raw until the `StyleTextPropAtom` (0x0FA1, §2.9.44) that follows it.
+Its character runs (`TextCFRun`, counted in UTF-16 units and covering one
+implicit final paragraph mark) split the text into spans. Each span and
+paragraph stores an index into the `StyleRegistry`. Index 0 is the default
+style, 18pt, which stands in for the unread master text styles.
+
+- The paragraph-level runs precede the character runs in the atom. The
+  parser skips them field by field (`TextPFException`, including the
+  variable `tabStops`).
+- Font names come from the `FontCollection` (0x07D5, inside `RT_Environment`
+  0x03F2), indexed by each `FontEntityAtom`'s `recInstance`. The
+  `StyleRegistry` owns the strings, so it reads them before any style is
   resolved.
-- **Colors** are `ColorIndexStruct`s: only explicit sRGB values (index `0xFE`)
-  are used; **scheme indexes are left unset** (they need the slide's color
-  scheme — open work).
-- Text without a `StyleTextPropAtom`, or characters past the last run, get a
-  **default style of 18pt** — an approximation of the unread master text
-  styles (`TxMasterStyleAtom`, open work). This replaces the old flat `11pt`
-  placeholder.
+- Colors are `ColorIndexStruct`s. Only explicit sRGB values (index `0xFE`)
+  are used. Scheme indexes stay unset.
 
-**Pictures resolve through the BLIP store.** A shape references its picture
-via the `OfficeArtFOPT` `pib` property (real picture shapes) or `fillBlip`
-(picture fills — how LibreOffice-exported `.ppt` places pictures), a one-based
-index into the `OfficeArtBStoreContainer` of the document's drawing group.
-Each `OfficeArtFBSE` locates the BLIP in the `/Pictures` (delay) stream at
-`foDelay` (or embeds it); **JPEG and PNG** BLIPs become an `image` element
-under the shape's frame, served to the renderer as an in-memory `odr::File`.
-WMF/EMF/PICT/DIB/TIFF BLIPs are skipped (open work). A shape flagged
-`fBackground` (`OfficeArtFSP`) gets a full-slide anchor when it has none and
-is moved before the slide's other shapes so it renders underneath.
+**Pictures resolve through the BLIP store.** A shape names its picture with
+the `OfficeArtFOPT` property `pib` (picture shape) or `fillBlip` (picture
+fill, which is how LibreOffice places pictures). `pib` wins. The value is a
+one-based index into the `OfficeArtBStoreContainer` of the document's drawing
+group. Each `OfficeArtFBSE` locates the BLIP in the `/Pictures` stream at
+`foDelay`, or embeds it. A JPEG or PNG BLIP becomes an `image` element under
+the shape's frame, served as an in-memory `odr::File`. WMF, EMF, PICT, DIB
+and TIFF BLIPs are skipped. A shape flagged `fBackground` (`OfficeArtFSP`)
+gets a full-slide anchor when it has none and moves before the slide's other
+shapes, so it renders underneath.
 
-**Slide size** comes from the `DocumentAtom` (master units), with 10"×7.5" as
-fallback; `slide_name` returns "Slide N" in presentation order.
-`Document::is_editable()` → `false`; `save` throws.
+**Slide size** comes from the `DocumentAtom` (master units), with 10in by
+7.5in as the fallback. `slide_name` returns "Slide N" in presentation order.
+`Document::is_editable()` is `false`. `save` throws.
 
-**Endianness.** Host byte order / LSB-first bit-fields assumed; shared `oldms/`
-assumption, see [`../AGENTS.md`](../AGENTS.md).
-
-### Text decoding
-
-`TextCharsAtom` = UTF-16 (`recLen/2` code units); `TextBytesAtom` = 1 byte/char
-(0x00–0xFF). In-text controls: `0x0D` = paragraph break, `0x0B` = manual line
-break (split like `doc_parser`); `0x09` tab kept; other controls dropped
-(`clean_text`).
+**Text decoding.** `TextCharsAtom` is UTF-16 (`recLen/2` code units).
+`TextBytesAtom` is one byte per character. `0x0D` is a paragraph break,
+`0x0B` a manual line break, `0x09` is kept, other controls are dropped.
 
 ## Tests
 
-- `ppt_parse_style_text_prop_atom` — inline bytes: PF-run skipping (incl.
-  mask-dependent fields), CFStyle bold/italic, fontRef/size, explicit sRGB
-  color.
-- `ppt_empty` (`empty.ppt`): 1 slide.
-- `ppt_style_various` (`style-various-1.ppt`): 8 slides, positioned frames,
-  per-box text, style assertions (44pt Arial black title; underlined blue
-  32pt link text), and the slide-6 background picture (leading full-slide
-  frame with the PNG bytes from `/Pictures`).
+- `OldMs.ppt_parse_style_text_prop_atom`: PF-run skipping, CFStyle bold and
+  italic, fontRef and size, explicit sRGB color.
+- `OldMs.ppt_empty` (`empty.ppt`): one slide.
+- `OldMs.ppt_style_various` (`style-various-1.ppt`): 8 slides, positioned
+  frames, per-box text, style assertions, the slide-6 background picture.
+- `OldMsEncryption.*`: the header token.
+- `html_output_test` compares the `.ppt` fixtures against the reference output.
 
-Fixture-commit / reference-HTML wiring / `OutlineTextRefAtom` fixture are open
-(§2 below).
+No fixture exercises the `OutlineTextRefAtom` path.
 
 ## Drawing-tree reference
 
-Every record starts with an 8-byte `RecordHeader` (`recVer:4`, `recInstance:12`,
-`recType:u16`, `recLen:u32`). `recVer == 0xF` marks a **container** (body is a
-sequence of records); otherwise an **atom** with `recLen` payload bytes.
+Every record starts with an 8-byte `RecordHeader` (`recVer:4`,
+`recInstance:12`, `recType:u16`, `recLen:u32`). `recVer == 0xF` marks a
+container. Otherwise it is an atom with `recLen` payload bytes.
 
 Key records: `CurrentUserAtom` 0x0FF6, `UserEditAtom` 0x0FF5,
-`PersistDirectoryAtom` 0x1772, `DocumentContainer` 0x03E8, `SlideListWithText`
-0x0FF0, `SlidePersistAtom` 0x03F3, `SlideContainer` 0x03EE, `MainMaster` 0x03F8
-(skipped), `Notes` 0x03F0 (skipped), `TextHeaderAtom` 0x0F9F, `TextCharsAtom`
-0x0FA0, `TextBytesAtom` 0x0FA8.
-
-Inside each `SlideContainer` is the Office Art (Escher) drawing that holds the
-text boxes:
+`PersistDirectoryAtom` 0x1772, `DocumentContainer` 0x03E8,
+`SlideListWithText` 0x0FF0, `SlidePersistAtom` 0x03F3, `SlideContainer`
+0x03EE, `MainMaster` 0x03F8 (skipped), `Notes` 0x03F0 (skipped),
+`TextHeaderAtom` 0x0F9F, `TextCharsAtom` 0x0FA0, `TextBytesAtom` 0x0FA8,
+`OutlineTextRefAtom` 0x0F9E.
 
 ```
 SlideContainer (0x03EE)                            [MS-PPT] 2.5.1
@@ -192,63 +152,44 @@ SlideContainer (0x03EE)                            [MS-PPT] 2.5.1
          └─ OfficeArtSpContainer (0xF004)          shape #2 …
 ```
 
-- `OfficeArt*` records are `[MS-ODRAW]`; the *client* records (`0xF00D` textbox,
-  `0xF010` anchor, `0xF011` data) and `DrawingContainer` are `[MS-PPT]`
-  (`[MS-ODRAW]` §2.2.14 defers `clientAnchor`/`clientData`/`clientTextbox` to the
-  host app). The parser matches by recType, so child order only documents what to
-  expect.
-- **Anchor body** (`OfficeArtClientAnchor`, atom), field order **top, left, right,
-  bottom**: `recLen == 8` → `SmallRectStruct` (§2.12.8, four signed 2-byte);
-  `recLen == 16` → `RectStruct` (§2.12.7, four signed 4-byte). `width = right −
-  left`, `height = bottom − top`; master units → inches = `/576`.
-- The first child `OfficeArtSpContainer` of the root spgr is the **group shape**
-  itself (holds `OfficeArtFSPGR`, no `clientTextbox`) — dropped implicitly because
-  it has no text.
-
----
+- `OfficeArt*` records are `[MS-ODRAW]`. The client records (`0xF00D`,
+  `0xF010`, `0xF011`) and `DrawingContainer` are `[MS-PPT]`. The parser
+  matches by recType, so the child order above is only what to expect.
+- Anchor body (`OfficeArtClientAnchor`), field order top, left, right, bottom:
+  `recLen == 8` is `SmallRectStruct` (§2.12.8, four signed 2-byte values),
+  `recLen == 16` is `RectStruct` (§2.12.7, four signed 4-byte values).
+  `width = right − left`, `height = bottom − top`, master units to inches
+  is `/576`.
+- The first `OfficeArtSpContainer` of the root group is the group shape
+  itself (it holds `OfficeArtFSPGR` and no `clientTextbox`).
 
 # Open work
 
 ## 1. Frame refinements
 
-The first cut reads only top-level shapes. Each refinement below raises fidelity
-and is independent:
-
-- **1.1 Nested groups.** A shape in a sub-group has its anchor in *that group's*
-  coordinate system (the group's `OfficeArtFSPGR` 0xF009: `xLeft, yTop, xRight,
-  yBottom`), not slide units. Recurse into nested `OfficeArtSpgrContainer` (0xF003)
-  and map each descendant's anchor from `[xLeft..xRight]×[yTop..yBottom]` onto the
-  group shape's own anchor rect in the parent, composing transforms down the
-  nesting, before the `/576` conversion.
-- **1.3 Optional / inherited anchor.** A shape without an `OfficeArtClientAnchor`
-  currently yields a frame with no position. PowerPoint placeholders often omit
-  it and inherit geometry from the matching placeholder on the **master slide**
-  (resolve via `OfficeArtClientData.placeholderAtom`).
-- **1.4 Origin / sign sanity check.** Field order and units are spec-confirmed and
-  verified on `slides.ppt`; still worth confirming origin (top-left) and
-  non-negative values on a second, independently produced real file.
+- Nested groups. A shape in a sub-group has its anchor in that group's
+  coordinate system (`OfficeArtFSPGR` 0xF009: `xLeft`, `yTop`, `xRight`,
+  `yBottom`), not in slide units. Recurse into nested
+  `OfficeArtSpgrContainer`s and map each anchor onto the group shape's own
+  anchor rect in the parent, composing transforms down the nesting, before
+  the `/576` conversion.
+- Inherited anchor. A shape without an `OfficeArtClientAnchor` yields a frame
+  with no position. PowerPoint placeholders often inherit geometry from the
+  matching placeholder on the master slide (via
+  `OfficeArtClientData.placeholderAtom`).
 
 ## 2. Smaller shortcomings
 
-- **2.0 Picture formats and locations.** WMF/EMF/PICT/DIB/TIFF BLIPs are
-  skipped (no converter; DIB would need a synthesized BMP header). Pictures on
-  **master slides** are not rendered (masters are skipped entirely) — e.g.
-  LibreOffice photo decks put each photo on a per-slide master.
-- **2.2 Reference-output HTML not wired.** `html_output_test` has no `ppt` case;
-  add reference HTML under `test/data/reference-output/…/output/ppt/` (needs the
-  `OpenDocument.test.output` submodule).
-- **2.3 Fixture not committed.** `slides.ppt` exists only in the local
-  `odr-public` working tree; must be committed/pushed and the submodule pointer
-  bumped, or CI can't see it.
-- **2.4 No `OutlineTextRefAtom` fixture.** The resolution path is implemented but
-  unexercised — all current `.ppt` files are LibreOffice-authored (empty outline).
-  A PowerPoint-authored file using the outline indirection is needed. Pairs with
-  §2.3.
-- **2.5a Master-inherited formatting.** Placeholder text without direct
-  formatting falls back to the 18pt default instead of the master's
-  `TxMasterStyleAtom` styles; scheme-indexed colors (`ColorIndexStruct`
-  index < 0xFE) are dropped for the same reason. Read the main master's text
-  styles + color scheme to resolve both.
-- **2.5 Auto-field metacharacters dropped.** Slide-number/date/header/footer
-  placeholders (`RT_*MetaCharAtom`) are ignored. Low priority.
-- **2.7 Endianness** — shared `oldms/` shortcoming; see [`../AGENTS.md`](../AGENTS.md).
+- Picture formats and locations. WMF, EMF, PICT, DIB and TIFF BLIPs are
+  skipped (DIB needs a synthesized BMP header). Pictures on master slides are
+  not rendered, and LibreOffice photo decks put each photo on a per-slide
+  master.
+- No `OutlineTextRefAtom` fixture. A PowerPoint-authored file that uses the
+  outline indirection is needed.
+- Master-inherited formatting. Placeholder text without direct formatting
+  falls back to the 18pt default instead of the master's
+  `TxMasterStyleAtom` styles, and scheme-indexed colors (index below `0xFE`)
+  are dropped. Read the main master's text styles and color scheme.
+- Auto-field metacharacters (`RT_*MetaCharAtom`: slide number, date, header,
+  footer) are ignored.
+- Endianness. See [`../AGENTS.md`](../AGENTS.md).
