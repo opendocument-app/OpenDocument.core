@@ -259,6 +259,29 @@ TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
   EXPECT_EQ(count(html, R"(<span class="sg f0 w)"), 1u);
 }
 
+// A word break with no gap in the PDF still gets a spacer of a stated width:
+// without one the spacer takes the space advance of the fallback font, and the
+// selection drifts off the glyphs by that much at every word.
+TEST(PdfFile, gapless_word_break_spacer_has_a_width) {
+  const std::string html = render_html(
+      text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj ( world) Tj ET"),
+      PdfTextMode::dual_layer);
+
+  EXPECT_EQ(count(html, R"(<span class="sg f0 w)"), 1u);
+  EXPECT_FALSE(contains(html, R"(<span class="sg f0">)"));
+}
+
+// A run that starts inside the previous one pulls the selection back by the
+// overlap, rather than being pushed to the previous run's end.
+TEST(PdfFile, overlapping_run_pulls_the_selection_back) {
+  const std::string html = render_html(
+      text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj 24 0 Td ( world) Tj ET"),
+      PdfTextMode::dual_layer);
+
+  EXPECT_TRUE(contains(html, R"(<span class="sr f0 ml)"));
+  EXPECT_TRUE(contains(html, "margin-left:-"));
+}
+
 // A standalone page view (`page{index}.html`) resolves internal links to the
 // target's page view file instead of a `#pN` anchor; the page div keeps its
 // document-global `id`.

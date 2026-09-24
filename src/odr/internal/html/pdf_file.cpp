@@ -1691,7 +1691,8 @@ public:
           double sel_extent = unit_extent * sel_local;
           double sel_font_pt = unit_font_pt * sel_local;
           double width_pt = round2(sel_extent);
-          const double gap_pt = std::max(0.0, sel_ox - sel_prev_end);
+          // Signed: a run that starts inside the previous one pulls back.
+          const double gap_pt = sel_ox - sel_prev_end;
 
           bool new_sel_line = !sel_frame_kept;
           bool sel_gap = false;
@@ -1766,22 +1767,23 @@ public:
             if (!sel_prev_ends_space && !runs.empty()) {
               std::string gap_cls = "sg";
               add_class(gap_cls, "f", pt_decl("font-size", sel_font_size_pt));
-              const double rounded_gap = round2(sel_pending_space);
-              if (rounded_gap > 0) {
-                add_class(gap_cls, "w", pt_decl("width", rounded_gap));
-                // Only a gap that still reads as a word space: a column of
-                // white painted solid is worse than the sliver.
-                if (rounded_gap <= sel_font_size_pt) {
-                  gap_cls += " sw";
-                }
+              // Always a width: an unsized spacer takes the space advance of
+              // the fallback font, and that adds up at every word break.
+              const double rounded_gap =
+                  std::max(0.0, round2(sel_pending_space));
+              add_class(gap_cls, "w", pt_decl("width", rounded_gap));
+              // Only a gap that still reads as a word space: a column of
+              // white painted solid is worse than the sliver.
+              if (rounded_gap > 0 && rounded_gap <= sel_font_size_pt) {
+                gap_cls += " sw";
               }
               runs.push_back(SelRunOut{std::move(gap_cls), " "});
-              sel_pending_space = 0;
+              sel_pending_space -= rounded_gap;
             }
             if (!core.empty()) {
               std::string cls = "sr";
               add_class(cls, "f", pt_decl("font-size", sel_font_size_pt));
-              if (const double owed = round2(sel_pending_space); owed > 0) {
+              if (const double owed = round2(sel_pending_space); owed != 0) {
                 add_class(cls, "ml", pt_decl("margin-left", owed));
               }
               sel_pending_space = 0;
