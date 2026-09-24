@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.3.2 - 2026-09-24
+
 - **Fix**: a markdown document in the paged view put its text on the edge of
   the page. The page now has a margin of `2em` on each side.
 
