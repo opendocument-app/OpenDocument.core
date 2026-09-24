@@ -50,10 +50,14 @@ public:
       : AdapterBase(registry), m_style_registry(&style_registry) {}
 
   /// Markdown is flow content: it has no page, and the viewport is the width.
+  /// The margin is ours, so that a paged view does not put the text on the
+  /// edge of the page.
   [[nodiscard]] PageLayout
   text_root_page_layout(const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {};
+    PageLayout result;
+    result.margin = DirectionalStyle<Measure>(Measure(2, DynamicUnit("em")));
+    return result;
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       const ElementIdentifier element_id) const override {

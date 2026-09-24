@@ -67,7 +67,7 @@ Two things the C boundary imposes:
 
 | md4c | model |
 |---|---|
-| `MD_BLOCK_DOC` | `root`, default (empty) `PageLayout` — markdown is flow content, not paged |
+| `MD_BLOCK_DOC` | `root`; its `PageLayout` has no size, because markdown is flow content, and only a `2em` margin, so that a paged view does not put the text on the edge of the page |
 | `MD_BLOCK_H` | `paragraph` + heading `TextStyle`, plus a bold `span` (see below) |
 | `MD_BLOCK_P` | `paragraph` |
 | `MD_BLOCK_UL` / `OL` | `list`; `MD_BLOCK_LI` → `list_item` carrying its marker |

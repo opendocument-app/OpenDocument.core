@@ -156,6 +156,19 @@ TEST(MarkdownFile, a_decodable_encoding_is_converted_before_parsing) {
   EXPECT_EQ(text_of(root(md)), "ärger");
 }
 
+TEST(MarkdownDocument, the_page_has_a_margin_but_no_size) {
+  const Document md = document("one\n");
+  const PageLayout page_layout = root(md).as_text_root().page_layout();
+
+  EXPECT_FALSE(page_layout.width.has_value());
+  EXPECT_FALSE(page_layout.height.has_value());
+  ASSERT_TRUE(page_layout.margin.left.has_value());
+  EXPECT_EQ(page_layout.margin.left->to_string(), "2em");
+  EXPECT_EQ(page_layout.margin.top, page_layout.margin.left);
+  EXPECT_EQ(page_layout.margin.right, page_layout.margin.left);
+  EXPECT_EQ(page_layout.margin.bottom, page_layout.margin.left);
+}
+
 TEST(MarkdownDocument, a_paragraph_is_a_paragraph) {
   const Document md = document("one\ntwo\n\nthree\n");
   const std::vector<Element> blocks = children(root(md));
