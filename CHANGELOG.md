@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The sheet editor formats cells. A selection is a rectangle, spanned by a
+  shift click, a shift arrow, a mouse drag or a header click, and
+  `odr.editing.format` and `toggle` take `fill` and `align` beside the text
+  keys. `onSelectionChange` reports what the selected cells agree on. One
+  gesture is one undo step, and the log holds one `setCellStyle` op per cell.
+
 - A cell of an ods or xlsx file takes a style: `Sheet::set_cell_style` and
   the `setCellStyle` op write the fill, the horizontal alignment, and bold,
   italic, underline, strikethrough, colour and size.

@@ -445,6 +445,7 @@ TEST(html, a_cell_fill_turns_over_in_the_dark) {
   const std::string dark = render(path, config);
   EXPECT_NE(dark.find("background-color:#ffff00;--odr-dark-fill:#"),
             std::string::npos);
+  EXPECT_NE(dark.find(";--odr-fill:#ffff00;"), std::string::npos);
   EXPECT_NE(
       dark.find(
           "td{background-color:var(--odr-dark-fill,transparent)!important}"),

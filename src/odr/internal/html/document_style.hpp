@@ -52,7 +52,8 @@ std::string
 translate_table_column_style(const TableColumnStyle &table_column_style);
 std::string translate_table_row_style(const TableRowStyle &table_row_style);
 /// With @p dark_fill a fill also carries `--odr-dark-fill`, the color
-/// `document-dark.css` paints the cell with.
+/// `document-dark.css` paints the cell with, and `--odr-fill`, the one it
+/// hides.
 std::string translate_table_cell_style(const TableCellStyle &table_cell_style,
                                        bool dark_fill);
 std::string translate_drawing_style(const GraphicStyle &graphic_style);

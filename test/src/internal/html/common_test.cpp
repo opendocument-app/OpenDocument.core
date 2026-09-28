@@ -443,3 +443,15 @@ TEST(html_common, a_global_locale_does_not_reach_the_css) {
 
   EXPECT_EQ(ihtml::color(translucent), "rgba(0,0,0,0.501961)");
 }
+
+// `sheet-editing.js` computes the same colours; its check page pins these.
+TEST(html_common, a_dark_fill_is_what_the_sheet_editor_computes) {
+  const auto dark = [](const std::uint32_t rgb) {
+    return ihtml::color(ihtml::dark_fill(Color::from_rgb(rgb)));
+  };
+  EXPECT_EQ(dark(0xffff00), "#1d1f00");
+  EXPECT_EQ(dark(0x0000ff), "#0027ae");
+  EXPECT_EQ(dark(0x000000), "#636363");
+  EXPECT_EQ(dark(0xff0000), "#680004");
+  EXPECT_EQ(dark(0xdce6f2), "#142130");
+}
