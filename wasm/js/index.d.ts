@@ -33,13 +33,7 @@ export interface TextStyle {
 
 /** What `Document.setCellStyle` states on a cell: the keys of `TextStyle`
  * but `highlight`, and the cell's own ground and alignment. */
-export interface CellStyle {
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  strikethrough?: boolean;
-  color?: string;
-  size?: string;
+export interface CellStyle extends Omit<TextStyle, 'highlight'> {
   /** `null` takes a fill away. */
   fill?: string | null;
   align?: 'left' | 'center' | 'right';

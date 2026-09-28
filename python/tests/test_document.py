@@ -259,5 +259,5 @@ def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
 
     cell_style = pyodr.TableCellStyle()
     cell_style.wrap_text = True
-    with pytest.raises(Exception):
+    with pytest.raises(pyodr.UnsupportedOperation):
         sheet.set_cell_style(0, 0, cell_style, pyodr.TextStyle())

@@ -16,11 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `Sheet::set_cell_style` in the bindings: `Sheet.set_cell_style` in python,
-  `Sheet.setCellStyle` in Java, `-[ODRSheet setCellStyle:textStyle:atColumn:row:error:]`
-  in Objective-C, and `Document.setCellStyle(sheet, column, row, style)` in the
-  npm package. `TableCellStyle` is constructible with writable fields in Java
-  and Objective-C.
+- The python, Java, Objective-C and npm bindings style a sheet cell
+  (`Sheet::set_cell_style`). In Java and Objective-C, a `TableCellStyle` can
+  now be built and written.
 
 - The sheet editor formats cells. A selection is a rectangle, spanned by a
   shift click, a shift arrow, a mouse drag or a header click, and
