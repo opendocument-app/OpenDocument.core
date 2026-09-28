@@ -37,6 +37,7 @@ public:
 
   struct Sheet final {
     struct Column final {
+      std::uint32_t min{0};
       pugi::xml_node node;
     };
 

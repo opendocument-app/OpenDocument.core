@@ -200,6 +200,20 @@ TEST(OoxmlSpreadsheetStyleWrite, a_cell_without_a_format_starts_from_its_row) {
   EXPECT_EQ(text_style_at(sheet, 0).font_weight, FontWeight::bold);
 }
 
+TEST(OoxmlSpreadsheetStyleWrite, a_cell_starts_from_its_own_column_only) {
+  const Document document = decode(
+      workbook(one_string, "", "", "",
+               R"(<cols><col min="3" max="3" style="1"/></cols>)", red_styles));
+
+  first_sheet(document).set_cell_style(0, 0, {}, bold());
+  first_sheet(document).set_cell_style(2, 0, {}, bold());
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
+}
+
 TEST(OoxmlSpreadsheetStyleWrite, a_covered_cell_refuses) {
   const Document document = decode(workbook(
       R"(<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c><c r="B1"/></row>)",

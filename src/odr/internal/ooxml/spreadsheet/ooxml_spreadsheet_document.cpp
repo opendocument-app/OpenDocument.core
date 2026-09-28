@@ -379,14 +379,10 @@ public:
                row_node.attribute("customFormat").as_bool()) {
       base = row_node.attribute("s").as_uint();
     } else {
-      for (const pugi::xml_node col :
-           get_node(element_id).child("cols").children("col")) {
-        if (col.attribute("min").as_uint() <= column + 1 &&
-            column + 1 <= col.attribute("max").as_uint()) {
-          base = col.attribute("style").as_uint();
-          break;
-        }
-      }
+      base = m_registry->sheet_element_at(element_id)
+                 .column_node(column)
+                 .attribute("style")
+                 .as_uint();
     }
 
     const std::uint32_t format =
