@@ -115,6 +115,12 @@
       );
       check("the cells are washed", document.querySelectorAll(".odr-sheet-selected").length === 5);
       check("a report followed the move", reported.length > 0);
+      var moves = 0;
+      document.querySelector(".odr-sheet").addEventListener("odr-sheet-select", function () {
+        ++moves;
+      });
+      odr.sheet.select({ column: 1, row: 2 });
+      check("a focus that stays moves nothing", moves === 0);
       odr.sheet.pin({ column: 2, row: 0 });
       check("a new pin drops the rectangle", odr.sheet.selectedCells().length === 1);
       check("and its wash", document.querySelectorAll(".odr-sheet-selected").length === 0);
@@ -239,6 +245,8 @@
       check("with no refusal", refusals.length === 0);
       check("an unknown key refuses", odr.editing.format({ highlight: "#ffff00" }) === false);
       check("a toggle of a colour refuses", odr.editing.toggle("color") === false);
+      var logged = ops().length;
+      check("an empty style refuses", odr.editing.format({}) === false && ops().length === logged);
 
       note("the chords");
       odr.sheet.pin({ column: 0, row: 2 });
@@ -246,6 +254,10 @@
       check("ctrl+b toggles bold", Number(computed(cell(0, 2)).fontWeight) >= 600);
       press("u", { ctrl: true });
       check("ctrl+u toggles underline", last().underline === true);
+      var field = document.body.appendChild(document.createElement("input"));
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "i", ctrlKey: true, bubbles: true }));
+      check("a chord typed into a field is the field's", computed(cell(0, 2)).fontStyle !== "italic");
+      field.remove();
 
       odr.editing.committed();
       check("a save resets the log", ops().length === 0);

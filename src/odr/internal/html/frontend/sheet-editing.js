@@ -361,19 +361,25 @@
     ArrowRight: [1, 0],
   };
 
+  /// Whether a key at @p target types into a field the page or the host owns.
+  function typingIn(target) {
+    return (
+      target !== null &&
+      (target.isContentEditable ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+    );
+  }
+
   /// What a pinned cell does with a key when no editor is open. Captured, so
   /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
   function pinnedKey(event) {
-    var target = event.target;
     if (
       !odr.editing.isEnabled() ||
       overlay !== null ||
       event.ctrlKey ||
       event.metaKey ||
       event.altKey ||
-      (target &&
-        (target.isContentEditable ||
-          /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))
+      typingIn(event.target)
     ) {
       return;
     }
@@ -815,7 +821,11 @@
       return false;
     }
     var cells = odr.sheet.selectedCells();
-    if (cells.length === 0 || !valid(style)) {
+    if (
+      cells.length === 0 ||
+      Object.keys(style).length === 0 ||
+      !valid(style)
+    ) {
       odr.editing.refuse("unsupportedEdit", { sheet: sheet });
       return false;
     }
@@ -878,7 +888,8 @@
       !odr.editing.isEnabled() ||
       overlay !== null ||
       event.altKey ||
-      !(event.ctrlKey || event.metaKey)
+      !(event.ctrlKey || event.metaKey) ||
+      typingIn(event.target)
     ) {
       return;
     }
