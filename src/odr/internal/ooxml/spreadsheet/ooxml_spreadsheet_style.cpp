@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
+#include <cstdlib>
 #include <string_view>
 
 namespace odr::internal::ooxml::spreadsheet {
@@ -276,6 +276,7 @@ void StyleRegistry::resolve_border_(const std::uint32_t i,
   result.table_cell_style.border.left = side(border.child("left"));
   result.table_cell_style.border.bottom = side(border.child("bottom"));
 }
+
 void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
   for (const pugi::xml_node font : styles_root.child("fonts")) {
     m_fonts_index.push_back(font);

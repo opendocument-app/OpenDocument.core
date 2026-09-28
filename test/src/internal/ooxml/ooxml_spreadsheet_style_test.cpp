@@ -29,8 +29,8 @@ constexpr const char *theme =
 /// attributes and children in @p xf.
 ResolvedStyle resolve(const std::string &fonts, const std::string &fills,
                       const std::string &xf) {
-  static pugi::xml_document styles;
-  static pugi::xml_document theme_document;
+  pugi::xml_document styles;
+  pugi::xml_document theme_document;
   const std::string xml = "<styleSheet><fonts>" + fonts + "</fonts><fills>" +
                           fills + "</fills><cellXfs>" + xf +
                           "</cellXfs></styleSheet>";
@@ -105,15 +105,18 @@ TEST(OoxmlSpreadsheetStyle, a_font_states_its_toggles) {
   EXPECT_EQ(off.font_line_through, false);
 }
 
-TEST(OoxmlSpreadsheetStyle, alignment_reads_left_and_right) {
-  const auto align = [](const char *horizontal) {
+TEST(OoxmlSpreadsheetStyle, alignment_reads_every_side) {
+  const auto align = [](const std::string &side, const std::string &value) {
     return resolve("", "",
-                   std::string(
-                       R"(<xf applyAlignment="1"><alignment horizontal=")") +
-                       horizontal + R"("/></xf>)")
-        .table_cell_style.horizontal_align;
+                   R"(<xf applyAlignment="1"><alignment )" + side + "=\"" +
+                       value + R"("/></xf>)")
+        .table_cell_style;
   };
-  EXPECT_EQ(align("left"), HorizontalAlign::left);
-  EXPECT_EQ(align("right"), HorizontalAlign::right);
-  EXPECT_EQ(align("general"), std::nullopt);
+  EXPECT_EQ(align("horizontal", "left").horizontal_align,
+            HorizontalAlign::left);
+  EXPECT_EQ(align("horizontal", "right").horizontal_align,
+            HorizontalAlign::right);
+  EXPECT_EQ(align("horizontal", "general").horizontal_align, std::nullopt);
+  EXPECT_EQ(align("vertical", "top").vertical_align, VerticalAlign::top);
+  EXPECT_EQ(align("vertical", "bottom").vertical_align, VerticalAlign::bottom);
 }
