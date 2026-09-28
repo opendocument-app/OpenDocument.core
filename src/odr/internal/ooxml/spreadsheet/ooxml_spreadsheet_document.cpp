@@ -32,7 +32,7 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(Document &document, ElementRegistry &registry);
 
 /// The `workbook` `calcPr`, appended where it is missing. ECMA-376 18.2.27
 /// orders the children, so a new one goes before the first that must follow it.
@@ -60,7 +60,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   const AbsPath workbook_path("/xl/workbook.xml");
   const auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
   m_written_parts.push_back(workbook_path);
-  const auto [styles_xml, _] = parse_xml_(AbsPath("/xl/styles.xml"));
+  const AbsPath styles_path("/xl/styles.xml");
+  const auto [styles_xml, _] = parse_xml_(styles_path);
+  m_written_parts.push_back(styles_path);
 
   for (pugi::xml_node sheet_node :
        workbook_xml.document_element().child("sheets").children("sheet")) {
@@ -111,6 +113,8 @@ const ElementRegistry &Document::element_registry() const {
 const StyleRegistry &Document::style_registry() const {
   return m_style_registry;
 }
+
+StyleRegistry &Document::style_registry() { return m_style_registry; }
 
 bool Document::is_editable() const noexcept { return true; }
 
@@ -184,7 +188,7 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
+  ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
 
   [[nodiscard]] std::string
@@ -347,6 +351,52 @@ public:
     }
     return result;
   }
+  /// [ECMA-376] 18.3.1.4: a `c` without `s` shows its row's `s` where the
+  /// row states `customFormat`, else its column's `style`.
+  void sheet_set_cell_style(const ElementIdentifier element_id,
+                            const std::uint32_t column, const std::uint32_t row,
+                            const TableCellStyle &cell_style,
+                            const TextStyle &text_style) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+
+    ElementIdentifier cell_id = null_element_id;
+    if (cell == nullptr) {
+      cell_id = insert_cell(element_id, column, row);
+    } else {
+      cell_id = cell->element_id;
+      if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
+        throw UnsupportedOperation();
+      }
+    }
+
+    pugi::xml_node node = get_node(cell_id);
+    std::uint32_t base = 0;
+    if (const pugi::xml_attribute style = node.attribute("s")) {
+      base = style.as_uint();
+    } else if (const pugi::xml_node row_node = node.parent();
+               row_node.attribute("customFormat").as_bool()) {
+      base = row_node.attribute("s").as_uint();
+    } else {
+      base = m_registry->sheet_element_at(element_id)
+                 .column_node(column)
+                 .attribute("style")
+                 .as_uint();
+    }
+
+    const std::uint32_t format =
+        m_document->style_registry().create_cell_format(base, cell_style,
+                                                        text_style);
+    pugi::xml_attribute attribute = node.attribute("s");
+    if (!attribute) {
+      const pugi::xml_attribute reference = node.attribute("r");
+      attribute = reference ? node.insert_attribute_after("s", reference)
+                            : node.prepend_attribute("s");
+    }
+    attribute.set_value(format);
+  }
+
   [[nodiscard]] TableCellStyle
   sheet_cell_style(const ElementIdentifier element_id,
                    const std::uint32_t column,
@@ -593,7 +643,7 @@ public:
   }
 
 private:
-  const Document *m_document{nullptr};
+  Document *m_document{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -763,7 +813,7 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
+create_element_adapter(Document &document, ElementRegistry &registry) {
   return std::make_unique<ElementAdapter>(document, registry);
 }
 

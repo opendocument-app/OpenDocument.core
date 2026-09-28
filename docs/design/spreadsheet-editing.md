@@ -195,7 +195,8 @@ separate scripts. The coordinates are the ones an op names, never a DOM index.
 
 ## Cell formatting
 
-Status: `.ods` writes a cell style. The steps land as a stack, in this order:
+Status: `.ods` and `.xlsx` write a cell style. The steps land as a stack, in
+this order:
 
 1. The xlsx reader reads what the writer writes: a solid fill from `fgColor`,
    theme colours with their `tint`, italic, underline and strikethrough, and

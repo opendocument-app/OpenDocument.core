@@ -71,10 +71,10 @@ void ElementRegistry::append_sheet_cell(const ElementIdentifier sheet_id,
   element_at(cell_id).parent_id = sheet_id;
 }
 
-void ElementRegistry::Sheet::register_column(
-    [[maybe_unused]] const std::uint32_t column_min,
-    const std::uint32_t column_max, const pugi::xml_node element) {
-  columns[column_max] = {.node = element};
+void ElementRegistry::Sheet::register_column(const std::uint32_t column_min,
+                                             const std::uint32_t column_max,
+                                             const pugi::xml_node element) {
+  columns[column_max] = {.min = column_min, .node = element};
 }
 
 void ElementRegistry::Sheet::register_row(const std::uint32_t row,
@@ -93,8 +93,10 @@ void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
 
 const ElementRegistry::Sheet::Column *
 ElementRegistry::Sheet::column(const std::uint32_t column) const {
+  // the ranges leave gaps, so the one ending at or after `column` may start
+  // past it
   if (const auto it = util::map::lookup_greater_or_equals(columns, column);
-      it != std::end(columns)) {
+      it != std::end(columns) && it->second.min <= column) {
     return &it->second;
   }
   return nullptr;

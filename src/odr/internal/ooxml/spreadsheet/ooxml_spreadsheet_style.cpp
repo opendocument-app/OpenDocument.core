@@ -2,9 +2,16 @@
 
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
+#include <array>
 #include <cstdlib>
+#include <span>
+#include <sstream>
+#include <string>
 #include <string_view>
+
+#include <fmt/format.h>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -68,12 +75,118 @@ bool read_toggle(const pugi::xml_node node) {
   return node && node.attribute("val").as_bool(true);
 }
 
+/// The child @p name of @p parent, made at its place in @p order.
+pugi::xml_node ordered_child(pugi::xml_node parent, const char *name,
+                             const std::span<const std::string_view> order) {
+  if (const pugi::xml_node existing = parent.child(name)) {
+    return existing;
+  }
+  return insert_in_sequence(parent, name, order);
+}
+
+/// The @p name child of `styleSheet`, made in the order [ECMA-376] 18.8.39
+/// gives them where it is missing.
+pugi::xml_node collection_of(pugi::xml_node root, const char *name) {
+  static constexpr std::array<std::string_view, 11> order{
+      "numFmts",      "fonts",   "fills",      "borders",
+      "cellStyleXfs", "cellXfs", "cellStyles", "dxfs",
+      "tableStyles",  "colors",  "extLst"};
+  return ordered_child(root, name, order);
+}
+
+std::string argb_of(const Color &color) { return "FF" + hex_color(color); }
+
+/// [ECMA-376] 18.8.22 `CT_Font` is a sequence.
+constexpr std::array<std::string_view, 15> font_order{
+    "b",         "i",  "strike", "condense", "extend", "outline", "shadow", "u",
+    "vertAlign", "sz", "color",  "name",     "family", "charset", "scheme"};
+
+/// `val` is dropped for on, as Excel writes it, and is `0` for off.
+void set_toggle(pugi::xml_node font, const char *name, const bool on) {
+  pugi::xml_node node = ordered_child(font, name, font_order);
+  node.remove_attribute("val");
+  if (!on) {
+    node.append_attribute("val").set_value("0");
+  }
+}
+
+std::string serialized(const pugi::xml_node node) {
+  std::ostringstream out;
+  node.print(out, "", pugi::format_raw);
+  return out.str();
+}
+
+/// The index of the child of @p collection equal to @p node, which is
+/// appended where none is, with the `count` kept.
+std::uint32_t intern(pugi::xml_node collection, const pugi::xml_node node) {
+  const std::string wanted = serialized(node);
+  std::uint32_t index = 0;
+  for (const pugi::xml_node child : collection.children()) {
+    if (serialized(child) == wanted) {
+      return index;
+    }
+    ++index;
+  }
+  collection.append_copy(node);
+  xml::set_attribute(collection, "count", std::to_string(index + 1).c_str());
+  return index;
+}
+
+/// What an empty `styleSheet` lacks and every `xf` needs a first entry of.
+void state_defaults(pugi::xml_node root) {
+  if (pugi::xml_node fonts = collection_of(root, "fonts");
+      !fonts.first_child()) {
+    pugi::xml_node font = fonts.append_child("font");
+    font.append_child("sz").append_attribute("val").set_value("11");
+    font.append_child("name").append_attribute("val").set_value("Calibri");
+    xml::set_attribute(fonts, "count", "1");
+  }
+  if (pugi::xml_node fills = collection_of(root, "fills");
+      !fills.first_child()) {
+    // 18.8.21: the first two are reserved
+    fills.append_child("fill")
+        .append_child("patternFill")
+        .append_attribute("patternType")
+        .set_value("none");
+    fills.append_child("fill")
+        .append_child("patternFill")
+        .append_attribute("patternType")
+        .set_value("gray125");
+    xml::set_attribute(fills, "count", "2");
+  }
+  if (pugi::xml_node borders = collection_of(root, "borders");
+      !borders.first_child()) {
+    borders.append_child("border");
+    xml::set_attribute(borders, "count", "1");
+  }
+  const auto default_xf = [](pugi::xml_node xf) {
+    xf.append_attribute("numFmtId").set_value("0");
+    xf.append_attribute("fontId").set_value("0");
+    xf.append_attribute("fillId").set_value("0");
+    xf.append_attribute("borderId").set_value("0");
+    return xf;
+  };
+  if (pugi::xml_node masters = collection_of(root, "cellStyleXfs");
+      !masters.first_child()) {
+    default_xf(masters.append_child("xf"));
+    xml::set_attribute(masters, "count", "1");
+  }
+  if (pugi::xml_node formats = collection_of(root, "cellXfs");
+      !formats.first_child()) {
+    default_xf(formats.append_child("xf"))
+        .append_attribute("xfId")
+        .set_value("0");
+    xml::set_attribute(formats, "count", "1");
+  }
+}
+
 } // namespace
 
 StyleRegistry::StyleRegistry() = default;
 
 StyleRegistry::StyleRegistry(const pugi::xml_node styles_root,
-                             const pugi::xml_node theme_root) {
+                             const pugi::xml_node theme_root)
+    : m_styles_root{styles_root} {
   const pugi::xml_node scheme =
       theme_root.child("a:themeElements").child("a:clrScheme");
   for (const char *name : {"a:lt1", "a:dk1", "a:lt2", "a:dk2", "a:accent1",
@@ -222,7 +335,101 @@ void StyleRegistry::resolve_border_(const std::uint32_t i,
   result.table_cell_style.border.bottom = side(border.child("bottom"));
 }
 
+std::uint32_t
+StyleRegistry::create_cell_format(const std::uint32_t base,
+                                  const TableCellStyle &cell_style,
+                                  const TextStyle &text_style) {
+  state_defaults(m_styles_root);
+  generate_indices_(m_styles_root);
+
+  pugi::xml_document scratch;
+  pugi::xml_node xf = scratch.append_copy(
+      m_cell_formats_index.at(base < m_cell_formats_index.size() ? base : 0));
+
+  if (text_style.font_weight || text_style.font_style ||
+      text_style.font_underline || text_style.font_line_through ||
+      text_style.font_color || text_style.font_size) {
+    const std::uint32_t font_id = xf.attribute("fontId").as_uint();
+    pugi::xml_node font = scratch.append_copy(
+        m_fonts_index.at(font_id < m_fonts_index.size() ? font_id : 0));
+    if (text_style.font_weight) {
+      set_toggle(font, "b", *text_style.font_weight == FontWeight::bold);
+    }
+    if (text_style.font_style) {
+      set_toggle(font, "i", *text_style.font_style == FontStyle::italic);
+    }
+    if (text_style.font_line_through) {
+      set_toggle(font, "strike", *text_style.font_line_through);
+    }
+    if (text_style.font_underline) {
+      pugi::xml_node underline = ordered_child(font, "u", font_order);
+      underline.remove_attribute("val");
+      if (!*text_style.font_underline) {
+        underline.append_attribute("val").set_value("none");
+      }
+    }
+    if (text_style.font_size) {
+      xml::set_attribute(
+          ordered_child(font, "sz", font_order), "val",
+          fmt::format("{:g}", points(*text_style.font_size)).c_str());
+    }
+    if (text_style.font_color) {
+      pugi::xml_node color = ordered_child(font, "color", font_order);
+      color.remove_attributes();
+      color.append_attribute("rgb").set_value(
+          argb_of(*text_style.font_color).c_str());
+    }
+    xml::set_attribute(
+        xf, "fontId",
+        std::to_string(intern(m_styles_root.child("fonts"), font)).c_str());
+    xml::set_attribute(xf, "applyFont", "1");
+  }
+
+  if (cell_style.background_color) {
+    pugi::xml_node fill = scratch.append_child("fill");
+    pugi::xml_node pattern = fill.append_child("patternFill");
+    if (cell_style.background_color->alpha == 0) {
+      pattern.append_attribute("patternType").set_value("none");
+    } else {
+      pattern.append_attribute("patternType").set_value("solid");
+      pattern.append_child("fgColor").append_attribute("rgb").set_value(
+          argb_of(*cell_style.background_color).c_str());
+      pattern.append_child("bgColor").append_attribute("indexed").set_value(
+          "64");
+    }
+    xml::set_attribute(
+        xf, "fillId",
+        std::to_string(intern(m_styles_root.child("fills"), fill)).c_str());
+    xml::set_attribute(xf, "applyFill", "1");
+  }
+
+  if (cell_style.horizontal_align) {
+    pugi::xml_node alignment = xf.child("alignment");
+    if (!alignment) {
+      alignment = xf.prepend_child("alignment");
+    }
+    const char *horizontal = "left";
+    if (*cell_style.horizontal_align == HorizontalAlign::center) {
+      horizontal = "center";
+    } else if (*cell_style.horizontal_align == HorizontalAlign::right) {
+      horizontal = "right";
+    }
+    xml::set_attribute(alignment, "horizontal", horizontal);
+    xml::set_attribute(xf, "applyAlignment", "1");
+  }
+
+  const std::uint32_t result = intern(m_styles_root.child("cellXfs"), xf);
+  generate_indices_(m_styles_root);
+  return result;
+}
+
 void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
+  m_fonts_index.clear();
+  m_fills_index.clear();
+  m_borders_index.clear();
+  m_cell_masters_index.clear();
+  m_cell_formats_index.clear();
+
   for (const pugi::xml_node font : styles_root.child("fonts")) {
     m_fonts_index.push_back(font);
   }

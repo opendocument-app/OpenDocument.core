@@ -16,13 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- A cell of an ods file takes a style: `Sheet::set_cell_style` and the
-  `setCellStyle` op write the fill, the horizontal alignment, and bold,
+- A cell of an ods or xlsx file takes a style: `Sheet::set_cell_style` and
+  the `setCellStyle` op write the fill, the horizontal alignment, and bold,
   italic, underline, strikethrough, colour and size.
 
 - **Fix**: in an ods file, a value written into a covered cell landed outside
   the merge, and one written into an empty cell right of a merge failed. The
   first now refuses, and the second lands in its cell.
+
+- **Fix**: an xlsx column in a gap between `<col>` ranges took the width and
+  the style of the next range. It now has neither.
 
 - **Fix**: many xlsx fills showed a wrong colour. A cell now shows its fill,
   theme colours and tints, italic, underline, strikethrough and every

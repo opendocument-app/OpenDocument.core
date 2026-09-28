@@ -89,6 +89,15 @@ pugi::xml_document xml::parse(std::istream &in) {
 
 void xml::check_xml_file(std::istream &in) { std::ignore = parse(in); }
 
+void xml::set_attribute(pugi::xml_node node, const char *name,
+                        const char *value) {
+  pugi::xml_attribute attribute = node.attribute(name);
+  if (!attribute) {
+    attribute = node.append_attribute(name);
+  }
+  attribute.set_value(value);
+}
+
 std::string xml::read_declared_encoding(std::istream &in) {
   static constexpr std::size_t probe_size = 1024;
   static constexpr std::string_view space = " \t\r\n";

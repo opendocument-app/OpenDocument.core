@@ -21,6 +21,7 @@ public:
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
   [[nodiscard]] const StyleRegistry &style_registry() const;
+  StyleRegistry &style_registry();
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
