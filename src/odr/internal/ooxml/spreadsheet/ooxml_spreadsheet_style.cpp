@@ -3,8 +3,6 @@
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 
-#include <algorithm>
-#include <cmath>
 #include <cstdlib>
 #include <string_view>
 
@@ -70,53 +68,6 @@ bool read_toggle(const pugi::xml_node node) {
   return node && node.attribute("val").as_bool(true);
 }
 
-/// [ECMA-376] 18.8.19: the lightness moves toward black for a negative tint
-/// and toward white for a positive one.
-Color apply_tint(const Color color, const double tint) {
-  const double r = color.red / 255.0;
-  const double g = color.green / 255.0;
-  const double b = color.blue / 255.0;
-  const double max = std::max({r, g, b});
-  const double min = std::min({r, g, b});
-  double hue = 0;
-  double saturation = 0;
-  double lightness = (max + min) / 2;
-  if (max != min) {
-    const double d = max - min;
-    saturation = lightness > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max == r) {
-      hue = (g - b) / d + (g < b ? 6 : 0);
-    } else if (max == g) {
-      hue = (b - r) / d + 2;
-    } else {
-      hue = (r - g) / d + 4;
-    }
-    hue /= 6;
-  }
-
-  lightness = tint < 0 ? lightness * (1 + tint) : lightness * (1 - tint) + tint;
-
-  const double q = lightness < 0.5
-                       ? lightness * (1 + saturation)
-                       : lightness + saturation - lightness * saturation;
-  const double p = 2 * lightness - q;
-  const auto channel = [&](double t) {
-    t -= std::floor(t);
-    double c = p;
-    if (t < 1.0 / 6) {
-      c = p + (q - p) * 6 * t;
-    } else if (t < 1.0 / 2) {
-      c = q;
-    } else if (t < 2.0 / 3) {
-      c = p + (q - p) * (2.0 / 3 - t) * 6;
-    }
-    return static_cast<std::uint8_t>(
-        std::lround(std::clamp(c, 0.0, 1.0) * 255));
-  };
-  return {channel(hue + 1.0 / 3), channel(hue), channel(hue - 1.0 / 3),
-          color.alpha};
-}
-
 } // namespace
 
 StyleRegistry::StyleRegistry() = default;
@@ -128,13 +79,7 @@ StyleRegistry::StyleRegistry(const pugi::xml_node styles_root,
   for (const char *name : {"a:lt1", "a:dk1", "a:lt2", "a:dk2", "a:accent1",
                            "a:accent2", "a:accent3", "a:accent4", "a:accent5",
                            "a:accent6", "a:hlink", "a:folHlink"}) {
-    const pugi::xml_node slot = scheme.child(name);
-    std::optional<Color> color =
-        read_color_attribute(slot.child("a:srgbClr").attribute("val"));
-    if (!color) {
-      color = read_color_attribute(slot.child("a:sysClr").attribute("lastClr"));
-    }
-    m_theme_colors.push_back(color);
+    m_theme_colors.push_back(read_drawing_rgb_color(scheme.child(name)));
   }
 
   generate_indices_(styles_root);
