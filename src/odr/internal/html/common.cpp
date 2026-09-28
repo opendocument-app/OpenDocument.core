@@ -411,9 +411,8 @@ bool in_gamut(const std::array<double, 3> &rgb) {
 } // namespace
 
 Color html::dark_fill(const Color &color) {
-  // The page of `document-dark.css`, where white lands, and the lightness of
-  // the lightest ground its `#e6edf3` text still reads on at 4.5:1, where
-  // black does.
+  // White lands on the page of `document-dark.css`, black on the lightest
+  // ground its `#e6edf3` text reads on at 4.5:1.
   static const Oklab page = to_oklab(Color(0x16, 0x1b, 0x22));
   static constexpr double lightest = 0.5;
 
