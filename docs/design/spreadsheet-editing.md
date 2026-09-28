@@ -193,6 +193,79 @@ classes and the raise wrapper avoids an overlay open over a cell the other
 script lowers. The read-only view does not carry the editor, so the two stay
 separate scripts. The coordinates are the ones an op names, never a DOM index.
 
+## Cell formatting
+
+Status: planned. The steps land as a stack, in this order:
+
+1. The xlsx reader reads what the writer writes: a solid fill from `fgColor`,
+   theme colours with their `tint`, italic, underline and strikethrough, and
+   left, right and justified alignment.
+2. `Sheet::set_cell_style` and the `setCellStyle` op, written into `.ods`.
+3. The same op written into `.xlsx`.
+4. The sheet editor formats a selection of cells, and a selection can be a
+   rectangle.
+5. `Sheet::set_cell_style` in the python, java, objective-c and npm bindings.
+
+### 9. One op per cell, the same keys as a run
+
+```json
+{"op": "setCellStyle", "sheet": 0, "column": 1, "row": 2,
+ "style": {"fill": "#ffff00", "bold": true, "align": "center"}}
+```
+
+| Key | Value | `.ods` cell style | `.xlsx` |
+|---|---|---|---|
+| `fill` | `#rrggbb` or null | `fo:background-color` in `style:table-cell-properties`, null is `transparent` | a `patternFill` `solid` with `fgColor`, null is `none` |
+| `bold`, `italic`, `underline`, `strikethrough` | a bool | `style:text-properties`, as for a run | `b`, `i`, `u`, `strike` in a `font` |
+| `color` | `#rrggbb` | `fo:color` | `font/color/@rgb` |
+| `size` | a length | `fo:font-size` | `font/sz`, in points |
+| `align` | `left`, `center`, `right`, `justify` or null | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"`; null is `value-type` | `alignment/@horizontal`; null is `general` |
+
+The text keys are the ones of `setTextStyle`, and off is written, never
+removed (`document-editing.md` decision 9). A cell has no `highlight`: `fill` is the
+cell's ground.
+
+**Why one op per cell:** a position is how every other sheet op addresses a
+cell, and coalescing stays a map keyed by position where the later keys win.
+A rectangle is as many ops as the page shows cells, so a selection never
+reaches past the rendered extent. The writer keeps one new style per distinct
+result for the length of a replay, so a thousand ops add one style.
+
+### 10. A style edit writes a copy, never the style it read
+
+An `.ods` cell style and an `.xlsx` `xf` are shared by every cell naming them.
+
+- `.ods`: the writer claims the cell (`claim_cell` or `grow_to_cell`), adds a
+  `style:family="table-cell"` automatic style that copies the one the cell
+  shows (its own, else the row's or the column's default) with the delta
+  applied, and points `table:style-name` at it. A formula cell and a rich cell
+  take a style: nothing in their content changes.
+- `.xlsx`: the writer appends a `font`, a `fill` and an `xf`, each only where
+  no equal one exists, with `applyFont`, `applyFill` and `applyAlignment` set,
+  sets `c/@s`, and saves `styles.xml`. A cell the file does not state is made
+  as for a value (`insert_cell`).
+
+### 11. The API takes the two style types the read side returns
+
+`Sheet::set_cell_style(column, row, TableCellStyle, TextStyle)`. The set
+fields are the delta, and a fill of alpha 0 is `fill: null`, as a highlight
+is for a run.
+
+### 12. A selection is a rectangle, and the pin is one corner of it
+
+`spreadsheet.js` owns it as it owns the pin: shift with a click or an arrow
+key, and a drag with a mouse, span it from the pin. `odr.sheet.selection()`
+answers `{columns: [first, last], rows: [first, last]}`, and a header click
+selects its row or its column across the rendered extent. The editor reports
+the keys the selected cells agree on through `onSelectionChange`, as the
+document editor does, and `odr.editing.format` and `toggle` act on every
+unlocked cell of it. A lock refuses a value, not a style.
+
+The editor patches the `td` and the text inside it with the declarations the
+renderer writes, and a fill also sets `--odr-dark-fill` with the same mapping
+as `html::dark_fill`, so a fill made in the dark scheme shows. Undo holds each
+cell's inline style before the gesture, and one gesture is one undo step.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -219,7 +292,8 @@ separate scripts. The coordinates are the ones an op names, never a DOM index.
   input in the editor comes with it.
 - Number formats (`number:number-style`, `numFmt`), dates and booleans as
   their own kinds. This also fixes `.xlsx` serials on the read side.
-- Multi-line cells, cell style edits, insert and delete of rows and columns.
+- Multi-line cells, insert and delete of rows and columns.
+- A style for a whole row or column, so cells past the rendered extent take it.
 - `.csv` save.
 - Sheets past `spreadsheet_limit` or `spreadsheet_cell_limit` are not in the
   page; the mode should say so where a view reports a `sheet_cut`.
