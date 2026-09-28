@@ -84,6 +84,35 @@ describe('edit', () => {
     }
   });
 
+  it('styles a sheet cell by position and saves the style', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      doc.setCellStyle(0, 0, 0, { fill: '#ffff00', bold: true });
+      assert.match(doc.render(0).html, /background-color:#ffff00/);
+
+      const reopened = odr.open(doc.save());
+      try {
+        const html = reopened.render(0).html;
+        assert.match(html, /background-color:#ffff00/);
+        assert.match(html, /font-weight:bold/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('refuses a cell style it cannot write', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      assert.throws(() => doc.setCellStyle(0, 0, 0, { highlight: '#ffff00' }), OdrError);
+      assert.throws(() => doc.setCellStyle(0, 0, 0, 'bold'), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('edits structurally by id and saves the result', () => {
     const doc = odr.open(minimalOdt('hello'), { editable: true });
     try {

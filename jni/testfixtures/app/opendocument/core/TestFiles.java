@@ -27,6 +27,9 @@ import java.util.Locale;
 final class TestFiles {
   static final String ODT_RESOURCE = "mixed-layout.odt";
 
+  /** {@code ods/span.ods} from the same repository; A1 holds "a". */
+  static final String ODS_RESOURCE = "span.ods";
+
   /**
    * The text of the document, node by node in document order. Each paragraph is a run and a span,
    * so the numbers are their own text elements — and the runs keep their trailing space.
@@ -49,6 +52,18 @@ final class TestFiles {
     try (InputStream stream = TestFiles.class.getResourceAsStream(ODT_RESOURCE)) {
       if (stream == null) {
         throw new IOException(ODT_RESOURCE + " is missing from the test classpath");
+      }
+      Files.copy(stream, path, StandardCopyOption.REPLACE_EXISTING);
+    }
+    return path;
+  }
+
+  /** The OpenDocument spreadsheet, unpacked from the classpath into {@code directory}. */
+  static Path odsFile(Path directory) throws IOException {
+    Path path = directory.resolve(ODS_RESOURCE);
+    try (InputStream stream = TestFiles.class.getResourceAsStream(ODS_RESOURCE)) {
+      if (stream == null) {
+        throw new IOException(ODS_RESOURCE + " is missing from the test classpath");
       }
       Files.copy(stream, path, StandardCopyOption.REPLACE_EXISTING);
     }

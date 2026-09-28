@@ -147,6 +147,16 @@ NS_SWIFT_NAME(Sheet)
 - (ODRTableCellStyle *)styleForCellAtColumn:(uint32_t)column
                                         row:(uint32_t)row
     NS_SWIFT_NAME(style(column:row:));
+/// States the non-nil properties of both styles on the cell and leaves the
+/// rest: the fill, the horizontal alignment and the text properties
+/// `-[ODRText setStyle:error:]` takes. Any other refuses with
+/// `ODRErrorUnsupportedOperation`.
+- (BOOL)setCellStyle:(ODRTableCellStyle *)cellStyle
+           textStyle:(ODRTextStyle *)textStyle
+            atColumn:(uint32_t)column
+                 row:(uint32_t)row
+               error:(NSError **)error
+    NS_SWIFT_NAME(setStyle(_:textStyle:column:row:));
 @end
 
 /// `odr::SheetCell`.

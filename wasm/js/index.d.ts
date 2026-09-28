@@ -31,6 +31,20 @@ export interface TextStyle {
   size?: string;
 }
 
+/** What `Document.setCellStyle` states on a cell: the keys of `TextStyle`
+ * but `highlight`, and the cell's own ground and alignment. */
+export interface CellStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  color?: string;
+  size?: string;
+  /** `null` takes a fill away. */
+  fill?: string | null;
+  align?: 'left' | 'center' | 'right';
+}
+
 export interface Capabilities {
   detectByContent: boolean;
   open: boolean;
@@ -200,6 +214,12 @@ export declare class Document {
    * @throws OdrError `invalid_argument` for a property it does not know
    */
   setTextStyle(id: number, style: TextStyle): this;
+  /**
+   * States `style` on the cell at (`column`, `row`) of the `sheet`-th sheet
+   * and leaves what it does not name.
+   * @throws OdrError `invalid_argument` for a property it does not know
+   */
+  setCellStyle(sheet: number, column: number, row: number, style: CellStyle): this;
   /** `afterId` of 0 splits before every child. */
   splitParagraph(paragraphId: number, afterId?: number): number;
   mergeParagraphWithNext(paragraphId: number): this;

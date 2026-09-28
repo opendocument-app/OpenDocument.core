@@ -54,6 +54,15 @@ public final class Sheet extends Element {
     return cellStyleNative(handle(), column, row);
   }
 
+  /**
+   * States the non-null fields of both styles on the cell and leaves the rest. The fill, the
+   * horizontal alignment and the text keys of {@link Text#setStyle} are written; any other field
+   * throws {@link OdrException.UnsupportedOperation}.
+   */
+  public void setCellStyle(int column, int row, TableCellStyle cellStyle, TextStyle textStyle) {
+    setCellStyleNative(handle(), column, row, cellStyle, textStyle);
+  }
+
   private native String nameNative(long handle);
 
   private native PageLayout pageLayoutNative(long handle);
@@ -73,4 +82,7 @@ public final class Sheet extends Element {
   private native TableRowStyle rowStyleNative(long handle, int row);
 
   private native TableCellStyle cellStyleNative(long handle, int column, int row);
+
+  private native void setCellStyleNative(
+      long handle, int column, int row, TableCellStyle cellStyle, TextStyle textStyle);
 }

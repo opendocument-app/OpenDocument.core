@@ -1,7 +1,10 @@
 #include "jni_convert.hpp"
 #include "odr_jni.hpp"
 
+#include <odr/exceptions.hpp>
+
 #include <cstdarg>
+#include <utility>
 #include <vector>
 
 namespace odr_jni {
@@ -334,6 +337,66 @@ odr::TextStyle text_style_from_java(JNIEnv *env, const jobject style) {
            [&](const jobject value) {
              return enum_from_java<odr::FontPosition>(env, value);
            });
+
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
+odr::TableCellStyle table_cell_style_from_java(JNIEnv *env,
+                                               const jobject style) {
+  odr::TableCellStyle result;
+  if (style == nullptr) {
+    return result;
+  }
+  jclass cls = env->GetObjectClass(style);
+  const auto field = [&](const char *name, const char *signature) {
+    return env->GetObjectField(style, env->GetFieldID(cls, name, signature));
+  };
+  const auto take = [&](jobject value, auto convert) {
+    auto converted = convert(value);
+    if (value != nullptr) {
+      env->DeleteLocalRef(value);
+    }
+    return converted;
+  };
+
+  for (const auto &[name, signature] :
+       {std::pair{"padding", "Lapp/opendocument/core/DirectionalMeasure;"},
+        std::pair{"border", "Lapp/opendocument/core/DirectionalString;"}}) {
+    if (const jobject value = field(name, signature); value != nullptr) {
+      env->DeleteLocalRef(value);
+      env->DeleteLocalRef(cls);
+      throw odr::UnsupportedOperation();
+    }
+  }
+  result.horizontal_align =
+      take(field("horizontalAlign", "Lapp/opendocument/core/HorizontalAlign;"),
+           [&](const jobject value) {
+             return enum_from_java<odr::HorizontalAlign>(env, value);
+           });
+  result.vertical_align =
+      take(field("verticalAlign", "Lapp/opendocument/core/VerticalAlign;"),
+           [&](const jobject value) {
+             return enum_from_java<odr::VerticalAlign>(env, value);
+           });
+  result.background_color =
+      take(field("backgroundColor", "Lapp/opendocument/core/Color;"),
+           [&](const jobject value) { return color_from_java(env, value); });
+  result.text_rotation =
+      take(field("textRotation", "Ljava/lang/Double;"),
+           [&](const jobject value) -> std::optional<double> {
+             if (value == nullptr) {
+               return std::nullopt;
+             }
+             jclass boxed = env->GetObjectClass(value);
+             const jdouble unboxed = env->CallDoubleMethod(
+                 value, env->GetMethodID(boxed, "doubleValue", "()D"));
+             env->DeleteLocalRef(boxed);
+             return unboxed;
+           });
+  result.wrap_text =
+      take(field("wrapText", "Ljava/lang/Boolean;"),
+           [&](const jobject value) { return boolean_from_java(env, value); });
 
   env->DeleteLocalRef(cls);
   return result;

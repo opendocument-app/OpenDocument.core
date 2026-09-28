@@ -120,6 +120,13 @@ export class Document {
     return this;
   }
 
+  // States `style` - the text keys of `setTextStyle`, and `fill` and
+  // `align` - on the cell at a position, as `odr.editing.format` takes it.
+  setCellStyle(sheet, column, row, style) {
+    unwrap(this.#core.setCellStyle(this.#handle, sheet, column, row, style));
+    return this;
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));

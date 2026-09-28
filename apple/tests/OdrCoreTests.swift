@@ -420,6 +420,53 @@ final class DocumentSaveTests: XCTestCase {
     }
   }
 
+  func testSetCellStyleFillsACell() throws {
+    let document = try DecodedFile.decode(path: try Fixture.ods())
+      .asDocumentFile().document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
+
+    let cellStyle = TableCellStyle()
+    var yellow = ODRColor(red: 255, green: 255, blue: 0, alpha: 255)
+    cellStyle.backgroundColor = NSValue(bytes: &yellow, objCType: "{ODRColor=CCCC}")
+    cellStyle.horizontalAlign = NSNumber(value: HorizontalAlign.center.rawValue)
+    let textStyle = TextStyle()
+    textStyle.fontWeight = NSNumber(value: FontWeight.bold.rawValue)
+    try sheet.setStyle(cellStyle, textStyle: textStyle, column: 0, row: 0)
+
+    let saved = try XCTUnwrap(try document.saveToMemory())
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("styled.ods")
+    try saved.write(to: path)
+
+    let reloaded = try DecodedFile.decode(path: path.path)
+      .asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    let reloadedSheet = try XCTUnwrap(reloadedRoot.firstDescendant(ofType: Sheet.self))
+    var fill = ODRColor()
+    try XCTUnwrap(reloadedSheet.style(column: 0, row: 0).backgroundColor)
+      .getValue(&fill, size: MemoryLayout<ODRColor>.size)
+    XCTAssertEqual([fill.red, fill.green, fill.blue], [255, 255, 0])
+    let cell = try XCTUnwrap(reloadedSheet.cell(column: 0, row: 0))
+    let text = try XCTUnwrap(cell.firstDescendant(ofType: Text.self))
+    XCTAssertEqual(text.style.fontWeight?.intValue, FontWeight.bold.rawValue)
+  }
+
+  func testSetCellStyleRefusesWhatNoEngineWrites() throws {
+    let document = try DecodedFile.decode(path: try Fixture.ods())
+      .asDocumentFile().document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
+
+    let cellStyle = TableCellStyle()
+    cellStyle.wrapText = true
+    XCTAssertThrowsError(
+      try sheet.setStyle(cellStyle, textStyle: TextStyle(), column: 0, row: 0)
+    ) { error in
+      XCTAssertEqual((error as NSError).code, ODRError.unsupportedOperation.rawValue)
+    }
+  }
+
   func testSaveToMemoryCarriesAnEdit() throws {
     let document = try self.document()
     XCTAssertTrue(document.isSavable)

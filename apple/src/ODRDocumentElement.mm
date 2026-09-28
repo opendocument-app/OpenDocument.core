@@ -390,6 +390,18 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (BOOL)setCellStyle:(ODRTableCellStyle *)cellStyle
+           textStyle:(ODRTextStyle *)textStyle
+            atColumn:(uint32_t)column
+                 row:(uint32_t)row
+               error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_sheet().set_cell_style(column, row, [cellStyle handle],
+                                          [textStyle handle]);
+    return YES;
+  });
+}
+
 @end
 
 @implementation ODRSheetCell

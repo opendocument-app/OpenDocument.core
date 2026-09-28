@@ -19,6 +19,11 @@ enum Fixture {
     try path("mixed-layout", "odt")
   }
 
+  /// `ods/span.ods` from the same repository; A1 holds "a".
+  static func ods() throws -> String {
+    try path("span", "ods")
+  }
+
   /// A one-page pdf written to a temporary file, its cross-reference offsets
   /// computed so they are right.
   static func pdf() throws -> String {
