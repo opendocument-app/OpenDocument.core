@@ -92,9 +92,7 @@ def ods_path(tmp_path):
         archive.writestr("styles.xml", ODT_STYLES_XML)
         archive.writestr(
             "META-INF/manifest.xml",
-            ODT_MANIFEST_XML.replace(
-                "opendocument.text", "opendocument.spreadsheet"
-            ),
+            ODT_MANIFEST_XML.replace("opendocument.text", "opendocument.spreadsheet"),
         )
     return path
 
