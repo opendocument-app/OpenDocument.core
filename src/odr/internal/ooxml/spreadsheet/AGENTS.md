@@ -7,7 +7,7 @@ The design of the xlsx module. The feature checklist is in
 
 Scope: read `xl/workbook.xml`, its sheets, the shared strings and the drawings
 into the abstract model, one table per sheet. Cell styles resolve from
-`xl/styles.xml`. Write a cell value, and save.
+`xl/styles.xml`. Write a cell value and a cell style, and save.
 
 ## Design decisions
 
@@ -59,6 +59,15 @@ their ids and stop being reachable. A shared string is never written back into
 `sharedStrings.xml`, because every cell indexing that entry would change with
 it, so the cell becomes `t="inlineStr"`. A covered cell, a cell holding an
 `f`, and a date, time or error value throw `UnsupportedOperation`.
+
+**A cell style is a new `xf`, never an edit of the one the cell names.**
+`sheet_set_cell_style` starts from the cell's `s`, else its row's where the
+row states `customFormat`, else its column's `style`. `create_cell_format`
+copies that `xf` and its `font`, applies the delta, and appends a `font`, a
+`fill` and an `xf` only where no equal one exists, with `applyFont`,
+`applyFill` and `applyAlignment` set. A `font` keeps the child order of
+`CT_Font`. An empty `styleSheet` first gets the entries every `xf` needs.
+`styles.xml` is a written part, so every save writes it from its dom.
 
 A position the file states no `c` for is stated by `insert_cell`: the `c` goes
 into its row in column order, a missing `row` into `sheetData` in row order,
