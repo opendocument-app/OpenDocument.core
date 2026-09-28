@@ -366,7 +366,8 @@ html::translate_table_row_style(const TableRowStyle &table_row_style) {
 }
 
 std::string
-html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
+html::translate_table_cell_style(const TableCellStyle &table_cell_style,
+                                 const bool dark_fill) {
   std::string result;
   if (const std::optional<HorizontalAlign> horizontal_align =
           table_cell_style.horizontal_align;
@@ -388,6 +389,11 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style) {
     result.append("background-color:")
         .append(color(*background_color))
         .append(";");
+    if (dark_fill) {
+      result.append("--odr-dark-fill:")
+          .append(color(html::dark_fill(*background_color)))
+          .append(";");
+    }
   }
   if (const std::optional<Quantity<double>> padding_right =
           table_cell_style.padding.right;

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: a cell fill disappeared in the dark color scheme. The cell now keeps
+  its fill in a dark version with the same hue, and the text stays readable on
+  it.
+
 ## v7.3.2 - 2026-09-24
 
 - **Fix**: a markdown document in the paged view put its text on the edge of

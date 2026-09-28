@@ -150,6 +150,9 @@ enum class UriKind {
 [[nodiscard]] std::string_view link_target_attributes(UriKind kind);
 
 std::string color(const Color &color);
+/// @p color for a dark page: its lightness mirrored into the band between the
+/// page and the lightest ground light text still reads on, its hue kept.
+Color dark_fill(const Color &color);
 
 /// Substitute `{index}` in an output file name pattern (e.g.
 /// `page{index}.html`) with `index`, or with "" when absent.

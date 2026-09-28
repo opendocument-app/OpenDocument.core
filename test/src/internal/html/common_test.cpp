@@ -6,6 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <limits>
 #include <locale>
 #include <optional>
@@ -313,6 +316,62 @@ TEST(html_common, a_color_that_does_not_fully_cover_states_its_alpha) {
   EXPECT_EQ(ihtml::color(Color(1, 2, 3, 0)), "rgba(1,2,3,0)");
   EXPECT_EQ(ihtml::color(Color(1, 2, 3, 128)), "rgba(1,2,3,0.501961)");
   EXPECT_EQ(ihtml::color(Color(1, 2, 3, 1)), "rgba(1,2,3,0.00392157)");
+}
+
+namespace {
+
+double relative_luminance(const Color &color) {
+  const auto linear = [](const std::uint8_t channel) {
+    const double c = channel / 255.0;
+    return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * linear(color.red) + 0.7152 * linear(color.green) +
+         0.0722 * linear(color.blue);
+}
+
+double contrast(const Color &a, const Color &b) {
+  const double la = relative_luminance(a);
+  const double lb = relative_luminance(b);
+  return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
+}
+
+} // namespace
+
+// A white cell looks like the page, in either scheme.
+TEST(html_common, a_white_fill_turns_into_the_dark_page) {
+  EXPECT_EQ(ihtml::color(ihtml::dark_fill(Color(0xff, 0xff, 0xff))), "#161b22");
+}
+
+// `document-dark.css` sets every cell's text to `#e6edf3`.
+TEST(html_common, the_text_of_the_dark_scheme_reads_on_every_dark_fill) {
+  const Color text(0xe6, 0xed, 0xf3);
+  for (int r = 0; r <= 255; r += 17) {
+    for (int g = 0; g <= 255; g += 17) {
+      for (int b = 0; b <= 255; b += 17) {
+        const Color fill(static_cast<std::uint8_t>(r),
+                         static_cast<std::uint8_t>(g),
+                         static_cast<std::uint8_t>(b));
+        EXPECT_GE(contrast(ihtml::dark_fill(fill), text), 4.5)
+            << ihtml::color(fill);
+      }
+    }
+  }
+}
+
+TEST(html_common, a_dark_fill_keeps_the_hue_and_the_order) {
+  const Color yellow = ihtml::dark_fill(Color(0xff, 0xff, 0x00));
+  EXPECT_GT(yellow.red, yellow.blue);
+  EXPECT_GT(yellow.green, yellow.blue);
+
+  const Color red = ihtml::dark_fill(Color(0xff, 0xcc, 0xcc));
+  EXPECT_GT(red.red, red.green);
+  EXPECT_GT(red.red, red.blue);
+
+  // the lighter a fill, the darker it turns
+  EXPECT_LT(relative_luminance(ihtml::dark_fill(Color(0xdd, 0xdd, 0xdd))),
+            relative_luminance(ihtml::dark_fill(Color(0x80, 0x80, 0x80))));
+
+  EXPECT_EQ(ihtml::dark_fill(Color(0xff, 0xff, 0x00, 0x80)).alpha, 0x80);
 }
 
 TEST(html_common, the_navigable_schemes_are_safe) {

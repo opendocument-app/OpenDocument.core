@@ -434,6 +434,23 @@ TEST(html, linked_dark_style_is_served) {
   EXPECT_TRUE(service.exists("document-dark.css"));
 }
 
+// A cell fill turns dark rather than giving way, so the cells stay apart.
+TEST(html, a_cell_fill_turns_over_in_the_dark) {
+  HtmlConfig config;
+  const std::string path = "odr-public/ods/Senza nome 1.ods";
+
+  EXPECT_EQ(render(path, config).find("--odr-dark-fill"), std::string::npos);
+
+  config.color_scheme = HtmlColorScheme::dark;
+  const std::string dark = render(path, config);
+  EXPECT_NE(dark.find("background-color:#ffff00;--odr-dark-fill:#"),
+            std::string::npos);
+  EXPECT_NE(
+      dark.find(
+          "td{background-color:var(--odr-dark-fill,transparent)!important}"),
+      std::string::npos);
+}
+
 // Every view but the pdf one turns over.
 TEST(html, color_scheme_reaches_every_view) {
   HtmlConfig config;
