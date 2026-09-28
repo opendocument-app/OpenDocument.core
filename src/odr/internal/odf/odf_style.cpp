@@ -2,6 +2,7 @@
 
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -749,19 +750,11 @@ std::string color_value(const Color &color) {
   return fmt::format("#{:06x}", color.rgb());
 }
 
-void set_attribute(pugi::xml_node node, const char *name, const char *value) {
-  pugi::xml_attribute attribute = node.attribute(name);
-  if (!attribute) {
-    attribute = node.append_attribute(name);
-  }
-  attribute.set_value(value);
-}
-
 /// Writes the set fields of @p style as attributes of @p properties, the
 /// asian and complex variants beside each western one.
 void write_text_properties(pugi::xml_node properties, const TextStyle &style) {
   const auto set = [&](const char *name, const std::string &value) {
-    set_attribute(properties, name, value.c_str());
+    xml::set_attribute(properties, name, value.c_str());
   };
 
   if (style.font_size.has_value()) {
@@ -874,7 +867,7 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
   if (base_node &&
       std::strcmp(base_node.parent().name(), "office:automatic-styles") == 0) {
     node = automatic_styles.append_copy(base_node);
-    set_attribute(node, "style:name", name.c_str());
+    xml::set_attribute(node, "style:name", name.c_str());
   } else {
     node = automatic_styles.append_child("style:style");
     node.append_attribute("style:name").set_value(name.c_str());
@@ -885,15 +878,16 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
   }
 
   if (cell.background_color.has_value()) {
-    set_attribute(properties_of(node, "style:table-cell-properties"),
-                  "fo:background-color",
-                  color_value(*cell.background_color).c_str());
+    xml::set_attribute(properties_of(node, "style:table-cell-properties"),
+                       "fo:background-color",
+                       color_value(*cell.background_color).c_str());
   }
   if (cell.horizontal_align.has_value()) {
-    set_attribute(properties_of(node, "style:table-cell-properties"),
-                  "style:text-align-source", "fix");
-    set_attribute(properties_of(node, "style:paragraph-properties"),
-                  "fo:text-align", text_align_value(*cell.horizontal_align));
+    xml::set_attribute(properties_of(node, "style:table-cell-properties"),
+                       "style:text-align-source", "fix");
+    xml::set_attribute(properties_of(node, "style:paragraph-properties"),
+                       "fo:text-align",
+                       text_align_value(*cell.horizontal_align));
   }
   TextStyle text_properties = text;
   text_properties.background_color.reset();

@@ -2,11 +2,10 @@
 
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cstdlib>
-#include <cstring>
 #include <span>
 #include <sstream>
 #include <string>
@@ -82,15 +81,7 @@ pugi::xml_node ordered_child(pugi::xml_node parent, const char *name,
   if (const pugi::xml_node existing = parent.child(name)) {
     return existing;
   }
-  const auto rank = [&](const std::string_view child) {
-    return std::ranges::find(order, child) - std::begin(order);
-  };
-  for (const pugi::xml_node child : parent.children()) {
-    if (rank(child.name()) > rank(name)) {
-      return parent.insert_child_before(name, child);
-    }
-  }
-  return parent.append_child(name);
+  return insert_in_sequence(parent, name, order);
 }
 
 /// The @p name child of `styleSheet`, made in the order [ECMA-376] 18.8.39
@@ -103,17 +94,7 @@ pugi::xml_node collection_of(pugi::xml_node root, const char *name) {
   return ordered_child(root, name, order);
 }
 
-void set_attribute(pugi::xml_node node, const char *name, const char *value) {
-  pugi::xml_attribute attribute = node.attribute(name);
-  if (!attribute) {
-    attribute = node.append_attribute(name);
-  }
-  attribute.set_value(value);
-}
-
-std::string argb_of(const Color &color) {
-  return fmt::format("FF{:06X}", color.rgb());
-}
+std::string argb_of(const Color &color) { return "FF" + hex_color(color); }
 
 /// [ECMA-376] 18.8.22 `CT_Font` is a sequence.
 constexpr std::array<std::string_view, 15> font_order{
@@ -147,7 +128,7 @@ std::uint32_t intern(pugi::xml_node collection, const pugi::xml_node node) {
     ++index;
   }
   collection.append_copy(node);
-  set_attribute(collection, "count", std::to_string(index + 1).c_str());
+  xml::set_attribute(collection, "count", std::to_string(index + 1).c_str());
   return index;
 }
 
@@ -158,7 +139,7 @@ void state_defaults(pugi::xml_node root) {
     pugi::xml_node font = fonts.append_child("font");
     font.append_child("sz").append_attribute("val").set_value("11");
     font.append_child("name").append_attribute("val").set_value("Calibri");
-    set_attribute(fonts, "count", "1");
+    xml::set_attribute(fonts, "count", "1");
   }
   if (pugi::xml_node fills = collection_of(root, "fills");
       !fills.first_child()) {
@@ -171,12 +152,12 @@ void state_defaults(pugi::xml_node root) {
         .append_child("patternFill")
         .append_attribute("patternType")
         .set_value("gray125");
-    set_attribute(fills, "count", "2");
+    xml::set_attribute(fills, "count", "2");
   }
   if (pugi::xml_node borders = collection_of(root, "borders");
       !borders.first_child()) {
     borders.append_child("border");
-    set_attribute(borders, "count", "1");
+    xml::set_attribute(borders, "count", "1");
   }
   const auto default_xf = [](pugi::xml_node xf) {
     xf.append_attribute("numFmtId").set_value("0");
@@ -188,14 +169,14 @@ void state_defaults(pugi::xml_node root) {
   if (pugi::xml_node masters = collection_of(root, "cellStyleXfs");
       !masters.first_child()) {
     default_xf(masters.append_child("xf"));
-    set_attribute(masters, "count", "1");
+    xml::set_attribute(masters, "count", "1");
   }
   if (pugi::xml_node formats = collection_of(root, "cellXfs");
       !formats.first_child()) {
     default_xf(formats.append_child("xf"))
         .append_attribute("xfId")
         .set_value("0");
-    set_attribute(formats, "count", "1");
+    xml::set_attribute(formats, "count", "1");
   }
 }
 
@@ -388,8 +369,9 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
       }
     }
     if (text_style.font_size) {
-      set_attribute(ordered_child(font, "sz", font_order), "val",
-                    fmt::format("{:g}", points(*text_style.font_size)).c_str());
+      xml::set_attribute(
+          ordered_child(font, "sz", font_order), "val",
+          fmt::format("{:g}", points(*text_style.font_size)).c_str());
     }
     if (text_style.font_color) {
       pugi::xml_node color = ordered_child(font, "color", font_order);
@@ -397,10 +379,10 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
       color.append_attribute("rgb").set_value(
           argb_of(*text_style.font_color).c_str());
     }
-    set_attribute(
+    xml::set_attribute(
         xf, "fontId",
         std::to_string(intern(m_styles_root.child("fonts"), font)).c_str());
-    set_attribute(xf, "applyFont", "1");
+    xml::set_attribute(xf, "applyFont", "1");
   }
 
   if (cell_style.background_color) {
@@ -415,10 +397,10 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
       pattern.append_child("bgColor").append_attribute("indexed").set_value(
           "64");
     }
-    set_attribute(
+    xml::set_attribute(
         xf, "fillId",
         std::to_string(intern(m_styles_root.child("fills"), fill)).c_str());
-    set_attribute(xf, "applyFill", "1");
+    xml::set_attribute(xf, "applyFill", "1");
   }
 
   if (cell_style.horizontal_align) {
@@ -432,8 +414,8 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
     } else if (*cell_style.horizontal_align == HorizontalAlign::right) {
       horizontal = "right";
     }
-    set_attribute(alignment, "horizontal", horizontal);
-    set_attribute(xf, "applyAlignment", "1");
+    xml::set_attribute(alignment, "horizontal", horizontal);
+    xml::set_attribute(xf, "applyAlignment", "1");
   }
 
   const std::uint32_t result = intern(m_styles_root.child("cellXfs"), xf);

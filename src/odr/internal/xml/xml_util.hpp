@@ -7,6 +7,7 @@
 
 namespace pugi {
 class xml_document;
+class xml_node;
 } // namespace pugi
 
 namespace odr::internal::abstract {
@@ -32,6 +33,9 @@ pugi::xml_document parse(const std::string &);
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::File &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
+
+/// Sets the attribute @p name of @p node, appending it where it is missing.
+void set_attribute(pugi::xml_node node, const char *name, const char *value);
 
 /// Throws unless @p in holds a well formed xml document.
 void check_xml_file(std::istream &in);
