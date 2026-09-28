@@ -3,6 +3,7 @@
 #import "ODRInternal.h"
 #import "ODRPrivate.h"
 
+#include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <optional>
@@ -305,6 +306,43 @@ odr::Color unbox_color(NSValue *const value) {
 @end
 
 @implementation ODRTableCellStyle
+
+- (instancetype)init {
+  if ((self = [super init]) != nil) {
+    _padding = [ODRDirectionalMeasure
+        directionalWithHandle:odr::DirectionalStyle<odr::Measure>()];
+    _border = [ODRDirectionalString
+        directionalWithHandle:odr::DirectionalStyle<std::string>()];
+  }
+  return self;
+}
+
+- (odr::TableCellStyle)handle {
+  if (_padding.right != nil || _padding.top != nil || _padding.left != nil ||
+      _padding.bottom != nil || _border.right != nil || _border.top != nil ||
+      _border.left != nil || _border.bottom != nil) {
+    throw odr::UnsupportedOperation();
+  }
+  odr::TableCellStyle result;
+  if (_horizontalAlign != nil) {
+    result.horizontal_align =
+        static_cast<odr::HorizontalAlign>(_horizontalAlign.integerValue);
+  }
+  if (_verticalAlign != nil) {
+    result.vertical_align =
+        static_cast<odr::VerticalAlign>(_verticalAlign.integerValue);
+  }
+  if (_backgroundColor != nil) {
+    result.background_color = unbox_color(_backgroundColor);
+  }
+  if (_textRotation != nil) {
+    result.text_rotation = _textRotation.doubleValue;
+  }
+  if (_wrapText != nil) {
+    result.wrap_text = _wrapText.boolValue != NO;
+  }
+  return result;
+}
 
 + (instancetype)styleWithHandle:(const odr::TableCellStyle &)handle {
   ODRTableCellStyle *const result = [[ODRTableCellStyle alloc] init];

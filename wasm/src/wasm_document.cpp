@@ -7,6 +7,7 @@
 
 #include <emscripten/bind.h>
 
+#include <cstdint>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -107,6 +108,29 @@ emscripten::val set_text_style(const Handle handle, const double id,
   });
 }
 
+/// @p style as the page's `odr.editing.format` takes it for a cell, replayed
+/// through the envelope, which parses it.
+emscripten::val set_cell_style(const Handle handle, const double sheet,
+                               const double column, const double row,
+                               const emscripten::val style) {
+  return guarded([&] {
+    Session &s = session(handle);
+    if (style.isUndefined() || style.isNull() ||
+        style.typeOf().as<std::string>() != "object") {
+      throw std::invalid_argument("setCellStyle takes a style object");
+    }
+    const std::string json =
+        emscripten::val::global("JSON").call<std::string>("stringify", style);
+    document_of(s).edit(
+        R"({"version":2,"ops":[{"op":"setCellStyle","sheet":)" +
+        std::to_string(static_cast<std::uint32_t>(sheet)) + R"(,"column":)" +
+        std::to_string(static_cast<std::uint32_t>(column)) + R"(,"row":)" +
+        std::to_string(static_cast<std::uint32_t>(row)) + R"(,"style":)" +
+        json + "}]}");
+    return ok();
+  });
+}
+
 /// @p after of 0 is `null_element_id`: split before every child.
 emscripten::val split_paragraph(const Handle handle, const double paragraph,
                                 const double after) {
@@ -176,6 +200,7 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("insertTextAfter", &odr::wasm::insert_text_after);
   emscripten::function("appendText", &odr::wasm::append_text);
   emscripten::function("setTextStyle", &odr::wasm::set_text_style);
+  emscripten::function("setCellStyle", &odr::wasm::set_cell_style);
   emscripten::function("splitParagraph", &odr::wasm::split_paragraph);
   emscripten::function("mergeParagraphWithNext",
                        &odr::wasm::merge_paragraph_with_next);

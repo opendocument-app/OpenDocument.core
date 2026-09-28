@@ -211,6 +211,7 @@ if (ODR_TEST AND NOT ANDROID)
             # verbatim, where an absolute path is not found.
             RESOURCES NAMESPACE "app/opendocument/core"
             "testfixtures/resources/app/opendocument/core/mixed-layout.odt"
+            "testfixtures/resources/app/opendocument/core/span.ods"
             INCLUDE_JARS odr_java "${ODR_JNI_JUNIT_JAR}"
             OUTPUT_NAME odr-core-java-tests
     )

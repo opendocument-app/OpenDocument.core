@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The python, Java, Objective-C and npm bindings style a sheet cell
+  (`Sheet::set_cell_style`). In Java and Objective-C, a `TableCellStyle` can
+  now be built and written.
+
 - The sheet editor formats cells. A selection is a rectangle, spanned by a
   shift click, a shift arrow, a mouse drag or a header click, and
   `odr.editing.format` and `toggle` take `fill` and `align` beside the text

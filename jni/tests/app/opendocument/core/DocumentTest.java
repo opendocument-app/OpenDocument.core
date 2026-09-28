@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -189,6 +190,41 @@ class DocumentTest {
     assertEquals("pt", styled.fontSize.unit);
     assertEquals(new Color(255, 255, 0), styled.backgroundColor);
     assertNull(styled.fontStyle);
+  }
+
+  @Test
+  void setCellStyleFillsACell() throws IOException {
+    Path ods = TestFiles.odsFile(tempDir);
+    Document document = Odr.open(ods.toString()).asDocumentFile().document();
+    Sheet sheet = document.rootElement().firstChild().asSheet();
+
+    TableCellStyle cellStyle = new TableCellStyle();
+    cellStyle.backgroundColor = new Color(255, 255, 0);
+    cellStyle.horizontalAlign = HorizontalAlign.CENTER;
+    TextStyle textStyle = new TextStyle();
+    textStyle.fontWeight = FontWeight.BOLD;
+    sheet.setCellStyle(0, 0, cellStyle, textStyle);
+
+    Path path = tempDir.resolve("styled.ods");
+    Files.write(path, document.saveToMemory());
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+    Sheet reloadedSheet = reloaded.rootElement().firstChild().asSheet();
+
+    assertEquals(new Color(255, 255, 0), reloadedSheet.cellStyle(0, 0).backgroundColor);
+    assertEquals(FontWeight.BOLD, firstText(reloadedSheet.cell(0, 0)).style().fontWeight);
+  }
+
+  @Test
+  void setCellStyleRefusesWhatNoEngineWrites() throws IOException {
+    Path ods = TestFiles.odsFile(tempDir);
+    Document document = Odr.open(ods.toString()).asDocumentFile().document();
+    Sheet sheet = document.rootElement().firstChild().asSheet();
+
+    TableCellStyle cellStyle = new TableCellStyle();
+    cellStyle.wrapText = true;
+    assertThrows(
+        OdrException.UnsupportedOperation.class,
+        () -> sheet.setCellStyle(0, 0, cellStyle, new TextStyle()));
   }
 
   @Test

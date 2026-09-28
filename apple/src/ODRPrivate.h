@@ -125,6 +125,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ODRTableCellStyle (Private)
 + (instancetype)styleWithHandle:(const odr::TableCellStyle &)handle;
+/// The set properties as a `TableCellStyle`; throws `UnsupportedOperation`
+/// where `padding` or `border` states a side, which no engine writes.
+- (odr::TableCellStyle)handle;
 @end
 
 @interface ODRDrawingPath (Private)

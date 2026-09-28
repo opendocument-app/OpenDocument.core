@@ -222,20 +222,20 @@ NS_SWIFT_NAME(TableRowStyle)
 NS_SWIFT_NAME(TableCellStyle)
 @interface ODRTableCellStyle : NSObject
 /// `ODRHorizontalAlign`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *horizontalAlign;
+@property(nonatomic, nullable) NSNumber *horizontalAlign;
 /// `ODRVerticalAlign`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *verticalAlign;
-/// `ODRColor`, boxed in an `NSValue`.
-@property(nonatomic, readonly, nullable) NSValue *backgroundColor;
+@property(nonatomic, nullable) NSNumber *verticalAlign;
+/// `ODRColor`, boxed in an `NSValue`; an alpha of 0 takes a fill away.
+@property(nonatomic, nullable) NSValue *backgroundColor;
 @property(nonatomic, readonly) ODRDirectionalMeasure *padding;
 @property(nonatomic, readonly) ODRDirectionalString *border;
 /// `double`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *textRotation;
+@property(nonatomic, nullable) NSNumber *textRotation;
 /// `BOOL`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *wrapText;
+@property(nonatomic, nullable) NSNumber *wrapText;
 
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)new NS_UNAVAILABLE;
+/// Every property `nil`, and no side of `padding` or `border` stated.
+- (instancetype)init;
 @end
 
 /// Graphic style — `odr::GraphicStyle`.

@@ -1,4 +1,5 @@
 import pyodr
+import pytest
 
 
 def walk_text(element):
@@ -228,3 +229,35 @@ def test_set_style_marks_a_run(odt_path, tmp_path):
     assert styled.font_size == pyodr.Measure("14pt")
     assert styled.background_color.rgb() == 0xFFFF00
     assert styled.font_style is None
+
+
+def test_set_cell_style_fills_a_cell(ods_path, tmp_path):
+    document = pyodr.open(str(ods_path)).as_document_file().document()
+    sheet = next(iter(document.root_element().children())).as_sheet()
+
+    cell_style = pyodr.TableCellStyle()
+    cell_style.background_color = pyodr.Color(0xFF, 0xFF, 0x00)
+    cell_style.horizontal_align = pyodr.HorizontalAlign.center
+    text_style = pyodr.TextStyle()
+    text_style.font_weight = pyodr.FontWeight.bold
+    sheet.set_cell_style(0, 0, cell_style, text_style)
+
+    path = tmp_path / "styled.ods"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    reloaded_sheet = next(iter(reloaded.root_element().children())).as_sheet()
+
+    assert reloaded_sheet.cell_style(0, 0).background_color.rgb() == 0xFFFF00
+    assert first_text(reloaded_sheet.cell(0, 0)).style().font_weight == (
+        pyodr.FontWeight.bold
+    )
+
+
+def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
+    document = pyodr.open(str(ods_path)).as_document_file().document()
+    sheet = next(iter(document.root_element().children())).as_sheet()
+
+    cell_style = pyodr.TableCellStyle()
+    cell_style.wrap_text = True
+    with pytest.raises(pyodr.UnsupportedOperation):
+        sheet.set_cell_style(0, 0, cell_style, pyodr.TextStyle())
