@@ -749,15 +749,19 @@ std::string color_value(const Color &color) {
   return fmt::format("#{:06x}", color.rgb());
 }
 
+void set_attribute(pugi::xml_node node, const char *name, const char *value) {
+  pugi::xml_attribute attribute = node.attribute(name);
+  if (!attribute) {
+    attribute = node.append_attribute(name);
+  }
+  attribute.set_value(value);
+}
+
 /// Writes the set fields of @p style as attributes of @p properties, the
 /// asian and complex variants beside each western one.
 void write_text_properties(pugi::xml_node properties, const TextStyle &style) {
   const auto set = [&](const char *name, const std::string &value) {
-    pugi::xml_attribute attribute = properties.attribute(name);
-    if (!attribute) {
-      attribute = properties.append_attribute(name);
-    }
-    attribute.set_value(value.c_str());
+    set_attribute(properties, name, value.c_str());
   };
 
   if (style.font_size.has_value()) {
@@ -815,14 +819,6 @@ pugi::xml_node properties_of(pugi::xml_node style, const char *name) {
   return style.append_child(name);
 }
 
-void set_attribute(pugi::xml_node node, const char *name, const char *value) {
-  pugi::xml_attribute attribute = node.attribute(name);
-  if (!attribute) {
-    attribute = node.append_attribute(name);
-  }
-  attribute.set_value(value);
-}
-
 const char *text_align_value(const HorizontalAlign align) {
   switch (align) {
   case HorizontalAlign::left:
@@ -842,7 +838,7 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
                                              const TableCellStyle &cell,
                                              const TextStyle &text) {
   const std::string base = base_name != nullptr ? base_name : "";
-  const auto optional = [](const auto &value) {
+  const auto key_of = [](const auto &value) {
     return value.has_value() ? std::to_string(static_cast<int>(*value))
                              : std::string("-");
   };
@@ -851,9 +847,9 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
       cell.background_color
           ? fmt::format("{:08x}", cell.background_color->argb())
           : "-",
-      optional(cell.horizontal_align), optional(text.font_weight),
-      optional(text.font_style), optional(text.font_underline),
-      optional(text.font_line_through),
+      key_of(cell.horizontal_align), key_of(text.font_weight),
+      key_of(text.font_style), key_of(text.font_underline),
+      key_of(text.font_line_through),
       text.font_color ? fmt::format("{:08x}", text.font_color->argb()) : "-",
       text.font_size ? text.font_size->to_string() : "-");
   if (const auto it = m_created_cell_styles.find(key);
