@@ -425,6 +425,25 @@ void Sheet::clear_cell(const std::uint32_t column,
   set_cell(column, row, CellValue());
 }
 
+void Sheet::set_cell_style(const std::uint32_t column, const std::uint32_t row,
+                           const TableCellStyle &cell_style,
+                           const TextStyle &text_style) const {
+  if (!exists_()) {
+    return;
+  }
+  const auto stated = [](const auto &sides) {
+    return sides.right || sides.top || sides.left || sides.bottom;
+  };
+  if (cell_style.vertical_align || stated(cell_style.padding) ||
+      stated(cell_style.border) || cell_style.text_rotation ||
+      cell_style.wrap_text || text_style.font_name || text_style.font_shadow ||
+      text_style.background_color || text_style.font_position) {
+    throw UnsupportedOperation();
+  }
+  m_adapter2->sheet_set_cell_style(m_identifier, column, row, cell_style,
+                                   text_style);
+}
+
 TableStyle Sheet::style() const {
   return exists_() ? m_adapter2->sheet_style(m_identifier) : TableStyle();
 }

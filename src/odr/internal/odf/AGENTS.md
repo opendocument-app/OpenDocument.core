@@ -141,6 +141,15 @@ unknown mimetype are tolerated.
   the same walk `spreadsheet.js::runOf` makes over the page. A cell that holds
   a formula, a link, a line break or several paragraphs refuses. Refusals are
   decided before any node is cut.
+- **A cell style.** `sheet_set_cell_style` claims the cell as a value write
+  does and points `table:style-name` at a fresh automatic style `ce<n>`
+  (`StyleRegistry::create_cell_style`): a copy of the automatic style the
+  cell shows (its own, else the row's or column's default) plus the delta, or
+  a child of a named one. One base and one delta make one style. The fill is
+  `fo:background-color`, the alignment `fo:text-align` with
+  `style:text-align-source="fix"`, and the text keys are `text_set_style`'s.
+- **A covered position** refuses a value and a style. The index holds no
+  covered cell, so `is_covered` walks the row's DOM.
 - **A repeated cell** is written by cutting the run: `claim_cell` copies the
   `table:table-row` and the `table:table-cell` around the position and leaves
   the original node as the one written, so its element survives.

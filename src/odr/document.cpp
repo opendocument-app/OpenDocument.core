@@ -172,6 +172,38 @@ TextStyle parse_text_style(const nlohmann::json &json) {
   return style;
 }
 
+/// The `style` of a `setCellStyle` op: the keys of `setTextStyle` but
+/// `highlight`, and `fill` and `align`.
+std::pair<TableCellStyle, TextStyle>
+parse_cell_style(const nlohmann::json &json) {
+  TableCellStyle cell_style;
+  nlohmann::json text_keys = nlohmann::json::object();
+  for (const auto &[key, value] : json.items()) {
+    if (key == "fill") {
+      cell_style.background_color = value.is_null()
+                                        ? Color(0, 0, 0, 0)
+                                        : parse_color(value.get<std::string>());
+    } else if (key == "align") {
+      const auto align = value.get<std::string>();
+      if (align == "left") {
+        cell_style.horizontal_align = HorizontalAlign::left;
+      } else if (align == "center") {
+        cell_style.horizontal_align = HorizontalAlign::center;
+      } else if (align == "right") {
+        cell_style.horizontal_align = HorizontalAlign::right;
+      } else {
+        throw std::invalid_argument("unknown alignment " + align);
+      }
+    } else if (key == "highlight") {
+      throw std::invalid_argument(
+          "a cell has no highlight; `fill` is its ground");
+    } else {
+      text_keys[key] = value;
+    }
+  }
+  return {cell_style, parse_text_style(text_keys)};
+}
+
 /// The @p ordinal -th sheet in document order, which is how an op names one.
 Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
@@ -267,6 +299,16 @@ void Document::edit(const std::string_view operations,
           .set_cell(operation.at("column").get<std::uint32_t>(),
                     operation.at("row").get<std::uint32_t>(),
                     parse_cell_value(operation.at("value")));
+      continue;
+    }
+
+    if (name == "setCellStyle") {
+      const auto [cell_style, text_style] =
+          parse_cell_style(operation.at("style"));
+      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
+          .set_cell_style(operation.at("column").get<std::uint32_t>(),
+                          operation.at("row").get<std::uint32_t>(), cell_style,
+                          text_style);
       continue;
     }
 

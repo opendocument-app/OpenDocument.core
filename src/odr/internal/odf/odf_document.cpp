@@ -494,6 +494,9 @@ public:
     if (!writable(value)) {
       throw UnsupportedOperation();
     }
+    if (is_covered(element_id, column, row)) {
+      throw UnsupportedOperation();
+    }
     const ElementRegistry::Sheet::Cell *cell =
         m_registry->sheet_element_at(element_id).cell(column, row);
 
@@ -548,6 +551,40 @@ public:
     }
 
     drop_stale_results(element_id, column, row);
+  }
+
+  void sheet_set_cell_style(const ElementIdentifier element_id,
+                            const std::uint32_t column, const std::uint32_t row,
+                            const TableCellStyle &cell_style,
+                            const TextStyle &text_style) const override {
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+
+    if (is_covered(element_id, column, row)) {
+      throw UnsupportedOperation();
+    }
+
+    ElementIdentifier cell_id = null_element_id;
+    if (cell == nullptr) {
+      cell_id = grow_to_cell(element_id, column, row);
+    } else {
+      cell_id = cell->element_id;
+      if (cell_id == null_element_id ||
+          m_registry->sheet_cell_element_at(cell_id).is_repeated) {
+        cell_id = claim_cell(element_id, column, row); // `cell` is stale after
+      }
+    }
+
+    pugi::xml_node node = get_node(cell_id);
+    const std::string name = m_document->style_registry().create_cell_style(
+        automatic_styles_of(node),
+        cell_style_name(element_id, cell_id, {column, row}), cell_style,
+        text_style);
+    pugi::xml_attribute attribute = node.attribute("table:style-name");
+    if (!attribute) {
+      attribute = node.prepend_attribute("table:style-name");
+    }
+    attribute.set_value(name.c_str());
   }
 
   /// The sheets of the document in the order an operation names them by.
@@ -1156,6 +1193,30 @@ private:
     return row_entry->node;
   }
 
+  /// Whether a span covers (@p column, @p row). The index holds no covered
+  /// cell, so the row's dom is asked ([ODF 1.2] 9.1.5).
+  [[nodiscard]] bool is_covered(const ElementIdentifier sheet_id,
+                                const std::uint32_t column,
+                                const std::uint32_t row) const {
+    const ElementRegistry::Sheet::Row *row_entry =
+        m_registry->sheet_element_at(sheet_id).row(row);
+    if (row_entry == nullptr) {
+      return false;
+    }
+    std::uint32_t begin = 0;
+    for (const pugi::xml_node cell : row_entry->node.children()) {
+      const std::string_view name = cell.name();
+      if (name != "table:table-cell" && name != "table:covered-table-cell") {
+        continue;
+      }
+      begin += cell.attribute("table:number-columns-repeated").as_uint(1);
+      if (column < begin) {
+        return name == "table:covered-table-cell";
+      }
+    }
+    return false;
+  }
+
   /// Gives (@p column, @p row) an element of its own: cuts the row and the
   /// cell run it is one position of, and states the `text:p` an empty cell
   /// has none of. Reindexes: every pointer read before is stale.
@@ -1165,13 +1226,12 @@ private:
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(sheet_id);
 
-    const std::span<const ElementRegistry::Sheet::Cell> cells =
-        sheet.row_cells(*sheet.row(row));
     const ElementRegistry::Sheet::Cell *cell_entry = sheet.cell(column, row);
-    const std::size_t cell_index = cell_entry - cells.data();
-    const std::uint32_t cell_begin =
-        cell_index == 0 ? 0 : cells[cell_index - 1].end;
     pugi::xml_node cell_node = cell_entry->node;
+    // not the end of the cell before: a span leaves a gap after that one
+    const std::uint32_t cell_begin =
+        cell_entry->end -
+        cell_node.attribute("table:number-columns-repeated").as_uint(1);
 
     // the row first: the cell keeps its node, so its own run is unmoved
     split_row_at(sheet, row);
@@ -1562,6 +1622,22 @@ private:
   get_partial_cell_style(const ElementIdentifier sheet_id,
                          const ElementIdentifier cell_id,
                          const TablePosition &position) const {
+    if (const char *style_name = cell_style_name(sheet_id, cell_id, position);
+        style_name != nullptr) {
+      if (const Style *style = m_document->style_registry().style(style_name);
+          style != nullptr) {
+        return style->resolved();
+      }
+    }
+    return {};
+  }
+
+  /// The style the cell shows: its own, else its row's or its column's
+  /// default. Null where none of them names one.
+  [[nodiscard]] const char *
+  cell_style_name(const ElementIdentifier sheet_id,
+                  const ElementIdentifier cell_id,
+                  const TablePosition &position) const {
     const char *style_name = nullptr;
 
     if (cell_id != null_element_id) {
@@ -1602,14 +1678,7 @@ private:
       }
     }
 
-    if (style_name != nullptr) {
-      if (const Style *style = m_document->style_registry().style(style_name);
-          style != nullptr) {
-        return style->resolved();
-      }
-    }
-
-    return {};
+    return style_name;
   }
 };
 
