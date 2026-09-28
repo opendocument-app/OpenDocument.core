@@ -6,6 +6,9 @@ body{background:#0d1117;color:#e6edf3}
 /* Fills give way to the page, text to one legible against it.
    `background-image` is left alone: a page printed on a picture keeps it. */
 div,table,tr,td,x-p,x-s{background-color:transparent!important}
+/* A cell's fill is what tells one cell from the next, so it turns over rather
+   than giving way (`dark_fill`). */
+td{background-color:var(--odr-dark-fill,transparent)!important}
 /* A shape's fill is an svg `fill` (`translate_drawing_style`), not a
    background, and gives way like one. The stroke stays: it is the line. */
 svg,svg *{fill:transparent!important}

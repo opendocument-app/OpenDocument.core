@@ -11,6 +11,7 @@
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_style.hpp>
+#include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
@@ -803,7 +804,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 }
               })
               .set_style(
-                  translate_table_cell_style(cell_style) +
+                  translate_table_cell_style(
+                      cell_style, writes_dark_style(state.config())) +
                       (column_pixels[column_index].has_value() ? "max-width:0;"
                                                                : "") +
                       cell_css +
@@ -1086,7 +1088,8 @@ void html::translate_table(const Element &element, const WritingState &state) {
                   clb("rowspan", std::to_string(cell_span.rows));
                 }
               })
-              .set_style(translate_table_cell_style(table_cell.style())));
+              .set_style(translate_table_cell_style(
+                  table_cell.style(), writes_dark_style(state.config()))));
 
       translate_children(cell.children(), state);
 
