@@ -6,8 +6,9 @@ xml does differently, and why. Open work is in [`PLAN.md`](PLAN.md).
 ## Three things live here
 
 - `xml_util` is the shared plumbing: `parse`, `escape_text`,
-  `escape_attribute`, `read_declared_encoding`, `tokenize_text`. odf, ooxml,
-  svg and the html writer go through it. It depends on no other engine.
+  `escape_attribute`, `read_declared_encoding`, `tokenize_text`, and for the
+  writers `set_attribute` and `insert_in_sequence`. odf, ooxml, svg and the
+  html writer go through it. It depends on no other engine.
 - `xml_tree_edit` is the node editing the odf and ooxml write sides share.
 - `xml_file` is the format: xml opened as a file of its own and rendered as a
   source view. The rest of this file is about it.

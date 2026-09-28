@@ -8,6 +8,7 @@
 
 #include <pugixml.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -96,6 +97,24 @@ void xml::set_attribute(pugi::xml_node node, const char *name,
     attribute = node.append_attribute(name);
   }
   attribute.set_value(value);
+}
+
+pugi::xml_node
+xml::insert_in_sequence(pugi::xml_node parent, const char *name,
+                        const std::span<const std::string_view> order) {
+  const auto rank = [&](const std::string_view child_name) {
+    const auto it = std::ranges::find(order, child_name);
+    return it == std::end(order)
+               ? order.size()
+               : static_cast<std::size_t>(it - std::begin(order));
+  };
+  const std::size_t own_rank = rank(name);
+  for (const pugi::xml_node child : parent.children()) {
+    if (rank(child.name()) > own_rank) {
+      return parent.insert_child_before(name, child);
+    }
+  }
+  return parent.append_child(name);
 }
 
 std::string xml::read_declared_encoding(std::istream &in) {

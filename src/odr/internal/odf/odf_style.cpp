@@ -4,7 +4,6 @@
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <cstring>
@@ -801,15 +800,7 @@ pugi::xml_node properties_of(pugi::xml_node style, const char *name) {
   if (pugi::xml_node existing = style.child(name)) {
     return existing;
   }
-  const auto rank = [](const std::string_view child) {
-    return std::ranges::find(order, child) - std::begin(order);
-  };
-  for (pugi::xml_node child : style.children()) {
-    if (rank(child.name()) > rank(name)) {
-      return style.insert_child_before(name, child);
-    }
-  }
-  return style.append_child(name);
+  return xml::insert_in_sequence(style, name, order);
 }
 
 const char *text_align_value(const HorizontalAlign align) {

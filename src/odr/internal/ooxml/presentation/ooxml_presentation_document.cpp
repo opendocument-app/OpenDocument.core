@@ -211,14 +211,10 @@ constexpr std::array<const char *, 6> fill_names{"a:noFill",   "a:solidFill",
 /// size as attributes, the colour and the highlight as children.
 void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
   const auto attribute = [&](const char *name, const std::string &value) {
-    pugi::xml_attribute attr = properties.attribute(name);
-    if (!attr) {
-      attr = properties.append_attribute(name);
-    }
-    attr.set_value(value.c_str());
+    xml::set_attribute(properties, name, value.c_str());
   };
   const auto solid = [&](const char *name, const Color &color) {
-    insert_in_sequence(properties, name, run_property_order)
+    xml::insert_in_sequence(properties, name, run_property_order)
         .append_child("a:srgbClr")
         .append_attribute("val")
         .set_value(hex_color(color).c_str());

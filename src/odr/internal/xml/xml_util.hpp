@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,6 +37,10 @@ pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
 
 /// Sets the attribute @p name of @p node, appending it where it is missing.
 void set_attribute(pugi::xml_node node, const char *name, const char *value);
+/// Inserts a child @p name into @p parent at its place in the schema
+/// sequence @p order; a child the sequence does not name ranks last.
+pugi::xml_node insert_in_sequence(pugi::xml_node parent, const char *name,
+                                  std::span<const std::string_view> order);
 
 /// Throws unless @p in holds a well formed xml document.
 void check_xml_file(std::istream &in);

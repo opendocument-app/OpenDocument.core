@@ -81,7 +81,7 @@ pugi::xml_node ordered_child(pugi::xml_node parent, const char *name,
   if (const pugi::xml_node existing = parent.child(name)) {
     return existing;
   }
-  return insert_in_sequence(parent, name, order);
+  return xml::insert_in_sequence(parent, name, order);
 }
 
 /// The @p name child of `styleSheet`, made in the order [ECMA-376] 18.8.39
