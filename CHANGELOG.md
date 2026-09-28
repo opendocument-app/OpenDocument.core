@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Fix**: an xlsx cell fill showed the pattern background and not its colour,
+  so many fills rendered in a wrong colour. A fill now shows `fgColor`, reads
+  a theme colour and its tint, and a cell shows italic, underline,
+  strikethrough and left or right alignment.
+
 - **Fix**: a cell fill disappeared in the dark color scheme. The cell now keeps
   its fill in a dark version with the same hue, and the text stays readable on
   it.

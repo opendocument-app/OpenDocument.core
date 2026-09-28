@@ -1,8 +1,12 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <string_view>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -33,61 +37,106 @@ const std::vector<Color> &color_index() {
 
 std::optional<HorizontalAlign>
 read_horizontal(const pugi::xml_attribute attribute) {
-  if (const std::string value = attribute.value(); value == "center") {
+  const std::string_view value = attribute.value();
+  if (value == "left") {
+    return HorizontalAlign::left;
+  }
+  if (value == "center") {
     return HorizontalAlign::center;
+  }
+  if (value == "right") {
+    return HorizontalAlign::right;
   }
   return {};
 }
 
 std::optional<VerticalAlign>
 read_vertical(const pugi::xml_attribute attribute) {
-  if (const std::string value = attribute.value(); value == "center") {
+  const std::string_view value = attribute.value();
+  if (value == "top") {
+    return VerticalAlign::top;
+  }
+  if (value == "center") {
     return VerticalAlign::middle;
   }
-  return {};
-}
-
-std::optional<Color> read_color(const pugi::xml_node node) {
-  if (const pugi::xml_attribute indexed = node.attribute("indexed")) {
-    return color_index().at(indexed.as_uint());
-  }
-  if (const pugi::xml_attribute rgb = node.attribute("rgb")) {
-    const char *value = rgb.value();
-    if (std::strlen(value) == 8) {
-      // the alpha byte is not one: excel ignores it and producers routinely
-      // write `00`, which would paint nothing at all
-      const std::uint32_t color = std::strtoull(value, nullptr, 16);
-      return Color::from_rgb(color);
-    }
-    if (std::strlen(value) == 6) {
-      const std::uint32_t color = std::strtoull(value, nullptr, 16);
-      return Color::from_rgb(color);
-    }
+  if (value == "bottom") {
+    return VerticalAlign::bottom;
   }
   return {};
 }
 
-std::optional<std::string> read_border(const pugi::xml_node node) {
-  if (!node) {
-    return {};
+/// A `CT_BooleanProperty`: present is on, unless `val` says otherwise.
+bool read_toggle(const pugi::xml_node node) {
+  return node && node.attribute("val").as_bool(true);
+}
+
+/// [ECMA-376] 18.8.19: the lightness moves toward black for a negative tint
+/// and toward white for a positive one.
+Color apply_tint(const Color color, const double tint) {
+  const double r = color.red / 255.0;
+  const double g = color.green / 255.0;
+  const double b = color.blue / 255.0;
+  const double max = std::max({r, g, b});
+  const double min = std::min({r, g, b});
+  double hue = 0;
+  double saturation = 0;
+  double lightness = (max + min) / 2;
+  if (max != min) {
+    const double d = max - min;
+    saturation = lightness > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max == r) {
+      hue = (g - b) / d + (g < b ? 6 : 0);
+    } else if (max == g) {
+      hue = (b - r) / d + 2;
+    } else {
+      hue = (r - g) / d + 4;
+    }
+    hue /= 6;
   }
-  std::string result;
-  if (!node.attribute("style")) {
-    return {};
-  }
-  // TODO: thin only
-  result.append("0.75pt solid ");
-  if (const std::optional<Color> color = read_color(node.child("color"))) {
-    result.append(html::color(*color));
-  }
-  return result;
+
+  lightness = tint < 0 ? lightness * (1 + tint) : lightness * (1 - tint) + tint;
+
+  const double q = lightness < 0.5
+                       ? lightness * (1 + saturation)
+                       : lightness + saturation - lightness * saturation;
+  const double p = 2 * lightness - q;
+  const auto channel = [&](double t) {
+    t -= std::floor(t);
+    double c = p;
+    if (t < 1.0 / 6) {
+      c = p + (q - p) * 6 * t;
+    } else if (t < 1.0 / 2) {
+      c = q;
+    } else if (t < 2.0 / 3) {
+      c = p + (q - p) * (2.0 / 3 - t) * 6;
+    }
+    return static_cast<std::uint8_t>(
+        std::lround(std::clamp(c, 0.0, 1.0) * 255));
+  };
+  return {channel(hue + 1.0 / 3), channel(hue), channel(hue - 1.0 / 3),
+          color.alpha};
 }
 
 } // namespace
 
 StyleRegistry::StyleRegistry() = default;
 
-StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
+StyleRegistry::StyleRegistry(const pugi::xml_node styles_root,
+                             const pugi::xml_node theme_root) {
+  const pugi::xml_node scheme =
+      theme_root.child("a:themeElements").child("a:clrScheme");
+  for (const char *name : {"a:lt1", "a:dk1", "a:lt2", "a:dk2", "a:accent1",
+                           "a:accent2", "a:accent3", "a:accent4", "a:accent5",
+                           "a:accent6", "a:hlink", "a:folHlink"}) {
+    const pugi::xml_node slot = scheme.child(name);
+    std::optional<Color> color =
+        read_color_attribute(slot.child("a:srgbClr").attribute("val"));
+    if (!color) {
+      color = read_color_attribute(slot.child("a:sysClr").attribute("lastClr"));
+    }
+    m_theme_colors.push_back(color);
+  }
+
   generate_indices_(styles_root);
 }
 
@@ -134,6 +183,34 @@ ResolvedStyle StyleRegistry::cell_style(const std::uint32_t i) const {
   return result;
 }
 
+/// [ECMA-376] 18.8.3 `CT_Color`: `rgb`, a legacy `indexed` slot or a `theme`
+/// slot, any of them moved by `tint`.
+std::optional<Color>
+StyleRegistry::read_color_(const pugi::xml_node node) const {
+  std::optional<Color> result;
+  if (const pugi::xml_attribute theme = node.attribute("theme")) {
+    if (theme.as_uint() < m_theme_colors.size()) {
+      result = m_theme_colors[theme.as_uint()];
+    }
+  } else if (const pugi::xml_attribute indexed = node.attribute("indexed")) {
+    if (indexed.as_uint() < color_index().size()) {
+      result = color_index()[indexed.as_uint()];
+    }
+  } else if (const pugi::xml_attribute rgb = node.attribute("rgb")) {
+    const std::string_view value = rgb.value();
+    // the alpha byte is not one: excel ignores it and producers routinely
+    // write `00`, which would paint nothing at all
+    if (value.size() == 8 || value.size() == 6) {
+      result = Color::from_rgb(static_cast<std::uint32_t>(
+          std::strtoull(rgb.value(), nullptr, 16) & 0xffffff));
+    }
+  }
+  if (const pugi::xml_attribute tint = node.attribute("tint"); result && tint) {
+    result = apply_tint(*result, tint.as_double());
+  }
+  return result;
+}
+
 void StyleRegistry::resolve_font_(const std::uint32_t i,
                                   ResolvedStyle &result) const {
   const pugi::xml_node font = m_fonts_index.at(i);
@@ -145,34 +222,60 @@ void StyleRegistry::resolve_font_(const std::uint32_t i,
           font.child("name").attribute("val")) {
     result.text_style.font_name = font_name.value();
   }
-  if (font.child("b")) {
-    result.text_style.font_weight = FontWeight::bold;
+  if (const pugi::xml_node bold = font.child("b")) {
+    result.text_style.font_weight =
+        read_toggle(bold) ? FontWeight::bold : FontWeight::normal;
+  }
+  if (const pugi::xml_node italic = font.child("i")) {
+    result.text_style.font_style =
+        read_toggle(italic) ? FontStyle::italic : FontStyle::normal;
+  }
+  if (const pugi::xml_node underline = font.child("u")) {
+    result.text_style.font_underline =
+        std::string_view(underline.attribute("val").value()) != "none";
+  }
+  if (const pugi::xml_node strike = font.child("strike")) {
+    result.text_style.font_line_through = read_toggle(strike);
   }
   if (const pugi::xml_node color = font.child("color")) {
-    result.text_style.font_color = read_color(color);
+    result.text_style.font_color = read_color_(color);
   }
 }
 
+/// [ECMA-376] 18.8.32: a pattern paints `fgColor`, so a solid fill is that
+/// colour; `none`, the default, paints nothing.
 void StyleRegistry::resolve_fill_(const std::uint32_t i,
                                   ResolvedStyle &result) const {
-  const pugi::xml_node fill = m_fills_index.at(i);
-
-  if (const pugi::xml_node pattern = fill.child("patternFill")) {
-    result.table_cell_style.background_color =
-        read_color(pattern.child("bgColor"));
+  const pugi::xml_node pattern = m_fills_index.at(i).child("patternFill");
+  const std::string_view type = pattern.attribute("patternType").value();
+  if (!pattern || type.empty() || type == "none") {
+    return;
   }
+  result.table_cell_style.background_color =
+      read_color_(pattern.child("fgColor"));
 }
 
 void StyleRegistry::resolve_border_(const std::uint32_t i,
                                     ResolvedStyle &result) const {
   const pugi::xml_node border = m_borders_index.at(i);
 
-  result.table_cell_style.border.right = read_border(border.child("right"));
-  result.table_cell_style.border.top = read_border(border.child("top"));
-  result.table_cell_style.border.left = read_border(border.child("left"));
-  result.table_cell_style.border.bottom = read_border(border.child("bottom"));
+  const auto side =
+      [&](const pugi::xml_node node) -> std::optional<std::string> {
+    if (!node.attribute("style")) {
+      return {};
+    }
+    // TODO: thin only
+    std::string declaration = "0.75pt solid ";
+    if (const std::optional<Color> color = read_color_(node.child("color"))) {
+      declaration.append(html::color(*color));
+    }
+    return declaration;
+  };
+  result.table_cell_style.border.right = side(border.child("right"));
+  result.table_cell_style.border.top = side(border.child("top"));
+  result.table_cell_style.border.left = side(border.child("left"));
+  result.table_cell_style.border.bottom = side(border.child("bottom"));
 }
-
 void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
   for (const pugi::xml_node font : styles_root.child("fonts")) {
     m_fonts_index.push_back(font);

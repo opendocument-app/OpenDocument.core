@@ -86,7 +86,17 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     }
   }
 
-  m_style_registry = StyleRegistry(styles_xml.document_element());
+  pugi::xml_node theme_root;
+  for (const auto &[id, target] : workbook_relations) {
+    if (target.starts_with("theme/")) {
+      const AbsPath theme_path = workbook_path.parent().join(RelPath(target));
+      if (m_files->is_file(theme_path)) {
+        theme_root = parse_xml_(theme_path).first.document_element();
+      }
+      break;
+    }
+  }
+  m_style_registry = StyleRegistry(styles_xml.document_element(), theme_root);
 
   const ParseContext parse_context(workbook_path, workbook_relations,
                                    m_xml_documents_and_relations,
