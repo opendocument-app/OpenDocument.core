@@ -3,12 +3,12 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/util/color_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -220,48 +220,10 @@ ooxml::read_drawing_rgb_color(const pugi::xml_node parent) {
 }
 
 Color ooxml::apply_tint(const Color &color, const double tint) {
-  const double r = color.red / 255.0;
-  const double g = color.green / 255.0;
-  const double b = color.blue / 255.0;
-  const double max = std::max({r, g, b});
-  const double min = std::min({r, g, b});
-  double hue = 0;
-  double saturation = 0;
-  double lightness = (max + min) / 2;
-  if (max != min) {
-    const double d = max - min;
-    saturation = lightness > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max == r) {
-      hue = (g - b) / d + (g < b ? 6 : 0);
-    } else if (max == g) {
-      hue = (b - r) / d + 2;
-    } else {
-      hue = (r - g) / d + 4;
-    }
-    hue /= 6;
-  }
-
-  lightness = tint < 0 ? lightness * (1 + tint) : lightness * (1 - tint) + tint;
-
-  const double q = lightness < 0.5
-                       ? lightness * (1 + saturation)
-                       : lightness + saturation - lightness * saturation;
-  const double p = 2 * lightness - q;
-  const auto channel = [&](double t) {
-    t -= std::floor(t);
-    double c = p;
-    if (t < 1.0 / 6) {
-      c = p + (q - p) * 6 * t;
-    } else if (t < 1.0 / 2) {
-      c = q;
-    } else if (t < 2.0 / 3) {
-      c = p + (q - p) * (2.0 / 3 - t) * 6;
-    }
-    return static_cast<std::uint8_t>(
-        std::lround(std::clamp(c, 0.0, 1.0) * 255));
-  };
-  return {channel(hue + 1.0 / 3), channel(hue), channel(hue - 1.0 / 3),
-          color.alpha};
+  util::color::Hsl hsl = util::color::Hsl::from_color(color);
+  hsl.lightness =
+      tint < 0 ? hsl.lightness * (1 + tint) : hsl.lightness * (1 - tint) + tint;
+  return hsl.to_color(color.alpha);
 }
 
 std::optional<Measure>

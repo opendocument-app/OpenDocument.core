@@ -25,6 +25,7 @@
 #include <odr/internal/pdf/pdf_document_parser.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 #include <odr/internal/pdf/pdf_page_extractor.hpp>
+#include <odr/internal/util/color_util.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -291,12 +292,6 @@ void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
   }
 }
 
-/// Clamp a colour component in [0, 1] to an 8-bit channel value.
-std::int32_t to255(const double v) {
-  return static_cast<std::int32_t>(
-      std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
-}
-
 /// A PDF device color as CSS `rgb(...)`. Other spaces are already converted at
 /// extract time; only `unknown` reaches here, falling back to black.
 std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
@@ -305,19 +300,19 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
   std::int32_t b = 0;
   switch (color.space) {
   case pdf::ColorSpace::device_grey:
-    r = g = b = to255(color.grey);
+    r = g = b = util::color::to_byte(color.grey);
     break;
   case pdf::ColorSpace::device_rgb:
-    r = to255(color.rgb[0]);
-    g = to255(color.rgb[1]);
-    b = to255(color.rgb[2]);
+    r = util::color::to_byte(color.rgb[0]);
+    g = util::color::to_byte(color.rgb[1]);
+    b = util::color::to_byte(color.rgb[2]);
     break;
   case pdf::ColorSpace::device_cmyk: {
     const std::array<double, 3> rgb = pdf::cmyk_to_rgb(
         color.cmyk[0], color.cmyk[1], color.cmyk[2], color.cmyk[3]);
-    r = to255(rgb[0]);
-    g = to255(rgb[1]);
-    b = to255(rgb[2]);
+    r = util::color::to_byte(rgb[0]);
+    g = util::color::to_byte(rgb[1]);
+    b = util::color::to_byte(rgb[2]);
     break;
   }
   case pdf::ColorSpace::unknown:
@@ -332,7 +327,8 @@ std::string device_color_to_css(const pdf::GraphicsState::Color &color) {
 /// `rgb(...)`.
 std::string rgb_to_css(const std::array<double, 3> &rgb) {
   std::ostringstream s;
-  s << "rgb(" << to255(rgb[0]) << ',' << to255(rgb[1]) << ',' << to255(rgb[2])
+  s << "rgb(" << +util::color::to_byte(rgb[0]) << ','
+    << +util::color::to_byte(rgb[1]) << ',' << +util::color::to_byte(rgb[2])
     << ')';
   return std::move(s).str();
 }

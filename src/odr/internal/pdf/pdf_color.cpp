@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_color.hpp>
 
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/util/color_util.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -11,10 +12,8 @@ namespace {
 
 double clamp01(const double v) { return std::clamp(v, 0.0, 1.0); }
 
-/// sRGB gamma encode of a linear component (IEC 61966-2-1).
 double linear_to_srgb(const double c) {
-  const double v = clamp01(c);
-  return v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1 / 2.4) - 0.055;
+  return util::color::linear_to_srgb(clamp01(c));
 }
 
 /// CIE L*a*b* -> sRGB through XYZ (ISO 32000-1 8.6.5.4), under the space's

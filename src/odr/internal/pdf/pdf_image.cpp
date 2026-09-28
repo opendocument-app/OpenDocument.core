@@ -7,6 +7,7 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 #include <odr/internal/png/png_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/color_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -54,11 +55,6 @@ private:
   std::int32_t m_bit{0};
 };
 
-std::uint8_t to_byte(const double v) {
-  const double scaled = std::lround(std::clamp(v, 0.0, 1.0) * 255.0);
-  return static_cast<std::uint8_t>(scaled);
-}
-
 /// Undo the premultiplication `/SMaskInData 2` declares, leaving the straight
 /// colour a PNG carries.
 void unpremultiply(std::string &samples, const std::int32_t components,
@@ -72,8 +68,10 @@ void unpremultiply(std::string &samples, const std::int32_t components,
         return;
       }
       const auto value = static_cast<std::uint8_t>(samples[i]);
-      samples[i] = static_cast<char>(
-          a == 0 ? 0 : to_byte(std::min(1.0, value / static_cast<double>(a))));
+      samples[i] =
+          static_cast<char>(a == 0 ? 0
+                                   : util::color::to_byte(std::min(
+                                         1.0, value / static_cast<double>(a))));
     }
   }
 }
@@ -188,7 +186,7 @@ std::string pdf::encode_image_png(const std::string &samples,
       const std::array<double, 1> value{component_value(sample, 0)};
       const std::array<double, 3> rgb = color_space.to_rgb(value);
       for (const double c : rgb) {
-        palette.push_back(static_cast<char>(to_byte(c)));
+        palette.push_back(static_cast<char>(util::color::to_byte(c)));
       }
     }
     const std::size_t size = row_bytes * static_cast<std::size_t>(height);
@@ -217,9 +215,9 @@ std::string pdf::encode_image_png(const std::string &samples,
         component_values[k] = component_value(sample, k);
       }
       const std::array<double, 3> pixel = color_space.to_rgb(component_values);
-      out[out_index++] = static_cast<char>(to_byte(pixel[0]));
-      out[out_index++] = static_cast<char>(to_byte(pixel[1]));
-      out[out_index++] = static_cast<char>(to_byte(pixel[2]));
+      out[out_index++] = static_cast<char>(util::color::to_byte(pixel[0]));
+      out[out_index++] = static_cast<char>(util::color::to_byte(pixel[1]));
+      out[out_index++] = static_cast<char>(util::color::to_byte(pixel[2]));
       if (has_alpha) {
         std::uint8_t a =
             alpha.size() == pixel_count ? alpha[pixel_index] : 0xFF;
@@ -281,7 +279,7 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
         native[i++] = value >= 0.5 ? 0x00 : 0xFF;
       } else {
         // A soft mask: the grey level is the coverage directly.
-        native[i++] = to_byte(value);
+        native[i++] = util::color::to_byte(value);
       }
     }
   }
@@ -316,9 +314,9 @@ std::string pdf::encode_stencil_png(const std::string &samples,
   // of [1 0] swaps that — paint when the decoded value rounds to 0.
   const bool invert = decode.size() >= 2 && decode[0] > decode[1];
 
-  const std::uint8_t r = to_byte(color[0]);
-  const std::uint8_t g = to_byte(color[1]);
-  const std::uint8_t b = to_byte(color[2]);
+  const std::uint8_t r = util::color::to_byte(color[0]);
+  const std::uint8_t g = util::color::to_byte(color[1]);
+  const std::uint8_t b = util::color::to_byte(color[2]);
 
   std::string rgba;
   rgba.resize(static_cast<std::size_t>(width) *

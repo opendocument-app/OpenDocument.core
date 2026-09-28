@@ -3,6 +3,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/color_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -360,49 +361,6 @@ std::string html::color(const Color &color) {
 
 namespace {
 
-struct Oklab {
-  double l{0};
-  double a{0};
-  double b{0};
-};
-
-double to_linear(const std::uint8_t channel) {
-  const double c = channel / 255.0;
-  return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
-}
-
-double from_linear(const double c) {
-  return c <= 0.0031308 ? c * 12.92 : 1.055 * std::pow(c, 1.0 / 2.4) - 0.055;
-}
-
-Oklab to_oklab(const Color &color) {
-  const double r = to_linear(color.red);
-  const double g = to_linear(color.green);
-  const double b = to_linear(color.blue);
-  const double l =
-      std::cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-  const double m =
-      std::cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-  const double s =
-      std::cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-  return {0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s};
-}
-
-/// Linear srgb, possibly outside the gamut.
-std::array<double, 3> to_linear_rgb(const Oklab &lab) {
-  const double l =
-      std::pow(lab.l + 0.3963377774 * lab.a + 0.2158037573 * lab.b, 3);
-  const double m =
-      std::pow(lab.l - 0.1055613458 * lab.a - 0.0638541728 * lab.b, 3);
-  const double s =
-      std::pow(lab.l - 0.0894841775 * lab.a - 1.2914855480 * lab.b, 3);
-  return {4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-          -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s};
-}
-
 bool in_gamut(const std::array<double, 3> &rgb) {
   return std::ranges::all_of(
       rgb, [](const double c) { return c >= -1e-9 && c <= 1 + 1e-9; });
@@ -413,31 +371,34 @@ bool in_gamut(const std::array<double, 3> &rgb) {
 Color html::dark_fill(const Color &color) {
   // White lands on the page of `document-dark.css`, black on the lightest
   // ground its `#e6edf3` text reads on at 4.5:1.
-  static const Oklab page = to_oklab(Color(0x16, 0x1b, 0x22));
+  static const util::color::Oklab page =
+      util::color::Oklab::from_color(Color(0x16, 0x1b, 0x22));
   static constexpr double lightest = 0.5;
 
-  const Oklab source = to_oklab(color);
+  const util::color::Oklab source = util::color::Oklab::from_color(color);
   const double t = 1 - source.l;
-  Oklab lab{page.l + t * (lightest - page.l), page.a * (1 - t) + source.a,
-            page.b * (1 - t) + source.b};
+  util::color::Oklab lab{page.l + t * (lightest - page.l),
+                         page.a * (1 - t) + source.a,
+                         page.b * (1 - t) + source.b};
 
   // Less chroma until the color fits, so the hue stays.
   double low = 0;
   double high = 1;
-  if (!in_gamut(to_linear_rgb(lab))) {
+  if (!in_gamut(lab.to_linear_rgb())) {
     for (int i = 0; i < 20; ++i) {
       const double mid = (low + high) / 2;
-      (in_gamut(to_linear_rgb({lab.l, lab.a * mid, lab.b * mid})) ? low
-                                                                  : high) = mid;
+      (in_gamut(
+           util::color::Oklab{lab.l, lab.a * mid, lab.b * mid}.to_linear_rgb())
+           ? low
+           : high) = mid;
     }
     lab.a *= low;
     lab.b *= low;
   }
 
-  const std::array<double, 3> rgb = to_linear_rgb(lab);
+  const std::array<double, 3> rgb = lab.to_linear_rgb();
   const auto channel = [](const double c) {
-    return static_cast<std::uint8_t>(
-        std::lround(std::clamp(from_linear(c), 0.0, 1.0) * 255));
+    return util::color::to_byte(util::color::linear_to_srgb(c));
   };
   return {channel(rgb[0]), channel(rgb[1]), channel(rgb[2]), color.alpha};
 }
