@@ -195,7 +195,7 @@ separate scripts. The coordinates are the ones an op names, never a DOM index.
 
 ## Cell formatting
 
-Status: planned. The steps land as a stack, in this order:
+Status: `.ods` writes a cell style. The steps land as a stack, in this order:
 
 1. The xlsx reader reads what the writer writes: a solid fill from `fgColor`,
    theme colours with their `tint`, italic, underline and strikethrough, and
@@ -219,7 +219,7 @@ Status: planned. The steps land as a stack, in this order:
 | `bold`, `italic`, `underline`, `strikethrough` | a bool | `style:text-properties`, as for a run | `b`, `i`, `u`, `strike` in a `font` |
 | `color` | `#rrggbb` | `fo:color` | `font/color/@rgb` |
 | `size` | a length | `fo:font-size` | `font/sz`, in points |
-| `align` | `left`, `center`, `right` or null | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"`; null is `value-type` | `alignment/@horizontal`; null is `general` |
+| `align` | `left`, `center` or `right` | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"` | `alignment/@horizontal` |
 
 The text keys are the ones of `setTextStyle`, and off is written, never
 removed (`document-editing.md` decision 9). A cell has no `highlight`: `fill` is the
@@ -239,7 +239,7 @@ An `.ods` cell style and an `.xlsx` `xf` are shared by every cell naming them.
   `style:family="table-cell"` automatic style that copies the one the cell
   shows (its own, else the row's or the column's default) with the delta
   applied, and points `table:style-name` at it. A formula cell and a rich cell
-  take a style: nothing in their content changes.
+  take a style: nothing in their content changes. A covered cell refuses.
 - `.xlsx`: the writer appends a `font`, a `fill` and an `xf`, each only where
   no equal one exists, with `applyFont`, `applyFill` and `applyAlignment` set,
   sets `c/@s`, and saves `styles.xml`. A cell the file does not state is made
@@ -294,6 +294,8 @@ cell's inline style before the gesture, and one gesture is one undo step.
   their own kinds. This also fixes `.xlsx` serials on the read side.
 - Multi-line cells, insert and delete of rows and columns.
 - A style for a whole row or column, so cells past the rendered extent take it.
+- `align` back to the alignment by value type: `TableCellStyle` has no value
+  that says it.
 - `.csv` save.
 - Sheets past `spreadsheet_limit` or `spreadsheet_cell_limit` are not in the
   page; the mode should say so where a view reports a `sheet_cut`.

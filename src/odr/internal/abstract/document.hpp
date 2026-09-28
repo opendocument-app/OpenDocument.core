@@ -291,6 +291,16 @@ public:
   virtual void sheet_set_cell(ElementIdentifier element_id,
                               std::uint32_t column, std::uint32_t row,
                               const CellValue &value) const = 0;
+  /// States the set fields of @p cell_style and @p text_style on the cell at
+  /// (@p column, @p row) and leaves the rest. The cell's content is untouched.
+  virtual void
+  sheet_set_cell_style([[maybe_unused]] ElementIdentifier element_id,
+                       [[maybe_unused]] std::uint32_t column,
+                       [[maybe_unused]] std::uint32_t row,
+                       [[maybe_unused]] const TableCellStyle &cell_style,
+                       [[maybe_unused]] const TextStyle &text_style) const {
+    throw UnsupportedOperation();
+  }
 
   [[nodiscard]] virtual TableStyle
   sheet_style(ElementIdentifier element_id) const = 0;

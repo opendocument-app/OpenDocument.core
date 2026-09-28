@@ -3,10 +3,13 @@
 #include <odr/internal/odf/odf_document.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -792,7 +795,124 @@ void write_text_properties(pugi::xml_node properties, const TextStyle &style) {
   }
 }
 
+/// The properties child @p name of @p style, made in the order [ODF 1.2]
+/// 16.2 gives them where it is missing.
+pugi::xml_node properties_of(pugi::xml_node style, const char *name) {
+  static constexpr std::array<std::string_view, 3> order{
+      "style:table-cell-properties", "style:paragraph-properties",
+      "style:text-properties"};
+  if (pugi::xml_node existing = style.child(name)) {
+    return existing;
+  }
+  const auto rank = [](const std::string_view child) {
+    return std::ranges::find(order, child) - std::begin(order);
+  };
+  for (pugi::xml_node child : style.children()) {
+    if (rank(child.name()) > rank(name)) {
+      return style.insert_child_before(name, child);
+    }
+  }
+  return style.append_child(name);
+}
+
+void set_attribute(pugi::xml_node node, const char *name, const char *value) {
+  pugi::xml_attribute attribute = node.attribute(name);
+  if (!attribute) {
+    attribute = node.append_attribute(name);
+  }
+  attribute.set_value(value);
+}
+
+const char *text_align_value(const HorizontalAlign align) {
+  switch (align) {
+  case HorizontalAlign::left:
+    return "left";
+  case HorizontalAlign::center:
+    return "center";
+  case HorizontalAlign::right:
+    return "right";
+  }
+  return "left";
+}
+
 } // namespace
+
+std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
+                                             const char *base_name,
+                                             const TableCellStyle &cell,
+                                             const TextStyle &text) {
+  const std::string base = base_name != nullptr ? base_name : "";
+  const auto optional = [](const auto &value) {
+    return value.has_value() ? std::to_string(static_cast<int>(*value))
+                             : std::string("-");
+  };
+  const std::string key = fmt::format(
+      "{}|{}|{}|{}|{}|{}|{}|{}|{}", base,
+      cell.background_color
+          ? fmt::format("{:08x}", cell.background_color->argb())
+          : "-",
+      optional(cell.horizontal_align), optional(text.font_weight),
+      optional(text.font_style), optional(text.font_underline),
+      optional(text.font_line_through),
+      text.font_color ? fmt::format("{:08x}", text.font_color->argb()) : "-",
+      text.font_size ? text.font_size->to_string() : "-");
+  if (const auto it = m_created_cell_styles.find(key);
+      it != std::end(m_created_cell_styles)) {
+    return it->second;
+  }
+
+  std::string name;
+  for (;; ++m_next_cell_style) {
+    name = "ce" + std::to_string(m_next_cell_style);
+    if (!m_index_style.contains(name)) {
+      break;
+    }
+  }
+
+  const auto base_it = m_index_style.find(base);
+  const pugi::xml_node base_node =
+      base_it != std::end(m_index_style) ? base_it->second : pugi::xml_node();
+  pugi::xml_node node;
+  // an automatic style may be shared, so it is copied; a named one is
+  // inherited from
+  if (base_node &&
+      std::strcmp(base_node.parent().name(), "office:automatic-styles") == 0) {
+    node = automatic_styles.append_copy(base_node);
+    set_attribute(node, "style:name", name.c_str());
+  } else {
+    node = automatic_styles.append_child("style:style");
+    node.append_attribute("style:name").set_value(name.c_str());
+    node.append_attribute("style:family").set_value("table-cell");
+    if (!base.empty()) {
+      node.append_attribute("style:parent-style-name").set_value(base.c_str());
+    }
+  }
+
+  if (cell.background_color.has_value()) {
+    set_attribute(properties_of(node, "style:table-cell-properties"),
+                  "fo:background-color",
+                  color_value(*cell.background_color).c_str());
+  }
+  if (cell.horizontal_align.has_value()) {
+    set_attribute(properties_of(node, "style:table-cell-properties"),
+                  "style:text-align-source", "fix");
+    set_attribute(properties_of(node, "style:paragraph-properties"),
+                  "fo:text-align", text_align_value(*cell.horizontal_align));
+  }
+  TextStyle text_properties = text;
+  text_properties.background_color.reset();
+  if (text_properties.font_size || text_properties.font_weight ||
+      text_properties.font_style || text_properties.font_underline ||
+      text_properties.font_line_through || text_properties.font_color) {
+    write_text_properties(properties_of(node, "style:text-properties"),
+                          text_properties);
+  }
+
+  m_index_style[name] = node;
+  generate_style_(name, node);
+  m_created_cell_styles.emplace(key, name);
+  return name;
+}
 
 std::string StyleRegistry::create_text_style(pugi::xml_node automatic_styles,
                                              const char *base_name,

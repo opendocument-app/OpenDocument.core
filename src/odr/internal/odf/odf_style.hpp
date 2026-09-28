@@ -88,10 +88,18 @@ public:
   /// child of a named one, the delta alone where it is null.
   std::string create_text_style(pugi::xml_node automatic_styles,
                                 const char *base_name, const TextStyle &style);
+  /// A table-cell style carrying @p cell and @p text, made as a text style is.
+  /// Two calls with one base and one delta answer one style.
+  std::string create_cell_style(pugi::xml_node automatic_styles,
+                                const char *base_name,
+                                const TableCellStyle &cell,
+                                const TextStyle &text);
 
 private:
   /// Where the search for a free `T<n>` name starts.
   std::uint32_t m_next_text_style{1};
+  std::uint32_t m_next_cell_style{1};
+  std::unordered_map<std::string, std::string> m_created_cell_styles;
 
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;

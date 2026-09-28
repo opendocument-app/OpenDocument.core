@@ -388,6 +388,13 @@ public:
   /// Takes the cell's value away, keeping the style it carries. Not the same
   /// as writing an empty string.
   void clear_cell(std::uint32_t column, std::uint32_t row) const;
+  /// States the set fields of both styles on the cell and leaves the rest; a
+  /// fill of alpha 0 takes the fill away.
+  /// @throws UnsupportedOperation where the cell cannot be styled, or a style
+  ///         sets a field no engine writes.
+  void set_cell_style(std::uint32_t column, std::uint32_t row,
+                      const TableCellStyle &cell_style,
+                      const TextStyle &text_style) const;
 
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
