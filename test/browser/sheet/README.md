@@ -11,6 +11,7 @@ open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
 open http://localhost:8732/keyboard.html
+open http://localhost:8732/formatting.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -44,6 +45,11 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
 - `keyboard.html`: a page whose config took both key classes away. The
   arrows, Escape, a printable key and the undo chord belong to the host. The
   commands (`editAt`, `undo`) and the keys of an open editor still work.
+- `formatting.html`: a selection and what `odr.editing.format` and `toggle`
+  do with it. The rectangle from the pin, a shift click, a shift arrow and a
+  header; a fill with the dark colour `html::dark_fill` computes; the text
+  keys over a cell that writes its string straight in and one whose run the
+  file styled; the ops, one undo step per gesture, and the chords.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

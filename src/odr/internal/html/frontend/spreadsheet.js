@@ -223,6 +223,7 @@
 
   function pin(column, row, cell) {
     lower();
+    focus = null;
     if (pinnedRow !== null) {
       pinnedRow.classList.remove("odr-sheet-pinned");
     }
@@ -242,6 +243,106 @@
       raise(pinnedCell);
     }
     paint();
+    paintSelection();
+  }
+
+  // The corner a gesture moved, the pin being the other; null while the
+  // selection is the pin alone.
+  var focus = null;
+  var selected = [];
+
+  function lastRow() {
+    var last = -1;
+    indexed().rows.forEach(function (entry, row) {
+      last = Math.max(last, row);
+    });
+    return last;
+  }
+
+  function lastColumn() {
+    return table.tHead.rows[0].children.length - 2;
+  }
+
+  // The rectangle the pin and the focus span, a header's row or column across
+  // the rendered extent, null where nothing is pinned.
+  function selectionOf() {
+    var at = pinnedPosition();
+    if (at === null) {
+      return null;
+    }
+    if (at.column === null && at.row === null) {
+      return null;
+    }
+    if (at.row === null) {
+      return {
+        columns: [at.column, at.column],
+        rows: [0, lastRow()],
+        focus: null,
+      };
+    }
+    if (at.column === null) {
+      return { columns: [0, lastColumn()], rows: [at.row, at.row], focus: null };
+    }
+    var to = focus === null ? at : focus;
+    return {
+      columns: [Math.min(at.column, to.column), Math.max(at.column, to.column)],
+      rows: [Math.min(at.row, to.row), Math.max(at.row, to.row)],
+      focus: { column: to.column, row: to.row },
+    };
+  }
+
+  // Every cell of the selection once, at the position an op names it by: a
+  // merge answers with its anchor.
+  function selectedCells() {
+    var range = selectionOf();
+    var result = [];
+    if (range === null) {
+      return result;
+    }
+    var seen = new Set();
+    for (var row = range.rows[0]; row <= range.rows[1]; ++row) {
+      for (var column = range.columns[0]; column <= range.columns[1]; ++column) {
+        var cell = cellAt(column, row);
+        if (cell === null || seen.has(cell)) {
+          continue;
+        }
+        seen.add(cell);
+        var position = positionOf(cell);
+        result.push({ cell: cell, column: position.column, row: position.row });
+      }
+    }
+    return result;
+  }
+
+  // The pin's outline marks a single cell, so only a wider selection is washed.
+  function paintSelection() {
+    for (var i = 0; i < selected.length; ++i) {
+      selected[i].classList.remove("odr-sheet-selected");
+    }
+    selected = [];
+    var cells = selectedCells();
+    if (cells.length > 1) {
+      for (var j = 0; j < cells.length; ++j) {
+        cells[j].cell.classList.add("odr-sheet-selected");
+        selected.push(cells[j].cell);
+      }
+    }
+    table.dispatchEvent(new CustomEvent("odr-sheet-select"));
+  }
+
+  // Moves the focus to @p position, the pin staying where it is. False where
+  // no cell is pinned or the sheet holds none there.
+  function select(position) {
+    var at = pinnedPosition();
+    if (at === null || at.column === null || at.row === null) {
+      return false;
+    }
+    if (cellAt(position.column, position.row) === null) {
+      return false;
+    }
+    focus = { column: position.column, row: position.row };
+    paintSelection();
+    return true;
   }
 
   // What is pinned: a cell, or a whole column or row where a header is, the
@@ -440,6 +541,9 @@
     formulaAt: formulaAt,
     showValue: showValue,
     reflow: reflow,
+    selection: selectionOf,
+    select: select,
+    selectedCells: selectedCells,
   };
 
   table.addEventListener("mouseover", function (event) {
@@ -476,6 +580,10 @@
       return;
     }
 
+    if (event.shiftKey && cell.tagName === "TD" && select(positionOf(cell))) {
+      return;
+    }
+
     // Clicking what is pinned clears it - but `detail` counts the clicks, and
     // the second of a double click is the reader selecting a word. Clearing
     // the pin under that flickers the border off again. A cell in an edited
@@ -498,6 +606,39 @@
     } else {
       pin(rulerColumn(cell), cell.parentElement, cell);
     }
+  });
+
+  // A mouse drawn over the cells in the editing mode spans a selection; a
+  // touch scrolls, and a read-only sheet leaves the text to select.
+  var dragFrom = null;
+  table.addEventListener("pointerdown", function (event) {
+    var cell = event.target.closest("td");
+    dragFrom =
+      event.pointerType === "mouse" &&
+      event.button === 0 &&
+      !event.shiftKey &&
+      cell !== null &&
+      editingEnabled()
+        ? cell
+        : null;
+  });
+  table.addEventListener("pointermove", function (event) {
+    if (dragFrom === null || (event.buttons & 1) === 0) {
+      dragFrom = null;
+      return;
+    }
+    var cell = event.target.closest("td");
+    if (cell === null || (cell === dragFrom && focus === null)) {
+      return;
+    }
+    if (pinnedCell !== dragFrom) {
+      pin(rulerColumn(dragFrom), dragFrom.parentElement, dragFrom);
+    }
+    event.preventDefault();
+    select(positionOf(cell));
+  });
+  document.addEventListener("pointerup", function () {
+    dragFrom = null;
   });
 
   // The canvas around the sheet included.

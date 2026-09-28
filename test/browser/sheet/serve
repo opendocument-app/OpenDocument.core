@@ -18,5 +18,6 @@ serve(
         "sorting.html",
         "editing.html",
         "keyboard.html",
+        "formatting.html",
     ),
 )

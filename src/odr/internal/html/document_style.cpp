@@ -392,6 +392,8 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style,
     if (dark_fill) {
       result.append("--odr-dark-fill:")
           .append(color(html::dark_fill(*background_color)))
+          .append(";--odr-fill:")
+          .append(color(*background_color))
           .append(";");
     }
   }

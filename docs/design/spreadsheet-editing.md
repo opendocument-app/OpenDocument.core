@@ -195,8 +195,8 @@ separate scripts. The coordinates are the ones an op names, never a DOM index.
 
 ## Cell formatting
 
-Status: `.ods` and `.xlsx` write a cell style. The steps land as a stack, in
-this order:
+Status: `.ods` and `.xlsx` write a cell style, and the sheet editor formats a
+selection. The steps land as a stack, in this order:
 
 1. The xlsx reader reads what the writer writes: a solid fill from `fgColor`,
    theme colours with their `tint`, italic, underline and strikethrough, and
@@ -255,16 +255,20 @@ is for a run.
 ### 12. A selection is a rectangle, and the pin is one corner of it
 
 `spreadsheet.js` owns it as it owns the pin: shift with a click or an arrow
-key, and a drag with a mouse, span it from the pin. `odr.sheet.selection()`
-answers `{columns: [first, last], rows: [first, last]}`, and a header click
-selects its row or its column across the rendered extent. The editor reports
+key, and a drag with a mouse in the editing mode, span it from the pin.
+`odr.sheet.selection()` answers `{columns: [first, last], rows: [first, last],
+focus}`, `odr.sheet.select(position)` moves the focus, and a header click
+selects its row or its column across the rendered extent. Ctrl or Cmd with B,
+I and U toggle, where the config gives the scripts the shortcuts. The editor reports
 the keys the selected cells agree on through `onSelectionChange`, as the
 document editor does, and `odr.editing.format` and `toggle` act on every
 unlocked cell of it. A lock refuses a value, not a style.
 
 The editor patches the `td` and the text inside it with the declarations the
 renderer writes, and a fill also sets `--odr-dark-fill` with the same mapping
-as `html::dark_fill`, so a fill made in the dark scheme shows. Undo holds each
+as `html::dark_fill`, so a fill made in the dark scheme shows. The renderer
+writes `--odr-fill` beside it, so the editor reads a cell's fill back in the
+dark scheme too. `html_common` and `formatting.html` pin the same colours. Undo holds each
 cell's inline style before the gesture, and one gesture is one undo step.
 
 ## Formulas, read side

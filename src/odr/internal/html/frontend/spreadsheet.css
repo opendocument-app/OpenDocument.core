@@ -8,6 +8,7 @@
 --odr-sheet-wash-pinned:rgba(0,0,0,.09);
 --odr-sheet-wash-ruler:rgba(0,0,0,.10);
 --odr-sheet-focus:#3c78dc;
+--odr-sheet-wash-selected:rgba(60,120,220,.16);
 --odr-sheet-refused:#d1493f;
 --odr-sheet-stale:#b8860b;
 --odr-sheet-raised:#ffffff;
@@ -38,6 +39,7 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet tbody tr.odr-sheet-pinned>*{background-image:linear-gradient(var(--odr-sheet-wash-pinned),var(--odr-sheet-wash-pinned))}
 .odr-sheet tbody tr:hover>th,.odr-sheet tbody tr.odr-sheet-pinned>th{background-image:linear-gradient(var(--odr-sheet-wash-ruler),var(--odr-sheet-wash-ruler))}
 .odr-sheet .odr-sheet-pinned-cell{outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
+.odr-sheet tbody tr>td.odr-sheet-selected{background-image:linear-gradient(var(--odr-sheet-wash-selected),var(--odr-sheet-wash-selected))}
 /* The clipped cell a reader asked to see: out of flow so the row cannot move,
    sized to the string, over its neighbours. `.odr-sheet-raised-box` is the
    wrapper the script adds to a cell that writes its string without one. */

@@ -154,8 +154,9 @@
     },
 
     /// States @p style on the selection: `bold`, `italic`, `underline`,
-    /// `strikethrough` (a bool), `highlight` (`#rrggbb` or null), `color`
-    /// (`#rrggbb`), `size` (`14pt`). False where refused; the channel says why.
+    /// `strikethrough` (a bool), `color` (`#rrggbb`), `size` (`14pt`), and
+    /// `highlight` (`#rrggbb` or null) on text, `fill` (the same) and `align`
+    /// (`left`, `center`, `right`) on cells. False where refused.
     format: function (style) {
       for (var i = editors.length - 1; i >= 0; --i) {
         if (typeof editors[i].format === "function") {

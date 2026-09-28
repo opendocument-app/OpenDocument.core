@@ -1,0 +1,254 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet formatting checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- A1 writes its string into the `td`, B1 into a run the file made
+         bold, C1 is filled red, D1 holds a formula. A2:B2 is one merged
+         cell. -->
+    <table class="odr-sheet" data-odr-sheet="1">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td>plain</td>
+          <td><x-p style="display:block"><x-s style="font-weight:bold;text-decoration:underline">run</x-s></x-p></td>
+          <td style="background-color:#ff0000">red</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=1+1">2</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td colspan="2">merged</td>
+          <td>x</td>
+          <td></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td class="odr-value-type-float">12</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var reported = [];
+      odr.onSelectionChange = function (style) {
+        reported.push(style);
+      };
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason);
+      };
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function cell(column, row) {
+        return odr.sheet.cellAt(column, row);
+      }
+      function computed(node) {
+        return getComputedStyle(node);
+      }
+      function last() {
+        return reported[reported.length - 1];
+      }
+      function press(key, modifiers) {
+        modifiers = modifiers || {};
+        document.body.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: key,
+            shiftKey: !!modifiers.shift,
+            ctrlKey: !!modifiers.ctrl,
+            bubbles: true,
+          })
+        );
+      }
+      function click(node, modifiers) {
+        modifiers = modifiers || {};
+        node.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, detail: 1, shiftKey: !!modifiers.shift })
+        );
+      }
+
+      note("the selection");
+      odr.editing.enable();
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("a pinned cell is a selection of one", odr.sheet.selectedCells().length === 1);
+      check("and is not washed", document.querySelectorAll(".odr-sheet-selected").length === 0);
+      check("the focus spans a rectangle", odr.sheet.select({ column: 1, row: 2 }) === true);
+      var range = odr.sheet.selection();
+      check(
+        "from the pin to the focus",
+        range.columns[0] === 0 && range.columns[1] === 1 && range.rows[0] === 0 && range.rows[1] === 2,
+        range
+      );
+      check(
+        "a merge answers once, at its anchor",
+        odr.sheet.selectedCells().length === 5 &&
+          odr.sheet.selectedCells().filter(function (at) {
+            return at.row === 1;
+          }).length === 1
+      );
+      check("the cells are washed", document.querySelectorAll(".odr-sheet-selected").length === 5);
+      check("a report followed the move", reported.length > 0);
+      odr.sheet.pin({ column: 2, row: 0 });
+      check("a new pin drops the rectangle", odr.sheet.selectedCells().length === 1);
+      check("and its wash", document.querySelectorAll(".odr-sheet-selected").length === 0);
+
+      click(cell(2, 2), { shift: true });
+      check("a shift click spans from the pin", odr.sheet.selectedCells().length === 3);
+      check("and opens no editor", document.querySelector(".odr-sheet-editor") === null);
+      press("ArrowRight", { shift: true });
+      range = odr.sheet.selection();
+      check("a shift arrow moves the focus", range.columns[1] === 3 && range.rows[1] === 2, range);
+      check("and the pin stays", odr.sheet.pinned().column === 2 && odr.sheet.pinned().row === 0);
+
+      click(document.querySelectorAll(".odr-sheet-column-header")[1]);
+      range = odr.sheet.selection();
+      check("a column header selects the column", range.columns[0] === 1 && range.rows[1] === 2, range);
+
+      note("a fill");
+      odr.sheet.pin({ column: 0, row: 0 });
+      reported = [];
+      check("a fill is stated", odr.editing.format({ fill: "#ffff00" }) === true);
+      check("the cell shows it", computed(cell(0, 0)).backgroundColor === "rgb(255, 255, 0)");
+      check(
+        "with the colour the dark sheet paints, as html::dark_fill computes it",
+        cell(0, 0).style.getPropertyValue("--odr-dark-fill") === "#1d1f00",
+        cell(0, 0).style.getPropertyValue("--odr-dark-fill")
+      );
+      check(
+        "one op states it",
+        ops().length === 1 &&
+          ops()[0].op === "setCellStyle" &&
+          ops()[0].sheet === 1 &&
+          ops()[0].column === 0 &&
+          ops()[0].row === 0 &&
+          ops()[0].style.fill === "#ffff00"
+      );
+      check("the report says the fill", last().fill === "#ffff00", last());
+
+      var darks = { "#0000ff": "#0027ae", "#000000": "#636363", "#ff0000": "#680004", "#dce6f2": "#142130" };
+      Object.keys(darks).forEach(function (fill) {
+        odr.editing.format({ fill: fill });
+        check(
+          "the dark fill of " + fill + " is html::dark_fill's",
+          cell(0, 0).style.getPropertyValue("--odr-dark-fill") === darks[fill],
+          cell(0, 0).style.getPropertyValue("--odr-dark-fill")
+        );
+      });
+      check(
+        "five fills on one cell are one op, the last fill",
+        ops().length === 1 && ops()[0].style.fill === "#dce6f2"
+      );
+
+      odr.sheet.pin({ column: 2, row: 0 });
+      odr.editing.format({ fill: null });
+      check("a fill taken away shows the sheet", computed(cell(2, 0)).backgroundColor === "rgba(0, 0, 0, 0)");
+      check("and the op says null", ops()[1].style.fill === null);
+
+      note("the text keys");
+      odr.sheet.pin({ column: 0, row: 0 });
+      odr.sheet.select({ column: 1, row: 0 });
+      check("the two cells disagree on bold", last().bold === undefined, last());
+      check("a toggle over a mixed selection turns on", odr.editing.toggle("bold") === true);
+      check("the plain cell is bold", Number(computed(cell(0, 0)).fontWeight) >= 600);
+      check("so is the run", Number(computed(cell(1, 0).querySelector("x-s")).fontWeight) >= 600);
+      check("and the report agrees", last().bold === true, last());
+      odr.editing.toggle("bold");
+      check("a second toggle turns it off", Number(computed(cell(1, 0).querySelector("x-s")).fontWeight) < 600);
+      check("over the run's own bold too", last().bold === false);
+
+      odr.editing.format({ strikethrough: true });
+      check(
+        "a strikethrough keeps the run's underline",
+        last().underline === undefined && last().strikethrough === true,
+        last()
+      );
+      var block = cell(1, 0).querySelector("x-p");
+      check(
+        "the block carries both lines",
+        block.style.textDecorationLine === "underline line-through",
+        block.style.textDecorationLine
+      );
+      odr.editing.format({ color: "#cc0000", size: "14pt", italic: true });
+      check("the colour lands", last().color === "#cc0000", last());
+      check("the size lands", last().size === "14pt", last());
+      check("italic lands", last().italic === true);
+
+      odr.editing.format({ align: "center" });
+      check("the alignment lands on the cell", computed(cell(0, 0)).textAlign === "center");
+      check("and on a block", computed(block).textAlign === "center");
+      check("the report says it", last().align === "center");
+
+      note("the log and undo");
+      var before = ops().length;
+      var shown = cell(1, 0).getAttribute("style");
+      check("undo takes a format back", odr.editing.undo() === true);
+      check("the page shows the step before", computed(cell(0, 0)).textAlign !== "center");
+      check("redo puts it back", odr.editing.redo() === true && computed(cell(0, 0)).textAlign === "center");
+      check("the cell is as it was", cell(1, 0).getAttribute("style") === shown);
+      check(
+        "a cell's style keys merge into one op",
+        ops().length === before &&
+          ops().filter(function (op) {
+            return op.op === "setCellStyle" && op.column === 1 && op.row === 0;
+          })[0].style.italic === true
+      );
+
+      odr.editing.editAt(2, 1);
+      document.querySelector(".odr-sheet-editor").value = "y";
+      press("Enter");
+      odr.sheet.pin({ column: 2, row: 1 });
+      odr.editing.format({ bold: true });
+      var here = ops().filter(function (op) {
+        return op.column === 2 && op.row === 1;
+      });
+      check(
+        "a value and a style on one cell are two ops",
+        here.length === 2 && here[0].op === "setCell" && here[1].op === "setCellStyle"
+      );
+
+      refusals = [];
+      odr.sheet.pin({ column: 3, row: 0 });
+      check("a formula cell takes a style", odr.editing.format({ fill: "#00ff00" }) === true);
+      check("with no refusal", refusals.length === 0);
+      check("an unknown key refuses", odr.editing.format({ highlight: "#ffff00" }) === false);
+      check("a toggle of a colour refuses", odr.editing.toggle("color") === false);
+
+      note("the chords");
+      odr.sheet.pin({ column: 0, row: 2 });
+      press("b", { ctrl: true });
+      check("ctrl+b toggles bold", Number(computed(cell(0, 2)).fontWeight) >= 600);
+      press("u", { ctrl: true });
+      check("ctrl+u toggles underline", last().underline === true);
+
+      odr.editing.committed();
+      check("a save resets the log", ops().length === 0);
+    </script>
+  </body>
+</html>

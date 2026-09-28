@@ -1,5 +1,5 @@
-// The sheet's editor, attached to `odr.editing`: the cell overlay, the locks
-// and the `setCell` op. The mode itself is `editing.js`.
+// The sheet's editor, attached to `odr.editing`: the cell overlay, the locks,
+// the `setCell` and `setCellStyle` ops. The mode itself is `editing.js`.
 (function () {
   "use strict";
 
@@ -43,14 +43,39 @@
   var history = [];
   var undone = [];
 
-  /// One op per position, the last write made.
+  /// One op per kind and position: the last value written, and the style
+  /// keys merged with the later ones winning.
   function coalesced() {
-    var byPosition = new Map();
+    var byKey = new Map();
     for (var i = 0; i < history.length; ++i) {
-      var op = history[i].op;
-      byPosition.set(op.sheet + ":" + op.column + ":" + op.row, op);
+      var ops = history[i].ops;
+      for (var j = 0; j < ops.length; ++j) {
+        var op = ops[j];
+        var key = op.op + ":" + op.sheet + ":" + op.column + ":" + op.row;
+        var earlier = byKey.get(key);
+        if (op.op === "setCellStyle" && earlier !== undefined) {
+          op = {
+            op: op.op,
+            sheet: op.sheet,
+            column: op.column,
+            row: op.row,
+            style: Object.assign({}, earlier.style, op.style),
+          };
+        }
+        byKey.set(key, op);
+      }
     }
-    return Array.from(byPosition.values());
+    return Array.from(byKey.values());
+  }
+
+  /// An undo and a redo are the same move on the page; the log tells them
+  /// apart.
+  function replay(move) {
+    close();
+    move();
+    repaintStale();
+    odr.editing.changed();
+    reportSelection(true);
   }
 
   var NUMBER = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
@@ -87,28 +112,20 @@
       return false;
     }
     history.push({
-      op: {
-        op: "setCell",
-        sheet: sheet,
-        column: column,
-        row: row,
-        value: value,
+      ops: [
+        { op: "setCell", sheet: sheet, column: column, row: row, value: value },
+      ],
+      undo: function () {
+        odr.sheet.showValue(column, row, before);
       },
-      before: before,
+      redo: function () {
+        odr.sheet.showValue(column, row, value);
+      },
     });
     undone = [];
     repaintStale();
     odr.editing.changed();
     return true;
-  }
-
-  /// An undo and a redo are the same move on the page; the log tells them
-  /// apart.
-  function replay(entry, value) {
-    close();
-    odr.sheet.showValue(entry.op.column, entry.op.row, value);
-    repaintStale();
-    odr.editing.changed();
   }
 
   /// What each formula cell reads, off `data-odr-reads`. Only the rectangles
@@ -199,7 +216,9 @@
     var written = [];
     var ops = coalesced();
     for (var i = 0; i < ops.length; ++i) {
-      written.push({ column: ops[i].column, row: ops[i].row });
+      if (ops[i].op === "setCell") {
+        written.push({ column: ops[i].column, row: ops[i].row });
+      }
     }
 
     for (var j = 0; j < stale.length; ++j) {
@@ -367,7 +386,10 @@
     var step =
       arrows[event.key] ||
       (event.key === "Tab" ? [event.shiftKey ? -1 : 1, 0] : null);
-    if (step !== null) {
+    if (event.shiftKey && arrows[event.key] !== undefined) {
+      var to = odr.sheet.selection().focus;
+      odr.sheet.select({ column: to.column + step[0], row: to.row + step[1] });
+    } else if (step !== null) {
       odr.sheet.pin({ column: at.column + step[0], row: at.row + step[1] });
     } else if (event.key === "Enter" || event.key === "F2") {
       edit(at.column, at.row, null);
@@ -441,10 +463,13 @@
     return copy;
   };
 
-  // A locked cell says so on the click, not on the double click.
+  // A locked cell says so on the click, not on the double click. A shift
+  // click spans a selection and opens nothing.
   table.addEventListener("click", function (event) {
     var at =
-      odr.editing.isEnabled() && overlay === null ? targetPosition(event) : null;
+      odr.editing.isEnabled() && overlay === null && !event.shiftKey
+        ? targetPosition(event)
+        : null;
     if (at === null) {
       return;
     }
@@ -483,6 +508,393 @@
     return edit(column, row, null);
   };
 
+  // ------------------------------------------------------------- formatting
+
+  var TOGGLES = ["bold", "italic", "underline", "strikethrough"];
+  var KEYS = TOGGLES.concat(["color", "size", "fill", "align"]);
+
+  /// `#rrggbb` for a computed `rgb(…)`, null for a transparent one.
+  function hexOf(computed) {
+    var match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(
+      computed
+    );
+    if (match === null || (match[4] !== undefined && Number(match[4]) === 0)) {
+      return null;
+    }
+    var hex = "#";
+    for (var i = 1; i <= 3; ++i) {
+      hex += ("0" + Number(match[i]).toString(16)).slice(-2);
+    }
+    return hex;
+  }
+
+  // `html::dark_fill`: the lightness mirrored in oklab into the band from
+  // the dark page to the lightest ground its text reads on, the hue kept.
+  function toLinear(c) {
+    c /= 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+
+  function toOklab(r, g, b) {
+    r = toLinear(r);
+    g = toLinear(g);
+    b = toLinear(b);
+    var l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    var m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    var s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [
+      0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+    ];
+  }
+
+  function toLinearRgb(lab) {
+    var l = Math.pow(lab[0] + 0.3963377774 * lab[1] + 0.2158037573 * lab[2], 3);
+    var m = Math.pow(lab[0] - 0.1055613458 * lab[1] - 0.0638541728 * lab[2], 3);
+    var s = Math.pow(lab[0] - 0.0894841775 * lab[1] - 1.291485548 * lab[2], 3);
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ];
+  }
+
+  function inGamut(rgb) {
+    return rgb.every(function (c) {
+      return c >= -1e-9 && c <= 1 + 1e-9;
+    });
+  }
+
+  var PAGE = toOklab(0x16, 0x1b, 0x22);
+  var LIGHTEST = 0.5;
+
+  function darkFill(hex) {
+    var source = toOklab(
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16)
+    );
+    var t = 1 - source[0];
+    var lab = [
+      PAGE[0] + t * (LIGHTEST - PAGE[0]),
+      PAGE[1] * (1 - t) + source[1],
+      PAGE[2] * (1 - t) + source[2],
+    ];
+    if (!inGamut(toLinearRgb(lab))) {
+      var low = 0;
+      var high = 1;
+      for (var i = 0; i < 20; ++i) {
+        var mid = (low + high) / 2;
+        if (inGamut(toLinearRgb([lab[0], lab[1] * mid, lab[2] * mid]))) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+      lab = [lab[0], lab[1] * low, lab[2] * low];
+    }
+    return (
+      "#" +
+      toLinearRgb(lab)
+        .map(function (c) {
+          c = c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+          var byte = Math.round(Math.min(Math.max(c, 0), 1) * 255);
+          return ("0" + byte.toString(16)).slice(-2);
+        })
+        .join("")
+    );
+  }
+
+  /// The blocks a cell's text sits in, the cell itself where it writes its
+  /// string straight in.
+  function holdersOf(cell) {
+    var blocks = cell.querySelectorAll(":scope>x-p");
+    return blocks.length > 0 ? Array.prototype.slice.call(blocks) : [cell];
+  }
+
+  /// The style the cell shows, as the wire spells it; computed, so what the
+  /// hoisted classes give it counts.
+  function styleOf(cell) {
+    var text = cell.querySelector("x-s") || cell.querySelector("x-p") || cell;
+    var computed = getComputedStyle(text);
+    var lines = "";
+    for (var node = text; node !== null; node = node.parentElement) {
+      lines += " " + getComputedStyle(node).textDecorationLine;
+      if (node === cell) {
+        break;
+      }
+    }
+    var weight = computed.fontWeight;
+    var px = parseFloat(computed.fontSize);
+    // the dark sheet paints `--odr-dark-fill`, and `--odr-fill` keeps the
+    // colour it stands for
+    var cellStyle = getComputedStyle(cell);
+    var stated = cellStyle.getPropertyValue("--odr-fill").trim();
+    var align = getComputedStyle(holdersOf(cell)[0]).textAlign;
+    return {
+      bold: weight === "bold" || Number(weight) >= 600,
+      italic: computed.fontStyle === "italic" || computed.fontStyle === "oblique",
+      underline: lines.indexOf("underline") !== -1,
+      strikethrough: lines.indexOf("line-through") !== -1,
+      color: hexOf(computed.color),
+      size: isNaN(px) ? null : String(Math.round(px * 75) / 100) + "pt",
+      fill:
+        stated === ""
+          ? hexOf(cellStyle.backgroundColor)
+          : /^#[0-9a-f]{6}$/i.test(stated)
+            ? stated.toLowerCase()
+            : null,
+      align:
+        align === "center"
+          ? "center"
+          : align === "right" || align === "end"
+            ? "right"
+            : align === "left" || align === "start"
+              ? "left"
+              : null,
+    };
+  }
+
+  /// What the selected cells agree on: a key per property with one value
+  /// across them, and none where they differ.
+  function summary() {
+    var result = {};
+    var cells = odr.sheet.selectedCells();
+    if (cells.length === 0) {
+      return result;
+    }
+    var styles = cells.map(function (at) {
+      return styleOf(at.cell);
+    });
+    KEYS.forEach(function (key) {
+      for (var i = 1; i < styles.length; ++i) {
+        if (styles[i][key] !== styles[0][key]) {
+          return;
+        }
+      }
+      result[key] = styles[0][key];
+    });
+    return result;
+  }
+
+  var lastReported = null;
+
+  function reportSelection(force) {
+    if (!odr.editing.isEnabled()) {
+      return;
+    }
+    var shown = summary();
+    var key = JSON.stringify(shown);
+    if (key === lastReported && force !== true) {
+      return;
+    }
+    lastReported = key;
+    odr.editing.selectionChanged(shown);
+  }
+
+  table.addEventListener("odr-sheet-select", function () {
+    reportSelection(false);
+  });
+
+  /// The `style` attribute of the cell and of each element in it, which is
+  /// all a format writes.
+  function snapshot(cell) {
+    return [cell]
+      .concat(Array.prototype.slice.call(cell.querySelectorAll("x-p,x-s")))
+      .map(function (node) {
+        return { node: node, style: node.getAttribute("style") };
+      });
+  }
+
+  function restore(shot) {
+    for (var i = 0; i < shot.length; ++i) {
+      if (shot[i].style === null) {
+        shot[i].node.removeAttribute("style");
+      } else {
+        shot[i].node.setAttribute("style", shot[i].style);
+      }
+    }
+  }
+
+  /// Writes @p style onto the cell as the renderer would: the cell and every
+  /// run in it take the text keys, the blocks take the lines and the
+  /// alignment, and a fill carries the colour the dark sheet paints.
+  function paintCell(cell, style) {
+    var texts = [cell].concat(
+      Array.prototype.slice.call(cell.querySelectorAll("x-p,x-s"))
+    );
+    var runs = cell.querySelectorAll("x-s");
+    var holders = holdersOf(cell);
+    var shown = styleOf(cell);
+    texts.forEach(function (node) {
+      if (style.bold !== undefined) {
+        node.style.fontWeight = style.bold ? "bold" : "normal";
+      }
+      if (style.italic !== undefined) {
+        node.style.fontStyle = style.italic ? "italic" : "normal";
+      }
+      if (style.color !== undefined) {
+        node.style.color = style.color;
+      }
+      if (style.size !== undefined) {
+        node.style.fontSize = style.size;
+      }
+    });
+    if (style.underline !== undefined || style.strikethrough !== undefined) {
+      var lines = [];
+      if (style.underline !== undefined ? style.underline : shown.underline) {
+        lines.push("underline");
+      }
+      if (
+        style.strikethrough !== undefined
+          ? style.strikethrough
+          : shown.strikethrough
+      ) {
+        lines.push("line-through");
+      }
+      holders.forEach(function (node) {
+        node.style.textDecorationLine =
+          lines.length === 0 ? "none" : lines.join(" ");
+      });
+      for (var i = 0; i < runs.length; ++i) {
+        runs[i].style.textDecorationLine = "none";
+      }
+    }
+    if (style.align !== undefined) {
+      holders.concat(holders[0] === cell ? [] : [cell]).forEach(function (node) {
+        node.style.textAlign = style.align;
+      });
+    }
+    if (style.fill !== undefined) {
+      var fill = style.fill === null ? "transparent" : style.fill;
+      cell.style.backgroundColor = fill;
+      cell.style.setProperty("--odr-fill", fill);
+      cell.style.setProperty(
+        "--odr-dark-fill",
+        style.fill === null ? "transparent" : darkFill(style.fill)
+      );
+    }
+  }
+
+  var COLOR = /^#[0-9a-f]{6}$/i;
+  var SIZE = /^[0-9]*\.?[0-9]+(pt|px|in|cm|mm|pc)$/;
+
+  /// Whether @p style is one the op can carry.
+  function valid(style) {
+    return Object.keys(style).every(function (key) {
+      var value = style[key];
+      if (TOGGLES.indexOf(key) !== -1) {
+        return typeof value === "boolean";
+      }
+      if (key === "color") {
+        return COLOR.test(value);
+      }
+      if (key === "fill") {
+        return value === null || COLOR.test(value);
+      }
+      if (key === "size") {
+        return SIZE.test(value);
+      }
+      if (key === "align") {
+        return value === "left" || value === "center" || value === "right";
+      }
+      return false;
+    });
+  }
+
+  /// States @p style on every selected cell as one undo step. A lock refuses
+  /// a value, not a style.
+  function format(style) {
+    finish();
+    if (!odr.editing.isEnabled()) {
+      return false;
+    }
+    if (!odr.editing.isEditable()) {
+      odr.editing.refuse("readOnly", { sheet: sheet });
+      return false;
+    }
+    var cells = odr.sheet.selectedCells();
+    if (cells.length === 0 || !valid(style)) {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet });
+      return false;
+    }
+    var befores = [];
+    var afters = [];
+    var ops = [];
+    var rows = new Set();
+    cells.forEach(function (at) {
+      befores.push(snapshot(at.cell));
+      paintCell(at.cell, style);
+      afters.push(snapshot(at.cell));
+      ops.push({
+        op: "setCellStyle",
+        sheet: sheet,
+        column: at.column,
+        row: at.row,
+        style: Object.assign({}, style),
+      });
+      rows.add(at.row);
+    });
+    var reflow = function () {
+      rows.forEach(function (row) {
+        odr.sheet.reflow(row);
+      });
+    };
+    history.push({
+      ops: ops,
+      undo: function () {
+        befores.forEach(restore);
+        reflow();
+      },
+      redo: function () {
+        afters.forEach(restore);
+        reflow();
+      },
+    });
+    undone = [];
+    reflow();
+    odr.editing.changed();
+    reportSelection(true);
+    return true;
+  }
+
+  /// A mixed selection turns on, as Word does.
+  function toggle(property) {
+    if (TOGGLES.indexOf(property) === -1) {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet });
+      return false;
+    }
+    var style = {};
+    style[property] = summary()[property] !== true;
+    return format(style);
+  }
+
+  var chords = { b: "bold", i: "italic", u: "underline" };
+
+  /// The formatting chords, where the config gives the scripts the shortcuts.
+  function chordKey(event) {
+    if (
+      !odr.editing.isEnabled() ||
+      overlay !== null ||
+      event.altKey ||
+      !(event.ctrlKey || event.metaKey)
+    ) {
+      return;
+    }
+    var property = chords[event.key.toLowerCase()];
+    if (property === undefined || odr.sheet.selectedCells().length === 0) {
+      return;
+    }
+    toggle(property);
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  if (odr.takesKeys("shortcuts")) {
+    document.addEventListener("keydown", chordKey, true);
+  }
+
   odr.editing.attach({
     // A cell nothing can commit must keep no overlay open over it.
     disable: close,
@@ -493,14 +905,14 @@
     canRedo: function () {
       return undone.length > 0;
     },
-    /// Takes the last write back; false where there is none.
+    /// Takes the last step back; false where there is none.
     undo: function () {
       if (history.length === 0) {
         return false;
       }
       var entry = history.pop();
       undone.push(entry);
-      replay(entry, entry.before);
+      replay(entry.undo);
       return true;
     },
     redo: function () {
@@ -509,8 +921,13 @@
       }
       var entry = undone.pop();
       history.push(entry);
-      replay(entry, entry.op.value);
+      replay(entry.redo);
       return true;
+    },
+    format: format,
+    toggle: toggle,
+    enable: function () {
+      reportSelection(true);
     },
     committed: function () {
       history = [];
