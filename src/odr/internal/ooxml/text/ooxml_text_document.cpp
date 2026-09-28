@@ -215,7 +215,7 @@ constexpr std::array<std::string_view, 39> run_property_order{
 /// `w:themeColor` would win over a new `w:val`.
 pugi::xml_node set_run_property(pugi::xml_node properties, const char *name) {
   properties.remove_child(name);
-  return insert_in_sequence(properties, name, run_property_order);
+  return xml::insert_in_sequence(properties, name, run_property_order);
 }
 
 /// Writes the set fields of @p style into a `w:rPr`, the complex-script

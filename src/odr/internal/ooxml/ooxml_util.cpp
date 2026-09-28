@@ -133,24 +133,6 @@ constexpr std::array<std::pair<std::string_view, std::uint32_t>, 16>
 
 } // namespace
 
-pugi::xml_node
-ooxml::insert_in_sequence(pugi::xml_node parent, const char *name,
-                          const std::span<const std::string_view> order) {
-  const auto rank = [&](const std::string_view child_name) {
-    const auto it = std::ranges::find(order, child_name);
-    return it == std::end(order)
-               ? order.size()
-               : static_cast<std::size_t>(it - std::begin(order));
-  };
-  const std::size_t own_rank = rank(name);
-  for (const pugi::xml_node child : parent.children()) {
-    if (rank(child.name()) > own_rank) {
-      return parent.insert_child_before(name, child);
-    }
-  }
-  return parent.append_child(name);
-}
-
 std::string ooxml::hex_color(const Color &color) {
   return fmt::format("{:06X}", color.rgb());
 }

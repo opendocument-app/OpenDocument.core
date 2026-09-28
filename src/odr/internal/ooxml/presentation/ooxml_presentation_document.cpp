@@ -218,7 +218,7 @@ void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
     attr.set_value(value.c_str());
   };
   const auto solid = [&](const char *name, const Color &color) {
-    insert_in_sequence(properties, name, run_property_order)
+    xml::insert_in_sequence(properties, name, run_property_order)
         .append_child("a:srgbClr")
         .append_attribute("val")
         .set_value(hex_color(color).c_str());

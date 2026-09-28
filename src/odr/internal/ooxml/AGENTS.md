@@ -39,7 +39,7 @@ a per-part `ParseContext` (path, its relations, the part cache).
 |---|---|
 | `ooxml_file.{hpp,cpp}` | `OfficeOpenXmlFile`: meta, encryption state, `decrypt()`, dispatch to the per-format `Document` on `file_type()` |
 | `ooxml_meta.cpp` | `parse_file_meta`: type detection by sentinel path (`/word/document.xml`, `/ppt/presentation.xml`, `/xl/workbook.xml`); an encrypted package has `/EncryptionInfo` and `/EncryptedPackage` |
-| `ooxml_util.{hpp,cpp}` | Stateless attribute readers: half-points, hundredth-points, EMUs, twips, percents, colours, borders, font weight and style; relationship parsing; `write_text_nodes`, `insert_in_sequence` for the writers |
+| `ooxml_util.{hpp,cpp}` | Stateless attribute readers: half-points, hundredth-points, EMUs, twips, percents, colours, borders, font weight and style; relationship parsing; `write_text_nodes` for the writers |
 | `ooxml_crypto.{hpp,cpp}` | Decryption |
 
 ## Encryption
