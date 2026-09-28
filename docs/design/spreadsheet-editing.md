@@ -199,7 +199,7 @@ Status: planned. The steps land as a stack, in this order:
 
 1. The xlsx reader reads what the writer writes: a solid fill from `fgColor`,
    theme colours with their `tint`, italic, underline and strikethrough, and
-   left, right and justified alignment.
+   left and right alignment.
 2. `Sheet::set_cell_style` and the `setCellStyle` op, written into `.ods`.
 3. The same op written into `.xlsx`.
 4. The sheet editor formats a selection of cells, and a selection can be a
@@ -219,7 +219,7 @@ Status: planned. The steps land as a stack, in this order:
 | `bold`, `italic`, `underline`, `strikethrough` | a bool | `style:text-properties`, as for a run | `b`, `i`, `u`, `strike` in a `font` |
 | `color` | `#rrggbb` | `fo:color` | `font/color/@rgb` |
 | `size` | a length | `fo:font-size` | `font/sz`, in points |
-| `align` | `left`, `center`, `right`, `justify` or null | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"`; null is `value-type` | `alignment/@horizontal`; null is `general` |
+| `align` | `left`, `center`, `right` or null | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"`; null is `value-type` | `alignment/@horizontal`; null is `general` |
 
 The text keys are the ones of `setTextStyle`, and off is written, never
 removed (`document-editing.md` decision 9). A cell has no `highlight`: `fill` is the
