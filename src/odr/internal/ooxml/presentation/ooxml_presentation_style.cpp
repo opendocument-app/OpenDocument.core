@@ -13,16 +13,6 @@ namespace odr::internal::ooxml::presentation {
 
 namespace {
 
-/// A literal colour, or a system colour that names the value it last resolved
-/// to. [ECMA-376] 20.1.2.3.32, 20.1.2.3.33
-std::optional<Color> read_theme_color_(const pugi::xml_node slot) {
-  if (const std::optional<Color> color =
-          read_color_attribute(slot.child("a:srgbClr").attribute("val"))) {
-    return color;
-  }
-  return read_color_attribute(slot.child("a:sysClr").attribute("lastClr"));
-}
-
 /// `a:spcPct` in thousandths of a percent, or `a:spcPts` in hundredths of a
 /// point. [ECMA-376] 21.1.2.2.12
 std::optional<Measure> read_line_spacing(const pugi::xml_node node) {
@@ -58,7 +48,7 @@ namespace odr::internal::ooxml {
 presentation::ColorScheme::ColorScheme(const pugi::xml_node color_scheme,
                                        const pugi::xml_node color_map) {
   for (const pugi::xml_node slot : color_scheme.children()) {
-    if (const std::optional<Color> color = read_theme_color_(slot)) {
+    if (const std::optional<Color> color = read_drawing_rgb_color(slot)) {
       // the slot names are `a:dk1`, `a:lt1`, `a:accent1`, …
       const std::string_view name = slot.name();
       const std::size_t colon = name.find(':');
@@ -88,7 +78,7 @@ presentation::ColorScheme::resolve(const char *name) const {
 std::optional<Color>
 presentation::read_drawing_color(const pugi::xml_node parent,
                                  const ColorScheme *color_scheme) {
-  if (const std::optional<Color> color = read_theme_color_(parent)) {
+  if (const std::optional<Color> color = read_drawing_rgb_color(parent)) {
     return color;
   }
   if (const pugi::xml_attribute scheme_color =

@@ -47,7 +47,9 @@ loads `fonts`, `fills`, `borders`, `cellStyleXfs` and `cellXfs`. A cell's `s`
 attribute indexes `cellXfs`. The `xf` picks `fontId`, `fillId`, `borderId` and
 `alignment`, each resolved via its vector. Font, border and alignment are gated
 by `applyFont`, `applyBorder` and `applyAlignment`. Fill is applied
-unconditionally. The legacy indexed colour palette is hardcoded.
+unconditionally, and a pattern paints its `fgColor`. A colour is `rgb`, a slot
+of the hardcoded legacy palette, or a `theme` slot of the workbook's
+`a:clrScheme`, counted `lt1`, `dk1`, `lt2`, `dk2` first, and `tint` moves it.
 `cellStyleXfs` is loaded but never consulted.
 
 **Writing a cell replaces its children, and a written string goes inline.**
@@ -87,8 +89,7 @@ formula.
 2. `sheet_content` ignores the requested range and returns the full
    `<dimension>`.
 3. No `cellStyleXfs` inheritance. Borders render as `0.75pt solid` whatever
-   the style. Font italic, underline and strike are not read. Cell
-   `protection` is read and dropped.
+   the style. Cell `protection` is read and dropped.
 4. `sheet_set_cell` writes a number, a string or a boolean. `text_set_content`
    throws `UnsupportedOperation`. A `<hyperlink>` is not modelled, so
    `link_href` is empty. Comments are not modelled.

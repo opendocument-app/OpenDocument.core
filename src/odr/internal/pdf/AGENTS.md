@@ -190,6 +190,7 @@ above. So each run is raised by one font ascent:
 | `pdf_writer.*` | `IncrementalWriter`: copies the source through and appends the changed objects under their own xref in the file's flavour. Refuses a recovered or encrypted file |
 | `pdf_annotation.*` | The markup and ink annotations and their appearance streams. Only the highlight blends Multiply (11.6.4.1) |
 | `util/math_util.hpp` | `util::math::Transform2D`, PDF row-vector convention |
+| `util/color_util.*` | `util::color`: the sRGB transfer, a channel to a byte, HSL and Oklab |
 
 Consumers outside the module: `open_strategy.cpp` and `html/pdf_file.cpp`
 (`create_pdf_service`; the per-font PUA re-encode, OTF wrap and `@font-face`;

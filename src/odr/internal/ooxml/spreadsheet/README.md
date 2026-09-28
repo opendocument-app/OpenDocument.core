@@ -36,11 +36,11 @@ through the `cellXfs`, `fonts`, `fills` and `borders` indices
   - [x] size
   - [x] bold
   - [x] color
-  - [ ] italic
-  - [ ] underline, strike through
+  - [x] italic
+  - [x] underline, strike through
   - [ ] superscript, subscript
 - [x] cell
-  - [x] background / fill color
+  - [x] background / fill color, theme colors and tint
   - [x] borders (`0.75pt solid` only)
   - [x] alignment (horizontal, vertical, text rotation)
   - [ ] protection

@@ -51,6 +51,12 @@ double points(const Measure &length);
 
 std::optional<std::string> read_string_attribute(pugi::xml_attribute);
 std::optional<Color> read_color_attribute(pugi::xml_attribute);
+/// The `a:srgbClr` of @p parent, else the value its `a:sysClr` last resolved
+/// to. [ECMA-376] 20.1.2.3.32, 20.1.2.3.33
+std::optional<Color> read_drawing_rgb_color(pugi::xml_node parent);
+/// [ECMA-376] 18.8.19: a negative @p tint moves the lightness toward black, a
+/// positive one toward white.
+Color apply_tint(const Color &color, double tint);
 std::optional<Measure> read_half_point_attribute(pugi::xml_attribute);
 std::optional<Measure> read_eighth_point_attribute(pugi::xml_attribute);
 std::optional<Measure> read_hundredth_point_attribute(pugi::xml_attribute);

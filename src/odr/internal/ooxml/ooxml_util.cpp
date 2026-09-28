@@ -3,6 +3,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/util/color_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
@@ -207,6 +208,22 @@ ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
     return Color::from_rgb(color);
   }
   return {};
+}
+
+std::optional<Color>
+ooxml::read_drawing_rgb_color(const pugi::xml_node parent) {
+  if (const std::optional<Color> color =
+          read_color_attribute(parent.child("a:srgbClr").attribute("val"))) {
+    return color;
+  }
+  return read_color_attribute(parent.child("a:sysClr").attribute("lastClr"));
+}
+
+Color ooxml::apply_tint(const Color &color, const double tint) {
+  util::color::Hsl hsl = util::color::Hsl::from_color(color);
+  hsl.lightness =
+      tint < 0 ? hsl.lightness * (1 + tint) : hsl.lightness * (1 - tint) + tint;
+  return hsl.to_color(color.alpha);
 }
 
 std::optional<Measure>

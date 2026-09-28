@@ -11,6 +11,7 @@
 #include <odr/internal/formula/formula_ast.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
+#include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -86,7 +87,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     }
   }
 
-  m_style_registry = StyleRegistry(styles_xml.document_element());
+  pugi::xml_node theme_root;
+  if (const std::optional<AbsPath> theme_path =
+          parse_relationship_target(*m_files, workbook_path, "theme");
+      theme_path && m_files->is_file(*theme_path)) {
+    theme_root = parse_xml_(*theme_path).first.document_element();
+  }
+  m_style_registry = StyleRegistry(styles_xml.document_element(), theme_root);
 
   const ParseContext parse_context(workbook_path, workbook_relations,
                                    m_xml_documents_and_relations,
