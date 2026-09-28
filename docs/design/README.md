@@ -15,8 +15,8 @@
   log, and C++ replays it on save. Elements are addressed by stable ids.
 - [Document editing design](document-editing.md): the editor of the document
   view. Runs, paragraphs and inline formatting.
-- [Spreadsheet editing design](spreadsheet-editing.md): cells edited by
-  position, and the formula plan.
+- [Spreadsheet editing design](spreadsheet-editing.md): cells edited and
+  formatted by position, and the formula plan.
 - [Plain-text editing design](txt-editing.md): the editor of the plain-text
   view. One `setContent` op.
 
