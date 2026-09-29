@@ -192,6 +192,45 @@ class DocumentTest {
     assertNull(styled.fontStyle);
   }
 
+  private static Paragraph firstParagraph(Element element) {
+    if (element.type() == ElementType.PARAGRAPH) {
+      return element.asParagraph();
+    }
+    for (Element child : element.children()) {
+      Paragraph found = firstParagraph(child);
+      if (found != null) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  @Test
+  void setStyleAlignsAParagraph() throws IOException {
+    Document document = openDocument();
+
+    ParagraphStyle style = new ParagraphStyle();
+    style.textAlign = TextAlign.CENTER;
+    firstParagraph(document.rootElement()).setStyle(style);
+
+    Path path = tempDir.resolve("aligned.odt");
+    Files.write(path, document.saveToMemory());
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+
+    assertEquals(TextAlign.CENTER, firstParagraph(reloaded.rootElement()).style().textAlign);
+  }
+
+  @Test
+  void setParagraphStyleRefusesWhatNoEngineWrites() throws IOException {
+    Document document = openDocument();
+    Paragraph paragraph = firstParagraph(document.rootElement());
+
+    ParagraphStyle style = new ParagraphStyle();
+    style.textAlign = TextAlign.CENTER;
+    style.lineHeight = new Measure(12, "pt");
+    assertThrows(OdrException.UnsupportedOperation.class, () -> paragraph.setStyle(style));
+  }
+
   @Test
   void setCellStyleFillsACell() throws IOException {
     Path ods = TestFiles.odsFile(tempDir);

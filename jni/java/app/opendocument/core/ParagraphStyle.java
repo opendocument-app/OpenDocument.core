@@ -1,17 +1,24 @@
 package app.opendocument.core;
 
-/** Style of a paragraph. Mirrors {@code odr::ParagraphStyle}; fields may be {@code null}. */
+/**
+ * Style of a paragraph. Mirrors {@code odr::ParagraphStyle}; a {@code null} field is one the
+ * document does not state. A caller builds one for {@link Paragraph#setStyle}: every field left
+ * {@code null} is left alone on the paragraph.
+ */
 public final class ParagraphStyle {
-  public final TextAlign textAlign;
+  public TextAlign textAlign;
   /** The base direction the paragraph's text runs in; {@code null} if the style says nothing. */
-  public final TextDirection direction;
-  public final DirectionalMeasure margin;
-  public final Measure lineHeight;
-  public final Measure textIndent;
+  public TextDirection direction;
+  public DirectionalMeasure margin;
+  public Measure lineHeight;
+  public Measure textIndent;
   /** A break the author put before the paragraph; {@code null} if the style says nothing. */
-  public final BreakType breakBefore;
+  public BreakType breakBefore;
   /** A break the author put after the paragraph; {@code null} if the style says nothing. */
-  public final BreakType breakAfter;
+  public BreakType breakAfter;
+
+  /** Every field {@code null}. */
+  public ParagraphStyle() {}
 
   ParagraphStyle(
       int textAlign,

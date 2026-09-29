@@ -258,6 +258,27 @@ odr::Color unbox_color(NSValue *const value) {
 
 @implementation ODRParagraphStyle
 
+- (instancetype)init {
+  if ((self = [super init]) != nil) {
+    _margin = [ODRDirectionalMeasure
+        directionalWithHandle:odr::DirectionalStyle<odr::Measure>()];
+  }
+  return self;
+}
+
+- (odr::ParagraphStyle)handle {
+  if (_direction != nil || _margin.right != nil || _margin.top != nil ||
+      _margin.left != nil || _margin.bottom != nil || _lineHeight != nil ||
+      _textIndent != nil || _breakBefore != nil || _breakAfter != nil) {
+    throw odr::UnsupportedOperation();
+  }
+  odr::ParagraphStyle result;
+  if (_textAlign != nil) {
+    result.text_align = static_cast<odr::TextAlign>(_textAlign.integerValue);
+  }
+  return result;
+}
+
 + (instancetype)styleWithHandle:(const odr::ParagraphStyle &)handle {
   ODRParagraphStyle *const result = [[ODRParagraphStyle alloc] init];
   result->_textAlign = box_enum(handle.text_align);

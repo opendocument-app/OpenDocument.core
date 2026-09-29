@@ -120,6 +120,13 @@ export class Document {
     return this;
   }
 
+  // States `style` - `{align}`, as the page's `odr.editing.format` takes it
+  // - on one paragraph.
+  setParagraphStyle(id, style) {
+    unwrap(this.#core.setParagraphStyle(this.#handle, id, style));
+    return this;
+  }
+
   // States `style` - the text keys of `setTextStyle`, and `fill` and
   // `align` - on the cell at a position, as `odr.editing.format` takes it.
   setCellStyle(sheet, column, row, style) {

@@ -109,6 +109,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ODRParagraphStyle (Private)
 + (instancetype)styleWithHandle:(const odr::ParagraphStyle &)handle;
+/// The set properties as a `ParagraphStyle`; throws `UnsupportedOperation`
+/// for any but `textAlign`, which no engine writes.
+- (odr::ParagraphStyle)handle;
 @end
 
 @interface ODRTableStyle (Private)

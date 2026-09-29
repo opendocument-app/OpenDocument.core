@@ -13,6 +13,12 @@ function firstEditableRunId(html) {
   return Number(match[1]);
 }
 
+function firstEditableParagraphId(html) {
+  const match = html.match(/<x-p [^>]*data-odr-id="(\d+)"/);
+  assert.ok(match, 'the editable render carries no paragraph id');
+  return Number(match[1]);
+}
+
 describe('edit', () => {
   let odr;
   before(async () => {
@@ -164,6 +170,35 @@ describe('edit', () => {
       const id = firstEditableRunId(doc.render(0).html);
       assert.throws(() => doc.setTextStyle(id, { blink: true }), OdrError);
       assert.throws(() => doc.setTextStyle(id, 'bold'), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('aligns a paragraph by id and saves the alignment', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      const id = firstEditableParagraphId(doc.render(0).html);
+      doc.setParagraphStyle(id, { align: 'center' });
+      assert.match(doc.render(0).html, /text-align:center/);
+
+      const reopened = odr.open(doc.save());
+      try {
+        assert.match(reopened.render(0).html, /text-align:center/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('refuses an alignment it does not know', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
+    try {
+      const id = firstEditableParagraphId(doc.render(0).html);
+      assert.throws(() => doc.setParagraphStyle(id, { align: 'middle' }), OdrError);
+      assert.throws(() => doc.setParagraphStyle(id, 'center'), OdrError);
     } finally {
       doc.close();
     }

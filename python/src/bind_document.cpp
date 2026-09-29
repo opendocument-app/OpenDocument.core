@@ -213,6 +213,7 @@ void odr_python::bind_document(py::module_ &m) {
 
   bind_element<odr::Paragraph>(m, "Paragraph")
       .def("style", &odr::Paragraph::style)
+      .def("set_style", &odr::Paragraph::set_style, py::arg("style"))
       .def("text_style", &odr::Paragraph::text_style);
 
   bind_element<odr::Span>(m, "Span").def("style", &odr::Span::style);

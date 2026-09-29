@@ -58,6 +58,9 @@ odr::TextStyle text_style_from_java(JNIEnv *env, jobject style);
 /// The fields a Java `TableCellStyle` states; a padding or a border is
 /// refused, since no engine writes one.
 odr::TableCellStyle table_cell_style_from_java(JNIEnv *env, jobject style);
+/// The fields a Java `ParagraphStyle` states; any but `textAlign` is refused,
+/// since no engine writes one.
+odr::ParagraphStyle paragraph_style_from_java(JNIEnv *env, jobject style);
 
 /// Optional enum to a Java-side code; -1 encodes absent.
 template <typename E> jint enum_code(const std::optional<E> &value) {

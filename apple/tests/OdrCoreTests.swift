@@ -420,6 +420,39 @@ final class DocumentSaveTests: XCTestCase {
     }
   }
 
+  func testSetStyleAlignsAParagraph() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let paragraph = try XCTUnwrap(root.firstDescendant(ofType: Paragraph.self))
+
+    let style = ParagraphStyle()
+    style.textAlign = NSNumber(value: TextAlign.center.rawValue)
+    try paragraph.setStyle(style)
+
+    let saved = try XCTUnwrap(try document.saveToMemory())
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("aligned.odt")
+    try saved.write(to: path)
+
+    let reloaded = try DecodedFile.decode(path: path.path)
+      .asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    let aligned = try XCTUnwrap(reloadedRoot.firstDescendant(ofType: Paragraph.self)).style
+    XCTAssertEqual(aligned.textAlign?.intValue, TextAlign.center.rawValue)
+  }
+
+  func testSetParagraphStyleRefusesALineHeight() throws {
+    let document = try self.document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let paragraph = try XCTUnwrap(root.firstDescendant(ofType: Paragraph.self))
+
+    let style = ParagraphStyle()
+    style.lineHeight = Measure(string: "12pt")
+    XCTAssertThrowsError(try paragraph.setStyle(style)) { error in
+      XCTAssertEqual((error as NSError).code, ODRError.unsupportedOperation.rawValue)
+    }
+  }
+
   func testSetCellStyleFillsACell() throws {
     let document = try DecodedFile.decode(path: try Fixture.ods())
       .asDocumentFile().document()
