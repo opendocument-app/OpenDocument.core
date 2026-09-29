@@ -355,7 +355,7 @@ public:
   paragraph_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TextStyle
   paragraph_text_style(ElementIdentifier element_id) const = 0;
-  /// States the set fields of @p style on the paragraph and leaves the rest.
+  /// Writes `text_align` of @p style, which is set, on the paragraph.
   virtual void
   paragraph_set_style([[maybe_unused]] const ElementIdentifier element_id,
                       [[maybe_unused]] const ParagraphStyle &style) const {

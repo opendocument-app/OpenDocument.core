@@ -895,10 +895,8 @@ StyleRegistry::create_paragraph_style(pugi::xml_node automatic_styles,
                                       const char *base_name,
                                       const ParagraphStyle &style) {
   const std::string base = base_name != nullptr ? base_name : "";
-  const std::string key = fmt::format(
-      "{}|{}", base,
-      style.text_align ? std::to_string(static_cast<int>(*style.text_align))
-                       : "-");
+  const std::string key =
+      fmt::format("{}|{}", base, static_cast<int>(*style.text_align));
   if (const auto it = m_created_paragraph_styles.find(key);
       it != std::end(m_created_paragraph_styles)) {
     return it->second;
@@ -908,10 +906,8 @@ StyleRegistry::create_paragraph_style(pugi::xml_node automatic_styles,
                                             "P", m_next_paragraph_style);
   const std::string name = node.attribute("style:name").value();
 
-  if (style.text_align.has_value()) {
-    xml::set_attribute(properties_of(node, "style:paragraph-properties"),
-                       "fo:text-align", text_align_value(*style.text_align));
-  }
+  xml::set_attribute(properties_of(node, "style:paragraph-properties"),
+                     "fo:text-align", text_align_value(*style.text_align));
 
   m_index_style[name] = node;
   generate_style_(name, node);

@@ -94,8 +94,7 @@ public:
                                 const char *base_name,
                                 const TableCellStyle &cell,
                                 const TextStyle &text);
-  /// A paragraph style carrying the `text_align` of @p style, made as a cell
-  /// style is.
+  /// A paragraph style carrying the `text_align` of @p style.
   std::string create_paragraph_style(pugi::xml_node automatic_styles,
                                      const char *base_name,
                                      const ParagraphStyle &style);
@@ -133,9 +132,8 @@ private:
 
   void generate_master_pages_(Document &);
 
-  /// A style of @p family under @p automatic_styles named @p prefix and the
-  /// first free number from @p next: a copy of the automatic style
-  /// @p base_name names, a child of a named one.
+  /// A fresh `<prefix><n>` style: a copy of the automatic style @p base_name,
+  /// or a child of the named one.
   pugi::xml_node create_style_(pugi::xml_node automatic_styles,
                                const std::string &base_name, const char *family,
                                const char *prefix, std::uint32_t &next);

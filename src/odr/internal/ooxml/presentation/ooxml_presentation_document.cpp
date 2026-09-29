@@ -302,24 +302,22 @@ public:
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
     const char *algn = nullptr;
-    if (style.text_align.has_value()) {
-      switch (*style.text_align) {
-      case TextAlign::left:
-        algn = "l";
-        break;
-      case TextAlign::right:
-        algn = "r";
-        break;
-      case TextAlign::center:
-        algn = "ctr";
-        break;
-      case TextAlign::justify:
-        algn = "just";
-        break;
-      case TextAlign::start:
-      case TextAlign::end:
-        throw UnsupportedOperation();
-      }
+    switch (*style.text_align) {
+    case TextAlign::left:
+      algn = "l";
+      break;
+    case TextAlign::right:
+      algn = "r";
+      break;
+    case TextAlign::center:
+      algn = "ctr";
+      break;
+    case TextAlign::justify:
+      algn = "just";
+      break;
+    case TextAlign::start:
+    case TextAlign::end:
+      throw UnsupportedOperation();
     }
     pugi::xml_node node = get_node(element_id);
     pugi::xml_node properties = node.child("a:pPr");
@@ -327,9 +325,7 @@ public:
       // the schema wants it ahead of the runs
       properties = node.prepend_child("a:pPr");
     }
-    if (algn != nullptr) {
-      xml::set_attribute(properties, "algn", algn);
-    }
+    xml::set_attribute(properties, "algn", algn);
   }
 
   [[nodiscard]] TextStyle

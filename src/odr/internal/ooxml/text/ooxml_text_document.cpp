@@ -397,14 +397,12 @@ public:
     if (!properties) {
       properties = node.prepend_child("w:pPr");
     }
-    if (style.text_align.has_value()) {
-      pugi::xml_node jc = properties.child("w:jc");
-      if (!jc) {
-        jc = xml::insert_in_sequence(properties, "w:jc",
-                                     paragraph_property_order);
-      }
-      xml::set_attribute(jc, "w:val", jc_value(*style.text_align));
+    pugi::xml_node jc = properties.child("w:jc");
+    if (!jc) {
+      jc =
+          xml::insert_in_sequence(properties, "w:jc", paragraph_property_order);
     }
+    xml::set_attribute(jc, "w:val", jc_value(*style.text_align));
   }
 
   [[nodiscard]] TextStyle

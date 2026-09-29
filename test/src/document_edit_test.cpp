@@ -896,11 +896,12 @@ Document pptx_of(const std::string &paragraphs) {
             paragraphs + R"(</p:txBody></p:sp></p:spTree></p:cSld></p:sld>)"}});
 }
 
-/// The @p ordinal -th run anywhere in @p document.
-Element nth_run(const Document &document, const std::uint32_t ordinal) {
+/// The @p ordinal -th element of @p type anywhere in @p document.
+Element nth_of_type(const Document &document, const ElementType type,
+                    const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
   const auto walk = [&](this auto &&self, const Element element) -> Element {
-    if (element.type() == ElementType::text && seen++ == ordinal) {
+    if (element.type() == type && seen++ == ordinal) {
       return element;
     }
     for (const Element child : element.children()) {
@@ -911,6 +912,10 @@ Element nth_run(const Document &document, const std::uint32_t ordinal) {
     return {};
   };
   return walk(document.root_element());
+}
+
+Element nth_run(const Document &document, const std::uint32_t ordinal) {
+  return nth_of_type(document, ElementType::text, ordinal);
 }
 
 /// The part @p path of @p document saved, empty elements spelt `<x/>`
@@ -1223,21 +1228,8 @@ std::optional<TextAlign> align_of(const Element paragraph) {
   return paragraph.as_paragraph().style().text_align;
 }
 
-/// The @p ordinal -th paragraph anywhere in @p document.
 Element nth_paragraph(const Document &document, const std::uint32_t ordinal) {
-  std::uint32_t seen = 0;
-  const auto walk = [&](this auto &&self, const Element element) -> Element {
-    if (element.type() == ElementType::paragraph && seen++ == ordinal) {
-      return element;
-    }
-    for (const Element child : element.children()) {
-      if (const Element found = self(child)) {
-        return found;
-      }
-    }
-    return {};
-  };
-  return walk(document.root_element());
+  return nth_of_type(document, ElementType::paragraph, ordinal);
 }
 
 } // namespace

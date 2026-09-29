@@ -16,15 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- A paragraph of an odt, odp, odg, docx or pptx file takes a horizontal
-  alignment: `Paragraph::set_style` and the `setParagraphStyle` op write
-  `text_align`. The document editor aligns every paragraph that the selection
-  reaches through `odr.editing.format({align})`, with `left`, `center`,
-  `right` or `justify`. `onSelectionChange` reports `align`. The python,
-  Java, Objective-C and npm bindings expose it, and in Java and Objective-C a
-  `ParagraphStyle` can now be built and written.
-
-- **Fix**: a docx paragraph with `w:jc="both"` was not justified. It now is.
+- A paragraph of an odt, odp, odg, docx or pptx file takes an alignment
+  (`Paragraph::set_style`, `setParagraphStyle`, `odr.editing.format({align})`,
+  and the bindings). The docx reader now reads `w:jc="both"` as justified.
 
 - The python, Java, Objective-C and npm bindings style a sheet cell
   (`Sheet::set_cell_style`). In Java and Objective-C, a `TableCellStyle` can

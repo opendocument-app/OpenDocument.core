@@ -535,6 +535,9 @@ void Paragraph::set_style(const ParagraphStyle &style) const {
       style.break_after.has_value()) {
     throw UnsupportedOperation();
   }
+  if (!style.text_align.has_value()) {
+    return;
+  }
   m_adapter2->paragraph_set_style(m_identifier, style);
 }
 

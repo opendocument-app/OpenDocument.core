@@ -786,8 +786,6 @@ public:
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
-  /// Points the paragraph at a fresh automatic style: a copy of the one it
-  /// shows plus the delta, or a child of a named one.
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
     pugi::xml_node node = get_node(element_id);
