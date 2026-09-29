@@ -792,6 +792,96 @@
         odr.editing.format({ bold: true }) === true && ops().length === pictureOps
       );
 
+      // ------------------------------------------------------- alignment
+
+      reset();
+      select(run(31).firstChild, 2);
+      check("center with a caret in a paragraph is taken", odr.editing.format({ align: "center" }) === true);
+      check(
+        "and aligns the paragraph as the renderer writes it, cutting no run",
+        paragraph(30).style.textAlign === "center" &&
+          run(31).textContent === "third" &&
+          run(31).getAttribute("style") === null
+      );
+      check(
+        "as one setParagraphStyle",
+        ops().length === 1 &&
+          ops()[0].op === "setParagraphStyle" &&
+          ops()[0].id === 30 &&
+          ops()[0].style.align === "center"
+      );
+      odr.editing.format({ align: "justify" });
+      check(
+        "a second alignment folds into the first",
+        ops().length === 1 && ops()[0].style.align === "justify"
+      );
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "and the selection reports it",
+        selections[selections.length - 1].align === "justify"
+      );
+      check(
+        "an alignment can be taken back",
+        odr.editing.undo() === true && odr.editing.undo() === true
+      );
+      check(
+        "leaving the paragraph as the renderer wrote it",
+        paragraph(30).getAttribute("style") === "display:block" && ops().length === 0
+      );
+
+      reset();
+      selectRuns(11, 2, 21, 2);
+      check("right over two paragraphs is taken", odr.editing.format({ align: "right" }) === true);
+      check(
+        "aligning both",
+        paragraph(10).style.textAlign === "right" &&
+          paragraph(20).style.textAlign === "right" &&
+          paragraph(30).style.textAlign === ""
+      );
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "which the selection reports",
+        selections[selections.length - 1].align === "right"
+      );
+      selectRuns(11, 2, 31, 2);
+      document.dispatchEvent(new Event("selectionchange"));
+      check(
+        "and leaves out where the paragraphs differ",
+        selections[selections.length - 1].align === undefined
+      );
+
+      reset();
+      selectRuns(31, 0, 31, 3);
+      check(
+        "an alignment beside a mark is taken",
+        odr.editing.format({ bold: true, align: "center" }) === true
+      );
+      check(
+        "marking the run and aligning its paragraph",
+        run(31).style.fontWeight === "bold" &&
+          run(31).style.textAlign === "" &&
+          paragraph(30).style.textAlign === "center" &&
+          ops().some(function (op) {
+            return op.op === "setTextStyle" && op.style.align === undefined;
+          }) &&
+          ops().some(function (op) {
+            return op.op === "setParagraphStyle" && op.id === 30;
+          })
+      );
+      check("an alignment the wire has not is refused", odr.editing.format({ align: "middle" }) === false);
+      check("as an edit we cannot replay", refusals.pop() === "unsupportedEdit 1007");
+      selectRuns(61, 1, 65, 3);
+      check(
+        "a paragraph holding a text box aligns",
+        odr.editing.format({ align: "center" }) === true &&
+          paragraph(60).style.textAlign === "center"
+      );
+
+      reset();
+      select(run(21).firstChild, 1);
+      check("the center chord is taken", input("formatJustifyCenter") === "taken");
+      check("and aligns the paragraph", paragraph(20).style.textAlign === "center");
+
       // ---------------------------------------------- scope paragraph
 
       reset();
@@ -810,6 +900,10 @@
       selectRuns(11, 2, 31, 2);
       check("a format over two paragraphs is refused", odr.editing.format({ bold: true }) === false);
       check("as out of scope", refusals.pop().indexOf("outOfScope ") === 0);
+      select(run(53).firstChild, 2);
+      check("an alignment in one paragraph is taken", odr.editing.format({ align: "right" }) === true);
+      check("an alignment chord is refused", input("formatJustifyRight") === "refused");
+      check("as out of scope", refusals.pop() === "outOfScope 1010");
 
       select(run(11).firstChild, 5);
       check("typing inside a run is taken", input("insertText", "X") === "taken");
@@ -864,11 +958,12 @@
       }
 
       check(
-        "the log names no paragraph operation",
+        "the log names no structural paragraph operation",
         ops().every(function (op) {
           return (
             op.op === "setText" ||
             op.op === "setTextStyle" ||
+            op.op === "setParagraphStyle" ||
             op.op === "removeElement" ||
             op.op === "insertText"
           );

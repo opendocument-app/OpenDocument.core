@@ -180,12 +180,13 @@
   }
 
   function withStyle(op, style) {
-    return { op: "setTextStyle", id: op.id, style: merged(op.style, style) };
+    return { op: op.op, id: op.id, style: merged(op.style, style) };
   }
 
   /// Folds what a save need not carry: several edits to one run are the text
   /// it ends at, a run created and typed into is one insert, and two marks on
-  /// one run are one where the later keys win.
+  /// one run, or two alignments of one paragraph, are one where the later
+  /// keys win.
   function coalesce(ops) {
     var result = [];
     for (var i = 0; i < ops.length; ++i) {
@@ -200,6 +201,13 @@
       }
       if (op.op === "setTextStyle") {
         at = foldable(result, op, ["setTextStyle"], ["setText"]);
+        if (at !== -1) {
+          result[at] = withStyle(result[at], op.style);
+          continue;
+        }
+      }
+      if (op.op === "setParagraphStyle") {
+        at = foldable(result, op, ["setParagraphStyle"], []);
         if (at !== -1) {
           result[at] = withStyle(result[at], op.style);
           continue;
@@ -415,6 +423,16 @@
     };
   }
 
+  /// Puts @p element's `style` attribute back to @p before.
+  function restoreStyle(element, before) {
+    // Chrome serialises a declaration set through `style` into an empty
+    // attribute after a bare `removeAttribute`, so it is stated first
+    element.setAttribute("style", before === null ? "" : before);
+    if (before === null) {
+      element.removeAttribute("style");
+    }
+  }
+
   /// States @p style on @p run as the renderer writes it; undo puts the
   /// attribute back as it was.
   function setRunStyle(run, style) {
@@ -425,12 +443,22 @@
         paint(run, style);
       },
       revert: function () {
-        // Chrome serialises a declaration set through `style` into an empty
-        // attribute after a bare `removeAttribute`, so it is stated first
-        run.setAttribute("style", before === null ? "" : before);
-        if (before === null) {
-          run.removeAttribute("style");
-        }
+        restoreStyle(run, before);
+      },
+    };
+  }
+
+  /// States @p style on @p paragraph as `translate_paragraph_style` writes
+  /// it; undo puts the attribute back as it was.
+  function setParagraphStyle(paragraph, style) {
+    var before = paragraph.getAttribute("style");
+    return {
+      ops: [{ op: "setParagraphStyle", id: idOf(paragraph), style: style }],
+      apply: function () {
+        paragraph.style.textAlign = style.align;
+      },
+      revert: function () {
+        restoreStyle(paragraph, before);
       },
     };
   }
@@ -473,6 +501,17 @@
     formatItalic: "italic",
     formatUnderline: "underline",
     formatStrikeThrough: "strikethrough",
+  };
+
+  // the values of `align`, which `setParagraphStyle` carries
+  var alignments = ["left", "center", "right", "justify"];
+
+  // the input types an alignment chord raises, and the value each one states
+  var aligning = {
+    formatJustifyLeft: "left",
+    formatJustifyCenter: "center",
+    formatJustifyRight: "right",
+    formatJustifyFull: "justify",
   };
 
   /// `#rrggbb` for a computed `rgb(…)`, null for a transparent one.
@@ -532,6 +571,21 @@
     return result;
   }
 
+  /// The alignment @p paragraph shows, as the wire spells it; `start` and
+  /// `end` resolved against its direction.
+  function alignOf(paragraph) {
+    var computed = window.getComputedStyle(paragraph);
+    var align = computed.textAlign;
+    var rtl = computed.direction === "rtl";
+    if (align === "start") {
+      return rtl ? "right" : "left";
+    }
+    if (align === "end") {
+      return rtl ? "left" : "right";
+    }
+    return alignments.indexOf(align) === -1 ? null : align;
+  }
+
   /// Writes @p style into @p run's `style` attribute as `translate_text_style`
   /// does: one `text-decoration` for both lines, none for a highlight removed.
   function paint(run, style) {
@@ -588,7 +642,8 @@
     return all.slice(all.indexOf(from), all.indexOf(to) + 1);
   }
 
-  /// Whether @p style names only properties the wire carries.
+  /// Whether @p style names only properties the wire carries, and an
+  /// `align` it knows.
   function knownStyle(style) {
     if (style === null || typeof style !== "object") {
       return false;
@@ -596,13 +651,44 @@
     var any = false;
     for (var key in style) {
       if (Object.prototype.hasOwnProperty.call(style, key)) {
-        if (properties.indexOf(key) === -1) {
+        if (key === "align") {
+          if (alignments.indexOf(style.align) === -1) {
+            return false;
+          }
+        } else if (properties.indexOf(key) === -1) {
           return false;
         }
         any = true;
       }
     }
     return any;
+  }
+
+  /// The run keys of @p style, or null where it has none.
+  function textKeysOf(style) {
+    var result = null;
+    for (var key in style) {
+      if (Object.prototype.hasOwnProperty.call(style, key) && key !== "align") {
+        result = result || {};
+        result[key] = style[key];
+      }
+    }
+    return result;
+  }
+
+  /// The paragraphs @p at reaches, in document order; null where one between
+  /// its ends cannot be named.
+  function paragraphsAt(at) {
+    var first = at.start.paragraph;
+    var last = at.end.paragraph;
+    if (first === null || last === null) {
+      return null;
+    }
+    if (first === last) {
+      return [first];
+    }
+    var between = paragraphsBetween(first, last);
+    return between === null ? null : [first].concat(between, [last]);
   }
 
   /// A collapsed range grown to the word the caret sits in, as Word does;
@@ -772,21 +858,45 @@
       refuse(null, "outOfScope", at);
       return false;
     }
+    // every paragraph has to be nameable before any run is marked, or a
+    // refusal would leave half a gesture on the page
+    var paragraphs = [];
+    if (style.align !== undefined) {
+      paragraphs = paragraphsAt(at);
+      if (paragraphs === null) {
+        refuse(null, "range", at);
+        return false;
+      }
+    }
+    var align = function () {
+      for (var i = 0; i < paragraphs.length; ++i) {
+        perform(setParagraphStyle(paragraphs[i], { align: style.align }));
+      }
+    };
+
+    var text = textKeysOf(style);
+    if (text === null) {
+      align();
+      reportSelection(true);
+      return true;
+    }
     if (isCollapsed(at)) {
       var word = wordAround(at);
       if (word === null) {
-        pending = pendingApplies(at) ? merged(pending, style) : style;
+        align();
+        pending = pendingApplies(at) ? merged(pending, text) : text;
         pendingAt = at.start;
         reportSelection(true);
         return true;
       }
       at = word;
     }
-    var marked = markRange(at, style);
+    var marked = markRange(at, text);
     if (marked === null) {
       refuse(null, "range", at);
       return false;
     }
+    align();
     selectRange(marked);
     return true;
   }
@@ -799,6 +909,18 @@
     }
     var covering = isCollapsed(at) ? wordAround(at) || at : at;
     var summary = summaryOf(coveredRuns(covering));
+    var paragraphs = paragraphsAt(at);
+    if (paragraphs !== null) {
+      var align = alignOf(paragraphs[0]);
+      for (var i = 1; i < paragraphs.length && align !== null; ++i) {
+        if (alignOf(paragraphs[i]) !== align) {
+          align = null;
+        }
+      }
+      if (align !== null) {
+        summary.align = align;
+      }
+    }
     return pendingApplies(at) ? merged(summary, pending) : summary;
   }
 
@@ -1507,6 +1629,20 @@
         return;
       }
       toggle(property, at);
+      return;
+    }
+
+    var alignment = aligning[type];
+    if (alignment !== undefined) {
+      event.preventDefault();
+      if (!odr.takesKeys("shortcuts")) {
+        return;
+      }
+      if (odr.editing.scope() === "paragraph") {
+        refuse(event, "outOfScope", at);
+        return;
+      }
+      format({ align: alignment }, at);
       return;
     }
 
