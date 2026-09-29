@@ -94,12 +94,19 @@ public:
                                 const char *base_name,
                                 const TableCellStyle &cell,
                                 const TextStyle &text);
+  /// A paragraph style carrying the `text_align` of @p style, made as a cell
+  /// style is.
+  std::string create_paragraph_style(pugi::xml_node automatic_styles,
+                                     const char *base_name,
+                                     const ParagraphStyle &style);
 
 private:
   /// Where the search for a free `T<n>` name starts.
   std::uint32_t m_next_text_style{1};
   std::uint32_t m_next_cell_style{1};
+  std::uint32_t m_next_paragraph_style{1};
   std::unordered_map<std::string, std::string> m_created_cell_styles;
+  std::unordered_map<std::string, std::string> m_created_paragraph_styles;
 
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
@@ -125,6 +132,13 @@ private:
   Style *generate_style_(const std::string &name, pugi::xml_node node);
 
   void generate_master_pages_(Document &);
+
+  /// A style of @p family under @p automatic_styles named @p prefix and the
+  /// first free number from @p next: a copy of the automatic style
+  /// @p base_name names, a child of a named one.
+  pugi::xml_node create_style_(pugi::xml_node automatic_styles,
+                               const std::string &base_name, const char *family,
+                               const char *prefix, std::uint32_t &next);
 };
 
 } // namespace odr::internal::odf

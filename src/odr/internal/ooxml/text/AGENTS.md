@@ -86,6 +86,10 @@ replaces an existing one whole. A highlight is `w:highlight` for one of the
 sixteen names and `w:shd` otherwise. The reader takes `w:shd` only where no
 highlight names a colour ([ECMA-376] 17.3.2.32).
 
+`paragraph_set_style` writes `w:jc` into the `w:pPr` of the paragraph, at its
+rank in `CT_PPr` (`paragraph_property_order`). Justified is `both`
+([ECMA-376] 17.18.44), and the reader takes `both` and `justify`.
+
 ## Module layout
 
 | File (`text/`) | Role |

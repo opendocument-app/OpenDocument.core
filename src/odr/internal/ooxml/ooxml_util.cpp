@@ -379,7 +379,8 @@ ooxml::read_font_style_attribute(const pugi::xml_attribute attribute) {
   return font_style_from_value(attribute.value());
 }
 
-/// [ECMA-376] 17.18.44 ST_Jc. `start`/`end` are relative to the direction.
+/// [ECMA-376] 17.18.44 ST_Jc. `start`/`end` are relative to the direction,
+/// and `both` is justified.
 std::optional<TextAlign>
 ooxml::read_text_align_attribute(const pugi::xml_attribute attribute) {
   const char *val = attribute.value();
@@ -398,7 +399,7 @@ ooxml::read_text_align_attribute(const pugi::xml_attribute attribute) {
   if (std::strcmp("center", val) == 0) {
     return TextAlign::center;
   }
-  if (std::strcmp("justify", val) == 0) {
+  if (std::strcmp("both", val) == 0 || std::strcmp("justify", val) == 0) {
     return TextAlign::justify;
   }
   return {};

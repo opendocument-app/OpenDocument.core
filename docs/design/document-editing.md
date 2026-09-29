@@ -104,6 +104,7 @@ Version 2. Version 1 addressed by path, and replay refuses it.
 | `mergeParagraph` | `paragraph` | takes the children of the next sibling paragraph and removes it |
 | `insertParagraph` | `after`, `id` | a fresh empty paragraph after the named one, copying its style |
 | `setTextStyle` | `id`, `style` | states the listed properties on one run; see [Inline formatting](#inline-formatting) |
+| `setParagraphStyle` | `id`, `style` | states the alignment of one paragraph; see [Paragraph alignment](#paragraph-alignment) |
 | `setCell` | `sheet`, `column`, `row`, `value` | see [`spreadsheet-editing.md`](spreadsheet-editing.md) |
 
 Every `id` on an op that creates an element is negative (decision 4). Every
@@ -154,7 +155,7 @@ call refuses an element of another document.
 
 The adapter hooks, all defaulting to `UnsupportedOperation` (decision 7):
 `element_remove`, `text_insert`, `text_set_style`, `paragraph_split`,
-`paragraph_merge_next` and `paragraph_insert_after`. Each engine resolves the
+`paragraph_merge_next`, `paragraph_insert_after` and `paragraph_set_style`. Each engine resolves the
 id to its registry entry, splices the pugixml subtree and fixes the registry
 links. Only the tag names differ: `text:p` and `text:span` against `w:p`,
 `w:r`, `a:p` and `a:r`. `internal::ElementRegistry` has `unlink_child`,
@@ -332,6 +333,59 @@ run stops the fold.
 `TextStyle` whose set fields are the change. `highlight: null` is a
 `background_color` with alpha 0. The bindings expose it in python, Java,
 Objective-C and the npm package.
+
+## Paragraph alignment
+
+```json
+{"op": "setParagraphStyle", "id": 9, "style": {"align": "center"}}
+```
+
+`align` is `left`, `center`, `right` or `justify`. It is the only key.
+
+| On the wire | `ParagraphStyle` | ODF `style:paragraph-properties` | docx `w:pPr` | pptx `a:pPr` |
+|---|---|---|---|---|
+| `left` | `TextAlign::left` | `fo:text-align="left"` | `<w:jc w:val="left"/>` | `algn="l"` |
+| `center` | `TextAlign::center` | `fo:text-align="center"` | `<w:jc w:val="center"/>` | `algn="ctr"` |
+| `right` | `TextAlign::right` | `fo:text-align="right"` | `<w:jc w:val="right"/>` | `algn="r"` |
+| `justify` | `TextAlign::justify` | `fo:text-align="justify"` | `<w:jc w:val="both"/>` | `algn="just"` |
+
+`Paragraph::set_style(delta)` reaches `ParagraphAdapter::paragraph_set_style`.
+It writes `text_align` only, and any other field of the delta refuses with
+`UnsupportedOperation`. The C++ call also takes `start` and `end`. ODF and
+docx write them as they are, and pptx refuses them, because
+`ST_TextAlignType` has no value for either.
+
+### 17. ODF aligns through a fresh automatic paragraph style
+
+This is decision 12 for a paragraph. The writer copies the automatic style
+that the paragraph shows, or makes a child of a named one, under a fresh
+`P<n>`. It then sets `fo:text-align` in the copy. The same base and the same
+delta give one style for the length of a replay, so a selection over twenty
+paragraphs of one style adds one style.
+
+### 18. docx and pptx write into the paragraph's own properties
+
+`w:pPr` and `a:pPr` belong to one paragraph, so no cut is needed. The writer
+makes the element as the first child where it is missing. `CT_PPr` is a
+sequence, so `w:jc` goes to its rank, as the run properties of decision 13
+do.
+
+### 19. The editor aligns every paragraph that the selection reaches
+
+`odr.editing.format({align: "center"})` sends one `setParagraphStyle` per
+paragraph from the start of the selection to its end. A collapsed caret
+aligns its own paragraph. A style can hold `align` and run keys together. The
+paragraphs are checked first and aligned last, so a refused mark leaves no
+paragraph aligned. The editor writes `text-align` on the `x-p`, which is the
+declaration that `translate_paragraph_style` writes. `onSelectionChange`
+reports `align` where the paragraphs agree, and it resolves `start` and `end`
+against the direction of the paragraph. Two alignments of one paragraph fold
+into one op, unless an op that names the paragraph lies between them.
+
+`formatJustifyLeft`, `formatJustifyCenter`, `formatJustifyRight` and
+`formatJustifyFull` are chords, as `formatBold` is. Under scope `paragraph`
+the host's `format` aligns, because an alignment moves no range, but a chord
+refuses, as every chord does.
 
 ## Open items
 

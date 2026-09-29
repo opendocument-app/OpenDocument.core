@@ -1183,3 +1183,245 @@ TEST(DocumentEdit, an_insert_naming_a_parent_and_a_run_to_sit_beside_refuses) {
                    id_of(run_at(document, 0, 0)) + R"(,"text":"x","id":-1})")),
                std::invalid_argument);
 }
+
+namespace {
+
+/// Two paragraphs sharing an automatic style with a margin, one under a named
+/// centered style, and a bare one.
+Document aligned_text() {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.text">)"
+      R"(<office:styles>)"
+      R"(<style:style style:name="Centered" style:family="paragraph">)"
+      R"(<style:paragraph-properties fo:text-align="center"/></style:style>)"
+      R"(</office:styles>)"
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="P1" style:family="paragraph">)"
+      R"(<style:paragraph-properties fo:margin-left="1in"/></style:style>)"
+      R"(</office:automatic-styles>)"
+      R"(<office:body><office:text>)"
+      R"(<text:p text:style-name="P1">one</text:p>)"
+      R"(<text:p text:style-name="P1">two</text:p>)"
+      R"(<text:p text:style-name="Centered">three</text:p>)"
+      R"(<text:p>four</text:p>)"
+      R"(</office:text></office:body></office:document>)";
+  return DecodedFile(
+             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
+                                      Logger::null()))
+      .as_document_file()
+      .document();
+}
+
+std::string align_op(const Element paragraph, const std::string &align) {
+  return R"({"op":"setParagraphStyle","id":)" + id_of(paragraph) +
+         R"(,"style":{"align":")" + align + R"("}})";
+}
+
+std::optional<TextAlign> align_of(const Element paragraph) {
+  return paragraph.as_paragraph().style().text_align;
+}
+
+/// The @p ordinal -th paragraph anywhere in @p document.
+Element nth_paragraph(const Document &document, const std::uint32_t ordinal) {
+  std::uint32_t seen = 0;
+  const auto walk = [&](this auto &&self, const Element element) -> Element {
+    if (element.type() == ElementType::paragraph && seen++ == ordinal) {
+      return element;
+    }
+    for (const Element child : element.children()) {
+      if (const Element found = self(child)) {
+        return found;
+      }
+    }
+    return {};
+  };
+  return walk(document.root_element());
+}
+
+} // namespace
+
+TEST(DocumentEdit, an_align_op_on_a_bare_paragraph_gives_it_a_style) {
+  const Document document = aligned_text();
+  const Element paragraph = paragraph_at(document, 3);
+  ASSERT_EQ(align_of(paragraph), std::nullopt);
+
+  document.edit(ops(align_op(paragraph, "right")));
+
+  EXPECT_EQ(align_of(paragraph), TextAlign::right);
+}
+
+TEST(DocumentEdit, an_align_op_copies_a_shared_automatic_style) {
+  const Document document = aligned_text();
+  const Element one = paragraph_at(document, 0);
+  const Element two = paragraph_at(document, 1);
+
+  document.edit(ops(align_op(one, "justify")));
+
+  EXPECT_EQ(align_of(one), TextAlign::justify);
+  ASSERT_TRUE(one.as_paragraph().style().margin.left.has_value());
+  EXPECT_EQ(one.as_paragraph().style().margin.left->to_string(), "1in");
+  EXPECT_EQ(align_of(two), std::nullopt);
+}
+
+TEST(DocumentEdit, an_align_op_under_a_named_style_overrides_it) {
+  const Document document = aligned_text();
+  const Element three = paragraph_at(document, 2);
+  ASSERT_EQ(align_of(three), TextAlign::center);
+
+  document.edit(ops(align_op(three, "left")));
+
+  EXPECT_EQ(align_of(three), TextAlign::left);
+}
+
+TEST(DocumentEdit, two_paragraphs_aligned_alike_share_one_style) {
+  const Document document = aligned_text();
+
+  document.edit(ops(align_op(paragraph_at(document, 0), "center") + "," +
+                    align_op(paragraph_at(document, 1), "center")));
+
+  // one for the named style, one for the two paragraphs
+  const std::string content(document.save_to_memory().memory_data().value());
+  const std::string center = R"(fo:text-align="center")";
+  std::size_t count = 0;
+  for (std::size_t at = content.find(center); at != std::string::npos;
+       at = content.find(center, at + 1)) {
+    ++count;
+  }
+  EXPECT_EQ(count, 2U);
+}
+
+TEST(DocumentEdit, an_align_op_survives_a_save) {
+  const Document document = aligned_text();
+  document.edit(ops(align_op(paragraph_at(document, 0), "center") + "," +
+                    align_op(paragraph_at(document, 3), "right")));
+
+  const Document saved = reopened(document);
+
+  EXPECT_EQ(align_of(paragraph_at(saved, 0)), TextAlign::center);
+  EXPECT_EQ(align_of(paragraph_at(saved, 1)), std::nullopt);
+  EXPECT_EQ(align_of(paragraph_at(saved, 3)), TextAlign::right);
+}
+
+TEST(DocumentEdit, an_align_op_with_an_unknown_value_refuses) {
+  const Document document = aligned_text();
+  const Element paragraph = paragraph_at(document, 3);
+
+  EXPECT_THROW(document.edit(ops(align_op(paragraph, "middle"))),
+               std::invalid_argument);
+  EXPECT_THROW(
+      document.edit(ops(R"({"op":"setParagraphStyle","id":)" +
+                        id_of(paragraph) + R"(,"style":{"indent":"1in"}})")),
+      std::invalid_argument);
+  EXPECT_THROW(document.edit(ops(align_op(run_at(document, 3, 0), "left"))),
+               std::invalid_argument);
+  EXPECT_EQ(align_of(paragraph), std::nullopt);
+}
+
+TEST(DocumentEdit, a_read_only_engine_refuses_an_align_op) {
+  const Document document =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(
+                                               std::string(R"({\rtf1 hello})")),
+                                           {}, Logger::null()))
+          .as_document_file()
+          .document();
+  const Element paragraph = nth_paragraph(document, 0);
+  ASSERT_TRUE(paragraph);
+
+  EXPECT_THROW(document.edit(ops(align_op(paragraph, "center"))),
+               UnsupportedOperation);
+}
+
+TEST(DocumentEdit, a_paragraph_style_the_handle_does_not_write_refuses) {
+  const Document document = aligned_text();
+  ParagraphStyle style;
+  style.text_align = TextAlign::center;
+  style.line_height = Measure("12pt");
+
+  EXPECT_THROW(paragraph_at(document, 3).as_paragraph().set_style(style),
+               UnsupportedOperation);
+  EXPECT_EQ(align_of(paragraph_at(document, 3)), std::nullopt);
+}
+
+TEST(DocumentEdit, docx_an_align_op_writes_jc_in_schema_order) {
+  const Document document =
+      docx_of(R"(<w:p><w:pPr><w:pStyle w:val="Bold"/><w:ind w:left="720"/>)"
+              R"(<w:rPr><w:b/></w:rPr></w:pPr><w:r><w:t>one</w:t></w:r></w:p>)"
+              R"(<w:p><w:r><w:t>two</w:t></w:r></w:p>)");
+  const Element one = nth_paragraph(document, 0);
+  const Element two = nth_paragraph(document, 1);
+
+  document.edit(ops(align_op(one, "justify") + "," + align_op(two, "center")));
+
+  EXPECT_EQ(align_of(one), TextAlign::justify);
+  EXPECT_EQ(align_of(two), TextAlign::center);
+  const std::string xml = part_of(document, "word/document.xml");
+  EXPECT_NE(xml.find(R"(<w:pPr><w:pStyle w:val="Bold"/><w:ind w:left="720"/>)"
+                     R"(<w:jc w:val="both"/><w:rPr><w:b/></w:rPr></w:pPr>)"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"(<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>)"),
+            std::string::npos);
+}
+
+TEST(DocumentEdit, docx_an_align_op_replaces_the_jc_there_is) {
+  const Document document = docx_of(
+      R"(<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>one</w:t></w:r></w:p>)");
+  const Element paragraph = nth_paragraph(document, 0);
+  ASSERT_EQ(align_of(paragraph), TextAlign::right);
+
+  document.edit(ops(align_op(paragraph, "left")));
+
+  EXPECT_EQ(align_of(paragraph), TextAlign::left);
+  const std::string xml = part_of(document, "word/document.xml");
+  EXPECT_EQ(xml.find("w:jc"), xml.rfind("w:jc"));
+}
+
+TEST(DocumentEdit, docx_an_align_op_survives_a_save) {
+  const Document document = docx_of(docx_paragraphs);
+  document.edit(ops(align_op(nth_paragraph(document, 1), "justify")));
+
+  const Document saved = reopened(document);
+
+  EXPECT_EQ(align_of(nth_paragraph(saved, 0)), std::nullopt);
+  EXPECT_EQ(align_of(nth_paragraph(saved, 1)), TextAlign::justify);
+  EXPECT_EQ(nth_run(saved, 1).as_text().style().font_weight, FontWeight::bold);
+}
+
+TEST(DocumentEdit, pptx_an_align_op_writes_algn) {
+  const Document document =
+      pptx_of(R"(<a:p><a:pPr marL="0"/><a:r><a:t>one</a:t></a:r></a:p>)"
+              R"(<a:p><a:r><a:t>two</a:t></a:r></a:p>)");
+  const Element one = nth_paragraph(document, 0);
+  const Element two = nth_paragraph(document, 1);
+
+  document.edit(ops(align_op(one, "center") + "," + align_op(two, "justify")));
+
+  EXPECT_EQ(align_of(one), TextAlign::center);
+  EXPECT_EQ(align_of(two), TextAlign::justify);
+  const std::string xml = part_of(document, "ppt/slides/slide1.xml");
+  EXPECT_NE(xml.find(R"(<a:p><a:pPr marL="0" algn="ctr"/><a:r>)"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"(<a:p><a:pPr algn="just"/><a:r>)"), std::string::npos);
+}
+
+TEST(DocumentEdit, pptx_an_align_op_survives_a_save) {
+  const Document document = pptx_of(pptx_paragraphs);
+  document.edit(ops(align_op(nth_paragraph(document, 0), "right")));
+
+  const Document saved = reopened(document);
+
+  EXPECT_EQ(align_of(nth_paragraph(saved, 0)), TextAlign::right);
+  EXPECT_EQ(align_of(nth_paragraph(saved, 1)), std::nullopt);
+}
+
+TEST(DocumentEdit, pptx_an_align_relative_to_the_direction_refuses) {
+  const Document document = pptx_of(pptx_paragraphs);
+  ParagraphStyle style;
+  style.text_align = TextAlign::start;
+
+  EXPECT_THROW(nth_paragraph(document, 0).as_paragraph().set_style(style),
+               UnsupportedOperation);
+  EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml").find("a:pPr"),
+            std::string::npos);
+}

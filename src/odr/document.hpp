@@ -56,10 +56,11 @@ public:
   /// `{"version": 2, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
   /// "row": 2, "value": {"type": "number", "number": 12.5, "text": "12.5"}}]}`.
   /// A value is typed `number`, `string` or `empty`; `setText` and
-  /// `setTextStyle` name a text element by the `id` the render wrote into the
-  /// page instead (`docs/design/document-editing.md`). Editing a single
-  /// element in process is @ref Text::set_content or @ref Text::set_style and
-  /// needs none of this.
+  /// `setTextStyle` name a text element, and `setParagraphStyle` a paragraph,
+  /// by the `id` the render wrote into the page instead
+  /// (`docs/design/document-editing.md`). Editing a single element in process
+  /// is @ref Text::set_content, @ref Text::set_style or
+  /// @ref Paragraph::set_style and needs none of this.
   /// @throws std::invalid_argument on the first operation it cannot apply,
   ///         leaving the ones before it applied - a host replays onto a fresh
   ///         decode.

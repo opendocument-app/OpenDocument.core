@@ -211,6 +211,64 @@ constexpr std::array<std::string_view, 39> run_property_order{
     "w:specVanish",
     "w:oMath"};
 
+/// [ECMA-376] 17.3.1.26 `CT_PPr`: a sequence, as `CT_RPr` is.
+constexpr std::array<std::string_view, 36> paragraph_property_order{
+    "w:pStyle",
+    "w:keepNext",
+    "w:keepLines",
+    "w:pageBreakBefore",
+    "w:framePr",
+    "w:widowControl",
+    "w:numPr",
+    "w:suppressLineNumbers",
+    "w:pBdr",
+    "w:shd",
+    "w:tabs",
+    "w:suppressAutoHyphens",
+    "w:kinsoku",
+    "w:wordWrap",
+    "w:overflowPunct",
+    "w:topLinePunct",
+    "w:autoSpaceDE",
+    "w:autoSpaceDN",
+    "w:bidi",
+    "w:adjustRightInd",
+    "w:snapToGrid",
+    "w:spacing",
+    "w:ind",
+    "w:contextualSpacing",
+    "w:mirrorIndents",
+    "w:suppressOverlap",
+    "w:jc",
+    "w:textDirection",
+    "w:textAlignment",
+    "w:textboxTightWrap",
+    "w:outlineLvl",
+    "w:divId",
+    "w:cnfStyle",
+    "w:rPr",
+    "w:sectPr",
+    "w:pPrChange"};
+
+/// [ECMA-376] 17.18.44 `ST_Jc`; justified is `both`.
+const char *jc_value(const TextAlign align) {
+  switch (align) {
+  case TextAlign::left:
+    return "left";
+  case TextAlign::right:
+    return "right";
+  case TextAlign::center:
+    return "center";
+  case TextAlign::justify:
+    return "both";
+  case TextAlign::start:
+    return "start";
+  case TextAlign::end:
+    return "end";
+  }
+  return "start";
+}
+
 /// Replaces @p name whole at its place in the sequence, since a stale
 /// `w:themeColor` would win over a new `w:val`.
 pugi::xml_node set_run_property(pugi::xml_node properties, const char *name) {
@@ -331,6 +389,22 @@ public:
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
+  }
+  void paragraph_set_style(const ElementIdentifier element_id,
+                           const ParagraphStyle &style) const override {
+    pugi::xml_node node = get_node(element_id);
+    pugi::xml_node properties = node.child("w:pPr");
+    if (!properties) {
+      properties = node.prepend_child("w:pPr");
+    }
+    if (style.text_align.has_value()) {
+      pugi::xml_node jc = properties.child("w:jc");
+      if (!jc) {
+        jc = xml::insert_in_sequence(properties, "w:jc",
+                                     paragraph_property_order);
+      }
+      xml::set_attribute(jc, "w:val", jc_value(*style.text_align));
+    }
   }
 
   [[nodiscard]] TextStyle
