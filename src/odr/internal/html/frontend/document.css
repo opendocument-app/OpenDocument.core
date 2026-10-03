@@ -7,6 +7,9 @@ x-p,td,.odr-page-outer{position:relative}
 td{vertical-align:top}
 x-p{display:block}
 x-s{display:inline}
+/* The editor writes a typed space into a run as is, and a collapsed one would
+   not show. A sheet cell keeps its `nowrap`. */
+.odr-editing x-s{white-space:pre-wrap;text-wrap-mode:inherit}
 .odr-background{padding:0;background:#525659}
 /* The page column, sized to the widest page so pages of differing width centre
    against each other, not against the viewport. The page's side margin is part

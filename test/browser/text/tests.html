@@ -244,6 +244,28 @@
       check("so is a backspace", input("deleteContentBackward") === "taken");
       check("which took the character", run(11).textContent === "XY run ");
 
+      // ---------------------------------------------------------- spaces
+
+      reset();
+      var bare = run(31).getBoundingClientRect().width;
+      select(run(31).firstChild, 5);
+      input("insertText", " ");
+      var one = run(31).getBoundingClientRect().width;
+      check("a space typed at the end of a run shows", one > bare);
+      select(run(31).firstChild, 6);
+      input("insertText", " ");
+      check(
+        "and so does a second one",
+        run(31).getBoundingClientRect().width > one
+      );
+      check("as plain spaces in the op", ops()[0].text === "third  ");
+
+      odr.editing.disable();
+      check(
+        "the mode leaves the run as the renderer wrote it",
+        getComputedStyle(run(31)).whiteSpace === "normal"
+      );
+
       // ------------------------------------------------- across two runs
 
       reset();
