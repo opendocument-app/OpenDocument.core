@@ -899,7 +899,8 @@ void html::translate_text(const Element &element, const WritingState &state) {
             write_edit_address(element, state, clb);
           })
           .set_style(translate_text_style(text.style()), state.styles()));
-  state.out().out() << escape_text(text.content());
+  // the editor reads the run's text back, so it is written as is
+  state.out().out() << xml::escape_text(text.content());
   state.out().write_element_end("x-s");
 }
 

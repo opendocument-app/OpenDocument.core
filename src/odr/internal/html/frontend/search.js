@@ -10,9 +10,9 @@
   // Case- and diacritic-folded `text` plus a folded-index to source-index map
   // (with an end sentinel), so a match maps back onto the source string.
   // Folding per character is what keeps that map right when a character folds
-  // to none or to several. Every space folds to one: a run's leading and
-  // trailing space is written as `&nbsp;` and a tab as `&emsp;`, and a keyword
-  // is typed with neither.
+  // to none or to several. Every space folds to one: a run holds a tab
+  // as is, a sheet cell writes `&nbsp;` and `&emsp;`, and a keyword is typed
+  // with none of them.
   function fold(text) {
     var folded = "";
     var map = [];
@@ -20,7 +20,7 @@
       var character = text[i]
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+        .replace(/[\t\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
         .toLowerCase();
       for (var j = 0; j < character.length; ++j) {
         map.push(i);

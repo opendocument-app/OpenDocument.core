@@ -6,9 +6,13 @@ x-p,td,.odr-page-outer{position:relative}
    sheet says its own, more specifically. */
 td{vertical-align:top}
 x-p{display:block}
-x-s{display:inline}
-/* The editor writes a typed space into a run as is, and a collapsed one would
-   not show. A sheet cell keeps its `nowrap`. */
+/* A run holds its text as is, spaces and tabs included, so the editor reads
+   back what the document holds. The wrap mode stays the parent's, so a sheet
+   cell keeps its `nowrap`. A tab goes to the next default tab stop of Word
+   and LibreOffice. */
+x-s{display:inline;white-space-collapse:preserve;tab-size:.5in}
+/* The same for an engine without `white-space-collapse`, where a typed space
+   would not show. */
 .odr-editing x-s{white-space:pre-wrap;text-wrap-mode:inherit}
 .odr-background{padding:0;background:#525659}
 /* The page column, sized to the widest page so pages of differing width centre
