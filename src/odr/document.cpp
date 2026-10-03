@@ -204,6 +204,30 @@ parse_cell_style(const nlohmann::json &json) {
   return {cell_style, parse_text_style(text_keys)};
 }
 
+/// The `style` of a `setParagraphStyle` op: `align` as `left`, `center`,
+/// `right` or `justify`.
+ParagraphStyle parse_paragraph_style(const nlohmann::json &json) {
+  ParagraphStyle style;
+  for (const auto &[key, value] : json.items()) {
+    if (key != "align") {
+      throw std::invalid_argument("unknown paragraph style property " + key);
+    }
+    const auto align = value.get<std::string>();
+    if (align == "left") {
+      style.text_align = TextAlign::left;
+    } else if (align == "center") {
+      style.text_align = TextAlign::center;
+    } else if (align == "right") {
+      style.text_align = TextAlign::right;
+    } else if (align == "justify") {
+      style.text_align = TextAlign::justify;
+    } else {
+      throw std::invalid_argument("unknown alignment " + align);
+    }
+  }
+  return style;
+}
+
 /// The @p ordinal -th sheet in document order, which is how an op names one.
 Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
@@ -321,6 +345,12 @@ void Document::edit(const std::string_view operations,
     if (name == "setTextStyle") {
       text_of(operation, "id")
           .set_style(parse_text_style(operation.at("style")));
+      continue;
+    }
+
+    if (name == "setParagraphStyle") {
+      paragraph_of(operation, "id")
+          .set_style(parse_paragraph_style(operation.at("style")));
       continue;
     }
 

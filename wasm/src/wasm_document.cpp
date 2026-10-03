@@ -108,6 +108,26 @@ emscripten::val set_text_style(const Handle handle, const double id,
   });
 }
 
+/// @p style as the page spells it - `{align: "center"}` - replayed through
+/// the envelope, which parses it.
+emscripten::val set_paragraph_style(const Handle handle, const double id,
+                                    const emscripten::val style) {
+  return guarded([&] {
+    Session &s = session(handle);
+    if (style.isUndefined() || style.isNull() ||
+        style.typeOf().as<std::string>() != "object") {
+      throw std::invalid_argument("setParagraphStyle takes a style object");
+    }
+    const std::string json =
+        emscripten::val::global("JSON").call<std::string>("stringify", style);
+    document_of(s).edit(
+        R"({"version":2,"ops":[{"op":"setParagraphStyle","id":)" +
+        std::to_string(element_of(s, id).identifier()) + R"(,"style":)" + json +
+        "}]}");
+    return ok();
+  });
+}
+
 /// @p style as the page's `odr.editing.format` takes it for a cell, replayed
 /// through the envelope, which parses it.
 emscripten::val set_cell_style(const Handle handle, const double sheet,
@@ -201,6 +221,7 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("appendText", &odr::wasm::append_text);
   emscripten::function("setTextStyle", &odr::wasm::set_text_style);
   emscripten::function("setCellStyle", &odr::wasm::set_cell_style);
+  emscripten::function("setParagraphStyle", &odr::wasm::set_paragraph_style);
   emscripten::function("splitParagraph", &odr::wasm::split_paragraph);
   emscripten::function("mergeParagraphWithNext",
                        &odr::wasm::merge_paragraph_with_next);

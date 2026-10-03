@@ -611,6 +611,16 @@ Java_app_opendocument_core_Paragraph_styleNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Paragraph_setStyleNative(JNIEnv *env, jobject,
+                                                    jlong handle,
+                                                    jobject style) {
+  guarded(env, [&] {
+    element(handle).as_paragraph().set_style(
+        odr_jni::paragraph_style_from_java(env, style));
+  });
+}
+
 extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Paragraph_textStyleNative(JNIEnv *env, jobject,
                                                      jlong handle) {

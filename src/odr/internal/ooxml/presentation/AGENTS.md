@@ -61,7 +61,9 @@ default of 10in × 7.5in when absent.
 docx. `text_set_style` cuts the `a:r` around the run and writes the toggles
 and the size as `a:rPr` attributes, the colour as `a:solidFill` and the
 highlight as `a:highlight`, each at its place in the
-`CT_TextCharacterProperties` sequence ([ECMA-376] 21.1.2.3.9). `save`
+`CT_TextCharacterProperties` sequence ([ECMA-376] 21.1.2.3.9).
+`paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
+refuses `start` and `end`, which `ST_TextAlignType` does not name. `save`
 re-serialises the slide parts and byte-copies the rest. The slides are held by
 `r:id`, so `save` keeps the path to `r:id` map to know which part it writes.
 

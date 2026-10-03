@@ -33,8 +33,9 @@ no live connection between the browser and C++.
 - The `back_translate` CLI replays an envelope onto a source document and
   saves it.
 - Inline formatting is `setTextStyle` on the wire and `odr.editing.format` in
-  the page. [`document-editing.md`](document-editing.md#inline-formatting)
-  holds its decisions.
+  the page, and a paragraph alignment is `setParagraphStyle`.
+  [`document-editing.md`](document-editing.md#inline-formatting) holds their
+  decisions.
 
 ## Decisions
 
@@ -189,6 +190,7 @@ the markup.
 | Backspace at the start of a paragraph | taken: the paragraph merges into the one before |
 | a paste of plain text | taken: each line after the first opens a paragraph |
 | a mark (ctrl/cmd+B, I, U, or `odr.editing.format`) under scope `document` | taken: a run covered in part is cut, and the covered runs are restyled |
+| an alignment (`formatJustify*`, or `odr.editing.format({align})`) | taken: every paragraph the selection reaches is aligned |
 | a composition (CJK, autocorrect, dictation) | let through, and each change recorded after its `input` |
 | a soft line break (`insertLineBreak`) | refused, reason `newLine` |
 | a range over a picture | taken: the frame carries an address |
@@ -217,7 +219,7 @@ each `input`. A run the browser took out of the page raises `unnameableEdit`.
 | Scope | What the document editor takes |
 |---|---|
 | `document` (default) | everything in decision 13 |
-| `paragraph` | an edit that starts and ends in one paragraph, and no formatting |
+| `paragraph` | an edit or a host's `format` that starts and ends in one paragraph, and no formatting chord |
 
 Why a paragraph and not a run: Word splits runs by revision session, so a wall
 at a run would stand in the middle of uniform text. The editor reads the

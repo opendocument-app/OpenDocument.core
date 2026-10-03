@@ -261,3 +261,38 @@ def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
     cell_style.wrap_text = True
     with pytest.raises(pyodr.UnsupportedOperation):
         sheet.set_cell_style(0, 0, cell_style, pyodr.TextStyle())
+
+
+def first_paragraph(element):
+    if element.type() == pyodr.ElementType.paragraph:
+        return element.as_paragraph()
+    for child in element.children():
+        found = first_paragraph(child)
+        if found is not None:
+            return found
+    return None
+
+
+def test_set_style_aligns_a_paragraph(odt_path, tmp_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+
+    style = pyodr.ParagraphStyle()
+    style.text_align = pyodr.TextAlign.center
+    first_paragraph(document.root_element()).set_style(style)
+
+    path = tmp_path / "aligned.odt"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+
+    assert first_paragraph(reloaded.root_element()).style().text_align == (
+        pyodr.TextAlign.center
+    )
+
+
+def test_set_paragraph_style_refuses_what_no_engine_writes(odt_path):
+    document = pyodr.open(str(odt_path)).as_document_file().document()
+
+    style = pyodr.ParagraphStyle()
+    style.line_height = pyodr.Measure("12pt")
+    with pytest.raises(pyodr.UnsupportedOperation):
+        first_paragraph(document.root_element()).set_style(style)

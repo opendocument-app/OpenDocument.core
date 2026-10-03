@@ -510,6 +510,13 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (BOOL)setStyle:(ODRParagraphStyle *)style error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_paragraph().set_style([style handle]);
+    return YES;
+  });
+}
+
 @end
 
 @implementation ODRSpan

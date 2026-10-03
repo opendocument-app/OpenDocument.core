@@ -155,8 +155,9 @@
 
     /// States @p style on the selection: `bold`, `italic`, `underline`,
     /// `strikethrough` (a bool), `color` (`#rrggbb`), `size` (`14pt`), and
-    /// `highlight` (`#rrggbb` or null) on text, `fill` (the same) and `align`
-    /// (`left`, `center`, `right`) on cells. False where refused.
+    /// `highlight` (`#rrggbb` or null) on text, `align` (`left`, `center`,
+    /// `right`, and `justify` on text) on every paragraph or cell it reaches,
+    /// and `fill` (`#rrggbb` or null) on cells. False where refused.
     format: function (style) {
       for (var i = editors.length - 1; i >= 0; --i) {
         if (typeof editors[i].format === "function") {

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A paragraph of an odt, odp, odg, docx or pptx file takes an alignment
+  (`Paragraph::set_style`, `setParagraphStyle`, `odr.editing.format({align})`,
+  and the bindings). The docx reader now reads `w:jc="both"` as justified.
+
 - The python, Java, Objective-C and npm bindings style a sheet cell
   (`Sheet::set_cell_style`). In Java and Objective-C, a `TableCellStyle` can
   now be built and written.

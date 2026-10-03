@@ -524,6 +524,23 @@ ParagraphStyle Paragraph::style() const {
                    : ParagraphStyle();
 }
 
+void Paragraph::set_style(const ParagraphStyle &style) const {
+  if (!exists_()) {
+    return;
+  }
+  if (style.direction.has_value() || style.margin.right.has_value() ||
+      style.margin.top.has_value() || style.margin.left.has_value() ||
+      style.margin.bottom.has_value() || style.line_height.has_value() ||
+      style.text_indent.has_value() || style.break_before.has_value() ||
+      style.break_after.has_value()) {
+    throw UnsupportedOperation();
+  }
+  if (!style.text_align.has_value()) {
+    return;
+  }
+  m_adapter2->paragraph_set_style(m_identifier, style);
+}
+
 TextStyle Paragraph::text_style() const {
   return exists_() ? m_adapter2->paragraph_text_style(m_identifier)
                    : TextStyle();

@@ -297,6 +297,36 @@ public:
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
+  /// [ECMA-376] 20.1.10.59 `ST_TextAlignType` names no `start` and no `end`,
+  /// so those refuse.
+  void paragraph_set_style(const ElementIdentifier element_id,
+                           const ParagraphStyle &style) const override {
+    const char *algn = nullptr;
+    switch (*style.text_align) {
+    case TextAlign::left:
+      algn = "l";
+      break;
+    case TextAlign::right:
+      algn = "r";
+      break;
+    case TextAlign::center:
+      algn = "ctr";
+      break;
+    case TextAlign::justify:
+      algn = "just";
+      break;
+    case TextAlign::start:
+    case TextAlign::end:
+      throw UnsupportedOperation();
+    }
+    pugi::xml_node node = get_node(element_id);
+    pugi::xml_node properties = node.child("a:pPr");
+    if (!properties) {
+      // the schema wants it ahead of the runs
+      properties = node.prepend_child("a:pPr");
+    }
+    xml::set_attribute(properties, "algn", algn);
+  }
 
   [[nodiscard]] TextStyle
   span_style(const ElementIdentifier element_id) const override {

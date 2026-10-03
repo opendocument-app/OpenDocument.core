@@ -194,6 +194,10 @@ NS_SWIFT_NAME(Paragraph)
 @interface ODRParagraph : ODRElement
 @property(nonatomic, readonly) ODRParagraphStyle *style;
 @property(nonatomic, readonly) ODRTextStyle *textStyle;
+/// States the non-nil properties of `style` on the paragraph and leaves the
+/// rest. Only `textAlign` is written; any other refuses with
+/// `ODRErrorUnsupportedOperation`.
+- (BOOL)setStyle:(ODRParagraphStyle *)style error:(NSError **)error;
 @end
 
 /// `odr::Span`.

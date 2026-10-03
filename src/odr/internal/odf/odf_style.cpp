@@ -803,6 +803,24 @@ pugi::xml_node properties_of(pugi::xml_node style, const char *name) {
   return xml::insert_in_sequence(style, name, order);
 }
 
+const char *text_align_value(const TextAlign align) {
+  switch (align) {
+  case TextAlign::left:
+    return "left";
+  case TextAlign::right:
+    return "right";
+  case TextAlign::center:
+    return "center";
+  case TextAlign::justify:
+    return "justify";
+  case TextAlign::start:
+    return "start";
+  case TextAlign::end:
+    return "end";
+  }
+  return "start";
+}
+
 const char *text_align_value(const HorizontalAlign align) {
   switch (align) {
   case HorizontalAlign::left:
@@ -841,32 +859,9 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
     return it->second;
   }
 
-  std::string name;
-  for (;; ++m_next_cell_style) {
-    name = "ce" + std::to_string(m_next_cell_style);
-    if (!m_index_style.contains(name)) {
-      break;
-    }
-  }
-
-  const auto base_it = m_index_style.find(base);
-  const pugi::xml_node base_node =
-      base_it != std::end(m_index_style) ? base_it->second : pugi::xml_node();
-  pugi::xml_node node;
-  // an automatic style may be shared, so it is copied; a named one is
-  // inherited from
-  if (base_node &&
-      std::strcmp(base_node.parent().name(), "office:automatic-styles") == 0) {
-    node = automatic_styles.append_copy(base_node);
-    xml::set_attribute(node, "style:name", name.c_str());
-  } else {
-    node = automatic_styles.append_child("style:style");
-    node.append_attribute("style:name").set_value(name.c_str());
-    node.append_attribute("style:family").set_value("table-cell");
-    if (!base.empty()) {
-      node.append_attribute("style:parent-style-name").set_value(base.c_str());
-    }
-  }
+  const pugi::xml_node node = create_style_(
+      automatic_styles, base, "table-cell", "ce", m_next_cell_style);
+  const std::string name = node.attribute("style:name").value();
 
   if (cell.background_color.has_value()) {
     xml::set_attribute(properties_of(node, "style:table-cell-properties"),
@@ -893,6 +888,65 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
   generate_style_(name, node);
   m_created_cell_styles.emplace(key, name);
   return name;
+}
+
+std::string
+StyleRegistry::create_paragraph_style(pugi::xml_node automatic_styles,
+                                      const char *base_name,
+                                      const ParagraphStyle &style) {
+  const std::string base = base_name != nullptr ? base_name : "";
+  const std::string key =
+      fmt::format("{}|{}", base, static_cast<int>(*style.text_align));
+  if (const auto it = m_created_paragraph_styles.find(key);
+      it != std::end(m_created_paragraph_styles)) {
+    return it->second;
+  }
+
+  const pugi::xml_node node = create_style_(automatic_styles, base, "paragraph",
+                                            "P", m_next_paragraph_style);
+  const std::string name = node.attribute("style:name").value();
+
+  xml::set_attribute(properties_of(node, "style:paragraph-properties"),
+                     "fo:text-align", text_align_value(*style.text_align));
+
+  m_index_style[name] = node;
+  generate_style_(name, node);
+  m_created_paragraph_styles.emplace(key, name);
+  return name;
+}
+
+pugi::xml_node StyleRegistry::create_style_(pugi::xml_node automatic_styles,
+                                            const std::string &base_name,
+                                            const char *family,
+                                            const char *prefix,
+                                            std::uint32_t &next) {
+  std::string name;
+  for (;; ++next) {
+    name = prefix + std::to_string(next);
+    if (!m_index_style.contains(name)) {
+      break;
+    }
+  }
+
+  const auto base_it = m_index_style.find(base_name);
+  const pugi::xml_node base_node =
+      base_it != std::end(m_index_style) ? base_it->second : pugi::xml_node();
+  // an automatic style may be shared, so it is copied; a named one is
+  // inherited from
+  if (base_node &&
+      std::strcmp(base_node.parent().name(), "office:automatic-styles") == 0) {
+    pugi::xml_node node = automatic_styles.append_copy(base_node);
+    xml::set_attribute(node, "style:name", name.c_str());
+    return node;
+  }
+  pugi::xml_node node = automatic_styles.append_child("style:style");
+  node.append_attribute("style:name").set_value(name.c_str());
+  node.append_attribute("style:family").set_value(family);
+  if (!base_name.empty()) {
+    node.append_attribute("style:parent-style-name")
+        .set_value(base_name.c_str());
+  }
+  return node;
 }
 
 std::string StyleRegistry::create_text_style(pugi::xml_node automatic_styles,

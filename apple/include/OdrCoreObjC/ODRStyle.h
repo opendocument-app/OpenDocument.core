@@ -173,19 +173,19 @@ NS_SWIFT_NAME(TextStyle)
 NS_SWIFT_NAME(ParagraphStyle)
 @interface ODRParagraphStyle : NSObject
 /// `ODRTextAlign`, boxed.
-@property(nonatomic, readonly, nullable) NSNumber *textAlign;
+@property(nonatomic, nullable) NSNumber *textAlign;
 /// `ODRTextDirection`, boxed; `nil` where the style says nothing.
-@property(nonatomic, readonly, nullable) NSNumber *direction;
+@property(nonatomic, nullable) NSNumber *direction;
 @property(nonatomic, readonly) ODRDirectionalMeasure *margin;
-@property(nonatomic, readonly, nullable) ODRMeasure *lineHeight;
-@property(nonatomic, readonly, nullable) ODRMeasure *textIndent;
+@property(nonatomic, nullable) ODRMeasure *lineHeight;
+@property(nonatomic, nullable) ODRMeasure *textIndent;
 /// `ODRBreakType`, boxed; `nil` where the style says nothing.
-@property(nonatomic, readonly, nullable) NSNumber *breakBefore;
+@property(nonatomic, nullable) NSNumber *breakBefore;
 /// `ODRBreakType`, boxed; `nil` where the style says nothing.
-@property(nonatomic, readonly, nullable) NSNumber *breakAfter;
+@property(nonatomic, nullable) NSNumber *breakAfter;
 
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)new NS_UNAVAILABLE;
+/// Every property `nil`, and no side of `margin` stated.
+- (instancetype)init;
 @end
 
 /// Table style — `odr::TableStyle`.

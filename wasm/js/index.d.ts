@@ -31,6 +31,11 @@ export interface TextStyle {
   size?: string;
 }
 
+/** What `Document.setParagraphStyle` states on a paragraph. */
+export interface ParagraphStyle {
+  align?: 'left' | 'center' | 'right' | 'justify';
+}
+
 /** What `Document.setCellStyle` states on a cell: the keys of `TextStyle`
  * but `highlight`, and the cell's own ground and alignment. */
 export interface CellStyle extends Omit<TextStyle, 'highlight'> {
@@ -214,6 +219,13 @@ export declare class Document {
    * @throws OdrError `invalid_argument` for a property it does not know
    */
   setCellStyle(sheet: number, column: number, row: number, style: CellStyle): this;
+  /**
+   * States `style` on one paragraph and leaves what it does not name. The
+   * same object the page's `odr.editing.format` takes.
+   * @throws OdrError `invalid_argument` for a property or a value it does
+   * not know
+   */
+  setParagraphStyle(id: number, style: ParagraphStyle): this;
   /** `afterId` of 0 splits before every child. */
   splitParagraph(paragraphId: number, afterId?: number): number;
   mergeParagraphWithNext(paragraphId: number): this;

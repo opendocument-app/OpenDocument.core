@@ -454,6 +454,10 @@ public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] ParagraphStyle style() const;
+  /// States the set fields of @p style on the paragraph and leaves the rest.
+  /// Only `text_align` is written; any other field refuses with
+  /// `UnsupportedOperation`.
+  void set_style(const ParagraphStyle &style) const;
   [[nodiscard]] TextStyle text_style() const;
 };
 

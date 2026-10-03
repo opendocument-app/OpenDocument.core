@@ -786,6 +786,19 @@ public:
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
+  void paragraph_set_style(const ElementIdentifier element_id,
+                           const ParagraphStyle &style) const override {
+    pugi::xml_node node = get_node(element_id);
+    const std::string name =
+        m_document->style_registry().create_paragraph_style(
+            automatic_styles_of(node),
+            node.attribute("text:style-name").value(), style);
+    pugi::xml_attribute attribute = node.attribute("text:style-name");
+    if (!attribute) {
+      attribute = node.prepend_attribute("text:style-name");
+    }
+    attribute.set_value(name.c_str());
+  }
 
   [[nodiscard]] TextStyle
   span_style(const ElementIdentifier element_id) const override {

@@ -402,6 +402,41 @@ odr::TableCellStyle table_cell_style_from_java(JNIEnv *env,
   return result;
 }
 
+odr::ParagraphStyle paragraph_style_from_java(JNIEnv *env,
+                                              const jobject style) {
+  odr::ParagraphStyle result;
+  if (style == nullptr) {
+    return result;
+  }
+  jclass cls = env->GetObjectClass(style);
+  const auto field = [&](const char *name, const char *signature) {
+    return env->GetObjectField(style, env->GetFieldID(cls, name, signature));
+  };
+
+  for (const auto &[name, signature] :
+       {std::pair{"direction", "Lapp/opendocument/core/TextDirection;"},
+        std::pair{"margin", "Lapp/opendocument/core/DirectionalMeasure;"},
+        std::pair{"lineHeight", "Lapp/opendocument/core/Measure;"},
+        std::pair{"textIndent", "Lapp/opendocument/core/Measure;"},
+        std::pair{"breakBefore", "Lapp/opendocument/core/BreakType;"},
+        std::pair{"breakAfter", "Lapp/opendocument/core/BreakType;"}}) {
+    if (const jobject value = field(name, signature); value != nullptr) {
+      env->DeleteLocalRef(value);
+      env->DeleteLocalRef(cls);
+      throw odr::UnsupportedOperation();
+    }
+  }
+  const jobject text_align =
+      field("textAlign", "Lapp/opendocument/core/TextAlign;");
+  result.text_align = enum_from_java<odr::TextAlign>(env, text_align);
+  if (text_align != nullptr) {
+    env->DeleteLocalRef(text_align);
+  }
+
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
 odr::DirectionalStyle<odr::Measure>
 directional_measure_from_java(JNIEnv *env, jobject value) {
   odr::DirectionalStyle<odr::Measure> result;

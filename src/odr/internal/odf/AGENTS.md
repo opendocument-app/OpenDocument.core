@@ -133,6 +133,10 @@ unknown mimetype are tolerated.
   and points it at a fresh automatic style `T<n>`
   (`StyleRegistry::create_text_style`): a copy of a shared automatic style
   plus the delta, or a child of a named style.
+- **A paragraph alignment.** `paragraph_set_style` points `text:style-name`
+  at a fresh automatic style `P<n>` (`StyleRegistry::create_paragraph_style`)
+  that carries `fo:text-align`. It is made as a cell style is, and one base
+  and one delta make one style.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps
