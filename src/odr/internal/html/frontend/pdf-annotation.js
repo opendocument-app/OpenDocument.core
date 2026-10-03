@@ -12,7 +12,9 @@
 
   /// Gesture policy, the viewer's to set. `inkPointerTypes` null takes any.
   var options = {
-    markOnSelection: false,
+    markOnSelection:
+      document.body.getAttribute("data-odr-annotation-mark-on-selection") ===
+      "true",
     inkPointerTypes: null,
     touchAction: "none",
     overscrollBehavior: "contain",

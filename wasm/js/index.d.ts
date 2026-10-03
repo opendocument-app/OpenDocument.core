@@ -119,6 +119,8 @@ export interface HtmlConfig {
   editingScope?: number;
   keyboardNavigation?: boolean;
   keyboardShortcuts?: boolean;
+  /** Whether a click opens the sheet editor; unset asks the pointer. */
+  sheetEditOnClick?: boolean;
   textDocumentMargin?: boolean;
   formatHtml?: boolean;
   pageRangeBegin?: number;
@@ -146,6 +148,8 @@ export interface HtmlConfig {
     left?: string;
   };
   pdfTextMode?: number;
+  /** Whether an armed annotation tool marks each selection as it is made. */
+  pdfAnnotationMarkOnSelection?: boolean;
 }
 
 export interface OpenOptions extends HtmlConfig {

@@ -166,6 +166,10 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   read_enum(value, "editingScope", config.editing_scope);
   read(value, "keyboardNavigation", config.keyboard_navigation);
   read(value, "keyboardShortcuts", config.keyboard_shortcuts);
+  if (const emscripten::val on_click = value["sheetEditOnClick"];
+      !on_click.isUndefined() && !on_click.isNull()) {
+    config.sheet_edit_on_click = on_click.as<bool>();
+  }
   read(value, "textDocumentMargin", config.text_document_margin);
   read(value, "formatHtml", config.format_html);
 
@@ -210,6 +214,8 @@ HtmlConfig to_html_config(const emscripten::val &value) {
     config.initial_zoom = zoom.as<double>();
   }
   read_enum(value, "pdfTextMode", config.pdf_text_mode);
+  read(value, "pdfAnnotationMarkOnSelection",
+       config.pdf_annotation_mark_on_selection);
 
   if (const emscripten::val margin = value["minContentMargin"];
       !margin.isUndefined() && !margin.isNull()) {

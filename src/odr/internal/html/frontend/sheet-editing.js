@@ -434,8 +434,9 @@
   });
 
   /// Gesture policy, the viewer's to set. `editOnClick` unstated asks the
-  /// pointer.
-  var options = { editOnClick: null };
+  /// pointer. `HtmlConfig::sheet_edit_on_click` states the start value.
+  var onClick = document.body.getAttribute("data-odr-sheet-edit-on-click");
+  var options = { editOnClick: onClick === null ? null : onClick === "true" };
 
   /// Whether a click opens the editor, where a double click always does. The
   /// pointer answers only while `editOnClick` is unstated, because it is a

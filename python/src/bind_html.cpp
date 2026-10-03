@@ -87,6 +87,8 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("keyboard_navigation",
                      &odr::HtmlConfig::keyboard_navigation)
       .def_readwrite("keyboard_shortcuts", &odr::HtmlConfig::keyboard_shortcuts)
+      .def_readwrite("sheet_edit_on_click",
+                     &odr::HtmlConfig::sheet_edit_on_click)
       .def_readwrite("text_document_margin",
                      &odr::HtmlConfig::text_document_margin)
       .def_readwrite("color_scheme", &odr::HtmlConfig::color_scheme)
@@ -116,6 +118,8 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::pdf_dual_layer_fallback_fonts)
       .def_readwrite("pdf_dual_layer_fallback_font_size_adjust",
                      &odr::HtmlConfig::pdf_dual_layer_fallback_font_size_adjust)
+      .def_readwrite("pdf_annotation_mark_on_selection",
+                     &odr::HtmlConfig::pdf_annotation_mark_on_selection)
       .def_readwrite("output_path", &odr::HtmlConfig::output_path)
       .def_readwrite("resource_locator", &odr::HtmlConfig::resource_locator);
 

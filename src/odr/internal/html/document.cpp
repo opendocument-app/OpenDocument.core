@@ -234,6 +234,13 @@ void write_body_begin(const Document &document, const WritingState &state) {
                   state.document_editable() ? "true" : "readOnly");
               clb("data-odr-editing-scope", std::string(editing_scope_name(
                                                 state.config().editing_scope)));
+              if (const std::optional<bool> on_click =
+                      state.config().sheet_edit_on_click;
+                  on_click.has_value() &&
+                  document.document_type() == DocumentType::spreadsheet) {
+                clb("data-odr-sheet-edit-on-click",
+                    *on_click ? "true" : "false");
+              }
             }
             // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));

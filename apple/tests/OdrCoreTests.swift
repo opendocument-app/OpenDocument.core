@@ -263,24 +263,28 @@ final class HtmlTests: XCTestCase {
     config.viewportWidth = 390
     config.initialZoom = 1.5
     config.pageRangeEnd = 7
+    config.sheetEditOnClick = false
 
     XCTAssertEqual(config.spreadsheetCellLimit, 1234)
     XCTAssertEqual(config.spreadsheetViewportMode, .fitWidth)
     XCTAssertEqual(config.viewportWidth, 390)
     XCTAssertEqual(config.initialZoom, 1.5)
     XCTAssertEqual(config.pageRangeEnd, 7)
+    XCTAssertEqual(config.sheetEditOnClick, false)
 
     config.spreadsheetCellLimit = nil
     config.spreadsheetViewportMode = nil
     config.viewportWidth = nil
     config.initialZoom = nil
     config.pageRangeEnd = nil
+    config.sheetEditOnClick = nil
 
     XCTAssertNil(config.spreadsheetCellLimit)
     XCTAssertNil(config.spreadsheetViewportMode)
     XCTAssertNil(config.viewportWidth)
     XCTAssertNil(config.initialZoom)
     XCTAssertNil(config.pageRangeEnd)
+    XCTAssertNil(config.sheetEditOnClick)
   }
 
   func testBringOfflineWritesFiles() throws {

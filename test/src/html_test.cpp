@@ -1058,6 +1058,41 @@ TEST(html, a_config_takes_one_key_class_away) {
   EXPECT_NE(page.find(R"(data-odr-keyboard="shortcuts")"), std::string::npos);
 }
 
+// The attribute, not the name: the script names it too.
+TEST(html, a_sheet_states_the_edit_gesture_only_where_the_config_sets_it) {
+  const DecodedFile file = fods_file(fods_row(fods_cell("one")));
+  EXPECT_EQ(render_sheet(file, editing_config())
+                .find(R"(data-odr-sheet-edit-on-click=")"),
+            std::string::npos);
+
+  HtmlConfig config = editing_config();
+  config.sheet_edit_on_click = false;
+  EXPECT_NE(render_sheet(file, config)
+                .find(R"(data-odr-sheet-edit-on-click="false")"),
+            std::string::npos);
+
+  config.sheet_edit_on_click = true;
+  EXPECT_NE(
+      render_sheet(file, config).find(R"(data-odr-sheet-edit-on-click="true")"),
+      std::string::npos);
+}
+
+TEST(html, a_pdf_states_mark_on_selection_in_both_text_modes) {
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    HtmlConfig config;
+    config.pdf_text_mode = mode;
+    EXPECT_EQ(render("odr-public/pdf/style-various-1.pdf", config)
+                  .find(R"(data-odr-annotation-mark-on-selection=")"),
+              std::string::npos);
+
+    config.pdf_annotation_mark_on_selection = true;
+    EXPECT_NE(render("odr-public/pdf/style-various-1.pdf", config)
+                  .find(R"(data-odr-annotation-mark-on-selection="true")"),
+              std::string::npos);
+  }
+}
+
 // A formula cell is locked: overwriting it leaves its dependants stale.
 TEST(html, a_formula_cell_is_locked_with_its_reason) {
   const std::string page = render_sheet(

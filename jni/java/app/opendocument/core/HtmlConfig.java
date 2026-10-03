@@ -28,6 +28,9 @@ public final class HtmlConfig {
   /** Whether the view's scripts take the editing chords: undo and redo. */
   public boolean keyboardShortcuts = true;
 
+  /** Whether a click opens the sheet editor; {@code null} asks the pointer. */
+  public Boolean sheetEditOnClick;
+
   public boolean textDocumentMargin = false;
 
   /** The colors a document renders against. */
@@ -78,6 +81,8 @@ public final class HtmlConfig {
     "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Nimbus Sans"
   };
   public double pdfDualLayerFallbackFontSizeAdjust = 0.5;
+  /** Whether an armed annotation tool marks each selection as it is made. */
+  public boolean pdfAnnotationMarkOnSelection = false;
 
   /** {@code null} keeps output in the cache directory. */
   public String outputPath;

@@ -204,6 +204,15 @@ LinkResolver build_link_resolver(pdf::DocumentParser &parser,
   return resolver;
 }
 
+void write_pdf_body_begin(HtmlWriter &out, const HtmlConfig &config) {
+  out.write_body_begin(HtmlElementOptions().set_attributes(
+      [&](const HtmlAttributeWriterCallback &clb) {
+        if (config.pdf_annotation_mark_on_selection) {
+          clb("data-odr-annotation-mark-on-selection", "true");
+        }
+      }));
+}
+
 /// A page's `/Link` annotations (ISO 32000-1 12.5.6.5) as positioned overlays.
 /// `to_box` maps PDF user space to the page box (points, y-down).
 std::vector<LinkOut> collect_page_links(const pdf::Page &page,
@@ -1972,7 +1981,7 @@ public:
       out.write_element_end("div");
     };
 
-    out.write_body_begin();
+    write_pdf_body_begin(out, config());
     out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
@@ -2488,7 +2497,7 @@ public:
       out.write_element_end("div");
     };
 
-    out.write_body_begin();
+    write_pdf_body_begin(out, config());
     out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {

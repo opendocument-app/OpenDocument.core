@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `HtmlConfig::sheet_edit_on_click` and `pdf_annotation_mark_on_selection` set
+  the start values of `setSheetOptions({editOnClick})` and
+  `odr.annotation.setOptions({markOnSelection})`, in every binding.
+
 - A sheet cell is written with its spaces and tabs as they are, and
   `spreadsheet.css` preserves them. The sheet editor no longer saves a
   no-break space in place of a space, and it keeps a space at the start or
