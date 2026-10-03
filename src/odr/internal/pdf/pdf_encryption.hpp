@@ -53,7 +53,7 @@ private:
 /// The authenticating half of the PDF standard security handler (ISO 32000-1
 /// 7.6; AES-256 / R 6 per ISO 32000-2 7.6.4): validates a password against the
 /// `/Encrypt` dictionary, producing a `Decryptor`. Permission bits are recorded
-/// but not enforced.
+/// here; `PdfFile::permissions` reports them.
 ///
 /// Supported configurations (anything else → `create` returns `nullopt`):
 ///   - `V 1/2`, `R 2/3` — RC4, 40-128 bit.
@@ -68,8 +68,9 @@ public:
   static std::optional<Authenticator> create(const Dictionary &encrypt,
                                              const std::string &file_id0);
 
-  /// The raw `/P` permission bitfield (recorded, not enforced).
+  /// The raw `/P` permission bitfield.
   [[nodiscard]] std::int64_t permissions() const { return m_p; }
+  [[nodiscard]] std::int64_t revision() const { return m_r; }
 
   /// Try `password` as the user password, then as the owner password;
   /// `nullopt` if neither matches. The derived key lives only inside the

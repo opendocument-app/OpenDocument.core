@@ -50,6 +50,7 @@ jobject make_html_sheet_cut(JNIEnv *env,
 jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta);
 jobject make_file_type_capabilities(JNIEnv *env,
                                     const odr::FileTypeCapabilities &);
+jobject make_pdf_permissions(JNIEnv *env, const odr::PdfPermissions &);
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);

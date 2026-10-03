@@ -375,9 +375,31 @@ void odr_python::bind_file(py::module_ &m) {
            "carries none or is still encrypted. Never rendered by us.")
       .def("document", &odr::DocumentFile::document);
 
+  py::class_<odr::PdfPermissions>(m, "PdfPermissions")
+      .def_readonly("print", &odr::PdfPermissions::print)
+      .def_readonly("modify_contents", &odr::PdfPermissions::modify_contents)
+      .def_readonly("copy", &odr::PdfPermissions::copy)
+      .def_readonly("modify_annotations",
+                    &odr::PdfPermissions::modify_annotations)
+      .def_readonly("fill_forms", &odr::PdfPermissions::fill_forms)
+      .def_readonly("copy_for_accessibility",
+                    &odr::PdfPermissions::copy_for_accessibility)
+      .def_readonly("assemble", &odr::PdfPermissions::assemble)
+      .def_readonly("print_high_quality",
+                    &odr::PdfPermissions::print_high_quality);
+
   py::class_<odr::PdfFile, odr::DecodedFile>(m, "PdfFile")
       .def("is_annotatable", &odr::PdfFile::is_annotatable,
            "Whether this file can take annotations.")
+      .def(
+          "permissions",
+          [](const odr::PdfFile &file) -> std::optional<odr::PdfPermissions> {
+            if (!file.has_permissions()) {
+              return std::nullopt;
+            }
+            return file.permissions();
+          },
+          "The permissions `/P` states, or `None` without an `/Encrypt`.")
       .def(
           "annotate",
           [](const odr::PdfFile &file, const std::string &annotations) {

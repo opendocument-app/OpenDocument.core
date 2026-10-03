@@ -161,6 +161,10 @@ public:
   /// @throws std::runtime_error when `annotatable()` is false.
   virtual void annotate(std::string_view annotations, std::ostream &out,
                         const Logger &logger) const = 0;
+
+  /// Empty without an `/Encrypt` that states `/P`.
+  [[nodiscard]] virtual std::optional<PdfPermissions>
+  permissions() const noexcept = 0;
 };
 
 class FontFile : public DecodedFile {

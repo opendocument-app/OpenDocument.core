@@ -79,7 +79,8 @@ output.
   (user, then owner), so an owner-locked file opens transparently. After
   `authenticate` the key lives only inside the `Decryptor`. `PdfFile` carries
   the authenticated `Decryptor` from the encryption probe to the render parse.
-  Permission bits (`/P`) are recorded, not enforced.
+  `PdfFile::permissions` reports the bits of `/P`. The renderer enforces them
+  only under `HtmlConfig::pdf_enforce_permissions`, as pdf.js does.
 
 ### Baseline placement
 

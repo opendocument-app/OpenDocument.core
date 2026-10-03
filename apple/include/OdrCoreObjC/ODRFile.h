@@ -455,6 +455,23 @@ NS_SWIFT_NAME(DocumentFile)
     NS_SWIFT_NAME(document());
 @end
 
+/// The permission bits (`/P`) of an encrypted pdf — `odr::PdfPermissions`. The
+/// renderer enforces them only under `ODRHtmlConfig.pdfEnforcePermissions`.
+NS_SWIFT_NAME(PdfPermissions)
+@interface ODRPdfPermissions : NSObject
+@property(nonatomic, readonly) BOOL print;
+@property(nonatomic, readonly) BOOL modifyContents;
+@property(nonatomic, readonly) BOOL copy;
+@property(nonatomic, readonly) BOOL modifyAnnotations;
+@property(nonatomic, readonly) BOOL fillForms;
+@property(nonatomic, readonly) BOOL copyForAccessibility;
+@property(nonatomic, readonly) BOOL assemble;
+@property(nonatomic, readonly) BOOL printHighQuality;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// A decoded PDF — `odr::PdfFile`.
 NS_SWIFT_NAME(PdfFile)
 @interface ODRPdfFile : ODRDecodedFile
@@ -462,6 +479,8 @@ NS_SWIFT_NAME(PdfFile)
 /// `ODRDocument.isEditable`. `NO` for a pdf declaring an `/Encrypt`, or whose
 /// cross-reference table had to be rebuilt by scanning.
 @property(nonatomic, readonly) BOOL isAnnotatable;
+/// The permissions `/P` states, or `nil` without an `/Encrypt`.
+@property(nonatomic, readonly, nullable) ODRPdfPermissions *permissions;
 /// Applies markup annotations — the payload the rendered page's
 /// `odr.annotation.getAnnotations()` collects — and returns the annotated pdf.
 - (nullable NSData *)annotate:(NSString *)annotations

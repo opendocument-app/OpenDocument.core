@@ -198,6 +198,10 @@ ODRMeasure *_Nullable box(const std::optional<odr::Measure> &measure);
 + (instancetype)metaWithHandle:(const odr::FileMeta &)handle;
 @end
 
+@interface ODRPdfPermissions (Private)
++ (instancetype)permissionsWithHandle:(const odr::PdfPermissions &)handle;
+@end
+
 @interface ODRFileTypeCapabilities (Private)
 + (instancetype)capabilitiesWithHandle:
     (const odr::FileTypeCapabilities &)handle;

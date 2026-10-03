@@ -4,7 +4,9 @@
 #include <odr/logger.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/html/pdf_file.hpp>
+#include <odr/internal/pdf/pdf_encryption.hpp>
 #include <odr/internal/pdf/pdf_file.hpp>
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
@@ -86,6 +88,29 @@ std::string link_annotations_mini_pdf() {
       .object("<< /Type /Annot /Subtype /Link /Rect [100 300 200 320] "
               "/A << /S /URI /URI (other.pdf) >> >>");
   return builder.trailer("/Root 1 0 R").build_classic();
+}
+
+/// A one-page mini-PDF under a revision 2 `/Encrypt` with the empty user
+/// password and permissions @p p. It holds no string or stream to encrypt.
+std::string permissions_mini_pdf(const std::int64_t p) {
+  const std::string o(32, 'o');
+  const std::string id0 = "0123456789abcdef";
+  const std::string key =
+      pdf::standard_security::compute_key_r2_r4("", o, p, id0, 2, 5, true);
+  const std::string u = pdf::standard_security::compute_u_r2_r4(key, id0, 2);
+  const std::string id = "<" + crypto::util::hex_encode(id0) + ">";
+
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      .object("<< /Filter /Standard /V 1 /R 2 /O <" +
+              crypto::util::hex_encode(o) + "> /U <" +
+              crypto::util::hex_encode(u) + "> /P " + std::to_string(p) +
+              " >>");
+  return builder
+      .trailer("/Root 1 0 R /Encrypt 4 0 R /ID [" + id + " " + id + "]")
+      .build_classic();
 }
 
 /// A two-page mini-PDF with an `/Info` dictionary. `/Title` is a UTF-16BE
@@ -582,4 +607,52 @@ TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
 
   EXPECT_TRUE(contains(html, "font-size:24pt"));
   EXPECT_FALSE(contains(html, "transform:scale("));
+}
+
+TEST(PdfFile, an_unencrypted_file_states_no_permissions) {
+  const odr::PdfFile file(open_pdf(info_mini_pdf()));
+  EXPECT_FALSE(file.has_permissions());
+  EXPECT_THROW((void)file.permissions(), ValueNotStated);
+}
+
+// Revision 2 defines only bits 3 to 6: print allowed, the rest refused.
+TEST(PdfFile, revision_2_permissions_stand_for_the_later_bits) {
+  const odr::PdfFile file(open_pdf(permissions_mini_pdf(-60)));
+  ASSERT_TRUE(file.has_permissions());
+  const PdfPermissions permissions = file.permissions();
+  EXPECT_TRUE(permissions.print);
+  EXPECT_TRUE(permissions.print_high_quality);
+  EXPECT_FALSE(permissions.copy);
+  EXPECT_FALSE(permissions.copy_for_accessibility);
+  EXPECT_FALSE(permissions.modify_contents);
+  EXPECT_FALSE(permissions.assemble);
+  EXPECT_FALSE(permissions.modify_annotations);
+  EXPECT_FALSE(permissions.fill_forms);
+}
+
+TEST(PdfFile, permissions_are_ignored_unless_enforced) {
+  const std::string html =
+      render_html(permissions_mini_pdf(-64), PdfTextMode::dual_layer);
+  EXPECT_FALSE(contains(html, "@media print{body{display:none"));
+  EXPECT_FALSE(contains(html, R"(addEventListener("copy")"));
+}
+
+TEST(PdfFile, enforced_permissions_refuse_what_the_file_refuses) {
+  HtmlConfig config;
+  config.pdf_enforce_permissions = true;
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    config.pdf_text_mode = mode;
+
+    const std::string none = render_path(
+        make_service(permissions_mini_pdf(-64), config), "document.html");
+    EXPECT_TRUE(contains(none, "@media print{body{display:none"));
+    EXPECT_TRUE(contains(none, R"(addEventListener("copy")"));
+
+    // -44 sets bits 3 and 5: print and copy
+    const std::string all = render_path(
+        make_service(permissions_mini_pdf(-44), config), "document.html");
+    EXPECT_FALSE(contains(all, "@media print{body{display:none"));
+    EXPECT_FALSE(contains(all, R"(addEventListener("copy")"));
+  }
 }

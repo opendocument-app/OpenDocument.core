@@ -173,6 +173,25 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 @end
 
+#pragma mark - ODRPdfPermissions
+
+@implementation ODRPdfPermissions
+
++ (instancetype)permissionsWithHandle:(const odr::PdfPermissions &)handle {
+  ODRPdfPermissions *const result = [[ODRPdfPermissions alloc] init];
+  result->_print = handle.print ? YES : NO;
+  result->_modifyContents = handle.modify_contents ? YES : NO;
+  result->_copy = handle.copy ? YES : NO;
+  result->_modifyAnnotations = handle.modify_annotations ? YES : NO;
+  result->_fillForms = handle.fill_forms ? YES : NO;
+  result->_copyForAccessibility = handle.copy_for_accessibility ? YES : NO;
+  result->_assemble = handle.assemble ? YES : NO;
+  result->_printHighQuality = handle.print_high_quality ? YES : NO;
+  return result;
+}
+
+@end
+
 #pragma mark - ODRFileMeta
 
 @implementation ODRFileMeta
@@ -752,6 +771,18 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 - (BOOL)isAnnotatable {
   return self.handle.as_pdf_file().is_annotatable() ? YES : NO;
+}
+
+- (nullable ODRPdfPermissions *)permissions {
+  return guarded_value(
+      [&]() -> ODRPdfPermissions * {
+        const odr::PdfFile file = self.handle.as_pdf_file();
+        if (!file.has_permissions()) {
+          return nil;
+        }
+        return [ODRPdfPermissions permissionsWithHandle:file.permissions()];
+      },
+      nil);
 }
 
 - (nullable NSData *)annotate:(NSString *)annotations error:(NSError **)error {

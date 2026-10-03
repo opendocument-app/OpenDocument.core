@@ -138,6 +138,7 @@ add_jar(odr_java
         "java/app/opendocument/core/Paragraph.java"
         "java/app/opendocument/core/ParagraphStyle.java"
         "java/app/opendocument/core/PdfFile.java"
+        "java/app/opendocument/core/PdfPermissions.java"
         "java/app/opendocument/core/PdfTextMode.java"
         "java/app/opendocument/core/PrintOrientation.java"
         "java/app/opendocument/core/ShapeType.java"

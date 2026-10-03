@@ -1,6 +1,7 @@
 package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,6 +24,13 @@ class PdfFileTest {
   @Test
   void annotateIsDeclaredForPdf() {
     assertTrue(Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT).annotate);
+  }
+
+  @Test
+  void anUnencryptedPdfStatesNoPermissions() throws IOException {
+    try (DecodedFile file = Odr.open(TestFiles.pdfFile(tempDir).toString())) {
+      assertNull(file.asPdfFile().permissions());
+    }
   }
 
   @Test

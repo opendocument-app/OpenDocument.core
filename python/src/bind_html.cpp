@@ -124,6 +124,8 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::pdf_dual_layer_fallback_font_size_adjust)
       .def_readwrite("pdf_annotation_mark_on_selection",
                      &odr::HtmlConfig::pdf_annotation_mark_on_selection)
+      .def_readwrite("pdf_enforce_permissions",
+                     &odr::HtmlConfig::pdf_enforce_permissions)
       .def_readwrite("output_path", &odr::HtmlConfig::output_path)
       .def_readwrite("resource_locator", &odr::HtmlConfig::resource_locator);
 

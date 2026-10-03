@@ -157,6 +157,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) double pdfDualLayerFallbackFontSizeAdjust;
 /// Whether an armed annotation tool marks each selection as it is made.
 @property(nonatomic) BOOL pdfAnnotationMarkOnSelection;
+/// Honor `ODRPdfFile.permissions`, as pdf.js `enablePermissions` does.
+@property(nonatomic) BOOL pdfEnforcePermissions;
 
 @property(nonatomic, copy, nullable) NSString *outputPath;
 

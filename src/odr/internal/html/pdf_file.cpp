@@ -2849,7 +2849,28 @@ public:
     out.write_header_style_end();
     write_search_style(state);
     write_pdf_annotation_style(state);
+    write_permissions(out);
     out.write_header_end();
+  }
+
+  /// pdf.js `enablePermissions`: the text stays selectable, but a copy puts
+  /// nothing on the clipboard, and a print shows nothing.
+  void write_permissions(HtmlWriter &out) const {
+    if (!config().pdf_enforce_permissions || !m_pdf_file.has_permissions()) {
+      return;
+    }
+    const PdfPermissions permissions = m_pdf_file.permissions();
+    if (!permissions.print && !permissions.print_high_quality) {
+      out.write_header_style_begin();
+      out.out() << "@media print{body{display:none!important}}";
+      out.write_header_style_end();
+    }
+    if (!permissions.copy) {
+      out.write_script_begin();
+      out.out() << R"(document.addEventListener("copy",function(e){)"
+                   R"(e.preventDefault();e.stopPropagation()},true);)";
+      out.write_script_end();
+    }
   }
 
   /// Appends a line block's placement classes: `l`/`t` plus `z` taking `local`

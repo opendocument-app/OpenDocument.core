@@ -557,6 +557,19 @@ private:
   std::shared_ptr<internal::abstract::DocumentFile> m_impl;
 };
 
+/// The permission bits (`/P`) of an encrypted pdf, ISO 32000-1 table 22. The
+/// renderer enforces them only under @ref HtmlConfig::pdf_enforce_permissions.
+struct PdfPermissions final {
+  bool print{};
+  bool modify_contents{};
+  bool copy{};
+  bool modify_annotations{};
+  bool fill_forms{};
+  bool copy_for_accessibility{};
+  bool assemble{};
+  bool print_high_quality{};
+};
+
 /// Represents a PDF file.
 class PdfFile final : public DecodedFile {
 public:
@@ -573,6 +586,11 @@ public:
   /// the empty password and so reports itself unencrypted — and for one whose
   /// cross-reference table had to be rebuilt by scanning.
   [[nodiscard]] bool is_annotatable() const noexcept;
+
+  /// Whether the file states permissions: an `/Encrypt` with a `/P`.
+  [[nodiscard]] bool has_permissions() const noexcept;
+  /// @throws ValueNotStated if @ref has_permissions is false.
+  [[nodiscard]] PdfPermissions permissions() const;
 
   /// @brief Applies markup @p annotations, writing the annotated pdf to
   ///        @p out.

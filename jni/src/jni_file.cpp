@@ -493,6 +493,18 @@ Java_app_opendocument_core_PdfFile_isAnnotatableNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_PdfFile_permissionsNative(JNIEnv *env, jobject,
+                                                     jlong handle) {
+  return guarded(env, [&]() -> jobject {
+    const odr::PdfFile file = decoded(handle).as_pdf_file();
+    if (!file.has_permissions()) {
+      return nullptr;
+    }
+    return odr_jni::make_pdf_permissions(env, file.permissions());
+  });
+}
+
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_app_opendocument_core_PdfFile_annotateNative(JNIEnv *env, jobject,
                                                   jlong handle,

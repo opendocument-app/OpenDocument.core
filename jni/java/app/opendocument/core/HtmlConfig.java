@@ -94,6 +94,8 @@ public final class HtmlConfig {
   public double pdfDualLayerFallbackFontSizeAdjust = 0.5;
   /** Whether an armed annotation tool marks each selection as it is made. */
   public boolean pdfAnnotationMarkOnSelection = false;
+  /** Honor {@link PdfFile#permissions}, as pdf.js {@code enablePermissions} does. */
+  public boolean pdfEnforcePermissions = false;
 
   /** {@code null} keeps output in the cache directory. */
   public String outputPath;

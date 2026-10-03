@@ -17,6 +17,11 @@ public final class PdfFile extends DecodedFile {
     return isAnnotatableNative(handle());
   }
 
+  /** The permissions {@code /P} states, or {@code null} without an {@code /Encrypt}. */
+  public PdfPermissions permissions() {
+    return permissionsNative(handle());
+  }
+
   /**
    * Applies markup annotations and returns the annotated pdf.
    *
@@ -32,4 +37,6 @@ public final class PdfFile extends DecodedFile {
   private native byte[] annotateNative(long handle, String annotations);
 
   private native boolean isAnnotatableNative(long handle);
+
+  private native PdfPermissions permissionsNative(long handle);
 }
