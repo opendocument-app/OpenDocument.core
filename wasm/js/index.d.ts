@@ -114,6 +114,8 @@ export interface Content {
 /** Anything omitted keeps the library's default. */
 export interface HtmlConfig {
   embedImages?: boolean;
+  /** Load the images a document names outside itself, and keep its relative links. */
+  allowExternalContent?: boolean;
   editable?: boolean;
   /** How far an edit in a document view may reach; the page refuses the rest. */
   editingScope?: number;

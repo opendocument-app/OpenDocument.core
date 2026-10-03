@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- By default the page loads no image that a document names outside itself,
+  and a relative link loses its `href`. Only a link with a navigable scheme
+  leaves the view, in a new window. `HtmlConfig::allow_external_content` (in
+  every binding) restores both. An image `data:` url always loads.
+
 - `HtmlConfig::host_message_handler` names a function, such as
   `webkit.messageHandlers.odr.postMessage`, that gets every `odr.on*` callback
   of the page as one JSON `{type, detail}` string. The host needs no injected

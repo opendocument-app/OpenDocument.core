@@ -653,6 +653,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_string("sheetOutputFileName", config.sheet_output_file_name);
   set_string("pageOutputFileName", config.page_output_file_name);
   set_boolean("embedImages", config.embed_images);
+  set_boolean("allowExternalContent", config.allow_external_content);
   set_boolean("embedShippedResources", config.embed_shipped_resources);
   set_string("resourcePath", config.resource_path);
   set_boolean("relativeResourcePaths", config.relative_resource_paths);
@@ -780,6 +781,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   result.sheet_output_file_name = get_string("sheetOutputFileName");
   result.page_output_file_name = get_string("pageOutputFileName");
   result.embed_images = get_boolean("embedImages");
+  result.allow_external_content = get_boolean("allowExternalContent");
   result.embed_shipped_resources = get_boolean("embedShippedResources");
   if (const auto resource_path = get_string_opt("resourcePath");
       resource_path.has_value()) {

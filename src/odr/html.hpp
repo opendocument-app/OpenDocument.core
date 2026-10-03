@@ -127,6 +127,9 @@ struct HtmlConfig {
 
   /// Embed images as data urls rather than writing them beside the document.
   bool embed_images{true};
+  /// Load the images a document names outside itself, and keep its relative
+  /// links. Off, only a navigable scheme leaves the view, in a new window.
+  bool allow_external_content{false};
   /// Write the renderer's own css and js into every document rather than beside
   /// it as one shared file the documents link.
   bool embed_shipped_resources{true};

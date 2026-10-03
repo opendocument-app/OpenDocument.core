@@ -670,12 +670,19 @@ TEST(html, an_image_no_browser_decodes_is_not_translated) {
 
 namespace {
 
-std::string render_markdown(const std::string &markdown) {
+std::string render_markdown(const std::string &markdown,
+                            const HtmlConfig &config = HtmlConfig()) {
   const DecodedFile file =
       open(File::from_memory(markdown), DecodeOptions::as(FileType::markdown));
   std::ostringstream out;
-  html::translate(file, HtmlConfig()).list_views().at(0).write_html(out);
+  html::translate(file, config).list_views().at(0).write_html(out);
   return std::move(out).str();
+}
+
+HtmlConfig external_content_config() {
+  HtmlConfig config;
+  config.allow_external_content = true;
+  return config;
 }
 
 /// A sheet of exactly @p rows by @p columns, with no trailing empty cells.
@@ -816,16 +823,78 @@ TEST(html, a_link_that_is_navigable_keeps_its_href) {
                       "><x-s>a</x-s></a>"),
             std::string::npos);
 
-  for (const std::string_view target :
-       {"#bookmark", "other.html", "a/b.html"}) {
+  EXPECT_NE(render_markdown("[a](#bookmark)\n")
+                .find(R"(<a href="#bookmark"><x-s>a</x-s></a>)"),
+            std::string::npos);
+}
+
+TEST(html, a_relative_link_keeps_its_href_only_with_external_content) {
+  for (const std::string_view target : {"other.html", "a/b.html"}) {
+    const std::string markdown = "[a](" + std::string(target) + ")\n";
+    EXPECT_NE(render_markdown(markdown).find("<a><x-s>a</x-s></a>"),
+              std::string::npos)
+        << target;
+
     const std::string page =
-        render_markdown("[a](" + std::string(target) + ")\n");
+        render_markdown(markdown, external_content_config());
     EXPECT_NE(page.find(R"(<a href=")" + std::string(target) +
                         R"("><x-s>a</x-s></a>)"),
               std::string::npos)
         << target;
     EXPECT_EQ(page.find("_blank"), std::string::npos) << target;
   }
+}
+
+/// A text document with one frame that shows the image at @p source.
+std::string render_image_odt(const std::string &source,
+                             const HtmlConfig &config = HtmlConfig()) {
+  const std::string fodt =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document)"
+      R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+      R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
+      R"( xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0")"
+      R"( xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0")"
+      R"( xmlns:xlink="http://www.w3.org/1999/xlink")"
+      R"( office:version="1.3")"
+      R"( office:mimetype="application/vnd.oasis.opendocument.text">)"
+      R"(<office:body><office:text><text:p>)"
+      R"(<draw:frame svg:width="1in" svg:height="1in"><draw:image xlink:href=")" +
+      source +
+      R"("/></draw:frame></text:p></office:text></office:body></office:document>)";
+  std::ostringstream out;
+  html::translate(open(File::from_memory(fodt),
+                       DecodeOptions::as(FileType::opendocument_text)),
+                  config)
+      .list_views()
+      .at(0)
+      .write_html(out);
+  return std::move(out).str();
+}
+
+TEST(html, an_external_image_loads_only_with_external_content) {
+  for (const std::string source :
+       {"https://x.example/a.png", "a.png", "file:///etc/passwd"}) {
+    const std::string page = render_image_odt(source);
+    EXPECT_EQ(page.find(source), std::string::npos) << source;
+    EXPECT_NE(page.find(R"(alt="external image not loaded")"),
+              std::string::npos)
+        << source;
+  }
+
+  EXPECT_NE(
+      render_image_odt("https://x.example/a.png", external_content_config())
+          .find(R"(src="https://x.example/a.png")"),
+      std::string::npos);
+  EXPECT_EQ(render_image_odt("file:///etc/passwd", external_content_config())
+                .find("passwd"),
+            std::string::npos);
+}
+
+TEST(html, an_image_data_url_always_loads) {
+  EXPECT_NE(render_image_odt("data:image/png;base64,AAAA")
+                .find(R"(src="data:image/png;base64,AAAA")"),
+            std::string::npos);
 }
 
 // #730

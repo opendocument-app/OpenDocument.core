@@ -32,6 +32,7 @@ class HtmlTest {
   void htmlConfigDefaults() {
     HtmlConfig config = new HtmlConfig();
     assertTrue(config.embedImages);
+    assertTrue(!config.allowExternalContent);
     assertTrue(!config.editable);
     assertEquals(HtmlEditingScope.DOCUMENT, config.editingScope);
     assertEquals(HtmlTableGridlines.SOFT, config.spreadsheetGridlines);

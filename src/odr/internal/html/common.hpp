@@ -151,6 +151,23 @@ enum class UriKind {
 /// @ref UriKind::external.
 [[nodiscard]] std::string_view link_target_attributes(UriKind kind);
 
+/// What an `<a>` from a document writes: its `href`, if the config lets it
+/// navigate, and the attributes of @ref link_target_attributes.
+struct LinkTarget {
+  std::optional<std::string> href;
+  std::string_view attributes;
+};
+
+/// A fragment stays in the view, so only @ref allow_external_content keeps
+/// any other relative target.
+[[nodiscard]] LinkTarget link_target(std::string_view href,
+                                     const HtmlConfig &config);
+
+/// Whether an `<img>` may load @p source, which a document names outside
+/// itself. An image `data:` url is inline, so it always loads.
+[[nodiscard]] bool loads_external_source(std::string_view source,
+                                         const HtmlConfig &config);
+
 std::string color(const Color &color);
 /// @p color for a dark page: its lightness mirrored into the band between the
 /// page and the lightest ground light text still reads on, its hue kept.

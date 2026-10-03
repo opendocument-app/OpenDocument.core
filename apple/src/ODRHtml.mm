@@ -88,6 +88,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _sheetOutputFileName = to_nsstring(config.sheet_output_file_name);
   _pageOutputFileName = to_nsstring(config.page_output_file_name);
   _embedImages = config.embed_images ? YES : NO;
+  _allowExternalContent = config.allow_external_content ? YES : NO;
   _embedShippedResources = config.embed_shipped_resources ? YES : NO;
   _resourcePath = to_nsstring(config.resource_path);
   _relativeResourcePaths = config.relative_resource_paths ? YES : NO;
@@ -159,6 +160,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.sheet_output_file_name = to_string(_sheetOutputFileName);
   config.page_output_file_name = to_string(_pageOutputFileName);
   config.embed_images = _embedImages == YES;
+  config.allow_external_content = _allowExternalContent == YES;
   config.embed_shipped_resources = _embedShippedResources == YES;
   // A nil resource path means "keep odrcore's default", which is what the
   // framework's bootstrap already set — writing an empty string here would

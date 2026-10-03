@@ -162,6 +162,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   }
 
   read(value, "embedImages", config.embed_images);
+  read(value, "allowExternalContent", config.allow_external_content);
   read(value, "editable", config.editable);
   read_enum(value, "editingScope", config.editing_scope);
   read(value, "keyboardNavigation", config.keyboard_navigation);

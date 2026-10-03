@@ -973,21 +973,19 @@ void html::translate_span(const Element &element, const WritingState &state) {
 
 void html::translate_link(const Element &element, const WritingState &state) {
   const Link link = element.as_link();
-  const std::string href = link.href();
-  const UriKind kind = uri_kind(href);
+  const LinkTarget target = link_target(link.href(), state.config());
 
   // A refused target loses the attribute, not the element.
   HtmlAttributesVector attributes;
-  if (kind != UriKind::refused) {
-    attributes.emplace_back("href", xml::escape_attribute(href));
+  if (target.href.has_value()) {
+    attributes.emplace_back("href", xml::escape_attribute(*target.href));
   }
 
   HtmlElementOptions options =
       HtmlElementOptions().set_inline(true).set_attributes(
           std::move(attributes));
-  if (const std::string_view target = link_target_attributes(kind);
-      !target.empty()) {
-    options.set_extra(std::string(target));
+  if (!target.attributes.empty()) {
+    options.set_extra(std::string(target.attributes));
   }
 
   state.out().write_element_begin("a", options);
@@ -1117,11 +1115,20 @@ void html::translate_image(const Element &element, const WritingState &state) {
                                     path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
-  } else {
+  } else if (loads_external_source(image.href(), state.config())) {
     resource =
         HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",
                              "image", std::nullopt, false, false, false);
     resource_location = image.href();
+  } else {
+    state.out().write_element_begin(
+        "img", HtmlElementOptions()
+                   .set_close_type(HtmlCloseType::trailing)
+                   .set_attributes(HtmlAttributesVector{
+                       {"alt", "external image not loaded"}})
+                   .set_style("position:absolute;left:0;top:0;width:100%;"
+                              "height:100%"));
+    return;
   }
   state.resources().emplace_back(std::move(resource), resource_location);
 
