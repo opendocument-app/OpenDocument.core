@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.4.0 - 2026-10-03
+
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
   every binding. `HtmlConfig::pdf_enforce_permissions`, off by default as
   pdf.js `enablePermissions` is, makes the page refuse a copy and a print that
