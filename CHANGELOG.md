@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
+  every binding. `HtmlConfig::pdf_enforce_permissions`, off by default as
+  pdf.js `enablePermissions` is, makes the page refuse a copy and a print that
+  the file does not allow.
+
 - By default the page loads no image that a document names outside itself,
   and a relative link loses its `href`. Only a link with a navigable scheme
   leaves the view, in a new window. `HtmlConfig::allow_external_content` (in

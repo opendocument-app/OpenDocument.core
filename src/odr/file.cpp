@@ -454,6 +454,18 @@ PdfFile PdfFile::decrypt(const std::string &password) const {
 
 bool PdfFile::is_annotatable() const noexcept { return m_impl->annotatable(); }
 
+bool PdfFile::has_permissions() const noexcept {
+  return m_impl->permissions().has_value();
+}
+
+PdfPermissions PdfFile::permissions() const {
+  const std::optional<PdfPermissions> permissions = m_impl->permissions();
+  if (!permissions.has_value()) {
+    throw ValueNotStated();
+  }
+  return *permissions;
+}
+
 void PdfFile::annotate(const std::string_view annotations, std::ostream &out,
                        const Logger &logger) const {
   m_impl->annotate(annotations, out, logger);

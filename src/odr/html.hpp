@@ -223,6 +223,9 @@ struct HtmlConfig {
   /// Whether an armed annotation tool marks each selection as it is made. The
   /// page's `odr.annotation.setOptions` overrides it.
   bool pdf_annotation_mark_on_selection{false};
+  /// Honor @ref PdfFile::permissions, as pdf.js `enablePermissions` does: no
+  /// copy, and no print unless the file allows one.
+  bool pdf_enforce_permissions{false};
 
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;

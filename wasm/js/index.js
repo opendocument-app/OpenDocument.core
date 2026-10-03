@@ -153,6 +153,11 @@ export class Document {
     return unwrap(this.#core.isAnnotatable(this.#handle));
   }
 
+  // What `/P` states, or `null` without an `/Encrypt`.
+  permissions() {
+    return unwrap(this.#core.permissions(this.#handle));
+  }
+
   // The annotated pdf's bytes; what `odr.annotation.getAnnotations()` collected
   // goes in.
   annotate(annotations) {

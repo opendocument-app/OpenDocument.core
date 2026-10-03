@@ -617,6 +617,19 @@ make_file_type_capabilities(JNIEnv *env,
                     static_cast<jboolean>(capabilities.annotate));
 }
 
+jobject make_pdf_permissions(JNIEnv *env,
+                             const odr::PdfPermissions &permissions) {
+  return new_object(env, "app/opendocument/core/PdfPermissions", "(ZZZZZZZZ)V",
+                    static_cast<jboolean>(permissions.print),
+                    static_cast<jboolean>(permissions.modify_contents),
+                    static_cast<jboolean>(permissions.copy),
+                    static_cast<jboolean>(permissions.modify_annotations),
+                    static_cast<jboolean>(permissions.fill_forms),
+                    static_cast<jboolean>(permissions.copy_for_accessibility),
+                    static_cast<jboolean>(permissions.assemble),
+                    static_cast<jboolean>(permissions.print_high_quality));
+}
+
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   jclass cls = env->FindClass("app/opendocument/core/HtmlConfig");
   if (cls == nullptr) {
@@ -728,6 +741,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              config.pdf_dual_layer_fallback_font_size_adjust);
   set_boolean("pdfAnnotationMarkOnSelection",
               config.pdf_annotation_mark_on_selection);
+  set_boolean("pdfEnforcePermissions", config.pdf_enforce_permissions);
   set_object("outputPath", "Ljava/lang/String;",
              make_string_opt(env, config.output_path));
 
@@ -945,6 +959,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       get_double("pdfDualLayerFallbackFontSizeAdjust");
   result.pdf_annotation_mark_on_selection =
       get_boolean("pdfAnnotationMarkOnSelection");
+  result.pdf_enforce_permissions = get_boolean("pdfEnforcePermissions");
   result.output_path = get_string_opt("outputPath");
 
   env->DeleteLocalRef(cls);

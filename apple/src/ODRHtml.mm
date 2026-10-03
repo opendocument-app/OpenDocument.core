@@ -145,6 +145,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
       config.pdf_dual_layer_fallback_font_size_adjust;
   _pdfAnnotationMarkOnSelection =
       config.pdf_annotation_mark_on_selection ? YES : NO;
+  _pdfEnforcePermissions = config.pdf_enforce_permissions ? YES : NO;
   _outputPath =
       config.output_path.has_value() ? to_nsstring(*config.output_path) : nil;
   return self;
@@ -243,6 +244,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
       _pdfDualLayerFallbackFontSizeAdjust;
   config.pdf_annotation_mark_on_selection =
       _pdfAnnotationMarkOnSelection == YES;
+  config.pdf_enforce_permissions = _pdfEnforcePermissions == YES;
   if (_outputPath != nil) {
     config.output_path = to_string(_outputPath);
   } else {

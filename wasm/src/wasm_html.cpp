@@ -218,6 +218,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   read_enum(value, "pdfTextMode", config.pdf_text_mode);
   read(value, "pdfAnnotationMarkOnSelection",
        config.pdf_annotation_mark_on_selection);
+  read(value, "pdfEnforcePermissions", config.pdf_enforce_permissions);
 
   if (const emscripten::val margin = value["minContentMargin"];
       !margin.isUndefined() && !margin.isNull()) {

@@ -149,6 +149,25 @@ FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
 
 bool PdfFile::annotatable() const noexcept { return m_annotatable; }
 
+std::optional<PdfPermissions> PdfFile::permissions() const noexcept {
+  if (!m_authenticator.has_value()) {
+    return std::nullopt;
+  }
+  // `/P` is a signed 32-bit integer; bit n of the table is `1 << (n - 1)`
+  const auto p = static_cast<std::uint32_t>(m_authenticator->permissions());
+  const auto bit = [p](const int n) { return (p & (1u << (n - 1))) != 0; };
+  // revision 2 defines only bits 3 to 6, which then stand for the rest
+  const bool r2 = m_authenticator->revision() == 2;
+  return PdfPermissions{.print = bit(3),
+                        .modify_contents = bit(4),
+                        .copy = bit(5),
+                        .modify_annotations = bit(6),
+                        .fill_forms = r2 ? bit(6) : bit(9),
+                        .copy_for_accessibility = r2 ? bit(5) : bit(10),
+                        .assemble = r2 ? bit(4) : bit(11),
+                        .print_high_quality = r2 ? bit(3) : bit(12)};
+}
+
 bool PdfFile::password_encrypted() const noexcept {
   return m_encryption_state == EncryptionState::encrypted;
 }

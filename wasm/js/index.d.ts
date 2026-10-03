@@ -111,6 +111,18 @@ export interface Content {
   mimeType: string;
 }
 
+/** The permission bits (`/P`) of an encrypted pdf. */
+export interface PdfPermissions {
+  print: boolean;
+  modifyContents: boolean;
+  copy: boolean;
+  modifyAnnotations: boolean;
+  fillForms: boolean;
+  copyForAccessibility: boolean;
+  assemble: boolean;
+  printHighQuality: boolean;
+}
+
 /** Anything omitted keeps the library's default. */
 export interface HtmlConfig {
   embedImages?: boolean;
@@ -154,6 +166,8 @@ export interface HtmlConfig {
   pdfTextMode?: number;
   /** Whether an armed annotation tool marks each selection as it is made. */
   pdfAnnotationMarkOnSelection?: boolean;
+  /** Honor `permissions()`, as pdf.js `enablePermissions` does. */
+  pdfEnforcePermissions?: boolean;
 }
 
 export interface OpenOptions extends HtmlConfig {
@@ -244,6 +258,9 @@ export declare class Document {
    * `/Encrypt`, or whose cross-reference table had to be rebuilt.
    */
   isAnnotatable(): boolean;
+
+  /** What `/P` states, or `null` without an `/Encrypt`. */
+  permissions(): PdfPermissions | null;
 
   /**
    * Applies markup annotations to a pdf and returns the annotated bytes.

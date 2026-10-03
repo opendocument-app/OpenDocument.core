@@ -16,6 +16,10 @@ def test_annotate_is_declared_for_pdf():
     assert capabilities.annotate
 
 
+def test_an_unencrypted_pdf_states_no_permissions(pdf_path):
+    assert pyodr.open(str(pdf_path)).as_pdf_file().permissions() is None
+
+
 def test_annotate_appends_to_the_source(pdf_path):
     source = pdf_path.read_bytes()
     result = annotate(

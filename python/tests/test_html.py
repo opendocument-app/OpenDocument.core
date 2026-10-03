@@ -15,6 +15,7 @@ def test_html_config_defaults():
     config = pyodr.HtmlConfig()
     assert config.embed_images
     assert not config.allow_external_content
+    assert not config.pdf_enforce_permissions
     assert not config.editable
     assert config.editing_scope == pyodr.HtmlEditingScope.document
     assert config.keyboard_navigation

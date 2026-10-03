@@ -125,6 +125,28 @@ emscripten::val is_annotatable(const Handle handle) {
   });
 }
 
+/// What `/P` states, or `null` without an `/Encrypt`.
+emscripten::val permissions(const Handle handle) {
+  return guarded([&] {
+    const Session &s = session(handle);
+    if (s.file.file_type() != FileType::portable_document_format ||
+        !s.file.as_pdf_file().has_permissions()) {
+      return ok(emscripten::val::null());
+    }
+    const PdfPermissions permissions = s.file.as_pdf_file().permissions();
+    emscripten::val result = emscripten::val::object();
+    result.set("print", permissions.print);
+    result.set("modifyContents", permissions.modify_contents);
+    result.set("copy", permissions.copy);
+    result.set("modifyAnnotations", permissions.modify_annotations);
+    result.set("fillForms", permissions.fill_forms);
+    result.set("copyForAccessibility", permissions.copy_for_accessibility);
+    result.set("assemble", permissions.assemble);
+    result.set("printHighQuality", permissions.print_high_quality);
+    return ok(result);
+  });
+}
+
 /// The annotated pdf's bytes; there is no filesystem to write to. `payload` is
 /// what the rendered page's `odr.annotation.getAnnotations()` collected.
 emscripten::val annotate(const Handle handle, const std::string &payload) {
@@ -163,6 +185,7 @@ EMSCRIPTEN_BINDINGS(odr_file) {
   emscripten::function("fileType", &odr::wasm::file_type);
   emscripten::function("fileName", &odr::wasm::file_name);
   emscripten::function("isAnnotatable", &odr::wasm::is_annotatable);
+  emscripten::function("permissions", &odr::wasm::permissions);
   emscripten::function("annotate", &odr::wasm::annotate);
   emscripten::function("close", &odr::wasm::close);
   emscripten::function("closeAll", &odr::wasm::close_all);
