@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The text editor shows a typed space at the end of a run, and two typed
+  spaces in a row. Before, the space was in the document but did not show,
+  and the caret did not move.
+
 - A paragraph of an odt, odp, odg, docx or pptx file takes an alignment
   (`Paragraph::set_style`, `setParagraphStyle`, `odr.editing.format({align})`,
   and the bindings). The docx reader now reads `w:jc="both"` as justified.
