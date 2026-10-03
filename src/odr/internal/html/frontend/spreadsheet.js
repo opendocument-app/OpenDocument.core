@@ -425,7 +425,8 @@
         cell: cells[i],
         blank: isBlank(cells[i]),
         sized: style.maxWidth === "0px",
-        nowrap: style.whiteSpace === "nowrap",
+        // a cell preserves its white space, so the shorthand reads `pre`
+        nowrap: (style.textWrapMode || style.whiteSpace) === "nowrap",
       });
     }
     return line;
@@ -498,7 +499,7 @@
     if (cell === null) {
       return null;
     }
-    var text = cell.textContent.trim();
+    var text = cell.textContent;
     if (text === "") {
       return { type: "empty" };
     }

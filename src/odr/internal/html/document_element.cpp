@@ -500,7 +500,7 @@ std::optional<FoldedCell> fold_cell(const SheetCell &cell,
       return {};
     }
     return FoldedCell{html::translate_text_style(run->style()),
-                      html::escape_text(run->content())};
+                      xml::escape_text(run->content())};
   }
 
   if (only.type() != ElementType::paragraph || row_height.has_value()) {
@@ -519,7 +519,7 @@ std::optional<FoldedCell> fold_cell(const SheetCell &cell,
 
   return FoldedCell{html::translate_paragraph_style(style, state.direction()) +
                         html::translate_text_style(run_style(paragraph, *run)),
-                    html::escape_text(run->content())};
+                    xml::escape_text(run->content())};
 }
 
 /// A paragraph holding one plain string carries what the run's `x-s` carried.
@@ -542,7 +542,7 @@ void translate_cell_children(const SheetCell &cell,
                                                        state.direction()) +
                        html::translate_text_style(run_style(paragraph, *run)),
                    state.styles()));
-    state.out().out() << html::escape_text(run->content());
+    state.out().out() << xml::escape_text(run->content());
     write_paragraph_line_box(false, state);
     state.out().write_element_end("x-p");
   }
@@ -784,7 +784,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       state.out().write_element_begin(
           "td",
           HtmlElementOptions()
-              .set_inline(folded.has_value())
+              // a cell preserves its white space, so nothing is indented in it
+              .set_inline(true)
               .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
                 if (cell_span.columns > 1) {
                   clb("colspan", std::to_string(cell_span.columns));

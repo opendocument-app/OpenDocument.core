@@ -941,6 +941,30 @@ TEST(html, a_cell_holding_one_plain_string_writes_no_box_of_its_own) {
   EXPECT_EQ(page.find("<x-p"), std::string::npos);
 }
 
+// The sheet editor reads a cell's text back, so the page holds it as the file
+// does, and a cell preserves its white space.
+TEST(html, a_cell_holds_its_spaces_as_is) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(fods_cell(R"(a<text:s text:c="2"/>b<text:s/>)"))),
+      editing_config());
+
+  EXPECT_NE(page.find(">a  b </td>"), std::string::npos);
+}
+
+// Anything indented into a cell would show.
+TEST(html, a_cell_of_several_paragraphs_is_not_indented) {
+  HtmlConfig config = editing_config();
+  config.format_html = true;
+  const std::string page = render_sheet(
+      fods_file(fods_row(fods_cell("one</text:p><text:p>two"))), config);
+
+  const std::size_t begin = page.find("<td");
+  ASSERT_NE(begin, std::string::npos);
+  const std::size_t end = page.find("</td>", begin);
+  ASSERT_NE(end, std::string::npos);
+  EXPECT_EQ(page.find('\n', begin), page.find('\n', end));
+}
+
 // A sheet's editing is an overlay, so no run of it says so in the markup.
 TEST(html, an_editable_sheet_writes_no_contenteditable) {
   const std::string page =
