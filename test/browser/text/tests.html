@@ -260,10 +260,11 @@
       );
       check("as plain spaces in the op", ops()[0].text === "third  ");
 
+      var two = run(31).getBoundingClientRect().width;
       odr.editing.disable();
       check(
-        "the mode leaves the run as the renderer wrote it",
-        getComputedStyle(run(31)).whiteSpace === "normal"
+        "and they still show with the mode off",
+        run(31).getBoundingClientRect().width === two
       );
 
       // ------------------------------------------------- across two runs

@@ -126,7 +126,9 @@ void write_zoom_style(HtmlWriter &out, const HtmlConfig &config, WidthFit fits,
 void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 
 /// @ref xml::escape_text, plus the `&nbsp;` and `&emsp;` that keep html
-/// from collapsing the run's own whitespace. An attribute value wants
+/// from collapsing whitespace where no css preserves it. A run (`x-s`) is
+/// written with @ref xml::escape_text, because the editor reads it back. An
+/// attribute value wants
 /// @ref xml::escape_attribute instead, which leaves spaces intact.
 std::string escape_text(std::string text);
 

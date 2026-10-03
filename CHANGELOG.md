@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A run of a document is written with its spaces and tabs as they are, in
+  place of `&nbsp;` and `&emsp;`, and `document.css` preserves them. An edit
+  in the text editor no longer saves a no-break space or an em space in place
+  of a space or a tab. A line can now break where two runs meet at a space,
+  and a tab goes to the next 0.5in tab stop.
+
 - The text editor shows a typed space at the end of a run, and two typed
   spaces in a row. Before, the space was in the document but did not show,
   and the caret did not move.

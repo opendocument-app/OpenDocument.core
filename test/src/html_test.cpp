@@ -1200,6 +1200,30 @@ TEST(html, a_read_only_text_document_addresses_no_run) {
   EXPECT_EQ(page.find("data-odr-id"), std::string::npos);
 }
 
+// The editor saves a run's text as the page holds it, so a `&nbsp;` or an
+// `&emsp;` there would replace a space or a tab in the document.
+TEST(html, a_run_holds_its_spaces_and_tabs_as_is) {
+  const std::string fodt =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document)"
+      R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+      R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
+      R"( office:version="1.3")"
+      R"( office:mimetype="application/vnd.oasis.opendocument.text">)"
+      R"(<office:body><office:text><text:p>)"
+      R"(<text:s/>a<text:s text:c="2"/>b<text:tab/>c<text:s/>)"
+      R"(</text:p></office:text></office:body></office:document>)";
+  std::ostringstream out;
+  html::translate(open(File::from_memory(fodt),
+                       DecodeOptions::as(FileType::opendocument_text)),
+                  editing_config())
+      .list_views()
+      .at(0)
+      .write_html(out);
+
+  EXPECT_NE(out.str().find("> a  b\tc </x-s>"), std::string::npos);
+}
+
 // #822: a sheet cell does not break its text into lines unless the file says
 // to — `style:wrap-option` is `no-wrap` by default, and so is `wrapText`.
 TEST(html, a_sheet_cell_keeps_its_text_on_one_line) {
