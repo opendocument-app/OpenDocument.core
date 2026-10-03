@@ -136,6 +136,7 @@ editors share the log and nothing else.
 | `data-odr-editable="true" \| "readOnly"` | whether `enable()` can succeed |
 | `data-odr-keyboard="navigation shortcuts"` | the key classes the scripts may take (decision 12) |
 | `data-odr-editing-scope` | the scope of decision 14 |
+| `data-odr-sheet-edit-on-click="true" \| "false"` | the start value of `setSheetOptions({editOnClick})`; absent asks the pointer |
 
 Per element the page states only the exceptions: `data-odr-id` addresses an
 editable run, and `odr-locked` with `data-odr-lock="<reason>"` marks what

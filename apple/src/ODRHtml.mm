@@ -95,6 +95,9 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _editingScope = static_cast<ODRHtmlEditingScope>(config.editing_scope);
   _keyboardNavigation = config.keyboard_navigation ? YES : NO;
   _keyboardShortcuts = config.keyboard_shortcuts ? YES : NO;
+  _sheetEditOnClick = config.sheet_edit_on_click.has_value()
+                          ? @(*config.sheet_edit_on_click)
+                          : nil;
   _textDocumentMargin = config.text_document_margin ? YES : NO;
   _colorScheme = static_cast<ODRHtmlColorScheme>(config.color_scheme);
   if (config.spreadsheet_limit.has_value()) {
@@ -138,6 +141,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _pdfDualLayerFallbackFonts = to_nsarray(config.pdf_dual_layer_fallback_fonts);
   _pdfDualLayerFallbackFontSizeAdjust =
       config.pdf_dual_layer_fallback_font_size_adjust;
+  _pdfAnnotationMarkOnSelection =
+      config.pdf_annotation_mark_on_selection ? YES : NO;
   _outputPath =
       config.output_path.has_value() ? to_nsstring(*config.output_path) : nil;
   return self;
@@ -165,6 +170,11 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.editing_scope = static_cast<odr::HtmlEditingScope>(_editingScope);
   config.keyboard_navigation = _keyboardNavigation == YES;
   config.keyboard_shortcuts = _keyboardShortcuts == YES;
+  if (_sheetEditOnClick != nil) {
+    config.sheet_edit_on_click = _sheetEditOnClick.boolValue == YES;
+  } else {
+    config.sheet_edit_on_click.reset();
+  }
   config.text_document_margin = _textDocumentMargin == YES;
   config.color_scheme = static_cast<odr::HtmlColorScheme>(_colorScheme);
   if (_spreadsheetLimit != nil) {
@@ -227,6 +237,8 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   config.pdf_dual_layer_fallback_fonts = to_strings(_pdfDualLayerFallbackFonts);
   config.pdf_dual_layer_fallback_font_size_adjust =
       _pdfDualLayerFallbackFontSizeAdjust;
+  config.pdf_annotation_mark_on_selection =
+      _pdfAnnotationMarkOnSelection == YES;
   if (_outputPath != nil) {
     config.output_path = to_string(_outputPath);
   } else {

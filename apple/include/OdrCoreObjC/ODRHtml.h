@@ -99,6 +99,9 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) BOOL keyboardNavigation;
 /// Whether the view's scripts take the editing chords: undo and redo.
 @property(nonatomic) BOOL keyboardShortcuts;
+/// Whether a click opens the sheet editor; `nil` asks the pointer.
+@property(nonatomic, strong, nullable)
+    NSNumber *sheetEditOnClick NS_REFINED_FOR_SWIFT;
 @property(nonatomic) BOOL textDocumentMargin;
 
 @property(nonatomic) ODRHtmlColorScheme colorScheme;
@@ -146,6 +149,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic) ODRPdfTextMode pdfTextMode;
 @property(nonatomic, copy) NSArray<NSString *> *pdfDualLayerFallbackFonts;
 @property(nonatomic) double pdfDualLayerFallbackFontSizeAdjust;
+/// Whether an armed annotation tool marks each selection as it is made.
+@property(nonatomic) BOOL pdfAnnotationMarkOnSelection;
 
 @property(nonatomic, copy, nullable) NSString *outputPath;
 

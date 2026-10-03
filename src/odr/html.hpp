@@ -152,6 +152,10 @@ struct HtmlConfig {
   /// Whether the view's scripts take the editing chords: undo and redo.
   bool keyboard_shortcuts{true};
 
+  /// Whether a click opens the sheet editor, where a double click always does.
+  /// Unset asks the pointer. The page's `setSheetOptions` overrides it.
+  std::optional<bool> sheet_edit_on_click;
+
   /// Render a text document as fixed-size pages rather than reflowing text.
   bool text_document_margin{false};
 
@@ -209,6 +213,9 @@ struct HtmlConfig {
   /// Shrinks the fallback's metrics toward the pdf's (0-1) so css justify can
   /// fill the box. Safe to underestimate: the excess is clipped, not shrunk.
   double pdf_dual_layer_fallback_font_size_adjust{0.5};
+  /// Whether an armed annotation tool marks each selection as it is made. The
+  /// page's `odr.annotation.setOptions` overrides it.
+  bool pdf_annotation_mark_on_selection{false};
 
   std::optional<std::string> output_path;
   HtmlResourceLocator resource_locator;

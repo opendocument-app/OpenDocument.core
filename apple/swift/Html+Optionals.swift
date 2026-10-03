@@ -27,6 +27,11 @@ extension HtmlConfig {
     }
   }
 
+  public var sheetEditOnClick: Bool? {
+    get { __sheetEditOnClick?.boolValue }
+    set { __sheetEditOnClick = newValue.map(NSNumber.init(value:)) }
+  }
+
   public var viewportWidth: UInt32? {
     get { __viewportWidth?.uint32Value }
     set { __viewportWidth = newValue.map(NSNumber.init(value:)) }

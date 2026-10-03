@@ -662,6 +662,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
                             static_cast<jint>(config.editing_scope)));
   set_boolean("keyboardNavigation", config.keyboard_navigation);
   set_boolean("keyboardShortcuts", config.keyboard_shortcuts);
+  set_object("sheetEditOnClick", "Ljava/lang/Boolean;",
+             box_boolean(env, config.sheet_edit_on_click));
   set_boolean("textDocumentMargin", config.text_document_margin);
   set_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;",
              enum_from_code(env, "app/opendocument/core/HtmlColorScheme",
@@ -722,6 +724,8 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   }
   set_double("pdfDualLayerFallbackFontSizeAdjust",
              config.pdf_dual_layer_fallback_font_size_adjust);
+  set_boolean("pdfAnnotationMarkOnSelection",
+              config.pdf_annotation_mark_on_selection);
   set_object("outputPath", "Ljava/lang/String;",
              make_string_opt(env, config.output_path));
 
@@ -792,6 +796,11 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   }
   result.keyboard_navigation = get_boolean("keyboardNavigation");
   result.keyboard_shortcuts = get_boolean("keyboardShortcuts");
+  {
+    jobject on_click = get_object("sheetEditOnClick", "Ljava/lang/Boolean;");
+    result.sheet_edit_on_click = boolean_from_java(env, on_click);
+    env->DeleteLocalRef(on_click);
+  }
   result.text_document_margin = get_boolean("textDocumentMargin");
   {
     const jint code = enum_ordinal(
@@ -930,6 +939,8 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   }
   result.pdf_dual_layer_fallback_font_size_adjust =
       get_double("pdfDualLayerFallbackFontSizeAdjust");
+  result.pdf_annotation_mark_on_selection =
+      get_boolean("pdfAnnotationMarkOnSelection");
   result.output_path = get_string_opt("outputPath");
 
   env->DeleteLocalRef(cls);

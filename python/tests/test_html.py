@@ -18,6 +18,8 @@ def test_html_config_defaults():
     assert config.editing_scope == pyodr.HtmlEditingScope.document
     assert config.keyboard_navigation
     assert config.keyboard_shortcuts
+    assert config.sheet_edit_on_click is None
+    assert not config.pdf_annotation_mark_on_selection
     assert config.spreadsheet_gridlines == pyodr.HtmlTableGridlines.soft
 
     config.editable = True
