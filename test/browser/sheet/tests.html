@@ -9,7 +9,8 @@
   <body class="odr-body odr-gridlines-soft" data-odr-keyboard="navigation shortcuts">
     <!-- What `translate_sheet` writes, cut down to the shapes the script has to
          tell apart: a cell that spills, one that is cut, one that keeps its
-         block, and one that writes its string without one. -->
+         block, one that writes its string without one, and one that holds spaces
+         the browser would collapse. -->
     <table class="odr-sheet">
       <col class="odr-sheet-gutter" />
       <col style="width:80px;min-width:80px" />
@@ -26,9 +27,7 @@
           <th class="odr-sheet-row-header" style="height:20px;max-height:20px">
             1
           </th>
-          <td id="cut-block" style="max-width:0;white-space:nowrap;overflow:hidden">
-            <x-p style="display:block">a string far too long for its cell</x-p>
-          </td>
+          <td id="cut-block" style="max-width:0;white-space:nowrap;overflow:hidden"><x-p style="display:block">a string far too long for its cell</x-p></td>
           <td><x-p style="display:block">next</x-p></td>
         </tr>
         <tr style="height:20px">
@@ -38,17 +37,18 @@
           <td
             id="spilling"
             style="max-width:0;white-space:nowrap;clip-path:inset(0 -80px 0 0)"
-          >
-            <x-p style="display:block">short</x-p>
-          </td>
+          ><x-p style="display:block">short</x-p></td>
           <td></td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">3</th>
-          <td id="cut-folded" style="max-width:0;white-space:nowrap;overflow:hidden">
-            a string far too long for its cell
-          </td>
+          <td id="cut-folded" style="max-width:0;white-space:nowrap;overflow:hidden">a string far too long for its cell</td>
           <td>next</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td id="spaced">a  b </td>
+          <td id="single">a b</td>
         </tr>
       </tbody>
     </table>
@@ -124,6 +124,15 @@
       click(cutBlock);
       click(report);
       check("a click outside the sheet lowers it", !raised(cutBlock));
+
+      // a cell holds its text as the file does, and the editor reads it back
+      function textWidth(id) {
+        var range = document.createRange();
+        range.selectNodeContents(document.getElementById(id));
+        return range.getBoundingClientRect().width;
+      }
+      check("two spaces in a cell show", textWidth("spaced") > textWidth("single"));
+      check("and its value keeps them", odr.sheet.valueAt(0, 3).text === "a  b ");
     </script>
   </body>
 </html>

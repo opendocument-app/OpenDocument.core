@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A sheet cell is written with its spaces and tabs as they are, and
+  `spreadsheet.css` preserves them. The sheet editor no longer saves a
+  no-break space in place of a space, and it keeps a space at the start or
+  the end of a value. Nothing is indented inside a cell any more.
+
 - A run of a document is written with its spaces and tabs as they are, in
   place of `&nbsp;` and `&emsp;`, and `document.css` preserves them. An edit
   in the text editor no longer saves a no-break space or an em space in place
