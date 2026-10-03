@@ -121,6 +121,8 @@ export interface HtmlConfig {
   keyboardShortcuts?: boolean;
   /** Whether a click opens the sheet editor; unset asks the pointer. */
   sheetEditOnClick?: boolean;
+  /** The function, as a path from `window`, that takes every `odr.on*` callback as a JSON string. */
+  hostMessageHandler?: string;
   textDocumentMargin?: boolean;
   formatHtml?: boolean;
   pageRangeBegin?: number;

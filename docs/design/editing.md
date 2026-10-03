@@ -56,6 +56,22 @@ The payload is JSON. The channel is the platform bridge
 CLI the same JSON is a file. A localhost HTTP server would have a port and a
 lifecycle, which fights the one-shot pipeline.
 
+`HtmlConfig::host_message_handler` names the function as a path from `window`:
+`webkit.messageHandlers.odr.postMessage` on iOS, `odrHost.postMessage` on
+Android. `host-bridge.js` calls it on its parent object with every `odr.on*`
+callback as one JSON string `{type, detail}`. `type` is the callback name
+without `on` (`editChange`, `selectionChange`, ...), and `detail` is its
+argument. `onError(code, message)` and `onZoomChange(zoom, followsFit)` put
+their two arguments into one `detail`.
+
+Why: each app otherwise injects its own script to connect the callbacks, and
+the two scripts drift apart. A string is the one argument that both platforms
+take, because an `addJavascriptInterface` method takes no object, so the page
+needs no platform switch. An Android interface must not be named `odr`,
+because that is the page's own namespace. The script runs after the other
+scripts, so it replaces their defaults, and a host can still replace a
+callback from script.
+
 ### 3. Record operations, do not compute a diff
 
 The wire format is an operation log, not a state-to-state diff.

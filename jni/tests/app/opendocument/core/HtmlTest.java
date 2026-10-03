@@ -52,6 +52,7 @@ class HtmlTest {
     config.initialZoom = 1.5;
     config.sheetEditOnClick = false;
     config.pdfAnnotationMarkOnSelection = true;
+    config.hostMessageHandler = "reader.postMessage";
 
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlConfig readBack = Html.translate(file, config).config();
@@ -63,6 +64,7 @@ class HtmlTest {
     assertEquals(Double.valueOf(1.5), readBack.initialZoom);
     assertEquals(Boolean.FALSE, readBack.sheetEditOnClick);
     assertTrue(readBack.pdfAnnotationMarkOnSelection);
+    assertEquals("reader.postMessage", readBack.hostMessageHandler);
   }
 
   /** Proves the scope crosses JNI; the C++ suite covers the rest. */

@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `HtmlConfig::host_message_handler` names a function, such as
+  `webkit.messageHandlers.odr.postMessage`, that gets every `odr.on*` callback
+  of the page as one JSON `{type, detail}` string. The host needs no injected
+  script for this.
+
 - `HtmlConfig::sheet_edit_on_click` and `pdf_annotation_mark_on_selection` set
   the start values of `setSheetOptions({editOnClick})` and
   `odr.annotation.setOptions({markOnSelection})`, in every binding.

@@ -163,6 +163,7 @@ public:
     write_editing_script(state);
     write_text_script(state);
     write_viewport_script(state);
+    write_host_bridge_script(state);
 
     out.write_body_end();
 

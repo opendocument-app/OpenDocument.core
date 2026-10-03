@@ -1093,6 +1093,58 @@ TEST(html, a_pdf_states_mark_on_selection_in_both_text_modes) {
   }
 }
 
+TEST(html, a_render_without_a_host_bridge_writes_none) {
+  EXPECT_EQ(render_odt(HtmlConfig()).find("odr.hostMessageHandler"),
+            std::string::npos);
+}
+
+TEST(html, the_host_bridge_comes_after_every_other_script) {
+  HtmlConfig config;
+  config.host_message_handler = "webkit.messageHandlers.reader.postMessage";
+
+  for (const std::string path :
+       {"odr-public/odt/about.odt", "odr-public/pdf/style-various-1.pdf",
+        "odr-public/txt/lorem ipsum.txt"}) {
+    const std::string page = render(path, config);
+    const std::size_t at = page.find(
+        R"(window.odr.hostMessageHandler = "webkit.messageHandlers.reader.postMessage";)");
+    ASSERT_NE(at, std::string::npos) << path;
+    EXPECT_EQ(page.find("<script", page.find("<script", at) + 1),
+              std::string::npos)
+        << path;
+  }
+}
+
+TEST(html, a_host_message_handler_cannot_end_its_script) {
+  HtmlConfig config;
+  config.host_message_handler = "</script>";
+
+  EXPECT_NE(render_odt(config).find(R"(= "\u003c/script>";)"),
+            std::string::npos);
+}
+
+TEST(html, a_linked_host_bridge_is_served) {
+  HtmlConfig config;
+  config.embed_shipped_resources = false;
+  config.host_message_handler = "reader.postMessage";
+
+  for (const std::string path :
+       {"odr-public/odt/about.odt", "odr-public/pdf/style-various-1.pdf",
+        "odr-public/txt/lorem ipsum.txt"}) {
+    const HtmlService service = html::translate(
+        open(TestData::test_file_path(path), {}, Logger::null()), config);
+    std::ostringstream out;
+    const HtmlResources resources = service.list_views().at(0).write_html(out);
+
+    const auto it = std::ranges::find_if(resources, [](const auto &entry) {
+      return entry.first.name() == "host-bridge.js";
+    });
+    ASSERT_NE(it, resources.end()) << path;
+    ASSERT_TRUE(it->second.has_value()) << path;
+    EXPECT_TRUE(service.exists(*it->second)) << path;
+  }
+}
+
 // A formula cell is locked: overwriting it leaves its dependants stale.
 TEST(html, a_formula_cell_is_locked_with_its_reason) {
   const std::string page = render_sheet(
