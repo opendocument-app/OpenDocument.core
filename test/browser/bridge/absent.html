@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>host bridge checks: no host</title>
+  </head>
+  <body data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script>
+      var defaults = { onEditChange: odr.onEditChange, onError: odr.onError };
+      window.odr.hostMessageHandler = "webkit.messageHandlers.reader.postMessage";
+    </script>
+    <!-- the page opened in a browser, outside the app that rendered it -->
+    <script src="host-bridge.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      check(
+        "without the handler the page keeps its callbacks",
+        odr.onEditChange === defaults.onEditChange && odr.onError === defaults.onError
+      );
+    </script>
+  </body>
+</html>

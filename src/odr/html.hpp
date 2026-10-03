@@ -152,6 +152,10 @@ struct HtmlConfig {
   /// Whether the view's scripts take the editing chords: undo and redo.
   bool keyboard_shortcuts{true};
 
+  /// The path from `window` to a function that takes each `odr.on*` callback
+  /// as a JSON `{type, detail}` string. Empty sends nothing.
+  std::string host_message_handler;
+
   /// Whether a click opens the sheet editor, where a double click always does.
   /// Unset asks the pointer. The page's `setSheetOptions` overrides it.
   std::optional<bool> sheet_edit_on_click;

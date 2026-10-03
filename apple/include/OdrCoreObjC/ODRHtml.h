@@ -102,6 +102,9 @@ NS_SWIFT_NAME(HtmlConfig)
 /// Whether a click opens the sheet editor; `nil` asks the pointer.
 @property(nonatomic, strong, nullable)
     NSNumber *sheetEditOnClick NS_REFINED_FOR_SWIFT;
+/// The function, as a path from `window`, that takes every `odr.on*` callback
+/// as a JSON string. Empty sends nothing.
+@property(nonatomic, copy) NSString *hostMessageHandler;
 @property(nonatomic) BOOL textDocumentMargin;
 
 @property(nonatomic) ODRHtmlColorScheme colorScheme;

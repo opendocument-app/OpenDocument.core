@@ -10,6 +10,8 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <array>
 #include <cstdint>
 #include <ostream>
@@ -125,6 +127,10 @@ constexpr Asset pdf_annotation_css_asset{HtmlResourceType::css, "text/css",
 constexpr Asset pdf_annotation_js_asset{HtmlResourceType::js, "text/javascript",
                                         "pdf-annotation.js",
                                         frontend_assets::pdf_annotation_js};
+/// Sends the `odr.on*` callbacks to `HtmlConfig::host_message_handler`.
+constexpr Asset host_bridge_js_asset{HtmlResourceType::js, "text/javascript",
+                                     "host-bridge.js",
+                                     frontend_assets::host_bridge_js};
 
 /// Appends @p asset to @p resources; `nullopt` to embed it.
 HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
@@ -145,6 +151,13 @@ HtmlResources locate_all(const std::span<const Asset> assets,
     locate(asset, config, resources);
   }
   return resources;
+}
+
+/// Every view with `viewport.js` takes the bridge too, for `onZoomChange`.
+void locate_host_bridge(const HtmlConfig &config, HtmlResources &resources) {
+  if (!config.host_message_handler.empty()) {
+    locate(host_bridge_js_asset, config, resources);
+  }
 }
 
 /// Adds the dark sheets where the config asks for them.
@@ -200,6 +213,19 @@ void write_error_codes(const WritingState &state) {
   out << "\n};\n";
 
   state.out().write_script_end();
+}
+
+/// A json string that cannot end the `<script>` it sits in.
+std::string script_string(const std::string &value) {
+  std::string result;
+  for (const char c : nlohmann::json(value).dump()) {
+    if (c == '<') {
+      result += "\\u003c";
+    } else {
+      result += c;
+    }
+  }
+  return result;
 }
 
 void write_script(const Asset &asset, const WritingState &state) {
@@ -320,19 +346,39 @@ void html::write_viewport_script(const WritingState &state) {
   write_script(viewport_js_asset, state);
 }
 
+void html::write_host_bridge_script(const WritingState &state) {
+  const HtmlConfig &config = state.config();
+  if (config.host_message_handler.empty()) {
+    return;
+  }
+
+  // per-render data, so inline even where the config links the scripts
+  state.out().write_script_begin();
+  state.out().out() << "\nwindow.odr = window.odr || {};\n"
+                    << "window.odr.hostMessageHandler = "
+                    << script_string(config.host_message_handler) << ";\n";
+  state.out().write_script_end();
+
+  write_script(host_bridge_js_asset, state);
+}
+
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
   static constexpr std::array assets{text_css_asset,  search_css_asset,
                                      search_js_asset, editing_js_asset,
                                      text_js_asset,   viewport_js_asset};
   static constexpr std::array dark{text_dark_css_asset, search_dark_css_asset};
-  return locate_all(assets, dark, config);
+  HtmlResources resources = locate_all(assets, dark, config);
+  locate_host_bridge(config, resources);
+  return resources;
 }
 
 HtmlResources html::locate_xml_resources(const HtmlConfig &config) {
   static constexpr std::array assets{xml_css_asset, search_css_asset,
                                      search_js_asset, viewport_js_asset};
   static constexpr std::array dark{xml_dark_css_asset, search_dark_css_asset};
-  return locate_all(assets, dark, config);
+  HtmlResources resources = locate_all(assets, dark, config);
+  locate_host_bridge(config, resources);
+  return resources;
 }
 
 HtmlResources html::locate_search_resources(const HtmlConfig &config) {
@@ -342,7 +388,9 @@ HtmlResources html::locate_search_resources(const HtmlConfig &config) {
 
 HtmlResources html::locate_viewport_resources(const HtmlConfig &config) {
   static constexpr std::array assets{viewport_js_asset};
-  return locate_all(assets, config);
+  HtmlResources resources = locate_all(assets, config);
+  locate_host_bridge(config, resources);
+  return resources;
 }
 
 HtmlResources html::locate_pdf_annotation_resources(const HtmlConfig &config) {

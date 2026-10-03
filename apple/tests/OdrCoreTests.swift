@@ -287,6 +287,15 @@ final class HtmlTests: XCTestCase {
     XCTAssertNil(config.sheetEditOnClick)
   }
 
+  func testHostMessageHandlerRoundTrips() {
+    let config = HtmlConfig()
+    XCTAssertEqual(config.hostMessageHandler, "")
+
+    config.hostMessageHandler = "webkit.messageHandlers.odr.postMessage"
+    XCTAssertEqual(
+      config.hostMessageHandler, "webkit.messageHandlers.odr.postMessage")
+  }
+
   func testBringOfflineWritesFiles() throws {
     let output = try temporaryDirectory()
     let html = try service().bringOffline(to: output)

@@ -270,6 +270,7 @@ void write_body_end(const Document &document, const WritingState &state) {
     }
   }
   write_viewport_script(state);
+  write_host_bridge_script(state);
 
   out.write_body_end();
 }

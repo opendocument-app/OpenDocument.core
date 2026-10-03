@@ -98,6 +98,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _sheetEditOnClick = config.sheet_edit_on_click.has_value()
                           ? @(*config.sheet_edit_on_click)
                           : nil;
+  _hostMessageHandler = to_nsstring(config.host_message_handler);
   _textDocumentMargin = config.text_document_margin ? YES : NO;
   _colorScheme = static_cast<ODRHtmlColorScheme>(config.color_scheme);
   if (config.spreadsheet_limit.has_value()) {
@@ -175,6 +176,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   } else {
     config.sheet_edit_on_click.reset();
   }
+  config.host_message_handler = to_string(_hostMessageHandler);
   config.text_document_margin = _textDocumentMargin == YES;
   config.color_scheme = static_cast<odr::HtmlColorScheme>(_colorScheme);
   if (_spreadsheetLimit != nil) {

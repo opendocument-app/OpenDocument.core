@@ -61,6 +61,9 @@ void write_pdf_annotation_script(const WritingState &state);
 /// `onZoomChange`, plus the fit @ref write_zoom_style left to be measured.
 /// Holds the reading position.
 void write_viewport_script(const WritingState &state);
+/// Last in the body, after every script that sets an `odr.on*` default.
+/// Nothing unless `HtmlConfig::host_message_handler` names a function.
+void write_host_bridge_script(const WritingState &state);
 
 /// What the corresponding `write_*` calls would link, without writing anything:
 /// a service has to answer for these paths as well as for its views. Every

@@ -163,6 +163,7 @@ public:
     }
 
     write_viewport_script(state);
+    write_host_bridge_script(state);
 
     out.write_body_end();
     out.write_end();

@@ -31,6 +31,12 @@ public final class HtmlConfig {
   /** Whether a click opens the sheet editor; {@code null} asks the pointer. */
   public Boolean sheetEditOnClick;
 
+  /**
+   * The function, as a path from {@code window}, that takes every {@code odr.on*} callback as a
+   * JSON string, e.g. {@code "odrHost.postMessage"}. Empty sends nothing.
+   */
+  public String hostMessageHandler = "";
+
   public boolean textDocumentMargin = false;
 
   /** The colors a document renders against. */

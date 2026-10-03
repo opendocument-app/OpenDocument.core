@@ -112,6 +112,7 @@ set(ODR_FRONTEND_ASSETS
         "viewport.js"
         "pdf-annotation.css"
         "pdf-annotation.js"
+        "host-bridge.js"
 )
 set(ODR_FRONTEND_ASSET_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/odr/internal/html/frontend")
 # Generated rather than installed: it is an implementation detail of one source

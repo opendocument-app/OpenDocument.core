@@ -170,6 +170,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
       !on_click.isUndefined() && !on_click.isNull()) {
     config.sheet_edit_on_click = on_click.as<bool>();
   }
+  read(value, "hostMessageHandler", config.host_message_handler);
   read(value, "textDocumentMargin", config.text_document_margin);
   read(value, "formatHtml", config.format_html);
 

@@ -664,6 +664,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_boolean("keyboardShortcuts", config.keyboard_shortcuts);
   set_object("sheetEditOnClick", "Ljava/lang/Boolean;",
              box_boolean(env, config.sheet_edit_on_click));
+  set_string("hostMessageHandler", config.host_message_handler);
   set_boolean("textDocumentMargin", config.text_document_margin);
   set_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;",
              enum_from_code(env, "app/opendocument/core/HtmlColorScheme",
@@ -801,6 +802,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
     result.sheet_edit_on_click = boolean_from_java(env, on_click);
     env->DeleteLocalRef(on_click);
   }
+  result.host_message_handler = get_string("hostMessageHandler");
   result.text_document_margin = get_boolean("textDocumentMargin");
   {
     const jint code = enum_ordinal(
