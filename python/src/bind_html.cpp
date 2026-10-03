@@ -77,6 +77,8 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("page_output_file_name",
                      &odr::HtmlConfig::page_output_file_name)
       .def_readwrite("embed_images", &odr::HtmlConfig::embed_images)
+      .def_readwrite("allow_external_content",
+                     &odr::HtmlConfig::allow_external_content)
       .def_readwrite("embed_shipped_resources",
                      &odr::HtmlConfig::embed_shipped_resources)
       .def_readwrite("resource_path", &odr::HtmlConfig::resource_path)

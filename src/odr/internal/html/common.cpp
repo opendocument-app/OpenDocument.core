@@ -338,6 +338,31 @@ std::string_view html::link_target_attributes(const UriKind kind) {
              : std::string_view();
 }
 
+html::LinkTarget html::link_target(const std::string_view href,
+                                   const HtmlConfig &config) {
+  const UriKind kind = uri_kind(href);
+  const bool keeps = kind == UriKind::external ||
+                     (kind == UriKind::relative &&
+                      (href.starts_with('#') || config.allow_external_content));
+  if (!keeps) {
+    return {};
+  }
+  return {std::string(href), link_target_attributes(kind)};
+}
+
+bool html::loads_external_source(std::string_view source,
+                                 const HtmlConfig &config) {
+  // browsers strip the same bytes before they read the scheme
+  while (!source.empty() &&
+         static_cast<unsigned char>(source.front()) <= 0x20) {
+    source.remove_prefix(1);
+  }
+  if (util::string::starts_with_ignore_case(source, "data:image/")) {
+    return true;
+  }
+  return config.allow_external_content && uri_kind(source) != UriKind::refused;
+}
+
 std::string
 html::fill_path_variables(const std::string &path,
                           const std::optional<std::uint32_t> index) {

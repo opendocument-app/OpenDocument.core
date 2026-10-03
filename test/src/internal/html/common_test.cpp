@@ -455,3 +455,37 @@ TEST(html_common, a_dark_fill_is_what_the_sheet_editor_computes) {
   EXPECT_EQ(dark(0xff0000), "#680004");
   EXPECT_EQ(dark(0xdce6f2), "#142130");
 }
+
+TEST(html_common, a_protected_link_leaves_only_through_a_navigable_scheme) {
+  const HtmlConfig config;
+  EXPECT_EQ(ihtml::link_target("https://x.example", config).href,
+            "https://x.example");
+  EXPECT_FALSE(
+      ihtml::link_target("https://x.example", config).attributes.empty());
+  EXPECT_EQ(ihtml::link_target("#top", config).href, "#top");
+  EXPECT_TRUE(ihtml::link_target("#top", config).attributes.empty());
+  EXPECT_FALSE(ihtml::link_target("other.html", config).href.has_value());
+  EXPECT_FALSE(ihtml::link_target("javascript:x", config).href.has_value());
+}
+
+TEST(html_common, external_content_keeps_a_relative_link) {
+  HtmlConfig config;
+  config.allow_external_content = true;
+  EXPECT_EQ(ihtml::link_target("other.html", config).href, "other.html");
+  EXPECT_TRUE(ihtml::link_target("other.html", config).attributes.empty());
+  EXPECT_FALSE(ihtml::link_target("javascript:x", config).href.has_value());
+}
+
+TEST(html_common, an_external_source_loads_only_with_external_content) {
+  HtmlConfig config;
+  EXPECT_FALSE(ihtml::loads_external_source("https://x.example/a.png", config));
+  EXPECT_FALSE(ihtml::loads_external_source("a.png", config));
+  EXPECT_TRUE(ihtml::loads_external_source(" DATA:image/png;base64,", config));
+  EXPECT_FALSE(ihtml::loads_external_source("data:text/html,x", config));
+
+  config.allow_external_content = true;
+  EXPECT_TRUE(ihtml::loads_external_source("https://x.example/a.png", config));
+  EXPECT_TRUE(ihtml::loads_external_source("a.png", config));
+  EXPECT_FALSE(ihtml::loads_external_source("javascript:x", config));
+  EXPECT_FALSE(ihtml::loads_external_source("file:///etc/passwd", config));
+}

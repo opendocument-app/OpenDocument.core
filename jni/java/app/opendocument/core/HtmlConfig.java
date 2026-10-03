@@ -13,6 +13,11 @@ public final class HtmlConfig {
   public String pageOutputFileName = "page{index}.html";
 
   public boolean embedImages = true;
+  /**
+   * Load the images a document names outside itself, and keep its relative links. Off, only a
+   * navigable scheme leaves the view, in a new window.
+   */
+  public boolean allowExternalContent = false;
   public boolean embedShippedResources = true;
 
   /** {@code null} keeps the native default (the odr core data path). */

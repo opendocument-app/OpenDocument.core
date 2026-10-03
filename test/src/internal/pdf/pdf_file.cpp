@@ -60,10 +60,11 @@ std::size_t count(const std::string &haystack, const std::string &needle) {
   return result;
 }
 
-/// A three-page mini-PDF whose first page carries four `/Link` annotations: a
+/// A three-page mini-PDF whose first page carries five `/Link` annotations: a
 /// `/URI` action, a direct `/Dest` array to page 2, a `/GoTo` action to a named
-/// destination (`chap3` → page 3, via the catalog `/Dests`), and a `/URI`
-/// action with a `javascript:` scheme (which must not become a live link).
+/// destination (`chap3` → page 3, via the catalog `/Dests`), a `/URI` action
+/// with a `javascript:` scheme (which must not become a live link), and a
+/// relative `/URI`.
 std::string link_annotations_mini_pdf() {
   PdfFileBuilder builder;
   builder
@@ -71,7 +72,7 @@ std::string link_annotations_mini_pdf() {
               "/Dests << /chap3 [5 0 R /Fit] >> >>")
       .object("<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-              "/Annots [6 0 R 7 0 R 8 0 R 9 0 R] >>")
+              "/Annots [6 0 R 7 0 R 8 0 R 9 0 R 10 0 R] >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
       .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
       .object("<< /Type /Annot /Subtype /Link /Rect [100 700 200 720] "
@@ -81,7 +82,9 @@ std::string link_annotations_mini_pdf() {
       .object("<< /Type /Annot /Subtype /Link /Rect [100 500 200 520] "
               "/A << /S /GoTo /D (chap3) >> >>")
       .object("<< /Type /Annot /Subtype /Link /Rect [100 400 200 420] "
-              "/A << /S /URI /URI (javascript:alert\\(1\\)) >> >>");
+              "/A << /S /URI /URI (javascript:alert\\(1\\)) >> >>")
+      .object("<< /Type /Annot /Subtype /Link /Rect [100 300 200 320] "
+              "/A << /S /URI /URI (other.pdf) >> >>");
   return builder.trailer("/Root 1 0 R").build_classic();
 }
 
@@ -220,6 +223,18 @@ TEST(PdfFile, link_annotations_render_as_anchors) {
     EXPECT_FALSE(contains(html, "javascript:alert"))
         << "mode " << static_cast<int>(mode);
   }
+}
+
+TEST(PdfFile, a_relative_uri_links_only_with_external_content) {
+  const std::string pdf = link_annotations_mini_pdf();
+  EXPECT_FALSE(
+      contains(render_html(pdf, PdfTextMode::dual_layer), "other.pdf"));
+
+  HtmlConfig config;
+  config.allow_external_content = true;
+  const std::string html =
+      render_path(make_service(pdf, config), "document.html");
+  EXPECT_TRUE(contains(html, R"(href="other.pdf" style=)"));
 }
 
 // A `Tm` scaling x and y differently takes the CSS matrix path: glyphs shown

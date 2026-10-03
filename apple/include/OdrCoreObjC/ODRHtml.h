@@ -83,6 +83,9 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, copy) NSString *pageOutputFileName;
 
 @property(nonatomic) BOOL embedImages;
+/// Load the images a document names outside itself, and keep its relative
+/// links. Off, only a navigable scheme leaves the view, in a new window.
+@property(nonatomic) BOOL allowExternalContent;
 @property(nonatomic) BOOL embedShippedResources;
 
 /// Where the shipped css/js live. `nil` keeps odrcore's own data path, which is

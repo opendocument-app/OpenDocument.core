@@ -93,10 +93,9 @@ struct LinkOut {
   double top{0};
   double width{0};
   double height{0};
-  std::string href;     ///< external URI or an internal target (a "#pN" anchor
-                        ///< or a "pageN.html" page view); already attr-escaped
-  bool internal{false}; ///< true for an internal target (needs
-                        ///< `target="_self"`)
+  std::string href; ///< external URI or an internal target (a "#pN" anchor
+                    ///< or a "pageN.html" page view); already attr-escaped
+  std::string_view target_attributes; ///< see @ref link_target
 };
 
 /// A link's 0-based target page index to the href navigating to it. Returns ""
@@ -218,7 +217,8 @@ void write_pdf_body_begin(HtmlWriter &out, const HtmlConfig &config) {
 std::vector<LinkOut> collect_page_links(const pdf::Page &page,
                                         const util::math::Transform2D &to_box,
                                         LinkResolver &resolver,
-                                        const PageHref &page_href) {
+                                        const PageHref &page_href,
+                                        const HtmlConfig &config) {
   std::vector<LinkOut> links;
   pdf::DocumentParser &parser = resolver.parser;
   for (const pdf::Annotation *annotation : page.annotations) {
@@ -238,7 +238,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     const std::vector<double> r = rect.as_reals();
 
     std::string href;
-    bool internal = false;
+    std::string_view target_attributes;
     if (dictionary.has_value("A")) {
       const pdf::Object action =
           parser.resolve_object_copy(dictionary.get("A"));
@@ -248,13 +248,14 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
         const std::string kind = s.is_name() ? s.as_name() : "";
         if (kind == "URI" && a.has_value("URI")) {
           const pdf::Object uri = parser.resolve_object_copy(a.get("URI"));
-          if (uri.is_string() && is_safe_uri(uri.as_string())) {
-            href = uri.as_string();
+          if (uri.is_string()) {
+            const LinkTarget target = link_target(uri.as_string(), config);
+            href = target.href.value_or("");
+            target_attributes = target.attributes;
           }
         } else if (kind == "GoTo" && a.has_value("D")) {
           if (const auto index = resolver.resolve_dest_page(a.get("D"))) {
             href = page_href(*index);
-            internal = true;
           }
         }
       }
@@ -263,7 +264,6 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
       if (const auto index =
               resolver.resolve_dest_page(dictionary.get("Dest"))) {
         href = page_href(*index);
-        internal = true;
       }
     }
     if (href.empty()) {
@@ -278,7 +278,7 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
     link.width = std::abs(p1[0] - p0[0]);
     link.height = std::abs(p1[1] - p0[1]);
     link.href = xml::escape_attribute(std::move(href));
-    link.internal = internal;
+    link.target_attributes = target_attributes;
     links.push_back(std::move(link));
   }
   return links;
@@ -291,8 +291,8 @@ void write_page_links(HtmlWriter &out, const std::vector<LinkOut> &links) {
     std::ostringstream a;
     // A `#pN` link scrolls this page; a `/URI` action leaves it.
     a << "<a class=\"lk\" href=\"" << link.href << '"';
-    if (!link.internal) {
-      a << ' ' << link_target_attributes(UriKind::external);
+    if (!link.target_attributes.empty()) {
+      a << ' ' << link.target_attributes;
     }
     a << " style=\"left:" << round2(link.left) << "pt;top:" << round2(link.top)
       << "pt;width:" << round2(link.width)
@@ -1491,7 +1491,7 @@ public:
       page_out.width = width;
       page_out.height = height;
       page_out.links =
-          collect_page_links(*page, to_box, link_resolver, page_href);
+          collect_page_links(*page, to_box, link_resolver, page_href, config());
 
       std::string stream;
       for (const auto &ref : page->contents_reference) {
@@ -2207,7 +2207,7 @@ public:
       page_out.width = width;
       page_out.height = height;
       page_out.links =
-          collect_page_links(page, to_box, link_resolver, page_href);
+          collect_page_links(page, to_box, link_resolver, page_href, config());
 
       ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()),
                          clip_font_family);
