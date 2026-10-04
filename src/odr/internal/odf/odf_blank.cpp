@@ -10,12 +10,13 @@
 #include <memory>
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 namespace odr::internal::odf {
 
 namespace {
 
-constexpr std::string_view namespaces =
+constexpr std::string_view root_attributes =
     R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
     R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
     R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
@@ -85,7 +86,7 @@ std::string manifest(const Blank &blank) {
 std::string meta() {
   std::string result(declaration);
   result += "<office:document-meta";
-  result += namespaces;
+  result += root_attributes;
   result += "><office:meta><meta:generator>odr</meta:generator></office:meta>"
             "</office:document-meta>";
   return result;
@@ -94,7 +95,7 @@ std::string meta() {
 std::string styles(const Blank &blank) {
   std::string result(declaration);
   result += "<office:document-styles";
-  result += namespaces;
+  result += root_attributes;
   result += "><office:font-face-decls>";
   result += blank.font_face_decls;
   result += "</office:font-face-decls><office:styles>";
@@ -112,10 +113,10 @@ std::string styles(const Blank &blank) {
 std::string content(const Blank &blank) {
   std::string result(declaration);
   result += "<office:document-content";
-  result += namespaces;
+  result += root_attributes;
   result += "><office:font-face-decls>";
   result += blank.font_face_decls;
-  result += "</office:font-face-decls><office:automatic-styles/><office:body>";
+  result += "</office:font-face-decls><office:body>";
   result += blank.body;
   result += "</office:body></office:document-content>";
   return result;
@@ -127,18 +128,17 @@ std::string blank_package(const FileType type) {
   const Blank &blank = find_blank(type);
 
   zip::ZipArchive archive;
-  const auto insert = [&](const char *path, std::string data,
-                          const std::uint32_t compression_level) {
-    archive.insert_file(std::end(archive), RelPath(path),
-                        std::make_shared<MemoryFile>(std::move(data)),
-                        compression_level);
-  };
   // ODF 1.3 part 2, 3.3: `mimetype` is the first file and stored
-  insert("mimetype", std::string(blank.mimetype), 0);
-  insert("META-INF/manifest.xml", manifest(blank), 6);
-  insert("meta.xml", meta(), 6);
-  insert("styles.xml", styles(blank), 6);
-  insert("content.xml", content(blank), 6);
+  archive.insert_file(std::end(archive), RelPath("mimetype"),
+                      std::make_shared<MemoryFile>(std::string(blank.mimetype)),
+                      0);
+  for (auto [path, data] :
+       {std::pair{"META-INF/manifest.xml", manifest(blank)},
+        std::pair{"meta.xml", meta()}, std::pair{"styles.xml", styles(blank)},
+        std::pair{"content.xml", content(blank)}}) {
+    archive.insert_file(std::end(archive), RelPath(path),
+                        std::make_shared<MemoryFile>(std::move(data)));
+  }
 
   std::stringstream out;
   archive.save(out);

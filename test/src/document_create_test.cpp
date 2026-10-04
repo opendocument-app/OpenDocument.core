@@ -86,14 +86,21 @@ TEST(DocumentCreate, odt_takes_an_edit_and_keeps_it_through_a_save) {
   const Paragraph first =
       (*document.root_element().children().begin()).as_paragraph();
 
-  std::ignore = document.append_text(first, "hello");
+  const Text hello = document.append_text(first, "hello");
+  TextStyle bold;
+  bold.font_weight = FontWeight::bold;
+  hello.set_style(bold);
   const Paragraph second = document.insert_paragraph_after(first);
   std::ignore = document.append_text(second, "world");
 
   const Document saved = reopen(document);
   const std::vector<Element> body = children(saved.root_element());
   ASSERT_EQ(body.size(), 2);
-  EXPECT_EQ(children(body[0]).at(0).as_text().content(), "hello");
+  const Element span = children(body[0]).at(0);
+  ASSERT_EQ(span.type(), ElementType::span);
+  const Text saved_hello = children(span).at(0).as_text();
+  EXPECT_EQ(saved_hello.content(), "hello");
+  EXPECT_EQ(saved_hello.style().font_weight, FontWeight::bold);
   EXPECT_EQ(children(body[1]).at(0).as_text().content(), "world");
 }
 
