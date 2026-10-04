@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <mutex>
@@ -367,8 +368,12 @@ bool writable(const CellValue &value) {
   case ValueType::boolean:
     return true;
   case ValueType::date:
+    // the years an `office:date-value` spells in four digits
+    return value.has_number() &&
+           value.number() >= number_format::days_from_civil(1, 1, 1) &&
+           value.number() < number_format::days_from_civil(10000, 1, 1);
   case ValueType::time:
-    return value.has_number();
+    return value.has_number() && std::isfinite(value.number());
   case ValueType::error:
     return false;
   }

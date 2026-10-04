@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -785,5 +786,18 @@ TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
   const Document document = dated_sheet();
 
   EXPECT_THROW(first_sheet(document).set_cell(1, 0, CellValue(ValueType::date)),
+               UnsupportedOperation);
+}
+
+TEST(OdfSheetWrite, a_date_past_9999_or_an_infinite_time_refuses) {
+  const Document document = dated_sheet();
+
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   1, 0, CellValue(ValueType::date).with_number(3e6)),
+               UnsupportedOperation);
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   2, 0,
+                   CellValue(ValueType::time)
+                       .with_number(std::numeric_limits<double>::infinity())),
                UnsupportedOperation);
 }
