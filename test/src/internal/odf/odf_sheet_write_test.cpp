@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -695,4 +696,108 @@ TEST(OdfSheetWrite, a_number_takes_the_data_style_of_its_cell) {
       << saved.str();
   EXPECT_NE(saved.str().find("<text:p>1234,5</text:p>"), std::string::npos);
   EXPECT_NE(saved.str().find(R"(office:value="1234.5")"), std::string::npos);
+}
+
+namespace {
+
+/// A sheet of four cells: a `dd.mm.yyyy` date style, two without a data style,
+/// and an `hh:mm` time style.
+Document dated_sheet() {
+  return document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:styles><number:date-style style:name="D1">)"
+      R"(<number:day number:style="long"/><number:text>.</number:text>)"
+      R"(<number:month number:style="long"/><number:text>.</number:text>)"
+      R"(<number:year number:style="long"/></number:date-style>)"
+      R"(<number:time-style style:name="T1"><number:hours number:style="long"/>)"
+      R"(<number:text>:</number:text><number:minutes number:style="long"/>)"
+      R"(</number:time-style>)"
+      R"(</office:styles><office:automatic-styles><style:style)"
+      R"( style:name="ce1" style:family="table-cell" style:data-style-name="D1"/>)"
+      R"(<style:style style:name="ce2" style:family="table-cell")"
+      R"( style:data-style-name="T1"/>)"
+      R"(</office:automatic-styles><office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s"><table:table-row>)"
+      R"(<table:table-cell table:style-name="ce1"/><table:table-cell/>)"
+      R"(<table:table-cell/><table:table-cell table:style-name="ce2"/>)"
+      R"(</table:table-row></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)");
+}
+
+std::string saved_of(const Document &document) {
+  std::ostringstream saved;
+  document.save(saved);
+  return saved.str();
+}
+
+} // namespace
+
+TEST(OdfSheetWrite, a_date_and_a_time_are_written) {
+  const Document document = dated_sheet();
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 0,
+                 CellValue(ValueType::date)
+                     .with_number(45659.75)
+                     .with_text("1/2/2025 18:00"));
+  sheet.set_cell(
+      2, 0,
+      CellValue(ValueType::time).with_number(18.5 / 24).with_text("18:30"));
+
+  const std::string xml = saved_of(document);
+  EXPECT_NE(xml.find(R"(office:value-type="date")"
+                     R"( office:date-value="2025-01-02T18:00:00"><text:p>)"
+                     R"(1/2/2025 18:00</text:p>)"),
+            std::string::npos)
+      << xml;
+  EXPECT_NE(xml.find(R"(office:value-type="time")"
+                     R"( office:time-value="PT18H30M00S"><text:p>18:30)"),
+            std::string::npos);
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45659.75);
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 18.5 / 24);
+}
+
+TEST(OdfSheetWrite, a_date_takes_the_date_style_of_its_cell) {
+  const Document document = dated_sheet();
+
+  document.edit(R"({"version": 2, "ops": [{"op": "setCell", "sheet": 0,)"
+                R"( "column": 0, "row": 0, "value": {"type": "date",)"
+                R"( "number": 45659, "text": "1/2/2025"}}]})");
+
+  EXPECT_NE(saved_of(document).find(R"(office:date-value="2025-01-02")"
+                                    R"(><text:p>02.01.2025</text:p>)"),
+            std::string::npos);
+}
+
+TEST(OdfSheetWrite, a_time_takes_the_time_style_of_its_cell) {
+  const Document document = dated_sheet();
+
+  first_sheet(document).set_cell(
+      3, 0,
+      CellValue(ValueType::time).with_number(18.5 / 24).with_text("6:30 PM"));
+
+  EXPECT_NE(saved_of(document).find("<text:p>18:30</text:p>"),
+            std::string::npos);
+}
+
+TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
+  const Document document = dated_sheet();
+
+  EXPECT_THROW(first_sheet(document).set_cell(1, 0, CellValue(ValueType::date)),
+               UnsupportedOperation);
+}
+
+TEST(OdfSheetWrite, a_date_past_9999_or_an_infinite_time_refuses) {
+  const Document document = dated_sheet();
+
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   1, 0, CellValue(ValueType::date).with_number(3e6)),
+               UnsupportedOperation);
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   2, 0,
+                   CellValue(ValueType::time)
+                       .with_number(std::numeric_limits<double>::infinity())),
+               UnsupportedOperation);
 }

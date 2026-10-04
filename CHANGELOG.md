@@ -20,6 +20,9 @@ The release run heads these entries with the version and opens a fresh
   the file counts from, and a time its length in days: an ods date or time
   now states one, and an xlsx date of a 1904 workbook counts 1462 days more. A `setCell` op takes
   `"date"` and `"time"` values.
+- An ods cell takes a written date or time: `office:date-value` or
+  `office:time-value`, and the text of its date or time style where it has
+  one.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or
