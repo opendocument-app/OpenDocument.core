@@ -383,7 +383,7 @@ public:
   /// the cell away, because it can ask no reader to recompute. An ooxml one
   /// keeps them: every save sets `calcPr/@fullCalcOnLoad`.
   /// @throws UnsupportedOperation where the cell cannot be written, or where
-  ///         @p value holds a formula - nothing here evaluates one.
+  ///         @p value holds a formula or a nonfinite numeric value.
   /// @throws ValueNotStated where @p value is typed a number and states none.
   void set_cell(std::uint32_t column, std::uint32_t row,
                 const CellValue &value) const;

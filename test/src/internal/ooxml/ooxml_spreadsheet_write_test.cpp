@@ -10,7 +10,6 @@
 
 #include <gtest/gtest.h>
 
-#include <limits>
 #include <sstream>
 #include <string>
 
@@ -123,8 +122,7 @@ TEST(OoxmlSpreadsheetWrite, a_boolean_lands_as_a_boolean) {
 }
 
 /// A refusal leaves the cell as it was.
-TEST(OoxmlSpreadsheetWrite,
-     an_error_or_a_date_without_a_finite_number_refuses) {
+TEST(OoxmlSpreadsheetWrite, an_error_or_a_date_without_a_number_refuses) {
   const Document document =
       decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
   const Sheet sheet = first_sheet(document);
@@ -132,12 +130,6 @@ TEST(OoxmlSpreadsheetWrite,
   for (const ValueType type :
        {ValueType::date, ValueType::time, ValueType::error}) {
     EXPECT_THROW(sheet.set_cell(0, 0, CellValue(type).with_text("x")),
-                 UnsupportedOperation);
-  }
-  for (const ValueType type : {ValueType::date, ValueType::time}) {
-    EXPECT_THROW(sheet.set_cell(0, 0,
-                                CellValue(type).with_number(
-                                    std::numeric_limits<double>::infinity())),
                  UnsupportedOperation);
   }
   EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);

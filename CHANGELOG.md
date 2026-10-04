@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet edits reject NaN and infinite numeric values before changing
+  cells or dimensions, consistently across CSV, ODS and XLSX.
+
 - XLSX workbooks without a styles part open and accept formatting edits;
   saving adds the styles part and its package declarations.
 
