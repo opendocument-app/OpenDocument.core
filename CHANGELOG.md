@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- iWork dates enforce the calendar range and format expanded years with their
+  sign; oversized decimal128 coefficients consistently decode as zero.
+
 - iWork validates UTF-8 throughout text storage and string cells, including
   the final paragraph; attachment traversal no longer rescans every anchor
   for every paragraph.

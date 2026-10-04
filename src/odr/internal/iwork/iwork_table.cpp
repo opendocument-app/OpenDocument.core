@@ -18,6 +18,7 @@
 #include <string_view>
 #include <unordered_map>
 
+#include <fmt/format.h>
 #include <utf8cpp/utf8/checked.h>
 
 namespace odr::internal::iwork {
@@ -112,11 +113,8 @@ constexpr std::array<Value, 5> value_layout{{
     {cell::flag::rich_text_key, 4},
 }};
 
-/// The largest instant either formatter reads, in seconds. `std::chrono::year`
-/// runs to ±32767, so a second beyond this names no date a calendar has —
-/// and the `std::int64_t` the seconds are cast to holds this with room to
-/// spare, which is what keeps the cast defined.
-constexpr double max_instant = 1e12;
+/// Limits duration conversion before rounding to an integer.
+constexpr double max_duration = 1e12;
 
 /// The offset of the value @p flag names within @p record, or nothing when the
 /// flags do not carry it or it would run past the record.
@@ -351,7 +349,7 @@ std::string iwork::decimal128_to_string(const std::string_view bytes) {
   while (!is_zero(coefficient)) {
     digits.push_back(static_cast<char>('0' + divide_by_ten(coefficient)));
   }
-  if (digits.empty()) {
+  if (digits.empty() || digits.size() > 34) {
     return "0";
   }
 
@@ -383,45 +381,34 @@ std::string iwork::decimal128_to_string(const std::string_view bytes) {
 }
 
 std::string iwork::date_to_string(const double seconds) {
-  // an instant is cast to `std::int64_t` below, which is undefined for a value
-  // the type cannot hold, and no `std::chrono::year` can name one this far out
-  // anyway — so a value beyond the calendar is read as no date at all
-  if (!std::isfinite(seconds) || std::abs(seconds) > max_instant) {
+  using namespace std::chrono;
+  constexpr sys_days epoch{year{2001} / January / 1};
+  constexpr auto first = sys_days{year::min() / January / 1};
+  constexpr auto last = sys_days{year::max() / December / 31} + days{1};
+  constexpr auto minimum =
+      duration_cast<std::chrono::seconds>(first - epoch).count();
+  constexpr auto maximum =
+      duration_cast<std::chrono::seconds>(last - epoch).count();
+  if (!std::isfinite(seconds) || seconds < minimum || seconds >= maximum) {
     return {};
   }
 
-  // days since the epoch, and the second within the day, with a negative
-  // instant flooring rather than truncating toward zero
   const auto total = static_cast<std::int64_t>(std::floor(seconds));
-  auto days = static_cast<std::int64_t>(std::floor(total / 86400.0));
-  auto rest = static_cast<std::int32_t>(total - days * 86400);
-
-  // Apple counts from 2001-01-01, which is 11323 days after 1970-01-01
-  days += 11323;
-
-  const std::chrono::year_month_day date{
-      std::chrono::sys_days(std::chrono::days(days))};
-
-  const auto pad = [](const std::int32_t value, const std::size_t width) {
-    std::string digits = std::to_string(value);
-    return digits.size() >= width
-               ? digits
-               : std::string(width - digits.size(), '0') + digits;
-  };
-
-  return pad(static_cast<std::int32_t>(date.year()), 4) + "-" +
-         pad(static_cast<std::int32_t>(
-                 static_cast<std::uint32_t>(date.month())),
-             2) +
-         "-" +
-         pad(static_cast<std::int32_t>(static_cast<std::uint32_t>(date.day())),
-             2) +
-         "T" + pad(rest / 3600, 2) + ":" + pad(rest / 60 % 60, 2) + ":" +
-         pad(rest % 60, 2) + "Z";
+  const auto day_count = static_cast<std::int64_t>(std::floor(total / 86400.0));
+  const auto rest = static_cast<std::int32_t>(total - day_count * 86400);
+  const year_month_day date{epoch + days{day_count}};
+  const auto year_number = static_cast<std::int32_t>(date.year());
+  const std::string year_text = year_number >= 0 && year_number <= 9999
+                                    ? fmt::format("{:04}", year_number)
+                                    : fmt::format("{:+07}", year_number);
+  return fmt::format("{}-{:02}-{:02}T{:02}:{:02}:{:02}Z", year_text,
+                     static_cast<std::uint32_t>(date.month()),
+                     static_cast<std::uint32_t>(date.day()), rest / 3600,
+                     rest / 60 % 60, rest % 60);
 }
 
 std::string iwork::duration_to_string(const double seconds) {
-  if (!std::isfinite(seconds) || std::abs(seconds) > max_instant) {
+  if (!std::isfinite(seconds) || std::abs(seconds) > max_duration) {
     return {};
   }
 
