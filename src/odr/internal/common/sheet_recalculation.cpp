@@ -176,12 +176,17 @@ CellValue cell_value_of(const formula::Value &value) {
 
 } // namespace
 
-bool is_edited(const abstract::Document &document) {
+} // namespace odr::internal
+
+namespace odr {
+
+bool internal::is_edited(const abstract::Document &document) {
   const auto *edited = dynamic_cast<const Document *>(&document);
   return edited != nullptr && (edited->moved() || !edited->written().empty());
 }
 
-SheetRecalculation recalculate(const abstract::Document &document) {
+internal::SheetRecalculation
+internal::recalculate(const abstract::Document &document) {
   SheetRecalculation result;
   const std::optional<formula::Syntax> syntax =
       formula::syntax_of(document.file_type());
@@ -330,4 +335,4 @@ SheetRecalculation recalculate(const abstract::Document &document) {
   return result;
 }
 
-} // namespace odr::internal
+} // namespace odr

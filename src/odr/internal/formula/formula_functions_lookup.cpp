@@ -658,6 +658,12 @@ constexpr std::array entries{
 
 } // namespace
 
-std::span<const FunctionEntry> lookup_functions() { return entries; }
-
 } // namespace odr::internal::formula
+
+namespace odr::internal {
+
+std::span<const formula::FunctionEntry> formula::lookup_functions() {
+  return entries;
+}
+
+} // namespace odr::internal
