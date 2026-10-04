@@ -478,6 +478,9 @@ Element Document::root_element() const {
 
 Element Document::element_by_id(const ElementIdentifier identifier) const {
   const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  if (adapter == nullptr || identifier == null_element_id) {
+    return {};
+  }
   try {
     // throwing is how a registry answers an id it does not hold
     static_cast<void>(adapter->element_type(identifier));
@@ -488,7 +491,7 @@ Element Document::element_by_id(const ElementIdentifier identifier) const {
 }
 
 ElementIdentifier Document::check_(const Element &element) const {
-  if (element_by_id(element.identifier()) != element) {
+  if (!element || element_by_id(element.identifier()) != element) {
     throw std::invalid_argument("element is not this document's");
   }
   return element.identifier();

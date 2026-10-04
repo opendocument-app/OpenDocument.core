@@ -82,6 +82,20 @@ std::string packaged_text(const std::string &name, const std::string &body) {
 
 } // namespace
 
+TEST(FlatOdf, missing_related_elements_return_empty_handles) {
+  const Document document = open(File::from_memory(flat_text("<table:table/>")))
+                                .as_document_file()
+                                .document();
+  EXPECT_FALSE(document.root_element().as_text_root().first_master_page());
+  const Table table =
+      first_of_type(document.root_element(), ElementType::table).as_table();
+  ASSERT_TRUE(table);
+  EXPECT_FALSE(table.first_row());
+  EXPECT_FALSE(table.first_column());
+  EXPECT_FALSE(document.element_by_id(null_element_id));
+  EXPECT_THROW(document.remove(Element()), std::invalid_argument);
+}
+
 TEST(FlatOpenDocumentFile, the_root_mimetype_names_the_document_type) {
   const struct {
     const char *mimetype;

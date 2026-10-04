@@ -326,6 +326,9 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
 std::vector<FileType>
 open_strategy::list_file_types(const std::shared_ptr<abstract::File> &file,
                                const Logger &logger) {
+  if (file == nullptr) {
+    throw NullPointerError("file");
+  }
   std::vector<FileType> result;
 
   auto file_type = magic::file_type(*file);
@@ -659,6 +662,9 @@ open_by_probe(const std::shared_ptr<abstract::File> &file,
 std::unique_ptr<abstract::DecodedFile>
 open_strategy::open_file(const std::shared_ptr<abstract::File> &file,
                          const DecodeOptions &options, const Logger &logger) {
+  if (file == nullptr) {
+    throw NullPointerError("file");
+  }
   // A named type is not a probe with one candidate: there is nothing to move
   // on to, so the format's own "not a ..." reaches the caller rather than
   // being collapsed into UnknownFileType.

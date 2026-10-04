@@ -43,6 +43,7 @@ enum class HtmlResourceType {
 /// font. @ref HtmlConfig decides which are embedded and which are linked.
 class HtmlResource final {
 public:
+  /// Empty handle; accessing it throws `NullPointerError`.
   HtmlResource();
   explicit HtmlResource(std::shared_ptr<internal::abstract::HtmlResource> impl);
 
@@ -276,6 +277,7 @@ struct HtmlSheetCut final {
 /// needs.
 class HtmlView final {
 public:
+  /// Empty handle; accessing it throws `NullPointerError`.
   HtmlView();
   explicit HtmlView(std::shared_ptr<internal::abstract::HtmlView> impl);
 
@@ -306,6 +308,7 @@ using HtmlViews = std::vector<HtmlView>;
 /// puts on a socket.
 class HtmlService final {
 public:
+  /// Empty handle; accessing it throws `NullPointerError`.
   HtmlService();
   explicit HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl);
 

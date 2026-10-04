@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Empty file and HTML handles throw instead of dereferencing null.
+  Missing master pages and table rows/columns return empty element handles.
+
 - Copied filesystem walkers keep independent traversal positions on disk,
   matching walkers over archives and memory filesystems.
 
