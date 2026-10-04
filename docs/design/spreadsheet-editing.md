@@ -389,6 +389,57 @@ nothing.
 After a commit the page shows the typed text until the host renders again:
 the formatter runs in C++ only, as the evaluator will (decision 5).
 
+## Typed dates and times
+
+Status: planned. The steps land as a stack, in this order:
+
+1. A date or time value states its serial, and the op carries one.
+2. The ods writer writes a date and a time.
+3. The xlsx writer writes them, and gives the cell a date format.
+4. The sheet editor reads a typed date or time, and opens a date cell on it.
+
+### 17. A date is a serial counted from 1899-12-30
+
+`CellValue` of `ValueType::date` states its number as days since 1899-12-30,
+the time of day in the fraction, whatever the file counts from. This is the
+1900 system from 1900-03-01 on. A `time` is a duration and states its length
+in days, which no epoch moves.
+
+- `.ods` states an ISO 8601 date in `office:date-value` and a duration in
+  `office:time-value`. The date is absolute, so `table:null-date`, which only
+  says how a formula counts, does not move it.
+- `.xlsx` states a serial. A 1904 workbook adds 1462 days. A 1900 serial
+  before 61 adds one, because 1900-02-29 never was, and 60 stays on 1900-03-01.
+
+The op is `{"type": "date", "number": 45658, "text": "1/1/2025"}`, and
+`"time"` the same.
+
+**Why one epoch:** a host or the editor then computes a date once, whatever
+the file.
+
+### 18. A written date takes the format the cell has, or gets one
+
+- `.ods` writes `office:value-type="date"` with `office:date-value`, or
+  `"time"` with `office:time-value`. The `text:p` comes from the cell's date
+  or time data style, else from the typed text.
+- `.xlsx` writes the serial in the workbook's epoch. A cell whose format is
+  not a date or time format gets a built-in one: 14 for a date, 20 or 21 for
+  a time, 22 for both, as Excel does when a date is typed.
+
+### 19. The editor reads a date in the locale's order
+
+ISO 8601 (`2025-01-02`) always reads as a date. Otherwise the order of day,
+month and year and the separator are the ones `Intl.DateTimeFormat` writes for
+the locale, so `1/2/2025` is 2 January in `en-US` and 1 February in `en-GB`. A
+two-digit year below 30 is 20xx, else 19xx, as Excel reads one. A time is
+`h:mm`, `h:mm:ss`, with `AM`/`PM`, alone or after a date.
+
+An editable render states `data-odr-value` on a date or time cell, so the
+editor opens the cell on the locale's spelling of its serial, and a commit of
+it unchanged writes nothing.
+
+Month and day names stay English in what C++ formats: no locale data ships.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -413,5 +464,6 @@ the formatter runs in C++ only, as the evaluator will (decision 5).
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- A typed date or time in the editor, and the locale's month names.
+- Typed dates and times, planned above (decisions 17 to 19).
+- The locale's month and day names in a formatted date.
 - Insert and delete of rows and columns.
