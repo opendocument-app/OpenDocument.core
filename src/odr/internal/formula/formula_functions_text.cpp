@@ -1,6 +1,7 @@
 #include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/formula/formula_text.hpp>
 
+#include <array>
 #include <cmath>
 #include <optional>
 #include <span>
@@ -11,20 +12,21 @@ namespace odr::internal::formula {
 
 namespace {
 
-bool is_libreoffice(const Call &call) {
-  return call.settings().dialect == Dialect::libreoffice;
-}
-
 /// The longest text a cell holds in both applications.
 constexpr std::size_t text_limit = 32767;
 
-/// Argument @p index as a text in UTF-16.
-std::u16string text_argument(const Call &call, const std::size_t index) {
-  const Text text = call.text(call.scalar(index));
+/// Argument @p index as a text.
+std::string string_argument(const Call &call, const std::size_t index) {
+  Text text = call.text(call.scalar(index));
   if (const auto *error = std::get_if<ErrorType>(&text)) {
     throw ErrorResult{*error};
   }
-  std::optional<std::u16string> units = utf16_of(std::get<std::string>(text));
+  return std::move(std::get<std::string>(text));
+}
+
+/// Argument @p index as a text in UTF-16.
+std::u16string text_argument(const Call &call, const std::size_t index) {
+  std::optional<std::u16string> units = utf16_of(string_argument(call, index));
   if (!units.has_value()) {
     throw NoAnswer{};
   }
@@ -57,11 +59,7 @@ Value length(const Call &call) {
 template <bool from_end> Value side(const Call &call) {
   expect_arguments(call, 1, 2);
   const std::u16string text = text_argument(call, 0);
-  double count = 1;
-  if (call.size() > 1) {
-    const double stated = count_argument(call, 1);
-    count = stated;
-  }
+  const double count = call.size() > 1 ? count_argument(call, 1) : 1;
   if (count < 0) {
     return refused(call, ErrorType::value);
   }
@@ -212,11 +210,7 @@ template <bool ignore_case> Value find(const Call &call) {
   expect_arguments(call, 2, 3);
   const std::u16string needle = text_argument(call, 0);
   const std::u16string haystack = text_argument(call, 1);
-  double start = 1;
-  if (call.size() > 2) {
-    const double stated = count_argument(call, 2);
-    start = stated;
-  }
+  const double start = call.size() > 2 ? count_argument(call, 2) : 1;
   if (start < 1 || start > static_cast<double>(haystack.size()) + 1) {
     return Value{ErrorType::value};
   }
@@ -298,8 +292,8 @@ Value replace(const Call &call) {
 
 Value exact(const Call &call) {
   expect_arguments(call, 2, 2);
-  const std::u16string a = text_argument(call, 0);
-  const std::u16string b = text_argument(call, 1);
+  const std::string a = string_argument(call, 0);
+  const std::string b = string_argument(call, 1);
   return Value{a == b};
 }
 
@@ -350,25 +344,25 @@ Value code(const Call &call) {
   return Value{static_cast<double>(text.front())};
 }
 
-constexpr FunctionEntry entries[] = {
-    {"CHAR", character},
-    {"CODE", code},
-    {"CONCAT", concat},
-    {"CONCATENATE", concatenate},
-    {"EXACT", exact},
-    {"FIND", find<false>},
-    {"LEFT", side<false>},
-    {"LEN", length},
-    {"LOWER", change_case<false>},
-    {"MID", middle},
-    {"REPLACE", replace},
-    {"REPT", repeat},
-    {"RIGHT", side<true>},
-    {"SEARCH", find<true>},
-    {"SUBSTITUTE", substitute},
-    {"TRIM", trim},
-    {"UPPER", change_case<true>},
-    {"VALUE", value},
+constexpr std::array entries{
+    FunctionEntry{"CHAR", character},
+    FunctionEntry{"CODE", code},
+    FunctionEntry{"CONCAT", concat},
+    FunctionEntry{"CONCATENATE", concatenate},
+    FunctionEntry{"EXACT", exact},
+    FunctionEntry{"FIND", find<false>},
+    FunctionEntry{"LEFT", side<false>},
+    FunctionEntry{"LEN", length},
+    FunctionEntry{"LOWER", change_case<false>},
+    FunctionEntry{"MID", middle},
+    FunctionEntry{"REPLACE", replace},
+    FunctionEntry{"REPT", repeat},
+    FunctionEntry{"RIGHT", side<true>},
+    FunctionEntry{"SEARCH", find<true>},
+    FunctionEntry{"SUBSTITUTE", substitute},
+    FunctionEntry{"TRIM", trim},
+    FunctionEntry{"UPPER", change_case<true>},
+    FunctionEntry{"VALUE", value},
 };
 
 } // namespace

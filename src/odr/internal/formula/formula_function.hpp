@@ -40,6 +40,8 @@ public:
   /// Argument @p index read as one value: a range gives the cell the
   /// formula's row or column crosses, an array its first element.
   [[nodiscard]] Value scalar(std::size_t index) const;
+  /// @p value read as one value, as @ref scalar reads an argument.
+  [[nodiscard]] Value scalar_of(Value value) const;
   /// Argument @p index read in an array context, as `SUMPRODUCT` reads it:
   /// an operator reads every cell of a range.
   [[nodiscard]] Matrix array(std::size_t index) const;
@@ -72,6 +74,9 @@ struct FunctionEntry final {
 
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Value power(double x, double y, Dialect dialect);
+
+/// Whether @p call follows LibreOffice's rules.
+[[nodiscard]] bool is_libreoffice(const Call &call);
 
 /// An argument a function refuses: @p excel in Excel. LibreOffice states a
 /// code of its own (`Err:502`), which a file cannot hold as an error, so it

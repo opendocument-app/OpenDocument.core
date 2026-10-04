@@ -17,10 +17,6 @@ namespace odr::internal::formula {
 
 namespace {
 
-bool is_libreoffice(const Call &call) {
-  return call.settings().dialect == Dialect::libreoffice;
-}
-
 /// An argument outside the domain of a function.
 Value invalid(const Call &call) { return refused(call, ErrorType::number); }
 

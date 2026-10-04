@@ -701,7 +701,11 @@ Value Call::value(const std::size_t index) const {
 }
 
 Value Call::scalar(const std::size_t index) const {
-  return m_evaluator->scalar(value(index));
+  return scalar_of(value(index));
+}
+
+Value Call::scalar_of(Value value) const {
+  return m_evaluator->scalar(std::move(value));
 }
 
 Matrix Call::array(const std::size_t index) const {

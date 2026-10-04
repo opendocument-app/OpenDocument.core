@@ -2,6 +2,7 @@
 
 #include <odr/internal/util/string_util.hpp>
 
+#include <array>
 #include <cmath>
 #include <optional>
 #include <set>
@@ -12,10 +13,6 @@
 namespace odr::internal::formula {
 
 namespace {
-
-bool is_libreoffice(const Call &call) {
-  return call.settings().dialect == Dialect::libreoffice;
-}
 
 /// A truth value, or the error standing for one.
 using Truth = std::variant<bool, ErrorType>;
@@ -172,7 +169,7 @@ template <bool (*question)(const Call &, const Value &argument,
 Value is(const Call &call) {
   expect_arguments(call, 1, 1);
   const Value argument = call.value(0);
-  return Value{question(call, argument, call.scalar(0))};
+  return Value{question(call, argument, call.scalar_of(argument))};
 }
 
 bool is_blank(const Call &, const Value &, const Value &value) {
@@ -207,9 +204,15 @@ bool is_not_available(const Call &, const Value &, const Value &value) {
          value.get<ErrorType>() == ErrorType::not_available;
 }
 
+/// `ISEVEN` and `ISODD`. Excel refuses a boolean, with an error its
+/// documentation does not name.
 template <bool odd> Value parity(const Call &call) {
   expect_arguments(call, 1, 1);
-  const Number number = call.number(call.scalar(0));
+  const Value value = call.scalar(0);
+  if (value.holds<bool>() && !is_libreoffice(call)) {
+    throw NoAnswer{};
+  }
+  const Number number = call.number(value);
   if (const auto *error = std::get_if<ErrorType>(&number)) {
     return Value{*error};
   }
@@ -240,27 +243,27 @@ Value text_of(const Call &call) {
   return Value{std::string()};
 }
 
-constexpr FunctionEntry entries[] = {
-    {"AND", all},
-    {"CHOOSE", choose},
-    {"IF", condition},
-    {"IFERROR", if_error<false>},
-    {"IFNA", if_error<true>},
-    {"ISBLANK", is<is_blank>},
-    {"ISERR", is<is_err>},
-    {"ISERROR", is<is_error>},
-    {"ISEVEN", parity<false>},
-    {"ISLOGICAL", is<is_logical>},
-    {"ISNA", is<is_not_available>},
-    {"ISNONTEXT", is<is_not_text>},
-    {"ISNUMBER", is<is_number>},
-    {"ISODD", parity<true>},
-    {"ISTEXT", is<is_text>},
-    {"N", number_of},
-    {"NOT", negation},
-    {"OR", any},
-    {"T", text_of},
-    {"XOR", one},
+constexpr std::array entries{
+    FunctionEntry{"AND", all},
+    FunctionEntry{"CHOOSE", choose},
+    FunctionEntry{"IF", condition},
+    FunctionEntry{"IFERROR", if_error<false>},
+    FunctionEntry{"IFNA", if_error<true>},
+    FunctionEntry{"ISBLANK", is<is_blank>},
+    FunctionEntry{"ISERR", is<is_err>},
+    FunctionEntry{"ISERROR", is<is_error>},
+    FunctionEntry{"ISEVEN", parity<false>},
+    FunctionEntry{"ISLOGICAL", is<is_logical>},
+    FunctionEntry{"ISNA", is<is_not_available>},
+    FunctionEntry{"ISNONTEXT", is<is_not_text>},
+    FunctionEntry{"ISNUMBER", is<is_number>},
+    FunctionEntry{"ISODD", parity<true>},
+    FunctionEntry{"ISTEXT", is<is_text>},
+    FunctionEntry{"N", number_of},
+    FunctionEntry{"NOT", negation},
+    FunctionEntry{"OR", any},
+    FunctionEntry{"T", text_of},
+    FunctionEntry{"XOR", one},
 };
 
 } // namespace

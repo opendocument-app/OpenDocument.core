@@ -58,8 +58,12 @@ const std::unordered_map<std::string, Function> &functions() {
 
 namespace odr::internal {
 
+bool formula::is_libreoffice(const Call &call) {
+  return call.settings().dialect == Dialect::libreoffice;
+}
+
 formula::Value formula::refused(const Call &call, const ErrorType excel) {
-  if (call.settings().dialect == Dialect::libreoffice) {
+  if (is_libreoffice(call)) {
     throw NoAnswer{};
   }
   return Value{excel};

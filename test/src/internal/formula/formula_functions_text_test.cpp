@@ -61,6 +61,9 @@ TEST(FormulaFunctionsLogic, the_type_of_a_value) {
   EXPECT_EQ(ods("=ISNA(NA())"), boolean(true));
   EXPECT_EQ(ods("=ISEVEN(3)"), boolean(false));
   EXPECT_EQ(ods("=ISODD(2.5)"), boolean(false));
+  EXPECT_EQ(ods("=ISODD(TRUE())"), boolean(true));
+  // Excel: an error its documentation does not name
+  EXPECT_EQ(xlsx("=ISODD(TRUE)"), std::nullopt);
 }
 
 TEST(FormulaFunctionsLogic, a_boolean_cell_is_a_number_in_libreoffice) {
@@ -144,6 +147,9 @@ TEST(FormulaFunctionsText, a_text_replaces_a_part) {
 TEST(FormulaFunctionsText, a_text_as_a_value) {
   EXPECT_EQ(ods(R"(=EXACT("a";"A"))"), boolean(false));
   EXPECT_EQ(ods(R"(=EXACT("a";"a"))"), boolean(true));
+  // a character past the basic plane, which EXACT does not cut
+  const std::string emoji = "\xF0\x9F\x98\x80";
+  EXPECT_EQ(ods("=EXACT(\"" + emoji + "\";\"" + emoji + "\")"), boolean(true));
   EXPECT_EQ(ods(R"(=VALUE("1e3"))"), number(1000));
   EXPECT_EQ(ods(R"(=VALUE("abc"))"), std::nullopt);
   EXPECT_EQ(xlsx(R"(=VALUE("abc"))"), error(ErrorType::value));

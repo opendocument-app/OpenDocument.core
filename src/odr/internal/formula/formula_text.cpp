@@ -19,15 +19,14 @@ bool is_caseless(const char16_t c) {
 }
 
 /// The other case of @p c within one of the ranges of Latin Extended-A
-/// whose letters alternate, upper case on @p upper_parity.
+/// whose letters alternate, upper case on an odd code where @p upper_odd.
 std::optional<char16_t> alternating(const char16_t c, const char16_t first,
-                                    const char16_t last,
-                                    const unsigned upper_parity,
+                                    const char16_t last, const bool upper_odd,
                                     const bool to_upper) {
   if (c < first || c > last) {
     return std::nullopt;
   }
-  const bool is_upper = (c % 2) == upper_parity;
+  const bool is_upper = (c % 2 == 1) == upper_odd;
   if (is_upper == to_upper) {
     return c;
   }
@@ -63,10 +62,10 @@ std::optional<char16_t> mapped(const char16_t c, const bool to_upper) {
     return std::nullopt;
   }
   for (const auto &[first, last, parity] :
-       {std::tuple<char16_t, char16_t, unsigned>{0x100, 0x137, 0},
-        {0x139, 0x148, 1},
-        {0x14A, 0x177, 0},
-        {0x179, 0x17E, 1}}) {
+       {std::tuple<char16_t, char16_t, bool>{0x100, 0x137, false},
+        {0x139, 0x148, true},
+        {0x14A, 0x177, false},
+        {0x179, 0x17E, true}}) {
     if (const std::optional<char16_t> other =
             alternating(c, first, last, parity, to_upper)) {
       return other;
