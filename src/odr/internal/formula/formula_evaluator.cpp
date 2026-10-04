@@ -21,15 +21,6 @@ std::uint32_t last_of(const std::uint32_t count) {
   return count == 0 ? 0 : count - 1;
 }
 
-/// `a + b`, and 0 where the two cancel to within the precision of a sheet,
-/// as LibreOffice's `rtl::math::approxAdd` does: `0.1+0.2-0.3` is 0.
-double add(const double a, const double b) {
-  if ((a < 0) != (b < 0) && approximately_equal(a, -b)) {
-    return 0;
-  }
-  return a + b;
-}
-
 /// Where a character sorts ignoring case: a digit before a letter. Nothing
 /// for one whose place depends on the collation of the application.
 std::optional<char> primary_of(const char c) {
@@ -126,8 +117,8 @@ std::string canonical_name(std::string_view name) {
 class Evaluator final {
 public:
   Evaluator(const CellSource *source, const Settings *settings,
-            const SheetPosition &cell)
-      : m_source{source}, m_settings{settings}, m_cell{cell} {}
+            const SheetPosition &cell, const Node *root)
+      : m_source{source}, m_settings{settings}, m_cell{cell}, m_root{root} {}
 
   [[nodiscard]] const Settings &settings() const { return *m_settings; }
   [[nodiscard]] const SheetPosition &cell() const { return m_cell; }
@@ -238,6 +229,8 @@ private:
   const CellSource *m_source{nullptr};
   const Settings *m_settings{nullptr};
   SheetPosition m_cell;
+  /// The node of the whole formula.
+  const Node *m_root{nullptr};
 
   [[nodiscard]] Value value_of(const NumberLiteral &literal, const Node &) {
     return Value{literal.value};
@@ -312,9 +305,10 @@ private:
     default:
       break;
     }
+    const bool last = &node == m_root;
     return elementwise(value(left), value(right),
                        [&](const Value &a, const Value &b) {
-                         return binary(operation.op, a, b);
+                         return binary(operation.op, a, b, last);
                        });
   }
 
@@ -479,8 +473,9 @@ private:
     return Value{std::move(result)};
   }
 
+  /// @p last where @p op is the last operation of the formula.
   [[nodiscard]] Value binary(const BinaryOperator op, const Value &a,
-                             const Value &b) const {
+                             const Value &b, const bool last) const {
     switch (op) {
     case BinaryOperator::concat:
       return concatenate(a, b);
@@ -492,12 +487,12 @@ private:
     case BinaryOperator::greater_equal:
       return compare(op, a, b);
     default:
-      return arithmetic(op, a, b);
+      return arithmetic(op, a, b, last);
     }
   }
 
   [[nodiscard]] Value arithmetic(const BinaryOperator op, const Value &a,
-                                 const Value &b) const {
+                                 const Value &b, const bool last) const {
     const Number left = number(a);
     if (const auto *error = std::get_if<ErrorType>(&left)) {
       return Value{*error};
@@ -511,10 +506,10 @@ private:
     double result = 0;
     switch (op) {
     case BinaryOperator::add:
-      result = add(x, y);
+      result = add(x, y, last);
       break;
     case BinaryOperator::subtract:
-      result = add(x, -y);
+      result = add(x, -y, last);
       break;
     case BinaryOperator::multiply:
       result = x * y;
@@ -534,6 +529,25 @@ private:
       return Value{ErrorType::number};
     }
     return Value{result};
+  }
+
+  /// `a + b`. LibreOffice gives 0 where the two cancel to within the
+  /// precision of a sheet (`rtl::math::approxAdd`), so `0.1+0.2-0.3` is 0.
+  /// Excel does so only for the last operation of a formula outside brackets,
+  /// which the tree does not keep, and does not document how near to 0.
+  [[nodiscard]] double add(const double a, const double b,
+                           const bool last) const {
+    const double result = a + b;
+    if (result == 0 || (a < 0) == (b < 0)) {
+      return result;
+    }
+    if (m_settings->dialect == Dialect::libreoffice) {
+      return approximately_equal(a, -b) ? 0 : result;
+    }
+    if (last && std::abs(result) < std::max(std::abs(a), std::abs(b)) * 1e-12) {
+      throw NoAnswer{};
+    }
+    return result;
   }
 
   [[nodiscard]] Value power(const double x, const double y) const {
@@ -714,7 +728,7 @@ std::optional<formula::Value> formula::evaluate(const Node &node,
                                                 const CellSource &source,
                                                 const Settings &settings) {
   try {
-    Evaluator evaluator(&source, &settings, cell);
+    Evaluator evaluator(&source, &settings, cell, &node);
     Value result = evaluator.scalar(evaluator.value(node));
     // a formula reading an empty cell shows 0
     if (result.holds<Empty>()) {

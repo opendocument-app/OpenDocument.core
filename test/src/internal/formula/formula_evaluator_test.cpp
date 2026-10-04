@@ -156,6 +156,15 @@ TEST(FormulaEvaluator, a_sum_that_cancels_is_0) {
   EXPECT_EQ(ods("=0.1+0.2=0.3"), boolean(true));
   EXPECT_EQ(ods("=1+1E-16=1"), boolean(true));
   EXPECT_EQ(ods("=1E-16=0"), boolean(false));
+  EXPECT_EQ(ods("=(1-0.9-0.1)*1"), number(0));
+}
+
+TEST(FormulaEvaluator, an_xlsx_sum_that_cancels_is_exact) {
+  EXPECT_EQ(xlsx("=(1-0.9-0.1)*1"), number(1 - 0.9 - 0.1));
+  EXPECT_EQ(xlsx("=1-(0.9+0.1)"), number(0));
+  EXPECT_EQ(xlsx("=0.1+0.2=0.3"), boolean(true));
+  // Excel gives 0 here, but -2.78E-17 for =(1-0.9-0.1)
+  EXPECT_EQ(xlsx("=1-0.9-0.1"), std::nullopt);
 }
 
 TEST(FormulaEvaluator, a_power_follows_the_dialect) {
