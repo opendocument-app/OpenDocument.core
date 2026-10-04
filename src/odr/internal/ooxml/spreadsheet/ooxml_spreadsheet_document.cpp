@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <ostream>
@@ -343,12 +344,15 @@ public:
           m_registry->create_text_element(value_node, value_node);
       m_registry->append_child(cell_id, text_id);
       // a date typed into a cell of a number format gets a date format, as
-      // Excel gives it one: 14, 20, 21 or 22 of ECMA-376 18.8.30
+      // Excel gives it one: 14, 20, 21, 22 or 46 of ECMA-376 18.8.30
       if (number_format_of(cell_id).category() ==
           number_format::Category::number) {
-        const std::int64_t seconds = std::llround(value.number() * 86400);
+        const std::int64_t seconds =
+            std::llround(std::abs(value.number()) * 86400);
         const std::uint32_t id = value.type() == ValueType::time
-                                     ? (seconds % 60 != 0 ? 21 : 20)
+                                     ? (seconds >= 86400    ? 46
+                                        : seconds % 60 != 0 ? 21
+                                                            : 20)
                                  : seconds % 86400 != 0 ? 22
                                                         : 14;
         restyle_cell(node,

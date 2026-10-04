@@ -245,6 +245,7 @@ TEST(OoxmlSpreadsheetValue, a_written_date_gets_a_date_format) {
   sheet.set_cell(8, 0, CellValue(ValueType::time).with_number(0.75));
   sheet.set_cell(9, 0,
                  CellValue(ValueType::time).with_number(0.75 + 5.0 / 86400));
+  sheet.set_cell(10, 0, CellValue(ValueType::time).with_number(1.75));
 
   const Document reopened = saved_and_reopened(document);
   const Sheet saved = first_sheet(reopened);
@@ -255,6 +256,8 @@ TEST(OoxmlSpreadsheetValue, a_written_date_gets_a_date_format) {
   EXPECT_EQ(saved.cell(8, 0).value().type(), ValueType::time);
   EXPECT_EQ(shown_at(saved, 8), "18:00");
   EXPECT_EQ(shown_at(saved, 9), "18:00:05");
+  // a time of a day or more does not wrap
+  EXPECT_EQ(shown_at(saved, 10), "42:00:00");
 }
 
 TEST(OoxmlSpreadsheetValue, a_date_keeps_the_date_format_its_cell_has) {
