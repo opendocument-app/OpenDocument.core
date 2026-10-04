@@ -305,6 +305,14 @@ style, so it keeps what it showed.
   last declared column, and each one starts from the default of its column.
   The row's `table:default-cell-style-name` is not written: LibreOffice
   applies it to every row of the sheet.
+- `.xlsx`, a row: the delta goes onto the row's `s` with `customFormat`, and
+  onto every `c` of it. A column stating a `style` inside the used range gets
+  a `c` where the row states none, because the row's format would hide the
+  column's (ECMA-376 18.3.1.4).
+- `.xlsx`, a column: the `col` is cut out of the one covering it, or stated
+  with `sheetFormatPr/@defaultColWidth`, because a `col` without a width is
+  zero wide in Excel. The delta goes onto its `style` and onto every `c` of
+  it, and a row with `customFormat` gets a `c` where it states none.
 
 **Why:** a header click selects a row or a column across the rendered extent
 only. The cells past it, and the cells a later write makes, have to take the

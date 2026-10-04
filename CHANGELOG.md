@@ -59,7 +59,9 @@ The release run heads these entries with the version and opens a fresh
 
 - `Sheet::set_row_style` and `Sheet::set_column_style`, and the
   `setRowStyle` and `setColumnStyle` ops, style a whole row or column of an
-  ods, also the cells past what the file states.
+  ods or an xlsx, also the cells past what the file states.
+- An xlsx cell without its own style shows the style of its row, where the
+  row states `customFormat`, else the style of its column.
 
 ## v7.4.0 - 2026-10-03
 

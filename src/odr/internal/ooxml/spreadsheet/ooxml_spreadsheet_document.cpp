@@ -380,29 +380,186 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    std::uint32_t base = 0;
-    if (const pugi::xml_attribute style = node.attribute("s")) {
-      base = style.as_uint();
-    } else if (const pugi::xml_node row_node = node.parent();
-               row_node.attribute("customFormat").as_bool()) {
-      base = row_node.attribute("s").as_uint();
-    } else {
-      base = m_registry->sheet_element_at(element_id)
-                 .column_node(column)
-                 .attribute("style")
-                 .as_uint();
+    restyle_cell(
+        node,
+        shown_format(
+            node, m_registry->sheet_element_at(element_id).column_node(column)),
+        cell_style, text_style);
+  }
+
+  /// A row's `s` with `customFormat`, and every `c` of it on its own `s`. A
+  /// column stating a style inside the used range gets a `c` where the row
+  /// states none, because the row's format would hide the column's.
+  void sheet_set_row_style(const ElementIdentifier element_id,
+                           const std::uint32_t row,
+                           const TableCellStyle &cell_style,
+                           const TextStyle &text_style) const override {
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
+    const pugi::xml_node sheet_node = get_node(element_id);
+
+    pugi::xml_node row_node = sheet.row_node(row);
+    if (!row_node) {
+      pugi::xml_node sheet_data = sheet_node.child("sheetData");
+      if (!sheet_data) {
+        throw UnsupportedOperation(); // 18.3.1.99 states one for every sheet
+      }
+      row_node = insert_row_node(sheet_data, row);
+      row_node.append_attribute("r").set_value(row + 1);
+      sheet.register_row(row, row_node);
+    }
+    const bool row_formatted = row_node.attribute("customFormat").as_bool();
+
+    for (const pugi::xml_node cell : row_node.children("c")) {
+      const TablePosition position(cell.attribute("r").value());
+      restyle_cell(cell, shown_format(cell, sheet.column_node(position.column)),
+                   cell_style, text_style);
+    }
+    if (!row_formatted) {
+      for (const auto &[max, entry] : sheet.columns) {
+        const std::uint32_t style = entry.node.attribute("style").as_uint();
+        for (std::uint32_t column = entry.min;
+             style != 0 && column <= max && column < sheet.dimensions.columns;
+             ++column) {
+          if (sheet.cell(column, row) == nullptr &&
+              !is_covered_by_merge(sheet_node, {column, row})) {
+            restyle_cell(get_node(insert_cell(element_id, column, row)), style,
+                         cell_style, text_style);
+          }
+        }
+      }
     }
 
+    xml::set_attribute(
+        row_node, "s",
+        std::to_string(
+            m_document->style_registry().create_cell_format(
+                row_formatted ? row_node.attribute("s").as_uint() : 0,
+                cell_style, text_style))
+            .c_str());
+    xml::set_attribute(row_node, "customFormat", "1");
+  }
+
+  /// A `col` of its own with the delta on its `style`, and every `c` of the
+  /// column on its own `s`. A row with `customFormat` gets a `c` where it
+  /// states none, because its format would hide the column's.
+  void sheet_set_column_style(const ElementIdentifier element_id,
+                              const std::uint32_t column,
+                              const TableCellStyle &cell_style,
+                              const TextStyle &text_style) const override {
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
+    const pugi::xml_node sheet_node = get_node(element_id);
+    const pugi::xml_node column_node = claim_column(sheet_node, sheet, column);
+
+    for (const auto &[row, entry] : sheet.rows) {
+      if (const ElementRegistry::Sheet::Cell *cell = sheet.cell(column, row);
+          cell != nullptr) {
+        restyle_cell(cell->node, shown_format(cell->node, column_node),
+                     cell_style, text_style);
+      } else if (entry.node.attribute("customFormat").as_bool() &&
+                 !is_covered_by_merge(sheet_node, {column, row})) {
+        restyle_cell(get_node(insert_cell(element_id, column, row)),
+                     entry.node.attribute("s").as_uint(), cell_style,
+                     text_style);
+      }
+    }
+
+    xml::set_attribute(
+        column_node, "style",
+        std::to_string(m_document->style_registry().create_cell_format(
+                           column_node.attribute("style").as_uint(), cell_style,
+                           text_style))
+            .c_str());
+  }
+
+  /// A position without `s` shows its row's `s` where the row states
+  /// `customFormat`, else its column's `style`, as LibreOffice reads it;
+  /// 18.3.1.4 alone would default `s` to 0. None where nothing states one.
+  static std::optional<std::uint32_t>
+  shown_format(const pugi::xml_node cell, const pugi::xml_node row_node,
+               const pugi::xml_node column_node) {
+    if (const pugi::xml_attribute style = cell.attribute("s")) {
+      return style.as_uint();
+    }
+    if (row_node.attribute("customFormat").as_bool()) {
+      return row_node.attribute("s").as_uint();
+    }
+    if (const pugi::xml_attribute style = column_node.attribute("style")) {
+      return style.as_uint();
+    }
+    return std::nullopt;
+  }
+
+  static std::uint32_t shown_format(const pugi::xml_node cell,
+                                    const pugi::xml_node column_node) {
+    return shown_format(cell, cell.parent(), column_node).value_or(0);
+  }
+
+  /// Points the `s` of @p cell at @p base with the delta applied.
+  void restyle_cell(pugi::xml_node cell, const std::uint32_t base,
+                    const TableCellStyle &cell_style,
+                    const TextStyle &text_style) const {
     const std::uint32_t format =
         m_document->style_registry().create_cell_format(base, cell_style,
                                                         text_style);
-    pugi::xml_attribute attribute = node.attribute("s");
+    pugi::xml_attribute attribute = cell.attribute("s");
     if (!attribute) {
-      const pugi::xml_attribute reference = node.attribute("r");
-      attribute = reference ? node.insert_attribute_after("s", reference)
-                            : node.prepend_attribute("s");
+      const pugi::xml_attribute reference = cell.attribute("r");
+      attribute = reference ? cell.insert_attribute_after("s", reference)
+                            : cell.prepend_attribute("s");
     }
     attribute.set_value(format);
+  }
+
+  /// The `col` of @p column alone: cut out of the one covering it, or stated
+  /// with the sheet's default width, since a `col` without one is zero wide
+  /// in Excel. Reindexes the columns.
+  static pugi::xml_node claim_column(const pugi::xml_node sheet_node,
+                                     ElementRegistry::Sheet &sheet,
+                                     const std::uint32_t column) {
+    static constexpr std::array<std::string_view, 6> order{
+        "sheetPr",       "dimension", "sheetViews",
+        "sheetFormatPr", "cols",      "sheetData"};
+    pugi::xml_node cols = sheet_node.child("cols");
+    if (!cols) {
+      cols = xml::insert_in_sequence(sheet_node, "cols", order);
+    }
+
+    pugi::xml_node node;
+    if (const ElementRegistry::Sheet::Column *entry = sheet.column(column);
+        entry != nullptr) {
+      node = entry->node;
+      const std::uint32_t min = node.attribute("min").as_uint();
+      const std::uint32_t max = node.attribute("max").as_uint();
+      if (column + 1 < max) {
+        pugi::xml_node after = cols.insert_copy_after(node, node);
+        xml::set_attribute(after, "min", std::to_string(column + 2).c_str());
+      }
+      if (column + 1 > min) {
+        pugi::xml_node before = cols.insert_copy_before(node, node);
+        xml::set_attribute(before, "max", std::to_string(column).c_str());
+      }
+    } else {
+      // 18.3.1.17 states the `col`s in column order
+      const pugi::xml_node next =
+          cols.find_child([column](const pugi::xml_node col) {
+            return col.attribute("min").as_uint() > column + 1;
+          });
+      node = next ? cols.insert_child_before("col", next)
+                  : cols.append_child("col");
+      const pugi::xml_node format = sheet_node.child("sheetFormatPr");
+      const pugi::xml_attribute width = format.attribute("defaultColWidth");
+      // Excel's own default for an 11pt Calibri
+      xml::set_attribute(node, "width", width ? width.value() : "8.43");
+    }
+    xml::set_attribute(node, "min", std::to_string(column + 1).c_str());
+    xml::set_attribute(node, "max", std::to_string(column + 1).c_str());
+
+    sheet.columns.clear();
+    for (const pugi::xml_node col : cols.children("col")) {
+      sheet.register_column(col.attribute("min").as_uint() - 1,
+                            col.attribute("max").as_uint() - 1, col);
+    }
+    return node;
   }
 
   [[nodiscard]] TableCellStyle
@@ -411,15 +568,13 @@ public:
                    const std::uint32_t row) const override {
     const ElementRegistry::Sheet &sheet_element =
         m_registry->sheet_element_at(element_id);
-    const pugi::xml_node cell_node = sheet_element.cell_node(column, row);
-
-    TableCellStyle result;
-    if (const pugi::xml_attribute style_attribute = cell_node.attribute("s")) {
-      const ResolvedStyle style =
-          m_document->style_registry().cell_style(style_attribute.as_uint());
-      result.override(style.table_cell_style);
+    const std::optional<std::uint32_t> format = shown_format(
+        sheet_element.cell_node(column, row), sheet_element.row_node(row),
+        sheet_element.column_node(column));
+    if (!format) {
+      return {};
     }
-    return result;
+    return m_document->style_registry().cell_style(*format).table_cell_style;
   }
 
   [[nodiscard]] TablePosition
@@ -802,8 +957,13 @@ private:
   [[nodiscard]] ResolvedStyle
   get_partial_cell_style(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute style_id = node.attribute("s")) {
-      return m_document->style_registry().cell_style(style_id.as_uint());
+    const pugi::xml_node column_node =
+        m_registry->sheet_element_at(element_parent(element_id))
+            .column_node(
+                m_registry->sheet_cell_element_at(element_id).position.column);
+    if (const std::optional<std::uint32_t> format =
+            shown_format(node, node.parent(), column_node)) {
+      return m_document->style_registry().cell_style(*format);
     }
     return {};
   }
