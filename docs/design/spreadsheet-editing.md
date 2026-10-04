@@ -299,13 +299,14 @@ Status: planned. The steps land as a stack, in this order:
    conditional aggregates (`COUNTIF`, `SUMIFS` and the like).
 4. The functions of dates and times.
 5. Named ranges and named expressions resolve.
-6. `Document::recalculate`: it computes the stale formula cells in
-   dependency order, reports cycles, and writes the results into `.ods` and
-   `.xlsx`.
-7. The sheet editor takes formula input, and shows the results the host
-   sends back.
-8. `Document::recalculate` in the python, java, objective-c and npm
+6. `Document::recalculate`: it computes the stale formula cells, reports
+   cycles, and writes the results into `.ods` and `.xlsx`. A save
+   recalculates first.
+7. `Document::recalculate` in the python, java, objective-c and npm
    bindings.
+
+How the page shows the results while the user edits is not part of this
+plan. The open work lists the options.
 
 ### 29. A result is never wrong, but it can be absent
 
@@ -393,41 +394,28 @@ file caches one:
   formatted with the data style of the cell.
 - `.xlsx`: `<v>` and `t`. The reader formats `<v>` already.
 
-The result serializes to JSON: a list of positions, each with a value in the
-shape of a `setCell` value. A host passes it to `odr.editing.showResults`,
-which shows each value and removes the stale marks it answers. A mark stays
-on a cell of a cycle and on a cell without an answer.
 
 **Why on demand, not in topological order:** `INDIRECT` and `OFFSET` decide
 what they read only when they run, so a static order is wrong for them. A
 pull computes each stale cell once and needs no sort.
 
-**Why record the positions in the document:** a host replays the log of a
-commit with `Document::edit` and then calls `recalculate()`. It does not have
-to name the positions a second time. So a host that shows results keeps one
-decode open for the whole session and replays each commit onto it, and
-decision 6 still holds for the save.
+**Why record the positions in the document:** a save and a host then ask
+for a recalculation without naming the positions a second time.
 
-### 33. The editor takes a formula in the spelling a user types
+### 33. A save recalculates, and a host can recalculate sooner
 
-The user types `=SUM(A1:B2)`. A formula cell is no longer locked, and the
-editor opens it on that spelling. Where the decimal sign of the document's
-locale is `,`, arguments separate with `;`, as Calc and Excel show them.
+`Document::save` calls `recalculate()` before it writes, so a saved file
+states a current result for every cell the evaluator answers. A user who
+opens the saved file again sees the results.
 
-- The render writes `data-odr-formula` in this spelling. The parser and the
-  writer get a third `Syntax`, the one a user types, with the decimal sign
-  as a parameter.
-- A `setCell` value of type `formula` states the text as typed. The writer
-  parses it with the locale of the document and writes it in the syntax of
-  the file: `of:=SUM([.A1:.B2])` in an `.ods`, `SUM(A1:B2)` in an `.xlsx`. A
-  formula that does not parse makes the writer throw, as any op it cannot
-  apply does (decision 2), and the cell keeps its value.
-- The page marks the new formula cell stale, and also the cells that read
-  it. The marks go when the host sends the results back.
+A host can call `recalculate()` at any time, for example after each commit
+to show results while the user edits. Core does not decide when a host does
+this: an app that offers live results to some users only gates the call in
+the app.
 
-**Why the locale of the document:** the page and the writer then read the
-same text the same way. The page states that locale already
-(`data-odr-locale`, decision 4).
+**Why a save recalculates:** without it, a saved `.ods` has no result for an
+edited formula, and a saved `.xlsx` shows the old results in every reader
+that does not compute (this one included). The cost comes once per save.
 
 ## Open work
 
@@ -440,6 +428,53 @@ same text the same way. The page states that locale already
   No spreadsheet in `test/data/input` states one. The fix moves `xm:sqref`
   as `sqref` and `xm:f` as a rule formula, with the code of decision 28.
 - **The formula evaluator**, as the plan above states it.
+- **Live results in the page.** The page has no evaluator, so it marks the
+  formula cells stale until something computes them. There are four ways to
+  compute them while the user edits:
+  - **A small wasm module with the evaluator only. This is the preferred
+    way.** The page has the cells already: `data-odr-formula` and
+    `data-odr-value` state what the evaluator reads. So the module holds
+    `internal/formula` and `internal/number_format` and nothing else: no
+    XML, no zip, no file format. Its only dependency outside core is `fmt`.
+    A JavaScript callback implements `formula::CellSource` over the DOM
+    (decision 30). The page embeds the module as base64, as
+    `HtmlConfig::embed_shipped_resources` does with the other resources,
+    so a page with no host computes too: an export, a page opened from
+    `file://`, a page sent as a mail attachment. There is still one
+    evaluator and one corpus test. Measure the size of the module once
+    step 1 exists.
+  - The host computes them in process (decision 5) and sends them to the
+    page. The apps and the npm host have core already. The host must keep a
+    decoded document that matches the page, and an undo in the page needs a
+    fresh decode and a replay of the log, because `Document::edit` cannot
+    take an op back. A page with no host does not compute.
+  - The page loads all of core as wasm. The page then needs the file, and
+    the module is 4.6 MB (`odr-core.wasm` today).
+  - The page has an evaluator in JavaScript. A page with no host computes,
+    but this is a second library of functions that drifts from the first,
+    which decision 5 rejects.
+
+  An evaluator in the page reads only what the page shows. A formula that
+  reads past a sheet the limits cut, or a sheet that is not in the page,
+  stays stale (decision 29). The page still needs a host to save.
+
+  The build cost of the small module: a page resource made with emscripten
+  makes every build that ships the resources need emscripten too, also the
+  android, ios and python builds. The emsdk in a conan cache takes 2.6 GB.
+  So CI, which has emscripten for the npm package already, builds the
+  module once and publishes it, and the other builds take that file, as
+  they take any shipped resource. A build without the module ships pages
+  that mark formulas stale, as now. This has two costs:
+  - The module must match the core that renders the page, for example in
+    how `data-odr-formula` spells a formula. So CI publishes the module per
+    core version, and a build takes the one of its version.
+  - A local change to `internal/formula` reaches the page only after CI
+    builds the module, or where the developer installs emscripten.
+- **Formula input in the editor.** The user types `=SUM(A1:B2)`, with `;`
+  between arguments where the decimal sign of the locale is `,`. The writer
+  parses that spelling with the locale of the document, and writes the
+  formula in the syntax of the file. It comes with live results, because a
+  typed formula has no result until something computes it.
 - **Out of the evaluator's first plan:** array formulas and dynamic arrays,
   a reference into another document, iterative calculation, and localized
   function names. Each cell that needs one stays without an answer
